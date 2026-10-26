@@ -1,6 +1,9 @@
 import type { InboxPromotionReviewItem } from '@n8n/api-types';
+import { componentRegistry, type PromotionChangesState } from '@n8n/frontend-module-sdk';
 import { useToast } from '@n8n/composables/useToast';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { defineComponent } from 'vue';
+import { onTestFinished } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { waitFor, within } from '@testing-library/vue';
@@ -19,6 +22,7 @@ const item = (props: Partial<InboxPromotionReviewItem> = {}): InboxPromotionRevi
 	id: 'rev-1',
 	state: 'open',
 	reviewState: 'open',
+	reviewType: 'gitlab',
 	title: 'Promote the thing',
 	webUrl: 'https://gitlab.example.com/platform/workflows/-/merge_requests/1',
 	branchName: 'n8n-promotion/1',
@@ -39,10 +43,24 @@ const renderComponent = createComponentRenderer(PromotionReviewDetail);
 const showError = vi.fn();
 const onItemChange = vi.fn();
 
+/** What the Changes tab reports. The editor renders it, so the test uses a stub. */
+let shownChanges: PromotionChangesState;
+const ChangesStub = defineComponent({
+	props: { reviewId: { type: String, required: true } },
+	emits: ['state'],
+	mounted() {
+		this.$emit('state', shownChanges);
+	},
+	template: '<div data-test-id="promotion-changes-stub">{{ reviewId }}</div>',
+});
+
 beforeEach(() => {
 	vi.clearAllMocks();
 	createTestingPinia();
 	vi.mocked(useToast).mockReturnValue({ showError } as unknown as ReturnType<typeof useToast>);
+	shownChanges = { status: 'ready', headCommitSha };
+	componentRegistry.register('promotion-changes', ChangesStub);
+	onTestFinished(() => componentRegistry.unregister('promotion-changes'));
 });
 
 async function approveInDialog({ getByRole, getByTestId }: ReturnType<typeof renderComponent>) {
@@ -169,4 +187,58 @@ it('shows the error, reloads the list, and enables approve again when the approv
 	expect(showError).toHaveBeenCalledWith(error, "Couldn't approve and merge");
 	expect(onItemChange).toHaveBeenCalledWith({ type: 'promotion_review', id: 'rev-1' });
 	expect(rendered.getByTestId('inbox-promotion-review-approve')).toBeEnabled();
+});
+
+it('shows the changes of the review from the shell', () => {
+	const { getByRole, getByTestId } = renderComponent({ props: { item: item(), onItemChange } });
+
+	expect(getByRole('tab', { name: 'Changes' })).toBeInTheDocument();
+	expect(getByTestId('promotion-changes-stub')).toHaveTextContent('rev-1');
+});
+
+it.each([
+	['the changes still load', { status: 'loading' } as const, null],
+	[
+		'the changes could not be shown',
+		{ status: 'unavailable' } as const,
+		"n8n couldn't show the changes of this review. Review and merge it on GitLab.",
+	],
+])('only approves changes that the admin saw: disabled when %s', async (_case, state, reason) => {
+	shownChanges = state;
+
+	const { getByTestId, findByTestId, queryByTestId } = renderComponent({
+		props: { item: item(), onItemChange },
+	});
+
+	if (reason) {
+		expect(await findByTestId('inbox-promotion-review-approve-reason')).toHaveTextContent(reason);
+	} else {
+		expect(queryByTestId('inbox-promotion-review-approve-reason')).not.toBeInTheDocument();
+	}
+	expect(getByTestId('inbox-promotion-review-approve')).toBeDisabled();
+});
+
+it('reloads the changes when GitLab reports new commits, then approves the new head', async () => {
+	const newHead = 'b'.repeat(40);
+	const rendered = renderComponent({
+		props: { item: item({ headCommitSha: newHead }), onItemChange },
+	});
+	const { getByTestId, findByTestId, getByText } = rendered;
+
+	expect(await findByTestId('inbox-promotion-review-new-commits')).toBeInTheDocument();
+	const approve = getByTestId('inbox-promotion-review-approve');
+	expect(approve).toBeDisabled();
+	// The callout above the changes explains why.
+	expect(approve).toHaveAttribute(
+		'aria-describedby',
+		getByText('The merge request has new commits since these changes loaded.').id,
+	);
+
+	shownChanges = { status: 'ready', headCommitSha: newHead };
+	await userEvent.click(getByTestId('inbox-promotion-review-reload-changes'));
+	await approveInDialog(rendered);
+
+	expect(approvePromotionReview).toHaveBeenCalledWith(expect.anything(), 'rev-1', {
+		headCommitSha: newHead,
+	});
 });

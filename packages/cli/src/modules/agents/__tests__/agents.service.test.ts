@@ -20,6 +20,7 @@ import type {
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock, type MockProxy } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
@@ -34,6 +35,7 @@ import { AgentsService } from '../agents.service';
 import type { AgentTask } from '../entities/agent-task.entity';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { N8nChatFlagService } from '../integrations/platforms/n8n-chat/n8n-chat-flag.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
@@ -101,12 +103,15 @@ function makeService() {
 		broadcaster,
 		new AgentModificationTelemetryService(
 			telemetry,
+			mock<InstanceSettings>(),
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 			eventService,
 			// EOF Experiment cleanup
 		),
 	);
 	const setupCompletion = mock<AgentSetupCompletionService>();
+	const n8nChatFlag = mock<N8nChatFlagService>();
+	n8nChatFlag.isEnabledFor.mockResolvedValue(false);
 	setupCompletion.recordIfSetupComplete.mockResolvedValue(null);
 	const configPreparation = new AgentConfigPreparationService(
 		credentialsService,
@@ -155,10 +160,12 @@ function makeService() {
 		configPreparation,
 		saveCompletion,
 		setupCompletion,
+		n8nChatFlag,
 	);
 
 	return {
 		service,
+		n8nChatFlag,
 		telemetry,
 		setupCompletion,
 		transactionRunner,
@@ -230,6 +237,62 @@ describe('AgentsService', () => {
 			expect(telemetry.track.mock.calls[0]?.[1]).not.toHaveProperty('changed_settings');
 		},
 	);
+
+	describe('default n8n Chat channel', () => {
+		it('adds n8n Chat to a new agent when the creator has the flag', async () => {
+			const { service, agentRepository, n8nChatFlag } = makeService();
+			n8nChatFlag.isEnabledFor.mockResolvedValue(true);
+			mockCreateReturning(agentRepository, makeAgent());
+
+			const { agent } = await service.createOrAdopt(projectId, 'Support Agent', {
+				actor,
+				user,
+				createdBy: 'user',
+			});
+
+			expect(n8nChatFlag.isEnabledFor).toHaveBeenCalledWith(user);
+			expect(agent.integrations).toEqual([{ type: N8N_CHAT_INTEGRATION_TYPE, credentialId: '' }]);
+		});
+
+		it('keeps n8n Chat when the create also carries an initial config', async () => {
+			const { service, agentRepository, n8nChatFlag } = makeService();
+			n8nChatFlag.isEnabledFor.mockResolvedValue(true);
+			mockCreateReturning(agentRepository, makeAgent());
+
+			const { agent } = await service.createOrAdopt(projectId, 'Support Agent', {
+				actor,
+				user,
+				createdBy: 'mcp',
+				config: { instructions: 'Help users' },
+			});
+
+			expect(agent.integrations).toEqual([{ type: N8N_CHAT_INTEGRATION_TYPE, credentialId: '' }]);
+		});
+
+		it('adds no channel when the creator does not have the flag', async () => {
+			const { service, agentRepository } = makeService();
+			mockCreateReturning(agentRepository, makeAgent());
+
+			const { agent } = await service.createOrAdopt(projectId, 'Support Agent', {
+				actor,
+				user,
+				createdBy: 'user',
+			});
+
+			expect(agent.integrations).toEqual([]);
+		});
+
+		it('adds no channel to a create without a user', async () => {
+			const { service, agentRepository, n8nChatFlag } = makeService();
+			n8nChatFlag.isEnabledFor.mockResolvedValue(true);
+			mockCreateReturning(agentRepository, makeAgent());
+
+			const { agent } = await service.createOrAdopt(projectId, 'Support Agent', { actor });
+
+			expect(n8nChatFlag.isEnabledFor).not.toHaveBeenCalled();
+			expect(agent.integrations).toEqual([]);
+		});
+	});
 
 	it('saves the prepared initial configuration and reports the stored profile', async () => {
 		const { service, agentRepository, telemetry, setupCompletion } = makeService();

@@ -292,6 +292,7 @@ export class EvalExecutionService {
 			`[EvalMock] Generating hints for ${nodeNames.length} nodes: ${nodeNames.join(', ')}`,
 		);
 
+		const defaultStartNode = this.findStartNode(this.buildDetachedWorkflow(workflowEntity));
 		const hints = await timings.time(
 			'hints',
 			undefined,
@@ -300,7 +301,7 @@ export class EvalExecutionService {
 					workflow: workflowEntity,
 					nodeNames,
 					scenarioHints,
-					defaultStartNodeName: this.findStartNode(this.buildWorkflow(workflowEntity))?.name,
+					defaultStartNodeName: defaultStartNode?.name,
 				}),
 		);
 
@@ -760,6 +761,11 @@ export class EvalExecutionService {
 
 	// ── Workflow construction ──────────────────────────────────────────────
 
+	/**
+	 * `new Workflow` rewrites each node's `parameters` in place and drops hidden
+	 * ones. Phase 2 relies on that: the patches applied to `workflow.nodes` reach
+	 * the entity that runs. Phase 1 uses `buildDetachedWorkflow` instead.
+	 */
 	private buildWorkflow(workflowEntity: IWorkflowBase): Workflow {
 		return new Workflow({
 			id: workflowEntity.id,
@@ -771,6 +777,16 @@ export class EvalExecutionService {
 			staticData: workflowEntity.staticData,
 			settings: workflowEntity.settings ?? {},
 		});
+	}
+
+	/**
+	 * A Workflow over a copy of the nodes, for Phase-1 lookups. Built from the
+	 * entity itself, it would drop params hidden while a resource picker is still
+	 * empty (Google Sheets `columns` while `sheetName` is ''), before
+	 * `fillSetupPendingResourceLocators` runs in Phase 2.
+	 */
+	private buildDetachedWorkflow(workflowEntity: IWorkflowBase): Workflow {
+		return this.buildWorkflow({ ...workflowEntity, nodes: structuredClone(workflowEntity.nodes) });
 	}
 
 	/**
@@ -788,7 +804,7 @@ export class EvalExecutionService {
 			: undefined;
 		return (
 			this.asTriggerNode(hinted) ??
-			this.asTriggerNode(this.findStartNode(this.buildWorkflow(workflowEntity)))
+			this.asTriggerNode(this.findStartNode(this.buildDetachedWorkflow(workflowEntity)))
 		);
 	}
 
@@ -1648,7 +1664,8 @@ function synthesizeResourceLocatorValue(paramName: string): string {
 
 /**
  * Fill empty resource-locator values on the raw entity nodes. Must run before
- * any Workflow construction — see the call site in execute() for why.
+ * any Workflow is built over the entity's own nodes (Phase-1 lookups use
+ * `buildDetachedWorkflow`, a copy) — see the call site in execute() for why.
  */
 function fillSetupPendingResourceLocators(parameters: INodeParameters): void {
 	for (const [key, raw] of Object.entries(parameters)) {

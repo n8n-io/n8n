@@ -26,9 +26,8 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 } from 'n8n-workflow';
 
+import { getExecutionRedaction } from '@/executions/execution-viewer-reader';
 import type { NodeTypes } from '@/node-types';
-
-import { getExecutionRedaction } from './instance-ai-execution-reader';
 
 /**
  * Maximum characters for a single resolved parameter leaf. Resolved parameter

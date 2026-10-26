@@ -105,6 +105,35 @@ or deactivation.
 
 ## Modal patterns
 
+### Channel behavior settings
+
+Put optional channel behavior controls in the channel edit view after setup.
+Use a Settings Row with a labeled control and a short description of its scope.
+Use `AgentFormSettingRow` for channel switches. Align labels with the form
+fields and switches with the right edge. Keep descriptions visible when they
+wrap. Use the same row for reply controls, approvals, and managed app behavior.
+Keep changes local until Save. Cancel and Close discard them. Show the same
+behavior controls for managed and manual connections.
+
+Group related controls in labeled Settings Row Groups, as Slack and WhatsApp do.
+Put reply controls in Conversations and approval controls in Agent permissions. Keep
+the credential selector outside these groups. Use inset dividers between rows.
+Keep each control on the right and its full description on the left. Keep the
+approval action selector inside its setting row.
+When channel approval is on, show a full-width action picker directly below
+Actions that need approval. Do not show a mode picker or helper text for this
+field. Show saved approval for all actions as a selection of every action.
+
+### Form spacing
+
+Use `--spacing--md` as the gap between independent fields and settings in flat
+Agent forms. The parent owns this gap. Fields and settings must not add outer
+vertical padding, margins, or a minimum row height. Keep label and description
+spacing inside the field. Use `AgentFormSettingRow` for inline controls in
+channel and tool forms. It grows with the text and control content.
+Keep grouped settings surfaces, such as expandable Teams availability, in
+their Settings Row Group layout.
+
 ### Canonical components
 
 Use these components:
@@ -121,14 +150,14 @@ design work.
 
 ### Layout contract
 
-| Area       | Rule                                                                                                                                                                                                                                                                                                                                                                                              |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                                                                                                                                                                                                                                                                                           |
-| Header     | Keep Back on the left and Close on the right. Do not add a divider under the header.                                                                                                                                                                                                                                                                                                              |
-| Title      | Use an editable local name when the asset supports one. Show the asset icon beside the name in tool configuration modals.                                                                                                                                                                                                                                                                         |
-| Body       | Let `AgentModal` own the outer body inset. Match the header: `--spacing--md` vertical and `--spacing--lg` horizontal. Do not repeat it on the first content wrapper. Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible.                                  |
-| Footer     | Use the same inset as the header. Keep the footer's top divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.                                                                                                                                                                                                                                                 |
-| Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                                                                                                                                                                                                                                                                                                   |
+| Area       | Rule                                                                                                                                                                                                                                                                                                                                                           |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                                                                                                                                                                                                                                                        |
+| Header     | Keep Back on the left and Close on the right. Do not add a divider under the header.                                                                                                                                                                                                                                                                           |
+| Title      | Use an editable local name when the asset supports one. Show the asset icon beside the name in tool configuration modals.                                                                                                                                                                                                                                      |
+| Body       | Let `AgentModal` own the outer body inset. Match the header: `--spacing--md` vertical and `--spacing--lg` horizontal. Do not repeat it on the first content wrapper. Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
+| Footer     | Use the same inset as the header. Keep the footer's top divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.                                                                                                                                                                                                              |
+| Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                                                                                                                                                                                                                                                                |
 
 Use CSS variables for all sizes, spacing, colors, and motion. Do not add a new
 global dialog primitive.
@@ -147,6 +176,9 @@ set it on short modals, such as confirmations, descriptions, and budgets.
 Do not add top padding or a top margin to a modal's first content wrapper. The
 shell supplies that space. Use the flush body only for a full-bleed workspace.
 The workspace must then own all of its edge spacing.
+Keep the shell's bottom body padding when a footer is present. Leave
+`--spacing--md` between the last form control and the footer divider, including
+after scrolling to the end. Do not add this space again in individual forms.
 
 When a nested credential or parameter editor dialog is open, release the parent
 focus trap and block parent dismissal. The nested dialog owns Escape until it

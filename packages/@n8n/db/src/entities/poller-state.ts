@@ -1,3 +1,4 @@
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 
 import { DateTimeColumn, JsonColumn, WithTimestamps } from './abstract-entity';
@@ -13,7 +14,7 @@ export class PollerState extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	workflowId: string;
 
-	@PrimaryColumn({ type: 'varchar', length: 36 })
+	@PrimaryColumn({ type: 'varchar', length: NODE_ID_MAX_LENGTH })
 	nodeId: string;
 
 	/** The node's own cursor shape, e.g. a timestamp, a page token, or a list of consumed ids. */

@@ -145,6 +145,41 @@ export class InstanceAiPage extends BasePage {
 		return this.container.getByTestId('instance-ai-composer');
 	}
 
+	async openConnectors(): Promise<void> {
+		await this.container
+			.getByRole('button', { name: 'Add context with connectors, files and more', exact: true })
+			.click();
+		await this.page.getByRole('menuitem', { name: 'Connect services', exact: true }).click();
+		await this.getConnectorsDialog().waitFor({ state: 'visible' });
+	}
+
+	getConnectorsDialog(): Locator {
+		return this.page.getByRole('dialog', { name: 'Connectors', exact: true });
+	}
+
+	getConnectorConnectButton(serverTitle: string): Locator {
+		return this.getConnectorsDialog()
+			.getByTestId('tools-connection-row')
+			.filter({ hasText: serverTitle })
+			.getByTestId('tool-credential-picker-trigger-connect');
+	}
+
+	async scrollConnectorsToBottom(): Promise<void> {
+		await this.getConnectorsDialog()
+			.locator('.recycle-scroller-wrapper')
+			.evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
+	}
+
+	getConnectorCredentialMenu(): Locator {
+		return this.getVisiblePoppers().filter({
+			has: this.page.getByTestId('tool-credential-picker-search'),
+		});
+	}
+
+	getConnectorCreateCredentialButton(): Locator {
+		return this.page.getByTestId('tool-credential-picker-create');
+	}
+
 	getSendButton(): Locator {
 		return this.container.getByTestId('instance-ai-send-button');
 	}

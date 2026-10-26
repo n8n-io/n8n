@@ -6,6 +6,7 @@ import {
 	Project,
 	ProjectRelation,
 	SharedCredentials,
+	Person,
 	User as UserEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -303,7 +304,7 @@ describe.runIf(runBenchmarks)('credentials list benchmarks', () => {
 				relations.push({ projectId, userId, role: { slug: 'project:editor' } });
 			}
 		}
-		await bulkInsert(UserEntity, users);
+		await bulkInsert(Person, users);
 		await bulkInsert(ProjectRelation, relations);
 
 		const credentials: Array<QueryDeepPartialEntity<CredentialsEntity>> = [];

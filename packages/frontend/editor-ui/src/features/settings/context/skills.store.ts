@@ -44,6 +44,16 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		await fetchSkills({ take: 1 });
 	}
 
+	/** For the creator filter of the skills list. */
+	async function fetchCreators() {
+		return await api.getSkillCreators(rootStore.restApiContext);
+	}
+
+	/** For the agent filter of the skills list. */
+	async function fetchAgents(query: Parameters<typeof api.getSkillAgents>[1] = {}) {
+		return await api.getSkillAgents(rootStore.restApiContext, query);
+	}
+
 	/** A default name that no skill in the scope has yet. */
 	async function fetchNewSkillName(query: Parameters<typeof api.getNewSkillName>[1]) {
 		return await api.getNewSkillName(rootStore.restApiContext, query);
@@ -71,6 +81,8 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		loading,
 		fetchSkills,
 		fetchSkillCount,
+		fetchCreators,
+		fetchAgents,
 		fetchSkill,
 		fetchNewSkillName,
 		createSkill,
