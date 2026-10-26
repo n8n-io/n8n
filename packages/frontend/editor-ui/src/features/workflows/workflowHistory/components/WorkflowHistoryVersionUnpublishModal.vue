@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { DependencyType, ResolvedDependency } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
+import uniqBy from 'lodash/uniqBy';
 import Modal from '@/app/components/Modal.vue';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { VIEWS } from '@/app/constants';
@@ -66,7 +67,8 @@ const affectedDependencies = computed(() => {
 	const affected = AFFECTED_TYPES.flatMap((type) =>
 		dependencies.filter((dep) => dep.type === type),
 	);
-	return affected.map((dep) => ({ ...dep, href: hrefFor(dep) }));
+	return uniqBy(affected, (dep) => `${dep.type === 'agentUsage' ? 'agent' : 'workflow'}:${dep.id}`)
+		.map((dep) => ({ ...dep, href: hrefFor(dep) }));
 });
 
 // Keep the existing dependency-count behavior; accuracy changes belong to LIGO-1310.
@@ -77,7 +79,7 @@ const hiddenAffectedCount = computed(() => {
 	return Math.max(0, total - affectedDependencies.value.length);
 });
 
-const affectedCount = computed(() => affectedDependencies.value.length + hiddenAffectedCount.value);
+const hasAffected = computed(() => affectedDependencies.value.length > 0 || hiddenAffectedCount.value > 0);
 
 const closeModal = () => {
 	uiStore.closeModal(props.modalName);
@@ -117,13 +119,10 @@ onBeforeUnmount(() => {
 							})
 						}}
 					</N8nText>
-					<template v-if="affectedCount > 0">
+					<template v-if="hasAffected">
 						<N8nText size="medium">
 							{{
-								i18n.baseText('workflowHistory.action.unpublish.modal.affected', {
-									adjustToNumber: affectedCount,
-									interpolate: { count: affectedCount },
-								})
+								i18n.baseText('workflowHistory.action.unpublish.modal.affected')
 							}}
 						</N8nText>
 						<div :class="$style.affected" data-test-id="workflow-unpublish-affected-resources">
