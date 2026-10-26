@@ -1122,15 +1122,22 @@ export class EnterpriseWorkflowService {
 				});
 			}
 
-			await this.workflowRepository.updateActiveState(workflowId, false);
+			try {
+				await this.workflowRepository.updateActiveState(workflowId, false);
 
-			// If reactivation failed we track deactivation of the workflow
-			await this.workflowPublishHistoryRepository.addRecord({
-				workflowId,
-				versionId,
-				event: 'deactivated',
-				userId,
-			});
+				// If reactivation failed we track deactivation of the workflow
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId,
+					versionId,
+					event: 'deactivated',
+					userId,
+				});
+			} catch (rollbackError) {
+				this.logger.error(`Failed to mark workflow "${workflowId}" as unpublished after a move`, {
+					workflowId,
+					error: rollbackError,
+				});
+			}
 
 			const unpublishReasons = findPolicyViolations(error);
 			if (unpublishReasons) return { unpublishReasons };

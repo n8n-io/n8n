@@ -2614,9 +2614,16 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 			{ parentFolder: sourceFolder1 },
 			sourceProject,
 		);
-		await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
+		const republishedWorkflow = await createActiveWorkflow(
+			{ parentFolder: sourceFolder2 },
+			sourceProject,
+		);
+		const inactiveWorkflow = await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
 
-		activeWorkflowManager.add.mockRejectedValue(new UnexpectedError('Oh no!'));
+		activeWorkflowManager.add.mockImplementation(async (workflowId) => {
+			if (workflowId === activeWorkflow.id) throw new UnexpectedError('Oh no!');
+			return { webhooks: true, triggersAndPollers: true };
+		});
 
 		//
 		// ACT
@@ -2644,6 +2651,21 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 		});
 		const workflowInDb = await workflowRepository.findOneByOrFail({ id: activeWorkflow.id });
 		expect(workflowInDb.activeVersionId).toBeNull();
+
+		// One failure must not stop the loop before the other workflows.
+		expect(activeWorkflowManager.add).toHaveBeenCalledWith(
+			republishedWorkflow.id,
+			'update',
+			undefined,
+			expect.anything(),
+		);
+		const republishedInDb = await workflowRepository.findOneByOrFail({
+			id: republishedWorkflow.id,
+		});
+		expect(republishedInDb.activeVersionId).not.toBeNull();
+
+		const [inactiveSharing] = await getWorkflowSharing(inactiveWorkflow);
+		expect(inactiveSharing.projectId).toBe(destinationProject.id);
 	});
 
 	test('should update workflow project cache entries when transferring folder', async () => {

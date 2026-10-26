@@ -1128,6 +1128,18 @@ describe('EnterpriseWorkflowService', () => {
 			expect(workflowRepository.updateActiveState).toHaveBeenCalledWith('wf-1', false);
 		});
 
+		it('returns the failure even when marking the workflow unpublished fails', async () => {
+			activeWorkflowManager.add.mockRejectedValue(new WorkflowActivationError('broken credential'));
+			workflowRepository.updateActiveState.mockRejectedValueOnce(new Error('database unavailable'));
+
+			const result = await service['attemptWorkflowReactivation']('wf-1', 'version-1', 'user-1');
+
+			expect(result).toEqual({
+				error: { name: 'WorkflowActivationError', message: 'broken credential' },
+			});
+			expect(service['logger'].error).toHaveBeenCalled();
+		});
+
 		it('should not touch triggers or the active flag when reactivation succeeds', async () => {
 			activeWorkflowManager.add.mockResolvedValue({ webhooks: true, triggersAndPollers: true });
 
