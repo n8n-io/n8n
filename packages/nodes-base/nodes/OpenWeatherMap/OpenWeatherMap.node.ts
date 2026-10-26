@@ -1,6 +1,7 @@
 import type {
 	IExecuteFunctions,
 	IDataObject,
+	IHttpRequestOptions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -15,7 +16,7 @@ export class OpenWeatherMap implements INodeType {
 		name: 'openWeatherMap',
 		icon: 'file:openWeatherMap.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Gets current and future weather information',
 		defaults: {
 			name: 'OpenWeatherMap',
@@ -197,6 +198,12 @@ export class OpenWeatherMap implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		const credentials = await this.getCredentials('openWeatherMapApi');
+		const nodeVersion = this.getNode().typeVersion;
+		const baseUrl = (
+			typeof credentials.url === 'string' && credentials.url.trim()
+				? credentials.url.trim()
+				: 'https://api.openweathermap.org'
+		).replace(/\/+$/, '');
 
 		const operation = this.getNodeParameter('operation', 0);
 
@@ -210,7 +217,6 @@ export class OpenWeatherMap implements INodeType {
 			try {
 				// Set base data
 				qs = {
-					APPID: credentials.accessToken,
 					units: this.getNodeParameter('format', i) as string,
 				};
 
@@ -259,16 +265,30 @@ export class OpenWeatherMap implements INodeType {
 					);
 				}
 
-				const options: IRequestOptions = {
-					method: 'GET',
-					qs,
-					uri: `https://api.openweathermap.org/data/2.5/${endpoint}`,
-					json: true,
-				};
-
 				let responseData;
 				try {
-					responseData = await this.helpers.request(options);
+					if (nodeVersion >= 1.1) {
+						// Use the credential base URL and auth so a proxy (e.g. the AI gateway) can serve the request
+						const options: IHttpRequestOptions = {
+							method: 'GET',
+							qs,
+							url: `${baseUrl}/data/2.5/${endpoint}`,
+							json: true,
+						};
+						responseData = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'openWeatherMapApi',
+							options,
+						);
+					} else {
+						const options: IRequestOptions = {
+							method: 'GET',
+							qs: { ...qs, APPID: credentials.accessToken },
+							uri: `https://api.openweathermap.org/data/2.5/${endpoint}`,
+							json: true,
+						};
+						responseData = await this.helpers.request(options);
+					}
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
