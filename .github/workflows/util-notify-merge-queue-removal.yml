@@ -2,16 +2,49 @@ name: 'Util: Notify Merge Queue Removal'
 
 on:
   pull_request:
-    types: [dequeued]
+    types: [enqueued, dequeued]
 
 permissions:
-  pull-requests: write
+  contents: read
+  pull-requests: read
 
 jobs:
+  collect:
+    if: github.repository == 'n8n-io/n8n'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github
+
+      - name: Record queue entry event
+        uses: ./.github/actions/run-workflow-script
+        with:
+          script: .github/scripts/observe-merge-queue.mjs
+          github-token: ${{ github.token }}
+        env:
+          MERGE_QUEUE_WEBHOOK_URL: ${{ secrets.MERGE_QUEUE_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
+
+      - name: Save queue entry event
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: merge-queue-event-${{ github.run_id }}-${{ github.run_attempt }}
+          path: merge-queue-event.json
+          if-no-files-found: warn
+          retention-days: 30
+
   notify:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     # MERGE/ALREADY_MERGED are successful exits, MANUAL is the author's own doing
-    if: ${{ !contains(fromJSON('["MERGE", "ALREADY_MERGED", "MANUAL"]'), github.event.reason) }}
+    if: ${{ github.event.action == 'dequeued' && !contains(fromJSON('["MERGE", "ALREADY_MERGED", "MANUAL"]'), github.event.reason) }}
     steps:
       # A failing PR can dequeue others behind it, so the reason may not be this PR's fault
       - run: |

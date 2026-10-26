@@ -1,0 +1,35 @@
+name: 'Upload merge queue test results'
+description: 'Preserve JUnit reports from failed merge queue jobs.'
+
+inputs:
+  name:
+    description: 'Unique report name within this workflow run.'
+    required: true
+  job-name:
+    description: 'Display name of the job that produced the reports.'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Record report source
+      shell: bash
+      env:
+        REPORT_JOB_NAME: ${{ inputs.job-name }}
+      run: |
+        node --input-type=module <<'NODE'
+        import { mkdirSync, writeFileSync } from 'node:fs';
+        mkdirSync('merge-queue-reports', { recursive: true });
+        writeFileSync('merge-queue-reports/source.json', JSON.stringify({ job_name: process.env.REPORT_JOB_NAME }));
+        NODE
+
+    - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: merge-queue-junit-${{ github.run_attempt }}-${{ inputs.name }}
+        path: |
+          merge-queue-reports/source.json
+          packages/**/junit.xml
+          !packages/**/node_modules/**
+          !packages/**/fixtures/**
+        if-no-files-found: ignore
+        retention-days: 7

@@ -1,0 +1,250 @@
+{
+	"name": "QA: Merge Queue Events",
+	"nodes": [
+		{
+			"id": "1c56df44-0187-4024-8668-7204760961a9",
+			"name": "Receive merge queue event",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "qa-merge-queue-events",
+				"authentication": "basicAuth",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"webhookId": "a161bf3a-78fd-4902-a9b5-bae57ded0966",
+			"credentials": {
+				"httpBasicAuth": {
+					"id": "G1Ko4mABNfdyTvuj",
+					"name": "QA_METRICS_WEBHOOK_CREDENTIAL"
+				}
+			}
+		},
+		{
+			"id": "acb59c2f-886a-496a-b7c6-64ed9f707c27",
+			"name": "Validate event",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [240, 0],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"language": "javaScript",
+				"jsCode": "function normalizeMergeQueueEvent(event) {\n\tif (!event || typeof event !== 'object' || Array.isArray(event)) {\n\t\treturn { valid: false, error: 'The request body must be an event object.' };\n\t}\n\tif (event.schema_version !== 1) {\n\t\treturn { valid: false, error: 'schema_version must be 1.' };\n\t}\n\tif (\n\t\tevent.repository !== 'n8n-io/n8n' ||\n\t\ttypeof event.id !== 'string' ||\n\t\t!event.id.startsWith('n8n-io/n8n:') ||\n\t\tevent.id.length > 512\n\t) {\n\t\treturn { valid: false, error: 'A valid n8n-io/n8n repository and event ID are required.' };\n\t}\n\tif (typeof event.observed_at !== 'string' || !Number.isFinite(Date.parse(event.observed_at))) {\n\t\treturn { valid: false, error: 'observed_at must be a valid timestamp.' };\n\t}\n\tif (\n\t\t!['merge_queue_group_created', 'merge_queue_run_failed', 'merge_queue_pr_enqueued', 'merge_queue_pr_dequeued'].includes(event.kind)\n\t) {\n\t\treturn { valid: false, error: 'The event kind is not supported.' };\n\t}\n\tif (['merge_queue_group_created', 'merge_queue_run_failed'].includes(event.kind)) {\n\t\tif (typeof event.merge_group?.head_sha !== 'string' || !/^[a-f0-9]{40}$/i.test(event.merge_group.head_sha)) {\n\t\t\treturn { valid: false, error: 'merge_group.head_sha must be a full commit SHA.' };\n\t\t}\n\t}\n\tif (event.kind === 'merge_queue_run_failed') {\n\t\tif (\n\t\t\t!Number.isSafeInteger(event.run?.id) || event.run.id < 1 ||\n\t\t\t!Number.isSafeInteger(event.run?.attempt) || event.run.attempt < 1 ||\n\t\t\t!Array.isArray(event.failed_jobs)\n\t\t) {\n\t\t\treturn { valid: false, error: 'A source run ID, attempt, and failed_jobs array are required.' };\n\t\t}\n\t} else if (event.kind === 'merge_queue_group_created') {\n\t\tif (!Array.isArray(event.queue)) {\n\t\t\treturn { valid: false, error: 'A queue snapshot array is required.' };\n\t\t}\n\t} else if (\n\t\t!Number.isSafeInteger(event.pr?.number) || event.pr.number < 1 ||\n\t\ttypeof event.pr?.head_sha !== 'string' || !/^[a-f0-9]{40}$/i.test(event.pr.head_sha) ||\n\t\t!Array.isArray(event.queue)\n\t) {\n\t\treturn { valid: false, error: 'A PR number, full PR head SHA, and queue snapshot array are required.' };\n\t}\n\treturn { valid: true, event_id: event.id, event_json: JSON.stringify(event) };\n}\nconst input = $input.first().json;\nreturn [{ json: normalizeMergeQueueEvent(input.body ?? input) }];"
+			}
+		},
+		{
+			"id": "2154e830-ea98-4b28-946e-9fa6befb6665",
+			"name": "Event is valid",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.4,
+			"position": [480, 0],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict"
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ $json.valid }}",
+							"rightValue": true,
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "99c82954-d6b2-48b4-9771-04ae1a10b9c6",
+			"name": "Store event in BigQuery",
+			"type": "n8n-nodes-base.googleBigQuery",
+			"typeVersion": 2.1,
+			"position": [720, 0],
+			"parameters": {
+				"authentication": "serviceAccount",
+				"resource": "database",
+				"operation": "executeQuery",
+				"projectId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "n8n-telemetry",
+					"cachedResultName": "n8n-telemetry"
+				},
+				"sqlQuery": "MERGE `n8n-telemetry.imported_n8n.qa_merge_queue_events_raw` AS target\nUSING (\n  SELECT\n    JSON_VALUE(@event_json, '$.id') AS event_id,\n    JSON_VALUE(@event_json, '$.kind') AS kind,\n    JSON_VALUE(@event_json, '$.repository') AS repository,\n    TIMESTAMP(JSON_VALUE(@event_json, '$.observed_at')) AS observed_at,\n    CURRENT_TIMESTAMP() AS received_at,\n    JSON_VALUE(@event_json, '$.merge_group.head_sha') AS group_sha,\n    SAFE_CAST(JSON_VALUE(@event_json, '$.pr.number') AS INT64) AS pr,\n    SAFE_CAST(JSON_VALUE(@event_json, '$.run.id') AS INT64) AS run_id,\n    SAFE_CAST(JSON_VALUE(@event_json, '$.run.attempt') AS INT64) AS run_attempt,\n    PARSE_JSON(@event_json) AS payload\n) AS source\nON target.event_id = source.event_id\nWHEN NOT MATCHED THEN INSERT (\n  event_id, kind, repository, observed_at, received_at, group_sha,\n  pr, run_id, run_attempt, payload\n) VALUES (\n  source.event_id, source.kind, source.repository, source.observed_at,\n  source.received_at, source.group_sha, source.pr, source.run_id,\n  source.run_attempt, source.payload\n);\n\nSELECT JSON_VALUE(@event_json, '$.id') AS event_id, TRUE AS accepted;\n",
+				"options": {
+					"useLegacySql": false,
+					"timeoutMs": 10000,
+					"queryParameters": {
+						"namedParameters": [
+							{
+								"name": "event_json",
+								"value": "={{ $json.event_json }}"
+							}
+						]
+					}
+				}
+			},
+			"credentials": {
+				"googleApi": {
+					"id": "boGUsH1hFGsDhI4l",
+					"name": "n8n Internal Instance BQ Service account"
+				}
+			}
+		},
+		{
+			"id": "b2bf0768-662f-424c-b21c-6b0c012bea77",
+			"name": "Accept event",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.5,
+			"position": [960, 0],
+			"parameters": {
+				"respondWith": "json",
+				"responseBody": "={{ { accepted: true, event_id: $('Validate event').first().json.event_id } }}",
+				"options": {
+					"responseCode": 200
+				}
+			}
+		},
+		{
+			"id": "7339f0d4-dbc6-4317-aaba-f85da0ec80e8",
+			"name": "Reject invalid event",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.5,
+			"position": [720, 220],
+			"parameters": {
+				"respondWith": "json",
+				"responseBody": "={{ { accepted: false, error: $json.error } }}",
+				"options": {
+					"responseCode": 400
+				}
+			}
+		},
+		{
+			"id": "0a7d27f7-d6ef-4ed1-ae45-a726ceb0b199",
+			"name": "Initialize storage",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 450],
+			"parameters": {}
+		},
+		{
+			"id": "9adef36f-ab06-4e00-9f18-20cbfe93c0eb",
+			"name": "Create event table and view",
+			"type": "n8n-nodes-base.googleBigQuery",
+			"typeVersion": 2.1,
+			"position": [240, 450],
+			"parameters": {
+				"authentication": "serviceAccount",
+				"resource": "database",
+				"operation": "executeQuery",
+				"projectId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "n8n-telemetry",
+					"cachedResultName": "n8n-telemetry"
+				},
+				"sqlQuery": "CREATE TABLE IF NOT EXISTS `n8n-telemetry.imported_n8n.qa_merge_queue_events_raw` (\n  event_id STRING NOT NULL,\n  kind STRING NOT NULL,\n  repository STRING NOT NULL,\n  observed_at TIMESTAMP NOT NULL,\n  received_at TIMESTAMP NOT NULL,\n  group_sha STRING,\n  pr INT64,\n  run_id INT64,\n  run_attempt INT64,\n  payload JSON\n)\nPARTITION BY DATE(observed_at)\nCLUSTER BY kind, group_sha;\n\nCREATE VIEW IF NOT EXISTS `n8n-telemetry.imported_n8n.qa_merge_queue_events` AS\nSELECT *\nFROM `n8n-telemetry.imported_n8n.qa_merge_queue_events_raw`\nQUALIFY ROW_NUMBER() OVER (\n  PARTITION BY event_id ORDER BY received_at DESC\n) = 1;\n\nSELECT 'ready' AS storage_status;\n",
+				"options": {
+					"useLegacySql": false,
+					"timeoutMs": 10000
+				}
+			},
+			"credentials": {
+				"googleApi": {
+					"id": "boGUsH1hFGsDhI4l",
+					"name": "n8n Internal Instance BQ Service account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Receive merge queue event": {
+			"main": [
+				[
+					{
+						"node": "Validate event",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Validate event": {
+			"main": [
+				[
+					{
+						"node": "Event is valid",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Event is valid": {
+			"main": [
+				[
+					{
+						"node": "Store event in BigQuery",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Reject invalid event",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Store event in BigQuery": {
+			"main": [
+				[
+					{
+						"node": "Accept event",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Initialize storage": {
+			"main": [
+				[
+					{
+						"node": "Create event table and view",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"nodeGroups": [
+		{
+			"id": "7122ac35-b413-4442-ab38-81e3a4b0d5b0",
+			"name": "Store evidence",
+			"nodeNames": ["Store event in BigQuery", "Accept event"],
+			"description": "Store the event in BigQuery before returning HTTP 200."
+		}
+	],
+	"settings": {
+		"executionOrder": "v1",
+		"availableInMCP": true,
+		"saveManualExecutions": true,
+		"saveDataErrorExecution": "all",
+		"saveDataSuccessExecution": "none",
+		"executionTimeout": 60
+	},
+	"active": false
+}

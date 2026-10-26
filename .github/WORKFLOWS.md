@@ -2,6 +2,13 @@
 
 Complete reference for n8n's `.github/` folder.
 
+`util-observe-merge-queue.yml` captures failed queue runs and queue snapshots.
+`util-notify-merge-queue-removal.yml` captures enqueue and dequeue events and keeps
+the existing removal comments. Failed test jobs preserve JUnit artifacts through
+`upload-merge-queue-test-results`. See
+[Merge queue evidence](MERGE-QUEUE-OBSERVABILITY.md) for setup and event fields.
+The n8n receiver source and storage queries are in `merge-queue/`.
+
 ---
 
 ## Folder Structure

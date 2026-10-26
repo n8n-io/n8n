@@ -1,0 +1,53 @@
+name: 'Util: Observe Merge Queue'
+
+on:
+  merge_group:
+    types: [checks_requested]
+  workflow_run:
+    workflows:
+      - 'CI: Pull Requests (Build, Test, Lint)'
+      - 'CI: PR Quality Checks'
+      - 'CI: CLA Check'
+      - 'CI: Owners Required Reviews'
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+jobs:
+  collect:
+    if: >-
+      github.repository == 'n8n-io/n8n' &&
+      (github.event_name == 'merge_group' ||
+       (github.event.workflow_run.event == 'merge_group' &&
+        contains(fromJSON('["failure", "timed_out"]'), github.event.workflow_run.conclusion)))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # The collector must use trusted code, including for workflow_run events.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github
+
+      - name: Collect merge queue evidence
+        uses: ./.github/actions/run-workflow-script
+        with:
+          script: .github/scripts/observe-merge-queue.mjs
+          github-token: ${{ github.token }}
+        env:
+          MERGE_QUEUE_WEBHOOK_URL: ${{ secrets.MERGE_QUEUE_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
+
+      - name: Save merge queue event
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: merge-queue-event-${{ github.run_id }}-${{ github.run_attempt }}
+          path: merge-queue-event.json
+          if-no-files-found: warn
+          retention-days: 30

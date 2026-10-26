@@ -2,6 +2,9 @@
 
 Pipeline: **GitHub Actions → Webhook → n8n → BigQuery**
 
+Merge queue evidence uses a separate event webhook and preserves JSON artifacts.
+See [Merge queue evidence](MERGE-QUEUE-OBSERVABILITY.md) for setup and correlation limits.
+
 ## Unified Payload Shape
 
 All telemetry uses the same format:
