@@ -125,7 +125,6 @@ export class AgentConfigService {
 			name: entity.name,
 			integrations: entity.integrations,
 			tools: entity.tools,
-			skills: entity.skills,
 		};
 
 		// Apply the replacement and remove resources that the config no longer references.
@@ -139,10 +138,7 @@ export class AgentConfigService {
 		if (
 			entity.versionId !== null &&
 			options.baseConfigHash !== null &&
-			isSameAgentConfig(
-				{ tools: previous.tools, skills: previous.skills },
-				{ tools: entity.tools, skills: entity.skills },
-			) &&
+			isSameAgentConfig(previous.tools, entity.tools) &&
 			options.baseConfigHash === getAgentConfigHash(composeJsonConfig(entity, next.skillRefs)) &&
 			existingTaskIds.every((id) => entity.schema?.tasks?.some((ref) => ref.id === id))
 		) {
@@ -263,14 +259,6 @@ export class AgentConfigService {
 	): void {
 		if (writesField(config, 'tools', clearOmitted)) {
 			this.removeUnreferencedCustomTools(entity, config);
-		}
-		// With the hub off, bodies live on the agent row: drop the ones no ref keeps, as on
-		// master. With the hub on, a detached skill stays in the hub.
-		if (!this.agentSkillRefs.usesSkillsHub && writesField(config, 'skills', clearOmitted)) {
-			const referenced = new Set((config.skills ?? []).map((ref) => ref.id));
-			entity.skills = Object.fromEntries(
-				Object.entries(entity.skills ?? {}).filter(([id]) => referenced.has(id)),
-			);
 		}
 	}
 

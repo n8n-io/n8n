@@ -535,8 +535,6 @@ describe('AssistantTurnInputBuilder — applyTurnScope', () => {
 		runId: 'run-1',
 		message: 'Build a digest',
 		fileAttachments: [],
-		isReplanFollowUp: false,
-		isPostPlanFollowUp: false,
 	};
 
 	it('gives an ordinary turn a new work item that reports to the workflow loop', () => {
@@ -549,33 +547,11 @@ describe('AssistantTurnInputBuilder — applyTurnScope', () => {
 			runId: 'run-1',
 			taskId: 'build-run-1',
 			workItemId: expect.stringMatching(/^wi_/),
-			allowPostPlanWorkflowCreate: false,
 			workflowTaskService: environment.workflowTasks,
 		});
 		expect(environment.orchestrationContext).toMatchObject({
 			currentUserMessage: 'Build a digest',
-			isReplanFollowUp: false,
 			timeZone: 'UTC',
 		});
-	});
-
-	it('uses the build context of a planned build follow-up', () => {
-		const environment = createEnvironment();
-		const plannedContext = {
-			threadId: 'thread-1',
-			runId: 'run-1',
-			taskId: 'task-1',
-			workItemId: 'wi_planned',
-			allowPostPlanWorkflowCreate: true,
-		};
-
-		createBuilder().applyTurnScope(environment, {
-			...scope,
-			timeZone: 'Europe/Helsinki',
-			workflowBuildContext: plannedContext,
-		});
-
-		expect(environment.context.workflowBuildContext).toBe(plannedContext);
-		expect(environment.orchestrationContext.timeZone).toBe('Europe/Helsinki');
 	});
 });

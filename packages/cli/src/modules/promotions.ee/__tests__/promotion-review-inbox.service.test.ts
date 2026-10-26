@@ -30,6 +30,7 @@ describe('PromotionReviewInboxService.refreshState', () => {
 		hostResolver,
 		mergeRequests,
 		logger,
+		mock(),
 	);
 
 	const review = (overrides: Partial<PromotionReview> = {}) =>
