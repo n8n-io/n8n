@@ -30,6 +30,11 @@ export const below = (limit: number): Expectation => ({
 	test: (actual) => typeof actual === 'number' && actual < limit,
 });
 
+export const atMost = (limit: number): Expectation => ({
+	describe: `is at most ${limit}`,
+	test: (actual) => typeof actual === 'number' && actual <= limit,
+});
+
 export const includes = (item: unknown): Expectation => ({
 	describe: `includes ${JSON.stringify(item)}`,
 	test: (actual) =>
