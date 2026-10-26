@@ -142,6 +142,20 @@ export const promotionDataTableChangeSchema = z.discriminatedUnion('kind', [
 	}),
 ]);
 
+const crossProjectMoveSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	/** The project that holds the item on the branch. */
+	project: promotionBindingProjectSchema,
+	/**
+	 * False when the branch project does not exist on this instance yet. Then the item can only move
+	 * back on the source instance.
+	 */
+	projectExists: z.boolean(),
+	/** The project that holds the item on this instance. */
+	instanceProject: promotionInstanceProjectSchema,
+});
+
 /**
  * Continue can confirm a `destructive-change` or `project-deletion` conflict.
  * The other conflicts need a package or target correction before creation can proceed.
@@ -224,6 +238,11 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		project: promotionBindingProjectSchema,
 		reason: z.string().optional(),
 	}),
+	/** Apply cannot move a workflow or folder between projects. The fields name both projects. */
+	crossProjectMoveSchema.extend({
+		kind: z.enum(['workflow', 'folder']),
+		code: z.literal('moved'),
+	}),
 ]);
 
 export const promotionBindingWarningSchema = z.object({
@@ -255,20 +274,6 @@ export const promotionBindingPreflightResultSchema = z.object({
 	accessRequirements: z.array(promotionBindingAccessRequirementSchema),
 	conflicts: z.array(promotionBindingConflictSchema),
 	warnings: z.array(promotionBindingWarningSchema),
-});
-
-const crossProjectMoveSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	/** The project that holds the item on the branch. */
-	project: promotionBindingProjectSchema,
-	/**
-	 * False when the branch project does not exist on this instance yet. Then the item can only move
-	 * back on the source instance.
-	 */
-	projectExists: z.boolean(),
-	/** The project that holds the item on this instance. */
-	instanceProject: promotionInstanceProjectSchema,
 });
 
 /** What stops the Apply of a project, read from the import plan. */

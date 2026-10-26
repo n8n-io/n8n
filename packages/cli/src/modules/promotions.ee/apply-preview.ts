@@ -137,8 +137,6 @@ export type ApplyCheckInput = {
 	/** References of the planned workflows, from a scan of their nodes. */
 	credentials: CredentialReference[];
 	variables: VariableReference[];
-	/** The project that project-wide blockers name when the issue names none. */
-	projectId: string;
 	moves: CrossProjectMoves;
 };
 
@@ -150,7 +148,7 @@ export type ApplyCheckInput = {
  * - a variable without a file in the package blocks.
  */
 export function toApplyCheck(input: ApplyCheckInput): PromotionApplyCheck {
-	const { plan, inventory, projectId, moves } = input;
+	const { plan, inventory, moves } = input;
 	const projects = new Map(inventory.projects.map((project) => [project.id, project]));
 	const projectOf: ProjectLookup = (id) => {
 		const project = projects.get(id);
@@ -206,10 +204,23 @@ export function toApplyCheck(input: ApplyCheckInput): PromotionApplyCheck {
 		}
 	}
 
+	// A project-wide blocker names the project whose plan raised it. An issue across projects
+	// names the first planned project.
+	const scopeProjects = new Map(
+		plan.scopes.flatMap(({ project, plan: scope }) =>
+			scope.blockingIssues.map((issue) => [issue, project.id] as const),
+		),
+	);
+	const fallbackProjectId = plan.scopes[0]?.project.id ?? inventory.projects[0]?.id ?? '';
+
 	for (const issue of plan.issues) {
 		if (handled.has(issue)) continue;
 		result.conflicts.push(
-			describeIssue(issue, projectId, { inventory, projectOf, consumersOfIds }),
+			describeIssue(issue, scopeProjects.get(issue) ?? fallbackProjectId, {
+				inventory,
+				projectOf,
+				consumersOfIds,
+			}),
 		);
 	}
 

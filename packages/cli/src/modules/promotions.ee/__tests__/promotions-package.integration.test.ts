@@ -49,7 +49,7 @@ import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { BadRequestError, UnprocessableRequestError } from '@n8n/errors';
+import { BadRequestError } from '@n8n/errors';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
@@ -2084,7 +2084,7 @@ describe('Apply moves and renames within a project', () => {
 		expect((await folderOf(archive.id)).name).toBe('Local archive');
 	});
 
-	it('only offers the source fix when the branch project does not exist here yet', async () => {
+	it('says when the branch project of a moved workflow does not exist here yet', async () => {
 		const { environments, promote } = await connect();
 		const {
 			project: archive,
@@ -2099,11 +2099,20 @@ describe('Apply moves and renames within a project', () => {
 		);
 		await projectService.deleteProject(owner, archive.id);
 
-		await expect(service.apply(environments.apply.id, owner)).rejects.toMatchObject({
-			httpStatusCode: 409,
-			message: expect.stringContaining(
-				`workflow "${moved.name}" (${moved.id}) is in project "Orders" here and in project "Archive" on the branch, and project "Archive" does not exist on this instance yet. Move them back on the source instance, then promote again.`,
-			),
+		expect(await service.apply(environments.apply.id, owner)).toMatchObject({
+			status: 'blocked',
+			preflight: {
+				conflicts: expect.arrayContaining([
+					expect.objectContaining({
+						kind: 'workflow',
+						code: 'moved',
+						id: moved.id,
+						project: { id: archive.id, name: 'Archive' },
+						projectExists: false,
+						instanceProject: { id: orders.id, name: 'Orders' },
+					}),
+				]),
+			},
 		});
 		const check = await service.checkApplyBlockers(orders.id, promoted.git.commitSha);
 		expect(check.movedWorkflows).toEqual([
@@ -2124,17 +2133,22 @@ describe('Check Apply blockers', () => {
 		expect(await snapshotApplyState()).toEqual(before);
 		expect(check.preflight.missingBindings).toHaveLength(3);
 		expect(check.movedWorkflows).toEqual([]);
-		expect(
-			await service.applyProjectSelection(project.id, owner, {
-				workflowIds: [workflow.id, unselectedWorkflow.id],
-				expectedSource: { environmentId: check.environmentId, ...check.git },
-			}),
-		).toEqual({
+		const result = await service.applyProjectSelection(project.id, owner, {
+			workflowIds: [workflow.id, unselectedWorkflow.id],
+			expectedSource: { environmentId: check.environmentId, ...check.git },
+		});
+		// The two checks sort the bindings in different orders.
+		expect(result).toEqual({
 			status: 'blocked',
 			environmentId: check.environmentId,
 			git: check.git,
-			preflight: check.preflight,
+			preflight: {
+				...check.preflight,
+				missingBindings: expect.arrayContaining(check.preflight.missingBindings),
+			},
 		});
+		assert(result.status === 'blocked');
+		expect(result.preflight.missingBindings).toHaveLength(3);
 	});
 
 	it('reports a workflow that moved to another project, next to the blockers of other workflows', async () => {
@@ -2409,7 +2423,7 @@ describe('Apply a project selection over the public API', () => {
 		expect(await snapshotApplyState()).toEqual(before);
 	});
 
-	it('maps a move between projects to 409 without importing', async () => {
+	it('reports a move between projects as blocked without importing', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.promote.id);
@@ -2440,8 +2454,23 @@ describe('Apply a project selection over the public API', () => {
 			.post(`/promotions/projects/${orders.id}/apply`)
 			.send({ workflowIds: [moved.id] });
 
-		expect(response.status, JSON.stringify(response.body)).toBe(409);
-		expect(response.body.message).toContain(`workflow "${moved.name}" (${moved.id})`);
+		expect(response.status, JSON.stringify(response.body)).toBe(200);
+		expect(response.body).toMatchObject({
+			status: 'blocked',
+			preflight: {
+				conflicts: [
+					{
+						kind: 'workflow',
+						code: 'moved',
+						id: moved.id,
+						name: moved.name,
+						project: { id: billing.id, name: billing.name },
+						projectExists: true,
+						instanceProject: { id: orders.id, name: orders.name },
+					},
+				],
+			},
+		});
 		expect(await snapshotApplyState()).toEqual(before);
 	});
 });
@@ -2542,24 +2571,25 @@ describe('Apply credential changes', () => {
 		await linkUserToProject(member, project, role.slug);
 		const before = await snapshotApplyState();
 
-		const error = await service
-			.applyProjectSelection(project.id, member, { workflowIds: [workflow.id] })
-			.then(
-				() => undefined,
-				(e: unknown) => e,
-			);
-
-		expect(error).toBeInstanceOf(UnprocessableRequestError);
-		expect((error as UnprocessableRequestError).meta).toEqual({
-			issues: [
-				{
-					type: 'credential-update-forbidden',
-					targetId: credential.id,
-					sourceIds: [credential.id],
-					name: credential.name,
-					usedBy: [{ kind: 'workflow', id: workflow.id }],
-				},
-			],
+		expect(
+			await service.applyProjectSelection(project.id, member, { workflowIds: [workflow.id] }),
+		).toMatchObject({
+			status: 'blocked',
+			preflight: {
+				conflicts: [
+					{
+						kind: 'workflow',
+						code: 'workflow-forbidden',
+						reason: 'credential-update-forbidden',
+						consumers: [
+							{
+								project: { id: project.id, name: project.name },
+								workflows: [{ id: workflow.id, name: workflow.name }],
+							},
+						],
+					},
+				],
+			},
 		});
 		expect(await snapshotApplyState()).toEqual(before);
 	});

@@ -1,4 +1,4 @@
-import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
+import type { ApplyCheckResult, PromotionDirection, PromotionResource } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
 import { isBlocking, type Blocker } from '../promotionOperation';
@@ -6,6 +6,17 @@ import { isContainer } from '../promotionPreview.tree';
 
 /** Apply keeps these resources as they are on the instance. It does not create them. */
 const KEPT_BY_APPLY = new Set<PromotionResource['type']>(['credential', 'variable']);
+
+const MOVED_DETAIL = {
+	workflow: {
+		existing: 'promotions.preview.blockers.movedWorkflow',
+		newProject: 'promotions.preview.blockers.movedWorkflow.newProject',
+	},
+	folder: {
+		existing: 'promotions.preview.blockers.movedFolder',
+		newProject: 'promotions.preview.blockers.movedFolder.newProject',
+	},
+} as const;
 
 /** The labels that the tree rows and the change cards share, so both say the same. */
 export function usePromotionPreviewLabels() {
@@ -91,5 +102,19 @@ export function usePromotionPreviewLabels() {
 			: i18n.baseText('promotions.preview.select', { interpolate });
 	}
 
-	return { changeLabel, blockerMessage, selectLabel };
+	/** Names both projects of a move between projects, and how to fix it. */
+	function moveDetail(
+		type: keyof typeof MOVED_DETAIL,
+		move: ApplyCheckResult['movedWorkflows'][number],
+	): string {
+		return i18n.baseText(MOVED_DETAIL[type][move.projectExists ? 'existing' : 'newProject'], {
+			interpolate: {
+				project: move.project.name,
+				instanceProject:
+					move.instanceProject.name ?? i18n.baseText('promotions.preview.personalProject'),
+			},
+		});
+	}
+
+	return { changeLabel, blockerMessage, selectLabel, moveDetail };
 }

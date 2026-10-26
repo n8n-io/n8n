@@ -60,11 +60,12 @@ describe('Apply response documentation', () => {
 				artifacts.find((artifact) => artifact.outputPath === schemaPath)!.content,
 			) as OpenAPIV3.SchemaObject;
 			const outcomes = result.oneOf as OpenAPIV3.SchemaObject[];
-			expect(outcomes).toHaveLength(3);
+			expect(outcomes).toHaveLength(4);
 			for (const [status, fields] of [
 				['applied', ['counts', 'warnings']],
 				['blocked', ['preflight']],
 				['source-changed', []],
+				['preview-changed', []],
 			] as const) {
 				const outcome = outcomes.find(
 					(candidate) =>

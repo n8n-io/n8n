@@ -1011,6 +1011,41 @@ describe('resources in the preview', () => {
 		]);
 	}, 30_000);
 
+	it('stops Apply when this instance changed after the preview, then applies what the preview shows', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Billing', owner);
+		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
+		const environments = await createInstanceEnvironments(['promote', 'apply']);
+		await promoteBaseline(environments.promote.id, owner);
+		const workflowRepository = Container.get(WorkflowRepository);
+		await workflowRepository.update(workflow.id, { name: 'Invoice (local)' });
+
+		const agent = server.authAgentFor(owner);
+		const endpoint = `/promotions/${project.id}/changes/apply`;
+		const loadPreview = async () => (await agent.get(endpoint).expect(200)).body.data;
+		const applyShown = async (preview: {
+			source: { environmentId: string; branchName: string };
+			commitSha: string;
+			revision: string;
+		}) =>
+			await Container.get(PromotionsService).applyProjectSelection(project.id, owner, {
+				workflowIds: [workflow.id],
+				expectedSource: { ...preview.source, commitSha: preview.commitSha },
+				expectedPreviewRevision: preview.revision,
+			});
+
+		const stale = await loadPreview();
+		await workflowRepository.update(workflow.id, { name: 'Invoice (edited again)' });
+		expect(await applyShown(stale)).toMatchObject({ status: 'preview-changed' });
+		expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toMatchObject({
+			name: 'Invoice (edited again)',
+		});
+
+		expect(await applyShown(await loadPreview())).toMatchObject({ status: 'applied' });
+		const after = await loadPreview();
+		expect(after.changes).toEqual([]);
+	}, 60_000);
+
 	it('lists a changed data table once, with each workflow that uses it, and describes the new column', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Orders', owner);

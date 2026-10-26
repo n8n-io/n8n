@@ -103,17 +103,6 @@ function describeItems({ workflows, folders }: CrossProjectMoves): string {
 	return [...workflows.map(describe('workflow')), ...folders.map(describe('folder'))].join('; ');
 }
 
-/**
- * The Apply refusal. An item can't move here to a branch project that does not exist here yet, so
- * then only the source fix is offered.
- */
-export function describeCrossProjectMoves(moves: CrossProjectMoves): string {
-	const remedy = [...moves.workflows, ...moves.folders].every(({ projectExists }) => projectExists)
-		? 'Move them on this instance to match the branch, or move them back on the source instance and promote again.'
-		: 'Move them back on the source instance, then promote again.';
-	return `Apply can't move workflows or folders between projects: ${describeItems(moves)}. ${remedy}`;
-}
-
 /** The promote refusal: the branch would hold a move that Apply then refuses. */
 export function describePromotedMoves(moves: CrossProjectMoves): string {
 	return `Promote can't move workflows or folders between projects, because Apply would refuse them on the destination: ${describeItems(moves)}. Move them back on this instance, then promote again.`;

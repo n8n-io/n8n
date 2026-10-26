@@ -186,18 +186,22 @@ export class ApplyPreviewService {
 		}
 	}
 
-	/** Reads the references of the selected workflows only, as the plan does. */
-	private check(
+	/**
+	 * What stops the Apply of a plan. Without a selection, it checks the whole package. It reads
+	 * credential and variable references only from the workflows that the plan imports.
+	 */
+	check(
 		plan: PackageImportPlan,
 		inventory: PackageDirectoryInventory,
-		selection: ImportSelection,
+		selection: ImportSelection | undefined,
 		moves: CrossProjectMoves,
 	): PromotionApplyCheck {
-		const selected = new Set(selection.selectedWorkflowIds);
+		const selected = selection && new Set(selection.selectedWorkflowIds);
 		const scoped = {
 			...inventory,
 			workflows: inventory.workflows.filter(
-				({ id, projectId }) => projectId === selection.selectedProjectId && selected.has(id),
+				({ id, projectId }) =>
+					!selection || (projectId === selection.selectedProjectId && selected?.has(id)),
 			),
 		};
 		return toApplyCheck({
@@ -205,7 +209,6 @@ export class ApplyPreviewService {
 			inventory,
 			credentials: collectCredentialReferences(scoped),
 			variables: collectVariableReferences(scoped, this.variableExtractor),
-			projectId: selection.selectedProjectId,
 			moves,
 		});
 	}
