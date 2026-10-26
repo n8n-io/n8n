@@ -7,18 +7,23 @@ import { defineComponent, h, ref } from 'vue';
 
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
+import type { ArtifactThread } from '../../artifactThread';
+import { USER_TYPED_MESSAGE } from '../../prefills';
+
 import { createComponentRenderer } from '@/__tests__/render';
 
 import { stashPendingAssistantAgentMessage } from '../assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgentThreads.store';
 import AssistantAgentThreadView from '../AssistantAgentThreadView.vue';
 
-const { panelProps, sendMessageFromOutside, telemetryTrack, previewProps } = vi.hoisted(() => ({
-	panelProps: { current: {} as Record<string, unknown> },
-	sendMessageFromOutside: vi.fn(),
-	telemetryTrack: vi.fn(),
-	previewProps: { current: undefined as Record<string, unknown> | undefined },
-}));
+const { panelProps, sendMessageFromOutside, telemetryTrack, previewProps, previewThread } =
+	vi.hoisted(() => ({
+		panelProps: { current: {} as Record<string, unknown> },
+		sendMessageFromOutside: vi.fn(),
+		telemetryTrack: vi.fn(),
+		previewProps: { current: undefined as Record<string, unknown> | undefined },
+		previewThread: { current: undefined as ArtifactThread | undefined },
+	}));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
@@ -46,17 +51,22 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 	}),
 }));
 
-vi.mock('../../components/InstanceAiWorkflowPreview.vue', () => ({
-	default: defineComponent({
-		inheritAttrs: false,
-		setup(_props, { attrs }) {
-			return () => {
-				previewProps.current = { ...attrs };
-				return h('div', { 'data-test-id': 'workflow-preview-stub' });
-			};
-		},
-	}),
-}));
+vi.mock('../../components/InstanceAiWorkflowPreview.vue', async () => {
+	const { useArtifactThread } = await import('../../artifactThread');
+	return {
+		default: defineComponent({
+			inheritAttrs: false,
+			setup(_props, { attrs }) {
+				// The real preview asks the Assistant through the injected thread.
+				previewThread.current = useArtifactThread();
+				return () => {
+					previewProps.current = { ...attrs };
+					return h('div', { 'data-test-id': 'workflow-preview-stub' });
+				};
+			},
+		}),
+	};
+});
 
 vi.mock('../../components/InstanceAiPreviewTabBar.vue', () => ({
 	default: defineComponent({ setup: () => () => h('div') }),
@@ -88,6 +98,7 @@ describe('AssistantAgentThreadView', () => {
 		telemetryTrack.mockReset();
 		panelProps.current = {};
 		previewProps.current = undefined;
+		previewThread.current = undefined;
 		chatMessages.value = [];
 		isLoadingHistory.value = true;
 	});
@@ -224,5 +235,28 @@ describe('AssistantAgentThreadView', () => {
 
 		expect(getByTestId('assistant-agent-preview-panel')).not.toBeVisible();
 		expect(previewProps.current).toBeUndefined();
+	});
+
+	it('sends a question from a preview with its context, until the message is accepted', async () => {
+		renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+		isLoadingHistory.value = false;
+		await flushPromises();
+		chatMessages.value = [buildMessage('tc-1')];
+		await flushPromises();
+
+		const context = { source: 'setup-panel-execute' as const, workflowId: 'wf-1' };
+		await previewThread.current?.sendMessage('Test the workflow', {
+			authorship: USER_TYPED_MESSAGE,
+			handoffContext: context,
+		});
+
+		expect(sendMessageFromOutside).toHaveBeenCalledWith('Test the workflow', []);
+		const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+		expect(clientContext()).toMatchObject({ context });
+
+		const onMessageAccepted = panelProps.current.onMessageAccepted as () => void;
+		onMessageAccepted();
+		expect(clientContext()).not.toHaveProperty('context');
 	});
 });

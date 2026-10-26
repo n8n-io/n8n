@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { AgentJsonConfig, InstanceAiAttachment } from '@n8n/api-types';
+import type {
+	AgentJsonConfig,
+	InstanceAiAttachment,
+	InstanceAiHandoffContext,
+} from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { N8nLink, N8nResizeWrapper, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -49,6 +53,8 @@ const threadsStore = useAssistantAgentThreadsStore();
 const pendingMessage = consumePendingAssistantAgentMessage(props.threadId);
 const isNewSession = ref(pendingMessage !== undefined);
 let pendingReferences: InstanceAiAttachment[] = pendingMessage?.references ?? [];
+// The context of a question that a preview sends, for example a credential to set up.
+let pendingHandoffContext: InstanceAiHandoffContext | undefined;
 // The lists show a thread opened by URL even when it is older than the recent page.
 if (!pendingMessage) void threadsStore.loadThread(props.threadId);
 
@@ -66,10 +72,11 @@ function clientContext(): Record<string, unknown> {
 		...(rootStore.pushRef ? { pushRef: rootStore.pushRef } : {}),
 		browserUseAvailable: settingsStore.isBrowserUseAvailable,
 		...(pendingReferences.length > 0 ? { attachments: pendingReferences } : {}),
+		...(pendingHandoffContext ? { context: pendingHandoffContext } : {}),
 	};
 }
 
-/** The references go with the first message, so a retry of a refused send keeps them. */
+/** The references and the context go with one message, so a retry of a refused send keeps them. */
 function onMessageAccepted(): void {
 	// Tracked on acceptance, like the current runtime, so refused sends don't inflate the count.
 	const nodeCount = countAttachedNodes(pendingReferences);
@@ -80,6 +87,7 @@ function onMessageAccepted(): void {
 		});
 	}
 	pendingReferences = [];
+	pendingHandoffContext = undefined;
 }
 
 const interactionExtensions = [assistantConfirmationExtension];
@@ -112,7 +120,10 @@ const thread = useAssistantArtifactThread({
 	isStreaming: () => panel.value?.isStreaming ?? false,
 	// Until the chat mounts, its history is not known, so a past build does not open the preview.
 	isLoadingHistory: () => panel.value?.isLoadingHistory ?? true,
-	sendMessage: (text) => panel.value?.sendMessageFromOutside(text, []),
+	sendMessage: (text, handoffContext) => {
+		pendingHandoffContext = handoffContext;
+		panel.value?.sendMessageFromOutside(text, []);
+	},
 });
 provideArtifactThread(thread);
 
