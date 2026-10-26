@@ -214,7 +214,11 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string, SessionDropd
 	}));
 });
 
-const { usage: sessionUsage, duration, onExecutionUpdated } = useAgentSessionUsage(
+const {
+	usage: sessionUsage,
+	duration,
+	onExecutionUpdated,
+} = useAgentSessionUsage(
 	() => (thread.value ? { thread: thread.value, executions: executions.value } : null),
 	() => ({}),
 );
