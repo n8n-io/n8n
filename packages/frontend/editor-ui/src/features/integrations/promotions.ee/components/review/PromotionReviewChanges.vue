@@ -199,7 +199,7 @@ const treeResizer = useResizablePanel({
 			<N8nEmptyState
 				v-if="outcome"
 				:class="$style.state"
-				:icon="{ type: 'icon', value: outcome.state === 'merged' ? 'check' : 'circle-x' }"
+				:icon="{ type: 'icon', value: outcome.state === 'merged' ? 'check' : 'circle-check' }"
 				:heading="i18n.baseText(`promotions.review.outcome.${outcome.state}.title`)"
 				:description="outcomeDescription"
 				:button-text="i18n.baseText('promotions.review.outcome.openOnHost')"
