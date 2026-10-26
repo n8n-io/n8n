@@ -200,8 +200,65 @@ describe('createKnowledgeRetrievalTools', () => {
 		await getToolHandler(tool)({ pattern: 'refund' }, { runId: 'run-1' });
 
 		expect(startToolCall).toHaveBeenCalledWith('run-1', 'file_search');
-		expect(finishToolCall).toHaveBeenCalledWith({ failed: true });
+		expect(finishToolCall).toHaveBeenCalledWith({
+			failed: true,
+			searchDurationMs: expect.any(Number),
+			errorType: 'Error',
+		});
 	});
+
+	it.each([
+		['content', { outputMode: 'content', matches: [] }, true],
+		[
+			'content',
+			{
+				outputMode: 'content',
+				matches: [
+					{
+						file: 'notes.txt',
+						fileId: 'file-1',
+						displayName: 'notes.txt',
+						lineNumber: 1,
+						text: 'refund',
+						textTruncated: false,
+					},
+				],
+			},
+			false,
+		],
+		['files_with_matches', { outputMode: 'files_with_matches', files: [] }, true],
+		[
+			'count',
+			{
+				outputMode: 'count',
+				counts: [{ file: 'notes.txt', fileId: 'file-1', displayName: 'notes.txt', count: 0 }],
+			},
+			true,
+		],
+	] as const)(
+		'passes the duration of a search_text call in %s mode, and whether it found nothing',
+		async (_mode, searchResult, emptySearch) => {
+			const { startToolCall, finishToolCall } = mockToolCallTracking();
+			const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
+			knowledgeMirrorService.searchKnowledge.mockResolvedValue({
+				...searchResult,
+				limit: 10,
+				hasMore: false,
+				truncated: false,
+			} as never);
+			const tool = buildTool(knowledgeMirrorService, 'search_text', startToolCall);
+
+			await getToolHandler(tool)({ pattern: 'refund' }, { runId: 'run-1' });
+
+			expect(finishToolCall).toHaveBeenCalledWith(
+				expect.objectContaining({
+					failed: false,
+					searchDurationMs: expect.any(Number),
+					emptySearch,
+				}),
+			);
+		},
+	);
 
 	it('passes the upload time of the file that read_file read, but not to the model', async () => {
 		const { startToolCall, finishToolCall } = mockToolCallTracking();

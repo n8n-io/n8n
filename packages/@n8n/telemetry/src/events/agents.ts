@@ -405,6 +405,54 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Ages in full days of the first 25 different knowledge files that read_file read successfully, in the order of their first read. Absent when the run read no file.',
 				),
+			file_search_duration_ms_avg: z
+				.number()
+				.optional()
+				.describe(
+					'Average duration of the search_text calls of the run, failed calls included. It includes the time to start the sandbox and to copy the knowledge files into it, which can make the first search of a run slower. Absent when the run made no such call.',
+				),
+			file_search_duration_ms_max: z
+				.number()
+				.optional()
+				.describe(
+					'Duration of the slowest search_text call of the run. Absent when the run made no such call.',
+				),
+			file_empty_search_count: z
+				.number()
+				.optional()
+				.describe(
+					'search_text calls that worked and found nothing. Absent when the run made no such call.',
+				),
+			file_error_types: z
+				.array(z.string())
+				.optional()
+				.describe(
+					'Error names of the failed search_text calls of the run, each name once. Absent when the run made no such call.',
+				),
+			vector_store_search_duration_ms_avg: z
+				.number()
+				.optional()
+				.describe(
+					'Average duration of the vector store search calls of the run, failed calls included. Absent when the run made no such call.',
+				),
+			vector_store_search_duration_ms_max: z
+				.number()
+				.optional()
+				.describe(
+					'Duration of the slowest vector store search call of the run. Absent when the run made no such call.',
+				),
+			vector_store_empty_search_count: z
+				.number()
+				.optional()
+				.describe(
+					'Vector store search calls that worked and found nothing. Absent when the run made no such call.',
+				),
+			vector_store_error_types: z
+				.array(z.string())
+				.optional()
+				.describe(
+					'Error names of the failed vector store search calls of the run, each name once. Absent when the run made no such call.',
+				),
 		}),
 	},
 	AGENT_EXECUTION_COUNT: {

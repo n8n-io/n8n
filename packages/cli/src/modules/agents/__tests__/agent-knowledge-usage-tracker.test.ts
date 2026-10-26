@@ -263,6 +263,56 @@ describe('AgentKnowledgeUsageTracker', () => {
 			});
 		});
 
+		it('sends the search stats of each kind that the run searched', () => {
+			const telemetry = mock<Telemetry>();
+			const tracker = new AgentKnowledgeUsageTracker(telemetry);
+			const fileSearch = (result: KnowledgeToolCallResult) =>
+				tracker.startToolCall('run-1', 'file_search')(result);
+			fileSearch({ failed: false, contentChars: 10, searchDurationMs: 100, emptySearch: false });
+			fileSearch({ failed: false, contentChars: 10, searchDurationMs: 301, emptySearch: true });
+			fileSearch({ failed: true, searchDurationMs: 50, errorType: 'TimeoutError' });
+			fileSearch({ failed: true, searchDurationMs: 40, errorType: 'OperationalError' });
+			fileSearch({ failed: true, searchDurationMs: 30, errorType: 'TimeoutError' });
+			tracker.startToolCall(
+				'run-1',
+				'vector_store_search',
+			)({
+				failed: false,
+				contentChars: 10,
+				searchDurationMs: 900,
+				emptySearch: true,
+			});
+
+			tracker.sendRunUsage('run-1', { agentId: 'agent-1', runType: 'production' });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_RUN_USED_KNOWLEDGE,
+				expect.objectContaining({
+					file_search_duration_ms_avg: 104,
+					file_search_duration_ms_max: 301,
+					file_empty_search_count: 1,
+					file_error_types: ['OperationalError', 'TimeoutError'],
+					vector_store_search_duration_ms_avg: 900,
+					vector_store_search_duration_ms_max: 900,
+					vector_store_empty_search_count: 1,
+					vector_store_error_types: [],
+				}),
+			);
+		});
+
+		it('sends no search stats for a kind that the run did not search', () => {
+			const telemetry = mock<Telemetry>();
+			const tracker = new AgentKnowledgeUsageTracker(telemetry);
+			tracker.startToolCall('run-1', 'file_read')({ failed: false, contentChars: 10 });
+			tracker.startToolCall('run-1', 'file_find')({ failed: false, contentChars: 10 });
+
+			tracker.sendRunUsage('run-1', { agentId: 'agent-1', runType: 'production' });
+
+			const [, properties] = telemetry.track.mock.calls[0];
+			expect(properties).not.toHaveProperty('file_search_duration_ms_avg');
+			expect(properties).not.toHaveProperty('vector_store_search_duration_ms_avg');
+		});
+
 		it('sends no ages when the run read no file', () => {
 			const telemetry = mock<Telemetry>();
 
