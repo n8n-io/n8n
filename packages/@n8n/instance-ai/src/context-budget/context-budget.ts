@@ -50,7 +50,9 @@ function measureTool(tool: BuiltTool): ToolBudget {
 		descriptionChars,
 		schemaChars,
 		systemInstructionChars,
-		chars: descriptionChars + schemaChars + systemInstructionChars,
+		// The name is the tool key the model sees. System instructions go into the
+		// system message, so they are counted in their own section.
+		chars: tool.name.length + descriptionChars + schemaChars,
 	};
 }
 
@@ -65,6 +67,7 @@ export function measureContextBudget(input: ContextBudgetInput): ContextBudget {
 		section('system prompt', input.systemPrompt.length),
 		section('skill catalog', input.skillCatalog.length),
 		section('tools', sum(tools.map((t) => t.chars))),
+		section('tool system instructions', sum(tools.map((t) => t.systemInstructionChars))),
 	];
 	if (input.skills) sections.push(section('loaded skills', sum(input.skills.map((s) => s.chars))));
 

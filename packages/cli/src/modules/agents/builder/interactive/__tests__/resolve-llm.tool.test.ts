@@ -1388,6 +1388,7 @@ describe('agent_builder_resolve_llm tool', () => {
 			);
 
 			expect(view.autoPicked).toBe(true);
+			expect(view.nextStep).toContain('provider and model');
 			expect(view.nextStep).toContain('changeable');
 		});
 	});

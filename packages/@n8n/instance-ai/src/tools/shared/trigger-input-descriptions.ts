@@ -10,5 +10,5 @@ export const TRIGGER_INPUT_DATA_DESCRIPTION =
 export const TRIGGER_NODE_NAME_DESCRIPTION =
 	'Trigger node to start from. REQUIRED when the workflow has more than one trigger, otherwise the ' +
 	"other triggers' branches never run: call once per trigger. Names come from " +
-	'workflow_builder_build_workflow\'s `triggerNodes` or workflows(action="get-as-code"). ' +
+	'workflow_builder_build_workflow\'s `triggerNodes` or workflow_builder_workflows(action="get-as-code"). ' +
 	'Never disable, delete, edit or copy a workflow to reach a branch.';

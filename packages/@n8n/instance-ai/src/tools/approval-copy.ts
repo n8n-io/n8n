@@ -10,7 +10,7 @@ export const approvalSummarySchema = z
 	// field repeats in every tool that shows an approval card.
 	.describe(
 		'One plain-language line for the approval card: the concrete change or effect of this call. ' +
-			'Do not repeat the workflow name or ID.',
+			'Do not repeat the workflow name or ID. Do not include unrelated future actions.',
 	);
 
 /**

@@ -19,6 +19,7 @@ const CEILINGS = {
 	systemPrompt: 21_000,
 	skillCatalog: 9_000,
 	alwaysLoadedTools: 72_000,
+	buildSkills: 135_000,
 };
 
 /** The skills that a typical workflow build loads and keeps for the rest of the thread. */
@@ -70,5 +71,6 @@ describe('orchestrator context budget', () => {
 		expect(size('system prompt')).toBeLessThanOrEqual(CEILINGS.systemPrompt);
 		expect(size('skill catalog')).toBeLessThanOrEqual(CEILINGS.skillCatalog);
 		expect(size('tools')).toBeLessThanOrEqual(CEILINGS.alwaysLoadedTools);
+		expect(size('loaded skills')).toBeLessThanOrEqual(CEILINGS.buildSkills);
 	});
 });

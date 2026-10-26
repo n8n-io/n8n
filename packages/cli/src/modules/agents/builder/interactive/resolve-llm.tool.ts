@@ -157,13 +157,18 @@ function nextStepFor(result: Record<string, unknown>): string | undefined {
 		if (result.claimedFreeOpenAiCredits === true) {
 			return 'Tell the user that free OpenAI credits were set up for this Agent.';
 		}
+		const steps: string[] = [];
 		if (result.autoPicked === true) {
-			return 'Tell the user which provider you picked and that it is changeable. Do not ask them to confirm it.';
+			steps.push(
+				'Tell the user which provider and model you picked and that they are changeable. Do not ask them to confirm.',
+			);
 		}
 		if (result.credentialName === N8N_CONNECT_CREDENTIAL_NAME) {
-			return 'Save this credential like any other, and tell the user that the model runs on Gateway credits.';
+			steps.push(
+				'Save this credential like any other, and tell the user that the model runs on Gateway credits.',
+			);
 		}
-		return undefined;
+		return steps.length > 0 ? steps.join(' ') : undefined;
 	}
 	switch (result.reason) {
 		case 'unknown_model':
@@ -391,8 +396,8 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 		.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.RESOLVE_LLM))
 		.description(
 			"Resolve the Agent's main LLM and credential without a picker. On a fresh Agent, read " +
-				'agent-context type "config" first: when model and credential are set, keep them and do not ' +
-				'call this tool. Otherwise call it once, silently, before the first config write, with ' +
+				'agent-context type "config" first: when model and credential are set, keep them, mention the ' +
+				'model in your summary as changeable, and do not call this tool. Otherwise call it once, silently, before the first config write, with ' +
 				'provider/model when the user named them. Call it again whenever the user names or changes a ' +
 				'provider or model. For "Anthropic via OpenRouter", pass provider "openrouter". For Microsoft ' +
 				'Foundry (provider "azure-openai"), pass a deployment name or the model it serves. Results that ' +
