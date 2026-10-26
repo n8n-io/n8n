@@ -22,8 +22,9 @@ export interface ProviderQuirks {
 	mergesAdjacentAssistantMessages?: boolean;
 	/**
 	 * Provider replays reasoning from the part's text itself, with no
-	 * providerMetadata involved — keep reasoning blocks in replayed history
-	 * even when they carry no replayable metadata.
+	 * providerMetadata involved — keep reasoning blocks that carry no replayable
+	 * metadata on the current tool chain (after the last user message). Older
+	 * turns still drop them.
 	 */
 	replayReasoningText?: boolean;
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
@@ -183,13 +184,11 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 	custom: {
 		...reasoningEffortQuirk('custom'),
 		// QUIRK(custom): OpenAI-compatible vendors return chain-of-thought as
-		// `reasoning_content` and expect it back on the next request when tools
-		// are in play (DeepSeek's thinking mode rejects the request without it —
-		// see patches/@langchain__openai@1.4.4.patch for the same fix on the
-		// LangChain stack). @ai-sdk/openai-compatible re-emits `reasoning_content`
-		// from replayed reasoning parts on its own, but attaches no
-		// providerMetadata to them, so the runtime must keep the parts in history
-		// by text alone.
+		// `reasoning_content` and expect it back within a tool-call chain
+		// (DeepSeek's thinking mode rejects the request without it).
+		// @ai-sdk/openai-compatible re-emits `reasoning_content` from replayed
+		// reasoning parts on its own, but attaches no providerMetadata to them, so
+		// the runtime keeps the parts by text alone, on the current tool chain only.
 		replayReasoningText: true,
 	},
 	moonshotai: reasoningEffortQuirk('moonshotai'),

@@ -1,24 +1,18 @@
-import type * as AiImport from 'ai';
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 
 import type { AgentMessage } from '../../types/sdk/message';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { AgentEventBus } from '../state/event-bus';
 
-const { mockGenerateText } = vi.hoisted(() => ({
-	mockGenerateText: vi.fn<(call: Record<string, unknown>) => Promise<Record<string, unknown>>>(),
-}));
+interface SentMessage {
+	role: string;
+	content?: string | null;
+	reasoning_content?: string;
+	tool_calls?: unknown[];
+}
 
-vi.mock('ai', async () => {
-	const actual = await vi.importActual<typeof AiImport>('ai');
-	return {
-		...actual,
-		generateText: async (call: Record<string, unknown>) => {
-			const result = await mockGenerateText(call);
-			return { ...result, finalStep: { providerMetadata: undefined } };
-		},
-	};
-});
-
+// One finished turn, then the current turn: reasoning, a tool call and its result.
 const history: AgentMessage[] = [
 	{ role: 'user', content: [{ type: 'text', text: 'First question' }] },
 	{
@@ -29,42 +23,95 @@ const history: AgentMessage[] = [
 		],
 	},
 	{ role: 'user', content: [{ type: 'text', text: 'Second question' }] },
+	{
+		role: 'assistant',
+		content: [
+			{ type: 'reasoning', text: 'Current chain of thought' },
+			{
+				type: 'tool-call',
+				toolCallId: 'call-1',
+				toolName: 'lookup',
+				input: { q: 'x' },
+				state: 'resolved',
+				output: { found: true },
+			},
+		],
+	},
 ];
 
-async function sentAssistantParts(model: Record<string, unknown>) {
-	mockGenerateText.mockResolvedValueOnce({
-		finishReason: 'stop',
-		usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
-		responseMessages: [{ role: 'assistant', content: [{ type: 'text', text: 'OK' }] }],
-		toolCalls: [],
-	});
-	await new AgentRuntime({
-		name: 'replay-test',
-		model: model as never,
-		instructions: 'test',
-		eventBus: new AgentEventBus(),
-	}).generate(history);
-	const messages = mockGenerateText.mock.calls.at(-1)?.[0].messages as Array<{
-		role: string;
-		content: Array<{ type: string }>;
-	}>;
-	return messages.find((message) => message.role === 'assistant')?.content.map((part) => part.type);
-}
+const completion = {
+	id: 'c1',
+	object: 'chat.completion',
+	created: 0,
+	model: 'test-model',
+	choices: [{ index: 0, message: { role: 'assistant', content: 'OK' }, finish_reason: 'stop' }],
+	usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+};
 
-describe('reasoning replay wiring', () => {
-	beforeEach(() => mockGenerateText.mockReset());
+const chunk = (choice: Record<string, unknown>) =>
+	`data: ${JSON.stringify({ ...completion, object: 'chat.completion.chunk', choices: [{ index: 0, ...choice }] })}\n\n`;
 
-	it('replays metadata-less reasoning to custom OpenAI-compatible models', async () => {
-		expect(
-			await sentAssistantParts({
-				id: 'custom/test-model',
-				url: 'http://127.0.0.1:1/v1',
-				apiKey: 'k',
-			}),
-		).toEqual(['reasoning', 'text']);
+const streamBody =
+	chunk({ delta: { role: 'assistant', content: 'OK' } }) +
+	chunk({ delta: {}, finish_reason: 'stop' }) +
+	'data: [DONE]\n\n';
+
+describe('reasoning replay on the wire', () => {
+	let server: Server;
+	let baseUrl: string;
+	const bodies: Array<{ messages: SentMessage[] }> = [];
+
+	beforeAll(async () => {
+		server = createServer((req, res) => {
+			let raw = '';
+			req.on('data', (data: Buffer) => (raw += data.toString()));
+			req.on('end', () => {
+				const body = JSON.parse(raw) as { messages: SentMessage[]; stream?: boolean };
+				bodies.push(body);
+				if (body.stream) {
+					res.writeHead(200, { 'content-type': 'text/event-stream' });
+					res.end(streamBody);
+				} else {
+					res.writeHead(200, { 'content-type': 'application/json' });
+					res.end(JSON.stringify(completion));
+				}
+			});
+		});
+		await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+		baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`;
 	});
 
-	it('still drops metadata-less reasoning for other providers', async () => {
-		expect(await sentAssistantParts({ id: 'openai/gpt-4o-mini', apiKey: 'k' })).toEqual(['text']);
-	});
+	afterAll(async () => await new Promise<void>((resolve) => server.close(() => resolve())));
+
+	beforeEach(() => (bodies.length = 0));
+
+	async function sentAssistantMessages(id: string, path: 'generate' | 'stream') {
+		const agent = new AgentRuntime({
+			name: 'replay-test',
+			model: { id, url: baseUrl, apiKey: 'k' } as never,
+			instructions: 'test',
+			eventBus: new AgentEventBus(),
+		});
+		if (path === 'generate') {
+			await agent.generate(history);
+		} else {
+			const reader = (await agent.stream(history)).stream.getReader();
+			while (!(await reader.read()).done) {
+				/* Drain the stream. */
+			}
+		}
+		return (bodies.at(-1)?.messages ?? []).filter((message) => message.role === 'assistant');
+	}
+
+	it.each(['generate', 'stream'] as const)(
+		'%s: sends reasoning_content back on the current tool chain only',
+		async (path) => {
+			const [finished, current] = await sentAssistantMessages('custom/test-model', path);
+
+			expect(current.tool_calls).toHaveLength(1);
+			expect(current.reasoning_content).toBe('Current chain of thought');
+			expect(finished.content).toBe('First answer');
+			expect(finished.reasoning_content).toBeUndefined();
+		},
+	);
 });

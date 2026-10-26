@@ -508,8 +508,10 @@ function toAiMessageList(
 export function toAiMessages(messages: Message[], providerId?: string): ModelMessage[] {
 	const replayReasoningText =
 		providerId !== undefined && (getProviderQuirks(providerId).replayReasoningText ?? false);
+	// Text replay covers only the current tool chain: the messages after the last user message.
+	const lastUserIndex = messages.map((message) => message.role).lastIndexOf('user');
 	const modelMessages = messages.flatMap((message, index) =>
-		toAiMessageList(message, index, replayReasoningText),
+		toAiMessageList(message, index, replayReasoningText && index > lastUserIndex),
 	);
 	const result: ModelMessage[] = [];
 
