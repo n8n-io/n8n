@@ -207,8 +207,8 @@ n8n-cli promotion-environment promote env-1 -m "Promote team projects" --force
 Personal projects are not included. A workflow on the branch that moved to a
 personal project is refused, because Apply would delete it on the destination.
 Move it back to its team project first. A workflow or folder on the branch that
-moved to another team project is also refused, because Apply can't move it
-between projects. Connect the environment first. This command
+moved to another team project is also refused while its old project still
+exists, because Apply can't move it between projects. Connect the environment first. This command
 works on an `instance` Promote environment only. The API key also needs
 `variable:list` when the workflows reference variables.
 

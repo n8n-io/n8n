@@ -1170,7 +1170,8 @@ export class PromotionsService {
 	 *   out of scope. The promote would drop it from the branch, and Apply would then delete it on
 	 *   the destination.
 	 * - A workflow or folder that another team project holds now would reach the branch, but Apply
-	 *   refuses moves between projects, so the destination would be stuck until it moves back.
+	 *   refuses moves between projects, so the destination would be stuck until it moves back. Only
+	 *   an item whose branch project still exists here is refused, because only it can move back.
 	 */
 	private async assertNoProjectMovesSinceBranch(
 		input: PromotionOperationInput,
@@ -1183,11 +1184,12 @@ export class PromotionsService {
 		const branch = readBranchPlacements(manifest, BRANCH_MANIFEST_PATH);
 		if (branch.workflows.length === 0 && branch.folders.length === 0) return;
 
-		const [owners, folders] = await Promise.all([
+		const [owners, folders, existingProjects] = await Promise.all([
 			this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
 				branch.workflows.map(({ id }) => id),
 			),
 			this.folderService.getFoldersByIds(branch.folders.map(({ folder }) => folder.id)),
+			this.projectRepository.findTypesByIds(branch.projects.map(({ id }) => id)),
 		]);
 		const droppedWorkflows = branch.workflows.filter(({ id }) => {
 			const owner = owners.get(id);
@@ -1201,11 +1203,18 @@ export class PromotionsService {
 			inventory: branch,
 			owners,
 			folderHomes: new Map(folders.map(({ id, homeProject }) => [id, homeProject])),
-			// Promote writes every team project, so each branch project exists on the destination.
-			existingProjectIds: new Set(branch.projects.map(({ id }) => id)),
+			existingProjectIds: new Set(existingProjects.map(({ id }) => id)),
 		});
-		if (moves.workflows.length > 0 || moves.folders.length > 0) {
-			throw new BadRequestError(describePromotedMoves(moves));
+		// An item whose branch project was deleted here can't move back, for example after a project
+		// delete that transferred its workflows. It reaches the branch, and the destination can then
+		// move it to match before Apply.
+		const refused = {
+			...moves,
+			workflows: moves.workflows.filter(({ projectExists }) => projectExists),
+			folders: moves.folders.filter(({ projectExists }) => projectExists),
+		};
+		if (refused.workflows.length > 0 || refused.folders.length > 0) {
+			throw new BadRequestError(describePromotedMoves(refused));
 		}
 	}
 

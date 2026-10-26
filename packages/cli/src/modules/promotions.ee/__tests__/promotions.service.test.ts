@@ -293,6 +293,7 @@ describe('PromotionsService', () => {
 				gitService.readFilesAtCommit.mockResolvedValue(
 					new Map([['n8n/manifest.json', JSON.stringify(manifest)]]),
 				);
+				projectRepository.findTypesByIds.mockResolvedValue([{ id: 'p-billing', type: 'team' }]);
 			});
 
 			it('refuses a promote while a branch workflow belongs to a personal project', async () => {
@@ -379,6 +380,22 @@ describe('PromotionsService', () => {
 					'folder "Payments" (f1) is in project "Ops" here and in project "Billing" on the branch',
 				);
 				expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			});
+
+			it('promotes a move out of a branch project that no longer exists here', async () => {
+				// Billing was deleted here and its workflows moved to Ops, so they can't move back. The
+				// destination moves them to match instead.
+				projectRepository.findTypesByIds.mockResolvedValue([]);
+				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+					new Map([['w1', mock<Project>({ id: 'p-ops', type: 'team', name: 'Ops' })]]),
+				);
+
+				await service.promote(ENVIRONMENT_ID, actor, {
+					canExportVariableValues: true,
+					commitMessage: 'sync projects',
+				});
+
+				expect(gitService.commitAndPush).toHaveBeenCalled();
 			});
 
 			it('promotes when branch workflows stay in their project or are gone', async () => {
