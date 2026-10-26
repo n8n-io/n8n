@@ -365,7 +365,6 @@ describe('GlobalConfig', () => {
 			vertexLocation: '',
 			vertexServiceAccountJson: '',
 			mcpServers: '',
-			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
 			memoryModel: '',
@@ -390,7 +389,6 @@ describe('GlobalConfig', () => {
 			builderSandboxTtlMs: 900_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
-			gatewayApiKey: '',
 			threadTtlDays: 30,
 			pruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
@@ -747,7 +745,6 @@ describe('GlobalConfig', () => {
 			tracingEnabled: true,
 			tracingRecordInputs: true,
 			tracingRecordOutputs: true,
-			skillsHubEnabled: false,
 			modules: [],
 			backgroundTasksEnabled: false,
 			sandboxEnabled: false,
@@ -804,15 +801,6 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.tracingRecordOutputs).toBe(false);
-	});
-
-	it('should parse N8N_AGENTS_SKILLS_HUB_ENABLED from env variables', () => {
-		process.env = {
-			N8N_AGENTS_SKILLS_HUB_ENABLED: 'true',
-		};
-		const config = Container.get(GlobalConfig);
-
-		expect(config.agents.skillsHubEnabled).toBe(true);
 	});
 
 	it('should parse N8N_AGENTS_AI_SANDBOX_SNAPSHOT from env variables', () => {

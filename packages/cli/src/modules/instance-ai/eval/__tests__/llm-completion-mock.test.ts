@@ -3,13 +3,17 @@ interface CompletionStep {
 	toolName?: string;
 	toolArguments?: Record<string, unknown>;
 	content?: string;
+	structuredContent?: Record<string, unknown>;
 }
 
 // Hoisted so the module mock factories below can resolve them.
 const { submitQueue, submitCapture, promptCapture, mockGenerate, mockAgent, mockExtractText } =
 	vi.hoisted(() => {
 		const submitQueue: CompletionStep[] = [];
-		const submitCapture: { handler?: (input: CompletionStep) => Promise<unknown> } = {};
+		const submitCapture: {
+			handler?: (input: CompletionStep) => Promise<unknown>;
+			endsTurn?: (output: unknown) => boolean;
+		} = {};
 		const promptCapture: { prompt?: string } = {};
 
 		const mockGenerate = vi.fn(async (prompt: string) => {
@@ -37,12 +41,18 @@ const { submitQueue, submitCapture, promptCapture, mockGenerate, mockAgent, mock
 const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 
 function toolBuilderMock(name: string) {
-	const built: { _name: string; _handler?: unknown } = { _name: name };
+	const built: { _name: string; _handler?: unknown; _endsTurn?: (output: unknown) => boolean } = {
+		_name: name,
+	};
 	return {
 		description: vi.fn().mockReturnThis(),
 		input: vi.fn().mockReturnThis(),
 		handler: vi.fn(function (this: unknown, h: unknown) {
 			built._handler = h;
+			return this;
+		}),
+		endsTurnWhen: vi.fn(function (this: unknown, fn: (output: unknown) => boolean) {
+			built._endsTurn = fn;
 			return this;
 		}),
 		build: vi.fn(() => built),
@@ -67,6 +77,7 @@ import { Tool } from '@n8n/agents/tool';
 import { Container } from '@n8n/di';
 import { createEvalAgent } from '@n8n/instance-ai';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { createLlmCompletionMockHandler } from '../llm-completion-mock';
 
@@ -77,10 +88,11 @@ function reapplyMockImplementations() {
 	vi.mocked(Tool).mockImplementation(toolBuilderMock as never);
 	mockAgent.tool.mockImplementation(function (
 		this: unknown,
-		builtTool: { _name?: string; _handler?: unknown },
+		builtTool: { _name?: string; _handler?: unknown; _endsTurn?: (output: unknown) => boolean },
 	) {
 		if (builtTool._name === 'submit_agent_step') {
 			submitCapture.handler = builtTool._handler as (input: CompletionStep) => Promise<unknown>;
+			submitCapture.endsTurn = builtTool._endsTurn;
 		}
 		return this;
 	});
@@ -164,6 +176,41 @@ describe('createLlmCompletionMockHandler', () => {
 		expect(res?.body).toEqual({
 			tool_calls: [{ name: 'format_response', arguments: { text: 'x' } }],
 		});
+	});
+
+	it('ends the model loop once a step is accepted, but not after a rejected step', async () => {
+		const handler = createLlmCompletionMockHandler();
+		submitQueue.push({ kind: 'final', content: 'Hello' });
+		await handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node);
+
+		expect(submitCapture.endsTurn?.('Accepted.')).toBe(true);
+		expect(submitCapture.endsTurn?.('Invalid: kind="tool_call" requires toolName.')).toBe(false);
+	});
+
+	it('rejects a tool name the request does not declare, so the model can retry', async () => {
+		const handler = createLlmCompletionMockHandler();
+		await handler(
+			chatRequest({
+				messages: [{ role: 'user', content: 'hi' }],
+				tools: [{ type: 'function', function: { name: 'search_web', parameters: {} } }],
+			}),
+			node,
+		);
+
+		expect(await submitCapture.handler?.({ kind: 'tool_call', toolName: 'web_search' })).toMatch(
+			/^Invalid:/,
+		);
+		expect(await submitCapture.handler?.({ kind: 'tool_call', toolName: 'search_web' })).toBe(
+			'Accepted.',
+		);
+	});
+
+	it('rejects a final step with no content, so the turn never ends empty', async () => {
+		const handler = createLlmCompletionMockHandler();
+		await handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node);
+
+		expect(await submitCapture.handler?.({ kind: 'final' })).toMatch(/^Invalid:/);
+		expect(await submitCapture.handler?.({ kind: 'final', content: '' })).toMatch(/^Invalid:/);
 	});
 
 	it('emits content for a final answer', async () => {
@@ -290,6 +337,22 @@ describe('createLlmCompletionMockHandler', () => {
 		);
 
 		expect(res?.body).toEqual({ content: '{"category":"bug"}' });
+	});
+
+	it('serializes a structured final answer, so quotes inside its values stay valid JSON', async () => {
+		submitQueue.push({
+			kind: 'final',
+			structuredContent: { output: { html: '<p>Say <em>"just arrived"</em></p>' } },
+		});
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(
+			chatRequest({ messages: [{ role: 'user', content: 'write' }] }),
+			node,
+		);
+
+		const content = (res?.body as { content: string }).content;
+		expect(jsonParse(content)).toEqual({ output: { html: '<p>Say <em>"just arrived"</em></p>' } });
 	});
 
 	it('injects the declared structured-output schema into the mock prompt', async () => {

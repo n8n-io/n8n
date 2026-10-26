@@ -66,7 +66,17 @@ export const getRequestHelperFunctions = (
 	// Eval LLM mock handler: extract once for use in direct helpers below
 	const evalLlmMock = additionalData.evalLlmMockHandler;
 
+	const getTraceHeaders = (): Record<string, string> => {
+		const { otel, executionId } = additionalData;
+		if (!otel?.injectTraceHeaders || !executionId) return {};
+
+		const headers: Record<string, string> = {};
+		otel.injectTraceHeaders(executionId, node.name, headers);
+		return headers;
+	};
+
 	return {
+		getTraceHeaders,
 		httpRequest: async (requestOptions: IHttpRequestOptions) => {
 			if (evalLlmMock) {
 				const evalMockResponse = await callEvalMockHandler(
@@ -77,13 +87,9 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			if (additionalData.otel?.injectTraceHeaders) {
-				requestOptions.headers ??= {};
-				additionalData.otel.injectTraceHeaders(
-					additionalData.executionId!,
-					node.name,
-					requestOptions.headers as Record<string, string>,
-				);
+			const traceHeaders = getTraceHeaders();
+			if (Object.keys(traceHeaders).length) {
+				Object.assign((requestOptions.headers ??= {}), traceHeaders);
 			}
 			return await Container.get(OutboundHttp).requests().request(requestOptions);
 		},
@@ -154,14 +160,10 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			if (additionalData.otel?.injectTraceHeaders) {
+			const traceHeaders = getTraceHeaders();
+			if (Object.keys(traceHeaders).length) {
 				const target = typeof uriOrObject === 'string' ? (options ??= {}) : uriOrObject;
-				target.headers ??= {};
-				additionalData.otel.injectTraceHeaders(
-					additionalData.executionId!,
-					node.name,
-					target.headers as Record<string, string>,
-				);
+				Object.assign((target.headers ??= {}), traceHeaders);
 			}
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);

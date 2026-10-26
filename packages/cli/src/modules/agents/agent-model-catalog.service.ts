@@ -2,6 +2,7 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	getAgentModelProviderCredentialTypes,
 	type AgentCatalogModel,
+	type AgentModelsUnavailableReason,
 	type AgentProviderModelsResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -13,6 +14,7 @@ import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
 import {
 	BuilderModelLiveLookupService,
 	type LiveModelLookupResult,
+	type ModelCatalogPolicy,
 } from './builder/builder-model-live-lookup.service';
 import type { ModelChoice } from './builder/model-lookup.types';
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
@@ -43,7 +45,9 @@ function liveModelIdVariants(id: string): string[] {
  * verifies/prunes it. Custom OpenAI-compatible endpoints are the exception:
  * their live `/models` response is authoritative and models.dev is never read.
  * The managed gateway also uses exact live ids, enriched from models.dev when
- * available. Without live discovery, curated catalog models remain unverified.
+ * available. Azure OpenAI lists the deployments of the credential's Foundry
+ * project, which are authoritative too. Without live discovery, curated
+ * catalog models remain unverified.
  */
 @Service()
 export class AgentModelCatalogService {
@@ -60,20 +64,52 @@ export class AgentModelCatalogService {
 		provider: string,
 		credentialId?: string,
 	): Promise<AgentProviderModelsResponse> {
-		const credentialType = getProviderCredentialType(provider);
-		if (!credentialId || !credentialType) return await this.unverifiedCatalog(provider);
+		if (!credentialId) return await this.unverifiedCatalog(provider);
 
+		// The n8n Connect managed tag has no stored credential to list deployments from.
+		if (provider === 'azure-openai' && credentialId !== AI_GATEWAY_MANAGED_TAG) {
+			return await this.modelsFromLiveLookup(
+				provider,
+				credentialId,
+				async () =>
+					await this.builderModelLiveLookupService.lookupAzureFoundryDeployments(
+						user,
+						projectId,
+						credentialId,
+					),
+				'endpoint-only',
+			);
+		}
+
+		const credentialType = getProviderCredentialType(provider);
+		if (!credentialType) return await this.unverifiedCatalog(provider);
+
+		return await this.modelsFromLiveLookup(
+			provider,
+			credentialId,
+			async () =>
+				await this.builderModelLiveLookupService.lookup(
+					user,
+					projectId,
+					credentialId,
+					credentialType,
+					provider,
+				),
+		);
+	}
+
+	/** `failurePolicy` applies when the lookup throws before it can report its own policy. */
+	private async modelsFromLiveLookup(
+		provider: string,
+		credentialId: string,
+		runLookup: () => Promise<LiveModelLookupResult>,
+		failurePolicy?: ModelCatalogPolicy,
+	): Promise<AgentProviderModelsResponse> {
 		let lookup: LiveModelLookupResult;
 		try {
-			lookup = await this.builderModelLiveLookupService.lookup(
-				user,
-				projectId,
-				credentialId,
-				credentialType,
-				provider,
-			);
+			lookup = await runLookup();
 		} catch (error) {
-			return await this.unavailableModels(provider, credentialId, error);
+			return await this.unavailableModels(provider, credentialId, error, failurePolicy);
 		}
 		return await this.modelsFromLookup(provider, credentialId, lookup);
 	}
@@ -87,16 +123,24 @@ export class AgentModelCatalogService {
 		provider: string,
 		credentialId: string,
 		error: unknown,
-		policy?: LiveModelLookupResult['policy'],
+		policy?: ModelCatalogPolicy,
+		reason?: AgentModelsUnavailableReason,
 	): Promise<AgentProviderModelsResponse> {
-		this.logLiveLookupFailure(provider, error);
+		// A reason without an error is a configuration gap, not a failed request.
+		if (error !== undefined) this.logLiveLookupFailure(provider, error);
 		// Managed and custom endpoint lists are authoritative. Do not use a static fallback.
 		if (
 			policy === 'managed' ||
 			policy === 'endpoint-only' ||
 			credentialId === AI_GATEWAY_MANAGED_TAG
 		) {
-			return { provider, verified: true, unavailable: true, models: [] };
+			return {
+				provider,
+				verified: true,
+				unavailable: true,
+				...(reason ? { unavailableReason: reason } : {}),
+				models: [],
+			};
 		}
 		return await this.unverifiedCatalog(provider);
 	}
@@ -107,7 +151,13 @@ export class AgentModelCatalogService {
 		lookup: LiveModelLookupResult,
 	): Promise<AgentProviderModelsResponse> {
 		if (lookup.status === 'unavailable') {
-			return await this.unavailableModels(provider, credentialId, lookup.error, lookup.policy);
+			return await this.unavailableModels(
+				provider,
+				credentialId,
+				lookup.error,
+				lookup.policy,
+				lookup.reason,
+			);
 		}
 		if (lookup.policy === 'endpoint-only') {
 			return this.withDefaultModel(provider, credentialId, {

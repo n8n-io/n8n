@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
-import type { ProjectScopeService } from '@n8n/backend-services';
+import type {
+	AssistantSkillContext,
+	AssistantSkillSummary,
+	ProjectScopeService,
+} from '@n8n/backend-services';
 import type { OperationContext, TransactionRunner, User } from '@n8n/db';
 import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -130,6 +134,233 @@ describe('SkillService', () => {
 				description: 'Write in our voice',
 				instructions: 'Use short sentences.',
 			});
+		});
+	});
+
+	describe('Assistant reads', () => {
+		const context: AssistantSkillContext = { user, projectId: 'project-1' };
+		const summary: AssistantSkillSummary = {
+			id: 'skill-1',
+			projectId: null,
+			name: 'Tone',
+			description: 'Writing style',
+			versionId: 'version-1',
+			version: 1,
+		};
+		let row: ResolvedSkillRow;
+
+		beforeEach(() => {
+			projectScope.getProjectIds.mockResolvedValue(['project-1', 'project-2']);
+			skills.findAssistantSkillSummaries.mockResolvedValue([]);
+			row = versionRow(skillRow('skill-1'), 1, {
+				id: 'version-1',
+				name: 'Tone',
+				description: 'Writing style',
+				instructions: 'Be brief.',
+			});
+			row.skill.availableToAssistant = true;
+			skills.findAssistantSkill.mockImplementation(async (id) =>
+				id === row.skill.id ? row : null,
+			);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+		});
+
+		it.each([
+			['project-1', ['project-1', 'project-2'], 'project-1'],
+			['project-1', null, 'project-1'],
+			['project-1', [], null],
+			[undefined, null, null],
+		] as const)(
+			'limits catalog reads to the authorized session project (%s, %s)',
+			async (projectId, allowed, expected) => {
+				projectScope.getProjectIds.mockResolvedValue(allowed === null ? null : [...allowed]);
+				const summaries = [{ ...summary, projectId: expected }];
+				skills.findAssistantSkillSummaries.mockResolvedValue(summaries);
+				expect(await service.listForAssistant({ ...context, projectId })).toEqual(summaries);
+				expect(skills.findAssistantSkillSummaries).toHaveBeenCalledWith(expected);
+			},
+		);
+
+		it('requires both list and read permissions for project skills', async () => {
+			await service.listForAssistant(context);
+			await service.readForAssistant(context, 'skill-1');
+			expect(projectScope.getProjectIds).toHaveBeenCalledTimes(2);
+			expect(projectScope.getProjectIds).toHaveBeenNthCalledWith(1, context.user, [
+				'projectSkill:list',
+				'projectSkill:read',
+			]);
+			expect(projectScope.getProjectIds).toHaveBeenNthCalledWith(2, context.user, [
+				'projectSkill:list',
+				'projectSkill:read',
+			]);
+		});
+
+		it('refuses disabled content even when its ID is supplied', async () => {
+			row.skill.availableToAssistant = false;
+			expect(await service.readForAssistant(context, 'skill-1')).toBeNull();
+		});
+
+		it('uses the existing skill permission check for content reads', async () => {
+			row.skill.projectId = 'project-1';
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+			expect(await service.readForAssistant(context, 'skill-1')).toBeNull();
+			expect(userHasScopes).toHaveBeenCalledWith(context.user, ['projectSkill:read'], false, {
+				projectId: 'project-1',
+			});
+		});
+
+		it.each([
+			['project-1', ['project-1'], true, 'project-1'],
+			['project-2', ['project-1', 'project-2'], false, 'project-1'],
+			['project-1', [], false, null],
+			['project-1', null, true, 'project-1'],
+		] as const)(
+			'limits content reads to the authorized session project (%s, %s)',
+			async (projectId, allowed, eligible, authorizedProjectId) => {
+				row.skill.projectId = projectId;
+				projectScope.getProjectIds.mockResolvedValue(allowed === null ? null : [...allowed]);
+				const result = await service.readForAssistant(context, 'skill-1');
+				expect(skills.findAssistantSkill).toHaveBeenCalledWith(
+					'skill-1',
+					authorizedProjectId,
+					undefined,
+				);
+				expect(skills.findLatestSaved).not.toHaveBeenCalled();
+				if (eligible) expect(result).toMatchObject({ id: 'skill-1', projectId });
+				else expect(result).toBeNull();
+			},
+		);
+
+		it('returns no project content without a session project, including for global roles', async () => {
+			row.skill.projectId = 'project-1';
+			projectScope.getProjectIds.mockResolvedValue(null);
+			expect(await service.readForAssistant({ user: context.user }, 'skill-1')).toBeNull();
+			expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', null, undefined);
+		});
+
+		it('reads enabled content with its saved version', async () => {
+			expect(await service.readForAssistant(context, 'skill-1')).toEqual({
+				id: 'skill-1',
+				projectId: null,
+				versionId: 'version-1',
+				version: 1,
+				name: 'Tone',
+				description: 'Writing style',
+				instructions: 'Be brief.',
+				frontmatter: null,
+				files: [],
+			});
+		});
+
+		it.each(['disabled', 'agent', 'other-project', 'permission', 'missing'])(
+			'refuses a reference that is %s',
+			async (reason) => {
+				row.skill.projectId = 'project-1';
+				if (reason === 'disabled') row.skill.availableToAssistant = false;
+				if (reason === 'agent') row.skill.agentId = 'agent-1';
+				if (reason === 'other-project') row.skill.projectId = 'project-2';
+				if (reason === 'permission') vi.mocked(userHasScopes).mockResolvedValue(false);
+				skills.findAssistantSkillFile.mockResolvedValue(
+					reason === 'missing'
+						? null
+						: {
+								skill: row.skill,
+								file: mock<SkillFile>({ path: 'references/guide.md', content: 'Guide.' }),
+							},
+				);
+				expect(
+					await service.readFileForAssistant(
+						context,
+						'skill-1',
+						'version-1',
+						'references/guide.md',
+					),
+				).toBeNull();
+			},
+		);
+
+		it('allows instance skills without project access', async () => {
+			projectScope.getProjectIds.mockResolvedValue([]);
+			expect(await service.readForAssistant(context, 'skill-1')).not.toBeNull();
+		});
+
+		it('returns null for a missing skill', async () => {
+			expect(await service.readForAssistant(context, 'missing')).toBeNull();
+		});
+	});
+
+	describe('MCP reads', () => {
+		const instanceSkill = versionRow(skillRow('skill-1'), 2, {}, [
+			{ path: 'references/style.md', content: 'Be brief.' },
+		]);
+		const projectSkill = versionRow(skillRow('skill-2', { projectId: 'project-1' }), 1);
+		const agentSkill = versionRow(skillRow('skill-3', { agentId: 'agent-1' }), 1);
+		const rows = [instanceSkill, projectSkill, agentSkill];
+
+		beforeEach(() => {
+			skills.findLatestSaved.mockImplementation(
+				async (ids) =>
+					new Map(
+						rows.filter((row) => ids.includes(row.skill.id)).map((row) => [row.skill.id, row]),
+					),
+			);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+		});
+
+		it('lists one page of the project and instance skills the user can list, without agent skills', async () => {
+			projectScope.getProjectIds.mockResolvedValue(['project-1']);
+			skills.findVisiblePage.mockResolvedValue({
+				skills: [instanceSkill.skill, projectSkill.skill],
+				count: 7,
+			});
+
+			const result = await service.listForMcp(user, 100, 50);
+
+			expect(skills.findVisiblePage).toHaveBeenCalledWith(
+				{ projectIds: ['project-1'], agentIds: [] },
+				{ skip: 100, take: 50 },
+			);
+			expect(result).toEqual({
+				count: 7,
+				skills: [
+					{ id: 'skill-1', projectId: null, skill: toAgentSkill(instanceSkill) },
+					{ id: 'skill-2', projectId: 'project-1', skill: toAgentSkill(projectSkill) },
+				],
+			});
+		});
+
+		it('lists the skills of every project for a user with a global scope', async () => {
+			projectScope.getProjectIds.mockResolvedValue(null);
+			skills.findVisiblePage.mockResolvedValue({ skills: [], count: 0 });
+
+			await service.listForMcp(user, 0, 100);
+
+			expect(skills.findVisiblePage).toHaveBeenCalledWith(
+				{ projectIds: 'all', agentIds: [] },
+				{ skip: 0, take: 100 },
+			);
+		});
+
+		it('reads the latest version of a readable skill', async () => {
+			expect(await service.readForMcp(user, 'skill-2')).toEqual({
+				id: 'skill-2',
+				projectId: 'project-1',
+				skill: toAgentSkill(projectSkill),
+			});
+		});
+
+		it('does not read an agent skill', async () => {
+			expect(await service.readForMcp(user, 'skill-3')).toBeNull();
+		});
+
+		it('does not read a skill the user cannot read', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			expect(await service.readForMcp(user, 'skill-2')).toBeNull();
+		});
+
+		it('does not read a missing skill', async () => {
+			expect(await service.readForMcp(user, 'missing')).toBeNull();
 		});
 	});
 
@@ -563,13 +794,103 @@ describe('SkillService', () => {
 			);
 		});
 
-		it('refuses to move a skill that another agent uses', async () => {
-			skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
+		describe('agents that use the skill', () => {
+			const AGENTS = new Map([
+				['agent-1', { name: 'Support bot', projectId: 'p1' }],
+				['agent-2', { name: 'Sales bot', projectId: 'p1' }],
+				['agent-3', { name: 'Ops bot', projectId: 'p2' }],
+			]);
 
-			await expect(
-				service.changeTarget('skill_a', { projectId: null, agentId: null }, 'agent-1'),
-			).rejects.toThrow('Other agents use this skill.');
-			expect(skills.updateTarget).not.toHaveBeenCalled();
+			beforeEach(() => {
+				skillAgents.findAgents.mockImplementation(
+					async (ids) =>
+						new Map(
+							ids.flatMap((id) => {
+								const agent = AGENTS.get(id);
+								return agent ? [[id, agent] as const] : [];
+							}),
+						),
+				);
+			});
+
+			it('moves a skill to the instance, which every agent can add', async () => {
+				skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-3']);
+
+				await service.changeTarget('skill_a', { projectId: null, agentId: null }, undefined);
+
+				expect(skills.updateTarget).toHaveBeenCalledWith(
+					'skill_a',
+					{ projectId: null, agentId: null },
+					TX_CTX,
+				);
+			});
+
+			it('moves a skill to the project of every agent that uses it', async () => {
+				skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
+
+				await service.changeTarget('skill_a', { projectId: 'p1', agentId: null }, undefined);
+
+				expect(skillAgents.findAgents).toHaveBeenCalledWith(['agent-1', 'agent-2'], TX_CTX);
+				expect(skills.updateTarget).toHaveBeenCalledWith(
+					'skill_a',
+					{ projectId: 'p1', agentId: null },
+					TX_CTX,
+				);
+			});
+
+			it('refuses a move that takes the skill away from agents, and names them', async () => {
+				skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-2', 'agent-3']);
+
+				await expectError(
+					service.changeTarget('skill_a', { projectId: 'p2', agentId: null }, undefined),
+					ConflictError,
+					'"Support bot", "Sales bot" would lose access to this skill. Choose a scope that includes those agents, or detach the skill from them first.',
+				);
+				expect(skills.updateTarget).not.toHaveBeenCalled();
+			});
+
+			it('only counts the agents in projects the user may not read', async () => {
+				skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-3']);
+
+				await expectError(
+					service.changeTarget(
+						'skill_a',
+						{ projectId: 'p9', agentId: null },
+						undefined,
+						{},
+						{ agentProjectIds: ['p2'] },
+					),
+					ConflictError,
+					'"Ops bot", 1 agent in other projects would lose access to this skill. Choose a scope that includes those agents, or detach the skill from them first.',
+				);
+			});
+
+			it('lets the agent that asks for the move narrow the skill to itself', async () => {
+				skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1']);
+
+				await service.changeTarget('skill_a', { projectId: null, agentId: 'agent-1' }, 'agent-1');
+
+				expect(skills.updateTarget).toHaveBeenCalled();
+			});
+
+			it('refuses to narrow the skill to one agent while another agent uses it', async () => {
+				skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
+
+				await expectError(
+					service.changeTarget('skill_a', { projectId: null, agentId: 'agent-1' }, 'agent-1'),
+					ConflictError,
+					'"Sales bot" would lose access to this skill. Choose a scope that includes that agent, or detach the skill from it first.',
+				);
+				expect(skills.updateTarget).not.toHaveBeenCalled();
+			});
+
+			it('does not let the agent that asks for the move block it', async () => {
+				skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-3']);
+
+				await service.changeTarget('skill_a', { projectId: 'p2', agentId: null }, 'agent-1');
+
+				expect(skills.updateTarget).toHaveBeenCalled();
+			});
 		});
 
 		it('refuses to move a skill into a scope that holds a name like it', async () => {
@@ -608,15 +929,6 @@ describe('SkillService', () => {
 				TX_CTX,
 			);
 			expect(skills.updateTarget).toHaveBeenCalled();
-		});
-
-		it('refuses to move a skill that any agent uses when no agent is kept', async () => {
-			skillAgents.findUsingAgentIds.mockResolvedValue(['agent-1']);
-
-			await expect(
-				service.changeTarget('skill_a', { projectId: null, agentId: null }, undefined),
-			).rejects.toThrow('Agents use this skill.');
-			expect(skills.updateTarget).not.toHaveBeenCalled();
 		});
 
 		it('refuses the move when the skill left the scope that the permission check saw', async () => {

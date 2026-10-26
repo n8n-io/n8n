@@ -649,6 +649,71 @@ describe('useWorkflowUpdate', () => {
 			});
 		});
 
+		describe('deprecated nodes', () => {
+			it('should leave a deprecated node unchanged', async () => {
+				const existingNode = createTestNode({
+					id: 'node-1',
+					name: 'Function',
+					type: 'n8n-nodes-base.function',
+					parameters: { functionCode: 'return items;' },
+				}) as INodeUi;
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
+				nodeTypesStore.isNodeDeprecated = vi.fn(() => true);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+				await updateWorkflow({
+					nodes: [
+						{
+							...existingNode,
+							name: 'Renamed Function',
+							parameters: { functionCode: 'return [];' },
+						},
+					],
+					connections: {},
+				});
+
+				expect(mockCanvasOperations.renameNode).not.toHaveBeenCalled();
+				expect(mockDocumentStore.setNodes).not.toHaveBeenCalled();
+			});
+
+			it('should move a deprecated node to a type that is not deprecated', async () => {
+				const existingNode = createTestNode({
+					id: 'node-1',
+					name: 'Function',
+					type: 'n8n-nodes-base.function',
+					parameters: { functionCode: 'return items;' },
+				}) as INodeUi;
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
+				const mockWorkflowObject: Partial<Workflow> = {
+					nodes: { Function: { ...existingNode } },
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				};
+				vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue(
+					mockWorkflowObject as Workflow,
+				);
+				nodeTypesStore.isNodeDeprecated = vi.fn(
+					(node: { type: string }) => node.type === 'n8n-nodes-base.function',
+				);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+				await updateWorkflow({
+					nodes: [
+						{
+							...existingNode,
+							type: 'n8n-nodes-base.code',
+							parameters: { jsCode: 'return items;' },
+						},
+					],
+					connections: {},
+				});
+
+				const setNodesCall = vi.mocked(mockDocumentStore.setNodes).mock.calls[0][0];
+				expect(setNodesCall[0].type).toBe('n8n-nodes-base.code');
+				expect(setNodesCall[0].parameters).toEqual({ jsCode: 'return items;' });
+			});
+		});
+
 		describe('parameter change tracking', () => {
 			it('should mark node as dirty when parameters change', async () => {
 				const existingNode = createTestNode({

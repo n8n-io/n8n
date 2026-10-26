@@ -1,3 +1,6 @@
+import type { SelfHealingResultDetail } from '@n8n/api-types';
+import type { ComputedRef } from 'vue';
+
 /**
  * A typed key for a capability. `declareCapability()` is the only way to make
  * one, and the token is the only way to read or write its slot in the registry.
@@ -29,4 +32,26 @@ export interface McpExposeAllOffer {
 	 * when the modal opened. `onExposed` runs after the user exposes everything.
 	 */
 	offer(onExposed: () => Promise<void> | void): Promise<boolean>;
+}
+
+export type SelfHealingChatInput = Pick<
+	SelfHealingResultDetail,
+	'resultId' | 'workflowId' | 'report' | 'outcome' | 'reviewState' | 'execution'
+>;
+
+/**
+ * `started` means the chat opened and the report is on its way, so do not start it again.
+ * `busy` and `failed` mean no chat started, so the caller can offer another try.
+ */
+export type SelfHealingChatStartOutcome = 'started' | 'busy' | 'failed' | 'unavailable';
+
+export interface SelfHealingChatHandoff {
+	available: ComputedRef<boolean>;
+	/**
+	 * Returns the current user's personal project, or null if it cannot load.
+	 * A reviewer can lack read access to the result's project.
+	 */
+	resolveProjectId(): Promise<string | null>;
+	/** Opens a chat in the project and sends the report through the normal Assistant handoff. */
+	start(projectId: string, input: SelfHealingChatInput): Promise<SelfHealingChatStartOutcome>;
 }

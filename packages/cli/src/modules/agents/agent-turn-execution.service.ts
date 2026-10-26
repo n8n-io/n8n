@@ -15,10 +15,11 @@ import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-ac
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
+import { AgentKnowledgeUsageTracker } from './agent-knowledge-usage-tracker';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
 import type { AgentExecutionStreamChunk, SteeredMessageEvent } from './types/agent-steering';
-import type { AgentTurnFinalizeOutcome } from './types/agent-turn-outcome';
+import type { AgentTurnFinalizeOutcome, FormattedTurnError } from './types/agent-turn-outcome';
 import { AgentToolApprovalService } from './agent-tool-approval.service';
 import { EXECUTION_METADATA_KEY, type AgentExecutionAdmission } from './types/agent-queued-message';
 import {
@@ -71,10 +72,18 @@ interface ExecuteTurnConfig {
 	onSettled?: (suspended: boolean) => Promise<void>;
 	/**
 	 * Called once when the outcome of the turn is known, before the runtime
-	 * stores the turn record. The runtime does not call it when the turn has
-	 * no execution record.
+	 * stores the turn record. Events that the host records here are stored
+	 * with the turn. The runtime does not call it when the turn has no
+	 * execution record.
 	 */
 	onBeforeFinalize?: (outcome: AgentTurnFinalizeOutcome) => Promise<void>;
+	/**
+	 * Map a turn error to the text to store on the execution. Return
+	 * `undefined` to store the raw error. Must not reject.
+	 */
+	formatError?: (error: unknown) => Promise<FormattedTurnError | undefined>;
+	/** Called once with the recorder of the turn, so that a host can record its own events. */
+	onRecorderCreated?: (recorder: ExecutionRecorder) => void;
 }
 
 interface TurnExecutionState {
@@ -84,6 +93,7 @@ interface TurnExecutionState {
 	executionError?: unknown;
 	receivedFinish: boolean;
 	suspendedRunId?: string;
+	runId?: string;
 }
 
 /** Preview and n8n Chat both run under one of these — a steerable, cancellable chat turn. */
@@ -116,6 +126,7 @@ export class AgentTurnExecutionService {
 		private readonly messageQueue: AgentMessageQueueService,
 		private readonly steering: AgentMessageSteeringService,
 		private readonly toolApprovalService: AgentToolApprovalService,
+		private readonly knowledgeUsageTracker: AgentKnowledgeUsageTracker,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -138,8 +149,8 @@ export class AgentTurnExecutionService {
 			config.backgroundJobSignal,
 			config.admittedExecution?.startedAt,
 		);
-
 		try {
+			config.onRecorderCreated?.(recorder);
 			turn = await config.prepare();
 			const preparedTurn = turn;
 			if (config.chatSurface !== undefined) {
@@ -161,7 +172,8 @@ export class AgentTurnExecutionService {
 				return;
 
 			state.executionError = error;
-			recorder.record({ type: 'error', error });
+			const formatted = await config.formatError?.(error);
+			recorder.record({ type: 'error', error: formatted?.message ?? error });
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
@@ -223,20 +235,22 @@ export class AgentTurnExecutionService {
 		turn.options.abortSignal?.throwIfAborted();
 		if (turn.type === 'start') {
 			state.executionStarted = true;
-			return (await config.agentInstance.stream(turn.input, turn.options)).stream;
+			const started = await config.agentInstance.stream(turn.input, turn.options);
+			state.runId = started.runId;
+			return started.stream;
 		}
 
 		const { options, resumeData } = turn;
-		return (
-			await config.agentInstance.resume('stream', resumeData, {
-				...options,
-				onResumeClaimed: async () => {
-					state.executionStarted = true;
-					recorder.recordHitlResponse(options.toolCallId, resumeData);
-					await options.onResumeClaimed?.();
-				},
-			})
-		).stream;
+		const resumed = await config.agentInstance.resume('stream', resumeData, {
+			...options,
+			onResumeClaimed: async () => {
+				state.executionStarted = true;
+				recorder.recordHitlResponse(options.toolCallId, resumeData);
+				await options.onResumeClaimed?.();
+			},
+		});
+		state.runId = resumed.runId;
+		return resumed.stream;
 	}
 
 	private async *streamTurn(
@@ -272,8 +286,20 @@ export class AgentTurnExecutionService {
 				chunk = { ...chunk, finishReason: 'cancelled' };
 			}
 
-			recorder.record(chunk);
+			if (chunk.type === 'error') {
+				const formatted = await config.formatError?.(chunk.error);
+				recorder.record({ ...chunk, error: formatted?.message ?? chunk.error });
+			} else {
+				recorder.record(chunk);
+			}
 
+			if (chunk.type === 'usage' && state.executionId) {
+				this.agentExecutionService.reportUsage(
+					{ ...config.context, executionId: state.executionId },
+					chunk.usage,
+					Math.max(0, Date.now() - recorder.startedAt.getTime()),
+				);
+			}
 			if (chunk.type === 'tool-call-suspended') state.suspendedRunId = chunk.runId;
 			if (chunk.type === 'error') state.executionError = chunk.error;
 			if (chunk.type === 'finish') state.receivedFinish = true;
@@ -331,6 +357,25 @@ export class AgentTurnExecutionService {
 				record: cancelled ? { ...record, finishReason: 'cancelled', error: null } : record,
 				hitlStatus,
 			},
+			runId: state.runId,
+		});
+	}
+
+	private sendKnowledgeUsage(runId: string | undefined, params: RecordMessageParams) {
+		if (!runId) {
+			return;
+		}
+
+		const { agentId, telemetry } = params;
+		if (!telemetry) {
+			this.knowledgeUsageTracker.takeRunUsage(runId);
+			return;
+		}
+
+		this.knowledgeUsageTracker.sendRunUsage(runId, {
+			agentId,
+			runType: telemetry.runType,
+			userId: telemetry.userId,
 		});
 	}
 
@@ -422,6 +467,8 @@ export class AgentTurnExecutionService {
 		executionError?: unknown;
 		onExecutionRecorded?: (executionId: string) => void;
 		params: RecordMessageParams;
+		/** Run id of the agent runtime. Absent when the runtime never started. */
+		runId?: string;
 	}): Promise<void> {
 		const { executionId, executionStarted, executionError, onExecutionRecorded, params } = args;
 		let recordedId: string;
@@ -435,6 +482,9 @@ export class AgentTurnExecutionService {
 				executionError,
 				cause,
 			});
+		} finally {
+			// Make sure the run's knowledge counts leave memory, also when recording fails.
+			this.sendKnowledgeUsage(args.runId, params);
 		}
 		onExecutionRecorded?.(recordedId);
 	}
@@ -608,10 +658,14 @@ export class AgentTurnExecutionService {
 		// Forward side-call model costs (title generation, observation-log
 		// observer/reflector, episodic-memory model calls) onto this execution
 		// row and its thread. The SDK prices each call; the host only adds the
-		// cost. Best-effort and idempotent per reportId.
+		// cost. Best-effort and idempotent per reportId. A caller's own callback
+		// still receives every report, for example to bill it. The SDK awaits
+		// that callback and logs its failure, so the caller decides how to handle it.
 		const threadId = config.context.threadId;
-		turn.options.onSideCallUsage = (report: SideCallUsageReport) => {
+		const callerOnSideCallUsage = turn.options.onSideCallUsage;
+		turn.options.onSideCallUsage = async (report: SideCallUsageReport) => {
 			void this.agentExecutionService.recordSideCallUsage(executionId, threadId, report);
+			await callerOnSideCallUsage?.(report);
 		};
 		return await this.startTurn(turn, config, recorder, state);
 	}

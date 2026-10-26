@@ -72,6 +72,7 @@ import {
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	ASSISTANT_SKILLS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
@@ -91,7 +92,13 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { NodeCatalogService } from '@/node-catalog';
 import type { NodeTypes } from '@/node-types';
+import { pairAiGatewayServers } from '@/modules/mcp-registry/registry/mcp-registry-ai-gateway';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import {
+	braveSearchAiGatewayMockServer,
+	firecrawlAiGatewayMockServer,
+	firecrawlMockServer,
+} from '@/modules/mcp-registry/registry/mock-servers';
 
 import { InstanceAiMcpRegistryService } from '../mcp';
 import type { InstanceContextService } from '../instance-context.service';
@@ -722,6 +729,82 @@ describe('formatExecutionError', () => {
 describe('redactExecuteNodeResult', () => {
 	const successResult = (items: Array<{ json: Record<string, unknown> }>) =>
 		({ status: 'success', output: [items] }) as Parameters<typeof redactExecuteNodeResult>[0];
+
+	it('reports a redacted successful run without output', () => {
+		const result = redactExecuteNodeResult(
+			{ status: 'redacted', failed: false, reason: 'workflow_redaction_policy' },
+			true,
+		);
+
+		expect(result).toEqual({
+			status: 'success',
+			output: '',
+			outputSuppressed:
+				'The node executed successfully, but n8n redacted its output for this user (workflow_redaction_policy). ' +
+				'n8n hides the data of every run like this one, so do not run the node again to see it. Tell the user that n8n redacted the data.',
+			redaction: { reason: 'workflow_redaction_policy', canReveal: false },
+		});
+	});
+
+	it('tells the model to use another credential when the credential is the reason', () => {
+		const result = redactExecuteNodeResult(
+			{ status: 'redacted', failed: false, reason: 'credential_inaccessible' },
+			true,
+		);
+
+		expect(result).toMatchObject({
+			status: 'success',
+			outputSuppressed: expect.stringContaining(
+				'Use a credential that the user owns or that is shared with them.',
+			),
+		});
+	});
+
+	it('reports a redacted failed run with only the error type', () => {
+		const result = redactExecuteNodeResult(
+			{
+				status: 'redacted',
+				failed: true,
+				reason: 'credential_inaccessible',
+				error: { type: 'NodeApiError', httpCode: '401' },
+			},
+			true,
+		);
+
+		expect(result).toEqual({
+			status: 'error',
+			error: {
+				message: 'NodeApiError error (401) (details hidden by n8n)',
+				description:
+					'The node used a credential that is not owned by or shared with the user, so n8n hides the data. ' +
+					'Do not run the node again with this credential. Use a credential that the user owns or that is shared with them.',
+				nodeErrorType: 'NodeApiError',
+			},
+			redaction: { reason: 'credential_inaccessible', canReveal: false },
+		});
+	});
+
+	it('keeps the description of a refused run when sending values is not allowed', () => {
+		const result = redactExecuteNodeResult(
+			{
+				status: 'error',
+				error: {
+					message: 'Node "Node" uses the credential "Bot", which you cannot use',
+					description: 'Ask its owner to share this credential with you.',
+					refused: true,
+				},
+			},
+			false,
+		);
+
+		expect(result).toEqual({
+			status: 'error',
+			error: {
+				message: 'Node "Node" uses the credential "Bot", which you cannot use',
+				description: 'Ask its owner to share this credential with you.',
+			},
+		});
+	});
 
 	it('returns the items inside the untrusted-data boundary when sending values is allowed', () => {
 		const result = redactExecuteNodeResult(successResult([{ json: { id: 1 } }]), true);
@@ -2804,6 +2887,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		create: vi.fn().mockImplementation((data: Record<string, unknown>) => data),
 		save: vi.fn().mockResolvedValue(undefined),
 		makeOwner: vi.fn().mockResolvedValue(undefined),
+		findProjectIds: vi.fn().mockResolvedValue(['team-project-id']),
 	};
 
 	const mockAiBuilderTemporaryWorkflowRepository = {
@@ -5193,7 +5277,7 @@ describe('createExecutionAdapter', () => {
 				expect.objectContaining({
 					user: mockUser,
 					sharingOptions: {
-						scopes: ['workflow:read'],
+						scopes: ['execution:read'],
 						projectRoles: ['project:editor'],
 						workflowRoles: ['workflow:owner', 'workflow:editor'],
 					},
@@ -7600,6 +7684,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
 			instanceContextEnabled: false,
+			assistantSkillsEnabled: false,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
@@ -7631,10 +7716,24 @@ describe('resolveExperimentGates', () => {
 			expect(second.nodeUsageEnabled).toBe(false);
 			expect(getFeatureFlagForInstance.mock.calls).toEqual([
 				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				[ASSISTANT_SKILLS_FLAG],
 				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				[ASSISTANT_SKILLS_FLAG],
 			]);
 		},
 	);
+
+	it.each([true, false])('reads Assistant skills %s from its instance flag', async (enabled) => {
+		stubContainer({});
+		getFeatureFlagForInstance.mockImplementation(
+			async (flag: string) => flag === ASSISTANT_SKILLS_FLAG && enabled,
+		);
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			assistantSkillsEnabled: enabled,
+			instanceContextEnabled: false,
+		});
+	});
 
 	it('keeps instance activity off when its evaluation fails', async () => {
 		stubContainer(allEnabled, true);
@@ -7695,6 +7794,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
+			assistantSkillsEnabled: false,
 		});
 	});
 
@@ -7754,6 +7854,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
+			assistantSkillsEnabled: false,
 		});
 	});
 
@@ -7773,6 +7874,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
+			assistantSkillsEnabled: false,
 		});
 	});
 });
@@ -7942,6 +8044,46 @@ describe('MCP registry discovery', () => {
 			expect(getBySlugs).toHaveBeenCalledWith(['google-drive', 'made-up']);
 			expect(results.map((result) => result.slug)).toEqual(['google-drive']);
 			expect(results[0].usesCredentials).toEqual(registryServer.usesCredentials);
+		});
+
+		it('never offers Gateway credits in search results or slug lookups', async () => {
+			stubContainer({
+				registrySearch: vi.fn().mockResolvedValue([
+					registryHit,
+					{
+						...registryHit,
+						slug: 'n8n-connect-brave-search',
+						authentication: 'none',
+						credential: AI_GATEWAY_MANAGED_TAG,
+					},
+					{ ...registryHit, slug: 'no-auth-server', authentication: 'none' },
+				]),
+				registryGetBySlugs: vi
+					.fn()
+					.mockResolvedValue(
+						pairAiGatewayServers(
+							[firecrawlMockServer, firecrawlAiGatewayMockServer, braveSearchAiGatewayMockServer],
+							() => true,
+						),
+					),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
+
+			const searchResults = await context.mcpService!.search(['drive', 'brave', 'no-auth']);
+			const servers = await context.mcpService!.getServers(['firecrawl']);
+
+			expect(searchResults.map((result) => result.slug)).toEqual([
+				'google-drive',
+				'no-auth-server',
+			]);
+			expect(servers.map(({ slug, usesCredentials }) => ({ slug, usesCredentials }))).toEqual([
+				{
+					slug: 'firecrawl',
+					usesCredentials: [
+						{ credentialType: 'firecrawlMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+					],
+				},
+			]);
 		});
 
 		it('lists slugs with a connection row, not just the loadable ones', async () => {
@@ -8244,6 +8386,7 @@ describe('createContext — run model wiring', () => {
 	it('copies the host-resolved modelId onto the context', () => {
 		const service = createAdapterWithGatewayMock(vi.fn());
 		const modelId = {
+			kind: 'endpoint' as const,
 			id: 'anthropic/claude-opus-4-8' as const,
 			url: 'https://proxy.example.com/anthropic/v1',
 			apiKey: 'proxy-token',
@@ -8579,6 +8722,83 @@ describe('createCredentialAdapter', () => {
 				expect.objectContaining({ data: { apiKey: 'secret' } }),
 			);
 		});
+
+		describe('eval bypass', () => {
+			const headerAuthCredential = {
+				id: 'cred-1',
+				name: 'Acme API header',
+				type: 'httpHeaderAuth',
+			};
+
+			/** A bypassed credential, with `hasConnectionTest` answering `testable` for its type. */
+			const bypassedAdapter = (
+				storedCredential: { id: string; name: string; type: string },
+				testable: boolean,
+			) => {
+				const decryptForUse = vi.fn().mockResolvedValue({ name: 'Authorization', value: 'x' });
+				const test = vi.fn().mockResolvedValue({
+					status: 'Error',
+					message: 'No testing function found for this credential.',
+				});
+				const hasConnectionTest = vi.fn().mockReturnValue(testable);
+				const { service, mockUser } = createNodeAdapterServiceForTests([], {
+					credentialsFinderService: {
+						findCredentialForUser: vi.fn().mockResolvedValue(storedCredential),
+					},
+					credentialsService: { decryptForUse, test, hasConnectionTest },
+				});
+				const { credentialService } = service.createContext(mockUser, {
+					shouldBypassCredentialTest: () => true,
+				});
+				return { credentialService, decryptForUse, test, hasConnectionTest };
+			};
+
+			// A synthetic pass on a type production cannot test tells the agent a credential
+			// was verified when a user would have been told it cannot be.
+			it('returns the real test result for a type with no connection test', async () => {
+				const { credentialService, test, hasConnectionTest } = bypassedAdapter(
+					headerAuthCredential,
+					false,
+				);
+
+				await expect(credentialService.test('cred-1')).resolves.toEqual({
+					success: false,
+					message: 'No testing function found for this credential.',
+				});
+				expect(hasConnectionTest).toHaveBeenCalledWith('httpHeaderAuth');
+				expect(test).toHaveBeenCalled();
+			});
+
+			it('resolves as passing without contacting the provider for a type with a connection test', async () => {
+				const { credentialService, decryptForUse, test } = bypassedAdapter(
+					{ id: 'cred-1', name: 'Slack account', type: 'slackApi' },
+					true,
+				);
+
+				await expect(credentialService.test('cred-1')).resolves.toEqual({
+					success: true,
+					message: 'Connection tested successfully',
+				});
+				expect(decryptForUse).not.toHaveBeenCalled();
+				expect(test).not.toHaveBeenCalled();
+			});
+
+			it('does not ask about testability when the thread bypasses nothing', async () => {
+				const decryptForUse = vi.fn().mockResolvedValue({});
+				const test = vi.fn().mockResolvedValue({ status: 'OK', message: 'ok' });
+				const hasConnectionTest = vi.fn();
+				const { credentialService } = createNodeAdapterServiceForTests([], {
+					credentialsFinderService: {
+						findCredentialForUser: vi.fn().mockResolvedValue(headerAuthCredential),
+					},
+					credentialsService: { decryptForUse, test, hasConnectionTest },
+				});
+
+				await credentialService.test('cred-1');
+
+				expect(hasConnectionTest).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('getCredentialFillState', () => {
@@ -8897,4 +9117,27 @@ describe('createContext — skill service wiring', () => {
 
 		expect(context.skillService).toBe(expected ? skillService : undefined);
 	});
+
+	it.each([true, false])(
+		'passes Assistant skills %s to the skills adapter',
+		(assistantSkillsEnabled) => {
+			const createService = vi.fn().mockReturnValue(mock<InstanceAiSkillService>());
+			vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+				if (token === ModuleRegistry) {
+					return {
+						isActive: vi.fn().mockReturnValue(true),
+						settings: new Map([['agents', { enabled: true, skillsHubEnabled: true }]]),
+					};
+				}
+				if (token === InstanceAiSkillsAdapterService) return { createService };
+				if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
+				throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+			});
+			const service = createAdapterWithGatewayMock(vi.fn());
+
+			service.createContext(mockUser, { threadId: 'thread-1', assistantSkillsEnabled });
+
+			expect(createService).toHaveBeenCalledWith(mockUser, assistantSkillsEnabled);
+		},
+	);
 });
