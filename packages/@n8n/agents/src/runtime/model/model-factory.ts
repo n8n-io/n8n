@@ -556,6 +556,8 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			const { createAmazonBedrock } =
 				require('@ai-sdk/amazon-bedrock') as typeof import('@ai-sdk/amazon-bedrock');
 			return createAmazonBedrock({
+				// An empty key stops the SDK from reading AWS_BEARER_TOKEN_BEDROCK from the process env.
+				apiKey: '',
 				region: creds.region,
 				accessKeyId: creds.accessKeyId,
 				secretAccessKey: creds.secretAccessKey,

@@ -14,8 +14,8 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import type { ModelChoice } from './model-lookup.types';
+import { mapCredentialForProvider } from '@/credentials/credential-field-mapping';
 import { AzureFoundryDeploymentsService } from '../azure-foundry-deployments.service';
-import { mapCredentialForProvider } from '../json-config/credential-field-mapping';
 import { LLM_PROVIDER_DEFAULTS } from '../llm-provider-defaults';
 import { decryptAgentCredential } from '../utils/decrypt-agent-credential';
 

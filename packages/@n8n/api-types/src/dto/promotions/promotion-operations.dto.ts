@@ -9,11 +9,12 @@ import {
 	promotionBindingProjectSchema,
 	promotionBindingWarningSchema,
 } from './promotion-binding-preflight.dto';
+import { promotionCommitMessageSchema } from './promotion-common.dto';
 import { promotionReviewResultSchema } from './promotion-review.dto';
 
 export class PromotePackageDto extends Z.class(
 	{
-		commitMessage: z.string().trim().min(1).max(1000),
+		commitMessage: promotionCommitMessageSchema,
 		force: z.boolean().optional(),
 	},
 	{ strict: true },
@@ -80,7 +81,7 @@ export const applyPackageCountsSchema = z.object({
 			failed: count(),
 		}),
 	}),
-	credentials: z.object({ matched: count(), stubbed: count() }),
+	credentials: z.object({ matched: count(), stubbed: count(), updated: count() }),
 	dataTables: z.object({ matched: count(), created: count(), updated: count() }),
 	variables: z.object({
 		matched: count(),

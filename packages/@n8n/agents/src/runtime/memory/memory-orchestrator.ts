@@ -131,6 +131,32 @@ function hasObservationLogObserverMemory(
 }
 
 /**
+ * The persisted messages that the runtime replays to the model on the next turn.
+ * With observational memory, the messages before the observation cursor are
+ * replaced by the observation log, so only the messages after it are replayed.
+ * A host that checks what the model already sees must read the same window.
+ */
+export async function loadReplayedMessages(
+	memory: BuiltMemory,
+	persistence: Pick<AgentPersistenceOptions, 'threadId' | 'resourceId'>,
+	options: { observationalMemory: boolean },
+): Promise<AgentDbMessage[]> {
+	const { threadId, resourceId } = persistence;
+	if (options.observationalMemory && hasObservationLogObserverMemory(memory)) {
+		const { cursor } = await readObservationState(memory, threadId);
+		if (cursor) {
+			return await memory.getMessagesForObservationScope(threadId, {
+				since: {
+					sinceCreatedAt: cursor.lastObservedAt,
+					sinceMessageId: cursor.lastObservedMessageId,
+				},
+			});
+		}
+	}
+	return await memory.getMessages(threadId, { resourceId });
+}
+
+/**
  * Owns all memory-store side effects for a single agent runtime: loading thread
  * history, seeding the live message list with the active observation log,
  * persisting the turn delta, and scheduling background observation-log and
@@ -193,20 +219,11 @@ export class MemoryOrchestrator {
 			telemetry,
 			() => ({ types: ['session'], owners: [resourceId], ...inferMemoryStoreAttributes(memory) }),
 			async () => {
-				if (this.config.observationalMemory && hasObservationLogObserverMemory(memory)) {
-					const { cursor } = await readObservationState(memory, threadId);
-					if (cursor) {
-						const messages = await memory.getMessagesForObservationScope(threadId, {
-							since: {
-								sinceCreatedAt: cursor.lastObservedAt,
-								sinceMessageId: cursor.lastObservedMessageId,
-							},
-						});
-						return { result: messages, attributes: this.queryResultAttributes(messages) };
-					}
-				}
-
-				const messages = await memory.getMessages(threadId, { resourceId });
+				const messages = await loadReplayedMessages(
+					memory,
+					{ threadId, resourceId },
+					{ observationalMemory: Boolean(this.config.observationalMemory) },
+				);
 				return { result: messages, attributes: this.queryResultAttributes(messages) };
 			},
 		);
@@ -698,6 +715,7 @@ export class MemoryOrchestrator {
 					tokenCounter: this.tokenCounter,
 					executionCounter,
 					telemetry,
+					modelFetch: this.config.modelFetch,
 					// Usage is forwarded inside the observer right after the model
 					// call (before persistence), so a billed observer turn is
 					// priced even when post-processing throws.
@@ -767,6 +785,7 @@ export class MemoryOrchestrator {
 					tokenCounter: this.tokenCounter,
 					executionCounter,
 					telemetry,
+					modelFetch: this.config.modelFetch,
 					// Usage is forwarded inside the reflector right after the model
 					// call (before persistence), so a billed reflector turn is
 					// priced even when post-processing throws.
@@ -817,6 +836,7 @@ export class MemoryOrchestrator {
 					...capture,
 					executionCounter,
 					telemetry,
+					modelFetch: this.config.modelFetch,
 					agentName: this.config.name,
 					// Each embed/reflect usage is forwarded inside the processor
 					// the moment its model call resolves, before persistence, so a

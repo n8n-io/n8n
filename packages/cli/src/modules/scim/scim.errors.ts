@@ -14,6 +14,13 @@ export class ScimConflictError extends UserError {
 	}
 }
 
+/** The operation is not allowed on this resource (e.g. deactivating the instance owner). Maps to HTTP 403. */
+export class ScimForbiddenError extends UserError {
+	constructor(detail: string) {
+		super(detail);
+	}
+}
+
 /** Filter expression is not supported. Maps to HTTP 400 with scimType "invalidFilter". */
 export class ScimInvalidFilterError extends UserError {
 	constructor(filter: string) {
@@ -21,9 +28,19 @@ export class ScimInvalidFilterError extends UserError {
 	}
 }
 
-/** An attribute value is not acceptable (e.g. unknown role). Maps to HTTP 400 with scimType "invalidValue". */
+/** An attribute value is not acceptable (e.g. no usable email address). Maps to HTTP 400 with scimType "invalidValue". */
 export class ScimInvalidValueError extends UserError {
 	constructor(detail: string) {
 		super(detail);
+	}
+}
+
+/**
+ * Another request changed the SCIM token while this one replaced it. Maps to
+ * HTTP 409 on `POST /rest/scim/token`.
+ */
+export class ScimTokenConflictError extends UserError {
+	constructor() {
+		super('The SCIM token changed during this request. Load the token state again and retry.');
 	}
 }

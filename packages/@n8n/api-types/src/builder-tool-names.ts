@@ -18,9 +18,7 @@ export const WORKFLOW_BUILDER_TOOL_NAMES = {
 	VERIFY_BUILT_WORKFLOW: 'workflow_builder_verify_built_workflow',
 	REPORT_VERIFICATION_VERDICT: 'workflow_builder_report_verification_verdict',
 	APPLY_WORKFLOW_CREDENTIALS: 'workflow_builder_apply_workflow_credentials',
-	CREATE_TASKS: 'workflow_builder_create_tasks',
 	TASK_CONTROL: 'workflow_builder_task_control',
-	COMPLETE_CHECKPOINT: 'workflow_builder_complete_checkpoint',
 } as const;
 
 /** Tools that the Instance AI orchestrator uses to build Agents. */
@@ -71,6 +69,8 @@ export const REMOVED_BUILDER_TOOL_NAMES = {
 	BUILD_WORKFLOW_WITH_AGENT: 'build-workflow-with-agent',
 	RESEARCH_WITH_AGENT: 'research-with-agent',
 	EVAL_SETUP_WITH_AGENT: 'eval-setup-with-agent',
+	CREATE_TASKS: 'workflow_builder_create_tasks',
+	COMPLETE_CHECKPOINT: 'workflow_builder_complete_checkpoint',
 } as const;
 
 /** Former tool names mapped to their current names. Never remove an entry. */
@@ -86,9 +86,9 @@ export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	'verify-built-workflow': WORKFLOW_BUILDER_TOOL_NAMES.VERIFY_BUILT_WORKFLOW,
 	'report-verification-verdict': WORKFLOW_BUILDER_TOOL_NAMES.REPORT_VERIFICATION_VERDICT,
 	'apply-workflow-credentials': WORKFLOW_BUILDER_TOOL_NAMES.APPLY_WORKFLOW_CREDENTIALS,
-	'create-tasks': WORKFLOW_BUILDER_TOOL_NAMES.CREATE_TASKS,
+	'create-tasks': REMOVED_BUILDER_TOOL_NAMES.CREATE_TASKS,
 	'task-control': WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL,
-	'complete-checkpoint': WORKFLOW_BUILDER_TOOL_NAMES.COMPLETE_CHECKPOINT,
+	'complete-checkpoint': REMOVED_BUILDER_TOOL_NAMES.COMPLETE_CHECKPOINT,
 	'build-agent': AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT,
 	write_config: AGENT_BUILDER_TOOL_NAMES.WRITE_CONFIG,
 	patch_config: AGENT_BUILDER_TOOL_NAMES.PATCH_CONFIG,

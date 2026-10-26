@@ -106,6 +106,11 @@ export class SlackIntegration extends AgentChatIntegration {
 		'search_channels',
 	]);
 
+	readonly contextToolGuidance = [
+		'Prefer get_channel_info when the channel ID is known.',
+		'For search_users and search_channels, CONTEXT_SEARCH_INCOMPLETE means that the bounded scan found no matches but more pages remain. Use the returned nextQuery to continue, or explain that the search is incomplete.',
+	];
+
 	readonly actionToolDefinitions = resolveIntegrationActionDefinitions([
 		'respond',
 		'send_dm',
@@ -214,6 +219,7 @@ export class SlackIntegration extends AgentChatIntegration {
 			chat: params.chat,
 			query: params.query,
 			input: params.input,
+			abortSignal: params.abortSignal,
 		});
 	}
 
