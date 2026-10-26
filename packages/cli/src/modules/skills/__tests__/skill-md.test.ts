@@ -205,6 +205,36 @@ describe('writeSkillFolder', () => {
 		]);
 	});
 
+	it('writes the real name and description, also when the frontmatter holds those keys', () => {
+		const [skillFile] = writeSkillFolder({
+			...content,
+			frontmatter: { name: 'Old name', description: 'Old description', license: 'MIT' },
+		});
+
+		expect(skillFile.content).toBe(
+			'---\nname: Brand voice\ndescription: Write in our voice\nlicense: MIT\n---\n\nUse short sentences.\n',
+		);
+	});
+
+	// Skill Sync compares the hash of a fetched folder with the stored one. A folder that
+	// was read once must give the same hash after each later write and read.
+	it('keeps the hash of a read folder stable over a write and a read', () => {
+		const messy = [
+			{
+				path: '.\\SKILL.md',
+				content:
+					'\uFEFF---\r\nname: "  Brand voice "\r\ndescription: Write\r\nmetadata:\r\n  team: core\r\n---\r\n\r\n  Use short sentences.  \r\n\r\n',
+			},
+			{ path: './references/tone.md', content: 'Warm.\r\n' },
+			{ path: 'scripts/run.sh', content: 'echo' },
+		];
+		const { content: first } = readSkillFolder('brand-voice', messy);
+
+		const { content: second } = readSkillFolder('brand-voice', writeSkillFolder(first));
+
+		expect(skillContentHash(second)).toBe(skillContentHash(first));
+	});
+
 	it.each<{ case: string; change: Partial<SkillContent> }>([
 		{ case: 'no frontmatter', change: { frontmatter: null, files: [] } },
 		{ case: 'a name that YAML reads as a number', change: { name: '123' } },

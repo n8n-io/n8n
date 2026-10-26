@@ -48,12 +48,16 @@ export function readSkillFolder(
 }
 
 /**
- * The content of one skill back to its folder: SKILL.md, then the references. Reading the
- * result with `readSkillFolder` gives the same `skillContentHash`.
+ * The content of one skill back to its folder: SKILL.md, then the references. For content
+ * that `readSkillFolder` returned, reading the result gives the same `skillContentHash`.
+ * Other content can change, because the reader trims text and normalizes line endings
+ * and paths.
  */
 export function writeSkillFolder(content: SkillContent): SkillFolderFile[] {
+	// The real name and description win over the same keys in the frontmatter.
+	const { name: _name, description: _description, ...otherKeys } = content.frontmatter ?? {};
 	const frontmatter = stringifyYaml(
-		{ name: content.name, description: content.description, ...content.frontmatter },
+		{ name: content.name, description: content.description, ...otherKeys },
 		// No line folding, so a long description stays on one line.
 		{ lineWidth: 0 },
 	);

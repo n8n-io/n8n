@@ -1,4 +1,9 @@
-import { toAgentSkill, toSkillContent, toSkillUpdate } from '../utils/skill-content';
+import {
+	syncedSourceLabel,
+	toAgentSkill,
+	toSkillContent,
+	toSkillUpdate,
+} from '../utils/skill-content';
 
 import { skillRow, versionRow } from './test-utils/skill-services';
 
@@ -63,5 +68,17 @@ describe('toSkillUpdate', () => {
 		},
 	])('$case', ({ changes, expected }) => {
 		expect(toSkillUpdate(changes, 'h')).toEqual(expected);
+	});
+});
+
+describe('syncedSourceLabel', () => {
+	it.each([
+		{ source: 'ui', expected: undefined },
+		{ source: 'agent', expected: undefined },
+		{ source: 'mcp', expected: undefined },
+		{ source: 'assistant', expected: undefined },
+		{ source: 'github', expected: 'GitHub' },
+	] as const)('$source → $expected', ({ source, expected }) => {
+		expect(syncedSourceLabel(source)).toBe(expected);
 	});
 });

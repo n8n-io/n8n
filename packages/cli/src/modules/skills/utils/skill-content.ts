@@ -105,12 +105,22 @@ export function toSkillContent(skill: AgentSkill, frontmatter: SkillFrontmatter 
 	return content;
 }
 
-/** The sources of synced skills, with the name the UI shows. A synced skill is read-only. */
-const SYNCED_SOURCE_LABELS: Partial<Record<SkillSource, string>> = { github: 'GitHub' };
+/**
+ * The name of the source of each synced skill source, or null for a skill that n8n owns. A
+ * synced skill is read-only. A new source value must be added here, so the compiler forces
+ * the choice.
+ */
+const SYNCED_SOURCE_LABELS: Record<SkillSource, string | null> = {
+	ui: null,
+	agent: null,
+	mcp: null,
+	assistant: null,
+	github: 'GitHub',
+};
 
 /** The name of the source of a synced skill. Undefined for a skill that n8n owns. */
 export function syncedSourceLabel(source: SkillSource): string | undefined {
-	return SYNCED_SOURCE_LABELS[source];
+	return SYNCED_SOURCE_LABELS[source] ?? undefined;
 }
 
 /** The `AgentSkill` shape the runtime and the API use, from one version row. */
