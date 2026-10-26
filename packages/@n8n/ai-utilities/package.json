@@ -175,6 +175,7 @@
     "oxlint-tsgolint": "catalog:"
   },
   "dependencies": {
+    "@ai-sdk/provider": "catalog:",
     "@n8n/errors": "workspace:*",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:",
