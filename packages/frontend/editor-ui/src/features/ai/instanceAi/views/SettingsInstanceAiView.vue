@@ -1,12 +1,10 @@
 <script lang="ts" setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import {
 	N8nBadge,
 	N8nButton,
-	N8nDropdownMenu,
 	N8nEmptyState,
 	N8nEnterpriseReadinessBadge,
-	N8nIcon,
 	N8nLoading,
 	N8nOption,
 	N8nSelect,
@@ -16,10 +14,8 @@ import {
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
-	N8nStatusDot,
 	N8nSwitch,
 	N8nText,
-	type DropdownMenuItemProps,
 	type EmptyStateIconCards,
 } from '@n8n/design-system';
 import {
@@ -40,7 +36,6 @@ import {
 	isContextPreferencesEnabled,
 	isContextSkillsEnabled,
 } from '@/features/settings/context/context.utils';
-import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSetupPageViewTelemetry } from '../instanceAiSetup.telemetry';
@@ -55,11 +50,9 @@ const router = useRouter();
 const settingsStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const store = useInstanceAiSettingsStore();
-const { isTestingCredential, testSavedCredential } = useInstanceCredentialTest();
 const {
 	modelCredential,
 	modelConfigured: isModelConfigured,
-	sandboxCredentialId,
 	sandboxConfigured: isSandboxConfigured,
 	searchCredential,
 	searchState,
@@ -107,8 +100,8 @@ const modelValue = computed(() => {
 const modelDescription = computed<{ key: BaseTextKey; warning: boolean } | null>(() => {
 	if (isModelConnectionEnvManaged.value)
 		return { key: 'settings.n8nAgent.modelCredential.env.description', warning: false };
-	if (store.settings?.modelCredentialId && store.settings.modelName) return null;
-	return { key: 'settings.n8nAgent.modelCredential.missing.description', warning: !isOff.value };
+	if ((store.settings?.modelCredentialId && store.settings.modelName) || isOff.value) return null;
+	return { key: 'settings.n8nAgent.modelCredential.missing.description', warning: true };
 });
 
 const searchValue = computed(() => {
@@ -117,12 +110,11 @@ const searchValue = computed(() => {
 	return searchCredential.value ? credentialTypeLabel(searchCredential.value.type) : '';
 });
 
-const isSetupRequired = computed(
+/** Mirrors the backend `setupCompleted`: only a direct self-managed instance needs setup. */
+const isSetupComplete = computed(
 	() =>
-		isEnabled.value &&
-		((showCredentialsRows.value && !isModelConfigured.value) ||
-			(showSandboxRow.value && !isSandboxConfigured.value) ||
-			(showCredentialsRows.value && searchState.value === 'notset')),
+		!showCredentialsRows.value ||
+		(isModelConfigured.value && isSandboxConfigured.value && searchState.value !== 'notset'),
 );
 const neverConfigured = computed(() => {
 	if (isEnabled.value) return false;
@@ -135,14 +127,6 @@ const emptyStateIcon: EmptyStateIconCards = {
 	center: 'sparkles',
 	sides: ['workflow', 'message-square', 'search', 'bot'],
 };
-
-const disableMenuItems: Array<DropdownMenuItemProps<string>> = [
-	{
-		id: 'disable',
-		label: i18n.baseText('settings.n8nAgent.status.disable'),
-		icon: { type: 'icon', value: 'power' },
-	},
-];
 
 const PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
 	'require_approval',
@@ -265,29 +249,26 @@ function permissionOptionsFor(key: keyof InstanceAiPermissions) {
 
 /** Exactly one dialog can be active; transitions between steps never observe an all-closed state. */
 const activeDialog = ref<InstanceAiConnectionKind | null>(null);
+/** True while walking through the missing setup items, so saving one dialog opens the next. */
 const setupChain = ref(false);
-const enableAfterSetup = ref(false);
-
-watch(activeDialog, (dialog) => {
-	if (dialog !== null) return;
-	setupChain.value = false;
-	enableAfterSetup.value = false;
-});
+/** The switch shows on while the walkthrough runs; `enabled` is saved only once setup is complete. */
+const isEnabling = ref(false);
+const isSwitchOn = computed(() => isEnabled.value || isEnabling.value);
 
 function setDialogOpen(kind: InstanceAiConnectionKind, isOpen: boolean) {
-	if (isOpen) activeDialog.value = kind;
-	else if (activeDialog.value === kind) activeDialog.value = null;
+	if (isOpen) {
+		activeDialog.value = kind;
+	} else if (activeDialog.value === kind) {
+		// Dialogs in the walkthrough don't close themselves, so this is a cancel.
+		activeDialog.value = null;
+		setupChain.value = false;
+		isEnabling.value = false;
+	}
 }
 
 function openModelDialog() {
 	if (isModelReadOnly.value) return;
 	setupChain.value = false;
-	activeDialog.value = 'model';
-}
-
-function openModelSetup() {
-	setupChain.value =
-		(!isSandboxConfigured.value && !isSandboxEnvManaged.value) || searchState.value === 'notset';
 	activeDialog.value = 'model';
 }
 
@@ -303,49 +284,34 @@ function openSearchDialog() {
 	activeDialog.value = 'search';
 }
 
-function openSearchSetup(): void {
-	activeDialog.value = 'search';
-}
-
-/** Returns whether the chain may continue (false only when enabling failed). */
-async function finishSetup(): Promise<boolean> {
-	setupChain.value = false;
-	if (!enableAfterSetup.value) {
-		activeDialog.value = null;
-		return true;
+async function nextSetupDialog(): Promise<InstanceAiConnectionKind | null> {
+	if (showCredentialsRows.value && !isModelConfigured.value) return 'model';
+	// An environment-configured sandbox has no dialog. It only needs to be switched on.
+	if (!(await enableEnvironmentSandboxIfNeeded())) return null;
+	if (showSandboxRow.value && !isSandboxConfigured.value && !isSandboxEnvManaged.value) {
+		return 'sandbox';
 	}
-
-	enableAfterSetup.value = false;
-	const enabled = await store.persistEnabled(true);
-	if (enabled) activeDialog.value = null;
-	return enabled;
+	if (showCredentialsRows.value && searchState.value === 'notset') return 'search';
+	return null;
 }
 
-async function handleModelSaved() {
-	if ((setupChain.value || enableAfterSetup.value) && !(await enableEnvironmentSandboxIfNeeded()))
-		return;
-	if (setupChain.value) {
-		if (isSandboxConfigured.value || isSandboxEnvManaged.value) {
-			openSearchSetup();
-		} else {
-			activeDialog.value = 'sandbox';
-		}
-		return;
-	}
-	await finishSetup();
+/**
+ * Opens the dialog for the first missing setup item. When none is left, it closes the
+ * walkthrough and saves a pending switch-on.
+ */
+async function continueSetup() {
+	setupChain.value = true;
+	const next = await nextSetupDialog();
+	if (!setupChain.value) return;
+	setupChain.value = next !== null;
+	activeDialog.value = next;
+	if (next !== null || !isEnabling.value) return;
+	if (isSetupComplete.value) await store.persistEnabled(true);
+	isEnabling.value = false;
 }
 
-async function handleSandboxSaved() {
-	const chainSearch = setupChain.value && searchState.value === 'notset';
-	if (chainSearch) {
-		openSearchSetup();
-		return;
-	}
-	await finishSetup();
-}
-
-async function handleSearchSaved() {
-	await finishSetup();
+async function handleDialogSaved() {
+	if (setupChain.value) await continueSetup();
 }
 
 function credentialTypeLabel(type: string) {
@@ -366,66 +332,20 @@ onMounted(() => {
 	void credentialsStore.fetchCredentialTypes(false);
 });
 
-async function handleEnable() {
-	if (!showCredentialsRows.value && (!showSandboxRow.value || isSandboxConfigured.value)) {
+async function enable() {
+	if (isSetupComplete.value) {
 		await store.persistEnabled(true);
 		return;
 	}
-
-	enableAfterSetup.value = true;
-	if (showCredentialsRows.value && !isModelConfigured.value) {
-		openModelSetup();
-		return;
-	}
-
-	const modelCredentialId = store.settings?.modelCredentialId;
-	if (
-		showCredentialsRows.value &&
-		modelCredentialId &&
-		store.canManageInstanceCredentials &&
-		(!modelCredential.value ||
-			!(await testSavedCredential(
-				modelCredentialId,
-				modelCredential.value.name,
-				modelCredential.value.type,
-			)))
-	) {
-		openModelSetup();
-		return;
-	}
-
-	if (!(await enableEnvironmentSandboxIfNeeded())) return;
-
-	if (showSandboxRow.value && !isSandboxConfigured.value && !isSandboxEnvManaged.value) {
-		openSandboxDialog();
-		return;
-	}
-
-	if (showSandboxRow.value && sandboxCredentialId.value && store.canManageInstanceCredentials) {
-		const isDaytona = store.settings?.sandboxProvider === 'daytona';
-		if (
-			!(await testSavedCredential(
-				sandboxCredentialId.value,
-				'n8n Assistant sandbox',
-				isDaytona ? 'daytonaApi' : 'httpHeaderAuth',
-			))
-		) {
-			openSandboxDialog();
-			return;
-		}
-	}
-
-	if (showCredentialsRows.value && searchState.value === 'notset') {
-		setupChain.value = true;
-		openSearchSetup();
-		return;
-	}
-
-	await finishSetup();
+	isEnabling.value = true;
+	await continueSetup();
 }
 
-async function handleStatusAction(action: string) {
-	if (action !== 'disable') return;
+async function handleEnabledToggle(value: boolean) {
+	if (value) {
+		await enable();
+		return;
+	}
 
 	const confirmed = await message.confirm(
 		i18n.baseText('settings.n8nAgent.status.disable.description'),
@@ -482,9 +402,9 @@ function openAiUsageSettings() {
 			:heading="i18n.baseText('settings.n8nAgent.empty.title')"
 			:description="i18n.baseText('settings.n8nAgent.empty.description')"
 			:button-text="isAdmin ? i18n.baseText('settings.n8nAgent.empty.enable') : undefined"
-			:button-disabled="store.isSaving || isTestingCredential"
+			:button-disabled="store.isSaving || isEnabling"
 			button-variant="solid"
-			@click:button="handleEnable"
+			@click:button="enable"
 		>
 			<template v-if="isAdmin" #additionalContent>
 				<N8nText size="small" color="text-light">
@@ -501,56 +421,13 @@ function openAiUsageSettings() {
 						:description="i18n.baseText('settings.n8nAgent.enable.description')"
 					>
 						<template #action>
-							<N8nButton
-								v-if="isOff"
-								variant="solid"
-								size="medium"
-								:label="i18n.baseText('settings.n8nAgent.status.enable')"
-								:disabled="store.isSaving || isTestingCredential"
-								data-test-id="n8n-agent-enable-button"
-								@click="handleEnable"
+							<N8nSwitch
+								:model-value="isSwitchOn"
+								:disabled="store.isSaving || isEnabling"
+								:aria-label="i18n.baseText('settings.n8nAgent.enable.label')"
+								data-test-id="n8n-agent-enable-toggle"
+								@update:model-value="handleEnabledToggle"
 							/>
-							<N8nDropdownMenu
-								v-else
-								:items="disableMenuItems"
-								placement="bottom-end"
-								data-test-id="n8n-agent-status-menu"
-								@select="handleStatusAction"
-							>
-								<template #trigger>
-									<N8nButton
-										variant="outline"
-										size="medium"
-										:disabled="store.isSaving"
-										:aria-label="i18n.baseText('settings.n8nAgent.status.manage')"
-									>
-										<span :class="$style.statusLabel">
-											<N8nStatusDot
-												:variant="isSetupRequired ? 'warning' : 'success'"
-												:pulse="!isSetupRequired"
-												data-test-id="n8n-agent-status-dot"
-											/>
-											{{
-												isSetupRequired
-													? i18n.baseText('settings.n8nAgent.status.setupRequired')
-													: i18n.baseText('settings.n8nAgent.status.enabled')
-											}}
-											<N8nIcon icon="chevron-down" size="small" />
-										</span>
-									</N8nButton>
-								</template>
-								<template #item-leading="{ item }">
-									<N8nIcon
-										v-if="item.icon?.type === 'icon'"
-										:class="$style.danger"
-										:icon="item.icon.value"
-										size="small"
-									/>
-								</template>
-								<template #item-label="{ item }">
-									<span :class="$style.danger">{{ item.label }}</span>
-								</template>
-							</N8nDropdownMenu>
 						</template>
 					</N8nSettingsRow>
 
@@ -581,7 +458,7 @@ function openAiUsageSettings() {
 								:label="i18n.baseText('settings.n8nAgent.modelCredential.add')"
 								:disabled="store.isSaving"
 								data-test-id="n8n-agent-model-add"
-								@click="openModelSetup"
+								@click="continueSetup"
 							/>
 							<N8nText
 								v-else-if="isModelReadOnly"
@@ -609,13 +486,13 @@ function openAiUsageSettings() {
 			<DefaultEditorSetting />
 
 			<N8nSettingsSection
+				:class="{ [$style.dim]: isOff }"
 				:title="i18n.baseText('settings.n8nAgent.capabilities.title')"
 				:description="i18n.baseText('settings.n8nAgent.capabilities.description')"
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
 						v-if="showCredentialsRows"
-						:class="{ [$style.dim]: isOff }"
 						:clickable="!isOff && searchState !== 'notset' && !isSearchEnvManaged"
 						data-test-id="n8n-agent-search-row"
 						@click="openSearchDialog"
@@ -660,13 +537,12 @@ function openAiUsageSettings() {
 					</N8nSettingsRow>
 
 					<N8nSettingsRow
-						:class="{ [$style.dim]: isOff }"
 						:title="i18n.baseText('settings.n8nAgent.browserUse.label')"
 						:description="i18n.baseText('settings.n8nAgent.browserUse.description')"
 					>
 						<template #action>
 							<N8nSwitch
-								:model-value="store.settings?.browserUseEnabled ?? true"
+								:model-value="!isOff && (store.settings?.browserUseEnabled ?? true)"
 								:disabled="store.isSaving || isOff"
 								:aria-label="i18n.baseText('settings.n8nAgent.browserUse.label')"
 								data-test-id="n8n-agent-browser-use-toggle"
@@ -678,18 +554,18 @@ function openAiUsageSettings() {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
+				:class="{ [$style.dim]: isOff }"
 				:title="i18n.baseText('settings.n8nAgent.mcp.title')"
 				:description="i18n.baseText('settings.n8nAgent.mcp.description')"
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
-						:class="{ [$style.dim]: isOff }"
 						:title="i18n.baseText('settings.n8nAgent.mcpAccess.label')"
 						:description="i18n.baseText('settings.n8nAgent.mcpAccess.description')"
 					>
 						<template #action>
 							<N8nSwitch
-								:model-value="isMcpAccessEnabled"
+								:model-value="!isOff && isMcpAccessEnabled"
 								:disabled="store.isSaving || isOff"
 								:aria-label="i18n.baseText('settings.n8nAgent.mcpAccess.label')"
 								data-test-id="n8n-agent-mcp-access-toggle"
@@ -701,6 +577,7 @@ function openAiUsageSettings() {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
+				:class="{ [$style.dim]: isOff }"
 				:title="i18n.baseText('settings.n8nAgent.permissions.title')"
 				:description="i18n.baseText('settings.n8nAgent.permissions.description')"
 			>
@@ -709,7 +586,7 @@ function openAiUsageSettings() {
 						v-for="group in permissionGroups"
 						:key="group.id"
 						v-model="expandedGroups[group.id]"
-						:class="{ [$style.dim]: isGroupLocked(group) }"
+						:class="{ [$style.dim]: !isOff && isGroupLocked(group) }"
 						:title="i18n.baseText(group.labelKey)"
 						:expandable="!isGroupLocked(group)"
 						:expand-label="groupSummary(group)"
@@ -758,12 +635,12 @@ function openAiUsageSettings() {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
+				:class="{ [$style.dim]: isOff }"
 				:title="i18n.baseText('settings.n8nAgent.dataSharing.title')"
 				:description="i18n.baseText('settings.n8nAgent.dataSharing.description')"
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
-						:class="{ [$style.dim]: isOff }"
 						:title="i18n.baseText('settings.n8nAgent.dataSharing.manage.label')"
 						:description="i18n.baseText('settings.n8nAgent.dataSharing.manage.description')"
 						:clickable="!isOff && store.canManageAiUsage"
@@ -788,7 +665,7 @@ function openAiUsageSettings() {
 			:open="activeDialog === 'model'"
 			:setup="setupChain"
 			@update:open="setDialogOpen('model', $event)"
-			@saved="handleModelSaved"
+			@saved="handleDialogSaved"
 		/>
 		<ConnectionDialog
 			v-if="showSandboxRow && !isSandboxEnvManaged"
@@ -796,7 +673,7 @@ function openAiUsageSettings() {
 			:open="activeDialog === 'sandbox'"
 			:setup="showCredentialsRows && setupChain"
 			@update:open="setDialogOpen('sandbox', $event)"
-			@saved="handleSandboxSaved"
+			@saved="handleDialogSaved"
 		/>
 		<ConnectionDialog
 			v-if="showCredentialsRows && !isSearchEnvManaged"
@@ -804,22 +681,12 @@ function openAiUsageSettings() {
 			:open="activeDialog === 'search'"
 			:setup="setupChain"
 			@update:open="setDialogOpen('search', $event)"
-			@saved="handleSearchSaved"
+			@saved="handleDialogSaved"
 		/>
 	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
-.statusLabel {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.danger {
-	color: var(--text-color--danger);
-}
-
 .titleWithTag {
 	display: inline-flex;
 	align-items: center;
