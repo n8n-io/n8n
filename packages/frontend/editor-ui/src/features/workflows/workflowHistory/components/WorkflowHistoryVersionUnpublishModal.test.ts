@@ -25,7 +25,7 @@ const ModalStub = {
 	template: '<div><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
 };
 
-const renderModal = (workflowId: string, workflowName?: string) => {
+const renderModal = (workflowId: string, workflowName = 'Example workflow') => {
 	const data = { workflowId, workflowName, versionName: 'v3', eventBus: createEventBus() };
 	return createComponentRenderer(WorkflowHistoryVersionUnpublishModal)({
 		props: {
@@ -152,6 +152,29 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 		expect(queryByText('Sub-workflow')).not.toBeInTheDocument();
 		// 5 dependents in the counts, 3 visible: the 2 hidden credentials do not count
 		expect(affected).toHaveTextContent('+2 not accessible to you');
+		expect(
+			getByText('5 resources use this workflow and may be affected by unpublishing it.'),
+		).toBeInTheDocument();
+	});
+
+	it('counts affected resources when none are accessible', async () => {
+		vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({
+			'wf-hidden': { dependencies: [], inaccessibleCount: 2 },
+		});
+		vi.mocked(workflowDependenciesApi.getResourceDependencyCounts).mockResolvedValue({
+			'wf-hidden': { ...noCounts, agentUsage: 1, credentialId: 1 },
+		});
+
+		const { findByTestId, getByText, queryByRole } = renderModal('wf-hidden');
+		const affected = await findByTestId('workflow-unpublish-affected-resources');
+
+		expect(
+			getByText('1 resource uses this workflow and may be affected by unpublishing it.'),
+		).toBeInTheDocument();
+		expect(affected).toHaveTextContent('Used by');
+		expect(affected).toHaveTextContent('+1 not accessible to you');
+		expect(queryByRole('link')).not.toBeInTheDocument();
+		expect(queryByRole('list')).not.toBeInTheDocument();
 	});
 
 	it('shows only the generic warning when nothing runs the published version', async () => {
@@ -170,7 +193,11 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 			expect(workflowDependenciesApi.getResourceDependencyCounts).toHaveBeenCalled(),
 		);
 
-		expect(getByText(/prevent all production executions/)).toBeInTheDocument();
+		expect(
+			getByText(
+				'Unpublishing “Example workflow” will prevent it from running in this instance until you publish it again.',
+			),
+		).toBeInTheDocument();
 		expect(queryByTestId('workflow-unpublish-affected-resources')).not.toBeInTheDocument();
 	});
 });
