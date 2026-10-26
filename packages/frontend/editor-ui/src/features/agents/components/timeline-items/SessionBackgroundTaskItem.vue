@@ -20,6 +20,7 @@ const props = defineProps<{
 	agentId?: string;
 	agentName?: string;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
+	tools?: AgentJsonConfig['tools'];
 	threadId?: string;
 }>();
 
@@ -76,7 +77,7 @@ function submitApproval(resumeData: ApprovalResume) {
 				:key="`${task.approval.runId}:${task.approval.toolCallId}`"
 				:input="approvalInput"
 				:agent-name="agentName"
-				:personalisation="personalisation"
+				:tools="tools"
 				:disabled="approvalPending"
 				:auto-focus="false"
 				:use-key-shortcuts="false"

@@ -5,18 +5,15 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { nodeNameToToolName } from 'n8n-workflow';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { N8nApprovalCard, N8nBadge, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nApprovalCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
-
-import AgentPersonalisationIcon from '../AgentPersonalisationIcon.vue';
 
 const props = withDefaults(
 	defineProps<{
 		input: ApprovalInput;
 		agentName?: string;
-		personalisation?: AgentJsonConfig['personalisation'] | null;
 		tools?: AgentJsonConfig['tools'];
 		disabled?: boolean;
 		autoFocus?: boolean;
@@ -61,8 +58,9 @@ function submit(key: string) {
 
 <template>
 	<N8nApprovalCard
-		variant="inline"
-		:title="i18n.baseText('agents.chat.approval.title')"
+		:title="
+			i18n.baseText('agents.chat.approval.description', { interpolate: { toolName: toolLabel } })
+		"
 		:labels="approvalLabels"
 		:args="input.args"
 		:supports-session-approval="input.supportsSessionApproval"
@@ -72,7 +70,7 @@ function submit(key: string) {
 		data-testid="agent-approval-card"
 		@select="submit"
 	>
-		<template #description>
+		<template #title>
 			<N8nText step="sm">
 				<I18nT keypath="agents.chat.approval.agentDescription" scope="global">
 					<template #agentName>

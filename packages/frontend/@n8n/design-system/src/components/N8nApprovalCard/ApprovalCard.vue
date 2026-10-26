@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { computed, ref, useId, useTemplateRef, watch } from 'vue';
+import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { computed, ref, useId, useSlots, useTemplateRef, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import N8nButton from '../N8nButton';
 import N8nCodeBlock from '../N8nCodeBlock';
 import N8nIcon, { type IconName } from '../N8nIcon';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
@@ -43,12 +43,12 @@ export interface ApprovalCardLabels {
 }
 
 interface ApprovalCardProps {
-	/** Use the full card or collapsible inline layout. */
-	variant?: 'full' | 'inline';
 	/** Heading that describes the action. */
 	title: string;
-	/** Action details shown in a scrollable text region. */
+	/** Optional supporting details shown below the header. */
 	description?: string;
+	/** Hide the formatted arguments when the card first renders. Defaults to false. */
+	defaultCollapsed?: boolean;
 	/** Tool arguments shown below the description. */
 	args?: unknown;
 	/** Accessible name for the details region. Defaults to the title. */
@@ -73,12 +73,13 @@ interface ApprovalCardProps {
 
 defineOptions({ name: 'N8nApprovalCard' });
 const props = withDefaults(defineProps<ApprovalCardProps>(), {
-	variant: 'full',
+	defaultCollapsed: false,
 	autoFocus: true,
 	useKeyShortcuts: true,
 });
 const emit = defineEmits<{ select: [key: string] }>();
 const { t } = useI18n();
+const slots = useSlots();
 
 const formattedArgs = computed(() => {
 	try {
@@ -123,16 +124,10 @@ const options = computed<readonly ApprovalOption[]>(() => {
 	return choices;
 });
 
-// Multiple approvals can be shown at once.
+/** Multiple approvals can be shown at once. */
 const id = useId();
 const containerRef = useTemplateRef<HTMLElement>('list');
 const highlightedIndex = ref(0);
-const expanded = ref(false);
-
-const inlineOptions = computed(() => [
-	...options.value.filter((option) => option.key === 'deny'),
-	...options.value.filter((option) => option.key !== 'deny'),
-]);
 
 watch(
 	() => options.value.length,
@@ -143,26 +138,31 @@ watch(
 
 watch(
 	containerRef,
-	(listbox) => {
+	() => {
 		if (props.autoFocus && !props.disabled) {
-			const target = props.variant === 'inline' ? listbox?.querySelector('button') : listbox;
-			target?.focus({ preventScroll: true });
+			focusOption(highlightedIndex.value);
 		}
 	},
 	{ flush: 'post' },
 );
 
+function focusOption(index: number) {
+	if (props.disabled) return;
+	containerRef.value
+		?.querySelectorAll<HTMLButtonElement>('button')
+		[index]?.focus({ preventScroll: true });
+}
+
 function selectOption(key: string) {
 	if (props.disabled) return;
-	if (props.variant === 'full') containerRef.value?.focus({ preventScroll: true });
 	emit('select', key);
 }
 
-function focusListbox(event: MouseEvent) {
-	if (props.variant === 'inline' || props.disabled || !(event.target instanceof Element)) return;
+function focusChoices(event: MouseEvent) {
+	if (props.disabled || !(event.target instanceof Element)) return;
 	if (event.target.closest('a, button, input, select, textarea, [tabindex], [role="button"]'))
 		return;
-	containerRef.value?.focus({ preventScroll: true });
+	focusOption(highlightedIndex.value);
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -174,13 +174,13 @@ function onKeydown(event: KeyboardEvent) {
 		!event.ctrlKey &&
 		!event.metaKey;
 
-	// Allows for using 0-9 as keyboard shorcuts
+	/** Use number keys for the first ten choices. */
 	if (enableKeyNumbers) {
 		const index = event.key === '0' ? 9 : Number(event.key) - 1;
 		const option = options.value[index];
 		if (option) {
 			event.preventDefault();
-			highlightedIndex.value = index;
+			focusOption(index);
 			selectOption(option.key);
 		}
 		return;
@@ -188,67 +188,66 @@ function onKeydown(event: KeyboardEvent) {
 
 	if (event.key === 'ArrowDown') {
 		event.preventDefault();
-		highlightedIndex.value = Math.min(options.value.length - 1, highlightedIndex.value + 1);
+		focusOption(Math.min(options.value.length - 1, highlightedIndex.value + 1));
 		return;
 	}
 	if (event.key === 'ArrowUp') {
 		event.preventDefault();
-		highlightedIndex.value = Math.max(0, highlightedIndex.value - 1);
+		focusOption(Math.max(0, highlightedIndex.value - 1));
 		return;
-	}
-	if (event.key === 'Enter' || event.key === ' ') {
-		event.preventDefault();
-		const option = options.value[highlightedIndex.value];
-		if (option) selectOption(option.key);
 	}
 }
 </script>
 
 <template>
-	<article
-		:class="[$style.card, variant === 'inline' && $style.inline, disabled && $style.disabled]"
-		@click="focusListbox"
+	<CollapsibleRoot
+		v-slot="{ open }"
+		as="article"
+		:default-open="!defaultCollapsed"
+		:class="[$style.card, disabled && $style.disabled]"
+		@click="focusChoices"
 	>
 		<div :class="$style.header">
 			<span :class="$style.iconContainer">
 				<span :class="$style.statusDot" aria-hidden="true" />
 			</span>
-			<N8nText
-				:id="`${id}-title`"
-				step="sm"
-				bold
-				:class="variant === 'inline' ? $style.srOnly : $style.title"
-				>{{ title }}</N8nText
-			>
-			<button
-				v-if="variant === 'inline'"
-				type="button"
+			<span :id="`${id}-status`" :class="$style.srOnly">
+				{{ decision ? labels[decision] : t('approvalCard.awaitingApproval') }}
+			</span>
+			<CollapsibleTrigger
+				v-if="description || slots.description || formattedArgs"
 				:class="$style.trigger"
-				:aria-expanded="expanded"
 				:aria-controls="`${id}-details`"
-				@click="expanded = !expanded"
 			>
-				<span
-					><slot name="description">{{ description ?? title }}</slot></span
+				<span :id="`${id}-title`">
+					<slot name="title"
+						><N8nText step="sm">{{ title }}</N8nText></slot
+					>
+				</span>
+				<N8nIcon :icon="open ? 'chevron-down' : 'chevron-right'" color="text-light" :size="12" />
+			</CollapsibleTrigger>
+			<div v-else :id="`${id}-title`" :class="$style.title">
+				<slot name="title"
+					><N8nText step="sm">{{ title }}</N8nText></slot
 				>
-				<N8nIcon :icon="expanded ? 'chevron-down' : 'chevron-right'" size="small" />
-			</button>
-			<slot name="header-label" />
+			</div>
 		</div>
-		<div v-show="variant === 'full' || expanded" :id="`${id}-details`" :class="$style.body">
-			<slot v-if="variant === 'full'" name="description">
-				<N8nText v-if="description" step="sm">
-					{{ description }}
-				</N8nText>
-			</slot>
-			<N8nCodeBlock
-				v-if="formattedArgs"
-				:code="formattedArgs"
-				language="json"
-				:aria-label="labels.args ?? title"
-				data-test-id="approval-card-args"
-			/>
-		</div>
+		<CollapsibleContent as-child>
+			<div v-if="description || slots.description" :id="`${id}-details`" :class="$style.body">
+				<div role="region" tabindex="0" :aria-label="descriptionLabel ?? title">
+					<slot name="description"
+						><N8nText step="sm">{{ description }}</N8nText></slot
+					>
+				</div>
+				<N8nCodeBlock
+					v-if="formattedArgs"
+					:code="formattedArgs"
+					language="json"
+					:aria-label="labels.args ?? title"
+					data-test-id="approval-card-args"
+				/>
+			</div>
+		</CollapsibleContent>
 		<div :class="$style.footer">
 			<div v-if="decision" :class="$style.resolved">
 				<N8nIcon
@@ -260,39 +259,24 @@ function onKeydown(event: KeyboardEvent) {
 					{{ labels[decision] }}
 				</N8nText>
 			</div>
-			<div v-else-if="variant === 'inline'" ref="list" :class="$style.inlineOptions">
-				<N8nButton
-					v-for="option in inlineOptions"
-					:key="option.key"
-					:disabled="disabled"
-					:variant="option.key === 'deny' ? 'ghost' : option.destructive ? 'destructive' : 'solid'"
-					:icon="option.icon"
-					:data-test-id="option.testId ?? `approval-card-${option.key}`"
-					@click="selectOption(option.key)"
-				>
-					{{ option.label }}<template v-if="option.suffix"> {{ option.suffix }}</template>
-				</N8nButton>
-			</div>
-			<ul
+			<div
 				v-else
 				ref="list"
 				:class="$style.list"
-				role="listbox"
-				:tabindex="disabled ? -1 : 0"
+				role="toolbar"
+				aria-orientation="vertical"
 				:aria-disabled="disabled"
-				:aria-labelledby="`${id}-title`"
-				:aria-activedescendant="
-					options[highlightedIndex] ? `${id}-${options[highlightedIndex].key}` : undefined
-				"
+				:aria-labelledby="`${id}-status ${id}-title`"
 				@keydown="onKeydown"
 			>
-				<li
+				<button
 					v-for="(option, idx) in options"
 					:id="`${id}-${option.key}`"
 					:key="option.key"
-					role="button"
+					type="button"
 					:aria-disabled="disabled"
-					:aria-pressed="highlightedIndex === idx"
+					:disabled="disabled"
+					:tabindex="!disabled && highlightedIndex === idx ? 0 : -1"
 					:class="[
 						$style.row,
 						highlightedIndex === idx && $style.highlighted,
@@ -300,7 +284,8 @@ function onKeydown(event: KeyboardEvent) {
 					]"
 					:data-test-id="option.testId ?? `approval-card-${option.key}`"
 					@click="selectOption(option.key)"
-					@mouseenter="highlightedIndex = idx"
+					@focus="highlightedIndex = idx"
+					@mouseenter="focusOption(idx)"
 				>
 					<N8nIcon :class="$style.leadingIcon" :icon="option.icon" size="large" />
 					<span :class="$style.label">
@@ -308,7 +293,7 @@ function onKeydown(event: KeyboardEvent) {
 						<N8nText v-if="option.suffix" step="sm" color="text-light">{{ option.suffix }}</N8nText>
 					</span>
 					<N8nIcon
-						v-if="highlightedIndex === idx"
+						v-if="highlightedIndex === idx && option.withArrow !== false"
 						:class="$style.trailingIcon"
 						icon="arrow-right"
 					/>
@@ -318,10 +303,10 @@ function onKeydown(event: KeyboardEvent) {
 						:keys="[String((idx + 1) % 10)]"
 						aria-hidden="true"
 					/>
-				</li>
-			</ul>
+				</button>
+			</div>
 		</div>
-	</article>
+	</CollapsibleRoot>
 </template>
 
 <style lang="scss" module>
@@ -332,9 +317,18 @@ function onKeydown(event: KeyboardEvent) {
 	min-width: 0;
 	border-radius: var(--radius--md);
 	background-color: var(--background--surface);
-	border: 1px solid var(--border-color);
+	border: var(--border);
 	background-clip: padding-box;
 	box-shadow: var(--shadow--xs);
+}
+.header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: var(--spacing--sm);
+	gap: var(--spacing--3xs);
+	border-bottom: var(--border);
+	border-color: var(--border-color--subtle);
 }
 .srOnly {
 	position: absolute;
@@ -351,9 +345,8 @@ function onKeydown(event: KeyboardEvent) {
 .trigger {
 	display: flex;
 	align-items: center;
-	flex: 1;
-	min-width: 0;
 	gap: var(--spacing--xs);
+	margin-inline-end: auto;
 	padding: 0;
 	border: none;
 	background: none;
@@ -363,47 +356,6 @@ function onKeydown(event: KeyboardEvent) {
 	cursor: pointer;
 }
 
-.inlineOptions {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
-}
-
-.inline {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-
-	.header {
-		flex: 1;
-		min-width: 0;
-		border-bottom: none;
-	}
-
-	.footer {
-		flex-shrink: 0;
-		align-items: flex-end;
-		padding: var(--spacing--sm);
-	}
-
-	.body {
-		order: 1;
-		flex-basis: 100%;
-		min-width: 0;
-	}
-}
-
-.header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: var(--spacing--sm);
-	gap: var(--spacing--3xs);
-	border-bottom: var(--border);
-	border-color: var(--border-color--subtle);
-}
 .title {
 	margin-inline-end: auto;
 }
@@ -422,6 +374,7 @@ function onKeydown(event: KeyboardEvent) {
 	height: var(--height--5xs);
 	border-radius: 50%;
 	background-color: var(--color--purple-700);
+	transform: translateY(1px);
 	@include motion.pulse;
 }
 
@@ -438,7 +391,7 @@ function onKeydown(event: KeyboardEvent) {
 .body {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 	padding: var(--spacing--sm);
 }
 
@@ -456,7 +409,7 @@ function onKeydown(event: KeyboardEvent) {
 	flex-direction: column;
 	gap: 1px;
 	padding: 0 var(--spacing--sm);
-	padding-block-end: var(--spacing--xs);
+	padding-block: var(--spacing--xs);
 }
 
 .row {
@@ -482,9 +435,7 @@ function onKeydown(event: KeyboardEvent) {
 	}
 }
 
-// Highlight: applied when the row is the current selection (keyboard or
-// mouse). Unifies the visual for hover and arrow-key states so the user
-// always sees one — and only one — active row.
+/** Keep the highlight on the active action. */
 
 .trailingIcon {
 	margin-inline-start: auto;
@@ -492,10 +443,10 @@ function onKeydown(event: KeyboardEvent) {
 
 .highlighted {
 	background-color: var(--background--hover);
+	outline: none;
 }
 
-// Destructive variant only changes the highlight colour, so the cost of
-// confirming becomes obvious the moment the user lands on the row.
+/** Mark the destructive action when it is active. */
 .rowDestructive.highlighted {
 	background-color: light-dark(var(--color--red-100), var(--callout--color--background--danger));
 	color: light-dark(var(--color--red-800), var(--color--red-250));

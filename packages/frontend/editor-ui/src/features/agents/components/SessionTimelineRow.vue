@@ -22,6 +22,7 @@ const props = defineProps<{
 	agentId?: string;
 	threadId?: string;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
+	tools?: AgentJsonConfig['tools'];
 }>();
 
 const i18n = useI18n();
@@ -56,6 +57,7 @@ const timelineItemProps = computed(function getTimelineItemProps() {
 		return {
 			respondToApproval: props.respondToApproval,
 			agentName: props.agentName,
+			tools: props.tools,
 			personalisation: props.personalisation,
 			approvalPending: runId ? props.pendingApprovalRunIds?.has(runId) : false,
 			...baseProps,

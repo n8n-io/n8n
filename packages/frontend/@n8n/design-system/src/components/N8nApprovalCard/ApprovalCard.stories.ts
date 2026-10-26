@@ -6,8 +6,7 @@ const meta = {
 	title: 'Areas/Assistant/ApprovalCard',
 	component: N8nApprovalCard,
 	args: {
-		title: 'Approval required',
-		description: 'The agent wants to run the Calculator tool.',
+		title: 'The agent wants to run the Calculator tool.',
 		supportsSessionApproval: true,
 	},
 } satisfies Meta<typeof N8nApprovalCard>;
@@ -17,11 +16,10 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-export const Inline: Story = {
+export const CollapsedArguments: Story = {
 	args: {
-		variant: 'inline',
-		autoFocus: false,
 		args: { query: 'Example tool input' },
+		defaultCollapsed: true,
 	},
 };
 
@@ -31,7 +29,7 @@ export const KeyboardNavigation: Story = {
 			'Use Arrow Up and Arrow Down to highlight a choice. Use Enter or Space to select it.',
 	},
 	play({ canvasElement }) {
-		const listbox = canvasElement.querySelector('[role="listbox"]');
+		const listbox = canvasElement.querySelector('[role="toolbar"] button[tabindex="0"]');
 		if (listbox instanceof HTMLElement) listbox.focus({ preventScroll: true });
 	},
 };

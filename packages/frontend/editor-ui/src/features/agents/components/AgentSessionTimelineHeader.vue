@@ -6,7 +6,6 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nText,
-	N8nToggle,
 	N8nTooltip,
 	type DropdownMenuItemProps,
 	type IconOrEmoji,
@@ -30,7 +29,6 @@ const props = defineProps<{
 	sessionOptions: Array<DropdownMenuItemProps<string, SessionDropdownData>>;
 	showLangsmithExport: boolean;
 	langsmithExportLoading: boolean;
-	isSidePanelVisible?: boolean;
 	metadata?: SessionTimelineMetadata;
 	hasSession?: boolean;
 	canDeleteSession?: boolean;
@@ -41,7 +39,6 @@ const emit = defineEmits<{
 	'breadcrumb-select': [item: PathItem];
 	'session-select': [sessionId: string];
 	'langsmith-export': [];
-	'toggle-side-panel': [];
 	'copy-link': [];
 	'delete-session': [];
 	close: [];
@@ -188,19 +185,6 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 						/>
 					</template>
 				</N8nDropdownMenu>
-			</N8nTooltip>
-			<N8nTooltip
-				:content="i18n.baseText(props.isSidePanelVisible ? 'mainSidebar.state.collapse' : 'mainSidebar.state.expand')"
-			>
-				<N8nToggle
-					variant="ghost"
-					icon="list"
-					size="medium"
-					:label="i18n.baseText(props.isSidePanelVisible ? 'mainSidebar.state.collapse' : 'mainSidebar.state.expand')"
-					:aria-pressed="props.isSidePanelVisible"
-					data-testid="agent-session-timeline-side-panel-toggle"
-					@click="emit('toggle-side-panel')"
-				/>
 			</N8nTooltip>
 			<N8nTooltip :content="i18n.baseText('generic.close')">
 				<N8nIconButton

@@ -21,6 +21,7 @@ const props = defineProps<{
 	agentId?: string;
 	threadId?: string;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
+	tools?: AgentJsonConfig['tools'];
 	selectedIndex: number | null;
 	visibleKinds: Set<string>;
 	searchQuery?: string;
@@ -292,6 +293,7 @@ onBeforeUnmount(() => {
 							:respond-to-approval="props.respondToApproval"
 							:pending-approval-run-ids="props.pendingApprovalRunIds"
 							:agent-name="props.agentName"
+							:tools="props.tools"
 							:selected="props.selectedIndex === row.index"
 							:search-query="props.searchQuery"
 							:personalisation="props.personalisation"
@@ -340,6 +342,7 @@ onBeforeUnmount(() => {
 							:respond-to-approval="props.respondToApproval"
 							:pending-approval-run-ids="props.pendingApprovalRunIds"
 							:agent-name="props.agentName"
+							:tools="props.tools"
 							:selected="props.selectedIndex === row.index"
 							:search-query="props.searchQuery"
 							:personalisation="props.personalisation"
