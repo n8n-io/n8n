@@ -152,8 +152,7 @@ async function onAction(action: SelfHealingResultAction) {
 
 		if (!isSelected(target.id) || action === 'dismiss') return;
 		// An outdated or concurrently discarded suggestion leaves nothing to continue with.
-		if (isContinuation && result.reviewState !== (before.suggestion ? 'applied' : 'dismissed'))
-			return;
+		if (result.reviewState !== (reviewAction === 'dismiss' ? 'dismissed' : 'applied')) return;
 
 		if (chatProjectId) {
 			try {
@@ -161,7 +160,7 @@ async function onAction(action: SelfHealingResultAction) {
 			} catch (cause) {
 				showError(cause, i18n.baseText('inbox.selfHealing.action.chatError'));
 			}
-		} else if (action === 'editor' || result.reviewState === 'applied') {
+		} else {
 			if (result.publishError !== undefined) {
 				showMessage({
 					type: 'warning',

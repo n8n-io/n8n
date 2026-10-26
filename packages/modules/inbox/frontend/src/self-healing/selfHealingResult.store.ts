@@ -71,7 +71,10 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 				return result;
 			}
 		} catch (cause) {
-			if (requestSequence === detailRequestSequence) setError(target, cause);
+			if (requestSequence === detailRequestSequence) {
+				detail.value = null;
+				error.value = cause;
+			}
 		} finally {
 			if (requestSequence === detailRequestSequence) loading.value = false;
 		}
