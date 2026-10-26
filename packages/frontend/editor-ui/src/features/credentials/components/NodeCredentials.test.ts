@@ -749,6 +749,7 @@ describe('NodeCredentials', () => {
 					within(screen.getByTestId('node-credentials-empty-state')).getByRole('button'),
 				);
 				await credentialsStore.createNewCredential({
+					id: credential.id,
 					name: credential.name,
 					type: credential.type,
 					isResolvable,
