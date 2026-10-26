@@ -14,21 +14,21 @@ const usage: SkillUsage = {
 
 describe('agentsLosingSkill', () => {
 	it('drops no agent when the skill moves to the instance', () => {
-		expect(agentsLosingSkill(usage, { projectId: null, agentId: null })).toEqual({
+		expect(agentsLosingSkill(usage, { projectId: null })).toEqual({
 			names: [],
 			hidden: 0,
 		});
 	});
 
 	it('names each agent outside the target project once, and counts the hidden ones', () => {
-		expect(agentsLosingSkill(usage, { projectId: 'p1', agentId: null })).toEqual({
+		expect(agentsLosingSkill(usage, { projectId: 'p1' })).toEqual({
 			names: ['Ops bot'],
 			hidden: 1,
 		});
 	});
 
-	it('keeps the target agent and the agent that asks for the move', () => {
-		expect(agentsLosingSkill(usage, { projectId: null, agentId: 'a1' }, 'a2')).toEqual({
+	it('keeps the agent that asks for the move', () => {
+		expect(agentsLosingSkill(usage, { projectId: 'p1' }, 'a2')).toEqual({
 			names: [],
 			hidden: 1,
 		});

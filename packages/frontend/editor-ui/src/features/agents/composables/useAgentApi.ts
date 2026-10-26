@@ -799,8 +799,7 @@ export const listAttachableSkills = async (
 	const { data } = await makeRestApiRequest<SkillListResponse>(context, 'GET', '/skills', {
 		attachableTo: agentId,
 	});
-	const targetRank = (skill: SkillListItem) =>
-		skill.scope === 'instance' ? 2 : skill.agentId ? 1 : 0;
+	const targetRank = (skill: SkillListItem) => (skill.scope === 'instance' ? 1 : 0);
 	const byTargetThenName = (left: SkillListItem, right: SkillListItem) =>
 		targetRank(left) - targetRank(right) || left.name.localeCompare(right.name);
 	return data.sort(byTargetThenName);

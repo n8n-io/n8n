@@ -36,19 +36,17 @@ const optionalUserId = z
 		'The acting user. Absent on the events the editor fires, which identify the user already',
 	);
 
-/** Where a skill lives. An agent skill takes its project from its agent. */
+/** Where a skill lives. */
 const skillScope = z
-	.enum(['project', 'agent', 'instance'])
-	.describe('Where the skill lives: one project, one agent, or the whole instance');
+	.enum(['project', 'instance'])
+	.describe('Where the skill lives: one project, or the whole instance');
 
 const skillId = z.string().describe('The skill. Its name and text are never reported');
 
 const skillProjectId = z
 	.string()
 	.optional()
-	.describe(
-		'The project of a project skill, or the project of the agent for an agent skill. Absent for an instance skill',
-	);
+	.describe('The project of a project skill. Absent for an instance skill');
 
 /** The surface that wrote the skill. Kept apart from `skill.source`, which stores no MCP value. */
 const skillSource = z

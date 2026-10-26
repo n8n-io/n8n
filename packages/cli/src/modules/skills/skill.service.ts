@@ -124,8 +124,7 @@ export type SkillMoveOptions = {
 /**
  * The rules of skills: which version a skill ref runs, save, edit permission, moves and
  * the delete guard. The agent runtime loads skills by id with no permission check. What
- * depends on agents (who uses a skill, the project of an agent skill) comes from
- * `SkillAgentsProxy`.
+ * depends on agents (who uses a skill) comes from `SkillAgentsProxy`.
  */
 @Service()
 export class SkillService {
@@ -176,7 +175,7 @@ export class SkillService {
 	): Promise<{ count: number; skills: McpSkillContent[] }> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
 		const page = await this.skillRepository.findVisiblePage(
-			{ projectIds: projectIds ?? 'all', agentIds: [] },
+			{ projectIds: projectIds ?? 'all' },
 			{ skip, take },
 		);
 		const rows = await this.skillRepository.findLatestSaved(page.skills.map((skill) => skill.id));
@@ -191,7 +190,7 @@ export class SkillService {
 
 	async readForMcp(user: User, skillId: string): Promise<McpSkillContent | null> {
 		const row = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
-		if (!row || row.skill.agentId !== null || !(await this.canAccess(user, row.skill, 'read'))) {
+		if (!row || !(await this.canAccess(user, row.skill, 'read'))) {
 			return null;
 		}
 		return toMcpSkillContent(row);
@@ -220,7 +219,6 @@ export class SkillService {
 		projectId: string | null,
 	): Promise<boolean> {
 		return (
-			skill.agentId === null &&
 			skill.availableToAssistant &&
 			(skill.projectId === null || skill.projectId === projectId) &&
 			(await this.canAccess(context.user, skill, 'read'))
@@ -301,8 +299,8 @@ export class SkillService {
 
 	/** Creates a skill with its v1. Returns the new id. */
 	/**
-	 * `checkNameTaken` is for a name that a user or the builder chose. A copy of an agent
-	 * skill for a new agent keeps the name of the skill it copies, so it skips the check.
+	 * `checkNameTaken` is for a name that a user or the builder chose. A caller that took a
+	 * name from `freeName` skips the check.
 	 */
 	async create(
 		input: {
@@ -339,13 +337,8 @@ export class SkillService {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
 			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
 			if (!skill) throw new NotFoundError('Skill not found');
-			if (skill.projectId !== checkedTarget.projectId || skill.agentId !== checkedTarget.agentId) {
+			if (skill.projectId !== checkedTarget.projectId) {
 				throw new ConflictError('The skill scope changed. Reload the skill and try again.');
-			}
-			if (available && skill.agentId !== null) {
-				throw new UserError(
-					"The n8n Assistant can't use skills scoped to an agent. Move the skill to a project or the instance first.",
-				);
 			}
 			await this.skillRepository.setAssistantAvailability(skillId, available, txCtx);
 		});
@@ -438,10 +431,7 @@ export class SkillService {
 	async freeName(requested: string, target: SkillTarget, ctx: OperationContext = {}) {
 		const taken = new Set(
 			(
-				await this.skillRepository.findLatestNamesInTarget(
-					{ projectId: target.projectId, agentId: target.agentId },
-					ctx,
-				)
+				await this.skillRepository.findLatestNamesInTarget({ projectId: target.projectId }, ctx)
 			).map(({ name }) => skillNameKey(name)),
 		);
 		const base = requested.trim();
@@ -455,7 +445,7 @@ export class SkillService {
 
 	/**
 	 * Refuses a name that is hard to tell apart from another skill's name in the same
-	 * scope: one agent, one project or the instance, by the same rule as inside one agent.
+	 * scope: one project or the instance, by the same rule as inside one agent.
 	 */
 	private async assertNameFree(
 		name: string,
@@ -465,7 +455,7 @@ export class SkillService {
 	): Promise<void> {
 		const key = skillNameKey(name);
 		const names = await this.skillRepository.findLatestNamesInTarget(
-			{ projectId: target.projectId, agentId: target.agentId },
+			{ projectId: target.projectId },
 			ctx,
 		);
 		if (
@@ -504,7 +494,7 @@ export class SkillService {
 	// ---------------------------------------------------------------- move
 
 	/**
-	 * Moves a skill to a project, one agent or the instance. Refused when an agent that uses
+	 * Moves a skill to a project or the instance. Refused when an agent that uses
 	 * the skill cannot add it in the new scope, so a move never takes a skill away from an
 	 * agent. `keepAgentId` is the agent that asks for the move: it does not block it. The edit
 	 * lock makes a concurrent attach wait, so the check and the move see the same agents.
@@ -523,10 +513,7 @@ export class SkillService {
 			if (checkedSource) {
 				const [locked] = await this.skillRepository.findByIds([skillId], txCtx);
 				if (!locked) throw new NotFoundError('Skill not found');
-				if (
-					locked.projectId !== checkedSource.projectId ||
-					locked.agentId !== checkedSource.agentId
-				) {
+				if (locked.projectId !== checkedSource.projectId) {
 					throw new ConflictError(
 						'The skill was moved somewhere else. Reload to see where it is now.',
 					);
@@ -547,7 +534,7 @@ export class SkillService {
 
 	/**
 	 * Refuses a move that takes the skill away from one of `agentIds`. An agent can add an
-	 * instance skill, a skill of its own project and its own agent skills.
+	 * instance skill and a skill of its own project.
 	 */
 	private async assertAgentsKeepAccess(
 		agentIds: string[],
@@ -555,11 +542,9 @@ export class SkillService {
 		agentProjectIds: string[] | 'all',
 		ctx: OperationContext,
 	): Promise<void> {
-		if (agentIds.length === 0 || (target.projectId === null && target.agentId === null)) return;
+		if (agentIds.length === 0 || target.projectId === null) return;
 		const agents = await this.skillAgents.findAgents(agentIds, ctx);
-		const losing = agentIds.filter((id) =>
-			target.agentId ? id !== target.agentId : agents.get(id)?.projectId !== target.projectId,
-		);
+		const losing = agentIds.filter((id) => agents.get(id)?.projectId !== target.projectId);
 		if (losing.length === 0) return;
 		const named: string[] = [];
 		let hidden = 0;
@@ -583,66 +568,43 @@ export class SkillService {
 	// ---------------------------------------------------------------- permission
 
 	/**
-	 * The project a skill's permissions come from: its own for a project skill, its
-	 * agent's for an agent skill, none for an instance skill. A skill whose agent is gone
-	 * has none either, and only the global scope can reach it.
-	 */
-	async projectOf(
-		skill: Pick<Skill, 'projectId' | 'agentId'>,
-		ctx: OperationContext = {},
-	): Promise<string | null> {
-		if (skill.projectId) return skill.projectId;
-		if (!skill.agentId) return null;
-		const agent = (await this.skillAgents.findAgents([skill.agentId], ctx)).get(skill.agentId);
-		return agent?.projectId ?? null;
-	}
-
-	/**
 	 * Whether the user may do `operation` on the skill, from the skill's own scope:
-	 * `projectSkill:*` on the project of a project or agent skill, and the global
-	 * `skill:*` for an instance skill. Every user may read an instance skill.
+	 * `projectSkill:*` on the project of a project skill, and the global `skill:*` for an
+	 * instance skill. Every user may read an instance skill.
 	 */
 	async canAccess(
 		user: User,
-		skill: Pick<Skill, 'projectId' | 'agentId'>,
+		skill: Pick<Skill, 'projectId'>,
 		operation: 'read' | 'update' | 'delete',
 	): Promise<boolean> {
-		const projectId = await this.projectOf(skill);
+		const { projectId } = skill;
 		if (projectId) {
 			return await userHasScopes(user, [`projectSkill:${operation}`], false, { projectId });
 		}
-		return this.canAccessInstanceSkill(user, skill, operation);
+		return this.canAccessInstanceSkill(user, operation);
 	}
 
-	/**
-	 * `canAccess` for a whole list: one query for the user's projects, not one per skill.
-	 * The caller passes each skill's project from `projectOf`, resolved in bulk.
-	 */
+	/** `canAccess` for a whole list: one query for the user's projects, not one per skill. */
 	async accessCheck(
 		user: User,
 		operation: 'read' | 'update' | 'delete',
-	): Promise<(skill: Pick<Skill, 'agentId'>, projectId: string | null) => boolean> {
+	): Promise<(skill: Pick<Skill, 'projectId'>) => boolean> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, [
 			`projectSkill:${operation}`,
 		]);
 		const allowed = projectIds === null ? null : new Set(projectIds);
-		return (skill, projectId) =>
+		return ({ projectId }) =>
 			projectId
 				? allowed === null || allowed.has(projectId)
-				: this.canAccessInstanceSkill(user, skill, operation);
+				: this.canAccessInstanceSkill(user, operation);
 	}
 
-	private canAccessInstanceSkill(
-		user: User,
-		skill: Pick<Skill, 'agentId'>,
-		operation: 'read' | 'update' | 'delete',
-	): boolean {
-		// An agent skill without a project lost its agent mid-request: only the global scope.
-		if (skill.agentId === null && operation === 'read') return true;
+	private canAccessInstanceSkill(user: User, operation: 'read' | 'update' | 'delete'): boolean {
+		if (operation === 'read') return true;
 		return hasGlobalScope(user, `skill:${operation}`);
 	}
 
-	async canEdit(user: User, skill: Pick<Skill, 'projectId' | 'agentId'>): Promise<boolean> {
+	async canEdit(user: User, skill: Pick<Skill, 'projectId'>): Promise<boolean> {
 		return await this.canAccess(user, skill, 'update');
 	}
 
@@ -657,7 +619,7 @@ export class SkillService {
 			throw new ForbiddenError('You are not allowed to move this skill out of its scope.');
 		}
 		// Pass this to `changeTarget` as `checkedSource`, so the move fails if the scope changed.
-		return { projectId: skill.projectId, agentId: skill.agentId };
+		return { projectId: skill.projectId };
 	}
 
 	async assertCanEdit(user: User, skillIds: string[], ctx: OperationContext = {}): Promise<void> {

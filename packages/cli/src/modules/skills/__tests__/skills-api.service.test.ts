@@ -28,14 +28,10 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 const user = mock<User>({ id: 'user-1' });
 const DATE = new Date('2026-10-01T00:00:00.000Z');
 
-function skill(
-	id: string,
-	target: Partial<Pick<Skill, 'projectId' | 'agentId' | 'createdById'>> = {},
-): Skill {
+function skill(id: string, target: Partial<Pick<Skill, 'projectId' | 'createdById'>> = {}): Skill {
 	return mock<Skill>({
 		id,
 		projectId: target.projectId ?? null,
-		agentId: target.agentId ?? null,
 		source: 'ui',
 		availableToAssistant: false,
 		createdById: target.createdById ?? null,
@@ -127,9 +123,6 @@ describe('SkillsApiService', () => {
 				new Map(visible.filter((s) => ids.includes(s.id)).map((s) => [s.id, row(s, 2)] as const)),
 		);
 		skillAgents.countUsingAgents.mockResolvedValue(new Map());
-		skillAgents.findAgentIdsInProjects.mockImplementation(async (projectIds) =>
-			projectIds.includes('project-1') ? ['agent-1'] : [],
-		);
 		repository.findProjects.mockImplementation(
 			async (ids) => new Map(ids.map((id) => [id, { name: 'Team', type: 'team' as const }])),
 		);
@@ -187,10 +180,10 @@ describe('SkillsApiService', () => {
 			);
 
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
-				{ projectIds: ['project-1'], agentIds: ['agent-1'] },
+				{ projectIds: ['project-1'] },
 				{
 					scope: 'project',
-					project: { id: 'project-1', agentIds: ['agent-1'] },
+					projectId: 'project-1',
 					search: 'rules',
 					skip: 10,
 					take: 5,
@@ -235,7 +228,6 @@ describe('SkillsApiService', () => {
 
 			expect(result).toEqual({ count: 0, data: [] });
 			expect(repository.findVisiblePage).not.toHaveBeenCalled();
-			expect(skillAgents.findAgentIdsInProjects).not.toHaveBeenCalledWith(['project-hidden']);
 		});
 
 		it('filters by any project for a user with global scopes', async () => {
@@ -245,7 +237,7 @@ describe('SkillsApiService', () => {
 
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ project: { id: 'project-2', agentIds: [] } }),
+				expect.objectContaining({ projectId: 'project-2' }),
 			);
 		});
 
@@ -258,7 +250,7 @@ describe('SkillsApiService', () => {
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({
-					usedBy: { agentId: 'agent-1', skillIds: ['skill_a', 'skill_b'] },
+					usedBy: { skillIds: ['skill_a', 'skill_b'] },
 					search: 'voice',
 				}),
 			);
@@ -291,7 +283,7 @@ describe('SkillsApiService', () => {
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({
-					attachableTo: { agentId: 'agent-1', projectId: 'project-1' },
+					attachableTo: { projectId: 'project-1' },
 					search: 'voice',
 				}),
 			);
@@ -304,7 +296,7 @@ describe('SkillsApiService', () => {
 			expect(repository.findVisiblePage).not.toHaveBeenCalled();
 		});
 
-		it.each([{ scope: 'agent' as const }, { projectId: 'project-1' }])(
+		it.each([{ scope: 'project' as const }, { projectId: 'project-1' }])(
 			'refuses attachableTo together with %o',
 			async (filter) => {
 				await expect(
@@ -338,10 +330,9 @@ describe('SkillsApiService', () => {
 			await service.list(user, query());
 
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
-				{ projectIds: 'all', agentIds: 'all' },
+				{ projectIds: 'all' },
 				expect.anything(),
 			);
-			expect(skillAgents.findAgentIdsInProjects).not.toHaveBeenCalled();
 		});
 
 		it('describes each skill', async () => {
@@ -362,8 +353,6 @@ describe('SkillsApiService', () => {
 				projectId: 'project-1',
 				projectName: 'Team',
 				projectType: 'team',
-				agentId: null,
-				agentName: null,
 				source: 'ui',
 				createdBy: null,
 				latestVersion: 2,
@@ -374,27 +363,6 @@ describe('SkillsApiService', () => {
 				createdAt: DATE.toISOString(),
 				updatedAt: DATE.toISOString(),
 			});
-		});
-
-		it('describes an agent skill with its agent and the project of the agent', async () => {
-			visible = [skill('skill_a', { agentId: 'agent-1' })];
-			repository.findProjects.mockResolvedValue(
-				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
-			);
-			const check = vi.fn().mockReturnValue(true);
-			skillService.accessCheck.mockResolvedValue(check);
-
-			const [item] = (await service.list(user, query())).data;
-
-			expect(item).toMatchObject({
-				scope: 'agent',
-				projectId: 'project-1',
-				projectName: 'Team',
-				agentId: 'agent-1',
-				agentName: 'Support bot',
-			});
-			// Permissions come from the agent's project.
-			expect(check).toHaveBeenCalledWith(visible[0], 'project-1');
 		});
 
 		it('checks edit and delete once for the page, not once per skill', async () => {
@@ -449,10 +417,7 @@ describe('SkillsApiService', () => {
 			const result = await service.listCreators(user);
 
 			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['projectSkill:list']);
-			expect(repository.findVisibleCreatorIds).toHaveBeenCalledWith({
-				projectIds: ['project-1'],
-				agentIds: ['agent-1'],
-			});
+			expect(repository.findVisibleCreatorIds).toHaveBeenCalledWith({ projectIds: ['project-1'] });
 			expect(result).toEqual([
 				{ id: 'user-2', email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' },
 			]);
@@ -550,7 +515,7 @@ describe('SkillsApiService', () => {
 
 			expect(skillsTelemetry.created).toHaveBeenCalledWith(
 				user.id,
-				[{ id: 'skill_new', projectId: null, agentId: null }],
+				[{ id: 'skill_new', projectId: null }],
 				'ui',
 				'upload',
 			);
@@ -563,7 +528,7 @@ describe('SkillsApiService', () => {
 
 			expect(skillsTelemetry.created).toHaveBeenCalledWith(
 				user.id,
-				[{ id: 'skill_new', projectId: null, agentId: null }],
+				[{ id: 'skill_new', projectId: null }],
 				'mcp',
 				'ai',
 			);
@@ -576,7 +541,7 @@ describe('SkillsApiService', () => {
 
 			expect(skillsTelemetry.created).toHaveBeenCalledWith(
 				user.id,
-				[{ id: 'skill_new', projectId: null, agentId: null }],
+				[{ id: 'skill_new', projectId: null }],
 				'ui',
 				'manual',
 			);
@@ -588,30 +553,12 @@ describe('SkillsApiService', () => {
 			expect(skillsTelemetry.created).not.toHaveBeenCalled();
 		});
 
-		it('creates an agent skill with projectSkill:create on the project of the agent', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(true);
-
-			const detail = await service.create(user, payload({ scope: 'agent', agentId: 'agent-1' }));
-
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:create'], false, {
-				projectId: 'project-1',
-			});
-			expect(skillService.create).toHaveBeenCalledWith({
-				checkNameTaken: true,
-				target: { projectId: null, agentId: 'agent-1' },
-				skill: body,
-				source: 'ui',
-				createdById: user.id,
-			});
-			expect(detail.id).toBe('skill_new');
-		});
-
 		it('makes the new skill available to the Assistant in the create transaction', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 
 			await service.create(user, payload({ availableToAssistant: true }));
 
-			const target = { projectId: null, agentId: null };
+			const target = { projectId: null };
 			expect(skillService.create).toHaveBeenCalledWith(expect.objectContaining({ target }), TX_CTX);
 			expect(skillService.setAssistantAvailability).toHaveBeenCalledWith(
 				'skill_new',
@@ -650,15 +597,6 @@ describe('SkillsApiService', () => {
 			);
 		});
 
-		it('refuses an agent skill for an agent that does not exist', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(true);
-
-			await expect(
-				service.create(user, payload({ scope: 'agent', agentId: 'agent-gone' })),
-			).rejects.toThrow(NotFoundError);
-			expect(skillService.create).not.toHaveBeenCalled();
-		});
-
 		it('creates a project skill with projectSkill:create, also in a personal project', async () => {
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 
@@ -668,7 +606,7 @@ describe('SkillsApiService', () => {
 				projectId: 'personal-1',
 			});
 			expect(skillService.create).toHaveBeenCalledWith(
-				expect.objectContaining({ target: { projectId: 'personal-1', agentId: null } }),
+				expect.objectContaining({ target: { projectId: 'personal-1' } }),
 			);
 		});
 
@@ -679,18 +617,13 @@ describe('SkillsApiService', () => {
 
 			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'skill:create');
 			expect(skillService.create).toHaveBeenCalledWith(
-				expect.objectContaining({ target: { projectId: null, agentId: null } }),
+				expect.objectContaining({ target: { projectId: null } }),
 			);
 		});
 
 		it.each([
 			['project', {}, UserError],
-			['project', { projectId: 'project-1', agentId: 'agent-1' }, UserError],
-			['agent', {}, UserError],
-			['agent', { agentId: 'agent-1', projectId: 'project-1' }, UserError],
-			['agent', { agentId: 'agent-1' }, ForbiddenError],
 			['instance', { projectId: 'project-1' }, UserError],
-			['instance', { agentId: 'agent-1' }, UserError],
 			['instance', {}, ForbiddenError],
 			['project', { projectId: 'project-1' }, ForbiddenError],
 		] as const)('refuses scope %s with %o', async (scope, extra, errorClass) => {
@@ -797,7 +730,7 @@ describe('SkillsApiService', () => {
 				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
 			);
 			skillService.save.mockResolvedValue(saved);
-			skillService.assertCanMove.mockResolvedValue({ projectId: null, agentId: null });
+			skillService.assertCanMove.mockResolvedValue({ projectId: null });
 
 			await service.update(
 				user,
@@ -807,14 +740,14 @@ describe('SkillsApiService', () => {
 
 			expect(skillService.changeTarget).toHaveBeenCalledWith(
 				'skill_a',
-				{ projectId: 'project-1', agentId: null },
+				{ projectId: 'project-1' },
 				undefined,
 				TX_CTX,
 				// The move is refused under its lock if the skill left the scope checked here.
 				// A refusal names only the agents in projects the user may read.
 				{
 					nameAfterMove: undefined,
-					checkedSource: { projectId: null, agentId: null },
+					checkedSource: { projectId: null },
 					agentProjectIds: ['project-1'],
 				},
 			);
@@ -829,7 +762,7 @@ describe('SkillsApiService', () => {
 			// The place the move wrote, not a read after the commit.
 			expect(skillsTelemetry.updated).toHaveBeenCalledWith(
 				user.id,
-				{ id: 'skill_a', projectId: 'project-1', agentId: null },
+				{ id: 'skill_a', projectId: 'project-1' },
 				'ui',
 				3,
 				true,
@@ -844,14 +777,14 @@ describe('SkillsApiService', () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 			projectScopeService.getProjectIds.mockResolvedValue(null);
 			skillService.save.mockResolvedValue(saved);
-			skillService.assertCanMove.mockResolvedValue({ projectId: 'project-1', agentId: null });
+			skillService.assertCanMove.mockResolvedValue({ projectId: 'project-1' });
 			visible = [skill('skill_a', { projectId: 'project-1' })];
 
 			await service.update(user, 'skill_a', update({ scope: 'instance', baseSkillHash: 'base' }));
 
 			expect(skillService.changeTarget).toHaveBeenCalledWith(
 				'skill_a',
-				{ projectId: null, agentId: null },
+				{ projectId: null },
 				undefined,
 				TX_CTX,
 				expect.objectContaining({ agentProjectIds: 'all' }),

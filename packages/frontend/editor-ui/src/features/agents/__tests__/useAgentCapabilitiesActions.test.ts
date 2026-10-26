@@ -182,7 +182,7 @@ type SkillModalData = {
 	onConfirm: (payload: {
 		id?: string;
 		skill: AgentSkill;
-		availableTo?: 'project' | 'agent' | 'instance';
+		availableTo?: 'project' | 'instance';
 		method?: 'manual' | 'upload';
 	}) => unknown;
 	onAttach?: (skill: SkillListItem) => Promise<void>;
@@ -643,8 +643,6 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			projectId: null,
 			projectName: null,
 			projectType: null,
-			agentId: null,
-			agentName: null,
 			source: 'ui',
 			createdBy: null,
 			latestVersion: 1,
@@ -719,7 +717,6 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 
 	it.each([
 		['project', { scope: 'project', projectId: 'project-1' }],
-		['agent', { scope: 'agent', agentId: 'agent-1' }],
 		['instance', { scope: 'instance' }],
 	])(
 		'asks the server for a default name where "available to" %s puts the skill',
@@ -943,12 +940,12 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 	it('saves the content and the target of an edited skill in one skill save', () => {
 		const { editData, scheduleSkillSave } = openEdit();
 
-		editData.onConfirm({ id: 'tone', skill: supportTone, availableTo: 'agent' });
+		editData.onConfirm({ id: 'tone', skill: supportTone, availableTo: 'instance' });
 
 		expect(scheduleSkillSave).toHaveBeenCalledWith({
 			skillId: 'tone',
 			skill: supportTone,
-			availableTo: 'agent',
+			availableTo: 'instance',
 		});
 	});
 

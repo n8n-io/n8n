@@ -152,8 +152,6 @@ function summary(item: SkillListItem, assistantSkillsEnabled: boolean) {
 		scope: item.scope,
 		projectId: item.projectId,
 		projectName: item.projectName,
-		agentId: item.agentId,
-		agentName: item.agentName,
 		...(assistantSkillsEnabled ? { availableToAssistant: item.availableToAssistant } : {}),
 		latestVersion: item.latestVersion,
 		usedByAgents: item.usedByAgents,

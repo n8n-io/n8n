@@ -100,12 +100,15 @@ describe('ListSkillAgentsQueryDto', () => {
 describe('CreateSkillDto', () => {
 	const skill = { name: 'Brand voice', description: 'How we write', instructions: 'Be brief.' };
 
-	it.each([
-		[{ scope: 'project', projectId: 'p1' }],
-		[{ scope: 'agent', agentId: 'a1' }],
-		[{ scope: 'instance' }],
-	])('accepts %o', (target) => {
-		expect(CreateSkillDto.safeParse({ ...target, skill }).success).toBe(true);
+	it.each([[{ scope: 'project', projectId: 'p1' }], [{ scope: 'instance' }]])(
+		'accepts %o',
+		(target) => {
+			expect(CreateSkillDto.safeParse({ ...target, skill }).success).toBe(true);
+		},
+	);
+
+	it('rejects the agent scope', () => {
+		expect(CreateSkillDto.safeParse({ scope: 'agent', skill }).success).toBe(false);
 	});
 
 	it('rejects allowed tools, which hub skills ignore', () => {

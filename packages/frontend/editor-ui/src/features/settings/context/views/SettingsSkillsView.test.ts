@@ -62,8 +62,6 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		projectId: null,
 		projectName: null,
 		projectType: null,
-		agentId: null,
-		agentName: null,
 		source: 'ui',
 		createdBy: null,
 		latestVersion: 1,
@@ -311,13 +309,13 @@ describe('SettingsSkillsView', () => {
 		const view = renderView();
 		await new Promise(process.nextTick);
 
-		await pickFilter(view, 'skills-filter-scope', 'Agents');
+		await pickFilter(view, 'skills-filter-scope', 'Projects');
 
 		await waitFor(() =>
 			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
 				skip: 0,
 				take: 10,
-				scope: 'agent',
+				scope: 'project',
 				sortBy: 'updatedAt:desc',
 			}),
 		);
@@ -332,11 +330,7 @@ describe('SettingsSkillsView', () => {
 		await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
 		const items = await getDropdownItems(await view.findByTestId('skills-filter-scope'));
 
-		expect([...items].map((item) => item.textContent?.trim())).toEqual([
-			'Global',
-			'Projects',
-			'Agents',
-		]);
+		expect([...items].map((item) => item.textContent?.trim())).toEqual(['Global', 'Projects']);
 	});
 
 	it('combines the agent and creator filters with the search, from the first page', async () => {
@@ -365,7 +359,7 @@ describe('SettingsSkillsView', () => {
 	});
 
 	it.each([
-		['skills-filter-scope', 'Agents'],
+		['skills-filter-scope', 'Projects'],
 		['skills-filter-agent', 'Support bot'],
 		['skills-filter-created-by', 'Ada Lovelace'],
 	])(
@@ -484,13 +478,13 @@ describe('SettingsSkillsView', () => {
 					value: 'project:personal-1',
 					label: 'Personal project',
 					icon: 'user',
-					target: { projectId: 'personal-1', agentId: null },
+					target: { projectId: 'personal-1' },
 				},
 				{
 					value: 'project:team-1',
 					label: 'Marketing',
 					icon: 'layers',
-					target: { projectId: 'team-1', agentId: null },
+					target: { projectId: 'team-1' },
 				},
 			]);
 		});
@@ -506,7 +500,7 @@ describe('SettingsSkillsView', () => {
 				value: 'instance',
 				label: 'Global',
 				icon: 'globe',
-				target: { projectId: null, agentId: null },
+				target: { projectId: null },
 			});
 		});
 
@@ -637,7 +631,6 @@ describe('SettingsSkillsView', () => {
 		it.each([
 			['instance', true, false, false],
 			['project', true, true, true],
-			['agent', true, false, false],
 			['instance', false, true, undefined],
 		] as const)(
 			'shows availability in the table and modal behind the Assistant flag (%s, %s)',
@@ -704,30 +697,16 @@ describe('SettingsSkillsView', () => {
 				pins: [],
 				hiddenAgents: 0,
 			};
-			skillsStore.skills = [skill({ scope: 'agent', agentName: 'FirstClassDarwin' })];
+			skillsStore.skills = [skill()];
 			skillsStore.count = 1;
-			skillsStore.fetchSkill.mockResolvedValue(
-				detail({
-					scope: 'agent',
-					agentId: 'a1',
-					agentName: 'FirstClassDarwin',
-					usedByAgents: 1,
-					usedBy,
-				}),
-			);
+			skillsStore.fetchSkill.mockResolvedValue(detail({ usedByAgents: 1, usedBy }));
 			const { getByText } = renderView();
 			await new Promise(process.nextTick);
 
 			await userEvent.click(getByText('research-search'));
 			await new Promise(process.nextTick);
 
-			// The agent scope is listed first because it is not a choice in Settings.
-			expect(lastModalData().scopeOptions?.[0]).toEqual({
-				value: 'agent',
-				label: 'FirstClassDarwin only',
-				icon: 'bot',
-			});
-			expect(lastModalData().initialScope).toBe('agent');
+			expect(lastModalData().initialScope).toBe('instance');
 			// The modal warns about a scope that drops an agent, so the picker stays open.
 			expect(lastModalData().scopeLockedReason).toBeUndefined();
 			expect(lastModalData().usedBy).toEqual(usedBy);

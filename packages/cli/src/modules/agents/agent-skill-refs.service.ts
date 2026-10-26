@@ -200,15 +200,12 @@ export class AgentSkillRefsService {
 	}
 
 	/**
-	 * Create with a config (duplicate, import, eval seeding). A ref to a hub
-	 * skill stays a ref. A ref to an agent skill of another agent in the same
-	 * project gets a copy. A ref with a body but no hub skill gets a new agent
-	 * skill. Both new skills belong to this agent only, so deleting the agent
-	 * deletes them. A new skill gets a new id, and the ref points to it. A ref
-	 * with neither is dropped, and so is a ref with only a body when no user
-	 * creates the skill. The new skills need no skill scope: they are part of the
-	 * agent, and the caller already checked the agent permission. Returns the refs
-	 * that the draft now has.
+	 * Create with a config (duplicate, import, eval seeding). A ref to a hub skill
+	 * stays a ref. A ref with a body but no hub skill gets a new skill in the agent's
+	 * project, with a free name there. The ref points to the new id. A ref with
+	 * neither is dropped, and so is a ref with only a body when no user creates the
+	 * skill. The new skills need no skill scope: the caller already checked the agent
+	 * permission. Returns the refs that the draft now has.
 	 */
 	async createDraftRefs(
 		agent: Pick<Agent, 'id' | 'projectId' | 'schema'>,
@@ -218,52 +215,27 @@ export class AgentSkillRefsService {
 		ctx: OperationContext,
 	): Promise<AgentJsonSkillConfig[]> {
 		if (!refs?.length) return [];
-		const found = new Map(
+		const found = new Set(
 			(
 				await this.skillRepository.findByIds(
 					refs.map((ref) => ref.id),
 					ctx,
 				)
-			).map((skill) => [skill.id, skill]),
+			).map((skill) => skill.id),
 		);
-		// Copy only the agent skills of agents in this project (a duplicate). Any other
-		// agent skill stays a plain ref, so `checkRefs` refuses it without reading its body.
-		const otherAgents = await this.agentSkillRepository.findAgents(
-			[...found.values()].flatMap((skill) =>
-				skill.agentId && skill.agentId !== agent.id ? [skill.agentId] : [],
-			),
-			ctx,
-		);
-		const otherAgentSkillIds = refs.flatMap((ref) => {
-			const skill = found.get(ref.id);
-			if (!skill?.agentId || skill.agentId === agent.id) return [];
-			return otherAgents.get(skill.agentId)?.projectId === agent.projectId ? [ref.id] : [];
-		});
-		const otherAgentBodies =
-			otherAgentSkillIds.length > 0
-				? await this.skillService.resolveForAgentDraft(
-						otherAgentSkillIds.map((id) => ({ id })),
-						ctx,
-					)
-				: {};
+		const target = { projectId: agent.projectId };
 		const next: AgentJsonSkillConfig[] = [];
 		for (const ref of refs) {
-			const skill = found.get(ref.id);
-			const copiesAgentSkill = otherAgentSkillIds.includes(ref.id);
-			if (skill && !copiesAgentSkill) {
+			if (found.has(ref.id)) {
 				next.push({ type: 'skill', id: ref.id });
 				continue;
 			}
-			const source = copiesAgentSkill ? otherAgentBodies : bodies;
-			const body = Object.hasOwn(source, ref.id) ? source[ref.id] : undefined;
-			// The new skill belongs to this agent only, so creating the agent is enough.
+			const body = Object.hasOwn(bodies, ref.id) ? bodies[ref.id] : undefined;
 			if (!body || creator === null) continue;
 			const id = await this.skillService.create(
 				{
-					// An inline body or a copy becomes a skill of this agent only, as the data
-					// migration does. It takes its project from the agent, and goes with the agent.
-					target: { projectId: null, agentId: agent.id },
-					skill: body,
+					target,
+					skill: { ...body, name: await this.skillService.freeName(body.name, target, ctx) },
 					source: 'agent',
 					createdById: creator.id,
 				},
@@ -337,7 +309,6 @@ export class AgentSkillRefsService {
 	): Promise<AgentSkillAvailability | undefined> {
 		const [skill] = await this.skillRepository.findByIds([skillId], ctx);
 		if (!skill) return undefined;
-		if (skill.agentId) return 'agent';
 		return skill.projectId ? 'project' : 'instance';
 	}
 
@@ -370,11 +341,8 @@ export class AgentSkillRefsService {
 	}
 }
 
-function targetFor(agent: Pick<Agent, 'id' | 'projectId'>, availableTo: AgentSkillAvailability) {
-	return {
-		projectId: availableTo === 'project' ? agent.projectId : null,
-		agentId: availableTo === 'agent' ? agent.id : null,
-	};
+function targetFor(agent: Pick<Agent, 'projectId'>, availableTo: AgentSkillAvailability) {
+	return { projectId: availableTo === 'project' ? agent.projectId : null };
 }
 
 function toServiceRefs(refs: AgentJsonSkillConfig[]): SkillRef[] {

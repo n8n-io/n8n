@@ -40,8 +40,8 @@ async function expectError(
 	expect(error).toHaveProperty('message', message);
 }
 
-function skillRow(id: string, target: Partial<Pick<Skill, 'projectId' | 'agentId'>> = {}): Skill {
-	return mock<Skill>({ id, projectId: target.projectId ?? null, agentId: target.agentId ?? null });
+function skillRow(id: string, target: Partial<Pick<Skill, 'projectId'>> = {}): Skill {
+	return mock<Skill>({ id, projectId: target.projectId ?? null });
 }
 
 function versionRow(
@@ -143,8 +143,6 @@ describe('AgentSkillUsageService', () => {
 			['an instance skill', {}, true],
 			['a skill of the agent project', { projectId: PROJECT }, true],
 			['a skill of another project', { projectId: 'project-2' }, false],
-			['a skill of this agent', { agentId: 'agent-1' }, true],
-			['a skill of another agent', { agentId: 'agent-2' }, false],
 		])('is %s attachable: %s', (_label, target, expected) => {
 			expect(service.isAttachable(skillRow('skill_a', target), agent)).toBe(expected);
 		});
@@ -235,16 +233,13 @@ describe('AgentSkillUsageService', () => {
 			expect(refs).toEqual([{ id: 'skill_old' }]);
 		});
 
-		it.each([
-			['a skill of another agent', { agentId: 'agent-2' }],
-			['a skill of another project', { projectId: 'project-2' }],
-		])('rejects a new ref to %s', async (_label, target) => {
-			givenSkills([{ skill: skillRow('skill_new', target), name: 'Tone' }]);
+		it('rejects a new ref to a skill of another project', async () => {
+			givenSkills([{ skill: skillRow('skill_new', { projectId: 'project-2' }), name: 'Tone' }]);
 
 			await expectError(
 				service.checkRefs(agent, [{ id: 'skill_new' }]),
 				UserError,
-				'Skill "Tone" (skill_new) is not available to this agent. An agent can use the skills of its own project, its own skills and instance skills.',
+				'Skill "Tone" (skill_new) is not available to this agent. An agent can use the skills of its own project and instance skills.',
 			);
 		});
 

@@ -169,11 +169,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 							{{ item.name }}
 						</N8nText>
 						<N8nTooltip
-							v-if="
-								props.showAssistantAvailability &&
-								item.scope !== 'agent' &&
-								item.availableToAssistant
-							"
+							v-if="props.showAssistantAvailability && item.availableToAssistant"
 							:content="i18n.baseText('settings.context.skills.assistant.label')"
 						>
 							<N8nBadge

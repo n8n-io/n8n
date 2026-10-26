@@ -416,10 +416,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	function newNameTarget(
 		availableTo: string,
 		targetProjectId: string,
-		targetAgentId: string,
-	): Pick<SkillNewNameQueryDto, 'scope' | 'projectId' | 'agentId'> {
+	): Pick<SkillNewNameQueryDto, 'scope' | 'projectId'> {
 		if (availableTo === 'instance') return { scope: 'instance' };
-		if (availableTo === 'agent') return { scope: 'agent', agentId: targetAgentId };
 		return { scope: 'project', projectId: targetProjectId };
 	}
 
@@ -503,7 +501,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					? {
 							getDefaultName: async (availableTo: string) =>
 								await getNewSkillName(rootStore.restApiContext, {
-									...newNameTarget(availableTo, targetProjectId, targetAgentId),
+									...newNameTarget(availableTo, targetProjectId),
 									name: locale.baseText('agents.builder.skills.defaultName'),
 								}),
 						}

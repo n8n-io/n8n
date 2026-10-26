@@ -419,8 +419,6 @@ export class AgentSkillsService {
 		projectId: string,
 		availableTo: AgentSkillAvailability,
 	): Promise<void> {
-		// A skill of one agent is part of that agent: the agent permission is enough.
-		if (availableTo === 'agent') return;
 		if (availableTo === 'instance') {
 			if (!hasGlobalScope(user, 'skill:create')) {
 				throw new ForbiddenError('You are not allowed to create skills for the whole instance.');

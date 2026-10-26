@@ -107,7 +107,6 @@ erDiagram
   datetime_3_ updatedAt
 }
 "skill" {
-  varchar_36_ agentId FK
   boolean availableToAssistant
   boolean availableToMCP
   datetime_3_ createdAt

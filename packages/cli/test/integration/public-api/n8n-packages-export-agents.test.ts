@@ -146,7 +146,7 @@ it('downloads an Agent with its skills, tools, tasks, and dependencies', async (
 	await skillRepository.createSkill(
 		{
 			id: skillId,
-			target: { projectId: project.id, agentId: null },
+			target: { projectId: project.id },
 			source: 'ui',
 			createdById: null,
 		},

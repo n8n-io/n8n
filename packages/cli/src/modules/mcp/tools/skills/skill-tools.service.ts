@@ -43,9 +43,9 @@ const skillIdInput = {
 } satisfies z.ZodRawShape;
 
 const createSkillInput = {
-	scope: z
-		.enum(['project', 'instance'])
-		.describe('project: one project can use the skill. instance: every project can use it'),
+	scope: skillScopeSchema.describe(
+		'project: one project can use the skill. instance: every project can use it',
+	),
 	projectId: z.string().min(1).optional().describe('Required when scope is project'),
 	skill: CreateSkillDto.schema.shape.skill,
 	availableToAssistant: CreateSkillDto.schema.shape.availableToAssistant.describe(
@@ -79,8 +79,6 @@ function summary(item: SkillListItem, assistantSkillsEnabled: boolean) {
 		scope: item.scope,
 		projectId: item.projectId,
 		projectName: item.projectName,
-		agentId: item.agentId,
-		agentName: item.agentName,
 		...(assistantSkillsEnabled ? { availableToAssistant: item.availableToAssistant } : {}),
 		latestVersion: item.latestVersion,
 		usedByAgents: item.usedByAgents,

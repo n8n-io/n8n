@@ -30,20 +30,11 @@ export function useSkillScopeDisplay() {
 	}
 
 	function scopeDisplay(
-		skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType' | 'agentName'>,
+		skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType'>,
 	): SkillScopeDisplay {
 		switch (skill.scope) {
 			case 'instance':
 				return { icon: 'globe', label: i18n.baseText('settings.context.skills.scope.instance') };
-			case 'agent':
-				return {
-					icon: 'bot',
-					label: skill.agentName
-						? i18n.baseText('settings.context.skills.scope.agent', {
-								interpolate: { name: skill.agentName },
-							})
-						: i18n.baseText('settings.context.skills.scope.agentFallback'),
-				};
 			case 'project':
 				if (!skill.projectId) {
 					return { icon: 'layers', label: i18n.baseText('settings.context.skills.scope.project') };

@@ -68,12 +68,8 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 
 	// ---------------------------------------------------------------- attach
 
-	/** An agent can attach instance skills, the skills of its own project and its own agent skills. */
-	isAttachable(
-		skill: Pick<Skill, 'projectId' | 'agentId'>,
-		agent: { id: string; projectId: string | null },
-	): boolean {
-		if (skill.agentId !== null) return skill.agentId === agent.id;
+	/** An agent can attach instance skills and the skills of its own project. */
+	isAttachable(skill: Pick<Skill, 'projectId'>, agent: { projectId: string | null }): boolean {
 		return skill.projectId === null || skill.projectId === agent.projectId;
 	}
 
@@ -121,7 +117,7 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 			const skill = found.get(id);
 			if (skill && !this.isAttachable(skill, agent)) {
 				throw new UserError(
-					`Skill "${nameOf({ id }) ?? id}" (${id}) is not available to this agent. An agent can use the skills of its own project, its own skills and instance skills.`,
+					`Skill "${nameOf({ id }) ?? id}" (${id}) is not available to this agent. An agent can use the skills of its own project and instance skills.`,
 				);
 			}
 		}
@@ -142,10 +138,6 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 
 	async findAgents(agentIds: string[], ctx: OperationContext) {
 		return await this.agentSkillRepository.findAgents(agentIds, ctx);
-	}
-
-	async findAgentIdsInProjects(projectIds: string[], ctx: OperationContext) {
-		return await this.agentSkillRepository.findAgentIdsInProjects(projectIds, ctx);
 	}
 
 	async findUsage(

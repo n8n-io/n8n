@@ -2,7 +2,7 @@ import type { SkillAgentOption, SkillUsage } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-/** An agent as the skills module sees it: an agent skill takes its project from its agent. */
+/** An agent as the skills module sees it. */
 export type SkillAgent = { name: string; projectId: string };
 
 /**
@@ -12,9 +12,6 @@ export type SkillAgent = { name: string; projectId: string };
 export interface SkillAgentsProvider {
 	/** Name and project of each agent, keyed by agent id. An agent without a project is absent. */
 	findAgents(agentIds: string[], ctx: OperationContext): Promise<Map<string, SkillAgent>>;
-
-	/** Ids of the agents in these projects. */
-	findAgentIdsInProjects(projectIds: string[], ctx: OperationContext): Promise<string[]>;
 
 	/** "Used by": the agents that use the skill. Agents outside `projectIds` are only counted. */
 	findUsage(
@@ -62,8 +59,7 @@ export interface SkillAgentsProvider {
 
 /**
  * Lets the skills module ask about agents without importing the agents module. Until a
- * provider is registered (the agents module is off), no agent uses a skill and an agent
- * skill has no project, so only the global scope can reach it.
+ * provider is registered (the agents module is off), no agent uses a skill.
  */
 @Service()
 export class SkillAgentsProxy implements SkillAgentsProvider {
@@ -81,11 +77,6 @@ export class SkillAgentsProxy implements SkillAgentsProvider {
 	async findAgents(agentIds: string[], ctx: OperationContext = {}) {
 		if (!this.provider || agentIds.length === 0) return new Map<string, SkillAgent>();
 		return await this.provider.findAgents(agentIds, ctx);
-	}
-
-	async findAgentIdsInProjects(projectIds: string[], ctx: OperationContext = {}) {
-		if (!this.provider || projectIds.length === 0) return [];
-		return await this.provider.findAgentIdsInProjects(projectIds, ctx);
 	}
 
 	async findUsage(

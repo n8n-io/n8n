@@ -167,7 +167,7 @@ describe('AgentRepository', () => {
 			const skillRefs = Container.get(AgentSkillRefsService);
 			const skillId = uuid();
 			await skillRepo.createSkill(
-				{ id: skillId, target: { projectId, agentId: null }, source: 'ui', createdById: null },
+				{ id: skillId, target: { projectId }, source: 'ui', createdById: null },
 				{
 					name: 'Writing',
 					description: 'Write notes',
@@ -332,7 +332,7 @@ describe('AgentRepository', () => {
 			await Container.get(SkillRepository).createSkill(
 				{
 					id: 'writing',
-					target: { projectId, agentId: null },
+					target: { projectId },
 					source: 'ui',
 					createdById: null,
 				},

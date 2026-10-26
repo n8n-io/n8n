@@ -25,7 +25,7 @@ const agent = { id: 'agent-1', projectId: 'project-1', schema: baseConfig } as u
 
 function row(skillId: string, versionId: string, name: string): ResolvedSkillRow {
 	return {
-		skill: mock<Skill>({ id: skillId, agentId: null }),
+		skill: mock<Skill>({ id: skillId }),
 		version: mock<SkillVersion>({
 			id: versionId,
 			skillId,
@@ -314,11 +314,12 @@ describe('AgentSkillRefsService', () => {
 		beforeEach(() => {
 			agentSkillUsage.checkRefs.mockImplementation(async (_agent, refs) => refs);
 			skillService.create.mockResolvedValue('skill_created');
+			skillService.freeName.mockImplementation(async (name) => name);
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 		});
 
-		it('keeps refs to hub skills and creates agent skills for refs with only a body', async () => {
-			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'shared', agentId: null })]);
+		it('keeps refs to hub skills and creates project skills for refs with only a body', async () => {
+			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'shared' })]);
 
 			const refs = await service.createDraftRefs(
 				agent,
@@ -335,7 +336,7 @@ describe('AgentSkillRefsService', () => {
 			expect(skillService.create).toHaveBeenCalledTimes(1);
 			expect(skillService.create).toHaveBeenCalledWith(
 				{
-					target: { projectId: null, agentId: 'agent-1' },
+					target: { projectId: 'project-1' },
 					skill: body,
 					source: 'agent',
 					createdById: 'user-1',
@@ -354,7 +355,7 @@ describe('AgentSkillRefsService', () => {
 			);
 		});
 
-		it('creates an agent skill without a project skill scope', async () => {
+		it('creates a project skill without a project skill scope', async () => {
 			skillRepository.findByIds.mockResolvedValue([]);
 			vi.mocked(userHasScopes).mockResolvedValue(false);
 
@@ -367,12 +368,12 @@ describe('AgentSkillRefsService', () => {
 					ctx,
 				),
 			).resolves.toEqual([{ type: 'skill', id: 'skill_created' }]);
-			// The skill is part of the agent, so the agent permission of the caller is enough.
+			// The caller already checked the agent permission, which is enough.
 			expect(userHasScopes).not.toHaveBeenCalled();
 		});
 
 		it('needs no skill permission for refs to hub skills', async () => {
-			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'shared', agentId: null })]);
+			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'shared' })]);
 			vi.mocked(userHasScopes).mockResolvedValue(false);
 
 			await expect(
@@ -381,51 +382,21 @@ describe('AgentSkillRefsService', () => {
 			expect(userHasScopes).not.toHaveBeenCalled();
 		});
 
-		it('copies a skill of another agent only for the new agent', async () => {
-			skillRepository.findByIds.mockResolvedValue([
-				mock<Skill>({ id: 'private', agentId: 'agent-source' }),
-			]);
-			agentSkillRepository.findAgents.mockResolvedValue(
-				new Map([['agent-source', { name: 'Source', projectId: 'project-1' }]]),
-			);
-			skillService.resolveForAgentDraft.mockResolvedValue({ private: body });
+		it('gives a new skill a free name in the project', async () => {
+			skillRepository.findByIds.mockResolvedValue([]);
+			skillService.freeName.mockResolvedValue('New 2');
 
-			const refs = await service.createDraftRefs(
+			await service.createDraftRefs(
 				agent,
-				[{ type: 'skill', id: 'private' }],
-				{},
+				[{ type: 'skill', id: 'seed_skill' }],
+				{ seed_skill: body },
 				user,
 				ctx,
 			);
 
+			expect(skillService.freeName).toHaveBeenCalledWith('New', { projectId: 'project-1' }, ctx);
 			expect(skillService.create).toHaveBeenCalledWith(
-				{
-					target: { projectId: null, agentId: 'agent-1' },
-					skill: body,
-					source: 'agent',
-					createdById: 'user-1',
-				},
-				ctx,
-			);
-			expect(refs).toEqual([{ type: 'skill', id: 'skill_created' }]);
-		});
-
-		it('does not read or copy an agent skill of another project', async () => {
-			skillRepository.findByIds.mockResolvedValue([
-				mock<Skill>({ id: 'private', agentId: 'agent-elsewhere' }),
-			]);
-			agentSkillRepository.findAgents.mockResolvedValue(
-				new Map([['agent-elsewhere', { name: 'Elsewhere', projectId: 'project-2' }]]),
-			);
-
-			await service.createDraftRefs(agent, [{ type: 'skill', id: 'private' }], {}, user, ctx);
-
-			expect(skillService.resolveForAgentDraft).not.toHaveBeenCalled();
-			expect(skillService.create).not.toHaveBeenCalled();
-			// The ref stays a plain ref, so the attach check refuses it.
-			expect(agentSkillUsage.checkRefs).toHaveBeenCalledWith(
-				{ id: 'agent-1', projectId: 'project-1' },
-				[{ id: 'private' }],
+				expect.objectContaining({ skill: { ...body, name: 'New 2' } }),
 				ctx,
 			);
 		});
@@ -448,9 +419,8 @@ describe('AgentSkillRefsService', () => {
 
 	describe('createSkills', () => {
 		it.each([
-			['project', { projectId: 'project-1', agentId: null }],
-			['agent', { projectId: null, agentId: 'agent-1' }],
-			['instance', { projectId: null, agentId: null }],
+			['project', { projectId: 'project-1' }],
+			['instance', { projectId: null }],
 		] as const)('creates a hub skill available to %s', async (availableTo, target) => {
 			const body = { name: 'New', description: 'New description', instructions: 'Do it.' };
 			skillService.create.mockResolvedValue('skill_created');
@@ -479,11 +449,11 @@ describe('AgentSkillRefsService', () => {
 
 	describe('setAvailability', () => {
 		it('moves the skill to the target of the choice, keeping this agent', async () => {
-			await service.setAvailability(agent, 'skill_a', 'agent', ctx);
+			await service.setAvailability(agent, 'skill_a', 'instance', ctx);
 
 			expect(skillService.changeTarget).toHaveBeenCalledWith(
 				'skill_a',
-				{ projectId: null, agentId: 'agent-1' },
+				{ projectId: null },
 				'agent-1',
 				ctx,
 				{},
@@ -497,7 +467,7 @@ describe('AgentSkillRefsService', () => {
 
 			expect(skillService.changeTarget).toHaveBeenCalledWith(
 				'skill_a',
-				{ projectId: agent.projectId, agentId: null },
+				{ projectId: agent.projectId },
 				'agent-1',
 				ctx,
 				{ nameAfterMove: 'Condense' },
