@@ -13,14 +13,28 @@ const plugin = {
 	rules: rules as ESLint.Plugin['rules'],
 } satisfies ESLint.Plugin;
 
+const plugins = {
+	'@n8n/design-system': plugin,
+};
+
 const configs = {
 	recommended: {
 		files: ['**/*.vue'],
-		plugins: {
-			'@n8n/design-system': plugin,
-		},
+		plugins,
 		rules: {
+			'@n8n/design-system/no-direct-wrapped-component-imports': 'error',
 			'@n8n/design-system/require-teleported-tooltip-in-dropdown': 'error',
+		},
+	},
+	/**
+	 * Script files. The import ban does not need the Vue template parser.
+	 * Vue files get the same ban from `recommended`.
+	 */
+	componentImports: {
+		files: ['**/*.{ts,tsx}'],
+		plugins,
+		rules: {
+			'@n8n/design-system/no-direct-wrapped-component-imports': 'error',
 		},
 	},
 } satisfies Record<string, Linter.Config>;

@@ -13,31 +13,12 @@ describe('localRulesPlugin recommended config', () => {
 });
 
 describe('frontendConfig', () => {
-	it('enables the design-system import bans as errors', () => {
-		const rules = frontendConfig.find(
-			(config) => config.rules?.['n8n-local-rules/no-reka-ui-pagination'] !== undefined,
-		)?.rules;
+	it('enables the design-system wrapped-component import ban for Vue and TypeScript files', () => {
+		const ruleName = '@n8n/design-system/no-direct-wrapped-component-imports';
+		const enabledFiles = frontendConfig
+			.filter((config) => config.rules?.[ruleName] === 'error')
+			.flatMap((config) => config.files ?? []);
 
-		for (const ruleName of [
-			'n8n-local-rules/no-element-plus-menu',
-			'n8n-local-rules/no-reka-ui-checkbox',
-			'n8n-local-rules/no-reka-ui-combobox',
-			'n8n-local-rules/no-reka-ui-date-range-picker',
-			'n8n-local-rules/no-reka-ui-dialog',
-			'n8n-local-rules/no-reka-ui-editable',
-			'n8n-local-rules/no-reka-ui-number-field',
-			'n8n-local-rules/no-reka-ui-pagination',
-			'n8n-local-rules/no-reka-ui-popover',
-			'n8n-local-rules/no-reka-ui-radio-group',
-			'n8n-local-rules/no-reka-ui-scroll-area',
-			'n8n-local-rules/no-reka-ui-select',
-			'n8n-local-rules/no-reka-ui-switch',
-			'n8n-local-rules/no-reka-ui-tags-input',
-			'n8n-local-rules/no-reka-ui-toggle',
-			'n8n-local-rules/no-reka-ui-tooltip',
-			'n8n-local-rules/no-reka-ui-tree',
-		]) {
-			expect(rules?.[ruleName]).toBe('error');
-		}
+		expect(enabledFiles).toEqual(expect.arrayContaining(['**/*.vue', '**/*.{ts,tsx}']));
 	});
 });
