@@ -21,7 +21,7 @@ import {
 	useOpenArtifactTabs,
 	type ThreadTabsStorage,
 } from './composables/useOpenArtifactTabs';
-import type { ThreadRuntime } from './instanceAi.store';
+import type { ArtifactThread } from './artifactThread';
 
 export interface ArtifactTab {
 	id: string;
@@ -36,7 +36,7 @@ export interface ArtifactTab {
 }
 
 interface UseCanvasPreviewOptions {
-	thread: ThreadRuntime;
+	thread: ArtifactThread;
 	threadId: () => string;
 	initialAgentId?: () => string | undefined;
 	/** Saves the open tabs. Without it, the tabs reset when the thread loads again. */
