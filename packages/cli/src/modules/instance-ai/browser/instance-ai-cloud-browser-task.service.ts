@@ -36,10 +36,17 @@ import {
 	AUTO_FOLLOW_UP_MESSAGE,
 	CLOUD_BROWSER_TASK_COMPLETED_CLOSE_TAG,
 	CLOUD_BROWSER_TASK_COMPLETED_OPEN_TAG,
+	sanitisePromptText,
 } from '../internal-messages';
 
 /** Same role as the cloud browser agent's. It names the task's events and its untrusted result. */
 const CLOUD_BROWSER_AGENT_ROLE = 'cloud-browser';
+
+/**
+ * Longest task summary the orchestrator gets. The agent writes a few sentences, so this only cuts
+ * a report that repeats too much page content.
+ */
+const TASK_SUMMARY_MAX_LENGTH = 4000;
 
 export interface InstanceAiCloudBrowserTaskServiceOptions {
 	logger: Logger;
@@ -207,8 +214,15 @@ export class InstanceAiCloudBrowserTaskService {
 						},
 					});
 				},
+				// The task manager does not wait for this callback, so a failed delivery is logged here.
 				onSettled: async () => {
-					await this.deliverPendingResults(user, threadId);
+					await this.deliverPendingResults(user, threadId).catch((error: unknown) => {
+						this.options.logger.error('Failed to deliver the cloud browser task results', {
+							threadId,
+							taskId,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					});
 				},
 			});
 		} catch (error) {
@@ -480,15 +494,17 @@ export class InstanceAiCloudBrowserTaskService {
  * so it is wrapped as untrusted data.
  */
 function buildTasksCompletedMessage(tasks: CloudBrowserTaskRecord[]): string {
-	const entries = tasks.flatMap((task) => {
-		// Quote the title, and drop tag characters so it cannot close the surrounding tag.
-		const title = JSON.stringify(task.title.replace(/[<>]/g, ''));
-		return [
-			`<task taskId="${task.taskId}" title=${title} outcome="${task.outcome ?? 'failed'}">`,
-			wrapUntrustedData(task.summary ?? '', CLOUD_BROWSER_AGENT_ROLE),
-			'</task>',
-		];
-	});
+	// The title and the summary come from the model and the pages, so they are cleaned like every
+	// value in a block: they cannot end their task or the block.
+	const entries = tasks.flatMap((task) => [
+		`<task taskId="${task.taskId}" outcome="${task.outcome ?? 'failed'}">`,
+		`Title: ${sanitisePromptText(task.title)}`,
+		wrapUntrustedData(
+			sanitisePromptText(task.summary ?? '', TASK_SUMMARY_MAX_LENGTH),
+			CLOUD_BROWSER_AGENT_ROLE,
+		),
+		'</task>',
+	]);
 	return [
 		CLOUD_BROWSER_TASK_COMPLETED_OPEN_TAG,
 		'Cloud browser tasks that ended. This is an automated report, not a message from the user. ' +

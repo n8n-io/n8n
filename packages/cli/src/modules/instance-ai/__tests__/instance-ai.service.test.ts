@@ -785,6 +785,9 @@ function stubInitialRunSurface(
 		createAgentFromEnvironment: vi.fn(async () => ({})),
 		buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
 		cloudBrowserTaskService: stubCloudBrowserTaskService(),
+		// Off by default, so the end of a run never reaches the cloud browser.
+		settingsService: { isCloudBrowserEnabled: () => false },
+		cloudBrowserService: { isAvailable: async () => false },
 		domainAccessTrackersByThread: new Map(),
 	});
 	vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
@@ -5624,6 +5627,44 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 				'run-1',
 				service.instanceAiErrorReporter.beginRun.mock.results[0].value,
 			);
+		},
+	);
+
+	it.each([
+		{ stopped: false, delivered: true },
+		{ stopped: true, delivered: false },
+	])(
+		'delivers cloud browser task results when a chat run ends, unless it was stopped (%j)',
+		async ({ stopped, delivered }) => {
+			const service = createTerminalGuardOrderService();
+			stubInitialRunSurface(service);
+			service.runState.hasSuspendedRun = vi.fn(() => false);
+			service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+			service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+			service.finalizeRun = vi.fn(async () => {});
+			Object.assign(service, {
+				settingsService: { isCloudBrowserEnabled: () => true },
+				cloudBrowserService: { isAvailable: async () => true },
+			});
+			const abortController = new AbortController();
+			if (stopped) abortController.abort();
+			vi.mocked(streamAgentRun).mockResolvedValueOnce({
+				status: stopped ? 'cancelled' : 'completed',
+				agentRunId: 'agent-run-1',
+				text: Promise.resolve('done'),
+				workSummary: emptyWorkSummary(),
+			});
+
+			await service.executeRun(fakeUser, 'thread-a', 'run-1', 'Hello', abortController);
+
+			if (delivered) {
+				expect(service.cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
+					fakeUser,
+					'thread-a',
+				);
+			} else {
+				expect(service.cloudBrowserTaskService.deliverPendingResults).not.toHaveBeenCalled();
+			}
 		},
 	);
 
