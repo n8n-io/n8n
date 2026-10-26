@@ -46,6 +46,8 @@ const MODEL_ENV_KEYS = [
 	'N8N_INSTANCE_AI_EVAL_MODEL',
 	'N8N_INSTANCE_AI_MODEL_API_KEY',
 	'N8N_INSTANCE_AI_MODEL_URL',
+	'N8N_INSTANCE_AI_EVAL_MODEL_URL',
+	'N8N_INSTANCE_AI_EVAL_MODEL_API_KEY',
 	'EVAL_MODAL_LLM_HEADERS',
 	'N8N_AI_ANTHROPIC_KEY',
 	'ANTHROPIC_API_KEY',
@@ -93,7 +95,7 @@ describe('eval agent model config', () => {
 
 		const config = resolveEvalModelConfig();
 
-		expect(config.modelId).toBe('anthropic/claude-sonnet-4-6');
+		expect(config.modelId).toBe('anthropic/claude-sonnet-5-5');
 		expect(config.apiKey).toBe('legacy-anthropic-key');
 	});
 
@@ -158,7 +160,7 @@ describe('eval agent model config', () => {
 		});
 
 		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith({
-			id: 'anthropic/claude-sonnet-4-6',
+			id: 'anthropic/claude-sonnet-5-5',
 			apiKey: 'env-key',
 			url: undefined,
 		});
@@ -236,6 +238,58 @@ describe('eval agent model config', () => {
 			url: undefined,
 			headers: undefined,
 		});
+	});
+
+	it('routes a dedicated eval model to its own URL and key, never the builder key', () => {
+		process.env.N8N_INSTANCE_AI_MODEL = 'anthropic/claude-sonnet-4-6';
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY = 'builder-key';
+		process.env.ANTHROPIC_API_KEY = 'anthropic-key';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'custom/deepseek/deepseek-v4.1-flash';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL = 'https://router.example.com/v1';
+
+		expect(resolveEvalModelConfig()).toEqual({
+			modelId: 'custom/deepseek/deepseek-v4.1-flash',
+			provider: 'custom',
+			providerModelId: 'deepseek/deepseek-v4.1-flash',
+			apiKey: '',
+			url: 'https://router.example.com/v1',
+			headers: undefined,
+		});
+
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_API_KEY = 'router-key';
+		expect(resolveEvalModelConfig().apiKey).toBe('router-key');
+	});
+
+	it('uses the eval model URL and key when no builder model is set', () => {
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'custom/deepseek/deepseek-v4.1-flash';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL = 'https://router.example.com/v1';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_API_KEY = 'router-key';
+
+		expect(resolveEvalModelConfig()).toMatchObject({
+			apiKey: 'router-key',
+			url: 'https://router.example.com/v1',
+		});
+	});
+
+	it('keeps judges and fixed helper ids off the eval model URL', () => {
+		process.env.N8N_INSTANCE_AI_MODEL = 'anthropic/claude-sonnet-4-6';
+		process.env.ANTHROPIC_API_KEY = 'anthropic-key';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'custom/deepseek/deepseek-v4.1-flash';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL = 'https://router.example.com/v1';
+
+		expect(resolveEvalModelConfig('anthropic/claude-haiku-4-5-20251001')).toMatchObject({
+			apiKey: 'anthropic-key',
+			url: undefined,
+		});
+	});
+
+	it('requires the eval key for a provider-native model on the eval model URL', () => {
+		process.env.N8N_INSTANCE_AI_MODEL = 'anthropic/claude-sonnet-4-6';
+		process.env.ANTHROPIC_API_KEY = 'anthropic-key';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'openai/gpt-5.6-sol';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL = 'https://gateway.example.com/v1';
+
+		expect(() => resolveEvalModelConfig()).toThrow(/N8N_INSTANCE_AI_EVAL_MODEL_API_KEY/);
 	});
 
 	it('prefers Anthropic keys over a non-Anthropic builder MODEL_API_KEY for the eval model', () => {
@@ -354,7 +408,7 @@ describe('eval agent judge and effort settings', () => {
 		expect(modelId()).toBe('anthropic/claude-sonnet-5');
 
 		createEvalAgent('proxy', { instructions: 'x' });
-		expect(modelId()).toBe('anthropic/claude-sonnet-4-6');
+		expect(modelId()).toBe('anthropic/claude-sonnet-5-5');
 	});
 
 	it('routes the eval effort to agents without a pinned model only', () => {

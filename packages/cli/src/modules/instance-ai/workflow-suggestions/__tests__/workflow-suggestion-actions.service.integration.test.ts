@@ -172,20 +172,48 @@ it('saves the applied version without changing the published version', async () 
 	});
 });
 
-it('returns the applied version when the same action is repeated', async () => {
+it('rejects a repeated apply without changing the workflow', async () => {
 	const { original, suggestion, act } = await fixture();
 	const notify = vi.spyOn(Container.get(CollaborationService), 'broadcastWorkflowUpdate');
-	const first = await act('apply');
+	await act('apply');
 	const saved = await workflows.findOneByOrFail({ id: original.id });
 	const beforeHistory = await history.countBy({ workflowId: original.id });
 	const beforeActivity = await suggestions.getActivity(suggestion.id);
 
-	expect((await act('apply')).appliedVersion).toEqual(first.appliedVersion);
+	await expect(act('apply')).rejects.toBeInstanceOf(ConflictError);
 
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(saved);
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
 	expect(await suggestions.getActivity(suggestion.id)).toEqual(beforeActivity);
 	expect(notify).toHaveBeenCalledOnce();
+});
+
+it.each([
+	['apply', 'applied'],
+	['approve-and-publish', 'applied'],
+	['apply', 'discarded'],
+	['approve-and-publish', 'discarded'],
+	['apply', 'outdated'],
+	['approve-and-publish', 'outdated'],
+] as const)('handles %s on a proposal closed as %s', async (action, closedReason) => {
+	const { original, act } = await fixture();
+	if (closedReason === 'applied') await act('apply');
+	else if (closedReason === 'discarded') await act('discard');
+	else await workflows.update(original.id, { settings: { executionTimeout: 60 } });
+	const saved = await workflows.findOneByOrFail({ id: original.id });
+	const beforeHistory = await history.countBy({ workflowId: original.id });
+	const publish = vi.spyOn(workflowService, 'activateWorkflow');
+	const repeated = act(action);
+
+	if (closedReason === 'outdated') {
+		expect(await repeated).toMatchObject({ closedReason, appliedVersion: null });
+	} else {
+		await expect(repeated).rejects.toBeInstanceOf(ConflictError);
+	}
+
+	expect(publish).not.toHaveBeenCalled();
+	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(saved);
+	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
 });
 
 it('saves one version when two requests apply the same proposal at once', async () => {
@@ -230,19 +258,41 @@ it('publishes the committed application once when an after-update hook fails', a
 	expect(detail.appliedVersion?.versionId).toBe(
 		(await workflows.findOneByOrFail({ id: original.id })).versionId,
 	);
-	await act('approve-and-publish');
+	await expect(act('approve-and-publish')).rejects.toBeInstanceOf(ConflictError);
 	expect(publish).toHaveBeenCalledOnce();
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory + 1);
 });
 
-it('rejects applying a Needs attention result', async () => {
+it('applies a Needs attention proposal to the draft without publishing', async () => {
 	const { original, suggestion, act } = await fixture('needs_you');
 	const beforeHistory = await history.countBy({ workflowId: original.id });
+	const publish = vi.spyOn(workflowService, 'activateWorkflow');
 
-	await expect(act('apply')).rejects.toThrow();
+	const applied = await act('apply');
+
+	expect(applied).toMatchObject({
+		closedReason: 'applied',
+		appliedVersion: { action: 'apply' },
+	});
+	expect((await workflows.findOneByOrFail({ id: original.id })).activeVersionId).toBe(
+		original.activeVersionId,
+	);
+	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory + 1);
+	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
+		state: 'closed',
+		closedReason: 'applied',
+	});
+	expect(publish).not.toHaveBeenCalled();
+});
+
+it('rejects approving and publishing a Needs attention proposal', async () => {
+	const { original, suggestion, act } = await fixture('needs_you');
+
+	await expect(act('approve-and-publish')).rejects.toThrow(
+		'Only a Fix ready suggestion can be approved and published.',
+	);
 
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
-	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
 	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
 		state: 'pending',
 	});
@@ -670,7 +720,7 @@ it('requests normal publication of the applied version and does not repeat it', 
 	expect(notify).toHaveBeenCalledExactlyOnceWith(original.id, user.id);
 	expect(detail).not.toHaveProperty('publication');
 
-	await act('approve-and-publish');
+	await expect(act('approve-and-publish')).rejects.toBeInstanceOf(ConflictError);
 	expect(publish).toHaveBeenCalledTimes(1);
 	expect(notify).toHaveBeenCalledTimes(1);
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
@@ -700,7 +750,7 @@ it('keeps the fix applied when the normal publication guard rejects it', async (
 	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
 		closedReason: 'applied',
 	});
-	await act('approve-and-publish');
+	await expect(act('approve-and-publish')).rejects.toBeInstanceOf(ConflictError);
 	expect(publish).toHaveBeenCalledTimes(1);
 });
 
@@ -722,7 +772,7 @@ it('returns the applied fix and request error when publication was already queue
 	expect(
 		await Container.get(WorkflowPublicationOutboxRepository).findInFlightByWorkflowId(original.id),
 	).toMatchObject({ publishedVersionId: detail.appliedVersion?.versionId });
-	expect(await act('approve-and-publish')).toMatchObject({ appliedVersion: detail.appliedVersion });
+	await expect(act('approve-and-publish')).rejects.toBeInstanceOf(ConflictError);
 	expect(publish).toHaveBeenCalledTimes(1);
 });
 

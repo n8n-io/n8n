@@ -19,6 +19,10 @@ import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from './workflow-suggestion.service';
 
+type ApplyResult =
+	| { status: 'applied'; version: WorkflowSuggestionAppliedVersion }
+	| { status: 'outdated' };
+
 @Service()
 export class WorkflowSuggestionActionsService {
 	constructor(
@@ -39,14 +43,14 @@ export class WorkflowSuggestionActionsService {
 		clientId?: string,
 	): Promise<WorkflowSuggestionActionResult> {
 		const user = await this.service.requireEditor(actor.id, workflowId);
-		const newlyAppliedVersion = await this.applySuggestion(
+		const result = await this.applySuggestion(
 			user,
 			{ workflowId, projectId },
 			suggestionId,
 			'apply',
 			clientId,
 		);
-		if (newlyAppliedVersion) await this.notifyEditors(workflowId, user.id);
+		if (result.status === 'applied') await this.notifyEditors(workflowId, user.id);
 		return await this.service.getProposal(user, projectId, workflowId, suggestionId);
 	}
 
@@ -61,7 +65,7 @@ export class WorkflowSuggestionActionsService {
 		if (!(await userHasScopes(user, ['workflow:publish'], false, { workflowId }))) {
 			throw new ForbiddenError('Workflow publish access is required.');
 		}
-		const newlyAppliedVersion = await this.applySuggestion(
+		const result = await this.applySuggestion(
 			user,
 			{ workflowId, projectId },
 			suggestionId,
@@ -69,12 +73,12 @@ export class WorkflowSuggestionActionsService {
 			clientId,
 		);
 		let publishError: string | undefined;
-		if (newlyAppliedVersion) {
+		if (result.status === 'applied') {
 			try {
 				await this.publishAppliedVersion(
 					user,
 					workflowId,
-					newlyAppliedVersion,
+					result.version,
 					clientId ?? suggestionId,
 				);
 			} catch (error) {
@@ -108,7 +112,7 @@ export class WorkflowSuggestionActionsService {
 		workflowId: string,
 		suggestionId: string,
 		ctx: OperationContext = {},
-	): Promise<'discarded' | 'already_closed' | 'unavailable'> {
+	): Promise<'discarded' | 'outdated' | 'already_closed' | 'unavailable'> {
 		return await this.txRunner.run(ctx, async (ctx) => {
 			const user = await this.service.requireEditor(actor.id, workflowId, ctx);
 			const { suggestion, target } = await this.service.reconcilePending(
@@ -126,7 +130,7 @@ export class WorkflowSuggestionActionsService {
 				);
 				return closed ? 'discarded' : 'already_closed';
 			}
-			return 'already_closed';
+			return suggestion.closedReason === 'outdated' ? 'outdated' : 'already_closed';
 		});
 	}
 
@@ -135,16 +139,26 @@ export class WorkflowSuggestionActionsService {
 		scope: Pick<WorkflowSuggestion, 'workflowId' | 'projectId'>,
 		suggestionId: string,
 		action: WorkflowSuggestionAppliedVersion['action'],
-		clientId?: string,
-	): Promise<WorkflowSuggestionAppliedVersion | undefined> {
+		clientId: string | undefined,
+	): Promise<ApplyResult> {
 		const { workflowId, projectId } = scope;
 		const { suggestion, target } = await this.service.reconcilePending(suggestionId, scope);
+
 		if (!target.workflow || target.projectId !== projectId)
 			throw new NotFoundError('Suggestion not found.');
-		if (suggestion.state !== 'pending') return undefined;
-		if (suggestion.resultKind !== 'fix_ready') {
-			throw new ConflictError('Only a Fix ready suggestion can be applied.');
+
+		if (suggestion.state !== 'pending') {
+			if (suggestion.closedReason !== 'outdated') {
+				throw new ConflictError('This suggestion is already closed.');
+			}
+
+			return { status: 'outdated' };
 		}
+
+		if (action === 'approve-and-publish' && suggestion.resultKind !== 'fix_ready') {
+			throw new ConflictError('Only a Fix ready suggestion can be approved and published.');
+		}
+
 		await this.collaboration.validateWriteLock(
 			user.id,
 			clientId ?? suggestion.id,
@@ -158,18 +172,22 @@ export class WorkflowSuggestionActionsService {
 			workflowId,
 			{ expectedChecksum: suggestion.expectedBaseline.checksum, source: 'n8n-ai' },
 		);
+
 		const { saved, appliedVersion } = await this.txRunner.run({}, async (ctx) => {
 			await this.validatePreparedWorkflow(suggestion, prepared.workflow, ctx);
 			await this.service.requireEditor(user.id, workflowId, ctx);
+
 			const saved = await this.workflows.savePreparedUpdate(prepared, ctx, {
 				propagateVersionHistoryErrors: true,
 			});
+
 			const appliedVersion: WorkflowSuggestionAppliedVersion = {
 				versionId: saved.versionId,
 				checksum: await calculateWorkflowChecksum(saved),
 				action,
 				actorId: user.id,
 			};
+
 			const closed = await this.suggestions.closePending(
 				suggestion,
 				'applied',
@@ -178,8 +196,10 @@ export class WorkflowSuggestionActionsService {
 				appliedVersion,
 			);
 			if (!closed) throw new ConflictError('The suggestion has already closed.');
+
 			return { saved, appliedVersion };
 		});
+
 		try {
 			await this.workflows.finishUpdate(prepared, saved);
 		} catch (error) {
@@ -188,7 +208,8 @@ export class WorkflowSuggestionActionsService {
 				error,
 			});
 		}
-		return appliedVersion;
+
+		return { status: 'applied', version: appliedVersion };
 	}
 
 	private async validatePreparedWorkflow(
