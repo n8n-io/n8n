@@ -480,6 +480,7 @@ describe('POST /workflow-dependencies/details', () => {
 		expect(resp.body.data[credential.id]).toEqual({
 			dependencies: [],
 			inaccessibleCount: 1,
+			inaccessibleAffectedCount: 1,
 		});
 	});
 
