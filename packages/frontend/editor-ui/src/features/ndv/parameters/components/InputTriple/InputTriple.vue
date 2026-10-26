@@ -95,8 +95,8 @@ const isStacked = computed(() => bp.value !== 'default');
 .item:first-of-type {
 	--n8n-input--radius--top-left: var(--radius);
 	--n8n-input--radius--bottom-left: var(--radius);
-	--input-triple--radius--top-right: 0;
-	--input-triple--radius--bottom-right: 0;
+	--n8n-input-triple--radius--top-right: 0;
+	--n8n-input-triple--radius--bottom-right: 0;
 
 	// Expression inputs
 	:global(.cm-editor) {
@@ -119,8 +119,8 @@ const isStacked = computed(() => bp.value !== 'default');
 	--n8n-input--radius--bottom-left: 0;
 	--n8n-input--radius--top-right: var(--radius);
 	--n8n-input--radius--bottom-right: var(--radius);
-	--input-triple--radius--top-right: var(--radius);
-	--input-triple--radius--bottom-right: var(--radius);
+	--n8n-input-triple--radius--top-right: var(--radius);
+	--n8n-input-triple--radius--bottom-right: var(--radius);
 
 	// Expression inputs
 	:global(.cm-editor) {
@@ -143,13 +143,13 @@ const isStacked = computed(() => bp.value !== 'default');
 	.middle {
 		margin-left: -1px;
 
-		--input-triple--radius--top-right: var(--radius);
-		--input-triple--radius--bottom-right: 0;
+		--n8n-input-triple--radius--top-right: var(--radius);
+		--n8n-input-triple--radius--bottom-right: 0;
 	}
 
 	.item:first-of-type {
 		--n8n-input--radius--top-left: var(--radius);
-		--input-triple--radius--top-right: 0;
+		--n8n-input-triple--radius--top-right: 0;
 		--n8n-input--radius--bottom-left: 0;
 		--n8n-input--radius--bottom-right: 0;
 	}
@@ -172,10 +172,10 @@ const isStacked = computed(() => bp.value !== 'default');
 
 		--n8n-input--radius--top-left: 0;
 		--n8n-input--radius--top-right: 0;
-		--input-triple--radius--top-right: 0;
+		--n8n-input-triple--radius--top-right: 0;
 		--n8n-input--radius--bottom-left: var(--radius);
 		--n8n-input--radius--bottom-right: var(--radius);
-		--input-triple--radius--bottom-right: var(--radius);
+		--n8n-input-triple--radius--bottom-right: var(--radius);
 	}
 
 	.item:last-of-type :global(.cm-editor) {
@@ -209,10 +209,10 @@ const isStacked = computed(() => bp.value !== 'default');
 	.item:first-of-type {
 		--n8n-input--radius--top-left: var(--radius);
 		--n8n-input--radius--top-right: var(--radius);
-		--input-triple--radius--top-right: var(--radius);
+		--n8n-input-triple--radius--top-right: var(--radius);
 		--n8n-input--radius--bottom-left: 0;
 		--n8n-input--radius--bottom-right: 0;
-		--input-triple--radius--bottom-right: 0;
+		--n8n-input-triple--radius--bottom-right: 0;
 	}
 
 	.item:first-of-type :global(.cm-editor) {
@@ -243,10 +243,10 @@ const isStacked = computed(() => bp.value !== 'default');
 	.item:last-of-type {
 		--n8n-input--radius--top-left: 0;
 		--n8n-input--radius--top-right: 0;
-		--input-triple--radius--top-right: 0;
+		--n8n-input-triple--radius--top-right: 0;
 		--n8n-input--radius--bottom-left: var(--radius);
 		--n8n-input--radius--bottom-right: var(--radius);
-		--input-triple--radius--bottom-right: var(--radius);
+		--n8n-input-triple--radius--bottom-right: var(--radius);
 	}
 
 	.item:last-of-type :global(.cm-editor) {

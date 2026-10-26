@@ -271,7 +271,6 @@ function onActivate(event: MouseEvent) {
 	@include styles.canvas-node-border-defaults;
 	--trigger-node--radius: 36px;
 	--canvas-node--status-icons--margin: var(--spacing--3xs);
-	--n8n-node-icon--color: var(--color--foreground--shade-1);
 
 	position: relative;
 	height: var(--canvas-node--height);

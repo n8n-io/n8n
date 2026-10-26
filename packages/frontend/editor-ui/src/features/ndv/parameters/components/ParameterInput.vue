@@ -2308,8 +2308,8 @@ onUpdated(async () => {
 
 .droppable {
 	--n8n-input--border-color: var(--ndv--droppable-parameter--color);
-	--input--border-right-color: var(--ndv--droppable-parameter--color);
-	--input--border-style: dashed;
+	--n8n-input--border-right-color: var(--ndv--droppable-parameter--color);
+	--n8n-input--border-style: dashed;
 	--n8n-input--border-width: 1.5px;
 
 	:global(.n8n-input__wrapper) {
@@ -2328,9 +2328,9 @@ onUpdated(async () => {
 
 .activeDrop {
 	--n8n-input--border-color: var(--color--success);
-	--input--border-right-color: var(--color--success);
+	--n8n-input--border-right-color: var(--color--success);
 	--n8n-input--color--background: var(--color--foreground--tint-2);
-	--input--border-style: solid;
+	--n8n-input--border-style: solid;
 	--n8n-input--border-width: 1px;
 
 	:global(.n8n-input__wrapper) {
@@ -2471,7 +2471,7 @@ onUpdated(async () => {
 
 <style lang="css" module>
 .modal {
-	--dialog--close--spacing--top: var(--spacing--md);
+	--n8n-dialog--close--spacing--top: var(--spacing--md);
 	display: flex;
 	flex-direction: column;
 	overflow: clip;
@@ -2491,7 +2491,7 @@ onUpdated(async () => {
 .tipVisible {
 	--n8n-input--radius--bottom-left: 0;
 	--n8n-input--radius--bottom-right: 0;
-	--input-triple--radius--bottom-right: 0;
+	--n8n-input-triple--radius--bottom-right: 0;
 }
 
 .tip {
@@ -2508,8 +2508,8 @@ onUpdated(async () => {
 }
 
 .noRightCornersInput > * {
-	--input-triple--radius--bottom-right: 0;
-	--input-triple--radius--top-right: 0;
+	--n8n-input-triple--radius--bottom-right: 0;
+	--n8n-input-triple--radius--top-right: 0;
 }
 
 .overrideButton {

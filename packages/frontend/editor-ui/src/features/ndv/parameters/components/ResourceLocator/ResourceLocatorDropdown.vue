@@ -295,6 +295,7 @@ watch(
 			>
 				<N8nInput
 					ref="searchRef"
+					:class="$style.searchField"
 					:model-value="props.filter"
 					size="medium"
 					:clearable="true"
@@ -449,10 +450,15 @@ watch(
 
 .searchInput {
 	border-bottom: var(--border);
-	--n8n-input--border-color: none;
-	--n8n-input--font-size: var(--font-size--2xs);
 	width: 100%;
 	z-index: 1;
+}
+
+.searchInput .searchField {
+	--n8n-input--border-color: transparent;
+	--n8n-input--border-color--hover: transparent;
+	--n8n-input--border-color--focus: transparent;
+	--n8n-input--font-size: var(--font-size--2xs);
 }
 
 .selected {

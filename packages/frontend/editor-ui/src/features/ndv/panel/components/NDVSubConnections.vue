@@ -470,7 +470,7 @@ defineExpose({
 	&.hasIssues {
 		animation: horizontal-shake 500ms;
 		button {
-			--n8n-button--color--text: var(--color--danger);
+			--n8n-button--color: var(--color--danger);
 			--n8n-button--border-color: var(--color--danger);
 		}
 	}

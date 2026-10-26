@@ -42,8 +42,8 @@ $--mode-selector-width: 92px;
 }
 
 .rightNoCorner > * {
-	--input-triple--radius--bottom-right: 0;
-	--input-triple--radius--top-right: 0;
+	--n8n-input-triple--radius--bottom-right: 0;
+	--n8n-input-triple--radius--top-right: 0;
 }
 
 .resourceLocator {
@@ -95,13 +95,13 @@ $--mode-selector-width: 92px;
 
 .droppable {
 	--n8n-input--border-color: var(--color--secondary--tint-1);
-	--input--border-style: dashed;
+	--n8n-input--border-style: dashed;
 }
 
 .activeDrop {
 	--n8n-input--border-color: var(--color--success);
 	--n8n-input--color--background: var(--color--success--tint-4);
-	--input--border-style: solid;
+	--n8n-input--border-style: solid;
 
 	textarea,
 	input {

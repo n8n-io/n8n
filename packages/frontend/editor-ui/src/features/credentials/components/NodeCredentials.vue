@@ -2146,11 +2146,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
    The container owns the border (same token as the row) so the merged block
    reads as one element; the inner input's own border is disabled. Covers both
    the new N8nInput (--input--radius--*) and the element-plus based select
-   (--input-triple--radius--*) corner variables. */
+   (--n8n-input-triple--radius--*) corner variables. */
 .inputWithPrivateRow {
 	--n8n-input--radius--bottom-left: 0;
 	--n8n-input--radius--bottom-right: 0;
-	--input-triple--radius--bottom-right: 0;
+	--n8n-input-triple--radius--bottom-right: 0;
 	--n8n-input--border-color: transparent;
 	border: var(--border-width, 1px) solid var(--border-color);
 	border-radius: var(--radius) var(--radius) 0 0;
@@ -2166,8 +2166,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
    whose bottom edge connects to the private connection row */
 .inputWithPrivateRowEditable {
 	--n8n-input--border-color: transparent;
-	--input-triple--radius--top-right: 0;
-	--input-triple--radius--bottom-right: 0;
+	--n8n-input-triple--radius--top-right: 0;
+	--n8n-input-triple--radius--bottom-right: 0;
 	border: var(--border-width, 1px) solid var(--border-color);
 	border-radius: var(--radius) var(--radius) 0 0;
 	padding-right: var(--spacing--2xs);

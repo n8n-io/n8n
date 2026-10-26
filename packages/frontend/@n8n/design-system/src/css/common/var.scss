@@ -395,15 +395,15 @@ $notification-danger-icon-color: var(--color--danger);
 $input-placeholder-color: var(--n8n-input--placeholder--color, var(--color--text--tint-1));
 $input-focus-border: var(--n8n-input--border-color--focus, var(--color--secondary));
 $input-border-color: var(--n8n-input--border-color, var(--border-color));
-$input-border-style: var(--input--border-style, var(--border-style));
+$input-border-style: var(--n8n-input--border-style, var(--border-style));
 $input-border-width: var(--n8n-input--border-width, var(--border-width));
 $input-border: $input-border-color $input-border-style $input-border-width;
 $input-border-right-color: var(
-	--input--border-right-color,
+	--n8n-input--border-right-color,
 	var(--n8n-input--border-color, var(--border-color))
 );
 $input-border-bottom-color: var(
-	--input--border-bottom-color,
+	--n8n-input--border-bottom-color,
 	var(--n8n-input--border-color, var(--border-color))
 );
 
@@ -421,7 +421,7 @@ $input-border-top-left-radius: var(
 	var(--n8n-input--radius, var(--radius))
 );
 $input-border-top-right-radius: var(
-	--input-triple--radius--top-right,
+	--n8n-input-triple--radius--top-right,
 	var(--n8n-input--radius, var(--radius)),
 );
 $input-border-bottom-left-radius: var(
@@ -429,7 +429,7 @@ $input-border-bottom-left-radius: var(
 	var(--n8n-input--radius, var(--radius)),
 );
 $input-border-bottom-right-radius: var(
-	--input-triple--radius--bottom-right,
+	--n8n-input-triple--radius--bottom-right,
 	var(--n8n-input--radius, var(--radius)),
 );
 $input-border-radius: var(--n8n-input--radius, var(--radius));
@@ -688,7 +688,7 @@ $dialog-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 $dialog-content-font-size: 14px;
 /// padding||Spacing|3
 $dialog-padding-primary: var(--spacing--lg);
-$dialog-close-top: var(--dialog--close--spacing--top, var(--spacing--lg));
+$dialog-close-top: var(--n8n-dialog--close--spacing--top, var(--spacing--lg));
 
 /* Table
 -------------------------- */

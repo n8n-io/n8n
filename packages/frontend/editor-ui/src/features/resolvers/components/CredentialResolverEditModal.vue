@@ -550,8 +550,8 @@ onMounted(async () => {
 <style module lang="scss">
 .resolverModal {
 	--n8n-dialog--max-width: 1200px;
-	--dialog--close--spacing--top: 31px;
-	--dialog--max-height: 750px;
+	--n8n-dialog--close--spacing--top: 31px;
+	--n8n-dialog--max-height: 750px;
 
 	:global(.el-dialog__header) {
 		padding-bottom: 0;

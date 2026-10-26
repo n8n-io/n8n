@@ -474,9 +474,14 @@ defineExpose({
 			float: none;
 			padding-top: var(--spacing--xl);
 		}
+		:global(.n8n-input) {
+			--n8n-input--border-color: var(--color--danger);
+			--n8n-input--border-color--hover: var(--color--danger);
+			--n8n-input--border-color--focus: var(--color--danger);
+		}
+
 		input,
 		input:focus {
-			--n8n-input--border-color: var(--color--danger);
 			border-color: var(--color--danger);
 		}
 	}

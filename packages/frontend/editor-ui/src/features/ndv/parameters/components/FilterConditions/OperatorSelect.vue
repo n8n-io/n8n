@@ -118,9 +118,9 @@ const onSelect = (operatorId: string): void => {
 		var(--n8n-input--border-color, var(--border-color));
 	border-top-left-radius: var(--n8n-input--radius--top-left, var(--n8n-input--radius, 0));
 	border-bottom-left-radius: var(--n8n-input--radius--bottom-left, var(--n8n-input--radius, 0));
-	border-top-right-radius: var(--input-triple--radius--top-right, var(--n8n-input--radius, 0));
+	border-top-right-radius: var(--n8n-input-triple--radius--top-right, var(--n8n-input--radius, 0));
 	border-bottom-right-radius: var(
-		--input-triple--radius--bottom-right,
+		--n8n-input-triple--radius--bottom-right,
 		var(--n8n-input--radius, 0)
 	);
 	background-color: var(--color--background--light-2);

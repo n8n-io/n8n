@@ -296,7 +296,7 @@ defineExpose({ focus, select });
 	padding: 3px;
 	line-height: 9px;
 	border: var(--n8n-input--border-color, var(--border-color))
-		var(--input--border-style, var(--border-style))
+		var(--n8n-input--border-style, var(--border-style))
 		var(--n8n-input--border-width, var(--border-width));
 	cursor: pointer;
 	border-radius: 0;
@@ -304,7 +304,7 @@ defineExpose({ focus, select });
 
 	&:hover {
 		border: var(--n8n-input--border-color, var(--border-color))
-			var(--input--border-style, var(--border-style))
+			var(--n8n-input--border-style, var(--border-style))
 			var(--n8n-input--border-width, var(--border-width));
 	}
 
@@ -334,7 +334,7 @@ defineExpose({ focus, select });
 
 .droppable {
 	--n8n-input--border-color: transparent;
-	--input--border-right-color: transparent;
+	--n8n-input--border-right-color: transparent;
 
 	:global(.cm-editor) {
 		border-color: transparent;
@@ -346,9 +346,9 @@ defineExpose({ focus, select });
 
 .activeDrop {
 	--n8n-input--border-color: var(--color--success);
-	--input--border-right-color: var(--color--success);
+	--n8n-input--border-right-color: var(--color--success);
 	--n8n-input--color--background: var(--color--foreground--tint-2);
-	--input--border-style: solid;
+	--n8n-input--border-style: solid;
 
 	:global(.cm-editor) {
 		cursor: grabbing !important;

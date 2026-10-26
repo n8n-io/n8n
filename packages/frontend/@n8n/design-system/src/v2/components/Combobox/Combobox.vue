@@ -589,14 +589,14 @@ function onTagsUpdate(value: TagsInputValue[]) {
 
 	&.multiple {
 		--n8n-tags-input--padding: var(--spacing--4xs);
-		--tag--height: calc(var(--n8n-input--height) - 2 * var(--n8n-tags-input--padding));
+		--n8n-tag--height: calc(var(--n8n-input--height) - 2 * var(--n8n-tags-input--padding));
 		padding: var(--n8n-tags-input--padding);
 		padding-inline-end: var(--n8n-input--padding);
 
 		.clearButton,
 		.comboboxTrigger {
 			align-self: flex-end;
-			height: var(--tag--height);
+			height: var(--n8n-tag--height);
 		}
 	}
 }
@@ -696,7 +696,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	display: inline-flex;
 	align-items: center;
 	align-self: flex-end;
-	height: var(--tag--height);
+	height: var(--n8n-tag--height);
 }
 
 .clearButton {

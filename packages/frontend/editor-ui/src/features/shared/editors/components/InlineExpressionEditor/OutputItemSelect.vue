@@ -100,8 +100,8 @@ function prevItem() {
 	--n8n-input--height: 22px;
 	--n8n-input--radius--top-left: var(--radius);
 	--n8n-input--radius--bottom-left: var(--radius);
-	--input-triple--radius--top-right: var(--radius);
-	--input-triple--radius--bottom-right: var(--radius);
+	--n8n-input-triple--radius--top-right: var(--radius);
+	--n8n-input-triple--radius--bottom-right: var(--radius);
 	--n8n-input--padding: var(--spacing--4xs);
 	flex: 0 0 auto;
 	box-sizing: border-box;

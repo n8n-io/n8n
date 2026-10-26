@@ -233,14 +233,14 @@ function getInputClass(isEmpty: boolean): string {
 	@include input-mixin.theme-variables(var(--border-color));
 
 	--n8n-tags-input--gap: calc(var(--n8n-tags-input--padding) - 1px);
-	--tag--height: calc(var(--n8n-input--height) - 2 * var(--n8n-tags-input--padding));
+	--n8n-tag--height: calc(var(--n8n-input--height) - 2 * var(--n8n-tags-input--padding));
 	--n8n-tag--gap: var(--spacing--4xs);
 	--n8n-tag--delete--size: max(
 		var(--height--4xs),
-		calc(var(--tag--height) - 2 * var(--spacing--4xs))
+		calc(var(--n8n-tag--height) - 2 * var(--spacing--4xs))
 	);
 	--n8n-tag--padding-inline-end: calc(
-		(var(--tag--height) - var(--n8n-tag--delete--size) - 2px) / 2
+		(var(--n8n-tag--height) - var(--n8n-tag--delete--size) - 2px) / 2
 	);
 }
 
@@ -365,7 +365,7 @@ function getInputClass(isEmpty: boolean): string {
 	gap: var(--n8n-tag--gap);
 	max-width: 100%;
 	min-width: 0;
-	height: var(--tag--height);
+	height: var(--n8n-tag--height);
 	padding: var(--tag--padding);
 	border: 1px solid var(--tag--border-color);
 	border-radius: var(--tag--radius);
@@ -430,7 +430,7 @@ function getInputClass(isEmpty: boolean): string {
 	flex: 1;
 	align-self: center;
 	min-width: var(--spacing--2xl);
-	min-height: var(--tag--height);
+	min-height: var(--n8n-tag--height);
 	padding: 0;
 	padding-inline-start: var(--n8n-tags-input--input--padding-inline-start);
 	border: none;

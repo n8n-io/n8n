@@ -285,7 +285,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 @use '@/app/css/variables' as *;
 
 .modal {
-	--dialog--close--spacing--top: var(--spacing--md);
+	--n8n-dialog--close--spacing--top: var(--spacing--md);
 	display: flex;
 	flex-direction: column;
 	overflow: clip;

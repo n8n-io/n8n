@@ -61,19 +61,19 @@ const { APP_Z_INDEXES } = useStyles();
 const styles = computed(() => {
 	const styles: { [prop: string]: string } = {};
 	if (props.height) {
-		styles['--dialog--height'] = props.height;
+		styles['--n8n-dialog--height'] = props.height;
 	}
 	if (props.minHeight) {
-		styles['--dialog--min-height'] = props.minHeight;
+		styles['--n8n-dialog--min-height'] = props.minHeight;
 	}
 	if (props.maxHeight) {
-		styles['--dialog--max-height'] = props.maxHeight;
+		styles['--n8n-dialog--max-height'] = props.maxHeight;
 	}
 	if (props.maxWidth) {
 		styles['--n8n-dialog--max-width'] = props.maxWidth;
 	}
 	if (props.minWidth) {
-		styles['--dialog--min-width'] = props.minWidth;
+		styles['--n8n-dialog--min-width'] = props.minWidth;
 	}
 	return styles;
 });
@@ -198,10 +198,10 @@ function getCustomClass() {
 		display: flex;
 		flex-direction: column;
 		max-width: var(--n8n-dialog--max-width, 80%);
-		min-width: var(--dialog--min-width, 420px);
-		height: var(--dialog--height);
-		min-height: var(--dialog--min-height);
-		max-height: var(--dialog--max-height);
+		min-width: var(--n8n-dialog--min-width, 420px);
+		height: var(--n8n-dialog--height);
+		min-height: var(--n8n-dialog--min-height);
+		max-height: var(--n8n-dialog--max-height);
 	}
 
 	.el-dialog__body {

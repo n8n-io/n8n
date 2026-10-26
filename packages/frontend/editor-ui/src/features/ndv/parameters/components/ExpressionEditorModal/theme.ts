@@ -4,7 +4,7 @@ import { highlighter } from '@/features/shared/editors/plugins/codemirror/resolv
 const commonThemeProps = (isReadOnly = false) => ({
 	'&': {
 		borderWidth: 'var(--border-width)',
-		borderStyle: 'var(--input--border-style, var(--border-style))',
+		borderStyle: 'var(--n8n-input--border-style, var(--border-style))',
 		borderColor: 'var(--n8n-input--border-color, var(--border-color))',
 		borderRadius: 'var(--n8n-input--radius, var(--radius))',
 		backgroundColor: 'var(--expression-editor--color--background)',
