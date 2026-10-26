@@ -19,7 +19,7 @@ dependencies:
 recommended_tools:
   - get_node_types
   - get_node_parameter_options
-  - workflow_builder_credentials
+  - list_credentials
   - workflow_builder_search_models
   - research
 ---

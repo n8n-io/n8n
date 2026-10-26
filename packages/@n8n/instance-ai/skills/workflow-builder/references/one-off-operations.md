@@ -70,7 +70,7 @@ Direct execution is sufficient when ALL of these hold:
 - The node runs standalone on `main` input alone — no required sub-node
   connections (e.g. an AI Agent needs a language model attached; such nodes
   need a workflow).
-- A usable credential already exists (`workflow_builder_credentials(action="list")`); the
+- A usable credential already exists (`list_credentials`); the
   action takes resolved `{ id, name }` references. If credentials must be
   created first, route that through the credentials setup as usual.
 - The run fits the 60s cap and the input volume is modest.

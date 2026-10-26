@@ -708,7 +708,7 @@ const getNodeParameterOptionsInputSchema = z.object({
 		.record(z.object({ id: z.string(), name: z.string() }))
 		.optional()
 		.describe(
-			'Node credentials map (e.g. returned by agent_builder_ask_credential), as an alternative to credentialType + credentialId.',
+			'Node credentials map (e.g. built from a credentials setup result), as an alternative to credentialType + credentialId.',
 		),
 	currentNodeParameters: z
 		.record(z.unknown())

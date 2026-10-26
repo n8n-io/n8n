@@ -111,7 +111,8 @@ function isTableTool(): boolean {
 		isAction(SHARED_BUILDER_TOOL_NAMES.DATA_TABLES, 'query') ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS, 'list') ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS, 'list') ||
-		isAction(WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS, 'list') ||
+		resolveBuilderToolName(props.toolName, props.toolArgs?.action) ===
+			SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'search') ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'list') ||
 		resolveBuilderToolName(props.toolName) === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES ||

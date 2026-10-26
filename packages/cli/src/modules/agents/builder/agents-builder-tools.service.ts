@@ -72,7 +72,6 @@ import {
 	InvalidAgentTestRunCheckpointError,
 	type AgentTestRunResult,
 } from '../agent-test-run.service';
-import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import type { BuilderTrackFn } from './builder-config-telemetry';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
@@ -80,8 +79,6 @@ import { describeCallAgentFailure } from './call-agent-failure';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import {
-	buildAskCredentialTool,
-	buildAskEmbeddingCredentialTool,
 	buildAskQuestionsTool,
 	buildConfigureChannelTool,
 	buildFinishSetupTool,
@@ -477,7 +474,6 @@ export class AgentsBuilderToolsService {
 		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly secureRuntime: AgentSecureRuntime,
-		private readonly agentsToolsService: AgentsToolsService,
 		private readonly builderModelLiveLookupService: BuilderModelLiveLookupService,
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly oauthService: OauthService,
@@ -583,7 +579,7 @@ export class AgentsBuilderToolsService {
 				user,
 				options,
 			),
-			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
+			shared: this.getSharedTools(agentId, projectId, user),
 		};
 	}
 
@@ -687,8 +683,6 @@ export class AgentsBuilderToolsService {
 			this.withConfigMutationMarker(unpublishAgentTool, agentId),
 			callAgentTool,
 			this.createLlmTool(credentialProvider, modelLookup, user, projectId),
-			this.createCredentialTool(credentialService, projectId, agentId, track),
-			this.createEmbeddingCredentialTool(credentialService, projectId, track),
 			buildAskQuestionsTool({ track }),
 			this.withConfigMutationMarker(
 				this.withConfigSnapshotOnResume(
@@ -748,15 +742,8 @@ export class AgentsBuilderToolsService {
 			applySetupToConfig: async (writes) =>
 				await this.applyFinishSetupToConfig(agentId, projectId, user, writes),
 			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
-			listIntegrationCredentialIds: async () => {
-				const agent = await this.agentsService.findById(agentId, projectId);
-				return (agent?.integrations ?? [])
-					.filter(
-						(integration) =>
-							isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
-					)
-					.map((integration) => integration.credentialId);
-			},
+			listIntegrationCredentialIds: async () =>
+				await this.listChannelCredentialIds(agentId, projectId),
 			listChatIntegrationTypes: async () =>
 				(await this.agentIntegrationPersistenceService.listBuilderChatIntegrations(user)).map(
 					(integration) => integration.type,
@@ -785,41 +772,21 @@ export class AgentsBuilderToolsService {
 		});
 	}
 
-	private createEmbeddingCredentialTool(
-		credentialService: BuilderCredentialService,
-		projectId: string,
-		track: BuilderTrackFn,
-	): BuiltTool {
-		return buildAskEmbeddingCredentialTool({
-			credentialService,
-			projectId,
-			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
-			isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
-			track,
-		});
+	async getCredentialDefaults(agentId: string, projectId: string) {
+		return {
+			channelCredentialIds: await this.listChannelCredentialIds(agentId, projectId),
+			managedCredentialAvailable: this.aiService.isProxyEnabled(),
+		};
 	}
 
-	private createCredentialTool(
-		credentialService: BuilderCredentialService,
-		projectId: string,
-		agentId: string,
-		track: BuilderTrackFn,
-	): BuiltTool {
-		return buildAskCredentialTool({
-			credentialService,
-			projectId,
-			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
-			listIntegrationCredentialIds: async () => {
-				const agent = await this.agentsService.findById(agentId, projectId);
-				return (agent?.integrations ?? [])
-					.filter(
-						(integration) =>
-							isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
-					)
-					.map((integration) => integration.credentialId);
-			},
-			track,
-		});
+	private async listChannelCredentialIds(agentId: string, projectId: string): Promise<string[]> {
+		const agent = await this.agentsService.findById(agentId, projectId);
+		return (agent?.integrations ?? [])
+			.filter(
+				(integration) =>
+					isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
+			)
+			.map((integration) => integration.credentialId);
 	}
 
 	private createLlmTool(
@@ -1152,12 +1119,7 @@ export class AgentsBuilderToolsService {
 			.build();
 	}
 
-	private getSharedTools(
-		agentId: string,
-		projectId: string,
-		credentialProvider: CredentialProvider,
-		user: User,
-	): BuiltTool[] {
+	private getSharedTools(agentId: string, projectId: string, user: User): BuiltTool[] {
 		const buildCustomToolTool = this.buildCustomToolTool(agentId, projectId, user);
 		const createSkillsTool = this.buildCreateSkillsTool(agentId, projectId, user);
 		const updateSkillTool = this.buildUpdateSkillTool(agentId, projectId, user);
@@ -1170,12 +1132,6 @@ export class AgentsBuilderToolsService {
 			this.withConfigMutationMarker(updateSkillTool, agentId),
 			this.withConfigMutationMarker(createTasksTool, agentId),
 			this.withConfigMutationMarker(updateTaskTool, agentId),
-			...this.agentsToolsService.getSharedTools(
-				credentialProvider,
-				'Read-only inspection of available credentials. Use agent_builder_ask_credential to let the user ' +
-					'pick the credential to wire into a node tool — never copy ids from this list directly ' +
-					'into the config.',
-			),
 		];
 	}
 
