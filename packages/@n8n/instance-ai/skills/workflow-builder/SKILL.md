@@ -590,6 +590,8 @@ every reported error and warning before calling `workflow_builder_build_workflow
   (never empty or placeholder).
 - For single-execution nodes that receive many items but should run once, set
   `executeOnce: true`.
+- SDK node mock `output` items are raw `$json` objects: write `[{ total: 42 }]`,
+  never `[{ json: { total: 42 } }]`.
 - Whenever a node declares mock `output` for verification, include every field
   later referenced by `$json` expressions, including optional trigger fields
   used in filters (for example Slack `subtype`, `bot_id`, `text`, `user`, `ts`,
