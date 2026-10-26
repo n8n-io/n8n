@@ -1,1 +1,1 @@
-export const PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG = '126_public_api_rate_limit_settings';
+export const PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG = '131_public_api_rate_limit_settings';
