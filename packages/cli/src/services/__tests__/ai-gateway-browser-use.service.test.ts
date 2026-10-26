@@ -62,6 +62,51 @@ describe('AiGatewayBrowserUseService', () => {
 			});
 		});
 
+		it('asks for a residential proxy in the given country', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+			});
+
+			await service.createSession({ userId: 'user-1', attribution, proxyCountry: 'DE' });
+
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					body: expect.objectContaining({
+						proxies: [{ type: 'browserbase', geolocation: { country: 'DE' } }],
+					}),
+				}),
+			);
+		});
+
+		it('sends no proxies without a country', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+			});
+
+			await service.createSession({ userId: 'user-1', attribution, proxyCountry: undefined });
+
+			const [{ body }] = aiGatewayService.sendProviderRequest.mock.calls[0];
+			expect(body).not.toHaveProperty('proxies');
+		});
+
+		it("returns the session's region when the gateway sends it", async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+				region: 'eu-central-1',
+			});
+
+			const session = await service.createSession({ userId: 'user-1', attribution });
+
+			expect(session).toEqual({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+				region: 'eu-central-1',
+			});
+		});
+
 		it('throws when the response has no connect URL', async () => {
 			aiGatewayService.sendProviderRequest.mockResolvedValue({ id: 'sess-1' });
 

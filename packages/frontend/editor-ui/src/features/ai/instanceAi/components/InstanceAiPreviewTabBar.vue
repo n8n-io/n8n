@@ -346,6 +346,13 @@ async function handleCopyLink(tab: PreviewTab) {
 							/>
 							<N8nIcon v-else :icon="tab.icon" size="large" :class="$style.icon" />
 							<span :class="$style.label">{{ tabName(tab) }}</span>
+							<!-- The browser task waits for the user. -->
+							<span
+								v-if="tab.type === 'browser' && tab.userAction"
+								:class="$style.waitingDot"
+								:aria-label="i18n.baseText('instanceAi.cloudBrowser.needsYou')"
+								data-test-id="instance-ai-tab-waiting"
+							/>
 						</TabsTrigger>
 						<span :class="$style.closeSlot">
 							<N8nIconButton
@@ -481,6 +488,21 @@ async function handleCopyLink(tab: PreviewTab) {
 </template>
 
 <style lang="scss" module>
+.waitingDot {
+	flex-shrink: 0;
+	width: var(--spacing--3xs);
+	height: var(--spacing--3xs);
+	border-radius: 50%;
+	background: var(--color--warning);
+	animation: waiting-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes waiting-pulse {
+	50% {
+		opacity: 0.3;
+	}
+}
+
 @property --right--fade {
 	syntax: '<length>';
 	inherits: false;

@@ -1,3 +1,5 @@
+import userEvent from '@testing-library/user-event';
+import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { reactive } from 'vue';
 
@@ -5,7 +7,17 @@ import { createComponentRenderer } from '@/__tests__/render';
 
 import type { CloudBrowserLiveView } from '../../composables/useCloudBrowserLiveViews';
 import { CloudBrowserLiveViewsKey } from '../../composables/useCloudBrowserLiveViews';
+import { postCloudBrowserReturnControl, postCloudBrowserTakeOver } from '../../instanceAi.api';
 import InstanceAiBrowserPreview from '../InstanceAiBrowserPreview.vue';
+
+const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
+vi.mock('../../instanceAi.api', () => ({
+	postCloudBrowserTakeOver: vi.fn(),
+	postCloudBrowserReturnControl: vi.fn(),
+}));
+vi.mock('../../instanceAi.store', () => ({ useThread: () => ({ id: 'thread-1' }) }));
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError }) }));
+vi.mock('@n8n/stores/useRootStore', () => ({ useRootStore: () => ({ restApiContext: {} }) }));
 
 const renderComponent = createComponentRenderer(InstanceAiBrowserPreview);
 
@@ -22,18 +34,28 @@ const popup: CloudBrowserLiveView = {
 	windowId: 'window-2',
 	background: { windowId: 'window-1', liveViewUrl: 'https://live.example.com/1' },
 };
+const userAction = { reason: 'Log in to the shop, please' };
 
-function render(view: CloudBrowserLiveView | undefined) {
+function render(
+	view: CloudBrowserLiveView | undefined,
+	props: { userAction?: { reason: string } } = {},
+) {
 	const liveViews = reactive(new Map<string, CloudBrowserLiveView>());
 	if (view) liveViews.set('task-1', view);
 	const rendered = renderComponent({
-		props: { taskId: 'task-1' },
+		props: { taskId: 'task-1', ...props },
 		global: { provide: { [CloudBrowserLiveViewsKey as symbol]: liveViews } },
 	});
 	return { ...rendered, liveViews };
 }
 
 describe('InstanceAiBrowserPreview', () => {
+	beforeEach(() => {
+		vi.mocked(postCloudBrowserTakeOver).mockReset().mockResolvedValue(undefined);
+		vi.mocked(postCloudBrowserReturnControl).mockReset().mockResolvedValue(undefined);
+		showError.mockReset();
+	});
+
 	describe('placeholder', () => {
 		it.each([
 			['before the live view loads', undefined],
@@ -60,10 +82,11 @@ describe('InstanceAiBrowserPreview', () => {
 	});
 
 	describe('live view', () => {
-		it("keeps Browserbase's navigation bar and is view-only", () => {
+		it("keeps Browserbase's navigation bar and starts view-only", () => {
 			const { getByTestId, queryByTestId } = render({
-				...live,
+				status: 'live',
 				liveViewUrl: 'https://live.example.com/1?navbar=false',
+				windowId: 'window-1',
 			});
 
 			const frame = getByTestId('instance-ai-browser-preview-frame');
@@ -72,7 +95,18 @@ describe('InstanceAiBrowserPreview', () => {
 			expect(frame).toHaveAttribute('data-cloud-browser-window-id', 'window-1');
 			expect(frame).toHaveAttribute('tabindex', '-1');
 			expect(frame).toHaveClass('viewOnly');
-			expect(queryByTestId('instance-ai-browser-preview-placeholder')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-browser-preview-banner')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-browser-preview-overlay')).not.toHaveClass('overlayVisible');
+		});
+
+		it('shows the banner and the overlay when the agent asks for the user', () => {
+			const { getByTestId, queryByTestId } = render(live, { userAction });
+
+			const banner = getByTestId('instance-ai-browser-preview-banner');
+			expect(banner).toHaveTextContent('The browser needs your input');
+			expect(banner).toHaveTextContent('Log in to the shop, please');
+			expect(getByTestId('instance-ai-browser-preview-overlay')).toHaveClass('overlayVisible');
+			expect(queryByTestId('instance-ai-browser-preview-done')).not.toBeInTheDocument();
 		});
 	});
 
@@ -96,6 +130,13 @@ describe('InstanceAiBrowserPreview', () => {
 			expect(background).toHaveClass('viewOnly');
 		});
 
+		it('keeps the window behind view-only while the user has control', () => {
+			const { getByTestId } = render({ ...popup, userInControl: true });
+
+			expect(getByTestId('instance-ai-browser-preview-frame')).not.toHaveClass('viewOnly');
+			expect(getByTestId('instance-ai-browser-preview-background-frame')).toHaveClass('viewOnly');
+		});
+
 		it('shows the same frame again when the window behind is current again', async () => {
 			const { getByTestId, queryByTestId, liveViews } = render(popup);
 			const background = getByTestId('instance-ai-browser-preview-background-frame');
@@ -108,6 +149,179 @@ describe('InstanceAiBrowserPreview', () => {
 			expect(background).not.toHaveClass('backgroundFrame');
 			expect(queryByTestId('instance-ai-browser-preview-background-frame')).not.toBeInTheDocument();
 			expect(queryByTestId('instance-ai-browser-preview-placeholder')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('take over', () => {
+		it('gives the user control without a request when the agent asked', async () => {
+			const { getByTestId, queryByTestId } = render(live, { userAction });
+
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-take-over'));
+
+			expect(postCloudBrowserTakeOver).not.toHaveBeenCalled();
+			expect(getByTestId('instance-ai-browser-preview-banner')).toHaveTextContent(
+				'You have control of the browser',
+			);
+			const frame = getByTestId('instance-ai-browser-preview-frame');
+			expect(frame).not.toHaveClass('viewOnly');
+			expect(frame).toHaveAttribute('tabindex', '0');
+			expect(queryByTestId('instance-ai-browser-preview-overlay')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-browser-preview-done')).toBeInTheDocument();
+		});
+
+		it('tells the server when the user takes over without a request', async () => {
+			const { getByTestId } = render(live);
+
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-take-over'));
+			await flushPromises();
+
+			expect(postCloudBrowserTakeOver).toHaveBeenCalledWith({}, 'thread-1', 'task-1');
+			expect(getByTestId('instance-ai-browser-preview-banner')).toHaveTextContent(
+				'You have control of the browser',
+			);
+			expect(getByTestId('instance-ai-browser-preview-frame')).not.toHaveClass('viewOnly');
+		});
+
+		it('shows an error and keeps the view-only state when the take over fails', async () => {
+			const error = new Error('Request failed');
+			vi.mocked(postCloudBrowserTakeOver).mockRejectedValue(error);
+			const { getByTestId, queryByTestId } = render(live);
+
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-take-over'));
+			await flushPromises();
+
+			expect(showError).toHaveBeenCalledWith(error, 'Could not take over the browser');
+			expect(queryByTestId('instance-ai-browser-preview-banner')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-browser-preview-frame')).toHaveClass('viewOnly');
+		});
+	});
+
+	describe('return control', () => {
+		it('returns control without a note dialog after the agent asked', async () => {
+			const { getByTestId, queryByTestId } = render(live, { userAction });
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-take-over'));
+
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-done'));
+			await flushPromises();
+
+			expect(queryByTestId('instance-ai-browser-preview-note-dialog')).not.toBeInTheDocument();
+			expect(postCloudBrowserReturnControl).toHaveBeenCalledWith(
+				{},
+				'thread-1',
+				'task-1',
+				undefined,
+			);
+			expect(getByTestId('instance-ai-browser-preview-frame')).toHaveClass('viewOnly');
+		});
+
+		async function takeOverWithoutRequest() {
+			const rendered = render(live);
+			await fireEvent.click(rendered.getByTestId('instance-ai-browser-preview-take-over'));
+			await flushPromises();
+			await fireEvent.click(rendered.getByTestId('instance-ai-browser-preview-done'));
+			return rendered;
+		}
+
+		it('asks for a note after a take over the agent did not ask for', async () => {
+			const { getByTestId, getByRole } = await takeOverWithoutRequest();
+
+			expect(getByTestId('instance-ai-browser-preview-note-dialog')).toBeInTheDocument();
+			expect(getByRole('dialog')).toHaveTextContent('Let n8n Assistant know what you changed');
+			expect(getByTestId('instance-ai-browser-preview-note-submit')).toBeDisabled();
+			expect(postCloudBrowserReturnControl).not.toHaveBeenCalled();
+		});
+
+		it('returns control without a note when the user skips the note', async () => {
+			const { getByTestId, queryByTestId } = await takeOverWithoutRequest();
+
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-note-skip'));
+			await flushPromises();
+
+			expect(postCloudBrowserReturnControl).toHaveBeenCalledWith(
+				{},
+				'thread-1',
+				'task-1',
+				undefined,
+			);
+			expect(queryByTestId('instance-ai-browser-preview-note-dialog')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-browser-preview-banner')).not.toBeInTheDocument();
+		});
+
+		it('returns control with the trimmed note when the user submits it', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = await takeOverWithoutRequest();
+
+			const input = getByTestId('instance-ai-browser-preview-note-input');
+			const textarea = input.querySelector('textarea') ?? input;
+			await user.type(textarea, '  I accepted the cookies  ');
+			await user.click(getByTestId('instance-ai-browser-preview-note-submit'));
+			await flushPromises();
+
+			expect(postCloudBrowserReturnControl).toHaveBeenCalledWith(
+				{},
+				'thread-1',
+				'task-1',
+				'I accepted the cookies',
+			);
+			expect(queryByTestId('instance-ai-browser-preview-note-dialog')).not.toBeInTheDocument();
+		});
+
+		it('shows an error and keeps control when returning control fails', async () => {
+			const error = new Error('Request failed');
+			vi.mocked(postCloudBrowserReturnControl).mockRejectedValue(error);
+			const { getByTestId } = render(live, { userAction });
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-take-over'));
+
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-done'));
+			await flushPromises();
+
+			expect(showError).toHaveBeenCalledWith(error, 'Could not give control back to the assistant');
+			expect(getByTestId('instance-ai-browser-preview-banner')).toHaveTextContent(
+				'You have control of the browser',
+			);
+		});
+	});
+
+	describe('control state', () => {
+		it('restores control after a reload when the user is in control', () => {
+			const { getByTestId } = render({ ...live, userInControl: true });
+
+			expect(getByTestId('instance-ai-browser-preview-banner')).toHaveTextContent(
+				'You have control of the browser',
+			);
+			expect(getByTestId('instance-ai-browser-preview-frame')).not.toHaveClass('viewOnly');
+		});
+
+		it('does not restore control while the agent asks for the user', () => {
+			const { getByTestId } = render({ ...live, userInControl: true }, { userAction });
+
+			expect(getByTestId('instance-ai-browser-preview-banner')).toHaveTextContent(
+				'The browser needs your input',
+			);
+			expect(getByTestId('instance-ai-browser-preview-frame')).toHaveClass('viewOnly');
+		});
+
+		it('ends control when the browser disconnects', async () => {
+			const { getByTestId, queryByTestId, liveViews } = render({ ...live, userInControl: true });
+
+			liveViews.set('task-1', { status: 'disconnected', reason: 'idleTimeout' });
+			await flushPromises();
+
+			expect(queryByTestId('instance-ai-browser-preview-banner')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-browser-preview-placeholder')).toHaveTextContent(
+				'The browser closed',
+			);
+		});
+
+		it('ends control when the request of the agent ends', async () => {
+			const { getByTestId, queryByTestId, rerender } = render(live, { userAction });
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-take-over'));
+
+			await rerender({ taskId: 'task-1', userAction: undefined });
+
+			expect(queryByTestId('instance-ai-browser-preview-banner')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-browser-preview-frame')).toHaveClass('viewOnly');
+			expect(getByTestId('instance-ai-browser-preview-overlay')).toBeInTheDocument();
 		});
 	});
 });

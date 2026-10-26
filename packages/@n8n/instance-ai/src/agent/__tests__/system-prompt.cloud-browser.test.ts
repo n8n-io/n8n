@@ -16,6 +16,15 @@ describe('getSystemPrompt — cloud browser', () => {
 		expect(getSystemPrompt({})).not.toContain('## Cloud Browser');
 	});
 
+	it('tells the model the browser agent can get the user to sign in', () => {
+		const section = cloudBrowserSection();
+
+		expect(section).toContain('**The browser agent can get the user to sign in.**');
+		expect(section).toContain('Never tell the browser agent to stop at a sign-in');
+		expect(section).toContain('never ask the user for a password');
+		expect(section).not.toContain('The browser agent cannot sign in for them');
+	});
+
 	it('names the start tool when the cloud browser is on', () => {
 		expect(cloudBrowserSection()).toContain(ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER_TASK);
 	});

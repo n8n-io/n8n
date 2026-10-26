@@ -942,6 +942,8 @@ export class InstanceAiService {
 			backgroundTaskIdleTimeoutMs: livenessPolicyConfig.backgroundTaskIdleTimeoutMs,
 			runState: this.runState,
 			backgroundTasks: this.backgroundTasks,
+			isTaskWaitingForUser: (taskId) =>
+				this.cloudBrowserService.findServer(taskId)?.isUserInControl() ?? false,
 			eventBus: this.eventBus,
 			logger: this.logger,
 			finalizeCancelledSuspendedRun: (suspended, reason) => {

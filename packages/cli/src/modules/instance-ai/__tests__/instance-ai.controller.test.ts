@@ -29,6 +29,7 @@ import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
+	InstanceAiCloudBrowserReturnControlRequest,
 	InstanceAiConfirmRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
@@ -1189,6 +1190,138 @@ describe('InstanceAiController', () => {
 				controller.cloudBrowserLiveView(req, res, THREAD_ID, 'task-1'),
 			).rejects.toThrow();
 			expect(cloudBrowserService.getLiveView).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('takeOverCloudBrowser', () => {
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('takeOverCloudBrowser')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		it("should give the user control of the task's browser", async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.giveControlToUser.mockReturnValue(undefined);
+
+			const result = await controller.takeOverCloudBrowser(req, res, THREAD_ID, 'task-1');
+
+			expect(result).toEqual({ ok: true });
+			expect(cloudBrowserService.giveControlToUser).toHaveBeenCalledWith(
+				USER_ID,
+				THREAD_ID,
+				'task-1',
+			);
+		});
+
+		it('should throw ConflictError with the reason when the user cannot take over', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.giveControlToUser.mockReturnValue('This browser task is not running.');
+
+			const call = controller.takeOverCloudBrowser(req, res, THREAD_ID, 'task-1');
+
+			await expect(call).rejects.toThrow(ConflictError);
+			await expect(call).rejects.toThrow('This browser task is not running.');
+		});
+
+		it('should not give control of a browser in a thread the user does not own', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(controller.takeOverCloudBrowser(req, res, THREAD_ID, 'task-1')).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(cloudBrowserService.giveControlToUser).not.toHaveBeenCalled();
+		});
+
+		it('should not give control when Instance AI is disabled', async () => {
+			settingsService.isInstanceAiEnabled.mockReturnValue(false);
+
+			await expect(controller.takeOverCloudBrowser(req, res, THREAD_ID, 'task-1')).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(memoryService.checkThreadOwnership).not.toHaveBeenCalled();
+			expect(cloudBrowserService.giveControlToUser).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('returnCloudBrowserControl', () => {
+		const payload = (note?: string) => mock<InstanceAiCloudBrowserReturnControlRequest>({ note });
+
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('returnCloudBrowserControl')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		it("should give control back to the agent with the user's note", async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.returnControlToAgent.mockReturnValue(undefined);
+
+			const result = await controller.returnCloudBrowserControl(
+				req,
+				res,
+				THREAD_ID,
+				'task-1',
+				payload('Signed in'),
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(cloudBrowserService.returnControlToAgent).toHaveBeenCalledWith(
+				USER_ID,
+				THREAD_ID,
+				'task-1',
+				'Signed in',
+			);
+		});
+
+		it.each([
+			['an empty note', ''],
+			['no note', undefined],
+		])('should pass no note for %s', async (_, note) => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.returnControlToAgent.mockReturnValue(undefined);
+
+			await controller.returnCloudBrowserControl(req, res, THREAD_ID, 'task-1', payload(note));
+
+			expect(cloudBrowserService.returnControlToAgent).toHaveBeenCalledWith(
+				USER_ID,
+				THREAD_ID,
+				'task-1',
+				undefined,
+			);
+		});
+
+		it('should throw ConflictError with the reason when control cannot be returned', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.returnControlToAgent.mockReturnValue(
+				'The user does not have control of the browser.',
+			);
+
+			const call = controller.returnCloudBrowserControl(req, res, THREAD_ID, 'task-1', payload());
+
+			await expect(call).rejects.toThrow(ConflictError);
+			await expect(call).rejects.toThrow('The user does not have control of the browser.');
+		});
+
+		it('should not return control of a browser in a thread the user does not own', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(
+				controller.returnCloudBrowserControl(req, res, THREAD_ID, 'task-1', payload()),
+			).rejects.toThrow(ForbiddenError);
+			expect(cloudBrowserService.returnControlToAgent).not.toHaveBeenCalled();
+		});
+
+		it('should not return control when Instance AI is disabled', async () => {
+			settingsService.isInstanceAiEnabled.mockReturnValue(false);
+
+			await expect(
+				controller.returnCloudBrowserControl(req, res, THREAD_ID, 'task-1', payload()),
+			).rejects.toThrow(ForbiddenError);
+			expect(memoryService.checkThreadOwnership).not.toHaveBeenCalled();
+			expect(cloudBrowserService.returnControlToAgent).not.toHaveBeenCalled();
 		});
 	});
 

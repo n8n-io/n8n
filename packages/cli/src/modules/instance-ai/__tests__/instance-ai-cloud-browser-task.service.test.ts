@@ -312,6 +312,45 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 			expect(cloudBrowserService.release).toHaveBeenCalledWith(taskId);
 		});
 
+		it('gives the agent its server as the host for user actions', async () => {
+			const { service, run, cloudBrowserService, runSpawnedTask } = setup();
+			const mcpServer = mock<CloudBrowserLocalMcpServer>();
+			cloudBrowserService.createServer.mockResolvedValue(mcpServer);
+			await service.startTask(task, run);
+
+			await runSpawnedTask();
+
+			const options = vi.mocked(runCloudBrowserAgent).mock.calls[0][0];
+			expect(options.mcpServer).toBe(mcpServer);
+			expect(options.userActionHost).toBe(mcpServer);
+		});
+
+		it('releases the server as soon as the task is stopped, while the agent still runs', async () => {
+			const { service, run, cloudBrowserService, spawnOptions } = setup();
+			const { taskId } = (await service.startTask(task, run)) as { taskId: string };
+			const controller = new AbortController();
+			let finishAgent!: () => void;
+			vi.mocked(runCloudBrowserAgent).mockImplementation(async () => {
+				await new Promise<void>((resolve) => (finishAgent = resolve));
+				return agentResult({ outcome: 'cancelled', status: 'cancelled' });
+			});
+
+			const running = spawnOptions().run(
+				controller.signal,
+				() => [],
+				async () => {},
+				{},
+			);
+			await vi.waitFor(() => expect(runCloudBrowserAgent).toHaveBeenCalled());
+			expect(cloudBrowserService.release).not.toHaveBeenCalled();
+
+			controller.abort();
+
+			expect(cloudBrowserService.release).toHaveBeenCalledWith(taskId);
+			finishAgent();
+			await running;
+		});
+
 		it('records a failed task and releases the server when the agent throws', async () => {
 			const { service, run, cloudBrowserService, runSpawnedTask, records } = setup();
 			vi.mocked(runCloudBrowserAgent).mockRejectedValue(new Error('Session lost'));

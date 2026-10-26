@@ -50,9 +50,14 @@ function windowIdOf(task: CloudBrowserTask): string | undefined {
 function subtitleOf(task: CloudBrowserTask): string {
 	if (task.state === 'done') return i18n.baseText('instanceAi.cloudBrowser.doneWaitingToSend');
 	if (task.state === 'failed') return i18n.baseText('instanceAi.cloudBrowser.failedWaitingToSend');
-	const status = liveViews?.get(task.taskId)?.status;
-	if (status === 'live') return i18n.baseText('instanceAi.cloudBrowser.working');
-	if (status === 'disconnected') return i18n.baseText('instanceAi.cloudBrowser.disconnected');
+	if (task.userAction) return i18n.baseText('instanceAi.cloudBrowser.needsYou');
+	const view = liveViews?.get(task.taskId);
+	if (view?.status === 'live') {
+		return view.userInControl
+			? i18n.baseText('instanceAi.cloudBrowser.youHaveControl')
+			: i18n.baseText('instanceAi.cloudBrowser.working');
+	}
+	if (view?.status === 'disconnected') return i18n.baseText('instanceAi.cloudBrowser.disconnected');
 	return i18n.baseText('instanceAi.cloudBrowser.opening');
 }
 </script>

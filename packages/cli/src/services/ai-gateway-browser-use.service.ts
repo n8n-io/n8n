@@ -21,6 +21,7 @@ export const BROWSER_VIEWPORT = { width: 1280, height: 800 };
 const createdSessionSchema = z.object({
 	id: z.string().min(1),
 	connectUrl: z.string().min(1),
+	region: z.string().optional(),
 });
 
 /**
@@ -69,9 +70,11 @@ export class AiGatewayBrowserUseService {
 	async createSession({
 		userId,
 		attribution,
+		proxyCountry,
 	}: {
 		userId: string;
 		attribution: AiGatewayRequestAttribution;
+		proxyCountry?: string;
 	}): Promise<AiGatewayBrowserSession> {
 		// Without keepAlive, Browserbase ends the session when the CDP connection
 		// drops, so a crashed or restarted instance cannot leave one running.
@@ -80,7 +83,18 @@ export class AiGatewayBrowserUseService {
 			authHeaderKey: BROWSERBASE_API_KEY_HEADER,
 			method: 'POST',
 			path: '/v1/sessions',
-			body: { keepAlive: false, browserSettings: { viewport: BROWSER_VIEWPORT } },
+			body: {
+				keepAlive: false,
+				browserSettings: { viewport: BROWSER_VIEWPORT },
+				...(proxyCountry && {
+					proxies: [
+						{
+							type: 'browserbase',
+							geolocation: { country: proxyCountry },
+						},
+					],
+				}),
+			},
 			userId,
 			attribution,
 			mapErrorResponse: toGatewayError,

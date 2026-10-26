@@ -62,6 +62,7 @@ import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
+import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
@@ -962,6 +963,7 @@ function handleNewThreadClick() {
 					@agent-attachment-restored="onAgentAttachmentRestored"
 				>
 					<template #above-input>
+						<InstanceAiCloudBrowserUserActionPanel />
 						<InstanceAiSetupPanel
 							v-if="setupPanelWorkflowId"
 							ref="setupPanel"
@@ -1129,6 +1131,7 @@ function handleNewThreadClick() {
 								:key="browserTab.id"
 								:class="$style.previewSlot"
 								:task-id="browserTab.taskId"
+								:user-action="browserTab.userAction"
 							/>
 						</div>
 					</TabsRoot>

@@ -339,11 +339,20 @@ export class InstanceAiCloudBrowserTaskService {
 					payload: {},
 				}),
 			);
+			// A stopped task can wait for the user inside a tool call. Releasing the browser ends the wait.
+			signal.addEventListener(
+				'abort',
+				() => {
+					void cloudBrowserService.release(taskId);
+				},
+				{ once: true },
+			);
 			try {
 				const result = await runCloudBrowserAgent({
 					agentId,
 					brief,
 					mcpServer,
+					userActionHost: mcpServer,
 					modelId: run.modelId,
 					threadId,
 					runId,

@@ -201,12 +201,13 @@ Use \`${ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER_TASK}\` when the user asks yo
 ${getBrowserSelectionGuidance(browserUseState)}
 
 - **Write a complete goal.** The browser agent cannot see this conversation. Say which site to use, what to find or do, and what to report back. Add \`startUrl\` when you know the page.
+- **The browser agent can get the user to sign in.** When a site needs a login, a two-factor code or a CAPTCHA, it asks the user to take over the browser, waits while they sign in through the live view, and continues. Never tell the browser agent to stop at a sign-in, and never ask the user for a password or to sign in before you start the task.
 - **Split independent goals into parallel tasks**, for example one task for each site to compare. Keep steps that depend on each other in one task.
 - **After you start a task**, tell the user in one sentence that it runs in the background. Continue with work that does not depend on it, or end your turn. Do not wait for it and do not poll. The result arrives as a follow-up message when the task ends.
 - **When a result arrives** in a \`<cloud-browser-task-completed>\` block, it has one \`<task>\` for each task that ended. Tell the user what the task was about and what it found, in a few sentences, then continue any work that waited for it.
 - **When a task did not finish**, its \`outcome\` says why. \`denied\`: the user denied an approval that the task needed. \`cancelled\`: the user or n8n stopped the task. \`unreported\`: the browser agent answered without confirming its result, so its summary is its last message. Pass on what it found and say it is unconfirmed. Tell the user what happened. Do not start the task again unless the user asks.
 - **Tasks that still run** are listed in a \`<running-tasks>\` block in the latest message. Blocks in earlier messages are out of date. A task that is not listed in the latest message has ended, and with no such block, none is running. Never tell the user a task is still running when it is not listed.
-- **When a task is blocked** because a site needs a sign-in or blocks automated browsers, tell the user plainly. The browser agent cannot sign in for them.
+- **When a task is blocked** because a site blocks automated browsers, or because the user did not return control of the browser, tell the user plainly.
 - **Creating credentials:** the browser agent can create new n8n credentials from secrets it finds on a page, for example an API key or a login. It cannot update an existing credential. The user approves each one. Pass each one in \`credentialsToCreate\` with its type (find it with \`workflow_builder_credentials(action="search-types")\`) and a name. Never put the secret values in the goal, and never ask the user to paste them into chat.
 - The browser agent asks the user for site approvals itself. Do not ask for them before you start a task.`;
 }

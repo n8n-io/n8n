@@ -6,7 +6,11 @@ import type {
 } from '@n8n/api-types';
 import { mcpToolSchema } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { LocalMcpServer } from '@n8n/instance-ai';
+import type {
+	CloudBrowserUserActionHost,
+	CloudBrowserUserControlResult,
+	LocalMcpServer,
+} from '@n8n/instance-ai';
 import type {
 	AffectedResource,
 	BrowserToolkit,
@@ -15,6 +19,7 @@ import type {
 	ToolDefinition,
 } from '@n8n/mcp-browser';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { z } from 'zod';
 
 import {
@@ -26,6 +31,7 @@ import {
 	type BrowserDomainGate,
 } from './browser.helpers';
 import type {
+	CloudBrowserSessionOptions,
 	CloudBrowserSessionScope,
 	CloudBrowserSessionProvider,
 } from './cloud-browser-session-provider';
@@ -73,6 +79,12 @@ export const START_SESSION_TOOL_NAME = 'browser_start_session';
  */
 export const SESSION_IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 
+/**
+ * While the user has control, the session stays open this long without a tool call, so they
+ * have time to sign in. Browserbase ends a session after 60 minutes in any case.
+ */
+export const USER_CONTROL_TIMEOUT_MS = 30 * 60 * 1000;
+
 const START_SESSION_MCP_TOOL: McpTool = mcpToolSchema.parse({
 	name: START_SESSION_TOOL_NAME,
 	description:
@@ -82,7 +94,16 @@ const START_SESSION_MCP_TOOL: McpTool = mcpToolSchema.parse({
 		'To go to a different URL in the current session, use browser_navigate.',
 	inputSchema: {
 		type: 'object',
-		properties: { url: { type: 'string', description: 'Full URL to open' } },
+		properties: {
+			url: { type: 'string', description: 'Full URL to open' },
+			proxyCountry: {
+				type: 'string',
+				description:
+					'Optional. A two-letter country code, for example "DE". The browser then reaches sites through a residential proxy in that country, which is slower and costs more. ' +
+					'Use it only when the goal asks for results as seen from a specific country, or after a site blocked the browser, for example with an access denied page, a CAPTCHA that keeps coming back, or a message about automated traffic. ' +
+					'In that case, call browser_start_session again with a country and try again.',
+			},
+		},
 		required: ['url'],
 	},
 	annotations: { category: 'browser' },
@@ -92,7 +113,11 @@ const START_SESSION_MCP_TOOL: McpTool = mcpToolSchema.parse({
  * Why browser tools cannot run: no session was started, or the session ended without
  * the model asking for it.
  */
-type SessionUnavailableReason = 'notStarted' | 'connectionLost' | 'idleTimeout';
+type SessionUnavailableReason =
+	| 'notStarted'
+	| 'connectionLost'
+	| 'idleTimeout'
+	| 'userControlTimeout';
 
 const RELEASED_MESSAGE = 'The browser task has ended. No browser tools can run.';
 
@@ -110,9 +135,40 @@ const SESSION_UNAVAILABLE_MESSAGES: Record<SessionUnavailableReason, string> = {
 	notStarted: `No browser session is open. ${START_SESSION_HINT}`,
 	connectionLost: `The browser session closed unexpectedly. Its pages, sign-ins and cookies are gone. ${START_SESSION_HINT}`,
 	idleTimeout: `The browser session was closed because no browser tool was used for ${SESSION_IDLE_TIMEOUT_MS / 60_000} minutes. Its pages, sign-ins and cookies are gone. ${START_SESSION_HINT}`,
+	userControlTimeout: `The browser session was closed because the user did not return control within ${USER_CONTROL_TIMEOUT_MS / 60_000} minutes. Its pages, sign-ins and cookies are gone. ${START_SESSION_HINT}`,
 };
 
-const startSessionArgsSchema = z.object({ url: z.string().url() });
+const USER_NOT_IN_CONTROL_MESSAGE = 'The user does not have control of the browser.';
+
+/**
+ * The result of a tool call that waited while the user had control. The call is skipped, because
+ * the page may have changed.
+ */
+function skippedToolCallResult(result: CloudBrowserUserControlResult): McpToolCallResult {
+	if (!result.returned) return browserErrorResult(result.error);
+	const note = result.note ? ` The user says: "${result.note}"` : '';
+	return {
+		content: [
+			{
+				type: 'text',
+				text: `The user took control of the browser, so this call did not run.${note} Call browser_snapshot to see the page, then continue.`,
+			},
+		],
+	};
+}
+
+const URL_ERROR = 'browser_start_session needs a URL.';
+const PROXY_COUNTRY_ERROR = 'proxyCountry must be a two-letter country code, for example "DE".';
+
+/** Each field carries the error message the model sees when it is invalid. */
+const startSessionArgsSchema = z.object({
+	url: z.string({ required_error: URL_ERROR, invalid_type_error: URL_ERROR }).url(URL_ERROR),
+	proxyCountry: z
+		.string({ invalid_type_error: PROXY_COUNTRY_ERROR })
+		.regex(/^[a-z]{2}$/i, PROXY_COUNTRY_ERROR)
+		.transform((country) => country.toUpperCase())
+		.optional(),
+});
 
 export interface CloudBrowserLocalMcpServerOptions {
 	scope: CloudBrowserSessionScope;
@@ -129,6 +185,7 @@ export interface CloudBrowserLocalMcpServerOptions {
 
 interface ActiveSession {
 	id: string;
+	regionCountry?: string;
 	connection: BrowserToolkit['connection'];
 	toolsByName: Map<string, ToolDefinition>;
 	/**
@@ -142,7 +199,7 @@ interface ActiveSession {
 }
 
 /** Browser tools on a Browserbase session, for one background task. */
-export class CloudBrowserLocalMcpServer implements LocalMcpServer {
+export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserUserActionHost {
 	private readonly toolList: McpTool[] = [START_SESSION_MCP_TOOL];
 
 	private activeSession?: ActiveSession;
@@ -162,6 +219,12 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 
 	/** Set while a session opens, so the live view can tell an opening browser from none. */
 	private isOpeningSession = false;
+
+	/**
+	 * Set while the user has control of the browser. Its promise resolves when control comes back to
+	 * the agent, or when the browser closes first.
+	 */
+	private userControl?: IDeferredPromise<CloudBrowserUserControlResult>;
 
 	/**
 	 * Session starts and releases hold this lock, so they run one at a time and two
@@ -206,6 +269,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 
 	async callTool(req: McpToolCallRequest): Promise<McpToolCallResult> {
 		if (this.isReleased) return browserErrorResult(RELEASED_MESSAGE);
+		// Not counted as pending, so the user-control timeout still runs while the call waits.
+		if (this.userControl) return skippedToolCallResult(await this.userControl.promise);
 
 		this.clearIdleTimer();
 		this.pendingCalls++;
@@ -236,7 +301,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 		if (this.isOpeningSession) return { status: 'starting' };
 
 		const session = this.activeSession;
-		// The next tool call notices the lost connection and releases the session.
+		// The disconnect handler releases the session. Until it runs, the connection already tells.
 		if (session && !session.connection.isConnected) {
 			return { status: 'disconnected', reason: 'connectionLost' };
 		}
@@ -253,7 +318,51 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			? await adapterOf(session)?.getTargetId?.(currentWindow)
 			: undefined;
 		const liveViewUrl = await sessionProvider.getSessionLiveViewUrl(scope, session.id, targetId);
-		return { status: 'live', liveViewUrl, windowId: session.windows.at(-1) ?? '' };
+		return {
+			status: 'live',
+			liveViewUrl,
+			windowId: session.windows.at(-1) ?? '',
+			...(this.userControl ? { userInControl: true } : {}),
+		};
+	}
+
+	/** Whether the user has control of the browser. Tool calls wait until they return it. */
+	isUserInControl(): boolean {
+		return this.userControl !== undefined;
+	}
+
+	/**
+	 * Gives the user control of the browser. Tool calls wait, and the session gets the longer idle
+	 * limit. Returns why the user cannot take over, for example when no session is open.
+	 */
+	giveControlToUser(): string | undefined {
+		if (this.isReleased) return RELEASED_MESSAGE;
+		if (!this.activeSession) return SESSION_UNAVAILABLE_MESSAGES[this.sessionUnavailableReason];
+		this.userControl ??= createDeferredPromise<CloudBrowserUserControlResult>();
+		this.scheduleIdleRelease();
+		return undefined;
+	}
+
+	/** Gives control back to the agent, with what the user changed. Returns why it cannot. */
+	returnControlToAgent(note?: string): string | undefined {
+		if (!this.userControl) return USER_NOT_IN_CONTROL_MESSAGE;
+		this.endUserControl({ returned: true, ...(note ? { note } : {}) });
+		return undefined;
+	}
+
+	/** For the agent's request: gives the user control and waits until they return it. */
+	async requestUserAction(): Promise<CloudBrowserUserControlResult> {
+		const error = this.giveControlToUser();
+		if (error) return { returned: false, error };
+		return (await this.userControl?.promise) ?? { returned: true };
+	}
+
+	private endUserControl(result: CloudBrowserUserControlResult): void {
+		const userControl = this.userControl;
+		if (!userControl) return;
+		this.userControl = undefined;
+		userControl.resolve(result);
+		this.scheduleIdleRelease();
 	}
 
 	/** A new session only loads its URL, so it touches the URL's host. */
@@ -277,6 +386,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			this.isReleased = true;
 			await this.endActiveSession();
 		});
+		this.endUserControl({ returned: false, error: RELEASED_MESSAGE });
 	}
 
 	private async startSession(
@@ -285,7 +395,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 	): Promise<McpToolCallResult> {
 		const args = startSessionArgsSchema.safeParse(rawArgs);
 		if (!args.success) {
-			return browserErrorResult('browser_start_session needs a URL.');
+			return browserErrorResult(args.error.issues.map((issue) => issue.message).join(' '));
 		}
 
 		// Like the other tools, a session only opens pages with a web address.
@@ -311,7 +421,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			let session: ActiveSession;
 			this.isOpeningSession = true;
 			try {
-				session = await this.openSession();
+				session = await this.openSession({ proxyCountry: args.data.proxyCountry });
 			} catch (error) {
 				return browserErrorResult(
 					`Could not open a browser session: ${ensureError(error).message}`,
@@ -326,7 +436,12 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 				return browserErrorResult('Unknown browser tool: browser_navigate');
 			}
 			// No access check: the URL was checked before the session opened.
-			return await executeBrowserTool(navigate, { url: args.data.url }, this.options.toolContext);
+			const result = await executeBrowserTool(
+				navigate,
+				{ url: args.data.url },
+				this.options.toolContext,
+			);
+			return withBrowserLocationContext(result, session.regionCountry, args.data.proxyCountry);
 		});
 	}
 
@@ -393,7 +508,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 		try {
 			session.connection.getConnection().activePageId = current ?? '';
 		} catch {
-			// The connection is gone. The next tool call releases the session.
+			// The connection is gone. The disconnect handler releases the session.
 			return;
 		}
 		if (session === this.activeSession) this.onCurrentWindowChange?.();
@@ -440,9 +555,12 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 	}
 
 	/** Creates a session and connects the browser tools to it. */
-	private async openSession(): Promise<ActiveSession> {
+	private async openSession(sessionOptions: CloudBrowserSessionOptions): Promise<ActiveSession> {
 		const { scope, sessionProvider, createToolkit, logger } = this.options;
-		const { id, connectUrl } = await sessionProvider.createSession(scope);
+		const { id, connectUrl, regionCountry } = await sessionProvider.createSession(
+			scope,
+			sessionOptions,
+		);
 
 		let toolkit: BrowserToolkit;
 		try {
@@ -457,13 +575,38 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 		const { adapter, activePageId } = toolkit.connection.getConnection();
 		const session: ActiveSession = {
 			id,
+			regionCountry,
 			connection: toolkit.connection,
 			toolsByName: new Map(this.getAvailableToolsFromToolkit(toolkit).map((t) => [t.name, t])),
 			windows: activePageId ? [activePageId] : [],
 			windowSeenByAgent: activePageId || undefined,
 		};
 		adapter.onPageChange = (change) => this.onPageChange(session, change);
+		// The connection uses this hook to clear its own state, so ours runs after it.
+		const onDisconnect = adapter.onDisconnect;
+		adapter.onDisconnect = (reason, details) => {
+			onDisconnect?.(reason, details);
+			void this.onConnectionLost(session);
+		};
 		return session;
+	}
+
+	/**
+	 * Releases a session whose connection dropped, for example when Browserbase ended it, and ends a
+	 * wait for the user with the reason. Without this, an agent that waits for the user would wait
+	 * until the user-control timeout, since no tool call comes to notice the drop.
+	 */
+	private async onConnectionLost(session: ActiveSession): Promise<void> {
+		// A session we closed ourselves, for example on an idle timeout, already has its reason.
+		if (session !== this.activeSession) return;
+
+		const { scope, logger } = this.options;
+		logger.warn('Cloud browser session lost', { taskId: scope.taskId, sessionId: session.id });
+		this.activeSession = undefined;
+		this.sessionUnavailableReason = 'connectionLost';
+		this.clearIdleTimer();
+		this.endUserControl({ returned: false, error: SESSION_UNAVAILABLE_MESSAGES.connectionLost });
+		await this.releaseSession(session.id);
 	}
 
 	/** Disconnects the tools and releases the active session, if one is open. */
@@ -497,7 +640,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 
 		this.idleTimer = setTimeout(
 			async () => await this.releaseIdleSession(),
-			SESSION_IDLE_TIMEOUT_MS,
+			this.userControl ? USER_CONTROL_TIMEOUT_MS : SESSION_IDLE_TIMEOUT_MS,
 		);
 		// The timer alone must not keep the process running.
 		this.idleTimer.unref();
@@ -516,8 +659,10 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 		});
 		await this.withSessionLock(async () => {
 			if (!this.activeSession) return;
+			const reason = this.userControl ? 'userControlTimeout' : 'idleTimeout';
 			await this.endActiveSession();
-			this.sessionUnavailableReason = 'idleTimeout';
+			this.sessionUnavailableReason = reason;
+			this.endUserControl({ returned: false, error: SESSION_UNAVAILABLE_MESSAGES[reason] });
 		});
 	}
 
@@ -542,6 +687,30 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
  */
 function isNoHostResource(resource: AffectedResource): boolean {
 	return resource.kind === 'host' && resource.resource === 'browser';
+}
+
+/**
+ * Adds where sites see the browser to a successful result, as `browserLocation.regionCountry`
+ * and `browserLocation.proxyCountry`. The model reads structuredContent when there is one, so
+ * it goes there.
+ */
+function withBrowserLocationContext(
+	result: McpToolCallResult,
+	regionCountry: string | undefined,
+	proxyCountry: string | undefined,
+): McpToolCallResult {
+	if (result.isError || !result.structuredContent || (!regionCountry && !proxyCountry))
+		return result;
+
+	const browserLocation = {
+		...(regionCountry && { regionCountry }),
+		...(proxyCountry && { proxyCountry }),
+	};
+	// First, so it stays visible when a large page result is cut down for the model.
+	return {
+		...result,
+		structuredContent: { browserLocation, ...result.structuredContent },
+	};
 }
 
 /** The tab the session's tools act on by default, or `undefined` when the connection is gone. */

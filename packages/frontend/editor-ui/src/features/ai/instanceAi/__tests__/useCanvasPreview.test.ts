@@ -1907,6 +1907,7 @@ describe('useCanvasPreview', () => {
 					name: 'Task task-1',
 					icon: 'globe',
 					taskId: 'task-1',
+					userAction: undefined,
 				},
 			]);
 			expect(ctx.activeTabId.value).toBe('browser:task-1');
@@ -1946,6 +1947,27 @@ describe('useCanvasPreview', () => {
 			ctx.openCloudBrowserTab('task-1');
 
 			expect(ctx.browserTabs.value[0].name).toBe('Browser');
+		});
+
+		test('passes the user action of the task to its tab', () => {
+			const ctx = setup();
+			setBrowserTasks(
+				ctx.thread,
+				browserTask({
+					taskId: 'task-1',
+					toolCalls: [
+						makeToolCall({
+							toolName: 'browser_request_user_action',
+							args: { reason: 'Log in, please' },
+							isLoading: true,
+						}),
+					],
+				}),
+			);
+
+			ctx.openCloudBrowserTab('task-1');
+
+			expect(ctx.browserTabs.value[0].userAction).toEqual({ reason: 'Log in, please' });
 		});
 
 		test('does not save browser tabs', async () => {

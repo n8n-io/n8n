@@ -33,7 +33,8 @@ export const cloudBrowserTaskInputSchema = z.object({
 		.min(1)
 		.describe(
 			'What to do in the browser, with every detail the browser agent needs: the site, the data ' +
-				'to find or enter, and what to report back. The browser agent cannot see this conversation.',
+				'to find or enter, and what to report back. The browser agent cannot see this conversation. ' +
+				'If the user wants results as seen from a specific country, name the country.',
 		),
 	startUrl: z
 		.string()

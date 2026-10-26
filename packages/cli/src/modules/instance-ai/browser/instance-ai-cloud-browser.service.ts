@@ -21,6 +21,16 @@ import {
 import { CloudBrowserLocalMcpServer } from './cloud-browser-local-mcp-server';
 import type { CloudBrowserSessionProvider } from './cloud-browser-session-provider';
 
+const TASK_NOT_RUNNING_MESSAGE = 'This browser task is not running.';
+
+/** The country sites see a browser in for each Browserbase region, without a proxy. */
+const BROWSERBASE_REGION_COUNTRIES = new Map([
+	['us-west-2', 'US'],
+	['us-east-1', 'US'],
+	['eu-central-1', 'DE'],
+	['ap-southeast-1', 'SG'],
+]);
+
 /** Creates the cloud browser for a background task. Each task gets its own server. */
 @Service()
 export class InstanceAiCloudBrowserService {
@@ -127,6 +137,28 @@ export class InstanceAiCloudBrowserService {
 		return await entry.server.getLiveView();
 	}
 
+	/**
+	 * Gives the user control of the task's browser, for its owner only. Returns why they cannot
+	 * take over.
+	 */
+	giveControlToUser(userId: string, threadId: string, taskId: string): string | undefined {
+		const entry = this.serversByTaskId.get(taskId);
+		if (entry?.userId !== userId || entry.threadId !== threadId) return TASK_NOT_RUNNING_MESSAGE;
+		return entry.server.giveControlToUser();
+	}
+
+	/** Gives control of the task's browser back to its agent, for its owner only. */
+	returnControlToAgent(
+		userId: string,
+		threadId: string,
+		taskId: string,
+		note?: string,
+	): string | undefined {
+		const entry = this.serversByTaskId.get(taskId);
+		if (entry?.userId !== userId || entry.threadId !== threadId) return TASK_NOT_RUNNING_MESSAGE;
+		return entry.server.returnControlToAgent(note);
+	}
+
 	/** Ends the task's browser and forgets its server. Called when the task ends. */
 	async release(taskId: string): Promise<void> {
 		const entry = this.serversByTaskId.get(taskId);
@@ -152,11 +184,15 @@ export class InstanceAiCloudBrowserService {
 
 	private buildGatewaySessionProvider(): CloudBrowserSessionProvider {
 		return {
-			createSession: async ({ userId, threadId, taskId }) =>
-				await this.aiGatewayBrowserUseService.createSession({
+			createSession: async ({ userId, threadId, taskId }, options) => {
+				const { id, connectUrl, region } = await this.aiGatewayBrowserUseService.createSession({
 					userId,
 					attribution: { instanceAiThreadId: threadId, instanceAiTaskId: taskId },
-				}),
+					proxyCountry: options?.proxyCountry,
+				});
+				const regionCountry = region ? BROWSERBASE_REGION_COUNTRIES.get(region) : undefined;
+				return { id, connectUrl, ...(regionCountry ? { regionCountry } : {}) };
+			},
 			releaseSession: async ({ userId, threadId, taskId }, sessionId) =>
 				await this.aiGatewayBrowserUseService.releaseSession({
 					userId,

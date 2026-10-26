@@ -1,19 +1,30 @@
 <script lang="ts" setup>
 /**
  * The live view of a running cloud browser task, in a preview tab. It keeps Browserbase's own
- * bar, which shows the address of the page. The view is read-only.
+ * bar, which shows the address of the page. It is read-only until the user takes over. When the
+ * agent asked for the user, the server already gave them control, so "Take over" only unlocks
+ * the view. Otherwise it also tells the server, and the agent's calls wait. "I'm done" gives
+ * control back. After a takeover the agent did not ask for, it first asks what the user changed.
  */
+import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { computed, inject } from 'vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, inject, ref, watch } from 'vue';
 
 import {
 	CloudBrowserLiveViewsKey,
 	embeddedLiveViewUrl,
 } from '../composables/useCloudBrowserLiveViews';
+import { postCloudBrowserReturnControl, postCloudBrowserTakeOver } from '../instanceAi.api';
+import { useThread } from '../instanceAi.store';
 
-const props = defineProps<{ taskId: string }>();
+const props = defineProps<{ taskId: string; userAction?: { reason: string } }>();
 
 const i18n = useI18n();
+const toast = useToast();
+const rootStore = useRootStore();
+const thread = useThread();
 const liveViews = inject(CloudBrowserLiveViewsKey, undefined);
 
 const liveView = computed(() => liveViews?.get(props.taskId));
@@ -38,10 +49,126 @@ const placeholder = computed(() => {
 	}
 	return i18n.baseText('instanceAi.cloudBrowser.opening');
 });
+
+/** True after the user clicks "Take over", until they give control back. */
+const hasControl = ref(false);
+const isBusy = ref(false);
+const isNoteDialogOpen = ref(false);
+const note = ref('');
+/** The user took over without the agent asking, so the agent does not know what they changed. */
+const isUserTakeover = computed(() => hasControl.value && !props.userAction);
+
+// After a reload, a takeover the user started is still in progress.
+watch(
+	() => liveView.value?.status === 'live' && liveView.value.userInControl === true,
+	(inControl) => {
+		if (inControl && !props.userAction) hasControl.value = true;
+	},
+	{ immediate: true },
+);
+
+// The browser closed, so there is nothing left to control.
+watch(
+	() => liveView.value?.status,
+	(status) => {
+		if (status === 'disconnected' || status === 'not-found') hasControl.value = false;
+	},
+);
+
+// Control ended, so the question about what changed no longer applies.
+watch(hasControl, (inControl) => {
+	if (inControl) return;
+	isNoteDialogOpen.value = false;
+	note.value = '';
+});
+
+// The agent's request ended elsewhere, for example in another browser tab or on a timeout.
+watch(
+	() => props.userAction,
+	(current, previous) => {
+		if (previous && !current) hasControl.value = false;
+	},
+);
+
+async function takeOver() {
+	// The agent asked, so the server already gave the user control.
+	if (props.userAction) {
+		hasControl.value = true;
+		return;
+	}
+	if (isBusy.value) return;
+	isBusy.value = true;
+	try {
+		await postCloudBrowserTakeOver(rootStore.restApiContext, thread.id, props.taskId);
+		hasControl.value = true;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('instanceAi.cloudBrowser.takeOverFailed'));
+	} finally {
+		isBusy.value = false;
+	}
+}
+
+function onDone() {
+	if (isUserTakeover.value) {
+		isNoteDialogOpen.value = true;
+		return;
+	}
+	void returnControl();
+}
+
+async function returnControl(userNote?: string) {
+	if (isBusy.value) return;
+	isBusy.value = true;
+	try {
+		await postCloudBrowserReturnControl(
+			rootStore.restApiContext,
+			thread.id,
+			props.taskId,
+			userNote,
+		);
+		hasControl.value = false;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('instanceAi.cloudBrowser.returnControlFailed'));
+	} finally {
+		isBusy.value = false;
+	}
+}
 </script>
 
 <template>
 	<div :class="$style.container" data-test-id="instance-ai-browser-preview">
+		<div
+			v-if="userAction || hasControl"
+			:class="$style.banner"
+			data-test-id="instance-ai-browser-preview-banner"
+		>
+			<div :class="$style.bannerText">
+				<N8nText tag="div" size="medium" bold :class="$style.bannerTitle">
+					{{
+						hasControl
+							? i18n.baseText('instanceAi.cloudBrowser.youHaveControl')
+							: i18n.baseText('instanceAi.cloudBrowser.needsInput')
+					}}
+				</N8nText>
+				<N8nText tag="div" size="medium">
+					{{
+						hasControl
+							? i18n.baseText('instanceAi.cloudBrowser.returnControlHint')
+							: userAction?.reason
+					}}
+				</N8nText>
+			</div>
+			<N8nButton
+				v-if="hasControl"
+				variant="brand"
+				size="medium"
+				:loading="isBusy"
+				data-test-id="instance-ai-browser-preview-done"
+				@click="onDone"
+			>
+				{{ i18n.baseText('instanceAi.cloudBrowser.done') }}
+			</N8nButton>
+		</div>
 		<div :class="$style.stage">
 			<div :class="$style.window">
 				<div
@@ -59,19 +186,90 @@ const placeholder = computed(() => {
 						:title="
 							frame.isCurrent ? i18n.baseText('instanceAi.cloudBrowser.frameTitle') : undefined
 						"
-						:class="[$style.frame, $style.viewOnly, { [$style.backgroundFrame]: !frame.isCurrent }]"
+						:class="[
+							$style.frame,
+							{
+								[$style.backgroundFrame]: !frame.isCurrent,
+								[$style.viewOnly]: !frame.isCurrent || !hasControl,
+							},
+						]"
 						:data-cloud-browser-task-id="taskId"
 						:data-cloud-browser-window-id="frame.windowId"
-						tabindex="-1"
+						:tabindex="frame.isCurrent && hasControl ? 0 : -1"
 						:aria-hidden="frame.isCurrent ? undefined : 'true'"
 						sandbox="allow-same-origin allow-scripts allow-forms"
+						allow="clipboard-read; clipboard-write"
 						:data-test-id="
 							frame.isCurrent
 								? 'instance-ai-browser-preview-frame'
 								: 'instance-ai-browser-preview-background-frame'
 						"
 					/>
+					<!-- Shows on hover, or always when the agent asks for the user. -->
+					<div
+						v-if="!hasControl"
+						:class="[$style.overlay, { [$style.overlayVisible]: !!userAction }]"
+						data-test-id="instance-ai-browser-preview-overlay"
+					>
+						<N8nButton
+							variant="brand"
+							size="large"
+							:loading="isBusy"
+							data-test-id="instance-ai-browser-preview-take-over"
+							@click="takeOver"
+						>
+							{{ i18n.baseText('instanceAi.cloudBrowser.takeOver') }}
+						</N8nButton>
+					</div>
 				</template>
+				<div
+					v-if="isNoteDialogOpen"
+					:class="$style.noteBackdrop"
+					data-test-id="instance-ai-browser-preview-note-dialog"
+				>
+					<div
+						:class="$style.noteDialog"
+						role="dialog"
+						aria-modal="true"
+						aria-labelledby="instance-ai-browser-note-title"
+					>
+						<N8nText id="instance-ai-browser-note-title" tag="h3" size="large" bold>
+							{{ i18n.baseText('instanceAi.cloudBrowser.noteTitle') }}
+						</N8nText>
+						<N8nText tag="p" size="small" :class="$style.noteDescription">
+							{{ i18n.baseText('instanceAi.cloudBrowser.noteDescription') }}
+						</N8nText>
+						<N8nInput
+							v-model="note"
+							type="textarea"
+							:autosize="{ minRows: 3, maxRows: 8 }"
+							:maxlength="2000"
+							:placeholder="i18n.baseText('instanceAi.cloudBrowser.notePlaceholder')"
+							data-test-id="instance-ai-browser-preview-note-input"
+						/>
+						<div :class="$style.noteActions">
+							<N8nButton
+								variant="outline"
+								size="medium"
+								:disabled="isBusy"
+								data-test-id="instance-ai-browser-preview-note-skip"
+								@click="returnControl()"
+							>
+								{{ i18n.baseText('instanceAi.cloudBrowser.noteSkip') }}
+							</N8nButton>
+							<N8nButton
+								variant="brand"
+								size="medium"
+								:disabled="!note.trim()"
+								:loading="isBusy"
+								data-test-id="instance-ai-browser-preview-note-submit"
+								@click="returnControl(note.trim())"
+							>
+								{{ i18n.baseText('instanceAi.cloudBrowser.noteSubmit') }}
+							</N8nButton>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -85,6 +283,26 @@ const placeholder = computed(() => {
 	height: 100%;
 	padding: var(--spacing--sm);
 }
+
+.banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
+.bannerText {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
+
+.bannerTitle {
+	color: var(--color--warning--shade-1);
+}
+
 .stage {
 	flex: 1;
 	min-height: 0;
@@ -93,6 +311,7 @@ const placeholder = computed(() => {
 	align-items: flex-start;
 	container-type: size;
 }
+
 .window {
 	// Browserbase's bar plus the page in the browser window's shape (1280x800, set on the
 	// session), as large as fits. Another shape would letterbox the page and shrink it.
@@ -108,6 +327,7 @@ const placeholder = computed(() => {
 	background: var(--color--background--light-3);
 	box-shadow: var(--shadow--xs);
 }
+
 .placeholder {
 	display: flex;
 	align-items: center;
@@ -118,6 +338,7 @@ const placeholder = computed(() => {
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--sm);
 }
+
 .frame {
 	display: block;
 	width: 100%;
@@ -135,5 +356,54 @@ const placeholder = computed(() => {
 .viewOnly {
 	// Browserbase's way to make a live view read-only: block mouse and keyboard input.
 	pointer-events: none;
+}
+
+.noteBackdrop {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--lg);
+	background: var(--color--black-alpha-400);
+}
+
+.noteDialog {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	width: 100%;
+	max-width: calc(var(--spacing--5xl) * 2);
+	padding: var(--spacing--lg);
+	border-radius: var(--radius--lg);
+	background: var(--color--background--light-3);
+	box-shadow: var(--shadow--md);
+}
+
+.noteDescription {
+	color: var(--color--text--tint-1);
+}
+
+.noteActions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing--2xs);
+}
+
+.overlay {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--color--black-alpha-400);
+	opacity: 0;
+	transition: opacity 0.15s ease;
+
+	.window:hover &,
+	&:focus-within,
+	&.overlayVisible {
+		opacity: 1;
+	}
 }
 </style>
