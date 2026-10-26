@@ -335,6 +335,37 @@ describe('InstanceAiMarkdown', () => {
 			},
 		);
 
+		it.each(agentPreviewLinks)(
+			'preserves Cmd/Ctrl-click on $label Preview links with an embedded provider',
+			({ content: agentPreviewContent }) => {
+				const openAgentChatPreview = vi.fn(() => true);
+				const { getByTestId } = renderComponent({
+					props: { content: agentPreviewContent },
+					global: { provide: { openAgentChatPreview } },
+				});
+				const link = getByTestId('markdown-output').querySelector('a');
+				if (!link) throw new Error('expected Preview anchor');
+				for (const modifier of [{ metaKey: true }, { ctrlKey: true }]) {
+					const event = clickEvent(modifier);
+					let prevented: boolean | undefined;
+					link.parentElement?.parentElement?.addEventListener(
+						'click',
+						(event) => {
+							prevented = event.defaultPrevented;
+							event.preventDefault();
+						},
+						{ once: true },
+					);
+					link.dispatchEvent(event);
+					expect(prevented).toBe(false);
+				}
+				expect(openAgentChatPreview).not.toHaveBeenCalled();
+				expect(link.getAttribute('href')).toBe(
+					'/projects/project-1/agents/agent-1?openPreview=true',
+				);
+			},
+		);
+
 		it('uses the builder artifact target for its Preview link', () => {
 			const openAgentChatPreview = vi.fn(() => true);
 			const { getByTestId } = renderComponent({

@@ -14,12 +14,15 @@ import {
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	// EOF Experiment cleanup
 	EXPERIMENTS_TO_TRACK,
-	AGENT_BUILDER_EXPERIMENT_COHORT,
-	AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT,
-	AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
 } from '@/app/constants';
+// Experiment cleanup (133_agent_builder_experiment_cohort)
+import {
+	getAgentBuilderExperimentEnrollment,
+	isAgentBuilderExperiment,
+} from '@/experiments/agentBuilder/enrollment';
+// EOF Experiment cleanup
 // Experiment cleanup (119_surface_assistant_on_workflow_error)
 import { CLOUD_ONLY } from '@/experiments/surfaceAssistantOnWorkflowError/cloudOnly';
 // EOF Experiment cleanup
@@ -188,19 +191,14 @@ export const usePostHog = defineStore('posthog', () => {
 	};
 
 	const trackExperiment = (featFlags: FeatureFlags, name: string) => {
-		const cohort =
-			overrides.value[AGENT_BUILDER_EXPERIMENT_COHORT.name]?.value ??
-			featFlags[AGENT_BUILDER_EXPERIMENT_COHORT.name];
+		// Experiment cleanup (133_agent_builder_experiment_cohort)
 		if (
-			name === AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT.name &&
-			cohort !== AGENT_BUILDER_EXPERIMENT_COHORT.chatWidth
+			isAgentBuilderExperiment(name) &&
+			getAgentBuilderExperimentEnrollment((key) => overrides.value[key]?.value ?? featFlags[key])
+				?.name !== name
 		)
 			return;
-		if (
-			name === AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT.name &&
-			cohort !== AGENT_BUILDER_EXPERIMENT_COHORT.testToggle
-		)
-			return;
+		// EOF Experiment cleanup
 		// Experiment cleanup (119_surface_assistant_on_workflow_error)
 		if (
 			CLOUD_ONLY &&

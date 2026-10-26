@@ -391,7 +391,7 @@ function enhanceResourceLinks(): void {
  *
  * Click behavior:
  * - An agent Preview link opens the embedded agent chat.
- * - Cmd/Ctrl+click on other links opens a new tab.
+ * - Cmd/Ctrl+click on links opens a new tab.
  * - Left-click on workflow/data-table → opens (or switches to) the inline
  *   preview tab. If the preview is already showing this resource, falls
  *   through to default `target="_blank"` and opens a new tab instead.
@@ -404,14 +404,14 @@ function handleLinkClick(event: MouseEvent): void {
 	const clickedLink = event.target.closest('a');
 	if (!(clickedLink instanceof HTMLAnchorElement)) return;
 
+	if (event.metaKey || event.ctrlKey) return;
+
 	const previewTarget = resolveContextualAgentPreviewLink(clickedLink.getAttribute('href') ?? '');
 	if (previewTarget && openAgentChatPreview) {
 		event.preventDefault();
 		openAgentChatPreview(previewTarget.agentId, previewTarget.projectId);
 		return;
 	}
-
-	if (event.metaKey || event.ctrlKey) return;
 
 	const type = clickedLink.dataset.resourceChip;
 	const id = clickedLink.dataset.resourceId;

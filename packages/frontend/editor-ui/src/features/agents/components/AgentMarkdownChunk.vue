@@ -53,6 +53,7 @@ function handleLinkClick(event: MouseEvent) {
 	const previewTarget = resolveAgentPreviewLink(href);
 	if (!previewTarget) return;
 	link.setAttribute('href', previewTarget.href);
+	if (event.metaKey || event.ctrlKey) return;
 
 	if (openAgentChatPreview) {
 		event.preventDefault();
@@ -60,7 +61,6 @@ function handleLinkClick(event: MouseEvent) {
 		return;
 	}
 
-	if (event.metaKey || event.ctrlKey) return;
 	event.preventDefault();
 	void router.push(previewTarget.href);
 }

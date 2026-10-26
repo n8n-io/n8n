@@ -20,9 +20,10 @@ describe('AgentMarkdownChunk', () => {
 		const wrapper = mount(AgentMarkdownChunk, {
 			props: { source: `[Open Build](${href})`, canOpenBuild: true },
 		});
-		const event = new MouseEvent('click', { bubbles: true, cancelable: true });
-		wrapper.get('a').element.dispatchEvent(event);
-		expect(event.defaultPrevented).toBe(true);
+		const prevented = vi.fn();
+		wrapper.element.addEventListener('click', (event) => prevented(event.defaultPrevented));
+		await wrapper.get('a').trigger('click');
+		expect(prevented).toHaveBeenCalledExactlyOnceWith(true);
 		expect(wrapper.emitted('open-build')).toEqual([[edit]]);
 		expect(routerPush).not.toHaveBeenCalled();
 		await wrapper.setProps({ canOpenBuild: false });
@@ -59,19 +60,32 @@ describe('AgentMarkdownChunk', () => {
 		expect(routerPush).not.toHaveBeenCalled();
 	});
 
-	it.each([{ metaKey: true }, { ctrlKey: true }])(
-		'canonicalizes modifier-click Preview links for the browser',
-		async (modifier) => {
+	it.each([
+		{ metaKey: true, embedded: false },
+		{ ctrlKey: true, embedded: false },
+		{ metaKey: true, embedded: true },
+		{ ctrlKey: true, embedded: true },
+	])(
+		'preserves modifier-click navigation with provider $embedded',
+		async ({ embedded, ...modifier }) => {
+			const openAgentChatPreview = vi.fn(() => true);
 			const wrapper = mount(AgentMarkdownChunk, {
-				props: {
-					source: '[Preview](/projects/project-1/agents/agent-1/preview)',
-				},
+				props: { source: '[Preview](/projects/project-1/agents/agent-1/preview)' },
+				global: { provide: embedded ? { openAgentChatPreview } : {} },
 			});
-
-			const link = wrapper.find('a');
-			link.element.addEventListener('click', (event) => event.preventDefault(), { once: true });
+			const link = wrapper.get('a');
+			let prevented: boolean | undefined;
+			wrapper.element.addEventListener(
+				'click',
+				(event) => {
+					prevented = event.defaultPrevented;
+					event.preventDefault();
+				},
+				{ once: true },
+			);
 			await link.trigger('click', modifier);
-
+			expect(prevented).toBe(false);
+			expect(openAgentChatPreview).not.toHaveBeenCalled();
 			expect(routerPush).not.toHaveBeenCalled();
 			expect(link.attributes('href')).toBe('/projects/project-1/agents/agent-1?openPreview=true');
 		},
