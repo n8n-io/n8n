@@ -441,7 +441,9 @@ export class McpService {
 				tool.name,
 				{
 					...config,
-					...(inputSchema ? { inputSchema: shapeToStandardSchema(inputSchema) } : {}),
+					...(inputSchema
+						? { inputSchema: shapeToStandardSchema(inputSchema, { decodeJsonStringArgs: true }) }
+						: {}),
 					...(outputSchema ? { outputSchema: shapeToStandardSchema(outputSchema) } : {}),
 				},
 				instrumentedHandler,

@@ -43,6 +43,7 @@ import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
+import { z } from 'zod';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 
@@ -1006,6 +1007,27 @@ describe('McpService', () => {
 				status: 'success',
 				workflowId: 'wf-42',
 				structuredContent: { workflowId: 'wf-42' },
+			});
+		});
+
+		it('accepts JSON-encoded typed arguments but keeps the output schema strict', async () => {
+			const server = new McpServer({ name: 'schema-test', version: '1.0.0' });
+			const registerTool = mcpService.createToolRegistrar(server, mcpUser());
+			const registered = registerTool({
+				name: 'search_workflow_executions',
+				config: {
+					description: 'test',
+					inputSchema: { status: z.array(z.string()).optional(), limit: z.number().optional() },
+					outputSchema: { count: z.number() },
+				},
+				handler: async () => ({ content: [], structuredContent: { count: 0 } }),
+			});
+
+			expect(
+				await registered.inputSchema?.['~standard'].validate({ status: '["error"]', limit: '4' }),
+			).toEqual({ value: { status: ['error'], limit: 4 } });
+			expect(await registered.outputSchema?.['~standard'].validate({ count: '4' })).toEqual({
+				issues: [expect.objectContaining({ path: ['count'] })],
 			});
 		});
 

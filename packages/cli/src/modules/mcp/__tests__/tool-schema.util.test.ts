@@ -89,6 +89,87 @@ describe('shapeToStandardSchema', () => {
 		});
 	});
 
+	describe('decodeJsonStringArgs', () => {
+		const shape = {
+			workflowId: z.string().optional(),
+			status: z.array(z.enum(['error', 'success'])).optional(),
+			limit: z.number().int().min(1).optional(),
+			dryRun: z.boolean().optional(),
+			node: z
+				.object({
+					name: z.string(),
+					position: z.array(z.number()).length(2).optional(),
+				})
+				.optional(),
+		};
+		const lenient = shapeToStandardSchema(shape, { decodeJsonStringArgs: true });
+
+		// Some MCP clients send typed arguments as JSON-encoded strings.
+		it('decodes JSON strings sent for array, number and boolean arguments', async () => {
+			const result = await lenient['~standard'].validate({
+				workflowId: 'wf-1',
+				status: '["error"]',
+				limit: '4',
+				dryRun: 'true',
+			});
+
+			expect(result).toEqual({
+				value: { workflowId: 'wf-1', status: ['error'], limit: 4, dryRun: true },
+			});
+		});
+
+		it('decodes nested JSON strings inside a JSON-encoded object', async () => {
+			const result = await lenient['~standard'].validate({
+				node: JSON.stringify({ name: 'Set', position: '[10, 20]' }),
+			});
+
+			expect(result).toEqual({ value: { node: { name: 'Set', position: [10, 20] } } });
+		});
+
+		it('keeps string arguments as strings', async () => {
+			const result = await lenient['~standard'].validate({ workflowId: '123' });
+
+			expect(result).toEqual({ value: { workflowId: '123' } });
+		});
+
+		it('reports the original issue when the string does not decode to the expected type', async () => {
+			const result = await lenient['~standard'].validate({ status: '"error"', limit: 'four' });
+
+			expect('issues' in result && result.issues).toEqual([
+				expect.objectContaining({ path: ['status'] }),
+				expect.objectContaining({ path: ['limit'] }),
+			]);
+		});
+
+		it('reports constraint issues on the decoded value', async () => {
+			const result = await lenient['~standard'].validate({ status: '["bogus"]', limit: '0' });
+
+			expect('issues' in result && result.issues).toEqual([
+				expect.objectContaining({ path: ['status', 0] }),
+				expect.objectContaining({ path: ['limit'] }),
+			]);
+		});
+
+		it('does not modify the input object', async () => {
+			const input = { status: '["error"]' };
+
+			await lenient['~standard'].validate(input);
+
+			expect(input).toEqual({ status: '["error"]' });
+		});
+
+		it('rejects JSON strings when the option is off', async () => {
+			const strict = shapeToStandardSchema(shape);
+
+			const result = await strict['~standard'].validate({ status: '["error"]', limit: '4' });
+
+			expect('issues' in result && result.issues).toEqual([
+				expect.objectContaining({ path: ['status'] }),
+				expect.objectContaining({ path: ['limit'] }),
+			]);
+		});
+	});
+
 	// A Zod instance reused across two properties must be inlined at both use
 	// sites. The generator's default strategy dedupes the second occurrence into
 	// a `$ref` to a `#/properties/...` path, which strict clients (e.g. Zod v4's
