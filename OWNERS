@@ -107,6 +107,8 @@ packages/cli/src/active-executions.ts                   @n8n-io/core-execution
 
 packages/cli/src/auth/                                  @n8n-io/iam
 packages/cli/src/credentials/                           @n8n-io/iam
+packages/cli/src/credentials/credential-field-mapping.ts                 @n8n-io/ai-agents
+packages/cli/src/credentials/__tests__/credential-field-mapping.test.ts  @n8n-io/ai-agents
 packages/cli/src/mfa/                                   @n8n-io/iam
 packages/cli/src/oauth/                                 @n8n-io/iam
 packages/cli/src/permissions.ee/                        @n8n-io/iam
@@ -143,6 +145,7 @@ packages/cli/src/modules/skills/                        @n8n-io/context
 packages/cli/test/integration/skills/                   @n8n-io/context
 packages/cli/src/modules/chat-hub/                      @n8n-io/ai-assistant
 packages/cli/src/modules/instance-ai/                   @n8n-io/ai-assistant
+packages/modules/self-healing/                         @n8n-io/ai-assistant
 packages/modules/inbox/                                @n8n-io/ligo
 
 # CLI controllers

@@ -23,6 +23,7 @@ import { InstanceAiThreadGrantRepository } from '../../repositories/instance-ai-
 import { InstanceAiThreadRepository } from '../../repositories/instance-ai-thread.repository';
 import { TypeORMAgentMemory } from '../../storage/typeorm-agent-memory';
 import { SelfHealingResultRepository } from '../database/self-healing-result.repository';
+import { createConfiguration, addReviewer } from './support/configuration';
 
 mockInstance(ActiveWorkflowManager);
 mockInstance(WorkflowPublicationNotifier);
@@ -63,12 +64,15 @@ async function savedResult() {
 		backgroundUser.id,
 	);
 	const execution = await createExecution({ status: 'error' }, workflow);
+	const configuration = await createConfiguration(ownerProject.id, backgroundUser.id);
 	const result = await Container.get(SelfHealingResultRepository).createResult(
 		{
+			configurationId: configuration.id,
 			workflowId: workflow.id,
 			projectId: ownerProject.id,
 			backgroundUserId: backgroundUser.id,
 			executionId: execution.id,
+			suggestionId: null,
 			usage: {
 				credits: 1,
 				turns: 2,
@@ -78,7 +82,6 @@ async function savedResult() {
 			summary: 'Review the failed request.',
 			report: 'The request failed. Check the connection settings, then retry the workflow.',
 			completedAt: new Date(),
-			suggestionId: null,
 		},
 		{},
 	);
@@ -92,6 +95,8 @@ it('continues a saved report in a new private chat owned by the current editor',
 	const editor = await createUser();
 	const otherEditor = await createUser();
 	await shareWorkflowWithUsers(workflow, [editor, otherEditor]);
+	await addReviewer(result.configurationId, editor.id);
+	await addReviewer(result.configurationId, otherEditor.id);
 	const editorProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		editor.id,
 	);

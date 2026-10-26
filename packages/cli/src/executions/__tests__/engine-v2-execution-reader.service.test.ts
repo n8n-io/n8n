@@ -171,6 +171,66 @@ describe('EngineV2ExecutionReader', () => {
 		});
 	});
 
+	describe('findLatest', () => {
+		beforeEach(() => {
+			dataPlane.findLatestExecution.mockResolvedValue(snapshot({ steps: [step()] }));
+		});
+
+		it('reads the newest match and its run data in one round trip', async () => {
+			const result = await reader.findLatest({ status: ['success'] }, [WORKFLOW_ID]);
+
+			expect(dataPlane.findLatestExecution).toHaveBeenCalledTimes(1);
+			expect(dataPlane.findLatestExecution).toHaveBeenCalledWith({
+				workflowIds: [WORKFLOW_ID],
+				status: ['completed'],
+				hostMode: undefined,
+				createdAfter: undefined,
+				createdBefore: undefined,
+			});
+			expect(dataPlane.searchExecutions).not.toHaveBeenCalled();
+			expect(dataPlane.getExecution).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				id: EXECUTION_ID,
+				workflowId: WORKFLOW_ID,
+				status: 'success',
+				data: expect.objectContaining({
+					resultData: expect.objectContaining({
+						runData: { Trigger: [expect.objectContaining({ executionStatus: 'success' })] },
+					}),
+				}),
+				workflowData: expect.objectContaining({ id: WORKFLOW_ID }),
+			});
+		});
+
+		it('returns undefined when nothing matches', async () => {
+			dataPlane.findLatestExecution.mockResolvedValue(undefined);
+
+			await expect(reader.findLatest({}, [WORKFLOW_ID])).resolves.toBeUndefined();
+		});
+
+		it('asks nothing for an empty scope', async () => {
+			await expect(reader.findLatest({}, [])).resolves.toBeUndefined();
+
+			expect(dataPlane.findLatestExecution).not.toHaveBeenCalled();
+		});
+
+		it('asks nothing for a status the data plane cannot match', async () => {
+			await expect(
+				reader.findLatest({ status: ['crashed' as ExecutionStatusV1] }, [WORKFLOW_ID]),
+			).resolves.toBeUndefined();
+
+			expect(dataPlane.findLatestExecution).not.toHaveBeenCalled();
+		});
+
+		it('returns undefined when the stored workflow cannot be read', async () => {
+			dataPlane.findLatestExecution.mockResolvedValue(
+				snapshot({ workflow: { nodes: 'not-a-list' } }),
+			);
+
+			await expect(reader.findLatest({}, [WORKFLOW_ID])).resolves.toBeUndefined();
+		});
+	});
+
 	describe('findReference', () => {
 		it('returns only execution identity without requesting steps', async () => {
 			await expect(reader.findReference(EXECUTION_ID)).resolves.toEqual({

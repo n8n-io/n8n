@@ -4,6 +4,7 @@ import type {
 	ExecutionListItem,
 	ExecutionSnapshot,
 	ExecutionStatus,
+	FindLatestExecutionRequest,
 	SearchExecutionsRequest,
 } from '@n8n/engine';
 import type {
@@ -43,6 +44,12 @@ export interface EngineV2SearchQuery {
 		startedAt?: 'DESC';
 	};
 }
+
+/** A latest-execution read takes the search filter, but no paging: it names one execution. */
+export type EngineV2LatestQuery = Pick<
+	EngineV2SearchQuery,
+	'status' | 'mode' | 'startedAfter' | 'startedBefore'
+>;
 
 /**
  * The most workflow IDs one data plane search takes. A wider scope throws for
@@ -90,6 +97,28 @@ export class EngineV2ExecutionReader {
 		return { items: [], hasMore: false, total: 0 };
 	}
 
+	/**
+	 * The newest execution matching `query` within `scope`, with its run data,
+	 * or `undefined` when none matches. One data plane round trip: the scope is
+	 * the access check, so no second read is needed to authorize the result.
+	 */
+	async findLatest(
+		query: EngineV2LatestQuery,
+		scope: V2Scope,
+	): Promise<IExecutionResponse | undefined> {
+		if (scope !== 'all' && !scope.length) return undefined;
+
+		const status = resolveV2Statuses(query.status);
+		if (status?.length === 0) return undefined;
+
+		const snapshot = await this.dataPlane.findLatestExecution(
+			this.buildFilter(query, this.searchableScope(scope), status),
+		);
+		if (!snapshot) return undefined;
+
+		return await this.fromSnapshot(snapshot);
+	}
+
 	/** The deduplicated scope, or a user-facing error when one search cannot hold it. */
 	private searchableScope(scope: V2Scope): V2Scope {
 		if (scope === 'all') return scope;
@@ -111,15 +140,25 @@ export class EngineV2ExecutionReader {
 		includeTotal: boolean,
 	): SearchExecutionsRequest {
 		return {
+			...this.buildFilter(query, scope, status),
+			before: query.before ? { createdAt: query.before.timestamp, id: query.before.id } : undefined,
+			limit: query.limit,
+			includeTotal,
+			order: query.order,
+		};
+	}
+
+	private buildFilter(
+		query: EngineV2LatestQuery,
+		scope: V2Scope,
+		status: ExecutionStatus[] | undefined,
+	): FindLatestExecutionRequest {
+		return {
 			workflowIds: scope,
 			status,
 			hostMode: query.mode,
 			createdAfter: query.startedAfter ? new Date(query.startedAfter).toISOString() : undefined,
 			createdBefore: query.startedBefore ? new Date(query.startedBefore).toISOString() : undefined,
-			before: query.before ? { createdAt: query.before.timestamp, id: query.before.id } : undefined,
-			limit: query.limit,
-			includeTotal,
-			order: query.order,
 		};
 	}
 
@@ -164,6 +203,11 @@ export class EngineV2ExecutionReader {
 		// The `workflow:read` check.
 		if (!sharedWorkflowIds.includes(snapshot.workflowId)) return undefined;
 
+		return await this.fromSnapshot(snapshot);
+	}
+
+	/** `undefined` when the stored workflow document cannot be read as one. */
+	private async fromSnapshot(snapshot: ExecutionSnapshot): Promise<IExecutionResponse | undefined> {
 		const workflow = asWorkflowSnapshot(snapshot.workflow);
 		if (!workflow) return undefined;
 
