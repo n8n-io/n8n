@@ -36,8 +36,6 @@ import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
 import { useKeybindings } from '@/app/composables/useKeybindings';
-import { useStubAgentSessionStore } from '../stubAgentSession.store';
-import AgentSessionMockControls from './AgentSessionMockControls.vue';
 
 const props = defineProps<{
 	projectId: string;
@@ -61,13 +59,11 @@ const agentTelemetry = useAgentTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const pushStore = usePushConnectionStore();
 const documentVisibility = useDocumentVisibility();
-const stubStore = useStubAgentSessionStore();
 
 const projectId = computed(() => props.projectId);
 
 const executions = ref<AgentExecution[]>([]);
 const loading = ref(true);
-const showLoading = computed(() => loading.value && !stubStore.active);
 const selectedIndex = ref<number | null>(null);
 const highlightedIndex = ref<number | null>(null);
 const timelineTableRef = useTemplateRef('timelineTable');
@@ -87,8 +83,8 @@ const { allJobs } = useAgentBackgroundJobs({
 
 const baseItems = computed<TimelineItem[]>(() =>
 	[
-		...flattenExecutionsToTimelineItems(stubStore.active ? stubStore.executions : executions.value),
-		...backgroundTasksToTimelineItems(stubStore.active ? stubStore.jobs : allJobs.value),
+		...flattenExecutionsToTimelineItems(executions.value),
+		...backgroundTasksToTimelineItems(allJobs.value),
 	].sort((a, b) => a.timestamp - b.timestamp),
 );
 
@@ -393,8 +389,7 @@ useKeybindings({
 
 <template>
 	<div :class="$style.panel">
-		<AgentSessionMockControls v-if="stubStore.active" />
-		<div v-if="!showLoading" :class="$style.subHeader">
+		<div v-if="!loading" :class="$style.subHeader">
 			<N8nInput
 				ref="searchInput"
 				v-model="searchQuery"
@@ -415,7 +410,7 @@ useKeybindings({
 			/>
 		</div>
 		<SessionTimelineChart
-			v-if="!showLoading"
+			v-if="!loading"
 			:items="items"
 			:session-start="bounds.start"
 			:session-end="bounds.end"
@@ -424,11 +419,11 @@ useKeybindings({
 			@select="onChartSelect"
 		/>
 		<div :class="$style.section">
-			<div v-if="showLoading" :class="$style.loading">
+			<div v-if="loading" :class="$style.loading">
 				{{ i18n.baseText('generic.loadingEllipsis') }}
 			</div>
 			<SessionTimelineTable
-				v-if="!showLoading"
+				v-if="!loading"
 				ref="timelineTable"
 				:project-id="props.projectId"
 				:agent-id="props.agentId"
