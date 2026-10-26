@@ -261,7 +261,7 @@ Operational details:
 A test case can declare optional natural-language assertions, split by what they judge:
 
 - **`processExpectations: string[]`** — about *how the build went* (clarifications asked, push-back, ordering). Judged from the **conversation transcript** (plus the workflow and conversation metrics). They require a transcript, so they are **skipped in prebuilt runs**. MCP runs capture the `claude` transcript, so they are judged there. e.g. `"Before building, the agent asked which Slack channel to use."`
-- **`outcomeExpectations: string[]`** — about the **resulting workflow**. Judged from the **workflow JSON**, so they **also run in prebuilt runs** (which have no transcript) and MCP runs. e.g. `"The final workflow splits the records envelope before posting."`
+- **`outcomeExpectations: string[]`** — about the **resulting artifact**. Judged from the **workflow JSON**, or from the Agent when the build made one, so they **also run in prebuilt runs** (which have no transcript) and MCP runs. e.g. `"The final workflow splits the records envelope before posting."`
 
 Both are graded by the same judge (`build-expectations/verifier.ts`) and **count as units in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. They don't flip an individual scenario's pass/fail (each is its own unit), and a judge `incomplete` verdict is excluded from the count. A full build judges the union of both fields against the transcript; a prebuilt build judges only `outcomeExpectations` against the workflow. A case may omit `executionScenarios` entirely — a **build-only** case — and is then graded by these expectations plus the always-on workflow checks.
 
@@ -507,8 +507,10 @@ How it differs from the manifest flow:
   deleted with the built workflows after the run; under `--keep-workflows` they
   stay, since deleting a user deletes their remaining data.
 - **Same conversation as the Instance AI arm.** `claude` gets only the first user
-  turn, with no harness instructions added (the workflow id comes from the
-  `create_workflow_from_code` tool result). After each reply, the same simulated user (`UserProxyLlm`) decides on a
+  turn, without the `WORKFLOW_ID` trailer (the workflow id comes from the
+  `create_workflow_from_code` tool result). Harness context still goes with it:
+  the project to build in, the note on pre-created scenario tables, and for a
+  seeded case the earlier conversation and the attached resource. After each reply, the same simulated user (`UserProxyLlm`) decides on a
   follow-up, which is sent with `claude -p --resume`, until it is done or the
   case's `messageBudget` is spent. Stage directions stay with the simulated user
   and never reach `claude`. A conversation that ends without a workflow or an

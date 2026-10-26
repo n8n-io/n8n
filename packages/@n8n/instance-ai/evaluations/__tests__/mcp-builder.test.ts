@@ -8,6 +8,7 @@ import {
 	buildAllowedTools,
 	buildPromptFromConversation,
 	buildWorkflowViaMcp,
+	isolatedClaudeAuthError,
 	MCP_BUILD_KEY_SUPPORT,
 	sanitizeServerName,
 	stageLaneMcpConfig,
@@ -691,6 +692,27 @@ describe('buildWorkflowViaMcp', () => {
 			);
 		});
 
+		it('ends the conversation at the build timeout when the simulated user hangs', async () => {
+			spawnReturning(() =>
+				emitting([initEvent('sess-1'), resultEvent({ result: 'Which channel?' })]),
+			);
+			const hungDriver = {
+				recordAssistantMessage: vi.fn(),
+				decideFollowUp: vi.fn(async () => await new Promise<never>(() => {})),
+			};
+
+			const result = await buildWorkflowViaMcp({
+				...buildOpts(),
+				settings: { ...settings, buildTimeoutMs: 50 },
+				createDriver: () => hungDriver,
+				seededWorkflowIds: ['wfSeed'],
+			});
+
+			expect(result.failureReason).toBe('timeout');
+			// An unfinished conversation does not fall back to the seeded workflow.
+			expect(result.workflowId).toBeNull();
+		});
+
 		it('does not retry a conversation that ended without a workflow', async () => {
 			spawnReturning(() =>
 				emitting([initEvent('sess-1'), resultEvent({ result: 'I need more details.' })]),
@@ -726,6 +748,25 @@ describe('buildWorkflowViaMcp', () => {
 			expect(result.workflowId).toBe('wf2');
 			expect(createDriver).toHaveBeenCalledTimes(2);
 		});
+	});
+});
+
+describe('isolatedClaudeAuthError', () => {
+	beforeEach(() => {
+		vi.stubEnv('ANTHROPIC_API_KEY', '');
+		vi.stubEnv('ANTHROPIC_AUTH_TOKEN', '');
+		vi.stubEnv('CLAUDE_CODE_OAUTH_TOKEN', '');
+	});
+	afterEach(() => vi.unstubAllEnvs());
+
+	it('names the env vars an isolated build needs when none is set', () => {
+		expect(isolatedClaudeAuthError(undefined)).toMatch(/ANTHROPIC_API_KEY/);
+	});
+
+	it('accepts a host setup through a build cwd, or any env token', () => {
+		expect(isolatedClaudeAuthError('/tmp/x')).toBeUndefined();
+		vi.stubEnv('CLAUDE_CODE_OAUTH_TOKEN', 'token');
+		expect(isolatedClaudeAuthError(undefined)).toBeUndefined();
 	});
 });
 

@@ -11,6 +11,7 @@ import { z } from 'zod';
 
 import {
 	buildWorkflowViaMcp,
+	isolatedClaudeAuthError,
 	stageMcpConfigFromClaudeJson,
 	uniqueProjectScopes,
 } from './mcp-builder';
@@ -461,6 +462,8 @@ async function main(): Promise<void> {
 	if (args.buildCwd && !existsSync(args.buildCwd)) {
 		throw new Error(`--build-cwd directory does not exist: ${args.buildCwd}`);
 	}
+	const authError = isolatedClaudeAuthError(args.buildCwd);
+	if (authError) throw new Error(authError);
 
 	// Resolve slug -> conversation from the chosen source. Disk reads --workflow-dir
 	// (positional slugs or discovered), langtracer pulls a suite over MCP; both feed

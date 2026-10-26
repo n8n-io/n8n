@@ -145,7 +145,8 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 	},
 	telegramApi: {
 		defaultName: '[eval] Telegram',
-		buildData: (token) => ({ accessToken: token }),
+		// The node builds its URLs from `baseUrl`; a stored credential has no default.
+		buildData: (token) => ({ accessToken: token, baseUrl: 'https://api.telegram.org' }),
 	},
 	airtableTokenApi: {
 		defaultName: '[eval] Airtable',

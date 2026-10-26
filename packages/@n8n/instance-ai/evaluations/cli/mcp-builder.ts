@@ -247,6 +247,18 @@ export function unsupportedMcpBuildSetupFields(testCase: WorkflowTestCase): stri
 	});
 }
 
+const CLAUDE_ENV_AUTH = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'];
+
+/**
+ * Why an MCP build cannot authenticate, or undefined when it can. Without a build
+ * cwd every attempt runs with an empty CLAUDE_CONFIG_DIR, so a stored `claude`
+ * login is not visible and auth must come from the environment.
+ */
+export function isolatedClaudeAuthError(buildCwd: string | undefined): string | undefined {
+	if (buildCwd || CLAUDE_ENV_AUTH.some((name) => process.env[name])) return undefined;
+	return `MCP builds without --build-cwd run claude isolated from ~/.claude — set one of ${CLAUDE_ENV_AUTH.join(', ')}, or pass --build-cwd to use the host claude setup.`;
+}
+
 // ---------------------------------------------------------------------------
 // `claude -p` subprocess invocation
 // ---------------------------------------------------------------------------
@@ -642,7 +654,14 @@ async function runConversationAttempt(opts: {
 		if (capture.session?.subtype !== 'success' || !sessionId) break;
 
 		driver.recordAssistantMessage(capture.agentText);
-		const decision = await driver.decideFollowUp();
+		const decision = await beforeDeadline(driver.decideFollowUp(), deadline);
+		if (decision === undefined) {
+			// The simulated user did not answer in time: the conversation is unfinished.
+			// The proxy's model call may still settle later; it no longer holds the lane.
+			attempt.timedOut = true;
+			attempt.lastSession = undefined;
+			break;
+		}
 		if (decision.kind === 'done') break;
 		if (decision.renameWorkflowTo !== undefined || decision.runWorkflowId !== undefined) {
 			log(
@@ -664,6 +683,22 @@ async function runConversationAttempt(opts: {
 		updatedWorkflowIds.at(-1) ??
 		(finished ? (opts.seededWorkflowIds?.[0] ?? null) : null);
 	return attempt;
+}
+
+/** Resolve with `promise`, or with undefined once `deadline` (epoch ms) passes. */
+async function beforeDeadline<T>(promise: Promise<T>, deadline: number | undefined) {
+	if (deadline === undefined) return await promise;
+	const timer = new AbortController();
+	try {
+		return await Promise.race([
+			promise,
+			delay(Math.max(0, deadline - Date.now()), undefined, { signal: timer.signal }).catch(
+				() => undefined,
+			),
+		]);
+	} finally {
+		timer.abort();
+	}
 }
 
 /** Provider-outage evidence lives in the session's free-text result; keep enough
