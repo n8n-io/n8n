@@ -21,6 +21,7 @@ export const API_KEY_SCOPE_GROUPS: Array<{ key: string; resources: ApiKeyResourc
 			'securityAudit',
 			'communityPackage',
 			'insights',
+			'llmUsage',
 			'nodeTypePolicy',
 			'credentialTypePolicy',
 		],

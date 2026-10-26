@@ -157,6 +157,9 @@ paths:
   /insights/summary:
     get:
       $ref: ./handlers/insights/spec/paths/getInsightsSummary.generated.yml
+  /llm-usage/calls:
+    get:
+      $ref: ./handlers/llm-usage/spec/paths/getCalls.generated.yml
   /settings/ldap:
     get:
       $ref: ./handlers/settings/spec/paths/getLdapConfiguration.generated.yml

@@ -30,6 +30,18 @@ const alias = {
 		__dirname,
 		'../modules/insights/backend/src/index.ts',
 	),
+	'@n8n/backend-module-llm-usage/testing': path.resolve(
+		__dirname,
+		'../modules/llm-usage/backend/src/testing.ts',
+	),
+	'@n8n/backend-module-llm-usage/module': path.resolve(
+		__dirname,
+		'../modules/llm-usage/backend/src/llm-usage.module.ts',
+	),
+	'@n8n/backend-module-llm-usage': path.resolve(
+		__dirname,
+		'../modules/llm-usage/backend/src/index.ts',
+	),
 	'@n8n/backend-module-workflow-builder/module': path.resolve(
 		__dirname,
 		'../modules/workflow-builder/backend/src/workflow-builder.module.ts',

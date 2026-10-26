@@ -86,6 +86,9 @@
 		"GET /insights/summary": {
 			"status": "gap"
 		},
+		"GET /llm-usage/calls": {
+			"status": "gap"
+		},
 		"GET /executions": {
 			"status": "covered",
 			"nodeOperation": "execution:getAll"

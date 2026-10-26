@@ -373,6 +373,11 @@ export type {
 	LlmUsageTotals,
 } from './llm-usage/llm-usage-response.dto';
 export {
+	ListLlmUsageCallsQueryPublicDto,
+	LlmUsageCallListPublicDto,
+	LlmUsageCallPublicDto,
+} from './llm-usage/llm-usage-public.dto';
+export {
 	InsightsSummaryPublicDto,
 	InsightsSummaryQueryPublicDto,
 } from './insights/insights-summary-public.dto';

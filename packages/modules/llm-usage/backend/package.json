@@ -14,6 +14,11 @@
       "types": "./dist/llm-usage.module.d.ts",
       "import": "./dist/llm-usage.module.js",
       "require": "./dist/llm-usage.module.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "require": "./dist/testing.js"
     }
   },
   "files": [

@@ -102,4 +102,22 @@ export class LlmUsageService {
 		const { count, items } = await this.repository.listCalls({ ...lastDays(days), ...page });
 		return { count, items: items.map(toCallItem) };
 	}
+
+	/**
+	 * One page of the calls in a time range, oldest first. Calls stored later mostly finished
+	 * later too, so they land on later pages instead of moving the pages a client has read.
+	 */
+	async listCallsInRange({
+		offset,
+		limit,
+		...range
+	}: LlmUsageTimeRange & { offset: number; limit: number }) {
+		return await this.repository.listCalls({
+			...range,
+			skip: offset,
+			take: limit,
+			sortBy: 'finishedAt',
+			sortOrder: 'asc',
+		});
+	}
 }
