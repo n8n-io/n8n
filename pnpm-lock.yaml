@@ -974,7 +974,7 @@ overrides:
   '@types/node': ^20.17.50
   chokidar: 4.0.3
   esbuild: ^0.28.1
-  multer: ^2.4.0
+  multer: ^2.5.0
   prebuild-install: 7.1.3
   pug: ^3.0.3
   semver: 7.7.3
@@ -4996,8 +4996,8 @@ importers:
         specifier: 'catalog:'
         version: 2.1.3
       multer:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.5.0
+        version: 2.5.0
       n8n-core:
         specifier: workspace:*
         version: link:../core
@@ -21043,8 +21043,8 @@ packages:
   muggle-string@0.4.1:
     resolution: {integrity: sha512-VNTrAak/KhO2i8dqqnqnAHOa3cYBwXEZe9h+D5h/1ZqFSTEFHdM65lR7RoIqq3tBBYavsOXV84NoHXZ0AkPyqQ==}
 
-  multer@2.4.0:
-    resolution: {integrity: sha512-7dqa0ZcFfzbefdTuIkzOSMvZWC0J7FLqBOjJUZvDCXShIURWKxAyTT1wHhnE5q19c7jOJf43IYYKjBmZVZmvhg==}
+  multer@2.5.0:
+    resolution: {integrity: sha512-BsqOzYGVq49JcW2IzoSAxeKYRevb+dGGPPWleOR8Lrlk4igwxu1/9pwSXlByhCb7MVZDrNJFC0IBP5/O5nLYRw==}
     engines: {node: '>= 10.16.0'}
 
   mustache@4.2.0:
@@ -39711,7 +39711,7 @@ snapshots:
 
   muggle-string@0.4.1: {}
 
-  multer@2.4.0:
+  multer@2.5.0:
     dependencies:
       append-field: 1.0.0
       busboy: 1.6.0

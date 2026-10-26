@@ -252,7 +252,7 @@
     "luxon": "catalog:",
     "moment-timezone": "catalog:",
     "ms": "catalog:",
-    "multer": "^2.4.0",
+    "multer": "^2.5.0",
     "n8n-core": "workspace:*",
     "n8n-editor-ui": "workspace:*",
     "n8n-nodes-base": "workspace:*",
