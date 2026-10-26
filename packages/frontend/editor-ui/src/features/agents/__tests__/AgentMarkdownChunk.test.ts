@@ -21,7 +21,7 @@ describe('AgentMarkdownChunk', () => {
 			props: { source: `[Open Build](${href})`, canOpenBuild: true },
 		});
 		const prevented = vi.fn();
-		wrapper.element.addEventListener('click', (event) => prevented(event.defaultPrevented));
+		wrapper.element.addEventListener('click', (event: Event) => prevented(event.defaultPrevented));
 		await wrapper.get('a').trigger('click');
 		expect(prevented).toHaveBeenCalledExactlyOnceWith(true);
 		expect(wrapper.emitted('open-build')).toEqual([[edit]]);
@@ -77,7 +77,7 @@ describe('AgentMarkdownChunk', () => {
 			let prevented: boolean | undefined;
 			wrapper.element.addEventListener(
 				'click',
-				(event) => {
+				(event: Event) => {
 					prevented = event.defaultPrevented;
 					event.preventDefault();
 				},

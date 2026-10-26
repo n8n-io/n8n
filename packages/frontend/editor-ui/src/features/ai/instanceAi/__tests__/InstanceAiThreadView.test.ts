@@ -925,29 +925,26 @@ describe('InstanceAiThreadView', () => {
 	it('shows the selector after the first build even if Test is unavailable, and disables it during work', async () => {
 		artifactChatModeState.value.visible = false;
 		const { queryByRole, getByRole, user, getByTestId } = await renderAgentArtifact();
-		expect(queryByRole('button', { name: 'Test', exact: true })).not.toBeInTheDocument();
+		expect(queryByRole('button', { name: 'Test' })).not.toBeInTheDocument();
 		artifactChatModeState.value.visible = true;
 		artifactChatModeState.value.testDisabledReason = "Can't test agent yet";
 		await nextTick();
-		expect(getByRole('button', { name: 'Build', exact: true })).toBeEnabled();
-		expect(getByRole('button', { name: 'Test', exact: true })).toBeDisabled();
+		expect(getByRole('button', { name: 'Build' })).toBeEnabled();
+		expect(getByRole('button', { name: 'Test' })).toBeDisabled();
 		artifactChatModeState.value.testDisabledReason = undefined;
 		await nextTick();
-		expect(getByRole('button', { name: 'Test', exact: true })).toBeEnabled();
+		expect(getByRole('button', { name: 'Test' })).toBeEnabled();
 		artifactChatModeState.value.disabled = true;
 		await nextTick();
-		expect(getByRole('button', { name: 'Build', exact: true })).toBeDisabled();
-		expect(getByRole('button', { name: 'Test', exact: true })).toBeDisabled();
+		expect(getByRole('button', { name: 'Build' })).toBeDisabled();
+		expect(getByRole('button', { name: 'Test' })).toBeDisabled();
 		artifactChatModeState.value.disabled = false;
 		await nextTick();
-		await user.click(getByRole('button', { name: 'Test', exact: true }));
+		await user.click(getByRole('button', { name: 'Test' }));
 		expect(getByTestId('instance-ai-agent-test-chat')).toBeVisible();
 		expect(getByTestId('instance-ai-input-stub')).not.toBeVisible();
 		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
-		expect(getByRole('button', { name: 'Build', exact: true })).toHaveAttribute(
-			'aria-pressed',
-			'true',
-		);
+		expect(getByRole('button', { name: 'Build' })).toHaveAttribute('aria-pressed', 'true');
 		expect(getByTestId('instance-ai-input-stub')).toBeVisible();
 	});
 
@@ -964,16 +961,16 @@ describe('InstanceAiThreadView', () => {
 			experiment.assistantChatRatio = 0.65;
 			const { getByTestId, queryByRole } = await renderAgentArtifact({ threadAreaWidth: 1600 });
 			expect(getByTestId('instance-ai-preview-panel').style.width).toBe(`${previewWidth}px`);
-			expect(Boolean(queryByRole('button', { name: 'Test', exact: true }))).toBe(hasToggle);
+			expect(Boolean(queryByRole('button', { name: 'Test' }))).toBe(hasToggle);
 			expect(experiment.trackExposure).toHaveBeenCalled();
 		},
 	);
 
 	it('removes the selector when the agent artifact is closed', async () => {
 		const { getByRole, queryByRole, getByTestId, user } = await renderAgentArtifact();
-		expect(getByRole('button', { name: 'Test', exact: true })).toBeVisible();
+		expect(getByRole('button', { name: 'Test' })).toBeVisible();
 		await user.click(getByTestId('instance-ai-artifacts-preview-toggle'));
-		expect(queryByRole('button', { name: 'Test', exact: true })).not.toBeInTheDocument();
+		expect(queryByRole('button', { name: 'Test' })).not.toBeInTheDocument();
 	});
 
 	it('closes the preview dock once the request is staged in the composer', async () => {
@@ -992,10 +989,7 @@ describe('InstanceAiThreadView', () => {
 			'data-preview-open',
 			'false',
 		);
-		expect(getByRole('button', { name: 'Build', exact: true })).toHaveAttribute(
-			'aria-pressed',
-			'true',
-		);
+		expect(getByRole('button', { name: 'Build' })).toHaveAttribute('aria-pressed', 'true');
 	});
 
 	it('keeps the in-place handoff when preview view metadata cannot be saved', async () => {

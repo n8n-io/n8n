@@ -6904,6 +6904,7 @@ describe('chat-first builder', () => {
 		await flushPromises();
 		expect(updateConfigMock).toHaveBeenCalled();
 		await wrapper.vm.setChatMode('build');
+		if (!mockConfig.value) throw new Error('Agent config is missing');
 		save.resolve({ config: mockConfig.value, versionId: 'v2', stale: false });
 		expect(await transition).toBe(false);
 		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);

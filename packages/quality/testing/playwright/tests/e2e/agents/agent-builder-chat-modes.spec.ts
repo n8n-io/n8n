@@ -132,15 +132,14 @@ test.describe(
 				await builder.setExperiment('outside', 'control', 'control');
 				await builder.openAssistantIfClosed();
 				const response = Promise.withResolvers<undefined>();
-				await n8n.page.route(`**/rest/instance-ai/chat/${threadId}`, async (route) => {
+				await n8n.page.route('**/rest/instance-ai/chat/*', async (route) => {
 					await response.promise;
 					await route.fulfill({ status: 400, json: { message: 'Test request finished' } });
 				});
 				try {
 					const request = n8n.page.waitForRequest(
 						(request) =>
-							request.method() === 'POST' &&
-							request.url().endsWith(`/instance-ai/chat/${threadId}`),
+							request.method() === 'POST' && request.url().includes('/rest/instance-ai/chat/'),
 					);
 					await composer.fill('Update the instructions');
 					await composer.press('Enter');
