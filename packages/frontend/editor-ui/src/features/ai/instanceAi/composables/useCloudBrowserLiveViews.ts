@@ -67,7 +67,9 @@ export function useCloudBrowserLiveViews(
 		if (next.status !== 'live' && next.status !== 'not-found') {
 			retryTimers.set(
 				taskId,
-				setTimeout(() => void refresh(taskId), CLOUD_BROWSER_LIVE_VIEW_RETRY_INTERVAL),
+				setTimeout(() => {
+					void refresh(taskId);
+				}, CLOUD_BROWSER_LIVE_VIEW_RETRY_INTERVAL),
 			);
 		}
 	}

@@ -13,11 +13,11 @@ export function createInstanceAiEventLifecycle(): InstanceAiEventLifecycle {
 /** Keep user actions and thread metadata available after a run ends. */
 function isRunActivity(event: InstanceAiEvent): boolean {
 	switch (event.type) {
+		// Arrives after a background agent completed, when a later run picks up its result.
+		case 'agent-result-delivered':
 		case 'thread-title-updated':
 		case 'preference-card':
 		case 'tasks-update':
-		// Arrives after a background agent completed, when a later run picks up its result.
-		case 'agent-result-delivered':
 			return false;
 		default:
 			return true;
