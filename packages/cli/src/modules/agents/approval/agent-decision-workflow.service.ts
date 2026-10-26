@@ -1,3 +1,5 @@
+import { truncate } from '@n8n/utils/string/truncate';
+import { AgentChannelHitlService } from './agent-channel-hitl.service';
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
 import {
@@ -6,6 +8,7 @@ import {
 	WORKFLOW_WAIT_SUSPEND_TYPE,
 	type AgentApprovalRoute,
 	type AgentJsonConfig,
+	type AgentIntegrationConfig,
 } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
 import { OperationalError, UserError, jsonParse } from 'n8n-workflow';
@@ -47,7 +50,12 @@ export class AgentDecisionWorkflowService {
 		tool: BuiltTool,
 		route: AgentApprovalRoute | undefined,
 		agentConfig: AgentJsonConfig,
-		identity: { agentId: string; projectId: string; published: boolean },
+		identity: {
+			agentId: string;
+			projectId: string;
+			published: boolean;
+			integrations?: AgentIntegrationConfig[];
+		},
 	): BuiltTool {
 		const effective = route ?? agentConfig.defaultApprovalRoute;
 		if (!effective || effective.type === 'conversation') {
@@ -74,35 +82,58 @@ export class AgentDecisionWorkflowService {
 		};
 	}
 
+	private approvalMessage(toolName: string, input: unknown, redacted: boolean) {
+		const argumentsText = redacted
+			? 'Tool arguments are hidden by the caller settings.'
+			: JSON.stringify(buildApprovalArgs(input), null, 2);
+		// Telegram escapes can double the length. Leave room for both buttons and the notice.
+		const message = `Approval required for ${toolName}\n\n${argumentsText}`;
+		return message.length > 1900
+			? `${truncate(message, 1900)}\n\nTool arguments are truncated.`
+			: message;
+	}
+
 	private async decide(
 		tool: BuiltTool,
 		input: unknown,
 		ctx: InterruptibleToolContext,
 		configuration: NonNullable<AgentJsonConfig['hitlConfigurations']>[number],
-		identity: { agentId: string; projectId: string; published: boolean },
+		identity: {
+			agentId: string;
+			projectId: string;
+			published: boolean;
+			integrations?: AgentIntegrationConfig[];
+		},
 	): Promise<unknown> {
 		const pending = DECISION_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
 		let executionId: string;
 		if (pending.success) {
 			executionId = pending.data.executionId;
 		} else {
-			const workflow = await this.loader.loadWorkflow(
-				identity.projectId,
-				{ workflowId: configuration.workflowId, workflowName: configuration.name },
-				{ usePublishedVersion: identity.published },
-			);
+			const caller = readWorkflowCaller(ctx.persistence?.hostMetadata?.workflowCaller);
+			if (!caller || !ctx.runId || !ctx.toolCallId || !ctx.persistence) {
+				throw new UserError(
+					'This spike supports advanced approvals from Message an Agent version 4',
+				);
+			}
+			const workflow =
+				configuration.method === 'channel'
+					? Container.get(AgentChannelHitlService).buildWorkflow(
+							configuration,
+							identity.integrations ?? [],
+							caller.workflowId,
+						)
+					: await this.loader.loadWorkflow(
+							identity.projectId,
+							{ workflowId: configuration.workflowId, workflowName: configuration.name },
+							{ usePublishedVersion: identity.published },
+						);
 			const trigger = workflow?.nodes.find(
 				(node) => node.type === AGENT_DECISION_TRIGGER_NODE_TYPE && !node.disabled,
 			);
 			if (!workflow || !trigger)
 				throw new UserError('Select a workflow with an Agent decision trigger');
-			const caller = readWorkflowCaller(ctx.persistence?.hostMetadata?.workflowCaller);
-			if (!caller || !ctx.runId || !ctx.toolCallId || !ctx.persistence) {
-				throw new UserError(
-					'This spike supports decision workflows from Message an Agent version 4',
-				);
-			}
-			if (workflow.id === caller.workflowId)
+			if (configuration.method === 'workflow' && workflow.id === caller.workflowId)
 				throw new UserError('A decision workflow cannot call itself');
 			const { WorkflowRunner } = await import('@/workflow-runner.js');
 			const result = await executeWorkflow(
@@ -115,6 +146,15 @@ export class AgentDecisionWorkflowService {
 				}),
 				trigger,
 				{
+					...(configuration.method === 'channel'
+						? {
+								message: this.approvalMessage(
+									tool.name,
+									input,
+									ctx.persistence.hostMetadata?.approvalArgumentsRedacted === true,
+								),
+							}
+						: {}),
 					requestId: `${ctx.runId}:${ctx.toolCallId}`,
 					agentId: identity.agentId,
 					toolName: tool.name,
@@ -128,6 +168,7 @@ export class AgentDecisionWorkflowService {
 					subworkflowPolicyChecker: this.policyChecker,
 					activeExecutions: this.activeExecutions,
 					projectId: identity.projectId,
+					...(configuration.method === 'channel' ? { executionProjectId: identity.projectId } : {}),
 					executionMode: identity.published ? 'integrated' : 'manual',
 					agentRun: {
 						...identity,

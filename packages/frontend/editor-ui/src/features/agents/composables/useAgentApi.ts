@@ -1,4 +1,7 @@
 import type {
+	AgentHitlChannelDescriptor,
+	AgentHitlOptionsPage,
+	AgentHitlOptionsQuery,
 	AgentApproval,
 	AgentBudgetSpend,
 	AgentBackgroundJobsResponse,
@@ -1076,3 +1079,28 @@ export const getAgentWriteLock = async (
 		`/projects/${projectId}/agents/v2/${agentId}/collaboration/write-lock`,
 	);
 };
+
+export async function getAgentHitlChannels(
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentHitlChannelDescriptor[]> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/hitl/channels`,
+	);
+}
+export async function getAgentHitlChannelOptions(
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	query: AgentHitlOptionsQuery,
+): Promise<AgentHitlOptionsPage> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/hitl/channel-options`,
+		query,
+	);
+}

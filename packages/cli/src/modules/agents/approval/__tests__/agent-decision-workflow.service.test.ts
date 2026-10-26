@@ -1,3 +1,4 @@
+import { AgentChannelHitlService } from '../agent-channel-hitl.service';
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { Container } from '@n8n/di';
@@ -151,6 +152,88 @@ describe('Agent decision workflow approval', () => {
 				executionId: 'child',
 			}),
 		);
+	});
+
+	it('dispatches a channel request through the same durable decision execution', async () => {
+		const { service, tool, jobs, executions, context, handler, loader } = setup();
+		const channels = mock<AgentChannelHitlService>();
+		Container.set(AgentChannelHitlService, channels);
+		Container.set(WorkflowRunner, mock<WorkflowRunner>());
+		channels.buildWorkflow.mockReturnValue({
+			id: 'caller',
+			name: 'Channel approval',
+			nodes: [{ name: 'Agent decision', type: 'n8n-nodes-base.agentDecisionTrigger' }],
+			connections: {},
+			settings: {},
+		} as never);
+		const execute = vi
+			.spyOn(workflowTools, 'executeWorkflow')
+			.mockResolvedValue({ executionId: 'child', status: 'waiting' });
+		jobs.findWorkflowJobByExecutionId.mockResolvedValue({
+			id: 'job',
+			status: 'running',
+		} as AgentBackgroundJob);
+		executions.findSingleExecution.mockResolvedValue({ status: 'waiting' } as IExecutionResponse);
+		const integration = { type: 'slack', credentialId: 'credential' } as const;
+		const config = {
+			...configuration,
+			hitlConfigurations: [
+				{
+					id: 'review',
+					name: 'Channel approval',
+					method: 'channel',
+					channel: 'slack',
+					credentialId: 'credential',
+					recipient: { kind: 'user', id: 'U1' },
+				},
+			],
+		} as AgentJsonConfig;
+		const wrapped = service.wrap(tool, undefined, config, {
+			agentId: 'agent',
+			projectId: 'project',
+			published: false,
+			integrations: [integration],
+		});
+		expect(
+			await wrapped.handler?.(
+				{ secret: 'hidden' },
+				{
+					...context,
+					continuation: undefined,
+					suspendPayload: undefined,
+					runId: 'run',
+					toolCallId: 'call',
+					persistence: {
+						threadId: 'thread',
+						resourceId: 'resource',
+						hostMetadata: {
+							...encodeAgentSandboxHostMetadata({
+								projectId: 'project',
+								principalHash: hashAgentSandboxPrincipal({
+									type: 'workflow-execution',
+									workflowId: 'caller',
+									executionId: 'parent',
+								}),
+							}),
+							workflowCaller: JSON.stringify({ workflowId: 'caller', executionId: 'parent' }),
+							approvalArgumentsRedacted: true,
+						},
+					},
+				},
+			),
+		).toBe('waiting');
+		expect(channels.buildWorkflow).toHaveBeenCalledWith(
+			config.hitlConfigurations?.[0],
+			[integration],
+			'caller',
+		);
+		expect(execute.mock.calls[0][2]).toMatchObject({
+			argumentsRedacted: true,
+			message: expect.stringContaining('hidden by the caller settings'),
+		});
+		expect(execute.mock.calls[0][2]).not.toHaveProperty('arguments');
+		expect(loader.loadWorkflow).not.toHaveBeenCalled();
+		expect(handler).not.toHaveBeenCalled();
 	});
 
 	it.each([true, false])(

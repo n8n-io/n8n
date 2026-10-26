@@ -2,12 +2,13 @@
 
 Run the database migrations. Use Message an Agent version 4.
 
-This branch implements the workflow path in the Advanced HITL investigation.
+This branch implements workflow and connected-channel approval destinations.
 It includes the workflow caller and item continuation in the same spike.
 
 1. Open a saved Agent. Open Settings, then Advanced HITL.
-2. Create a configuration. Select a decision workflow or create one.
-3. Add review steps between the Agent decision trigger and the response.
+2. Create a configuration. Select a workflow or a connected Slack, Telegram, or
+   Discord channel. The workflow picker includes search and Create workflow.
+3. For a workflow, add review steps between the Agent decision trigger and the response.
    A send-and-wait approval node can return the decision directly.
 4. Return one terminal item with `approved: true` or `approved: false`.
    The response helper is optional. Its starter value is false.
@@ -39,8 +40,14 @@ arguments. Child redaction and private credential markers pass back to the paren
 
 ## Limits to investigate before delivery
 
-- Scheduled Agent tasks and direct Slack, Telegram, or Discord destinations are not
-  implemented here. Use existing workflow send-and-wait nodes for channel review.
+- Scheduled Agent tasks remain unsupported.
+- The channel path runs a generated send-and-wait snapshot under the caller
+  workflow ID. It does not save a workflow or change the caller graph. Credential
+  policy uses the Agent project. Review execution ownership before delivery.
+- Discord user lists require the Server Members intent. Slack lists need
+  channel and user read scopes. Telegram users must first message the bot.
+- Destination search reads one vendor page per request. Load more continues the
+  search. The destination menu virtualizes loaded rows.
 - Inline Agents remain excluded. Conversational approvals keep their existing path.
 - There is no production readiness claim for queue restart, cancellation races,
   concurrent Agent nodes, execution deletion, or dynamic credential identity.
@@ -53,6 +60,10 @@ arguments. Child redaction and private credential markers pass back to the paren
   Set the rollout policy before release.
 - The migration and generated schema docs are included. Test upgrade and downgrade
   with active requests before release.
+
+Channel definitions own their fields, list lookup, and send-and-wait node.
+Linear explicitly disables this capability. The runtime checks that the selected
+connection belongs to the pinned Agent.
 
 The repository's execution pruner now reads approval receipts to retain child rows.
 This coupling needs review before a production implementation.

@@ -40,6 +40,7 @@ import type { DecodedThread, OriginInput } from '../../integration-origin-suppor
  */
 @Service()
 export class LinearIntegration extends AgentChatIntegration {
+	readonly hitl = { supported: false } as const;
 	readonly type = 'linear';
 
 	readonly credentialTypes = ['linearOAuth2Api'];

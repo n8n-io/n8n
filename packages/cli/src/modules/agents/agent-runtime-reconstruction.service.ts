@@ -650,7 +650,7 @@ export class AgentRuntimeReconstructionService {
 		return await this.reconstructRuntime({
 			...params,
 			config,
-			credentialIntegrations: [],
+			credentialIntegrations: params.credentialIntegrations ?? [],
 			subAgentDelegation,
 			unavailableTools,
 		});
@@ -848,6 +848,7 @@ export class AgentRuntimeReconstructionService {
 			agentId: options.memoryOwnerAgentId,
 			projectId: options.projectId,
 			published: options.runType === 'production',
+			integrations: options.credentialIntegrations,
 		});
 	}
 

@@ -404,6 +404,7 @@ defineExpose({ onSetupTaskAction });
 					<div :class="$style.settingsCards">
 						<AgentHitlPanel
 							v-if="!agentUnsaved"
+							:agent-id="agentId"
 							:config="localConfig"
 							:project-id="projectId"
 							:disabled="childrenDisabled"

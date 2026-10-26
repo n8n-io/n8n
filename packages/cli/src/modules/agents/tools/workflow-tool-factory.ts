@@ -18,6 +18,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import { DateTime } from 'luxon';
 import type {
+	IWorkflowBase,
 	IDataObject,
 	IExecuteResponsePromiseData,
 	INode,
@@ -451,7 +452,7 @@ async function resolveWorkflowToolInput(
 // ---------------------------------------------------------------------------
 
 export async function executeWorkflow(
-	workflow: WorkflowEntity,
+	workflow: IWorkflowBase,
 	triggerNode: INode,
 	inputData: Record<string, unknown>,
 	context: Pick<
@@ -464,7 +465,7 @@ export async function executeWorkflow(
 		| 'agentRun'
 		| 'abortSignal'
 		| 'instrumentToolAdditionalData'
-	>,
+	> & { executionProjectId?: string },
 	allOutputs = false,
 	/** Sanitized tool name for eval instrumentation; set only on instrumented runs. */
 	instrumentedToolName?: string,
@@ -484,6 +485,7 @@ export async function executeWorkflow(
 
 	// Build execution data following Instance AI adapter's pattern
 	const runData: IWorkflowExecutionDataProcess = {
+		...(context.executionProjectId ? { projectId: context.executionProjectId } : {}),
 		executionMode: context.executionMode,
 		workflowData,
 		startNodes: [{ name: triggerNode.name, sourceData: null }],

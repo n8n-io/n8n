@@ -811,6 +811,7 @@ export class AgentWorkflowExecutionService {
 		const reconstructed =
 			await this.agentRuntimeReconstructionService.reconstructFromResolvedSource({
 				config: snapshot.config,
+				credentialIntegrations: snapshot.config.integrations ?? [],
 				...snapshot.assets,
 				memoryOwnerAgentId: params.agentId,
 				projectId: params.projectId,
@@ -909,7 +910,10 @@ export class AgentWorkflowExecutionService {
 		const snapshot: WorkflowRunSnapshot | undefined =
 			agentData.schema && workflowContext?.supportsSuspension
 				? {
-						config: toAgentDocument(agentData.schema, runSource.skillRefs),
+						config: {
+							...toAgentDocument(agentData.schema, runSource.skillRefs),
+							integrations: agentData.integrations ?? [],
+						},
 						assets: getAgentRuntimeAssets(agentData, runSource.skills),
 						recordingParams,
 						runType,

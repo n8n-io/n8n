@@ -1,3 +1,4 @@
+import { AgentHitlOptionsQuerySchema } from './agent-hitl.schema';
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -511,3 +512,5 @@ export class AgentChatCancelDto extends Z.class({
 export class AgentTaskCancellationDto extends Z.class({
 	planId: z.string().uuid().toLowerCase().nullable(),
 }) {}
+
+export class AgentHitlOptionsQueryDto extends Z.class(AgentHitlOptionsQuerySchema.shape) {}

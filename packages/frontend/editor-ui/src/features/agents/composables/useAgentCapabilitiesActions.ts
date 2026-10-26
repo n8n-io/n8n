@@ -160,6 +160,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		if (supportsToolApproval === false) return undefined;
 		const targetAgentId = agentId.value;
 		return {
+			agentId: targetAgentId,
 			getConfig: () => (agentId.value === targetAgentId ? localConfig.value : null),
 			saveConfiguration: (configuration: AgentHitlConfiguration) => {
 				if (agentId.value !== targetAgentId) return;

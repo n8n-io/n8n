@@ -187,12 +187,21 @@ approves or rejects them in this chat. If it returns `approval_required` for an
 unsupported interaction, explain that it cannot be completed here and send the
 user to the Preview link from `sessionContext` to run it again.
 
-The Advanced HITL spike adds workflow approval for saved Agents called from a
-workflow. It requires Message an Agent version 4. It does not yet support
-scheduled Agent tasks or direct channel delivery. Do not promise these paths.
+The Advanced HITL spike adds workflow and connected-channel approval for saved
+Agents called from a workflow. It requires Message an Agent version 4. It does
+not yet support scheduled Agent tasks. Do not promise that path.
 
-Use `hitlConfigurations` for named workflow destinations. Each configuration
-has `id`, `name`, `method: "workflow"`, and `workflowId`. Set
+Use `hitlConfigurations` for named approval destinations. A workflow configuration
+has `id`, `name`, `method: "workflow"`, and `workflowId`. A channel configuration
+has `id`, `name`, `method: "channel"`, `channel`, `credentialId`, and
+`recipient: { kind: "channel" | "user", id, name? }`. Use a Slack, Telegram, or
+Discord connection already configured on the Agent. Linear does not support
+approval delivery. Discord also requires `guildId`. Telegram requires a numeric
+user ID, and the user must first message the bot. Do not use a Telegram username.
+Slack and Discord provide searchable destination lists in Settings. The channel
+path uses existing durable send-and-wait nodes with the connected credential.
+
+Set
 `defaultApprovalRoute: { type: "configuration", configurationId }` to use one
 destination for all gated tools. A tool or MCP server can set `approvalRoute`
 to override that default. Keep `requireApproval` and MCP permission rules.

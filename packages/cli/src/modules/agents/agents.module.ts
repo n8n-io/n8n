@@ -35,6 +35,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-chat.controller.js');
 		await import('./system-agents/system-agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
+		await import('./approval/agent-hitl-channels.controller.js');
 		await import('./agent-slack-integrations.controller.js');
 		await import('./agent-teams-integrations.controller.js');
 		await import('./agent-whatsapp-integrations.controller.js');

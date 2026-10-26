@@ -1,3 +1,4 @@
+import type { ChannelHitlDefinition } from './channel-hitl';
 import {
 	AgentIntegrationConfig,
 	type AgentIntegrationDisconnectWarning,
@@ -264,6 +265,8 @@ export type SettleActionMessage = (params: SettleActionMessageParams) => Promise
  * The concrete subclasses live under `./platforms/`.
  */
 export abstract class AgentChatIntegration {
+	readonly hitl: ChannelHitlDefinition = { supported: false };
+
 	/** Platform identifier (`'slack'`, `'telegram'`, …). */
 	abstract readonly type: string;
 

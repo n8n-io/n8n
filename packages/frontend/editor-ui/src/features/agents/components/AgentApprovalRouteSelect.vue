@@ -72,6 +72,7 @@ function save(configuration: AgentHitlConfiguration) {
 		</N8nSelect>
 		<AgentHitlConfigurationModal
 			v-if="creating"
+			:context="context"
 			:project-id="projectId"
 			:next-number="configurations.length + 1"
 			@save="save"

@@ -1,3 +1,4 @@
+import { discordHitl } from './discord-hitl';
 import type { AgentMessageIntegrationOrigin, RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
@@ -75,6 +76,7 @@ const DISCORD_API_URL = 'https://discord.com/api/v10';
  */
 @Service()
 export class DiscordIntegration extends AgentChatIntegration {
+	readonly hitl = discordHitl;
 	readonly type = 'discord';
 
 	readonly credentialTypes = ['discordBotApi'];

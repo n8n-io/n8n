@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentHitlConfiguration, AgentJsonConfig } from '@n8n/api-types';
@@ -10,6 +10,7 @@ import AgentHitlConfigurationModal from './AgentHitlConfigurationModal.vue';
 const props = defineProps<{
 	config: AgentJsonConfig | null;
 	projectId: string;
+	agentId: string;
 	disabled: boolean;
 }>();
 const emit = defineEmits<{ 'update:config': [updates: Partial<AgentJsonConfig>] }>();
@@ -26,7 +27,21 @@ function save(configuration: AgentHitlConfiguration) {
 	});
 	modalOpen.value = false;
 }
-const context = { getConfig: () => props.config, saveConfiguration: save };
+const context = {
+	get agentId() {
+		return props.agentId;
+	},
+	getConfig: () => props.config,
+	saveConfiguration: save,
+};
+watch(
+	() => props.agentId,
+	() => {
+		modalOpen.value = false;
+		editing.value = undefined;
+	},
+);
+
 function remove() {
 	const id = editing.value?.id;
 	const route = props.config?.defaultApprovalRoute;
@@ -94,6 +109,7 @@ function remove() {
 		<AgentHitlConfigurationModal
 			v-if="modalOpen"
 			:configuration="editing"
+			:context="context"
 			:project-id="projectId"
 			:next-number="configurations.length + 1"
 			@save="save"
