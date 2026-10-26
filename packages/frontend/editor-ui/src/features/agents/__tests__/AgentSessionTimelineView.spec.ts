@@ -236,6 +236,7 @@ describe('AgentSessionTimelineView', () => {
 			await nextTick();
 			const header = wrapper.findComponent(AgentSessionTimelineHeader);
 			expect(header.props('isPreviewOpen')).toBeFalsy();
+			expect(header.props('durationLabel')).toBe('');
 			for (const listener of pushListeners)
 				listener({
 					type: 'agentExecutionUpdated',
@@ -345,6 +346,42 @@ describe('AgentSessionTimelineView', () => {
 		pushListeners.clear();
 		routerPush.mockClear();
 		routerReplace.mockClear();
+	});
+
+	it.each([
+		{ triggerSource: null, totalTokens: 0, separators: 0 },
+		{ triggerSource: 'chat', totalTokens: 0, separators: 0 },
+		{ triggerSource: null, totalTokens: 125, separators: 0 },
+		{ triggerSource: 'chat', totalTokens: 125, separators: 1 },
+	])('hides unknown duration without extra separators for %j', async (metrics) => {
+		const wrapper = shallowMount(AgentSessionTimelineHeader, {
+			props: {
+				breadcrumbItems: [],
+				projectIcon: { type: 'icon', value: 'user' },
+				sessionTitle: '',
+				sessionOptions: [],
+				showMetrics: true,
+				triggerSource: metrics.triggerSource,
+				triggerIcon: 'bolt-filled',
+				triggerLabel: metrics.triggerSource ? 'Chat' : '',
+				totalTokens: metrics.totalTokens,
+				totalCost: 0,
+				durationLabel: '',
+				showLangsmithExport: false,
+				langsmithExportLoading: false,
+				showPreview: false,
+			},
+		});
+		expect(wrapper.find('[icon="clock"]').exists()).toBe(false);
+		expect(wrapper.text().split('·').length - 1).toBe(metrics.separators);
+		if (metrics.totalTokens) expect(wrapper.text()).toContain('125t');
+		await wrapper.setProps({ durationLabel: '2.0s' });
+		expect(wrapper.find('[icon="clock"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('2.0s');
+		expect(wrapper.text().split('·').length - 1).toBe(
+			metrics.separators + (metrics.triggerSource || metrics.totalTokens ? 1 : 0),
+		);
+		wrapper.unmount();
 	});
 
 	it('shows Preview controls before a new session has metrics', () => {

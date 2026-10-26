@@ -445,6 +445,7 @@ export class AgentExecutionService {
 
 			// Save the terminal row first. A rejected finalization must not replace a stored blob.
 			await this.moveFinalTimelineToBlob(executionId, settled, storedAt);
+			await this.completeRecordedExecution(settled, executionId, status);
 
 			this.executionUpdateBroadcaster.notify({
 				projectId: params.projectId,
@@ -454,7 +455,6 @@ export class AgentExecutionService {
 				duration: record.duration,
 				complete: true,
 			});
-			await this.completeRecordedExecution(settled, executionId, status);
 			return executionId;
 		} catch (error) {
 			this.errorReporter.error(error);

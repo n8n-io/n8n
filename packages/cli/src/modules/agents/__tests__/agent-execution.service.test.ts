@@ -824,6 +824,42 @@ describe('AgentExecutionService', () => {
 		);
 	});
 
+	it('publishes completion after the thread totals are saved', async () => {
+		const totalsWriteStarted = createDeferredPromise();
+		const totalsWrite = createDeferredPromise();
+		agentExecutionThreadRepository.incrementUsage.mockImplementationOnce(async () => {
+			totalsWriteStarted.resolve();
+			await totalsWrite.promise;
+		});
+		const finalized = service.finalizeExecution('execution-1', {
+			threadId: 'thread-1',
+			agentId: 'agent-1',
+			agentName: 'Agent',
+			projectId: 'project-1',
+			userMessage: null,
+			record: makeMessageRecord({
+				usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5 },
+				totalCost: 0.01,
+				duration: 1500,
+			}),
+		});
+		try {
+			await totalsWriteStarted.promise;
+			expect(executionUpdateBroadcaster.notify).not.toHaveBeenCalled();
+		} finally {
+			totalsWrite.resolve();
+			await finalized;
+		}
+		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledExactlyOnceWith({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			executionId: 'execution-1',
+			duration: 1500,
+			complete: true,
+		});
+	});
+
 	it('keeps terminal persistence successful when usage totals and model backfill fail', async () => {
 		agentExecutionThreadRepository.incrementUsage.mockRejectedValue(
 			new Error('usage update failed'),

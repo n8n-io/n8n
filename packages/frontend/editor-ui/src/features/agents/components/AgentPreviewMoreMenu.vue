@@ -162,6 +162,7 @@ const { usage, duration, onExecutionUpdated } = useAgentSessionUsage(
 );
 const tokenSpendLabel = computed(() => formatAgentUsage(usage.value.totalTokens, usage.value.cost));
 const durationLabel = computed(() => {
+	if (!Number.isFinite(duration.value) || duration.value <= 0) return '';
 	if (duration.value < 1000) return `${duration.value}ms`;
 	return `${(duration.value / 1000).toFixed(1)}s`;
 });
@@ -345,8 +346,9 @@ watch(
 			<template #footer>
 				<ul :class="$style.sessionMetadata">
 					<li v-if="triggerLabel"><N8nIcon :icon="triggerIcon" :size="12" />{{ triggerLabel }}</li>
-					<li v-if="sessionMetadata" :class="$style.metrics">
-						<span v-if="tokenSpendLabel">{{ tokenSpendLabel }} • </span>{{ durationLabel }}
+					<li v-if="tokenSpendLabel || durationLabel" :class="$style.metrics">
+						<span v-if="tokenSpendLabel">{{ tokenSpendLabel }}</span>
+						<span v-if="tokenSpendLabel && durationLabel"> • </span>{{ durationLabel }}
 					</li>
 					<li v-if="sessionMetadata?.updatedAt">
 						{{

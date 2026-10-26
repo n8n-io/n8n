@@ -126,13 +126,20 @@ const breadcrumbItems = computed(() =>
 				<N8nIcon :icon="props.triggerIcon" :size="12" />
 				<span>{{ props.triggerLabel }}</span>
 			</span>
-			<span v-if="props.showMetrics && props.triggerSource" :class="$style.sep">·</span>
+			<span
+				v-if="props.showMetrics && props.triggerSource && (tokenSpendLabel || props.durationLabel)"
+				:class="$style.sep"
+			>
+				·
+			</span>
 			<span v-if="props.showMetrics && tokenSpendLabel" :class="$style.metricItem">
 				<N8nIcon icon="circle-dollar-sign" :size="12" />
 				<span>{{ tokenSpendLabel }}</span>
 			</span>
-			<span v-if="props.showMetrics && tokenSpendLabel" :class="$style.sep">·</span>
-			<span v-if="props.showMetrics" :class="$style.metricItem">
+			<span v-if="props.showMetrics && tokenSpendLabel && props.durationLabel" :class="$style.sep">
+				·
+			</span>
+			<span v-if="props.showMetrics && props.durationLabel" :class="$style.metricItem">
 				<N8nIcon icon="clock" :size="12" />
 				<span>{{ props.durationLabel }}</span>
 			</span>

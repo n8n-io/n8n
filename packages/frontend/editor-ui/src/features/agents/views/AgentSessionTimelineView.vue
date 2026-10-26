@@ -324,7 +324,7 @@ useAgentExecutionUpdates(
 );
 
 function formatDuration(ms: number): string {
-	if (!ms || ms <= 0) return '0ms';
+	if (!Number.isFinite(ms) || ms <= 0) return '';
 	if (ms < 1000) return `${ms}ms`;
 	return `${(ms / 1000).toFixed(1)}s`;
 }

@@ -448,6 +448,38 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		expect(wrapper.text()).not.toContain('$');
 	});
 
+	it.each([false, true])('hides unknown duration when usage is known: %s', async (usageKnown) => {
+		getThreadDetail.mockResolvedValueOnce({
+			thread: {
+				...thread,
+				totalPromptTokens: usageKnown ? 100 : 0,
+				totalCompletionTokens: usageKnown ? 25 : 0,
+				totalCost: usageKnown ? 0.125 : 0,
+				totalDuration: 0,
+			},
+			executions: [
+				mock<AgentExecution>({ id: 'live-1', source: null, status: 'running', duration: 0 }),
+			],
+		});
+		const wrapper = mountMenu();
+		await flushPromises();
+		expect(wrapper.text()).not.toContain('0ms');
+		expect(wrapper.text()).not.toContain('•');
+		if (usageKnown) expect(wrapper.text()).toContain('125t ($0.1250)');
+		await wrapper.setProps({
+			usageUpdates: {
+				'live-1': {
+					sessionId: 'thread-1',
+					executionId: 'live-1',
+					complete: false,
+					duration: 2000,
+				},
+			},
+		});
+		expect(wrapper.text()).toContain('2.0s');
+		expect(wrapper.text().includes('•')).toBe(usageKnown);
+	});
+
 	it('hides a partial session price when the live turn has a zero cost', async () => {
 		const wrapper = mountMenu();
 		await flushPromises();
