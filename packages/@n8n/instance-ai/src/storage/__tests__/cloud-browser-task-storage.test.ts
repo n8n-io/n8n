@@ -132,6 +132,25 @@ describe('CloudBrowserTaskStorage', () => {
 		expect(finished.aliveAt).toBeUndefined();
 	});
 
+	it('records and clears the card of a running task, and leaves a finished one', async () => {
+		const { memory } = makeMemory();
+		const storage = new CloudBrowserTaskStorage(memory);
+		await storage.add(THREAD_ID, makeRecord());
+		await storage.add(THREAD_ID, makeRecord({ taskId: 'task-2' }));
+		await storage.markFinished(THREAD_ID, 'task-2', { outcome: 'succeeded', summary: '$20' });
+
+		await storage.setPendingConfirmation(THREAD_ID, 'task-1', 'request-1');
+		await storage.setPendingConfirmation(THREAD_ID, 'task-2', 'request-2');
+
+		const [running, finished] = await storage.list(THREAD_ID);
+		expect(running.pendingConfirmationRequestId).toBe('request-1');
+		expect(finished.pendingConfirmationRequestId).toBeUndefined();
+
+		await storage.setPendingConfirmation(THREAD_ID, 'task-1', null);
+
+		expect((await storage.list(THREAD_ID))[0].pendingConfirmationRequestId).toBeNull();
+	});
+
 	describe('failStale', () => {
 		const stopped = { outcome: 'failed', summary: 'Stopped' };
 

@@ -758,9 +758,6 @@ export class InstanceAiService {
 
 	private readonly finalizingSelfHealingRuns = new Set<string>();
 
-	/** Live runs the user stopped, until their run-end handling saves the run-stopped note. */
-	private readonly userStoppedRunIds = new Set<string>();
-
 	private readonly backgroundTasks: BackgroundTaskManager;
 
 	private readonly memoryTaskRegistry = new MemoryTaskRegistry();
@@ -994,8 +991,12 @@ export class InstanceAiService {
 			agentMemory: this.agentMemory,
 			runState: this.runState,
 			suspendedThreads: this.suspendedThreads,
-			startFollowUpRun: async (user, threadId, message, messageGroupId) =>
-				await this.startInternalFollowUpRun(user, threadId, message, messageGroupId),
+			startFollowUpRun: async (user, threadId, message, messageGroupId) => {
+				// The task can end long after the user lost access. No run starts for that user.
+				const activeUser = await this.revalidateActiveUser(user.id);
+				if (!activeUser) return '';
+				return await this.startInternalFollowUpRun(activeUser, threadId, message, messageGroupId);
+			},
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
 			// The terminal guard and outcome-replay dedup must see the run's events
@@ -1800,7 +1801,7 @@ export class InstanceAiService {
 		const { active, suspended } = this.runState.cancelThread(threadId);
 		if (active) {
 			if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) this.liveness.markRunTimedOut(active.runId);
-			if (reason === 'user_cancelled') this.userStoppedRunIds.add(active.runId);
+			if (reason === 'user_cancelled') active.stoppedByUser = true;
 			active.abortController.abort(abortReason);
 			// inline-kind rows are dropped via the resolve-callback fired by
 			// runState.cancelThread; suspended-kind rows (no in-memory
@@ -5190,9 +5191,10 @@ export class InstanceAiService {
 				},
 			);
 		} finally {
+			const active = this.runState.getActiveRun(threadId);
+			const stoppedByUser = active?.runId === runId && active.stoppedByUser === true;
+			if (stoppedByUser) await this.persistRunStoppedNote(threadId, user.id);
 			this.runState.clearActiveRun(threadId);
-			// Read once and cleared on every exit, also when the run suspended, so the set cannot grow.
-			const stoppedByUser = this.userStoppedRunIds.delete(runId);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
 			// Note: don't delete threadPushRef here. Planned tasks (build agent,
 			// checkpoint verifications) dispatch later in this same finally and
@@ -5249,7 +5251,6 @@ export class InstanceAiService {
 				// Even after a stop: a stop does not stop cloud browser tasks, so their results
 				// still have to reach the user. The run-stopped note keeps the delivery run from
 				// resuming the stopped work.
-				if (stoppedByUser) await this.persistRunStoppedNote(threadId, user.id);
 				if (!blockedForQuota) await this.maybeDeliverCloudBrowserTaskResults(user, threadId);
 			}
 			if (errorReporterExecutionToken) {
@@ -6784,8 +6785,12 @@ export class InstanceAiService {
 				},
 			);
 		} finally {
+			const active = this.runState.getActiveRun(opts.threadId);
+			const stoppedByUser = active?.runId === opts.runId && active.stoppedByUser === true;
+			if (stoppedByUser && !skipPostRunCleanup) {
+				await this.persistRunStoppedNote(opts.threadId, opts.user.id);
+			}
 			this.runState.clearActiveRun(opts.threadId, opts.resumeExecutionToken);
-			const stoppedByUser = this.userStoppedRunIds.delete(opts.runId);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
 			// See note in executeRun's finally — keep threadPushRef alive for
 			// post-run planned-task dispatch.
@@ -6841,7 +6846,6 @@ export class InstanceAiService {
 				}
 				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
 				if (reschedule) await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
-				if (stoppedByUser) await this.persistRunStoppedNote(opts.threadId, opts.user.id);
 				if (!blockedForQuota) {
 					await this.maybeDeliverCloudBrowserTaskResults(opts.user, opts.threadId);
 				}
@@ -7146,6 +7150,9 @@ export class InstanceAiService {
 		suspended: SuspendedRunState<User>,
 		reason = 'user_cancelled',
 	): Promise<void> {
+		if (reason === 'user_cancelled') {
+			await this.persistRunStoppedNote(suspended.threadId, suspended.user.id);
+		}
 		const runTimeout =
 			reason === INSTANCE_AI_RUN_TIMEOUT_REASON
 				? this.liveness.consumeRunTimeout(suspended.runId)
@@ -7189,6 +7196,8 @@ export class InstanceAiService {
 		});
 
 		void this.suspendedThreads.dropPendingConfirmation(suspended.requestId);
+		// Results that came in while the run waited at its card. No run end delivers them.
+		await this.maybeDeliverCloudBrowserTaskResults(suspended.user, suspended.threadId);
 	}
 
 	private publishRunFinish(

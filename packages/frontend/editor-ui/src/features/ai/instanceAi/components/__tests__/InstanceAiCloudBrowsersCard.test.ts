@@ -1,19 +1,18 @@
 import { fireEvent } from '@testing-library/vue';
-import { reactive } from 'vue';
+import { computed, reactive } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 
 import type { CloudBrowserLiveView } from '../../composables/useCloudBrowserLiveViews';
 import { CloudBrowserLiveViewsKey } from '../../composables/useCloudBrowserLiveViews';
-import type { CloudBrowserTask } from '../../composables/useCloudBrowserTasks';
+import {
+	CloudBrowserTasksKey,
+	type CloudBrowserTask,
+} from '../../composables/useCloudBrowserTasks';
 import InstanceAiCloudBrowsersCard from '../InstanceAiCloudBrowsersCard.vue';
 
-const { thread, tasks } = vi.hoisted(() => ({
-	thread: { cancelBackgroundTask: vi.fn() },
-	tasks: { value: [] as CloudBrowserTask[] },
-}));
+const { thread } = vi.hoisted(() => ({ thread: { cancelBackgroundTask: vi.fn() } }));
 vi.mock('../../instanceAi.store', () => ({ useThread: () => thread }));
-vi.mock('../../composables/useCloudBrowserTasks', () => ({ useCloudBrowserTasks: () => tasks }));
 
 const renderComponent = createComponentRenderer(InstanceAiCloudBrowsersCard);
 
@@ -29,11 +28,15 @@ function makeTask(overrides: Partial<CloudBrowserTask> = {}): CloudBrowserTask {
 }
 
 function render(task: CloudBrowserTask, view?: CloudBrowserLiveView) {
-	tasks.value = [task];
 	const liveViews = reactive(new Map<string, CloudBrowserLiveView>());
 	if (view) liveViews.set(task.taskId, view);
 	return renderComponent({
-		global: { provide: { [CloudBrowserLiveViewsKey as symbol]: liveViews } },
+		global: {
+			provide: {
+				[CloudBrowserTasksKey as symbol]: computed(() => [task]),
+				[CloudBrowserLiveViewsKey as symbol]: liveViews,
+			},
+		},
 	});
 }
 
@@ -43,8 +46,6 @@ describe('InstanceAiCloudBrowsersCard', () => {
 	});
 
 	it('shows nothing when no browser task runs', () => {
-		tasks.value = [];
-
 		const { queryByTestId } = renderComponent();
 
 		expect(queryByTestId('instance-ai-cloud-browsers')).not.toBeInTheDocument();

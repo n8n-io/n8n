@@ -33,7 +33,7 @@ import {
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
-import { useCloudBrowserTasks } from './composables/useCloudBrowserTasks';
+import { CloudBrowserTasksKey, useCloudBrowserTasks } from './composables/useCloudBrowserTasks';
 import {
 	CloudBrowserLiveViewsKey,
 	useCloudBrowserLiveViews,
@@ -345,6 +345,7 @@ provide('openWorkflowPreview', openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 const cloudBrowserTasks = useCloudBrowserTasks(thread);
+provide(CloudBrowserTasksKey, cloudBrowserTasks);
 const runningCloudBrowserTasks = computed(() =>
 	cloudBrowserTasks.value.filter((task) => task.state === 'running'),
 );

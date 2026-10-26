@@ -148,6 +148,7 @@ function setup() {
 		spawnOptions,
 		runSpawnedTask,
 		records,
+		taskStorage: new CloudBrowserTaskStorage(agentMemory),
 	};
 }
 
@@ -365,6 +366,31 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 			);
 			expect(runState.rejectPendingConfirmation).toHaveBeenCalledWith('request-1');
 			expect(suspendedThreads.dropPendingConfirmation).toHaveBeenCalledWith('request-1');
+		});
+
+		it('records the card on the task while the agent waits on it, and clears it once answered', async () => {
+			const { service, run, runState, suspendedThreads, records, runSpawnedTask } = setup();
+			let answer = () => {};
+			runState.registerPendingConfirmation.mockImplementation((_requestId, pending) => {
+				answer = () => pending.resolve({ approved: true });
+			});
+			let whileWaiting: string | null | undefined;
+			suspendedThreads.persistPendingConfirmation.mockImplementation(async () => {
+				whileWaiting = (await records())[0].pendingConfirmationRequestId;
+				answer();
+			});
+			let afterAnswer: string | null | undefined = 'not read';
+			vi.mocked(runCloudBrowserAgent).mockImplementation(async ({ waitForConfirmation }) => {
+				await waitForConfirmation('request-1');
+				afterAnswer = (await records())[0].pendingConfirmationRequestId;
+				return agentResult();
+			});
+			await service.startTask(task, run);
+
+			await runSpawnedTask();
+
+			expect(whileWaiting).toBe('request-1');
+			expect(afterAnswer).toBeNull();
 		});
 
 		it('does not close a card the user answered', async () => {
@@ -706,7 +732,16 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 
 	describe('deliverPendingResults', () => {
 		it('fails a running task that is no longer marked alive, closes its card, and reports it', async () => {
-			const { service, run, eventBus, startFollowUpRun, records } = setup();
+			const {
+				service,
+				run,
+				eventBus,
+				startFollowUpRun,
+				records,
+				taskStorage,
+				runState,
+				suspendedThreads,
+			} = setup();
 			vi.useFakeTimers({ toFake: ['Date'] });
 			try {
 				// Its main stopped 20 minutes ago, so nothing marked it alive since.
@@ -715,9 +750,14 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 			} finally {
 				vi.useRealTimers();
 			}
-			const [{ agentId }] = await records();
+			const [{ agentId, taskId }] = await records();
+			// Its main stopped while the task waited on a card.
+			await taskStorage.setPendingConfirmation(THREAD_ID, taskId, 'request-1');
 
 			await service.deliverPendingResults(run.user, THREAD_ID);
+
+			expect(runState.rejectPendingConfirmation).toHaveBeenCalledWith('request-1');
+			expect(suspendedThreads.dropPendingConfirmation).toHaveBeenCalledWith('request-1');
 
 			expect(eventBus.publish).toHaveBeenCalledWith(THREAD_ID, {
 				type: 'agent-completed',
@@ -738,13 +778,30 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 		});
 
 		it('leaves a running task that its main still marks alive', async () => {
-			const { service, run, startFollowUpRun, records } = setup();
-			await service.startTask(task, run);
+			const { service, run, startFollowUpRun, records, runSpawnedTask } = setup();
+			let finishAgent = () => {};
+			vi.mocked(runCloudBrowserAgent).mockImplementation(
+				async () =>
+					await new Promise((resolve) => {
+						finishAgent = () => resolve(agentResult());
+					}),
+			);
+			vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+			try {
+				await service.startTask(task, run);
+				const running = runSpawnedTask();
+				// Past the stale limit, so only the alive timer keeps the task from failing.
+				await vi.advanceTimersByTimeAsync(20 * 60 * 1000);
 
-			await service.deliverPendingResults(run.user, THREAD_ID);
+				await service.deliverPendingResults(run.user, THREAD_ID);
 
-			expect(startFollowUpRun).not.toHaveBeenCalled();
-			expect((await records()).map((record) => record.status)).toEqual(['running']);
+				expect(startFollowUpRun).not.toHaveBeenCalled();
+				expect((await records()).map((record) => record.status)).toEqual(['running']);
+				finishAgent();
+				await running;
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('starts no run when no task has finished', async () => {

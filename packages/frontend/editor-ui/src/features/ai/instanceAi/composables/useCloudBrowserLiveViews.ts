@@ -50,6 +50,8 @@ export function useCloudBrowserLiveViews(
 	}
 
 	async function refresh(taskId: string) {
+		const sessionKey = fetchedKeys.get(taskId);
+		if (!sessionKey) return;
 		clearRetry(taskId);
 		let next: CloudBrowserLiveView;
 		try {
@@ -58,8 +60,8 @@ export function useCloudBrowserLiveViews(
 			// A failed request is retried like a browser that is still opening.
 			next = { status: 'starting' };
 		}
-		// The task ended while the request ran.
-		if (!fetchedKeys.has(taskId)) return;
+		// The task ended, or a new session started, while the request ran.
+		if (fetchedKeys.get(taskId) !== sessionKey) return;
 
 		views.set(taskId, next);
 
@@ -98,6 +100,8 @@ export function useCloudBrowserLiveViews(
 
 	onScopeDispose(() => {
 		for (const taskId of [...retryTimers.keys()]) clearRetry(taskId);
+		// A request that is still running then finds no key and does not ask again.
+		fetchedKeys.clear();
 	});
 
 	return views;

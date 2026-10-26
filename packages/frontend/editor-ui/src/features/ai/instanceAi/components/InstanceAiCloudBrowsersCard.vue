@@ -4,7 +4,7 @@
  * read-only live view and a stop button. A finished task stays, with no browser, until its
  * result reaches the assistant.
  */
-import { N8nButton, N8nHeading } from '@n8n/design-system';
+import { N8nHeading, N8nIcon, N8nIconButton, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject } from 'vue';
 
@@ -12,31 +12,46 @@ import {
 	CloudBrowserLiveViewsKey,
 	embeddedLiveViewUrl,
 } from '../composables/useCloudBrowserLiveViews';
-import { useCloudBrowserTasks, type CloudBrowserTask } from '../composables/useCloudBrowserTasks';
+import { CloudBrowserTasksKey, type CloudBrowserTask } from '../composables/useCloudBrowserTasks';
 import { useThread } from '../instanceAi.store';
 
 const i18n = useI18n();
 const thread = useThread();
-const tasks = useCloudBrowserTasks();
+const tasks = inject(
+	CloudBrowserTasksKey,
+	computed(() => []),
+);
 const liveViews = inject(CloudBrowserLiveViewsKey, undefined);
+
+// The same icons as the Tasks section of the panel.
+const stateIcons: Record<
+	CloudBrowserTask['state'],
+	{ icon: IconName; spin: boolean; className: string }
+> = {
+	running: { icon: 'spinner', spin: true, className: 'runningIcon' },
+	done: { icon: 'circle-check', spin: false, className: 'doneIcon' },
+	failed: { icon: 'circle-x', spin: false, className: 'failedIcon' },
+};
 
 // A running task the instance no longer runs (for example after a restart) is not shown.
 const rows = computed(() =>
-	tasks.value.filter(
-		(task) => task.state !== 'running' || liveViews?.get(task.taskId)?.status !== 'not-found',
-	),
+	tasks.value
+		.filter(
+			(task) => task.state !== 'running' || liveViews?.get(task.taskId)?.status !== 'not-found',
+		)
+		.map((task) => {
+			const view = liveViews?.get(task.taskId);
+			return {
+				task,
+				stateIcon: stateIcons[task.state],
+				subtitle: subtitleOf(task),
+				liveViewUrl:
+					task.state === 'running' && view?.status === 'live'
+						? embeddedLiveViewUrl(view.liveViewUrl)
+						: undefined,
+			};
+		}),
 );
-
-function dotClassOf(task: CloudBrowserTask): string {
-	if (task.state === 'done') return 'dotDone';
-	if (task.state === 'failed') return 'dotFailed';
-	return 'dotRunning';
-}
-
-function liveViewUrlOf(task: CloudBrowserTask): string | undefined {
-	const view = liveViews?.get(task.taskId);
-	return view?.status === 'live' ? view.liveViewUrl : undefined;
-}
 
 function subtitleOf(task: CloudBrowserTask): string {
 	if (task.state === 'done') return i18n.baseText('instanceAi.cloudBrowser.doneWaitingToSend');
@@ -58,32 +73,37 @@ function subtitleOf(task: CloudBrowserTask): string {
 			</div>
 
 			<div
-				v-for="task in rows"
+				v-for="{ task, stateIcon, subtitle, liveViewUrl } in rows"
 				:key="task.taskId"
 				:class="$style.row"
 				data-test-id="instance-ai-cloud-browser-row"
 			>
 				<div :class="$style.header">
-					<span :class="[$style.dot, $style[dotClassOf(task)]]" />
+					<span :class="$style.titleLine" aria-hidden="true">
+						<N8nIcon
+							:icon="stateIcon.icon"
+							:spin="stateIcon.spin"
+							:class="$style[stateIcon.className]"
+							size="small"
+						/>
+					</span>
 					<span :class="$style.text">
 						<span :class="$style.name" :title="task.title">{{ task.title }}</span>
 						<span :class="$style.subtitle" data-test-id="instance-ai-cloud-browser-status">
-							{{ subtitleOf(task) }}
+							{{ subtitle }}
 						</span>
 					</span>
-					<N8nButton
-						v-if="task.state === 'running'"
-						variant="ghost"
-						icon-only
-						icon="filled-square"
-						icon-size="small"
-						size="mini"
-						:class="$style.stop"
-						:aria-label="i18n.baseText('instanceAi.cloudBrowser.stop')"
-						:title="i18n.baseText('instanceAi.cloudBrowser.stop')"
-						data-test-id="instance-ai-cloud-browser-stop"
-						@click="thread.cancelBackgroundTask(task.taskId)"
-					/>
+					<span v-if="task.state === 'running'" :class="$style.titleLine">
+						<N8nIconButton
+							icon="filled-square"
+							variant="ghost"
+							size="xsmall"
+							:aria-label="i18n.baseText('instanceAi.cloudBrowser.stop')"
+							:title="i18n.baseText('instanceAi.cloudBrowser.stop')"
+							data-test-id="instance-ai-cloud-browser-stop"
+							@click="thread.cancelBackgroundTask(task.taskId)"
+						/>
+					</span>
 				</div>
 				<div
 					v-if="task.state === 'running'"
@@ -91,8 +111,8 @@ function subtitleOf(task: CloudBrowserTask): string {
 					data-test-id="instance-ai-cloud-browser-live-view"
 				>
 					<iframe
-						v-if="liveViewUrlOf(task)"
-						:src="embeddedLiveViewUrl(liveViewUrlOf(task) ?? '')"
+						v-if="liveViewUrl"
+						:src="liveViewUrl"
 						:class="$style.thumbnailFrame"
 						tabindex="-1"
 						aria-hidden="true"
@@ -143,31 +163,27 @@ function subtitleOf(task: CloudBrowserTask): string {
 	gap: var(--spacing--2xs);
 }
 
-.dot {
+/*
+ * One title line tall, so the icon and the stop button are centered on the title, not on the top
+ * of its line. The button is taller than the line and overflows the box evenly.
+ */
+.titleLine {
+	display: flex;
 	flex-shrink: 0;
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	margin-top: var(--spacing--3xs);
-	border-radius: 50%;
+	align-items: center;
+	height: calc(var(--font-size--sm) * var(--line-height--lg));
 }
 
-.dotRunning {
-	background: var(--color--text--tint-1);
-	animation: browser-pulse 1.4s ease-in-out infinite;
+.runningIcon {
+	color: var(--color--primary);
 }
 
-.dotDone {
-	background: var(--color--success);
+.doneIcon {
+	color: var(--color--success);
 }
 
-.dotFailed {
-	background: var(--color--danger);
-}
-
-@keyframes browser-pulse {
-	50% {
-		opacity: 0.35;
-	}
+.failedIcon {
+	color: var(--color--danger);
 }
 
 .text {
@@ -190,17 +206,6 @@ function subtitleOf(task: CloudBrowserTask): string {
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--md);
 	color: var(--color--text--tint-1);
-}
-
-.stop {
-	flex-shrink: 0;
-	color: var(--color--text--tint-1);
-	background: transparent;
-
-	&:hover {
-		color: var(--color--primary);
-		background: transparent;
-	}
 }
 
 /* The live view laid out at 4x its box and scaled down, so the page renders at desktop size. */

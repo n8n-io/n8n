@@ -976,6 +976,22 @@ describe('CloudBrowserLocalMcpServer', () => {
 			expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(scope, 'sess-1');
 		});
 
+		it('is starting when a new session replaced the one it asked about', async () => {
+			const { server, sessionProvider, start } = setup();
+			await start({ url: 'https://example.com' });
+			sessionProvider.createSession.mockResolvedValueOnce({
+				id: 'sess-2',
+				connectUrl: 'wss://connect/2',
+			});
+			sessionProvider.getSessionLiveViewUrl.mockImplementation(async (_scope, sessionId) => {
+				// The agent opens a new session while the gateway answers for the first one.
+				if (sessionId === 'sess-1') await start({ url: 'https://example.org' });
+				return `https://live.example.com/${sessionId}`;
+			});
+
+			expect(await server.getLiveView()).toEqual({ status: 'starting' });
+		});
+
 		it('is disconnected when the connection dropped', async () => {
 			const { server, toolkits, start } = setup();
 			await start({ url: 'https://example.com' });

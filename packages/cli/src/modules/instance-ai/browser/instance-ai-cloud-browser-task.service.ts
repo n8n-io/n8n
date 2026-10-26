@@ -342,7 +342,7 @@ export class InstanceAiCloudBrowserTaskService {
 					logger,
 					abortSignal: signal,
 					waitForConfirmation: async (requestId) =>
-						await this.waitForAnswer(requestId, run, confirmationCards),
+						await this.waitForAnswer(requestId, taskId, run, confirmationCards),
 					onActivity: () => backgroundTaskManager.touchTask(threadId, taskId),
 					streamOptions: {
 						...run.modelStreamStallOptions,
@@ -451,11 +451,14 @@ export class InstanceAiCloudBrowserTaskService {
 	 */
 	private async waitForAnswer(
 		requestId: string,
+		taskId: string,
 		run: CloudBrowserRunOptions,
 		openCards: Set<string>,
 	): Promise<ConfirmationData> {
 		const { threadId, user } = run;
 		openCards.add(requestId);
+		// Before the card's row, so a stale task never leaves a row that no record points to.
+		await this.setPendingConfirmation(threadId, taskId, requestId);
 		const answer = new Promise<ConfirmationData>((resolve) => {
 			this.options.runState.registerPendingConfirmation(requestId, {
 				resolve,
@@ -476,7 +479,24 @@ export class InstanceAiCloudBrowserTaskService {
 			return await answer;
 		} finally {
 			openCards.delete(requestId);
+			await this.setPendingConfirmation(threadId, taskId, null);
 		}
+	}
+
+	/** A failed write only means that another main cannot close the card. The task goes on. */
+	private async setPendingConfirmation(
+		threadId: string,
+		taskId: string,
+		requestId: string | null,
+	): Promise<void> {
+		await this.taskStore
+			.setPendingConfirmation(threadId, taskId, requestId)
+			.catch((error: unknown) => {
+				this.options.logger.warn('Failed to record the card of a cloud browser task', {
+					taskId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
 	}
 
 	/** Rejects a card that no agent waits for any more, and drops its row. */
@@ -513,6 +533,10 @@ export class InstanceAiCloudBrowserTaskService {
 					status: 'error',
 				},
 			});
+			// Its own main stopped, so nothing else closes the card it waited on.
+			if (task.pendingConfirmationRequestId) {
+				await this.closeConfirmationCard(task.pendingConfirmationRequestId);
+			}
 		}
 	}
 

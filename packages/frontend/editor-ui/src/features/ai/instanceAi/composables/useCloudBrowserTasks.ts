@@ -1,5 +1,5 @@
 import type { InstanceAiAgentNode } from '@n8n/api-types';
-import { computed, type ComputedRef } from 'vue';
+import { computed, type ComputedRef, type InjectionKey } from 'vue';
 
 import { isCloudBrowserAgent } from '../cloudBrowserAgents';
 import { useThread, type ThreadRuntime } from '../instanceAi.store';
@@ -19,6 +19,9 @@ export interface CloudBrowserTask {
 	/** Changes each time the agent opens a browser session, so the live view link is fetched again. */
 	sessionKey: string;
 }
+
+export const CloudBrowserTasksKey: InjectionKey<ComputedRef<CloudBrowserTask[]>> =
+	Symbol('CloudBrowserTasks');
 
 function sessionKeyOf(node: InstanceAiAgentNode): string {
 	const started = node.toolCalls.filter(

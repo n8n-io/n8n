@@ -25,6 +25,11 @@ const cloudBrowserTaskRecordSchema = z.object({
 	 * for example on a restart, stops updating it.
 	 */
 	aliveAt: z.string().optional(),
+	/**
+	 * The approval card the task waits on, or `null` once it closed. Another main closes it when the
+	 * task stops being marked alive, because the task's own main cannot.
+	 */
+	pendingConfirmationRequestId: z.string().nullish(),
 	/** How the task ended, in the agent's own words, for example "succeeded" or "blocked". */
 	outcome: z.string().optional(),
 	summary: z.string().optional(),
@@ -72,6 +77,19 @@ export class CloudBrowserTaskStorage {
 			const record = records[taskId];
 			if (record?.status !== 'running') return null;
 			return { ...records, [taskId]: { ...record, aliveAt: new Date().toISOString() } };
+		});
+	}
+
+	/** Records the approval card the running task waits on, or that it waits on none. */
+	async setPendingConfirmation(
+		threadId: string,
+		taskId: string,
+		requestId: string | null,
+	): Promise<void> {
+		await this.patch(threadId, (records) => {
+			const record = records[taskId];
+			if (record?.status !== 'running') return null;
+			return { ...records, [taskId]: { ...record, pendingConfirmationRequestId: requestId } };
 		});
 	}
 
