@@ -1,4 +1,4 @@
-import { manifestSchema, runnersImage, scenarioSchema } from './manifest';
+import { loadManifest, manifestSchema, runnersImage, scenarioSchema } from './manifest';
 
 const valid = {
 	spec: 'a.spec.ts',
@@ -7,6 +7,10 @@ const valid = {
 };
 
 describe('manifest', () => {
+	it('loads the repository manifest and finds every spec', () => {
+		expect(Object.keys(loadManifest()).length).toBeGreaterThan(0);
+	});
+
 	it('accepts a scenario with an issue and harness env', () => {
 		expect(
 			scenarioSchema.safeParse({ ...valid, issue: 'CAT-1', env: { FAULT_HARNESS_GRACE: '5' } })
