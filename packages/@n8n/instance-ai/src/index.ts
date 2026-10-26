@@ -13,8 +13,6 @@ import type * as McpClientManagerMod from './mcp/mcp-client-manager';
 import type * as TitleUtilsMod from './memory/title-utils';
 import type * as StructuredFileParserMod from './parsers/structured-file-parser';
 import type * as ValidateAttachmentsMod from './parsers/validate-attachments';
-import type * as PlannedTaskPermissionsMod from './planned-tasks/planned-task-permissions';
-import type * as PlannedTaskServiceMod from './planned-tasks/planned-task-service';
 import type * as PromptProfilesMod from './prompts/prompt-profiles';
 import type * as BackgroundTaskManagerMod from './runtime/background-task-manager';
 import type * as InstanceContextStateMod from './runtime/instance-context-state';
@@ -255,12 +253,6 @@ const loadWorkflowLoop = lazyModule(() => require('./workflow-loop') as typeof W
 const loadWorkflowLoopRuntime = lazyModule(
 	() => require('./workflow-loop/runtime') as typeof WorkflowLoopRuntimeMod,
 );
-const loadPlannedTaskService = lazyModule(
-	() => require('./planned-tasks/planned-task-service') as typeof PlannedTaskServiceMod,
-);
-const loadPlannedTaskPermissions = lazyModule(
-	() => require('./planned-tasks/planned-task-permissions') as typeof PlannedTaskPermissionsMod,
-);
 const loadStructuredFileParser = lazyModule(
 	() => require('./parsers/structured-file-parser') as typeof StructuredFileParserMod,
 );
@@ -282,11 +274,6 @@ export {
 	OutsideThreadProjectError,
 	formatRedactedError,
 } from './errors';
-export {
-	LEGACY_PLANNED_TASK_KINDS,
-	PLANNED_TASK_KINDS,
-	STORED_PLANNED_TASK_KINDS,
-} from './types';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
@@ -445,10 +432,6 @@ export type ThreadTaskStorage = StorageMod.ThreadTaskStorage;
 export const ThreadTaskStorage: typeof StorageMod.ThreadTaskStorage = lazyClass(
 	() => loadStorage().ThreadTaskStorage,
 );
-export type PlannedTaskStorage = StorageMod.PlannedTaskStorage;
-export const PlannedTaskStorage: typeof StorageMod.PlannedTaskStorage = lazyClass(
-	() => loadStorage().PlannedTaskStorage,
-);
 export const getThread: typeof StorageMod.getThread = lazyFunction(() => loadStorage().getThread);
 export type CloudBrowserTaskStorage = StorageMod.CloudBrowserTaskStorage;
 export const CloudBrowserTaskStorage: typeof StorageMod.CloudBrowserTaskStorage = lazyClass(
@@ -603,12 +586,12 @@ export {
 export type {
 	ActiveRunState,
 	BackgroundTaskStatusSnapshot,
-	ConfirmationData,
 	PendingConfirmation,
 	RunStateTimeoutDetails,
 	StartedRunState,
 	SuspendedRunState,
 } from './runtime/run-state-registry';
+export type { ConfirmationData } from './runtime/confirmation-payload';
 export type InstanceAiTerminalResponseGuard =
 	TerminalResponseGuardMod.InstanceAiTerminalResponseGuard;
 export const InstanceAiTerminalResponseGuard: typeof TerminalResponseGuardMod.InstanceAiTerminalResponseGuard =
@@ -685,12 +668,6 @@ export const deriveWorkflowVerificationObligationFromOutcome: typeof WorkflowLoo
 	lazyFunction(() => loadWorkflowLoop().deriveWorkflowVerificationObligationFromOutcome);
 export const isWorkflowVerificationObligationUnsettled: typeof WorkflowLoopMod.isWorkflowVerificationObligationUnsettled =
 	lazyFunction(() => loadWorkflowLoop().isWorkflowVerificationObligationUnsettled);
-export const resolveWorkflowBuildOwner: typeof WorkflowLoopMod.resolveWorkflowBuildOwner =
-	lazyFunction(() => loadWorkflowLoop().resolveWorkflowBuildOwner);
-export const plannedTaskIdFromWorkflowBuildOwner: typeof WorkflowLoopMod.plannedTaskIdFromWorkflowBuildOwner =
-	lazyFunction(() => loadWorkflowLoop().plannedTaskIdFromWorkflowBuildOwner);
-export const isPlannedWorkflowBuildOwner: typeof WorkflowLoopMod.isPlannedWorkflowBuildOwner =
-	lazyFunction(() => loadWorkflowLoop().isPlannedWorkflowBuildOwner);
 export declare const workflowBuildOutcomeSchema: typeof WorkflowLoopMod.workflowBuildOutcomeSchema;
 export declare const workflowVerificationEvidenceSchema: typeof WorkflowLoopMod.workflowVerificationEvidenceSchema;
 export declare const attemptRecordSchema: typeof WorkflowLoopMod.attemptRecordSchema;
@@ -699,13 +676,11 @@ export declare const verificationResultSchema: typeof WorkflowLoopMod.verificati
 export type {
 	WorkflowLoopState,
 	WorkflowLoopAction,
-	WorkflowBuildOwner,
 	WorkflowBuildOutcome,
 	VerificationResult,
 	AttemptRecord,
 	WorkflowVerificationEvidence,
 	WorkflowVerificationObligation,
-	WorkflowVerificationObligationSource,
 } from './workflow-loop';
 export const compileWorkflowSource: typeof WorkflowSourceCompilerMod.compileWorkflowSource =
 	lazyFunction(() => loadWorkflowSourceCompiler().compileWorkflowSource);
@@ -749,11 +724,6 @@ export type WorkflowLoopRuntime = WorkflowLoopRuntimeMod.WorkflowLoopRuntime;
 export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRuntime = lazyClass(
 	() => loadWorkflowLoopRuntime().WorkflowLoopRuntime,
 );
-export type PlannedTaskCoordinator = PlannedTaskServiceMod.PlannedTaskCoordinator;
-export const PlannedTaskCoordinator: typeof PlannedTaskServiceMod.PlannedTaskCoordinator =
-	lazyClass(() => loadPlannedTaskService().PlannedTaskCoordinator);
-export const applyPlannedTaskPermissionOverrides: typeof PlannedTaskPermissionsMod.applyPlannedTaskPermissionOverrides =
-	lazyFunction(() => loadPlannedTaskPermissions().applyPlannedTaskPermissionOverrides);
 export type {
 	InstanceAiChangedArtifact,
 	InstanceAiContext,
@@ -793,16 +763,6 @@ export type {
 	InstanceAiMemoryConfig,
 	CreateInstanceAgentOptions,
 	TaskStorage,
-	PlannedTask,
-	PlannedTaskKind,
-	StoredPlannedTaskKind,
-	PlannedTaskStatus,
-	PlannedTaskRecord,
-	PlannedTaskGraph,
-	PlannedTaskGraphStatus,
-	PlannedWorkflowVerification,
-	PlannedTaskSchedulerAction,
-	PlannedTaskService,
 	OrchestrationContext,
 	BackgroundTaskResult,
 	InstanceAiToolTraceOptions,
@@ -841,6 +801,8 @@ export type {
 	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
+	ResolveParameterOptionsParams,
+	ResolveParameterOptionsResult,
 	UnavailableLocatorValue,
 	FetchedPage,
 	WebSearchResult,

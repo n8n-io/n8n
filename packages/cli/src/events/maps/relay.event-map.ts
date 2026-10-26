@@ -2,6 +2,7 @@ import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
+	EnvironmentsVersion,
 	ProjectRelation,
 	RedactionFloor,
 } from '@n8n/api-types';
@@ -758,6 +759,11 @@ export type RelayEventMap = {
 		connectionType: 'ssh' | 'https';
 	};
 
+	'source-control-environments-version-switched': {
+		userId: string;
+		version: EnvironmentsVersion;
+	};
+
 	'source-control-user-started-pull-ui': {
 		userId?: string;
 		workflowUpdates: number;
@@ -946,6 +952,17 @@ export type RelayEventMap = {
 		userId: string;
 	};
 
+	/**
+	 * SAML or OIDC sign-in turned off: the authentication method changed from
+	 * that protocol to email. A switch from one protocol to the other keeps
+	 * single sign-on on and does not emit this event.
+	 */
+	'sso-login-disabled': {
+		protocol: 'saml' | 'oidc';
+		/** SCIM provisioning was on when sign-in turned off. SCIM turns off with it. */
+		scimWasEnabled: boolean;
+	};
+
 	// #endregion
 
 	// #region Role Mapping
@@ -1126,6 +1143,38 @@ export type RelayEventMap = {
 	'runner-disconnected': {
 		reason: 'failed-heartbeat-check' | 'runner-unresponsive';
 		mode: 'internal' | 'external';
+	};
+
+	'memory-guard-hold-started': {
+		memoryUsedBytes: number;
+		memoryLimitBytes: number;
+	};
+
+	'memory-guard-hold-ended': {
+		heldMs: number;
+	};
+
+	/** Crashed sessions so far, by the strongest guard action before each crash. */
+	'memory-guard-crashes-counted': {
+		crashes: Record<'none' | 'hold' | 'stop', number>;
+	};
+
+	'memory-guard-workflow-deactivated': {
+		workflowId: string;
+	};
+
+	'memory-guard-execution-stopped': {
+		executionId: string;
+		workflowId: string;
+		mode: WorkflowExecuteMode;
+		reason: 'threshold' | 'critical' | 'hold-limit';
+		runningNodeType: string | undefined;
+		largestDataNodeType: string | undefined;
+		estimatedBytes: number;
+		memoryUsedBytes: number;
+		memoryLimitBytes: number;
+		freedMemory: boolean;
+		workflowDeactivationStarted: boolean;
 	};
 
 	// #endregion

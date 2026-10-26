@@ -10,7 +10,7 @@ import type { AgentSkillRefsService } from '../../agent-skill-refs.service';
 import type { AgentHistory } from '../../entities/agent-history.entity';
 import type { Agent } from '../../entities/agent.entity';
 import { composeJsonConfig } from '../../json-config/agent-config-composition';
-import { withoutLegacySkillRefs, type AgentSkillRefs } from '../../json-config/agent-document';
+import type { AgentSkillRefs } from '../../json-config/agent-document';
 import type { AgentRunSource } from '../../utils/agent-published-snapshot';
 
 /**
@@ -49,7 +49,6 @@ export function createAgentSkillRefsService(
 		bodies,
 		draftRefs,
 		versionPins,
-		usesSkillsHub: true,
 	});
 	const readDraftRefs = (agent: Pick<Agent, 'id'>): AgentJsonSkillConfig[] =>
 		draftRefs.get(agent.id) ?? storedSkillRefs(agent);
@@ -71,17 +70,24 @@ export function createAgentSkillRefsService(
 		);
 	};
 
-	// A published version's refs carry no `versionId`: its pins live in their own table.
-	service.refsForVersion.mockImplementation(async (version) => storedSkillRefs(version));
+	// As the real seam: a published version's refs come from its pins, in pin order, and
+	// carry no `versionId`. A version fixture without pins reads its `storedAgentConfig`.
+	const readVersionRefs = (version: Pick<AgentHistory, 'versionId'>): AgentJsonSkillConfig[] => {
+		const pins = versionPins.get(version.versionId);
+		return pins
+			? Object.keys(pins).map((id) => ({ type: 'skill' as const, id }))
+			: storedSkillRefs(version);
+	};
+	service.refsForVersion.mockImplementation(async (version) => readVersionRefs(version));
 	service.readDraft.mockImplementation(async (agent) => {
 		const skillRefs = readDraftRefs(agent);
 		return { skillRefs, skills: pickBodies(skillRefs) };
 	});
 	service.readVersion.mockImplementation(async (version) => {
-		const skillRefs = storedSkillRefs(version);
+		const skillRefs = readVersionRefs(version);
 		return { skillRefs, skills: pickBodies(skillRefs) };
 	});
-	service.skillsForRefs.mockImplementation(async (_agent, refs) => pickBodies(refs));
+	service.skillsForRefs.mockImplementation(async (refs) => pickBodies(refs));
 	service.effectiveDraftRefs.mockImplementation(async (_agent, refs) => refs);
 	service.replaceDraftRefs.mockImplementation(async (agent, refs) => writeRefs(agent, refs));
 	service.restoreDraftRefs.mockImplementation(async (agent, version, refs) =>
@@ -104,20 +110,15 @@ export function createAgentSkillRefsService(
 			),
 		),
 	);
-	// As the real seam: the legacy columns get the refs and bodies the draft runs.
 	service.versionSnapshot.mockImplementation(async (agent) => {
-		if (!agent.schema) return { schema: null, skills: null, pins: new Map() };
-		const skillRefs = readDraftRefs(agent);
-		return {
-			schema: {
-				...withoutLegacySkillRefs(agent.schema),
-				skills: skillRefs.map(({ id }) => ({ type: 'skill', id })),
-			} as unknown as StoredAgentConfig,
-			skills: pickBodies(skillRefs),
-			pins: new Map(skillRefs.map((ref) => [ref.id, ref.versionId ?? `${ref.id}-latest`])),
-		};
+		if (!agent.schema) return new Map();
+		return new Map(
+			readDraftRefs(agent).map((ref) => [ref.id, ref.versionId ?? `${ref.id}-latest`]),
+		);
 	});
-	service.pinVersion.mockResolvedValue(undefined);
+	service.pinVersion.mockImplementation(async (agentVersionId, pins) => {
+		versionPins.set(agentVersionId, Object.fromEntries(pins));
+	});
 	service.findOutdatedSkillIds.mockResolvedValue([]);
 	return service;
 }
