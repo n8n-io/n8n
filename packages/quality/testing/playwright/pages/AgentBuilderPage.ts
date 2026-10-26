@@ -16,6 +16,37 @@ export class AgentBuilderPage extends BasePage {
 		await this.page.goto(`/projects/${projectId}/agents/${agentId}${query}`);
 	}
 
+	async setExperiment(cohort: string, width: string, toggle: string): Promise<void> {
+		await this.page.evaluate(
+			({ cohort, width, toggle }) => {
+				const flags = (
+					window as Window & { featureFlags?: { override: (key: string, value: string) => void } }
+				).featureFlags;
+				if (!flags) throw new Error('Feature flag overrides are not available');
+				flags.override('133_agent_builder_experiment_cohort', cohort);
+				flags.override('134_agent_builder_chat_width', width);
+				flags.override('135_agent_builder_test_toggle', toggle);
+			},
+			{ cohort, width, toggle },
+		);
+	}
+
+	async openAssistantIfClosed(): Promise<void> {
+		const button = this.page.locator('[data-testid="agent-builder-instance-ai-btn"]');
+		if (await button.isVisible()) await button.click();
+	}
+
+	getHeaderTestButton(): Locator {
+		return this.page.locator('[data-testid="agent-header-preview-btn"]');
+	}
+
+	async getArtifactChatWidths(): Promise<{ chat: number; area: number }> {
+		const area = await this.page.getByTestId('instance-ai-thread-area').boundingBox();
+		const preview = await this.page.getByTestId('instance-ai-preview-panel').boundingBox();
+		if (!area || !preview) throw new Error('The artifact panels are not visible');
+		return { chat: area.width - preview.width, area: area.width };
+	}
+
 	getBuilderContainer(): Locator {
 		return this.page.locator('[data-testid="agent-builder-container"]');
 	}

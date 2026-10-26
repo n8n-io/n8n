@@ -32,6 +32,17 @@ import {
 	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 } from '../constants';
 
+const builderExperimentMock = reactive({
+	layout: { chatWidth: 'current', testChat: 'dock' },
+	enrollment: undefined,
+});
+const trackExperimentExposure = vi.fn();
+vi.mock('@/experiments/agentBuilder/stores/agentBuilder.store', () => ({
+	useAgentBuilderExperimentStore: () => ({
+		...builderExperimentMock,
+		trackExposure: trackExperimentExposure,
+	}),
+}));
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
 const routeQuery = reactive<Record<string, string | undefined>>({});
@@ -6537,6 +6548,12 @@ describe(
 );
 
 describe('chat-first builder', () => {
+	beforeEach(() => {
+		builderExperimentMock.layout = { chatWidth: 'wide', testChat: 'inline' };
+	});
+	afterEach(() => {
+		builderExperimentMock.layout = { chatWidth: 'current', testChat: 'dock' };
+	});
 	beforeEach(() => {
 		resetViewMocks();
 		agentPermissionsMock.canUpdate.value = true;

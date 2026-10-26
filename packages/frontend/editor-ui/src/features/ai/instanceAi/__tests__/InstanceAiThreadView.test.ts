@@ -1,3 +1,4 @@
+import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResponseError } from '@n8n/rest-api-client';
 import { defineComponent, h, inject, type PropType, type Ref, nextTick, ref } from 'vue';
@@ -449,6 +450,10 @@ describe('InstanceAiThreadView', () => {
 		// Default `stubActions: true` — every store action becomes a no-op spy.
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
+		mockedStore(useAgentBuilderExperimentStore).layout = {
+			chatWidth: 'current',
+			testChat: 'inline',
+		};
 
 		useSettingsStore().moduleSettings = {
 			'instance-ai': { ...defaultModuleSettings },
@@ -999,6 +1004,24 @@ describe('InstanceAiThreadView', () => {
 		);
 		expect(getByTestId('instance-ai-input-stub')).toBeVisible();
 	});
+
+	it.each([
+		['current', 'dock', 800, false],
+		['wide', 'dock', 560, false],
+		['wide', 'inline', 560, true],
+		['current', 'inline', 800, true],
+	] as const)(
+		'applies the %s / %s experiment layout to agent artifacts',
+		async (chatWidth, testChat, previewWidth, hasToggle) => {
+			const experiment = mockedStore(useAgentBuilderExperimentStore);
+			experiment.layout = { chatWidth, testChat };
+			experiment.assistantChatRatio = 0.65;
+			const { getByTestId, queryByRole } = await renderAgentArtifact({ threadAreaWidth: 1600 });
+			expect(getByTestId('instance-ai-preview-panel').style.width).toBe(`${previewWidth}px`);
+			expect(Boolean(queryByRole('button', { name: 'Test', exact: true }))).toBe(hasToggle);
+			expect(experiment.trackExposure).toHaveBeenCalled();
+		},
+	);
 
 	it('removes the selector when the agent artifact is closed', async () => {
 		const { getByRole, queryByRole, getByTestId, user } = await renderAgentArtifact();

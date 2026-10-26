@@ -45,19 +45,20 @@ remaining width in proportion to each panel's requested extra width above
 
 ## Chat-first builder
 
-The standalone builder and Agent artifacts in the Assistant use one chat area
-for Build and Test. Keep each chat mounted when the mode changes. Preserve each
+The Build/Test experiment variants use one chat area in the standalone builder
+and in Agent artifacts in the Assistant. Users outside the experiments keep the
+current layout. Keep each chat mounted when the mode changes. Preserve each
 draft, session, and active response.
 Put the grouped Build/Test selector first in the composer toolbar. Use wrench
 and flask icons. Show a purple active state in both themes. Stop the discovery
 pulse after the first message. Disable the pulse for reduced motion.
 
-In the standalone builder, start chat at 65% and configuration at 35% of the
-workspace beside the sidebar.
+In the wide variants, start chat at 65% and configuration at 35% of the
+workspace beside the sidebar. Apply this ratio to both agent surfaces.
 Save manual resize choices as a ratio. Keep this preference separate from the
 saved Assistant dock width and the previous fixed configuration width. Keep the
-ratio when the window or sidebar changes size. Double-click the divider to reset
-to 65/35. Reserve at least 360 pixels for configuration and 320 pixels for chat.
+ratio when the window or sidebar changes size. Double-click the standalone
+divider to reset to 65/35. Reserve at least 360 pixels for configuration and 320 pixels for chat.
 When the ratio would break a minimum, the minimum wins.
 Do not cap configuration at a fixed maximum width. Below 680 pixels of available
 workspace, fill the viewport with one panel at a time, above the sidebar. Measure
@@ -78,8 +79,8 @@ existing docks. An Agent artifact uses the main Assistant chat area for Test and
 keeps configuration in the artifact panel. On narrow Assistant layouts, use one
 panel at a time. The preview button switches between chat and configuration.
 Keep both mounted and preserve the selected chat mode.
-Always show the selector in the standalone builder. In the Assistant, show it
-when an Agent artifact is open and its initial build finishes. Test readiness
+In toggle variants, always show the selector in the standalone builder. In the
+Assistant, show it when an Agent artifact is open and its initial build finishes. Test readiness
 does not control visibility. Disable Test when the Agent cannot run. Use the
 same validation tooltip as the header Test button to explain the setup issues.
 Keep the selector visible during later Assistant work, with both modes disabled.

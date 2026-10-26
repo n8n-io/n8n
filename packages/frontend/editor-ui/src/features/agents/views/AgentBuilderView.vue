@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
 import {
 	ref,
 	computed,
@@ -151,7 +152,6 @@ import AgentBuilderChatMode from '../components/AgentBuilderChatMode.vue';
 import AgentBuilderChatDisclaimer from '../components/AgentBuilderChatDisclaimer.vue';
 import {
 	useAgentBuilderLayout,
-	DEFAULT_AGENT_BUILDER_LAYOUT,
 	AGENT_CONFIG_MIN_WIDTH,
 	type AgentBuilderLayout,
 } from '../composables/useAgentBuilderLayout';
@@ -230,7 +230,6 @@ const props = withDefaults(
 	}>(),
 	{
 		artifactMode: false,
-		builderLayout: () => ({ ...DEFAULT_AGENT_BUILDER_LAYOUT }),
 		artifactProjectId: undefined,
 		artifactAgentId: undefined,
 		artifactPreviewSessionId: undefined,
@@ -374,16 +373,21 @@ const { width: builderContainerWidth } = useElementSize(builderContainer, undefi
 const chatLayoutEnabled = computed(
 	() => !isArtifactMode.value && !isStandalonePreview.value && instanceAiReady.value,
 );
+const builderExperiment = useAgentBuilderExperimentStore();
+const builderLayout = computed(() => props.builderLayout ?? builderExperiment.layout);
 const wideChat = computed(
-	() => chatLayoutEnabled.value && props.builderLayout.chatWidth === 'wide',
+	() => chatLayoutEnabled.value && builderLayout.value.chatWidth === 'wide',
 );
 const inlineTestChat = computed(
 	() =>
 		artifactInlineTestChat.value ||
-		(chatLayoutEnabled.value && props.builderLayout.testChat === 'inline'),
+		(chatLayoutEnabled.value && builderLayout.value.testChat === 'inline'),
 );
 const artifactInlineTestChat = computed(
-	() => isArtifactMode.value && props.artifactTestChatTarget !== undefined,
+	() =>
+		isArtifactMode.value &&
+		builderLayout.value.testChat === 'inline' &&
+		props.artifactTestChatTarget !== undefined,
 );
 const {
 	compact: compactLayout,
@@ -1150,6 +1154,13 @@ const chatModeState = computed(() => ({
 	testValidationIssues: testValidationIssues.value,
 }));
 defineExpose({ chatModeState, setChatMode });
+watch(
+	[initialized, chatLayoutEnabled, () => builderExperiment.enrollment],
+	([loaded, enabled]) => {
+		if (loaded && enabled && !props.builderLayout) builderExperiment.trackExposure();
+	},
+	{ immediate: true, flush: 'post' },
+);
 
 const showBuilderLoading = computed(() => !initialized.value);
 

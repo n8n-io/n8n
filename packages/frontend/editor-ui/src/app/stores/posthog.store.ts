@@ -11,6 +11,9 @@ import {
 	MCP_DISCOVERY_EXPERIMENT,
 	// EOF Experiment cleanup
 	EXPERIMENTS_TO_TRACK,
+	AGENT_BUILDER_EXPERIMENT_COHORT,
+	AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT,
+	AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
 } from '@/app/constants';
@@ -175,6 +178,19 @@ export const usePostHog = defineStore('posthog', () => {
 	};
 
 	const trackExperiment = (featFlags: FeatureFlags, name: string) => {
+		const cohort =
+			overrides.value[AGENT_BUILDER_EXPERIMENT_COHORT.name]?.value ??
+			featFlags[AGENT_BUILDER_EXPERIMENT_COHORT.name];
+		if (
+			name === AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT.name &&
+			cohort !== AGENT_BUILDER_EXPERIMENT_COHORT.chatWidth
+		)
+			return;
+		if (
+			name === AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT.name &&
+			cohort !== AGENT_BUILDER_EXPERIMENT_COHORT.testToggle
+		)
+			return;
 		// Experiment cleanup (119_surface_assistant_on_workflow_error)
 		if (
 			CLOUD_ONLY &&

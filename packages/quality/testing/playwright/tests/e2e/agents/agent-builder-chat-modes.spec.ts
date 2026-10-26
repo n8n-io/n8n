@@ -12,6 +12,17 @@ test.use({
 	},
 });
 
+test.beforeEach(async ({ setupRequirements }) => {
+	await setupRequirements({
+		storage: {
+			N8N_EXPERIMENT_OVERRIDES: JSON.stringify({
+				'133_agent_builder_experiment_cohort': 'test-toggle',
+				'135_agent_builder_test_toggle': 'toggle-wide',
+			}),
+		},
+	});
+});
+
 async function createRunnableAgent(api: ApiHelpers) {
 	const project = await api.projects.getMyPersonalProject();
 	const name = `Chat modes ${nanoid(6)}`;
@@ -33,6 +44,60 @@ test.describe(
 	'Agent builder chat modes',
 	{ annotation: [{ type: 'owner', description: 'Agent' }] },
 	() => {
+		for (const [cohort, width, toggle, wide, inline] of [
+			['outside', 'wide', 'toggle-wide', false, false],
+			['chat-width', 'control', 'toggle-wide', false, false],
+			['chat-width', 'wide', 'toggle-wide', true, false],
+			['test-toggle', 'wide', 'control', false, false],
+			['test-toggle', 'wide', 'toggle-current', false, true],
+			['test-toggle', 'wide', 'toggle-wide', true, true],
+		] as const) {
+			test(`applies ${cohort} / ${width} / ${toggle} on both agent surfaces`, async ({
+				n8n,
+				api,
+			}) => {
+				setContextModuleSettings(n8n.page.context(), {
+					'instance-ai': { enabled: true, setupCompleted: true, workflowBuilderAvailable: true },
+				});
+				const { project, agent, name } = await createRunnableAgent(api);
+				const threadId = randomUUID();
+				await api.instanceAi.createAgentArtifactThread({
+					threadId,
+					projectId: project.id,
+					agentId: agent.id,
+					name,
+				});
+				await n8n.page.setViewportSize({ width: 1920, height: 1080 });
+				await n8n.start.fromHome();
+				const builder = n8n.agentBuilder;
+				await builder.goto(project.id, agent.id);
+				await expect(builder.getComposer('build')).toBeVisible();
+				await builder.setExperiment(cohort, width, toggle);
+				await builder.openAssistantIfClosed();
+				await expect
+					.poll(async () => await builder.getConfigurationWidthRatio())
+					.toBeCloseTo(wide ? 0.35 : 0.7, 2);
+				await expect(builder.getModeButton('test')).toHaveCount(inline ? 1 : 0);
+				await (inline ? builder.getModeButton('test') : builder.getHeaderTestButton()).click();
+				await expect(builder.getComposer('test')).toBeVisible();
+				await expect(builder.getComposer('build')).toBeVisible({ visible: !inline });
+				await (inline ? builder.getModeButton('build') : builder.getHeaderTestButton()).click();
+
+				await n8n.instanceAi.gotoThread(threadId);
+				await expect(builder.getArtifactBuildComposer()).toBeVisible();
+				await builder.setExperiment(cohort, width, toggle);
+				await expect(builder.getModeButton('test')).toHaveCount(inline ? 1 : 0);
+				await expect
+					.poll(async () => {
+						const widths = await builder.getArtifactChatWidths();
+						return Math.abs(widths.chat - (wide ? widths.area * 0.65 : 800));
+					})
+					.toBeLessThanOrEqual(1);
+				await (inline ? builder.getModeButton('test') : builder.getHeaderTestButton()).click();
+				await expect(builder.getComposer('test')).toBeVisible();
+				await expect(builder.getArtifactBuildComposer()).toBeVisible({ visible: !inline });
+			});
+		}
 		test('switches to Test from Assistant preview links without page navigation', async ({
 			n8n,
 			api,

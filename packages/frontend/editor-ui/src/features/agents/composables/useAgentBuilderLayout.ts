@@ -6,12 +6,6 @@ export interface AgentBuilderLayout {
 	testChat: 'inline' | 'dock';
 }
 
-// Keep the two choices independent for the width and mode-selector experiments.
-export const DEFAULT_AGENT_BUILDER_LAYOUT: AgentBuilderLayout = {
-	chatWidth: 'wide',
-	testChat: 'inline',
-};
-
 const DEFAULT_CONFIG_RATIO = 0.35;
 export const AGENT_CONFIG_MIN_WIDTH = 360;
 const MIN_CHAT_WIDTH = 320;

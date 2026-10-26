@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
@@ -84,6 +85,11 @@ const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = 
 const toast = useToast();
 const recentWorkflowsStore = useRecentWorkflowsStore();
 const mentionsEnabled = useIsAssistantAtMentionsEnabled();
+const builderExperiment = useAgentBuilderExperimentStore();
+const inlineAgentTest = computed(() => builderExperiment.layout.testChat === 'inline');
+const wideAgentChat = computed(
+	() => agentChatActive.value && builderExperiment.layout.chatWidth === 'wide',
+);
 
 const conversationRef = useTemplateRef<InstanceType<typeof InstanceAiConversation>>('conversation');
 const agentPreviewRef = useTemplateRef<InstanceType<typeof InstanceAiAgentPreview>>('agentPreview');
@@ -92,7 +98,9 @@ const agentChatModeState = computed(() => agentPreviewRef.value?.chatModeState);
 const agentChatActive = computed(
 	() => preview.isPreviewVisible.value && !!preview.activeAgentId.value,
 );
-const isAgentTestChat = computed(() => agentChatActive.value && isAgentPreviewDockOpen.value);
+const isAgentTestChat = computed(
+	() => agentChatActive.value && inlineAgentTest.value && isAgentPreviewDockOpen.value,
+);
 async function setAgentChatMode(mode: 'build' | 'test') {
 	const state = agentChatModeState.value;
 	if (!state || state.disabled || (mode === 'test' && (!state.visible || state.testDisabledReason)))
@@ -471,12 +479,21 @@ function suppressPanelTransitionsUntilStableRender() {
 	previewPanelTransitionGate.suppressUntilStableRender();
 }
 
+watch(
+	[agentChatActive, () => builderExperiment.enrollment],
+	([active]) => {
+		if (active) builderExperiment.trackExposure();
+	},
+	{ immediate: true, flush: 'post' },
+);
+
 // --- Preview panel resize (when canvas is visible) ---
 const threadAreaRef = useTemplateRef<HTMLElement>('threadArea');
 const { width: threadAreaWidth } = useElementSize(threadAreaRef);
 const compactAgentLayout = computed(
 	() =>
 		agentChatActive.value &&
+		(inlineAgentTest.value || wideAgentChat.value) &&
 		threadAreaWidth.value > 0 &&
 		threadAreaWidth.value < AGENT_BUILDER_COMPACT_WIDTH,
 );
@@ -556,7 +573,9 @@ const previewMaxWidth = computed(() =>
 	Math.max(threadAreaWidth.value - MIN_SPLIT_PANEL_WIDTH, halfThreadAreaWidth.value),
 );
 const previewPanelWidth = computed(() => {
-	const ratio = chatPanelWidthRatio.value;
+	const ratio = wideAgentChat.value
+		? builderExperiment.assistantChatRatio
+		: chatPanelWidthRatio.value;
 	const chatPanelWidth =
 		ratio >= 0 && ratio <= 1 ? threadAreaWidth.value * ratio : DEFAULT_CHAT_PANEL_CONTENT_WIDTH;
 	return Math.round(
@@ -615,7 +634,9 @@ function handleAgentPreviewDockOpenChange(open: boolean) {
 function handlePreviewResize({ width }: { width: number }) {
 	// The wrapper clamps the width, so an unchanged value means the drag hit a limit: keep the stored ratio.
 	if (Math.round(width) === previewPanelWidth.value) return;
-	chatPanelWidthRatio.value = (threadAreaWidth.value - width) / threadAreaWidth.value;
+	const ratio = (threadAreaWidth.value - width) / threadAreaWidth.value;
+	if (wideAgentChat.value) builderExperiment.resizeAssistantChat(ratio);
+	else chatPanelWidthRatio.value = ratio;
 }
 
 function handlePreviewPanelAfterEnter() {
@@ -1007,7 +1028,7 @@ function handleNewThreadClick() {
 					@thread-missing="onThreadMissing"
 					@agent-attachment-restored="onAgentAttachmentRestored"
 				>
-					<template v-if="agentChatActive" #composer-start>
+					<template v-if="agentChatActive && inlineAgentTest" #composer-start>
 						<AgentBuilderChatMode
 							v-if="agentChatModeState?.visible"
 							model-value="build"
@@ -1182,7 +1203,7 @@ function handleNewThreadClick() {
 								:project-id="preview.activeAgentProjectId.value"
 								:preview-session-id="activeAgentPreviewSessionId"
 								:preview-open="isAgentPreviewDockOpen"
-								:test-chat-target="agentTestChat"
+								:test-chat-target="inlineAgentTest ? agentTestChat : undefined"
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
