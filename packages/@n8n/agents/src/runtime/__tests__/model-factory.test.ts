@@ -275,6 +275,7 @@ vi.mock('@ai-sdk/minimax', () => ({
 vi.mock('@ai-sdk/amazon-bedrock', () => ({
 	createAmazonBedrock:
 		(opts?: {
+			apiKey?: string;
 			region?: string;
 			accessKeyId?: string;
 			secretAccessKey?: string;
@@ -283,6 +284,7 @@ vi.mock('@ai-sdk/amazon-bedrock', () => ({
 		(model: string) => ({
 			provider: 'aws-bedrock',
 			modelId: model,
+			apiKey: opts?.apiKey,
 			region: opts?.region,
 			accessKeyId: opts?.accessKeyId,
 			secretAccessKey: opts?.secretAccessKey,
@@ -1197,6 +1199,16 @@ describe('createModel', () => {
 			expect(model.modelId).toBe('amazon.titan-text-lite-v1');
 			expect(model.region).toBe('us-east-1');
 			expect(model.accessKeyId).toBe('AKIAIOSFODNN7EXAMPLE');
+		});
+
+		it('should pin an empty apiKey so the SDK ignores AWS_BEARER_TOKEN_BEDROCK', () => {
+			const model = createModel({
+				id: 'aws-bedrock/amazon.titan-text-lite-v1',
+				region: 'us-east-1',
+				accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
+				secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+			}) as unknown as Record<string, unknown>;
+			expect(model.apiKey).toBe('');
 		});
 
 		it('should throw if region is missing', () => {
