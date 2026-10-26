@@ -279,7 +279,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
-		Container.get(WaitTracker).init();
+		await Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
 		await this.initMemoryGuard();
 		await Container.get(CredentialsOverwrites).init();

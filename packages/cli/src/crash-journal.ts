@@ -1,7 +1,7 @@
 import { inProduction, Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { existsSync } from 'fs';
-import { mkdir, utimes, open, rm } from 'fs/promises';
+import { mkdir, utimes, open, readdir, rm } from 'fs/promises';
 import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
 import { join, dirname } from 'path';
@@ -31,10 +31,16 @@ const { n8nFolder } = Container.get(InstanceSettings);
  */
 const journalFile = process.env.N8N_CRASH_JOURNAL_PATH || join(n8nFolder, 'crash.journal');
 
+/** One empty file per execution that this process is resuming. */
+const resumesFolder = `${journalFile}.resumes`;
+
+let lastSessionCrashed = false;
+
 export const init = async () => {
 	if (!inProduction || process.env.N8N_DEV_RELOAD === 'true') return;
 
-	if (existsSync(journalFile)) {
+	lastSessionCrashed = existsSync(journalFile);
+	if (lastSessionCrashed) {
 		// Crash detected
 		Container.get(Logger).error('Last session crashed');
 		// add a 10 seconds pause to slow down crash-looping
@@ -45,4 +51,27 @@ export const init = async () => {
 
 export const cleanup = async () => {
 	await rm(journalFile, { force: true });
+	await rm(resumesFolder, { recursive: true, force: true });
+};
+
+export const markResumeStarted = async (executionId: string) => {
+	await touchFile(join(resumesFolder, executionId));
+};
+
+export const markResumeEnded = async (executionId: string) => {
+	await rm(join(resumesFolder, executionId), { force: true });
+};
+
+/** Executions whose resume was in progress when the last session crashed. */
+export const readInterruptedResumes = async (): Promise<string[]> => {
+	try {
+		if (!lastSessionCrashed) {
+			// Left by a clean exit whose cleanup failed, so not evidence of a crash.
+			await rm(resumesFolder, { recursive: true, force: true });
+			return [];
+		}
+		return existsSync(resumesFolder) ? await readdir(resumesFolder) : [];
+	} catch {
+		return [];
+	}
 };
