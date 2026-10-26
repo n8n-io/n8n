@@ -11,7 +11,6 @@ import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
 import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
-import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
 import { AgentKnowledgeSnapshotTask } from '../agent-knowledge-snapshot.task';
@@ -66,7 +65,6 @@ function setUpContainerForInit() {
 	Container.set(AgentSecureRuntime, mock<AgentSecureRuntime>());
 
 	Container.set(AgentRepository, mock<AgentRepository>());
-	Container.set(SkillsHubRollout, mock<SkillsHubRollout>());
 	Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>());
 	Container.set(AgentSkillUsageService, mock<AgentSkillUsageService>());
 	Container.set(FavoriteResourceResolverRegistry, mock<FavoriteResourceResolverRegistry>());

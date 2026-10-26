@@ -247,7 +247,6 @@ export class AgentsModule implements ModuleInterface {
 		const { KnowledgeAvailabilityService } = await import(
 			'@/modules/knowledge/knowledge-availability.service.js'
 		);
-		const { SkillsHubRollout } = await import('@/modules/skills/skills-hub-rollout.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
@@ -255,7 +254,6 @@ export class AgentsModule implements ModuleInterface {
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(KnowledgeAvailabilityService).isFileKnowledgeEnabled(),
 			proxyEnabled,
-			skillsHubEnabled: Container.get(SkillsHubRollout).isEnabled,
 		};
 	}
 
