@@ -1,5 +1,10 @@
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
-import { AgentJsonConfigBaseSchema, AgentModelSchema } from '@n8n/api-types';
+import {
+	AgentJsonConfigBaseSchema,
+	AgentModelSchema,
+	EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS,
+	EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH,
+} from '@n8n/api-types';
 import type { ZodObject, ZodRawShape } from 'zod';
 import { z } from 'zod';
 
@@ -9,6 +14,10 @@ const BuilderPromptMemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,
 	credential: z.string().trim().min(1),
 });
+
+const BuilderPromptGuidanceTopicsSchema = z
+	.array(z.string().trim().min(1).max(EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH))
+	.max(EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS);
 
 const BuilderPromptMemoryConfigSchema = z.object({
 	enabled: z.boolean(),
@@ -36,8 +45,8 @@ const BuilderPromptMemoryConfigSchema = z.object({
 				maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
 				guidance: z
 					.object({
-						include: z.array(z.string()).optional(),
-						exclude: z.array(z.string()).optional(),
+						include: BuilderPromptGuidanceTopicsSchema.optional(),
+						exclude: BuilderPromptGuidanceTopicsSchema.optional(),
 					})
 					.optional(),
 			}),
