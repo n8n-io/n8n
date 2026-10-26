@@ -46,6 +46,7 @@ import { TimedQuery } from '../utils/timed-query';
 import {
 	loadWorkflowCollections,
 	splitWorkflowRelations,
+	wasDeletedAfterRead,
 	type WorkflowCollections,
 } from '../utils/workflow-collections';
 
@@ -617,6 +618,9 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		if (!workflow) return null;
 
 		await loadWorkflowCollections(this.manager, [workflow], { shared: { project: true } });
+		// Report a workflow deleted between the two reads as not found, as a single joined read
+		// would have.
+		if (await wasDeletedAfterRead(this.manager, workflow)) return null;
 		return workflow;
 	}
 

@@ -5,7 +5,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { BaseRepository } from './base-repository';
 import { WorkflowPublishedVersion } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
-import { loadWorkflowCollections } from '../utils/workflow-collections';
+import { loadWorkflowCollections, wasDeletedAfterRead } from '../utils/workflow-collections';
 
 export type PublishedWorkflowDataForExecution = Pick<
 	IWorkflowBase,
@@ -97,6 +97,9 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 			await loadWorkflowCollections(this.manager, [record.workflow], {
 				shared: { project: true },
 			});
+			// Report a workflow deleted between the two reads as not found, as a single joined
+			// read would have.
+			if (await wasDeletedAfterRead(this.manager, record.workflow)) return null;
 		}
 		return record;
 	}

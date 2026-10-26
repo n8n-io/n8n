@@ -1,5 +1,6 @@
 import {
 	createTeamProject,
+	createWorkflow,
 	createWorkflowWithHistory,
 	linkUserToProject,
 	setActiveVersion,
@@ -9,6 +10,7 @@ import {
 import type { Folder, Project, User, WorkflowEntity } from '@n8n/db';
 import {
 	ProjectRepository,
+	SharedWorkflow,
 	SharedWorkflowRepository,
 	TagEntity,
 	WorkflowPublishedVersionRepository,
@@ -61,6 +63,25 @@ async function measure<T>(load: () => Promise<T>) {
 		draftCopies: countCopies(statements, DRAFT_MARKER),
 		publishedCopies: countCopies(statements, PUBLISHED_MARKER),
 	};
+}
+
+/**
+ * Deletes the workflow just before its shares are read, as a concurrent request would between
+ * the workflow read and the share read. Removes the published version mapping first, as
+ * unpublishing does: its foreign key blocks deleting a published workflow. Restore the returned
+ * spy when done.
+ */
+function deleteBeforeShareRead(workflowId: string) {
+	const workflowRepository = Container.get(WorkflowRepository);
+	const { manager } = workflowRepository;
+	const find = manager.find.bind(manager);
+	return vi.spyOn(manager, 'find').mockImplementation(async (entityClass, options) => {
+		if (entityClass === SharedWorkflow) {
+			await Container.get(WorkflowPublishedVersionRepository).removePublishedVersion(workflowId);
+			await workflowRepository.delete(workflowId);
+		}
+		return await find(entityClass, options);
+	});
 }
 
 describe('Workflow relation loading', () => {
@@ -246,26 +267,16 @@ describe('Workflow relation loading', () => {
 		});
 
 		it('returns null when the workflow is deleted between the workflow and share reads', async () => {
-			const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
 			const deleted = await createWorkflowWithHistory({ name: 'Deleted mid-read' }, ownerProject);
-			const { manager } = sharedWorkflowRepository;
-			const find = manager.find.bind(manager);
-			// The share read is the first `find` after the workflow row is read. Delete the
-			// workflow just before it runs, as a concurrent request would.
-			const findSpy = vi
-				.spyOn(manager, 'find')
-				.mockImplementationOnce(async (entityClass, options) => {
-					await Container.get(WorkflowRepository).delete(deleted.id);
-					return await find(entityClass, options);
-				});
+			const findSpy = deleteBeforeShareRead(deleted.id);
 
 			try {
-				const result = await sharedWorkflowRepository.findWorkflowWithOptions(deleted.id, {
-					includeTags: true,
-					includeActiveVersion: true,
-				});
+				const result = await Container.get(SharedWorkflowRepository).findWorkflowWithOptions(
+					deleted.id,
+					{ includeTags: true, includeActiveVersion: true },
+				);
 
-				expect(findSpy).toHaveBeenCalled();
+				expect(findSpy).toHaveBeenCalledWith(SharedWorkflow, expect.anything());
 				expect(result).toBeNull();
 			} finally {
 				findSpy.mockRestore();
@@ -343,6 +354,34 @@ describe('Workflow relation loading', () => {
 		it('returns null for an unknown id', async () => {
 			expect(await Container.get(WorkflowRepository).findById('does-not-exist')).toBeNull();
 		});
+
+		it('returns null when the workflow is deleted between the workflow and share reads', async () => {
+			const deleted = await createWorkflowWithHistory({ name: 'Deleted mid-read' }, ownerProject);
+			const findSpy = deleteBeforeShareRead(deleted.id);
+
+			try {
+				const result = await Container.get(WorkflowRepository).findById(deleted.id);
+
+				expect(findSpy).toHaveBeenCalledWith(SharedWorkflow, expect.anything());
+				expect(result).toBeNull();
+			} finally {
+				findSpy.mockRestore();
+			}
+		});
+
+		it('still loads a workflow that exists without shares', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const unshared = await createWorkflow({ name: 'No shares' });
+
+			try {
+				const result = await workflowRepository.findById(unshared.id);
+
+				expect(result?.id).toBe(unshared.id);
+				expect(result?.shared).toEqual([]);
+			} finally {
+				await workflowRepository.delete(unshared.id);
+			}
+		});
 	});
 
 	describe('webhooks (WorkflowPublishedVersionRepository.getPublishedVersionWithRelations)', () => {
@@ -371,6 +410,24 @@ describe('Workflow relation loading', () => {
 					untaggedWorkflow.id,
 				),
 			).toBeNull();
+		});
+
+		it('returns null when the workflow is deleted between the workflow and share reads', async () => {
+			const publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
+			const deleted = await createWorkflowWithHistory({ name: 'Deleted mid-read' }, ownerProject);
+			await publishedVersionRepository.setPublishedVersion(deleted.id, deleted.versionId);
+			const findSpy = deleteBeforeShareRead(deleted.id);
+
+			try {
+				const result = await publishedVersionRepository.getPublishedVersionWithRelations(
+					deleted.id,
+				);
+
+				expect(findSpy).toHaveBeenCalledWith(SharedWorkflow, expect.anything());
+				expect(result).toBeNull();
+			} finally {
+				findSpy.mockRestore();
+			}
 		});
 	});
 

@@ -6,7 +6,11 @@ import { SharedWorkflow } from '../../entities/shared-workflow';
 import type { TagEntity } from '../../entities/tag-entity';
 import { WorkflowEntity } from '../../entities/workflow-entity';
 import { WorkflowTagMapping } from '../../entities/workflow-tag-mapping';
-import { loadWorkflowCollections, splitWorkflowRelations } from '../workflow-collections';
+import {
+	loadWorkflowCollections,
+	splitWorkflowRelations,
+	wasDeletedAfterRead,
+} from '../workflow-collections';
 
 const workflowWithId = (id: string) => Object.assign(new WorkflowEntity(), { id });
 
@@ -164,5 +168,35 @@ describe('loadWorkflowCollections', () => {
 		expect(workflows[0].shared).toEqual([firstShare]);
 		expect(workflows[10_000].shared).toEqual([lastShare]);
 		expect(workflows[5_000].shared).toEqual([]);
+	});
+});
+
+describe('wasDeletedAfterRead', () => {
+	const manager = mock<EntityManager>();
+	const withShares = (shared: SharedWorkflow[]) =>
+		Object.assign(workflowWithId('workflow-1'), { shared });
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+	});
+
+	it('runs no query for a workflow with shares', async () => {
+		const workflow = withShares([mock<SharedWorkflow>({ workflowId: 'workflow-1' })]);
+
+		expect(await wasDeletedAfterRead(manager, workflow)).toBe(false);
+		expect(manager.existsBy).not.toHaveBeenCalled();
+	});
+
+	it('reports a workflow without shares whose row is gone as deleted', async () => {
+		manager.existsBy.mockResolvedValueOnce(false);
+
+		expect(await wasDeletedAfterRead(manager, withShares([]))).toBe(true);
+		expect(manager.existsBy).toHaveBeenCalledWith(WorkflowEntity, { id: 'workflow-1' });
+	});
+
+	it('does not report a workflow that still exists without shares as deleted', async () => {
+		manager.existsBy.mockResolvedValueOnce(true);
+
+		expect(await wasDeletedAfterRead(manager, withShares([]))).toBe(false);
 	});
 });

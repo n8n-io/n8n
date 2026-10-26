@@ -4,7 +4,7 @@ import type { EntityManager, FindOptionsRelations, FindOptionsWhere } from '@n8n
 import { chunkIds } from './chunk-ids';
 import { SharedWorkflow } from '../entities/shared-workflow';
 import { TagEntity } from '../entities/tag-entity';
-import type { WorkflowEntity } from '../entities/workflow-entity';
+import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowTagMapping } from '../entities/workflow-tag-mapping';
 
 /**
@@ -20,7 +20,7 @@ export type WorkflowCollections = {
 };
 
 type WorkflowRelations = FindOptionsRelations<WorkflowEntity>;
-type WorkflowWhere = FindOptionsWhere<WorkflowEntity> | FindOptionsWhere<WorkflowEntity>[];
+type WorkflowWhere = FindOptionsWhere<WorkflowEntity> | Array<FindOptionsWhere<WorkflowEntity>>;
 
 /**
  * Loads tags and shares for `workflows` with one query per relation (per batch of ids) and
@@ -46,7 +46,7 @@ export async function loadWorkflowCollections(
 				.where('mapping.workflowId IN (:...ids)', { ids: chunk })
 				.orderBy('tag.createdAt', 'ASC')
 				.addOrderBy('tag.id', 'ASC')
-				.getMany()) as (WorkflowTagMapping & { tag: TagEntity })[];
+				.getMany()) as Array<WorkflowTagMapping & { tag: TagEntity }>;
 
 			for (const { workflowId, tag } of mappings) {
 				const tags = tagsByWorkflow.get(workflowId) ?? [];
@@ -75,6 +75,20 @@ export async function loadWorkflowCollections(
 		}
 		for (const workflow of workflows) workflow.shared = sharesByWorkflow.get(workflow.id) ?? [];
 	}
+}
+
+/**
+ * Whether `workflow`, whose shares {@link loadWorkflowCollections} just loaded, was deleted
+ * after it was read. A workflow always has an owner share, so no shares usually means the
+ * delete landed between the two reads. Only then does it check the row: a workflow that still
+ * exists without shares is broken data, and callers have always loaded it as it is.
+ */
+export async function wasDeletedAfterRead(
+	manager: EntityManager,
+	workflow: WorkflowEntity,
+): Promise<boolean> {
+	if (workflow.shared.length > 0) return false;
+	return !(await manager.existsBy(WorkflowEntity, { id: workflow.id }));
 }
 
 /** `['shared', 'shared.project']` → `{ shared: { project: true } }`, as TypeORM reads them. */
