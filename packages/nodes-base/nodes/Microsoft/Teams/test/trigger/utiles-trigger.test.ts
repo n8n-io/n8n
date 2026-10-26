@@ -240,7 +240,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 		const STORED = { webhookSecret: 'expected-secret' };
 		const match = { clientState: 'expected-secret', id: 1 };
-		const other = { clientState: 'wrong-secret', id: 2 };
+		const other = { clientState: 'wrong-secret-aa', id: 2 };
 		const none = { id: 3 };
 
 		it.each([
@@ -826,7 +826,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 			const deleted = () => calls('DELETE').map((call) => call[2]);
 			const created = () => calls('POST').map((call) => call[3].resource);
 
-			it('keeps the later-expiring renewed id and breaks a tie by id', async () => {
+			it('keeps the later-expiring renewed id, breaks a tie by id and forgets the others', async () => {
 				const { ctx, staticData } = arrange({
 					staticData: { subscriptionIds: ['c', 'b', 'a'], webhookSecret: 'secret' },
 				});
@@ -840,21 +840,22 @@ describe('Microsoft Teams Helpers Functions', () => {
 					renewed: new Set(['a', 'b', 'c']),
 				});
 
-				expect(deleted()).toEqual(['/v1.0/subscriptions/c', '/v1.0/subscriptions/a']);
+				expect(deleted()).toEqual([]);
 				expect(created()).toEqual([]);
 				expect(result).toEqual([]);
 				expect(staticData.subscriptionIds).toEqual(['b']);
 			});
 
-			// Earlier versions stored every own subscription, so either one can carry a foreign secret.
-			it('trusts neither of two stored live subscriptions on one resource without a renewal', async () => {
+			// Earlier versions stored every own subscription, so either one can carry a foreign secret,
+			// and the one about to expire can be the only one with the stored secret.
+			it('trusts neither of two stored subscriptions on one resource without a renewal, even when one expires soon', async () => {
 				const { ctx, staticData } = arrange({
 					staticData: { subscriptionIds: ['a', 'b'], webhookSecret: 'secret' },
 				});
 
 				const result = await reconcile(ctx, {
 					subscriptions: [
-						subscription('a', '/me/chats', minutes(60)),
+						subscription('a', '/me/chats', minutes(2)),
 						subscription('b', '/me/chats', minutes(90)),
 					],
 				});
@@ -881,15 +882,35 @@ describe('Microsoft Teams Helpers Functions', () => {
 					renewed: new Set(['b1']),
 				});
 
-				expect(deleted()).toEqual([
-					'/v1.0/subscriptions/a1',
-					'/v1.0/subscriptions/a2',
-					'/v1.0/subscriptions/b2',
-				]);
+				// b2 lost to the renewed b1 and is forgotten, not deleted.
+				expect(deleted()).toEqual(['/v1.0/subscriptions/a1', '/v1.0/subscriptions/a2']);
 				expect(created()).toEqual([TEAM1]);
 				expect(result).toEqual([]);
 				expect(staticData.subscriptionIds).toEqual(['b1', 'new-team1']);
 			});
+
+			// Two requests that renew different twins can run at the same time. Neither deletes the
+			// other one's twin, so one subscription stays whichever write wins.
+			it.each(['a', 'b'])(
+				'forgets but does not delete the stored twin that lost to the renewed %s',
+				async (winner) => {
+					const { ctx, staticData } = arrange({
+						staticData: { subscriptionIds: ['a', 'b'], webhookSecret: 'secret' },
+					});
+
+					await reconcile(ctx, {
+						subscriptions: [
+							subscription('a', '/me/chats', minutes(60)),
+							subscription('b', '/me/chats', minutes(90)),
+						],
+						renewed: new Set([winner]),
+					});
+
+					expect(deleted()).toEqual([]);
+					expect(created()).toEqual([]);
+					expect(staticData.subscriptionIds).toEqual([winner]);
+				},
+			);
 
 			it('keeps a renewed listed subscription whose listed expiry has passed', async () => {
 				const { ctx, staticData } = arrange();
@@ -1030,7 +1051,9 @@ describe('Microsoft Teams Helpers Functions', () => {
 				const { ctx, staticData } = arrange();
 				answerById({ sub1: subscription('sub1', '/me/chats', minutes(60)) });
 
-				await expect(storedSubscriptionsCover.call(ctx, webhookUrl, 'newChat')).resolves.toBe(true);
+				await expect(
+					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChat'),
+				).resolves.toBe(true);
 				expect(reads()).toEqual(['/v1.0/subscriptions/sub1']);
 				expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
 			});
@@ -1047,6 +1070,10 @@ describe('Microsoft Teams Helpers Functions', () => {
 				],
 				['the answer names another id', { sub1: subscription('other', '/me/chats', minutes(60)) }],
 				[
+					'Graph answers with another clientState',
+					{ sub1: { ...subscription('sub1', '/me/chats', minutes(60)), clientState: 'other' } },
+				],
+				[
 					'the subscription watches another resource',
 					{ sub1: subscription('sub1', TEAM1, minutes(60)) },
 				],
@@ -1054,8 +1081,34 @@ describe('Microsoft Teams Helpers Functions', () => {
 				const { ctx } = arrange();
 				answerById(byId);
 
-				await expect(storedSubscriptionsCover.call(ctx, webhookUrl, 'newChat')).resolves.toBe(
-					false,
+				await expect(
+					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChat'),
+				).resolves.toBe(false);
+			});
+
+			it.each([
+				['the stored one', 'secret'],
+				['null', null],
+			])('covers when Graph answers with %s as clientState', async (_label, answered) => {
+				const { ctx } = arrange();
+				answerById({
+					sub1: { ...subscription('sub1', '/me/chats', minutes(60)), clientState: answered },
+				});
+
+				await expect(
+					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChat'),
+				).resolves.toBe(true);
+			});
+
+			it('logs why a stored id does not count', async () => {
+				const { ctx } = arrange();
+				answerById({});
+
+				await storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChat');
+
+				expect(ctx.logger.debug).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to read stored subscription',
+					expect.objectContaining({ subscriptionId: 'sub1', error: expect.any(String) }),
 				);
 			});
 
@@ -1067,14 +1120,14 @@ describe('Microsoft Teams Helpers Functions', () => {
 				const a = subscription('a', TEAM1, minutes(60));
 
 				answerById({ a });
-				await expect(storedSubscriptionsCover.call(ctx, webhookUrl, 'newChannel')).resolves.toBe(
-					false,
-				);
+				await expect(
+					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChannel'),
+				).resolves.toBe(false);
 
 				answerById({ a, b: subscription('b', TEAM2, minutes(60)) });
-				await expect(storedSubscriptionsCover.call(ctx, webhookUrl, 'newChannel')).resolves.toBe(
-					true,
-				);
+				await expect(
+					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChannel'),
+				).resolves.toBe(true);
 			});
 
 			it('skips a stored id that fails validation without a request', async () => {
@@ -1083,7 +1136,9 @@ describe('Microsoft Teams Helpers Functions', () => {
 				});
 				answerById({ sub1: subscription('sub1', '/me/chats', minutes(60)) });
 
-				await expect(storedSubscriptionsCover.call(ctx, webhookUrl, 'newChat')).resolves.toBe(true);
+				await expect(
+					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChat'),
+				).resolves.toBe(true);
 				expect(reads()).toEqual(['/v1.0/subscriptions/sub1']);
 			});
 
@@ -1094,7 +1149,9 @@ describe('Microsoft Teams Helpers Functions', () => {
 				const { ctx } = arrange({ staticData, params: { event } });
 				answerById({ sub1: subscription('sub1', '/me/chats', minutes(60)) });
 
-				await expect(storedSubscriptionsCover.call(ctx, webhookUrl, event)).resolves.toBe(false);
+				await expect(storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', event)).resolves.toBe(
+					false,
+				);
 				expect(reads()).toEqual([]);
 			});
 		});
@@ -1340,47 +1397,59 @@ describe('Microsoft Teams Helpers Functions', () => {
 				expect(staticData.subscriptionIds).toBe(ids);
 			});
 
-			it('skips the listing for a renew-only batch under Watch All', async () => {
-				const ids = ['sub1', 'sub2'];
-				const { ctx, staticData } = arrange({
-					staticData: { subscriptionIds: ids, webhookSecret: 'secret' },
-					params: { event: 'newChannel', watchAllTeams: true },
-				});
+			it.each([
+				{ event: 'newChannel', watchAllTeams: true },
+				{ event: 'newChannelMessage', watchAllChannels: true },
+			])(
+				'skips the listing for a renew-only batch that watches many resources (%j)',
+				async (params) => {
+					const ids = ['sub1', 'sub2'];
+					const { ctx, staticData } = arrange({
+						staticData: { subscriptionIds: ids, webhookSecret: 'secret' },
+						params,
+					});
 
-				await handleLifecycleNotifications.call(ctx, [
-					lifecycleItem('reauthorizationRequired', 'sub1'),
-					lifecycleItem('reauthorizationRequired', 'sub2'),
-				]);
+					await handleLifecycleNotifications.call(ctx, [
+						lifecycleItem('reauthorizationRequired', 'sub1'),
+						lifecycleItem('reauthorizationRequired', 'sub2'),
+					]);
 
-				expect(calls('PATCH').map((call) => call[2])).toEqual([
-					'/v1.0/subscriptions/sub1',
-					'/v1.0/subscriptions/sub2',
-				]);
-				expect(microsoftApiRequest.call).toHaveBeenCalledTimes(2);
-				expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
-				expect(staticData.subscriptionIds).toBe(ids);
-			});
+					expect(calls('PATCH').map((call) => call[2])).toEqual([
+						'/v1.0/subscriptions/sub1',
+						'/v1.0/subscriptions/sub2',
+					]);
+					expect(microsoftApiRequest.call).toHaveBeenCalledTimes(2);
+					expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
+					expect(staticData.subscriptionIds).toBe(ids);
+				},
+			);
 
-			it('lists on a plain renewal when a trigger that watches one resource stores two ids', async () => {
-				const { ctx, staticData } = arrange({
-					staticData: { subscriptionIds: ['sub1', 'sub2'], webhookSecret: 'secret' },
-					subscriptions: [
-						subscription('sub1', '/me/chats', minutes(60)),
-						subscription('sub2', '/me/chats', minutes(90)),
-					],
-				});
+			// A watch-all flag left over from another event does not count.
+			it.each([{ event: 'newChat' }, { event: 'newChat', watchAllTeams: true }])(
+				'lists on a plain renewal when a trigger that watches one resource stores two ids (%j)',
+				async (params) => {
+					const { ctx, staticData } = arrange({
+						staticData: { subscriptionIds: ['sub1', 'sub2'], webhookSecret: 'secret' },
+						params,
+						subscriptions: [
+							subscription('sub1', '/me/chats', minutes(60)),
+							subscription('sub2', '/me/chats', minutes(90)),
+						],
+					});
 
-				await handleLifecycleNotifications.call(ctx, [
-					lifecycleItem('reauthorizationRequired', 'sub1'),
-				]);
+					await handleLifecycleNotifications.call(ctx, [
+						lifecycleItem('reauthorizationRequired', 'sub1'),
+					]);
 
-				expect(calls('PATCH').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
-				expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
-				// The renewed one carries the stored secret: its lifecycle item passed verification.
-				expect(calls('DELETE').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub2']);
-				expect(calls('POST')).toHaveLength(0);
-				expect(staticData.subscriptionIds).toEqual(['sub1']);
-			});
+					expect(calls('PATCH').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
+					expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+					// The renewed one carries the stored secret: its lifecycle item passed verification. The
+					// other one is forgotten, and its own next renewal removes it.
+					expect(calls('DELETE')).toHaveLength(0);
+					expect(calls('POST')).toHaveLength(0);
+					expect(staticData.subscriptionIds).toEqual(['sub1']);
+				},
+			);
 
 			it('reconciles a renew-only batch when the request rejected an item', async () => {
 				const ids = ['sub1'];

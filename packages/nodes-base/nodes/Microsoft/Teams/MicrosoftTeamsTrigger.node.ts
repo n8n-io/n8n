@@ -367,17 +367,17 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 				// An activation that cannot see Graph must not create blind. A throw reaches core: it
 				// runs `delete()`, which also removes the stored subscriptions, and tries the
-				// activation up to 5 times before it marks the trigger failed. The legacy activation
-				// manager retries a failure at instance start later instead. So stored subscriptions
-				// that GET by id shows live stay: the listing allows only 40 requests per 20 s for an
-				// app across all tenants, and the next listing reconciles.
+				// activation up to 5 times before it marks the trigger failed. When the activation at
+				// instance start fails, the legacy activation manager queues retries instead. So
+				// stored subscriptions that GET by id shows live stay: the listing allows only 40
+				// requests per 20 s for an app across all tenants, and the next listing reconciles.
 				let subscriptions: SubscriptionResponse[];
 				try {
 					subscriptions = await listOwnSubscriptions.call(this, webhookUrl);
 				} catch (error) {
 					if (
 						clientState !== undefined &&
-						(await storedSubscriptionsCover.call(this, webhookUrl, event))
+						(await storedSubscriptionsCover.call(this, webhookUrl, clientState, event))
 					) {
 						logTrigger.call(this, 'warn', 'failed to list subscriptions, kept the stored ones', {
 							error: ensureError(error).message,
@@ -437,10 +437,15 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					requiredResources,
 					clientState,
 				);
-				// Stored before the throw, so core's cleanup removes them even when its listing fails.
-				webhookData.subscriptionIds = ids;
-				if (errors.length > 0) throw errors[0];
+				if (errors.length > 0) {
+					// The activation fails, so the subscriptions that landed go now. Only the ones Graph
+					// refused to remove stay stored: the publication service runs `delete()` on this
+					// workflow next, while the legacy manager reloads the static data from the database.
+					webhookData.subscriptionIds = await deleteSubscriptions.call(this, ids);
+					throw errors[0];
+				}
 
+				webhookData.subscriptionIds = ids;
 				webhookData.webhookSecret = clientState;
 				return true;
 			},
@@ -503,8 +508,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		const rejected = notifications.length - accepted.length;
 		if (rejected > 0) {
 			// The ids name the leftover subscriptions; the values are capped like other logged input.
+			const acceptedItems = new Set(accepted);
 			const subscriptionIds = notifications
-				.filter((item) => !accepted.includes(item))
+				.filter((item) => !acceptedItems.has(item))
 				.flatMap((item) =>
 					isRecord(item) && typeof item.subscriptionId === 'string'
 						? [item.subscriptionId.slice(0, 64)]

@@ -31,8 +31,7 @@ export const ACTIVITY_PERMISSION_FORBIDDEN = {
 // permission `match` is a fragment of that path, never a permission name: the same 403
 // also lists the roles the caller already has (PR #38954). The fragments do not overlap
 // for the paths getResourcePath posts, so their order does not matter. The subscription
-// limit hint matches a phrase instead and comes first in TEAMS_FORBIDDEN_HINTS, so a limit
-// text that names a path still gets the limit copy.
+// limit hint below matches a phrase instead.
 // `/channels('` is the channel-message path: a channel key follows `/channels` only there.
 export const TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN = {
 	endpoint: SUBSCRIPTIONS_ENDPOINT,
@@ -99,11 +98,12 @@ export const CHAT_ALL_MESSAGES_SUBSCRIPTION_FORBIDDEN = {
 
 // Graph answers 403 `ExtensionError` with this text when a subscription would go over a
 // quota of one. Seen live for a second `/teams/{id}/channels` subscription: "User '<id>' has
-// reached its limit of '1' 'TEAMS/<ID>/CHANNELS' subscription". Graph documents the same quota
-// for team members and for the messages of one channel or chat. The match names no subject,
-// so the app-subject variant under the Service Principal credential matches too. It keeps the
-// `'1'`, because the quota of ten chat subscriptions for each user is not this case. The main
-// copy is for the Service Principal credential, the `delegated` copy for a signed-in account.
+// reached its limit of '1' 'TEAMS/<ID>/CHANNELS' subscription". The Graph docs list a quota of
+// one for each app and team (channels, members) and for each app and channel or chat
+// (messages), and ten for the chats of one user (change-notifications-overview). The match
+// names no subject, so the app-subject variant under the Service Principal credential matches
+// too. It keeps the `'1'`, because the quota of ten is not this case. The main copy is for the
+// Service Principal credential, the `delegated` copy for a signed-in account.
 export const SUBSCRIPTION_LIMIT_FORBIDDEN = {
 	endpoint: SUBSCRIPTIONS_ENDPOINT,
 	match: "has reached its limit of '1'",

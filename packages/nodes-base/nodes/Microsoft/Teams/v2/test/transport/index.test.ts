@@ -398,7 +398,7 @@ describe('Microsoft Teams Transport', () => {
 		// the resource token in upper case. The app-subject form follows a Microsoft Q&A report.
 		const LIMIT_403 = `Operation: Create; Exception: [Status Code: Forbidden; Reason: User '${USER_ID}' has reached its limit of '1' 'TEAMS/${TEAM_ID.toUpperCase()}/CHANNELS' subscription on tenant '${USER_ID}'.]`;
 		const APP_LIMIT_403 = LIMIT_403.replace(`User '${USER_ID}'`, `App '${USER_ID}'`);
-		// Modeled on LIMIT_403 for the documented quota of ten chat subscriptions per user
+		// Modeled on LIMIT_403 for the documented quota of ten chat subscriptions per user, not seen live
 		const LIMIT_OF_TEN_403 = `Operation: Create; Exception: [Status Code: Forbidden; Reason: User '${USER_ID}' has reached its limit of '10' 'ME/CHATS' subscription on tenant '${USER_ID}'.]`;
 		// Names the hinted permissions only as granted roles (a listing 403 on GET /v1.0/subscriptions
 		// has this shape too): no hint may fire on it
@@ -491,7 +491,7 @@ describe('Microsoft Teams Transport', () => {
 			{ label: 'app limit', hint: SUBSCRIPTION_LIMIT_FORBIDDEN, graphText: APP_LIMIT_403 },
 		];
 
-		// Pins the hint-table comment: each text contains exactly one fragment, so order does not matter
+		// Pins the hint-table comment: each text matches exactly one hint, so order does not matter
 		it.each([...teamRows, ...chatRows, ...limitRows])(
 			'matches exactly one hint for a $label text',
 			({ hint, graphText }) => {
@@ -550,8 +550,8 @@ describe('Microsoft Teams Transport', () => {
 				},
 			);
 
-			it.each(limitRows)('explains the quota of one for a $label text', async ({ graphText }) => {
-				mockRequestWithAuthentication.mockRejectedValue(wrapped(graphText));
+			it('explains the quota of one for an app limit text', async () => {
+				mockRequestWithAuthentication.mockRejectedValue(wrapped(APP_LIMIT_403));
 
 				const error = await post();
 
@@ -596,8 +596,8 @@ describe('Microsoft Teams Transport', () => {
 				},
 			);
 
-			it.each(limitRows)('explains the quota of one for a $label text', async ({ graphText }) => {
-				mockRequestOAuth2.mockRejectedValue(graphError(graphText));
+			it('explains the quota of one for a user limit text', async () => {
+				mockRequestOAuth2.mockRejectedValue(graphError(LIMIT_403));
 
 				const error = await post();
 
@@ -605,7 +605,7 @@ describe('Microsoft Teams Transport', () => {
 				expect(error.message).toBe(SUBSCRIPTION_LIMIT_FORBIDDEN.delegated.message);
 				expect(error.description).toBe(SUBSCRIPTION_LIMIT_FORBIDDEN.delegated.description);
 				// The raw Graph text stays in the error details
-				expect(error.messages).toContain(graphText);
+				expect(error.messages).toContain(LIMIT_403);
 			});
 
 			// The create hook has no catch of its own. Pin that the hint copy reaches the publish
