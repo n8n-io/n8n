@@ -20,6 +20,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import { DateTime } from 'luxon';
 import type {
+	IBinaryKeyData,
 	IDataObject,
 	IExecuteResponsePromiseData,
 	INode,
@@ -50,7 +51,7 @@ import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
-import { AgentFileBridge } from '../agent-file-bridge.service';
+import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
@@ -470,6 +471,8 @@ export async function executeWorkflow(
 	allOutputs = false,
 	/** Sanitized tool name for eval instrumentation; set only on instrumented runs. */
 	instrumentedToolName?: string,
+	/** Files the model passed to the tool, as binary of the trigger item. */
+	binary?: IBinaryKeyData,
 ): Promise<WorkflowToolExecutionResult> {
 	const { workflowRunner, subworkflowPolicyChecker, activeExecutions } = context;
 
@@ -479,7 +482,7 @@ export async function executeWorkflow(
 
 	// Build pin data for the trigger
 	const triggerPinData: IPinData = {
-		[triggerNode.name]: [{ json: inputData as IDataObject }],
+		[triggerNode.name]: [{ json: inputData as IDataObject, ...(binary && { binary }) }],
 	};
 	const workflowData =
 		workflow.pinData === undefined ? workflow : { ...workflow, pinData: undefined };
@@ -1137,7 +1140,7 @@ function assembleWorkflowTool(
 	context: WorkflowToolContext,
 	tool: {
 		reference: WorkflowToolWorkflowReference;
-		inputSchema: z.ZodTypeAny;
+		inputSchema: z.AnyZodObject;
 		triggerType?: string;
 	},
 ): BuiltTool {
@@ -1158,7 +1161,7 @@ function assembleWorkflowTool(
 	const supportsHitl = context.supportsHitl ?? true;
 	const builder = new Tool(toolName)
 		.description(toolDescription)
-		.input(inputSchema)
+		.input(inputSchema.extend({ files: FILES_INPUT_SCHEMA }))
 		.output(
 			z.object({
 				executionId: z.string(),
@@ -1187,8 +1190,15 @@ function assembleWorkflowTool(
 			} else {
 				current = await loadCurrentWorkflow(context, reference);
 				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
+				const { files, ...modelInput } = input;
+				const binary = files
+					? await Container.get(AgentFileBridge).toBinary(files, {
+							projectId: context.projectId,
+							threadId: ctx.persistence?.threadId,
+						})
+					: undefined;
 				const parsedInput = await resolveWorkflowToolInput(
-					input,
+					modelInput,
 					toolInputs,
 					currentFullSchema,
 					context,
@@ -1205,6 +1215,7 @@ function assembleWorkflowTool(
 					},
 					allOutputs,
 					toolName,
+					binary,
 				);
 			}
 

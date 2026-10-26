@@ -16,7 +16,7 @@ import { z } from 'zod';
 import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 
-import { AgentFileBridge } from '../agent-file-bridge.service';
+import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
 import { toPolicyRefusalResult } from './policy-refusal';
 
@@ -89,7 +89,10 @@ async function resolveInputSchema(
 	const collectedArguments = extractFromAIParameters(
 		(toolSchema.node.nodeParameters ?? {}) as INodeParameters,
 	);
-	if (collectedArguments.length > 0) return createZodSchemaFromArgs(collectedArguments);
+	// Supply-data tools take JSON only, so only these schemas accept files.
+	if (collectedArguments.length > 0) {
+		return createZodSchemaFromArgs(collectedArguments).extend({ files: FILES_INPUT_SCHEMA });
+	}
 
 	let nodeType;
 	const nodeTypeName = resolveToolNodeType(
@@ -125,7 +128,7 @@ async function resolveInputSchema(
 		);
 	}
 
-	return { type: 'object', properties: {} };
+	return z.object({ files: FILES_INPUT_SCHEMA }).passthrough();
 }
 
 /**
@@ -158,13 +161,19 @@ export async function resolveNodeTool(
 	const built = new Tool(sanitizedName)
 		.description(toolSchema.description ?? `Execute the ${nodeType} node`)
 		.input(await resolveInputSchema(toolSchema, ctx))
-		.handler(async (input: Record<string, unknown>, toolCtx) => {
+		.handler(async ({ files, ...input }: Record<string, unknown>, toolCtx) => {
+			const binary = files
+				? await Container.get(AgentFileBridge).toBinary(files, {
+						projectId: ctx.projectId,
+						threadId: toolCtx.persistence?.threadId,
+					})
+				: undefined;
 			const result = await ctx.executor.executeInline({
 				nodeType,
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
 				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
-				inputData: [{ json: input as IDataObject }],
+				inputData: [{ json: input as IDataObject, ...(binary && { binary }) }],
 				projectId: ctx.projectId,
 				...instrumentedExecution,
 			});

@@ -411,3 +411,37 @@ describe('resolveNodeTool → binary output', () => {
 		expect(output).toEqual({ status: 'success', data: [{ json: { id: 'drive-1' } }] });
 	});
 });
+
+describe('resolveNodeTool → file input', () => {
+	afterEach(() => {
+		Container.reset();
+	});
+
+	it('passes file IDs to the input item as binary and keeps them out of the JSON', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
+		const toBinary = vi.fn().mockResolvedValue(binary);
+		Container.set(AgentFileBridge, { toBinary } as unknown as AgentFileBridge);
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: {
+					...baseToolSchema.node,
+					nodeParameters: {
+						name: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('name', 'File name', 'string') }}",
+					},
+				},
+			},
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+
+		await tool.handler!({ name: 'cat.png', files: { data: 'aid-1' } }, {
+			persistence: { threadId: 't1' },
+		} as never);
+
+		expect(toBinary).toHaveBeenCalledWith({ data: 'aid-1' }, { projectId: 'p1', threadId: 't1' });
+		expect(executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({ inputData: [{ json: { name: 'cat.png' }, binary }] }),
+		);
+	});
+});

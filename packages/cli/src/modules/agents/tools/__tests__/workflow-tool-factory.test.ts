@@ -1359,3 +1359,42 @@ describe('workflow tool → background job handoff', () => {
 		expect(jobService.markMailConsumed).not.toHaveBeenCalled();
 	});
 });
+
+describe('workflow tool → file input', () => {
+	afterEach(() => {
+		Container.reset();
+	});
+
+	it('passes file IDs to the trigger item as binary', async () => {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: {} } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
+		const bridge = mock<AgentFileBridge>();
+		bridge.toBinary.mockResolvedValue(binary);
+		Container.set(AgentFileBridge, bridge);
+		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(run, { workflowLoader }),
+		);
+
+		await tool.handler?.({ files: { data: 'aid-1' } }, {
+			persistence: { threadId: 't-1' },
+		} as never);
+
+		expect(bridge.toBinary).toHaveBeenCalledWith(
+			{ data: 'aid-1' },
+			{ projectId: 'p1', threadId: 't-1' },
+		);
+		const { pinData } = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		const [triggerItems] = Object.values(pinData ?? {});
+		expect(triggerItems[0].binary).toEqual(binary);
+		expect(triggerItems[0].json).not.toHaveProperty('files');
+	});
+});
