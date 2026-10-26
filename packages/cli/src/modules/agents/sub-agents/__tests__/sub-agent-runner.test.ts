@@ -1293,6 +1293,36 @@ describe('SubAgentRunner', () => {
 		).rejects.toBe(admissionError);
 	});
 
+	it('returns the files that the child made in all its runs after a resume', async () => {
+		const made = [
+			{ fileId: 'first-run', fileName: 'a.png', mimeType: 'image/png', sizeBytes: 1 },
+			{ fileId: 'second-run', fileName: 'b.png', mimeType: 'image/png', sizeBytes: 2 },
+		];
+		attachmentService.returnToParent.mockResolvedValue(made);
+
+		const result = await runner.resumeForeground(
+			{
+				...delegatedRequest,
+				childRunId: 'child-run-1',
+				childToolCallId: 'tool-call-1',
+				childThreadId: 'child-thread-1',
+				resumeData: { approved: true },
+				resumeContext: { agentId: 'agent-1' },
+				parentThreadId,
+			},
+			{ projectId, parentAgentId, credentialProvider, runType: 'production' },
+		);
+
+		// The query is on the child thread, so it covers the runs before the pause too.
+		expect(attachmentService.returnToParent).toHaveBeenCalledWith({
+			projectId,
+			parentThreadId,
+			childThreadId: 'child-thread-1',
+		});
+		expect(attachmentService.grantToSubAgent).not.toHaveBeenCalled();
+		expect(result.files).toEqual(made);
+	});
+
 	it('records a draft child resume in the same thread only after host admission', async () => {
 		const approvalContext = { approvedKeys: new Set<string>(), onDecision: vi.fn() };
 		toolApprovalService.createContext.mockResolvedValueOnce(approvalContext);
