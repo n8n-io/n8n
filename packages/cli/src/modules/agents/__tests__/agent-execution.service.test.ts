@@ -1279,6 +1279,8 @@ describe('AgentExecutionService', () => {
 				cost: 25,
 				token_count: 15,
 				tool_call_count: 1,
+				skill_load_count: 0,
+				loaded_skill_ids: [],
 			});
 		});
 

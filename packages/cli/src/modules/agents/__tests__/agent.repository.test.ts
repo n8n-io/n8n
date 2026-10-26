@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-import type { TransactionRunner } from '@n8n/db';
+import { LIKE_ESCAPE_CLAUSE, type TransactionRunner } from '@n8n/db';
 import { In } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -162,15 +162,16 @@ describe('AgentRepository', () => {
 			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 			await repository.findSummariesByProjectIds(['p1', 'p2'], {
-				query: 'sales',
+				query: 'Sales',
 				publishedOnly: true,
 				excludeAgentId: 'agent-3',
 				limit: 10,
 			});
 
-			expect(mockQb.andWhere).toHaveBeenCalledWith('LOWER(agent.name) LIKE LOWER(:query)', {
-				query: '%sales%',
-			});
+			expect(mockQb.andWhere).toHaveBeenCalledWith(
+				`LOWER(agent.name) LIKE :query ${LIKE_ESCAPE_CLAUSE}`,
+				{ query: '%sales%' },
+			);
 			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.activeVersionId IS NOT NULL');
 			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.id != :excludeAgentId', {
 				excludeAgentId: 'agent-3',

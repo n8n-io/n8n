@@ -299,7 +299,7 @@ describe('useAgentVersionHistory', () => {
 					type: 'success',
 				}),
 			);
-			expect(mocks.showAgentPublishedConfirmation).toHaveBeenCalledWith('agent-1');
+			expect(mocks.showAgentPublishedConfirmation).toHaveBeenCalledWith(updatedAgent);
 			expect(result).toBe(updatedAgent);
 		});
 
