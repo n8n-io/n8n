@@ -17,7 +17,8 @@ export default class PromotionEnvironmentPromote extends BaseCommand {
 		...BaseCommand.baseFlags,
 		message: Flags.string({
 			char: 'm',
-			description: 'Commit message for the promotion. A default is used when omitted.',
+			description:
+				'Commit message for the promotion. If you omit it, the commit uses a generated message.',
 		}),
 		force: Flags.boolean({
 			description: 'Overwrite the remote branch even if it has diverged',

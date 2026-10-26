@@ -9,17 +9,12 @@ import {
 	promotionBindingProjectSchema,
 	promotionBindingWarningSchema,
 } from './promotion-binding-preflight.dto';
+import { promotionCommitMessageSchema } from './promotion-common.dto';
 import { promotionReviewResultSchema } from './promotion-review.dto';
 
 export class PromotePackageDto extends Z.class(
 	{
-		commitMessage: z
-			.string()
-			.trim()
-			.min(1)
-			.max(1000)
-			.describe('Message for the promotion commit. A default is used when omitted.')
-			.optional(),
+		commitMessage: promotionCommitMessageSchema,
 		force: z.boolean().optional(),
 	},
 	{ strict: true },

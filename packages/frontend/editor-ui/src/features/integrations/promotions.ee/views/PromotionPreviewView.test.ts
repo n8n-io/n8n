@@ -409,6 +409,20 @@ describe('PromotionPreviewView', () => {
 		expect(getByTestId('promote-commit-message')).toHaveValue('Route leads by region');
 	});
 
+	it('should clear the typed commit message when the project changes', async () => {
+		vi.mocked(api.promoteProjectSelection).mockRejectedValueOnce(new Error('offline'));
+
+		const { getByTestId, queryByTestId, rerender } = await render();
+		await promote(getByTestId, 'Route leads by region');
+		await waitFor(() => expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument());
+
+		await rerender({ projectId: 'p2', direction: 'promote' });
+		await waitAllPromises();
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(getByTestId('promote-commit-message')).toHaveValue('');
+	});
+
 	it('should not promote when the promote dialog is canceled', async () => {
 		const { getByTestId, queryByTestId } = await render();
 		await userEvent.click(getByTestId('promotion-preview-submit'));

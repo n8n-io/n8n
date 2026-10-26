@@ -221,6 +221,10 @@ const submitLabel = computed(() => {
 const promoteDialogOpen = ref(false);
 // Lives here, not in the dialog, so the typed message survives a failed promote.
 const promoteCommitMessage = ref('');
+// The router reuses this view across projects, so a draft must not carry over.
+watch(projectId, () => {
+	promoteCommitMessage.value = '';
+});
 
 async function onSubmit() {
 	if (props.direction === 'promote') {

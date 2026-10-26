@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { PROMOTION_COMMIT_MESSAGE_MAX_LENGTH } from '@n8n/api-types';
 import { N8nInput, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useTemplateRef } from 'vue';
+
+import CharacterCount from '@/app/components/CharacterCount.vue';
 
 defineProps<{ disabled?: boolean }>();
 
@@ -25,9 +28,15 @@ defineExpose({ focus: () => input.value?.focus() });
 			v-model="commitMessage"
 			type="textarea"
 			:rows="3"
+			:maxlength="PROMOTION_COMMIT_MESSAGE_MAX_LENGTH"
 			:disabled="disabled"
 			:placeholder="i18n.baseText('promotions.commitMessage.placeholder')"
 			data-test-id="promote-commit-message"
+		/>
+		<CharacterCount
+			:value="commitMessage"
+			:max="PROMOTION_COMMIT_MESSAGE_MAX_LENGTH"
+			data-test-id="promote-commit-message-character-count"
 		/>
 	</N8nInputLabel>
 </template>

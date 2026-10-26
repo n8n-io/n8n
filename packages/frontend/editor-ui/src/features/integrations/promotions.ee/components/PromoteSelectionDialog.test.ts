@@ -24,7 +24,7 @@ describe('PromoteSelectionDialog', () => {
 
 		const dialog = await findByTestId('promote-selection-dialog');
 		expect(dialog).toHaveTextContent('Promote 3 changes?');
-		expect(dialog).toHaveTextContent('This promotes the selected changes to the main branch.');
+		expect(dialog).toHaveTextContent('This promotes the selected changes to branch main.');
 	});
 
 	it('says that GitLab gets a merge request when promotions create a branch', async () => {
@@ -33,7 +33,7 @@ describe('PromoteSelectionDialog', () => {
 		});
 
 		expect(await findByTestId('promote-selection-dialog')).toHaveTextContent(
-			'This promotes the selected changes to a new branch and opens a merge request into the main branch.',
+			'This promotes the selected changes to a new branch and opens a merge request into branch main.',
 		);
 	});
 
@@ -53,6 +53,17 @@ describe('PromoteSelectionDialog', () => {
 		await userEvent.click(getByTestId('promote-confirm-button'));
 
 		expect(emitted('confirm')).toEqual([['Route leads by region']]);
+	});
+
+	it('limits the message to the length that the API accepts and counts it', async () => {
+		const { findByTestId, getByTestId } = renderComponent();
+
+		const field = await findByTestId('promote-commit-message');
+		expect(field).toHaveAttribute('maxlength', '1000');
+
+		await userEvent.type(field, 'Route leads');
+
+		expect(getByTestId('promote-commit-message-character-count')).toHaveTextContent('11/1000');
 	});
 
 	it('closes without confirming on cancel', async () => {
