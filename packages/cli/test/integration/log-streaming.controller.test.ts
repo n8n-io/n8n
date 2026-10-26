@@ -45,7 +45,6 @@ beforeAll(async () => {
 });
 
 describe('POST /eventbus/destination', () => {
-	// Regression guard: destination saves use the required scope. Ref: GOV-262.
 	describe('destination save permissions', () => {
 		const payload = {
 			__type: MessageEventBusDestinationTypeNames.webhook,
@@ -201,49 +200,6 @@ describe('POST /eventbus/destination', () => {
 				stored.destination,
 			]);
 		});
-
-		test.each([false, true])(
-			'cleans up a failed creation when another instance updated the stored settings: %s',
-			async (updatedOnAnotherInstance) => {
-				const id = uuid();
-				destinationIds.add(id);
-				await authOwnerAgent
-					.post('/eventbus/destination')
-					.send({ ...payload, id })
-					.expect(200);
-				const repository = Container.get(EventDestinationsRepository);
-				const service = Container.get(LogStreamingDestinationService);
-				const active = await service.findDestination(id);
-				// Model a row removed on another instance while its destination is still loaded here.
-				await repository.delete({ id });
-				const changedSettings = { ...active[0], label: 'Updated on another instance' };
-				const close = vi
-					.spyOn(MessageEventBusDestinationWebhook.prototype, 'close')
-					.mockImplementationOnce(async () => {
-						if (updatedOnAnotherInstance) {
-							await repository.upsert({ id, destination: changedSettings }, ['id']);
-						}
-						throw new Error('Could not close the active destination');
-					});
-
-				await createOnlyAgent
-					.post('/eventbus/destination')
-					.send({ ...payload, id, label: 'New destination' })
-					.expect(500);
-
-				expect(close.mock.contexts).toEqual([
-					expect.objectContaining({ label: 'Original destination' }),
-					expect.objectContaining({ label: 'New destination', enabled: false }),
-				]);
-				const stored = await repository.findOneBy({ id });
-				if (updatedOnAnotherInstance) {
-					expect(stored?.destination).toEqual(changedSettings);
-				} else {
-					expect(stored).toBeNull();
-				}
-				expect(await service.findDestination(id)).toEqual(active);
-			},
-		);
 	});
 
 	describe('Valid destination creation', () => {

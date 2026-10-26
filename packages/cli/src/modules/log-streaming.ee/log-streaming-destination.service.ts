@@ -103,25 +103,18 @@ export class LogStreamingDestinationService {
 		destination: MessageEventBusDestination,
 	): Promise<MessageEventBusDestination> {
 		return await this.destinationMutationMutex(async () => {
-			const id = destination.getId();
-			const settings = destination.serialize();
-			let created = false;
 			try {
 				// Insert before activation so a duplicate ID leaves the active destination unchanged.
-				created = await this.eventDestinationsRepository.createIfNew(id, settings);
+				const created = await this.eventDestinationsRepository.createIfNew(
+					destination.getId(),
+					destination.serialize(),
+				);
 				if (!created) {
 					throw new ForbiddenError('User is missing a scope required to perform this action');
 				}
 
 				return await this.activateDestination(destination);
 			} catch (error) {
-				if (created) {
-					try {
-						await this.eventDestinationsRepository.deleteIfUnchanged(id, settings);
-					} catch (rollbackError) {
-						this.logger.error('Failed to roll back destination creation', { error: rollbackError });
-					}
-				}
 				await this.closeFailedDestination(destination);
 				throw error;
 			}

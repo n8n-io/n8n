@@ -168,7 +168,6 @@ describe('LogStreamingDestinationService', () => {
 			expect(replacement.close).toHaveBeenCalledOnce();
 			expect(await service.findDestination('webhook-1')).toEqual([original.serialize()]);
 			expect(eventDestinationsRepository.upsert).not.toHaveBeenCalled();
-			expect(eventDestinationsRepository.deleteIfUnchanged).not.toHaveBeenCalled();
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
@@ -181,11 +180,10 @@ describe('LogStreamingDestinationService', () => {
 
 			expect(destination.close).toHaveBeenCalledOnce();
 			expect(await service.findDestination('webhook-1')).toEqual([]);
-			expect(eventDestinationsRepository.deleteIfUnchanged).not.toHaveBeenCalled();
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
-		it('closes the new destination and rolls back its insert when activation fails', async () => {
+		it('closes the new destination when activation fails', async () => {
 			const original = createMockDestination({ id: 'webhook-1' });
 			await service.addDestination(original);
 			vi.clearAllMocks();
@@ -200,10 +198,6 @@ describe('LogStreamingDestinationService', () => {
 			await expect(service.createDestination(destination)).rejects.toThrow(error);
 
 			expect(destination.close).toHaveBeenCalledOnce();
-			expect(eventDestinationsRepository.deleteIfUnchanged).toHaveBeenCalledWith(
-				'webhook-1',
-				destination.serialize(),
-			);
 			expect(await service.findDestination('webhook-1')).toEqual([original.serialize()]);
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
@@ -262,24 +256,6 @@ describe('LogStreamingDestinationService', () => {
 				expect(destination.close).toHaveBeenCalledOnce();
 			},
 		);
-
-		it('still closes the new destination if rollback fails', async () => {
-			const original = createMockDestination({ id: 'webhook-1' });
-			await service.addDestination(original);
-			const error = new Error('Could not close the active destination');
-			vi.mocked(original.close).mockRejectedValueOnce(error);
-			const destination = createMockDestination({ id: 'webhook-1' });
-			eventDestinationsRepository.createIfNew.mockResolvedValueOnce(true);
-			const rollbackError = new Error('Database unavailable');
-			eventDestinationsRepository.deleteIfUnchanged.mockRejectedValueOnce(rollbackError);
-
-			await expect(service.createDestination(destination)).rejects.toThrow(error);
-
-			expect(destination.close).toHaveBeenCalledOnce();
-			expect(logger.error).toHaveBeenCalledWith('Failed to roll back destination creation', {
-				error: rollbackError,
-			});
-		});
 	});
 
 	describe('addDestination', () => {
