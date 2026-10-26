@@ -6,6 +6,7 @@ import {
 	isServiceAccount,
 	isPerson,
 	ServiceAccount,
+	ServiceAccountDetails,
 	ServiceAccountRepository,
 	Person,
 	PersonRepository,
@@ -217,6 +218,72 @@ describe('UserRepository (both kinds)', () => {
 				ServiceAccount,
 			);
 			expect(await serviceAccountRepository.findById(person.id)).toBeNull();
+		});
+
+		it('creates a service account with a name and loads the name with it', async () => {
+			const serviceAccountRepository = Container.get(ServiceAccountRepository);
+
+			const created = await serviceAccountRepository.create({
+				name: 'Deploy bot',
+				role: GLOBAL_MEMBER_ROLE,
+			});
+			const loaded = await serviceAccountRepository.findById(created.id);
+
+			expect(created).toBeInstanceOf(ServiceAccount);
+			expect(created.details?.name).toBe('Deploy bot');
+			expect(loaded).toBeInstanceOf(ServiceAccount);
+			expect(loaded?.details).toBeInstanceOf(ServiceAccountDetails);
+			expect(loaded?.details?.name).toBe('Deploy bot');
+		});
+
+		it('loads a service account without details', async () => {
+			const serviceAccountRepository = Container.get(ServiceAccountRepository);
+			const serviceAccount = await createServiceAccount();
+
+			const loaded = await serviceAccountRepository.findById(serviceAccount.id);
+
+			expect(loaded).toBeInstanceOf(ServiceAccount);
+			expect(loaded?.details).toBeNull();
+		});
+
+		it('creates nothing when the details cannot be saved', async () => {
+			const serviceAccountRepository = Container.get(ServiceAccountRepository);
+
+			await expect(
+				serviceAccountRepository.create({
+					name: null as unknown as string,
+					role: GLOBAL_MEMBER_ROLE,
+				}),
+			).rejects.toThrow();
+
+			expect(await serviceAccountTable.count()).toBe(0);
+		});
+	});
+
+	describe('ServiceAccountDetails entity', () => {
+		let detailsTable: Repository<ServiceAccountDetails>;
+
+		beforeAll(() => {
+			detailsTable = Container.get(DataSource).getRepository(ServiceAccountDetails);
+		});
+
+		it('is deleted with its service account', async () => {
+			const { id } = await Container.get(ServiceAccountRepository).create({
+				name: 'Short-lived bot',
+				role: GLOBAL_MEMBER_ROLE,
+			});
+
+			await serviceAccountTable.delete({ id });
+
+			expect(await detailsTable.existsBy({ userId: id })).toBe(false);
+		});
+
+		it('cannot be saved without a name', async () => {
+			const serviceAccount = await createServiceAccount();
+
+			await expect(
+				detailsTable.save(detailsTable.create({ userId: serviceAccount.id })),
+			).rejects.toThrow();
 		});
 	});
 });
