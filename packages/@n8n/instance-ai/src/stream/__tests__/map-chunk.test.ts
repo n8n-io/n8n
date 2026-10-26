@@ -104,7 +104,7 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
-	it('maps runtime skill updates without exposing the instruction body', () => {
+	it('maps the skill update content delivered for the response', () => {
 		const update = {
 			skillId: 'hub-example',
 			name: 'Writing style',
@@ -136,6 +136,7 @@ describe('mapAgentChunkToEvent', () => {
 				name: update.name,
 				version: update.version,
 				change: update.change,
+				content: update.content,
 			},
 		});
 		expect(

@@ -486,23 +486,35 @@ describe('collapsed subline label', () => {
 });
 
 describe('skill update activity', () => {
-	it('shows the update while active and explains which version the response used', async () => {
-		const entry: InstanceAiTimelineEntry = {
-			type: 'skill-update',
-			runId: 'run-1',
-			skillId: 'hub:1',
-			name: 'Writing',
-			version: 'v2',
-			change: 'updated',
-		};
-		const { getByTestId, findByRole, findByText } = renderComponent({
-			props: { agentNode: makeAgentNode(), entries: [entry], active: true },
-		});
-		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Using updated skill: Writing');
-		await fireEvent.click(getByTestId('thinking-block-header'));
-		await fireEvent.click(await findByRole('button', { name: 'Using updated skill: Writing' }));
-		expect(await findByText('Latest version loaded for this response')).toBeVisible();
-	});
+	it.each([undefined, 'Updated instructions for this response.'])(
+		'shows the saved skill content with a fallback for metadata-only events (%s)',
+		async (content) => {
+			const entry: InstanceAiTimelineEntry = {
+				type: 'skill-update',
+				runId: 'run-1',
+				skillId: 'hub:1',
+				name: 'Writing',
+				version: 'v2',
+				change: 'updated',
+				content,
+			};
+			const { getByTestId, findByRole, findByText } = renderComponent({
+				props: { agentNode: makeAgentNode(), entries: [entry], active: true },
+				global: { stubs: { ToolResultJson: false } },
+			});
+			expect(getByTestId('thinking-block-subline')).toHaveTextContent(
+				'Using updated skill: Writing',
+			);
+			await fireEvent.click(getByTestId('thinking-block-header'));
+			await fireEvent.click(await findByRole('button', { name: 'Using updated skill: Writing' }));
+			if (content) {
+				expect(await findByText(/Updated instructions for this response/)).toBeVisible();
+				expect(await findByText(/"hash": "v2"/)).toBeVisible();
+			} else {
+				expect(await findByText('Latest version loaded for this response')).toBeVisible();
+			}
+		},
+	);
 
 	it('shows an unnamed unavailable skill without exposing its internal ID', async () => {
 		const entry: InstanceAiTimelineEntry = {

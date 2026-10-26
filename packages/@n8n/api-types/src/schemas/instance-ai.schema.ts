@@ -1241,6 +1241,8 @@ export const skillUpdatePayloadSchema = z.object({
 	name: z.string().optional(),
 	version: z.string().nullable(),
 	change: z.enum(['updated', 'restored', 'unavailable']),
+	/** The content delivered for this response. Older events contain metadata only. */
+	content: z.string().optional(),
 });
 export type InstanceAiSkillUpdatePayload = z.infer<typeof skillUpdatePayloadSchema>;
 

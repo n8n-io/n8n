@@ -233,7 +233,13 @@ describe('agent-run-reducer', () => {
 			type: 'skill-update',
 			runId: 'run-1',
 			agentId: 'root',
-			payload: { skillId: 'hub:1', name: 'Writing', version: 'v2', change: 'updated' },
+			payload: {
+				skillId: 'hub:1',
+				name: 'Writing',
+				version: 'v2',
+				change: 'updated',
+				content: 'Use the revised writing instructions.',
+			},
 		};
 		reduceEvent(state, event);
 		const restored = stateFromAgentTree(deepCopy(toAgentTree(state)));
