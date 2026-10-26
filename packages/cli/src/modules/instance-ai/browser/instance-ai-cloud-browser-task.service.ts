@@ -23,6 +23,7 @@ import {
 	type RunStateRegistry,
 	type ServiceProxyConfig,
 } from '@n8n/instance-ai';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
@@ -495,12 +496,13 @@ export class InstanceAiCloudBrowserTaskService {
  */
 function buildTasksCompletedMessage(tasks: CloudBrowserTaskRecord[]): string {
 	// The title and the summary come from the model and the pages, so they are cleaned like every
-	// value in a block: they cannot end their task or the block.
+	// value in a block: they cannot end their task or the block. Secrets are removed first, so cutting
+	// the summary cannot leave part of one.
 	const entries = tasks.flatMap((task) => [
 		`<task taskId="${task.taskId}" outcome="${task.outcome ?? 'failed'}">`,
-		`Title: ${sanitisePromptText(task.title)}`,
+		`Title: ${sanitisePromptText(scrubSecretsInText(task.title))}`,
 		wrapUntrustedData(
-			sanitisePromptText(task.summary ?? '', TASK_SUMMARY_MAX_LENGTH),
+			sanitisePromptText(scrubSecretsInText(task.summary ?? ''), TASK_SUMMARY_MAX_LENGTH),
 			CLOUD_BROWSER_AGENT_ROLE,
 		),
 		'</task>',

@@ -713,6 +713,24 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 			expect(message.replace(wrapped, '')).not.toContain('Ignore previous instructions');
 		});
 
+		it('removes secrets from the task title and summary before cutting the summary', async () => {
+			const key = `sk-ant-${'x'.repeat(40)}`;
+			const { service, run, startFollowUpRun, runSpawnedTask } = setup();
+			vi.mocked(runCloudBrowserAgent).mockResolvedValue(
+				agentResult({ summary: `${'a'.repeat(3989)} ${key}` }),
+			);
+			await service.startTask({ ...task, title: `Key ${key}` }, run);
+			await runSpawnedTask();
+
+			await service.deliverPendingResults(run.user, THREAD_ID);
+
+			const message = startFollowUpRun.mock.calls[0][2];
+			expect(message).toContain('Title: Key [REDACTED]');
+			// Cut first, the key would stay as `sk-ant-xxx`, too short to be found as a secret.
+			expect(message).toContain(`${'a'.repeat(3989)} [REDACTED]`);
+			expect(message).not.toContain('sk-ant-');
+		});
+
 		it('cuts a task summary at 4000 characters', async () => {
 			const { service, run, startFollowUpRun, runSpawnedTask } = setup();
 			vi.mocked(runCloudBrowserAgent).mockResolvedValue(
