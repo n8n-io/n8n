@@ -477,6 +477,42 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(result).toEqual({ data: mockData, hints: mockHints });
 		});
 
+		it('should return the eval node mock output instead of running the node', async () => {
+			const mockData = [[{ json: { mocked: true }, pairedItem: { item: 0 } }]];
+			mockNodeType.execute = vi.fn();
+			mockAdditionalData.evalNodeMockHandler = vi.fn().mockResolvedValue(mockData);
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				mockExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(mockNodeType.execute).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ data: mockData });
+		});
+
+		it('should run the node when the eval node mock returns no output', async () => {
+			const mockData = [[{ json: { result: 'test' } }]];
+			mockNodeType.execute = vi.fn().mockResolvedValue(mockData);
+			mockAdditionalData.evalNodeMockHandler = vi.fn().mockResolvedValue(undefined);
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				mockExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(mockNodeType.execute).toHaveBeenCalled();
+			expect(result).toMatchObject({ data: mockData });
+		});
+
 		it('should execute Node class instance with execute method', async () => {
 			const mockData = [[{ json: { result: 'test' } }]];
 			// Create a mock that extends Node to trigger instanceof Node check

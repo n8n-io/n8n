@@ -13,7 +13,6 @@
 			}
 		],
 		"noneOf": [
-			"workflow_builder_create_tasks",
 			"workflow_builder_build_workflow",
 			"spawn_sub_agent:workflow-builder"
 		]

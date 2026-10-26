@@ -13,6 +13,7 @@ import {
 	type PromotionBindingConflict,
 	type PromotionCheckoutPublicDto,
 	type PromotionDirection,
+	type PromotionRunContents,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
@@ -32,6 +33,7 @@ import {
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
+import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import {
 	CredentialConflictPolicy,
 	DataTableMissingMode,
@@ -56,12 +58,11 @@ import {
 import { ProjectService } from '@/services/project.service.ee';
 
 import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-files';
+import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
 import {
-	GIT_DEFAULT_COMMIT_EMAIL,
-	GIT_DEFAULT_COMMIT_NAME,
-	PACKAGE_SUBFOLDER,
-	PROMOTE_SELECTION_COMMIT_MESSAGE,
-} from './constants';
+	buildInstancePromotionCommitMessage,
+	buildSelectionPromotionCommitMessage,
+} from './promotion-commit-message';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { PromotionBindingPreflightService } from './promotion-binding-preflight.service';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
@@ -84,9 +85,19 @@ import type {
 	PromotionGitCredentials,
 	PromotionOperationInput,
 } from './promotions.types';
-import { WorkingCopyUpdater, type SelectivePushOptions } from './working-copy-updater';
+import {
+	WorkingCopyUpdater,
+	type ScannedBranch,
+	type SelectivePushOptions,
+} from './working-copy-updater';
 
 type ProjectReconciliationResult = { deletedProjectIds: string[] };
+
+type PushedPromotion = {
+	commitSha: string;
+	counts: PromotePackageResultDto['counts'];
+	commitMessage: string;
+};
 
 /** Conflicts that `confirmDestructiveChanges` lets the apply continue past. */
 function isConfirmableConflict(code: PromotionBindingConflict['code']): boolean {
@@ -103,7 +114,7 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	missingNodeTypeMode: MissingNodeTypeMode.Fail,
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
-	credentialConflictPolicy: CredentialConflictPolicy.KeepExisting,
+	credentialConflictPolicy: CredentialConflictPolicy.Overwrite,
 	folderConflictPolicy: FolderConflictPolicy.Overwrite,
 	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 	dataTableMatchingMode: 'by-id',
@@ -230,7 +241,7 @@ export class PromotionsService {
 		await mkdir(repositoryFolder, { recursive: true });
 		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${PACKAGE_SUBFOLDER}-`));
 
-		let pushed: { commitSha: string; counts: PromotePackageResultDto['counts'] };
+		let pushed: PushedPromotion;
 		try {
 			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
 				{
@@ -260,6 +271,12 @@ export class PromotionsService {
 				await this.workingDirectory.invalidateDescriptor(input.environmentId);
 			}
 
+			const commitMessage =
+				request.commitMessage ??
+				buildInstancePromotionCommitMessage({
+					projectCount: projectIds.length,
+					workflowCount: exportResult.counts.workflows,
+				});
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
 				credentials,
@@ -268,14 +285,14 @@ export class PromotionsService {
 				targetBranchName,
 				environmentId: input.environmentId,
 				author: this.commitAuthor(actor),
-				commitMessage: request.commitMessage,
+				commitMessage,
 				// A promotion branch must be new, so force does not apply.
 				force: targetBranchName ? false : (request.force ?? false),
 				stagePathspec: PACKAGE_SUBFOLDER,
 				onCheckoutRestored: async () =>
 					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
 			});
-			pushed = { commitSha, counts: exportResult.counts };
+			pushed = { commitSha, counts: exportResult.counts, commitMessage };
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
 		}
@@ -287,7 +304,8 @@ export class PromotionsService {
 			...(await this.openReview(input, actor, {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
-				title: request.commitMessage,
+				commitMessage: pushed.commitMessage,
+				promotionRunContents: { projectIds },
 			})),
 		};
 	}
@@ -296,11 +314,18 @@ export class PromotionsService {
 	private async openReview(
 		input: PromotionOperationInput,
 		actor: User,
-		push: { promotionBranchName: string | undefined; commitSha: string; title: string },
+		push: {
+			promotionBranchName: string | undefined;
+			commitSha: string;
+			commitMessage: string;
+			promotionRunContents: PromotionRunContents;
+		},
 	): Promise<Pick<PromotePackageResultDto, 'review' | 'warnings'>> {
 		const recorded = await this.recordPromoteRun(input, actor, {
 			branchName: push.promotionBranchName ?? checkoutBranchName(input.config),
 			commitSha: push.commitSha,
+			// Only a promotion branch has a review, and the review gate reads the project list.
+			...(push.promotionBranchName && { promotionRunContents: push.promotionRunContents }),
 		});
 		// A review without a run cannot be rendered: the branch and commit live on the run.
 		if (!recorded.runId) {
@@ -316,7 +341,8 @@ export class PromotionsService {
 			};
 		}
 		if (!push.promotionBranchName) return {};
-		const lines = push.title.split('\n');
+		// The first line becomes the merge request title, the rest its description.
+		const lines = push.commitMessage.split('\n');
 		const titleIndex = lines.findIndex((line) => line.trim() !== '');
 		if (titleIndex === -1) {
 			return {
@@ -349,7 +375,7 @@ export class PromotionsService {
 	private async recordPromoteRun(
 		input: PromotionOperationInput,
 		actor: User,
-		git: { branchName: string; commitSha: string },
+		git: { branchName: string; commitSha: string; promotionRunContents?: PromotionRunContents },
 	): Promise<{ runId?: string }> {
 		try {
 			const type = promotionRunTypeSchema.parse('git');
@@ -362,6 +388,7 @@ export class PromotionsService {
 					schemaVersion: 1,
 					branchName: git.branchName,
 					commitSha: git.commitSha,
+					...(git.promotionRunContents && { contents: git.promotionRunContents }),
 				}),
 				reviewId: null,
 			});
@@ -381,14 +408,14 @@ export class PromotionsService {
 	private async promoteSelectionResolved(
 		input: PromotionOperationInput,
 		actor: User,
-		request: { commitMessage: string; canExportVariableValues: boolean },
+		request: { commitMessage?: string; canExportVariableValues: boolean },
 		selection: SelectivePushOptions,
 	): Promise<PromotePackageResultDto> {
 		// NOTE: This assertion needs adjusting once we add full support for project-scoped promotions.
 		this.assertInstanceScope(input, 'Promote');
 
 		this.workingCopy.validateSelection(selection);
-		await this.assertTeamProject(selection.projectId);
+		const project = await this.assertTeamProject(selection.projectId);
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
@@ -423,7 +450,7 @@ export class PromotionsService {
 		let backedUp = false;
 		let keepPrePushBackup = false;
 
-		let pushed: { commitSha: string; counts: PromotePackageResultDto['counts'] };
+		let pushed: PushedPromotion;
 		try {
 			if (packageExisted) {
 				await rm(prePushBackup, { recursive: true, force: true });
@@ -464,6 +491,9 @@ export class PromotionsService {
 				await this.workingDirectory.invalidateDescriptor(input.environmentId);
 			}
 
+			const commitMessage =
+				request.commitMessage ??
+				this.defaultSelectionCommitMessage(project.name, selection, staging, branch);
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
 				credentials,
@@ -472,7 +502,7 @@ export class PromotionsService {
 				targetBranchName,
 				environmentId: input.environmentId,
 				author: this.commitAuthor(actor),
-				commitMessage: request.commitMessage,
+				commitMessage,
 				// A promotion branch must be new, so force never applies.
 				force: false,
 				stagePathspec: PACKAGE_SUBFOLDER,
@@ -480,7 +510,7 @@ export class PromotionsService {
 				onCheckoutRestored: async () =>
 					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
 			});
-			pushed = { commitSha, counts };
+			pushed = { commitSha, counts, commitMessage };
 		} catch (error) {
 			if (backedUp) {
 				await rm(packageFolder, { recursive: true, force: true }).catch((restoreError: unknown) => {
@@ -526,7 +556,8 @@ export class PromotionsService {
 			...(await this.openReview(input, actor, {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
-				title: request.commitMessage,
+				commitMessage: pushed.commitMessage,
+				promotionRunContents: { projectIds: [selection.projectId] },
 			})),
 		};
 	}
@@ -559,7 +590,7 @@ export class PromotionsService {
 					input,
 					actor,
 					{
-						commitMessage: request.commitMessage ?? PROMOTE_SELECTION_COMMIT_MESSAGE,
+						commitMessage: request.commitMessage,
 						canExportVariableValues: request.canExportVariableValues,
 					},
 					await this.classifySelection(projectId, request.workflowIds),
@@ -937,6 +968,7 @@ export class PromotionsService {
 					? DataTableSchemaConflictPolicy.Overwrite
 					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
 				tagConflictPolicy: IMPORT_POLICY.tagConflictPolicy,
+				credentialConflictPolicy: IMPORT_POLICY.credentialConflictPolicy,
 			},
 			{ sourceDir: packageFolder },
 			selection,
@@ -1228,6 +1260,26 @@ export class PromotionsService {
 		if (project.type !== 'team') {
 			throw new BadRequestError('Only team projects can use a promotion environment');
 		}
+		return project;
+	}
+
+	/** A selected workflow the branch already holds counts as updated, otherwise as added. */
+	private defaultSelectionCommitMessage(
+		projectName: string,
+		selection: SelectivePushOptions,
+		staging: PackageManifest,
+		branch: ScannedBranch,
+	): string {
+		const onBranch = new Map((branch.state.workflows ?? []).map((w) => [w.id, w.name]));
+		const exported = new Map((staging.workflows ?? []).map((w) => [w.id, w.name]));
+		const pushed = selection.workflowIds.map((id) => ({ id, name: exported.get(id) ?? id }));
+
+		return buildSelectionPromotionCommitMessage({
+			projectName,
+			added: pushed.filter(({ id }) => !onBranch.has(id)),
+			updated: pushed.filter(({ id }) => onBranch.has(id)),
+			removed: selection.deletedWorkflowIds.map((id) => ({ id, name: onBranch.get(id) ?? id })),
+		});
 	}
 
 	/**
@@ -1333,6 +1385,7 @@ export class PromotionsService {
 			credentials: {
 				matched: importResult.credentials.matched.length,
 				stubbed: importResult.credentials.stubbed.length,
+				updated: importResult.credentials.updated.length,
 			},
 			dataTables: {
 				matched: importResult.dataTables.matched,

@@ -387,6 +387,16 @@ describe('PromotionsService', () => {
 			});
 		});
 
+		it('generates a commit message when the request has none', async () => {
+			await service.promote(ENVIRONMENT_ID, actor, { canExportVariableValues: true });
+
+			expect(gitService.commitAndPush).toHaveBeenCalledWith(
+				expect.objectContaining({
+					commitMessage: 'Promote instance: 2 projects, 0 workflows',
+				}),
+			);
+		});
+
 		it('keeps the previous package when the export fails', async () => {
 			const { repositoryFolder } = workingDirectory.paths(ENVIRONMENT_ID);
 			const packageFolder = path.join(repositoryFolder, 'n8n');
@@ -511,6 +521,9 @@ describe('PromotionsService', () => {
 					commitMessage: '\nReal title\nMore detail',
 				});
 
+				expect(gitService.commitAndPush).toHaveBeenCalledWith(
+					expect.objectContaining({ commitMessage: '\nReal title\nMore detail' }),
+				);
 				expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
 					input,
 					actor,
@@ -532,6 +545,35 @@ describe('PromotionsService', () => {
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'promotion-promoted',
 					expect.objectContaining({ outcome: 'success', openedReview: true }),
+				);
+				expect(runRepository.insertRun).toHaveBeenCalledWith(
+					expect.objectContaining({
+						details: expect.objectContaining({
+							contents: { projectIds: ['project-a', 'project-b'] },
+						}),
+					}),
+				);
+			});
+
+			it('titles the review with the generated message when the request has none', async () => {
+				const input = branched();
+				resolver.resolveForEnvironment.mockResolvedValue(input);
+
+				const result = await service.promote(ENVIRONMENT_ID, actor, {
+					canExportVariableValues: true,
+				});
+
+				expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
+					input,
+					actor,
+					{
+						branchName: result.git.branchName,
+						baseBranchName: 'staging',
+						commitSha: 'newsha',
+						title: 'Promote instance: 2 projects, 0 workflows',
+						body: '',
+					},
+					'run-1',
 				);
 			});
 
@@ -791,7 +833,11 @@ describe('PromotionsService', () => {
 			await markCloned(input, 'staging');
 			repositoryFolder = workingDirectory.paths(ENVIRONMENT_ID).repositoryFolder;
 			packageFolder = path.join(repositoryFolder, 'n8n');
-			projectRepository.findOneBy.mockResolvedValue({ id: 'p1', type: 'team' } as never);
+			projectRepository.findOneBy.mockResolvedValue({
+				id: 'p1',
+				name: 'Alpha',
+				type: 'team',
+			} as never);
 			gitService.commitAndPush.mockResolvedValue({ commitSha: 'selsha' });
 		});
 
@@ -933,6 +979,40 @@ describe('PromotionsService', () => {
 			await expect(stat(`${packageFolder}.pre-selection`)).rejects.toThrow();
 		});
 
+		it('opens the review with the generated message when the request has none', async () => {
+			const input = operationInput({
+				direction: 'promote',
+				settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
+			});
+			resolver.resolveForProject.mockResolvedValue(input);
+			const files = {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			};
+			await writeExportTree(packageFolder, files);
+			mockExport(files);
+
+			ownedByP1('w1');
+			const result = await service.promoteProjectSelection('p1', actor, {
+				workflowIds: ['w1'],
+				canExportVariableValues: true,
+			});
+
+			expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
+				input,
+				actor,
+				{
+					branchName: result.git.branchName,
+					baseBranchName: 'staging',
+					commitSha: 'selsha',
+					title: 'Promote 1 workflow from "Alpha"',
+					body: '\nUpdated:\n- W1 (w1)',
+				},
+				'run-1',
+			);
+		});
+
 		it('refuses a selection when the export does not match the selected workflows', async () => {
 			await writeExportTree(packageFolder, {
 				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
@@ -1030,6 +1110,39 @@ describe('PromotionsService', () => {
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 			expect(await readExported('projects/beta/workflows/w1/workflow.json')).toBe(
 				branchWorkflowFile('w1', 'W1'),
+			);
+		});
+
+		it('describes the added, updated and removed workflows in the commit message', async () => {
+			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1'), wf('w3')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/workflows/w3/workflow.json': workflowFile('w3'),
+			});
+			mockExport({
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1'), wf('w2')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
+			});
+
+			// w3 is not owned by p1 anymore, so it leaves the branch.
+			ownedByP1('w1', 'w2');
+			await service.promoteProjectSelection('p1', actor, {
+				workflowIds: ['w1', 'w2', 'w3'],
+				canExportVariableValues: true,
+			});
+
+			expect(gitService.commitAndPush).toHaveBeenCalledWith(
+				expect.objectContaining({
+					commitMessage: [
+						'Promote 3 workflows from "Alpha"',
+						'Added:\n- W2 (w2)',
+						'Updated:\n- W1 (w1)',
+						'Removed:\n- W3 (w3)',
+					].join('\n\n'),
+				}),
 			);
 		});
 
@@ -1244,7 +1357,7 @@ describe('PromotionsService', () => {
 				actor,
 				expect.objectContaining({
 					canExportVariableValues: true,
-					commitMessage: 'Promote a selection of project changes',
+					commitMessage: undefined,
 				}),
 				{ projectId: 'p1', workflowIds: ['w1', 'w2', 'w4'], deletedWorkflowIds: ['w3'] },
 			);
@@ -1420,7 +1533,7 @@ describe('PromotionsService', () => {
 				],
 				removedFolders: [{}, {}],
 				bindings: { workflows: {}, credentials: {} },
-				credentials: { matched: ['c1'], stubbed: ['c2', 'c3'] },
+				credentials: { matched: ['c1'], stubbed: ['c2', 'c3'], updated: ['c4'] },
 				dataTables: { matched: 1, created: 2, updated: 3 },
 				variables: { matched: ['v1'], created: ['v2'], updated: ['v3'], stubbed: [], missing: [] },
 				tags: { matched: [], created: ['t1'], renamed: ['t2'], reconciled: [], skipped: [] },
@@ -1460,7 +1573,7 @@ describe('PromotionsService', () => {
 					missingNodeTypeMode: 'fail',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
-					credentialConflictPolicy: 'keep-existing',
+					credentialConflictPolicy: 'overwrite',
 					folderConflictPolicy: 'overwrite',
 					overwriteDeletionPolicy: 'hard-delete',
 					dataTableMatchingMode: 'by-id',
@@ -1494,7 +1607,7 @@ describe('PromotionsService', () => {
 						deleted: 2,
 						publishing: { published: 1, unpublished: 0, unchanged: 1, blocked: 1, failed: 0 },
 					},
-					credentials: { matched: 1, stubbed: 2 },
+					credentials: { matched: 1, stubbed: 2, updated: 1 },
 					dataTables: { matched: 1, created: 2, updated: 3 },
 					variables: { matched: 1, created: 1, updated: 1, stubbed: 0, missing: 0 },
 					tags: { matched: 0, created: 1, renamed: 1, reconciled: 0, skipped: 0 },
@@ -1775,6 +1888,7 @@ describe('PromotionsService', () => {
 						overwriteDeletionPolicy: 'hard-delete',
 						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 						tagConflictPolicy: 'rename',
+						credentialConflictPolicy: 'overwrite',
 					},
 					{ sourceDir: packageFolder },
 					{
@@ -1896,6 +2010,7 @@ describe('PromotionsService', () => {
 								overwriteDeletionPolicy: 'hard-delete',
 								dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 								tagConflictPolicy: 'rename',
+								credentialConflictPolicy: 'overwrite',
 							},
 							{ sourceDir: packageFolder },
 							{

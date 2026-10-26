@@ -11,6 +11,7 @@ import {
 	createTeamProject,
 	createWorkflow,
 	getPersonalProject,
+	linkUserToProject,
 	mockInstance,
 	mockLogger,
 	testDb,
@@ -45,9 +46,10 @@ import { simpleGit, type SimpleGit } from 'simple-git';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialTypes } from '@/credential-types';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, UnprocessableRequestError } from '@n8n/errors';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
@@ -74,7 +76,8 @@ import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.sche
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import { createFolder } from '@test-integration/db/folders';
-import { createOwnerWithApiKey } from '@test-integration/db/users';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
+import { createMember, createOwnerWithApiKey } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, initCredentialsTypes, setupTestServer } from '@test-integration/utils';
 
@@ -87,6 +90,7 @@ import { PromotionBindingPreflightService } from '../promotion-binding-preflight
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import { PromotionProvidersService } from '../promotion-providers.service';
+import { PromotionReviewGateService } from '../promotion-review-gate.service';
 import { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsGitService } from '../promotions-git.service';
@@ -482,6 +486,8 @@ async function listApplyChanges(projectId: string) {
 		Container.get(DataTableService),
 		Container.get(DataTableSerializer),
 		Container.get(ModuleRegistry),
+		Container.get(PromotionEnvironmentResolver),
+		Container.get(PromotionReviewGateService),
 		mockLogger(),
 	);
 	const { changes } = await changeService.getChanges(owner, projectId, 'apply', {
@@ -542,6 +548,92 @@ async function promoteDataTableWorkflows() {
 		orders,
 		customers,
 		dataTableService,
+	};
+}
+
+function headerAuthNode(credential: { id: string; name: string }): INode {
+	return {
+		id: `node-${credential.id}`,
+		name: credential.name,
+		type: 'n8n-nodes-base.httpRequest',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: { url: 'https://example.com' },
+		credentials: { httpHeaderAuth: { id: credential.id, name: credential.name } },
+	};
+}
+
+/**
+ * Promotes a team project whose `Charge` workflow uses the `Billing header` credential and whose
+ * `Report` workflow uses the `Report header` credential.
+ */
+async function promoteCredentialWorkflows() {
+	const remote = await createRemote();
+	const environments = await createInstanceEnvironments(remote.bareDir);
+	await service.clone(environments.promote.id, owner);
+	await service.clone(environments.apply.id, owner);
+	const project = await createTeamProject('Billing', owner);
+	const credential = await saveCredential(
+		{ name: 'Billing header', type: 'httpHeaderAuth', data: { name: 'X-Token', value: 'secret' } },
+		{ project, role: 'credential:owner' },
+	);
+	const reportCredential = await saveCredential(
+		{ name: 'Report header', type: 'httpHeaderAuth', data: { name: 'X-Token', value: 'secret' } },
+		{ project, role: 'credential:owner' },
+	);
+	const workflow = await createWorkflow(
+		{ name: 'Charge', nodes: [headerAuthNode(credential)], connections: {} },
+		project,
+	);
+	const reportWorkflow = await createWorkflow(
+		{ name: 'Report', nodes: [headerAuthNode(reportCredential)], connections: {} },
+		project,
+	);
+	await service.promote(environments.promote.id, owner, {
+		canExportVariableValues: true,
+		commitMessage: 'Export billing',
+	});
+	return { remote, environments, project, credential, reportCredential, workflow, reportWorkflow };
+}
+
+/** Changes credential files on the branch, as a later promotion from the source would. */
+async function changeBranchCredentials(
+	remote: TestRemote,
+	changes: Record<string, { name: string; data: Record<string, string> }>,
+) {
+	await remote.git.pull('origin', 'main');
+	const walk = async (dir: string): Promise<void> => {
+		for (const entry of await readdir(dir, { withFileTypes: true })) {
+			const fullPath = path.join(dir, entry.name);
+			if (entry.isDirectory()) {
+				await walk(fullPath);
+				continue;
+			}
+			if (entry.name !== PACKAGE_ENTITY_LAYOUT.credentials.fileName) continue;
+			const file = jsonParse<{ id: string }>(await readFile(fullPath, 'utf-8'));
+			const change = changes[file.id];
+			if (change) await writeFile(fullPath, JSON.stringify({ ...file, ...change }, null, 2));
+		}
+	};
+	await walk(path.join(remote.workingDir, 'n8n'));
+	// The manifest lists each credential name too, and the reader checks that both agree.
+	const manifestPath = path.join(remote.workingDir, 'n8n', 'manifest.json');
+	const manifest = jsonParse<{ credentials?: Array<{ id: string; name: string }> }>(
+		await readFile(manifestPath, 'utf-8'),
+	);
+	for (const entry of manifest.credentials ?? []) {
+		entry.name = changes[entry.id]?.name ?? entry.name;
+	}
+	await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+	await commitAndPushRemote(remote, 'Change credentials');
+}
+
+async function storedCredential(id: string) {
+	const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+	return {
+		name: credential.name,
+		updatedAt: credential.updatedAt,
+		data: await Container.get(CredentialsService).decrypt(credential, true),
 	};
 }
 
@@ -1121,7 +1213,7 @@ describe('Promote and Apply', () => {
 			});
 			expect(result.counts.projects.created).toBe(0);
 
-			expect(result.counts.credentials).toEqual({ matched: 1, stubbed: 0 });
+			expect(result.counts.credentials).toEqual({ matched: 1, stubbed: 0, updated: 0 });
 			expect(result.counts.variables).toMatchObject({ created: 0, updated: 0, stubbed: 0 });
 			expect(
 				await Container.get(VariablesRepository).findOneByOrFail({ id: targetVariable.id }),
@@ -2014,6 +2106,125 @@ describe('Apply a project selection over the public API', () => {
 			.send({ workflowIds: [workflows[0].id] });
 
 		expect(response.status, JSON.stringify(response.body)).toBe(409);
+		expect(await snapshotApplyState()).toEqual(before);
+	});
+});
+
+describe('Apply credential changes', () => {
+	const EXPRESSION = '={{ $vars.billingToken }}';
+
+	it('writes the branch name and expression values to a matched credential on a full apply', async () => {
+		const { remote, environments, credential, reportCredential } =
+			await promoteCredentialWorkflows();
+		await changeBranchCredentials(remote, {
+			[credential.id]: { name: 'Billing header v2', data: { value: EXPRESSION } },
+		});
+		const reportBefore = await storedCredential(reportCredential.id);
+
+		const result = await service.apply(environments.apply.id, owner);
+
+		expect(result).toMatchObject({
+			status: 'applied',
+			counts: { credentials: { matched: 1, stubbed: 0, updated: 1 } },
+		});
+		expect(await storedCredential(credential.id)).toMatchObject({
+			name: 'Billing header v2',
+			data: { name: 'X-Token', value: EXPRESSION },
+		});
+		expect(await storedCredential(reportCredential.id)).toEqual(reportBefore);
+	});
+
+	it('writes nothing when the same branch is applied again', async () => {
+		const { remote, environments, credential } = await promoteCredentialWorkflows();
+		await changeBranchCredentials(remote, {
+			[credential.id]: { name: 'Billing header v2', data: { value: EXPRESSION } },
+		});
+		await service.apply(environments.apply.id, owner);
+		const before = await storedCredential(credential.id);
+
+		const result = await service.apply(environments.apply.id, owner);
+
+		expect(result).toMatchObject({
+			status: 'applied',
+			counts: { credentials: { matched: 2, stubbed: 0, updated: 0 } },
+		});
+		expect(await storedCredential(credential.id)).toEqual(before);
+	});
+
+	it('writes a credential that a selected workflow uses, and leaves one that only an unselected workflow uses', async () => {
+		const { remote, project, credential, reportCredential, workflow } =
+			await promoteCredentialWorkflows();
+		await changeBranchCredentials(remote, {
+			[credential.id]: { name: 'Billing header v2', data: { value: EXPRESSION } },
+			[reportCredential.id]: { name: 'Report header v2', data: { value: EXPRESSION } },
+		});
+		const reportBefore = await storedCredential(reportCredential.id);
+
+		const result = await service.applyProjectSelection(project.id, owner, {
+			workflowIds: [workflow.id],
+		});
+
+		expect(result).toMatchObject({
+			status: 'applied',
+			counts: { credentials: { matched: 0, stubbed: 0, updated: 1 } },
+		});
+		expect(await storedCredential(credential.id)).toMatchObject({
+			name: 'Billing header v2',
+			data: { name: 'X-Token', value: EXPRESSION },
+		});
+		expect(await storedCredential(reportCredential.id)).toEqual(reportBefore);
+	});
+
+	it('blocks a selection apply when the actor cannot update a matched credential, and writes nothing', async () => {
+		const { remote, project, credential, workflow } = await promoteCredentialWorkflows();
+		await changeBranchCredentials(remote, {
+			[credential.id]: { name: 'Billing header v2', data: { value: EXPRESSION } },
+		});
+		const member = await createMember();
+		// Project editors and admins always hold `credential:update`: only a custom role lacks it.
+		const role = await createCustomRoleWithScopeSlugs(
+			[
+				'project:read',
+				'project:list',
+				'project:update',
+				'folder:create',
+				'folder:read',
+				'folder:update',
+				'folder:list',
+				'workflow:create',
+				'workflow:read',
+				'workflow:update',
+				'workflow:import',
+				'workflow:list',
+				'workflow:delete',
+				'workflow:publish',
+				'credential:read',
+				'credential:list',
+			],
+			{ roleType: 'project' },
+		);
+		await linkUserToProject(member, project, role.slug);
+		const before = await snapshotApplyState();
+
+		const error = await service
+			.applyProjectSelection(project.id, member, { workflowIds: [workflow.id] })
+			.then(
+				() => undefined,
+				(e: unknown) => e,
+			);
+
+		expect(error).toBeInstanceOf(UnprocessableRequestError);
+		expect((error as UnprocessableRequestError).meta).toEqual({
+			issues: [
+				{
+					type: 'credential-update-forbidden',
+					targetId: credential.id,
+					sourceIds: [credential.id],
+					name: credential.name,
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
+				},
+			],
+		});
 		expect(await snapshotApplyState()).toEqual(before);
 	});
 });

@@ -1,3 +1,4 @@
+import type { AgentKnowledgeUsageTracker } from '../../agent-knowledge-usage-tracker';
 import type { AgentMessageSteeringService } from '../../agent-message-steering.service';
 import {
 	encodeEpisodicScopeMetadata,
@@ -131,6 +132,7 @@ describe('SubAgentRunner', () => {
 	let runner: SubAgentRunner;
 	let childAgent: Mocked<BuiltAgent>;
 	let agentExecutionService: Mocked<AgentExecutionService>;
+	let knowledgeUsageTracker: Mocked<AgentKnowledgeUsageTracker>;
 	let logger: Mocked<Logger>;
 	let checkpointStorage: Mocked<N8NCheckpointStorage>;
 	let credentialProvider: Mocked<CredentialProvider>;
@@ -155,6 +157,7 @@ describe('SubAgentRunner', () => {
 		);
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
+		knowledgeUsageTracker = mock<AgentKnowledgeUsageTracker>();
 		logger = mock<Logger>();
 		executionRepository = mock<AgentExecutionRepository>();
 		usageRelay = mock<SystemAgentUsageRelay>();
@@ -169,6 +172,7 @@ describe('SubAgentRunner', () => {
 				mock<AgentMessageQueueService>(),
 				mock<AgentMessageSteeringService>(),
 				toolApprovalService,
+				knowledgeUsageTracker,
 			),
 			checkpointStorage,
 			logger,
@@ -203,6 +207,21 @@ describe('SubAgentRunner', () => {
 		});
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledTimes(1);
+	});
+
+	it('sends the knowledge use of the child run when it ends', async () => {
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		expect(knowledgeUsageTracker.sendRunUsage).toHaveBeenCalledTimes(1);
+		expect(knowledgeUsageTracker.sendRunUsage).toHaveBeenCalledWith(
+			'child-run-1',
+			expect.objectContaining({ runType: 'production' }),
+		);
 	});
 
 	it.each([
@@ -1555,7 +1574,7 @@ describe('SubAgentRunner', () => {
 				telemetry: {
 					...parentTelemetry,
 					functionId: undefined,
-					metadata: { agent_id: 'agent-1', thread_id: 'parent-thread-1', source: 'sub-agent' },
+					metadata: { thread_id: 'parent-thread-1', source: 'sub-agent' },
 					rootAnchored: false,
 				},
 			}),

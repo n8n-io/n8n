@@ -44,6 +44,8 @@ import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
 
+type InFlightExecutionOutcome = Pick<IExecutionResponse, 'status' | 'finished' | 'stoppedAt'>;
+
 type FoundExecution = IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 
 type UpdatableEntityColumns = Omit<
@@ -105,12 +107,16 @@ export class ExecutionPersistence {
 		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
 
 		let reclaimedTombstone: DeletionTarget | null = null;
+		const failedCreate: {
+			blobTarget: (ExecutionRef & { storedAt: BlobStorageLocation }) | null;
+		} = { blobTarget: null };
 		try {
 			const executionId = await this.executionRepository.runInTransaction(ctx, async (tx) => {
 				reclaimedTombstone = await this.reclaimTombstone(tx, executionEntity.deduplicationKey);
 				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
 				const executionId = String(identifiers[0].id);
 				const ref = { workflowId: id, executionId };
+				if (storedAt !== 'db') failedCreate.blobTarget = { ...ref, storedAt };
 
 				const jsonSizeBytes = await this.trackWrite(storedAt, ref.workflowId, async () => {
 					const bundle: ExecutionDataPayload = {
@@ -136,6 +142,19 @@ export class ExecutionPersistence {
 
 			return executionId;
 		} catch (error) {
+			const failedTarget = failedCreate.blobTarget;
+			if (failedTarget) {
+				try {
+					await this.jsonStore.delete([failedTarget]);
+				} catch (cleanupError) {
+					this.errorReporter.error(cleanupError, {
+						extra: {
+							executionId: failedTarget.executionId,
+							storedAt: failedTarget.storedAt,
+						},
+					});
+				}
+			}
 			if (executionEntity.deduplicationKey && this.isDuplicateExecutionError(error)) {
 				throw new DuplicateExecutionError(executionEntity.deduplicationKey, error);
 			}
@@ -631,16 +650,27 @@ export class ExecutionPersistence {
 	/**
 	 * Delete an in-flight execution that is not meant to be saved.
 	 *
-	 * - When pruning is enabled, soft-deletes with a backdated `deletedAt` so the
-	 * execution is immediately eligible for the next pruning hard-delete batch.
+	 * - When pruning is enabled, writes the final state and soft-deletes with a
+	 * backdated `deletedAt` so the execution is immediately eligible for the
+	 * next pruning hard-delete batch. A canceled execution keeps its status.
 	 * - When pruning is disabled, hard-deletes immediately so the execution
 	 * is not persisted indefinitely.
 	 */
-	async deleteInFlightExecution(target: DeletionTarget) {
+	async deleteInFlightExecution(target: DeletionTarget, outcome: InFlightExecutionOutcome) {
 		if (this.executionsConfig.pruneData) {
 			const bufferMs = this.executionsConfig.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
 			const deletedAt = new Date(Date.now() - bufferMs);
-			await this.executionRepository.update(target.executionId, { deletedAt });
+			const { affected } = await this.executionRepository.update(
+				this.buildEntityWhereCondition(target.executionId, { requireNotCanceled: true }),
+				{
+					deletedAt,
+					status: outcome.status,
+					// oxlint-disable-next-line typescript/no-deprecated
+					finished: outcome.finished,
+					stoppedAt: outcome.stoppedAt,
+				},
+			);
+			if (!affected) await this.executionRepository.update(target.executionId, { deletedAt });
 		} else {
 			await this.hardDelete(target);
 		}
@@ -657,6 +687,22 @@ export class ExecutionPersistence {
 		]);
 
 		await this.executionRepository.deleteByIds(targets.map((t) => t.executionId));
+	}
+
+	/** Resolve and remove one execution together with every storage-backed payload it owns. */
+	async hardDeleteById(executionId: string) {
+		const execution = await this.executionRepository.findOne({
+			select: ['id', 'workflowId', 'storedAt'],
+			where: { id: executionId },
+			withDeleted: true,
+		});
+		if (!execution) return;
+
+		await this.hardDelete({
+			executionId: execution.id,
+			workflowId: execution.workflowId,
+			storedAt: execution.storedAt,
+		});
 	}
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
