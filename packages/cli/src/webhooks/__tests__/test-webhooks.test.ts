@@ -2,10 +2,13 @@ import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
 import type * as express from 'express';
+import { HookContext } from 'n8n-core';
 import type { ExecutionContextService } from 'n8n-core';
-import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import type {
+	INode,
 	INodeParameters,
+	IWebhookDescription,
 	ITaskData,
 	IWorkflowBase,
 	IWebhookData,
@@ -105,28 +108,46 @@ describe('TestWebhooks', () => {
 			expect(registerOrder).toBeLessThan(createOrder);
 		});
 
-		test('returns each registered node name once, in registration order', async () => {
+		test('returns each registered node name once, in registration order, and the test URL of the form trigger', async () => {
 			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
-			const toWebhook = (node: string, webhookPath: string, method: IHttpRequestMethods) =>
+			const formTrigger = mock<INode>({ name: 'Form Trigger', type: FORM_TRIGGER_NODE_TYPE });
+			const webhookTrigger = mock<INode>({ name: 'Webhook', type: WEBHOOK_NODE_TYPE });
+			workflow.getNode.mockImplementation((name) =>
+				name === formTrigger.name ? formTrigger : webhookTrigger,
+			);
+			const formTestUrl = 'http://localhost:5678/form-test/form-path';
+			const getNodeWebhookUrl = vi
+				.spyOn(HookContext.prototype, 'getNodeWebhookUrl')
+				.mockReturnValue(formTestUrl);
+			const toWebhook = (
+				node: string,
+				webhookPath: string,
+				method: IHttpRequestMethods,
+				webhookName: string,
+			) =>
 				mock<IWebhookData>({
 					node,
 					httpMethod: method,
 					path: webhookPath,
 					workflowId: workflowEntity.id,
 					userId,
+					webhookDescription: { name: webhookName } as IWebhookDescription,
 				});
 
 			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
 			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
-				toWebhook('Form Trigger', 'form-path', 'GET'),
-				toWebhook('Form Trigger', 'form-path', 'POST'),
-				toWebhook('Webhook', 'webhook-path', 'POST'),
+				toWebhook('Form Trigger', 'form-path', 'GET', 'setup'),
+				toWebhook('Form Trigger', 'form-path', 'POST', 'default'),
+				toWebhook('Webhook', 'webhook-path', 'GET', 'default'),
 			]);
 
-			const { nodeNames } = await testWebhooks.registerWebhooks(args);
+			const { nodeNames, formTestUrls } = await testWebhooks.registerWebhooks(args);
 
 			expect(registrations.register).toHaveBeenCalledTimes(6);
 			expect(nodeNames).toEqual(['Form Trigger', 'Webhook']);
+			expect(getNodeWebhookUrl).toHaveBeenCalledTimes(1);
+			expect(getNodeWebhookUrl).toHaveBeenCalledWith('setup');
+			expect(formTestUrls).toEqual([formTestUrl]);
 		});
 
 		test('registers with a TTL that covers the listener window plus the buffer', async () => {

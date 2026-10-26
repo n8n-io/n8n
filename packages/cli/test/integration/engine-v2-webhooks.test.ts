@@ -262,7 +262,7 @@ describe.each([
 		);
 
 		const listening = await startListening(workflow.id);
-		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+		expect(listening.body.data).toEqual({ waitingForWebhook: true, formTestUrls: [] });
 
 		const response = await webhookAgent
 			.post(`/${webhookTestEndpoint}/${webhookId}`)
