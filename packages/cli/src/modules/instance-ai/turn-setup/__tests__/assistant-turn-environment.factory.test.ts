@@ -169,7 +169,6 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			const { orchestrationContext } = await factory.create(params, createRuntime());
 
 			expect(orchestrationContext.cancelBackgroundTask).toBeUndefined();
-			expect(orchestrationContext.schedulePlannedTasks).toBeUndefined();
 			expect(orchestrationContext.sendCorrectionToTask).toBeUndefined();
 		});
 

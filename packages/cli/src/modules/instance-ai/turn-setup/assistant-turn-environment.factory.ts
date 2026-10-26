@@ -14,8 +14,6 @@ import {
 	resolvePromptProfile,
 	describePromptProfile,
 	createDomainAccessTracker,
-	PlannedTaskCoordinator,
-	PlannedTaskStorage,
 	createSetupItemsEmitter,
 	isSetupPanelEnabled,
 	orchestratorAgentId,
@@ -89,7 +87,6 @@ export interface AssistantTurnEnvironment {
 	taskStorage: ThreadTaskStorage;
 	iterationLog: DbIterationLogStorage;
 	workflowTasks: WorkflowTaskService;
-	plannedTaskService: PlannedTaskCoordinator;
 	modelId: ModelConfig;
 	memoryModelId: ModelConfig | undefined;
 	orchestrationContext: OrchestrationContext;
@@ -438,8 +435,6 @@ export class AssistantTurnEnvironmentFactory {
 		const workflowTasks = runtime.syncWorkflowTasks
 			? this.createWorkflowTaskServiceWithUiSync(workflowTaskCoordinator, runtime.syncWorkflowTasks)
 			: workflowTaskCoordinator;
-		const plannedTaskStorage = new PlannedTaskStorage(memory);
-		const plannedTaskService = new PlannedTaskCoordinator(plannedTaskStorage);
 
 		const nodeDefDirs = this.adapterService.getNodeDefinitionDirs();
 		if (nodeDefDirs.length > 0) {
@@ -556,8 +551,6 @@ export class AssistantTurnEnvironmentFactory {
 			cancelBackgroundTask: runtime.cancelBackgroundTask,
 			touchRun: runtime.touchRun,
 			touchBackgroundTask: runtime.touchBackgroundTask,
-			plannedTaskService,
-			schedulePlannedTasks: runtime.schedulePlannedTasks,
 			iterationLog,
 			sendCorrectionToTask: runtime.sendCorrectionToTask,
 			workflowTaskService: workflowTasks,
@@ -573,7 +566,6 @@ export class AssistantTurnEnvironmentFactory {
 			taskStorage,
 			iterationLog,
 			workflowTasks,
-			plannedTaskService,
 			modelId,
 			memoryModelId,
 			orchestrationContext,

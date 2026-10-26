@@ -129,11 +129,6 @@ export interface AssistantTurnScopeParams {
 	message: string;
 	timeZone?: string;
 	fileAttachments: InstanceAiFileAttachment[];
-	isReplanFollowUp: boolean;
-	/** True for replan and checkpoint follow-ups, where an approved plan already exists. */
-	isPostPlanFollowUp: boolean;
-	/** The build context of a planned build follow-up. Other turns get a new work item. */
-	workflowBuildContext?: InstanceAiContext['workflowBuildContext'];
 }
 
 /** What the turn input build needs from the runtime that runs the turn. */
@@ -152,8 +147,6 @@ export interface AssistantTurnInputParams {
 	handoffContext?: InstanceAiHandoffContext;
 	timeZone?: string;
 	resumeReason?: OrchestratorResumeReason;
-	/** A checkpoint or planned-build turn: the agent continues its own task. */
-	isMachineFollowUp: boolean;
 	threadArtifacts?: InstanceAiThreadArtifactsContext;
 	/** Receives the instance-context summary as soon as the block is built. */
 	onInstanceContextInjection?: (injection: InstanceContextInjection) => void;
@@ -232,15 +225,13 @@ export class AssistantTurnInputBuilder {
 		// Make the current user message available since memory history only
 		// returns previously-saved messages.
 		orchestrationContext.currentUserMessage = message;
-		orchestrationContext.isReplanFollowUp = params.isReplanFollowUp;
 		orchestrationContext.timeZone = timeZone ?? this.defaultTimeZone;
 
-		context.workflowBuildContext = params.workflowBuildContext ?? {
+		context.workflowBuildContext = {
 			threadId,
 			runId,
 			taskId: `build-${runId}`,
 			workItemId: `wi_${nanoid(8)}`,
-			allowPostPlanWorkflowCreate: params.isPostPlanFollowUp,
 			workflowTaskService: workflowTasks,
 		};
 
@@ -275,7 +266,6 @@ export class AssistantTurnInputBuilder {
 			handoffContext,
 			timeZone,
 			resumeReason,
-			isMachineFollowUp,
 			threadArtifacts,
 			onInstanceContextInjection,
 		} = params;
@@ -371,8 +361,6 @@ export class AssistantTurnInputBuilder {
 
 		// Sent in full on a thread's first turn and as additions after that: the earlier block
 		// stays in the conversation, so re-sending it pays for the same context twice.
-		//
-		// Skipped entirely on a machine follow-up.
 		const instanceContext = await this.instanceContext.buildBlock({
 			user,
 			scope: {
@@ -380,7 +368,6 @@ export class AssistantTurnInputBuilder {
 				...(context.projectId !== undefined ? { projectId: context.projectId } : {}),
 			},
 			cursor: readInstanceContextCursor(thread?.metadata),
-			isMachineFollowUp,
 			enabled: instanceContextEnabled,
 		});
 
@@ -460,7 +447,7 @@ export class AssistantTurnInputBuilder {
 		// same way they skip the other ambient context: the block from the user turn is
 		// already in the history the follow-up replays.
 		const aiPreferencesTurn =
-			aiPreferencesEnabled && resumeReason === undefined && !isMachineFollowUp
+			aiPreferencesEnabled && resumeReason === undefined
 				? await this.resolveAiPreferencesTurn(user.id, boundProject, threadId, loadReplayedHistory)
 				: undefined;
 		const threadContextBlock = buildThreadContextBlock([

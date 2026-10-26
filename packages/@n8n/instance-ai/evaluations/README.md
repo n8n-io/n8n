@@ -754,7 +754,6 @@ The agent is stubbed for non-interactive use. The summary tracks divergence
 from this assumption — investigate any non-zero count:
 
 - `askUserCount` — `workflow_builder_ask_user` tool was invoked (eval responds with `{ approved: false }`)
-- `planToolCount` — `workflow_builder_create_tasks` was invoked (single-prompt dataset shouldn't trigger planning)
 - `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `data_tables` create); auto-approved
 - `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
 
