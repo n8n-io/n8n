@@ -282,17 +282,6 @@ describe('AssistantConfirmationCard', () => {
 		]);
 	});
 
-	it('shows a plan review as not available, without actions', () => {
-		const { getByTestId, queryByRole } = renderComponent({
-			props: {
-				input: { requestId: 'req-u', message: 'Review the plan', inputType: 'plan-review' },
-			},
-		});
-
-		expect(getByTestId('assistant-agent-unsupported-card')).toHaveTextContent('Review the plan');
-		expect(queryByRole('button')).not.toBeInTheDocument();
-	});
-
 	// Minimal payloads: the card only needs each field to choose its setup variant.
 	it.each<[string, string, Record<string, unknown>, Record<string, unknown>]>([
 		[

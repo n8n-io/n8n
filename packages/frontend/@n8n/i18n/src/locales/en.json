@@ -8123,7 +8123,6 @@
 	"instanceAi.gatewayConfirmation.prompt": "Allow n8n Assistant to access '{resources}' using Browser Use?",
 	"instanceAi.askUser.placeholder": "Type your answer...",
 	"instanceAi.askUser.submit": "Submit",
-	"instanceAi.assistantAgent.unsupportedCard": "This step isn't available in this chat yet. Send a message to continue.",
 	"instanceAi.askUser.skip": "Skip",
 	"instanceAi.preferenceCard.saved.justForYou": "Preference saved just for you",
 	"instanceAi.preferenceCard.saved.globally": "Preference saved globally",
