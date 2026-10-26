@@ -68,8 +68,9 @@ export function reconstructError(data: ErrorSentinel): Error {
 	return error;
 }
 
-/** Workflow data for one `execute()` call, cleared when the call ends. */
+/** Workflow data for one `execute()` call. */
 export interface DataHolder {
+	/** The bridge clears this when the call ends. */
 	data?: WorkflowData;
 }
 

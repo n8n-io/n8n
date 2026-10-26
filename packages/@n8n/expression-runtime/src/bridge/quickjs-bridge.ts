@@ -1128,7 +1128,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Create per-execute callback function handles, closure-scoped to `holder`.
+	 * Create per-execute callback function handles.
 	 *
 	 * The handles are passed as arguments into the per-call wrapper function
 	 * (see execute()) instead of being set as VM globals: `execute()` can
@@ -1185,7 +1185,7 @@ export class QuickJsBridge implements RuntimeBridge {
 				}),
 			);
 		} catch (error) {
-			// The caller gets no handles to dispose, so free the ones already made.
+			// A live handle keeps the data. It also makes JS_FreeRuntime abort.
 			for (const handle of handles) handle.dispose();
 			throw error;
 		}
