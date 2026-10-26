@@ -135,10 +135,10 @@ onBeforeUnmount(() => {
 								</N8nText>
 								<ul :class="$style.list">
 									<li v-for="dep in group.items" :key="dep.id">
-										<N8nLink v-if="dep.href" :to="dep.href" new-window size="small">
+										<N8nLink v-if="dep.href" :to="dep.href" new-window size="medium">
 											{{ dep.name }}
 										</N8nLink>
-										<N8nText v-else size="small">{{ dep.name }}</N8nText>
+										<N8nText v-else size="medium">{{ dep.name }}</N8nText>
 									</li>
 								</ul>
 							</div>
