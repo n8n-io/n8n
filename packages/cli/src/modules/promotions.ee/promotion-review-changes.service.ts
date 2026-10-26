@@ -207,8 +207,9 @@ function baselineOf(
 }
 
 /**
- * Prefers what the host recorded, then the n8n approver. The time stays unknown when the
- * host omits it: n8n only knows when it noticed the change, not when the host made it.
+ * A merge through n8n reaches the host as its token user, so the n8n approver names the
+ * person and comes first. The time stays unknown when the host omits it: n8n only knows
+ * when it noticed the change, not when the host made it.
  */
 function outcomeOf(
 	review: PromotionReview,
@@ -228,7 +229,7 @@ function outcomeOf(
 	return {
 		state,
 		at: hostAt ?? null,
-		by: hostActor ?? approverName ?? null,
+		by: approverName ?? hostActor ?? null,
 		webUrl,
 	};
 }

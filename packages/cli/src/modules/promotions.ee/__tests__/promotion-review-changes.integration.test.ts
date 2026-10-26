@@ -376,7 +376,7 @@ describe('when the host dropped the commits of a finished review', () => {
 		});
 	}, 60_000);
 
-	it('falls back to the n8n approver, but not to the time n8n noticed the merge', async () => {
+	it('names the n8n approver over the token user, but not the time n8n noticed the merge', async () => {
 		const { review, headSha, baseSha } = await promoteAndLose();
 		await Container.get(PromotionReviewRepository).update(review.reviewId, {
 			approvedById: owner.id,
@@ -385,6 +385,7 @@ describe('when the host dropped the commits of a finished review', () => {
 		});
 		finishOnHost(review.iid, {
 			state: 'merged',
+			merge_user: { name: 'n8n' },
 			diff_refs: { base_sha: baseSha, head_sha: headSha },
 		});
 
