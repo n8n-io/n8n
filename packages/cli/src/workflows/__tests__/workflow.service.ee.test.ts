@@ -1105,8 +1105,18 @@ describe('EnterpriseWorkflowService', () => {
 				userId: 'user-1',
 			});
 			expect(result).toEqual({
-				error: expect.objectContaining({ message: 'broken credential' }),
+				error: { name: 'WorkflowActivationError', message: 'broken credential' },
 			});
+		});
+
+		it('returns an unexpected failure instead of throwing it, and logs it', async () => {
+			activeWorkflowManager.add.mockRejectedValue(new Error('active version missing'));
+
+			const result = await service['attemptWorkflowReactivation']('wf-1', 'version-1', 'user-1');
+
+			expect(result).toEqual({ error: { name: 'Error', message: 'active version missing' } });
+			expect(workflowRepository.updateActiveState).toHaveBeenCalledWith('wf-1', false);
+			expect(service['logger'].error).toHaveBeenCalled();
 		});
 
 		it('should still deactivate the workflow when the trigger teardown fails', async () => {
@@ -1202,6 +1212,29 @@ describe('EnterpriseWorkflowService', () => {
 			});
 			expect(workflowRepository.updateActiveState).toHaveBeenCalledExactlyOnceWith('wf-1', false);
 			// One refusal must not leave the rest of the folder unpublished.
+			expect(activeWorkflowManager.add).toHaveBeenCalledTimes(2);
+		});
+
+		it('republishes the rest of the folder after an unexpected failure, and reports it', async () => {
+			activeWorkflowManager.add.mockRejectedValueOnce(new Error('active version missing'));
+
+			const result = await service.transferFolder(
+				user,
+				'proj-source',
+				'folder-1',
+				'proj-dest',
+				'0',
+			);
+
+			expect(result).toEqual({
+				unpublishedWorkflows: [
+					{
+						id: 'wf-1',
+						name: 'Workflow wf-1',
+						error: { name: 'Error', message: 'active version missing' },
+					},
+				],
+			});
 			expect(activeWorkflowManager.add).toHaveBeenCalledTimes(2);
 		});
 

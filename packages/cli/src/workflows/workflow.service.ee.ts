@@ -28,6 +28,7 @@ import {
 import type { PolicyDecision } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
 import { In, type EntityManager } from '@n8n/typeorm';
 import isEqual from 'lodash/isEqual';
@@ -1089,26 +1090,13 @@ export class EnterpriseWorkflowService {
 				workflow.activeVersionId,
 				user.id,
 			);
-			if (result && 'unpublishReasons' in result) {
-				const { id, name } = workflow;
-				unpublishedWorkflows.push({ id, name, unpublishReasons: result.unpublishReasons });
-			}
+			if (result) unpublishedWorkflows.push({ id: workflow.id, name: workflow.name, ...result });
 		}
 
 		return { unpublishedWorkflows };
 	}
 
-	private formatActivationError(error: WorkflowActivationError) {
-		return {
-			error: error.toJSON
-				? error.toJSON()
-				: {
-						name: error.name,
-						message: error.message,
-					},
-		};
-	}
-
+	/** Returns a failed republish instead of throwing it, so one failure cannot stop a folder move. */
 	private async attemptWorkflowReactivation(
 		workflowId: string,
 		versionId: string,
@@ -1147,11 +1135,15 @@ export class EnterpriseWorkflowService {
 			const unpublishReasons = findPolicyViolations(error);
 			if (unpublishReasons) return { unpublishReasons };
 
-			if (error instanceof WorkflowActivationError) {
-				return this.formatActivationError(error);
+			const { name, message } = ensureError(error);
+			if (!(error instanceof WorkflowActivationError)) {
+				this.logger.error(`Failed to republish workflow "${workflowId}" after a move`, {
+					workflowId,
+					error,
+				});
 			}
 
-			throw error;
+			return { error: { name, message } };
 		}
 	}
 

@@ -597,8 +597,8 @@ export class ActiveWorkflowManager {
 				actor,
 			);
 
-			// The leader registers out of band, so the policy must refuse here for the
-			// caller to see the refusal.
+			// This check answers the caller. The leader checks again as `system` before it
+			// registers, so a check that depends on the actor can still refuse there.
 			if (this.instanceSettings.isMultiMain && shouldPublish) {
 				void this.publisher.publishCommand({
 					command: 'add-webhooks-triggers-and-pollers',

@@ -10,12 +10,11 @@ export type WorkflowTransferResult =
 	/** The republish failed for another reason, so the workflow is unpublished. */
 	| { error: { name: string; message: string } };
 
-/** A workflow that a folder move unpublished, because the destination's policy refused it. */
+/** A workflow that a folder move unpublished, with the reason its republish failed. */
 export type UnpublishedWorkflow = {
 	id: string;
 	name: string;
-	unpublishReasons: PolicyViolation[];
-};
+} & WorkflowTransferResult;
 
 /** Response of `PUT /projects/:projectId/folders/:folderId/transfer`. */
 export type FolderTransferResult = {
