@@ -360,7 +360,7 @@ export class PromotionsService {
 		actor: User,
 		request: { commitMessage: string; canExportVariableValues: boolean },
 		selection: SelectivePushOptions,
-		movedOwnerNames: ReadonlyMap<string, string>,
+		movedTo: ReadonlyMap<string, string>,
 	): Promise<PromotePackageResultDto> {
 		// NOTE: This assertion needs adjusting once we add full support for project-scoped promotions.
 		this.assertInstanceScope(input, 'Promote');
@@ -397,9 +397,9 @@ export class PromotionsService {
 		const branch = await this.workingCopy.assertSelectionFitsBranch(packageFolder, selection);
 		// After the branch checks, so an id the branch holds elsewhere gets its own error first. The
 		// destination can't tell a move from a removal and would delete the workflow.
-		if (movedOwnerNames.size > 0) {
+		if (movedTo.size > 0) {
 			throw new PromotionsWorkflowsMovedCrossProjectError(
-				[...movedOwnerNames].map(([id, name]) => ({ id, detail: `now in project "${name}" here` })),
+				[...movedTo].map(([id, place]) => ({ id, detail: `now in ${place} here` })),
 			);
 		}
 
@@ -535,10 +535,7 @@ export class PromotionsService {
 		// the user previewed. resolveForProject validates the project and environment too.
 		const input = await this.resolver.resolveForProject(projectId, 'promote');
 
-		const { selection, movedOwnerNames } = await this.classifySelection(
-			projectId,
-			request.workflowIds,
-		);
+		const { selection, movedTo } = await this.classifySelection(projectId, request.workflowIds);
 
 		return await this.promoteSelectionResolved(
 			input,
@@ -548,7 +545,7 @@ export class PromotionsService {
 				canExportVariableValues: request.canExportVariableValues,
 			},
 			selection,
-			movedOwnerNames,
+			movedTo,
 		);
 	}
 
@@ -556,19 +553,19 @@ export class PromotionsService {
 	 * Splits selected ids into pushes and deletions, using the current instance
 	 * state. A live or archived workflow this project owns exports; an id it no
 	 * longer owns leaves the branch. An id that another project owns now is also
-	 * returned in `movedOwnerNames`, with the name of that project, because promote
-	 * refuses it as a move.
+	 * returned in `movedTo`, which says where it is now, because promote refuses it
+	 * as a move.
 	 */
 	private async classifySelection(
 		projectId: string,
 		workflowIds: string[],
-	): Promise<{ selection: SelectivePushOptions; movedOwnerNames: Map<string, string> }> {
+	): Promise<{ selection: SelectivePushOptions; movedTo: Map<string, string> }> {
 		const ownerProjects =
 			await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
 
 		const live: string[] = [];
 		const deleted: string[] = [];
-		const movedOwnerNames = new Map<string, string>();
+		const movedTo = new Map<string, string>();
 		for (const id of workflowIds) {
 			const owner = ownerProjects.get(id);
 			if (owner?.id === projectId) {
@@ -577,13 +574,17 @@ export class PromotionsService {
 				live.push(id);
 				continue;
 			}
-			if (owner) movedOwnerNames.set(id, owner.name);
+			// A personal project's name holds its owner's email, and error messages reach the UI and
+			// telemetry, so it stays out.
+			if (owner) {
+				movedTo.set(id, owner.type === 'team' ? `project "${owner.name}"` : 'a personal project');
+			}
 			deleted.push(id);
 		}
 
 		return {
 			selection: { projectId, workflowIds: live, deletedWorkflowIds: deleted },
-			movedOwnerNames,
+			movedTo,
 		};
 	}
 

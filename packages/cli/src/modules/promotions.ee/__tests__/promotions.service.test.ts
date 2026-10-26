@@ -1143,7 +1143,7 @@ describe('PromotionsService', () => {
 				'projects/alpha/workflows/w1/workflow.json': branchWorkflowFile('w1', 'W1'),
 			});
 			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
-				new Map([['w1', mock<Project>({ id: 'p2', name: 'Ops' })]]),
+				new Map([['w1', mock<Project>({ id: 'p2', name: 'Ops', type: 'team' })]]),
 			);
 
 			await expect(
@@ -1160,6 +1160,36 @@ describe('PromotionsService', () => {
 			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
 				branchWorkflowFile('w1', 'W1'),
 			);
+		});
+
+		it('refuses the delete of a workflow that moved to a personal project, without its name', async () => {
+			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify(alpha),
+				'projects/alpha/workflows/w1/workflow.json': branchWorkflowFile('w1', 'W1'),
+			});
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([
+					[
+						'w1',
+						mock<Project>({ id: 'p9', name: 'Ada Lovelace <ada@example.com>', type: 'personal' }),
+					],
+				]),
+			);
+
+			const refusal = service.promoteProjectSelection('p1', actor, {
+				workflowIds: ['w1'],
+				commitMessage: 'm',
+				canExportVariableValues: true,
+			});
+
+			await expect(refusal).rejects.toMatchObject({
+				message: expect.stringContaining('w1 (now in a personal project here)'),
+			});
+			// A personal project's name holds its owner's email.
+			await expect(refusal).rejects.not.toMatchObject({
+				message: expect.stringContaining('ada@example.com'),
+			});
 		});
 
 		it('still refuses a foreign id as not belonging to the project, not as a move', async () => {
@@ -1447,12 +1477,12 @@ describe('PromotionsService', () => {
 			);
 		});
 
-		it('passes a workflow that another project owns now as a deletion with its owner name', async () => {
+		it('passes a workflow that another project owns now as a deletion, with where it is now', async () => {
 			// w9 moved to "Ops". The branch check refuses it as a move when the branch holds it under p1.
 			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
 				new Map([
 					['w1', mock<Project>({ id: 'p1' })],
-					['w9', mock<Project>({ id: 'other', name: 'Ops' })],
+					['w9', mock<Project>({ id: 'other', name: 'Ops', type: 'team' })],
 				]),
 			);
 			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue({} as never);
@@ -1467,7 +1497,7 @@ describe('PromotionsService', () => {
 				actor,
 				expect.anything(),
 				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'] },
-				new Map([['w9', 'Ops']]),
+				new Map([['w9', 'project "Ops"']]),
 			);
 		});
 
