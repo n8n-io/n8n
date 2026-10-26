@@ -9,7 +9,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
-| [public.agent_background_job](public.agent_background_job.md) | 23 |  | BASE TABLE |
+| [public.agent_background_job](public.agent_background_job.md) | 24 |  | BASE TABLE |
 | [public.agent_budget_applied_call](public.agent_budget_applied_call.md) | 2 |  | BASE TABLE |
 | [public.agent_budget_spend](public.agent_budget_spend.md) | 4 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
@@ -507,6 +507,7 @@ erDiagram
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
   text error
+  json files
   varchar_36_ id
   varchar_16_ kind
   timestamp_3__with_time_zone notifiedAt

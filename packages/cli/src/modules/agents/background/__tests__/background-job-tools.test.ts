@@ -43,6 +43,7 @@ function jobView(overrides: Partial<BackgroundJobView> = {}): BackgroundJobView 
 		status: 'running',
 		result: null,
 		error: null,
+		files: null,
 		createdAt: new Date('2026-08-26T10:00:00Z'),
 		timeoutAt: null,
 		settledAt: null,
@@ -466,6 +467,25 @@ describe('check_background_jobs', () => {
 
 		expect(output).toMatchObject({
 			jobs: [expect.objectContaining({ executionId: 'exec-1' })],
+		});
+	});
+
+	it('lists the output files of a job', async () => {
+		const { jobService, options } = setup();
+		const file = { fileId: 'file-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 3 };
+		jobService.listForThread.mockResolvedValue([
+			jobView({ kind: 'workflow', status: 'completed', files: [file] }),
+			jobView({ id: 'job-2' }),
+		]);
+		const tool = createCheckBackgroundJobsTool(options.jobService);
+
+		const output = await tool.handler!({}, { persistence });
+
+		expect(output).toMatchObject({
+			jobs: [expect.objectContaining({ files: [file] }), expect.anything()],
+		});
+		expect(output).toMatchObject({
+			jobs: [{}, expect.not.objectContaining({ files: expect.anything() })],
 		});
 	});
 

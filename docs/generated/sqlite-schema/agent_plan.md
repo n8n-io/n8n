@@ -66,6 +66,7 @@ erDiagram
   varchar_128_ childThreadId
   datetime_3_ createdAt
   TEXT error
+  TEXT files
   varchar_36_ id PK
   varchar_16_ kind
   datetime_3_ notifiedAt

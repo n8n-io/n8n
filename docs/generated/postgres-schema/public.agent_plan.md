@@ -61,6 +61,7 @@ erDiagram
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
   text error
+  json files
   varchar_36_ id
   varchar_16_ kind
   timestamp_3__with_time_zone notifiedAt

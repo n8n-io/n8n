@@ -37,6 +37,7 @@ import type { AgentMessageRepository } from '@/modules/agents/repositories/agent
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import type { AgentFileBridge } from '@/modules/agents/agent-file-bridge.service';
 import { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 
 import { createOwner } from '../../shared/db/users';
@@ -305,6 +306,7 @@ describe('AgentBackgroundJobRepository', () => {
 			Container.get(N8NCheckpointStorage),
 			mock<AgentMessageRepository>(),
 			mock<AgentPlanRepository>(),
+			mock<AgentFileBridge>(),
 		);
 
 		if (recover) {
@@ -885,6 +887,7 @@ describe('AgentBackgroundJobRepository', () => {
 				checkpointStorage,
 				mock<AgentMessageRepository>(),
 				mock<AgentPlanRepository>(),
+				mock<AgentFileBridge>(),
 			);
 
 			const planService = mock<AgentPlanService>();

@@ -19,6 +19,8 @@ import { AgentChatExecutionService } from '../../agent-chat-execution.service';
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
+import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
+import type { AgentFileBridge } from '../../agent-file-bridge.service';
 import type { AgentMessageEntity } from '../../entities/agent-message.entity';
 import type { AgentExecution } from '../../entities/agent-execution.entity';
 import {
@@ -76,6 +78,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const executionRepository = mock<AgentExecutionRepository>();
 	const messageRepository = mock<AgentMessageRepository>();
+	const fileBridge = mock<AgentFileBridge>();
 	const executionPersistence = mock<ExecutionPersistence>();
 	const publisher = mock<Publisher>();
 	const logger = mock<Logger>();
@@ -116,12 +119,16 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		checkpointStorage,
 		messageRepository,
 		plans,
+		fileBridge,
 	);
+	cancellation.findProjectId.mockResolvedValue('project-1');
 
 	return {
 		plans,
 		service,
 		cancellation,
+		threadRepository: cancellation,
+		fileBridge,
 		checkpointStorage,
 		jobRepository,
 		executionRepository,
@@ -1537,6 +1544,85 @@ describe('settleWorkflowJobByExecutionId', () => {
 			},
 			undefined,
 		);
+	});
+
+	describe('output files', () => {
+		const file = { fileId: 'file-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 3 };
+		const binaryItem = {
+			json: { ok: true },
+			binary: { data: { data: '', mimeType: 'image/png' } },
+		};
+		const runData = { Chart: [{ data: { main: [[binaryItem]] } } as never] };
+
+		it('stores the binary output of a completed job as files of the parent thread', async () => {
+			const { service, jobRepository, fileBridge } = setup();
+			jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(makeWorkflowJob());
+			fileBridge.adoptFromItems.mockResolvedValue({ items: [], files: [file] });
+
+			await service.settleWorkflowJobByExecutionId('exec-1', { status: 'completed' }, runData);
+
+			expect(fileBridge.adoptFromItems).toHaveBeenCalledWith([binaryItem], {
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				threadId: 'thread-1',
+			});
+			expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+				'wf-job-1',
+				{ status: 'completed', files: [file] },
+				undefined,
+			);
+		});
+
+		it('stores no files for a failed job', async () => {
+			const { service, jobRepository, fileBridge } = setup();
+			jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(makeWorkflowJob());
+
+			await service.settleWorkflowJobByExecutionId('exec-1', { status: 'failed' }, runData);
+
+			expect(fileBridge.adoptFromItems).not.toHaveBeenCalled();
+		});
+
+		it('settles without files when the files cannot be stored', async () => {
+			const { service, jobRepository, threadRepository } = setup();
+			jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(makeWorkflowJob());
+			threadRepository.findProjectId.mockRejectedValue(new Error('db down'));
+
+			const settled = await service.settleWorkflowJobByExecutionId(
+				'exec-1',
+				{ status: 'completed' },
+				runData,
+			);
+
+			expect(settled).toBe(true);
+			expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+				'wf-job-1',
+				{ status: 'completed', files: null },
+				undefined,
+			);
+		});
+
+		it('stores the files when reconciliation settles a finished job', async () => {
+			const { service, jobRepository, executionPersistence, fileBridge } = setup();
+			jobRepository.findRunningJobs.mockImplementation(async (kind) =>
+				kind === 'workflow' ? [makeWorkflowJob()] : [],
+			);
+			executionPersistence.findStatusesByIds.mockResolvedValue([
+				{ id: 'exec-1', status: 'success' },
+			]);
+			executionPersistence.findSingleExecution.mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData } },
+			} as never);
+			fileBridge.adoptFromItems.mockResolvedValue({ items: [], files: [file] });
+
+			await service.reconcile();
+
+			expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+				'wf-job-1',
+				expect.objectContaining({ status: 'completed', files: [file] }),
+				undefined,
+			);
+		});
 	});
 
 	it('is a no-op when no running job tracks the execution', async () => {

@@ -1,4 +1,4 @@
-import type { AgentPlanTaskRef } from '@n8n/api-types';
+import type { AgentPlanTaskRef, AgentToolOutputFile } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, LessThan, Not } from '@n8n/typeorm';
@@ -44,6 +44,7 @@ export type AgentBackgroundJobSettlement = {
 	status: Exclude<AgentBackgroundJobStatus, 'running' | 'suspended' | 'paused'>;
 	result?: string | null;
 	error?: string | null;
+	files?: AgentToolOutputFile[] | null;
 };
 
 export type ExpectedBackgroundJobState = {
@@ -632,6 +633,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 				status: settlement.status,
 				result: settlement.result ?? (settlement.status === 'cancelled' ? () => '"result"' : null),
 				error: settlement.error ?? null,
+				files: settlement.files ?? null,
 				settledAt: new Date(),
 				notifiedAt:
 					settlement.status === 'cancelled' || expected?.status === 'paused'

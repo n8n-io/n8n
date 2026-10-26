@@ -1183,6 +1183,23 @@ describe('formatWakeMessage', () => {
 		expect(message).not.toContain('"error":""');
 	});
 
+	it('lists the output files of a job', () => {
+		const file = { fileId: 'file-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 3 };
+		const message = formatWakeMessage([
+			makeJob({ kind: 'workflow', status: 'completed', files: [file] }),
+			makeJob({ id: 'job-2', files: null }),
+		]);
+		const payload = JSON.parse(
+			message.slice(
+				'<background-jobs-settled>'.length,
+				message.indexOf('</background-jobs-settled>'),
+			),
+		) as Array<{ files?: unknown }>;
+
+		expect(payload[0]?.files).toEqual([file]);
+		expect(payload[1]).not.toHaveProperty('files');
+	});
+
 	it('keeps short results intact without a truncation marker', () => {
 		const message = formatWakeMessage([makeJob({ result: 'Done' })]);
 

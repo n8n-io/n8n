@@ -211,6 +211,7 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 					...(job.pauseRequestId ? { userStopped: true } : {}),
 					...(job.result !== null ? { result: truncateResult(job.result) } : {}),
 					...(job.error !== null ? { error: truncateResult(job.error) } : {}),
+					...(job.files?.length ? { files: job.files } : {}),
 					startedAt: job.createdAt.toISOString(),
 					...(job.timeoutAt !== null ? { timeoutAt: job.timeoutAt.toISOString() } : {}),
 					...(job.childExecutionId !== null ? { executionId: job.childExecutionId } : {}),

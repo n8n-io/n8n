@@ -8,6 +8,7 @@
 | childThreadId | varchar(128) |  | true |  |  | Sub-agent jobs only; minted at dispatch, links to agent_execution_threads |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | error | text |  | true |  |  |  |
+| files | json |  | true |  |  | Output files that the job stored for the parent thread |
 | id | varchar(36) |  | false |  |  |  |
 | kind | varchar(16) |  | false |  |  | What the job tracks: a detached sub-agent run or a workflow execution |
 | notifiedAt | timestamp(3) with time zone |  | true |  |  | Time when the parent received the latest result or approval request |
@@ -77,6 +78,7 @@ erDiagram
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
   text error
+  json files
   varchar_36_ id
   varchar_16_ kind
   timestamp_3__with_time_zone notifiedAt

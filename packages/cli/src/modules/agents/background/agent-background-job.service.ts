@@ -1,4 +1,4 @@
-import type { AgentBackgroundJobDto } from '@n8n/api-types';
+import type { AgentBackgroundJobDto, AgentToolOutputFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -20,6 +20,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
+import { AgentFileBridge } from '../agent-file-bridge.service';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { isApprovalSuspendPayload } from '../integrations/agent-chat-suspension-cards';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -33,6 +34,7 @@ import {
 } from '../repositories/agent-background-job.repository';
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentPlanRepository } from '../repositories/agent-plan.repository';
 import { formatPauseHandoff, REPLACED_PAUSE_GROUP_NOTICE } from './background-job-messages';
@@ -60,6 +62,7 @@ export type BackgroundJobView = Pick<
 	| 'status'
 	| 'result'
 	| 'error'
+	| 'files'
 	| 'createdAt'
 	| 'timeoutAt'
 	| 'settledAt'
@@ -179,6 +182,7 @@ export class AgentBackgroundJobService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly plans: AgentPlanRepository,
+		private readonly fileBridge: AgentFileBridge,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -253,7 +257,37 @@ export class AgentBackgroundJobService {
 				result: serializeWorkflowJobResult(collectResultData(runData, true)),
 			};
 		}
+		if (settlement.status === 'completed' && runData && settlement.files === undefined) {
+			settlement = { ...settlement, files: await this.storeOutputFiles(job, runData) };
+		}
 		return await this.settle(job.id, settlement);
+	}
+
+	/**
+	 * Store the binary output of the last node as files of the parent thread,
+	 * the same output that the job result holds. The job keeps the file list,
+	 * so the wake message and check_background_jobs can show the file IDs.
+	 * A storage error must not block the settle, so it logs and returns null.
+	 */
+	async storeOutputFiles(
+		job: Pick<AgentBackgroundJob, 'id' | 'parentAgentId' | 'parentThreadId'>,
+		runData: IRunData,
+	): Promise<AgentToolOutputFile[] | null> {
+		const items = Object.values(collectResultItems(runData, false)).flat();
+		if (!items.some((item) => item.binary)) return null;
+		try {
+			const projectId = await this.threadRepository.findProjectId(job.parentThreadId);
+			if (!projectId) return null;
+			const { files } = await this.fileBridge.adoptFromItems(items, {
+				agentId: job.parentAgentId,
+				projectId,
+				threadId: job.parentThreadId,
+			});
+			return files.length > 0 ? files : null;
+		} catch (error) {
+			this.logger.warn('Failed to store background job output files', { jobId: job.id, error });
+			return null;
+		}
 	}
 
 	async settle(
@@ -793,6 +827,7 @@ export class AgentBackgroundJobService {
 			status: job.status,
 			result: job.result,
 			error: job.error,
+			files: job.files,
 			createdAt: job.createdAt,
 			timeoutAt: job.timeoutAt,
 			settledAt: job.settledAt,
@@ -1105,7 +1140,7 @@ export class AgentBackgroundJobService {
 			await this.settle(job.id, {
 				status: 'cancelled',
 				result: job.childExecutionId
-					? await this.loadExecutionResult(job.childExecutionId, true)
+					? (await this.loadExecutionOutput(job, job.childExecutionId, 'cancelled', true)).result
 					: null,
 			});
 			return 'cancelled';
@@ -1177,10 +1212,12 @@ export class AgentBackgroundJobService {
 	}
 
 	/** Read retained output when the execution data is not in memory. */
-	private async loadExecutionResult(
+	private async loadExecutionOutput(
+		job: AgentBackgroundJob,
 		executionId: string,
+		status: AgentBackgroundJobSettlement['status'],
 		allOutputs = false,
-	): Promise<string | null> {
+	): Promise<{ result: string | null; files: AgentToolOutputFile[] | null }> {
 		// A failed data read must not block the settle: workflow jobs have no
 		// timeout, so a row skipped here could stay running forever.
 		try {
@@ -1190,15 +1227,18 @@ export class AgentBackgroundJobService {
 			});
 
 			const runData = execution?.data?.resultData?.runData;
-			if (!runData) return null;
+			if (!runData) return { result: null, files: null };
 
-			return serializeWorkflowJobResult(collectResultData(runData, allOutputs));
+			return {
+				result: serializeWorkflowJobResult(collectResultData(runData, allOutputs)),
+				files: status === 'completed' ? await this.storeOutputFiles(job, runData) : null,
+			};
 		} catch (error) {
 			this.logger.warn('Failed to read a finished execution’s data for its job result', {
 				executionId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return null;
+			return { result: null, files: null };
 		}
 	}
 
@@ -1334,12 +1374,13 @@ export class AgentBackgroundJobService {
 			}
 			if (!isTerminalExecutionStatus(executionStatus)) return false;
 			const status = settlementStatusForExecution(executionStatus);
+			const output =
+				status === 'completed' || job.pauseRequestId
+					? await this.loadExecutionOutput(job, executionId, status, Boolean(job.pauseRequestId))
+					: { result: null, files: null };
 			return await this.settle(job.id, {
 				status,
-				result:
-					status === 'completed' || job.pauseRequestId
-						? await this.loadExecutionResult(executionId, Boolean(job.pauseRequestId))
-						: null,
+				...output,
 				error: executionStatus === 'success' ? null : `Execution ${executionStatus}`,
 			});
 		} catch (error) {

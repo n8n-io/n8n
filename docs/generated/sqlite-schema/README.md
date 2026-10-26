@@ -9,7 +9,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [activity_event](activity_event.md) | 11 |  | table |
-| [agent_background_job](agent_background_job.md) | 23 |  | table |
+| [agent_background_job](agent_background_job.md) | 24 |  | table |
 | [agent_budget_applied_call](agent_budget_applied_call.md) | 2 |  | table |
 | [agent_budget_spend](agent_budget_spend.md) | 4 |  | table |
 | [agent_channel_status](agent_channel_status.md) | 11 |  | table |
@@ -192,9 +192,9 @@ erDiagram
 
 "activity_event" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "activity_event" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"agent_background_job" }o--o| "agent_plan" : "FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"agent_background_job" }o--o| "agent_execution" : "FOREIGN KEY (sourceExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_background_job" }o--|| "agents" : "FOREIGN KEY (parentAgentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_background_job" }o--o| "agent_execution" : "FOREIGN KEY (sourceExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_background_job" }o--o| "agent_plan" : "FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_channel_status" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_attachments" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_attachments" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -493,6 +493,7 @@ erDiagram
   varchar_128_ childThreadId
   datetime_3_ createdAt
   TEXT error
+  TEXT files
   varchar_36_ id PK
   varchar_16_ kind
   datetime_3_ notifiedAt
