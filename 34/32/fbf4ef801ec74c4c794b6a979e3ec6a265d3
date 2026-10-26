@@ -1,0 +1,9 @@
+packages/cli/test/migration/1793036689320-backfill-agent-draft-versions.test.ts
+  ai_agent 59,64-92,281-293,295,306-315,336-623
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3432fbf4ef801ec74c4c794b6a979e3ec6a265d3",
+  "prompts": {}
+}
