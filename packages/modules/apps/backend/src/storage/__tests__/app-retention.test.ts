@@ -6,11 +6,11 @@ import { AppArtifactService } from '../app-artifact.service';
 import { AppRetentionService } from '../app-retention.service';
 import { appStorageLockSubKey } from '../app-storage-lock';
 import { AppStorageCleanupTask } from '../app-storage-cleanup.task';
-import { AppVersionRepository } from '../app-version.repository';
-import type { App } from '../app.entity';
-import { AppRepository } from '../app.repository';
-import { AppsConfig } from '../apps.config';
-import { AppSourceVersionStore, AppBuildResultStore } from '../storage/app-version-stores';
+import { AppVersionRepository } from '../../versions/app-version.repository';
+import type { App } from '../../app.entity';
+import { AppRepository } from '../../app.repository';
+import { AppsConfig } from '../../apps.config';
+import { AppSourceVersionStore, AppBuildResultStore } from '../app-version-stores';
 
 function createRetention() {
 	const ctx = mock<OperationContext>();
@@ -29,6 +29,7 @@ function createRetention() {
 		locks,
 		sourceVersions,
 		buildResults,
+		mock<Logger>(),
 	);
 	return { retention, ctx, apps, versions, sourceVersions, buildResults, config, locks };
 }

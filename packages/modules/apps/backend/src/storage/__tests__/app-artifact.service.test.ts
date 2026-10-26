@@ -9,8 +9,8 @@ import type { AppArtifact } from '../app-artifact.entity';
 import { AppArtifactRepository } from '../app-artifact.repository';
 import { AppArtifactService } from '../app-artifact.service';
 import { appStorageLockSubKey } from '../app-storage-lock';
-import { AppsConfig } from '../apps.config';
-import { AppBlobStore } from '../storage/app-blob-store';
+import { AppsConfig } from '../../apps.config';
+import { AppBlobStore } from '../app-blob-store';
 
 const appId = '11111111-1111-4111-8111-111111111111';
 
