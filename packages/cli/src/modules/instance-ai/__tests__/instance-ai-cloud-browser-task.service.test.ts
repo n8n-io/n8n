@@ -6,10 +6,10 @@ import {
 	runCloudBrowserAgent,
 	type BackgroundTaskManager,
 	type CloudBrowserCredentialToCreate,
+	type ConfirmationData,
 	type InstanceAiEventBus,
 	type InstanceAiTraceContext,
 	type Logger,
-	type PatchableThreadMemory,
 	type RunStateRegistry,
 } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
@@ -60,7 +60,7 @@ function agentResult(overrides: Partial<AgentResult> = {}): AgentResult {
 }
 
 /** A thread memory that keeps one thread, so the task records go through the real storage. */
-function makeMemory(): PatchableThreadMemory {
+function makeMemory() {
 	let thread = {
 		id: THREAD_ID,
 		resourceId: 'user-1',
@@ -149,6 +149,7 @@ function setup() {
 		runSpawnedTask,
 		records,
 		taskStorage: new CloudBrowserTaskStorage(agentMemory),
+		agentMemory,
 	};
 }
 
@@ -391,6 +392,88 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 
 			expect(whileWaiting).toBe('request-1');
 			expect(afterAnswer).toBeNull();
+		});
+
+		it('takes an answer to the card before it writes the card to the task record', async () => {
+			const { service, run, runState, agentMemory, runSpawnedTask } = setup();
+			const order: string[] = [];
+			const saveThread = agentMemory.saveThread;
+			agentMemory.saveThread = async (thread) => {
+				order.push('write');
+				return await saveThread(thread);
+			};
+			runState.registerPendingConfirmation.mockImplementation((_requestId, pending) => {
+				order.push('register');
+				pending.resolve({ approved: true });
+			});
+			vi.mocked(runCloudBrowserAgent).mockImplementation(async ({ waitForConfirmation }) => {
+				order.length = 0;
+				await waitForConfirmation('request-1');
+				return agentResult();
+			});
+			await service.startTask(task, run);
+
+			await runSpawnedTask();
+
+			expect(order.slice(0, 2)).toEqual(['register', 'write']);
+		});
+
+		it('declines the card of a task that another main failed as stale while it ran', async () => {
+			const { service, run, runState, suspendedThreads, taskStorage, runSpawnedTask } = setup();
+			let answer: ConfirmationData | undefined;
+			runState.registerPendingConfirmation.mockImplementation((requestId, pending) => {
+				runState.rejectPendingConfirmation.mockImplementation((rejected) => {
+					if (rejected === requestId) pending.resolve({ approved: false });
+					return true;
+				});
+			});
+			vi.mocked(runCloudBrowserAgent).mockImplementation(async ({ waitForConfirmation }) => {
+				await taskStorage.failStale(THREAD_ID, new Date(Date.now() + 1000), {
+					outcome: 'failed',
+					summary: 'Stopped',
+				});
+				answer = await waitForConfirmation('request-1');
+				return agentResult();
+			});
+			await service.startTask(task, run);
+
+			await runSpawnedTask();
+
+			expect(answer).toEqual({ approved: false });
+			expect(suspendedThreads.persistPendingConfirmation).not.toHaveBeenCalled();
+		});
+
+		it('keeps the card when the task record cannot be written', async () => {
+			const { service, run, runState, suspendedThreads, agentMemory, logger, runSpawnedTask } =
+				setup();
+			const saveThread = agentMemory.saveThread;
+			let failWrites = false;
+			agentMemory.saveThread = async (thread) => {
+				if (failWrites) throw new Error('DB down');
+				return await saveThread(thread);
+			};
+			runState.registerPendingConfirmation.mockImplementation((_requestId, pending) => {
+				pending.resolve({ approved: true });
+			});
+			let answer: ConfirmationData | undefined;
+			vi.mocked(runCloudBrowserAgent).mockImplementation(async ({ waitForConfirmation }) => {
+				failWrites = true;
+				answer = await waitForConfirmation('request-1');
+				failWrites = false;
+				return agentResult();
+			});
+			await service.startTask(task, run);
+
+			await runSpawnedTask();
+
+			expect(answer).toEqual({ approved: true });
+			expect(suspendedThreads.persistPendingConfirmation).toHaveBeenCalledWith(
+				expect.objectContaining({ requestId: 'request-1' }),
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to record the card of a cloud browser task',
+				expect.objectContaining({ error: 'DB down' }),
+			);
 		});
 
 		it('does not close a card the user answered', async () => {

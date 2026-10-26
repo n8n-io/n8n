@@ -457,8 +457,7 @@ export class InstanceAiCloudBrowserTaskService {
 	): Promise<ConfirmationData> {
 		const { threadId, user } = run;
 		openCards.add(requestId);
-		// Before the card's row, so a stale task never leaves a row that no record points to.
-		await this.setPendingConfirmation(threadId, taskId, requestId);
+		// Register before any await: the card is already on screen.
 		const answer = new Promise<ConfirmationData>((resolve) => {
 			this.options.runState.registerPendingConfirmation(requestId, {
 				resolve,
@@ -467,35 +466,46 @@ export class InstanceAiCloudBrowserTaskService {
 				createdAt: Date.now(),
 			});
 		});
-		await this.options.suspendedThreads.persistPendingConfirmation({
-			requestId,
-			threadId,
-			userId: user.id,
-			runId: run.runId,
-			messageGroupId: run.messageGroupId,
-			kind: 'inline',
-		});
+
+		const taskStillRunning = await this.setPendingConfirmation(threadId, taskId, requestId);
+		if (taskStillRunning) {
+			await this.options.suspendedThreads.persistPendingConfirmation({
+				requestId,
+				threadId,
+				userId: user.id,
+				runId: run.runId,
+				messageGroupId: run.messageGroupId,
+				kind: 'inline',
+			});
+		} else {
+			// The task is no longer running, so we close the card now since nothing will close it later
+			this.options.runState.rejectPendingConfirmation(requestId);
+		}
 		try {
 			return await answer;
 		} finally {
 			openCards.delete(requestId);
-			await this.setPendingConfirmation(threadId, taskId, null);
+			if (taskStillRunning) await this.setPendingConfirmation(threadId, taskId, null);
 		}
 	}
 
-	/** A failed write only means that another main cannot close the card. The task goes on. */
+	/**
+	 * Returns false only when the task is no longer running. If the write fails, it logs a warning
+	 * and returns true, so the task goes on.
+	 */
 	private async setPendingConfirmation(
 		threadId: string,
 		taskId: string,
 		requestId: string | null,
-	): Promise<void> {
-		await this.taskStore
+	): Promise<boolean> {
+		return await this.taskStore
 			.setPendingConfirmation(threadId, taskId, requestId)
 			.catch((error: unknown) => {
 				this.options.logger.warn('Failed to record the card of a cloud browser task', {
 					taskId,
 					error: error instanceof Error ? error.message : String(error),
 				});
+				return true;
 			});
 	}
 

@@ -80,17 +80,23 @@ export class CloudBrowserTaskStorage {
 		});
 	}
 
-	/** Records the approval card the running task waits on, or that it waits on none. */
+	/**
+	 * Saves the approval card the running task waits on, or `null` when it waits on none. Returns
+	 * false when the task is no longer running.
+	 */
 	async setPendingConfirmation(
 		threadId: string,
 		taskId: string,
 		requestId: string | null,
-	): Promise<void> {
+	): Promise<boolean> {
+		let updated = false;
 		await this.patch(threadId, (records) => {
 			const record = records[taskId];
 			if (record?.status !== 'running') return null;
+			updated = true;
 			return { ...records, [taskId]: { ...record, pendingConfirmationRequestId: requestId } };
 		});
+		return updated;
 	}
 
 	/**

@@ -139,8 +139,8 @@ describe('CloudBrowserTaskStorage', () => {
 		await storage.add(THREAD_ID, makeRecord({ taskId: 'task-2' }));
 		await storage.markFinished(THREAD_ID, 'task-2', { outcome: 'succeeded', summary: '$20' });
 
-		await storage.setPendingConfirmation(THREAD_ID, 'task-1', 'request-1');
-		await storage.setPendingConfirmation(THREAD_ID, 'task-2', 'request-2');
+		expect(await storage.setPendingConfirmation(THREAD_ID, 'task-1', 'request-1')).toBe(true);
+		expect(await storage.setPendingConfirmation(THREAD_ID, 'task-2', 'request-2')).toBe(false);
 
 		const [running, finished] = await storage.list(THREAD_ID);
 		expect(running.pendingConfirmationRequestId).toBe('request-1');
