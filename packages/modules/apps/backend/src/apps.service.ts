@@ -48,6 +48,7 @@ export class AppsService {
 
 	async createApp(projectId: string, dto: CreateAppDto): Promise<AppResponse> {
 		await this.assertProjectExists(projectId);
+		this.assertValidNamespace(dto.namespace);
 		const app = await this.appRepository.createApp(projectId, dto);
 		this.logger.debug('Created app.', { projectId, appId: app.id });
 		return toResponse(app, this.hosts);
@@ -77,6 +78,7 @@ export class AppsService {
 			throw new BadRequestError('Select an app field to update.');
 		}
 		this.assertValidAppId(appId);
+		if (dto.namespace !== undefined) this.assertValidNamespace(dto.namespace);
 		const app = await this.appRepository.updateApp(projectId, appId, dto);
 		if (!app) throw new NotFoundError('App not found');
 		this.logger.debug('Updated app.', { projectId, appId });
@@ -106,6 +108,14 @@ export class AppsService {
 			await this.workspaces.delete(projectId, appId);
 		} catch (error) {
 			this.logger.warn('Could not delete app sandbox.', { appId, error });
+		}
+	}
+
+	private assertValidNamespace(namespace: string) {
+		if (!this.hosts.origin(namespace)) {
+			throw new BadRequestError(
+				'The app namespace is too long for this instance. Choose a shorter namespace.',
+			);
 		}
 	}
 
