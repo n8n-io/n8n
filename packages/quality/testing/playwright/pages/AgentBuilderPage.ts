@@ -44,6 +44,10 @@ export class AgentBuilderPage extends BasePage {
 		return this.page.locator('[data-testid="agent-triggers-preview-chat-button"]');
 	}
 
+	async hoverTestButtonWarning(button: Locator): Promise<void> {
+		await button.locator('..').hover();
+	}
+
 	getPreviewWorkingWarning(): Locator {
 		return this.page
 			.getByTestId('tooltip-content')

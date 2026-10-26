@@ -147,7 +147,7 @@ test.describe(
 					await request;
 					for (const button of [builder.getHeaderTestButton(), builder.getTriggersTestButton()]) {
 						await expect(button).toBeDisabled();
-						await button.locator('..').hover();
+						await builder.hoverTestButtonWarning(button);
 						await expect(builder.getPreviewWorkingWarning()).toBeVisible();
 						await composer.hover();
 						await expect(builder.getPreviewWorkingWarning()).toHaveCount(0);
