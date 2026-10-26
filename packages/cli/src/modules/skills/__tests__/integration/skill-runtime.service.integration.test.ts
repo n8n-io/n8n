@@ -1,6 +1,7 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { randomUUID } from 'node:crypto';
 
 import { SkillRuntimeService } from '../../services/skill-runtime.service';
 import { createSkill, createSkillVersion, deleteAllSkills } from '../../testing';
@@ -108,8 +109,10 @@ describe('SkillRuntimeService agent reads', () => {
 	it('resolves version ids to their skill, content and number', async () => {
 		const { voice } = await givenSkills();
 
-		const versions = await runtime.resolveVersions([voice.v2, 'version-gone']);
-		const numbers = await runtime.findVersionNumbers([voice.v1, voice.v2, 'version-gone']);
+		// Version ids are UUIDs on Postgres, so an unknown one must be a UUID too.
+		const unknown = randomUUID();
+		const versions = await runtime.resolveVersions([voice.v2, unknown]);
+		const numbers = await runtime.findVersionNumbers([voice.v1, voice.v2, unknown]);
 
 		expect([...versions]).toEqual([
 			[
