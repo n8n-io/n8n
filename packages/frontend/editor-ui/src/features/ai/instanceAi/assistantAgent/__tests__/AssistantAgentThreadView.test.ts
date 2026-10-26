@@ -1,6 +1,7 @@
 import { WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
+import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import { defineComponent, h, ref } from 'vue';
@@ -8,6 +9,7 @@ import { defineComponent, h, ref } from 'vue';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 import type { ArtifactThread } from '../../artifactThread';
+import { INSTANCE_AI_VIEW } from '../../constants';
 import { USER_TYPED_MESSAGE } from '../../prefills';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -16,14 +18,21 @@ import { stashPendingAssistantAgentMessage } from '../assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgentThreads.store';
 import AssistantAgentThreadView from '../AssistantAgentThreadView.vue';
 
-const { panelProps, sendMessageFromOutside, telemetryTrack, previewProps, previewThread } =
-	vi.hoisted(() => ({
-		panelProps: { current: {} as Record<string, unknown> },
-		sendMessageFromOutside: vi.fn(),
-		telemetryTrack: vi.fn(),
-		previewProps: { current: undefined as Record<string, unknown> | undefined },
-		previewThread: { current: undefined as ArtifactThread | undefined },
-	}));
+const {
+	panelProps,
+	sendMessageFromOutside,
+	telemetryTrack,
+	previewProps,
+	previewThread,
+	routerPush,
+} = vi.hoisted(() => ({
+	panelProps: { current: {} as Record<string, unknown> },
+	sendMessageFromOutside: vi.fn(),
+	telemetryTrack: vi.fn(),
+	previewProps: { current: undefined as Record<string, unknown> | undefined },
+	previewThread: { current: undefined as ArtifactThread | undefined },
+	routerPush: vi.fn(),
+}));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
@@ -72,6 +81,28 @@ vi.mock('../../components/InstanceAiPreviewTabBar.vue', () => ({
 	default: defineComponent({ setup: () => () => h('div') }),
 }));
 
+vi.mock('../../components/InstanceAiArtifactsPanel.vue', () => ({
+	default: defineComponent({
+		setup: () => () => h('div', { 'data-test-id': 'artifacts-panel-stub' }),
+	}),
+}));
+
+// The real header also renders the thread list, which has its own tests.
+vi.mock('../../components/InstanceAiViewHeader.vue', () => ({
+	default: defineComponent({
+		props: { title: { type: String, default: undefined }, threadId: { type: String, default: '' } },
+		setup(props, { slots }) {
+			return () =>
+				h('div', [h('span', { 'data-test-id': 'header-title' }, props.title), slots.actions?.()]);
+		},
+	}),
+}));
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({ push: routerPush }),
+}));
+
 const renderView = createComponentRenderer(AssistantAgentThreadView);
 
 function buildMessage(toolCallId: string): ChatMessage {
@@ -99,6 +130,7 @@ describe('AssistantAgentThreadView', () => {
 		panelProps.current = {};
 		previewProps.current = undefined;
 		previewThread.current = undefined;
+		routerPush.mockReset();
 		chatMessages.value = [];
 		isLoadingHistory.value = true;
 	});
@@ -254,5 +286,57 @@ describe('AssistantAgentThreadView', () => {
 		expect(sendMessageFromOutside).toHaveBeenCalledWith('Test the workflow', [], { context });
 		const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
 		expect(clientContext()).not.toHaveProperty('context');
+	});
+
+	it('shows the stored title of the thread in the header', async () => {
+		useAssistantAgentThreadsStore().openedThreads = [
+			{
+				id: 'thread-1',
+				title: 'Weekly digest',
+				updatedAt: '2026-10-26T10:00:00.000Z',
+				projectId: 'project-1',
+			},
+		];
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		chatMessages.value = [{ id: 'u1', role: 'user', content: 'Build a digest' }];
+		await flushPromises();
+
+		expect(getByTestId('header-title')).toHaveTextContent('Weekly digest');
+	});
+
+	it('titles an untitled thread with its first message', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		chatMessages.value = [{ id: 'u1', role: 'user', content: 'Build a digest' }];
+		await flushPromises();
+
+		expect(getByTestId('header-title')).toHaveTextContent('Build a digest');
+	});
+
+	it('opens a new Assistant thread from the header', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		await fireEvent.click(getByTestId('assistant-agent-new-thread'));
+
+		expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
+	});
+
+	it('shows and hides the artifacts panel from the header', async () => {
+		const { getByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1', projectId: 'project-1' },
+		});
+		await flushPromises();
+		expect(queryByTestId('assistant-agent-artifacts-panel-toggle')).not.toBeInTheDocument();
+
+		chatMessages.value = [{ id: 'u1', role: 'user', content: 'Build a digest' }];
+		await flushPromises();
+		// The test view has no width, so the panel shows over the chat only when asked for.
+		expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('assistant-agent-artifacts-panel-toggle'));
+		expect(getByTestId('assistant-agent-artifacts-panel')).toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('assistant-agent-artifacts-panel-toggle'));
+		expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
 	});
 });
