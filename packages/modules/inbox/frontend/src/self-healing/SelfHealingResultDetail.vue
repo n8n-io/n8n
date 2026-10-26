@@ -237,13 +237,14 @@ async function onAction(action: SelfHealingResultAction) {
 		const result = await reviewSelfHealingResult(rootStore.restApiContext, target, reviewAction);
 
 		store.acceptResult(result);
-		notifyResultClosed(before, result, onItemChange);
 		await continueAfterClose(result, false);
+		notifyResultClosed(before, result, onItemChange);
 	} catch (cause) {
 		// Refresh saved state before the user retries a request with a lost response.
 		const reconcile = async (current: SelfHealingResultDetail) => {
+			const continued = !isRejected(cause) && (await continueAfterClose(current, true));
 			notifyResultClosed(before, current, onItemChange);
-			return !isRejected(cause) && (await continueAfterClose(current, true));
+			return continued;
 		};
 
 		try {

@@ -139,7 +139,7 @@ it.each([
 			withSuggestion ? 'apply' : 'dismiss',
 		);
 		expect(api.fetchSelfHealingResult).toHaveBeenCalledOnce();
-		expect(itemChangeCountAtNavigation).toBe(1);
+		expect(itemChangeCountAtNavigation).toBe(0);
 		expect(onItemChange).toHaveBeenCalledExactlyOnceWith(
 			expect.objectContaining({
 				type: 'self_healing_result',
@@ -160,6 +160,31 @@ it.each([
 			});
 			expect(startChat).not.toHaveBeenCalled();
 		}
+	},
+);
+
+it.each(['editor', 'chat'] as const)(
+	'waits for %s navigation before updating the inbox tab',
+	async (destination) => {
+		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(appliedResult());
+		const navigation = createDeferredPromise<'started' | undefined>();
+		const navigate = destination === 'chat' ? startChat : push;
+		navigate.mockReturnValueOnce(navigation.promise);
+		const view = renderComponent();
+		await waitAllPromises();
+
+		view.getByTestId(destination).click();
+		await waitAllPromises();
+
+		expect(navigate).toHaveBeenCalledOnce();
+		expect(onItemChange).not.toHaveBeenCalled();
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-pending', destination);
+
+		navigation.resolve(destination === 'chat' ? 'started' : undefined);
+		await waitAllPromises();
+
+		expect(onItemChange).toHaveBeenCalledOnce();
+		expect(view.getByTestId('result-content')).not.toHaveAttribute('data-pending');
 	},
 );
 
