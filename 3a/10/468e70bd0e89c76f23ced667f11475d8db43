@@ -1,0 +1,19 @@
+packages/cli/test/migration/1792834153953-drop-instance-ai-iteration-logs.test.ts
+  s_77a76b2ab478d5::t_8209a4e83321e2 20,50,53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3a10468e70bd0e89c76f23ced667f11475d8db43",
+  "prompts": {},
+  "sessions": {
+    "s_77a76b2ab478d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8809e5a4-3ca8-4f74-9640-dda9fdea3940",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

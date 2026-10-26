@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  h_f8b427917eda26 18,25-28,89-92
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  h_f8b427917eda26 9,94
+packages/frontend/editor-ui/src/features/agents/utils/background-task-timeline.ts
+  h_f8b427917eda26 46-77
+packages/frontend/editor-ui/src/features/agents/__tests__/background-task-timeline.spec.ts
+  h_f8b427917eda26 1-74
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  h_f8b427917eda26 50,56,58,66,90-110,147,442,561,601
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  h_f8b427917eda26 29
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  h_f8b427917eda26 722,930-937,940-945
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d4d7ab66cf13089c82918e3e027c86c5886e8f0",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_f60d4ac55ef297::t_91c9573d5807b4 69,72-73
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_f60d4ac55ef297::t_91c9573d5807b4 692-735
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_f60d4ac55ef297::t_de007248c86147 247-250,257-278,382-385,577,582-583,592-596,598
+  s_f60d4ac55ef297::t_78221d040e7a1f 578-581
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_f60d4ac55ef297::t_bee2df055956aa 226-228,231
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_f60d4ac55ef297::t_04018948a69898 491,509
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_f60d4ac55ef297::t_bee2df055956aa 54
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_f60d4ac55ef297::t_bee2df055956aa 87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7bc76a73c1a28159b00f8f6fb45c1823333e6e02",
+  "prompts": {},
+  "sessions": {
+    "s_f60d4ac55ef297": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c247a87-d94b-4616-ba4c-bf4b0860ce0b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/turn-setup/assistant-agent.factory.ts
+  s_b5a8445673eca3::t_b8d953d8ef7237 21,25-26,28-29,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d6ae5fdaead540a2cbadbc8dd2b2f3e84449605",
+  "prompts": {},
+  "sessions": {
+    "s_b5a8445673eca3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb833279-1188-4ee7-9b26-9c556fb8de80",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_f1595e10a3a066::t_597d1746c10a64 44,54,319-321,425-437
+  s_f1595e10a3a066::t_d6dfda7976a1f6 438-439
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_f1595e10a3a066::t_597d1746c10a64 12,17,225-242,390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2f754d469e07b9b43802f8508e7fa53213963ac3",
+  "prompts": {},
+  "sessions": {
+    "s_f1595e10a3a066": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cf2ac8b0-ab0d-4ccc-992e-7165304281ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
