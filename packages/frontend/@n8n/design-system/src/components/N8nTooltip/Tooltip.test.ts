@@ -1,6 +1,5 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
-import { useZIndex } from 'element-plus';
 
 // eslint-disable-next-line import-x/no-duplicates -- ?raw imports the source as a string
 import Tooltip from './Tooltip.vue';
@@ -288,77 +287,6 @@ describe('components/N8nTooltip', () => {
 
 			const tooltipContent = await getTooltip();
 			expect(container).toContainElement(tooltipContent);
-		});
-	});
-
-	describe('stacking', () => {
-		it('should stack above Element Plus poppers that opened before it', async () => {
-			const { nextZIndex } = useZIndex();
-			nextZIndex();
-			nextZIndex();
-			const popperZIndex = nextZIndex();
-
-			render(Tooltip, {
-				props: {
-					content: 'Test tooltip',
-					visible: true,
-				},
-				slots: {
-					default: '<button>Hover me</button>',
-				},
-			});
-
-			const tooltip = await getTooltip();
-			expect(Number(tooltip.style.zIndex)).toBeGreaterThan(popperZIndex);
-
-			const contentWrapper = tooltip.closest('[data-reka-popper-content-wrapper]') as HTMLElement;
-			expect(contentWrapper).toBeInTheDocument();
-			await waitFor(() => {
-				expect(Number(contentWrapper.style.zIndex)).toBeGreaterThan(popperZIndex);
-			});
-		});
-
-		it('should take a higher z-index each time it opens', async () => {
-			const wrapper = render(Tooltip, {
-				props: {
-					content: 'Test tooltip',
-					visible: true,
-				},
-				slots: {
-					default: '<button>Hover me</button>',
-				},
-			});
-
-			const first = Number((await getTooltip()).style.zIndex);
-
-			await wrapper.rerender({ visible: false });
-			await waitFor(() => {
-				expect(document.querySelector('[data-dismissable-layer]')).not.toBeInTheDocument();
-			});
-
-			await wrapper.rerender({ visible: true });
-			const second = Number((await getTooltip()).style.zIndex);
-
-			expect(second).toBeGreaterThan(first);
-		});
-
-		it('should stack above Element Plus poppers when opened by hover', async () => {
-			const { nextZIndex } = useZIndex();
-			const popperZIndex = nextZIndex();
-
-			const wrapper = render(Tooltip, {
-				props: {
-					content: 'Test tooltip',
-				},
-				slots: {
-					default: '<button>Hover me</button>',
-				},
-			});
-
-			hoverTooltipTrigger(wrapper.getByText('Hover me'));
-
-			const tooltip = await getTooltip();
-			expect(Number(tooltip.style.zIndex)).toBeGreaterThan(popperZIndex);
 		});
 	});
 

@@ -1151,6 +1151,8 @@ onBeforeUnmount(() => {
 										v-if="item.active === false"
 										:content="i18n.baseText('resourceLocator.workflow.inactive.tooltip')"
 										placement="top"
+										:teleported="false"
+										:content-class="$style.inactiveTooltip"
 									>
 										<N8nIcon icon="triangle-alert" size="small" :class="$style.inactiveIcon" />
 									</N8nTooltip>
@@ -2186,6 +2188,12 @@ onBeforeUnmount(() => {
 	align-items: center;
 	justify-content: space-between;
 	width: 100%;
+}
+
+// The tooltip renders inside the option, so reset the option text styles it inherits.
+.inactiveTooltip {
+	white-space: normal;
+	cursor: default;
 }
 
 .c {
