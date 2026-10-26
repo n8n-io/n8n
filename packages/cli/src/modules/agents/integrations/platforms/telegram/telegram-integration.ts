@@ -107,9 +107,9 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly disableStreaming = true;
 
-	// The adapter cuts messages at 4,096 characters after it escapes the
-	// Markdown. The margin covers that escaping.
-	readonly maxMessageLength = 3_500;
+	// Telegram rich messages hold up to 32,768 characters. A bot without rich
+	// messages falls back to the 4,096-character format, which the adapter cuts.
+	readonly maxMessageLength = 30_000;
 
 	formatActionDecisionMessage({
 		approved,
