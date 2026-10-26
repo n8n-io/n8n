@@ -76,7 +76,10 @@ describe('Assistant Hub runtime skills', () => {
 		const provider = providerFor([content()]);
 		if (flag === 'unavailable') provider.isEnabled.mockRejectedValue(new Error('Unavailable'));
 		else provider.isEnabled.mockResolvedValue(false);
-		expect(await load(provider, builtIns)).toEqual({ source: builtIns });
+		const { source } = await load(provider, builtIns);
+		expect(source.registry).toEqual(builtIns.registry);
+		expect(source.shouldAppendSkillUpdates?.('hub-previously-loaded')).toBe(true);
+		expect(source.shouldAppendSkillUpdates?.(builtIn.id)).toBe(false);
 		expect(provider.listSkills).not.toHaveBeenCalled();
 		expect(provider.readSkill).not.toHaveBeenCalled();
 	});

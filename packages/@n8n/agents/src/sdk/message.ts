@@ -21,5 +21,18 @@ export function isLlmMessage(message: AgentMessage): message is Message {
 }
 
 export function filterLlmMessages(messages: AgentMessage[]): Message[] {
-	return messages.filter(isLlmMessage);
+	return messages.flatMap((message): Message[] => {
+		if (isLlmMessage(message)) return [message];
+		if ('skillUpdate' in message.data) {
+			return [
+				{
+					...message,
+					type: 'llm',
+					role: 'user',
+					content: [{ type: 'text', text: message.data.skillUpdate.content }],
+				},
+			];
+		}
+		return [];
+	});
 }

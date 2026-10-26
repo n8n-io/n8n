@@ -15,7 +15,7 @@ import type { AgentMessageList } from '../model/message-list';
  * Keeps trusted skill instructions available without invalidating the cached
  * prompt prefix.
  *
- * A skill body rides on the tool result that activated it (the recorded result
+ * By default, a skill body rides on the tool result that activated it (the recorded result
  * is collapsed first, so an obsolete persisted body is never replayed). The
  * top-level system prompt does not mention the skill, so activating and
  * carrying a skill never rewrites the cached prefix — within a run or across
@@ -34,9 +34,13 @@ import type { AgentMessageList } from '../model/message-list';
  *   never lost. When observation memory replaced the history it already rewrote
  *   the prefix, so the move is free; otherwise it costs one rewrite, the price
  *   of not dropping an active skill.
+ *
+ * Sources can opt into explicit updates. Those skills keep their original tool
+ * results and receive new instructions in persisted messages after the user turn.
  */
 export class ActiveSkills {
 	private readonly loaded = new Map<string, RuntimeSkillContent>();
+	private previousVersions: Record<string, string | null> = {};
 	private list?: AgentMessageList;
 	private scope?: RuntimeSkillStateScope;
 	private pendingSave = Promise.resolve();
@@ -62,22 +66,32 @@ export class ActiveSkills {
 				? await this.store?.load(this.scope)
 				: undefined;
 		const ids = list.activeSkillIds ??
-			stored ?? [
+			stored?.skillIds ?? [
 				...this.recordedLoads(list).values(),
 				...this.stampedActivations(list).map(([, skillId]) => skillId),
 			];
+		this.previousVersions = { ...(list.activeSkillVersions ?? stored?.versions) };
+		const versions = { ...this.previousVersions };
 		const registered = new Set(this.source.registry.skills.map(({ id }) => id));
 		const retainedIds = new Set<string>();
 		for (const id of new Set(ids)) {
 			const skill = registered.has(id) ? await this.source.loadSkill(id) : null;
 			if (skill) this.loaded.set(id, skill);
 			if (skill || this.source.getLoadError?.(id)?.retryable) retainedIds.add(id);
+			const entry = this.source.registry.skills.find((candidate) => candidate.id === id);
+			if (this.source.shouldAppendSkillUpdates?.(id) || Object.hasOwn(versions, id)) {
+				if (skill && entry) versions[id] = entry.hash;
+				else if (!this.source.getLoadError?.(id)?.retryable) versions[id] = null;
+			}
 		}
 		list.activeSkillIds = [...retainedIds];
+		if (Object.keys(versions).length > 0) list.activeSkillVersions = versions;
 		const storeIsCurrent =
 			stored !== undefined &&
-			new Set(stored).size === retainedIds.size &&
-			stored.every((id) => retainedIds.has(id));
+			new Set(stored.skillIds).size === retainedIds.size &&
+			stored.skillIds.every((id) => retainedIds.has(id)) &&
+			Object.keys(stored.versions ?? {}).length === Object.keys(versions).length &&
+			Object.entries(versions).every(([id, version]) => stored.versions?.[id] === version);
 		if (!storeIsCurrent && (ids.length > 0 || stored !== undefined)) await this.persist();
 	}
 
@@ -92,9 +106,15 @@ export class ActiveSkills {
 		if (!this.loaded.has(skillId)) {
 			this.loaded.set(skillId, skill);
 			this.list.activeSkillIds = [...new Set([...(this.list.activeSkillIds ?? []), skillId])];
+			const entry = this.source.registry.skills.find((candidate) => candidate.id === skillId);
+			const version =
+				entry && this.source.shouldAppendSkillUpdates?.(skillId) ? entry.hash : undefined;
+			if (version !== undefined) {
+				this.list.activeSkillVersions = { ...this.list.activeSkillVersions, [skillId]: version };
+			}
 			// Stamp the activating tool result so the body re-anchors there on a
 			// later turn instead of falling back into the system prompt.
-			if (anchor) this.list.stampActivatedSkill(anchor.toolCallId, skillId);
+			if (anchor) this.list.stampActivatedSkill(anchor.toolCallId, skillId, version);
 			await this.persist();
 		}
 		return skill;
@@ -107,6 +127,7 @@ export class ActiveSkills {
 	 * still-anchored skill never edits `system` or breaks a warm cache.
 	 */
 	instructions(): string | undefined {
+		this.appendUpdates();
 		const { inBlock } = this.placement();
 		const sections = inBlock.flatMap((id) => {
 			const text = this.formatSkill(id);
@@ -145,6 +166,7 @@ export class ActiveSkills {
 				content: message.content.map((part) => {
 					if (part.type !== 'tool-result') return part;
 					const skillId = loads.get(part.toolCallId);
+					if (skillId && this.usesAppendUpdates(skillId)) return part;
 					const collapsed: ToolResultPart = skillId
 						? {
 								...part,
@@ -191,12 +213,19 @@ export class ActiveSkills {
 				...this.stampedActivations(this.list),
 			];
 			for (const [toolCallId, skillId] of sources) {
-				if (!anchors.has(skillId) && this.loaded.has(skillId) && deliverable.has(toolCallId)) {
+				if (
+					!this.usesAppendUpdates(skillId) &&
+					!anchors.has(skillId) &&
+					this.loaded.has(skillId) &&
+					deliverable.has(toolCallId)
+				) {
 					anchors.set(skillId, toolCallId);
 				}
 			}
 		}
-		const inBlock = [...this.loaded.keys()].filter((id) => !anchors.has(id));
+		const inBlock = [...this.loaded.keys()].filter(
+			(id) => !this.usesAppendUpdates(id) && !anchors.has(id),
+		);
 		return { anchors, inBlock };
 	}
 
@@ -244,6 +273,49 @@ export class ActiveSkills {
 		return skill && entry ? formatActiveSkill(skill, entry, this.source.registry) : undefined;
 	}
 
+	private usesAppendUpdates(skillId: string): boolean {
+		return Object.hasOwn(this.list?.activeSkillVersions ?? {}, skillId);
+	}
+
+	/** Recover current instructions after compaction without changing an earlier message. */
+	private appendUpdates(): void {
+		const list = this.list;
+		if (!list?.activeSkillVersions) return;
+		const visibleVersions = new Map<string, string | null>();
+		for (const message of list.llmVisibleMessages()) {
+			if (message.type === 'custom') {
+				if ('skillUpdate' in message.data) {
+					const { skillId, version } = message.data.skillUpdate;
+					visibleVersions.set(skillId, version);
+				}
+				continue;
+			}
+			for (const part of message.content) {
+				if (
+					part.type !== 'tool-call' ||
+					part.toolName !== SKILL_LOAD_TOOL_NAME ||
+					part.state !== 'resolved' ||
+					part.canceled
+				)
+					continue;
+				for (const [id, version] of Object.entries(part.activatedSkillVersions ?? {})) {
+					visibleVersions.set(id, version);
+				}
+			}
+		}
+		for (const [skillId, savedVersion] of Object.entries(list.activeSkillVersions)) {
+			const version = this.loaded.has(skillId) ? savedVersion : null;
+			if (visibleVersions.has(skillId) && visibleVersions.get(skillId) === version) continue;
+			const body = this.formatSkill(skillId);
+			const changed =
+				this.previousVersions[skillId] !== undefined && this.previousVersions[skillId] !== version;
+			const content = body
+				? `Skill ${JSON.stringify(skillId)} ${changed ? 'was updated' : 'is active'}. Use these current instructions when relevant. They replace earlier instructions and reference content for this skill.\n\n${body}`
+				: `Skill ${JSON.stringify(skillId)} is unavailable. Do not use its earlier instructions or reference content. Load it again if it becomes available and is needed.`;
+			list.addInput([{ type: 'custom', data: { skillUpdate: { skillId, version, content } } }]);
+		}
+	}
+
 	private recordedLoads(list: AgentMessageList): Map<string, string> {
 		const loads = new Map<string, string>();
 		for (const message of list.messages()) {
@@ -289,8 +361,10 @@ export class ActiveSkills {
 		const store = this.store;
 		if (!scope || !store) return;
 		const ids = [...(this.list?.activeSkillIds ?? [])];
+		const versions = this.list?.activeSkillVersions;
 		// Concurrent tool calls must not overwrite a newer activation with an older set.
-		const save = this.pendingSave.then(async () => await store.save(scope, ids));
+		const state = { skillIds: ids, ...(versions ? { versions: { ...versions } } : {}) };
+		const save = this.pendingSave.then(async () => await store.save(scope, state));
 		this.pendingSave = save.catch(() => undefined);
 		await save;
 	}

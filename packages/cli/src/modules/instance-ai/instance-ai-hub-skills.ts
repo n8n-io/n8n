@@ -43,7 +43,7 @@ export async function loadHubRunSkills(
 	context: AssistantSkillContext,
 ): Promise<HubRunSkills> {
 	const enabled = await provider.isEnabled().catch(() => false);
-	if (!enabled) return { source: builtIns };
+	if (!enabled) return createDeferredHubSource(builtIns, provider, context, []);
 	const summaries = await provider.listSkills(context).catch(() => null);
 	return createDeferredHubSource(builtIns, provider, context, summaries);
 }
@@ -89,6 +89,9 @@ function createDeferredHubSource(
 	const source: RuntimeSkillSource = {
 		...builtIns,
 		registry: mergedRegistry(),
+		shouldAppendSkillUpdates: (id) =>
+			id.startsWith(HUB_SKILL_ID_PREFIX) &&
+			!builtIns.registry.skills.some((entry) => entry.id === id),
 		loadSkill: async (id) => (hubSkills.has(id) ? await load(id) : await builtIns.loadSkill(id)),
 		loadFile: async (id, path) => {
 			const selected = hubSkills.get(id);
