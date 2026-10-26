@@ -4,11 +4,11 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { IExecutionResponse } from '@n8n/db';
 
-import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
-import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
-import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import type { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
-import { AgentHitlRequestsService } from './agent-hitl-requests.service';
+import type { AgentBackgroundJobService } from '../../background/agent-background-job.service';
+import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
+import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
+import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
+import { AgentHitlRequestsService } from '../agent-hitl-requests.service';
 
 describe('Agent approval cancellation', () => {
 	function setup() {

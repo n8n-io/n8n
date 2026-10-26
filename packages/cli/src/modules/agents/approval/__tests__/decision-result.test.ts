@@ -1,6 +1,6 @@
 import type { IRunData, ITaskData, IDataObject } from 'n8n-workflow';
 
-import { collectAgentDecision } from './decision-result';
+import { collectAgentDecision } from '../decision-result';
 
 function output(json: IDataObject): ITaskData {
 	return {

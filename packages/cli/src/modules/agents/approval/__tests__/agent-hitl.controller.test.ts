@@ -1,14 +1,14 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
-import type { AgentRepository } from '../repositories/agent.repository';
-import type { ProjectAgent } from '../entities/agent.entity';
+import type { AgentRepository } from '../../repositories/agent.repository';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
-} from '../__tests__/test-utils/controller-route-metadata';
-import type { AgentHitlRequestsService } from './agent-hitl-requests.service';
-import { AgentHitlController } from './agent-hitl.controller';
+} from '../../__tests__/test-utils/controller-route-metadata';
+import type { AgentHitlRequestsService } from '../agent-hitl-requests.service';
+import { AgentHitlController } from '../agent-hitl.controller';
 
 describe('Advanced HITL routes', () => {
 	expectProjectScopedAgentRoutes(AgentHitlController);

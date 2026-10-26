@@ -8,16 +8,16 @@ import { WorkflowRunner } from '@/workflow-runner';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
-} from '../agent-sandbox-principal';
-import * as workflowTools from '../tools/workflow-tool-factory';
+} from '../../agent-sandbox-principal';
+import * as workflowTools from '../../tools/workflow-tool-factory';
 import type { ActiveExecutions } from '@/active-executions';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
-import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
-import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
-import type { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
-import type { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
-import { AgentDecisionWorkflowService } from './agent-decision-workflow.service';
+import type { AgentBackgroundJobService } from '../../background/agent-background-job.service';
+import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
+import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
+import type { WorkflowToolWorkflowLoader } from '../../tools/workflow-tool-workflow-loader.service';
+import { AgentDecisionWorkflowService } from '../agent-decision-workflow.service';
 
 const configuration: AgentJsonConfig = {
 	name: 'Reviewer',
