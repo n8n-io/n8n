@@ -6339,7 +6339,7 @@
 	"settings.security.personalSpace.sharing.existingCount.value": "{workflowCount} workflows, {credentialCount} credentials",
 	"settings.security.personalSpace.unlicensed_tooltip": "Upgrade to a plan that includes personal space policies to manage this setting. {action}",
 	"settings.security.personalSpace.unlicensed_tooltip.link": "Upgrade now",
-	"settings.security.rateLimits.title": "Limits",
+	"settings.security.rateLimits.title": "Public API Limits",
 	"settings.security.rateLimits.enable.title": "Enable API key rate limits",
 	"settings.security.rateLimits.enable.description": "Cap how many requests your {apiKeys} can make.",
 	"settings.security.rateLimits.enable.description.apiKeys": "API keys",

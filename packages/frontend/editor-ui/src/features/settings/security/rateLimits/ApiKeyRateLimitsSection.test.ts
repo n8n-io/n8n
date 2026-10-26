@@ -74,6 +74,12 @@ describe('ApiKeyRateLimitsSection', () => {
 		updateSettings.mockImplementation(async (_context, data) => response(data));
 	});
 
+	it('names the section after the Public API', async () => {
+		const { getByText } = await renderLoaded();
+
+		expect(getByText('Public API Limits')).toBeInTheDocument();
+	});
+
 	it('does not show the limits while rate limiting is off', async () => {
 		const { queryByTestId } = await renderLoaded();
 
