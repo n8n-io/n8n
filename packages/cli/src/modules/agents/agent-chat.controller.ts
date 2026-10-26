@@ -1009,7 +1009,12 @@ export class AgentChatController {
 	@Get('/:agentId/chat/attachments/:attachmentId')
 	@ProjectScope('agent:read')
 	async getChatAttachment(
-		req: AuthenticatedRequest<{ projectId: string; agentId: string; attachmentId: string }>,
+		req: AuthenticatedRequest<
+			{ projectId: string; agentId: string; attachmentId: string },
+			{},
+			{},
+			{ threadId?: string }
+		>,
 		res: Response,
 	) {
 		const { projectId, agentId, attachmentId } = req.params;
