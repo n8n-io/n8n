@@ -188,7 +188,6 @@ async function persist(next: PublicApiRateLimitSettings) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--sm);
-	/* The expanded region is flush with the card edges, so match the row padding. */
 	padding: var(--spacing--xs) var(--spacing--sm) var(--spacing--sm);
 }
 

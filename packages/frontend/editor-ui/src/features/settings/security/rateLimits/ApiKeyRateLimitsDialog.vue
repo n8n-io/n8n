@@ -332,7 +332,6 @@ function save() {
 
 .row {
 	display: grid;
-	/* `minmax(0, …)` lets the inputs shrink, so the row never overflows the dialog. */
 	grid-template-columns: var(--spacing--3xl) minmax(0, 3fr) auto minmax(0, 2fr) var(--spacing--xl);
 	align-items: center;
 	gap: var(--spacing--2xs);
