@@ -17,6 +17,8 @@ export class OtelConfigureHook {
 
 	private readonly outboundBaggageMappers: OtelAttributeMapper[] = [];
 
+	private readonly warnedMappers = new WeakSet<OtelAttributeMapper>();
+
 	readonly api: OtelConfigureHookApi = {
 		registerResourceAttributeMapper: (mapper) => {
 			this.resourceAttributeMappers.push(mapper);
@@ -54,6 +56,8 @@ export class OtelConfigureHook {
 					if (typeof value === 'string') merged[key] = value;
 				}
 			} catch (error) {
+				if (this.warnedMappers.has(mapper)) continue;
+				this.warnedMappers.add(mapper);
 				this.logger.warn(`OpenTelemetry ${label} mapper failed`, { error: getErrorMessage(error) });
 			}
 		}
