@@ -87,11 +87,12 @@ const pollJobProvider = mockInstance(PollJobProvider);
 
 const instanceSettings = Container.get(InstanceSettings);
 
-const { FakeRunDataTracker, FakeMemoryGuardService } = vi.hoisted(() => ({
+const { FakeRunDataTracker, FakeMemoryGuardService, removeMemoryGuardJournal } = vi.hoisted(() => ({
 	FakeRunDataTracker: class {},
 	FakeMemoryGuardService: class {
 		init = vi.fn();
 	},
+	removeMemoryGuardJournal: vi.fn(),
 }));
 vi.mock('@/memory-guard/run-data-tracker', () => ({
 	RunDataTracker: FakeRunDataTracker,
@@ -99,6 +100,7 @@ vi.mock('@/memory-guard/run-data-tracker', () => ({
 vi.mock('@/memory-guard/memory-guard.service', () => ({
 	MemoryGuardService: FakeMemoryGuardService,
 }));
+vi.mock('@/memory-guard/memory-guard-journal', () => ({ removeMemoryGuardJournal }));
 
 describe('Start - AuthRolesService initialization', () => {
 	let start: Start;
@@ -431,12 +433,14 @@ describe('Start - AuthRolesService initialization', () => {
 
 			expect(containerGet).toHaveBeenCalledWith(FakeRunDataTracker);
 			expect(guard.init).toHaveBeenCalled();
+			expect(removeMemoryGuardJournal).not.toHaveBeenCalled();
 		});
 
 		it('should not start the run data tracker when the guard is disabled', async () => {
 			await start.init();
 
 			expect(containerGet).not.toHaveBeenCalledWith(FakeRunDataTracker);
+			expect(removeMemoryGuardJournal).toHaveBeenCalled();
 		});
 
 		it('should not start the run data tracker in queue mode, and should warn', async () => {
@@ -451,6 +455,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 			expect(containerGet).not.toHaveBeenCalledWith(FakeRunDataTracker);
 			expect(warn).toHaveBeenCalledWith('Memory guard supports only regular mode, so it stays off');
+			expect(removeMemoryGuardJournal).toHaveBeenCalled();
 		});
 	});
 

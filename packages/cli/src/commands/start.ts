@@ -313,10 +313,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	private async initMemoryGuard() {
-		if (!this.globalConfig.memoryGuard.enabled) return;
-
-		if (this.globalConfig.executions.mode === 'queue') {
-			this.logger.warn('Memory guard supports only regular mode, so it stays off');
+		const isQueueMode = this.globalConfig.executions.mode === 'queue';
+		if (!this.globalConfig.memoryGuard.enabled || isQueueMode) {
+			if (this.globalConfig.memoryGuard.enabled) {
+				this.logger.warn('Memory guard supports only regular mode, so it stays off');
+			}
+			const { removeMemoryGuardJournal } = await import('@/memory-guard/memory-guard-journal.js');
+			removeMemoryGuardJournal();
 			return;
 		}
 
