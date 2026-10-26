@@ -1,0 +1,23 @@
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.test.ts
+  s_dfaa6f73e8ee38::t_00d6b10e5c9d80 185,456,460-477,480-491
+  s_dfaa6f73e8ee38::t_540e0c3e0a36a5 453-455
+  s_dfaa6f73e8ee38::t_3232c7cba277b4 478
+  s_dfaa6f73e8ee38::t_7ddda42d4e073f 479
+  s_dfaa6f73e8ee38::t_ef66bba0b79f59 492-493
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd629c6e6ef328346727c8df95539344ebb9c8c6",
+  "prompts": {},
+  "sessions": {
+    "s_dfaa6f73e8ee38": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16965-fb6b-7ae3-9355-73ebf9402858",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_aaa3f8c0014b3c::t_43f04dd604da97 10026-10027
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.test.ts
+  s_aaa3f8c0014b3c::t_3b935d1850f913 61-66,74,79,87-91,95
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.ts
+  s_aaa3f8c0014b3c::t_43f04dd604da97 18,29,33,44-45,51
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue
+  s_aaa3f8c0014b3c::t_26c08f148f7fb4 118
+  s_aaa3f8c0014b3c::t_36b0fd118a215e 150
+  s_aaa3f8c0014b3c::t_43f04dd604da97 3,115,119-133,152
+  s_aaa3f8c0014b3c::t_d886fa65e9b737 141-146
+  s_aaa3f8c0014b3c::t_38da7dd6d22f39 162-165,179-185
+  s_aaa3f8c0014b3c::t_ca82898495e262 186-187
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_aaa3f8c0014b3c::t_36b0fd118a215e 208,229-231
+  s_aaa3f8c0014b3c::t_3b935d1850f913 2-3,188,190-198,205-207,209-225,232-238
+  s_aaa3f8c0014b3c::t_f8165533d6b9b6 239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "90f54549fed90d891b9bb4d6f5346a257576fe1c",
+  "prompts": {},
+  "sessions": {
+    "s_aaa3f8c0014b3c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a168c0-40e6-7a93-8ad9-13970e561dbb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
