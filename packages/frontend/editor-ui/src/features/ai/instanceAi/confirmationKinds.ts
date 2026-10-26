@@ -7,7 +7,7 @@ import type { PendingConfirmationItem } from './instanceAi.store';
  *
  * Floating: structured questions, single-click approvals, domain/web-search access,
  *   and cloud browser resource-decisions.
- * Inline: plan-review, text, setup, credential, other gateway resource-decisions,
+ * Inline: text, setup, credential, other gateway resource-decisions,
  *   continue, channel setup.
  *
  * Items are inline-by-presence: if `setupRequests` / `credentialRequests` /
@@ -25,7 +25,6 @@ export function isPendingItemFloating(item: PendingConfirmationItem): boolean {
 	if (conf.testListener) return false;
 
 	switch (conf.inputType) {
-		case 'plan-review':
 		case 'text':
 		case 'continue':
 			return false;

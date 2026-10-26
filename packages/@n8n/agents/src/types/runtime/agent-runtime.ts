@@ -43,8 +43,8 @@ export interface AgentRuntimeConfig {
 	name: string;
 	model: ModelConfig;
 	/**
-	 * Proxy-aware `fetch` used for all model calls in this runtime (main model and
-	 * title generation). When unset, model construction falls back to the ambient
+	 * Proxy-aware `fetch` used for all model calls in this runtime (main model,
+	 * title generation and memory tasks). When unset, model construction falls back to the ambient
 	 * HTTP_PROXY resolver.
 	 */
 	modelFetch?: FetchFn;

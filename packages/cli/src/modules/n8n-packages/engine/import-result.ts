@@ -47,20 +47,28 @@ export function toImportedWorkflowSummaries(
 	projectId: string,
 	published: PackagePublishingResults,
 ): ImportedWorkflowSummary[] {
-	return outcomes.map(({ workflow, sourceWorkflowId, status }) => {
+	return outcomes.map((outcome) => {
+		const { workflow, sourceWorkflowId, status } = outcome;
 		const result = published.get(sourceWorkflowId);
 		const current = result?.workflow ?? workflow;
+		// The reloaded workflow does not carry its folder, so a move reports its planned target.
+		const moveToFolderId =
+			outcome.status === 'updated' && outcome.item.action === 'update'
+				? outcome.item.moveToFolderId
+				: undefined;
 
 		return {
 			sourceWorkflowId,
 			localId: current.id,
 			name: current.name,
 			projectId,
-			parentFolderId: current.parentFolder?.id ?? null,
+			parentFolderId:
+				moveToFolderId !== undefined ? moveToFolderId : (current.parentFolder?.id ?? null),
 			activeVersionId: current.activeVersionId ?? null,
 			isArchived: current.isArchived,
 			publishing: result?.publishing ?? { state: 'unchanged' },
 			status,
+			...(moveToFolderId !== undefined ? { moved: true as const } : {}),
 		};
 	});
 }

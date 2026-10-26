@@ -5,6 +5,8 @@ import { Container } from '@n8n/di';
 
 import { UrlService } from '@n8n/backend-services';
 
+import * as ssoHelpers from '@/sso.ee/sso-helpers';
+
 import * as helpers from '../saml-helpers';
 import type { SamlUserAttributes } from '../types';
 
@@ -417,6 +419,51 @@ describe('sso/saml/samlHelpers', () => {
 		test('returns false when RelayState is missing', () => {
 			expect(helpers.isConnectionTestRequest({})).toBe(false);
 		});
+	});
+
+	describe('setSamlLoginEnabled', () => {
+		const emitSsoLoginDisabled = () => vi.mocked(ssoHelpers.emitSsoLoginDisabled);
+
+		beforeEach(() => {
+			vi.spyOn(ssoHelpers, 'setCurrentAuthenticationMethod').mockResolvedValue();
+			vi.spyOn(ssoHelpers, 'emitSsoLoginDisabled').mockResolvedValue();
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		test('emits sso-login-disabled when SAML login turns off', async () => {
+			vi.spyOn(ssoHelpers, 'getCurrentAuthenticationMethod').mockReturnValue('saml');
+
+			await helpers.setSamlLoginEnabled(false);
+
+			expect(ssoHelpers.setCurrentAuthenticationMethod).toHaveBeenCalledWith('email');
+			expect(emitSsoLoginDisabled()).toHaveBeenCalledExactlyOnceWith('saml');
+		});
+
+		test.each(['email', 'oidc', 'ldap'] as const)(
+			'does not emit when SAML is off and the method is %s',
+			async (method) => {
+				vi.spyOn(ssoHelpers, 'getCurrentAuthenticationMethod').mockReturnValue(method);
+
+				await helpers.setSamlLoginEnabled(false);
+
+				expect(emitSsoLoginDisabled()).not.toHaveBeenCalled();
+			},
+		);
+
+		test.each(['email', 'saml'] as const)(
+			'does not emit when SAML login turns on from %s',
+			async (method) => {
+				vi.spyOn(ssoHelpers, 'getCurrentAuthenticationMethod').mockReturnValue(method);
+
+				await helpers.setSamlLoginEnabled(true);
+
+				expect(ssoHelpers.setCurrentAuthenticationMethod).toHaveBeenCalledWith('saml');
+				expect(emitSsoLoginDisabled()).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('extractTestIdFromRelayState', () => {
