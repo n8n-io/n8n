@@ -1,0 +1,59 @@
+packages/nodes-base/nodes/Google/BigQuery/test/v2/methods/loadOptions.test.ts
+  s_2e1fa95fc44f8f::t_3de2979852d092 2,4-8,10-19,21-24
+  s_2e1fa95fc44f8f::t_babc012beb2eb8 3
+  s_2e1fa95fc44f8f::t_57a4a1f2341fc7 20
+  s_2e1fa95fc44f8f::t_67ac118a7bc98f 1
+  s_2e1fa95fc44f8f::t_d5bb94e5d3ef2a 9
+packages/nodes-base/nodes/Google/BigQuery/test/v1/loadOptions.test.ts
+  s_2e1fa95fc44f8f::t_326e6c2431296c 3
+  s_2e1fa95fc44f8f::t_08c0fdee6ca3ce 20
+  s_2e1fa95fc44f8f::t_ca99840be05dc5 2,4-9,11-19,21-24
+  s_2e1fa95fc44f8f::t_2dbb5819e649bd 1
+  s_2e1fa95fc44f8f::t_700d2e04b9cf68 10
+packages/nodes-base/nodes/Google/BigQuery/v1/GenericFunctions.ts
+  s_e73c18b72cf9b3::t_405d1c9365b930 8-10,12,19,22,31,38,76
+packages/nodes-base/nodes/Google/BigQuery/v1/GoogleBigQueryV1.node.ts
+  s_e73c18b72cf9b3::t_01dc1f5c040944 12,106,121,138,204,241,261,270
+packages/nodes-base/nodes/Google/BigQuery/v2/actions/database/executeQuery.operation.ts
+  s_715e72d26dd7c6::t_02a8e523bb829c 7,320,346,422
+packages/nodes-base/nodes/Google/BigQuery/v2/actions/database/insert.operation.ts
+  s_715e72d26dd7c6::t_ff772dbb8210d9 7,186,238
+packages/nodes-base/nodes/Google/BigQuery/v2/methods/loadOptions.ts
+  s_e73c18b72cf9b3::t_4d1cf1da819b28 2,14,41
+packages/nodes-base/nodes/Google/BigQuery/v2/transport/index.ts
+  s_e73c18b72cf9b3::t_bda573cfb9312c 8-10,12,19,22,31,38,77
+packages/nodes-base/nodes/Google/BigQuery/v2/methods/listSearch.ts
+  s_2e1fa95fc44f8f::t_29e7c14acc3b6b 2,15-21,59,101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f5abb12752755c8d8102d3675255745d2426e0e5",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_715e72d26dd7c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a62cd39faddbb3da7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_e73c18b72cf9b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6f0fe4addd3da03e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

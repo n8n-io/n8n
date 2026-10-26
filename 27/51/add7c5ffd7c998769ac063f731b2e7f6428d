@@ -1,0 +1,31 @@
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_458504fc575b5e::t_7a5c118209bf65 928-931,933
+packages/@n8n/instance-ai/src/tools/workspace.tool.ts
+  s_458504fc575b5e::t_ddafca4a219340 211
+  s_458504fc575b5e::t_5ec91931f2bf35 55-57
+  s_458504fc575b5e::t_cb5e311a7e530d 215
+  s_458504fc575b5e::t_adf9a22c13f04a 210,212-214,216-218
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_458504fc575b5e::t_6b73605c5a7760 547-595
+packages/@n8n/instance-ai/src/tools/__tests__/workspace.tool.test.ts
+  s_458504fc575b5e::t_c7d956f6b88efd 391-398
+  s_458504fc575b5e::t_2597c4f77237a4 390,399-412
+packages/@n8n/instance-ai/src/tools/workflows/workflow-build-context.ts
+  s_458504fc575b5e::t_aa66e68a09a294 117,119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2751add7c5ffd7c998769ac063f731b2e7f6428d",
+  "prompts": {},
+  "sessions": {
+    "s_458504fc575b5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "daa000ac-4122-4835-9d3f-6ab2ca4c7948",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

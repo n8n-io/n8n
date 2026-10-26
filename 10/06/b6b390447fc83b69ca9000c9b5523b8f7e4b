@@ -1,0 +1,39 @@
+packages/nodes-base/nodes/Databricks/Databricks.node.ts
+  s_2e1fa95fc44f8f::t_78f4fb48697864 37-38
+packages/nodes-base/nodes/Databricks/actions/files/createDirectory.operation.ts
+  s_2e1fa95fc44f8f::t_ad8bea455d8e22 24
+packages/nodes-base/nodes/Databricks/actions/files/deleteDirectory.operation.ts
+  s_2e1fa95fc44f8f::t_1edfdbaddc959e 24
+packages/nodes-base/nodes/Databricks/actions/files/deleteFile.operation.ts
+  s_2e1fa95fc44f8f::t_ddca9f6d8831a0 24
+packages/nodes-base/nodes/Databricks/actions/files/downloadFile.operation.ts
+  s_2e1fa95fc44f8f::t_dc5bb66572e07b 32
+packages/nodes-base/nodes/Databricks/actions/files/getFileInfo.operation.ts
+  s_2e1fa95fc44f8f::t_a5e4d139d5cc7f 24
+packages/nodes-base/nodes/Databricks/actions/files/listDirectory.operation.ts
+  s_2e1fa95fc44f8f::t_da1150e127a723 32
+packages/nodes-base/nodes/Databricks/actions/files/uploadFile.operation.ts
+  s_2e1fa95fc44f8f::t_5184f4f0d8dc39 28
+packages/nodes-base/nodes/Databricks/actions/helpers.ts
+  s_2e1fa95fc44f8f::t_e22d8a354fb820 3-10,22,101-102
+packages/nodes-base/nodes/Databricks/constants.ts
+  s_2e1fa95fc44f8f::t_3cabe98766d354 1-2
+packages/nodes-base/nodes/Databricks/test/requestUrls.test.ts
+  s_2e1fa95fc44f8f::t_502800122e94d2 2,12,14,58-71,76-77,86-101,128,138-143,149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1006b6b390447fc83b69ca9000c9b5523b8f7e4b",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

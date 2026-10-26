@@ -1,0 +1,62 @@
+packages/nodes-base/nodes/Autopilot/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_adb76ea7b05cdd 1-24
+packages/nodes-base/nodes/Autopilot/Autopilot.node.ts
+  s_2e1fa95fc44f8f::t_ea315782e51703 11
+  s_2e1fa95fc44f8f::t_72970cb7ac9be9 83-87,98,109,175,183-187,195-199,212,231,249,276,294,303
+packages/nodes-base/nodes/Autopilot/AutopilotTrigger.node.ts
+  s_2e1fa95fc44f8f::t_11b18b11ceafa4 10,89-93,110,117-121
+packages/nodes-base/nodes/Autopilot/GenericFunctions.ts
+  s_097953de0a96e2::t_215f167693913f 10-11,13,18,26,34,55,68-70
+packages/nodes-base/nodes/Aws/IAM/test/transport/index.test.ts
+  s_097953de0a96e2::t_2a66ff7dae22b2 34,43,52
+packages/nodes-base/nodes/Aws/IAM/transport/index.ts
+  s_097953de0a96e2::t_b110d203b1053c 20,24,26-27
+packages/nodes-base/nodes/Aws/Textract/GenericFunctions.ts
+  s_011c996fdfa425::t_2654b19433acde 14,16,156,174,177
+packages/nodes-base/nodes/Aws/Transcribe/AwsTranscribe.node.ts
+  s_1784f57a265e56::t_ca62d1b1e19fad 8,434,453,473,516,527
+packages/nodes-base/nodes/Aws/Transcribe/GenericFunctions.ts
+  s_1784f57a265e56::t_fa9fe027faf3f3 13-14,16,45,51,54-60,80,83,97,114
+packages/nodes-base/nodes/Aws/Transcribe/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_bfd7461f57f1f3 3,48,68-73,100,120,153,172-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95bd5a1dc6e3a567a15d84e839d3f25d039b415b",
+  "prompts": {},
+  "sessions": {
+    "s_011c996fdfa425": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab6cdd889fabef339",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_097953de0a96e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aac90f73f2622c71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_1784f57a265e56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae4316d2f9da06192",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

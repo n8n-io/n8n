@@ -1,0 +1,44 @@
+packages/cli/src/modules/otel/__tests__/otel.service.grpc-deps.test.ts
+  s_71fde24149b9db::t_afb3574c40ad75 73,77,82-84,88-97
+packages/cli/src/modules/type-availability-policies/type-availability-policy-snapshot.ts
+  s_71fde24149b9db::t_afb3574c40ad75 5,114
+packages/@n8n/utils/src/promise/latest-wins.test.ts
+  s_71fde24149b9db::t_afb3574c40ad75 1-58
+packages/cli/src/observability/__tests__/otel-sdk.test.ts
+  s_71fde24149b9db::t_afb3574c40ad75 224-253
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_71fde24149b9db::t_afb3574c40ad75 2,176-180,505-556,561-564,569-570,573-574,577-591,594-676,702,704,779,852,854-855,859,861-862
+  s_71fde24149b9db::t_3006b943c7d89b 557-560,567,572,575-576,592-593
+  s_71fde24149b9db::t_39eced25ae7744 566
+packages/cli/src/observability/swappable-pipeline.ts
+  s_71fde24149b9db::t_623122cccf3c3d 38-39,43-45,47,59-62,67,72-77
+  s_71fde24149b9db::t_afb3574c40ad75 41
+packages/@n8n/utils/src/promise/latest-wins.ts
+  s_71fde24149b9db::t_afb3574c40ad75 1-17
+packages/cli/src/observability/__tests__/swappable-pipeline.test.ts
+  s_71fde24149b9db::t_498f12b0d39057 2-9,11-35
+  s_71fde24149b9db::t_39eced25ae7744 10
+  s_71fde24149b9db::t_d6f2f382e22b17 1
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  ai_agent 8,29-35,38-39,45,49-62,65,96-98,104-107,128-129,153,293-366
+packages/cli/src/modules/otel/otel.service.ts
+  ai_agent 6,40-60,66-68,82-83,85-86,145-147,155-196,209-211,217,236,247,257,296,298,307,313,322,337-338,349
+packages/cli/src/modules/otel/README.md
+  s_71fde24149b9db::t_afb3574c40ad75 44-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b1da74ed816ef7cfe6ea49e1e056587a1f5f0f4",
+  "prompts": {},
+  "sessions": {
+    "s_71fde24149b9db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f71bd56d-a432-4323-a999-6a6b83977c41",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

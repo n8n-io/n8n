@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.test.ts
+  s_f987b203754da1::t_4741d2c33e2649 103,171,238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ec5d6c1d2c6e787305db4f9a6a1da3e28cd665c",
+  "prompts": {},
+  "sessions": {
+    "s_f987b203754da1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76cb3d21-3669-4c64-b24a-660ba265012f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

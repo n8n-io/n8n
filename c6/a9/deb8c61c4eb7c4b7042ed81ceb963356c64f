@@ -1,0 +1,40 @@
+packages/cli/src/modules/agents/evaluation/agent-evaluation.service.ts
+  s_58620fba057bad::t_332afc69ba86a3 1,38-43,47,50-54,89,96,108,110,112-114,116-150
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_58620fba057bad::t_a5a9c7b8059883 1,8,577-578,586-597,604-607,613-618,623,625-628,630-633,635-642,646-648
+  s_58620fba057bad::t_ea8dfa7c640e5e 602-603,643-645
+  s_58620fba057bad::t_9fec03a4aa28bc 599,601
+packages/cli/src/modules/agents/evaluation/__tests__/agent-evaluation.service.test.ts
+  s_58620fba057bad::t_a5a9c7b8059883 4,250-292
+  s_58620fba057bad::t_332afc69ba86a3 293
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_58620fba057bad::t_332afc69ba86a3 344,968,974,980,1218,1243,1282-1289,1313,1315,1328
+  s_58620fba057bad::t_ea8dfa7c640e5e 345,574,582,601-605,613-631,642-652
+  s_58620fba057bad::t_90b66d4a92119a 3-4,158,315,325,341-343,352-354,376,569-573,579-581,653-668,967,977,998,1000-1002,1006,1046,1050,1157,1171,1181,1185,1236,1241,1273
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_58620fba057bad::t_ea8dfa7c640e5e 400-401
+  s_58620fba057bad::t_a5a9c7b8059883 22,321-324,334,395-399,402-437
+  s_58620fba057bad::t_3d37c7cb05d909 438
+packages/cli/src/modules/agents/evaluation/agent-evaluation.contracts.ts
+  s_58620fba057bad::t_332afc69ba86a3 25
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_58620fba057bad::t_e54781ea1fca1b 208,412,414,421-426,429-432
+  s_58620fba057bad::t_01a1dfd2af1812 256-271,273-279,358,380,385,433,443,457,474,494,499-500
+  s_58620fba057bad::t_add8c22f531acd 3-4,24,74-85,359-379,381-384,386-391,394-399,401-405,434-442,444-456,458-468,470-473,475-491,493,496-498,501-507
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6a9deb8c61c4eb7c4b7042ed81ceb963356c64f",
+  "prompts": {},
+  "sessions": {
+    "s_58620fba057bad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13f8e-afeb-7511-82e8-d8246a12076c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

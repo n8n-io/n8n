@@ -1,0 +1,17 @@
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  ai_agent 138
+packages/cli/test/integration/agents/agent-version-history.test.ts
+  ai_agent 130-134
+packages/@n8n/api-types/src/agents/types.ts
+  ai_agent 268
+packages/cli/src/modules/agents/repositories/agent-publish-history.repository.ts
+  ai_agent 38-59
+packages/cli/src/modules/agents/agent-publish.service.ts
+  ai_agent 40,490-496,499-503,514-522,534-535
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4188a368bfa05eb9625a2d9dc65adbdba8af24a9",
+  "prompts": {}
+}

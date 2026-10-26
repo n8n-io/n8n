@@ -1,0 +1,343 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  ai_agent 2,457-505
+docs/generated/sqlite-schema/project.md
+  ai_agent 276
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  ai_agent 833
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.test.ts
+  ai_agent 32,41-81
+packages/frontend/editor-ui/src/features/execution/logs/logs.constants.ts
+  ai_agent 7-8
+packages/@n8n/engine/src/auth/__tests__/resume-token.test.ts
+  ai_agent 1-85
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-inbox.service.test.ts
+  ai_agent 1-163
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.vue
+  ai_agent 62
+packages/quality/testing/playwright/tests/e2e/workflows/editor/execution/engine-type-setting.spec.ts
+  ai_agent 1-77
+packages/@n8n/task-runner-python/pyproject.toml
+  ai_agent 16
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-result.service.integration.test.ts
+  ai_agent 19,22,52-55,123-126,128,168-173,188-192,194-195,201,215-216,227,301-327,357-486,488,491,493-497,500,502-504,551,568-570,588-590,784-793,828,945-950,957,959-961,965,971-977,1323,1336,1357-1359,1364,1375-1376,1582-1584,1609-1610
+packages/@n8n/engine/src/execution/execution.types.ts
+  ai_agent 140-141,147,150-152,168-172
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-trigger.service.integration.test.ts
+  ai_agent 4,40,49,66-67,69-72,74-75,79,83-84
+packages/cli/src/modules/source-control.ee/__tests__/source-control-export.service.test.ts
+  ai_agent 482-487,558,566,579-628
+packages/core/src/execution-engine/node-execution-context/utils/execution-metadata.ts
+  ai_agent 35-40
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  ai_agent 325-343,348,1265
+packages/quality/testing/playwright/pages/WorkflowSettingsModal.ts
+  ai_agent 54-62
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.test.ts
+  ai_agent 873-902
+docs/generated/sqlite-schema/self_healing_configuration.md
+  ai_agent 99
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  ai_agent 77-78,80,149-150,181-204
+docs/generated/postgres-schema/public.self_healing_configuration.md
+  ai_agent 95
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-investigation.service.test.ts
+  ai_agent 125,170,448-490
+packages/@n8n/api-types/src/self-healing-results.ts
+  ai_agent 41-51
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-verification.service.test.ts
+  ai_agent 91-96
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-configuration.service.integration.test.ts
+  ai_agent 102,376
+packages/cli/src/modules/otel/otel-lifecycle-handler.ts
+  ai_agent 1,20,239-244,322-324
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/createCredential.generated.yml
+  ai_agent 38
+packages/@n8n/task-runner-python/uv.lock
+  ai_agent 7,77,79,81
+packages/nodes-base/nodes/Strava/__tests__/StravaTrigger.node.test.ts
+  ai_agent 1-174
+packages/nodes-base/nodes/ExecutionData/test/ExecutionData.node.test.ts
+  ai_agent 47-72
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/generate-simulation-fixtures.service.test.ts
+  ai_agent 163
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  ai_agent 72-79,83
+packages/cli/src/modules/instance-ai/self-healing/database/self-healing-investigation.repository.ts
+  ai_agent 51,55-59
+packages/cli/src/modules/instance-ai/self-healing/README.md
+  ai_agent 39,41-42,127-149,217-219,244,292-294,320-321
+packages/quality/testing/playwright/pages/components/LogsPanel.ts
+  ai_agent 50-53
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  ai_agent 1107-1114,1118-1120,1143,1155,1160-1162,1167-1170,1174-1301
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/updateCredential.generated.yml
+  ai_agent 38
+packages/@n8n/instance-ai/src/utils/modal-session.ts
+  ai_agent 1,5-6
+packages/frontend/editor-ui/src/app/init/index.ts
+  ai_agent 243-261,267,284-287
+packages/frontend/editor-ui/src/features/agents/components/AgentRegistryMcpConfigForm.vue
+  ai_agent 8,33,127-131,134-139
+packages/@n8n/ai-utilities/src/gen-ai/attributes.ts
+  ai_agent 1-112
+docs/generated/postgres-schema/README.md
+  ai_agent 1784
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  ai_agent 416
+packages/frontend/editor-ui/src/features/execution/logs/components/LogDetailsPanel.vue
+  ai_agent 23-26
+docs/generated/postgres-schema/public.workflow_entity.md
+  ai_agent 282
+packages/cli/src/modules/otel/gen-ai-attributes.ts
+  ai_agent 1-96
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  ai_agent 89,483-484
+packages/cli/src/public-api/v1/openapi.yml
+  ai_agent 27,30,33,36,39,42,45,48,51,54,57,60,63,66,69,72,75,78,81,84,87,90,93,96,99,102,105
+packages/frontend/editor-ui/src/features/agents/channels/teams/useTeamsSetupRestart.ts
+  ai_agent 4,12,15-20
+docs/generated/postgres-schema/public.user.md
+  ai_agent 453
+docs/generated/sqlite-schema/workflow_entity.md
+  ai_agent 281
+packages/cli/test/integration/public-api/credentials.test.ts
+  ai_agent 151-161
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  ai_agent 167
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderSession.ts
+  ai_agent 14,243,259-265
+packages/cli/src/modules/promotions.ee/git-hosts/__tests__/gitlab-merge-request.client.test.ts
+  ai_agent 106-116
+docs/generated/postgres-schema/public.project.md
+  ai_agent 270
+packages/cli/src/modules/instance-ai/self-healing/database/self-healing-result.repository.ts
+  ai_agent 16,19,21,58-63,105-116
+packages/frontend/editor-ui/src/features/core/folders/components/FolderBreadcrumbs.vue
+  ai_agent 279-281
+packages/frontend/editor-ui/src/features/execution/logs/composables/useLogsPanelLayout.ts
+  ai_agent 20,76-77
+packages/cli/src/public-api/types.ts
+  ai_agent 1-2,24
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  ai_agent 6974
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue
+  ai_agent 99-101,110-113,117,121-126,134-153,155,166,190-197
+packages/cli/src/public-api/v1/handlers/credentials/credentials.utils.ts
+  ai_agent 8,76-80
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterOptions.vue
+  ai_agent 200,213,272
+packages/cli/src/modules/instance-ai/__tests__/model-config-name.test.ts
+  ai_agent 10-15,17-22,25-30,32-37,67
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  ai_agent 8370
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-run.dto.test.ts
+  ai_agent 19-27
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/execution-metadata.test.ts
+  ai_agent 81-92
+packages/@n8n/db/src/migrations/common/1792750863544-ReplaceSelfHealingInvestigationBaseline.ts
+  ai_agent 3-28,31-48
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsEditView.test.ts
+  ai_agent 31-33,165-166
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  ai_agent 266
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.client.ts
+  ai_agent 70,127,132,179,193
+packages/@n8n/ai-utilities/src/__tests__/utils/n8n-llm-tracing.test.ts
+  ai_agent 1104-1205
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-model.service.test.ts
+  ai_agent 274-279,283
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-settings.service.test.ts
+  ai_agent 1393,1442,1462,1490,1525,1557,1591,1618,1962,1964,1967,1969,1972-1977,1979-1984,2019,2041,2049,2072,2094
+packages/cli/src/modules/promotions.ee/promotion-review-gate.service.ts
+  ai_agent 1-96
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  ai_agent 5,151
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  ai_agent 226-231
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 1786-1787,4788-4789,10031-10035
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  ai_agent 825
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  ai_agent 2672
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.vue
+  ai_agent 332-334
+packages/nodes-base/nodes/Strava/StravaTrigger.node.ts
+  ai_agent 149,180,246-249,258-263
+packages/quality/testing/playwright/tests/e2e/workflows/editor/execution/logs-layout.spec.ts
+  ai_agent 1-132
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreview.ts
+  ai_agent 19-20,85
+packages/cli/src/modules/source-control.ee/source-control-export.service.ee.ts
+  ai_agent 428,445-456,462,470
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  ai_agent 31,369
+packages/cli/src/modules/instance-ai/self-healing/self-healing-investigation.service.ts
+  ai_agent 4,34-35,96-97,109,183-184,198-207,212,219,238,306,308
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  ai_agent 415,434,447,456,531
+packages/cli/src/modules/instance-ai/__tests__/observability.test.ts
+  ai_agent 71
+docs/generated/postgres-schema/public.self_healing_result.md
+  ai_agent 128
+packages/@n8n/instance-ai/src/index.ts
+  ai_agent 768
+packages/@n8n/engine/src/auth/index.ts
+  ai_agent 17
+packages/cli/src/modules/instance-ai/model-config-name.ts
+  ai_agent 23-30
+packages/@n8n/engine/src/auth/shared-secret-token.ts
+  ai_agent 18-22,24,32,45,62
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  ai_agent 688,705,717-718
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.test.ts
+  ai_agent 43-67
+packages/@n8n/engine/src/auth/resume-token.ts
+  ai_agent 1-47
+packages/frontend/editor-ui/src/features/agents/components/AgentConfirmationModal.vue
+  ai_agent 12,75-80
+docs/generated/sqlite-schema/self_healing_result.md
+  ai_agent 127
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  ai_agent 78
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  ai_agent 42,45,50,5055-5058,5268-5474
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.stories.ts
+  ai_agent 18-25,85-107
+packages/@n8n/ai-utilities/src/gen-ai/index.ts
+  ai_agent 1-7
+packages/@n8n/ai-utilities/src/utils/n8n-llm-tracing.ts
+  ai_agent 10-11,14-15,62-63,117,144,192-193,195,231-235,246-254,286-288,328-343
+packages/@n8n/ai-utilities/package.json
+  ai_agent 40-42,107-110
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  ai_agent 1348-1349,1351-1361
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBuilderSession.test.ts
+  ai_agent 3-4,65-71,269-272,274-275
+packages/@n8n/instance-ai/src/utils/__tests__/modal-session.test.ts
+  ai_agent 22,56
+packages/cli/src/modules/instance-ai/self-healing/self-healing-result.service.ts
+  ai_agent 11,24,52,55-57,109,112-116,123-130,136,167,199,387
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  ai_agent 1-119
+packages/cli/test/integration/environments/source-control-import.service.test.ts
+  ai_agent 1326-1365
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue
+  ai_agent 265-269,272-276,299
+packages/@n8n/api-types/src/dto/credentials/credential-public.dto.ts
+  ai_agent 66-67,111-113
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue
+  ai_agent 100-101,934,1039
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  ai_agent 60-61,84,188-195,417-428,587-590
+packages/frontend/editor-ui/src/app/init/index.test.ts
+  ai_agent 90-105,358-359,401-425,428-429,439,444-471
+packages/cli/src/modules/otel/execution-level-tracer.types.ts
+  ai_agent 1,96
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsSetup.test.ts
+  ai_agent 43-45,583,585
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.ts
+  ai_agent 2,20-21,30,42,50
+packages/@n8n/engine/src/index.ts
+  ai_agent 13
+packages/@n8n/instance-ai/src/types.ts
+  ai_agent 2046-2055,2058,2068,2072
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.test.ts
+  ai_agent 20-26
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionReviewBlocker.vue
+  ai_agent 1-40
+docs/generated/sqlite-schema/README.md
+  ai_agent 1770
+packages/cli/src/public-api/v1/handlers/credentials/__tests__/credentials.utils.test.ts
+  ai_agent 159-184
+docs/generated/postgres-schema/public.self_healing_investigation.md
+  ai_agent 14,37,74
+docs/generated/sqlite-schema/self_healing_investigation.md
+  ai_agent 9,25,75
+packages/@n8n/nodes-langchain/nodes/llms/test/N8nLlmTracing.test.ts
+  ai_agent 371
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  ai_agent 1446,1627,1637,1673
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  ai_agent 16,260,269-274,279-280,329,342,508
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.vue
+  ai_agent 18-19,105-107
+packages/frontend/@n8n/design-system/src/components/N8nSettingsLayout/Examples.stories.ts
+  ai_agent 936
+packages/@n8n/api-types/src/dto/promotions/promotion-run.dto.ts
+  ai_agent 11-20,23-24,31
+packages/cli/src/modules/instance-ai/instance-ai-model.service.ts
+  ai_agent 12,180-182
+packages/cli/test/integration/engine-v2-webhooks.test.ts
+  ai_agent 21,249-281
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.types.ts
+  ai_agent 1-3,25-28
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue
+  ai_agent 174-190,194,529
+packages/cli/test/migration/1792750863544-replace-self-healing-investigation-baseline.test.ts
+  ai_agent 13,15-29,31-67,69,71-74,77-115,117,119-128,130-132,134-136,138-142,146-152
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  ai_agent 2,4-5,13,65,344-395
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/InstanceAiToolsConnectionModalWrapper.test.ts
+  ai_agent 155-161,163,220,359-398
+docs/generated/sqlite-schema/user.md
+  ai_agent 457
+packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
+  ai_agent 1125
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadsView.vue
+  ai_agent 189,204
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRow/SettingsRow.stories.ts
+  ai_agent 281
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  ai_agent 462-468
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsManagedSetup.test.ts
+  ai_agent 24-26,293-294
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  ai_agent 2,64,235-241
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdown.vue
+  ai_agent 278
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatAgentCard.vue
+  ai_agent 79
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolsConnectionModal.test.ts
+  ai_agent 735-751
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.test.ts
+  ai_agent 782-805
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/plan-verification-simulation.test.ts
+  ai_agent 68
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  ai_agent 874,920,935-946,948,950-963,1028
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-investigation.repository.integration.test.ts
+  ai_agent 98,101-109,120,122-126,128,130,133,138
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  ai_agent 430-432,435,445,515-516
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-gate.service.test.ts
+  ai_agent 1-169
+packages/cli/src/modules/promotions.ee/promotion-review-inbox.service.ts
+  ai_agent 41-45,72-73,118-153,273,295,298,312,324,378-381
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentRegistryMcpConfigForm.test.ts
+  ai_agent 2-3,164-170,242-243
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-review.repository.ts
+  ai_agent 50-58
+packages/cli/src/modules/instance-ai/self-healing/database/self-healing-investigation.entity.ts
+  ai_agent 1,53-54
+packages/nodes-base/nodes/ExecutionData/ExecutionData.node.ts
+  ai_agent 123-126
+packages/@n8n/api-types/src/dto/index.ts
+  ai_agent 838,842
+packages/@n8n/engine/src/execution/index.ts
+  ai_agent 16
+packages/frontend/editor-ui/src/app/components/FocusPanel.vue
+  ai_agent 589
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  ai_agent 96-127
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/classify-node-destructiveness.service.test.ts
+  ai_agent 216
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatSidebarLink.vue
+  ai_agent 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f82541cedc72db8ebaf35d97332db5209e5cc3ca",
+  "prompts": {}
+}

@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMessage.test.ts
+  s_e1732fec194a6d::t_7e4f7e7ce725c5 96,118-123
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMessage.vue
+  s_e1732fec194a6d::t_b9ea804a675622 180-181,299-304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d3e08959c1c76a6d2b4a22ce2f36327095b559f6",
+  "prompts": {},
+  "sessions": {
+    "s_e1732fec194a6d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a154f4-6701-7402-bd21-8e02f23e405d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

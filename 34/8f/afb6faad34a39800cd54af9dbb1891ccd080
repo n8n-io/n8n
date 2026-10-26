@@ -1,0 +1,129 @@
+packages/cli/src/modules/n8n-packages/entities/credential/credential-conflict-policy.ts
+  s_9bbfd68223ab3c::t_71786a3f907939 52,56-67,187-199
+  s_9bbfd68223ab3c::t_67441edf8c8ec3 200
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_9bbfd68223ab3c::t_18d3f576322051 39,171-173
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_9bbfd68223ab3c::t_527cc1b4dca240 674,680
+  s_9bbfd68223ab3c::t_7001111a28d2c0 676
+  s_9bbfd68223ab3c::t_d74a02a739cfc3 2
+  s_9bbfd68223ab3c::t_377da57ee42fd1 6,14-19,478-479,637-673,675,677-679,681-861
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_9bbfd68223ab3c::t_1644125ca35f6d 112
+packages/cli/src/modules/n8n-packages/engine/__tests__/credential-save-policy.test.ts
+  s_9bbfd68223ab3c::t_d74a02a739cfc3 311,369
+  s_9bbfd68223ab3c::t_c24aa32ba6300b 14,245-310,312-368,370-396
+  s_9bbfd68223ab3c::t_1a6600cc683602 397
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_9bbfd68223ab3c::t_5657e829afcc0c 262,536
+packages/cli/src/modules/n8n-packages/__tests__/import-credential-conflict.integration.test.ts
+  s_9bbfd68223ab3c::t_96ce57e2d08a98 14,18-23,27,104,110-149,462-484,646-668,670-676,678-727,729-908,910-979,981
+  s_9bbfd68223ab3c::t_ab529ad4658539 669,728
+  s_9bbfd68223ab3c::t_fdb3a015a21b66 980,982
+  s_71287c13b32be3::t_17c7d99f970626 677,909
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_9bbfd68223ab3c::t_96a246a58aebcb 1432
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  s_9bbfd68223ab3c::t_c24aa32ba6300b 5,54,56-67,69-73,75-79,81-87,89-93,95-96
+  s_9bbfd68223ab3c::t_9a5aa1df3a761a 97
+  s_71287c13b32be3::t_5b50de96f882fc 7,55,68,74,80,88,94
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_9bbfd68223ab3c::t_971aaa296d3d3b 10,88,90-93,195,197-201,263,268,272-278,435,467,479-486,502
+  s_9bbfd68223ab3c::t_ab529ad4658539 223-232
+  s_71287c13b32be3::t_f37f3a49a754ad 89,196,449,455
+packages/cli/src/modules/n8n-packages/engine/credential-save-policy.ts
+  s_9bbfd68223ab3c::t_70e134180d0b25 2,98,101-154
+  s_9bbfd68223ab3c::t_4350875a82ed08 13,77-97,99-100
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_9bbfd68223ab3c::t_b3557fb54c3314 74-77,120-121,129-131
+  s_9bbfd68223ab3c::t_525ebe11c07f54 132-133
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_9bbfd68223ab3c::t_1644125ca35f6d 3486,3544
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.openapi.ts
+  s_9bbfd68223ab3c::t_18d3f576322051 345-350,356-358
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_9bbfd68223ab3c::t_8af1e3bbee21b2 33,205
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_9bbfd68223ab3c::t_96a246a58aebcb 55-59,61-64,145,163
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_9bbfd68223ab3c::t_c24aa32ba6300b 9,105-112,114-115,123-131,133-134,142
+  s_9bbfd68223ab3c::t_d74a02a739cfc3 135-138,140-141
+  s_9bbfd68223ab3c::t_b4e8d5d7c08313 143
+  s_71287c13b32be3::t_17c7d99f970626 113,116-122,132,139
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_9bbfd68223ab3c::t_24b84560980bca 4-5,10-16,24,88,104-105,116,134,142-143,191-205,210,255-344
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_9bbfd68223ab3c::t_18d3f576322051 159-164,168
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_9bbfd68223ab3c::t_d515332132e94d 59
+  s_9bbfd68223ab3c::t_8af1e3bbee21b2 231,256,282-285,287-288
+  s_71287c13b32be3::t_f37f3a49a754ad 286
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_9bbfd68223ab3c::t_a00b801a9cf060 207-228
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-conflict-policy.test.ts
+  s_9bbfd68223ab3c::t_07dbcce8c457c2 11,49-50,367-396
+  s_9bbfd68223ab3c::t_774d4d89343e2e 397
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_9bbfd68223ab3c::t_5657e829afcc0c 2233-2236,2238-2239,2483-2485,2488-2489
+  s_9bbfd68223ab3c::t_7001111a28d2c0 1291,1392,1463,1536
+  s_71287c13b32be3::t_17c7d99f970626 1875
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_9bbfd68223ab3c::t_a9f67c532933e2 5,81-84,86-91
+  s_9bbfd68223ab3c::t_49bb3961271e2e 92-94
+  s_71287c13b32be3::t_f37f3a49a754ad 10-13,17,85
+packages/cli/src/modules/n8n-packages/__tests__/import-package-policy.integration.test.ts
+  s_9bbfd68223ab3c::t_de22fa38b3ccc9 42,53-54,69-78,87-95,176-177,462-550
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_9bbfd68223ab3c::t_18d3f576322051 389
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_9bbfd68223ab3c::t_d74a02a739cfc3 341-345,347-348,379-383,385-386,392-396,398-399,437-441,443-444,473-477,479-480
+  s_9bbfd68223ab3c::t_3dc4083a530b81 217,237,293-302,304-330
+  s_71287c13b32be3::t_f37f3a49a754ad 276
+  s_71287c13b32be3::t_c03f700d2be3e2 303
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_9bbfd68223ab3c::t_8af1e3bbee21b2 95-102,104-111,113-116
+  s_71287c13b32be3::t_f37f3a49a754ad 103,112
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_9bbfd68223ab3c::t_bbe95c802fc3bc 435,623-624,727-728
+  s_9bbfd68223ab3c::t_360da8ad42f73b 620
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  s_51377107c6724f::t_f7d7fdfe293787 743-745,788
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  s_51377107c6724f::t_ff9d01dbbb7a8f 238-242,248
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  s_71287c13b32be3::t_6f4501f03534f9 58
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_71287c13b32be3::t_f37f3a49a754ad 739
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "348fafb6faad34a39800cd54af9dbb1891ccd080",
+  "prompts": {},
+  "sessions": {
+    "s_51377107c6724f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b6f764b-f4cc-4a2e-84e0-e78a10703b30",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_71287c13b32be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdfb0c47-19a6-4c6b-ac16-9299ca5773fb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_9bbfd68223ab3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0873dbf-0334-4565-aefe-16906f51f94a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

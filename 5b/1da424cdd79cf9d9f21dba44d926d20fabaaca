@@ -1,0 +1,53 @@
+packages/nodes-base/nodes/Twitter/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_32db8972e619f6 1-43
+packages/nodes-base/nodes/Twitter/V1/TwitterV1.node.ts
+  s_2e1fa95fc44f8f::t_9e6993962a6004 13
+  s_ef0fffff10168e::t_323b0282541778 140,195,207,254,263,286,307
+packages/nodes-base/nodes/Twitter/V2/TwitterV2.node.ts
+  s_2e1fa95fc44f8f::t_018d280db36e7f 15
+  s_19150bf5812493::t_3431403b4fefff 130,145,152,197,207,238,248-253,266-271,277,292-297,303,327-334,361
+packages/nodes-base/nodes/Twitter/V1/GenericFunctions.ts
+  s_607917b9ae477c::t_d1e16eaf07161f 9-11,13,20,23-24,26,30,53,89,116,129,152,166
+packages/nodes-base/nodes/Twitter/V2/GenericFunctions.ts
+  s_607917b9ae477c::t_e9cba02364f953 10-11,13,18,23,27,61,116,124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5b1da424cdd79cf9d9f21dba44d926d20fabaaca",
+  "prompts": {},
+  "sessions": {
+    "s_19150bf5812493": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaeb313a3a4da81b4",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_607917b9ae477c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afd947c4a80f6efd7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_ef0fffff10168e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a1f680bdd9c7d11ee",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

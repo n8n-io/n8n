@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBudgetModals.test.ts
+  h_f8b427917eda26 3,57-59,61-70,80,133
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalExamplesSlider.test.ts
+  h_f8b427917eda26 36-47
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalExamplesSlider.vue
+  h_f8b427917eda26 9,127-131,161-164,166-168,171,275-276,278
+  s_a70135a9ee0bd4::t_358d593e51bd9c 153
+packages/frontend/editor-ui/src/features/agents/components/BudgetAlertSlider.vue
+  h_f8b427917eda26 2,6,15-16,21-23,25-27,29,38
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/ConcurrencySlider/ConcurrencySlider.vue
+  h_f8b427917eda26 2,5,11,22-33,37-40,43-46,48-49,55-57
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvaluationsView.vue
+  h_f8b427917eda26 237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "585902e0071c605e384d9212337a5b7c2232c3a3",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_a70135a9ee0bd4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1545c-a589-759e-a080-f4c921a84c04",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

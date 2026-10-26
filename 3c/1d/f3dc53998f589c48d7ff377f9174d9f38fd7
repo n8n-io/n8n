@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/toolResultRenderers.test.ts
+  s_31113b68959a1b::t_f148fd3e800a88 87-92
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_31113b68959a1b::t_c8058644fce73a 163-165,167,169-171,174,181
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactionRegistry.ts
+  s_31113b68959a1b::t_c8058644fce73a 48,73-76,78-82,88-89
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_31113b68959a1b::t_f148fd3e800a88 1389-1411
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3c1df3dc53998f589c48d7ff377f9174d9f38fd7",
+  "prompts": {},
+  "sessions": {
+    "s_31113b68959a1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87d3ead0-6e51-48ec-bd0f-66f2412b1ae9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/utils/container-limits.ts
+  s_ec3a17488104de::t_47f2fe2af05097 42,44-46,48,52-56,62-69,71,74-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a15e1e38d209aab1f949bd3776abe315cbf2999f",
+  "prompts": {},
+  "sessions": {
+    "s_ec3a17488104de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e85f3596-80d0-47ee-92ad-8b347ad82b76",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

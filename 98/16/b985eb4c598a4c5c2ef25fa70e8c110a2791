@@ -1,0 +1,50 @@
+packages/cli/src/public-api/v1/shared/spec/schemas/promotePackageResultDto.generated.yml
+  ai_agent 49,56,62
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_5ef8864054ee6b::t_f3f1dbac60a1ba 227,229
+packages/@n8n/api-types/src/dto/index.ts
+  s_5ef8864054ee6b::t_8d264076d6b4b7 844
+  s_5ef8864054ee6b::t_27ceba921749f0 831
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.vue
+  s_5ef8864054ee6b::t_7b1b106b21f887 74
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_5ef8864054ee6b::t_08e0e3bad32d8d 426,430
+  s_5ef8864054ee6b::t_dea90c49794950 488
+  s_5ef8864054ee6b::t_39dc229401b5af 451,453
+  s_5ef8864054ee6b::t_77fcedcce726fc 474
+packages/@n8n/api-types/src/dto/promotions/promotion-review.dto.ts
+  s_5ef8864054ee6b::t_ea4d8b2c5eed9c 145
+  s_5ef8864054ee6b::t_65e3df5d3fe96e 142-143,148
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_5ef8864054ee6b::t_292b8944603bd5 307
+  s_5ef8864054ee6b::t_62ff764df255eb 320
+  s_5ef8864054ee6b::t_754e7f4134c43b 277
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_5ef8864054ee6b::t_024fb47f09bb8d 57-58
+  s_5ef8864054ee6b::t_ee0cfbbed21af0 11
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.test.ts
+  s_5ef8864054ee6b::t_56a7e579c39671 90
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_5ef8864054ee6b::t_0f30b5612ddc87 34
+  s_5ef8864054ee6b::t_a3f265abd34fca 114
+  s_5ef8864054ee6b::t_0445d1055f4de2 4
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionResult.ts
+  s_5ef8864054ee6b::t_3a22d9399e408c 44
+  s_5ef8864054ee6b::t_611b1f759edc54 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9816b985eb4c598a4c5c2ef25fa70e8c110a2791",
+  "prompts": {},
+  "sessions": {
+    "s_5ef8864054ee6b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c63a640e-618d-456a-b511-501d52ce31b1",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

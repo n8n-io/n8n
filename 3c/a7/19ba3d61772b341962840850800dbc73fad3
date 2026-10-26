@@ -1,0 +1,11 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  ai_agent 1200
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  ai_agent 2923-2924
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3ca719ba3d61772b341962840850800dbc73fad3",
+  "prompts": {}
+}

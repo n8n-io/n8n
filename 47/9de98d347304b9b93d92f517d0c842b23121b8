@@ -1,5 +1,5 @@
 packages/cli/test/integration/public-api/n8n-packages-export-agents.test.ts
-  s_71ad2034164515::t_1883e06ebce05b 54-55,57,120-133,136-180
+  s_71ad2034164515::t_3acac3946fa973 54-55,57,120-133,136-180
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -11,7 +11,7 @@ packages/cli/test/integration/public-api/n8n-packages-export-agents.test.ts
       "agent_id": {
         "tool": "codex",
         "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
-        "model": "gpt-6-astra"
+        "model": "gpt-6.1-sol"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }

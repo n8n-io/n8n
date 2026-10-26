@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreviewLabels.ts
+  s_91f6d770b324e5::t_b6b16809236b65 5,74-82
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.vue
+  s_91f6d770b324e5::t_b6b16809236b65 11,45,65-72,136
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.vue
+  s_91f6d770b324e5::t_884c16e3bec89a 6,41,51,60,143-154,164,183-184
+  s_91f6d770b324e5::t_2de0509cdd3922 29,155-163,165-167,169-176,179-182
+  s_91f6d770b324e5::t_7fbdc22799f45a 316-329,402,404-406
+  s_91f6d770b324e5::t_2a5e736b629fba 408
+  s_91f6d770b324e5::t_716d105a953514 177-178
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_91f6d770b324e5::t_6bc90ee55e1cae 180-204
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_91f6d770b324e5::t_b6b16809236b65 9840-9841,9855
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.selection.ts
+  s_91f6d770b324e5::t_b6b16809236b65 3-4,209-245
+  s_91f6d770b324e5::t_36ae984c853903 246-247
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_91f6d770b324e5::t_6985bd5068544f 446,448-449,457-458
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.test.ts
+  s_91f6d770b324e5::t_e2c1936c6729e8 28,192,209,228,233,235-237,244,254,263-265
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.selection.test.ts
+  s_91f6d770b324e5::t_6bc90ee55e1cae 10,16,154-171
+  s_91f6d770b324e5::t_99591e4101c2fb 172
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCards.vue
+  s_91f6d770b324e5::t_6985bd5068544f 2,7-14,21,23-25,38-39,42-54,85,94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4930315eb3787dcff9f9aecc864207ed42d2fc86",
+  "prompts": {},
+  "sessions": {
+    "s_91f6d770b324e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92ca22a4-e99d-4c1c-8457-cecbf97ec372",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

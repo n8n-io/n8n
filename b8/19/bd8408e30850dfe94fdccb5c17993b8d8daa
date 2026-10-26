@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/__tests__/agent-thread.repository.integration.test.ts
+  s_58620fba057bad::t_2b50e281069f55 43-72
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_58620fba057bad::t_1d3cd9ecc16634 225,530-547
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_58620fba057bad::t_498532781381c9 78-80,194-196
+packages/cli/src/modules/agents/repositories/agent-thread.repository.ts
+  s_58620fba057bad::t_c0ca9b419276e0 25
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_58620fba057bad::t_b5d48e7fabc232 205-227
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_58620fba057bad::t_68c14983b476d5 7894,7909,7912-7914
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b819bd8408e30850dfe94fdccb5c17993b8d8daa",
+  "prompts": {},
+  "sessions": {
+    "s_58620fba057bad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13f8e-afeb-7511-82e8-d8246a12076c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

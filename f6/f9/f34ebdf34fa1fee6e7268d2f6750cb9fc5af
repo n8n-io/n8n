@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_ca670fa39858e8::t_40230bdd79929f 455
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_ca670fa39858e8::t_6bcc17a15604cd 2700
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f6f9f34ebdf34fa1fee6e7268d2f6750cb9fc5af",
+  "prompts": {},
+  "sessions": {
+    "s_ca670fa39858e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e15b4e0-3527-473c-a3bf-0e02b3a8a92f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

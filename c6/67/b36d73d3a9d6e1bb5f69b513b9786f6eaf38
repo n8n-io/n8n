@@ -1,0 +1,21 @@
+packages/@n8n/config/src/configs/public-api.config.ts
+  s_925dcfedebf0c9::t_b012e262559531 1-2,6-8,15-22
+packages/@n8n/config/test/config.test.ts
+  s_925dcfedebf0c9::t_f5f3e3ce5922ce 227,1040,1053,1065-1068
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c667b36d73d3a9d6e1bb5f69b513b9786f6eaf38",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/@n8n/db/src/migrations/common/1792139680416-DeleteInstanceAgentsOnRevert.ts
+  s_11e4bcab32bc0a::t_01819f4f14ea28 16
+  s_11e4bcab32bc0a::t_459e3eac5f44e2 3-15,17
+packages/cli/test/migration/1792139680416-delete-instance-agents-on-revert.test.ts
+  s_11e4bcab32bc0a::t_e6523dd6014d87 1-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e960e1b58b9f95a50a86a0d7ff8ae41c0af15dfe",
+  "prompts": {},
+  "sessions": {
+    "s_11e4bcab32bc0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2de91e43-6020-4277-b7ee-f862c0e118ce",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

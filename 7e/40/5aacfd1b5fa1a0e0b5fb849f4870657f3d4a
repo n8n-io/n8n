@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/agents.service.ts
+  s_71ad2034164515::t_fc38a38d64fbbb 161,163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e405aacfd1b5fa1a0e0b5fb849f4870657f3d4a",
+  "prompts": {},
+  "sessions": {
+    "s_3d603ecb7cc413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "820e497a-8b5a-46a8-b24e-e243dbaa7c63",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

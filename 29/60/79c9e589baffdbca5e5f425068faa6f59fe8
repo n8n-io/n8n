@@ -1,0 +1,26 @@
+packages/@n8n/db/src/repositories/__tests__/shared-workflow.repository.test.ts
+  s_7295da4de38bc8::t_ff45d3c36e2623 93-98
+  s_7295da4de38bc8::t_193efb561359bd 69-73
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_7295da4de38bc8::t_6b820b74696a0c 44-54
+packages/@n8n/backend-services/src/services/workflow-sharing.service.ts
+  s_7295da4de38bc8::t_bfa971aeb9df6c 54-57,59
+packages/@n8n/backend-services/src/services/__tests__/workflow-sharing.service.test.ts
+  s_7295da4de38bc8::t_5d6bace51962dc 65-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "296079c9e589baffdbca5e5f425068faa6f59fe8",
+  "prompts": {},
+  "sessions": {
+    "s_7295da4de38bc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "392f5562-983e-4f64-8730-a6e4e36c3d8f",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

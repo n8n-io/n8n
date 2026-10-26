@@ -1,0 +1,86 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/bindings.fixtures.ts
+  s_d51616375ad4ee::t_76ae1aeb0b58b5 51-57
+packages/@n8n/cli/src/commands/promotion-connection/apply-continue.ts
+  s_d51616375ad4ee::t_49def8f2e3dcf6 9,22
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.test.ts
+  s_d51616375ad4ee::t_cf413a951b1c23 164
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_d51616375ad4ee::t_96dfe1d02fff93 110-114
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.integration.test.ts
+  s_d51616375ad4ee::t_0e5c35072c0b24 358-363,460-467
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d51616375ad4ee::t_bd3ae25d0e66e4 9538,9545-9551
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
+  s_d51616375ad4ee::t_26ffa5cca5dcc5 47-48,121-153,302-320,322,332,470,474
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_d51616375ad4ee::t_42e263a6bcaf9f 543,572
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_d51616375ad4ee::t_bc110fb219b177 748-755,902,906,909,911-913
+  s_d51616375ad4ee::t_b684831ceb5659 9
+  s_d51616375ad4ee::t_19f161366d92dc 81-85,610,711
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_d51616375ad4ee::t_6841f5208be6c5 169-184
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_d51616375ad4ee::t_484e893fcafcd8 237-238
+packages/@n8n/cli/docs/commands/promotions.md
+  s_d51616375ad4ee::t_484e893fcafcd8 297,303-308,329-338
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  s_d51616375ad4ee::t_96dfe1d02fff93 138,168-178
+  s_d51616375ad4ee::t_987f55b0aa1add 179
+packages/@n8n/cli/src/commands/promotion-connection/apply-command.ts
+  s_d51616375ad4ee::t_49def8f2e3dcf6 2-6,72,81-90,98-102,109-114
+  s_d51616375ad4ee::t_a7f8801fdc1921 106-108
+  s_d51616375ad4ee::t_9ac27ce3d130b0 115
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.ts
+  s_d51616375ad4ee::t_bd3ae25d0e66e4 43,47-48,133-134,136-138,143,235,269-270
+  s_d51616375ad4ee::t_5efc1766faf4b5 49-53,139
+packages/@n8n/cli/src/client.ts
+  s_d51616375ad4ee::t_49def8f2e3dcf6 139,141-144,146
+  s_d51616375ad4ee::t_b05ff8f68971c9 140,145
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.service.test.ts
+  s_d51616375ad4ee::t_2d883962b1ee17 2-9,14,46-49,182
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_d51616375ad4ee::t_045302fc4bb063 905-938
+  s_d51616375ad4ee::t_c52f78b3f39d52 850-862,864-868,870-885,1022-1025
+  s_d51616375ad4ee::t_31a4ecd89860a3 863
+packages/@n8n/cli/src/__tests__/promotion-connection-operations.test.ts
+  s_d51616375ad4ee::t_581c57fb2a655b 223-249
+  s_d51616375ad4ee::t_6fc9248e2a134d 221-222
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.test.ts
+  s_d51616375ad4ee::t_76ae1aeb0b58b5 11,193-209
+  s_d51616375ad4ee::t_2ad19c1a2469da 210-211
+packages/cli/src/modules/data-table/data-table.service.ts
+  s_d51616375ad4ee::t_b1a6cce7371c71 186-190
+packages/cli/src/modules/data-table/data-table.repository.ts
+  s_d51616375ad4ee::t_b1a6cce7371c71 8,202-214
+  s_d51616375ad4ee::t_5fd9cadf47419c 215-216
+packages/@n8n/db/src/repositories/shared-credentials.repository.ts
+  s_d51616375ad4ee::t_6841f5208be6c5 39-54
+packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
+  s_d51616375ad4ee::t_593a5c36dfb635 7-14,19,71-74,165-166,170-202
+  s_d51616375ad4ee::t_df60a8609222bf 203-204
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_d51616375ad4ee::t_0dbc0e9e9b0069 5
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_d51616375ad4ee::t_4af1589f6e32a7 5,44
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_d51616375ad4ee::t_681202135b0801 51
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  s_d51616375ad4ee::t_0e1d070dba04a7 1098-1139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa540178e5b2b6d2534c8a708f7126d7b0723479",
+  "prompts": {},
+  "sessions": {
+    "s_d51616375ad4ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a27e4e53-5e32-4961-9672-f9b46ca06994",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

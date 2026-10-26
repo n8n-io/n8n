@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/HomeAssistant/test/workflow/HomeAssistant.workflow.test.ts
+  s_2e1fa95fc44f8f::t_b2594e3dd247cd 1-54
+packages/nodes-base/nodes/HomeAssistant/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_d2e9bc3fd9ce21 1-378
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d57fabe9173b4424fc318d0e0031a2c39af72ba3",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+packages/cli/src/workflow-execute-additional-data.ts
+  s_58620fba057bad::t_280b5863faaa47 59
+packages/cli/src/modules/agents/evaluation/agent-evaluation.contracts.ts
+  s_58620fba057bad::t_280b5863faaa47 1,3-26,28-30
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_58620fba057bad::t_280b5863faaa47 27
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_58620fba057bad::t_280b5863faaa47 46
+packages/cli/src/modules/agents/evaluation/agent-evaluation.service.ts
+  s_58620fba057bad::t_280b5863faaa47 1-125
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_58620fba057bad::t_280b5863faaa47 12-15,20-21,29,32,48-56,108-109,114,131,145-147,154-155,157-158,165,170-172,179-181,194,200,220,242,269,284,294,318,343,350,390,431-434,451,458-461,466,482,500,523,543,568,585-587,602-611,625-631
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_58620fba057bad::t_280b5863faaa47 48
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_58620fba057bad::t_280b5863faaa47 55,65-66
+packages/cli/src/modules/agents/evaluation/evaluation-config.ts
+  s_58620fba057bad::t_280b5863faaa47 1-113
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_58620fba057bad::t_280b5863faaa47 39
+packages/cli/src/modules/agents/tools/node-tool-factory.ts
+  s_58620fba057bad::t_280b5863faaa47 19
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_58620fba057bad::t_280b5863faaa47 63
+packages/cli/src/modules/agents/evaluation/__tests__/agent-evaluation.service.test.ts
+  s_58620fba057bad::t_280b5863faaa47 1-247
+packages/cli/src/modules/agents/evaluation/__tests__/evaluation-config.test.ts
+  s_58620fba057bad::t_280b5863faaa47 1-111
+packages/cli/src/modules/instance-ai/eval/__tests__/execution.service.test.ts
+  s_58620fba057bad::t_280b5863faaa47 20
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_58620fba057bad::t_280b5863faaa47 21-22,27,133-157,190-193,322-326,328-341,343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3c22050aab7a1b2beedb3e612f9a5fc79661d38",
+  "prompts": {},
+  "sessions": {
+    "s_58620fba057bad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13f8e-afeb-7511-82e8-d8246a12076c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

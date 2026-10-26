@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_234832aa318d60::t_27c9061cafa052 814,828,840-842,853,872
+packages/@n8n/api-types/src/agents/types.ts
+  s_234832aa318d60::t_be3f5eb49b658c 447
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_234832aa318d60::t_332bce3b82a1f9 4548-4549,4552,4554,4570-4572,4576,4579-4580,4582,4586-4587,4601-4604,4606,4609-4610,4612,4629-4630,4634-4638
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_234832aa318d60::t_4886dcbbc2505c 630,638,673,693
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_234832aa318d60::t_be3f5eb49b658c 36,38,42,86-88,90,92,96,105,109-110,114-115,119-120,123
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_234832aa318d60::t_be3f5eb49b658c 356,359-362,364,368
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_234832aa318d60::t_f28c7258e914d4 428-430,433,435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3105656e40aa818635f764dfcc525d3c7789cf30",
+  "prompts": {},
+  "sessions": {
+    "s_234832aa318d60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be3f1a42-934b-41b5-b566-dced269d16b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

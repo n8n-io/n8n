@@ -1,0 +1,28 @@
+packages/cli/src/commands/base-command.ts
+  s_933070d0aea825::t_a018985dfb9c6b 315
+  s_933070d0aea825::t_5203cc63b4891f 289-291
+packages/cli/src/commands/__tests__/execute.test.ts
+  s_933070d0aea825::t_cf7b7df90d97ac 214
+  s_933070d0aea825::t_6acce5938f75d0 301
+  s_933070d0aea825::t_19ca42d79972df 310-337
+packages/workflow/src/expression.ts
+  s_933070d0aea825::t_82785794f6fc7d 628
+packages/workflow/test/native-evaluation-verify.test.ts
+  s_933070d0aea825::t_b5a27ca02d5224 173-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ce3497774d624200efe5f00c9a3bf1679836bb2",
+  "prompts": {},
+  "sessions": {
+    "s_933070d0aea825": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ee3a819-a5dd-4ffe-994f-d18d7afd3f99",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

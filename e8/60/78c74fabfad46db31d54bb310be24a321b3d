@@ -1,0 +1,21 @@
+packages/cli/src/expression-observability/__tests__/expression-observability.provider.test.ts
+  s_4ae3be5380c2af::t_5a222c41e18545 26-27
+packages/@n8n/config/src/configs/expression-engine.config.ts
+  s_4ae3be5380c2af::t_6fee63042333f7 68-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e86078c74fabfad46db31d54bb310be24a321b3d",
+  "prompts": {},
+  "sessions": {
+    "s_4ae3be5380c2af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2443cbf1-b425-4118-91f3-38b358f7777e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

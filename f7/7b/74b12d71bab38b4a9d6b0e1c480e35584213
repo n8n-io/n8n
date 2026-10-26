@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/evaluations/discovery/cli.ts
+  s_477941eb7ed906::t_e5c308740658e5 177-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f77b74b12d71bab38b4a9d6b0e1c480e35584213",
+  "prompts": {},
+  "sessions": {
+    "s_477941eb7ed906": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a19031c1-bf52-41d7-aef1-e6d0c26b3bfb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

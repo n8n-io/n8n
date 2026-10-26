@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.ts
+  s_435076b3ca8555::t_bbf8666203a1d7 83-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4e9deb9cef87a2bfb6d4ae9748cb38285c174f32",
+  "prompts": {},
+  "sessions": {
+    "s_435076b3ca8555": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da43e803-76da-49a9-b5ef-e4967fafc650",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

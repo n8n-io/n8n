@@ -1,0 +1,33 @@
+packages/@n8n/nodes-langchain/credentials/AzureEntraCognitiveServicesOAuth2Api.credentials.ts
+  s_9eede8cb7d9e61::t_b44cb6e78aba91 61-69
+packages/@n8n/nodes-langchain/credentials/AzureOpenAiApi.credentials.ts
+  s_9eede8cb7d9e61::t_9e2463fe2aa473 57-65
+packages/@n8n/nodes-langchain/credentials/test/AzureEntraCognitiveServicesOAuth2Api.credentials.test.ts
+  s_9eede8cb7d9e61::t_fe6290d55d6eb3 14-24
+packages/@n8n/nodes-langchain/credentials/test/AzureOpenAiApi.credentials.test.ts
+  s_9eede8cb7d9e61::t_09a3ecdbb8aa62 46-57
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.test.ts
+  s_9eede8cb7d9e61::t_2688170e58af09 96,113,120-175
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.ts
+  s_9eede8cb7d9e61::t_a07d04c4b54a36 14,39,51-52,57,67,78
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/properties.ts
+  s_9eede8cb7d9e61::t_c4659d371df9d9 57
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/types.ts
+  s_9eede8cb7d9e61::t_eef5140deae216 118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be51ed40bc441a0c1beffbb0967da1340f117c97",
+  "prompts": {},
+  "sessions": {
+    "s_9eede8cb7d9e61": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5cedc78e-75ca-408d-aea0-b07f90cbad00",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

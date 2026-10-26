@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2e7e9ffc6c26aff07e43d52ac694b52c79f6380",
+  "prompts": {},
+  "sessions": {
+    "s_552547881634b9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a14091-11a5-72be-863b-392cb0e314a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

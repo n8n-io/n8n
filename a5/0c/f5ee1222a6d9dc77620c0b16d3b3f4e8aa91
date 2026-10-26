@@ -1,0 +1,97 @@
+.github/test-metrics/e2e-impact-map.json
+  s_45c9c02db4924e::t_41822700784648 1
+packages/@n8n/agents/docs/prompt-caching.md
+  s_45c9c02db4924e::t_b74bb10b0794ab 49-113,123-125,218-225,284-286
+packages/@n8n/agents/src/__tests__/agent-configuration.test.ts
+  s_45c9c02db4924e::t_cddbdaad20cd1d 23-32
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/provider-tool-executes-without-interruption-while-a-mixed-in-interruptible-tool-suspends.json
+  s_45c9c02db4924e::t_5394c6c442d48f 55,60,63,66,69,72,77-78,81,120,123,128,131-134,138-141,147-148,152-160,162,166-169,173-176,180-183,187-190,194-195,197,200-203,207,211,214,227,262,267,270,273,276,279,284-285,288
+packages/@n8n/agents/src/index.ts
+  s_45c9c02db4924e::t_c0e8abd36eb613 98
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime-conversion.test.ts
+  s_45c9c02db4924e::t_826fb06fd9c77a 18,22-68
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_45c9c02db4924e::t_6848ae53ea61a6 57-58,83-84,1871,1885,1887-1889,3868-3901,5939,5956,5958-5960,9716-9735,9737-9745,9747-9753,9755-9756,9758-9759,9761-9765,9767-9781
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_45c9c02db4924e::t_fee553597b65e0 214,974,1058
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_45c9c02db4924e::t_2ba8d9169212b4 27-32,35,79-80,101-103,144,152-159,168,172,184,211-213,217,226-227,229-231,242
+packages/@n8n/agents/src/runtime/model/__tests__/prompt-cache.test.ts
+  s_45c9c02db4924e::t_d8c7ae7f2b4a8b 299-311,367-370,436-444,446-453,455-463
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_45c9c02db4924e::t_d7c2588ad5f7d6 279,294,304,537
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_45c9c02db4924e::t_999f42e8fefa24 3,8-10,87,246,288,501-510
+packages/@n8n/agents/src/runtime/model/prompt-cache.ts
+  s_45c9c02db4924e::t_5c7e30b1d6df22 97-98,100-104,263-267
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_45c9c02db4924e::t_f4a088d1213148 15,150,158,281,296
+packages/@n8n/agents/src/sdk/agent.ts
+  s_45c9c02db4924e::t_d03f1125d0e86f 76,152,188-189,325-330,748-750,1178,1326
+packages/@n8n/agents/src/types/index.ts
+  s_45c9c02db4924e::t_02ff18d9f042df 67
+packages/@n8n/agents/src/types/runtime/agent-runtime.ts
+  s_45c9c02db4924e::t_0ad256d5eeff29 27-32,57
+packages/@n8n/agents/src/types/sdk/agent-builder.ts
+  s_45c9c02db4924e::t_10611b0a7438ce 1,25
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_45c9c02db4924e::t_1b4631da536f41 312-316
+packages/@n8n/agents/src/types/sdk/message.ts
+  s_45c9c02db4924e::t_73b6a8c0c29813 137-139
+packages/@n8n/agents/vitest.integration.setup.ts
+  s_45c9c02db4924e::t_e6eb18e068f380 128-129
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_45c9c02db4924e::t_d9a49a139ef547 9,15-48
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_45c9c02db4924e::t_4442d8be850bb3 432,481-492
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-subagent-workspace.test.ts
+  s_45c9c02db4924e::t_1f98eec9e2d27f 125-131
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-context.adapter.test.ts
+  s_45c9c02db4924e::t_4a07230d870486 4-9,13-15,18-30,32,34-41,45-47,50-58,60,62-64
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_45c9c02db4924e::t_444c2f1f0fed5b 3,908-910
+packages/cli/src/modules/agents/builder/__tests__/format-preview-context.test.ts
+  s_45c9c02db4924e::t_e11d6df98a3b7e 1-6,13,19,22,33,129
+packages/cli/src/modules/agents/builder/format-preview-context.ts
+  s_45c9c02db4924e::t_d3a21263f87c0e 3-8,52,88,114,116,135,159-160
+packages/cli/src/modules/agents/instance-ai-agent-context.adapter.ts
+  s_45c9c02db4924e::t_c1f594b7df8281 3,5,11,14,17-18,20-22,25-27
+packages/cli/src/modules/instance-ai/__tests__/agent-preview-handoff.test.ts
+  s_45c9c02db4924e::t_59e6099d475328 1-4,11,17,20,31
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-pending-agent.service.test.ts
+  s_45c9c02db4924e::t_fb6b8331933e23 4,7-8,13-15,17-18,20,23,27-28,32-35,37-43,45-47,49,54-73,75-81,86-89,92,99,103-108,111-129,131-135,137-167
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-skills.service.test.ts
+  s_45c9c02db4924e::t_61d5fc17d2d960 50
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_45c9c02db4924e::t_4c2a62410ae2b6 1594-1598,1611-1615,1634-1638
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.agent-context.test.ts
+  s_45c9c02db4924e::t_e4d6786d5c8c26 7-8,20,64-124
+packages/cli/src/modules/instance-ai/agent-preview-handoff.ts
+  s_45c9c02db4924e::t_00b952c760aebe 8,42-47
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.test.ts
+  s_45c9c02db4924e::t_b56a0869f9a576 19,609,636-645,675,709,721,750,801,824,833,845,859,868,880-884,893
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_45c9c02db4924e::t_213354bf330ee2 34,294,315,318,323,381,384,393,397
+packages/cli/src/modules/instance-ai/instance-ai-pending-agent.service.ts
+  s_45c9c02db4924e::t_e2796e480749aa 8,24-25,43,58,72-79,90,98
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_45c9c02db4924e::t_c330135ea58acd 1406
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_45c9c02db4924e::t_59c434b1441ea0 279,2996,3000,3003,3047,3049,4190-4191,4197-4198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a50cf5ee1222a6d9dc77620c0b16d3b3f4e8aa91",
+  "prompts": {},
+  "sessions": {
+    "s_45c9c02db4924e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13acd-cd08-74b2-b4f6-17aac3637046",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

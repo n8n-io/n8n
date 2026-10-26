@@ -1,0 +1,51 @@
+packages/nodes-base/nodes/TheHiveProject/transport/requestApi.ts
+  s_2e1fa95fc44f8f::t_12d3cc895c181d 25
+packages/nodes-base/nodes/TheHiveProject/actions/alert/create.operation.ts
+  s_583f3daf84dd86::t_6a506b3a2cef3e 182-184
+packages/nodes-base/nodes/TheHiveProject/actions/case/addAttachment.operation.ts
+  s_583f3daf84dd86::t_7856f7fd5dd03c 77-79
+packages/nodes-base/nodes/TheHiveProject/actions/log/addAttachment.operation.ts
+  s_583f3daf84dd86::t_bee1ab39afc28e 55-57
+packages/nodes-base/nodes/TheHiveProject/actions/log/create.operation.ts
+  s_583f3daf84dd86::t_0c3d0d24ff5639 98-100
+packages/nodes-base/nodes/TheHiveProject/actions/observable/create.operation.ts
+  s_583f3daf84dd86::t_a274a5b4289259 165-167
+packages/nodes-base/nodes/TravisCi/GenericFunctions.ts
+  s_4ebde64ab825df::t_cab81ff471bdc4 48-55
+packages/nodes-base/nodes/TravisCi/TravisCi.node.ts
+  s_4ebde64ab825df::t_883e25512b7132 11,164
+packages/nodes-base/nodes/TravisCi/test/GenericFunctions.test.ts
+  s_583f3daf84dd86::t_662b35b2238f66 5,24-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa09ed018b27dfec44b69b8234948d4cf94fe65f",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4ebde64ab825df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9b9b2bb511b5c44a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_583f3daf84dd86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a95339e7aeb200f99",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

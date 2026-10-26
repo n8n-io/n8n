@@ -20,6 +20,8 @@ packages/@n8n/config/src/configs/engine.config.ts
   s_794845deccc20b::t_9bbbf1f363a95f 4,66-73
 packages/cli/src/services/engine-v2-dispatcher.service.ts
   s_794845deccc20b::t_9bbbf1f363a95f 11,14,86-91,107-109
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_a52facf53351c5::t_dfe7423ae8332d 253-275,338,347,350-366,369-378,379-380,397-402,409-416,420,430,434-435,437-438,440,442-443,448-451,453,455-467,470-536,537-552,565,567,572-575,578-590,591-610,612,613-634,645-656,658-675,676-692,693-709,721-722,724-742,743-756,757-762,771-775,778,781-789,791-803,804-809,814-815,817,825-835,837-840,841-864,866-868,930-934,937-940,942,944-945,949,962-978,984-1001,1002-1013,1015,1044-1045,1047-1050,1058-1086
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -34,6 +36,14 @@ packages/cli/src/services/engine-v2-dispatcher.service.ts
         "model": "gpt-5.6-sol"
       },
       "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_a52facf53351c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b491-bd1b-7860-8002-0194a946ab94",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }
   }
 }

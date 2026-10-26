@@ -1,0 +1,24 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review.repository.integration.test.ts
+  s_47d1e0264915a8::t_38b448771d8237 127-153
+packages/@n8n/api-types/src/dto/promotions/promotion-review.dto.ts
+  s_47d1e0264915a8::t_21f2fc9d05ed71 102,104-107
+  s_47d1e0264915a8::t_e1db4e895f0716 52-55
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-review.repository.ts
+  s_47d1e0264915a8::t_86cbebaa1b36ee 18-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ebc62ef734ad20fa6d443e490880be9aaa1a9cd",
+  "prompts": {},
+  "sessions": {
+    "s_47d1e0264915a8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "60e62fb0-397a-40d4-9c2f-b454af702013",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

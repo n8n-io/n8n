@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Google/BusinessProfile/GoogleBusinessProfileTrigger.node.ts
+  s_2e1fa95fc44f8f::t_5cbea313ccd186 145
+  s_2e1fa95fc44f8f::t_1bffa0815e2a85 9,12-17,155-159
+packages/nodes-base/nodes/Google/BusinessProfile/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_a29d6dbf68032c 4-5,19-21,323,326,328,335,353-380,398,404,442,447,454,490,531
+packages/nodes-base/nodes/Google/BusinessProfile/test/GoogleApiRequest.test.ts
+  s_2e1fa95fc44f8f::t_3dfce44e037e26 1-6,8,27,33-35,49-54,61-63,76,91-93,99-126
+packages/nodes-base/nodes/Google/BusinessProfile/test/SearchLocations.test.ts
+  s_2e1fa95fc44f8f::t_a7772a32e8faf5 19-21
+packages/nodes-base/nodes/Google/BusinessProfile/test/SearchPosts.test.ts
+  s_2e1fa95fc44f8f::t_a435a4f20372b2 19-21
+packages/nodes-base/nodes/Google/BusinessProfile/test/SearchReviews.test.ts
+  s_2e1fa95fc44f8f::t_4ae08accb94843 20-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99aa80efe48f1a127e3837b7d04b48e80ce7c960",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.stories.ts
+  s_c59e21f9b5250b::t_0d8d8bb25562cf 122-136,138-140,142,149-157,159-177
+  s_c59e21f9b5250b::t_c979668b378fba 145-146
+  s_c59e21f9b5250b::t_b69c8242e378be 137,141,143-144,147-148,158
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.test.ts
+  s_c59e21f9b5250b::t_c979668b378fba 24,53-56
+  s_c59e21f9b5250b::t_59f1876a32c961 16,25,40-44,57,59-60,62-64,66-73,77-79,91,94-95,97,103,109-110,115-116,121-122,127,130,143
+  s_c59e21f9b5250b::t_0411e0e5943d16 2,11-15,17-23,26-39,45-49,51-52,58,61,65,74-76,80-90,92-93,96,98-102,104-108,111-114,117-120,123-126,128-129,131-142,144
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_c59e21f9b5250b::t_c979668b378fba 62-65,72-76,79,81,83-92
+  s_c59e21f9b5250b::t_de3d663e3402dc 2-3,6,22-23,26-28,31,36-39,48,93-101,103,108,117-126,212-221,228-230,234-235,244-247,249-253,258-259,282,311,330,342,410-427
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_c59e21f9b5250b::t_ec2ebb1fb87e8f 56-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d1a3606ca2a1940773397657eb14d4fdcfa79c7",
+  "prompts": {},
+  "sessions": {
+    "s_c59e21f9b5250b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a159d0-203b-73e2-a6c9-a261f76f0c06",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

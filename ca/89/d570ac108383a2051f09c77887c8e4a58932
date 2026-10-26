@@ -1,0 +1,23 @@
+packages/@n8n/db/src/migrations/common/1792051765225-AddInstanceScopeToAgents.ts
+  s_f492ca66fffc84::t_9b07c395e84e7a 14
+packages/cli/test/migration/1792051765225-add-instance-scope-to-agents.test.ts
+  s_f492ca66fffc84::t_9b07c395e84e7a 13
+packages/@n8n/db/src/migrations/sqlite/1792051765225-AddInstanceScopeToAgents.ts
+  s_f492ca66fffc84::t_9b07c395e84e7a 3,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ca89d570ac108383a2051f09c77887c8e4a58932",
+  "prompts": {},
+  "sessions": {
+    "s_f492ca66fffc84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb73c4c0-ce17-4d70-8113-ed2daa4d066a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

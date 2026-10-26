@@ -1,0 +1,50 @@
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.openapi.ts
+  s_bb83266717791e::t_dbc8e92e037ff9 107-121
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_bb83266717791e::t_8c6778930ac749 5-8,585
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_bb83266717791e::t_dbc8e92e037ff9 12-13,152-163,407
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_bb83266717791e::t_bfbf2a0c02b793 15,22,51,58-59,66,71-75,80,91-122,124,137
+packages/cli/src/modules/n8n-packages/entities/credential/credential-conflict-policy.ts
+  s_bb83266717791e::t_b27cbf44a665b6 10,12,44-46,96-97,116,125-132,185-194
+  s_bb83266717791e::t_842f70674d9a48 195-196
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_bb83266717791e::t_7c221f314635bf 98-100,102
+  s_bb83266717791e::t_f43e5631a5cc72 54-55,60-67,79-80,97,101
+  s_bb83266717791e::t_1609643d253fed 103
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_bb83266717791e::t_8c6778930ac749 7-10,228-231,234
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_bb83266717791e::t_1aa6742ad3df7a 299-318
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_bb83266717791e::t_1bf00f4a4497bf 52-58,180-184
+packages/cli/src/modules/n8n-packages/__tests__/blocking-issue-schema-contract.test.ts
+  s_bb83266717791e::t_e57c510756654e 35-39
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-blocked.error.test.ts
+  s_bb83266717791e::t_75653a61ae06d9 107-119
+packages/cli/src/modules/n8n-packages/__tests__/import-credential-conflict.integration.test.ts
+  s_bb83266717791e::t_adbd82068a5976 17,78-81,87,298-309,311-334,337-366
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-conflict-policy.test.ts
+  s_bb83266717791e::t_d29336970441ec 9,14-18,338-381
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_bb83266717791e::t_b4e6985e64fb03 448,450,528-529,543-553,559-581
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  s_bb83266717791e::t_f3f31909ad4ee4 204-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "03f2ac2d8b2ec6906e39d29e4c6f2cbddcd07c1b",
+  "prompts": {},
+  "sessions": {
+    "s_bb83266717791e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8291e227-a5ed-46e7-bb51-5eff2b4ab0a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

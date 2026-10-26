@@ -1,0 +1,27 @@
+packages/@n8n/node-cli/src/template/templates/declarative/custom/template/README.md
+  s_2e1fa95fc44f8f::t_c5105f0c1d0ba4 31-32
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/README.md
+  s_2e1fa95fc44f8f::t_372cf4e9114429 68
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom-example/template/README.md
+  s_2e1fa95fc44f8f::t_b37f46dce8120f 31-32
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom/template/README.md
+  s_2e1fa95fc44f8f::t_27c554254b5f6e 31-32
+packages/@n8n/node-cli/src/template/templates/shared/default/.agents/nodes-declarative.md
+  s_2e1fa95fc44f8f::t_a55f795b14ac6b 100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c007fe15a6409028c38f7928508586b3210c649",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

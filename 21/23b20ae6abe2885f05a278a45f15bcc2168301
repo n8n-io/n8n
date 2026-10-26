@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Facebook/FacebookGraphApi.node.ts
+  s_2e1fa95fc44f8f::t_0fd3ee77ff93db 83
+  s_2e1fa95fc44f8f::t_65c083f87448f0 478-484
+  s_2e1fa95fc44f8f::t_c4b4026a2697e8 397-398
+  s_2e1fa95fc44f8f::t_b81a4f73d46b34 21-25
+packages/nodes-base/nodes/Facebook/__tests__/FacebookGraphApi.node.test.ts
+  s_2e1fa95fc44f8f::t_56e0cc6be4f4ba 180-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2123b20ae6abe2885f05a278a45f15bcc2168301",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,119 @@
+packages/nodes-base/nodes/Confluence/methods/listSearch.ts
+  s_2e1fa95fc44f8f::t_fd748fefe7edf5 6
+  s_2e1fa95fc44f8f::t_8235f481101e5f 8,36,88,106,141-147
+packages/nodes-base/nodes/Confluence/actions/attachment/delete.operation.ts
+  s_2e1fa95fc44f8f::t_fd748fefe7edf5 1
+  s_2e1fa95fc44f8f::t_5d11c34d541aff 2,42,65,111
+packages/nodes-base/nodes/Confluence/test/actions/space/get.operation.test.ts
+  s_2e1fa95fc44f8f::t_ca58d7fb2141c9 56-64
+  s_4b13c6fdeedfcb::t_95c2a82114062b 2,52,71,85
+packages/nodes-base/nodes/Confluence/actions/common.ts
+  s_2e1fa95fc44f8f::t_fd748fefe7edf5 7
+  s_2e1fa95fc44f8f::t_36a333b64db9ef 9,333,454,494,526-532
+packages/nodes-base/nodes/Confluence/actions/attachment/getMany.operation.ts
+  s_2e1fa95fc44f8f::t_dfde559a4982e1 2,73
+packages/nodes-base/nodes/Confluence/actions/attachment/upload.operation.ts
+  s_2e1fa95fc44f8f::t_2cbd15d9c0fa3a 3,76
+packages/nodes-base/nodes/Confluence/actions/page/addLabels.operation.ts
+  s_2e1fa95fc44f8f::t_9957f2849e412f 2,68
+packages/nodes-base/nodes/Confluence/actions/page/create.operation.ts
+  s_2e1fa95fc44f8f::t_012647fd50bdb5 7,134
+packages/nodes-base/nodes/Confluence/actions/page/delete.operation.ts
+  s_2e1fa95fc44f8f::t_7c94c8364946af 2,48
+packages/nodes-base/nodes/Confluence/actions/page/deleteComment.operation.ts
+  s_2e1fa95fc44f8f::t_8938f44e6fc6e4 2,44
+packages/nodes-base/nodes/Confluence/actions/page/get.operation.ts
+  s_2e1fa95fc44f8f::t_4a1c3e02bdd70d 2,121,164,182
+packages/nodes-base/nodes/Confluence/actions/page/getComments.operation.ts
+  s_2e1fa95fc44f8f::t_4406f9f52871c9 2,93
+packages/nodes-base/nodes/Confluence/actions/page/getLabels.operation.ts
+  s_2e1fa95fc44f8f::t_a149ec4deace08 2,101
+packages/nodes-base/nodes/Confluence/actions/page/getManyByLabel.operation.ts
+  s_2e1fa95fc44f8f::t_33e6d444108c04 2,79
+packages/nodes-base/nodes/Confluence/actions/page/pageWrite.ts
+  s_2e1fa95fc44f8f::t_034763d854af1d 2,33,111
+packages/nodes-base/nodes/Confluence/actions/page/removeLabel.operation.ts
+  s_2e1fa95fc44f8f::t_f31633147fdb9f 2,70
+packages/nodes-base/nodes/Confluence/actions/space/get.operation.ts
+  s_2e1fa95fc44f8f::t_98806aa8921663 2,44
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_2e1fa95fc44f8f::t_ce0448f7636f0e 11-12,14,152,161,163,235,241,243
+packages/nodes-base/nodes/Confluence/test/actions/attachment/delete.operation.test.ts
+  s_4b13c6fdeedfcb::t_b17f0a3537904c 1,14
+packages/nodes-base/nodes/Confluence/test/actions/attachment/getMany.operation.test.ts
+  s_4b13c6fdeedfcb::t_be8da74db0203b 2,17
+packages/nodes-base/nodes/Confluence/test/actions/attachment/upload.operation.test.ts
+  s_4b13c6fdeedfcb::t_4d84b8930181cf 2,15,60
+packages/nodes-base/nodes/Confluence/test/actions/page/addComment.operation.test.ts
+  s_4b13c6fdeedfcb::t_26b6ec3d5fa54c 1,45,63,72,88,106
+packages/nodes-base/nodes/Confluence/test/actions/page/append.operation.test.ts
+  s_4b13c6fdeedfcb::t_b66c117374b346 1,50,54,113,117,143
+packages/nodes-base/nodes/Confluence/test/actions/page/create.operation.test.ts
+  s_4b13c6fdeedfcb::t_2d8681a27ec9af 1,35
+packages/nodes-base/nodes/Confluence/test/actions/page/delete.operation.test.ts
+  s_5fa5d2ccf12525::t_53cb091a3b1318 7,60,70,74,93,105,109,127
+packages/nodes-base/nodes/Confluence/test/actions/page/getComments.operation.test.ts
+  s_4b13c6fdeedfcb::t_35c83d7e071abd 8,67,89,106,131,138
+packages/nodes-base/nodes/Confluence/test/actions/page/getLabels.operation.test.ts
+  s_4b13c6fdeedfcb::t_4687388fc8f56a 2,15
+packages/nodes-base/nodes/Confluence/test/actions/page/getManyByLabel.operation.test.ts
+  s_4b13c6fdeedfcb::t_12ac7f3dcd3137 8,66,84,109,147,154,260,287
+packages/nodes-base/nodes/Confluence/test/actions/page/removeLabel.operation.test.ts
+  s_4b13c6fdeedfcb::t_7bfabe99ae69c9 2,33,85,92,106
+packages/nodes-base/nodes/Confluence/test/actions/search/query.operation.test.ts
+  s_4b13c6fdeedfcb::t_8a90e981212fb8 1,22
+packages/nodes-base/nodes/Confluence/actions/page/addComment.operation.ts
+  s_2e1fa95fc44f8f::t_00c0a5683837aa 7,67-72
+packages/nodes-base/nodes/Confluence/actions/search/query.operation.ts
+  s_2e1fa95fc44f8f::t_e420506971119b 2,162-168
+packages/nodes-base/nodes/Confluence/actions/space/getMany.operation.ts
+  s_2e1fa95fc44f8f::t_de52f79228b829 2,43-48
+packages/nodes-base/nodes/Confluence/test/actions/page/addLabels.operation.test.ts
+  s_2e1fa95fc44f8f::t_f163d1407490b2 1,26,40,95,99-104
+packages/nodes-base/nodes/Confluence/test/actions/page/deleteComment.operation.test.ts
+  s_2e1fa95fc44f8f::t_b16b1e10185bc4 1,24-27,34-37
+packages/nodes-base/nodes/Confluence/test/actions/page/get.operation.test.ts
+  s_2e1fa95fc44f8f::t_0e185471bce6fe 8,65,87,105,169,276,280-281,295,299,314,318,373,417,459,461,463,491,498,505,555-556,571,589-590,599,613,638,640-642,669,789,813,827,831,834
+packages/nodes-base/nodes/Confluence/test/actions/page/update.operation.test.ts
+  s_2e1fa95fc44f8f::t_fda3c1008e8712 1,39-46,124,128,152,217,221
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_2e1fa95fc44f8f::t_a4cd3b9706d6a9 1,74,95,122,144,172,193,211-214,230,241,264,291,305-307,341,396,409-414,466
+packages/nodes-base/nodes/Confluence/test/actions/space/getMany.operation.test.ts
+  s_2e1fa95fc44f8f::t_41418f716ac51d 2,50-55,74-80,84,103-109,113,126-131,200,219
+packages/nodes-base/nodes/Confluence/test/methods/listSearch.test.ts
+  s_2e1fa95fc44f8f::t_d2ee6f7f06ca22 1,66,87-88,113,120-121,144,155-157,196,235,254,270,276,291,299-300,329,348,377,432,452,481,554,574
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_f5d15bba53bd4a 2-9,68,108,123,130-131,134-136,148,161,172,186,197,210,226,247,267,278,286-288,295,301,313,319,328,343,350,528,539,555,573,596,610,656,672,686,715,743
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01a33a01513e31dea821aed5308816a819037ed7",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4b13c6fdeedfcb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac95db28d7dd57bdd",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_5fa5d2ccf12525": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2e6eead891460daf",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

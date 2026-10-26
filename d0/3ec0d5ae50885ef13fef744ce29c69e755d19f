@@ -1,0 +1,26 @@
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreDatabricks/VectorStoreDatabricks.node.test.ts
+  s_3fb02ceb0c8884::t_edb34bb7929830 99,104
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsDatabricks.test.ts
+  s_3fb02ceb0c8884::t_edb34bb7929830 102
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/__tests__/DatabricksAiAgent.node.test.ts
+  s_3fb02ceb0c8884::t_1bf23591ea261b 29-36
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/DatabricksAiAgent.node.ts
+  s_3fb02ceb0c8884::t_edb34bb7929830 140-145
+  s_3fb02ceb0c8884::t_5a6df47a0f69ed 146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d03ec0d5ae50885ef13fef744ce29c69e755d19f",
+  "prompts": {},
+  "sessions": {
+    "s_3fb02ceb0c8884": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b223eef3-0258-4eaf-b965-fa8fac274976",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

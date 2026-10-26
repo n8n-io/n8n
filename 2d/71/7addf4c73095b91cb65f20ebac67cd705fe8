@@ -1,0 +1,133 @@
+.github/test-metrics/e2e-impact-map.json
+  s_45c9c02db4924e::t_f13828e119e554 1
+packages/@n8n/agents/docs/prompt-caching.md
+  s_45c9c02db4924e::t_3398cfb4b8615c 49-113,123-125,218-225,284-286
+packages/@n8n/agents/src/__tests__/agent-configuration.test.ts
+  s_45c9c02db4924e::t_d179184d3f40d8 23-32
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/generate-preserves-discovery-approval-history-and-cache-store-false.json
+  s_45c9c02db4924e::t_ed5efe02a58c9e 1-714
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/generate-preserves-discovery-approval-history-and-cache-store-true.json
+  s_45c9c02db4924e::t_369fc9e68b6c51 1-564
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/generate-preserves-discovery-approval-history-and-cache-store-undefined.json
+  s_45c9c02db4924e::t_07ca7cbd242cc1 1-750
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-false.json
+  s_45c9c02db4924e::t_d6865c2215cb1a 1-722
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-true.json
+  s_45c9c02db4924e::t_259f148da69a39 1-572
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-undefined.json
+  s_45c9c02db4924e::t_f20865090c8472 1-774
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/provider-tool-executes-without-interruption-while-a-mixed-in-interruptible-tool-suspends.json
+  s_45c9c02db4924e::t_1fb5db689ffd0f 55,60,63,66,69,72,77-78,81,120,123,128,131-134,138-141,147-148,152-160,162,166-169,173-176,180-183,187-190,194-195,197,200-203,207,211,214,227,262,267,270,273,276,279,284-285,288
+packages/@n8n/agents/src/__tests__/integration/native-tool-deferral.test.ts
+  s_45c9c02db4924e::t_30f3a209d412a6 1-233
+packages/@n8n/agents/src/index.ts
+  s_45c9c02db4924e::t_2aeae5c994ce37 98
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime-conversion.test.ts
+  s_45c9c02db4924e::t_82034da529c651 18,22-68
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_45c9c02db4924e::t_c97b3917b7003a 57-58,83-84,1871,1885,1887-1889,3868-3901,5939,5956,5958-5960,9716-9735,9737-9745,9747-9753,9755-9756,9758-9759,9761-9765,9767-9781
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_45c9c02db4924e::t_5e79a51a736b42 214,974,1058
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_45c9c02db4924e::t_b72acb841f9d93 27-32,35,79-80,101-103,144,152-159,168,172,184,211-213,217,226-227,229-231,242
+packages/@n8n/agents/src/runtime/model/__tests__/native-tool-deferral.test.ts
+  s_45c9c02db4924e::t_3ddb8fa34df457 1-429
+packages/@n8n/agents/src/runtime/model/__tests__/prompt-cache.test.ts
+  s_45c9c02db4924e::t_05e463eb9fc76a 299-311,367-370,436-444,446-453,455-463
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_45c9c02db4924e::t_b1bd74679afc95 279,294,304,537
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_45c9c02db4924e::t_8307b8e6dc668b 3,8-10,87,246,288,501-510
+packages/@n8n/agents/src/runtime/model/native-tool-deferral.ts
+  s_45c9c02db4924e::t_c0bce9a27767c5 1-162
+packages/@n8n/agents/src/runtime/model/native-tool-deferral/anthropic.ts
+  s_45c9c02db4924e::t_eecb49155403ac 1-104
+packages/@n8n/agents/src/runtime/model/native-tool-deferral/openai.ts
+  s_45c9c02db4924e::t_02c24f71e19993 1-54
+packages/@n8n/agents/src/runtime/model/prompt-cache.ts
+  s_45c9c02db4924e::t_bbdf5906997f2e 97-98,100-104,263-267
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_45c9c02db4924e::t_6d8f9d4257529d 15,150,158,281,296
+packages/@n8n/agents/src/sdk/agent.ts
+  s_45c9c02db4924e::t_e8349cd3b63991 76,152,188-189,325-330,748-750,1178,1326
+packages/@n8n/agents/src/types/index.ts
+  s_45c9c02db4924e::t_d8196a4dfae312 67
+packages/@n8n/agents/src/types/runtime/agent-runtime.ts
+  s_45c9c02db4924e::t_07d0b9c5c542b9 27-32,57
+packages/@n8n/agents/src/types/sdk/agent-builder.ts
+  s_45c9c02db4924e::t_59ea22a0751ca1 1,25
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_45c9c02db4924e::t_a604a71230fa2b 312-316
+packages/@n8n/agents/src/types/sdk/message.ts
+  s_45c9c02db4924e::t_f2a0c0a7987789 137-139
+packages/@n8n/agents/vitest.integration.setup.ts
+  s_45c9c02db4924e::t_9cc339cd94ca45 128-129
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_45c9c02db4924e::t_deaa806da18bb7 9,15-48
+packages/cli/src/modules/agents/__tests__/agent-context.service.test.ts
+  s_45c9c02db4924e::t_7cc76db986996a 1-587
+packages/cli/src/modules/agents/__tests__/agent-draft.service.test.ts
+  s_45c9c02db4924e::t_1e0f9fa6070484 1-234
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_45c9c02db4924e::t_f292ef0e3befb1 432,481-492
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-subagent-workspace.test.ts
+  s_45c9c02db4924e::t_49fcccdf1c0641 125-131
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-context.adapter.test.ts
+  s_45c9c02db4924e::t_5ff8b8d60f748e 4-9,13-15,18-30,32,34-41,45-47,50-58,60,62-64
+packages/cli/src/modules/agents/agent-context.contracts.ts
+  s_45c9c02db4924e::t_6a00f8781ed728 1-81
+packages/cli/src/modules/agents/agent-context.service.ts
+  s_45c9c02db4924e::t_826917c107e999 1-316
+packages/cli/src/modules/agents/agent-draft.contracts.ts
+  s_45c9c02db4924e::t_8a8b14d1b0ba1b 1-57
+packages/cli/src/modules/agents/agent-draft.service.ts
+  s_45c9c02db4924e::t_7858c064bfd87f 1-103
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_45c9c02db4924e::t_a2fa20c2341f1e 3,908-910
+packages/cli/src/modules/agents/agent-session-read.ts
+  s_45c9c02db4924e::t_ac43f2a15fd7a8 1-41
+packages/cli/src/modules/agents/builder/__tests__/format-preview-context.test.ts
+  s_45c9c02db4924e::t_eeac8a7a26134f 1-6,13,19,22,33,129
+packages/cli/src/modules/agents/builder/format-preview-context.ts
+  s_45c9c02db4924e::t_9f641edb3addfb 3-8,52,88,114,116,135,159-160
+packages/cli/src/modules/agents/instance-ai-agent-context.adapter.ts
+  s_45c9c02db4924e::t_312f15e9c4f8da 3,5,11,14,17-18,20-22,25-27
+packages/cli/src/modules/instance-ai/__tests__/agent-preview-handoff.test.ts
+  s_45c9c02db4924e::t_7627d9e0e5796f 1-4,11,17,20,31
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-pending-agent.service.test.ts
+  s_45c9c02db4924e::t_5ea7283adf7048 4,7-8,13-15,17-18,20,23,27-28,32-35,37-43,45-47,49,54-73,75-81,86-89,92,99,103-108,111-129,131-135,137-167
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-skills.service.test.ts
+  s_45c9c02db4924e::t_93fab57f5cb36a 50
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_45c9c02db4924e::t_3ec4dc16148c4b 1594-1598,1611-1615,1634-1638
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.agent-context.test.ts
+  s_45c9c02db4924e::t_1bb91124201652 7-8,20,64-124
+packages/cli/src/modules/instance-ai/agent-preview-handoff.ts
+  s_45c9c02db4924e::t_9ca8290e26121b 8,42-47
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.test.ts
+  s_45c9c02db4924e::t_abf8740dde6c24 19,609,636-645,675,709,721,750,801,824,833,845,859,868,880-884,893
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_45c9c02db4924e::t_a9126eabb5a914 34,294,315,318,323,381,384,393,397
+packages/cli/src/modules/instance-ai/instance-ai-pending-agent.service.ts
+  s_45c9c02db4924e::t_4af7de01fce2d0 8,24-25,43,58,72-79,90,98
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_45c9c02db4924e::t_1ae9c05456d8bf 1406
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_45c9c02db4924e::t_a9b08f3c9a89b2 279,2996,3000,3003,3047,3049,4190-4191,4197-4198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d717addf4c73095b91cb65f20ebac67cd705fe8",
+  "prompts": {},
+  "sessions": {
+    "s_45c9c02db4924e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13acd-cd08-74b2-b4f6-17aac3637046",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

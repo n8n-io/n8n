@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Microsoft/Dataverse/test/workflow/requestUrls.test.ts
+  s_2e1fa95fc44f8f::t_e8ad08f7009117 1-62
+packages/nodes-base/nodes/Microsoft/Dataverse/test/workflow/requestUrls.workflow.json
+  s_2e1fa95fc44f8f::t_0527c40ad4f7a5 1-165
+  s_2e1fa95fc44f8f::t_0d6e419f65cce5 166-168
+  s_01a6cef1dba9b2::t_31635d75fcfae2 169-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c7e5401fc58ac1e25f92e8464e07ea00fb95dc88",
+  "prompts": {},
+  "sessions": {
+    "s_01a6cef1dba9b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a04ba7208f8c81e30",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

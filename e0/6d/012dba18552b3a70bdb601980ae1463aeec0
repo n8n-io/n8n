@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Google/Sheet/test/v1/GoogleSheet.test.ts
+  s_2e1fa95fc44f8f::t_a0e0724a870f5c 1-19
+packages/nodes-base/nodes/Google/Sheet/v2/helpers/GoogleSheets.utils.ts
+  s_31cebdf9d3ffe1::t_655f790596d41a 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e06d012dba18552b3a70bdb601980ae1463aeec0",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_31cebdf9d3ffe1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a29c3b63139d7fbed",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

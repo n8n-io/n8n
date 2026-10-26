@@ -1,0 +1,37 @@
+packages/cli/src/events/maps/relay.event-map.ts
+  s_5da27d368df3fc::t_c3f64c2ca053b0 369-374
+packages/cli/src/modules/sso-saml/saml.service.ee.ts
+  s_5da27d368df3fc::t_c3f64c2ca053b0 23,106,401-415
+  s_5da27d368df3fc::t_458c1812fae055 400
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_5da27d368df3fc::t_4c78cf8501f90d 1738-1762,1764-1766
+  s_5da27d368df3fc::t_458c1812fae055 1763
+packages/cli/src/modules/sso-saml/__tests__/saml.service.ee.test.ts
+  s_5da27d368df3fc::t_8b4c3eaa5e52d8 19
+  s_5da27d368df3fc::t_3450149673451f 233
+  s_5da27d368df3fc::t_e0222acf21ea19 536,538-552,555-574,576-582
+  s_5da27d368df3fc::t_1ea12d8981f4a6 172
+  s_5da27d368df3fc::t_f2232f9ae07286 252
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_5da27d368df3fc::t_c3f64c2ca053b0 81
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_5da27d368df3fc::t_c3f64c2ca053b0 105,633-640
+  s_5da27d368df3fc::t_458c1812fae055 641
+  s_5da27d368df3fc::t_1406dc4530afd4 642-644
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b52b212c93c5cb1fff993d884d05457b2435b376",
+  "prompts": {},
+  "sessions": {
+    "s_5da27d368df3fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b09342bb-f16e-455e-b993-8a3b26de57a6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
