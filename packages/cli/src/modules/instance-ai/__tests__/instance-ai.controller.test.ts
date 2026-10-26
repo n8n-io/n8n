@@ -1885,6 +1885,32 @@ describe('InstanceAiController', () => {
 			});
 		});
 
+		it('should start delivering waiting cloud browser results without waiting for it', async () => {
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			eventLog.getNextEventId.mockResolvedValue(42);
+			instanceAiService.getActiveRunId.mockReturnValue(undefined);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+			// A delivery that never ends must not hold up the messages.
+			instanceAiService.maybeDeliverCloudBrowserTaskResults.mockReturnValue(
+				new Promise<void>(() => {}),
+			);
+			const query = mock<InstanceAiThreadMessagesQuery>({ limit: 50, page: 0, raw: undefined });
+
+			const result = await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			expect(result).toMatchObject({ nextEventId: 42 });
+			expect(instanceAiService.maybeDeliverCloudBrowserTaskResults).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+			);
+		});
+
 		it("should leave out a background task's turn, but not the turn of one detached from it", async () => {
 			instanceAiService.getActiveRunId.mockReturnValue(undefined);
 			instanceAiService.getThreadStatus.mockReturnValue({

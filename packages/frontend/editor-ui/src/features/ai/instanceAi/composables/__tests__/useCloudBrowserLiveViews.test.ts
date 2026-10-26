@@ -229,6 +229,26 @@ describe('useCloudBrowserLiveViews', () => {
 		expect(views.get('task-1')).toEqual(popup);
 	});
 
+	it('ignores the answer for an old session that arrives after the answer for the new one', async () => {
+		let resolveFirst!: (view: InstanceAiCloudBrowserLiveViewResponse) => void;
+		const second = { ...popup, liveViewUrl: 'https://live.example.com/2' };
+		vi.mocked(fetchCloudBrowserLiveView)
+			.mockImplementationOnce(async () => await new Promise((resolve) => (resolveFirst = resolve)))
+			.mockResolvedValue(second);
+
+		const { tasks, views } = setup([makeTask({ sessionKey: 'tc-1' })]);
+		tasks.value = [makeTask({ sessionKey: 'tc-2' })];
+		await flushPromises();
+		expect(views.get('task-1')).toEqual(second);
+
+		resolveFirst({ status: 'starting' });
+		await flushPromises();
+		await vi.advanceTimersByTimeAsync(CLOUD_BROWSER_LIVE_VIEW_RETRY_INTERVAL * 3);
+
+		expect(views.get('task-1')).toEqual(second);
+		expect(fetchCloudBrowserLiveView).toHaveBeenCalledTimes(2);
+	});
+
 	it('forgets a task that stopped running, and stops asking for it', async () => {
 		vi.mocked(fetchCloudBrowserLiveView).mockResolvedValue({ status: 'starting' });
 
@@ -256,6 +276,21 @@ describe('useCloudBrowserLiveViews', () => {
 		await vi.advanceTimersByTimeAsync(CLOUD_BROWSER_LIVE_VIEW_RETRY_INTERVAL * 3);
 
 		expect(views.has('task-1')).toBe(false);
+		expect(fetchCloudBrowserLiveView).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not ask again for a response that arrives after the thread view went away', async () => {
+		let resolveFetch!: (view: InstanceAiCloudBrowserLiveViewResponse) => void;
+		vi.mocked(fetchCloudBrowserLiveView).mockImplementationOnce(
+			async () => await new Promise((resolve) => (resolveFetch = resolve)),
+		);
+
+		const { scope } = setup([makeTask()]);
+		scope.stop();
+		resolveFetch({ status: 'starting' });
+		await flushPromises();
+		await vi.advanceTimersByTimeAsync(CLOUD_BROWSER_LIVE_VIEW_RETRY_INTERVAL * 3);
+
 		expect(fetchCloudBrowserLiveView).toHaveBeenCalledTimes(1);
 	});
 

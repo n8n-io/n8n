@@ -253,6 +253,9 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			? await adapterOf(session)?.getTargetId?.(currentWindow)
 			: undefined;
 		const liveViewUrl = await sessionProvider.getSessionLiveViewUrl(scope, session.id, targetId);
+		// The session can end or change before we get the live url response.
+		// Then this link is old, and we need the client to ask again.
+		if (this.activeSession?.id !== session.id) return { status: 'starting' };
 		return { status: 'live', liveViewUrl, windowId: session.windows.at(-1) ?? '' };
 	}
 

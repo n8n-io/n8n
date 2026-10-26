@@ -33,6 +33,7 @@ import {
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isArtifactTab, useCanvasPreview } from './useCanvasPreview';
+import { CloudBrowserTasksKey } from './composables/useCloudBrowserTasks';
 import {
 	CloudBrowserLiveViewsKey,
 	useCloudBrowserLiveViews,
@@ -347,6 +348,7 @@ provide('openWorkflowPreview', openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openCloudBrowserTab', preview.openCloudBrowserTab);
+provide(CloudBrowserTasksKey, preview.cloudBrowserTasks);
 // Only a running task has a browser to show.
 const runningCloudBrowserTasks = computed(() =>
 	preview.cloudBrowserTasks.value.filter((task) => task.state === 'running'),
