@@ -1773,7 +1773,20 @@ describe('McpAgentToolsService', () => {
 			duration: 100,
 			totalTokens: 15,
 			error: null,
-			timeline: [{ type: 'text', content: `Reply ${id}`, timestamp: 1 }],
+			timeline: [
+				{
+					type: 'tool-call',
+					kind: 'tool',
+					name: 'lookup_order',
+					toolCallId: `call-${id}`,
+					input: { orderId: 'BAD-1' },
+					output: { error: 'Order database is not reachable' },
+					startTime: 1,
+					endTime: 2,
+					success: false,
+				},
+				{ type: 'text', content: `Reply ${id}`, timestamp: 3 },
+			],
 		});
 		const sessionDetail: AgentSessionDetail = {
 			thread: {

@@ -38,6 +38,7 @@ import { AgentIntegrationManagementService } from '@/modules/agents/agent-integr
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
 import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
+import { toSessionTitle } from '@/modules/agents/agent-session-read';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
 import {
@@ -1039,7 +1040,7 @@ export class McpAgentToolsService {
 						session: {
 							sessionId: id,
 							...thread,
-							title: title?.trim() || `Session #${thread.sessionNumber}`,
+							title: toSessionTitle(title, thread.sessionNumber),
 						},
 						executions,
 					};

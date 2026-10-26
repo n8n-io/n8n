@@ -33,7 +33,7 @@ import { AgentsToolsService } from './agents-tools.service';
 import { AgentsService } from './agents.service';
 import { AttachableWorkflowsService } from './attachable-workflows.service';
 import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
-import { toAgentSessionDetail } from './agent-session-read';
+import { toAgentSessionDetail, toSessionTitle } from './agent-session-read';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import { jsonSchemaToCompactText } from './json-config/schema-text-serializer';
@@ -43,7 +43,7 @@ const toSessionSummary = (thread: ThreadListItem): AgentSessionSummary => ({
 	threadId: thread.id,
 	agentId: thread.agentId,
 	agentName: thread.agentName,
-	title: thread.title?.trim() || `Session #${thread.sessionNumber}`,
+	title: toSessionTitle(thread.title, thread.sessionNumber),
 	sessionNumber: thread.sessionNumber,
 	createdAt: thread.createdAt.toISOString(),
 	updatedAt: thread.updatedAt.toISOString(),
@@ -67,7 +67,7 @@ const toSessionDetailSummary = (detail: ThreadDetail): AgentSessionSummary => {
 		threadId: detail.thread.id,
 		agentId: detail.thread.agentId,
 		agentName: detail.thread.agentName,
-		title: detail.thread.title?.trim() || `Session #${detail.thread.sessionNumber}`,
+		title: toSessionTitle(detail.thread.title, detail.thread.sessionNumber),
 		sessionNumber: detail.thread.sessionNumber,
 		createdAt: detail.thread.createdAt.toISOString(),
 		updatedAt: detail.thread.updatedAt.toISOString(),
