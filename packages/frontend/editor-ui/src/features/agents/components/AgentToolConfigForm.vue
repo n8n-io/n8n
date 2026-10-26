@@ -1,13 +1,21 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
-import { N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nText } from '@n8n/design-system';
 import {
 	RestrictedToolCallout,
 	useNodeTypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { extractFromAICalls, type INode } from 'n8n-workflow';
-import { computed, effectScope, onBeforeUnmount, ref, watch } from 'vue';
+import {
+	computed,
+	effectScope,
+	onBeforeUnmount,
+	ref,
+	toValue,
+	watch,
+	type MaybeRefOrGetter,
+} from 'vue';
 
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -21,6 +29,7 @@ import {
 	updateWorkflowToolRef,
 } from '../composables/useAgentToolRefAdapter';
 import { nodeToMcpServer } from '../composables/useMcpServerAdapter';
+import { isRestrictedByInlineTool } from '../utils/validationIssues';
 import type {
 	AgentJsonMcpServerConfig,
 	AgentJsonToolRef,
@@ -39,7 +48,8 @@ interface ToolModalData {
 	existingToolNames?: string[];
 	projectId?: string;
 	agentId?: string;
-	validationIssues?: AgentConfigValidationIssue[];
+	/** A getter keeps the form current when the builder validates again while the modal is open. */
+	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
 	/** Inline agents pass false because approval needs suspend and resume. */
 	supportsToolApproval?: boolean;
 	onConfirm: (updatedRef: AgentJsonToolRef) => void;
@@ -94,6 +104,7 @@ function containsFromAiCall(value: unknown): boolean {
 const isMcpTool = computed(() => isMcpServerModalData(props.data));
 const mcpModalData = computed(() => (isMcpServerModalData(props.data) ? props.data : null));
 const toolModalData = computed(() => (isMcpServerModalData(props.data) ? null : props.data));
+const toolValidationIssues = computed(() => toValue(toolModalData.value?.validationIssues) ?? []);
 const isWorkflowTool = computed(() => toolModalData.value?.toolRef.type === 'workflow');
 const isCustomTool = computed(() => toolModalData.value?.toolRef.type === 'custom');
 
@@ -117,7 +128,7 @@ const initialNode = computed<INode | null>(() =>
 				: null,
 );
 
-const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => initialNode.value?.type);
+const { isRestricted, restriction } = useNodeTypeRestriction(() => initialNode.value?.type);
 const restrictedToolName = computed(() =>
 	initialNode.value
 		? (nodeTypesStore.getNodeType(initialNode.value.type)?.displayName ?? initialNode.value.type)
@@ -193,11 +204,19 @@ watch(title, (value) => emit('update:title', value), { immediate: true });
 
 const currentNode = computed(() => draftNode.value ?? initialNode.value);
 
+/**
+ * The tool itself is allowed but the agent it embeds holds a denied node type. The form stays
+ * editable on purpose: removing that embedded tool is the only fix, so locking it would strand
+ * the agent.
+ */
+const embedsRestrictedTool = computed(() =>
+	toolValidationIssues.value.some(isRestrictedByInlineTool),
+);
 const hasHttpRequestUrlIssue = computed(() => {
 	const data = toolModalData.value;
 	if (data?.toolRef.type !== 'node') return false;
 	if (
-		!data.validationIssues?.some(
+		!toolValidationIssues.value.some(
 			(issue) => issue.code === 'invalid_value' && issue.path.endsWith('.node.nodeParameters.url'),
 		)
 	) {
@@ -337,8 +356,15 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 		<RestrictedToolCallout
 			v-if="isRestricted"
 			:node-type-name="restrictedToolName"
-			:scope="restrictionScope"
+			:restriction="restriction"
 		/>
+		<N8nCallout
+			v-else-if="embedsRestrictedTool"
+			theme="warning"
+			data-test-id="inline-restricted-tool-callout"
+		>
+			{{ i18n.baseText('agents.toolConfig.restrictedInlineTool' as BaseTextKey) }}
+		</N8nCallout>
 		<N8nText
 			v-if="submitCount && !canSave"
 			size="small"
@@ -417,7 +443,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 .contentWrapper {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 	overflow-x: hidden;
 
 	:global(.ndv-connection-hint-notice) {
@@ -434,7 +460,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 	display: flex;
 	min-height: 0;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 }
 
 .customToolViewer {

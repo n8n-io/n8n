@@ -128,10 +128,9 @@ export class InstanceAiConfig {
 	sandboxEphemeral: boolean = false;
 
 	/**
-	 * Marks an instance that serves the Instance AI eval harness. Only then may an eval run
-	 * reset per-workflow state (Remove Duplicates history) around a scenario: on a normal
-	 * instance an eval pointed at a real workflow must leave its history alone. An eval
-	 * instance also skips PostHog, so feature flags resolve from their defaults plus env overrides.
+	 * Set to true only on a throwaway instance that runs n8n Assistant evaluations. It turns on
+	 * the evaluation API routes and lets an evaluation reset Remove Duplicates history between
+	 * scenarios. Feature flags then come only from their defaults and environment overrides.
 	 */
 	@Env('N8N_INSTANCE_AI_EVAL_INSTANCE')
 	evalInstance: boolean = false;

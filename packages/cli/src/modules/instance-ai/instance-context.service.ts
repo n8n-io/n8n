@@ -123,7 +123,12 @@ export type InstanceContextScope =
  * so nothing downstream can mistake "what was asked for" for "what was allowed".
  */
 type ResolvedScope = { allowedCategories: ActivityEventCategory[] } & (
-	| { surface: 'conversation'; projectIds: string[] }
+	| {
+			surface: 'conversation';
+			projectIds: string[];
+			/** Whether the caller holds `execution:read` on the thread's project. */
+			runsVisible: boolean;
+	  }
 	| {
 			surface: 'mcp';
 			projectIds: ActivityProjectScope;
@@ -232,7 +237,6 @@ const TRACED_ABSENCE_REASONS: Record<InstanceContextAbsenceReason, boolean> = {
 	failed: true,
 	empty: false,
 	disabled: false,
-	'machine-follow-up': false,
 };
 
 export function shouldTraceContextInjection(injection: InstanceContextInjection): boolean {
@@ -281,18 +285,11 @@ export class InstanceContextService {
 		 */
 		scope: InstanceContextScope;
 		cursor: InstanceContextCursor | null;
-		/**
-		 * The agent continuing its own task — a checkpoint or a planned build — rather than a
-		 * person saying something. Nobody is reading intent on those turns, so the block would be
-		 * paid for unread. Checked before any read, so a skipped turn costs nothing.
-		 */
-		isMachineFollowUp?: boolean;
 		/** Instance gate result shared with the activity tool for this turn. */
 		enabled: boolean;
 		now?: Date;
 	}): Promise<InstanceContextResult> {
 		if (!input.enabled) return { state: 'absent', reason: 'disabled' };
-		if (input.isMachineFollowUp) return { state: 'absent', reason: 'machine-follow-up' };
 
 		try {
 			const now = input.now ?? new Date();
@@ -313,7 +310,7 @@ export class InstanceContextService {
 
 			const [entries, runs, inventory] = await Promise.all([
 				this.readEntries({ cursor, now, scope: resolved }),
-				resolved.surface === 'mcp' && !resolved.runsVisible
+				!resolved.runsVisible
 					? Promise.resolve([])
 					: this.readRuns({ projectIds, cursor, now, mcpVisibleOnly }),
 				// Only on the opening block. A delta skips it: the estate has not changed in a way
@@ -678,11 +675,17 @@ export class InstanceContextService {
 			if (!allowed) return null;
 
 			if (scope.surface === 'conversation') {
-				const credentials = await userHasScopes(user, ['credential:read'], false, { projectId });
+				// Runs sit behind `execution:read`, as in the executions API. A custom project role
+				// can grant `workflow:read` without it.
+				const [credentials, executions] = await Promise.all([
+					userHasScopes(user, ['credential:read'], false, { projectId }),
+					userHasScopes(user, ['execution:read'], false, { projectId }),
+				]);
 				return {
 					surface: 'conversation',
 					projectIds: [projectId],
 					allowedCategories: credentials ? ['workflow', 'credential'] : ['workflow'],
+					runsVisible: executions,
 				};
 			}
 

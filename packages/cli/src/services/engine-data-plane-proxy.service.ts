@@ -2,6 +2,7 @@ import { Service } from '@n8n/di';
 import type {
 	ExecutionSnapshot,
 	ExecutionStatus,
+	FindLatestExecutionRequest,
 	StartExecutionRequest,
 	StartExecutionResult,
 	SearchExecutionsRequest,
@@ -41,6 +42,12 @@ export type CancelExecutionOutcome =
  */
 export interface EngineDataPlaneProvider {
 	searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse>;
+
+	/**
+	 * The newest execution matching `request`, with its steps, in one round trip.
+	 * `undefined` when none matches.
+	 */
+	findLatestExecution(request: FindLatestExecutionRequest): Promise<ExecutionSnapshot | undefined>;
 
 	/**
 	 * Throws {@link EngineRejectedWorkflowError} or {@link EngineDidNotAdmitError}
@@ -85,6 +92,13 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 	async searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse> {
 		if (!this.provider) return { items: [], nextCursor: null, total: 0 };
 		return await this.provider.searchExecutions(request);
+	}
+
+	async findLatestExecution(
+		request: FindLatestExecutionRequest,
+	): Promise<ExecutionSnapshot | undefined> {
+		if (!this.provider) return undefined;
+		return await this.provider.findLatestExecution(request);
 	}
 
 	async startExecution(request: StartExecutionRequest): Promise<StartExecutionResult> {

@@ -44,6 +44,7 @@ export type PubSubEventName =
 	| 'reload-mcp-registry'
 	| 'reload-otel-config'
 	| 'reload-instance-ai-settings'
+	| 'self-healing-failure'
 	| 'reload-agents-settings'
 	| 'cancel-test-run'
 	| 'cancel-collection'

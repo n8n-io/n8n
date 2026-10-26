@@ -1,12 +1,16 @@
 import type { ApplyCheckResult } from '@n8n/api-types';
+import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
 import { ResponseError } from '@n8n/rest-api-client';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor, within } from '@testing-library/vue';
+import { render as renderToast, waitFor, within } from '@testing-library/vue';
+import { defineComponent } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { waitAllPromises } from '@/__tests__/utils';
+import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 import { applied, destructiveChange, variable } from '../__tests__/bindings.fixtures';
@@ -58,6 +62,7 @@ const router = createRouter({
 			name: PROMOTION_PREVIEW_VIEWS.apply,
 			component: stub,
 		},
+		{ path: '/inbox', name: INBOX_VIEW, component: stub },
 	],
 });
 const renderComponent = createComponentRenderer(PromotionPreviewView, {
@@ -70,6 +75,8 @@ const environment = (direction: 'promote' | 'apply') =>
 		scope: 'instance',
 		direction,
 		remote: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
+		provider: { type: 'git' },
+		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
 	}) as unknown as settingsApi.PromotionEnvironmentSummary;
 
 async function render(
@@ -83,6 +90,15 @@ async function render(
 	});
 	await waitAllPromises();
 	return result;
+}
+
+/** Promote opens a dialog for the optional commit message. */
+async function promote(getByTestId: (id: string) => HTMLElement, commitMessage?: string) {
+	await userEvent.click(getByTestId('promotion-preview-submit'));
+	if (commitMessage !== undefined) {
+		await userEvent.type(getByTestId('promote-commit-message'), commitMessage);
+	}
+	await userEvent.click(getByTestId('promote-confirm-button'));
 }
 
 const consumers = (...ids: string[]) => [
@@ -183,16 +199,39 @@ describe('PromotionPreviewView', () => {
 		expect(router.currentRoute.value.query.resource).toBe('dataTable:t1');
 	});
 
-	it('should load the changed resources and only the active workflow with the preview', async () => {
+	it('should share one selection between the card headers and the tree', async () => {
+		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+			git: { branchName: 'main', commitSha: COMMIT_SHA },
+		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+		const { getAllByTestId, getByTestId } = await render();
+		const cardCheckbox = (key: string) =>
+			card(getAllByTestId, key).getByTestId('promotion-preview-card-checkbox');
+
+		// The folder card clears the workflows inside the folder, and the card stays open.
+		await userEvent.click(cardCheckbox('folder:f1'));
+		expect(cardToggle(getAllByTestId, 'folder:f1')).toHaveAttribute('aria-expanded', 'true');
+		expect(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox')).not.toBeChecked();
+		expect(cardCheckbox('workflow:w2')).not.toBeChecked();
+		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('2 of 5');
+
+		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
+		expect(cardCheckbox('workflow:w1')).toBeChecked();
+		expect(cardCheckbox('folder:f1')).toHaveAttribute('data-state', 'indeterminate');
+
+		await promote(getByTestId);
+		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1', 'w3', 'w4'],
+		});
+	});
+
+	it('should load the changed resources and only the active workflow at the commit of the preview', async () => {
 		await render();
 
 		expect(api.getPromotionResourceDetails).toHaveBeenCalledTimes(1);
-		expect(vi.mocked(api.getPromotionResourceDetails).mock.calls[0][3].keys).toEqual([
-			'folder:f1',
-			'workflow:w1',
-			'dataTable:t1',
-			'variable:global:API_URL',
-		]);
+		expect(vi.mocked(api.getPromotionResourceDetails).mock.calls[0][3]).toEqual({
+			commitSha: COMMIT_SHA,
+			keys: ['folder:f1', 'workflow:w1', 'dataTable:t1', 'variable:global:API_URL'],
+		});
 	});
 
 	it('should switch the active diff without collapsing or scrolling cards', async () => {
@@ -338,6 +377,60 @@ describe('PromotionPreviewView', () => {
 		expect(getByTestId('promotion-preview-tree')).toBeInTheDocument();
 	});
 
+	describe('with an open review', () => {
+		const blocked = () =>
+			billingPreview({
+				resources: [],
+				changes: [],
+				blocker: { code: 'reviewOpen', reviewId: 'review-1' },
+			});
+
+		async function renderBlocked(canReadReviews: boolean, inboxEnabled = true) {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(blocked());
+			await router.push('/projects/p1/promotions/promote');
+			const pinia = createTestingPinia();
+			mockedStore(useRBACStore).hasScope.mockReturnValue(canReadReviews);
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings = {
+				...settingsStore.settings,
+				inbox: { enabled: inboxEnabled, availableTypes: [], failedTypes: [] },
+			};
+			const result = renderComponent({ pinia, props: { projectId: 'p1', direction: 'promote' } });
+			await waitAllPromises();
+			return result;
+		}
+
+		it('should show the blocker with a link to the Inbox and no changes to promote', async () => {
+			const { getByTestId, queryByTestId, getByText } = await renderBlocked(true);
+
+			expect(getByTestId('promotion-review-blocker')).toHaveTextContent('A review is open');
+			expect(queryByTestId('promotion-preview-tree')).not.toBeInTheDocument();
+			expect(queryByTestId('promotion-preview-empty')).not.toBeInTheDocument();
+			expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+
+			await userEvent.click(getByText('Open the Inbox'));
+			await waitFor(() => expect(router.currentRoute.value.name).toBe(INBOX_VIEW));
+		});
+
+		it('should ask for an admin when the user cannot read reviews', async () => {
+			const { getByTestId, queryByText } = await renderBlocked(false);
+
+			expect(getByTestId('promotion-review-blocker')).toHaveTextContent(
+				'Ask an admin to merge or close the review.',
+			);
+			expect(queryByText('Open the Inbox')).not.toBeInTheDocument();
+		});
+
+		it('should not link to the Inbox when the Inbox is off', async () => {
+			const { getByTestId, queryByText } = await renderBlocked(true, false);
+
+			expect(getByTestId('promotion-review-blocker')).toHaveTextContent(
+				'Ask an admin to merge or close the review.',
+			);
+			expect(queryByText('Open the Inbox')).not.toBeInTheDocument();
+		});
+	});
+
 	it('should show the error when the refresh of an empty preview fails', async () => {
 		vi.mocked(api.getPromotionPreview).mockResolvedValueOnce(billingPreview({ resources: [] }));
 		const { getByTestId } = await render();
@@ -358,13 +451,104 @@ describe('PromotionPreviewView', () => {
 		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
 
 		const { getByTestId } = await render();
-		await userEvent.click(getByTestId('promotion-preview-submit'));
+		await promote(getByTestId);
 
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
 		});
-		expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Changes promoted',
+			message: 'Pushed to promotion/p1.',
+			type: 'success',
+		});
 		expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
+	});
+
+	it('should send the trimmed commit message from the promote dialog', async () => {
+		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+			git: { branchName: 'main', commitSha: COMMIT_SHA },
+		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+
+		const { getByTestId } = await render();
+		await promote(getByTestId, '  Route leads by region  ');
+
+		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1', 'w2', 'w3', 'w4'],
+			commitMessage: 'Route leads by region',
+		});
+	});
+
+	it('should keep the typed commit message after a failed promote', async () => {
+		vi.mocked(api.promoteProjectSelection).mockRejectedValueOnce(new Error('offline'));
+
+		const { getByTestId, queryByTestId } = await render();
+		await promote(getByTestId, 'Route leads by region');
+		await waitFor(() => expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument());
+
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(getByTestId('promote-commit-message')).toHaveValue('Route leads by region');
+	});
+
+	it('should clear the typed commit message when the project changes', async () => {
+		vi.mocked(api.promoteProjectSelection).mockRejectedValueOnce(new Error('offline'));
+
+		const { getByTestId, queryByTestId, rerender } = await render();
+		await promote(getByTestId, 'Route leads by region');
+		await waitFor(() => expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument());
+
+		await rerender({ projectId: 'p2', direction: 'promote' });
+		await waitAllPromises();
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(getByTestId('promote-commit-message')).toHaveValue('');
+	});
+
+	it('should not promote when the promote dialog is canceled', async () => {
+		const { getByTestId, queryByTestId } = await render();
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+		await userEvent.click(getByTestId('promote-cancel-button'));
+
+		await waitFor(() => expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument());
+		expect(api.promoteProjectSelection).not.toHaveBeenCalled();
+	});
+
+	it('should keep the promotion toast open and link the merge request', async () => {
+		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+			git: { branchName: 'promotion/p1', commitSha: COMMIT_SHA },
+			review: { reviewId: 'review-1', number: 3, webUrl: 'https://gitlab.example/mr/3' },
+		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+
+		const { getByTestId } = await render();
+		await promote(getByTestId);
+
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ title: 'Changes promoted', type: 'success', duration: 0 }),
+		);
+		const message = showMessage.mock.calls[0]?.[0].message;
+		const toast = renderToast(defineComponent({ render: () => message }));
+		const link = toast.getByRole('link', { name: 'View merge request' });
+		expect(link).toHaveAttribute('href', 'https://gitlab.example/mr/3');
+		expect(link).toHaveAttribute('target', '_blank');
+		expect(toast.queryByText(/Pushed to/)).not.toBeInTheDocument();
+	});
+
+	it('should keep promotion warnings visible in the toast', async () => {
+		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+			git: { branchName: 'promotion/p1', commitSha: COMMIT_SHA },
+			warnings: [{ message: 'No merge request was opened.' }],
+		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+
+		const { getByTestId } = await render();
+		await promote(getByTestId);
+
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ title: 'Changes promoted', type: 'warning', duration: 0 }),
+		);
+		const message = showMessage.mock.calls[0]?.[0].message;
+		const toast = renderToast(defineComponent({ render: () => message }));
+		expect(toast.getByText('Pushed to promotion/p1.')).toBeInTheDocument();
+		expect(toast.getByText('No merge request was opened.')).toBeInTheDocument();
 	});
 
 	it('should apply only the workflows without blockers, once, at the commit of the check', async () => {

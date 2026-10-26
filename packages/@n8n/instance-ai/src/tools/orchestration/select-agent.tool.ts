@@ -23,6 +23,7 @@ import {
 } from './agent-target-binding';
 import { snapshotAgent } from './builder-tools';
 import type {
+	BuilderToolsSession,
 	InstanceAiBuilderDelegate,
 	InstanceAiContext,
 	OrchestrationContext,
@@ -150,6 +151,7 @@ async function resolveTarget(
 	delegate: InstanceAiBuilderDelegate,
 	input: SelectAgentInput,
 	boundTarget: AgentBuilderTarget | undefined,
+	session: BuilderToolsSession,
 ): Promise<TargetResolution> {
 	const keySource = input.agentRef ?? input.name;
 	const key = keySource ? normalizeAgentRef(keySource) : undefined;
@@ -254,10 +256,10 @@ async function resolveTarget(
 					};
 				}
 			}
-			const created = await delegate.createAgent(
-				input.name,
-				pendingId ? { id: pendingId, adoptOnCollision: true } : undefined,
-			);
+			const created = await delegate.createAgent(input.name, {
+				...(pendingId ? { id: pendingId, adoptOnCollision: true } : {}),
+				session,
+			});
 			return {
 				ok: true,
 				target: {
@@ -335,7 +337,10 @@ export function createSelectAgentTool(context: OrchestrationContext) {
 			}
 
 			const boundTarget = await resolveAgentBuilderTarget(domainContext);
-			const resolution = await resolveTarget(domainContext, delegate, input, boundTarget);
+			const resolution = await resolveTarget(domainContext, delegate, input, boundTarget, {
+				threadId: context.threadId,
+				runId: context.runId,
+			});
 			if (!resolution.ok) {
 				context.trackTelemetry?.('instance_ai_agent_build_route', {
 					thread_id: context.threadId,

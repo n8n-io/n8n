@@ -10,13 +10,15 @@ import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ExecutionSnapshot, StepDetail } from '@n8n/engine';
-import { parse } from 'flatted';
-import type { INode } from 'n8n-workflow';
+import { parse, stringify } from 'flatted';
+import type { INode, IRun } from 'n8n-workflow';
 import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
+import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { WaitTracker } from '@/wait-tracker';
+import { WorkflowRunner } from '@/workflow-runner';
 
 import {
 	createExecution,
@@ -261,6 +263,7 @@ describe('GET /executions/:id', () => {
 				startExecution,
 				getExecution,
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
+				findLatestExecution: vi.fn(),
 				cancelExecution: vi.fn(),
 			});
 		});
@@ -573,6 +576,85 @@ describe('POST /executions/stop', () => {
 		await testServer.authAgentFor(owner).post(`/executions/${execution.id}/stop`).expect(200);
 	});
 });
+describe('POST /executions/:id/retry', () => {
+	const baseScopes = ['workflow:read', 'workflow:list', 'workflow:execute'];
+
+	/**
+	 * A failed execution that a retry can continue. The retry run itself is mocked,
+	 * so the test exercises the access check and the response, not the engine.
+	 */
+	const retryAs = async (scopes: string[]) => {
+		const teamProject = await createTeamProject();
+		const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+		await linkUserToProject(member, teamProject, role.slug);
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createExecution(
+			{
+				finished: false,
+				status: 'error',
+				data: stringify({
+					resultData: { runData: { Canary: [] } },
+					executionData: {
+						contextData: {},
+						nodeExecutionStack: [],
+						metadata: {},
+						waitingExecution: {},
+						waitingExecutionSource: {},
+					},
+				}),
+			},
+			workflow,
+		);
+
+		const run = vi.spyOn(Container.get(WorkflowRunner), 'run').mockResolvedValue('999');
+		const outcome = vi
+			.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
+			.mockResolvedValue({
+				data: { resultData: { runData: {} } },
+				mode: 'retry',
+				startedAt: new Date(),
+				finished: true,
+				status: 'success',
+				waitTill: null,
+			} as unknown as IRun);
+
+		const response = await testServer
+			.authAgentFor(member)
+			.post(`/executions/${execution.id}/retry`);
+
+		const ran = run.mock.calls.length > 0;
+		run.mockRestore();
+		outcome.mockRestore();
+		return { response, ran };
+	};
+
+	test('a custom project role without execution:read retries without the execution data', async () => {
+		const { response, ran } = await retryAs(baseScopes);
+
+		expect(response.statusCode).toBe(200);
+		expect(ran).toBe(true);
+		expect(response.body.data).toMatchObject({ id: '999', status: 'success' });
+		expect(response.body.data).not.toHaveProperty('data');
+		expect(response.body.data).not.toHaveProperty('workflowData');
+	});
+
+	test('a custom project role with execution:read retries with the execution data', async () => {
+		const { response } = await retryAs([...baseScopes, 'execution:read']);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({ id: '999', status: 'success' });
+		expect(response.body.data).toHaveProperty('data');
+		expect(response.body.data).toHaveProperty('workflowData');
+	});
+
+	test('a custom project role without workflow:execute cannot retry an execution', async () => {
+		const { response, ran } = await retryAs(['workflow:read', 'workflow:list', 'execution:read']);
+
+		expect(response.statusCode).toBe(404);
+		expect(ran).toBe(false);
+	});
+});
+
 describe('POST /executions/stopMany', () => {
 	test('should not stop an execution we do not have access to', async () => {
 		await saveWaitingExecution({ belongingTo: owner });

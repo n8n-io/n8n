@@ -3,6 +3,7 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Data & Storage"],
+	"alias": ["Lakebase"],
 	"resources": {
 		"credentialDocumentation": [
 			{
