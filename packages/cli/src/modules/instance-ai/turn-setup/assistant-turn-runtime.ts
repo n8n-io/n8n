@@ -43,11 +43,7 @@ export interface AssistantTurnState {
 export interface AssistantTurnRuntime
 	extends Pick<
 			OrchestrationContext,
-			| 'touchRun'
-			| 'cancelBackgroundTask'
-			| 'sendCorrectionToTask'
-			| 'touchBackgroundTask'
-			| 'schedulePlannedTasks'
+			'touchRun' | 'cancelBackgroundTask' | 'sendCorrectionToTask' | 'touchBackgroundTask'
 		>,
 		Pick<
 			InstanceAiContext,

@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
 import { promotionChangesSchema } from './promotable-resource.dto';
-import { promotionDataTableChangeSchema } from './promotion-binding-preflight.dto';
+import {
+	promotionBindingProjectSchema,
+	promotionDataTableChangeSchema,
+	promotionInstanceProjectSchema,
+} from './promotion-binding-preflight.dto';
 import { Z } from '../../zod-class';
 import { serializedCredentialSchema } from '../packages/credential.schema';
 import { serializedDataTableSchema } from '../packages/data-table.schema';
@@ -55,6 +59,16 @@ export const promotionResourceSchema = z.object({
 	change: promotionResourceChangeSchema,
 	/** Whether the user can select the resource directly. Only workflows can be selected for now. */
 	selectable: z.boolean(),
+	/**
+	 * Only for deleted workflows on Promote: the project that owns the workflow on this instance now.
+	 * Promote refuses the workflow, because the destination would delete it.
+	 */
+	movedToProject: promotionInstanceProjectSchema.optional(),
+	/**
+	 * Only for added workflows on Promote: the project that holds the workflow on the branch. It moved
+	 * into this project on this instance, and a project promote refuses it.
+	 */
+	movedFromProject: promotionBindingProjectSchema.optional(),
 	revision: revisionSchema,
 });
 

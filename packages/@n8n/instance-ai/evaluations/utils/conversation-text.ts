@@ -336,16 +336,6 @@ function describeStep(step: TranscriptStep): string | null {
 
 function describeInteraction(interaction: ToolInteraction): string | null {
 	switch (interaction.kind) {
-		case 'plan': {
-			if (interaction.tasks.length === 0) return null;
-			const items = interaction.tasks
-				.map((t, i) => {
-					const title = t.title ?? `Task ${String(i + 1)}`;
-					return t.description ? `${title}: ${t.description}` : title;
-				})
-				.join('; ');
-			return cap(`Plan (${String(interaction.tasks.length)}): ${items}`);
-		}
 		case 'ask-user': {
 			if (interaction.questions.length === 0) return null;
 			const answerByQId = new Map<string, string>();

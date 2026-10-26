@@ -67,7 +67,7 @@ before you use it as the `repositoryId` to list branches of a saved environment.
 
 Use the instance base URL and an opaque access token. Recommend a group access
 token for self-managed automation. A personal access token uses the same path.
-Grant `read_api` and `write_repository`. Protected branches can require the
+Grant `api` and `write_repository`. Protected branches can require the
 Maintainer role. API validation does not prove write permission on a repository.
 
 Merge requests need the `api` scope. A branched Promote opens one. Approve in

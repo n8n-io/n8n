@@ -393,6 +393,7 @@ export class ProjectPackageImporter {
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
 			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
 			checkRootPlacement: true,
+			...(request.selection ? { movableFolderIds: foldersHolding(folders, workflows) } : {}),
 		};
 	}
 
@@ -437,4 +438,26 @@ function deletesForProject(
 ): string[] | undefined {
 	if (!selection || selection.selectedProjectId !== projectId) return undefined;
 	return selection.deletedWorkflowIds;
+}
+
+/** The folders that hold a selected workflow, with every folder above them. */
+function foldersHolding(
+	folders: Array<{ sourceFolderId: string; parentFolderId: string | null }>,
+	workflows: Array<{ parentFolderId: string | null }>,
+): Set<string> {
+	const parentOf = new Map(
+		folders.map(({ sourceFolderId, parentFolderId }) => [sourceFolderId, parentFolderId]),
+	);
+	const holding = new Set<string>();
+	for (const workflow of workflows) {
+		// A visited folder ends the walk, which also stops a cycle.
+		for (
+			let current = workflow.parentFolderId;
+			current !== null && !holding.has(current);
+			current = parentOf.get(current) ?? null
+		) {
+			holding.add(current);
+		}
+	}
+	return holding;
 }

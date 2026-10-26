@@ -1,4 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
+import type { PushMessage } from '@n8n/api-types';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import userEvent from '@testing-library/user-event';
 import { cleanup, render, screen, waitFor } from '@testing-library/vue';
@@ -27,6 +28,16 @@ const { clipboardCopy, getThreadDetail, routerResolve, showError, showMessage } 
 	},
 );
 
+const pushListeners = new Set<(event: PushMessage) => void>();
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		pushConnect: vi.fn(),
+		addEventListener: (listener: (event: PushMessage) => void) => {
+			pushListeners.add(listener);
+			return () => pushListeners.delete(listener);
+		},
+	}),
+}));
 const track = vi.fn();
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
@@ -143,7 +154,7 @@ const thread = {
 	updatedAt: '2026-08-26T16:32:00.000Z',
 } satisfies ThreadDetail['thread'];
 
-const slackExecution = mock<AgentExecution>({ source: 'slack' });
+const slackExecution = mock<AgentExecution>({ source: 'slack', duration: 0 });
 const defaultDetail: ThreadDetail = { thread, executions: [slackExecution] };
 
 type MenuProps = InstanceType<typeof AgentPreviewMoreMenu>['$props'];
@@ -416,6 +427,217 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		getDropdown(wrapper).vm.$emit('select', 'export-session');
 		expect(wrapper.emitted('export-session')).toBeUndefined();
 		expect(track).not.toHaveBeenCalled();
+	});
+
+	it('hides unavailable pricing and keeps the token count', async () => {
+		getThreadDetail.mockResolvedValueOnce({ thread: { ...thread, totalCost: 0 }, executions: [] });
+		const wrapper = mountMenu();
+		await flushPromises();
+		expect(wrapper.text()).toContain('125t');
+		expect(wrapper.text()).not.toContain('$');
+	});
+
+	it('hides token and price values before usage is known', async () => {
+		getThreadDetail.mockResolvedValueOnce({
+			thread: { ...thread, totalPromptTokens: 0, totalCompletionTokens: 0, totalCost: 0 },
+			executions: [],
+		});
+		const wrapper = mountMenu();
+		await flushPromises();
+		expect(wrapper.text()).not.toContain('0t');
+		expect(wrapper.text()).not.toContain('$');
+	});
+
+	it.each([false, true])('hides unknown duration when usage is known: %s', async (usageKnown) => {
+		getThreadDetail.mockResolvedValueOnce({
+			thread: {
+				...thread,
+				totalPromptTokens: usageKnown ? 100 : 0,
+				totalCompletionTokens: usageKnown ? 25 : 0,
+				totalCost: usageKnown ? 0.125 : 0,
+				totalDuration: 0,
+			},
+			executions: [
+				mock<AgentExecution>({ id: 'live-1', source: null, status: 'running', duration: 0 }),
+			],
+		});
+		const wrapper = mountMenu();
+		await flushPromises();
+		expect(wrapper.text()).not.toContain('0ms');
+		expect(wrapper.text()).not.toContain('•');
+		if (usageKnown) expect(wrapper.text()).toContain('125t ($0.1250)');
+		await wrapper.setProps({
+			usageUpdates: {
+				'live-1': {
+					sessionId: 'thread-1',
+					executionId: 'live-1',
+					complete: false,
+					duration: 2000,
+				},
+			},
+		});
+		expect(wrapper.text()).toContain('2.0s');
+		expect(wrapper.text().includes('•')).toBe(usageKnown);
+	});
+
+	it('hides a partial session price when the live turn has a zero cost', async () => {
+		const wrapper = mountMenu();
+		await flushPromises();
+		await wrapper.setProps({
+			usageUpdates: {
+				'live-1': {
+					sessionId: 'thread-1',
+					executionId: 'live-1',
+					complete: false,
+					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0 },
+				},
+			},
+		});
+		expect(wrapper.text()).toContain('140t');
+		expect(wrapper.text()).not.toContain('$');
+	});
+
+	it('uses server duration without advancing during delayed completion', async () => {
+		vi.useFakeTimers();
+		try {
+			getThreadDetail.mockResolvedValue({
+				thread,
+				executions: [
+					mock<AgentExecution>({ id: 'live-1', source: null, status: 'running', duration: 0 }),
+				],
+			});
+			const wrapper = mountMenu();
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(2000);
+			expect(wrapper.text()).toContain('1.5s');
+			function pushDuration(duration: number, complete = false) {
+				for (const listener of pushListeners)
+					listener({
+						type: 'agentExecutionUpdated',
+						data: {
+							projectId: 'project-1',
+							agentId: 'agent-1',
+							threadId: 'thread-1',
+							executionId: 'live-1',
+							duration,
+							complete,
+							...(complete
+								? {}
+								: {
+										usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.05 },
+									}),
+						},
+					});
+			}
+			pushDuration(2000);
+			await flushPromises();
+			expect(wrapper.text()).toContain('155t ($0.1750)');
+			expect(wrapper.text()).toContain('3.5s');
+			await vi.advanceTimersByTimeAsync(2000);
+			expect(wrapper.text()).toContain('3.5s');
+			pushDuration(2300, true);
+			await flushPromises();
+			await wrapper.setProps({
+				usageUpdates: {
+					'live-1': { sessionId: 'thread-1', executionId: 'live-1', complete: true },
+				},
+			});
+			pushDuration(2200);
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(3000);
+			expect(wrapper.text()).toContain('3.8s');
+			wrapper.unmount();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it.each([undefined, 'thread-2'])(
+		'ignores usage for an unselected session when the current session is %s',
+		async (effectiveSessionId) => {
+			getThreadDetail.mockImplementation(async (_projectId, _agentId, threadId) => ({
+				thread: { ...thread, id: threadId },
+				executions: [],
+			}));
+			const wrapper = mountMenu({ effectiveSessionId, hasSession: !!effectiveSessionId });
+			await flushPromises();
+			const update = {
+				type: 'agentExecutionUpdated',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					threadId: 'thread-1',
+					executionId: 'live-1',
+					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
+				},
+			} satisfies PushMessage;
+			for (const listener of pushListeners) listener(update);
+			await flushPromises();
+
+			await wrapper.setProps({ effectiveSessionId: 'thread-1', hasSession: true });
+			await flushPromises();
+			expect(wrapper.text()).toContain('125t ($0.1250)');
+
+			for (const listener of pushListeners) listener(update);
+			await flushPromises();
+			expect(wrapper.text()).toContain('140t ($0.1500)');
+		},
+	);
+
+	it('replaces turn snapshots and reconciles them with the saved result', async () => {
+		const wrapper = mountMenu();
+		await flushPromises();
+		const update = {
+			sessionId: 'thread-1',
+			executionId: 'live-1',
+			complete: false,
+			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
+		};
+		await wrapper.setProps({ usageUpdates: { 'live-1': update } });
+		expect(wrapper.text()).toContain('140t ($0.1500)');
+		const next = {
+			...update,
+			usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.05 },
+		};
+		await wrapper.setProps({ usageUpdates: { 'live-1': next } });
+		expect(wrapper.text()).toContain('155t ($0.1750)');
+		getThreadDetail.mockResolvedValueOnce({
+			thread: { ...thread, totalPromptTokens: 120, totalCompletionTokens: 35, totalCost: 0.18 },
+			executions: [
+				mock<AgentExecution>({
+					id: 'live-1',
+					source: null,
+					status: 'success',
+					totalTokens: 30,
+					cost: 0.055,
+				}),
+			],
+		});
+		await wrapper.setProps({ usageUpdates: { 'live-1': { ...next, complete: true } } });
+		await flushPromises();
+		expect(wrapper.text()).toContain('155t ($0.1800)');
+	});
+
+	it('loads a new session when its first usage update arrives', async () => {
+		getThreadDetail.mockRejectedValueOnce({ httpStatusCode: 404 });
+		const wrapper = mountMenu();
+		await flushPromises();
+		getThreadDetail.mockResolvedValueOnce({
+			thread: { ...thread, totalPromptTokens: 0, totalCompletionTokens: 0, totalCost: 0 },
+			executions: [],
+		});
+		await wrapper.setProps({
+			usageUpdates: {
+				'execution-1': {
+					sessionId: 'thread-1',
+					executionId: 'execution-1',
+					complete: false,
+					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
+				},
+			},
+		});
+		await flushPromises();
+		expect(wrapper.text()).toContain('15t ($0.0250)');
 	});
 
 	it('loads current metadata when the menu opens', async function refreshesMetadata() {

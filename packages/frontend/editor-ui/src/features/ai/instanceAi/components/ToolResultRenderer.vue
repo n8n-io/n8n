@@ -101,7 +101,8 @@ function normalizeContentItems(items: unknown[]): McpContentItem[] | null {
 function isCodeTool(): boolean {
 	return (
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS, 'get-as-code') ||
-		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'type-definition')
+		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'type-definition') ||
+		resolveBuilderToolName(props.toolName) === SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES
 	);
 }
 
@@ -110,9 +111,11 @@ function isTableTool(): boolean {
 		isAction(SHARED_BUILDER_TOOL_NAMES.DATA_TABLES, 'query') ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS, 'list') ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS, 'list') ||
-		isAction(WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS, 'list') ||
+		resolveBuilderToolName(props.toolName, props.toolArgs?.action) ===
+			SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'search') ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'list') ||
+		resolveBuilderToolName(props.toolName) === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES ||
 		isAction(SHARED_BUILDER_TOOL_NAMES.DATA_TABLES, 'list')
 	);
 }
@@ -151,7 +154,8 @@ function extractCode(result: unknown): string | null {
 		return obj.code;
 	}
 	if (
-		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'type-definition') &&
+		(isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'type-definition') ||
+			resolveBuilderToolName(props.toolName) === SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES) &&
 		Array.isArray(obj.definitions)
 	) {
 		const defs = obj.definitions as Array<Record<string, unknown>>;

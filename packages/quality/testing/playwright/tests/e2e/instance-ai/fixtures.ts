@@ -11,14 +11,10 @@ const INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR = 'You are the n8n Instance Agent';
 export const SKIP_PROXY_SETUP_ANNOTATION = 'skip-proxy-setup';
 const SYSTEM_PROMPT_ANCHORS = [
 	INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR,
-	'You are the n8n Workflow Planner',
 	'You are an expert n8n workflow builder',
 	'You generate a short descriptive title for a conversation',
 ] as const;
-const SUB_AGENT_INITIAL_PROMPT_ANCHORS = [
-	'You are the n8n Workflow Planner',
-	'You are an expert n8n workflow builder',
-] as const;
+const SUB_AGENT_INITIAL_PROMPT_ANCHORS = ['You are an expert n8n workflow builder'] as const;
 const LEGACY_SYSTEM_ARRAY_PREFIX =
 	/\\\[\\\{"type":"text","text":"(?=You are the n8n Instance Agent)/g;
 const LEGACY_SYSTEM_STRING_PREFIX = '[{"type":"text","text":"';
@@ -111,44 +107,6 @@ function getStableJsonFieldAnchor(value: string): string | undefined {
 	return undefined;
 }
 
-function getPlannedTaskFollowUpType(value: string): string | undefined {
-	for (const type of ['checkpoint', 'synthesize']) {
-		if (value.includes(`planned-task-follow-up type=${type}`)) return type;
-		if (value.includes(`planned-task-follow-up type="${type}"`)) return type;
-		if (value.includes(`planned-task-follow-up type=\\"${type}\\"`)) return type;
-		if (value.includes(`planned-task-follow-up type=\\\\"${type}\\\\"`)) return type;
-	}
-
-	return undefined;
-}
-
-function getLooselyUnescapedValue(value: string): string {
-	let result = value;
-	for (let i = 0; i < 4; i++) {
-		const next = result.replace(/\\\\/g, '\\').replace(/\\"/g, '"');
-		if (next === result) break;
-		result = next;
-	}
-
-	return result;
-}
-
-function getPlannedTaskFollowUpId(value: string): string | undefined {
-	const normalized = getLooselyUnescapedValue(value);
-	const match = normalized.match(/"id"\s*:\s*"([^"]+)"/);
-	return match?.[1];
-}
-
-function getPlannedTaskFollowUpAnchor(value: string, type: string): string {
-	const tagAnchor = escapeRegex(
-		JSON.stringify(`<planned-task-follow-up type="${type}">`).slice(1, -1),
-	);
-	const taskId = getPlannedTaskFollowUpId(value);
-	if (!taskId) return tagAnchor;
-
-	return `${tagAnchor}[\\s\\S]{0,2000}${escapeRegex(taskId)}`;
-}
-
 function asContentBlocks(content: unknown): AnthropicContentBlock[] {
 	if (typeof content === 'string') return [{ type: 'text', text: content }];
 	if (!Array.isArray(content)) return [];
@@ -165,13 +123,6 @@ function getStableTextAnchor(text: string): string | undefined {
 		.replace(/"([A-Za-z]*[Ii]d)"\s*:\s*\d+/g, `"$1":${ID_VALUE_PLACEHOLDER}`)
 		.trimStart();
 	if (!trimmed) return undefined;
-
-	const plannedTaskFollowUpType = getPlannedTaskFollowUpType(trimmed);
-	if (plannedTaskFollowUpType) {
-		return restoreIdValuePlaceholders(
-			getPlannedTaskFollowUpAnchor(trimmed, plannedTaskFollowUpType),
-		);
-	}
 
 	const jsonFieldAnchor = getStableJsonFieldAnchor(trimmed);
 	if (jsonFieldAnchor) return restoreIdValuePlaceholders(jsonFieldAnchor);
@@ -452,14 +403,6 @@ function loosenRecordedInstanceAiPromptMatcher(expectation: Expectation): Expect
 		);
 		if (subAgentSystemAnchor && !regex.includes('"type"\\s*:\\s*"tool_use"')) {
 			body.regex = `[\\s\\S]*${escapeRegex(subAgentSystemAnchor)}[\\s\\S]*`;
-			return expectation;
-		}
-
-		if (regex.includes('<planned-task-follow-up')) {
-			const plannedTaskFollowUpType = getPlannedTaskFollowUpType(regex);
-			body.regex = plannedTaskFollowUpType
-				? `[\\s\\S]*${getPlannedTaskFollowUpAnchor(regex, plannedTaskFollowUpType)}[\\s\\S]*`
-				: '[\\s\\S]*<planned-task-follow-up[\\s\\S]*';
 			return expectation;
 		}
 
