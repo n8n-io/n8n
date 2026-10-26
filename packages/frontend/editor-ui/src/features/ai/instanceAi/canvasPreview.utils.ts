@@ -495,6 +495,24 @@ export const SKILLS_TOOL_NAME = 'skills';
 
 const SKILL_WRITE_ACTIONS = new Set(['create', 'update']);
 
+const UNTRUSTED_DATA_PATTERN = /^<untrusted_data\b[^>]*>\n([\s\S]*)\n<\/untrusted_data>$/;
+
+function unwrapUntrustedToolResult(result: unknown): unknown {
+	if (!isRecord(result) || result.type !== 'content' || !Array.isArray(result.value)) {
+		return result;
+	}
+	const [part]: unknown[] = result.value;
+	if (!isRecord(part) || part.type !== 'text' || typeof part.text !== 'string') return result;
+	const json = UNTRUSTED_DATA_PATTERN.exec(part.text)?.[1];
+	if (json === undefined) return result;
+	try {
+		const parsed: unknown = JSON.parse(json);
+		return parsed;
+	} catch {
+		return result;
+	}
+}
+
 /** The Skills Hub deep link that opens one skill. */
 export function skillsHubHref(skillId: string): string {
 	return `/settings/context/skills?skillId=${encodeURIComponent(skillId)}`;
@@ -521,10 +539,11 @@ export function getSkillArtifactFromToolCall(
 	if (tc.toolName !== SKILLS_TOOL_NAME || tc.isLoading) return undefined;
 	const action = tc.args?.action;
 	if (typeof action !== 'string' || !SKILL_WRITE_ACTIONS.has(action)) return undefined;
-	if (!isRecord(tc.result) || tc.result.success !== true) return undefined;
+	const result = unwrapUntrustedToolResult(tc.result);
+	if (!isRecord(result) || result.success !== true) return undefined;
 
 	// create: { success, skill: { id, name, ... } }. update: { success, saved: { id, name? } }.
-	const written = action === 'create' ? tc.result.skill : tc.result.saved;
+	const written = action === 'create' ? result.skill : result.saved;
 	if (!isRecord(written)) return undefined;
 	const skillId =
 		typeof written.id === 'string'

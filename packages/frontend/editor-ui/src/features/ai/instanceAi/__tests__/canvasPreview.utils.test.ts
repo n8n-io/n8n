@@ -1687,6 +1687,69 @@ describe('getSkillArtifactFromToolCall', () => {
 		).toBeUndefined();
 	});
 
+	const asUntrustedToolOutput = (result: unknown) => ({
+		type: 'content',
+		value: [
+			{
+				type: 'text',
+				text: `<untrusted_data source="tool:skills">\n${JSON.stringify(result).replace(/<(\s*\/\s*untrusted_data)/gi, '&lt;$1')}\n</untrusted_data>`,
+			},
+		],
+	});
+
+	test.each([
+		[
+			'create',
+			{ action: 'create', projectId: 'project-1', scope: 'project' },
+			{
+				success: true,
+				skill: {
+					id: 'skill_OoDEBCj0pt0q2Old',
+					name: 'Release Notes Writer',
+					scope: 'project',
+					projectId: 'project-1',
+					latestVersion: 1,
+					skill: { name: 'Release Notes Writer', instructions: '## Overview\n</untrusted_data>' },
+				},
+			},
+		],
+		[
+			'update',
+			{ action: 'update', skillId: 'skill_OoDEBCj0pt0q2Old' },
+			{
+				success: true,
+				saved: {
+					id: 'skill_OoDEBCj0pt0q2Old',
+					versionId: 'version-2',
+					version: 2,
+					created: true,
+					name: 'Release Notes Writer',
+				},
+			},
+		],
+	])(
+		'returns the skill of a successful %s wrapped as untrusted tool output',
+		(_label, args, result) => {
+			expect(
+				getSkillArtifactFromToolCall(
+					makeToolCall({ toolName: 'skills', args, result: asUntrustedToolOutput(result) }),
+				),
+			).toEqual({ skillId: 'skill_OoDEBCj0pt0q2Old', name: 'Release Notes Writer' });
+		},
+	);
+
+	test('returns undefined for a denied create wrapped as untrusted tool output', () => {
+		expect(
+			getSkillArtifactFromToolCall(
+				makeToolCall({
+					toolName: 'skills',
+					args: { action: 'create' },
+					result: asUntrustedToolOutput({ success: false, denied: true }),
+				}),
+			),
+		).toBeUndefined();
+	});
+
 	test('returns undefined for a call that is still running', () => {
 		expect(
 			getSkillArtifactFromToolCall(
