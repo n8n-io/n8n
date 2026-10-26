@@ -1,13 +1,11 @@
-import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
 import { SkillsHubRollout } from '../../skills-hub-rollout';
 
 /**
- * Sets `N8N_AGENTS_SKILLS_HUB_ENABLED` and reads it again, as a restart does. Tests that
- * need the skills hub on or off call it instead of changing the config directly.
+ * Turns the skills hub on or off, as starting n8n with or without the skills module does.
+ * Tests that cover the inline skills, which a later release removes, turn it off.
  */
 export function setSkillsHubFlag(enabled: boolean): void {
-	Container.get(AgentsConfig).skillsHubEnabled = enabled;
-	Container.get(SkillsHubRollout).init();
+	(Container.get(SkillsHubRollout) as unknown as { started: boolean }).started = enabled;
 }

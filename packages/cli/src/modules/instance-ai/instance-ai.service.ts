@@ -2844,20 +2844,6 @@ export class InstanceAiService {
 			const { fullMessage, nonStructuredAttachments, contextInjection, aiPreferencesTurn } =
 				turnInput;
 			turnHadFileAttachments = turnInput.turnHadFileAttachments;
-			if (
-				aiPreferencesTurn &&
-				!aiPreferencesTurn.payload.injectedThisTurn &&
-				aiPreferencesTurn.payload.renderedLength > 0
-			) {
-				// A lookup failure only costs the run attribution, never the skip itself.
-				const carriedFromRunId = await this.bestEffort(
-					'Instance AI failed to resolve which run sent the AI preferences block',
-					{ threadId },
-					async () => await this.eventLog.getLastPreferencesInjectionRunId(threadId),
-				);
-				if (carriedFromRunId)
-					aiPreferencesTurn.payload = { ...aiPreferencesTurn.payload, carriedFromRunId };
-			}
 
 			const promptBuildRun = tracing
 				? await tracing.startChildRun(tracing.messageRun, {
