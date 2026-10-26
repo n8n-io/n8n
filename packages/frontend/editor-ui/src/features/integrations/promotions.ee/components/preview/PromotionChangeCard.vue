@@ -3,6 +3,7 @@ import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nCallout,
+	N8nCheckbox,
 	N8nIcon,
 	N8nLoading,
 	N8nText,
@@ -25,7 +26,7 @@ import {
 	sideState,
 	type DetailSide,
 } from '../../promotionPreview.content';
-import type { ResourceKey, SelectionGraph } from '../../promotionPreview.selection';
+import type { ResourceKey, SelectionCheck, SelectionGraph } from '../../promotionPreview.selection';
 import { isContainer, resourceIcon } from '../../promotionPreview.tree';
 import { hasWorkflowDiff } from '../../promotionPreview.workflow';
 import DataTableChangeDetails from './DataTableChangeDetails.vue';
@@ -33,20 +34,25 @@ import PromotionFieldChanges from './PromotionFieldChanges.vue';
 import PromotionWorkflowPreview from './PromotionWorkflowPreview.vue';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
 
-const props = defineProps<{
-	resource: PromotionResource;
-	graph: SelectionGraph;
-	direction: PromotionDirection;
-	included: boolean;
-	entry?: DetailEntry;
-	inspected: boolean;
-	blockers?: Blocker[];
-	branchName?: string;
-	diffActive?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		resource: PromotionResource;
+		graph: SelectionGraph;
+		direction: PromotionDirection;
+		selection: SelectionCheck;
+		entry?: DetailEntry;
+		inspected: boolean;
+		blockers?: Blocker[];
+		diffActive?: boolean;
+		/** False for a list that users only read. */
+		selectable?: boolean;
+	}>(),
+	{ selectable: true },
+);
 
 const emit = defineEmits<{
 	inspect: [key: ResourceKey];
+	toggle: [];
 	retry: [];
 	refresh: [];
 	activateDiff: [];
@@ -55,7 +61,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const nameOf = (key: string) => props.graph.resources.get(key)?.name ?? key;
-const { changeLabel, blockerMessage } = usePromotionPreviewLabels();
+const { changeLabel, blockerMessage, selectLabel } = usePromotionPreviewLabels();
 // A moved folder explains itself in the card body.
 const blocker = computed(() =>
 	props.resource.type === 'folder' ? undefined : blockerMessage(props.resource, props.blockers),
@@ -72,24 +78,6 @@ watch(
 watch(open, (isOpen) => {
 	if (!isOpen && props.diffActive) emit('deactivateDiff');
 });
-// A blocker matters more than the inclusion, so it takes the place of the inclusion icon.
-const status = computed(() => {
-	if (blocker.value) {
-		return { label: blocker.value, icon: 'circle-alert' as const, tone: 'blocked' };
-	}
-	return props.included
-		? {
-				label: i18n.baseText('promotions.preview.card.included'),
-				icon: 'circle-check' as const,
-				tone: 'included',
-			}
-		: {
-				label: i18n.baseText('promotions.preview.card.notIncluded'),
-				icon: 'circle-minus' as const,
-				tone: undefined,
-			};
-});
-
 // On a project page, project scope is the default, so only global variables say so.
 const scope = computed(() =>
 	props.resource.key.startsWith('variable:global:')
@@ -99,18 +87,19 @@ const scope = computed(() =>
 
 type Footer = { keypath: BaseTextKey; workflows: Array<{ key: ResourceKey; name: string }> };
 
-// Resources that users cannot select name the workflows that use or call them.
+// Resources that users cannot select name the workflows that use or call them. A resource
+// that a review deletes can have no such workflow left.
 const footer = computed((): Footer | undefined => {
 	const { resource, graph } = props;
 	if (resource.selectable || isContainer(resource)) return undefined;
 	const users = graph.requiredBy.get(resource.key) ?? [];
+	const callers = graph.calledBy.get(resource.key) ?? [];
 	const named = (keys: readonly ResourceKey[]) => keys.map((key) => ({ key, name: nameOf(key) }));
 	if (users.length > 0)
 		return { keypath: 'promotions.preview.card.usedBy', workflows: named(users) };
-	return {
-		keypath: 'promotions.preview.card.calledBy',
-		workflows: named(graph.calledBy.get(resource.key) ?? []),
-	};
+	if (callers.length > 0)
+		return { keypath: 'promotions.preview.card.calledBy', workflows: named(callers) };
+	return undefined;
 });
 
 const detail = computed(() => (props.entry?.status === 'loaded' ? props.entry.detail : undefined));
@@ -158,35 +147,46 @@ const tagNote = computed(() => {
 			data-test-id="promotion-preview-card"
 			:data-resource-key="resource.key"
 		>
-			<CollapsibleTrigger :class="$style.header" data-test-id="promotion-preview-card-toggle">
-				<N8nIcon :icon="resourceIcon(resource.type)" size="small" :class="$style.icon" />
-				<span :class="$style.heading">
-					<N8nText
-						bold
-						size="medium"
-						color="text-dark"
-						:title="resource.name"
-						:class="$style.title"
-					>
-						{{ resource.name }}
-					</N8nText>
-					<N8nText v-if="changeLabel(resource, direction)" step="xs" color="text-light">
-						{{ changeLabel(resource, direction) }}
-					</N8nText>
-				</span>
-				<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
-				<N8nTooltip :content="status.label" as-child>
-					<span
-						role="img"
-						:aria-label="status.label"
-						:class="[$style.status, status.tone && $style[status.tone]]"
-						data-test-id="promotion-preview-card-status"
-						:data-included="included"
-					>
-						<N8nIcon :icon="status.icon" size="medium" />
+			<div :class="$style.header">
+				<!-- A sibling of the trigger, as a checkbox cannot sit inside a button. -->
+				<N8nCheckbox
+					v-if="selectable"
+					:model-value="selection.checked"
+					:indeterminate="selection.indeterminate"
+					:disabled="selection.disabled"
+					:aria-label="selectLabel(resource)"
+					data-test-id="promotion-preview-card-checkbox"
+					@update:model-value="emit('toggle')"
+				/>
+				<CollapsibleTrigger :class="$style.trigger" data-test-id="promotion-preview-card-toggle">
+					<N8nIcon :icon="resourceIcon(resource.type)" size="small" :class="$style.icon" />
+					<span :class="$style.heading">
+						<N8nText
+							bold
+							size="medium"
+							color="text-dark"
+							:title="resource.name"
+							:class="$style.title"
+						>
+							{{ resource.name }}
+						</N8nText>
+						<N8nText v-if="changeLabel(resource, direction)" step="xs" color="text-light">
+							{{ changeLabel(resource, direction) }}
+						</N8nText>
 					</span>
-				</N8nTooltip>
-			</CollapsibleTrigger>
+					<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
+					<N8nTooltip v-if="blocker" :content="blocker" as-child>
+						<span
+							role="img"
+							:aria-label="blocker"
+							:class="$style.blocker"
+							data-test-id="promotion-preview-card-blocker"
+						>
+							<N8nIcon icon="circle-alert" size="medium" color="--icon-color--warning" />
+						</span>
+					</N8nTooltip>
+				</CollapsibleTrigger>
+			</div>
 
 			<CollapsibleContent>
 				<div :class="$style.notices">
@@ -254,7 +254,6 @@ const tagNote = computed(() => {
 						:resource-key="resource.key"
 						:workflow-name="resource.name"
 						:direction="direction"
-						:branch-name="branchName"
 						:graph="graph"
 						@activate="emit('activateDiff')"
 						@retry="emit('retry')"
@@ -276,9 +275,14 @@ const tagNote = computed(() => {
 					</N8nText>
 				</template>
 
-				<footer v-if="footer" :class="$style.footer">
+				<footer v-if="footer || scope" :class="$style.footer">
 					<N8nText v-if="scope" step="2xs" color="text-light">{{ scope }}</N8nText>
-					<N8nText step="2xs" color="text-light" data-test-id="promotion-preview-card-inclusion">
+					<N8nText
+						v-if="footer"
+						step="2xs"
+						color="text-light"
+						data-test-id="promotion-preview-card-inclusion"
+					>
 						<I18nT :keypath="footer.keypath" scope="global">
 							<template #names>
 								<PromotionWorkflowLinks
@@ -316,17 +320,26 @@ const tagNote = computed(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	width: 100%;
 	min-height: var(--height--xl);
 	padding: 0 var(--spacing--sm);
+
+	[data-state='open'] > & {
+		border-bottom: var(--border);
+	}
+}
+
+.trigger {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	align-self: stretch;
+	padding: 0;
 	border: none;
 	background: none;
 	text-align: left;
 	cursor: pointer;
-
-	&[data-state='open'] {
-		border-bottom: var(--border);
-	}
 
 	&:focus-visible {
 		outline: var(--focus--border-width) solid var(--focus--outline-color);
@@ -395,17 +408,10 @@ const tagNote = computed(() => {
 	margin-right: var(--spacing--2xs);
 }
 
-.status {
+.blocker {
 	display: flex;
+	flex-shrink: 0;
+	align-items: center;
 	margin-left: auto;
-	color: var(--icon-color);
-}
-
-.included {
-	color: var(--icon-color--success);
-}
-
-.blocked {
-	color: var(--icon-color--warning);
 }
 </style>

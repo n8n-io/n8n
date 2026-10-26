@@ -11,8 +11,13 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 
-import { estimateItemsSize } from '../estimate-run-data-size';
+import { estimateItemsSize, estimateTaskDataSize } from '../estimate-run-data-size';
 import { RunDataTracker } from '../run-data-tracker';
+
+vi.mock('../estimate-run-data-size', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../estimate-run-data-size')>();
+	return { ...actual, estimateTaskDataSize: vi.fn(actual.estimateTaskDataSize) };
+});
 
 const toItems = (count: number): INodeExecutionData[] =>
 	Array.from({ length: count }, (_, i) => ({ json: { id: i, name: `item-${i}` } }));
@@ -273,6 +278,128 @@ describe('RunDataTracker', () => {
 
 		// The second run holds the same objects, so only its item wrappers are new.
 		expect(tracker.getEstimate('1')?.totalBytes).toBe(sizeOf(earlier) + wrappersOf(earlier));
+	});
+
+	describe('when an execution starts with many runs', () => {
+		const runsOf = (count: number, itemCount: number) =>
+			Array.from({ length: count }, () => taskDataOf(toItems(itemCount)));
+
+		beforeEach(() => {
+			vi.mocked(estimateTaskDataSize).mockClear();
+		});
+
+		it('should measure 25 runs and give the others the average of their node', () => {
+			start('1', { Node: runsOf(100, 3) });
+
+			expect(estimateTaskDataSize).toHaveBeenCalledTimes(25);
+			expect(tracker.getEstimate('1')?.totalBytes).toBe(100 * sizeOf(toItems(3)));
+		});
+
+		it('should measure each run once, without sharing, when all runs fit in the budget', () => {
+			start('1', { Node: runsOf(25, 3) });
+
+			expect(estimateTaskDataSize).toHaveBeenCalledTimes(25);
+			for (const [, , , sharing] of vi.mocked(estimateTaskDataSize).mock.calls) {
+				expect(sharing).toBeUndefined();
+			}
+			expect(tracker.getEstimate('1')?.totalBytes).toBe(25 * sizeOf(toItems(3)));
+		});
+
+		it('should measure distinct runs when a node has a few more runs than the budget', () => {
+			start('1', { Node: runsOf(26, 3) });
+
+			const measured = vi.mocked(estimateTaskDataSize).mock.calls.map(([taskData]) => taskData);
+			expect(new Set(measured).size).toBe(25);
+			expect(tracker.getEstimate('1')?.totalBytes).toBe(26 * sizeOf(toItems(3)));
+		});
+
+		it('should measure a run of every node before a second run of any node', () => {
+			const loop = runsOf(1000, 1);
+			const large = runsOf(2, 50);
+
+			start('1', { Loop: loop, Large: large });
+
+			const measured = vi.mocked(estimateTaskDataSize).mock.calls.map(([taskData]) => taskData);
+			expect(measured.filter((taskData) => loop.includes(taskData))).toHaveLength(23);
+			expect(measured.filter((taskData) => large.includes(taskData))).toHaveLength(2);
+			expect(tracker.getEstimate('1')?.bytesByNode).toEqual(
+				new Map([
+					['Loop', 1000 * sizeOf(toItems(1))],
+					['Large', 2 * sizeOf(toItems(50))],
+				]),
+			);
+		});
+
+		it('should give a node without a measured run the average of all measured runs', () => {
+			const runData = Object.fromEntries(
+				Array.from({ length: 30 }, (_, i) => [`Node ${i}`, runsOf(1, 2)]),
+			);
+
+			start('1', runData);
+
+			expect(estimateTaskDataSize).toHaveBeenCalledTimes(25);
+			expect(tracker.getEstimate('1')?.bytesByNode.get('Node 29')).toBe(sizeOf(toItems(2)));
+			expect(tracker.getEstimate('1')?.totalBytes).toBe(30 * sizeOf(toItems(2)));
+		});
+
+		it('should leave a run whose estimate fails out of the average of its node', () => {
+			vi.mocked(estimateTaskDataSize).mockImplementationOnce(() => {
+				throw new Error('estimate');
+			});
+
+			start('1', { Node: runsOf(100, 3) });
+
+			expect(tracker.getEstimate('1')?.totalBytes).toBe(100 * sizeOf(toItems(3)));
+		});
+
+		it('should give a node whose estimates all fail the average of all measured runs', async () => {
+			const actual = await vi.importActual<typeof import('../estimate-run-data-size')>(
+				'../estimate-run-data-size',
+			);
+			const loop = runsOf(1000, 2);
+			vi.mocked(estimateTaskDataSize).mockImplementation((taskData, ...rest) => {
+				if (loop.includes(taskData)) throw new Error('estimate');
+				return actual.estimateTaskDataSize(taskData, ...rest);
+			});
+
+			start('1', { Loop: loop, Other: runsOf(1, 2) });
+
+			expect(tracker.getEstimate('1')?.bytesByNode.get('Loop')).toBe(1000 * sizeOf(toItems(2)));
+			vi.mocked(estimateTaskDataSize).mockImplementation(actual.estimateTaskDataSize);
+		});
+
+		const payloads = Array.from({ length: 25 }, (_, i) => ({ data: `${i}-`.repeat(50_000) }));
+
+		it.each([
+			['all runs hold one object', () => ({ payload: payloads[0] })],
+			[
+				'the second half of the runs hold a second object',
+				(run: number) => ({ payload: payloads[run < 50 ? 0 : 1] }),
+			],
+			['the runs alternate between two objects', (run: number) => ({ payload: payloads[run % 2] })],
+			['the runs take turns with three objects', (run: number) => ({ payload: payloads[run % 3] })],
+			[
+				'each group of 4 runs holds its object and the object of the next group',
+				(run: number) => {
+					const group = Math.floor(run / 4);
+					return { payload: payloads[group], next: payloads[(group + 1) % 25] };
+				},
+			],
+		])('should count once each object that many runs hold, when %s', (_, jsonOf) => {
+			const runs = Array.from({ length: 100 }, (_, run) => [{ json: jsonOf(run) }]);
+			const seen = new WeakSet<object>();
+			const fullWalk = runs.reduce((bytes, items) => bytes + estimateItemsSize(items, seen), 0);
+
+			start('1', { Node: runs.map(taskDataOf) });
+
+			expect(tracker.getEstimate('1')?.totalBytes).toBe(fullWalk);
+		});
+
+		it('should count nothing for a node without runs', () => {
+			start('1', { Empty: [] });
+
+			expect(tracker.getEstimate('1')?.totalBytes).toBe(0);
+		});
 	});
 
 	it('should drop an execution that is no longer active when another starts', () => {

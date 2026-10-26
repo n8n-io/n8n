@@ -1,4 +1,5 @@
 import type { WorkflowSuggestionAction } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	createWorkflowWithHistory,
@@ -33,7 +34,11 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
-import { WorkflowPublishGuardProxy } from '@n8n/backend-services';
+import {
+	EventService,
+	WorkflowMutationHooksProxy,
+	WorkflowPublishGuardProxy,
+} from '@n8n/backend-services';
 import { createAdmin, createUser } from '@test-integration/db/users';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
@@ -41,6 +46,7 @@ import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-acti
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 import { WorkflowSuggestionActionsService } from '../workflow-suggestion-actions.service';
+import { WorkflowSuggestionEventRelay } from '../workflow-suggestion-event-relay.service';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 
 mockInstance(ActiveWorkflowManager);
@@ -81,7 +87,6 @@ beforeEach(() => {
 
 afterEach(async () => {
 	vi.restoreAllMocks();
-	await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).clear();
 	await suggestions.createQueryBuilder().delete().execute();
 });
 
@@ -856,4 +861,44 @@ it('keeps human activity when its actor is deleted', async () => {
 		actorId: null,
 	});
 	expect(await suggestions.findOneBy({ id: suggestion.id })).not.toBeNull();
+});
+
+describe('workflow mutation hooks', () => {
+	beforeAll(() => {
+		// Isolate the hooks so an event listener cannot hide a missing hook call.
+		const relay = new WorkflowSuggestionEventRelay(
+			new EventService(),
+			suggestionService,
+			Container.get(Logger),
+		);
+		Container.get(WorkflowMutationHooksProxy).registerProvider(relay);
+	});
+
+	it.each([
+		{ action: 'publish', useOutbox: true },
+		{ action: 'publish', useOutbox: false },
+		{ action: 'archive', useOutbox: true },
+		{ action: 'archive', useOutbox: false },
+	])(
+		'closes a pending suggestion before $action returns (outbox: $useOutbox)',
+		async ({ action, useOutbox }) => {
+			const { user, original, suggestion } = await fixture();
+			Container.get(GlobalConfig).workflows.useWorkflowPublicationService = useOutbox;
+
+			if (action === 'publish') {
+				await workflowService.activateWorkflow(user, original.id);
+			} else {
+				await workflowService.archive(user, original.id);
+			}
+
+			expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
+				state: 'closed',
+				closedReason: 'outdated',
+			});
+			expect((await suggestions.getActivity(suggestion.id)).map(({ action }) => action)).toEqual([
+				'submitted',
+				'outdated',
+			]);
+		},
+	);
 });

@@ -1,4 +1,6 @@
 import { defineComponent, ref } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
+import { useUIStore } from '@/app/stores/ui.store';
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
@@ -20,10 +22,6 @@ vi.mock('../composables/useAgentRegistryMcpConfig', () => ({
 	DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS: 60_000,
 	MAX_AGENT_MCP_CONNECTION_TIMEOUT_MS: 120_000,
 	useAgentRegistryMcpConfig: useAgentRegistryMcpConfigMock,
-}));
-
-vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: () => ({ confirm: confirmRemove }),
 }));
 
 vi.mock('@n8n/i18n', () => {
@@ -163,6 +161,13 @@ async function remove(wrapper: ReturnType<typeof mountForm>): Promise<boolean> {
 describe('AgentRegistryMcpConfigForm', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		setActivePinia(createPinia());
+		vi.spyOn(useUIStore(), 'openModalWithData').mockImplementation(({ data }) => {
+			void confirmRemove(data).then((result: string) => {
+				const onResult = result === MODAL_CONFIRM ? data.onConfirm : data.onCancel;
+				if (typeof onResult === 'function') onResult();
+			});
+		});
 		saveMock.mockReturnValue(true);
 		confirmRemove.mockResolvedValue(MODAL_CANCEL);
 	});
@@ -233,8 +238,9 @@ describe('AgentRegistryMcpConfigForm', () => {
 
 		await expect(remove(wrapper)).resolves.toBe(false);
 		expect(confirmRemove).toHaveBeenCalledWith(
-			'tools.connection.settings.removeConfirm.description',
 			expect.objectContaining({
+				description: 'tools.connection.settings.removeConfirm.description',
+				isDestructive: true,
 				confirmButtonText: 'tools.connection.settings.removeConfirm.confirmButton',
 			}),
 		);

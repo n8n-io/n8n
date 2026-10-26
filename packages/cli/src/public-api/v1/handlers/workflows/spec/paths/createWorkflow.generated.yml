@@ -184,6 +184,11 @@ requestBody:
                   - separate
                   - combined
                 description: Controls how binary data is resolved from a node's input. This is a derived, internal setting rather than something intended to be set programmatically. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
+              engineType:
+                type: string
+                nullable: true
+                description: The execution engine that runs this workflow. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
+                example: v1
               callerPolicy:
                 type: string
                 enum:
@@ -684,12 +689,6 @@ responses:
                           required:
                             - key
                             - value
-                  createdAt:
-                    type: string
-                    format: date-time
-                  updatedAt:
-                    type: string
-                    format: date-time
             connections:
               type: object
               description: Connections between nodes, keyed by source node name
@@ -774,6 +773,11 @@ responses:
                     - separate
                     - combined
                   description: Controls how binary data is resolved from a node's input. This is a derived, internal setting rather than something intended to be set programmatically. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
+                engineType:
+                  type: string
+                  nullable: true
+                  example: v1
+                  description: The execution engine that runs this workflow. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
                 callerPolicy:
                   type: string
                   enum:
@@ -1077,12 +1081,6 @@ responses:
                               required:
                                 - key
                                 - value
-                      createdAt:
-                        type: string
-                        format: date-time
-                      updatedAt:
-                        type: string
-                        format: date-time
                 connections:
                   type: object
                   description: Connections between nodes, keyed by source node name

@@ -8,7 +8,9 @@ import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
+import { SELF_HEALING_CONFIGURATION_VIEW } from '@n8n/frontend-constants/self-healing';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiModule } from '../module.descriptor';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from '../constants';
 
@@ -35,7 +37,7 @@ function withStubbedComponents(route: RouteRecordRaw): RouteRecordRaw {
 
 const moduleRoutes = (InstanceAiModule.routes ?? []).map(withStubbedComponents);
 
-// Absolute-path routes register at the top level; relative ones nest under `/settings`.
+// Match the app's top-level, settings, and project route parents.
 function createTestRouter() {
 	return createRouter({
 		history: createMemoryHistory(),
@@ -45,7 +47,14 @@ function createTestRouter() {
 			{
 				path: '/settings',
 				component: stub,
-				children: moduleRoutes.filter((route) => !route.path.startsWith('/')),
+				children: moduleRoutes.filter(
+					(route) => !route.path.startsWith('/') && !route.meta?.projectRoute,
+				),
+			},
+			{
+				path: '/projects/:projectId',
+				component: stub,
+				children: moduleRoutes.filter((route) => route.meta?.projectRoute),
 			},
 		],
 	});
@@ -65,6 +74,7 @@ const instanceAiModuleSettings: NonNullable<FrontendModuleSettings['instance-ai'
 	workflowBuilderAvailable: true,
 	sandboxUnavailableReason: null,
 	runDebugEnabled: false,
+	workflowSuggestionsEnabled: false,
 };
 
 function setAssistantEnabled(enabled: boolean) {
@@ -114,6 +124,48 @@ describe('InstanceAiModule legacy route redirects', () => {
 		expect(router.currentRoute.value.name).toBe(INSTANCE_AI_SETTINGS_VIEW);
 		expect(router.currentRoute.value.path).toBe('/settings/assistant');
 	});
+});
+
+describe.each(['initial navigation', 'from another page'])('self-healing access %s', (entry) => {
+	it.each([
+		{ enabled: false, canUpdate: true, allowed: false },
+		{ enabled: true, canUpdate: false, allowed: false },
+		{ enabled: true, canUpdate: true, allowed: true },
+	])(
+		'checks feature=$enabled and project update=$canUpdate',
+		async ({ enabled, canUpdate, allowed }) => {
+			useSettingsStore().moduleSettings = {
+				'instance-ai': { ...instanceAiModuleSettings, workflowSuggestionsEnabled: enabled },
+			};
+			useProjectsStore().myProjects = [
+				{
+					id: 'project',
+					name: 'Team project',
+					type: 'team',
+					icon: null,
+					createdAt: '',
+					updatedAt: '',
+					role: 'project:admin',
+					scopes: canUpdate ? ['project:update'] : ['project:read'],
+				},
+			];
+			const router = createTestRouter();
+			if (entry === 'from another page') {
+				await router.push('/assistant');
+			}
+			await router.push('/projects/project/settings/self-healing/new');
+
+			expect(router.currentRoute.value.name).toBe(
+				allowed ? SELF_HEALING_CONFIGURATION_VIEW : VIEWS.HOMEPAGE,
+			);
+			if (allowed) {
+				expect(router.currentRoute.value.params).toEqual({
+					projectId: 'project',
+					configurationId: 'new',
+				});
+			}
+		},
+	);
 });
 
 describe('InstanceAiModule settings page access', () => {

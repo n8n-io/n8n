@@ -78,7 +78,6 @@ import type {
 	WorkflowLoopState,
 	WorkflowVerificationEvidence,
 	WorkflowTriggerVerificationProgress,
-	WorkflowVerificationObligation,
 } from './workflow-loop/workflow-loop-state';
 import type { BuilderTemplatesService } from './workspace/builder-templates-service';
 
@@ -756,8 +755,15 @@ export type ExecuteNodeResult =
 			output: string;
 			truncated?: { totalItems: number; shownItems: number; message: string };
 			outputSuppressed?: string;
+			/** Set when n8n redacted the run's data for the user. `output` is then empty. */
+			redaction?: ExecutionRedaction;
 	  }
-	| { status: 'error'; error: { message: string; description?: string; nodeErrorType?: string } };
+	| {
+			status: 'error';
+			error: { message: string; description?: string; nodeErrorType?: string };
+			/** Set when n8n redacted the run's data for the user. Only the error type remains. */
+			redaction?: ExecutionRedaction;
+	  };
 
 /** Executes a single node standalone through the regular execution engine.
  *  The request mirrors a workflow-sdk node (`{ type, version, config }`). */
@@ -1439,11 +1445,12 @@ export interface InstanceAiBuilderDelegate {
 	 * `options.adoptOnCollision` says the caller has proven it may adopt that
 	 * agent — set it only for an id this thread's own lifecycle metadata attests
 	 * to, so the editor winning the insert (and configuring the row) makes this
-	 * call adopt rather than fail.
+	 * call adopt rather than fail. `options.session` names the thread and run
+	 * for the creation telemetry.
 	 */
 	createAgent(
 		name: string,
-		options?: { id?: string; adoptOnCollision?: boolean },
+		options?: { id?: string; adoptOnCollision?: boolean; session?: BuilderToolsSession },
 	): Promise<{
 		agentId: string;
 		projectId: string;
@@ -1652,14 +1659,6 @@ export interface InstanceAiContext {
 	browserUseState?: BrowserUseState;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
-	/** When set, `runWorkflow: 'always_allow'` only short-circuits HITL approval for these workflow IDs.
-	 *  Used by checkpoint follow-up runs to scope the override to the workflows the checkpoint is
-	 *  verifying — `workflow_builder_executions(action="run")` on any other workflow still requires user approval. */
-	allowedRunWorkflowIds?: ReadonlySet<string>;
-	/** Fallback scope for checkpoint follow-up runs when replay/runtime workflow IDs are remapped. */
-	allowedRunWorkflowNames?: ReadonlySet<string>;
-	/** Force `workflow_builder_executions(action="run")` through HITL even when a scoped checkpoint override exists. */
-	requireRunWorkflowApproval?: boolean;
 	/** Thread-level "always allow" grants the user has approved (keys like `executions:run`).
 	 *  Loaded per run from persisted thread state so a grant survives reload/navigation and
 	 *  is visible across mains. Tools consult this to skip HITL for already-granted actions. */
@@ -1771,22 +1770,14 @@ export interface InstanceAiContext {
 	outputSchemaLookup?: OutputSchemaLookup;
 	/**
 	 * Runtime-only workflow build loop context. The direct `workflow_builder_build_workflow` tool
-	 * reports build outcomes here so planned build follow-ups and verification
-	 * tools can share the same work item without a detached builder sub-agent.
+	 * reports build outcomes here so verification tools can share the same work
+	 * item without a detached builder sub-agent.
 	 */
 	workflowBuildContext?: {
 		threadId: string;
 		runId: string;
 		taskId: string;
 		workItemId: string;
-		/**
-		 * True for replan/checkpoint follow-ups where an approved plan already
-		 * exists and the builder may retry directly without creating a new plan.
-		 */
-		allowPostPlanWorkflowCreate?: boolean;
-		/** True when the active planned build task's final deliverable is a supporting workflow. */
-		isSupportingWorkflowTask?: boolean;
-		plannedTaskService?: PlannedTaskService;
 		workflowTaskService?: WorkflowTaskService;
 		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
 	};
@@ -1825,168 +1816,6 @@ export interface TaskStorage {
 	get(threadId: string): Promise<TaskList | null>;
 	save(threadId: string, tasks: TaskList): Promise<void>;
 }
-
-// ── Planned task graphs ─────────────────────────────────────────────────────
-
-export const PLANNED_TASK_KINDS = ['build-workflow', 'checkpoint'] as const;
-/** Legacy kinds still accepted when loading persisted graphs; failed at dispatch time. */
-export const LEGACY_PLANNED_TASK_KINDS = ['delegate'] as const;
-export const STORED_PLANNED_TASK_KINDS = [
-	...PLANNED_TASK_KINDS,
-	...LEGACY_PLANNED_TASK_KINDS,
-] as const;
-export type PlannedTaskKind = (typeof PLANNED_TASK_KINDS)[number];
-export type StoredPlannedTaskKind = (typeof STORED_PLANNED_TASK_KINDS)[number];
-
-export interface PlannedTask {
-	id: string;
-	title: string;
-	kind: PlannedTaskKind;
-	spec: string;
-	deps: string[];
-	/** Existing workflow ID for build-workflow tasks that modify an existing workflow. */
-	workflowId?: string;
-	/**
-	 * True when the build-workflow task's final deliverable is intentionally a
-	 * supporting sub-workflow. Auxiliary supporting workflows created inside a
-	 * larger main-workflow task should not set this.
-	 */
-	isSupportingWorkflow?: boolean;
-}
-
-export type PlannedTaskStatus = 'planned' | 'running' | 'succeeded' | 'failed' | 'cancelled';
-
-export interface PlannedTaskRecord extends Omit<PlannedTask, 'kind'> {
-	kind: StoredPlannedTaskKind;
-	status: PlannedTaskStatus;
-	agentId?: string;
-	backgroundTaskId?: string;
-	result?: string;
-	error?: string;
-	outcome?: Record<string, unknown>;
-	startedAt?: number;
-	finishedAt?: number;
-}
-
-export type PlannedTaskGraphStatus =
-	| 'awaiting_approval'
-	| 'active'
-	| 'awaiting_replan'
-	| 'completed'
-	| 'cancelled';
-
-export interface PlannedTaskGraph {
-	planRunId: string;
-	messageGroupId?: string;
-	postBuildRunApprovalRequired?: boolean;
-	status: PlannedTaskGraphStatus;
-	tasks: PlannedTaskRecord[];
-}
-
-export interface PlannedWorkflowVerification {
-	task: PlannedTaskRecord;
-	obligation: WorkflowVerificationObligation;
-	outcome?: WorkflowBuildOutcome;
-}
-
-export type PlannedTaskSchedulerAction =
-	| { type: 'none'; graph: PlannedTaskGraph | null }
-	| { type: 'dispatch'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
-	| { type: 'orchestrate-build-workflow'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
-	| { type: 'orchestrate-checkpoint'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
-	| {
-			type: 'orchestrate-workflow-verification';
-			graph: PlannedTaskGraph;
-			verification: PlannedWorkflowVerification;
-	  }
-	| { type: 'replan'; graph: PlannedTaskGraph; failedTask: PlannedTaskRecord }
-	| { type: 'synthesize'; graph: PlannedTaskGraph };
-
-export interface PlannedTaskService {
-	createPlan(
-		threadId: string,
-		tasks: PlannedTask[],
-		metadata: {
-			planRunId: string;
-			messageGroupId?: string;
-			postBuildRunApprovalRequired?: boolean;
-		},
-	): Promise<PlannedTaskGraph>;
-	getGraph(threadId: string): Promise<PlannedTaskGraph | null>;
-	markRunning(
-		threadId: string,
-		taskId: string,
-		update: { agentId?: string; backgroundTaskId?: string; startedAt?: number },
-	): Promise<PlannedTaskGraph | null>;
-	markSucceeded(
-		threadId: string,
-		taskId: string,
-		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
-	): Promise<PlannedTaskGraph | null>;
-	markFailed(
-		threadId: string,
-		taskId: string,
-		update: { error?: string; finishedAt?: number },
-	): Promise<PlannedTaskGraph | null>;
-	markCancelled(
-		threadId: string,
-		taskId: string,
-		update?: { error?: string; finishedAt?: number },
-	): Promise<PlannedTaskGraph | null>;
-	markCheckpointSucceeded(
-		threadId: string,
-		taskId: string,
-		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
-	): Promise<CheckpointSettleResult>;
-	markCheckpointFailed(
-		threadId: string,
-		taskId: string,
-		update: {
-			error?: string;
-			/** Structured verification outcome (executionId, failureNode, etc.) so
-			 *  replans have execution context, not just a flat error string. */
-			outcome?: Record<string, unknown>;
-			finishedAt?: number;
-		},
-	): Promise<CheckpointSettleResult>;
-	/** Rewind a running checkpoint back to `planned` after a scheduling race
-	 *  prevented its follow-up from starting. Non-destructive — dependents are
-	 *  untouched and the next tick re-emits `orchestrate-checkpoint`. */
-	revertCheckpointToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
-	/** Rewind a running build-workflow task after a scheduling race prevented
-	 *  its orchestrator follow-up from starting. */
-	revertBuildWorkflowToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
-	tick(
-		threadId: string,
-		options?: {
-			availableSlots?: number;
-			pendingWorkflowVerification?: PlannedWorkflowVerification;
-		},
-	): Promise<PlannedTaskSchedulerAction>;
-	clear(threadId: string): Promise<void>;
-	/** Transition an `awaiting_approval` graph → `active` after the user
-	 *  approves the plan. No-op on any other status. */
-	approvePlan(threadId: string): Promise<PlannedTaskGraph | null>;
-	/** Transition an `awaiting_approval` graph → `cancelled` after the user
-	 *  denies the plan outright. No-op on any other status. */
-	denyPlan(threadId: string): Promise<PlannedTaskGraph | null>;
-	/** Revert an `awaiting_replan` or `completed` graph back to `active`. Used by
-	 *  the service when a replan or synthesize follow-up couldn't start. */
-	revertToActive(threadId: string): Promise<PlannedTaskGraph | null>;
-}
-
-/**
- * Result of a guarded checkpoint settlement. The mutators only transition a task
- * when its kind is `checkpoint` AND its status is `running`, so callers can read
- * the `reason` to report a precise error back to the LLM.
- */
-export type CheckpointSettleResult =
-	| { ok: true; graph: PlannedTaskGraph }
-	| {
-			ok: false;
-			reason: 'not-found' | 'wrong-kind' | 'wrong-status';
-			actual?: { kind?: StoredPlannedTaskKind; status?: PlannedTaskStatus };
-	  };
 
 // ── MCP ──────────────────────────────────────────────────────────────────────
 
@@ -2036,8 +1865,19 @@ export interface InstanceAiMemoryConfig {
 
 type NativeLanguageModelConfig = Extract<NativeModelConfig, { specificationVersion: string }>;
 
+/** OpenAI-compatible or api-key-only endpoint. An empty `url` keeps the provider default. */
+export type EndpointModelConfig = {
+	kind: 'endpoint';
+	id: `${string}/${string}`;
+	url: string;
+	apiKey?: string;
+	headers?: Record<string, string>;
+	supportsStructuredOutputs?: boolean;
+};
+
 /** Direct Google Vertex Claude (Anthropic Messages via `:rawPredict`). */
 export type VertexAnthropicModelConfig = {
+	kind: 'vertex-anthropic';
 	id: `google-vertex-anthropic/${string}`;
 	project: string;
 	location: string;
@@ -2047,10 +1887,11 @@ export type VertexAnthropicModelConfig = {
 /** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
  *  Vertex Claude, or a pre-built LanguageModel instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
  *
+ *  Object configs carry a `kind` tag, so code never infers the variant from its fields.
  *  The LanguageModel variant exists for proxy routes that need a provider-native transport. */
 export type ModelConfig =
 	| string
-	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
+	| EndpointModelConfig
 	| VertexAnthropicModelConfig
 	| NativeLanguageModelConfig;
 
@@ -2268,10 +2109,6 @@ export interface OrchestrationContext {
 	oauth2CallbackUrl?: string;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
-	/** Persist and inspect dependency-aware planned tasks for this thread. */
-	plannedTaskService?: PlannedTaskService;
-	/** Run one scheduler pass after plan/task state changes. */
-	schedulePlannedTasks?: () => Promise<void>;
 	/** Hand off durable work to follow-up tasks once the current tool result reaches the UI. */
 	requestRunHandoff?: (reason: OrchestratorRunHandoffReason) => void;
 	/** Shared runtime workspace for the current orchestration context. */
@@ -2283,16 +2120,6 @@ export interface OrchestrationContext {
 	/** The current user message being processed — needed because memory history only
 	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
 	currentUserMessage?: string;
-	/** True when the current run was started by the replan pipeline after a failed
-	 *  background task. Set by the host, not by user text — the workflow_builder_create_tasks guard
-	 *  reads this instead of substring-matching `currentUserMessage`. */
-	isReplanFollowUp?: boolean;
-	/** True when the current run was started to execute a planned-task checkpoint.
-	 *  The orchestrator should run the checkpoint's spec and call workflow_builder_complete_checkpoint. */
-	isCheckpointFollowUp?: boolean;
-	/** When isCheckpointFollowUp is true, the task ID of the checkpoint being executed.
-	 *  Used by the post-run deadlock fallback in the service. */
-	checkpointTaskId?: string;
 	/** The domain context — gives sub-agent tools access to n8n services */
 	domainContext?: InstanceAiContext;
 	/** Thread-scoped iteration log for accumulating attempt history across retries */

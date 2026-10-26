@@ -69,7 +69,10 @@ vi.mock('../composables/useAgentApi', async (importOriginal) => {
 	};
 });
 
-import { useAgentChatStream } from '../composables/useAgentChatStream';
+import {
+	useAgentChatStream,
+	type UseAgentChatStreamParams,
+} from '../composables/useAgentChatStream';
 import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
 import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import {
@@ -226,6 +229,7 @@ function buildHook(
 	options: {
 		newSession?: Ref<boolean>;
 		onSessionCreated?: (sessionId: string) => void;
+		onUsageUpdated?: UseAgentChatStreamParams['onUsageUpdated'];
 		onAgentUnavailable?: () => void;
 		budgetCards?: boolean;
 		channel?: Ref<'chat' | 'n8n-chat'>;
@@ -266,6 +270,55 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		globalThis.fetch = originalFetch;
 		vi.stubGlobal('localStorage', originalLocalStorage);
 		vi.restoreAllMocks();
+	});
+
+	it('reports usage at turn boundaries and refreshes it at completion', async () => {
+		const onUsageUpdated = vi.fn();
+		const stream = makeControllableSseResponse(
+			[{ type: 'execution-started', executionId: 'execution-1', sessionId: 'thread-1' }],
+			null,
+		);
+		globalThis.fetch = vi.fn(async () => stream.response);
+		const hook = buildHook('thread-1', { onUsageUpdated });
+		const sending = hook.sendMessage('hello');
+		await flushPromises();
+		stream.emit([{ type: 'text-delta', id: 'text-1', delta: 'hello' }]);
+		await flushPromises();
+		expect(onUsageUpdated).toHaveBeenCalledOnce();
+		expect(onUsageUpdated).toHaveBeenLastCalledWith({
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			usage: undefined,
+			complete: false,
+		});
+		const usage = { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 };
+		stream.emit([{ type: 'usage', usage }]);
+		await flushPromises();
+		expect(onUsageUpdated).toHaveBeenLastCalledWith({
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			usage,
+			complete: false,
+		});
+		const finalUsage = { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.02 };
+		stream.close([
+			{ type: 'finish', finishReason: 'stop', usage: finalUsage },
+			{ type: 'done', executionId: 'execution-1' },
+		]);
+		await sending;
+		await flushPromises();
+		expect(onUsageUpdated).toHaveBeenNthCalledWith(3, {
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			usage: finalUsage,
+			complete: false,
+		});
+		expect(onUsageUpdated).toHaveBeenLastCalledWith({
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			usage: undefined,
+			complete: true,
+		});
 	});
 
 	it('renders nested approval while preserving delegated tool input', async () => {
@@ -1947,6 +2000,98 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(hook.messages.value[1].content).toBe('hello');
 	});
 
+	it('keeps host events on the streaming turn in arrival order', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.prepared', payload: { step: 1 } },
+			{ type: 'text-delta', id: 't-1', delta: 'hello' },
+			{ type: 'host-event', name: 'test.unknown', payload: null },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.messages.value).toHaveLength(2);
+		const assistant = hook.messages.value[1];
+		expect(assistant.content).toBe('hello');
+		expect(assistant.hostEvents?.map(({ name, payload }) => ({ name, payload }))).toEqual([
+			{ name: 'test.prepared', payload: { step: 1 } },
+			{ name: 'test.unknown', payload: null },
+		]);
+	});
+
+	it('replaces a keyed host event in its position and appends unkeyed ones', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 0 } },
+			{ type: 'host-event', name: 'test.notice', payload: 1 },
+			{ type: 'host-event', name: 'test.progress', key: 'other', payload: { done: 0 } },
+			{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+			{ type: 'host-event', name: 'test.notice', payload: 2 },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		const hostEvents = hook.messages.value[1].hostEvents ?? [];
+		expect(hostEvents.map(({ name, key, payload }) => ({ name, key, payload }))).toEqual([
+			{ name: 'test.progress', key: 'build', payload: { done: 1 } },
+			{ name: 'test.notice', key: undefined, payload: 1 },
+			{ name: 'test.progress', key: 'other', payload: { done: 0 } },
+			{ name: 'test.notice', key: undefined, payload: 2 },
+		]);
+	});
+
+	it('replaces a keyed host event from an earlier step of the turn', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 0 } },
+			{ type: 'text-delta', id: 't-1', delta: 'Step one' },
+			{ type: 'finish-step' },
+			{ type: 'start-step' },
+			{ type: 'text-delta', id: 't-2', delta: 'Step two' },
+			{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+			{ type: 'finish-step' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		const assistant = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistant.map(({ content }) => content)).toEqual(['Step one', 'Step two']);
+		expect(assistant[0].hostEvents).toEqual([
+			expect.objectContaining({ name: 'test.progress', key: 'build', payload: { done: 1 } }),
+		]);
+		expect(assistant[1].hostEvents).toBeUndefined();
+	});
+
+	it('keeps a message with only host events when the turn reports an error', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.notice', payload: 1 },
+			{ type: 'error', message: 'boom' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.messages.value.flatMap((message) => message.hostEvents ?? [])).toEqual([
+			expect.objectContaining({ name: 'test.notice', payload: 1 }),
+		]);
+	});
+
 	it('clears prior warnings on the next send', async () => {
 		const withWarning: AgentSseEvent[] = [
 			{ type: 'warning', message: 'boom', source: 'mcp', server: 'dead' },
@@ -2770,6 +2915,31 @@ describe('useAgentChatStream — loadHistory', () => {
 		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
 		expect(msg.interactive?.runId).toBe('run-9');
 		expect(msg.status).toBe('awaitingUser');
+	});
+
+	it('restores host events of a turn from history', async () => {
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'm1',
+					role: 'assistant',
+					content: [
+						{ type: 'host-event', name: 'test.prepared', payload: { step: 1 } },
+						{ type: 'text', text: 'hello' },
+					],
+				},
+			],
+			openSuspensions: [],
+		});
+
+		const hook = buildHook();
+		await hook.loadHistory();
+
+		const msg = hook.messages.value.at(-1)!;
+		expect(msg.content).toBe('hello');
+		expect(msg.hostEvents).toEqual([
+			{ id: 'm1:host-event:0', name: 'test.prepared', payload: { step: 1 } },
+		]);
 	});
 
 	it('re-arms a suspended n8n_chat_action card from continued session history', async () => {
