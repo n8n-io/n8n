@@ -340,8 +340,8 @@ watch(runningTestRun, (run) => {
 // Match the left-side radius to the split button. Only the standalone
 // caret-less variant inherits the design-system's default radius.
 .runTestGroup .runTestButtonWithCaret {
-	border-top-left-radius: var(--radius--2xs);
-	border-bottom-left-radius: var(--radius--2xs);
+	border-top-left-radius: var(--radius--full);
+	border-bottom-left-radius: var(--radius--full);
 }
 
 .runTestGroup .caretButton {
