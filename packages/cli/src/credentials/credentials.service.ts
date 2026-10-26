@@ -1531,6 +1531,11 @@ export class CredentialsService {
 		return await this.credentialsTester.testCredentials(userId, credentials.type, credentials);
 	}
 
+	/** Whether n8n can run a connection test for this credential type at all. */
+	hasConnectionTest(credentialType: string): boolean {
+		return this.credentialsTester.getCredentialTestFunction(credentialType) !== undefined;
+	}
+
 	/**
 	 * Tests a stored credential by id. Takes the user rather than a user id: testing
 	 * makes a live call with the secret, so it has to go through the finder, which

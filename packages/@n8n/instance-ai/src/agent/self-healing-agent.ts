@@ -1,4 +1,4 @@
-import { Agent, Memory, Tool } from '@n8n/agents';
+import { Agent, Memory, Tool, type FetchFn } from '@n8n/agents';
 
 import { applyAgentThinking } from './apply-agent-thinking';
 import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
@@ -33,6 +33,7 @@ export interface CreateSelfHealingAgentOptions {
 	verifyCandidate: SelfHealingCandidateVerifier;
 	abortSignal?: AbortSignal;
 	thinkingEnabled?: boolean;
+	modelFetch?: FetchFn;
 }
 
 const SOURCE_GUIDANCE =
@@ -131,6 +132,7 @@ export async function createSelfHealingAgent(
 		.memory(new Memory().storage('memory'));
 
 	if (workspace) agent.workspace(workspace);
+	if (options.modelFetch) agent.modelFetch(options.modelFetch);
 	if (options.thinkingEnabled !== false) applyAgentThinking(agent, modelId);
 
 	const telemetry = tracing?.getTelemetry?.({

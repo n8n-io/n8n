@@ -754,7 +754,6 @@ The agent is stubbed for non-interactive use. The summary tracks divergence
 from this assumption — investigate any non-zero count:
 
 - `askUserCount` — `workflow_builder_ask_user` tool was invoked (eval responds with `{ approved: false }`)
-- `planToolCount` — `workflow_builder_create_tasks` was invoked (single-prompt dataset shouldn't trigger planning)
 - `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `data_tables` create); auto-approved
 - `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
 
@@ -904,7 +903,7 @@ A case that tests credential behaviour declares what should exist:
 "credentials": [{ "type": "slackApi" }, { "type": "slackApi" }]
 ```
 
-Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Their connection test resolves as passing — a declared credential stands for one the user already connected — the same treatment a credential set up on a card during the run gets. Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
+Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Their connection test resolves as passing — a declared credential stands for one the user already connected — the same treatment a credential set up on a card during the run gets. A type n8n has no connection test for (Header, Basic or Bearer Auth) is not bypassed: its test returns production's "No testing function found for this credential." Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
 
 Each type needs a data template in `credentials/seeder.ts`; declaring an unknown type fails the build with a pointer there.
 
