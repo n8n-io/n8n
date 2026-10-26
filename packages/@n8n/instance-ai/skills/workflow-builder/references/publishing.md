@@ -45,7 +45,9 @@ was used. You may offer publishing after that confirmation.
 Only call `workflow_builder_workflows(action="publish")` when the user explicitly asks to
 publish. Never publish automatically or proactively offer publishing before
 the publish-readiness requirement above is met. A repair of a workflow that
-is already published is the exception: see the section below.
+is already published is the exception: you may ask whether to publish the fix
+before that requirement is met, as the section below describes. Still publish
+it only after the user agrees.
 
 ## Fixing a workflow that is already published
 

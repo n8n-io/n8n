@@ -745,9 +745,12 @@ asked for that exact name.
   clarification or use placeholders. Do not guess.
 - Pay attention to `@builderHint` annotations in search results and type
   definitions. They contain node-specific configuration rules and examples.
-- Give every Webhook and Form Trigger an explicit, readable `path` (for example
+- Give every Webhook and Form Trigger an explicit, readable `path` that is
+  specific to this workflow (for example `acme-contact-form`, not
   `contact-form`), so the URL you share after the build is stable and readable.
-  Without a path, the URL uses the random webhook ID.
+  Paths are shared by all workflows on the instance: a second active workflow
+  with the same path and method cannot be published. Without a path, the URL
+  uses the random webhook ID.
 - Gmail archive: the message resource has no `archive` operation. To archive a
   Gmail message, remove the `INBOX` label with `operation: 'removeLabels'` and
   `labelIds: ['INBOX']`; do not add an invented `ARCHIVE` label.

@@ -93,10 +93,9 @@ When the workflow authenticates a service through Simplified Custom Auth,
 include `credentialHints` in the same `workflow_builder_workflows(action="setup")` call so the
 setup card pre-fills the credential and the user only pastes their secret —
 instead of facing an empty JSON template they'd have to decode from the
-provider's docs. Before composing the hints, load the
-`credential-recipe-research` skill and execute its lookup procedure — the
-template, `docsUrl` and `testUrl` must come from the provider documentation
-it has you fetch, never from memory:
+provider's docs. Before composing the hints, execute the lookup procedure in
+sections 1–3 above — the template, `docsUrl` and `testUrl` must come from the
+provider documentation it has you fetch, never from memory:
 
 - `template` — the auth request parts (headers/qs/body) exactly as documented,
   with `{{placeholder}}` markers where the user's values go.

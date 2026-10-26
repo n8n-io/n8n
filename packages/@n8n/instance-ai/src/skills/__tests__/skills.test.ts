@@ -456,6 +456,9 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('node-types/index.txt');
 		// The path is set while building; sharing the URL happens after the build.
 		expect(loaded?.instructions).toContain('explicit, readable `path`');
+		expect(loaded?.instructions).not.toContain('## Trigger URL Sharing');
+		expect(loaded?.instructions).not.toContain('{formBaseUrl}/{path}');
+		expect(loaded?.instructions).not.toContain('**Open chat** button');
 		// URLs are shared after the build, so the rules live in post-build-flow.
 		const postBuild = (await source.loadSkill('post-build-flow'))?.instructions ?? '';
 		expect(postBuild).toContain('## Trigger URL Sharing');
@@ -570,6 +573,7 @@ describe('Instance AI skills', () => {
 
 		const recipes = (await source.loadSkill('credential-recipe-research'))?.instructions ?? '';
 		expect(recipes).toContain('"suggestedName": "fal.ai API Key"');
+		expect(recipes).not.toContain('load the\n`credential-recipe-research` skill');
 		expect(recipes).toContain('`placeholders` — one entry per marker');
 
 		const loadTool = createSkillLoadTool(source);
