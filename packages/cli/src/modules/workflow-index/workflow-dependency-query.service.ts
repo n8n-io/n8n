@@ -31,6 +31,12 @@ const DEFAULT_NODE_USAGE_WORKFLOW_LIMIT = 10;
  *  otherwise returns every type in use. */
 const DEFAULT_NODE_USAGE_TYPE_LIMIT = 100;
 
+const RESOURCE_DEPENDENCY_TYPES: Record<DependencyResourceType, string[]> = {
+	workflow: ['workflowCall', 'errorWorkflow'],
+	credential: ['credentialId'],
+	dataTable: ['dataTableId'],
+};
+
 /**
  * Node-type usage over the workflows in scope. Exactly one of `nodeTypes` and `workflows` is set:
  * the histogram when no node type was named, the workflows using it when one was.
@@ -323,11 +329,23 @@ export class WorkflowDependencyQueryService {
 		const [rawDeps, agentDeps] = await Promise.all([
 			this.dependencyRepository.find({
 				where: [
+					...(resourceType === 'workflow'
+						? [
+								{
+									workflowId: In(accessibleInputIds),
+									dependencyType: In([
+										'credentialId',
+										'dataTableId',
+										'errorWorkflow',
+										'workflowCall',
+									]),
+								},
+							]
+						: []),
 					{
-						workflowId: In(accessibleInputIds),
-						dependencyType: In(['credentialId', 'dataTableId', 'errorWorkflow', 'workflowCall']),
+						dependencyKey: In(accessibleInputIds),
+						dependencyType: In(RESOURCE_DEPENDENCY_TYPES[resourceType]),
 					},
-					{ dependencyKey: In(accessibleInputIds) },
 				],
 				select: ['workflowId', 'dependencyType', 'dependencyKey'],
 			}),
@@ -336,7 +354,7 @@ export class WorkflowDependencyQueryService {
 
 		if (rawDeps.length === 0 && agentDeps.length === 0) return null;
 
-		return { accessibleInputIds, maps: this.buildDepMaps(rawDeps, agentDeps) };
+		return { accessibleInputIds, maps: this.buildDepMaps(rawDeps, agentDeps, resourceType) };
 	}
 
 	/** Agents using the resources, as `{ agentId, resourceId }` regardless of resource type. */
@@ -350,6 +368,7 @@ export class WorkflowDependencyQueryService {
 	private buildDepMaps(
 		rawDeps: Array<{ workflowId: string; dependencyType: string; dependencyKey: string }>,
 		agentDeps: Array<{ agentId: string; resourceId: string }>,
+		resourceType: DependencyResourceType,
 	): RawDepMaps {
 		const agentUsageMap = new Map<string, Set<string>>();
 		const credMap = new Map<string, Set<string>>();
@@ -365,25 +384,31 @@ export class WorkflowDependencyQueryService {
 
 		for (const dep of rawDeps) {
 			allWfIds.add(dep.workflowId);
+			// Batch queries also load outgoing dependencies. Only matching target types can add parents.
+			if (RESOURCE_DEPENDENCY_TYPES[resourceType].includes(dep.dependencyType)) {
+				addToSet(
+					dep.dependencyType === 'errorWorkflow' ? errorWfParentMap : parentMap,
+					dep.dependencyKey,
+					dep.workflowId,
+				);
+			}
+			if (resourceType !== 'workflow') continue;
+
 			switch (dep.dependencyType) {
 				case 'credentialId':
 					addToSet(credMap, dep.workflowId, dep.dependencyKey);
-					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
 					allCredIds.add(dep.dependencyKey);
 					break;
 				case 'dataTableId':
 					addToSet(dtMap, dep.workflowId, dep.dependencyKey);
-					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
 					allDtIds.add(dep.dependencyKey);
 					break;
 				case 'workflowCall':
 					addToSet(subMap, dep.workflowId, dep.dependencyKey);
-					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
 					allWfIds.add(dep.dependencyKey);
 					break;
 				case 'errorWorkflow':
 					addToSet(errorWfMap, dep.workflowId, dep.dependencyKey);
-					addToSet(errorWfParentMap, dep.dependencyKey, dep.workflowId);
 					allWfIds.add(dep.dependencyKey);
 					break;
 			}
