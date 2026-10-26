@@ -110,6 +110,13 @@ the error when the row does not fit the panel. Wrap long URLs and error text.
 
 Agent artifacts inside an Assistant chat keep the handoff in that chat.
 
+In Test, the Agent can link to Build when the user asks about editing or finding
+the Assistant. A navigation link selects Build in place. An edit link stages the
+preceding user request and Test session in the Assistant. Keep an existing Build
+draft if the handoff is refused. Do not send the staged request automatically.
+Render these links as plain text outside Test. Keep this guidance out of the
+Agent's saved instructions and all other execution surfaces.
+
 ## Setup checklist
 
 Show `Finish setup` after the Agent exists and the Assistant finishes building it.

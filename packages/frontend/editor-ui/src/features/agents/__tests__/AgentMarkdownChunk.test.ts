@@ -13,6 +13,22 @@ describe('AgentMarkdownChunk', () => {
 	beforeEach(() => {
 		routerPush.mockReset();
 	});
+	it.each([
+		['#agent-build', false],
+		['#agent-edit', true],
+	] as const)('opens the Test-only Build link %s without navigation', async (href, edit) => {
+		const wrapper = mount(AgentMarkdownChunk, {
+			props: { source: `[Open Build](${href})`, canOpenBuild: true },
+		});
+		const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+		wrapper.get('a').element.dispatchEvent(event);
+		expect(event.defaultPrevented).toBe(true);
+		expect(wrapper.emitted('open-build')).toEqual([[edit]]);
+		expect(routerPush).not.toHaveBeenCalled();
+		await wrapper.setProps({ canOpenBuild: false });
+		expect(wrapper.find('a').exists()).toBe(false);
+		expect(wrapper.text()).toBe('Open Build');
+	});
 
 	it('routes legacy agent Preview links to the builder dock', async () => {
 		const wrapper = mount(AgentMarkdownChunk, {

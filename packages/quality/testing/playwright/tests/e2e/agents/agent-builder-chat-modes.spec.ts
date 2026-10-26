@@ -101,6 +101,90 @@ test.describe(
 				}
 			}
 		});
+		for (const surface of ['builder', 'assistant'] as const) {
+			test(`returns from Test links to ${surface} without replacing a Build draft`, async ({
+				n8n,
+				api,
+			}) => {
+				setContextModuleSettings(n8n.page.context(), {
+					'instance-ai': { enabled: true, setupCompleted: true, workflowBuilderAvailable: true },
+				});
+				const { project, agent, name } = await createRunnableAgent(api);
+				const threadId = randomUUID();
+				await api.instanceAi.createAgentArtifactThread({
+					threadId,
+					projectId: project.id,
+					agentId: agent.id,
+					name,
+				});
+				const request = 'Change your instructions to answer in German';
+				const reply = '[Open Build](#agent-build) or [Edit with Assistant](#agent-edit)';
+				const executionId = randomUUID();
+				const chatPath = `**/rest/projects/${project.id}/agents/v2/${agent.id}/chat`;
+				await n8n.page.route(`${chatPath}/*/messages*`, async (route) => {
+					await route.fulfill({
+						json: {
+							data: {
+								messages: [
+									{
+										id: 'request',
+										role: 'user',
+										executionId,
+										content: [{ type: 'text', text: request }],
+									},
+									{
+										id: 'reply',
+										role: 'assistant',
+										executionId,
+										content: [{ type: 'text', text: reply }],
+									},
+								],
+								openSuspensions: [],
+								activeExecutionId: null,
+							},
+						},
+					});
+				});
+				await n8n.start.fromHome();
+				const builder = n8n.agentBuilder;
+				const { open, composer } = {
+					builder: {
+						open: async () => await builder.goto(project.id, agent.id),
+						composer: builder.getComposer('build'),
+					},
+					assistant: {
+						open: async () => await n8n.instanceAi.gotoThread(threadId),
+						composer: builder.getArtifactBuildComposer(),
+					},
+				}[surface];
+				await open();
+				await composer.fill('Keep my Build draft');
+				await builder.getModeButton('test').click();
+				await expect(builder.getPreviewLink('Open Build')).toBeVisible();
+				let documentRequests = 0;
+				let assistantRequests = 0;
+				n8n.page.on('request', (outgoing) => {
+					if (outgoing.isNavigationRequest() && outgoing.resourceType() === 'document')
+						documentRequests++;
+					if (outgoing.method() === 'POST' && outgoing.url().includes('/instance-ai/chat/'))
+						assistantRequests++;
+				});
+				await builder.getPreviewLink('Open Build').click();
+				await expect(composer).toHaveValue('Keep my Build draft');
+				await builder.getModeButton('test').click();
+				await builder.getPreviewLink('Edit with Assistant').click();
+				await expect(builder.getModeButton('test')).toHaveAttribute('aria-pressed', 'true');
+				await builder.getModeButton('build').click();
+				await expect(composer).toHaveValue('Keep my Build draft');
+				await composer.fill('');
+				await builder.getModeButton('test').click();
+				await builder.getPreviewLink('Edit with Assistant').click();
+				await expect(composer).toBeVisible();
+				await expect(composer).toHaveValue(new RegExp(request));
+				expect(documentRequests).toBe(0);
+				expect(assistantRequests).toBe(0);
+			});
+		}
 		test('preserves both drafts and fits desktop and mobile layouts', async ({ n8n, api }) => {
 			// This checks layout and draft routing. It does not send model requests.
 			setContextModuleSettings(n8n.page.context(), {

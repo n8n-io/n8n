@@ -7,6 +7,7 @@ export * from './agent-json-config.schema';
 export * from './agent-message-origin.schema';
 export * from './agent-node-tool-operations';
 export * from './agent-personalisation';
+export * from './agent-preview.constants';
 export * from './agent-skill.schema';
 export * from './skills.schema';
 export * from './skill-names';

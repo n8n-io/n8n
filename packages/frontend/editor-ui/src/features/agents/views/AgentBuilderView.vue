@@ -424,6 +424,7 @@ let previewRequest = 0;
 async function setChatMode(mode: 'build' | 'test') {
 	if (mode === 'test') return await onOpenPreview();
 	if (chatModeBusy.value) return false;
+	if (!isArtifactMode.value && instanceAiReady.value) isAiPanelOpen.value = true;
 	closePreviewDock();
 	return true;
 }
@@ -3637,7 +3638,7 @@ useKeybindings({
 					:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
 					@continue-loaded="onContinueLoaded"
 					@session-created="markSessionCreated"
-					@open-build="returnToBuilderFromPreview"
+					@open-build="setChatMode('build')"
 					@send-to-assistant="onSendPreviewToAssistant"
 				/>
 
@@ -3781,6 +3782,7 @@ useKeybindings({
 							@continue-loaded="onContinueLoaded"
 							@session-created="markSessionCreated"
 							@send-to-assistant="onSendPreviewToAssistant"
+							@open-build="setChatMode('build')"
 							@initial-consumed="taskPreviewPrompt = undefined"
 						>
 							<template v-if="$slots['artifact-test-actions']" #header-actions>

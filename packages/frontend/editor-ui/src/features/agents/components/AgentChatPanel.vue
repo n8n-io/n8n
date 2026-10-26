@@ -1493,6 +1493,7 @@ onBeforeUnmount(() => {
 			@retry="retryMessage"
 			@resume="resume"
 			@send-to-assistant="emit('send-to-assistant', $event)"
+			@open-build="emit('open-build')"
 			@increase-budget="onIncreaseBudget"
 		>
 			<template v-if="$slots['message-actions']" #message-actions="actionProps">
