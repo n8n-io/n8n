@@ -410,8 +410,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins/mixins';
-
 .carousel {
 	display: flex;
 	align-items: center;
@@ -425,8 +423,6 @@ onBeforeUnmount(() => {
 	padding-block: var(--spacing--xs);
 	max-width: var(--n8n-session-panel--container-width, none);
 	margin: 0 auto;
-
-	// @include mixins.scroll-mask(x);
 }
 
 .chart {
