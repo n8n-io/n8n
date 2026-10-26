@@ -753,6 +753,8 @@ export {
 
 export {
 	PROMOTION_BRANCH_PREFIX,
+	PROMOTION_COMMIT_MESSAGE_MAX_LENGTH,
+	promotionCommitMessageSchema,
 	promotionDisplayNameSchema,
 } from './promotions/promotion-common.dto';
 export {

@@ -2240,6 +2240,18 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('deleteMemoryThreadsForAgent', () => {
+		it('deletes the memory threads of the agent sessions in bulk', async () => {
+			agentExecutionThreadRepository.findIdsByAgentId.mockResolvedValue(['thread-1', 'thread-2']);
+
+			await service.deleteMemoryThreadsForAgent('agent-1');
+
+			expect(agentExecutionThreadRepository.findIdsByAgentId).toHaveBeenCalledWith('agent-1');
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
+			expect(memoryBackend.deleteThreads).toHaveBeenCalledWith(['thread-1', 'thread-2']);
+		});
+	});
+
 	describe('deleteExecutionLogsForAgent', () => {
 		it('deletes all blob-stored logs for an agent', async () => {
 			agentExecutionRepository.findBlobRefsByAgentId.mockResolvedValue([

@@ -174,10 +174,10 @@ function onOpenChange(open: boolean) {
 	color: var(--text-color);
 
 	&:not([data-disabled]) {
-		&:hover,
+		cursor: pointer;
+
 		&[data-highlighted] {
 			background-color: var(--background--hover);
-			cursor: pointer;
 		}
 	}
 

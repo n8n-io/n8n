@@ -75,6 +75,8 @@ const environment = (direction: 'promote' | 'apply') =>
 		scope: 'instance',
 		direction,
 		remote: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
+		provider: { type: 'git' },
+		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
 	}) as unknown as settingsApi.PromotionEnvironmentSummary;
 
 async function render(
@@ -88,6 +90,15 @@ async function render(
 	});
 	await waitAllPromises();
 	return result;
+}
+
+/** Promote opens a dialog for the optional commit message. */
+async function promote(getByTestId: (id: string) => HTMLElement, commitMessage?: string) {
+	await userEvent.click(getByTestId('promotion-preview-submit'));
+	if (commitMessage !== undefined) {
+		await userEvent.type(getByTestId('promote-commit-message'), commitMessage);
+	}
+	await userEvent.click(getByTestId('promote-confirm-button'));
 }
 
 const consumers = (...ids: string[]) => [
@@ -207,7 +218,7 @@ describe('PromotionPreviewView', () => {
 		expect(cardCheckbox('workflow:w1')).toBeChecked();
 		expect(cardCheckbox('folder:f1')).toHaveAttribute('data-state', 'indeterminate');
 
-		await userEvent.click(getByTestId('promotion-preview-submit'));
+		await promote(getByTestId);
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3', 'w4'],
 		});
@@ -440,7 +451,7 @@ describe('PromotionPreviewView', () => {
 		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
 
 		const { getByTestId } = await render();
-		await userEvent.click(getByTestId('promotion-preview-submit'));
+		await promote(getByTestId);
 
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
@@ -453,6 +464,55 @@ describe('PromotionPreviewView', () => {
 		expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
 	});
 
+	it('should send the trimmed commit message from the promote dialog', async () => {
+		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+			git: { branchName: 'main', commitSha: COMMIT_SHA },
+		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+
+		const { getByTestId } = await render();
+		await promote(getByTestId, '  Route leads by region  ');
+
+		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1', 'w2', 'w3', 'w4'],
+			commitMessage: 'Route leads by region',
+		});
+	});
+
+	it('should keep the typed commit message after a failed promote', async () => {
+		vi.mocked(api.promoteProjectSelection).mockRejectedValueOnce(new Error('offline'));
+
+		const { getByTestId, queryByTestId } = await render();
+		await promote(getByTestId, 'Route leads by region');
+		await waitFor(() => expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument());
+
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(getByTestId('promote-commit-message')).toHaveValue('Route leads by region');
+	});
+
+	it('should clear the typed commit message when the project changes', async () => {
+		vi.mocked(api.promoteProjectSelection).mockRejectedValueOnce(new Error('offline'));
+
+		const { getByTestId, queryByTestId, rerender } = await render();
+		await promote(getByTestId, 'Route leads by region');
+		await waitFor(() => expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument());
+
+		await rerender({ projectId: 'p2', direction: 'promote' });
+		await waitAllPromises();
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(getByTestId('promote-commit-message')).toHaveValue('');
+	});
+
+	it('should not promote when the promote dialog is canceled', async () => {
+		const { getByTestId, queryByTestId } = await render();
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+		await userEvent.click(getByTestId('promote-cancel-button'));
+
+		await waitFor(() => expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument());
+		expect(api.promoteProjectSelection).not.toHaveBeenCalled();
+	});
+
 	it('should keep the promotion toast open and link the merge request', async () => {
 		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
 			git: { branchName: 'promotion/p1', commitSha: COMMIT_SHA },
@@ -460,7 +520,7 @@ describe('PromotionPreviewView', () => {
 		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
 
 		const { getByTestId } = await render();
-		await userEvent.click(getByTestId('promotion-preview-submit'));
+		await promote(getByTestId);
 
 		expect(showMessage).toHaveBeenCalledWith(
 			expect.objectContaining({ title: 'Changes promoted', type: 'success', duration: 0 }),
@@ -480,7 +540,7 @@ describe('PromotionPreviewView', () => {
 		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
 
 		const { getByTestId } = await render();
-		await userEvent.click(getByTestId('promotion-preview-submit'));
+		await promote(getByTestId);
 
 		expect(showMessage).toHaveBeenCalledWith(
 			expect.objectContaining({ title: 'Changes promoted', type: 'warning', duration: 0 }),
