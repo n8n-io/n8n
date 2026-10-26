@@ -1,0 +1,71 @@
+{
+	"name": "n8n node version 2",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "0f8c2c5e-3b0e-4a4f-9a51-6a2f4d1c9b01",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [640, 360]
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "addUser",
+				"projectId": "proj-v2",
+				"userId": "user-v2",
+				"role": "project:editor"
+			},
+			"id": "1a9d3d6f-4c1f-4b50-8b62-7b3e5e2dac02",
+			"name": "Add user",
+			"type": "n8n-nodes-base.n8n",
+			"typeVersion": 2,
+			"position": [900, 360],
+			"credentials": {
+				"n8nApi": {
+					"id": "7",
+					"name": "n8n account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "execution",
+				"operation": "getAll",
+				"returnAll": true,
+				"options": {
+					"status": "error"
+				}
+			},
+			"id": "2bae4e7a-5d2a-4c61-9c73-8c4f6f3ebd03",
+			"name": "Get failed executions",
+			"type": "n8n-nodes-base.n8n",
+			"typeVersion": 2,
+			"position": [1160, 360],
+			"credentials": {
+				"n8nApi": {
+					"id": "7",
+					"name": "n8n account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Add user", "type": "main", "index": 0 }]]
+		},
+		"Add user": {
+			"main": [[{ "node": "Get failed executions", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"pinData": {
+		"Add user": [{ "json": { "success": true } }],
+		"Get failed executions": [
+			{ "json": { "id": "1", "status": "error" } },
+			{ "json": { "id": "2", "status": "error" } }
+		]
+	}
+}
