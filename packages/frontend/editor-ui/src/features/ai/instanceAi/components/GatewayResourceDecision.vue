@@ -7,7 +7,7 @@ import { computed } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { redactTelemetryProperties } from '@n8n/telemetry';
-import type { ConfirmationSubmit } from '../confirmationTransport';
+import { useConfirmationThreadId, type ConfirmationSubmit } from '../confirmationTransport';
 import { useOptionalThread } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
@@ -40,6 +40,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const thread = useOptionalThread();
+const threadId = useConfirmationThreadId(thread);
 
 interface OptionEntry {
 	decision: InstanceGatewayResourceDecision;
@@ -79,7 +80,7 @@ async function confirm(decision: InstanceGatewayResourceDecision) {
 	const tc = thread?.findToolCallByRequestId(props.requestId);
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	const eventProps = {
-		thread_id: thread?.id ?? '',
+		thread_id: threadId(),
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
 		type: 'resource-decision',

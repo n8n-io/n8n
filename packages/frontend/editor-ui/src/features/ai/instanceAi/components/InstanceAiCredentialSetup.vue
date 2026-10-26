@@ -25,7 +25,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { useConfirmationTransport, type ConfirmationSubmit } from '../confirmationTransport';
+import {
+	useConfirmationThreadId,
+	useConfirmationTransport,
+	type ConfirmationSubmit,
+} from '../confirmationTransport';
 import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
 import { useBrowserUseConnection } from '../composables/useBrowserUseConnection';
 import { AI_GATEWAY_MANAGED_TAG, INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_ENABLED } from '../constants';
@@ -49,6 +53,7 @@ const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const transport = useConfirmationTransport(() => props.submit);
 const thread = transport.thread;
+const threadId = useConfirmationThreadId(thread);
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
@@ -513,7 +518,7 @@ function trackCredentialInput() {
 		}
 	}
 	telemetry.track('User finished providing input', {
-		thread_id: thread?.id ?? '',
+		thread_id: threadId(),
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
 		type: 'credential-setup',

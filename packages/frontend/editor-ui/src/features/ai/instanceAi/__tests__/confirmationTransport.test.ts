@@ -1,7 +1,9 @@
 import { mount } from '@vue/test-utils';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, provide } from 'vue';
 
 import {
+	CONFIRMATION_THREAD_ID,
+	useConfirmationThreadId,
 	useConfirmationTransport,
 	type ConfirmationSubmit,
 	type ConfirmationTransport,
@@ -74,5 +76,44 @@ describe('useConfirmationTransport', () => {
 
 		expect(transport.thread).toBeUndefined();
 		await expect(transport.confirm('req-1', body, 'approved')).resolves.toBe(false);
+	});
+});
+
+describe('useConfirmationThreadId', () => {
+	function threadIdIn(options: { thread?: ThreadRuntime; providedThreadId?: string }) {
+		let threadId!: () => string;
+		const Card = defineComponent({
+			setup() {
+				threadId = useConfirmationThreadId(options.thread);
+				return () => null;
+			},
+		});
+		const Host = defineComponent({
+			setup() {
+				if (options.providedThreadId) provide(CONFIRMATION_THREAD_ID, options.providedThreadId);
+				return () => h(Card);
+			},
+		});
+		mount(Host);
+		return threadId;
+	}
+
+	it('reports the thread of the current Assistant', () => {
+		const thread = { id: 'thread-1' } as ThreadRuntime;
+
+		expect(threadIdIn({ thread, providedThreadId: 'agent-thread' })()).toBe('thread-1');
+	});
+
+	it('reports the thread that the host provides when there is no thread runtime', () => {
+		expect(threadIdIn({ providedThreadId: 'agent-thread' })()).toBe('agent-thread');
+	});
+
+	it('reports no thread outside a component, without injecting', () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		expect(useConfirmationThreadId(undefined)()).toBe('');
+		expect(useConfirmationThreadId({ id: 'thread-1' } as ThreadRuntime)()).toBe('thread-1');
+		expect(warn).not.toHaveBeenCalled();
+		warn.mockRestore();
 	});
 });

@@ -4,6 +4,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { isRecord } from '@n8n/utils/is-record';
 import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
+import { useConfirmationThreadId } from '../../confirmationTransport';
 import type { ThreadRuntime } from '../../instanceAi.store';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 
@@ -55,6 +56,7 @@ export function useWorkflowSetupTelemetry(deps: {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
 	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();
+	const threadId = useConfirmationThreadId(deps.thread);
 
 	const shownStepKeys = new Set<string>();
 	const handledStepKeys = new Set<string>();
@@ -65,7 +67,7 @@ export function useWorkflowSetupTelemetry(deps: {
 			...getTelemetryPayload(),
 			session_id: rootStore.pushRef,
 			workflow_id: deps.workflowId?.value,
-			thread_id: deps.thread?.id ?? '',
+			thread_id: threadId(),
 			input_thread_id: tc?.confirmation?.inputThreadId ?? '',
 			instance_id: rootStore.instanceId,
 			type: 'setup',
@@ -173,7 +175,7 @@ export function useWorkflowSetupTelemetry(deps: {
 			...getTelemetryPayload(),
 			instance_id: rootStore.instanceId,
 			workflow_id: workflowId,
-			thread_id: deps.thread?.id ?? '',
+			thread_id: threadId(),
 			session_id: rootStore.pushRef,
 			source: 'instance_ai_setup_wizard',
 			request_id: deps.requestId.value,

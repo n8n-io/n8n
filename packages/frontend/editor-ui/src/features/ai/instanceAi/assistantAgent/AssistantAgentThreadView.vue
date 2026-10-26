@@ -8,6 +8,7 @@ import { computed, provide, ref, useTemplateRef, watch } from 'vue';
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
 
+import { CONFIRMATION_THREAD_ID } from '../confirmationTransport';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { countAttachedNodes } from '../utils/buildNodesAttachment';
 import {
@@ -24,6 +25,8 @@ const props = defineProps<{ threadId: string; projectId: string }>();
 
 provide(ASSISTANT_AGENT_THREAD_ID, props.threadId);
 provide(ASSISTANT_AGENT_PROJECT_ID, props.projectId);
+// The cards have no thread runtime here, so their telemetry reads the thread id from this.
+provide(CONFIRMATION_THREAD_ID, props.threadId);
 
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
