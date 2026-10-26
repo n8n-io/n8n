@@ -87,11 +87,12 @@ export const applied: AppliedResult = {
 	git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 	counts: {
 		projects: { created: 0, updated: 1, skipped: 1, deleted: 0 },
-		folders: { created: 0, skipped: 0, removed: 0 },
+		folders: { created: 0, updated: 0, skipped: 0, moved: 0, renamed: 0, removed: 0 },
 		workflows: {
 			created: 1,
 			updated: 2,
 			skipped: 1,
+			moved: 0,
 			archived: 0,
 			deleted: 0,
 			publishing: { published: 0, unpublished: 0, unchanged: 0, blocked: 1, failed: 1 },

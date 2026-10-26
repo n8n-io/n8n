@@ -146,6 +146,8 @@ function buildEpisodicMemoryCaptureInstruction(include: string[], exclude: strin
 function buildFlagMemoryInputSchema(exclude: string[]) {
 	if (exclude.length === 0) return FlagMemoryInputSchema;
 	const { content } = FlagMemoryInputSchema.shape;
+	// Unquoted on purpose: quoting here lowered capture of prioritized topics in the eval.
+	// Only builders set topics, and they already control the agent instructions.
 	return FlagMemoryInputSchema.extend({
 		content: content.describe(
 			`${content.description} Must not contain details about: ${exclude.join(', ')}.`,
@@ -211,6 +213,7 @@ export interface RunEpisodicMemoryCandidateProcessorOpts {
 	now?: Date;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	modelFetch?: typeof globalThis.fetch;
 	agentName?: string;
 	/**
 	 * Receives each episodic model call's usage the moment it resolves — once
@@ -515,6 +518,7 @@ async function runEpisodicMemoryReflection(
 		entries: cluster,
 		sources,
 		executionCounter: opts.executionCounter,
+		modelFetch: opts.modelFetch,
 	});
 	const reflectionResult =
 		'reflection' in reflectResult

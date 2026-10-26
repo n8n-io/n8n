@@ -141,6 +141,9 @@ export class DiscordIntegration extends AgentChatIntegration {
 
 	readonly disableStreaming = true;
 
+	// The adapter cuts messages at 2,000 characters. The margin covers mentions.
+	readonly maxMessageLength = 1_900;
+
 	/**
 	 * Discord acknowledges a button click with `DeferredUpdateMessage`, which
 	 * promises Discord an edit of the source message. Deleting it instead would
