@@ -72,6 +72,7 @@ The most important settings:
 | `COMPARE_BINARY_CHECKS` | `1` (default) runs the deterministic binary checks of the Instance AI eval suite. `0` turns it off |
 | `GOOGLE_GENERATIVE_AI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `MISTRAL_API_KEY`, `GROQ_API_KEY` | Model keys for the real AI runs. A workflow model without a key skips those runs |
 | `CLAUDE_MODEL`, `CODEX_MODEL` | Model ids. Empty uses the CLI default. A prefix such as `anthropic/` is removed |
+| `CODEX_REASONING_EFFORT` | Reasoning effort of Codex: `minimal`, `low`, `medium` (default), `high` or `xhigh`. The Effort column of the page shows the effort of each run |
 | `COMPARE_CLAUDE_TOOLS` | `none` (default) gives Claude Code only the n8n tools. `default` also gives it its built-in tools, all allowed (see "How the builders run") |
 | `CLAUDE_API_KEY` | Anthropic key for Claude Code. Falls back to `ANTHROPIC_API_KEY` |
 | `CODEX_API_KEY` | OpenAI key for Codex. Falls back to `OPENAI_API_KEY` |
@@ -630,7 +631,14 @@ The runner answers every confirmation card with one fixed policy, so runs
 can be compared. It approves actions and plans, picks the first option of a
 question, allows a domain once, defers workflow and credential setup cards,
 and denies access to local files and MCP connections. `iai/run.json` lists
-each decision.
+each decision. After `run-finish`, the runner waits until the thread is idle
+for 10 seconds, so it does not miss a background task or a follow-up run.
+This wait is not part of the time: `finishedAt` is the time of the last
+`run-finish` event. n8n does not report the reasoning effort, so the Effort
+column shows the effort that n8n uses for `N8N_INSTANCE_AI_MODEL` and
+`N8N_INSTANCE_AI_REASONING_EFFORT`, with the rules of
+`apply-agent-thinking.ts`. Claude Code reports its effort in the session
+file. Codex reports it in the recorded model request.
 
 **Claude Code and Codex** run in a Docker container (`COMPARE_ISOLATION=container`):
 
@@ -678,12 +686,20 @@ By default the CLIs run in interactive mode (`COMPARE_CLI_MODE=interactive`):
   prompt when the input box shows, plus a short wait, not as an argument.
 - Claude uses `--permission-mode dontAsk`: the n8n tools are pre-approved,
   and all other tools are denied without a question.
+- When the CLI shows a question picker, the script selects the first
+  option, which is the recommended option. This is the same policy as for
+  Instance AI. A picker with several tabs gets one answer for each tab, then
+  Submit. `<builder>/answers.json` lists each answer.
 - The model key reaches the CLI through a variable that only the CLI reads
   (`apiKeyHelper` for Claude, a provider `env_key` for Codex). Thus no screen
   asks to confirm the key or shows part of it, and no key is in a file.
 - The script reads the session file of the CLI for the progress lines, the
   end of the turn, the trace and the tokens. Claude Code then shows no cost
   estimate, so the cost needs the published prices.
+- The time on the page is the model turn from the session file
+  (`turnStartedAt` to `turnFinishedAt` in `run.json`). It does not include
+  the container start-up, the wait before the prompt is pasted, or the
+  shutdown.
 - After each run, the script searches the run folder for the model key and
   the MCP token. It prints a warning with the file name if it finds one.
 
