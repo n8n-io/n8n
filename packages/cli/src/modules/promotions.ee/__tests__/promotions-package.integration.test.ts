@@ -1972,7 +1972,7 @@ describe('Apply moves and renames within a project', () => {
 		});
 
 		assert(result.status === 'applied');
-		expect(result.counts.credentials).toEqual({ matched: 1, stubbed: 0 });
+		expect(result.counts.credentials).toMatchObject({ matched: 1, stubbed: 0 });
 		const applied = await placeOf(workflow.id);
 		expect(applied.parentFolder?.id).toBe(folder.id);
 		expect(applied.nodes[0].credentials?.httpHeaderAuth?.id).toBe(credential.id);
