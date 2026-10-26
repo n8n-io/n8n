@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/shared/contextMenu/components/ContextMenu.vue
+  s_015bd55490d112::t_9528f8496c93d5 7-12,17-20,29-30,32-42,52-55,57-58,60-61,73-74,83-85,89-91,93,96-97,118,120-122,147
+  s_015bd55490d112::t_e757af72ae8e19 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "123801697d016c81eefdb0ff8b191019878e1f8e",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_015bd55490d112": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "19ca4793-0bae-4d35-9aee-546985c34a30",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

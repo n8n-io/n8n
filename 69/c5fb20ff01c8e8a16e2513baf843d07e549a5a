@@ -1,0 +1,50 @@
+packages/frontend/editor-ui/src/features/execution/logs/composables/useLogsExecutionData.test.ts
+  s_fdc21302a0e47a::t_be41af0f151bb8 24-25,75-88,92
+  s_fdc21302a0e47a::t_15052ecdc14ce2 89-91
+  s_fdc21302a0e47a::t_83739b86ebf42f 93-94
+packages/frontend/editor-ui/src/app/stores/executionData.store.test.ts
+  s_fdc21302a0e47a::t_d7025add84576f 633-635,655,684-685,692,699,709,721,747-768
+  s_fdc21302a0e47a::t_5713333f80b036 3-9,24,30-36,824-907,911-1142
+  s_fdc21302a0e47a::t_15052ecdc14ce2 908-910
+  s_fdc21302a0e47a::t_4055c8bd70fe5e 37,769,1143-1144
+packages/frontend/editor-ui/src/features/execution/logs/logs.utils.ts
+  s_fdc21302a0e47a::t_bf50ba3f680f84 717-720,723,727,762,764
+packages/frontend/editor-ui/src/app/stores/executionData.store.ts
+  s_fdc21302a0e47a::t_b365a894c98b03 186,189-203,653,658,660,732-733,739,750-755,766,782,819-837,849-850,855-861
+  s_fdc21302a0e47a::t_008692049e15b7 656-657
+  s_fdc21302a0e47a::t_2ced484f743dbf 851-854
+  s_fdc21302a0e47a::t_6d9a70c8ebc4c3 3-12,23,25-26,91-150,155-185,188,213,289-291,302,439-441,613-619,621,623-624,655,696-697,701,703-704,735-738,740-745,760-761,765,767-773,779-781,787-791,793,795-798,801-802,804-806,810-817,847-848,876
+  s_fdc21302a0e47a::t_15052ecdc14ce2 151-154
+  s_fdc21302a0e47a::t_1659f22073b550 662
+  s_fdc21302a0e47a::t_67b3e1c9f073e1 187,818
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.test.ts
+  s_fdc21302a0e47a::t_57459abed55d2a 12,27-32,353-365,662-697,1373-1403
+  s_fdc21302a0e47a::t_da652497904446 1404-1405
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsPanel.test.ts
+  s_fdc21302a0e47a::t_da13c13b340ec7 392-398,417,436,438
+packages/frontend/editor-ui/src/features/execution/logs/composables/useLogsExecutionData.ts
+  s_fdc21302a0e47a::t_bf50ba3f680f84 1,44-45,170
+  s_fdc21302a0e47a::t_527bb67df276d9 46
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.ts
+  s_fdc21302a0e47a::t_15052ecdc14ce2 730-732
+  s_fdc21302a0e47a::t_25d890b004e9ce 10-11,138,316-318,375-376,721-729,733-735,960-962,1039,1064
+  s_fdc21302a0e47a::t_7daf97994305d3 304-305
+packages/frontend/editor-ui/src/features/execution/logs/logs.utils.test.ts
+  s_fdc21302a0e47a::t_be41af0f151bb8 1583-1603
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "69c5fb20ff01c8e8a16e2513baf843d07e549a5a",
+  "prompts": {},
+  "sessions": {
+    "s_fdc21302a0e47a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a376b60-3f3c-43fe-bc09-dde3e877902d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

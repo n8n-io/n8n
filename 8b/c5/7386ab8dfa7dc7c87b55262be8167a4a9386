@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.store.ts
+  s_6f3bf766fd9fe0::t_bb0ba1f1129da9 55,57-61
+  s_6f3bf766fd9fe0::t_09da3087b4630d 84-90,94-95
+  s_6f3bf766fd9fe0::t_ad53f68bcff7c0 112,124
+  s_6f3bf766fd9fe0::t_3d663c240b8f60 14-18
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.ts
+  s_6f3bf766fd9fe0::t_621d6a6ccbf56c 26-30
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantAgentThreads.store.test.ts
+  s_6f3bf766fd9fe0::t_b290d492786952 30,34,62-69,85-118
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadRouteView.test.ts
+  s_6f3bf766fd9fe0::t_18e15edee7ecd1 13,121-124
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/useMergedChatHistory.test.ts
+  s_6f3bf766fd9fe0::t_3b495f289cd430 20,23,63-72,113,121-196
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_6f3bf766fd9fe0::t_26640ce0162fd6 5,15,417
+  s_6f3bf766fd9fe0::t_4115d621664b4e 392-416,418-428
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_6f3bf766fd9fe0::t_8ae83fd51766e3 119
+  s_6f3bf766fd9fe0::t_72412b4facc4bf 370-372
+  s_6f3bf766fd9fe0::t_10d3c35b8242c9 100-103,105
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadRouteView.vue
+  s_6f3bf766fd9fe0::t_e9d7a089aa18bb 16,32,45-54
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_6f3bf766fd9fe0::t_d2c964c89ae3db 27
+  s_6f3bf766fd9fe0::t_ebf5939c3ba259 219-251
+  s_6f3bf766fd9fe0::t_cd406c9b8ece70 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8bc57386ab8dfa7dc7c87b55262be8167a4a9386",
+  "prompts": {},
+  "sessions": {
+    "s_6f3bf766fd9fe0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54b552f3-ed95-47f8-bae0-29b5254ca51c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupTelemetry.ts
+  s_6f3bf766fd9fe0::t_8b8bfd5673f9e9 7,59,70,178
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/GatewayResourceDecision.vue
+  s_6f3bf766fd9fe0::t_75c28399d78354 10,43,83
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_6f3bf766fd9fe0::t_75c28399d78354 28-32,56,521
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/confirmationTransport.test.ts
+  s_6f3bf766fd9fe0::t_09933075278ebc 2,5-6,81-117
+  s_6f3bf766fd9fe0::t_0f78d0ac2c48a2 118-119
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_6f3bf766fd9fe0::t_332875453a2734 9,22-23
+packages/frontend/editor-ui/src/features/ai/instanceAi/confirmationTransport.ts
+  s_6f3bf766fd9fe0::t_3262ce73f8f212 2,63,66
+  s_6f3bf766fd9fe0::t_0f78d0ac2c48a2 68
+  s_6f3bf766fd9fe0::t_ccd3b921084275 18-21,54-62,64-65,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a53c2d9b02852fdb096865723ed72c554c0581b6",
+  "prompts": {},
+  "sessions": {
+    "s_6f3bf766fd9fe0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54b552f3-ed95-47f8-bae0-29b5254ca51c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

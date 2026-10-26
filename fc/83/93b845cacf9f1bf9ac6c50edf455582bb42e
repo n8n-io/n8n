@@ -1,0 +1,37 @@
+packages/@n8n/cli/src/commands/promotion-environment/promote.ts
+  s_ea8398b491aecc::t_69d42eee91d0b1 7
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_ea8398b491aecc::t_a20d6b2b20c4ae 2033-2063
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  ai_agent 5
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_ea8398b491aecc::t_c4e600823b4a2b 333,335-387
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-changes.integration.test.ts
+  s_ea8398b491aecc::t_4ef26888e8c238 354-363,365
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_ea8398b491aecc::t_9edc8211becd48 68,205,1168-1173,1175,1183-1184,1186-1192,1196-1208,1438,1450,1453-1458,1460,1463,1482,1486-1498
+packages/@n8n/cli/docs/commands/promotions.md
+  s_ea8398b491aecc::t_3788f35d4b3676 209-211
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_ea8398b491aecc::t_116cc3b6a20415 501
+packages/cli/src/modules/promotions.ee/cross-project-moves.ts
+  s_ea8398b491aecc::t_408efa5dce33fb 16-21,24-27,95-96,103-111,114-119
+packages/cli/src/modules/promotions.ee/__tests__/cross-project-moves.test.ts
+  s_ea8398b491aecc::t_a20d6b2b20c4ae 6,110-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fc8393b845cacf9f1bf9ac6c50edf455582bb42e",
+  "prompts": {},
+  "sessions": {
+    "s_ea8398b491aecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79fa3697-e88c-41ac-8b49-e4829ac9b740",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
