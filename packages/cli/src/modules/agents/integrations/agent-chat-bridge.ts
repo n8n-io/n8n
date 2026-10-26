@@ -273,7 +273,6 @@ export class AgentChatBridge {
 		this.streamConsumer = new AgentChatStreamConsumer({
 			disableStreaming,
 			singleStreamedRunPerTurn: this.integrationImpl?.singleStreamedRunPerTurn,
-			maxMessageLength: this.integrationImpl?.maxMessageLength,
 			logger: this.logger,
 			postErrorToThread: this.postErrorToThread.bind(this),
 			handleSuspension: this.handleSuspension.bind(this),

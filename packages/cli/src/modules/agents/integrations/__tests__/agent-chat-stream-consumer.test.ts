@@ -239,45 +239,6 @@ describe('AgentChatStreamConsumer — stream delivery failure', () => {
 describe.each([
 	['streaming', false],
 	['buffered', true],
-])('AgentChatStreamConsumer — maxMessageLength (%s)', (_name, disableStreaming) => {
-	it('continues a long reply in new messages that end on whole lines', async () => {
-		const { thread, streamedText, discrete } = makeStreamingThread();
-		const consumer = makeStreamingConsumer({ disableStreaming, maxMessageLength: 20 });
-		const lines = Array.from({ length: 10 }, (_, i) => `line ${i}\n`);
-
-		await consumer.consume(
-			makeStream(lines.map((delta) => ({ type: 'text-delta', id: 't-1', delta }))),
-			thread,
-		);
-
-		const messages = disableStreaming
-			? discrete.map((message) => (message as { markdown: string }).markdown)
-			: streamedText;
-		expect(messages.length).toBeGreaterThan(1);
-		expect(messages.join('')).toBe(lines.join(''));
-		for (const message of messages) {
-			expect(message.length).toBeLessThanOrEqual(20);
-			expect(message.endsWith('\n')).toBe(true);
-		}
-	});
-
-	it('breaks a line that does not fit in one message', async () => {
-		const { thread, streamedText, discrete } = makeStreamingThread();
-		const consumer = makeStreamingConsumer({ disableStreaming, maxMessageLength: 20 });
-		const text = 'x'.repeat(50);
-
-		await consumer.consume(makeStream([{ type: 'text-delta', id: 't-1', delta: text }]), thread);
-
-		const messages = disableStreaming
-			? discrete.map((message) => (message as { markdown: string }).markdown)
-			: streamedText;
-		expect(messages).toEqual(['x'.repeat(20), 'x'.repeat(20), 'x'.repeat(10)]);
-	});
-});
-
-describe.each([
-	['streaming', false],
-	['buffered', true],
 ])('AgentChatStreamConsumer — text step boundaries (%s)', (_name, disableStreaming) => {
 	async function consumeText(chunks: StreamChunk[]) {
 		const { thread, streamedText, discrete } = makeStreamingThread();

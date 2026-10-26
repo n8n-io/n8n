@@ -41,8 +41,6 @@ interface AgentChatStreamConsumerOptions {
 	isIntegrationActionTool?: (toolName: string) => boolean;
 	/** Text after the first streamed run is buffered and posted on its own. */
 	singleStreamedRunPerTurn?: boolean;
-	/** Text past this many characters continues in a new message. */
-	maxMessageLength?: number;
 }
 
 /** The platform did not accept a reply, so the user did not get all of it. */
@@ -264,41 +262,26 @@ export class AgentChatStreamConsumer {
 		const responseState = createResponseState(options);
 		let budgetStop: string | undefined;
 
-		const streamDelta = async (delta: string) => {
-			// Opening on whitespace alone posts a placeholder that the
-			// platform then has nothing to replace it with.
-			if (!delta.trim() && !responseState.hasVisibleResponse) return;
-			await responseLifecycle.startStreamingResponse();
-			pendingText += delta;
-			textStream.yield?.(delta);
-			if (delta.trim()) responseState.hasVisibleResponse = true;
-			if (!statusRestoredForPost && options.statusHandle?.resumeAfterResponse) {
-				await flushStreamingPost();
-				await responseLifecycle.resumeThinking();
-				statusRestoredForPost = true;
-			}
-		};
-		/** Continues in a new message before the current one passes the platform limit. */
-		const streamText = async (text: string) => {
-			let rest = text;
-			let breakAt = this.messageBreak(pendingText.length, rest);
-			while (breakAt !== undefined) {
-				await streamDelta(rest.slice(0, breakAt));
-				await endStreamingPost();
-				rest = rest.slice(breakAt);
-				// Whitespace alone would open an empty message.
-				if (!rest.trim()) return;
-				breakAt = this.messageBreak(pendingText.length, rest);
-			}
-			await streamDelta(rest);
-		};
-
 		try {
 			for await (const chunk of stream) {
 				switch (chunk.type) {
-					case 'text-delta':
-						if (!responseState.suppressText) await streamText(chunk.delta);
+					case 'text-delta': {
+						if (responseState.suppressText) break;
+						const { delta } = chunk;
+						// Opening on whitespace alone posts a placeholder that the
+						// platform then has nothing to replace it with.
+						if (!delta.trim() && !responseState.hasVisibleResponse) break;
+						await responseLifecycle.startStreamingResponse();
+						pendingText += delta;
+						textStream.yield?.(delta);
+						if (delta.trim()) responseState.hasVisibleResponse = true;
+						if (!statusRestoredForPost && options.statusHandle?.resumeAfterResponse) {
+							await flushStreamingPost();
+							await responseLifecycle.resumeThinking();
+							statusRestoredForPost = true;
+						}
 						break;
+					}
 					case 'text-end':
 						await flushStreamingPost();
 						break;
@@ -394,9 +377,7 @@ export class AgentChatStreamConsumer {
 		throwOnDeliveryError = false,
 	): Promise<void> {
 		try {
-			for (const part of this.messageParts(text)) {
-				await thread.post({ markdown: part });
-			}
+			await thread.post({ markdown: text });
 		} catch (postError: unknown) {
 			this.options.logger.error('[AgentChatBridge] Buffered post failed', {
 				error: postError instanceof Error ? postError.message : String(postError),
@@ -404,37 +385,6 @@ export class AgentChatStreamConsumer {
 			if (throwOnDeliveryError) throw postError;
 			await this.postError(thread, new ReplyDeliveryError(postError), state);
 		}
-	}
-
-	/** Splits text that is over the platform limit into messages that fit. */
-	private messageParts(text: string): string[] {
-		const max = this.options.maxMessageLength;
-		const parts: string[] = [];
-		let rest = text;
-		while (max !== undefined && rest.length > max) {
-			const breakAt = this.messageBreak(0, rest) ?? max;
-			parts.push(rest.slice(0, breakAt));
-			rest = rest.slice(breakAt);
-		}
-		parts.push(rest);
-		return parts.filter((part) => part.trim());
-	}
-
-	/**
-	 * Where `text` must continue in a new message, so that a message that
-	 * already holds `used` characters stays within the platform limit. Near the
-	 * limit it breaks after a line, so messages end on whole lines when it can.
-	 * Text is cut mid-line only when it does not fit in an empty message.
-	 */
-	private messageBreak(used: number, text: string): number | undefined {
-		const max = this.options.maxMessageLength;
-		if (max === undefined || used + text.length <= max * 0.9) return undefined;
-		const room = max - used;
-		if (room <= 0) return 0;
-		const lineEnd = text.lastIndexOf('\n', room - 1);
-		if (lineEnd !== -1) return lineEnd + 1;
-		if (text.length <= room) return undefined;
-		return used > 0 ? 0 : room;
 	}
 
 	private async postBudgetStop(
