@@ -410,11 +410,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// next isolated-vm call in the process, even after the isolate is disposed.
 		// So the callbacks read the data from a holder that `finally` clears.
 		const holder: DataHolder = { data };
-		const getValueAtPath = this.createGetValueAtPathRef(holder);
-		const getArrayElement = this.createGetArrayElementRef(holder);
-		const callHost = this.createCallHostRef(holder);
 
 		try {
+			const getValueAtPath = this.createGetValueAtPathRef(holder);
+			const getArrayElement = this.createGetArrayElementRef(holder);
+			const callHost = this.createCallHostRef(holder);
 			const timezone = options?.timezone ? safeStringify(options.timezone) : 'undefined';
 
 			// Wrap transformed code so 'this' === the closure-scoped context.

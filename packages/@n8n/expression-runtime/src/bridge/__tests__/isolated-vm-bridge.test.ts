@@ -120,6 +120,28 @@ describe('IsolatedVmBridge', () => {
 			expect(dataRef.deref()).toBeUndefined();
 		});
 
+		it('should free the data of a call whose callbacks fail to build', async () => {
+			setFlagsFromString('--expose_gc');
+			const gc = runInNewContext('gc') as unknown as () => void;
+
+			vi.spyOn(
+				bridge as unknown as { createGetArrayElementRef: () => unknown },
+				'createGetArrayElementRef',
+			).mockImplementation(() => {
+				throw new Error('Callback failed');
+			});
+			let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
+			const dataRef = new WeakRef(data);
+			expect(() => bridge.execute('return 1', data!)).toThrow('Callback failed');
+			data = undefined;
+
+			// A WeakRef keeps its target alive until the current job ends.
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			gc();
+
+			expect(dataRef.deref()).toBeUndefined();
+		});
+
 		it('should return an error from a callback that runs after its call failed', () => {
 			expect(() =>
 				bridge.execute('globalThis.__getValueAtPath = $0; throw new Error("boom")', {
