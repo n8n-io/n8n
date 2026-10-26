@@ -2,6 +2,7 @@ import type {
 	CredentialsRepository,
 	ProjectRelationRepository,
 	SharedWorkflow,
+	WorkflowEntity,
 	User,
 	WorkflowDependencyRepository,
 	WorkflowRepository,
@@ -144,7 +145,7 @@ describe('WorkflowDependencyQueryService', () => {
 					]),
 				);
 				workflowRepository.find.mockResolvedValue([
-					mock({ id: 'shared-id', name: 'Order intake', shared: [] }),
+					mock<WorkflowEntity>({ id: 'shared-id', name: 'Order intake', shared: [] }),
 				]);
 				agentUsageProvider.findAgentUsages.mockResolvedValue(
 					resourceIds.map((resourceId) => ({ agentId: 'shared-id', resourceId })),
