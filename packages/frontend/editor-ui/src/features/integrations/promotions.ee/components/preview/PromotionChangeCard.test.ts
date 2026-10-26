@@ -26,6 +26,7 @@ type Case = {
 };
 
 const revision = { before: 'b', after: 'a' };
+const readOnly = (checked: boolean) => ({ checked, indeterminate: false, disabled: true });
 
 const cases: Case[] = [
 	{
@@ -189,7 +190,7 @@ describe('PromotionChangeCard', () => {
 					graph: buildSelectionGraph(billingPreview(), 'promote'),
 					direction,
 					entry: detail ? { status: 'loaded', detail } : undefined,
-					included: false,
+					selection: readOnly(false),
 					inspected: false,
 				},
 			});
@@ -223,7 +224,7 @@ describe('PromotionChangeCard', () => {
 						],
 					},
 				},
-				included: false,
+				selection: readOnly(false),
 				inspected: false,
 			},
 		});
@@ -241,7 +242,7 @@ describe('PromotionChangeCard', () => {
 				resource: billingResources.stripe,
 				graph: buildSelectionGraph(billingPreview(), 'promote'),
 				direction: 'apply',
-				included: false,
+				selection: readOnly(false),
 				inspected: false,
 			},
 		});
@@ -260,27 +261,23 @@ describe('PromotionChangeCard', () => {
 			resource: billingResources.stripe,
 			graph: buildSelectionGraph(billingPreview(), 'promote'),
 			direction: 'promote' as const,
-			included: false,
+			selection: readOnly(false),
 			inspected: false,
 		};
 		const included = renderComponent({
 			pinia: createTestingPinia(),
-			props: { ...props, included: true },
+			props: { ...props, selection: readOnly(true) },
 		});
-		expect(included.getByTestId('promotion-preview-card-status')).toHaveAttribute(
-			'aria-label',
-			'Included',
-		);
+		const checkbox = included.getByTestId('promotion-preview-card-checkbox');
+		expect(checkbox).toBeChecked();
+		expect(checkbox).toBeDisabled();
 		expect(included.getByTestId('promotion-preview-card-inclusion')).toHaveTextContent(
 			'Used by Invoice reconciliation',
 		);
 
 		included.unmount();
 		const notIncluded = renderComponent({ pinia: createTestingPinia(), props });
-		expect(notIncluded.getByTestId('promotion-preview-card-status')).toHaveAttribute(
-			'aria-label',
-			'Not included',
-		);
+		expect(notIncluded.getByTestId('promotion-preview-card-checkbox')).not.toBeChecked();
 	});
 
 	it('should say that Apply needs a credential that this instance does not have, instead of creating it', () => {
@@ -290,7 +287,7 @@ describe('PromotionChangeCard', () => {
 				resource: { ...billingResources.stripe, change: 'added' },
 				graph: buildSelectionGraph(billingPreview(), 'apply'),
 				direction: 'apply',
-				included: false,
+				selection: readOnly(false),
 				inspected: false,
 				blockers: [
 					{ kind: 'missing', resourceKey: 'credential:c1', workflowKeys: ['workflow:w1'] },
@@ -299,8 +296,9 @@ describe('PromotionChangeCard', () => {
 		});
 
 		expect(getByTestId('promotion-preview-card-toggle')).toHaveTextContent('Not on this instance');
-		// The blocker takes the place of the inclusion icon.
-		expect(getByTestId('promotion-preview-card-status')).toHaveAttribute(
+		const blocker = getByTestId('promotion-preview-card-blocker');
+		expect(blocker).not.toHaveTextContent('Blocker');
+		expect(blocker).toHaveAttribute(
 			'aria-label',
 			expect.stringContaining(
 				"This credential isn't on this instance, and 1 workflow depends on it.",

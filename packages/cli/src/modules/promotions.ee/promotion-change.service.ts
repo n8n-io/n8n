@@ -77,7 +77,10 @@ import {
 	type ApplyDestination,
 	type PreviewSide,
 } from './promotion-preview';
+import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
+import { PromotionReviewGateService } from './promotion-review-gate.service';
 import { PromotionsService } from './promotions.service';
+import { checkoutBranchName } from './promotions-git.utils';
 import type { BranchPackage } from './promotions.types';
 
 const DEPENDENCY_COLLECTIONS = {
@@ -147,6 +150,8 @@ export class PromotionChangeService {
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableSerializer: DataTableSerializer,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly environmentResolver: PromotionEnvironmentResolver,
+		private readonly reviewGate: PromotionReviewGateService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
@@ -177,6 +182,30 @@ export class PromotionChangeService {
 		direction: PromotionDirection,
 		query: PromotionChangesQueryDto,
 	): Promise<PromotionPreview> {
+		if (direction === 'promote') {
+			// The gate runs before the git and export work, so a blocked project skips both.
+			this.assertCanPreview(user, direction);
+			const input = await this.environmentResolver.resolveForProject(projectId, direction);
+			// Only a branched promote opens a review. A direct push has nothing to wait for, even
+			// when an older review of the environment is still open.
+			const blocker =
+				input.config.direction === 'promote' && input.config.settings.createBranchOnPromotion
+					? await this.reviewGate.findPromoteBlocker(projectId, input.environmentId)
+					: null;
+			if (blocker) {
+				return {
+					commitSha: null,
+					source: {
+						environmentId: input.environmentId,
+						branchName: checkoutBranchName(input.config),
+					},
+					changes: [],
+					resources: [],
+					dependencies: [],
+					blocker,
+				};
+			}
+		}
 		const comparison = await this.compareProject(user, projectId, direction);
 		const { branch, instance, archiveState } = comparison;
 		// Promote compares with the branch manifest to see renames and moves. The manifest can list
