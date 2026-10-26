@@ -239,21 +239,23 @@ describe('EphemeralNodeExecutor', () => {
 			},
 		);
 
-		it.each([...AGENT_TOOL_NODE_DENYLIST])(
-			'rejects the `*Tool`-suffixed variant of the denylisted node type "%s"',
-			async (nodeType) => {
-				const result = await executor.executeInline({
-					nodeType: `${nodeType}Tool`,
-					nodeTypeVersion: 1,
-					nodeParameters: {},
-					inputData: [],
-					projectId: 'p-1',
-				});
+		it.each(
+			[...AGENT_TOOL_NODE_DENYLIST].flatMap((nodeType) => [
+				[nodeType, 'Tool'],
+				[nodeType, 'HitlTool'],
+			]),
+		)('rejects the denylisted node type "%s" with the `%s` suffix', async (nodeType, suffix) => {
+			const result = await executor.executeInline({
+				nodeType: `${nodeType}${suffix}`,
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+			});
 
-				expect(result.status).toBe('error');
-				expect(result.error).toContain('not permitted for agent tool execution');
-			},
-		);
+			expect(result.status).toBe('error');
+			expect(result.error).toContain('not permitted for agent tool execution');
+		});
 
 		it('still executes a normal tool node that is not on the denylist', async () => {
 			const execute = vi.fn().mockResolvedValue([[{ json: { ok: true } }]]);
