@@ -261,6 +261,39 @@ describe('InstanceAiBrowserPreview', () => {
 			expect(postCloudBrowserReturnControl).not.toHaveBeenCalled();
 		});
 
+		it('moves focus into the note dialog when it opens', async () => {
+			const { getByRole } = await takeOverWithoutRequest();
+			await flushPromises();
+
+			expect(getByRole('dialog')).toContainElement(document.activeElement as HTMLElement);
+		});
+
+		it('closes the note dialog on Escape and keeps control with the user', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = await takeOverWithoutRequest();
+
+			await user.keyboard('{Escape}');
+			await flushPromises();
+
+			expect(queryByTestId('instance-ai-browser-preview-note-dialog')).not.toBeInTheDocument();
+			expect(postCloudBrowserReturnControl).not.toHaveBeenCalled();
+			expect(getByTestId('instance-ai-browser-preview-done')).toBeInTheDocument();
+		});
+
+		it('keeps Tab inside the note dialog', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = await takeOverWithoutRequest();
+			await flushPromises();
+			const input = getByTestId('instance-ai-browser-preview-note-input');
+			const textarea = input.querySelector('textarea') ?? input;
+			getByTestId('instance-ai-browser-preview-note-skip').focus();
+
+			// Send is disabled while the note is empty, so Skip is the last stop.
+			await user.tab();
+
+			expect(textarea).toHaveFocus();
+		});
+
 		it('returns control without a note when the user skips the note', async () => {
 			const { getByTestId, queryByTestId } = await takeOverWithoutRequest();
 

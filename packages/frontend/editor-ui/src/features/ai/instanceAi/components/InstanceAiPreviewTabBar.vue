@@ -350,6 +350,7 @@ async function handleCopyLink(tab: PreviewTab) {
 							<span
 								v-if="tab.type === 'browser' && tab.userAction"
 								:class="$style.waitingDot"
+								role="img"
 								:aria-label="i18n.baseText('instanceAi.cloudBrowser.needsYou')"
 								data-test-id="instance-ai-tab-waiting"
 							/>

@@ -641,6 +641,21 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 			});
 		});
 
+		it('restarts the idle time of the task when the user gives control back', async () => {
+			const { service, run, cloudBrowserService, backgroundTaskManager, records, runSpawnedTask } =
+				setup();
+			const mcpServer = mock<CloudBrowserLocalMcpServer>();
+			cloudBrowserService.createServer.mockResolvedValue(mcpServer);
+			await service.startTask(task, run);
+			const [{ taskId }] = await records();
+			await runSpawnedTask();
+			const [onControlReturned] = mcpServer.setControlReturnedListener.mock.calls[0];
+
+			onControlReturned();
+
+			expect(backgroundTaskManager.touchTask).toHaveBeenCalledWith(THREAD_ID, taskId);
+		});
+
 		it('marks the task alive while it runs, and stops when it ends', async () => {
 			const { service, run, records, runSpawnedTask } = setup();
 			let finishAgent = () => {};

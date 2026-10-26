@@ -461,14 +461,18 @@ describe('InstanceAiPreviewTabBar', () => {
 		});
 
 		it('shows a waiting dot while the task waits for the user', () => {
-			const { getByTestId } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: {
 					tabs: [{ ...browserTab, userAction: { reason: 'Log in, please' } }],
 					activeTabId: 'browser:task-1',
 				},
 			});
 
-			expect(getByTestId('instance-ai-tab-waiting')).toHaveAttribute('aria-label', 'Needs you');
+			// Screen readers announce the dot, not only its label attribute.
+			expect(getByRole('img', { name: 'Needs you' })).toHaveAttribute(
+				'data-test-id',
+				'instance-ai-tab-waiting',
+			);
 		});
 
 		it('shows no waiting dot while the task works', () => {

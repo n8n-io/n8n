@@ -339,6 +339,9 @@ export class InstanceAiCloudBrowserTaskService {
 					payload: {},
 				}),
 			);
+			// The timeout check skips the task while the user has control, but its idle time still
+			// grows. It starts again from zero when the user gives control back.
+			mcpServer.setControlReturnedListener(() => backgroundTaskManager.touchTask(threadId, taskId));
 			// A stopped task can wait for the user inside a tool call. Releasing the browser ends the wait.
 			signal.addEventListener(
 				'abort',

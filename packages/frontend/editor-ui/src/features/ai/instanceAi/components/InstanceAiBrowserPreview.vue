@@ -10,6 +10,7 @@ import { N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { FocusScope } from 'reka-ui';
 import { computed, inject, ref, watch } from 'vue';
 
 import {
@@ -260,48 +261,52 @@ async function returnControl(userNote?: string) {
 					:class="$style.noteBackdrop"
 					data-test-id="instance-ai-browser-preview-note-dialog"
 				>
-					<div
-						:class="$style.noteDialog"
-						role="dialog"
-						aria-modal="true"
-						aria-labelledby="instance-ai-browser-note-title"
-					>
-						<N8nText id="instance-ai-browser-note-title" tag="h3" size="large" bold>
-							{{ i18n.baseText('instanceAi.cloudBrowser.noteTitle') }}
-						</N8nText>
-						<N8nText tag="p" size="small" :class="$style.noteDescription">
-							{{ i18n.baseText('instanceAi.cloudBrowser.noteDescription') }}
-						</N8nText>
-						<N8nInput
-							v-model="note"
-							type="textarea"
-							:autosize="{ minRows: 3, maxRows: 8 }"
-							:maxlength="2000"
-							:placeholder="i18n.baseText('instanceAi.cloudBrowser.notePlaceholder')"
-							data-test-id="instance-ai-browser-preview-note-input"
-						/>
-						<div :class="$style.noteActions">
-							<N8nButton
-								variant="outline"
-								size="medium"
-								:disabled="isBusy"
-								data-test-id="instance-ai-browser-preview-note-skip"
-								@click="returnControl()"
-							>
-								{{ i18n.baseText('instanceAi.cloudBrowser.noteSkip') }}
-							</N8nButton>
-							<N8nButton
-								variant="brand"
-								size="medium"
-								:disabled="!note.trim()"
-								:loading="isBusy"
-								data-test-id="instance-ai-browser-preview-note-submit"
-								@click="returnControl(note.trim())"
-							>
-								{{ i18n.baseText('instanceAi.cloudBrowser.noteSubmit') }}
-							</N8nButton>
+					<!-- Keeps keyboard focus in the dialog while it is open. -->
+					<FocusScope trapped loop as-child>
+						<div
+							:class="$style.noteDialog"
+							role="dialog"
+							aria-modal="true"
+							aria-labelledby="instance-ai-browser-note-title"
+							@keydown.esc="isNoteDialogOpen = false"
+						>
+							<N8nText id="instance-ai-browser-note-title" tag="h3" size="large" bold>
+								{{ i18n.baseText('instanceAi.cloudBrowser.noteTitle') }}
+							</N8nText>
+							<N8nText tag="p" size="small" :class="$style.noteDescription">
+								{{ i18n.baseText('instanceAi.cloudBrowser.noteDescription') }}
+							</N8nText>
+							<N8nInput
+								v-model="note"
+								type="textarea"
+								:autosize="{ minRows: 3, maxRows: 8 }"
+								:maxlength="2000"
+								:placeholder="i18n.baseText('instanceAi.cloudBrowser.notePlaceholder')"
+								data-test-id="instance-ai-browser-preview-note-input"
+							/>
+							<div :class="$style.noteActions">
+								<N8nButton
+									variant="outline"
+									size="medium"
+									:disabled="isBusy"
+									data-test-id="instance-ai-browser-preview-note-skip"
+									@click="returnControl()"
+								>
+									{{ i18n.baseText('instanceAi.cloudBrowser.noteSkip') }}
+								</N8nButton>
+								<N8nButton
+									variant="brand"
+									size="medium"
+									:disabled="!note.trim()"
+									:loading="isBusy"
+									data-test-id="instance-ai-browser-preview-note-submit"
+									@click="returnControl(note.trim())"
+								>
+									{{ i18n.baseText('instanceAi.cloudBrowser.noteSubmit') }}
+								</N8nButton>
+							</div>
 						</div>
-					</div>
+					</FocusScope>
 				</div>
 			</div>
 		</div>

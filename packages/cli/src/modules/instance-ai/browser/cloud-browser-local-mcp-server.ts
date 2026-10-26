@@ -240,6 +240,9 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	/** Called when the current window changes, so the live view can show the new one. */
 	private onCurrentWindowChange?: () => void;
 
+	/** Called when the user gives control back to the agent. */
+	private onControlReturned?: () => void;
+
 	constructor(private readonly options: CloudBrowserLocalMcpServerOptions) {
 		this.domainGate = options.domainGate;
 
@@ -258,6 +261,11 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	/** Sets what to call when the current window changes, also while the user has control. */
 	setCurrentWindowListener(listener: () => void): void {
 		this.onCurrentWindowChange = listener;
+	}
+
+	/** Sets what to call when the user gives control back to the agent. */
+	setControlReturnedListener(listener: () => void): void {
+		this.onControlReturned = listener;
 	}
 
 	getAvailableTools(): McpTool[] {
@@ -351,6 +359,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	returnControlToAgent(note?: string): string | undefined {
 		if (!this.userControl) return USER_NOT_IN_CONTROL_MESSAGE;
 		this.endUserControl({ returned: true, ...(note ? { note } : {}) });
+		this.onControlReturned?.();
 		return undefined;
 	}
 

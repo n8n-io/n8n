@@ -1188,10 +1188,25 @@ describe('CloudBrowserLocalMcpServer', () => {
 		it('refuses to return control when the user is not in control', async () => {
 			const { server, start } = setup();
 			await start({ url: 'https://example.com' });
+			const listener = vi.fn();
+			server.setControlReturnedListener(listener);
 
 			expect(server.returnControlToAgent('x')).toBe(
 				'The user does not have control of the browser.',
 			);
+			expect(listener).not.toHaveBeenCalled();
+		});
+
+		it('tells the listener when the user gives control back', async () => {
+			const { server, start } = setup();
+			await start({ url: 'https://example.com' });
+			const listener = vi.fn();
+			server.setControlReturnedListener(listener);
+			server.giveControlToUser();
+
+			server.returnControlToAgent();
+
+			expect(listener).toHaveBeenCalledTimes(1);
 		});
 
 		it('keeps one wait when control is given twice', async () => {
