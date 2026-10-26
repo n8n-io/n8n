@@ -302,6 +302,15 @@ export function getProjects(): Project[] {
 			use: { trace: 'off', video: 'off', screenshot: 'off' },
 		});
 
+		projects.push({
+			name: 'test-rig',
+			testDir: './tests/infrastructure/test-rig',
+			workers: 1,
+			timeout: 300_000,
+			retries: 0,
+			use: { trace: 'off', video: 'off', screenshot: 'off' },
+		});
+
 		for (const { name, config } of LOCAL_ONLY_BENCHMARK_PROFILES) {
 			projects.push({
 				name: `benchmark-${name}:infrastructure`,

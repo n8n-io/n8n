@@ -9464,6 +9464,9 @@ importers:
       '@n8n/test-impact':
         specifier: workspace:*
         version: link:../test-impact
+      '@n8n/test-rig':
+        specifier: workspace:*
+        version: link:../test-rig
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils

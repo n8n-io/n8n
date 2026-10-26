@@ -1,0 +1,44 @@
+{
+	"worker-drain-detached-subworkflow": {
+		"issue": "CAT-4349",
+		"spec": "worker-drain-detached-subworkflow.spec.ts",
+		"before": "n8nio/n8n:2.38.7",
+		"after": "n8nio/n8n:2.39.0"
+	},
+	"worker-drain-long-task": {
+		"issue": "CAT-4338",
+		"spec": "worker-drain-long-task.spec.ts",
+		"before": "n8nio/n8n:2.38.3",
+		"after": "n8nio/n8n:2.38.4"
+	},
+	"stalled-success-leak": {
+		"issue": "CAT-4491",
+		"spec": "stalled-success-leak.spec.ts",
+		"before": "n8nio/n8n:2.40.7",
+		"after": "n8nio/n8n:2.41.0"
+	},
+	"worker-drain-rejected-run": {
+		"issue": "CAT-4336",
+		"spec": "worker-drain-rejected-run.spec.ts",
+		"before": "n8nio/n8n:2.38.2",
+		"after": "n8nio/n8n:2.38.3"
+	},
+	"worker-drain-long-task-external": {
+		"issue": "CAT-4338",
+		"spec": "worker-drain-long-task.spec.ts",
+		"before": "n8nio/n8n:2.38.3",
+		"after": "n8nio/n8n:2.38.4",
+		"env": {
+			"TEST_RIG_RUNNERS": "external"
+		}
+	},
+	"worker-drain-detached-subworkflow-external": {
+		"issue": "CAT-4349",
+		"spec": "worker-drain-detached-subworkflow.spec.ts",
+		"before": "n8nio/n8n:2.38.7",
+		"after": "n8nio/n8n:2.39.0",
+		"env": {
+			"TEST_RIG_RUNNERS": "external"
+		}
+	}
+}
