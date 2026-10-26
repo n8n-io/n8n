@@ -663,7 +663,6 @@ it.each(['create', 'update', 'publish', 'unpublish'] as const)(
 					agentId: 'source',
 					versionId: 'published',
 					schema: null,
-					skills: {},
 					tools: {},
 					publishedBy: 'Test',
 				});
