@@ -351,6 +351,15 @@ export class AgentRuntimeReconstructionService {
 			unavailableTools = filtered.unavailable;
 		}
 
+		let credentialIntegrations = agentEntity.integrations ?? [];
+		if (user && runType === 'test') {
+			const integrations = credentialIntegrations;
+			credentialIntegrations = await raceWithAbort(
+				async () => await this.filterIntegrationsForUser(integrations, agentEntity.projectId, user),
+				abortSignal,
+			);
+		}
+
 		const { toolDescriptors, toolCodeByName } = getAgentRuntimeAssets(agentEntity, skills);
 		const subAgentDelegation = await raceWithAbort(
 			async () => await this.createSubAgentDelegationConfig(config, agentEntity.projectId),
@@ -371,7 +380,7 @@ export class AgentRuntimeReconstructionService {
 			workflowToolExecutionMode,
 			parentAgentIdForDelegation: agentEntity.id,
 			integrationType,
-			credentialIntegrations: agentEntity.integrations ?? [],
+			credentialIntegrations,
 			subAgentDelegation,
 			user,
 			attributionUserId,
@@ -449,6 +458,24 @@ export class AgentRuntimeReconstructionService {
 					}
 				: {}),
 		};
+	}
+
+	/**
+	 * Drop draft integrations whose credential the calling user can't use, the
+	 * same credential rule `filterToolsForUser` applies to node tools. Published
+	 * runs keep the integrations the publisher configured.
+	 */
+	private async filterIntegrationsForUser(
+		integrations: AgentIntegrationConfig[],
+		projectId: string,
+		user: User,
+	): Promise<AgentIntegrationConfig[]> {
+		if (!integrations.some(isCredentialAgentIntegration)) return integrations;
+		const usableIds = await this.loadAgentUsableCredentialIds(projectId, user);
+		return integrations.filter(
+			(integration) =>
+				!isCredentialAgentIntegration(integration) || usableIds.has(integration.credentialId),
+		);
 	}
 
 	/** Returns the credential IDs agents can use. */
