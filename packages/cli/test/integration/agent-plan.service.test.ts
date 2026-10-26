@@ -1,3 +1,4 @@
+import { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { TransactionRunner } from '@n8n/db';
@@ -5,6 +6,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
+import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentPlanService } from '@/modules/agents/agent-plan.service';
 import { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { Agent } from '@/modules/agents/entities/agent.entity';
@@ -88,7 +90,7 @@ describe('AgentPlanService', () => {
 			{
 				id: randomUUID(),
 				threadId,
-				formatVersion: 1,
+				formatVersion: 2,
 				data,
 			},
 			{},
@@ -106,7 +108,7 @@ describe('AgentPlanService', () => {
 				threadId,
 				planId: initial.id,
 				expectedRevision: 1,
-				formatVersion: 1,
+				formatVersion: 2,
 				data: {
 					...document({ ...first, status: 'done', resultSummary: 'Ready' }, second),
 					presentation: { label: 'Research finished', detail: 'One source remains unchecked.' },
@@ -114,7 +116,16 @@ describe('AgentPlanService', () => {
 			},
 			{},
 		);
-		const fresh = new AgentPlanService(new AgentPlanRepository(dataSource, transactionRunner));
+		const fresh = new AgentPlanService(
+			new AgentPlanRepository(
+				dataSource,
+				transactionRunner,
+				Container.get(AgentExecutionThreadRepository),
+			),
+			transactionRunner,
+			Container.get(AgentExecutionThreadRepository),
+			Container.get(AgentExecutionUpdateBroadcaster),
+		);
 		expect(await fresh.findActivePlan(threadId, {})).toEqual(updated);
 		expect(updated.readiness.ready).toEqual([second.id]);
 		expect(updated.data.items[0].startedAt).toEqual(updated.data.items[0].endedAt);
@@ -138,7 +149,7 @@ describe('AgentPlanService', () => {
 					threadId: 'other-thread',
 					planId: initial.id,
 					expectedRevision: 2,
-					formatVersion: 1,
+					formatVersion: 2,
 					data: updated.data,
 				},
 				{},
@@ -162,7 +173,7 @@ describe('AgentPlanService', () => {
 				threadId,
 				planId: initial.id,
 				expectedRevision: 1,
-				formatVersion: 1,
+				formatVersion: 2,
 				data: document({ ...original, status: 'failed' }, dependent),
 			},
 			{},
@@ -173,7 +184,7 @@ describe('AgentPlanService', () => {
 				threadId,
 				planId: initial.id,
 				expectedRevision: 2,
-				formatVersion: 1,
+				formatVersion: 2,
 				data: { ...failed.data, items: [...failed.data.items, replacement] },
 			},
 			{},
@@ -190,7 +201,7 @@ describe('AgentPlanService', () => {
 					threadId,
 					planId: initial.id,
 					expectedRevision: 3,
-					formatVersion: 1,
+					formatVersion: 2,
 					data: {
 						...next.data,
 						items: [next.data.items[0], { ...next.data.items[1], status: 'done' }, replacement],
@@ -241,7 +252,7 @@ describe('AgentPlanService', () => {
 				threadId,
 				planId: initial.id,
 				expectedRevision: 1,
-				formatVersion: 1,
+				formatVersion: 2,
 				data: document(
 					{ ...done, status: 'done', resultSummary: 'Saved result' },
 					{ ...research, status: 'in_progress' },
@@ -256,7 +267,7 @@ describe('AgentPlanService', () => {
 		const input = { planId: initial.id, expectedRevision: 2 };
 		for (const update of [
 			{ document: {}, removeItemIds: [done.id] },
-			{ document: { items: [{ id: done.id, title: 'Changed final task' }] } },
+			{ document: { items: [{ id: done.id, description: 'Changed final task' }] } },
 			{ document: { items: [{ id: merge.id, status: 'done' }] } },
 			{
 				document: {
@@ -312,7 +323,7 @@ describe('AgentPlanService', () => {
 						threadId,
 						planId: initial.id,
 						expectedRevision: 1,
-						formatVersion: 1,
+						formatVersion: 2,
 						data: { ...initial.data, title: 'Changed' },
 					},
 					ctx,
@@ -346,9 +357,14 @@ describe('AgentPlanService', () => {
 
 	it('supports plan tools across turns and reconstructed tool instances', async () => {
 		const call = async (name: string, input: unknown) => {
-			const tool = createAgentPlanTools(new AgentPlanService(repository)).find(
-				(entry) => entry.name === name,
-			);
+			const tool = createAgentPlanTools(
+				new AgentPlanService(
+					repository,
+					transactionRunner,
+					Container.get(AgentExecutionThreadRepository),
+					Container.get(AgentExecutionUpdateBroadcaster),
+				),
+			).find((entry) => entry.name === name);
 			if (!tool?.handler) throw new Error(`Missing tool: ${name}`);
 			return await tool.handler(input, { persistence: { threadId, resourceId: agentId } });
 		};
@@ -465,7 +481,7 @@ describe('AgentPlanService', () => {
 			{
 				id: randomUUID(),
 				threadId,
-				formatVersion: 2,
+				formatVersion: 3,
 				data: { future: true },
 			},
 			{},

@@ -45,7 +45,7 @@ const plan = (...items: AgentPlanItem[]): AgentPlanDocument => ({
 	items,
 });
 const prepare = (next: unknown, previous: AgentPlanDocument | null = null, now = started) =>
-	prepareAgentPlan(next, 1, previous, now);
+	prepareAgentPlan(next, 2, previous, now);
 const setStatuses = (document: AgentPlanDocument, statuses: Record<string, AgentPlanStatus>) => {
 	const copy = structuredClone(document);
 	for (const item of copy.items.flatMap((item) =>
@@ -88,13 +88,13 @@ describe('Agent plan schema', () => {
 		expect(prepare(data)).toEqual(data);
 		expect(data).toEqual(before);
 		const { startedAt: _startedAt, endedAt: _endedAt, ...withoutTimestamps } = task();
-		expect(parseAgentPlan(plan(withoutTimestamps as AgentPlanTask), 1).items[0]).toMatchObject({
+		expect(parseAgentPlan(plan(withoutTimestamps as AgentPlanTask), 2).items[0]).toMatchObject({
 			startedAt: null,
 			endedAt: null,
 		});
 	});
 
-	it.each([0, 2, 1.5])('rejects unsupported format %s', (version) => {
+	it.each([0, 1, 1.5])('rejects unsupported format %s', (version) => {
 		expect(() => parseAgentPlan(plan(), version)).toThrow('Unsupported plan format version');
 	});
 
@@ -107,10 +107,10 @@ describe('Agent plan schema', () => {
 		['invalid IDs', plan(task({ id: 'task-1' }))],
 		['invalid dependency IDs', plan(task({ dependsOn: ['task-1'] }))],
 		['invalid timestamps', plan(task({ startedAt: 'yesterday' }))],
-		['invalid statuses', plan(task({ status: 'paused' as AgentPlanStatus }))],
+		['invalid statuses', plan(task({ status: 'unknown' as AgentPlanStatus }))],
 		['empty titles', plan(task({ title: '' }))],
 	])('rejects %s', (_label, data) => {
-		expect(() => parseAgentPlan(data, 1)).toThrow(AgentPlanValidationError);
+		expect(() => parseAgentPlan(data, 2)).toThrow(AgentPlanValidationError);
 	});
 });
 
@@ -335,62 +335,68 @@ describe('Agent plan changes', () => {
 		);
 	});
 
-	it.each(['done', 'failed', 'cancelled'] as const)('keeps %s tasks unchanged', (status) => {
-		const first = task();
-		const initial = prepare(plan(first));
-		const previous = prepare(setStatuses(initial, { [first.id]: status }), initial);
-		for (const changes of [
-			{ status: 'in_progress' as const },
-			{ title: 'Changed' },
-			{ resultSummary: 'Changed' },
-			{ dependsOn: [randomUUID()] },
-		]) {
-			expect(() => prepare(plan({ ...previous.items[0], ...changes }), previous)).toThrow(
-				'Final items cannot change',
-			);
-		}
-		expect(prepare(previous, previous, ended)).toEqual(previous);
-	});
-
 	it.each(['done', 'failed', 'cancelled'] as const)(
-		'requires final children before a group becomes %s',
+		'allows metadata edits for %s tasks',
 		(status) => {
-			const child = task();
-			const phase = group([child]);
-			const initial = prepare(plan(phase));
-			expect(() => prepare(setStatuses(initial, { [phase.id]: status }), initial)).toThrow(
-				'Every task',
-			);
-			const previous = prepare(setStatuses(initial, { [child.id]: 'in_progress' }), initial);
-			expect(() => prepare(setStatuses(previous, { [phase.id]: status }), previous)).toThrow(
-				'Every task',
-			);
-			const next = prepare(
-				setStatuses(previous, { [child.id]: 'cancelled', [phase.id]: status }),
-				previous,
-			);
-			expect(next.items[0].status).toBe(status);
-			const finalGroup = next.items[0] as AgentPlanGroup;
-			expect(() => prepare(plan({ ...finalGroup, tasks: [] }), next)).toThrow('Only Pending');
-			expect(() =>
+			const initial = prepare(plan(task()));
+			const previous = prepare(setStatuses(initial, { [initial.items[0].id]: status }), initial);
+			expect(
 				prepare(
-					plan({
-						...finalGroup,
-						tasks: [...finalGroup.tasks, task()],
-					}),
-					next,
-				),
-			).toThrow('Final items');
+					plan({ ...previous.items[0], title: 'Changed', resultSummary: 'Changed' }),
+					previous,
+				).items[0],
+			).toMatchObject({ title: 'Changed', resultSummary: 'Changed', status });
+			expect(() =>
+				prepare(plan({ ...previous.items[0], dependsOn: [randomUUID()] }), previous),
+			).toThrow('Final task definitions');
 		},
 	);
-
-	it('does not infer a group status when its tasks finish', () => {
-		const child = task();
-		const phase = group([child]);
-		const initial = prepare(plan(phase));
-		expect(prepare(setStatuses(initial, { [child.id]: 'done' }), initial).items[0].status).toBe(
-			'pending',
+	it('allows a manual correction before dependent work starts', () => {
+		const first = task();
+		const next = task({ dependsOn: [first.id] });
+		const initial = prepare(plan(first, next));
+		const done = prepare(setStatuses(initial, { [first.id]: 'done' }), initial);
+		const corrected = prepare(setStatuses(done, { [first.id]: 'in_progress' }), done, ended);
+		expect(corrected.items[0]).toMatchObject({ status: 'in_progress', endedAt: null });
+		const running = prepare(setStatuses(done, { [next.id]: 'in_progress' }), done);
+		expect(() => prepare(setStatuses(running, { [first.id]: 'in_progress' }), running)).toThrow(
+			'already started',
 		);
+	});
+	it('rejects manual corrections when a dependent group has started', () => {
+		const first = task();
+		const child = task();
+		const initial = prepare(plan(first, group([child], { dependsOn: [first.id] })));
+		const started = prepare(
+			setStatuses(initial, { [first.id]: 'done', [child.id]: 'in_progress' }),
+			initial,
+		);
+		expect(() => prepare(setStatuses(started, { [first.id]: 'in_progress' }), started)).toThrow(
+			'already started',
+		);
+	});
+	it('rejects delegated status changes and preserves its binding on metadata edits', () => {
+		const delegated = task({
+			jobId: randomUUID(),
+			status: 'done',
+			startedAt: started.toISOString(),
+			endedAt: ended.toISOString(),
+		});
+		const previous = plan(delegated);
+		expect(() => prepare(plan({ ...delegated, status: 'in_progress' }), previous)).toThrow(
+			'background job controls',
+		);
+		expect(
+			prepare(plan({ ...delegated, title: 'Clearer title' }), previous).items[0],
+		).toMatchObject({ jobId: delegated.jobId, status: 'done' });
+	});
+	it('calculates group status from its children', () => {
+		const child = task();
+		const initial = prepare(plan(group([child])));
+		expect(prepare(setStatuses(initial, { [child.id]: 'done' }), initial).items[0]).toMatchObject({
+			status: 'done',
+			endedAt: started.toISOString(),
+		});
 	});
 });
 

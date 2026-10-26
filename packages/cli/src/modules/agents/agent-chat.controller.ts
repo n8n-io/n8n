@@ -29,6 +29,8 @@ import { redactDeep } from '@n8n/utils/redaction/redact-text';
 import type { Response } from 'express';
 import { randomUUID } from 'node:crypto';
 
+import { AgentPlanService } from './agent-plan.service';
+import { presentPlan } from './plans/agent-plan-tools';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -79,6 +81,7 @@ export class AgentChatController {
 		private readonly messageQueue: AgentMessageQueueService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly chatRelay: AgentChatRelayService,
+		private readonly plans: AgentPlanService,
 	) {}
 
 	private async requireProductionChat(agentId: string, projectId: string): Promise<void> {
@@ -790,6 +793,45 @@ export class AgentChatController {
 				...(job.settledAt ? { settledAt: job.settledAt.toISOString() } : {}),
 			})),
 		};
+	}
+
+	private async requireTaskThread(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		if (
+			!(await this.agentsService.findById(agentId, projectId)) ||
+			!(await this.agentExecutionService.canUseDraftThread(
+				threadId,
+				projectId,
+				agentId,
+				req.user.id,
+				{ previewChat: true, sessionMode: 'existing' },
+			))
+		)
+			throw new NotFoundError('Session not found');
+		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled)
+			throw new BadRequestError('Background tasks are not enabled');
+	}
+
+	@Get('/:agentId/n8n-chat/:threadId/plan')
+	@ProjectScope('agent:execute')
+	async getProductionPlan(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		await this.requireProductionChat(agentId, projectId);
+		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
+		return presentPlan(await this.plans.findLatestPlan(threadId, {}));
+	}
+
+	@Get('/:agentId/chat/:threadId/plan')
+	@ProjectScope('agent:execute')
+	async getPlan(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		await this.requireTaskThread(req);
+		return presentPlan(await this.plans.findLatestPlan(req.params.threadId, {}));
 	}
 
 	@Post('/:agentId/chat/:threadId/background-tasks/stop')

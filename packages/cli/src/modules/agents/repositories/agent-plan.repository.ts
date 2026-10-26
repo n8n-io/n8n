@@ -1,3 +1,4 @@
+import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import {
 	BaseRepository,
 	isUniqueConstraintError,
@@ -12,6 +13,7 @@ import { validate as isUuid } from 'uuid';
 
 import { AgentPlanHistory } from '../entities/agent-plan-history.entity';
 import { AgentPlan } from '../entities/agent-plan.entity';
+import { AgentExecutionThreadRepository } from './agent-execution-thread.repository';
 
 export type AgentPlanRecord = Pick<
 	AgentPlan,
@@ -36,7 +38,11 @@ export class AgentPlanWriteConflictError extends UserError {
 
 @Service()
 export class AgentPlanRepository extends BaseRepository<AgentPlan> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly threadRepository: AgentExecutionThreadRepository,
+	) {
 		super(AgentPlan, dataSource.manager, transactionRunner);
 	}
 
@@ -48,7 +54,8 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 		this.validateVersion(input.formatVersion);
 		const data = this.serializeData(input.data);
 
-		return await this.runInTransaction(ctx, async (manager) => {
+		return await this.runInTransaction(ctx, async (manager, tx) => {
+			await this.threadRepository.lockById(input.threadId, tx);
 			const now = new Date();
 			try {
 				await manager
@@ -79,6 +86,13 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 			await this.insertSnapshot(manager, plan);
 
 			return plan;
+		});
+	}
+
+	async findLatestPlan(threadId: string, ctx: OperationContext) {
+		return await this.managerFor(ctx).findOne(AgentPlan, {
+			where: { threadId },
+			order: { createdAt: 'DESC' },
 		});
 	}
 
@@ -166,7 +180,8 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 	): Promise<AgentPlanRecord> {
 		this.validateVersion(input.expectedRevision);
 
-		return await this.runInTransaction(ctx, async (manager) => {
+		return await this.runInTransaction(ctx, async (manager, tx) => {
+			await this.threadRepository.lockById(input.threadId, tx);
 			const now = new Date();
 			const query = manager
 				.createQueryBuilder()
@@ -224,5 +239,11 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 	private serializeData(data: JsonObject): string {
 		if (!isRecord(data)) throw new UserError('The plan document must be a JSON object');
 		return JSON.stringify(data);
+	}
+	async jobStatesForPlan(planId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).find(AgentBackgroundJob, {
+			where: { planId },
+			select: ['id', 'status', 'createdAt', 'settledAt', 'pauseRequestId', 'notifiedAt'],
+		});
 	}
 }

@@ -1,3 +1,4 @@
+import { AgentPlanService } from '../agent-plan.service';
 import { EventEmitter } from 'node:events';
 import { PassThrough, Readable } from 'node:stream';
 import type { SerializableAgentState } from '@n8n/agents';
@@ -105,6 +106,7 @@ function makeController() {
 		mock<Subscriber>(),
 	);
 
+	const plans = mock<AgentPlanService>();
 	const controller = new AgentChatController(
 		agentExecutionOrchestratorService,
 		agentTestRunService,
@@ -119,9 +121,11 @@ function makeController() {
 		messageQueue,
 		agentsConfig,
 		new AgentChatRelayService(messageQueue, previewStreams, agentChatAttachmentService),
+		plans,
 	);
 
 	return {
+		plans,
 		controller,
 		agentsConfig,
 		messageQueue,
@@ -211,6 +215,8 @@ describe('AgentChatController route access scopes', () => {
 		['getProductionBackgroundJobs', 'agent:execute'],
 		['stopProductionBackgroundJobs', 'agent:execute'],
 		['resumeProductionBackgroundJob', 'agent:execute'],
+		['getPlan', 'agent:execute'],
+		['getProductionPlan', 'agent:execute'],
 		['getTestChatMessages', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
@@ -1784,5 +1790,45 @@ describe('AgentChatController n8n Chat read-route ownership', () => {
 			await expect(controller.getProductionChatAttachment(req, res)).rejects.toThrow(NotFoundError);
 			expect(agentChatAttachmentService.getStream).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('AgentChatController current plan', () => {
+	const request = {
+		params: { projectId: 'project', agentId: 'agent', threadId: 'thread' },
+		user: { id: 'user' },
+	};
+
+	it('reads the current plan after the existing thread access check', async () => {
+		const { controller, agentsService, plans, agentExecutionService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent' } as never);
+		plans.findLatestPlan.mockResolvedValue(null);
+		expect(await controller.getPlan(request as never)).toBeNull();
+		expect(plans.findLatestPlan).toHaveBeenCalledWith('thread', {});
+		expect(agentExecutionService.canUseDraftThread).toHaveBeenCalledWith(
+			'thread',
+			'project',
+			'agent',
+			'user',
+			{ previewChat: true, sessionMode: 'existing' },
+		);
+		agentExecutionService.canUseDraftThread.mockResolvedValue(false);
+		plans.findLatestPlan.mockClear();
+		await expect(controller.getPlan(request as never)).rejects.toThrow('Session not found');
+		expect(plans.findLatestPlan).not.toHaveBeenCalled();
+	});
+	it('checks published chat and thread access before reading its plan', async () => {
+		const { controller, agentsService, plans, agentExecutionService } = makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		agentExecutionService.canUseProductionChatThread.mockResolvedValue(true);
+		plans.findLatestPlan.mockResolvedValue(null);
+		expect(await controller.getProductionPlan(request as never)).toBeNull();
+		expect(plans.findLatestPlan).toHaveBeenCalledWith('thread', {});
+		plans.findLatestPlan.mockClear();
+		agentExecutionService.canUseProductionChatThread.mockResolvedValue(false);
+		await expect(controller.getProductionPlan(request as never)).rejects.toThrow(
+			'Session not found',
+		);
+		expect(plans.findLatestPlan).not.toHaveBeenCalled();
 	});
 });
