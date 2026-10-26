@@ -59,6 +59,7 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 					{ type: 'agentUsage', id: 'agent-1', name: 'Support agent', projectId: 'proj-1' },
 				],
 				inaccessibleCount: 4,
+				inaccessibleAffectedCount: 2,
 			},
 		});
 		vi.mocked(workflowDependenciesApi.getResourceDependencyCounts).mockResolvedValue({
@@ -102,6 +103,7 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 					{ type: 'errorWorkflowParent', id: 'parent-1', name: 'Order intake' },
 				],
 				inaccessibleCount: 0,
+				inaccessibleAffectedCount: 0,
 			},
 		});
 		vi.mocked(workflowDependenciesApi.getResourceDependencyCounts).mockResolvedValue({
@@ -112,7 +114,7 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 		const affected = await findByTestId('workflow-unpublish-affected-resources');
 		expect(getAllByText('Order intake')).toHaveLength(1);
 		expect(affected).not.toHaveTextContent('not accessible to you');
-		expect(queryByText('2 resources use this workflow and may be affected by unpublishing it.')).toBeInTheDocument();
+		expect(queryByText('1 resource uses this workflow and may be affected by unpublishing it.')).toBeInTheDocument();
 	});
 
 	it('shows only the generic warning when nothing runs the published version', async () => {
@@ -120,6 +122,7 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 			'wf-2': {
 				dependencies: [{ type: 'credentialId', id: 'cred-1', name: 'Slack account' }],
 				inaccessibleCount: 1,
+				inaccessibleAffectedCount: 0,
 			},
 		});
 		vi.mocked(workflowDependenciesApi.getResourceDependencyCounts).mockResolvedValue({
@@ -128,7 +131,7 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 
 		const { queryByTestId, getByText } = renderModal('wf-2');
 		await waitFor(() =>
-			expect(workflowDependenciesApi.getResourceDependencyCounts).toHaveBeenCalled(),
+			expect(workflowDependenciesApi.getResourceDependencies).toHaveBeenCalled(),
 		);
 
 		expect(getByText(/Unpublishing “Example workflow”/)).toBeInTheDocument();
