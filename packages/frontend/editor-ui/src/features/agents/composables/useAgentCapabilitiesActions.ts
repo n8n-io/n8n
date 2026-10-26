@@ -43,6 +43,7 @@ export interface AgentCapabilitiesTelemetry {
 	trackOpenedSkillFromList?: (skillId: string) => void;
 	trackOpenedAddSkillModal?: () => void;
 	trackTriggerAdded?: (payload: { triggerType: string; triggers: string[] }) => void;
+	trackTriggerRemoved?: (payload: { triggerType: string; triggers: string[] }) => void;
 }
 
 export interface UseAgentCapabilitiesActionsDeps {
@@ -214,9 +215,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					projectId: projectId.value,
 					agentId: agentId.value,
 					supportsToolApproval,
-					validationIssues: validationIssues?.value.filter(
-						(issue) => issue.capability.kind === 'tool' && issue.capability.index === toolIndex,
-					),
+					validationIssues: () =>
+						validationIssues?.value.filter(
+							(issue) => issue.capability.kind === 'tool' && issue.capability.index === toolIndex,
+						) ?? [],
 					existingToolNames: tools
 						.map((toolRef, i) =>
 							i === toolIndex || toolRef.type === 'custom' ? null : toolRef.name,
@@ -704,6 +706,11 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		telemetry?.trackTriggerAdded?.(payload);
 	}
 
+	function onTriggerRemoved(payload: { triggerType: string; triggers: string[] }) {
+		connectedTriggers.value = payload.triggers;
+		telemetry?.trackTriggerRemoved?.(payload);
+	}
+
 	return {
 		appliedSkills,
 		onOpenAddToolModal,
@@ -715,5 +722,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		onToggleTask,
 		onConnectedTriggersUpdate,
 		onTriggerAdded,
+		onTriggerRemoved,
 	};
 }

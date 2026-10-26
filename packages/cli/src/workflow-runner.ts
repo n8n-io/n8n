@@ -207,11 +207,19 @@ export class WorkflowRunner {
 								} else if (isManualExecution) {
 									await this.executionRepository.clearUnsavedManualExecutionStarter(executionId);
 								} else if (!saveSettings.success) {
-									await this.executionPersistence.deleteInFlightExecution({
-										workflowId: fullExecutionData.workflowId,
-										executionId,
-										storedAt: fullExecutionData.storedAt,
-									});
+									await this.executionPersistence.deleteInFlightExecution(
+										{
+											workflowId: fullExecutionData.workflowId,
+											executionId,
+											storedAt: fullExecutionData.storedAt,
+										},
+										{
+											status: fullExecutionData.status,
+											// oxlint-disable-next-line typescript/no-deprecated
+											finished: fullExecutionData.finished,
+											stoppedAt: fullExecutionData.stoppedAt,
+										},
+									);
 								}
 							} catch (pruneError) {
 								this.logger.warn('Could not prune a recovered false-positive success', {

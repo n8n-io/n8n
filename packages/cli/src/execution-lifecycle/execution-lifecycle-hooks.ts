@@ -740,11 +740,19 @@ function hookFunctionsSave(
 					);
 				}
 
-				await executionPersistence.deleteInFlightExecution({
-					workflowId: this.workflowData.id,
-					executionId: this.executionId,
-					storedAt: fullRunData.storedAt,
-				});
+				await executionPersistence.deleteInFlightExecution(
+					{
+						workflowId: this.workflowData.id,
+						executionId: this.executionId,
+						storedAt: fullRunData.storedAt,
+					},
+					{
+						status: fullRunData.status,
+						// oxlint-disable-next-line typescript/no-deprecated
+						finished: fullRunData.finished ?? false,
+						stoppedAt: fullRunData.stoppedAt,
+					},
+				);
 
 				return;
 			}
@@ -982,7 +990,10 @@ export function getLifecycleHooksForScalingWorker(
 		hookFunctionsPush(hooks, optionalParameters, data.userId, data.source);
 	}
 
-	Container.get(ModulesHooksRegistry).addHooks(hooks, source);
+	Container.get(ModulesHooksRegistry).addHooks(
+		hooks,
+		source ?? data.executionData?.manualData?.source,
+	);
 
 	return hooks;
 }
@@ -1054,11 +1065,19 @@ export function getLifecycleHooksForScalingMain(
 			(fullRunData.status !== 'success' && !saveSettings.error);
 
 		if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
-			await executionPersistence.deleteInFlightExecution({
-				workflowId: this.workflowData.id,
-				executionId: this.executionId,
-				storedAt: fullRunData.storedAt,
-			});
+			await executionPersistence.deleteInFlightExecution(
+				{
+					workflowId: this.workflowData.id,
+					executionId: this.executionId,
+					storedAt: fullRunData.storedAt,
+				},
+				{
+					status: fullRunData.status,
+					// oxlint-disable-next-line typescript/no-deprecated
+					finished: fullRunData.finished ?? false,
+					stoppedAt: fullRunData.stoppedAt,
+				},
+			);
 		} else {
 			// Only save metadata if execution is being kept
 			await updateExistingExecutionMetadata(
@@ -1079,7 +1098,11 @@ export function getLifecycleHooksForScalingMain(
 	hooks.handlers.nodeExecuteBefore = [];
 	hooks.handlers.nodeExecuteAfter = [];
 
-	Container.get(ModulesHooksRegistry).addHooks(hooks, source, { executedInThisProcess: false });
+	Container.get(ModulesHooksRegistry).addHooks(
+		hooks,
+		source ?? data.executionData?.manualData?.source,
+		{ executedInThisProcess: false },
+	);
 
 	return hooks;
 }
@@ -1127,6 +1150,9 @@ export function getLifecycleHooksForRegularMain(
 	hookFunctionsStatistics(hooks, source);
 	hookFunctionsPreExecute(hooks, source);
 	hookFunctionsPostExecute(hooks);
-	Container.get(ModulesHooksRegistry).addHooks(hooks, source);
+	Container.get(ModulesHooksRegistry).addHooks(
+		hooks,
+		source ?? data.executionData?.manualData?.source,
+	);
 	return hooks;
 }

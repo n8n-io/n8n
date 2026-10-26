@@ -90,6 +90,11 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 
 - Purpose: For each configured chat integration, the runtime attaches a context tool and an action tool. The context tool reads message context from the platform. The action tool acts on the platform, for example to send a message. The tool names use the integration type: `<type>_context` and `<type>_action`, for example `slack_context` and `slack_action`. A second connection of the same type gets a numeric suffix. n8n Chat adds `chat_context` and `chat_action`.
 - Attach condition: Top-level agent with at least one configured chat integration, or a run through n8n Chat.
+- Read-only platform queries return `CONTEXT_QUERY_TIMEOUT` after 30 seconds. The agent can then explain the delay or use a more specific lookup. Cancellation stops the wait. A platform request can continue if its SDK does not support cancellation. This deadline does not apply to actions or normal replies. Slack keeps its default request timeout, retry, and rate-limit handling.
+- Use `get_user` for a known platform user ID. Use `search_users` with `email` for an exact email address. Slack also recognizes an email or user ID in `query`. If Slack email lookup lacks `users:read.email`, the tool reports the missing permission. It does not scan the directory for an unavailable email field.
+- Slack user and channel searches read up to five directory pages of 200 entries per call. They stop when a page has matches or the directory ends. If five pages have no matches and more remain, the tool returns `CONTEXT_SEARCH_INCOMPLETE` and `nextQuery` to continue. Only a completed search returns a successful empty list.
+- Slack user and channel searches return `nextCursor` when more results remain. The cursor retains unused matches from the current page and binds the search criteria and filters. Keep the same search inputs when you continue. Use `get_channel_info` when the channel ID is known.
+- Teams and Linear user searches use platform filters. They return a continuation cursor when the platform has another page.
 - Source: [`integrations/integration-tool-factory.ts`](./integrations/integration-tool-factory.ts).
 
 ### `delegate_subagent`
