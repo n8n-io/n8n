@@ -9029,6 +9029,7 @@
 	"agents.builder.memory.episodicMemory.credentialDialog.title": "Select an OpenAI credential",
 	"agents.builder.memory.episodicMemory.guidance.open": "Open cross-session memory guidance",
 	"agents.builder.memory.episodicMemory.guidance.title": "Guidance",
+	"agents.builder.memory.episodicMemory.guidance.description": "Choose which details this agent saves about each user across sessions. The agent treats these topics as guidance, not strict rules. Changes apply to new memories only.",
 	"agents.builder.memory.episodicMemory.guidance.include.label": "What to add",
 	"agents.builder.memory.episodicMemory.guidance.exclude.label": "What to exclude",
 	"agents.builder.memory.episodicMemory.guidance.placeholder": "Add a topic...",

@@ -71,6 +71,9 @@ function onSave() {
 		@update:open="emit('update:open', $event)"
 	>
 		<div :class="$style.fields">
+			<N8nText step="sm" color="text-light">
+				{{ i18n.baseText('agents.builder.memory.episodicMemory.guidance.description') }}
+			</N8nText>
 			<div v-for="field in FIELDS" :key="field.key" :class="$style.field">
 				<N8nText step="sm" bold>{{ i18n.baseText(field.label) }}</N8nText>
 				<N8nTagsInput2
