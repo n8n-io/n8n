@@ -323,31 +323,6 @@ describe('Microsoft Teams Trigger Node', () => {
 				);
 			});
 
-			// Only an earlier version stores two ids on one resource, and either one can carry a
-			// foreign secret, the one about to expire included.
-			it('creates the resource again when a second stored subscription on it expires soon', async () => {
-				const staticData: Record<string, unknown> = {
-					subscriptionIds: ['sub1', 'sub2'],
-					webhookSecret: 'secret',
-				};
-				const ctx = hookCtx(staticData, { event: 'newChat' });
-				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
-					own('sub1', '/me/chats', HOUR),
-					own('sub2', '/me/chats', 2 * 60 * 1000),
-				]);
-				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'new' });
-
-				const result = await checkExists(ctx);
-
-				expect(result).toBe(true);
-				expect(graphCalls()).toEqual([
-					['DELETE', '/v1.0/subscriptions/sub1'],
-					['DELETE', '/v1.0/subscriptions/sub2'],
-					['POST', '/v1.0/subscriptions'],
-				]);
-				expect(staticData).toEqual({ webhookSecret: 'secret', subscriptionIds: ['new'] });
-			});
-
 			it('removes an expiring stored subscription and re-creates the resource with the stored secret', async () => {
 				const staticData: Record<string, unknown> = {
 					subscriptionIds: ['sub1'],
@@ -435,7 +410,7 @@ describe('Microsoft Teams Trigger Node', () => {
 					};
 					const ctx = hookCtx(staticData, { event: 'newChat' });
 					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(throttled(ctx));
-					answerById({ sub1: own('sub1', '/me/chats', HOUR) });
+					answerById({ sub1: { ...own('sub1', '/me/chats', HOUR), clientState: 'secret' } });
 
 					await expect(checkExists(ctx)).resolves.toBe(true);
 					expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
@@ -511,32 +486,39 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(staticData.subscriptionIds).toEqual(['new']);
 			});
 
-			// An earlier version stored every own subscription, so either one can carry a foreign secret.
-			it('creates the resource again when two stored live subscriptions cover it', async () => {
-				const staticData: Record<string, unknown> = {
-					subscriptionIds: ['a', 'b'],
-					webhookSecret: 'secret',
-				};
-				const ctx = hookCtx(staticData, { event: 'newChat' });
-				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
-					own('a', '/me/chats', HOUR),
-					own('b', '/me/chats', 2 * HOUR),
-				]);
-				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'new' });
+			// An earlier version stored every own subscription, so either one can carry a foreign secret,
+			// the one about to expire included.
+			it.each([
+				['both are live', 2 * HOUR],
+				['the second one expires soon', 2 * 60 * 1000],
+			])(
+				'creates the resource again when two stored subscriptions cover it and %s',
+				async (_label, expiresInMs) => {
+					const staticData: Record<string, unknown> = {
+						subscriptionIds: ['a', 'b'],
+						webhookSecret: 'secret',
+					};
+					const ctx = hookCtx(staticData, { event: 'newChat' });
+					(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+						own('a', '/me/chats', HOUR),
+						own('b', '/me/chats', expiresInMs),
+					]);
+					(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'new' });
 
-				const result = await checkExists(ctx);
+					const result = await checkExists(ctx);
 
-				expect(result).toBe(true);
-				expect(graphCalls()).toEqual([
-					['DELETE', '/v1.0/subscriptions/a'],
-					['DELETE', '/v1.0/subscriptions/b'],
-					['POST', '/v1.0/subscriptions'],
-				]);
-				expect(calls('POST')[0][3]).toEqual(
-					expect.objectContaining({ clientState: 'secret', resource: '/me/chats' }),
-				);
-				expect(staticData.subscriptionIds).toEqual(['new']);
-			});
+					expect(result).toBe(true);
+					expect(graphCalls()).toEqual([
+						['DELETE', '/v1.0/subscriptions/a'],
+						['DELETE', '/v1.0/subscriptions/b'],
+						['POST', '/v1.0/subscriptions'],
+					]);
+					expect(calls('POST')[0][3]).toEqual(
+						expect.objectContaining({ clientState: 'secret', resource: '/me/chats' }),
+					);
+					expect(staticData.subscriptionIds).toEqual(['new']);
+				},
+			);
 
 			it('removes a stored subscription whose resource is no longer required', async () => {
 				const staticData: Record<string, unknown> = {

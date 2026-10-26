@@ -203,9 +203,9 @@ export async function listOwnSubscriptions(
 
 /**
  * Applies the ownership rule to one own listing: one stored live subscription per
- * required resource stays, every other own subscription goes, and the uncovered
- * resources are created with the stored secret. Two stored subscriptions on one resource
- * are both untrusted unless a renewal in this request proves one of them; the other one is
+ * required resource stays, the uncovered resources are created with the stored secret, and
+ * every other own subscription goes. Two stored subscriptions on one resource are both
+ * untrusted unless a renewal in this request proves one of them; the other stored ones are
  * then forgotten, not deleted. Reads and writes `subscriptionIds` itself, so the trust
  * decision and the write share one source. Returns the create errors. Never throws.
  */
@@ -236,8 +236,8 @@ export async function reconcileSubscriptions(
 	);
 	const isStored = (sub: SubscriptionResponse) => storedIds.includes(sub.id) && !gone.has(sub.id);
 	// Trust needs the own listing and the stored id, so an own subscription that is not stored
-	// never becomes a keeper. Renewed first, then the later expiry, then the id, so two mains
-	// that activate on the same listing pick the same one.
+	// never becomes a keeper. Renewed first, then the later expiry, then the id, so a request
+	// that renews several twins keeps the same one whatever the listing order.
 	const candidates = subscriptions
 		.filter((sub) => isStored(sub) && live.has(sub.id) && required.includes(sub.resource))
 		.sort(
@@ -264,19 +264,21 @@ export async function reconcileSubscriptions(
 		}
 	}
 	const keeperIds = new Set(keepers.values());
-	// A stored live subscription that lost to a renewed keeper is forgotten, not deleted: a
-	// request that renewed it can run at the same time and keep it, and the two must not
-	// delete each other's keeper. Its next renewal names an unknown id, which removes it.
+	// A stored subscription beside a renewed keeper is forgotten, not deleted, whatever its
+	// listed expiry: a request that renewed it can run at the same time and keep it, and the
+	// two must not delete each other's keeper. One with the stored secret names an unknown id
+	// at its next renewal, and that reconcile removes it; one with another secret fails
+	// verification, is never renewed and expires.
 	const forgotten = new Set(
-		candidates
-			.filter((sub) => keepers.has(sub.resource) && !keeperIds.has(sub.id))
+		subscriptions
+			.filter((sub) => isStored(sub) && keepers.has(sub.resource) && !keeperIds.has(sub.id))
 			.map((sub) => sub.id),
 	);
 
 	const listedIds = new Set(subscriptions.map((sub) => sub.id));
 	const storedAbsent = storedIds.filter((id) => !listedIds.has(id) && !gone.has(id));
-	// Every other own subscription goes first: Graph refuses a second `/teams/{id}/channels`
-	// subscription, and the two must never deliver together.
+	// Every other own subscription goes before the first create: Graph refuses a second
+	// `/teams/{id}/channels` subscription.
 	const refused = new Set(
 		await deleteSubscriptions.call(this, [
 			...subscriptions
@@ -317,8 +319,9 @@ export async function reconcileSubscriptions(
  * this URL. Reads each stored id with GET by id, which has its own budget: 2000 requests per
  * 20 s for an app across all tenants, against 40 for the listing. Two stored subscriptions on
  * one resource both count: keeping them is safer than core's cleanup, and the next listing
- * trusts neither. An answer with another clientState covers nothing (the listing never
- * returns clientState, and GET by id is not proven to). Never throws.
+ * trusts neither unless a renewal proves one. An answer with another clientState covers
+ * nothing. An answer without one counts, because the listing never returns clientState and
+ * GET by id is not proven to. Never throws.
  */
 export async function storedSubscriptionsCover(
 	this: IHookFunctions | IWebhookFunctions,
@@ -352,7 +355,7 @@ export async function storedSubscriptionsCover(
 					covered.add(answer.resource);
 					return;
 				}
-				logTrigger.call(this, 'debug', 'stored subscription does not count as live', {
+				logTrigger.call(this, 'debug', 'stored subscription does not count', {
 					subscriptionId: id,
 				});
 			} catch (error) {
