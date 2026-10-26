@@ -54,6 +54,10 @@ export const FORCE_CLOSE_GRACE_MS = 1_000;
  * - After `databaseConfig.pingMaxFailuresBeforeRecovery` consecutive failures, destroys
  *   and reinitializes the DataSource with exponential backoff
  *   (`databaseConfig.minRecoveryBackoffMs` .. `databaseConfig.maxRecoveryBackoffMs`).
+ *   A failure only counts when a connection opened outside the pool still answers:
+ *   that proves the pooled connections are the broken part, so a rebuilt pool helps.
+ *   When the probe fails too, the server is unreachable or stalled, and tearing the
+ *   pool down would only abort every in-flight query for nothing.
  *   Postgres-only: for sqlite the database is a local file, so a failed ping means a
  *   saturated pool rather than a lost connection, and destroying the pool would abort
  *   every pending acquisition (failing in-flight executions) with nothing to re-establish.
@@ -175,6 +179,18 @@ export class DbConnectionMonitor {
 			return;
 		} catch (error) {
 			this.setConnected(false);
+			const { message } = ensureError(error);
+			if (!(error instanceof OperationalError) && !this.isRecoverableConnectionError(error)) {
+				this.errorReporter.error(error);
+			}
+
+			if (this.recoveryEnabled && !(await this.probeOutsidePool())) {
+				this.logger.warn(
+					`Database ping failed (not counted towards recovery, ${this.consecutiveFailures}/${this.databaseConfig.pingMaxFailuresBeforeRecovery}): ${message}. A connection opened outside the pool failed too, so the database is unreachable or stalled and rebuilding the pool would not help`,
+				);
+				return;
+			}
+
 			this.consecutiveFailures += 1;
 
 			// Only Postgres counts toward a recovery threshold; showing it for sqlite would suggest a teardown that never comes.
@@ -182,10 +198,7 @@ export class DbConnectionMonitor {
 				? `${this.consecutiveFailures}/${this.databaseConfig.pingMaxFailuresBeforeRecovery}`
 				: `${this.consecutiveFailures}`;
 
-			this.logger.warn(`Database ping failed (${failureCount}): ${ensureError(error).message}`);
-			if (!(error instanceof OperationalError) && !this.isRecoverableConnectionError(error)) {
-				this.errorReporter.error(error);
-			}
+			this.logger.warn(`Database ping failed (${failureCount}): ${message}`);
 
 			if (
 				this.recoveryEnabled &&
@@ -257,6 +270,43 @@ export class DbConnectionMonitor {
 		} catch (error) {
 			this.safeDestroyClient(client); // timeout or error: destroy the connection to free the slot now
 			throw error;
+		}
+	}
+
+	/**
+	 * Opens a connection outside the pool and runs the health-check query on it, bounded by
+	 * `pingTimeoutMs`. Resolves `true` when the server answers: the pooled connections are
+	 * then the broken part, so a rebuilt pool would work. Resolves `false` when this
+	 * connection fails too: the server is unreachable or stalled, and a rebuild would only
+	 * abort every in-flight query for nothing.
+	 *
+	 * The client is built the way pg-pool builds its own, from `pool.options`, so it uses
+	 * the same host, credentials, TLS and connect timeout. Resolves `true` (the pre-probe
+	 * behaviour) when the driver offers no way to build one.
+	 */
+	private async probeOutsidePool(): Promise<boolean> {
+		const pool = this.postgresDriver.master;
+		const { postgres } = this.postgresDriver;
+		const Client = typeof postgres === 'object' && postgres !== null ? postgres.Client : undefined;
+		if (!pool?.options || typeof Client !== 'function') {
+			this.logger.warn(
+				'Cannot probe the database outside the pool: driver.master.options or driver.postgres.Client is unavailable (TypeORM internals may have changed); counting the ping failure towards recovery',
+			);
+			return true;
+		}
+
+		const client = new Client(pool.options);
+		// A client that errors after connecting emits 'error'; without a listener Node crashes the process.
+		client.on('error', () => {});
+		try {
+			await this.raceTimeout(client.connect().then(async () => await client.query('SELECT 1')));
+			return true;
+		} catch (error) {
+			this.logger.debug(`Database probe outside the pool failed: ${ensureError(error).message}`);
+			return false;
+		} finally {
+			// `end()` is a no-op on a client that never connected and destroys the socket under a hung query.
+			void client.end().catch(() => {});
 		}
 	}
 
