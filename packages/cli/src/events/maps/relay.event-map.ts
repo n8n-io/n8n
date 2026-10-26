@@ -2,6 +2,7 @@ import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
+	EnvironmentsVersion,
 	ProjectRelation,
 	RedactionFloor,
 } from '@n8n/api-types';
@@ -756,6 +757,11 @@ export type RelayEventMap = {
 		repoType: 'github' | 'gitlab' | 'other';
 		connected: boolean;
 		connectionType: 'ssh' | 'https';
+	};
+
+	'source-control-environments-version-switched': {
+		userId: string;
+		version: EnvironmentsVersion;
 	};
 
 	'source-control-user-started-pull-ui': {

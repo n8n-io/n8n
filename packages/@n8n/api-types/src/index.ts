@@ -234,6 +234,8 @@ export {
 	SOURCE_CONTROL_FILE_LOCATION,
 	SOURCE_CONTROL_FILE_STATUS,
 	SOURCE_CONTROL_FILE_TYPE,
+	ENVIRONMENTS_VERSIONS,
+	type EnvironmentsVersion,
 } from './schemas/source-controlled-file.schema';
 
 export {
