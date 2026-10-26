@@ -1,3 +1,4 @@
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
 import type {
 	ICredentialsDecrypted,
@@ -192,35 +193,19 @@ export class ServiceNow implements INodeType {
 					};
 				}
 
-				if (
-					subdomain.length === 0 ||
-					subdomain.length > 63 ||
-					/[^a-z0-9-]/i.test(subdomain) ||
-					subdomain.startsWith('-') ||
-					subdomain.endsWith('-')
-				) {
+				if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(subdomain)) {
 					return {
 						status: 'Error',
 						message: 'Connection failed. Enter only your ServiceNow subdomain, such as dev12345.',
 					};
 				}
 
-				if (ENCODED_QUERY_DELIMITERS.some((delimiter) => user.includes(delimiter))) {
-					return {
-						status: 'Error',
-						message: 'Connection failed. Enter a username without the ^ character.',
-					};
-				}
-
-				const url = new URL(`https://${subdomain}.service-now.com/api/now/table/sys_user`);
 				const options: IRequestOptions = {
 					method: 'GET',
-					uri: url.href,
-					allowedDomains: url.hostname,
+					uri: `https://${subdomain}.service-now.com/api/now/table/sys_user`,
 					followRedirect: false,
 					auth: { user, pass: password },
 					qs: {
-						sysparm_query: `user_name=${user}`,
 						sysparm_limit: '1',
 						sysparm_fields: 'sys_id',
 					},
@@ -245,8 +230,11 @@ export class ServiceNow implements INodeType {
 									: `Connection failed. ServiceNow returned HTTP ${statusCode}. Check your instance and try again.`,
 						};
 					}
-				} catch {
-					// A failed request cannot verify the credentials.
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `Connection failed: ${ensureError(error).message}. Check your ServiceNow instance and try again.`,
+					};
 				}
 
 				return {

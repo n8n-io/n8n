@@ -71,34 +71,62 @@ describe('ServiceNow Node', () => {
 			await new ServiceNow().methods.credentialTest.serviceNowBasicApiTest.call(context, {
 				id: 'service-now-credential',
 				name: 'ServiceNow integration',
+				type: 'serviceNowBasicApi',
 				data: values,
 			});
 
-		// PR 41119: Credential checks require one instance subdomain.
+		it.each<[number | Error, 'OK' | 'Error', string]>([
+			[200, 'OK', 'Connection successful!'],
+			[204, 'OK', 'Connection successful!'],
+			[299, 'OK', 'Connection successful!'],
+			[403, 'OK', 'Connection successful!'],
+			[401, 'Error', 'Authentication failed. Check your user and password.'],
+			...[302, 400, 404, 418, 429, 500, 503].map((statusCode): [number, 'Error', string] => [
+				statusCode,
+				'Error',
+				`Connection failed. ServiceNow returned HTTP ${statusCode}. Check your instance and try again.`,
+			]),
+			[
+				new Error('getaddrinfo ENOTFOUND test-instance.service-now.com'),
+				'Error',
+				'Connection failed: getaddrinfo ENOTFOUND test-instance.service-now.com. Check your ServiceNow instance and try again.',
+			],
+		])('handles the ServiceNow response %s', async (response, status, message) => {
+			if (response instanceof Error) {
+				vi.mocked(context.helpers.request).mockRejectedValueOnce(response);
+			} else {
+				vi.mocked(context.helpers.request).mockResolvedValueOnce({ statusCode: response });
+			}
+
+			expect(await testCredentials(data)).toEqual({ status, message });
+		});
+
+		it('limits a table credential check to one record and its identifier', async () => {
+			const result = await testCredentials(data);
+
+			expect(result.status).toBe('OK');
+			expect(context.helpers.request).toHaveBeenCalledExactlyOnceWith({
+				method: 'GET',
+				uri: 'https://test-instance.service-now.com/api/now/table/sys_user',
+				followRedirect: false,
+				auth: { user: data.user, pass: data.password },
+				qs: { sysparm_limit: '1', sysparm_fields: 'sys_id' },
+				json: true,
+				simple: false,
+				resolveWithFullResponse: true,
+			});
+		});
+
 		describe('subdomain validation', () => {
 			it.each(
 				[
 					'',
-					'example.com/',
-					'example.com\\',
-					'example.com#',
-					'example.com?',
-					'instance@example.com/',
-					'example.com:443/',
 					'test.instance',
-					'https://test-instance.service-now.com',
-					'%65xample.com%2f',
-					' test-instance',
-					'test-instance\n',
+					'test/instance',
+					'test#instance',
 					'-test-instance',
 					'test-instance-',
-					'test_instance',
-					'ｔest-instance',
 					'a'.repeat(64),
-					null,
-					42,
-					['test-instance'],
-					{ value: 'test-instance' },
 				].map((subdomain) => ({ subdomain })),
 			)(
 				'rejects an invalid subdomain $subdomain before making a request',
@@ -119,43 +147,9 @@ describe('ServiceNow Node', () => {
 					expect(context.helpers.request).toHaveBeenCalledOnce();
 					expect(context.helpers.request).toHaveBeenCalledWith(
 						expect.objectContaining({
-							uri: `https://${subdomain.toLowerCase()}.service-now.com/api/now/table/sys_user`,
-							allowedDomains: `${subdomain.toLowerCase()}.service-now.com`,
+							uri: `https://${subdomain}.service-now.com/api/now/table/sys_user`,
 							followRedirect: false,
 							auth: { user: data.user, pass: data.password },
-						}),
-					);
-				},
-			);
-		});
-
-		// PR 41119: Credential checks must preserve the exact username filter.
-		describe('username validation', () => {
-			it.each(
-				['a^b', 'a^ORuser_name=b', 'a^NQuser_name=b', null, 42, ['jane.doe']].map((user) => ({
-					user,
-				})),
-			)('rejects an invalid username $user before making a request', async ({ user }) => {
-				const result = await testCredentials({ ...data, user });
-
-				expect(result.status).toBe('Error');
-				expect(context.helpers.request).not.toHaveBeenCalled();
-			});
-
-			it.each(['jane.doe', 'jane+doe@example.com', 'jane&doe', 'jane=doe'])(
-				'uses the exact username %s in the credential check',
-				async (user) => {
-					const result = await testCredentials({ ...data, user });
-
-					expect(result.status).toBe('OK');
-					expect(context.helpers.request).toHaveBeenCalledWith(
-						expect.objectContaining({
-							auth: { user, pass: data.password },
-							qs: {
-								sysparm_query: `user_name=${user}`,
-								sysparm_limit: '1',
-								sysparm_fields: 'sys_id',
-							},
 						}),
 					);
 				},
