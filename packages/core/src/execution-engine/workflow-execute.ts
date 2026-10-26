@@ -2010,9 +2010,6 @@ export class WorkflowExecute {
 	): INodeExecutionData[][] | null | undefined {
 		if (nodeSuccessData?.[0]?.[0]) return nodeSuccessData;
 		if (executionData.node.alwaysOutputData !== true) return nodeSuccessData;
-		if (executionData.node.onError === 'continueErrorOutput' && nodeSuccessData?.at(-1)?.length) {
-			return nodeSuccessData;
-		}
 
 		// Get pairedItem from all input items
 		const pairedItem: IPairedItemData[] = [];
