@@ -10,8 +10,10 @@ import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { sleep } from '@n8n/utils/sleep';
+import { FileNotFoundError } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
+import { buffer as streamToBuffer } from 'node:stream/consumers';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
@@ -24,12 +26,13 @@ import { chatErrorCode, emitChunkEvents } from '../agent-sse-stream';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import { N8nMemory } from '../integrations/n8n-memory';
 import {
 	AgentExecutionRepository,
 	type AgentExecutionUsageRow,
 } from '../repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
-import { AgentRepository } from '../repositories/agent.repository';
+import { AgentThreadGrantRepository } from '../repositories/agent-thread-grant.repository';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from '../types/agent-queued-message';
 import type { FormattedTurnError } from '../types/agent-turn-outcome';
@@ -41,6 +44,7 @@ import { SystemAgentHostEventChannel } from './system-agent-host-events';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type {
 	SystemAgentProvider,
+	SystemAgentStartTurn,
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
@@ -133,7 +137,6 @@ export class SystemAgentExecutionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly registry: SystemAgentRegistry,
-		private readonly agentRepository: AgentRepository,
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly executionService: AgentExecutionService,
@@ -144,13 +147,9 @@ export class SystemAgentExecutionService {
 		private readonly txRunner: TransactionRunner,
 		private readonly attachmentService: AgentChatAttachmentService,
 		private readonly conversationState: AgentConversationStateService,
+		private readonly n8nMemory: N8nMemory,
+		private readonly threadGrants: AgentThreadGrantRepository,
 	) {}
-
-	/** Register a provider and make sure its instance agent row exists. */
-	async register(provider: SystemAgentProvider): Promise<void> {
-		await this.agentRepository.ensureInstanceAgent(provider.agentId, provider.name);
-		this.registry.register(provider);
-	}
 
 	resourceIdFor(user: Pick<User, 'id'>): string {
 		return systemChatMemoryResourceId(user.id);
@@ -597,10 +596,13 @@ export class SystemAgentExecutionService {
 						resourceId,
 						abortSignal: controller.signal,
 						...(workspace ? { workspace: workspace.lease } : {}),
+						...this.turnStateOf(thread),
 						emitHostEvent: hostEvents.emit,
 						executionId: admission.executionId,
 						message: payload.message,
 						attachments,
+						readAttachment: async (ref) =>
+							await this.readTurnAttachment(thread, resourceId, attachments, ref),
 						options: payload.options ?? {},
 					});
 				},
@@ -687,6 +689,7 @@ export class SystemAgentExecutionService {
 					resourceId,
 					abortSignal: controller.signal,
 					...(workspace ? { workspace: workspace.lease } : {}),
+					...this.turnStateOf(thread),
 					emitHostEvent: hostEvents.emit,
 					runId,
 					toolCallId: pending.toolCallId,
@@ -834,6 +837,44 @@ export class SystemAgentExecutionService {
 			userId: user.id,
 			surface: 'system',
 		});
+	}
+
+	/** The Agents state of the thread that the provider builds the turn with. */
+	private turnStateOf(
+		thread: AgentExecutionThread,
+	): Pick<SystemAgentStartTurn, 'memory' | 'checkpointStore' | 'sessionGrants'> {
+		return {
+			memory: this.n8nMemory.getImplementation(thread.agentId),
+			checkpointStore: this.checkpointStorage.getStorage(thread.agentId),
+			sessionGrants: {
+				load: async () => await this.threadGrants.findKeys(thread.id),
+				grant: async (key) => await this.threadGrants.grant(thread.id, key),
+				revoke: async (key) => await this.threadGrants.revoke(thread.id, key),
+			},
+		};
+	}
+
+	/** Read an attachment of the turn, from the system chat of the thread's owner. */
+	private async readTurnAttachment(
+		thread: AgentExecutionThread,
+		resourceId: string,
+		attachments: StoredAttachmentRef[],
+		ref: StoredAttachmentRef,
+	): Promise<Buffer | undefined> {
+		if (!attachments.some((attachment) => attachment.id === ref.id)) return undefined;
+		const attachment = await this.attachmentService.getForSystemAgent(ref.id, {
+			agentId: thread.agentId,
+			resourceId,
+			source: SYSTEM_CHAT_SOURCE,
+		});
+		if (attachment?.threadId !== thread.id) return undefined;
+		try {
+			return await streamToBuffer(await this.attachmentService.getStream(attachment));
+		} catch (error) {
+			// Storage can prune the bytes while the attachment row stays.
+			if (error instanceof FileNotFoundError) return undefined;
+			throw error;
+		}
 	}
 
 	/**

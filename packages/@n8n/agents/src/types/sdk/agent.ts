@@ -113,6 +113,7 @@ export type StreamChunk = ContentMetadata &
 		| { type: 'input'; message: AgentDbMessage }
 		| { type: 'start-step' }
 		| { type: 'finish-step' }
+		| { type: 'usage'; usage: TokenUsage; model: string }
 		| { type: 'text-start'; id: string }
 		| { type: 'text-delta'; id: string; delta: string }
 		| { type: 'text-end'; id: string }

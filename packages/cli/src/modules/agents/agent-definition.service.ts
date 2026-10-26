@@ -48,24 +48,23 @@ export class AgentDefinitionService {
 		);
 		if (existing) return existing;
 
-		// Capture schema + skills snapshot
-		const snapshot = await this.agentSkillRefs.versionSnapshot(agent, ctx);
+		// Capture skill versions
+		const pins = await this.agentSkillRefs.versionSnapshot(agent, ctx);
 
 		// Insert a new history row
 		const history = await this.historyRepository.saveVersion(
 			{
 				versionId: agent.versionId,
 				agentId: agent.id,
-				schema: snapshot.schema
+				schema: agent.schema
 					? {
-							...snapshot.schema,
+							...agent.schema,
 							integrations: (agent.integrations ?? []).filter(
 								({ type }) => type === N8N_CHAT_INTEGRATION_TYPE,
 							),
 						}
 					: null,
 				tools: agent.tools,
-				skills: snapshot.skills,
 				savedBy:
 					source && source !== 'user'
 						? `${typeof savedBy === 'string' ? savedBy : renderAuthor(savedBy)}${source === 'mcp' ? ' (via MCP)' : ' (with n8n Assistant)'}`
@@ -75,7 +74,7 @@ export class AgentDefinitionService {
 		);
 
 		// Link the skill versions
-		await this.agentSkillRefs.pinVersion(history.versionId, snapshot, ctx);
+		await this.agentSkillRefs.pinVersion(history.versionId, pins, ctx);
 
 		// Snapshot tasks
 		const tasks = await this.taskRepository.findByAgentId(agent.id, ctx);
@@ -104,7 +103,7 @@ export class AgentDefinitionService {
 		const skillRefs = pending
 			? pending.skillRefs
 			: await this.agentSkillRefs.refsForDraft(agent, ctx);
-		const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, ctx);
+		const skills = await this.agentSkillRefs.skillsForRefs(skillRefs, ctx);
 		return {
 			...getAgentDefinitionContent(agent, skillRefs, skills),
 			tasks: new Map(tasks.map((task) => [task.id, getAgentTaskBody(task)])),
@@ -131,7 +130,7 @@ export class AgentDefinitionService {
 		agent: Agent,
 		definition: AgentDefinition,
 		ctx: OperationContext = {},
-		skillPinsFrom?: Pick<AgentHistory, 'versionId' | 'skills'>,
+		skillPinsFrom?: Pick<AgentHistory, 'versionId'>,
 	): Promise<boolean> {
 		// Preserve workflow input names in the JSON configuration.
 		const document = structuredClone(definition.schema);

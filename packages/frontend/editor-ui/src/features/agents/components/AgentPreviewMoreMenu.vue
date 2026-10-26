@@ -17,7 +17,11 @@ import { useRouter } from 'vue-router';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 
 import { useAgentSessionsStore } from '../agentSessions.store';
-import type { AgentExecutionThread } from '../composables/useAgentThreadsApi';
+import { formatAgentUsage } from '../utils/agent-usage';
+import { useAgentSessionUsage } from '../composables/useAgentSessionUsage';
+import { useAgentExecutionUpdates } from '../composables/useAgentExecutionUpdates';
+import type { ThreadDetail } from '../composables/useAgentThreadsApi';
+import type { AgentUsageUpdate } from '../types';
 import { useAgentTelemetry, type AgentPreviewMoreOption } from '../composables/useAgentTelemetry';
 import {
 	AGENT_BUILDER_VIEW,
@@ -45,8 +49,9 @@ const props = withDefaults(
 		isLangSmithExportEnabled: boolean;
 		isExporting: boolean;
 		getConversationMarkdown: () => string;
+		usageUpdates?: Record<string, AgentUsageUpdate>;
 	}>(),
-	{ canDeleteSession: false, isDeletingSession: false },
+	{ canDeleteSession: false, isDeletingSession: false, usageUpdates: () => ({}) },
 );
 
 const emit = defineEmits<{
@@ -61,7 +66,8 @@ const clipboard = useClipboard();
 const toast = useToast();
 const sessionsStore = useAgentSessionsStore();
 const agentTelemetry = useAgentTelemetry();
-const sessionMetadata = ref<AgentExecutionThread | null>(null);
+const sessionDetail = ref<ThreadDetail | null>(null);
+const sessionMetadata = computed(() => sessionDetail.value?.thread ?? null);
 const canLinkSession = computed(function canLinkSession() {
 	return props.hasSession && Boolean(props.effectiveSessionId);
 });
@@ -150,18 +156,27 @@ const triggerIcon = computed<IconName>(() => {
 	}
 });
 
-const tokenSpendLabel = computed(() => {
-	const metadata = sessionMetadata.value;
-	if (!metadata) return '—';
-	const totalTokens = metadata.totalPromptTokens + metadata.totalCompletionTokens;
-	return `${totalTokens.toLocaleString()}t ($${metadata.totalCost.toFixed(4)})`;
-});
-
+const { usage, duration, onExecutionUpdated } = useAgentSessionUsage(
+	() => sessionDetail.value,
+	() => props.usageUpdates,
+);
+const tokenSpendLabel = computed(() => formatAgentUsage(usage.value.totalTokens, usage.value.cost));
 const durationLabel = computed(() => {
-	const duration = sessionMetadata.value?.totalDuration ?? 0;
-	if (duration < 1000) return `${duration}ms`;
-	return `${(duration / 1000).toFixed(1)}s`;
+	if (!Number.isFinite(duration.value) || duration.value <= 0) return '';
+	if (duration.value < 1000) return `${duration.value}ms`;
+	return `${(duration.value / 1000).toFixed(1)}s`;
 });
+useAgentExecutionUpdates(
+	{
+		projectId: computed(() => props.projectId),
+		agentId: computed(() => props.agentId),
+		threadId: computed(() => props.effectiveSessionId),
+	},
+	() => loadSessionMetadata(),
+	(update) => {
+		if (update.threadId === props.effectiveSessionId) onExecutionUpdated(update);
+	},
+);
 
 const lastMessageLabel = computed(() => {
 	const updatedAt = sessionMetadata.value?.updatedAt;
@@ -249,21 +264,24 @@ async function loadSessionMetadata() {
 	const requestId = ++metadataRequestId;
 	const sessionId = props.effectiveSessionId;
 	if (!sessionId) {
-		sessionMetadata.value = null;
+		sessionDetail.value = null;
 		return;
 	}
 	try {
 		const detail = await sessionsStore.getThreadDetail(props.projectId, props.agentId, sessionId);
 		if (requestId === metadataRequestId) {
-			sessionMetadata.value = {
-				...detail.thread,
-				source: detail.executions.find(function hasSource(execution) {
-					return execution.source !== null;
-				})?.source,
+			sessionDetail.value = {
+				...detail,
+				thread: {
+					...detail.thread,
+					source: detail.executions.find(function hasSource(execution) {
+						return execution.source !== null;
+					})?.source,
+				},
 			};
 		}
 	} catch {
-		if (requestId === metadataRequestId) sessionMetadata.value = null;
+		if (requestId === metadataRequestId) sessionDetail.value = null;
 	}
 }
 
@@ -276,10 +294,20 @@ function onMenuOpenChange(isOpen: boolean) {
 watch(
 	[() => props.projectId, () => props.agentId, () => props.effectiveSessionId],
 	function refreshSessionMetadata() {
-		sessionMetadata.value = null;
+		sessionDetail.value = null;
 		void loadSessionMetadata();
 	},
 	{ immediate: true },
+);
+
+watch(
+	() => Object.values(props.usageUpdates),
+	(updates, previous) => {
+		if (updates.length === 0) return;
+		const completed = updates.filter((update) => update.complete).length;
+		const previouslyCompleted = previous.filter((update) => update.complete).length;
+		if (!sessionDetail.value || completed !== previouslyCompleted) void loadSessionMetadata();
+	},
 );
 </script>
 
@@ -318,7 +346,10 @@ watch(
 			<template #footer>
 				<ul :class="$style.sessionMetadata">
 					<li v-if="triggerLabel"><N8nIcon :icon="triggerIcon" :size="12" />{{ triggerLabel }}</li>
-					<li v-if="sessionMetadata">{{ tokenSpendLabel }} • {{ durationLabel }}</li>
+					<li v-if="tokenSpendLabel || durationLabel" :class="$style.metrics">
+						<span v-if="tokenSpendLabel">{{ tokenSpendLabel }}</span>
+						<span v-if="tokenSpendLabel && durationLabel"> • </span>{{ durationLabel }}
+					</li>
 					<li v-if="sessionMetadata?.updatedAt">
 						{{
 							i18n.baseText('agents.builder.preview.more.lastMessageSent' as BaseTextKey, {
@@ -339,6 +370,10 @@ watch(
 
 .layoutSwitch {
 	pointer-events: none;
+}
+
+.metrics {
+	font-variant-numeric: tabular-nums;
 }
 
 .sessionMetadata {

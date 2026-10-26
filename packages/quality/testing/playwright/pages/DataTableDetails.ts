@@ -391,10 +391,27 @@ export class DataTableDetails extends BasePage {
 
 	async search(query: string) {
 		const searchInput = this.getSearchInput();
+		// An unchanged value sends no request, so there is nothing to wait for
+		if ((await searchInput.inputValue()) === query) return;
+
+		const rowsResponse = this.page.waitForResponse((response) => {
+			const url = new URL(response.url());
+			return (
+				response.request().method() === 'GET' &&
+				url.pathname.endsWith('/rows') &&
+				url.searchParams.get('search') === query
+			);
+		});
 		await searchInput.fill(query);
-		// Wait for debounce
-		await this.page.waitForTimeout(300);
-		await this.page.getByText('Loading...').waitFor({ state: 'hidden' });
+		const response = await rowsResponse;
+		const body = (await response.json()) as { data: { data: Array<{ id: number | string }> } };
+		const expectedIds = body.data.data.map((row) => String(row.id));
+
+		// The response arrives before the grid renders it, so wait until the grid shows these rows
+		await expect(this.getDataRows()).toHaveCount(expectedIds.length);
+		for (const [rowIndex, id] of expectedIds.entries()) {
+			await expect(this.getCell(rowIndex, 'id')).toHaveText(id);
+		}
 	}
 
 	async clearSearch() {

@@ -10,10 +10,10 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
-import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
+import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
 import { SkillRepository } from '@/modules/skills/skill.repository';
 import { SkillService } from '@/modules/skills/skill.service';
 import { PostHogClient } from '@/posthog';
@@ -57,7 +57,6 @@ describe('SkillsController', () => {
 	});
 
 	beforeEach(async () => {
-		setSkillsHubFlag(true);
 		postHog.getFeatureFlagForInstance.mockImplementation(
 			async (flag) => flag === ASSISTANT_SKILLS_FLAG,
 		);
@@ -177,12 +176,41 @@ describe('SkillsController', () => {
 		expect(moved.availableToAssistant).toBe(true);
 	});
 
-	it('hides the skills API when the skills hub is off', async () => {
-		setSkillsHubFlag(false);
+	it('creates a skill that the Assistant can use', async () => {
+		const {
+			body: { data: created },
+		} = await editor
+			.post('/skills')
+			.send({ scope: 'project', projectId: project.id, skill: body, availableToAssistant: true })
+			.expect(200);
+		expect(created.availableToAssistant).toBe(true);
+		expect(created.latestVersion).toBe(1);
+	});
+
+	it('creates nothing when the Assistant cannot use the new skill', async () => {
+		const agent = await newAgent('Assistant create test', project.id);
+		await owner
+			.post('/skills')
+			.send({ scope: 'agent', agentId: agent.id, skill: body, availableToAssistant: true })
+			.expect(400);
+		postHog.getFeatureFlagForInstance.mockResolvedValue(false);
+		await owner
+			.post('/skills')
+			.send({ scope: 'instance', skill: body, availableToAssistant: true })
+			.expect(400);
+		const {
+			body: { data: list },
+		} = await owner.get('/skills').expect(200);
+		expect(list.count).toBe(0);
+	});
+
+	it('hides the skills API while the agents module is off', async () => {
+		// As when the agents module never registered its provider.
+		vi.spyOn(Container.get(SkillAgentsProxy), 'hasProvider', 'get').mockReturnValue(false);
 
 		await owner.get('/skills').expect(404);
 		await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(404);
-		// The flag is checked before the body, so a malformed request also answers 404.
+		// The gate is checked before the body, so a malformed request also answers 404.
 		await owner.post('/skills').send({ scope: 'nope' }).expect(404);
 		await owner.get('/skills?take=-1').expect(404);
 	});
@@ -652,7 +680,7 @@ describe('SkillsController', () => {
 		});
 
 		it('allows a rename that only changes case, even when another skill shares the name', async () => {
-			// The startup copy can leave two skills with one name key in a scope.
+			// The data migration can leave two skills with one name key in a scope.
 			const { id, skillHash } = await create(owner, { scope: 'instance', skill: body });
 			await Container.get(SkillService).create({
 				target: { projectId: null, agentId: null },

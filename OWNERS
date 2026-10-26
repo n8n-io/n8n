@@ -316,6 +316,57 @@ packages/frontend/editor-ui/src/app/composables/useAiGateway.ts @n8n-io/relay
 packages/frontend/editor-ui/src/features/credentials/gatewayCreditsPromotion/ @n8n-io/relay
 packages/frontend/editor-ui/src/features/shared/nodeCreator/components/SectionHeaderCreditsTag.vue @n8n-io/relay
 
+# Enterprise Nodes & Partnerships
+
+packages/nodes-base/nodes/Databricks/                                    @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Kafka/                                         @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Confluence/                                    @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Jira/                                          @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Salesforce/                                    @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/ServiceNow/                                    @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Snowflake/                                     @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Okta/                                          @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Dynamics/                            @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Excel/                               @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/                     @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/OneDrive/                            @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Outlook/                             @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/SharePoint/                          @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Teams/                               @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Sql/                                 @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Storage/                             @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/ToDo/                                @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Dataverse/                           @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Oracle/                                        @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/S3/                                        @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/S3/                                            @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/                  @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/               @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsDatabricks/     @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreDatabricks/  @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/                   @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/               @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/     @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/              @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAzureOpenAi/    @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/             @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/   @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreOracleDB/    @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatNvidia/                   @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsNvidia/         @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Entra/                               @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/GraphSecurity/                       @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/AzureCosmosDb/                       @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/GenericFunctions.ts                  @n8n-io/enterprise-nodes
+packages/nodes-base/utils/microsoft/                                     @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/DynamoDB/                                  @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/SQS/                                       @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/IAM/                                       @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/Cognito/                                   @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/AwsSns.node.ts                             @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/AwsSnsTrigger.node.ts                      @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/AwsSnsTriggerHelpers.ts                    @n8n-io/enterprise-nodes
+
 # Community engineering
 .agents/skills/create-community-node-lint-rule/         @n8n-io/community-engineering
 .agents/skills/community-pr-readiness-check/            @n8n-io/community-engineering

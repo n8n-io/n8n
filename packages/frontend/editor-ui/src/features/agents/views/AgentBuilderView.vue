@@ -3267,11 +3267,8 @@ useKeybindings({
 			:config-validation-status="configValidation?.status ?? null"
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
-			:is-preview-open="isPreviewDockOpen"
 			:tasks="areSetupTasksVisible ? setupTasks : undefined"
 			@header-action="onHeaderAction"
-			@open-preview="onOpenPreview"
-			@close-preview="closePreviewDock"
 			@publish-ready="isPublishReady = $event"
 			@published="onPublished"
 			@unpublished="onUnpublished"
@@ -3443,6 +3440,7 @@ useKeybindings({
 					:executions-description="executionsDescription"
 					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
 					:artifact-mode="isArtifactMode"
+					:is-preview-open="isPreviewDockOpen"
 					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
 					@update:config="onConfigFieldUpdate"
@@ -3469,6 +3467,7 @@ useKeybindings({
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
 					@open-preview="onOpenPreview"
+					@close-preview="closePreviewDock"
 					@publish-agent="onSetupTaskPublishAgent"
 				/>
 

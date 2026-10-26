@@ -645,6 +645,8 @@ export class AgentsService {
 
 		await this.agentExecutionService.deleteExecutionLogsForAgent(agentId);
 
+		await this.agentExecutionService.deleteMemoryThreadsForAgent(agentId);
+
 		await this.agentRepository.remove(agent);
 
 		this.runtimeCacheService.clearRuntimes(agentId);

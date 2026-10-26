@@ -6,6 +6,9 @@ import { Container } from '@n8n/di';
  * SCIM 2.0 module for user provisioning.
  * Implements System for Cross-domain Identity Management (RFC 7644) for
  * automated user lifecycle management.
+ *
+ * SCIM provisioning works only while SAML or OIDC single sign-on is on
+ * (`ScimSsoService`).
  */
 @BackendModule({ name: 'scim', licenseFlag: 'feat:scim', instanceTypes: ['main'] })
 export class ScimModule implements ModuleInterface {
@@ -15,8 +18,10 @@ export class ScimModule implements ModuleInterface {
 		await import('./scim-discovery.controller.js');
 		await import('./scim-token.controller.js');
 
-		const { ScimTokenRevocationListener } = await import('./scim-token-revocation.listener.js');
-		Container.get(ScimTokenRevocationListener);
+		// The SAML and OIDC modules init before this module, so the single
+		// sign-on state is loaded here.
+		const { ScimSsoService } = await import('./scim-sso.service.js');
+		await Container.get(ScimSsoService).init();
 	}
 
 	/**
