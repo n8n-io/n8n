@@ -323,6 +323,7 @@ import type {
 } from '../self-healing/self-healing-agent.service';
 import type { InstanceAiTracingService } from '../tracing/instance-ai-tracing.service';
 import { RunStateRegistry } from '@n8n/instance-ai';
+import { AssistantTurnEnvironmentFactory } from '../turn-setup/assistant-turn-environment.factory';
 import type {
 	RebuildSuspendedRunOutcome,
 	ResumableOrphan,
@@ -463,6 +464,39 @@ function queuedMemoryTaskEvent(): ScopedMemoryTaskEvent {
 }
 
 const fakeUser = { id: 'user-1' } as User;
+
+const TURN_ENVIRONMENT_FIELDS = [
+	'logger',
+	'instanceAiConfig',
+	'aiConfig',
+	'oauth2CallbackUrl',
+	'defaultTimeZone',
+	'adapterService',
+	'settingsService',
+	'browserSessionService',
+	'aiService',
+	'dbIterationLogStorage',
+	'instanceWriteAccess',
+	'telemetry',
+	'evalCredentialAllowlists',
+	'modelService',
+	'creditService',
+	'instanceAiErrorReporter',
+	'conversationHistoryService',
+	'aiUsageService',
+	'skillsService',
+	'areMcpConnectionsAvailable',
+] as const;
+
+/** Builds the shared turn setup from the mocks that a test sets on the service. */
+function attachTurnEnvironment(service: object): void {
+	const fields = service as Record<string, unknown>;
+	const turnEnvironment = Object.create(AssistantTurnEnvironmentFactory.prototype) as object;
+	for (const field of TURN_ENVIRONMENT_FIELDS) {
+		if (field in fields) Object.assign(turnEnvironment, { [field]: fields[field] });
+	}
+	Object.assign(service, { turnEnvironment });
+}
 
 function emptyWorkSummary(): WorkSummary {
 	return { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0, askedClarifyingQuestion: false };
@@ -783,33 +817,6 @@ function stubInitialRunSurface(
 	vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
 }
 
-describe('InstanceAiService — MCP connections availability', () => {
-	afterEach(() => {
-		vi.restoreAllMocks();
-	});
-
-	it.each([
-		{ moduleActive: true, accessEnabled: true, expected: true },
-		{ moduleActive: false, accessEnabled: true, expected: false },
-		{ moduleActive: true, accessEnabled: false, expected: false },
-	])(
-		'returns $expected when moduleActive=$moduleActive and accessEnabled=$accessEnabled',
-		({ moduleActive, accessEnabled, expected }) => {
-			const service = Object.create(InstanceAiService.prototype) as unknown as {
-				areMcpConnectionsAvailable: () => boolean;
-				settingsService: { isMcpAccessEnabled: Mock };
-			};
-			service.settingsService = { isMcpAccessEnabled: vi.fn(() => accessEnabled) };
-			vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
-				if (token === ModuleRegistry) return { isActive: () => moduleActive };
-				throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
-			});
-
-			expect(service.areMcpConnectionsAvailable()).toBe(expected);
-		},
-	);
-});
-
 describe('InstanceAiService — runtime workspace setup', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -1051,6 +1058,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			service.adapterService.createContext.mockReturnValue({ builderDelegate: {} });
 		}
 		const loadSkills = vi.spyOn(service.skillsService, 'loadSkills');
+		attachTurnEnvironment(service);
 
 		const environment = await service.createExecutionEnvironment(
 			fakeUser,
@@ -1407,6 +1415,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			destroy: vi.fn(async () => {}),
 		});
 		(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+		attachTurnEnvironment(service);
 
 		const environment = await service.createExecutionEnvironment(
 			fakeUser,
@@ -1864,6 +1873,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 		Object.assign(service.liveness, { clearThreadState: vi.fn() });
 		stubInitialRunSurface(service);
 		Reflect.deleteProperty(service, 'createExecutionEnvironment');
+		attachTurnEnvironment(service);
 		const createContext = vi.fn();
 		Object.assign(service.adapterService, { createContext });
 
@@ -6067,25 +6077,6 @@ describe('InstanceAiService — agent preview handoff scopes', () => {
 		await expect(service.assertAgentPreviewHandoffScopes(fakeUser, 'project-1')).rejects.toThrow(
 			'You do not have permission to load or edit agent previews in this project.',
 		);
-	});
-});
-
-describe('InstanceAiService — OAuth callback URL', () => {
-	// Regression: the OAuth callback URL exposed to browser-assisted credential
-	// setup must come from urlService.getInstanceBaseUrl() (which honors WEBHOOK_URL
-	// on cloud), not from globalConfig.editorBaseUrl with a localhost fallback.
-	it('builds oauth2CallbackUrl from urlService.getInstanceBaseUrl()', () => {
-		const source = InstanceAiService.toString();
-
-		expect(source).toMatch(
-			/this\.oauth2CallbackUrl\s*=[^;]*this\.urlService\.getInstanceBaseUrl\(\)[^;]*oauth2-credential\/callback/,
-		);
-	});
-
-	it('does not fall back to localhost when editorBaseUrl is empty', () => {
-		const source = InstanceAiService.toString();
-
-		expect(source).not.toMatch(/globalConfig\.editorBaseUrl\s*\|\|/);
 	});
 });
 

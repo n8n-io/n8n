@@ -454,13 +454,18 @@ const treeResizer = useResizablePanel({
 						:order="order"
 						:graph="graph"
 						:direction="direction"
+						:selected="selection.selected.value"
 						:inclusion="selection.inclusion.value"
+						:disabled="blockers.blocked"
+						:locked="operation.isBusy.value"
 						:entries="details.entries.value"
 						:inspected-key="inspectedKey"
 						:blockers="blockers"
 						@retry="details.retry"
 						@refresh="refresh"
 						@inspect="inspect"
+						@toggle="selection.toggle"
+						@toggle-container="selection.toggleAllInside"
 					/>
 				</section>
 			</div>

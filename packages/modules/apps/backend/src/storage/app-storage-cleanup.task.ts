@@ -4,7 +4,7 @@ import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { AppArtifactService } from './app-artifact.service';
 import { AppRetentionService } from './app-retention.service';
-import { AppRepository } from './app.repository';
+import { AppRepository } from '../app.repository';
 
 @SystemTask()
 export class AppStorageCleanupTask implements SystemTask {

@@ -6,8 +6,8 @@ import { BadRequestError, ConflictError, NotFoundError, UnexpectedError } from '
 import type { AppArtifact, AppArtifactRef } from './app-artifact.entity';
 import { AppArtifactRepository } from './app-artifact.repository';
 import { appStorageLockSubKey } from './app-storage-lock';
-import { AppsConfig } from './apps.config';
-import { AppBlobStore } from './storage/app-blob-store';
+import { AppsConfig } from '../apps.config';
+import { AppBlobStore } from './app-blob-store';
 
 const UPLOAD_LIFETIME_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -39,6 +39,12 @@ export class AppArtifactService {
 			await this.blobs.write(artifact, body);
 			if (artifact.createdAt.getTime() < Date.now() - UPLOAD_LIFETIME_MS)
 				throw new ConflictError('App artifact upload expired. Save the artifact again.');
+			this.logger.debug('Uploaded app artifact bytes.', {
+				appId,
+				artifactId: artifact.id,
+				storedAt: artifact.storedAt,
+				sizeBytes: body.length,
+			});
 			return artifact;
 		} catch (error) {
 			await this.deleteUnused(artifact, true);
@@ -118,6 +124,12 @@ export class AppArtifactService {
 				},
 				{ subKey: appStorageLockSubKey(ref.appId) },
 			);
+			this.logger.debug('Deleted unused app artifact.', {
+				appId: ref.appId,
+				artifactId: ref.id,
+				storedAt: artifact.storedAt,
+				sizeBytes: artifact.sizeBytes,
+			});
 		} catch (error) {
 			this.logger.warn('Could not delete an unused app artifact.', { artifactId: ref.id, error });
 		}
