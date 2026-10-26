@@ -34,8 +34,8 @@ describe('createModel env-proxy fallback', () => {
 	});
 
 	beforeEach(() => {
-		// undici reads the lowercase variables first, so clear them and NO_PROXY from the host env.
-		for (const name of ['http_proxy', 'https_proxy', 'no_proxy', 'NO_PROXY'])
+		// Clear the host's proxy variables. undici reads the lowercase ones first.
+		for (const name of ['http_proxy', 'https_proxy', 'HTTPS_PROXY', 'no_proxy', 'NO_PROXY'])
 			vi.stubEnv(name, undefined);
 		// Nothing listens on port 1, so a proxied request fails.
 		vi.stubEnv('HTTP_PROXY', 'http://127.0.0.1:1');

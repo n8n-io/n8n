@@ -45,7 +45,6 @@
  *
  * Never throws.
  */
-import { getProxyFetch } from '@n8n/agents';
 import { sleep } from '@n8n/utils/sleep';
 import workflowSdkPackage from '@n8n/workflow-sdk/package.json';
 import { createHash } from 'node:crypto';
@@ -95,7 +94,7 @@ export interface BuilderTemplatesServiceOptions {
 	failureRetryIntervalMs?: number;
 	/** When true, the service short-circuits to an empty bundle and never fetches. */
 	disabled?: boolean;
-	/** `fetch` for the archive and sha256 downloads. Default: the env-proxy fallback from `@n8n/agents`. */
+	/** `fetch` for the archive and sha256 downloads. Default `globalThis.fetch`. */
 	fetch?: typeof globalThis.fetch;
 	/** Structured logger. */
 	logger: Logger;
@@ -156,7 +155,7 @@ export class BuilderTemplatesService {
 		this.retryBackoffBaseMs = opts.retryBackoffBaseMs ?? DEFAULT_RETRY_BACKOFF_BASE_MS;
 		this.failureRetryIntervalMs = opts.failureRetryIntervalMs ?? DEFAULT_FAILURE_RETRY_INTERVAL_MS;
 		this.disabled = opts.disabled ?? false;
-		this.fetch = opts.fetch ?? getProxyFetch() ?? globalThis.fetch;
+		this.fetch = opts.fetch ?? globalThis.fetch;
 		this.logger = opts.logger;
 	}
 

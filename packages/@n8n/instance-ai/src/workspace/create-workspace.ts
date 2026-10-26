@@ -13,6 +13,7 @@ import {
 import { randomUUID } from 'node:crypto';
 
 import type { Logger } from '../logger';
+import type { BuilderTemplatesService } from './builder-templates-service';
 import { SnapshotManager } from './snapshot-manager';
 
 export type InstanceAiDaytonaSandboxConfig = DaytonaSandboxConfig & {
@@ -32,6 +33,7 @@ export { type SandboxInstance, type SandboxProvider };
 
 export interface InstanceAiCreateSandboxOptions extends CreateSandboxOptions {
 	useSnapshotFallback?: boolean;
+	templatesService?: BuilderTemplatesService;
 }
 
 const NOOP_LOGGER: Logger = {
@@ -94,6 +96,7 @@ export async function createSandbox(
 		typeof config.image === 'string' ? config.image : undefined,
 		logger,
 		config.n8nVersion,
+		options.templatesService,
 	);
 
 	const isProxyMode = config.getAuthToken !== undefined;

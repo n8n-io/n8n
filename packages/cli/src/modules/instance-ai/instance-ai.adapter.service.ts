@@ -977,7 +977,7 @@ export class InstanceAiAdapterService {
 		return meta;
 	}
 
-	private getTemplatesService(): BuilderTemplatesServiceInstance {
+	getTemplatesService(): BuilderTemplatesServiceInstance {
 		if (!this.templatesService) {
 			this.templatesService = new BuilderTemplatesService({
 				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
