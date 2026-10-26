@@ -149,6 +149,7 @@ describe('WorkflowService', () => {
 				mock(), // errorWorkflowValidationService
 				restrictedNodeTypesProviderMock, // restrictedNodeTypesProvider
 				mock(),
+				mock(), // projectScopeService
 			);
 		});
 
@@ -434,10 +435,15 @@ describe('WorkflowService', () => {
 				expect(result).toMatchObject({ workflows: [folder], count: 1 });
 				expect(
 					workflowRepositoryMock.getWorkflowsAndFoldersWithCountWithSharingSubquery,
-				).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
-					...restrictedNodeFilter,
-					workflowIdsIn: null,
-				});
+				).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					{
+						...restrictedNodeFilter,
+						workflowIdsIn: null,
+					},
+					undefined,
+				);
 			});
 
 			test('limits the list query to the restricted workflow ids', async () => {
@@ -534,6 +540,7 @@ describe('WorkflowService', () => {
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
 				mock(),
+				mock(), // projectScopeService
 			);
 
 			vi.clearAllMocks();
@@ -1710,6 +1717,7 @@ describe('WorkflowService', () => {
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
 				mock(),
+				mock(), // projectScopeService
 			);
 
 			// Bypass validation internals
@@ -2473,6 +2481,7 @@ describe('WorkflowService', () => {
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
 				mock(),
+				mock(), // projectScopeService
 			);
 		});
 
@@ -2617,6 +2626,7 @@ describe('WorkflowService', () => {
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
 				mock(),
+				mock(), // projectScopeService
 			);
 		});
 
@@ -2930,6 +2940,7 @@ describe('WorkflowService', () => {
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
 				mock(),
+				mock(), // projectScopeService
 			);
 		});
 
@@ -3107,6 +3118,7 @@ describe('WorkflowService', () => {
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
 				mock(),
+				mock(), // projectScopeService
 			);
 		});
 
@@ -3297,6 +3309,7 @@ describe('WorkflowService', () => {
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
 				mock(),
+				mock(), // projectScopeService
 			);
 		});
 
@@ -3403,6 +3416,7 @@ describe('WorkflowService', () => {
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
 				mock(),
+				mock(), // projectScopeService
 			);
 		});
 
@@ -3512,6 +3526,7 @@ describe('WorkflowService', () => {
 				errorWorkflowValidationServiceMock, // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
 				mock(),
+				mock(), // projectScopeService
 			);
 
 			vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);

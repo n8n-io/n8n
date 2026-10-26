@@ -1000,6 +1000,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		accessibleProjectIds?: string[],
 	) {
 		if (
 			options.filter?.parentFolderId &&
@@ -1019,8 +1020,18 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		}
 
 		const [workflowsAndFolders, count] = await Promise.all([
-			this.getWorkflowsAndFoldersUnionWithSharingSubquery(user, sharingOptions, options),
-			this.getWorkflowsAndFoldersCountWithSharingSubquery(user, sharingOptions, options),
+			this.getWorkflowsAndFoldersUnionWithSharingSubquery(
+				user,
+				sharingOptions,
+				options,
+				accessibleProjectIds,
+			),
+			this.getWorkflowsAndFoldersCountWithSharingSubquery(
+				user,
+				sharingOptions,
+				options,
+				accessibleProjectIds,
+			),
 		]);
 
 		const isArchived =
@@ -1047,9 +1058,15 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		accessibleProjectIds?: string[],
 	) {
 		const { baseQuery, sortByColumn, sortByDirection } =
-			this.buildBaseUnionQueryWithSharingSubquery(user, sharingOptions, options);
+			this.buildBaseUnionQueryWithSharingSubquery(
+				user,
+				sharingOptions,
+				options,
+				accessibleProjectIds,
+			);
 
 		const query = this.buildUnionQuery(baseQuery, {
 			sortByColumn,
@@ -1075,6 +1092,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		accessibleProjectIds?: string[],
 	) {
 		const { skip, take, ...baseQueryParameters } = options;
 
@@ -1082,6 +1100,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			user,
 			sharingOptions,
 			baseQueryParameters,
+			accessibleProjectIds,
 		);
 
 		const response = await baseQuery
@@ -1103,6 +1122,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		accessibleProjectIds?: string[],
 	) {
 		// Common fields for both folders and workflows
 		const commonFields = {
@@ -1147,6 +1167,18 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			.getManyQuery(folderQueryParameters)
 			.addSelect('NULL', 'description') // Add NULL for description in folders
 			.addSelect("'folder'", 'resource');
+
+		// Restrict folders to projects in which the user can list folders.
+		// When undefined (global access), no filtering is applied.
+		if (accessibleProjectIds !== undefined) {
+			if (accessibleProjectIds.length > 0) {
+				foldersQuery.andWhere('folder.projectId IN (:...accessibleProjectIds)', {
+					accessibleProjectIds,
+				});
+			} else {
+				foldersQuery.andWhere('1 = 0');
+			}
+		}
 
 		const workflowsQuery = this.getManyQueryWithSharingSubquery(
 			user,

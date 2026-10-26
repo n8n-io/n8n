@@ -2611,7 +2611,9 @@ describe('GET /workflows?includeFolders=true', () => {
 			.query({ includeFolders: true })
 			.expect(200);
 
-		const rows = response.body.data as WorkflowFolderUnionFull[];
+		const rows = response.body.data as Array<
+			WorkflowFolderUnionFull & { homeProject?: { id: string } | null }
+		>;
 		const ids = rows.map((row) => row.id);
 
 		expect(ids).not.toContain(ownerWorkflow.id);
