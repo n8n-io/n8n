@@ -572,7 +572,7 @@ test.describe(
 			expect(adamValue).toContain('Eve Adams');
 		});
 
-		// KNO-258: search() returns before the search results render. A follow-up
+		// search() returns before the search results render. A follow-up
 		// toHaveCount(1) passes on the previous result, and getCellValue reads stale rows.
 		test('Should show new search results when search() resolves on a slow rows response', async ({
 			n8n,
