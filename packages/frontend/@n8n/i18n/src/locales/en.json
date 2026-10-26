@@ -6364,6 +6364,8 @@
 	"settings.security.rateLimits.dialog.read": "Read",
 	"settings.security.rateLimits.dialog.write": "Write",
 	"settings.security.rateLimits.dialog.requestsPer": "requests per",
+	"settings.security.rateLimits.dialog.limit.label": "{group}: {kind} limit",
+	"settings.security.rateLimits.dialog.window.label": "{group}: {kind} window in seconds",
 	"settings.security.rateLimits.dialog.noLimit": "No limit",
 	"settings.security.rateLimits.dialog.seconds": "s",
 	"settings.security.rateLimits.dialog.reset": "Reset to default: {value}",

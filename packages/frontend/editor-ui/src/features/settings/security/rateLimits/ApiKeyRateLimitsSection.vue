@@ -23,7 +23,7 @@ import * as rateLimitSettingsApi from '@n8n/rest-api-client/api/public-api-rate-
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import ApiKeyRateLimitsDialog from './ApiKeyRateLimitsDialog.vue';
-import { RATE_LIMIT_GROUPS, formatGroupSummary, type RateLimitGroup } from './rateLimits';
+import { RATE_LIMIT_GROUP_KEYS, formatGroupSummary } from './rateLimits';
 
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -49,8 +49,6 @@ const settings = computed((): PublicApiRateLimitSettings | undefined => {
 });
 
 const isToggleLocked = computed(() => state.value?.envManagedFields.includes('enabled') ?? false);
-
-const groups = Object.keys(RATE_LIMIT_GROUPS) as RateLimitGroup[];
 
 const toggleValue = computed({
 	get: () => settings.value?.enabled ?? false,
@@ -139,7 +137,7 @@ async function persist(next: PublicApiRateLimitSettings) {
 				<template #expanded>
 					<div v-if="settings.enabled" :class="$style.summary">
 						<div :class="$style.summaryLines">
-							<div v-for="group in groups" :key="group" :class="$style.summaryLine">
+							<div v-for="group in RATE_LIMIT_GROUP_KEYS" :key="group" :class="$style.summaryLine">
 								<div :class="$style.summaryLabel">
 									<N8nText size="small">
 										{{ i18n.baseText(`settings.security.rateLimits.group.${group}`) }}

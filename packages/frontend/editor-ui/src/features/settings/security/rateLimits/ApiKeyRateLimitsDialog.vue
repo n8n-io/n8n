@@ -19,6 +19,8 @@ import { useI18n } from '@n8n/i18n';
 
 import {
 	RATE_LIMIT_GROUPS,
+	RATE_LIMIT_GROUP_KEYS,
+	RATE_LIMIT_ROW_KEYS,
 	exceedsAllEndpointsLimit,
 	fromDraft,
 	getRowError,
@@ -59,18 +61,26 @@ watch(
 	},
 );
 
-const groups = Object.entries(RATE_LIMIT_GROUPS) as Array<
-	[RateLimitGroup, (typeof RATE_LIMIT_GROUPS)[RateLimitGroup]]
->;
-
-const rowKeys: RateLimitRowKey[] = ['globalRead', 'globalWrite', 'endpointRead', 'endpointWrite'];
+const groups = RATE_LIMIT_GROUP_KEYS.map((group) => ({ group, rows: RATE_LIMIT_GROUPS[group] }));
 
 const isLimitLocked = (key: RateLimitRowKey) => props.envManagedFields.includes(`${key}Limit`);
 const isWindowLocked = (key: RateLimitRowKey) =>
 	props.envManagedFields.includes(`${key}WindowSeconds`);
 
-const rowError = (key: RateLimitRowKey) =>
-	submitted.value || touchedRows.value.has(key) ? getRowError(draft.value[key]) : undefined;
+function rowErrorText(key: RateLimitRowKey) {
+	if (!submitted.value && !touchedRows.value.has(key)) return undefined;
+	const error = getRowError(draft.value[key]);
+	return error && i18n.baseText(`settings.security.rateLimits.dialog.error.${error}`);
+}
+
+function fieldLabel(field: 'limit' | 'window', group: RateLimitGroup, kind: 'read' | 'write') {
+	return i18n.baseText(`settings.security.rateLimits.dialog.${field}.label`, {
+		interpolate: {
+			group: i18n.baseText(`settings.security.rateLimits.group.${group}`),
+			kind: i18n.baseText(`settings.security.rateLimits.dialog.${kind}`),
+		},
+	});
+}
 
 const rowWarning = (key: RateLimitRowKey) =>
 	(key === 'endpointRead' || key === 'endpointWrite') && exceedsAllEndpointsLimit(draft.value, key);
@@ -82,7 +92,7 @@ const canReset = (key: RateLimitRowKey) =>
 	(!isWindowLocked(key) && draft.value[key].window !== defaultDraft.value[key].window);
 
 const hasErrors = computed(() =>
-	rowKeys.some((key) => getRowError(draft.value[key]) !== undefined),
+	RATE_LIMIT_ROW_KEYS.some((key) => getRowError(draft.value[key]) !== undefined),
 );
 const isEmpty = computed(() => isDraftEmpty(draft.value));
 const showFixMessage = computed(() => submitted.value && hasErrors.value);
@@ -124,7 +134,7 @@ function resetRow(key: RateLimitRowKey) {
 }
 
 function resetAll() {
-	for (const key of rowKeys) if (canReset(key)) resetRow(key);
+	for (const key of RATE_LIMIT_ROW_KEYS) if (canReset(key)) resetRow(key);
 }
 
 function save() {
@@ -147,7 +157,7 @@ function save() {
 				{{ i18n.baseText('settings.security.rateLimits.dialog.description') }}
 			</N8nDialogDescription>
 			<div :class="$style.groups">
-				<div v-for="[group, rows] in groups" :key="group" :class="$style.group">
+				<div v-for="{ group, rows } in groups" :key="group" :class="$style.group">
 					<div :class="$style.groupTitle">
 						<N8nText :bold="true">
 							{{ i18n.baseText(`settings.security.rateLimits.group.${group}`) }}
@@ -174,6 +184,7 @@ function save() {
 										size="medium"
 										inputmode="numeric"
 										:placeholder="i18n.baseText('settings.security.rateLimits.dialog.noLimit')"
+										:aria-label="fieldLabel('limit', group, kind)"
 										:disabled="isLimitLocked(rows[kind])"
 										:data-test-id="`rate-limits-limit-${rows[kind]}`"
 										@blur="touchedRows.add(rows[kind])"
@@ -192,6 +203,7 @@ function save() {
 										v-model="draft[rows[kind]].window"
 										size="medium"
 										inputmode="numeric"
+										:aria-label="fieldLabel('window', group, kind)"
 										:disabled="isWindowLocked(rows[kind])"
 										:data-test-id="`rate-limits-window-${rows[kind]}`"
 										@blur="touchedRows.add(rows[kind])"
@@ -229,15 +241,13 @@ function save() {
 							</div>
 						</div>
 						<N8nText
-							v-if="rowError(rows[kind])"
+							v-if="rowErrorText(rows[kind])"
 							size="small"
 							color="danger"
 							:class="$style.message"
 							:data-test-id="`rate-limits-error-${rows[kind]}`"
 						>
-							{{
-								i18n.baseText(`settings.security.rateLimits.dialog.error.${rowError(rows[kind])!}`)
-							}}
+							{{ rowErrorText(rows[kind]) }}
 						</N8nText>
 						<N8nText
 							v-else-if="rowWarning(rows[kind])"
@@ -257,7 +267,7 @@ function save() {
 			<div :class="$style.footer">
 				<div :class="$style.footerStart">
 					<N8nButton
-						v-if="rowKeys.some(canReset)"
+						v-if="RATE_LIMIT_ROW_KEYS.some(canReset)"
 						variant="ghost"
 						size="small"
 						:label="i18n.baseText('settings.security.rateLimits.dialog.resetAll')"

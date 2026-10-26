@@ -1,9 +1,18 @@
 import type { PublicApiRateLimitSettings } from '@n8n/api-types';
 import type { useI18n } from '@n8n/i18n';
 
-export type RateLimitRowKey = 'globalRead' | 'globalWrite' | 'endpointRead' | 'endpointWrite';
+export const RATE_LIMIT_ROW_KEYS = [
+	'globalRead',
+	'globalWrite',
+	'endpointRead',
+	'endpointWrite',
+] as const;
 
-export type RateLimitGroup = 'allEndpoints' | 'individualEndpoints';
+export type RateLimitRowKey = (typeof RATE_LIMIT_ROW_KEYS)[number];
+
+export const RATE_LIMIT_GROUP_KEYS = ['allEndpoints', 'individualEndpoints'] as const;
+
+export type RateLimitGroup = (typeof RATE_LIMIT_GROUP_KEYS)[number];
 
 type LimitField = `${RateLimitRowKey}Limit`;
 type WindowField = `${RateLimitRowKey}WindowSeconds`;
@@ -20,8 +29,6 @@ export const RATE_LIMIT_GROUPS: Record<
 	allEndpoints: { read: 'globalRead', write: 'globalWrite' },
 	individualEndpoints: { read: 'endpointRead', write: 'endpointWrite' },
 };
-
-const ROW_KEYS: RateLimitRowKey[] = ['globalRead', 'globalWrite', 'endpointRead', 'endpointWrite'];
 
 const WHOLE_NUMBER = /^\d+$/;
 
@@ -49,7 +56,7 @@ export function fromDraft(
 	base: PublicApiRateLimitSettings,
 ): PublicApiRateLimitSettings {
 	const settings = { ...base };
-	for (const key of ROW_KEYS) {
+	for (const key of RATE_LIMIT_ROW_KEYS) {
 		const window = draft[key].window.trim();
 		settings[limitField(key)] = parseLimit(draft[key].limit);
 		if (WHOLE_NUMBER.test(window) && Number(window) >= 1) {
@@ -68,7 +75,7 @@ export function getRowError(row: RateLimitDraft[RateLimitRowKey]): RateLimitRowE
 }
 
 export function isDraftEmpty(draft: RateLimitDraft): boolean {
-	return ROW_KEYS.every((key) => parseLimit(draft[key].limit) === 0);
+	return RATE_LIMIT_ROW_KEYS.every((key) => parseLimit(draft[key].limit) === 0);
 }
 
 /**

@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import ApiKeyRateLimitsSection from './ApiKeyRateLimitsSection.vue';
+import { RATE_LIMIT_ROW_KEYS } from './rateLimits';
 
 const getSettings = vi.fn();
 const updateSettings = vi.fn();
@@ -63,7 +64,7 @@ const limitInput = (row: string) =>
 	screen.getByTestId<HTMLInputElement>(`rate-limits-limit-${row}`);
 
 async function clearAllLimits() {
-	for (const row of ['globalRead', 'globalWrite', 'endpointRead', 'endpointWrite']) {
+	for (const row of RATE_LIMIT_ROW_KEYS) {
 		await userEvent.clear(limitInput(row));
 	}
 }
@@ -74,229 +75,237 @@ describe('ApiKeyRateLimitsSection', () => {
 		updateSettings.mockImplementation(async (_context, data) => response(data));
 	});
 
-	it('names the section after the Public API', async () => {
-		const { getByText } = await renderLoaded();
+	describe('the section', () => {
+		it('names the section after the Public API', async () => {
+			const { getByText } = await renderLoaded();
 
-		expect(getByText('Public API Limits')).toBeInTheDocument();
-	});
-
-	it('does not show the limits while rate limiting is off', async () => {
-		const { queryByTestId } = await renderLoaded();
-
-		expect(queryByTestId('rate-limits-summary-allEndpoints')).not.toBeInTheDocument();
-	});
-
-	it('shows the limits while rate limiting is on', async () => {
-		const { getByTestId } = await renderLoaded({ enabled: true, endpointWriteLimit: 0 });
-
-		expect(getByTestId('rate-limits-summary-allEndpoints')).toHaveTextContent(
-			'1,200 reads · 600 writes / 60 seconds',
-		);
-		expect(getByTestId('rate-limits-summary-individualEndpoints')).toHaveTextContent(
-			'1,000 reads / 60 seconds · no limit on writes',
-		);
-	});
-
-	it('opens the dialog with the stored values and turns rate limiting on when saved', async () => {
-		const { getByTestId } = await renderLoaded();
-
-		await userEvent.click(getByTestId('rate-limits-toggle'));
-
-		expect(limitInput('globalRead').value).toBe('1200');
-		await userEvent.click(screen.getByTestId('rate-limits-save'));
-
-		await waitFor(() =>
-			expect(updateSettings).toHaveBeenCalledWith({}, { ...settingsOf, enabled: true }),
-		);
-		expect(getByTestId('rate-limits-summary-allEndpoints')).toBeInTheDocument();
-	});
-
-	it('describes the limits in the dialog', async () => {
-		const { getByTestId } = await renderLoaded();
-
-		await userEvent.click(getByTestId('rate-limits-toggle'));
-
-		expect(
-			screen.getByText(
-				'Limits how many Public API requests each API key can make. Requests over the limit get a 429 response until it resets.',
-			),
-		).toBeInTheDocument();
-	});
-
-	it('keeps rate limiting off when the dialog is cancelled', async () => {
-		const { getByTestId, queryByTestId } = await renderLoaded();
-
-		await userEvent.click(getByTestId('rate-limits-toggle'));
-		await userEvent.click(screen.getByTestId('rate-limits-cancel'));
-
-		expect(updateSettings).not.toHaveBeenCalled();
-		expect(queryByTestId('rate-limits-summary-allEndpoints')).not.toBeInTheDocument();
-	});
-
-	it('does not turn rate limiting on while no limit is set', async () => {
-		const { getByTestId } = await renderLoaded();
-
-		await userEvent.click(getByTestId('rate-limits-toggle'));
-		await clearAllLimits();
-
-		expect(screen.getByTestId('rate-limits-save')).toBeDisabled();
-	});
-
-	it('turns rate limiting off with the toggle and keeps the limits', async () => {
-		const { getByTestId } = await renderLoaded({ enabled: true });
-
-		await userEvent.click(getByTestId('rate-limits-toggle'));
-
-		await waitFor(() =>
-			expect(updateSettings).toHaveBeenCalledWith({}, { ...settingsOf, enabled: false }),
-		);
-	});
-
-	it('turns rate limiting off when every limit is cleared in the edit dialog', async () => {
-		const { getByTestId } = await renderLoaded({ enabled: true });
-
-		await userEvent.click(getByTestId('rate-limits-edit'));
-		await clearAllLimits();
-		const save = screen.getByTestId('rate-limits-save');
-		expect(save).toHaveTextContent('Disable limits');
-		await userEvent.click(save);
-
-		await waitFor(() =>
-			expect(updateSettings).toHaveBeenCalledWith(
-				{},
-				{
-					...settingsOf,
-					enabled: false,
-					globalReadLimit: 0,
-					globalWriteLimit: 0,
-					endpointReadLimit: 0,
-					endpointWriteLimit: 0,
-				},
-			),
-		);
-	});
-
-	it('does not offer to turn rate limiting off when an environment variable turns it on', async () => {
-		const { getByTestId } = await renderLoaded({ enabled: true, envManagedFields: ['enabled'] });
-
-		await userEvent.click(getByTestId('rate-limits-edit'));
-		await clearAllLimits();
-
-		const save = screen.getByTestId('rate-limits-save');
-		expect(save).not.toHaveTextContent('Disable limits');
-		expect(save).toBeDisabled();
-	});
-
-	it('shows an error for an invalid limit and does not save', async () => {
-		const { getByTestId } = await renderLoaded({ enabled: true });
-
-		await userEvent.click(getByTestId('rate-limits-edit'));
-		await userEvent.clear(limitInput('globalRead'));
-		await userEvent.type(limitInput('globalRead'), 'abc');
-		await userEvent.tab();
-		await userEvent.click(screen.getByTestId('rate-limits-save'));
-
-		expect(screen.getByTestId('rate-limits-error-globalRead')).toHaveTextContent(
-			'Enter a whole number, 1 or more.',
-		);
-		expect(screen.getByText('Fix the highlighted fields.')).toBeInTheDocument();
-		expect(updateSettings).not.toHaveBeenCalled();
-	});
-
-	it('warns when a per-endpoint limit is above the all-endpoints limit', async () => {
-		const { getByTestId } = await renderLoaded({ enabled: true });
-
-		await userEvent.click(getByTestId('rate-limits-edit'));
-		await userEvent.clear(limitInput('endpointRead'));
-		await userEvent.type(limitInput('endpointRead'), '5000');
-
-		expect(screen.getByTestId('rate-limits-warning-endpointRead')).toHaveTextContent(
-			'Higher than the all-endpoints limit, so it never applies.',
-		);
-	});
-
-	it('resets a row to its default', async () => {
-		const { getByTestId } = await renderLoaded({ enabled: true });
-
-		await userEvent.click(getByTestId('rate-limits-edit'));
-		await userEvent.clear(limitInput('globalRead'));
-		await userEvent.type(limitInput('globalRead'), '5');
-		await userEvent.click(screen.getByTestId('rate-limits-reset-globalRead'));
-
-		expect(limitInput('globalRead').value).toBe('1200');
-	});
-
-	it('names the toggle after its row', async () => {
-		const { getByRole } = await renderLoaded();
-
-		expect(getByRole('switch', { name: 'Enable API key rate limits' })).toBeInTheDocument();
-	});
-
-	it('resets the editable field of a row whose other field is locked', async () => {
-		const { getByTestId } = await renderLoaded({
-			enabled: true,
-			globalReadWindowSeconds: 30,
-			envManagedFields: ['globalReadWindowSeconds'],
+			expect(getByText('Public API Limits')).toBeInTheDocument();
 		});
 
-		await userEvent.click(getByTestId('rate-limits-edit'));
-		await userEvent.clear(limitInput('globalRead'));
-		await userEvent.type(limitInput('globalRead'), '5');
-		const reset = screen.getByTestId('rate-limits-reset-globalRead');
-		expect(reset).toHaveAccessibleName('Reset to default: 1,200 / 30 s');
-		await userEvent.click(reset);
+		it('names the toggle after its row', async () => {
+			const { getByRole } = await renderLoaded();
 
-		expect(limitInput('globalRead').value).toBe('1200');
-		expect(screen.getByTestId<HTMLInputElement>('rate-limits-window-globalRead').value).toBe('30');
-	});
-
-	it('locks a field that an environment variable sets', async () => {
-		const { getByTestId } = await renderLoaded({
-			enabled: true,
-			envManagedFields: ['enabled', 'globalReadLimit'],
+			expect(getByRole('switch', { name: 'Enable API key rate limits' })).toBeInTheDocument();
 		});
 
-		expect(getByTestId('rate-limits-toggle')).toBeDisabled();
-		await userEvent.click(getByTestId('rate-limits-edit'));
-		expect(limitInput('globalRead')).toBeDisabled();
-		expect(limitInput('globalWrite')).not.toBeDisabled();
-	});
+		it('does not show the limits while rate limiting is off', async () => {
+			const { queryByTestId } = await renderLoaded();
 
-	it('explains how to change the limits when an environment variable turns them on', async () => {
-		const { getByTestId } = await renderLoaded({ enabled: true, envManagedFields: ['enabled'] });
-
-		await userEvent.hover(getByTestId('rate-limits-toggle').parentElement!);
-
-		expect(
-			await screen.findByText(
-				'These limits are set through an environment variable. To change them or turn them off, edit the variable.',
-			),
-		).toBeInTheDocument();
-	});
-
-	it('explains how to change a limit that an environment variable sets', async () => {
-		const { getByTestId } = await renderLoaded({
-			enabled: true,
-			envManagedFields: ['globalReadLimit'],
+			expect(queryByTestId('rate-limits-summary-allEndpoints')).not.toBeInTheDocument();
 		});
 
-		await userEvent.click(getByTestId('rate-limits-edit'));
-		await userEvent.hover(limitInput('globalRead').parentElement!);
+		it('shows the limits while rate limiting is on', async () => {
+			const { getByTestId } = await renderLoaded({ enabled: true, endpointWriteLimit: 0 });
 
-		expect(
-			await screen.findByText(
-				'This limit is set by an environment variable. To change it, edit the variable.',
-			),
-		).toBeInTheDocument();
+			expect(getByTestId('rate-limits-summary-allEndpoints')).toHaveTextContent(
+				'1,200 reads · 600 writes / 60 seconds',
+			);
+			expect(getByTestId('rate-limits-summary-individualEndpoints')).toHaveTextContent(
+				'1,000 reads / 60 seconds · no limit on writes',
+			);
+		});
+
+		it('turns rate limiting off with the toggle and keeps the limits', async () => {
+			const { getByTestId } = await renderLoaded({ enabled: true });
+
+			await userEvent.click(getByTestId('rate-limits-toggle'));
+
+			await waitFor(() =>
+				expect(updateSettings).toHaveBeenCalledWith({}, { ...settingsOf, enabled: false }),
+			);
+		});
+
+		it('shows an error when the settings cannot be saved', async () => {
+			updateSettings.mockRejectedValue(new Error('boom'));
+			const { getByTestId } = await renderLoaded({ enabled: true });
+
+			await userEvent.click(getByTestId('rate-limits-toggle'));
+
+			await waitFor(() => expect(showError).toHaveBeenCalled());
+			expect(getByTestId('rate-limits-summary-allEndpoints')).toBeInTheDocument();
+		});
 	});
 
-	it('shows an error when the settings cannot be saved', async () => {
-		updateSettings.mockRejectedValue(new Error('boom'));
-		const { getByTestId } = await renderLoaded({ enabled: true });
+	describe('the dialog', () => {
+		it('describes the limits in the dialog', async () => {
+			const { getByTestId } = await renderLoaded();
 
-		await userEvent.click(getByTestId('rate-limits-toggle'));
+			await userEvent.click(getByTestId('rate-limits-toggle'));
 
-		await waitFor(() => expect(showError).toHaveBeenCalled());
-		expect(getByTestId('rate-limits-summary-allEndpoints')).toBeInTheDocument();
+			expect(
+				screen.getByText(
+					'Limits how many Public API requests each API key can make. Requests over the limit get a 429 response until it resets.',
+				),
+			).toBeInTheDocument();
+		});
+
+		it('names each limit and window input after its group and kind', async () => {
+			const { getByTestId } = await renderLoaded();
+
+			await userEvent.click(getByTestId('rate-limits-toggle'));
+
+			expect(limitInput('endpointWrite')).toHaveAccessibleName('Individual endpoints: Write limit');
+			expect(screen.getByTestId('rate-limits-window-globalRead')).toHaveAccessibleName(
+				'All endpoints: Read window in seconds',
+			);
+		});
+
+		it('opens the dialog with the stored values and turns rate limiting on when saved', async () => {
+			const { getByTestId } = await renderLoaded();
+
+			await userEvent.click(getByTestId('rate-limits-toggle'));
+
+			expect(limitInput('globalRead').value).toBe('1200');
+			await userEvent.click(screen.getByTestId('rate-limits-save'));
+
+			await waitFor(() =>
+				expect(updateSettings).toHaveBeenCalledWith({}, { ...settingsOf, enabled: true }),
+			);
+			expect(getByTestId('rate-limits-summary-allEndpoints')).toBeInTheDocument();
+		});
+
+		it('keeps rate limiting off when the dialog is cancelled', async () => {
+			const { getByTestId, queryByTestId } = await renderLoaded();
+
+			await userEvent.click(getByTestId('rate-limits-toggle'));
+			await userEvent.click(screen.getByTestId('rate-limits-cancel'));
+
+			expect(updateSettings).not.toHaveBeenCalled();
+			expect(queryByTestId('rate-limits-summary-allEndpoints')).not.toBeInTheDocument();
+		});
+
+		it('does not turn rate limiting on while no limit is set', async () => {
+			const { getByTestId } = await renderLoaded();
+
+			await userEvent.click(getByTestId('rate-limits-toggle'));
+			await clearAllLimits();
+
+			expect(screen.getByTestId('rate-limits-save')).toBeDisabled();
+		});
+
+		it('turns rate limiting off when every limit is cleared in the edit dialog', async () => {
+			const { getByTestId } = await renderLoaded({ enabled: true });
+
+			await userEvent.click(getByTestId('rate-limits-edit'));
+			await clearAllLimits();
+			const save = screen.getByTestId('rate-limits-save');
+			expect(save).toHaveTextContent('Disable limits');
+			await userEvent.click(save);
+
+			await waitFor(() =>
+				expect(updateSettings).toHaveBeenCalledWith(
+					{},
+					{
+						...settingsOf,
+						enabled: false,
+						globalReadLimit: 0,
+						globalWriteLimit: 0,
+						endpointReadLimit: 0,
+						endpointWriteLimit: 0,
+					},
+				),
+			);
+		});
+
+		it('shows an error for an invalid limit and does not save', async () => {
+			const { getByTestId } = await renderLoaded({ enabled: true });
+
+			await userEvent.click(getByTestId('rate-limits-edit'));
+			await userEvent.clear(limitInput('globalRead'));
+			await userEvent.type(limitInput('globalRead'), 'abc');
+			await userEvent.tab();
+			await userEvent.click(screen.getByTestId('rate-limits-save'));
+
+			expect(screen.getByTestId('rate-limits-error-globalRead')).toHaveTextContent(
+				'Enter a whole number, 1 or more.',
+			);
+			expect(screen.getByText('Fix the highlighted fields.')).toBeInTheDocument();
+			expect(updateSettings).not.toHaveBeenCalled();
+		});
+
+		it('warns when a per-endpoint limit is above the all-endpoints limit', async () => {
+			const { getByTestId } = await renderLoaded({ enabled: true });
+
+			await userEvent.click(getByTestId('rate-limits-edit'));
+			await userEvent.clear(limitInput('endpointRead'));
+			await userEvent.type(limitInput('endpointRead'), '5000');
+
+			expect(screen.getByTestId('rate-limits-warning-endpointRead')).toHaveTextContent(
+				'Higher than the all-endpoints limit, so it never applies.',
+			);
+		});
+	});
+
+	describe('environment variables', () => {
+		it('locks a field that an environment variable sets', async () => {
+			const { getByTestId } = await renderLoaded({
+				enabled: true,
+				envManagedFields: ['enabled', 'globalReadLimit'],
+			});
+
+			expect(getByTestId('rate-limits-toggle')).toBeDisabled();
+			await userEvent.click(getByTestId('rate-limits-edit'));
+			expect(limitInput('globalRead')).toBeDisabled();
+			expect(limitInput('globalWrite')).not.toBeDisabled();
+		});
+
+		it('does not offer to turn rate limiting off when an environment variable turns it on', async () => {
+			const { getByTestId } = await renderLoaded({ enabled: true, envManagedFields: ['enabled'] });
+
+			await userEvent.click(getByTestId('rate-limits-edit'));
+			await clearAllLimits();
+
+			const save = screen.getByTestId('rate-limits-save');
+			expect(save).not.toHaveTextContent('Disable limits');
+			expect(save).toBeDisabled();
+		});
+
+		it('resets the editable field of a row whose other field is locked', async () => {
+			const { getByTestId } = await renderLoaded({
+				enabled: true,
+				globalReadWindowSeconds: 30,
+				envManagedFields: ['globalReadWindowSeconds'],
+			});
+
+			await userEvent.click(getByTestId('rate-limits-edit'));
+			await userEvent.clear(limitInput('globalRead'));
+			await userEvent.type(limitInput('globalRead'), '5');
+			const reset = screen.getByTestId('rate-limits-reset-globalRead');
+			expect(reset).toHaveAccessibleName('Reset to default: 1,200 / 30 s');
+			await userEvent.click(reset);
+
+			expect(limitInput('globalRead').value).toBe('1200');
+			expect(screen.getByTestId<HTMLInputElement>('rate-limits-window-globalRead').value).toBe(
+				'30',
+			);
+		});
+
+		it('explains how to change the limits when an environment variable turns them on', async () => {
+			const { getByTestId } = await renderLoaded({ enabled: true, envManagedFields: ['enabled'] });
+
+			await userEvent.hover(getByTestId('rate-limits-toggle').parentElement!);
+
+			expect(
+				await screen.findByText(
+					'These limits are set through an environment variable. To change them or turn them off, edit the variable.',
+				),
+			).toBeInTheDocument();
+		});
+
+		it('explains how to change a limit that an environment variable sets', async () => {
+			const { getByTestId } = await renderLoaded({
+				enabled: true,
+				envManagedFields: ['globalReadLimit'],
+			});
+
+			await userEvent.click(getByTestId('rate-limits-edit'));
+			await userEvent.hover(limitInput('globalRead').parentElement!);
+
+			expect(
+				await screen.findByText(
+					'This limit is set by an environment variable. To change it, edit the variable.',
+				),
+			).toBeInTheDocument();
+		});
 	});
 });
