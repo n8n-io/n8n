@@ -186,8 +186,7 @@ These only run if specific files changed:
 
 | Event                      | Workflow                    | Condition                                            |
 |----------------------------|-----------------------------|------------------------------------------------------|
-| Review submitted or dismissed | `ci-pull-request-review.yml` | Triggers required-review checks for fork PRs          |
-| Any review                 | `util-notify-pr-status.yml` | not community-labeled                                |
+| Review submitted or dismissed | `util-notify-pr-status.yml` | Triggers required-review checks for fork PRs; sends notifications for PRs without the community label |
 
 **Why Instance AI evals fire once per PR state-change, not per push:** the
 workflow eval is the most expensive job in PR CI (LLM-bound builds). Running it
@@ -948,7 +947,7 @@ a fork-context run has no secrets and a read-only token. PR changes arrive
 through `pull_request_target`, which is safe here because no step checks out
 or runs PR code. Review events on a same-repo PR arrive through
 `pull_request_review`. Review events on a fork PR arrive through the
-`workflow_run` of `ci-pull-request-review.yml`, which runs on every submitted
+`workflow_run` of `util-notify-pr-status.yml`, which receives every submitted
 or dismissed review; the owners workflow looks the PR up from that run's head
 and skips same-repo heads, which the direct event already covers. A first
 contribution whose runs still wait for approval gets no review-event
