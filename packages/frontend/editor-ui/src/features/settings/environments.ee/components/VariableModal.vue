@@ -285,98 +285,94 @@ onMounted(async () => {
 		:header="modalTitle"
 		:show-close-button="!loading"
 		:stacked="appendToBody === true"
+		:data-test-id="`${VARIABLE_MODAL_KEY}-modal`"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody>
-			<div :data-test-id="`${VARIABLE_MODAL_KEY}-modal`">
-				<div :class="$style.form" @keyup.enter="handleSubmit">
-					<N8nCallout v-if="notice" theme="info">{{ notice() }}</N8nCallout>
-					<N8nText v-if="destinationName">{{ destinationName }}</N8nText>
-					<N8nFormInput
-						ref="keyInputRef"
-						v-model="form.key"
-						:disabled="fixedKey || isKeyLocked || loading"
-						:label="i18n.baseText('variables.modal.key.label')"
-						name="key"
-						focus-initially
-						data-test-id="variable-modal-key-input"
-						:placeholder="i18n.baseText('variables.editing.key.placeholder')"
-						required
-						:validate-on-blur="true"
-						:validation-rules="keyValidationRules"
-						@validate="(value: boolean) => (formValidation.key = value)"
-					/>
+			<div :class="$style.form" @keyup.enter="handleSubmit">
+				<N8nCallout v-if="notice" theme="info">{{ notice() }}</N8nCallout>
+				<N8nText v-if="destinationName">{{ destinationName }}</N8nText>
+				<N8nFormInput
+					ref="keyInputRef"
+					v-model="form.key"
+					:disabled="fixedKey || isKeyLocked || loading"
+					:label="i18n.baseText('variables.modal.key.label')"
+					name="key"
+					focus-initially
+					data-test-id="variable-modal-key-input"
+					:placeholder="i18n.baseText('variables.editing.key.placeholder')"
+					required
+					:validate-on-blur="true"
+					:validation-rules="keyValidationRules"
+					@validate="(value: boolean) => (formValidation.key = value)"
+				/>
 
-					<N8nCallout
-						v-if="keyExistsInSameScope"
-						theme="danger"
-						data-test-id="variable-modal-key-exists-error"
-					>
-						{{ i18n.baseText('variables.modal.error.keyExistsInProject') }}
-					</N8nCallout>
+				<N8nCallout
+					v-if="keyExistsInSameScope"
+					theme="danger"
+					data-test-id="variable-modal-key-exists-error"
+				>
+					{{ i18n.baseText('variables.modal.error.keyExistsInProject') }}
+				</N8nCallout>
 
-					<N8nCallout
-						v-else-if="globalVariableExistsWarning"
-						theme="warning"
-						data-test-id="variable-modal-global-exists-warning"
-					>
-						{{ i18n.baseText('variables.modal.warning.globalKeyExists') }}
-					</N8nCallout>
+				<N8nCallout
+					v-else-if="globalVariableExistsWarning"
+					theme="warning"
+					data-test-id="variable-modal-global-exists-warning"
+				>
+					{{ i18n.baseText('variables.modal.warning.globalKeyExists') }}
+				</N8nCallout>
 
-					<N8nFormInput
-						v-model="form.value"
-						:disabled="loading"
-						name="value"
-						:label="i18n.baseText('variables.modal.value.label')"
-						data-test-id="variable-modal-value-input"
-						:placeholder="i18n.baseText('variables.editing.value.placeholder')"
-						type="textarea"
-						:autosize="{ minRows: 3, maxRows: 6 }"
-						:maxlength="VALUE_MAX_LENGTH"
-						:validate-on-blur="true"
-						:validation-rules="valueValidationRules"
-						@validate="(value: boolean) => (formValidation.value = value)"
-					/>
+				<N8nFormInput
+					v-model="form.value"
+					:disabled="loading"
+					name="value"
+					:label="i18n.baseText('variables.modal.value.label')"
+					data-test-id="variable-modal-value-input"
+					:placeholder="i18n.baseText('variables.editing.value.placeholder')"
+					type="textarea"
+					:autosize="{ minRows: 3, maxRows: 6 }"
+					:maxlength="VALUE_MAX_LENGTH"
+					:validate-on-blur="true"
+					:validation-rules="valueValidationRules"
+					@validate="(value: boolean) => (formValidation.value = value)"
+				/>
 
-					<div v-if="showScopeField">
-						<N8nInputLabel :label="i18n.baseText('variables.modal.scope.label')" color="text-dark">
-							<N8nSelect
-								v-model="form.projectId"
-								size="large"
-								filterable
-								:teleported="false"
-								data-test-id="variable-modal-scope-select"
-							>
-								<template #prefix>
-									<N8nText
-										v-if="selectedProjectIcon?.type === 'emoji'"
-										:class="$style.menuItemEmoji"
-										>{{ selectedProjectIcon.value }}</N8nText
-									>
-									<N8nIcon
-										v-else-if="selectedProjectIcon?.value"
-										:icon="selectedProjectIcon.value"
-									/>
-								</template>
-								<N8nOption
-									v-for="option in projectOptions"
-									:key="option.value || 'global'"
-									:value="option.value"
-									:label="option.label"
-									:disabled="option.disabled"
-									:class="{ [$style.globalOption]: option.value === '' }"
+				<div v-if="showScopeField">
+					<N8nInputLabel :label="i18n.baseText('variables.modal.scope.label')" color="text-dark">
+						<N8nSelect
+							v-model="form.projectId"
+							size="large"
+							filterable
+							:teleported="false"
+							data-test-id="variable-modal-scope-select"
+						>
+							<template #prefix>
+								<N8nText
+									v-if="selectedProjectIcon?.type === 'emoji'"
+									:class="$style.menuItemEmoji"
+									>{{ selectedProjectIcon.value }}</N8nText
 								>
-									<div :class="$style.optionContent">
-										<N8nText v-if="option.icon?.type === 'emoji'" :class="$style.menuItemEmoji">{{
-											option.icon.value
-										}}</N8nText>
-										<N8nIcon v-else-if="option.icon?.value" :icon="option.icon.value" />
-										<span>{{ option.label }}</span>
-									</div>
-								</N8nOption>
-							</N8nSelect>
-						</N8nInputLabel>
-					</div>
+								<N8nIcon v-else-if="selectedProjectIcon?.value" :icon="selectedProjectIcon.value" />
+							</template>
+							<N8nOption
+								v-for="option in projectOptions"
+								:key="option.value || 'global'"
+								:value="option.value"
+								:label="option.label"
+								:disabled="option.disabled"
+								:class="{ [$style.globalOption]: option.value === '' }"
+							>
+								<div :class="$style.optionContent">
+									<N8nText v-if="option.icon?.type === 'emoji'" :class="$style.menuItemEmoji">{{
+										option.icon.value
+									}}</N8nText>
+									<N8nIcon v-else-if="option.icon?.value" :icon="option.icon.value" />
+									<span>{{ option.label }}</span>
+								</div>
+							</N8nOption>
+						</N8nSelect>
+					</N8nInputLabel>
 				</div>
 			</div>
 		</N8nDialogBody>

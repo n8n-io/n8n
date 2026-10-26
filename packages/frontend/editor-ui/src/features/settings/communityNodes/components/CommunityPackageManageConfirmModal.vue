@@ -257,27 +257,26 @@ onMounted(async () => {
 		:close-on-overlay-click="!loading"
 		:close-on-escape="!loading"
 		:show-close-button="!loading"
+		:data-test-id="`${COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY}-modal`"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody>
-			<div :data-test-id="`${COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY}-modal`">
-				<N8nText color="text-dark" :bold="true">{{ getModalContent.message }}</N8nText>
-				<N8nNotice
-					v-if="!isLatestPackageVerified && getModalContent.warning"
-					data-test-id="communityPackageManageConfirmModal-warning"
-					:content="getModalContent.warning"
-				/>
-				<div :class="$style.descriptionContainer">
-					<N8nText size="medium" color="text-base">
-						{{ getModalContent.description }}
-					</N8nText>
-				</div>
-
-				<NodesInWorkflowTable
-					v-if="workflowsWithPackageNodes?.length"
-					:data="workflowsWithPackageNodes"
-				/>
+			<N8nText color="text-dark" :bold="true">{{ getModalContent.message }}</N8nText>
+			<N8nNotice
+				v-if="!isLatestPackageVerified && getModalContent.warning"
+				data-test-id="communityPackageManageConfirmModal-warning"
+				:content="getModalContent.warning"
+			/>
+			<div :class="$style.descriptionContainer">
+				<N8nText size="medium" color="text-base">
+					{{ getModalContent.description }}
+				</N8nText>
 			</div>
+
+			<NodesInWorkflowTable
+				v-if="workflowsWithPackageNodes?.length"
+				:data="workflowsWithPackageNodes"
+			/>
 		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
