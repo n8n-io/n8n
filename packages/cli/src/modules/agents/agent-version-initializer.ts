@@ -17,17 +17,13 @@ export class AgentVersionInitializer {
 		private readonly logger: Logger,
 	) {}
 
-	async run(excludedAgentIds: string[] | null = []): Promise<void> {
-		// Unknown copy progress cannot establish which drafts are ready to capture.
-		if (excludedAgentIds === null) return;
-		const excluded = new Set(excludedAgentIds);
+	async run(): Promise<void> {
 		let afterId: string | undefined;
 		let ids: string[];
 		while (
 			(ids = await this.agents.findMissingVersionIds(BACKFILL_BATCH_SIZE, afterId)).length > 0
 		) {
 			for (const id of ids) {
-				if (excluded.has(id)) continue;
 				try {
 					await this.transactionRunner.run({}, async (ctx) => {
 						const agent = await this.agents.lockForVersionCapture(id, ctx);

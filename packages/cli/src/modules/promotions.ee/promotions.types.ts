@@ -76,6 +76,8 @@ export type BranchPackage = Readonly<{
 	branchName: string;
 	commitSha: string | null;
 	files: PackageFile[];
+	/** Whether the branch holds a package manifest. It can list other projects when `files` is empty. */
+	hasManifest: boolean;
 	readFiles: (paths: readonly string[]) => Promise<Map<string, string>>;
 }>;
 

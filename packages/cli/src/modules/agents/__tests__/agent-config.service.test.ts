@@ -777,6 +777,7 @@ describe('AgentConfigService', () => {
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 				projectId,
 				excludePersonalRoute: true,
+				excludeResolvable: true,
 			});
 			expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
@@ -855,26 +856,6 @@ describe('AgentConfigService', () => {
 			expect(reactivated.config.tools).toEqual([
 				{ type: 'workflow', workflow: 'Deferred Workflow', enabled: true },
 			]);
-		});
-
-		it('drops the inline body of a removed skill ref while the skills hub is off', async () => {
-			const { service, agentRepository, skillRefs } = makeService();
-			Object.assign(skillRefs, { usesSkillsHub: false });
-			const kept = { name: 'Kept', description: 'Kept', instructions: 'Keep.' };
-			const agent = makeAgent({
-				skills: { kept, removed: { name: 'Removed', description: 'Removed', instructions: 'Go.' } },
-			});
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			await service.updateConfig(
-				agentId,
-				projectId,
-				{ ...baseConfig, skills: [{ type: 'skill', id: 'kept' }] },
-				user,
-				byUser,
-			);
-
-			expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({ kept });
 		});
 
 		it('removes config refs and stored bodies that no longer have matching definitions', async () => {

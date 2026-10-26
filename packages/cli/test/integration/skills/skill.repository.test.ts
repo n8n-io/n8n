@@ -16,7 +16,6 @@ import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-hist
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
-import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
 import { HubAssistantSkillProvider } from '@/modules/skills/hub-assistant-skill-provider.service';
 import { skillContentHash, type SkillContent } from '@/modules/skills/skill-content-hash';
 import { SkillRepository, type SkillVisibility } from '@/modules/skills/skill.repository';
@@ -59,7 +58,6 @@ describe('SkillRepository', () => {
 		histories = Container.get(AgentHistoryRepository);
 		txRunner = Container.get(TransactionRunner);
 		registerSkillAgentsProvider();
-		setSkillsHubFlag(true);
 		assistantSkills = Container.get(HubAssistantSkillProvider);
 		owner = await createOwner();
 		user = await createUser();
@@ -116,7 +114,7 @@ describe('SkillRepository', () => {
 		expect(await skills.findAssistantSkill(scoped, project.id)).toMatchObject({
 			skill: { id: scoped, projectId: project.id },
 			version: { id: versionId, version: 2, instructions: 'Updated instructions.' },
-			files: [{ path: 'references/style.md', content: 'Style guide.' }],
+			files: [{ path: 'references/style.md' }],
 		});
 		expect(await skills.findAssistantSkill(instance, null)).toMatchObject({
 			skill: { id: instance, projectId: null },
@@ -126,6 +124,67 @@ describe('SkillRepository', () => {
 		expect(await skills.findAssistantSkill(other, project.id)).toBeNull();
 		expect(await skills.findAssistantSkill(disabled, project.id)).toBeNull();
 		expect(await skills.findAssistantSkill('skill_missing', project.id)).toBeNull();
+	});
+
+	it('reads a selected saved version with current availability and scope checks', async () => {
+		const id = await createSkill(
+			{ projectId: project.id },
+			content({ files: [{ path: 'references/guide.md', content: 'Original guide.' }] }),
+		);
+		await skills.update(id, { availableToAssistant: true });
+		const v1 = await latestVersionId(id);
+		const v2 = await skills.insertSavedVersion(
+			id,
+			2,
+			content({ files: [{ path: 'references/guide.md', content: 'Updated guide.' }] }),
+			null,
+		);
+		const context = { user: owner, projectId: project.id };
+		const selected = await assistantSkills.readSkill(context, id, v1);
+		expect(selected?.versionId).toBe(v1);
+		expect(selected?.files).toEqual([{ path: 'references/guide.md' }]);
+		expect(await assistantSkills.readSkill(context, id)).toMatchObject({
+			versionId: v2,
+			files: [{ path: 'references/guide.md' }],
+		});
+		expect(await assistantSkills.readFile(context, id, v1, 'references/guide.md')).toEqual({
+			skillId: id,
+			versionId: v1,
+			path: 'references/guide.md',
+			content: 'Original guide.',
+		});
+		expect(await assistantSkills.readFile(context, id, v2, 'references/guide.md')).toMatchObject({
+			content: 'Updated guide.',
+		});
+		expect(await assistantSkills.readFile(context, id, v1, 'references/missing.md')).toBeNull();
+		expect(
+			await assistantSkills.readFile(context, id, randomUUID(), 'references/guide.md'),
+		).toBeNull();
+		expect(await assistantSkills.readSkill(context, id, randomUUID())).toBeNull();
+		const other = await createSkill({ projectId: project.id });
+		expect(await assistantSkills.readSkill(context, id, await latestVersionId(other))).toBeNull();
+		for (const denied of [
+			{ user: owner, projectId: otherProject.id },
+			{ user, projectId: project.id },
+			{ user },
+		]) {
+			expect(await assistantSkills.readSkill(denied, id, v1)).toBeNull();
+			expect(await assistantSkills.readFile(denied, id, v1, 'references/guide.md')).toBeNull();
+		}
+		expect(
+			await assistantSkills.readFile(
+				context,
+				id,
+				await latestVersionId(other),
+				'references/guide.md',
+			),
+		).toBeNull();
+		postHog.getFeatureFlagForInstance.mockResolvedValue(false);
+		expect(await assistantSkills.readFile(context, id, v1, 'references/guide.md')).toBeNull();
+		postHog.getFeatureFlagForInstance.mockResolvedValue(true);
+		await skills.update(id, { availableToAssistant: false });
+		expect(await assistantSkills.readFile(context, id, v1, 'references/guide.md')).toBeNull();
+		expect(await assistantSkills.readSkill(context, id, v1)).toBeNull();
 	});
 
 	it.each(['project', 'instance'] as const)(
@@ -721,16 +780,7 @@ describe('SkillRepository', () => {
 	});
 
 	describe('reads for the agents module', () => {
-		it('tells whether an agent owns a skill', async () => {
-			const owner = await createAgent('Owner');
-			const other = await createAgent('Other');
-			await createSkill({ agentId: owner.id });
-
-			expect(await skills.existsForAgent(owner.id)).toBe(true);
-			expect(await skills.existsForAgent(other.id)).toBe(false);
-		});
-
-		it('maps version ids to their number and content hash', async () => {
+		it('maps version ids to their number', async () => {
 			const id = await createSkill();
 			const v1 = await latestVersionId(id);
 			const v2 = await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
@@ -741,37 +791,20 @@ describe('SkillRepository', () => {
 					[v2, 2],
 				]),
 			);
-			expect(await skills.findContentHashes([v2])).toEqual(
-				new Map([[v2, skillContentHash(content({ instructions: 'v2' }))]]),
-			);
 		});
 
-		it('maps skill ids to the content hash of their latest version', async () => {
+		it('finds version ids without their content, for publish', async () => {
 			const id = await createSkill();
-			await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
+			const v1 = await latestVersionId(id);
+			const v2 = await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
 
-			expect(await skills.findLatestContentHashes([id, 'skill_gone'])).toEqual(
-				new Map([[id, skillContentHash(content({ instructions: 'v2' }))]]),
+			expect(await skills.findLatestVersionIds([id, 'skill_unknown'])).toEqual(new Map([[id, v2]]));
+			expect(await skills.findSkillIdsOfVersions([v1, v2, randomUUID()])).toEqual(
+				new Map([
+					[v1, id],
+					[v2, id],
+				]),
 			);
-		});
-
-		it('lists every version of the skills an agent owns and of the skills it refers to', async () => {
-			const agent = await createAgent('Support');
-			const own = await createSkill({ agentId: agent.id });
-			const referred = await createSkill({ projectId: project.id });
-			await createSkill({ projectId: project.id });
-			await skills.insertSavedVersion(own, 2, content({ instructions: 'v2' }), null);
-
-			const versions = await skills.findVersionsOfAgentSkills(agent.id, [referred]);
-
-			expect(versions.map(({ skillId, version }) => [skillId, version]).sort()).toEqual(
-				[
-					[own, 1],
-					[own, 2],
-					[referred, 1],
-				].sort(),
-			);
-			expect(versions.every((version) => version.contentHash.length === 64)).toBe(true);
 		});
 	});
 

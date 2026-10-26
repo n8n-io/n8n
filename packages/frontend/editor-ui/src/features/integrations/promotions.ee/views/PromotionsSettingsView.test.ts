@@ -1,4 +1,5 @@
 import type { IUser } from '@n8n/rest-api-client';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor, within } from '@testing-library/vue';
@@ -42,6 +43,11 @@ vi.mock('@n8n/design-system', async () => ({
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
+}));
+
+vi.mock('vue-router', async () => ({
+	...(await vi.importActual<object>('vue-router')),
+	useRouter: () => ({ push: vi.fn() }),
 }));
 
 const timestamps = {
@@ -102,6 +108,47 @@ describe('PromotionsSettingsView', () => {
 		);
 		await cachedEnvironments.load();
 		expect(cachedEnvironments.hasApplyConfig.value).toBe(false);
+	});
+
+	it('offers no switch back while no v1 repository is connected', async () => {
+		api.fetchPromotionEnvironments.mockResolvedValue([]);
+		useRBACStore().setGlobalScopes(['sourceControl:manage']);
+		const sourceControlStore = useSourceControlStore();
+		vi.mocked(getPreferences).mockResolvedValue({
+			...sourceControlStore.preferences,
+			connected: false,
+		});
+		renderView();
+
+		const toggle = await screen.findByRole('switch', { name: 'Protected instance' });
+		await waitFor(() => expect(toggle).toBeEnabled());
+		expect(screen.queryByTestId('promotions-switch-to-v1')).not.toBeInTheDocument();
+	});
+
+	it('switches the instance back to Environments v1 after confirmation', async () => {
+		api.fetchPromotionEnvironments.mockResolvedValue([]);
+		mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+		useRBACStore().setGlobalScopes(['sourceControl:manage']);
+		const sourceControlStore = useSourceControlStore();
+		vi.mocked(getPreferences).mockResolvedValue({
+			...sourceControlStore.preferences,
+			connected: true,
+		});
+		vi.mocked(updatePreferences).mockResolvedValue({
+			...sourceControlStore.preferences,
+			connected: true,
+			environmentsVersion: 'v1',
+		});
+		renderView();
+
+		await userEvent.click(await screen.findByTestId('promotions-switch-to-v1'));
+
+		expect(mockConfirm).toHaveBeenCalledWith(expect.anything(), 'Switch back?', expect.anything());
+		await waitFor(() =>
+			expect(updatePreferences).toHaveBeenCalledWith(expect.anything(), {
+				environmentsVersion: 'v1',
+			}),
+		);
 	});
 
 	it('keeps each card busy until its own retry finishes', async () => {

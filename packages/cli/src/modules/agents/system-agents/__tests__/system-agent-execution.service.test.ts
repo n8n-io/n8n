@@ -3,6 +3,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { TransactionRunner, User } from '@n8n/db';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
+import { FileNotFoundError } from 'n8n-core';
+import { Readable } from 'node:stream';
 import { UserError } from 'n8n-workflow';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -25,12 +27,13 @@ import type {
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import { ExecutionRecorder, type TimelineEvent } from '../../execution-recorder';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
+import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory';
+import type { AgentThreadGrantRepository } from '../../repositories/agent-thread-grant.repository';
 import type {
 	AgentExecutionRepository,
 	AgentExecutionUsageRow,
 } from '../../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
-import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
 import type { AgentTurnFinalizeOutcome } from '../../types/agent-turn-outcome';
 import { executionToMessagesDto } from '../../utils/execution-to-message-mapper';
@@ -103,8 +106,13 @@ function setup(
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const executionService = mock<AgentExecutionService>();
 	const chatExecutionService = mock<AgentChatExecutionService>();
-	const agentRepository = mock<AgentRepository>();
 	const attachmentService = mock<AgentChatAttachmentService>();
+	const agentMemory = mock<N8nMemoryImpl>();
+	const n8nMemory = mock<N8nMemory>();
+	n8nMemory.getImplementation.mockReturnValue(agentMemory);
+	const agentCheckpointStore = mock<ReturnType<N8NCheckpointStorage['getStorage']>>();
+	checkpointStorage.getStorage.mockReturnValue(agentCheckpointStore);
+	const threadGrants = mock<AgentThreadGrantRepository>();
 
 	const onChunk = vi.fn();
 	const onSettled = vi.fn(async () => {});
@@ -144,7 +152,6 @@ function setup(
 	const service = new SystemAgentExecutionService(
 		logger,
 		registry,
-		agentRepository,
 		threadRepository,
 		executionRepository,
 		executionService,
@@ -156,6 +163,8 @@ function setup(
 		attachmentService,
 		// The real service, so the status tests check the real reads and precedence.
 		new AgentConversationStateService(executionRepository, checkpointStorage),
+		n8nMemory,
+		threadGrants,
 	);
 
 	return {
@@ -174,9 +183,12 @@ function setup(
 		txRunner,
 		executionService,
 		chatExecutionService,
-		agentRepository,
 		registry,
 		attachmentService,
+		n8nMemory,
+		agentMemory,
+		agentCheckpointStore,
+		threadGrants,
 	};
 }
 
@@ -492,7 +504,17 @@ describe('SystemAgentExecutionService', () => {
 
 	describe('consume', () => {
 		it('prepares the turn and runs the provider handle on the Agents runtime', async () => {
-			const { service, provider, handle, turnExecutionService, prepared } = setup([textChunk]);
+			const {
+				service,
+				provider,
+				handle,
+				turnExecutionService,
+				prepared,
+				n8nMemory,
+				agentMemory,
+				checkpointStorage,
+				agentCheckpointStore,
+			} = setup([textChunk]);
 			const signal = new AbortController().signal;
 
 			await service.consume(claimFor({ runId: 'run-1' }), user, signal, vi.fn());
@@ -507,8 +529,12 @@ describe('SystemAgentExecutionService', () => {
 					message: 'Build me a workflow',
 					attachments: [],
 					options: { runId: 'run-1' },
+					memory: agentMemory,
+					checkpointStore: agentCheckpointStore,
 				}),
 			);
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith(AGENT_ID);
+			expect(checkpointStorage.getStorage).toHaveBeenCalledWith(AGENT_ID);
 			expect(turnExecutionService.execute).toHaveBeenCalledWith(
 				expect.objectContaining({
 					agentInstance: handle.agent,
@@ -619,6 +645,92 @@ describe('SystemAgentExecutionService', () => {
 				expect.objectContaining({ status: 'errored', error: failure }),
 			);
 			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
+		});
+
+		it('gives the provider the session grants of the thread', async () => {
+			const { service, provider, threadGrants } = setup([textChunk]);
+			threadGrants.findKeys.mockResolvedValue(new Set(['tool:run']));
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+			const turn = provider.prepareTurn.mock.calls[0][0];
+
+			await expect(turn.sessionGrants.load()).resolves.toEqual(new Set(['tool:run']));
+			await turn.sessionGrants.grant('tool:write');
+			await turn.sessionGrants.revoke('tool:run');
+			expect(threadGrants.findKeys).toHaveBeenCalledWith('thread-1');
+			expect(threadGrants.grant).toHaveBeenCalledWith('thread-1', 'tool:write');
+			expect(threadGrants.revoke).toHaveBeenCalledWith('thread-1', 'tool:run');
+		});
+
+		describe('attachment reads', () => {
+			const ref = { id: 'att-1', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 };
+
+			async function startTurnWithAttachment() {
+				const context = setup([textChunk]);
+				const claim = claimFor();
+				Object.assign(claim.payload, { attachments: [ref] });
+				await context.service.consume(claim, user, new AbortController().signal, vi.fn());
+				const turn = context.provider.prepareTurn.mock.calls[0][0];
+				if (turn.type !== 'start') throw new Error('expected a start turn');
+				return { ...context, turn };
+			}
+
+			it('reads an attachment of the turn from the system chat of the thread owner', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				const attachment = { id: 'att-1', threadId: 'thread-1' };
+				attachmentService.getForSystemAgent.mockResolvedValue(attachment as never);
+				attachmentService.getStream.mockResolvedValue(Readable.from([Buffer.from('hello')]));
+
+				const content = await turn.readAttachment(ref);
+
+				expect(content?.toString()).toBe('hello');
+				expect(attachmentService.getForSystemAgent).toHaveBeenCalledWith('att-1', {
+					agentId: AGENT_ID,
+					resourceId: 'system-chat:user-1',
+					source: 'system_chat',
+				});
+			});
+
+			it('does not read a file that is not an attachment of the turn', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+
+				await expect(turn.readAttachment({ ...ref, id: 'att-other' })).resolves.toBeUndefined();
+				expect(attachmentService.getForSystemAgent).not.toHaveBeenCalled();
+			});
+
+			it('does not read an attachment that belongs to another thread', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				attachmentService.getForSystemAgent.mockResolvedValue({
+					id: 'att-1',
+					threadId: 'thread-2',
+				} as never);
+
+				await expect(turn.readAttachment(ref)).resolves.toBeUndefined();
+				expect(attachmentService.getStream).not.toHaveBeenCalled();
+			});
+
+			it('gives no content when the attachment bytes no longer exist', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				attachmentService.getForSystemAgent.mockResolvedValue({
+					id: 'att-1',
+					threadId: 'thread-1',
+				} as never);
+				attachmentService.getStream.mockRejectedValue(new FileNotFoundError('file-1'));
+
+				await expect(turn.readAttachment(ref)).resolves.toBeUndefined();
+			});
+
+			it('rethrows other storage errors', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				attachmentService.getForSystemAgent.mockResolvedValue({
+					id: 'att-1',
+					threadId: 'thread-1',
+				} as never);
+				const error = new Error('storage unavailable');
+				attachmentService.getStream.mockRejectedValue(error);
+
+				await expect(turn.readAttachment(ref)).rejects.toBe(error);
+			});
 		});
 
 		it('attaches the attachment store to a turn without attachments', async () => {
@@ -917,7 +1029,8 @@ describe('SystemAgentExecutionService', () => {
 
 	describe('resume', () => {
 		it('finds the suspended tool call in the checkpoint and prepares a resume turn', async () => {
-			const { service, provider, checkpointStorage, prepared } = setup([textChunk]);
+			const { service, provider, checkpointStorage, prepared, agentMemory, agentCheckpointStore } =
+				setup([textChunk]);
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
 
 			const result = await service.resume({
@@ -939,6 +1052,8 @@ describe('SystemAgentExecutionService', () => {
 					toolCallId: 'tc-1',
 					checkpointHostMetadata: { turnOptions: { runId: 'host-run-1' } },
 					resumeData: { approved: true },
+					memory: agentMemory,
+					checkpointStore: agentCheckpointStore,
 				}),
 			);
 			expect(prepared[0]).toMatchObject({
@@ -1639,41 +1754,6 @@ describe('SystemAgentExecutionService', () => {
 			);
 		});
 	});
-	describe('register', () => {
-		it('seeds the instance agent row before it registers the provider', async () => {
-			const { service, agentRepository, registry } = setup();
-			const provider = {
-				agentId: 'other-agent',
-				name: 'Other Agent',
-				authorize: vi.fn(async () => true),
-				prepareTurn: vi.fn(),
-			} satisfies SystemAgentProvider;
-
-			await service.register(provider);
-
-			expect(agentRepository.ensureInstanceAgent).toHaveBeenCalledWith(
-				'other-agent',
-				'Other Agent',
-			);
-			expect(registry.get('other-agent')).toBe(provider);
-		});
-
-		it('does not register a provider whose agent row cannot be seeded', async () => {
-			const { service, agentRepository, registry } = setup();
-			agentRepository.ensureInstanceAgent.mockRejectedValue(new Error('project agent'));
-
-			await expect(
-				service.register({
-					agentId: 'other-agent',
-					name: 'Other Agent',
-					authorize: vi.fn(async () => true),
-					prepareTurn: vi.fn(),
-				}),
-			).rejects.toThrow('project agent');
-			expect(registry.has('other-agent')).toBe(false);
-		});
-	});
-
 	describe('hidden turns', () => {
 		it('runs a hidden queued message like any other system turn', async () => {
 			const { service, provider, prepared } = setup([textChunk]);

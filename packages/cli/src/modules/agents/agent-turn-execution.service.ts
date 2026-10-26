@@ -293,6 +293,13 @@ export class AgentTurnExecutionService {
 				recorder.record(chunk);
 			}
 
+			if (chunk.type === 'usage' && state.executionId) {
+				this.agentExecutionService.reportUsage(
+					{ ...config.context, executionId: state.executionId },
+					chunk.usage,
+					Math.max(0, Date.now() - recorder.startedAt.getTime()),
+				);
+			}
 			if (chunk.type === 'tool-call-suspended') state.suspendedRunId = chunk.runId;
 			if (chunk.type === 'error') state.executionError = chunk.error;
 			if (chunk.type === 'finish') state.receivedFinish = true;
