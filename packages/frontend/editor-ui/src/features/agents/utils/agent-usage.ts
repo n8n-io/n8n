@@ -43,36 +43,30 @@ export function getAgentSessionUsage(
 	return { totalTokens, cost: priceKnown ? cost : null };
 }
 
-/** Add elapsed execution time until the saved session total includes it. */
+/** Add server duration snapshots until the saved session total includes them. */
 export function getAgentSessionDuration(
 	detail: ThreadDetail,
 	updates: Record<string, AgentUsageUpdate>,
-	now: number,
-): { duration: number; running: boolean } {
-	let duration = detail.thread.totalDuration ?? 0;
-	let running = false;
-	const pending = new Map<string, { startedAt?: number; stoppedAt?: number; complete: boolean }>();
+): number {
+	let savedDuration = 0;
+	const pending = new Map<string, number>();
 	for (const execution of detail.executions) {
-		if (execution.status !== 'running') continue;
-		const startedAt = execution.startedAt ? Date.parse(execution.startedAt) : undefined;
-		pending.set(execution.id, { startedAt, complete: false });
+		if (execution.status === 'running') pending.set(execution.id, execution.duration ?? 0);
+		else savedDuration += execution.duration ?? 0;
 	}
 	const executions = new Map(detail.executions.map((execution) => [execution.id, execution]));
 	for (const update of Object.values(updates)) {
 		if (update.sessionId !== detail.thread.id) continue;
 		const execution = executions.get(update.executionId);
 		if (execution && execution.status !== 'running') continue;
-		pending.set(update.executionId, {
-			...update,
-			startedAt: pending.get(update.executionId)?.startedAt ?? update.startedAt,
-		});
+		if (update.duration === undefined || !Number.isFinite(update.duration)) continue;
+		pending.set(
+			update.executionId,
+			Math.max(pending.get(update.executionId) ?? 0, update.duration),
+		);
 	}
-	for (const execution of pending.values()) {
-		const start = execution.startedAt;
-		if (start === undefined || !Number.isFinite(start)) continue;
-		if (!execution.complete) running = true;
-		const end = execution.complete ? (execution.stoppedAt ?? start) : now;
-		duration += Math.max(0, end - start);
-	}
-	return { duration, running };
+	// A terminal execution can arrive before the thread aggregate is updated.
+	let duration = Math.max(detail.thread.totalDuration ?? 0, savedDuration);
+	for (const elapsed of pending.values()) duration += elapsed;
+	return duration;
 }

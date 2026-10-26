@@ -289,7 +289,6 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			sessionId: 'thread-1',
 			executionId: 'execution-1',
 			usage: undefined,
-			startedAt: expect.any(Number),
 			complete: false,
 		});
 		const usage = { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 };
@@ -299,7 +298,6 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			sessionId: 'thread-1',
 			executionId: 'execution-1',
 			usage,
-			startedAt: expect.any(Number),
 			complete: false,
 		});
 		const finalUsage = { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.02 };
@@ -313,15 +311,12 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			sessionId: 'thread-1',
 			executionId: 'execution-1',
 			usage: finalUsage,
-			startedAt: expect.any(Number),
 			complete: false,
 		});
 		expect(onUsageUpdated).toHaveBeenLastCalledWith({
 			sessionId: 'thread-1',
 			executionId: 'execution-1',
 			usage: undefined,
-			startedAt: expect.any(Number),
-			stoppedAt: expect.any(Number),
 			complete: true,
 		});
 	});

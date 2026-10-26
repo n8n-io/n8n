@@ -214,7 +214,7 @@ describe('AgentSessionTimelineView', () => {
 		wrapper.unmount();
 	});
 
-	it('updates the closed preview trace through push and stops its elapsed timer', async () => {
+	it('uses server duration in the closed preview trace and ignores late snapshots', async () => {
 		vi.useFakeTimers();
 		const start = Date.parse('2026-10-23T12:00:00Z');
 		vi.setSystemTime(start);
@@ -231,9 +231,7 @@ describe('AgentSessionTimelineView', () => {
 			};
 			panel.vm.$emit('loaded', {
 				thread,
-				executions: [
-					{ id: 'execution-1', status: 'running', startedAt: new Date(start).toISOString() },
-				],
+				executions: [{ id: 'execution-1', status: 'running', duration: 0 }],
 			});
 			await nextTick();
 			const header = wrapper.findComponent(AgentSessionTimelineHeader);
@@ -246,6 +244,7 @@ describe('AgentSessionTimelineView', () => {
 						agentId: 'a1',
 						threadId: 'thread-a',
 						executionId: 'execution-1',
+						duration: 2000,
 						usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.05 },
 					},
 				});
@@ -257,13 +256,14 @@ describe('AgentSessionTimelineView', () => {
 						agentId: 'a1',
 						threadId: 'thread-a',
 						executionId: 'execution-1',
+						duration: 1500,
 						usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
 					},
 				});
 			wrapper.findComponent(AgentPreviewDock).vm.$emit('usage-updated', {
 				sessionId: 'thread-a',
 				executionId: 'execution-1',
-				startedAt: start,
+				duration: 1000,
 				complete: false,
 				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
 			});
@@ -273,6 +273,24 @@ describe('AgentSessionTimelineView', () => {
 				totalCost: 0.05,
 				durationLabel: '2.0s',
 			});
+			for (const snapshot of [
+				{ duration: 2300, complete: true },
+				{ duration: 4000, complete: false },
+			]) {
+				for (const listener of pushListeners)
+					listener({
+						type: 'agentExecutionUpdated',
+						data: {
+							projectId: 'p1',
+							agentId: 'a1',
+							threadId: 'thread-a',
+							executionId: 'execution-1',
+							...snapshot,
+						},
+					});
+			}
+			await vi.advanceTimersByTimeAsync(2000);
+			expect(header.props('durationLabel')).toBe('2.3s');
 			panel.vm.$emit('loaded', {
 				thread: {
 					...thread,
@@ -281,7 +299,9 @@ describe('AgentSessionTimelineView', () => {
 					totalCost: 0.06,
 					totalDuration: 2300,
 				},
-				executions: [{ id: 'execution-1', status: 'success', totalTokens: 30, cost: 0.06 }],
+				executions: [
+					{ id: 'execution-1', status: 'success', duration: 2300, totalTokens: 30, cost: 0.06 },
+				],
 			});
 			await nextTick();
 			await vi.advanceTimersByTimeAsync(3000);

@@ -48,9 +48,10 @@ remaining width in proportion to each panel's requested extra width above
 Show token usage after a model turn reports it. Hide the cost when pricing is
 unavailable. Keep known token counts visible. Show a positive cost below the
 display precision as `<$0.0001`. Replace live totals with saved session totals
-after the execution completes. Show elapsed execution time while the session
-runs. Stop the timer when execution ends. Keep progress visible in the session
-trace when the Preview panel is closed.
+after the execution completes. Show server-measured duration with each model
+turn update and when execution ends. Keep the last confirmed duration between
+updates. Exclude time spent waiting for human approval. Keep progress visible
+in the session trace when the Preview panel is closed.
 
 Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.
 The shared button shows the history icon and the chat title. Click the title or

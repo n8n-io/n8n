@@ -112,58 +112,80 @@ describe('getAgentSessionUsage', () => {
 });
 
 describe('getAgentSessionDuration', () => {
-	const start = Date.parse('2026-10-23T12:00:00Z');
 	const thread = mock<ThreadDetail['thread']>({ id: 'session-1', totalDuration: 1500 });
 	const update: AgentUsageUpdate = {
 		sessionId: 'session-1',
 		executionId: 'live-1',
-		startedAt: start,
+		duration: 2000,
 		complete: false,
 	};
-	it('adds running time to earlier completed executions', () => {
-		expect(
-			getAgentSessionDuration({ thread, executions: [] }, { 'live-1': update }, start + 2000),
-		).toEqual({ duration: 3500, running: true });
+	it('adds server duration to earlier completed executions', () => {
+		expect(getAgentSessionDuration({ thread, executions: [] }, { 'live-1': update })).toBe(3500);
 	});
-	it('uses the server start time after loading a running session', () => {
-		const execution = mock<AgentExecution>({
-			id: 'live-1',
-			status: 'running',
-			startedAt: new Date(start).toISOString(),
-		});
+	it('keeps the confirmed duration when a running execution has no new snapshot', () => {
+		const execution = mock<AgentExecution>({ id: 'live-1', status: 'running', duration: 500 });
+		expect(getAgentSessionDuration({ thread, executions: [execution] }, {})).toBe(2000);
+		expect(getAgentSessionDuration({ thread, executions: [execution] }, { 'live-1': update })).toBe(
+			3500,
+		);
+	});
+	it('keeps final duration until the saved result arrives without double counting', () => {
+		const completed = { ...update, complete: true, duration: 2300 };
+		expect(getAgentSessionDuration({ thread, executions: [] }, { 'live-1': completed })).toBe(3800);
 		expect(
 			getAgentSessionDuration(
-				{ thread, executions: [execution] },
-				{ 'live-1': { ...update, startedAt: start + 500 } },
-				start + 2000,
-			),
-		).toEqual({ duration: 3500, running: true });
-	});
-	it('freezes the last duration until the saved result arrives', () => {
-		const completed = { ...update, complete: true, stoppedAt: start + 2000 };
-		expect(
-			getAgentSessionDuration({ thread, executions: [] }, { 'live-1': completed }, start + 5000),
-		).toEqual({ duration: 3500, running: false });
-		expect(
-			getAgentSessionDuration(
-				{ thread, executions: [mock<AgentExecution>({ id: 'live-1', status: 'success' })] },
+				{
+					thread: { ...thread, totalDuration: 3800 },
+					executions: [mock<AgentExecution>({ id: 'live-1', status: 'success', duration: 2300 })],
+				},
 				{ 'live-1': completed },
-				start + 5000,
 			),
-		).toEqual({ duration: 1500, running: false });
+		).toBe(3800);
 	});
-	it('excludes idle time and other sessions', () => {
+	it('uses saved execution durations before the thread aggregate catches up', () => {
+		expect(
+			getAgentSessionDuration(
+				{
+					thread,
+					executions: [
+						mock<AgentExecution>({ id: 'earlier', status: 'success', duration: 1500 }),
+						mock<AgentExecution>({ id: 'live-1', status: 'success', duration: 2300 }),
+					],
+				},
+				{ 'live-1': { ...update, complete: true, duration: 2300 } },
+			),
+		).toBe(3800);
+	});
+	it('excludes approval waiting time when a suspended execution resumes', () => {
+		const executions = [
+			mock<AgentExecution>({
+				id: 'live-1',
+				status: 'success',
+				hitlStatus: 'suspended',
+				duration: 2000,
+			}),
+			mock<AgentExecution>({ id: 'resumed', status: 'running', duration: 0 }),
+		];
+		expect(
+			getAgentSessionDuration(
+				{ thread: { ...thread, totalDuration: 2000 }, executions },
+				{
+					'live-1': update,
+					resumed: { ...update, executionId: 'resumed', duration: 500 },
+				},
+			),
+		).toBe(2500);
+	});
+	it('excludes other sessions and invalid durations', () => {
 		expect(
 			getAgentSessionDuration(
 				{ thread, executions: [] },
-				{ 'live-1': { ...update, sessionId: 'other' } },
-				start + 2000,
+				{
+					other: { ...update, sessionId: 'other' },
+					invalid: { ...update, executionId: 'invalid', duration: Number.NaN },
+					negative: { ...update, executionId: 'negative', duration: -2000 },
+				},
 			),
-		).toEqual({ duration: 1500, running: false });
-	});
-	it('does not show a negative duration when clocks differ', () => {
-		expect(
-			getAgentSessionDuration({ thread, executions: [] }, { 'live-1': update }, start - 2000),
-		).toEqual({ duration: 1500, running: true });
+		).toBe(1500);
 	});
 });

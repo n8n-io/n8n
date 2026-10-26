@@ -383,12 +383,17 @@ export class AgentExecutionService {
 		return this.executionControllers.get(executionId)?.signal ?? AbortSignal.abort();
 	}
 
-	reportUsage(context: AgentExecutionLogRef & { projectId: string }, usage: AgentTokenUsage): void {
+	reportUsage(
+		context: AgentExecutionLogRef & { projectId: string },
+		usage: AgentTokenUsage,
+		duration: number,
+	): void {
 		this.executionUpdateBroadcaster.notify({
 			projectId: context.projectId,
 			agentId: context.agentId,
 			threadId: context.threadId,
 			executionId: context.executionId,
+			duration,
 			usage: {
 				promptTokens: usage.promptTokens,
 				completionTokens: usage.completionTokens,
@@ -446,6 +451,8 @@ export class AgentExecutionService {
 				agentId: params.agentId,
 				threadId: params.threadId,
 				executionId,
+				duration: record.duration,
+				complete: true,
 			});
 			await this.completeRecordedExecution(settled, executionId, status);
 			return executionId;

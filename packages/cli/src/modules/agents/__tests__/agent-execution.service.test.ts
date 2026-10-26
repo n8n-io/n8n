@@ -182,9 +182,10 @@ describe('AgentExecutionService', () => {
 			cost: 0.01,
 			inputTokenDetails: { cacheRead: 4 },
 		};
-		service.reportUsage(context, usage);
+		service.reportUsage(context, usage, 2300);
 		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
 			...context,
+			duration: 2300,
 			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
 		});
 		expect(agentExecutionThreadRepository.incrementUsage).not.toHaveBeenCalled();
@@ -988,6 +989,8 @@ describe('AgentExecutionService', () => {
 				agentId: 'agent-1',
 				threadId: 'thread-1',
 				executionId: 'execution-1',
+				duration: record.duration,
+				complete: true,
 			});
 			expect(executionUpdateBroadcaster.notify).toHaveBeenCalledTimes(2);
 		});

@@ -297,6 +297,7 @@ export class AgentTurnExecutionService {
 				this.agentExecutionService.reportUsage(
 					{ ...config.context, executionId: state.executionId },
 					chunk.usage,
+					Math.max(0, Date.now() - recorder.startedAt.getTime()),
 				);
 			}
 			if (chunk.type === 'tool-call-suspended') state.suspendedRunId = chunk.runId;

@@ -154,7 +154,7 @@ const thread = {
 	updatedAt: '2026-08-26T16:32:00.000Z',
 } satisfies ThreadDetail['thread'];
 
-const slackExecution = mock<AgentExecution>({ source: 'slack' });
+const slackExecution = mock<AgentExecution>({ source: 'slack', duration: 0 });
 const defaultDetail: ThreadDetail = { thread, executions: [slackExecution] };
 
 type MenuProps = InstanceType<typeof AgentPreviewMoreMenu>['$props'];
@@ -465,53 +465,55 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		expect(wrapper.text()).not.toContain('$');
 	});
 
-	it('updates elapsed time and receives cost without a preview stream', async () => {
+	it('uses server duration without advancing during delayed completion', async () => {
 		vi.useFakeTimers();
-		const startedAt = Date.parse('2026-10-23T12:00:00Z');
-		vi.setSystemTime(startedAt);
 		try {
 			getThreadDetail.mockResolvedValue({
 				thread,
 				executions: [
-					mock<AgentExecution>({
-						id: 'live-1',
-						source: null,
-						status: 'running',
-						startedAt: new Date(startedAt).toISOString(),
-					}),
+					mock<AgentExecution>({ id: 'live-1', source: null, status: 'running', duration: 0 }),
 				],
 			});
 			const wrapper = mountMenu();
 			await flushPromises();
 			await vi.advanceTimersByTimeAsync(2000);
-			expect(wrapper.text()).toContain('3.5s');
-			for (const listener of pushListeners)
-				listener({
-					type: 'agentExecutionUpdated',
-					data: {
-						projectId: 'project-1',
-						agentId: 'agent-1',
-						threadId: 'thread-1',
-						executionId: 'live-1',
-						usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.05 },
-					},
-				});
+			expect(wrapper.text()).toContain('1.5s');
+			function pushDuration(duration: number, complete = false) {
+				for (const listener of pushListeners)
+					listener({
+						type: 'agentExecutionUpdated',
+						data: {
+							projectId: 'project-1',
+							agentId: 'agent-1',
+							threadId: 'thread-1',
+							executionId: 'live-1',
+							duration,
+							complete,
+							...(complete
+								? {}
+								: {
+										usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.05 },
+									}),
+						},
+					});
+			}
+			pushDuration(2000);
 			await flushPromises();
 			expect(wrapper.text()).toContain('155t ($0.1750)');
+			expect(wrapper.text()).toContain('3.5s');
+			await vi.advanceTimersByTimeAsync(2000);
+			expect(wrapper.text()).toContain('3.5s');
+			pushDuration(2300, true);
+			await flushPromises();
 			await wrapper.setProps({
 				usageUpdates: {
-					'live-1': {
-						sessionId: 'thread-1',
-						executionId: 'live-1',
-						startedAt,
-						stoppedAt: startedAt + 2000,
-						complete: true,
-					},
+					'live-1': { sessionId: 'thread-1', executionId: 'live-1', complete: true },
 				},
 			});
+			pushDuration(2200);
 			await flushPromises();
 			await vi.advanceTimersByTimeAsync(3000);
-			expect(wrapper.text()).toContain('3.5s');
+			expect(wrapper.text()).toContain('3.8s');
 			wrapper.unmount();
 		} finally {
 			vi.useRealTimers();

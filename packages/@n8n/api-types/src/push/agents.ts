@@ -9,6 +9,9 @@ export type AgentExecutionUpdated = {
 		threadId: string;
 		executionId: string;
 		usage?: AgentTokenUsage;
+		/** Execution duration in milliseconds, measured on the server. */
+		duration?: number;
+		complete?: boolean;
 	};
 };
 
