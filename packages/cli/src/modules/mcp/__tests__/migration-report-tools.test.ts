@@ -527,6 +527,23 @@ describe('get_migration_findings', () => {
 			});
 		});
 
+		it('says so for a workflow the report never flagged', async () => {
+			const deps = makeDeps();
+			deps.workflowFinderService.findWorkflowForUser.mockResolvedValue(mcpWorkflow('wf-1', true));
+			deps.queryService.getWorkflowFindings.mockResolvedValue(undefined);
+
+			const result = await createGetMigrationFindingsTool(owner, deps).handler({
+				workflowId: 'wf-1',
+			});
+
+			expect(result.isError).toBeUndefined();
+			expect(result.structuredContent).toEqual({
+				reportUrl: `${BASE_URL}/settings/migration-report`,
+				rules: [],
+				note: 'The v3 migration report flags nothing on this workflow.',
+			});
+		});
+
 		it('refuses a workflow that is not available in MCP, without re-checking it', async () => {
 			const deps = makeDeps();
 			deps.workflowFinderService.findWorkflowForUser.mockResolvedValue(mcpWorkflow('wf-1', false));
