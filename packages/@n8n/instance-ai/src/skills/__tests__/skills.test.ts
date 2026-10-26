@@ -454,6 +454,8 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('n8n-docs-assistant');
 		expect(loaded?.instructions).toContain('never load `templates/index.json`');
 		expect(loaded?.instructions).toContain('node-types/index.txt');
+		// The path is set while building; sharing the URL happens after the build.
+		expect(loaded?.instructions).toContain('explicit, readable `path`');
 		// URLs are shared after the build, so the rules live in post-build-flow.
 		const postBuild = (await source.loadSkill('post-build-flow'))?.instructions ?? '';
 		expect(postBuild).toContain('## Trigger URL Sharing');
@@ -516,10 +518,19 @@ describe('Instance AI skills', () => {
 			'Do not offer publishing as an alternative or describe the workflow as ready to\nuse or publish',
 		);
 
+		expect(loaded?.instructions).toMatch(
+			/Do not ask whether to build now and set up\s+credentials later/,
+		);
+		expect(loaded?.instructions).toContain(
+			'Ask once when a service has multiple credentials of the same type',
+		);
+		expect(loaded?.instructions).toContain(
+			'Ask which auth type to use when a service supports more than one',
+		);
 		expect(loaded?.instructions).toContain('`trigger-input-data-shapes`');
 		expect(loaded?.instructions).toContain('load the `publishing` reference');
 		expect(loaded?.instructions).toContain('load `error-workflows` and follow its');
-		expect(loaded?.instructions.length).toBeLessThan(32_000);
+		expect(loaded?.instructions.length).toBeLessThan(34_000);
 
 		// Step-specific sections live in the reference that owns the step.
 		const errorWorkflows = (await source.loadSkill('error-workflows'))?.instructions ?? '';
