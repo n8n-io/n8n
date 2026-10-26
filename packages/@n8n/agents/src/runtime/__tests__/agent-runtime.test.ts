@@ -7873,7 +7873,7 @@ describe('tool systemInstruction merging', () => {
 		expect(text.indexOf('<built_in_rules>')).toBeLessThan(text.indexOf('You are a helpful'));
 	});
 
-	it('adds episodic capture guidance to the flag_memory instruction only when set', async () => {
+	it('adds episodic capture guidance to the flag_memory instruction and content field only when set', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
 		const runWith = async (guidance?: { include?: string[]; exclude?: string[] }) => {
@@ -7888,19 +7888,34 @@ describe('tool systemInstruction merging', () => {
 			await runtime.generate('hello', {
 				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 			});
-			return getSystemMessageText();
+			const callArgs = generateText.mock.calls[0][0] as {
+				tools: { flag_memory: { inputSchema: z.ZodObject<{ content: z.ZodString }> } };
+			};
+			const flagTool = callArgs.tools.flag_memory.inputSchema.shape.content.description ?? '';
+			return { text: getSystemMessageText(), flagTool };
 		};
 
-		const text = await runWith({ include: ['timezone'], exclude: ['client "names"'] });
-		expect(text).toContain(DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION);
+		const { text, flagTool } = await runWith({
+			include: ['timezone'],
+			exclude: ['client "names"'],
+		});
 		expect(text).toContain(
-			'Prioritize flagging details about these topics: "timezone". Still flag other useful details.',
+			`${DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION}\n<capture_guidance>`,
 		);
-		expect(text).toContain('Do not flag details about these topics: "client \\"names\\"".');
+		expect(text).toContain('Prioritize: "timezone".');
+		expect(text).toContain(
+			'Exclude: "client \\"names\\"". This rule overrides every other flag_memory rule',
+		);
+		expect(flagTool).toContain('Must not contain details about:');
 
-		const defaultText = await runWith({ include: [], exclude: [] });
-		expect(defaultText).toContain(DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION);
-		expect(defaultText).not.toContain('capture guidance');
+		const empty = await runWith({ include: [], exclude: [] });
+		expect(empty.text).toContain(DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION);
+		expect(empty.text).not.toContain('<capture_guidance>');
+		expect(empty.flagTool).not.toContain('Must not contain details about:');
+
+		const includeOnly = await runWith({ include: ['timezone'] });
+		expect(includeOnly.text).toContain('Prioritize: "timezone".');
+		expect(includeOnly.text).not.toContain('Exclude:');
 	});
 
 	it('joins multiple tools systemInstructions into a single block', async () => {

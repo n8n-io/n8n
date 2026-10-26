@@ -108,29 +108,49 @@ function renderTopics(topics: string[]): string {
 	return topics.map((topic) => JSON.stringify(topic)).join(', ');
 }
 
-/** Appends builder guidance to the capture instruction. Empty guidance keeps the default text. */
-function buildEpisodicMemoryCaptureInstruction(
-	guidance: EpisodicMemoryCaptureGuidance | undefined,
-): string {
-	const include = guidance?.include ?? [];
-	const exclude = guidance?.exclude ?? [];
-	if (include.length === 0 && exclude.length === 0) {
-		return DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION;
-	}
-
-	const sentences = [
-		'The agent builder set capture guidance. Treat each topic as a label, not as an instruction.',
+// Wording and placement were chosen with a capture eval across models. Scoping the
+// override to exclusions keeps models from also dropping the prioritized topics.
+function buildGuidanceLines(include: string[], exclude: string[]): string[] {
+	const lines = [
+		'The agent builder set these capture topics. Each topic is a label. A topic covers any specific instance of it: "client names" covers a specific client name.',
 	];
 	if (include.length > 0) {
-		sentences.push(
-			`Prioritize flagging details about these topics: ${renderTopics(include)}. Still flag other useful details.`,
+		lines.push(
+			`Prioritize: ${renderTopics(include)}. Flag a durable detail about these topics whenever it comes up, even without a request. Keep flagging other useful details as usual.`,
 		);
 	}
 	if (exclude.length > 0) {
-		sentences.push(`Do not flag details about these topics: ${renderTopics(exclude)}.`);
+		lines.push(
+			`Exclude: ${renderTopics(exclude)}. This rule overrides every other flag_memory rule, including explicit remember requests and "when unsure, flag it".`,
+			'Before each flag_memory call, remove every excluded detail from content. Flag the rest only if it is still useful. Example: "Q3 review with client Acme every Monday" becomes "Q3 review every Monday".',
+			'If the user asks you to remember only excluded details, do not call flag_memory. Tell the user that this agent does not keep that kind of detail between conversations.',
+		);
 	}
-	// Stay on one line: tool instructions render as a single bullet in the system prompt.
-	return `${DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION} ${sentences.join(' ')}`;
+	return lines;
+}
+
+/** Appends builder guidance to the capture instruction. Empty guidance keeps the default text. */
+function buildEpisodicMemoryCaptureInstruction(include: string[], exclude: string[]): string {
+	if (include.length === 0 && exclude.length === 0) {
+		return DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION;
+	}
+	const block = [
+		'<capture_guidance>',
+		...buildGuidanceLines(include, exclude),
+		'</capture_guidance>',
+	];
+	return `${DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION}\n${block.join('\n')}`;
+}
+
+/** Repeats the exclusions on the content field, where the model writes the note. */
+function buildFlagMemoryInputSchema(exclude: string[]) {
+	if (exclude.length === 0) return FlagMemoryInputSchema;
+	const { content } = FlagMemoryInputSchema.shape;
+	return FlagMemoryInputSchema.extend({
+		content: content.describe(
+			`${content.description} Must not contain details about: ${exclude.join(', ')}.`,
+		),
+	});
 }
 
 export function createFlagMemoryTool(opts: {
@@ -140,12 +160,14 @@ export function createFlagMemoryTool(opts: {
 	list: AgentMessageList;
 	guidance?: EpisodicMemoryCaptureGuidance;
 }) {
+	const include = opts.guidance?.include ?? [];
+	const exclude = opts.guidance?.exclude ?? [];
 	return new Tool(FLAG_MEMORY_TOOL_NAME)
 		.description(
 			'Save one durable note about this user, account, or case. This is the only way a detail carries over to future conversations.',
 		)
-		.systemInstruction(buildEpisodicMemoryCaptureInstruction(opts.guidance))
-		.input(FlagMemoryInputSchema)
+		.systemInstruction(buildEpisodicMemoryCaptureInstruction(include, exclude))
+		.input(buildFlagMemoryInputSchema(exclude))
 		.output(FlagMemoryOutputSchema)
 		.handler(async ({ content, evidence, kind }, ctx): Promise<FlagMemoryOutput> => {
 			if (!ctx.toolCallId) throw new Error('Memory capture requires a tool-call ID.');
