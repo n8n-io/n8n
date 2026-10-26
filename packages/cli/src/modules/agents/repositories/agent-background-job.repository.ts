@@ -138,14 +138,6 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		return await this.findOneBy({ id });
 	}
 
-	async listPendingApprovals(agentId: string): Promise<AgentBackgroundJob[]> {
-		return await this.find({
-			where: { parentAgentId: agentId, kind: 'approval', notifiedAt: IsNull() },
-			order: { createdAt: 'ASC' },
-			take: 100,
-		});
-	}
-
 	async findWorkflowJobByExecutionId(executionId: string): Promise<AgentBackgroundJob | null> {
 		return await this.findOneBy({ childExecutionId: executionId });
 	}

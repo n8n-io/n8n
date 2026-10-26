@@ -24,15 +24,6 @@ export const AgentDecisionSchema = z.object({
 export type AgentApprovalRoute = z.infer<typeof AgentApprovalRouteSchema>;
 export type AgentHitlConfiguration = z.infer<typeof AgentHitlConfigurationSchema>;
 
-export interface AgentPendingApproval {
-	id: string;
-	title: string;
-	status: string;
-	requestedAt: string;
-	threadId: string;
-	workflowExecutionId: string | null;
-}
-
 /** Send-and-wait nodes return either the decision or a data envelope. */
 export function parseAgentDecision(value: unknown): z.infer<typeof AgentDecisionSchema> {
 	const direct = AgentDecisionSchema.safeParse(value);

@@ -43,7 +43,7 @@ async function load() {
 			select: ['id', 'name'],
 		});
 	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.hitl.loadFailed'));
+		toast.showError(error, i18n.baseText('agents.hitl.workflowLoadFailed'));
 	}
 }
 onMounted(load);

@@ -1,5 +1,4 @@
 import type {
-	AgentPendingApproval,
 	AgentApproval,
 	AgentBudgetSpend,
 	AgentBackgroundJobsResponse,
@@ -714,29 +713,6 @@ export const getAgentConfig = async (
 		`/projects/${projectId}/agents/v2/${agentId}/config`,
 	);
 };
-
-export const getAgentApprovals = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-) =>
-	await makeRestApiRequest<AgentPendingApproval[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/hitl/requests`,
-	);
-
-export const cancelAgentApproval = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	requestId: string,
-) =>
-	await makeRestApiRequest<{ success: boolean }>(
-		context,
-		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/hitl/requests/${requestId}/cancel`,
-	);
 
 /**
  * Static, authoritative readiness check for the current draft. Never

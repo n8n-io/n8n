@@ -406,9 +406,7 @@ defineExpose({ onSetupTaskAction });
 							v-if="!agentUnsaved"
 							:config="localConfig"
 							:project-id="projectId"
-							:agent-id="agentId"
 							:disabled="childrenDisabled"
-							:can-execute="canExecuteAgent"
 							@update:config="emit('update:config', $event)"
 						/>
 						<AgentBudgetPanel

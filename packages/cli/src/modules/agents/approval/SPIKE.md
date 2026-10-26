@@ -17,13 +17,15 @@ It includes the workflow caller and item continuation in the same spike.
 7. Call the Agent from Message an Agent version 4. The caller waits when review waits.
 8. Approve or reject through the workflow. The same Agent run resumes.
    A rejection does not run the protected tool.
-9. Open Advanced HITL to cancel a pending request and its caller.
 
 Requests have no expiry. Approval jobs retain the exact Agent checkpoint and
 decision execution until consumption. They do not send background mailbox turns.
 The existing `AgentWorkflowToolResumeService` handles workflow completion and worker
 relay. The existing `WaitTracker` claims and restarts the waiting parent execution.
 No separate Agent continuation scheduler is added.
+
+The builder configures approval destinations. Pending request tracking belongs
+to the separate session traces work.
 
 Message an Agent processes items in order. It retains completed item results in
 task metadata. It stops at a suspended item. On resume, it restores that item and
@@ -43,8 +45,6 @@ arguments. Child redaction and private credential markers pass back to the paren
 - There is no production readiness claim for queue restart, cancellation races,
   concurrent Agent nodes, execution deletion, or dynamic credential identity.
   Run these against a complete local instance and a queue deployment.
-- The pending list returns the first 100 unconsumed requests. It needs pagination
-  and links to the caller before delivery.
 - Workflow deletion checks and configuration validation must include decision
   workflow references. The current runtime rejects unavailable configurations.
 - The snapshot includes config and tool assets. It needs review against execution

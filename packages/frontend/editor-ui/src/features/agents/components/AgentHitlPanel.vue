@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { AgentHitlConfiguration, AgentJsonConfig, AgentPendingApproval } from '@n8n/api-types';
-import { useToast } from '@n8n/composables/useToast';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { cancelAgentApproval, getAgentApprovals } from '../composables/useAgentApi';
+import type { AgentHitlConfiguration, AgentJsonConfig } from '@n8n/api-types';
 import AgentPanel from './AgentPanel.vue';
 import AgentApprovalRouteSelect from './AgentApprovalRouteSelect.vue';
 import AgentHitlConfigurationModal from './AgentHitlConfigurationModal.vue';
@@ -13,18 +10,12 @@ import AgentHitlConfigurationModal from './AgentHitlConfigurationModal.vue';
 const props = defineProps<{
 	config: AgentJsonConfig | null;
 	projectId: string;
-	agentId: string;
 	disabled: boolean;
-	canExecute?: boolean;
 }>();
 const emit = defineEmits<{ 'update:config': [updates: Partial<AgentJsonConfig>] }>();
 const i18n = useI18n();
-const toast = useToast();
-const root = useRootStore();
 const editing = ref<AgentHitlConfiguration>();
 const modalOpen = ref(false);
-const pending = ref<AgentPendingApproval[]>([]);
-const busy = ref(false);
 const configurations = computed(() => props.config?.hitlConfigurations ?? []);
 function save(configuration: AgentHitlConfiguration) {
 	emit('update:config', {
@@ -59,29 +50,6 @@ function remove() {
 	});
 	modalOpen.value = false;
 }
-async function refresh() {
-	if (!props.agentId) return;
-	busy.value = true;
-	try {
-		pending.value = await getAgentApprovals(root.restApiContext, props.projectId, props.agentId);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.hitl.loadFailed'));
-	} finally {
-		busy.value = false;
-	}
-}
-async function cancel(id: string) {
-	busy.value = true;
-	try {
-		await cancelAgentApproval(root.restApiContext, props.projectId, props.agentId, id);
-		await refresh();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.hitl.cancelFailed'));
-	} finally {
-		busy.value = false;
-	}
-}
-onMounted(refresh);
 </script>
 
 <template>
@@ -120,27 +88,6 @@ onMounted(refresh);
 						editing = configuration;
 						modalOpen = true;
 					"
-				/>
-			</div>
-			<div :class="$style.row">
-				<N8nText bold>{{ i18n.baseText('agents.hitl.pending') }}</N8nText
-				><N8nButton
-					type="tertiary"
-					:loading="busy"
-					:label="i18n.baseText('agents.hitl.refresh')"
-					@click="refresh"
-				/>
-			</div>
-			<N8nText v-if="!pending.length" color="text-light" size="small">{{
-				i18n.baseText('agents.hitl.empty')
-			}}</N8nText>
-			<div v-for="request in pending" :key="request.id" :class="$style.row">
-				<N8nText>{{ request.title }}</N8nText>
-				<N8nButton
-					type="tertiary"
-					:disabled="!canExecute || busy"
-					:label="i18n.baseText('agents.hitl.cancel')"
-					@click="cancel(request.id)"
 				/>
 			</div>
 		</AgentPanel>

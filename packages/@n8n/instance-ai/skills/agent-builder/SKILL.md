@@ -203,8 +203,8 @@ review steps and return one terminal item with `{ approved: boolean }`.
 Existing send-and-wait nodes can return this item directly. The optional
 `n8n-nodes-base.agentDecisionResponse` node builds the same result. Never use
 an unconditional approval as a human review step. A production run uses the
-published decision workflow. Requests have no expiry. A user can cancel the
-request and its caller from Advanced HITL in Agent Settings.
+published decision workflow. Requests have no expiry. Agent Settings configures
+approval destinations.
 
 After a successful build or config change that leaves the Agent ready to try,
 include that Preview markdown link in your wrap-up. Keep Preview links as

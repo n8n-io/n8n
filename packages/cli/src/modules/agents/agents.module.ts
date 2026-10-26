@@ -40,7 +40,6 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-whatsapp-integrations.controller.js');
 		await import('./agent-vector-stores.controller.js');
 		await import('./agent-tasks.controller.js');
-		await import('./approval/agent-hitl.controller.js');
 		await import('./agent-sandbox.controller.js');
 		await import('./agents-list.controller.js');
 		await import('./agent-mcp-access.controller.js');
