@@ -1,9 +1,11 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, useId, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, ref, useCssModule, useId, useTemplateRef, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nIcon, { type IconName } from '../N8nIcon';
 import N8nText from '../N8nText';
+
+export type ApprovalRiskLevel = 'low' | 'medium' | 'high' | 'critical';
 
 export interface ApprovalOption {
 	/** Stable identifier emitted on click. */
@@ -56,6 +58,8 @@ interface ApprovalCardProps {
 	labels?: ApprovalCardLabels;
 	/** Add the session choice to the standard decisions. */
 	supportsSessionApproval?: boolean;
+	/** Label the approval as low/medium/high/critical risk. */
+	riskLevel?: ApprovalRiskLevel;
 	/** Mark the standard single-use choice as destructive. */
 	destructive?: boolean;
 	/** Show a saved decision instead of the available choices. */
@@ -70,6 +74,7 @@ const props = withDefaults(defineProps<ApprovalCardProps>(), {
 });
 const emit = defineEmits<{ select: [key: string] }>();
 const { t } = useI18n();
+const $style = useCssModule();
 
 const formattedArgs = computed(() => {
 	try {
@@ -90,6 +95,24 @@ const labels = computed<ApprovalCardLabels>(
 			denied: t('approvalCard.denied'),
 		},
 );
+
+const riskLevelText = computed(() => {
+	if (!props.riskLevel || props.riskLevel === 'low') return undefined;
+	return props.riskLevel.charAt(0).toUpperCase() + props.riskLevel.slice(1);
+});
+
+const riskBadgeClass = computed(() => {
+	switch (props.riskLevel) {
+		case 'critical':
+			return $style.riskBadgeCritical;
+		case 'high':
+			return $style.riskBadgeHigh;
+		case 'medium':
+			return $style.riskBadgeMedium;
+		default:
+			return undefined;
+	}
+});
 
 const options = computed<readonly ApprovalOption[]>(() => {
 	if (props.options) return props.options;
@@ -160,6 +183,9 @@ function onKeydown(event: KeyboardEvent) {
 	<div :class="[$style.card, disabled && $style.disabled]">
 		<div :class="$style.body">
 			<N8nText :id="`${id}-title`" :size="titleSize" bold>{{ title }}</N8nText>
+			<div v-if="riskLevelText" :class="[$style.riskBadge, riskBadgeClass]" data-test-id="approval-card-risk">
+				Risk: {{ riskLevelText }}
+			</div>
 			<slot name="description">
 				<div
 					v-if="description"
@@ -268,6 +294,33 @@ function onKeydown(event: KeyboardEvent) {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm) var(--spacing--sm) 0;
+}
+
+.riskBadge {
+	display: inline-flex;
+	align-self: flex-start;
+	align-items: center;
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--radius--lg);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.riskBadgeMedium {
+	background: var(--color-warning-tint-1);
+	color: var(--color-warning);
+}
+
+.riskBadgeHigh {
+	background: var(--color-warning-tint-2);
+	color: var(--color-warning);
+}
+
+.riskBadgeCritical {
+	background: var(--color-danger-tint-1);
+	color: var(--color-danger);
 }
 
 .description {

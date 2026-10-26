@@ -1,7 +1,12 @@
 import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
-import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../types';
+import type {
+	BuiltTool,
+	InterruptibleToolContext,
+	ToolContext,
+	ToolRiskLevel,
+} from '../types';
 import { AgentEvent } from '../types/runtime/event';
 import type { AgentMessage } from '../types/sdk/message';
 import type { ToolDescriptor } from '../types/sdk/tool-descriptor';
@@ -13,6 +18,7 @@ export const APPROVAL_SUSPEND_SCHEMA = z.object({
 	toolName: z.string(),
 	displayName: z.string().optional(),
 	supportsSessionApproval: z.boolean().optional(),
+	riskLevel: z.enum(['low', 'medium', 'high', 'critical']).optional(),
 	args: z.unknown(),
 });
 
@@ -42,6 +48,7 @@ type OutputType<TOutput> = TOutput extends z.ZodType ? z.infer<TOutput> : unknow
 export interface ApprovalConfig {
 	requireApproval?: boolean;
 	needsApprovalFn?: (args: unknown) => Promise<boolean> | boolean;
+	riskLevel?: ToolRiskLevel;
 }
 
 function emitToolExecutionStart(
@@ -106,6 +113,7 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 		approval: {
 			required: config.requireApproval === true,
 			...(hasConditionalApproval ? { conditional: true } : {}),
+			...(config.riskLevel ? { riskLevel: config.riskLevel } : {}),
 		},
 		suspendSchema: combineInterruptSchemas(APPROVAL_SUSPEND_SCHEMA, tool.suspendSchema),
 		resumeSchema: combineInterruptSchemas(APPROVAL_RESUME_SCHEMA, tool.resumeSchema),
@@ -142,6 +150,7 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 							toolName: currentTool.name,
 							...(approvalContext ? { supportsSessionApproval: true } : {}),
 							...(displayName ? { displayName } : {}),
+							...(config.riskLevel ? { riskLevel: config.riskLevel } : {}),
 							args: approvalContext?.getDisplayArgs
 								? approvalContext.getDisplayArgs(currentTool.name, input)
 								: input,
@@ -248,6 +257,8 @@ export class Tool<
 	private handleCancellationValue?: boolean;
 
 	private requireApprovalValue?: boolean;
+
+	private riskLevelValue?: ToolRiskLevel;
 
 	private needsApprovalFnValue?: (args: unknown) => Promise<boolean> | boolean;
 
@@ -374,6 +385,12 @@ export class Tool<
 		return this;
 	}
 
+	/** Label the tool with a safety/risk level so it can trigger approval automatically for risky actions. */
+	riskLevel(level: ToolRiskLevel): this {
+		this.riskLevelValue = level;
+		return this;
+	}
+
 	/** Conditionally require approval based on the tool's input. Mutually exclusive with .suspend()/.resume(). */
 	needsApprovalFn(fn: (args: OutputType<TInput>) => Promise<boolean> | boolean): this {
 		this.needsApprovalFnValue = fn as (args: unknown) => Promise<boolean> | boolean;
@@ -424,11 +441,15 @@ export class Tool<
 			throw new Error(`Tool "${this.name}" cannot combine .endsTurnWhen() with .toModelOutput()`);
 		}
 
+		const riskRequiresApproval =
+			this.riskLevelValue !== undefined && this.riskLevelValue !== 'low';
 		const hasApproval =
-			(this.requireApprovalValue ?? false) || this.needsApprovalFnValue !== undefined;
+			(this.requireApprovalValue ?? false) ||
+			this.needsApprovalFnValue !== undefined ||
+			riskRequiresApproval;
 		if (hasApproval && (hasSuspend || hasResume)) {
 			throw new Error(
-				`Tool "${this.name}" cannot use both approval (.requireApproval/.needsApprovalFn) and suspend/resume (.suspend/.resume)`,
+				`Tool "${this.name}" cannot use both approval (.requireApproval/.needsApprovalFn/.riskLevel) and suspend/resume (.suspend/.resume)`,
 			);
 		}
 
@@ -453,10 +474,11 @@ export class Tool<
 			providerOptions: this.providerOptionsValue,
 		};
 
-		if (this.requireApprovalValue || this.needsApprovalFnValue) {
+		if (this.requireApprovalValue || this.needsApprovalFnValue || riskRequiresApproval) {
 			return wrapToolForApproval(built, {
-				requireApproval: this.requireApprovalValue,
+				requireApproval: this.requireApprovalValue === true || riskRequiresApproval,
 				needsApprovalFn: this.needsApprovalFnValue,
+				riskLevel: this.riskLevelValue,
 			});
 		}
 
@@ -481,6 +503,8 @@ export class Tool<
 				? zodToJsonSchema(this.outputSchema)
 				: this.outputSchema
 			: null;
+		const riskRequiresApproval =
+			this.riskLevelValue !== undefined && this.riskLevelValue !== 'low';
 		return {
 			name: this.name,
 			description: this.desc,
@@ -490,7 +514,8 @@ export class Tool<
 			hasSuspend: this.suspendSchemaValue !== undefined,
 			hasResume: this.resumeSchemaValue !== undefined,
 			hasToMessage: this.toMessageFn !== undefined,
-			requireApproval: this.requireApprovalValue ?? false,
+			requireApproval: (this.requireApprovalValue ?? false) || riskRequiresApproval,
+			riskLevel: this.riskLevelValue ?? null,
 			outputTrust: this.outputTrustValue ?? null,
 			providerOptions: this.providerOptionsValue ?? null,
 		};

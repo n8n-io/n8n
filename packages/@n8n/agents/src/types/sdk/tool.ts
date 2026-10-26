@@ -11,6 +11,8 @@ import type { AgentEventData } from '../runtime/event';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject, JSONValue } from '../utils/json';
 
+export type ToolRiskLevel = 'low' | 'medium' | 'high' | 'critical';
+
 export interface ToolApprovalContext {
 	readonly approvedKeys: ReadonlySet<string>;
 	/** Prepare display arguments before checkpointing. Keep execution arguments unchanged. */
@@ -162,6 +164,7 @@ export interface BuiltTool {
 	readonly approval?: {
 		readonly required: boolean;
 		readonly conditional?: boolean;
+		readonly riskLevel?: ToolRiskLevel;
 	};
 	/** When `true`, the handler is called on cancellation with `ctx.cancellation` set instead of being bypassed. */
 	readonly handleCancellation?: boolean;
