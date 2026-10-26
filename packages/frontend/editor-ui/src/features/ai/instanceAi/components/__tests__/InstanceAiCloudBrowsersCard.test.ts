@@ -28,12 +28,18 @@ function makeTask(overrides: Partial<CloudBrowserTask> = {}): CloudBrowserTask {
 	};
 }
 
-function render(task: CloudBrowserTask, view?: CloudBrowserLiveView) {
+function render(
+	task: CloudBrowserTask,
+	view?: CloudBrowserLiveView,
+	openCloudBrowserTab?: (taskId: string) => void,
+) {
 	tasks.value = [task];
 	const liveViews = reactive(new Map<string, CloudBrowserLiveView>());
 	if (view) liveViews.set(task.taskId, view);
 	return renderComponent({
-		global: { provide: { [CloudBrowserLiveViewsKey as symbol]: liveViews } },
+		global: {
+			provide: { [CloudBrowserLiveViewsKey as symbol]: liveViews, openCloudBrowserTab },
+		},
 	});
 }
 
@@ -66,11 +72,18 @@ describe('InstanceAiCloudBrowsersCard', () => {
 		const { getByTestId, container } = render(makeTask(), {
 			status: 'live',
 			liveViewUrl: 'https://live.example.com/1',
+			windowId: 'window-1',
 		});
 
 		expect(getByTestId('instance-ai-cloud-browser-status')).toHaveTextContent('Working');
 		expect(container.querySelector('iframe')?.getAttribute('src')).toBe(
 			'https://live.example.com/1?navbar=false',
+		);
+		expect(container.querySelector('iframe')?.getAttribute('data-cloud-browser-task-id')).toBe(
+			'task-1',
+		);
+		expect(container.querySelector('iframe')?.getAttribute('data-cloud-browser-window-id')).toBe(
+			'window-1',
 		);
 	});
 
@@ -107,5 +120,18 @@ describe('InstanceAiCloudBrowsersCard', () => {
 		await fireEvent.click(getByTestId('instance-ai-cloud-browser-stop'));
 
 		expect(thread.cancelBackgroundTask).toHaveBeenCalledWith('task-1');
+	});
+
+	it('opens the browser tab when the user clicks the live view', async () => {
+		const openCloudBrowserTab = vi.fn();
+		const { getByTestId } = render(
+			makeTask(),
+			{ status: 'live', liveViewUrl: 'https://live.example.com/1', windowId: 'window-1' },
+			openCloudBrowserTab,
+		);
+
+		await fireEvent.click(getByTestId('instance-ai-cloud-browser-live-view'));
+
+		expect(openCloudBrowserTab).toHaveBeenCalledWith('task-1');
 	});
 });

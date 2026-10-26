@@ -84,12 +84,45 @@ describe('AiGatewayBrowserUseService', () => {
 				sessionId: 'sess/1',
 			});
 
-			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1' });
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages: [] });
 			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
 				...sessionRequest,
 				method: 'GET',
 				path: '/v1/sessions/sess%2F1/debug',
 			});
+		});
+
+		it('reads the live view link of each tab', async () => {
+			const pages = [
+				{ id: 'TARGET-1', debuggerFullscreenUrl: 'https://live.example.com/1' },
+				{ id: 'TARGET-2', debuggerFullscreenUrl: 'https://live.example.com/2' },
+			];
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+				pages,
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess-1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages });
+		});
+
+		it('reads a response with no tab list as no tabs', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess-1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages: [] });
 		});
 
 		it('throws when the response has no live view link', async () => {

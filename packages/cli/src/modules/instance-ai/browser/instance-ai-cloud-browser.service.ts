@@ -163,13 +163,24 @@ export class InstanceAiCloudBrowserService {
 					attribution: { instanceAiThreadId: threadId, instanceAiTaskId: taskId },
 					sessionId,
 				}),
-			getSessionLiveViewUrl: async ({ userId, threadId, taskId }, sessionId) => {
-				const { debuggerFullscreenUrl } = await this.aiGatewayBrowserUseService.getLiveView({
+			getSessionLiveViewUrl: async ({ userId, threadId, taskId }, sessionId, targetId) => {
+				const { debuggerFullscreenUrl, pages } = await this.aiGatewayBrowserUseService.getLiveView({
 					userId,
 					attribution: { instanceAiThreadId: threadId, instanceAiTaskId: taskId },
 					sessionId,
 				});
-				return debuggerFullscreenUrl;
+				if (!targetId) return debuggerFullscreenUrl;
+				const page = pages.find(({ id }) => id === targetId);
+				if (!page) {
+					this.logger.warn(
+						'Cloud browser window not found in its live view, showing the first tab',
+						{
+							taskId,
+							tabCount: pages.length,
+						},
+					);
+				}
+				return page?.debuggerFullscreenUrl ?? debuggerFullscreenUrl;
 			},
 		};
 	}

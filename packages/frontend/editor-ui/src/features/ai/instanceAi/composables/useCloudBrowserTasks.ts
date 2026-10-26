@@ -16,7 +16,10 @@ export interface CloudBrowserTask {
 	 * reached the orchestrator yet. That waits until no run is live in the thread.
 	 */
 	state: 'running' | 'done' | 'failed';
-	/** Changes each time the agent opens a browser session, so the live view link is fetched again. */
+	/**
+	 * Changes each time the agent opens a browser session or its current window changes, so the live
+	 * view link is fetched again.
+	 */
 	sessionKey: string;
 }
 
@@ -24,7 +27,9 @@ function sessionKeyOf(node: InstanceAiAgentNode): string {
 	const started = node.toolCalls.filter(
 		(toolCall) => toolCall.toolName === START_SESSION_TOOL && !toolCall.isLoading,
 	);
-	return started.at(-1)?.toolCallId ?? '';
+	const sessionId = started.at(-1)?.toolCallId;
+	if (!sessionId) return '';
+	return `${sessionId}:${node.cloudBrowserWindowChanges ?? 0}`;
 }
 
 function taskStateOf(node: InstanceAiAgentNode): CloudBrowserTask['state'] | undefined {

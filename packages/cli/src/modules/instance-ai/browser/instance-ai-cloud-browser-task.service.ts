@@ -330,6 +330,15 @@ export class InstanceAiCloudBrowserTaskService {
 				taskId,
 				run.domainGate,
 			);
+			mcpServer.setCurrentWindowListener(() =>
+				eventBus.publish(threadId, {
+					type: 'cloud-browser-window-changed',
+					runId,
+					agentId,
+					detachedFromTurn: true,
+					payload: {},
+				}),
+			);
 			try {
 				const result = await runCloudBrowserAgent({
 					agentId,

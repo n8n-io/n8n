@@ -233,6 +233,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'agent-spawned',
 	'agent-completed',
 	'agent-result-delivered',
+	'cloud-browser-window-changed',
 	'text-delta',
 	'reasoning-delta',
 	'text-block',
@@ -266,6 +267,7 @@ export const INSTANCE_AI_EPHEMERAL_EVENT_TYPES: ReadonlySet<InstanceAiEventType>
 	'text-delta',
 	'reasoning-delta',
 	'status',
+	'cloud-browser-window-changed',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -494,6 +496,13 @@ export const agentSpawnedPayloadSchema = z.object({
  * the agent, so the payload is empty.
  */
 export const agentResultDeliveredPayloadSchema = z.object({});
+
+/**
+ * A cloud browser agent's current window changed, for example when a site opened a popup. The
+ * client fetches the live view again. The payload is empty, so the live view link never travels
+ * in an event.
+ */
+export const cloudBrowserWindowChangedPayloadSchema = z.object({});
 
 export const agentCompletedPayloadSchema = z.object({
 	role: z.string(),
@@ -1150,7 +1159,8 @@ export interface InstanceAiBrowserCreateLinkResponse {
 /**
  * The live view of a cloud browser task:
  * - `live`: a session is open. The link lets anyone who has it control the browser, so the
- *   client keeps it in memory only.
+ *   client keeps it in memory only. `windowId` names the window the link shows, so the client
+ *   can tell a new window from a new link to the same one.
  * - `starting`: a session is opening.
  * - `no-session`: the task runs, but the agent has not opened a session yet.
  * - `disconnected`: the session closed while the task runs. The agent can open a new one.
@@ -1158,7 +1168,7 @@ export interface InstanceAiBrowserCreateLinkResponse {
  *   task runs on another main, or it is not the user's.
  */
 export type InstanceAiCloudBrowserLiveViewResponse =
-	| { status: 'live'; liveViewUrl: string }
+	| { status: 'live'; liveViewUrl: string; windowId: string }
 	| { status: 'starting' }
 	| { status: 'no-session' }
 	| { status: 'disconnected'; reason: 'connectionLost' | 'idleTimeout' }
@@ -1328,6 +1338,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		type: z.literal('agent-result-delivered'),
 		...eventBase,
 		payload: agentResultDeliveredPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('cloud-browser-window-changed'),
+		...eventBase,
+		payload: cloudBrowserWindowChangedPayloadSchema,
 	}),
 	z.object({ type: z.literal('text-delta'), ...eventBase, payload: textDeltaPayloadSchema }),
 	z.object({
@@ -2063,6 +2078,8 @@ export interface InstanceAiAgentNode {
 	agentChange?: InstanceAiAgentChange;
 	/** A finished background agent whose result reached the orchestrator in a later run. */
 	resultDelivered?: boolean;
+	/** Counts the current window changes of a cloud browser agent, so its live view is fetched again. */
+	cloudBrowserWindowChanges?: number;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
 	/** Brief task description for distinguishing sibling agents. */

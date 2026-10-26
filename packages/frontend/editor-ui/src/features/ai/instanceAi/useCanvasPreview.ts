@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
@@ -15,6 +16,7 @@ import {
 } from './canvasPreview.utils';
 import { useAgentMutationRefresh } from './composables/useAgentMutationRefresh';
 import { useBuildingArtifactIds } from './composables/useBuildingArtifactIds';
+import { useCloudBrowserTasks } from './composables/useCloudBrowserTasks';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import {
 	ARTIFACT_TAB_ICONS,
@@ -33,6 +35,28 @@ export interface ArtifactTab {
 	pending?: boolean;
 	/** The AI is actively mutating this artifact right now. */
 	building?: boolean;
+}
+
+/** The live view of a running cloud browser task. Never stored with the thread. */
+export interface BrowserTab {
+	id: string;
+	type: 'browser';
+	name: string;
+	icon: IconName;
+	taskId: string;
+}
+
+/** A tab in the preview tab bar. */
+export type PreviewTab = ArtifactTab | BrowserTab;
+
+export function isArtifactTab(tab: PreviewTab): tab is ArtifactTab {
+	return tab.type !== 'browser';
+}
+
+const BROWSER_TAB_PREFIX = 'browser:';
+
+function isBrowserTabId(tabId: string | undefined): boolean {
+	return tabId?.startsWith(BROWSER_TAB_PREFIX) === true;
 }
 
 interface UseCanvasPreviewOptions {
@@ -60,6 +84,7 @@ function getAttachedArtifactId(attachment: InstanceAiAttachment): string | undef
 }
 
 export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCanvasPreviewOptions) {
+	const i18n = useI18n();
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 	// The stored tabs of the thread remember this. It applies once they load.
@@ -131,7 +156,39 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		storage: tabsStorage,
 		previewOpen: () => isPreviewOpen.value,
 	});
-	const openTabs = tabs.openTabs;
+
+	// --- Cloud browser tabs ---
+	// A running browser task gets a tab once the user opens it. Closing the tab only hides it.
+	// The tab goes away when the task ends, and is never stored: the live view link is short-lived.
+	const cloudBrowserTasks = useCloudBrowserTasks(thread);
+	const openedBrowserTaskIds = ref(new Set<string>());
+	const browserTabs = computed((): BrowserTab[] =>
+		cloudBrowserTasks.value
+			.filter((task) => task.state === 'running' && openedBrowserTaskIds.value.has(task.taskId))
+			.map((task) => ({
+				id: `${BROWSER_TAB_PREFIX}${task.taskId}`,
+				type: 'browser',
+				name: task.title || i18n.baseText('instanceAi.cloudBrowser.tabName'),
+				icon: 'globe',
+				taskId: task.taskId,
+			})),
+	);
+
+	const openTabs = computed((): PreviewTab[] => [...tabs.openTabs.value, ...browserTabs.value]);
+
+	const activeBrowserTab = computed(() => {
+		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'browser' ? tab : null;
+	});
+
+	// When the task of the active browser tab ends, show another tab.
+	watch(browserTabs, (current) => {
+		const activeId = activeTabId.value;
+		if (!isBrowserTabId(activeId) || current.some((tab) => tab.id === activeId)) return;
+		activeTabId.value = openTabs.value[0]?.id;
+		if (userTabId.value === activeId) userTabId.value = undefined;
+		if (activeTabId.value === undefined) setPreviewOpen(false, false);
+	});
 
 	// Derived preview state from active tab
 	const activeWorkflowId = computed(() => {
@@ -279,6 +336,13 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	// --- Actions ---
 
 	function selectTab(tabId: string) {
+		if (isBrowserTabId(tabId)) {
+			activeTabId.value = tabId;
+			userTabId.value = isAgentWorking.value ? tabId : undefined;
+			// Not saved: the browser tab is gone after a reload.
+			setPreviewOpen(true, false);
+			return;
+		}
 		// Opening a closed artifact from the chat or the artifacts list shows its tab again.
 		tabs.reopenTab(tabId);
 		activeTabId.value = tabId;
@@ -294,11 +358,24 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	}
 
 	function reorderTab(tabId: string, toIndex: number) {
+		if (isBrowserTabId(tabId)) return;
 		tabs.moveTab(tabId, toIndex);
 		tabs.saveTabs(activeTabId.value);
 	}
 
 	function closeTab(tabId: string) {
+		if (isBrowserTabId(tabId)) {
+			const taskId = tabId.slice(BROWSER_TAB_PREFIX.length);
+			openedBrowserTaskIds.value = new Set(
+				[...openedBrowserTaskIds.value].filter((id) => id !== taskId),
+			);
+			if (activeTabId.value === tabId) {
+				activeTabId.value = openTabs.value.find((tab) => tab.id !== tabId)?.id;
+				if (userTabId.value === tabId) userTabId.value = undefined;
+				if (activeTabId.value === undefined) setPreviewOpen(false, false);
+			}
+			return;
+		}
 		const nextTabId = tabs.closeTab(tabId);
 		if (activeTabId.value === tabId) {
 			activeTabId.value = nextTabId;
@@ -323,6 +400,16 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		if (!pinned) activeTabId.value = tabId;
 		setPreviewOpen(true);
 		if (reopened) tabs.saveTabs(activeTabId.value);
+	}
+
+	/** Show a running cloud browser task in its tab. */
+	function openCloudBrowserTab(taskId: string) {
+		const isRunning = cloudBrowserTasks.value.some(
+			(task) => task.taskId === taskId && task.state === 'running',
+		);
+		if (!isRunning) return;
+		openedBrowserTaskIds.value = new Set([...openedBrowserTaskIds.value, taskId]);
+		selectTab(`${BROWSER_TAB_PREFIX}${taskId}`);
 	}
 
 	/**
@@ -627,6 +714,9 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		activeAgentId,
 		activeAgentProjectId,
 		activeAgentPending,
+		activeBrowserTab,
+		browserTabs,
+		cloudBrowserTasks,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		isPreviewVisible,
@@ -639,5 +729,6 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		openWorkflowPreview,
 		openDataTablePreview,
 		openAgentPreview,
+		openCloudBrowserTab,
 	};
 }

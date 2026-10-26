@@ -24,7 +24,7 @@ import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { DEBOUNCE_TIME, HOVER_DELAY } from '@/app/constants/durations';
-import type { ArtifactTab } from '../useCanvasPreview';
+import { isArtifactTab, type ArtifactTab, type PreviewTab } from '../useCanvasPreview';
 import { hasTabSummary, useArtifactTabSummaries } from '../useArtifactTabSummaries';
 import { useProjectResourceSearch } from '../composables/useProjectResourceSearch';
 import { TAB_DRAG_IGNORE_ATTRIBUTE, useTabDragReorder } from '../composables/useTabDragReorder';
@@ -34,7 +34,7 @@ import ManualEditorButton from '@/experiments/openWorkflowInAssistant/components
 
 const props = withDefaults(
 	defineProps<{
-		tabs: ArtifactTab[];
+		tabs: PreviewTab[];
 		activeTabId?: string;
 		isExpanded?: boolean;
 		isExpandDisabled?: boolean;
@@ -121,7 +121,7 @@ watch(
 	},
 );
 
-function tabHref(tab: ArtifactTab): string | undefined {
+function tabHref(tab: PreviewTab): string | undefined {
 	if (tab.type === 'workflow') return `/workflow/${tab.id}`;
 	if (tab.type === 'data-table') {
 		return tab.projectId ? `/projects/${tab.projectId}/datatables/${tab.id}` : '/home/datatables';
@@ -132,7 +132,7 @@ function tabHref(tab: ArtifactTab): string | undefined {
 	return undefined;
 }
 
-function handleOpenInEditor(tab: ArtifactTab) {
+function handleOpenInEditor(tab: PreviewTab) {
 	const href = tabHref(tab);
 	if (!href) return;
 	window.open(href, '_blank', 'noopener');
@@ -141,10 +141,13 @@ function handleOpenInEditor(tab: ArtifactTab) {
 type HoverTarget = { tabId: string; reference: HTMLElement };
 
 const {
-	getSummary,
-	displayName: tabName,
+	getSummary: getArtifactSummary,
+	displayName: artifactTabName,
 	refresh: refreshSummaries,
-} = useArtifactTabSummaries(() => props.tabs);
+} = useArtifactTabSummaries(() => props.tabs.filter(isArtifactTab));
+// A browser tab has no stored resource behind it, so it has no summary.
+const getSummary = (tab: PreviewTab) => (isArtifactTab(tab) ? getArtifactSummary(tab) : undefined);
+const tabName = (tab: PreviewTab) => (isArtifactTab(tab) ? artifactTabName(tab) : tab.name);
 const hoverTarget = shallowRef<HoverTarget | null>(null);
 // Read the tab from the current props, so a rename shows at once while the card is open.
 const hoveredTab = computed(() => {
@@ -157,7 +160,10 @@ const hoveredSummary = computed(() =>
 );
 const isHoveredSummaryLoading = computed(
 	() =>
-		!!hoveredTab.value && hasTabSummary(hoveredTab.value.tab) && hoveredSummary.value === undefined,
+		!!hoveredTab.value &&
+		isArtifactTab(hoveredTab.value.tab) &&
+		hasTabSummary(hoveredTab.value.tab) &&
+		hoveredSummary.value === undefined,
 );
 const hoveredStatus = computed(() => {
 	const summary = hoveredSummary.value;
@@ -187,7 +193,7 @@ function setHoveredTab(target: HoverTarget) {
 		return;
 	}
 	// Keep the stored details on screen while this refresh runs.
-	void refreshSummaries([hoveredTab.value.tab]);
+	if (isArtifactTab(hoveredTab.value.tab)) void refreshSummaries([hoveredTab.value.tab]);
 }
 
 const { start: startOpenTimer, stop: stopOpenTimer } = useTimeoutFn(
@@ -206,7 +212,7 @@ const { start: startCloseTimer, stop: stopCloseTimer } = useTimeoutFn(
 	{ immediate: false },
 );
 
-function showTabHoverCard(tab: ArtifactTab, event: MouseEvent) {
+function showTabHoverCard(tab: PreviewTab, event: MouseEvent) {
 	if (!(event.currentTarget instanceof HTMLElement)) return;
 	if (tabDrag.draggedTabId.value !== undefined) return;
 	const target = { tabId: tab.id, reference: event.currentTarget };
@@ -255,7 +261,7 @@ const tabDrag = useTabDragReorder({
 const isPickerOpen = ref(false);
 const resourceSearch = useProjectResourceSearch({
 	projectId: () => props.projectId,
-	excludedTabs: () => props.tabs,
+	excludedTabs: () => props.tabs.filter(isArtifactTab),
 });
 const pickerItems = computed(
 	(): Array<DropdownMenuItemProps<string>> =>
@@ -278,7 +284,7 @@ function handlePickerSelect(itemId: string) {
 	if (resource) emit('openTab', resource);
 }
 
-async function handleCopyLink(tab: ArtifactTab) {
+async function handleCopyLink(tab: PreviewTab) {
 	const href = tabHref(tab);
 	if (!href) return;
 	const url = new URL(href, window.location.origin).toString();
@@ -331,7 +337,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 							@keydown.delete.prevent="emit('closeTab', tab.id)"
 						>
 							<N8nIcon
-								v-if="tab.building"
+								v-if="isArtifactTab(tab) && tab.building"
 								icon="spinner"
 								size="large"
 								spin
@@ -361,11 +367,19 @@ async function handleCopyLink(tab: ArtifactTab) {
 				</ContextMenuTrigger>
 				<ContextMenuPortal>
 					<ContextMenuContent :class="$style.contextMenu">
-						<ContextMenuItem :class="$style.contextMenuItem" @select="handleOpenInEditor(tab)">
+						<ContextMenuItem
+							:class="$style.contextMenuItem"
+							:disabled="!tabHref(tab)"
+							@select="handleOpenInEditor(tab)"
+						>
 							<N8nIcon icon="external-link" size="small" />
 							<span>{{ i18n.baseText('instanceAi.previewTabBar.openInEditor') }}</span>
 						</ContextMenuItem>
-						<ContextMenuItem :class="$style.contextMenuItem" @select="handleCopyLink(tab)">
+						<ContextMenuItem
+							:class="$style.contextMenuItem"
+							:disabled="!tabHref(tab)"
+							@select="handleCopyLink(tab)"
+						>
 							<N8nIcon icon="link" size="small" />
 							<span>{{ i18n.baseText('instanceAi.previewTabBar.copyLink') }}</span>
 						</ContextMenuItem>
@@ -452,7 +466,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 			</template>
 		</N8nHoverCard>
 		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
-		<ManualEditorButton :tabs="tabs" :active-tab-id="activeTabId" />
+		<ManualEditorButton :tabs="tabs.filter(isArtifactTab)" :active-tab-id="activeTabId" />
 		<N8nIconButton
 			:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
 			variant="ghost"

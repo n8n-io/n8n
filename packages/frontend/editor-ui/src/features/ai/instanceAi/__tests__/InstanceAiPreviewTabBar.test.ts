@@ -7,7 +7,7 @@ import { TabsRoot } from 'reka-ui';
 import { readFileSync } from 'node:fs';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
-import type { ArtifactTab } from '../useCanvasPreview';
+import type { ArtifactTab, BrowserTab, PreviewTab } from '../useCanvasPreview';
 import { HOVER_DELAY } from '@/app/constants/durations';
 
 const mockCopy = vi.fn();
@@ -59,6 +59,14 @@ const agentTab: ArtifactTab = {
 	projectId: 'proj-1',
 };
 
+const browserTab: BrowserTab = {
+	id: 'browser:task-1',
+	type: 'browser',
+	name: 'Find the price',
+	icon: 'globe',
+	taskId: 'task-1',
+};
+
 const agentTabWithoutProject: ArtifactTab = {
 	id: 'agent-2',
 	type: 'agent',
@@ -71,7 +79,7 @@ const agentTabWithoutProject: ArtifactTab = {
 // so the scroll-into-view watcher is actually exercised.
 const Wrapper = defineComponent({
 	props: {
-		tabs: { type: Array as () => ArtifactTab[], required: true },
+		tabs: { type: Array as () => PreviewTab[], required: true },
 		activeTabId: { type: String, default: undefined },
 		isExpanded: { type: Boolean, default: false },
 		isExpandDisabled: { type: Boolean, default: false },
@@ -389,6 +397,67 @@ describe('InstanceAiPreviewTabBar', () => {
 			expect(window.open).toHaveBeenCalledWith('/home/agents', '_blank', 'noopener');
 		});
 	});
+	describe('browser tabs', () => {
+		it('shows the name of the browser tab', () => {
+			const { container } = renderComponent({
+				props: { tabs: [workflowTab, browserTab], activeTabId: 'browser:task-1' },
+			});
+
+			expect(container.querySelector('[data-tab-id="browser:task-1"]')).toHaveTextContent(
+				'Find the price',
+			);
+		});
+
+		it.each(['Open in editor', 'Copy link'])('disables "%s" in the context menu', async (label) => {
+			const { container } = renderComponent({
+				props: { tabs: [browserTab], activeTabId: 'browser:task-1' },
+			});
+
+			await openAgentTabContextMenu(container, 'browser:task-1');
+			let menuItem: HTMLElement | undefined;
+			await waitFor(() => {
+				menuItem = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+					(item) => item.textContent?.includes(label),
+				);
+				expect(menuItem).toBeDefined();
+			});
+			expect(menuItem).toHaveAttribute('data-disabled');
+			await fireEvent.click(menuItem!);
+
+			expect(window.open).not.toHaveBeenCalled();
+			expect(mockCopy).not.toHaveBeenCalled();
+		});
+
+		it('does not load a summary for a browser tab', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			try {
+				const { container } = renderComponent({
+					props: { tabs: [browserTab], activeTabId: 'browser:task-1' },
+				});
+
+				await fireEvent.mouseEnter(
+					container.querySelector<HTMLElement>('[data-tab-item-id="browser:task-1"]')!,
+				);
+				await vi.advanceTimersByTimeAsync(HOVER_DELAY.SHOW);
+
+				expect(
+					document.body.querySelector('[data-test-id="instance-ai-tab-hover-card"]'),
+				).toHaveTextContent('Find the price');
+				expect(
+					document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-placeholder"]'),
+				).toBeNull();
+				expect(
+					document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-status"]'),
+				).toBeNull();
+				expect(mockSearchWorkflows).not.toHaveBeenCalled();
+				expect(mockFetchDataTablesApi).not.toHaveBeenCalled();
+				expect(mockListAgentsPage).not.toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
 	describe('tab hover card', () => {
 		const workflowTab2: ArtifactTab = { ...workflowTab, id: 'wf-2', name: 'Second Workflow' };
 

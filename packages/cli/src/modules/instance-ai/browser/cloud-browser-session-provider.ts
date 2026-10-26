@@ -21,5 +21,13 @@ export interface CloudBrowserSessionScope {
 export interface CloudBrowserSessionProvider {
 	createSession(scope: CloudBrowserSessionScope): Promise<CloudBrowserSession>;
 	releaseSession(scope: CloudBrowserSessionScope, sessionId: string): Promise<void>;
-	getSessionLiveViewUrl(scope: CloudBrowserSessionScope, sessionId: string): Promise<string>;
+	/**
+	 * The live view of the tab with this CDP target id, or of the first tab when no id is given
+	 * or no tab has it.
+	 */
+	getSessionLiveViewUrl(
+		scope: CloudBrowserSessionScope,
+		sessionId: string,
+		targetId?: string,
+	): Promise<string>;
 }

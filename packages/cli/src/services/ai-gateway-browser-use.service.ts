@@ -23,9 +23,15 @@ const createdSessionSchema = z.object({
 	connectUrl: z.string().min(1),
 });
 
-/** The live view of a session's first tab. The response also lists each tab, which we do not need. */
+/**
+ * The live view of a session's first tab, and of each open tab. A tab's `id` is its CDP
+ * target id.
+ */
 const liveViewSchema = z.object({
 	debuggerFullscreenUrl: z.string().min(1),
+	pages: z
+		.array(z.object({ id: z.string().min(1), debuggerFullscreenUrl: z.string().min(1) }))
+		.default([]),
 });
 
 /** Errors from the gateway itself carry a message written for the user. */
@@ -40,7 +46,7 @@ const gatewayErrorSchema = z.object({
 export type AiGatewayBrowserSession = z.infer<typeof createdSessionSchema>;
 
 /**
- * The live view link of a session. The link lets anyone who has it watch and control the
+ * The live view links of a session. A link lets anyone who has it watch and control the
  * browser, so it must never be logged or stored.
  */
 export type AiGatewayBrowserLiveView = z.infer<typeof liveViewSchema>;

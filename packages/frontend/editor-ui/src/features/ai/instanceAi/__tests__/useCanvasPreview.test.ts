@@ -8,7 +8,7 @@ import {
 	type InstanceAiAgentNode,
 	type InstanceAiToolCallState,
 } from '@n8n/api-types';
-import { useCanvasPreview } from '../useCanvasPreview';
+import { isArtifactTab, useCanvasPreview } from '../useCanvasPreview';
 import type { ResourceEntry } from '../useResourceRegistry';
 import type { ThreadTabsStorage } from '../composables/useOpenArtifactTabs';
 
@@ -225,7 +225,7 @@ describe('useCanvasPreview', () => {
 				}),
 			];
 
-			const byId = new Map(ctx.openTabs.value.map((t) => [t.id, t]));
+			const byId = new Map(ctx.openTabs.value.filter(isArtifactTab).map((t) => [t.id, t]));
 			expect(byId.get('agent-1')?.building).toBe(true);
 			expect(byId.get('wf-1')?.building).toBe(false);
 		});
@@ -245,7 +245,7 @@ describe('useCanvasPreview', () => {
 				makeMessage({ agentTree: makeAgentNode({ status: 'active', children: [builder] }) }),
 			];
 
-			expect(ctx.openTabs.value[0].building).toBe(true);
+			expect(ctx.openTabs.value.filter(isArtifactTab)[0].building).toBe(true);
 
 			ctx.thread.messages = [
 				makeMessage({
@@ -256,7 +256,7 @@ describe('useCanvasPreview', () => {
 				}),
 			];
 
-			expect(ctx.openTabs.value[0].building).toBe(false);
+			expect(ctx.openTabs.value.filter(isArtifactTab)[0].building).toBe(false);
 		});
 
 		test('excludes credential entries', () => {
@@ -1873,6 +1873,177 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.activeTabId.value).toBe('wf-1');
 			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+	});
+
+	describe('cloud browser tabs', () => {
+		function browserTask(
+			overrides: Partial<InstanceAiAgentNode> & { taskId: string },
+		): InstanceAiAgentNode {
+			return makeAgentNode({
+				agentId: `agent-${overrides.taskId}`,
+				role: 'cloud-browser',
+				kind: 'cloud-browser',
+				status: 'active',
+				title: `Task ${overrides.taskId}`,
+				...overrides,
+			});
+		}
+
+		function setBrowserTasks(thread: MockThread, ...tasks: InstanceAiAgentNode[]) {
+			thread.messages = [makeMessage({ agentTree: makeAgentNode({ children: tasks }) })];
+		}
+
+		test('opens, selects and shows the tab of a running task', () => {
+			const ctx = setup();
+			setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1' }));
+
+			ctx.openCloudBrowserTab('task-1');
+
+			expect(ctx.browserTabs.value).toEqual([
+				{
+					id: 'browser:task-1',
+					type: 'browser',
+					name: 'Task task-1',
+					icon: 'globe',
+					taskId: 'task-1',
+				},
+			]);
+			expect(ctx.activeTabId.value).toBe('browser:task-1');
+			expect(ctx.activeBrowserTab.value?.taskId).toBe('task-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('adds the browser tab after the artifact tabs', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1' }));
+
+			ctx.openCloudBrowserTab('task-1');
+
+			expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual(['wf-1', 'browser:task-1']);
+		});
+
+		test.each([
+			['a done task', 'task-1', { status: 'completed' as const }],
+			['a failed task', 'task-1', { status: 'error' as const }],
+			['an unknown task', 'task-2', {}],
+		])('does not open a tab for %s', (_, taskId, overrides) => {
+			const ctx = setup();
+			setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1', ...overrides }));
+
+			ctx.openCloudBrowserTab(taskId);
+
+			expect(ctx.browserTabs.value).toEqual([]);
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('names the tab "Browser" when the task has no title', () => {
+			const ctx = setup();
+			setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1', title: undefined }));
+
+			ctx.openCloudBrowserTab('task-1');
+
+			expect(ctx.browserTabs.value[0].name).toBe('Browser');
+		});
+
+		test('does not save browser tabs', async () => {
+			vi.useFakeTimers();
+			try {
+				const save = vi.fn().mockResolvedValue(undefined);
+				const ctx = setup({ tabsStorage: { load: vi.fn().mockResolvedValue(null), save } });
+				await flushPromises();
+				registerWorkflow(ctx.thread, 'wf-1');
+				ctx.selectTab('wf-1');
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+				save.mockClear();
+				setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1' }));
+
+				ctx.openCloudBrowserTab('task-1');
+				ctx.reorderTab('browser:task-1', 0);
+				ctx.closeTab('browser:task-1');
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+
+				expect(save).not.toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		test('closing the active browser tab hides it and selects another tab', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1' }));
+			ctx.openCloudBrowserTab('task-1');
+
+			ctx.closeTab('browser:task-1');
+
+			expect(ctx.browserTabs.value).toEqual([]);
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			expect(ctx.cloudBrowserTasks.value.map((task) => task.taskId)).toEqual(['task-1']);
+		});
+
+		test('opens a closed browser tab again', () => {
+			const ctx = setup();
+			setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1' }));
+			ctx.openCloudBrowserTab('task-1');
+			ctx.closeTab('browser:task-1');
+
+			ctx.openCloudBrowserTab('task-1');
+
+			expect(ctx.browserTabs.value.map((tab) => tab.id)).toEqual(['browser:task-1']);
+			expect(ctx.activeTabId.value).toBe('browser:task-1');
+		});
+
+		test('closes the preview when the last tab is a browser tab and it closes', () => {
+			const ctx = setup();
+			setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1' }));
+			ctx.openCloudBrowserTab('task-1');
+
+			ctx.closeTab('browser:task-1');
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('removes the tab when its task ends and selects another tab', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1' }));
+			ctx.openCloudBrowserTab('task-1');
+
+			setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1', status: 'completed' }));
+			await nextTick();
+
+			expect(ctx.browserTabs.value).toEqual([]);
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('closes the preview when the task of the only tab ends', async () => {
+			const ctx = setup();
+			setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1' }));
+			ctx.openCloudBrowserTab('task-1');
+
+			setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1', status: 'completed' }));
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('does not reorder a browser tab', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1' }));
+			ctx.openCloudBrowserTab('task-1');
+
+			ctx.reorderTab('browser:task-1', 0);
+
+			expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual(['wf-1', 'wf-2', 'browser:task-1']);
 		});
 	});
 });

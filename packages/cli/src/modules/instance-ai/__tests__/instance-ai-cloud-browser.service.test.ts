@@ -24,9 +24,10 @@ describe('InstanceAiCloudBrowserService', () => {
 	const domainGate: BrowserDomainGate = { tracker: mock<DomainAccessTracker>(), runId: 'run-1' };
 	let release: ReturnType<typeof vi.spyOn>;
 	let aiGatewayBrowserUseService: ReturnType<typeof mock<AiGatewayBrowserUseService>>;
+	let logger: ReturnType<typeof mock<Logger>>;
 
 	beforeEach(() => {
-		const logger = mock<Logger>();
+		logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
 		aiGatewayBrowserUseService = mock<AiGatewayBrowserUseService>();
 		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(true);
@@ -174,11 +175,13 @@ describe('InstanceAiCloudBrowserService', () => {
 			vi.spyOn(server, 'getLiveView').mockResolvedValue({
 				status: 'live',
 				liveViewUrl: 'https://live.example.com/1',
+				windowId: 'page-1',
 			});
 
 			expect(await service.getLiveView('user-1', 'thread-1', 'task-1')).toEqual({
 				status: 'live',
 				liveViewUrl: 'https://live.example.com/1',
+				windowId: 'page-1',
 			});
 		});
 
@@ -286,6 +289,7 @@ describe('InstanceAiCloudBrowserService', () => {
 	it("gets a session's live view link through the gateway for the task", async () => {
 		aiGatewayBrowserUseService.getLiveView.mockResolvedValue({
 			debuggerFullscreenUrl: 'https://live.example.com/1',
+			pages: [],
 		});
 		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
 		const { sessionProvider, scope } = server['options'];
@@ -297,6 +301,52 @@ describe('InstanceAiCloudBrowserService', () => {
 			userId: 'user-1',
 			attribution: { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task-1' },
 			sessionId: 'sess-1',
+		});
+	});
+
+	describe('live view of a window', () => {
+		const pages = [
+			{ id: 'TARGET-1', debuggerFullscreenUrl: 'https://live.example.com/tab-1' },
+			{ id: 'TARGET-2', debuggerFullscreenUrl: 'https://live.example.com/tab-2' },
+		];
+
+		beforeEach(() => {
+			aiGatewayBrowserUseService.getLiveView.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+				pages,
+			});
+		});
+
+		it('gets the live view of the tab with the target id', async () => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const { sessionProvider, scope } = server['options'];
+
+			await expect(
+				sessionProvider.getSessionLiveViewUrl(scope, 'sess-1', 'TARGET-2'),
+			).resolves.toBe('https://live.example.com/tab-2');
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('gets the first tab and logs a warning when no tab has the target id', async () => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const { sessionProvider, scope } = server['options'];
+
+			await expect(
+				sessionProvider.getSessionLiveViewUrl(scope, 'sess-1', 'TARGET-9'),
+			).resolves.toBe('https://live.example.com/1');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Cloud browser window not found in its live view, showing the first tab',
+				{ taskId: 'task-1', tabCount: 2 },
+			);
+		});
+
+		it('gets the first tab without a target id', async () => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const { sessionProvider, scope } = server['options'];
+
+			await expect(sessionProvider.getSessionLiveViewUrl(scope, 'sess-1')).resolves.toBe(
+				'https://live.example.com/1',
+			);
 		});
 	});
 });

@@ -34,6 +34,7 @@ import type {
 	ModalState,
 	NavigateResult,
 	NetworkEntry,
+	PageChangeDetails,
 	PageInfo,
 	ResolvedConfig,
 	HtmlProbeResult,
@@ -131,6 +132,8 @@ export class PlaywrightAdapter {
 	onDisconnect?: (reason: ConnectionLostReason, details?: DisconnectDetails) => void;
 
 	onBlocked?: (details: DisconnectDetails) => void;
+
+	onPageChange?: (change: PageChangeDetails) => void;
 
 	constructor(config: ResolvedConfig, options?: PlaywrightAdapterOptions) {
 		this.resolvedConfig = config;
@@ -1185,9 +1188,11 @@ export class PlaywrightAdapter {
 			log.debug('page closed:', id);
 			this.pageStates.delete(id);
 			this.relay?.deactivateTab(id);
+			this.onPageChange?.({ type: 'closed', pageId: id });
 		});
 
 		this.pageStates.set(id, state);
+		this.onPageChange?.({ type: 'opened', pageId: id });
 		return state;
 	}
 
@@ -1198,6 +1203,23 @@ export class PlaywrightAdapter {
 		try {
 			return state.page.url();
 		} catch {
+			return undefined;
+		}
+	}
+
+	async getTargetId(pageId: string): Promise<string | undefined> {
+		const state = this.pageStates.get(pageId);
+		if (!state) return undefined;
+		try {
+			const session = await this.requireContext().newCDPSession(state.page);
+			try {
+				const { targetInfo } = await session.send('Target.getTargetInfo');
+				return targetInfo.targetId;
+			} finally {
+				await session.detach().catch(() => {});
+			}
+		} catch {
+			// The page closed while we asked.
 			return undefined;
 		}
 	}
