@@ -26,6 +26,8 @@ import { Credentials } from 'n8n-core';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
+import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
+import { TeamsIntegration } from '@/modules/agents/integrations/platforms/teams/teams-integration';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
@@ -61,6 +63,7 @@ beforeAll(async () => {
 	await testModules.loadModules(['agents', 'n8n-packages']);
 	await testDb.init();
 	license.mockLicenseState(Container.get(LicenseState));
+	Container.get(ChatIntegrationRegistry).register(Container.get(TeamsIntegration));
 	planner = Container.get(ImportOrchestrator);
 	agents = Container.get(AgentRepository);
 	user = await createOwner();
@@ -606,33 +609,39 @@ it('blocks unavailable Agent tool node types without changing destination record
 	expect(await records()).toEqual(before);
 });
 
-it.each(['skills', 'self-reference'] as const)(
-	'uses the UI validation rule for %s',
-	async (invalid) => {
-		const source = agent('source');
-		if (invalid === 'skills') {
-			source.skills = {
-				skill_first: { name: 'Review', description: 'Review.', instructions: 'Review the change.' },
-				skill_second: {
-					name: 'review',
-					description: 'Review.',
-					instructions: 'Review the change.',
-				},
-			};
-		} else source.config!.subAgents = { agents: [{ agentId: 'source' }] };
-		const before = await records();
-		const plan = await planner.plan(input([source]));
-		expect(plan.blockingIssues).toContainEqual(
-			expect.objectContaining({
-				type: 'agent-invalid',
-				message: expect.stringMatching(
-					invalid === 'skills' ? /hard to tell apart|skill name/i : /itself/,
-				),
-			}),
-		);
-		expect(await records()).toEqual(before);
-	},
-);
+it.each([
+	['skills', /hard to tell apart|skill name/i],
+	['self-reference', /itself/],
+	['Teams connections', /only one Microsoft Teams connection/],
+] as const)('uses the UI validation rule for %s', async (invalid, errorPattern) => {
+	const source = agent('source');
+	if (invalid === 'skills') {
+		source.skills = {
+			skill_first: { name: 'Review', description: 'Review.', instructions: 'Review the change.' },
+			skill_second: {
+				name: 'review',
+				description: 'Review.',
+				instructions: 'Review the change.',
+			},
+		};
+	} else if (invalid === 'self-reference') {
+		source.config!.subAgents = { agents: [{ agentId: 'source' }] };
+	} else {
+		source.config!.integrations = [
+			{ type: 'teams', credentialId: 'teams-1' },
+			{ type: 'teams', credentialId: 'teams-2' },
+		];
+	}
+	const before = await records();
+	const plan = await planner.plan(input([source]));
+	expect(plan.blockingIssues).toContainEqual(
+		expect.objectContaining({
+			type: 'agent-invalid',
+			message: expect.stringMatching(errorPattern),
+		}),
+	);
+	expect(await records()).toEqual(before);
+});
 
 it.each(['create', 'update', 'publish', 'unpublish'] as const)(
 	'requires the Agent %s action scope for project roles and API keys',

@@ -25,6 +25,8 @@ import {
 import { AgentPolicyService } from './agent-policy.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent, ProjectAgent } from './entities/agent.entity';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { assertSingleConnections } from './integrations/single-connection';
 import { decomposeJsonConfig } from './json-config/agent-config-composition';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { pruneMissingConfigReferences } from './json-config/prune-missing-config-references';
@@ -150,6 +152,10 @@ export class AgentConfigPreparationService {
 		if (prepared.config === null) return prepared;
 		const result = await this.validateConfig(prepared.config);
 		if (!result.valid) throw new UserError(result.error);
+		assertSingleConnections(
+			Container.get(ChatIntegrationRegistry),
+			result.config.integrations ?? [],
+		);
 		prepared.config = reconcileNativeWebSearch(result.config);
 		this.validateSubAgentRefs(prepared.config.subAgents?.agents ?? [], agentId);
 		const [missingBody] = findMissingAgentDefinitionBodies(prepared);
