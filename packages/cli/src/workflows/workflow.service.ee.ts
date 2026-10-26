@@ -1,7 +1,10 @@
 import type {
 	FolderTransferPreview,
+	FolderTransferResult,
 	PolicyViolation,
+	UnpublishedWorkflow,
 	WorkflowTransferPreview,
+	WorkflowTransferResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type {
@@ -25,6 +28,7 @@ import {
 import type { PolicyDecision } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
 import { In, type EntityManager } from '@n8n/typeorm';
 import isEqual from 'lodash/isEqual';
@@ -57,6 +61,7 @@ import {
 	hasCheckErrors,
 	PolicyEnforcementService,
 } from '@/policy/policy-enforcement.service';
+import { findPolicyViolations } from '@/policy/policy-violation.error';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { stripToolSuffix } from '@/utils';
@@ -763,7 +768,7 @@ export class EnterpriseWorkflowService {
 		destinationProjectId: string,
 		shareCredentials: string[] = [],
 		destinationParentFolderId?: string,
-	) {
+	): Promise<WorkflowTransferResult | undefined> {
 		// 1. get workflow
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
@@ -824,29 +829,24 @@ export class EnterpriseWorkflowService {
 			}
 		}
 
-		// 6. validate against the destination project's policy
-		await this.policyEnforcementService.enforceWorkflowTransfer(
-			{ workflow, targetProjectId: destinationProject.id },
-			{ kind: 'user', user },
-		);
-
 		const wasActive = this.isActiveWorkflow(workflow);
 
-		// 7. deactivate workflow if necessary
+		// 6. deactivate workflow if necessary
 		if (wasActive) {
 			await this.activeWorkflowManager.remove(workflowId);
 		}
 
-		// 8. transfer the workflow
+		// 7. transfer the workflow
 		await this.transferWorkflowOwnership(user, [workflow], destinationProject);
 
-		// 9. share credentials into the destination project
+		// 8. share credentials into the destination project
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
 
-		// 10. Move workflow to the right folder if any
+		// 9. Move workflow to the right folder if any
 		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
 
-		// 11. try to activate it again if it was active
+		// 10. try to activate it again if it was active. The destination's policy can refuse
+		// the republish, and then the move unpublishes the workflow.
 		if (wasActive) {
 			return await this.attemptWorkflowReactivation(workflowId, workflow.activeVersionId, user.id);
 		}
@@ -1019,7 +1019,7 @@ export class EnterpriseWorkflowService {
 		destinationProjectId: string,
 		destinationParentFolderId: string,
 		shareCredentials: string[] = [],
-	) {
+	): Promise<FolderTransferResult> {
 		// 1. Get all children folders
 
 		const childrenFolderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
@@ -1029,10 +1029,9 @@ export class EnterpriseWorkflowService {
 
 		// 2. Get all workflows in the nested folders
 
-		const checksTransfer = this.policyEnforcementService.hasChecksFor('workflowTransfer');
 		const workflows = await this.workflowRepository.findInFoldersForTransfer(
 			[...childrenFolderIds, sourceFolderId],
-			{ withNodes: checksTransfer },
+			{ withNodes: false },
 		);
 
 		const activeWorkflows = workflows.filter((x) => this.isActiveWorkflow(x));
@@ -1061,15 +1060,6 @@ export class EnterpriseWorkflowService {
 
 		assertNoneOwnedBy(workflows, destinationProject);
 
-		if (checksTransfer) {
-			for (const workflow of workflows) {
-				await this.policyEnforcementService.enforceWorkflowTransfer(
-					{ workflow, targetProjectId: destinationProject.id },
-					{ kind: 'user', user },
-				);
-			}
-		}
-
 		// 5. deactivate all workflows if necessary
 		const deactivateWorkflowsPromises = activeWorkflows.map(
 			async (workflow) => await this.activeWorkflowManager.remove(workflow.id),
@@ -1093,23 +1083,25 @@ export class EnterpriseWorkflowService {
 
 		// 9. try to activate workflows again if they were active
 
+		const unpublishedWorkflows: UnpublishedWorkflow[] = [];
 		for (const workflow of activeWorkflows) {
-			await this.attemptWorkflowReactivation(workflow.id, workflow.activeVersionId, user.id);
+			const result = await this.attemptWorkflowReactivation(
+				workflow.id,
+				workflow.activeVersionId,
+				user.id,
+			);
+			if (result) unpublishedWorkflows.push({ id: workflow.id, name: workflow.name, ...result });
 		}
+
+		return { unpublishedWorkflows };
 	}
 
-	private formatActivationError(error: WorkflowActivationError) {
-		return {
-			error: error.toJSON
-				? error.toJSON()
-				: {
-						name: error.name,
-						message: error.message,
-					},
-		};
-	}
-
-	private async attemptWorkflowReactivation(workflowId: string, versionId: string, userId: string) {
+	/** Returns a failed republish instead of throwing it, so one failure cannot stop a folder move. */
+	private async attemptWorkflowReactivation(
+		workflowId: string,
+		versionId: string,
+		userId: string,
+	): Promise<WorkflowTransferResult | undefined> {
 		try {
 			await this.activeWorkflowManager.add(workflowId, 'update', undefined, {
 				actor: { kind: 'user', user: { id: userId } },
@@ -1130,21 +1122,35 @@ export class EnterpriseWorkflowService {
 				});
 			}
 
-			await this.workflowRepository.updateActiveState(workflowId, false);
+			try {
+				await this.workflowRepository.updateActiveState(workflowId, false);
 
-			// If reactivation failed we track deactivation of the workflow
-			await this.workflowPublishHistoryRepository.addRecord({
-				workflowId,
-				versionId,
-				event: 'deactivated',
-				userId,
-			});
-
-			if (error instanceof WorkflowActivationError) {
-				return this.formatActivationError(error);
+				// If reactivation failed we track deactivation of the workflow
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId,
+					versionId,
+					event: 'deactivated',
+					userId,
+				});
+			} catch (rollbackError) {
+				this.logger.error(`Failed to mark workflow "${workflowId}" as unpublished after a move`, {
+					workflowId,
+					error: rollbackError,
+				});
 			}
 
-			throw error;
+			const unpublishReasons = findPolicyViolations(error);
+			if (unpublishReasons) return { unpublishReasons };
+
+			const { name, message } = ensureError(error);
+			if (!(error instanceof WorkflowActivationError)) {
+				this.logger.error(`Failed to republish workflow "${workflowId}" after a move`, {
+					workflowId,
+					error,
+				});
+			}
+
+			return { error: { name, message } };
 		}
 	}
 

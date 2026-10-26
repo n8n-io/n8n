@@ -22,6 +22,7 @@ import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflo
 import type { NodeTypes } from '@/node-types';
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -1104,8 +1105,18 @@ describe('EnterpriseWorkflowService', () => {
 				userId: 'user-1',
 			});
 			expect(result).toEqual({
-				error: expect.objectContaining({ message: 'broken credential' }),
+				error: { name: 'WorkflowActivationError', message: 'broken credential' },
 			});
+		});
+
+		it('returns an unexpected failure instead of throwing it, and logs it', async () => {
+			activeWorkflowManager.add.mockRejectedValue(new Error('active version missing'));
+
+			const result = await service['attemptWorkflowReactivation']('wf-1', 'version-1', 'user-1');
+
+			expect(result).toEqual({ error: { name: 'Error', message: 'active version missing' } });
+			expect(workflowRepository.updateActiveState).toHaveBeenCalledWith('wf-1', false);
+			expect(service['logger'].error).toHaveBeenCalled();
 		});
 
 		it('should still deactivate the workflow when the trigger teardown fails', async () => {
@@ -1115,6 +1126,18 @@ describe('EnterpriseWorkflowService', () => {
 			await service['attemptWorkflowReactivation']('wf-1', 'version-1', 'user-1');
 
 			expect(workflowRepository.updateActiveState).toHaveBeenCalledWith('wf-1', false);
+		});
+
+		it('returns the failure even when marking the workflow unpublished fails', async () => {
+			activeWorkflowManager.add.mockRejectedValue(new WorkflowActivationError('broken credential'));
+			workflowRepository.updateActiveState.mockRejectedValueOnce(new Error('database unavailable'));
+
+			const result = await service['attemptWorkflowReactivation']('wf-1', 'version-1', 'user-1');
+
+			expect(result).toEqual({
+				error: { name: 'WorkflowActivationError', message: 'broken credential' },
+			});
+			expect(service['logger'].error).toHaveBeenCalled();
 		});
 
 		it('should not touch triggers or the active flag when reactivation succeeds', async () => {
@@ -1127,6 +1150,12 @@ describe('EnterpriseWorkflowService', () => {
 			expect(workflowRepository.updateActiveState).not.toHaveBeenCalled();
 		});
 	});
+
+	const violation = {
+		kind: 'node-type-unavailable',
+		checkId: 'node-type-policy',
+		message: 'Slack is not available in this project',
+	};
 
 	describe('transferFolder()', () => {
 		const user = mock<User>({ id: 'user-1' });
@@ -1152,8 +1181,6 @@ describe('EnterpriseWorkflowService', () => {
 			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
 			workflowRepository.findInFoldersForTransfer.mockResolvedValue(workflows);
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
-			policyEnforcementService.hasChecksFor.mockReturnValue(true);
-			policyEnforcementService.enforceWorkflowTransfer.mockResolvedValue(mock());
 			activeWorkflowManager.remove.mockResolvedValue(undefined);
 			activeWorkflowManager.add.mockResolvedValue({ webhooks: true, triggersAndPollers: true });
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1168,17 +1195,7 @@ describe('EnterpriseWorkflowService', () => {
 				.mockResolvedValue(undefined);
 		});
 
-		it('loads the fields the policy check reads', async () => {
-			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
-
-			expect(workflowRepository.findInFoldersForTransfer).toHaveBeenCalledWith(['folder-1'], {
-				withNodes: true,
-			});
-		});
-
-		it('skips the nodes and the check when no check is registered', async () => {
-			policyEnforcementService.hasChecksFor.mockReturnValue(false);
-
+		it('moves the folder without asking the transfer policy', async () => {
 			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
 
 			expect(workflowRepository.findInFoldersForTransfer).toHaveBeenCalledWith(['folder-1'], {
@@ -1186,33 +1203,63 @@ describe('EnterpriseWorkflowService', () => {
 			});
 			expect(policyEnforcementService.enforceWorkflowTransfer).not.toHaveBeenCalled();
 			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
-		});
-
-		it('calls enforceWorkflowTransfer once per workflow with the target project', async () => {
-			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
-
-			expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledTimes(2);
-			for (const workflow of workflows) {
-				expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledWith(
-					{ workflow, targetProjectId: destinationProject.id },
-					{ kind: 'user', user },
-				);
-			}
-			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
 			expect(moveFoldersSpy).toHaveBeenCalledTimes(1);
 		});
 
-		it('blocks the move and performs no mutation when the policy check throws', async () => {
-			const violation = new Error('blocked by policy');
-			policyEnforcementService.enforceWorkflowTransfer.mockRejectedValueOnce(violation);
+		it('reports the workflows whose republish the destination policy refuses', async () => {
+			activeWorkflowManager.add.mockRejectedValueOnce(new PolicyViolationError([violation]));
 
-			await expect(
-				service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0'),
-			).rejects.toThrow(violation);
+			const result = await service.transferFolder(
+				user,
+				'proj-source',
+				'folder-1',
+				'proj-dest',
+				'0',
+			);
 
-			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
-			expect(transferOwnershipSpy).not.toHaveBeenCalled();
-			expect(moveFoldersSpy).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				unpublishedWorkflows: [
+					{ id: 'wf-1', name: 'Workflow wf-1', unpublishReasons: [violation] },
+				],
+			});
+			expect(workflowRepository.updateActiveState).toHaveBeenCalledExactlyOnceWith('wf-1', false);
+			// One refusal must not leave the rest of the folder unpublished.
+			expect(activeWorkflowManager.add).toHaveBeenCalledTimes(2);
+		});
+
+		it('republishes the rest of the folder after an unexpected failure, and reports it', async () => {
+			activeWorkflowManager.add.mockRejectedValueOnce(new Error('active version missing'));
+
+			const result = await service.transferFolder(
+				user,
+				'proj-source',
+				'folder-1',
+				'proj-dest',
+				'0',
+			);
+
+			expect(result).toEqual({
+				unpublishedWorkflows: [
+					{
+						id: 'wf-1',
+						name: 'Workflow wf-1',
+						error: { name: 'Error', message: 'active version missing' },
+					},
+				],
+			});
+			expect(activeWorkflowManager.add).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports nothing when every workflow republishes', async () => {
+			const result = await service.transferFolder(
+				user,
+				'proj-source',
+				'folder-1',
+				'proj-dest',
+				'0',
+			);
+
+			expect(result).toEqual({ unpublishedWorkflows: [] });
 		});
 	});
 
@@ -1322,10 +1369,8 @@ describe('EnterpriseWorkflowService', () => {
 		beforeEach(() => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflow());
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
-			policyEnforcementService.enforceWorkflowTransfer.mockResolvedValue(mock());
 			// Ownership transfer and credential sharing are exercised by their own
-			// describe blocks below; stubbed here so these tests isolate the
-			// policy-enforcement wiring in `transferWorkflow` itself.
+			// describe blocks below.
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			transferOwnershipSpy = vi
 				.spyOn(service as any, 'transferWorkflowOwnership')
@@ -1336,24 +1381,11 @@ describe('EnterpriseWorkflowService', () => {
 				.mockResolvedValue(undefined);
 		});
 
-		it('calls enforceWorkflowTransfer with the target project, not the source', async () => {
-			const workflow = makeWorkflow();
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
+		it('moves the workflow without asking the transfer policy', async () => {
+			const result = await service.transferWorkflow(user, 'wf-1', 'proj-dest');
 
-			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
-
-			expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledExactlyOnceWith(
-				{
-					workflow,
-					targetProjectId: destinationProject.id,
-				},
-				{ kind: 'user', user },
-			);
-		});
-
-		it('proceeds with the transfer unchanged when the policy check clears', async () => {
-			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
-
+			expect(result).toBeUndefined();
+			expect(policyEnforcementService.enforceWorkflowTransfer).not.toHaveBeenCalled();
 			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
 			expect(shareCredentialsSpy).toHaveBeenCalledTimes(1);
 			expect(workflowRepository.update).toHaveBeenCalledWith(
@@ -1362,32 +1394,20 @@ describe('EnterpriseWorkflowService', () => {
 			);
 		});
 
-		it('blocks the transfer and performs no mutation when the policy check throws', async () => {
-			const violation = new Error('blocked by policy');
-			policyEnforcementService.enforceWorkflowTransfer.mockRejectedValue(violation);
+		it('unpublishes a published workflow when the destination policy refuses the republish', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflow({ activeVersionId: 'version-1' }),
+			);
+			activeWorkflowManager.add.mockRejectedValueOnce(new PolicyViolationError([violation]));
 
-			await expect(service.transferWorkflow(user, 'wf-1', 'proj-dest')).rejects.toThrow(violation);
+			const result = await service.transferWorkflow(user, 'wf-1', 'proj-dest');
 
-			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
-			expect(transferOwnershipSpy).not.toHaveBeenCalled();
-			expect(shareCredentialsSpy).not.toHaveBeenCalled();
-			expect(workflowRepository.update).not.toHaveBeenCalled();
-		});
-
-		it('resolves the destination project before enforcing the policy check', async () => {
-			const callOrder: string[] = [];
-			projectService.getProjectWithScope.mockImplementation(async () => {
-				callOrder.push('getProjectWithScope');
-				return destinationProject;
-			});
-			policyEnforcementService.enforceWorkflowTransfer.mockImplementation(async () => {
-				callOrder.push('enforceWorkflowTransfer');
-				return await mock();
-			});
-
-			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
-
-			expect(callOrder).toEqual(['getProjectWithScope', 'enforceWorkflowTransfer']);
+			expect(result).toEqual({ unpublishReasons: [violation] });
+			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
+			expect(workflowRepository.updateActiveState).toHaveBeenCalledExactlyOnceWith('wf-1', false);
+			expect(workflowPublishHistoryRepository.addRecord).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowId: 'wf-1', event: 'deactivated' }),
+			);
 		});
 	});
 
