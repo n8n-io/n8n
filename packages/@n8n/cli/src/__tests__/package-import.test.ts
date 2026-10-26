@@ -187,6 +187,7 @@ describe('package import command', () => {
 					conflictPolicy: 'new-version',
 					idPolicy: undefined,
 					publishingPolicy: undefined,
+					credentialConflictPolicy: undefined,
 				}),
 			);
 		});
@@ -247,6 +248,26 @@ describe('package import command', () => {
 				expect.anything(),
 				expect.objectContaining({ projectConflictPolicy: 'merge' }),
 			);
+		});
+
+		it.each(['keep-existing', 'overwrite', 'fail'])(
+			'parses --credential-conflict-policy=%s',
+			async (credentialConflictPolicy) => {
+				const importPackage = await runWithArgv([
+					'--file=/tmp/export.n8np',
+					`--credential-conflict-policy=${credentialConflictPolicy}`,
+				]);
+				expect(importPackage).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.objectContaining({ credentialConflictPolicy }),
+				);
+			},
+		);
+
+		it('rejects an unsupported credential conflict policy', async () => {
+			await expect(
+				runWithArgv(['--file=/tmp/export.n8np', '--credential-conflict-policy=merge']),
+			).rejects.toThrow(/Expected --credentialConflictPolicy=merge/);
 		});
 
 		it.each([
