@@ -726,10 +726,19 @@ export class InstanceContextService {
 			// Reading every workflow does not imply reading every credential, and the two are
 			// resolved apart: global `credential:read` opens all of them, otherwise the caller may
 			// still hold it on individual projects and should see those.
-			// Runs follow the same rule with `execution:read`.
+			// Runs follow the same rule with `execution:read`. The scoped query returns team
+			// projects only, so the personal project is added back as in the branch below.
+			const personalProjectId =
+				scope.credentialGranted || scope.executionGranted
+					? (await this.projectRepository.getPersonalProjectForUser(user.id))?.id
+					: undefined;
 			const [credentialProjectIds, runProjectIds] = await Promise.all([
-				scope.credentialGranted ? this.globalOrProjectIdsWithScope(user, 'credential:read') : [],
-				scope.executionGranted ? this.globalOrProjectIdsWithScope(user, 'execution:read') : [],
+				scope.credentialGranted
+					? this.globalOrProjectIdsWithScope(user, 'credential:read', personalProjectId)
+					: [],
+				scope.executionGranted
+					? this.globalOrProjectIdsWithScope(user, 'execution:read', personalProjectId)
+					: [],
 			]);
 			return {
 				surface: 'mcp',
@@ -776,9 +785,10 @@ export class InstanceContextService {
 	private async globalOrProjectIdsWithScope(
 		user: User,
 		scope: 'credential:read' | 'execution:read',
+		personalProjectId: string | undefined,
 	): Promise<ActivityProjectScope> {
 		if (hasGlobalScope(user, [scope], { mode: 'allOf' })) return 'all-projects';
-		return await this.projectIdsWithScope(user, scope, null, undefined);
+		return await this.projectIdsWithScope(user, scope, null, personalProjectId);
 	}
 
 	/**
