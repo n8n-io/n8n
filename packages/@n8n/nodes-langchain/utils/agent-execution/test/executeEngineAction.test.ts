@@ -40,6 +40,17 @@ describe('executeEngineAction', () => {
 		expect(invoke.mock.calls[0][0]).not.toHaveProperty(INTERNAL_TOOL_ARG_STASH_KEY);
 	});
 
+	it('restores a stashed `toolCallId` argument', async () => {
+		const invoke = await execute({
+			tool: 'mcp_tool',
+			[INTERNAL_TOOL_ARG_STASH_KEY]: { toolCallId: 'user-id' },
+			query: 'hello',
+		});
+
+		expect(invoke.mock.calls[0][0]).toEqual({ toolCallId: 'user-id', query: 'hello' });
+		expect(invoke.mock.calls[0][0]).not.toHaveProperty(INTERNAL_TOOL_ARG_STASH_KEY);
+	});
+
 	it('removes the stash key when it has no value to restore', async () => {
 		const invoke = await execute({
 			tool: 'mcp_tool',
