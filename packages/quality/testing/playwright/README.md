@@ -19,6 +19,7 @@ Commands in this table run from the repository root. Container-backed tests need
 | Measure Docker image size and layer waste | `@n8n/efficiency` image projects | `pnpm --filter @n8n/efficiency test:images` | [Image efficiency](../../efficiency/images/README.md) |
 | Measure infrastructure throughput and resource use | `benchmarking:infrastructure` | `pnpm --filter n8n-playwright test:benchmark` | [Infrastructure benchmarks](tests/infrastructure/benchmarks/README.md) |
 | Investigate Instance AI memory with a local-only, Docker-backed run | `benchmark-memory-instanceai:infrastructure` | `pnpm --filter n8n-playwright exec playwright test --project=benchmark-memory-instanceai:infrastructure` | [Local benchmark setup](tests/infrastructure/benchmarks-local/README.md) |
+| Reproduce queue and drain bugs on before and after images, local only | `fault-harness` | `pnpm --filter @n8n/fault-harness scenarios` | [Fault harness](../fault-harness/README.md) |
 | Test workflow execution and schemas | `cli-workflows` | `pnpm --filter n8n-playwright test:workflows` | [Workflow tests](tests/cli-workflows/README.md) |
 | Check fixture, reporter, or helper code without a browser | Vitest | `pnpm --filter n8n-playwright test:unit` | [Test-writing patterns](docs/TESTING_PATTERNS.md) |
 | Run evaluation scenarios | `eval` | `pnpm --filter n8n-playwright test:evals` | [Evaluation tests](tests/evals/) |
