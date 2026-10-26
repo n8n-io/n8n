@@ -125,4 +125,6 @@ jobs:
     uses: ./.github/workflows/util-publish-api-schema.yml
     with:
       version: ${{ inputs.new_stable_version != '' && inputs.new_stable_version || inputs.version }}
-    secrets: inherit
+    secrets:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

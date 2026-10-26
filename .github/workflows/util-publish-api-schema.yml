@@ -10,6 +10,11 @@ on:
         description: 'The release version to publish the spec from (e.g. 2.45.3)'
         required: true
         type: string
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
 
   # Allow manual re-publish
   workflow_dispatch:
