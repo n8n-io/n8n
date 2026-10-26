@@ -1,4 +1,5 @@
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import { hasInjectionContext, inject, type InjectionKey } from 'vue';
 
 import { useOptionalThread, type ThreadRuntime } from './instanceAi.store';
 
@@ -14,8 +15,10 @@ export interface ConfirmationTransport {
 	/** The current Assistant thread, or `undefined` in the Assistant agent chat. */
 	thread: ThreadRuntime | undefined;
 	/**
-	 * Sends the body and marks the card resolved. Resolves to `false` when the
-	 * request failed, so the card can let the user try again.
+	 * Sends the body. On the thread path, it marks the card resolved, and resolves
+	 * to `false` when the request failed, so the card can let the user try again.
+	 * With `submit`, it always resolves to `true`: the caller owns the answer, and
+	 * gives the card back when it does not take it.
 	 */
 	confirm: (
 		requestId: string,
@@ -47,4 +50,19 @@ export function useConfirmationTransport(
 			return success;
 		},
 	};
+}
+
+/**
+ * The id of a thread that has no thread runtime, such as an Assistant agent
+ * thread. The card telemetry reports it.
+ */
+export const CONFIRMATION_THREAD_ID: InjectionKey<string> = Symbol('confirmationThreadId');
+
+/**
+ * The thread id for card telemetry: the current Assistant thread, or the thread
+ * that the host provides. Outside a component setup, only the thread counts.
+ */
+export function useConfirmationThreadId(thread: ThreadRuntime | undefined): () => string {
+	const providedThreadId = hasInjectionContext() ? inject(CONFIRMATION_THREAD_ID, '') : '';
+	return () => thread?.id ?? providedThreadId;
 }
