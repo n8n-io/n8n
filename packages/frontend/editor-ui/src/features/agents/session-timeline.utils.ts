@@ -719,6 +719,7 @@ function inputTimelineItem(
 	return {
 		kind: 'user',
 		executionId,
+		id: `${executionId}:user:${input.id}`,
 		content: message.content,
 		timestamp,
 		...(input.author && { authorName: input.author.name }),
@@ -926,5 +927,19 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 			});
 		}
 	}
+	/** Count equal identities before task merging and sorting. Content can change during streaming. */
+	const occurrences = new Map<string, number>();
+	for (const item of items) {
+		const key = `${item.executionId}:${item.kind}:${item.toolCallId ?? item.timestamp}`;
+		const occurrence = occurrences.get(key) ?? 0;
+		occurrences.set(key, occurrence + 1);
+		item.id ??= `${key}:${occurrence}`;
+	}
 	return items;
+}
+
+/** Use the same identity for selection, row state, and size measurements. */
+export function timelineItemKey(item: TimelineItem): string {
+	if (item.backgroundTask) return `background-task-${item.backgroundTask.id}`;
+	return item.id ?? `${item.executionId}:${item.kind}:${item.toolCallId ?? item.timestamp}`;
 }

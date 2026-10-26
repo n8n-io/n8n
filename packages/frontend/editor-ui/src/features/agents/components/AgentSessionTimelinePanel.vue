@@ -15,13 +15,17 @@ import SessionTimelineTable from '@/features/agents/components/SessionTimelineTa
 import SessionTimelineChart from '@/features/agents/components/SessionTimelineChart.vue';
 import {
 	flattenExecutionsToTimelineItems,
+	timelineItemKey,
 	sessionBounds,
 	isSubAgentTimelineItem,
 	itemStatusFilterKey,
 } from '@/features/agents/session-timeline.utils';
 import { timelineColors } from '@/features/agents/session-timeline.styles';
 import { useAgentBackgroundJobs } from '@/features/agents/composables/useAgentBackgroundJobs';
-import { backgroundTasksToTimelineItems } from '@/features/agents/utils/background-task-timeline';
+import {
+	backgroundTasksToTimelineItems,
+	insertBackgroundTaskTimelineItems,
+} from '@/features/agents/utils/background-task-timeline';
 import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
 import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
 import { backgroundJobTimelineLabelKey } from '@/features/agents/utils/background-job-labels';
@@ -82,10 +86,10 @@ const { allJobs } = useAgentBackgroundJobs({
 });
 
 const baseItems = computed<TimelineItem[]>(() =>
-	[
-		...flattenExecutionsToTimelineItems(executions.value),
-		...backgroundTasksToTimelineItems(allJobs.value),
-	].sort((a, b) => a.timestamp - b.timestamp),
+	insertBackgroundTaskTimelineItems(
+		flattenExecutionsToTimelineItems(executions.value),
+		backgroundTasksToTimelineItems(allJobs.value),
+	),
 );
 
 /** Keep selection on the same item when task data arrives after execution data. */
@@ -262,10 +266,6 @@ function onTimelineItemSelect(index: number | null) {
 function onChartSelect(index: number): void {
 	onTimelineItemSelect(index);
 	void nextTick(() => timelineTableRef.value?.scrollSelectedIntoView());
-}
-
-function timelineItemKey(item: TimelineItem): string {
-	return `${item.executionId}:${item.kind}:${item.toolCallId ?? item.timestamp}`;
 }
 
 function loadThreadDetail() {

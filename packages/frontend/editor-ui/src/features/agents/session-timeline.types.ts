@@ -26,6 +26,7 @@ export type HitlResponseStatus = 'approved' | 'declined' | 'responded';
 export type TimelineStatusFilterKey = 'approved' | 'declined' | 'error';
 
 export interface TimelineItem {
+	id?: string;
 	kind: EventKind;
 	executionId: string;
 	timestamp: number;

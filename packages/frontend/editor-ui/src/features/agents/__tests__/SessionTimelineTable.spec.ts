@@ -47,13 +47,15 @@ function makeRouter(): Router {
 function makeItems(): TimelineItem[] {
 	return [
 		{
+			id: 'event-0',
 			kind: 'user',
 			executionId: 'e1',
 			timestamp: 0,
 			content: '[Read notes](https://example.com/notes)',
 		},
-		{ kind: 'agent', executionId: 'e1', timestamp: 500, content: 'hello' },
+		{ id: 'event-1', kind: 'agent', executionId: 'e1', timestamp: 500, content: 'hello' },
 		{
+			id: 'event-2',
 			kind: 'tool',
 			executionId: 'e1',
 			timestamp: 1000,
@@ -61,6 +63,7 @@ function makeItems(): TimelineItem[] {
 			endTimestamp: 1100,
 		},
 		{
+			id: 'event-3',
 			kind: 'workflow',
 			executionId: 'e1',
 			timestamp: 2000,
@@ -84,6 +87,27 @@ function mountTable(
 }
 
 describe('SessionTimelineTable', () => {
+	it('keeps row instances when a late background task sorts before existing events', async () => {
+		const items = makeItems();
+		const w = mount(SessionTimelineTable, {
+			props: { items, selectedIndex: null, visibleKinds: new Set<string>() },
+			global: { plugins: [makeRouter()], stubs: { SessionTimelineRow: true } },
+		});
+		const original = w.get('[data-timeline-row-id="event-1"]').element;
+		const task: TimelineItem = {
+			kind: 'background-task',
+			executionId: 'e1',
+			timestamp: 250,
+			backgroundTask: { id: 'late-task' } as NonNullable<TimelineItem['backgroundTask']>,
+		};
+		await w.setProps({ items: [...items, task].sort((a, b) => a.timestamp - b.timestamp) });
+		expect(w.get('[data-timeline-row-id="event-1"]').element).toBe(original);
+		expect(
+			w.findAll('[data-timeline-row-id]').map((row) => row.attributes('data-timeline-row-id')),
+		).toEqual(['event-0', 'background-task-late-task', 'event-1', 'event-2', 'event-3']);
+		w.unmount();
+	});
+
 	it('forwards virtual row size changes to the scroller', async () => {
 		const resizeCallbacks = new Map<Element, (height: number) => void>();
 		vi.stubGlobal(
@@ -120,6 +144,7 @@ describe('SessionTimelineTable', () => {
 			{ length: 101 },
 			(_, index): TimelineItem => ({
 				kind: 'user',
+				id: `event-${index}`,
 				executionId: `e${index}`,
 				timestamp: index,
 				content: `message ${index}`,
@@ -414,6 +439,7 @@ describe('SessionTimelineTable', () => {
 				{ length: 101 },
 				(_, index): TimelineItem => ({
 					kind: 'user',
+					id: `event-${index}`,
 					executionId: `e${index}`,
 					timestamp: index,
 					content: `message ${index}`,
@@ -532,6 +558,7 @@ describe('SessionTimelineTable', () => {
 				{ length: 101 },
 				(_, index): TimelineItem => ({
 					kind: 'user',
+					id: `event-${index}`,
 					executionId: `e${index}`,
 					timestamp: index,
 					content: 'Message',
@@ -571,6 +598,7 @@ describe('SessionTimelineTable', () => {
 			{ length: 101 },
 			(_, index): TimelineItem => ({
 				kind: 'user',
+				id: `event-${index}`,
 				executionId: `e${index}`,
 				timestamp: index,
 				content: 'Message',

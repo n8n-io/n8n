@@ -6,7 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { N8nRecycleScroller } from '@n8n/design-system';
 import SessionTimelineRow from './SessionTimelineRow.vue';
 import type { TimelineItem } from '../session-timeline.types';
-import { filteredTimelineItemIndexes } from '../session-timeline.utils';
+import { filteredTimelineItemIndexes, timelineItemKey } from '../session-timeline.utils';
 import { backgroundJobTimelineLabelKey } from '../utils/background-job-labels';
 
 const ROW_HEIGHT = 40;
@@ -91,7 +91,7 @@ const rows = computed<Row[]>(function getRows() {
 	).map(function toEventRow(index) {
 		const item = props.items[index];
 		return {
-			id: item.backgroundTask ? `background-task-${item.backgroundTask.id}` : `event-${index}`,
+			id: timelineItemKey(item),
 			kind: 'event',
 			item,
 			index,

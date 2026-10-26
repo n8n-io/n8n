@@ -43,6 +43,38 @@ export const backgroundTaskPresentation = {
 	}
 >;
 
+/**
+ * Preserve execution order. Insert tasks before the first later execution timestamp.
+ * Keep equal task timestamps stable. Append tasks without a finite timestamp.
+ */
+export function insertBackgroundTaskTimelineItems(
+	executionItems: readonly TimelineItem[],
+	taskItems: readonly TimelineItem[],
+): TimelineItem[] {
+	const sortedTasks = [...taskItems].sort((a, b) => {
+		const aTime = Number.isFinite(a.timestamp) ? a.timestamp : Infinity;
+		const bTime = Number.isFinite(b.timestamp) ? b.timestamp : Infinity;
+		return aTime === bTime ? 0 : aTime - bTime;
+	});
+	const items: TimelineItem[] = [];
+	let taskIndex = 0;
+
+	for (const item of executionItems) {
+		while (
+			Number.isFinite(item.timestamp) &&
+			taskIndex < sortedTasks.length &&
+			Number.isFinite(sortedTasks[taskIndex].timestamp) &&
+			sortedTasks[taskIndex].timestamp < item.timestamp
+		) {
+			items.push(sortedTasks[taskIndex++]);
+		}
+		items.push(item);
+	}
+
+	items.push(...sortedTasks.slice(taskIndex));
+	return items;
+}
+
 /** Keep one item per task in the current group. */
 export function backgroundTasksToTimelineItems(tasks: AgentBackgroundJobDto[]): TimelineItem[] {
 	return tasks.map((task) => ({
