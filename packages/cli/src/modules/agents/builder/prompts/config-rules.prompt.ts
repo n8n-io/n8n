@@ -34,6 +34,12 @@ const BuilderPromptMemoryConfigSchema = z.object({
 				reflectorModel: BuilderPromptMemoryWorkerModelSchema.optional(),
 				topK: z.number().int().min(1).max(100).optional(),
 				maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
+				guidance: z
+					.object({
+						include: z.array(z.string()).optional(),
+						exclude: z.array(z.string()).optional(),
+					})
+					.optional(),
 			}),
 		])
 		.optional(),

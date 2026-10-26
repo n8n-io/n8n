@@ -37,6 +37,7 @@ import { createBudgetGuardrail } from '../guardrails/budget-guardrail';
 import { spendLedger } from '../guardrails/__tests__/spend-ledger';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { StreamSink } from '../loop/stream-sink';
+import { DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION } from '../memory/episodic-memory-defaults';
 import { InMemoryMemory } from '../memory/memory-store';
 import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
 import { AgentEventBus } from '../state/event-bus';
@@ -7870,6 +7871,36 @@ describe('tool systemInstruction merging', () => {
 		expect(text).toContain('</built_in_rules>');
 		expect(text).toContain('You are a helpful assistant.');
 		expect(text.indexOf('<built_in_rules>')).toBeLessThan(text.indexOf('You are a helpful'));
+	});
+
+	it('adds episodic capture guidance to the flag_memory instruction only when set', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+		const runWith = async (guidance?: { include?: string[]; exclude?: string[] }) => {
+			generateText.mockClear();
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'You are a test assistant.',
+				memory: new InMemoryMemory(),
+				episodicMemory: { embedder: fakeEmbedder, guidance },
+			});
+			await runtime.generate('hello', {
+				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			});
+			return getSystemMessageText();
+		};
+
+		const text = await runWith({ include: ['timezone'], exclude: ['client "names"'] });
+		expect(text).toContain(DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION);
+		expect(text).toContain(
+			'Prioritize flagging details about these topics: "timezone". Still flag other useful details.',
+		);
+		expect(text).toContain('Do not flag details about these topics: "client \\"names\\"".');
+
+		const defaultText = await runWith({ include: [], exclude: [] });
+		expect(defaultText).toContain(DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION);
+		expect(defaultText).not.toContain('capture guidance');
 	});
 
 	it('joins multiple tools systemInstructions into a single block', async () => {
