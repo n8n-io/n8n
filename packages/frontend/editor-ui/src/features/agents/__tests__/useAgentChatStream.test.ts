@@ -69,7 +69,10 @@ vi.mock('../composables/useAgentApi', async (importOriginal) => {
 	};
 });
 
-import { useAgentChatStream } from '../composables/useAgentChatStream';
+import {
+	useAgentChatStream,
+	type UseAgentChatStreamParams,
+} from '../composables/useAgentChatStream';
 import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
 import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import {
@@ -226,6 +229,7 @@ function buildHook(
 	options: {
 		newSession?: Ref<boolean>;
 		onSessionCreated?: (sessionId: string) => void;
+		onUsageUpdated?: UseAgentChatStreamParams['onUsageUpdated'];
 		onAgentUnavailable?: () => void;
 		budgetCards?: boolean;
 		channel?: Ref<'chat' | 'n8n-chat'>;
@@ -266,6 +270,55 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		globalThis.fetch = originalFetch;
 		vi.stubGlobal('localStorage', originalLocalStorage);
 		vi.restoreAllMocks();
+	});
+
+	it('reports usage at turn boundaries and refreshes it at completion', async () => {
+		const onUsageUpdated = vi.fn();
+		const stream = makeControllableSseResponse(
+			[{ type: 'execution-started', executionId: 'execution-1', sessionId: 'thread-1' }],
+			null,
+		);
+		globalThis.fetch = vi.fn(async () => stream.response);
+		const hook = buildHook('thread-1', { onUsageUpdated });
+		const sending = hook.sendMessage('hello');
+		await flushPromises();
+		stream.emit([{ type: 'text-delta', id: 'text-1', delta: 'hello' }]);
+		await flushPromises();
+		expect(onUsageUpdated).toHaveBeenCalledOnce();
+		expect(onUsageUpdated).toHaveBeenLastCalledWith({
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			usage: undefined,
+			complete: false,
+		});
+		const usage = { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 };
+		stream.emit([{ type: 'usage', usage }]);
+		await flushPromises();
+		expect(onUsageUpdated).toHaveBeenLastCalledWith({
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			usage,
+			complete: false,
+		});
+		const finalUsage = { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.02 };
+		stream.close([
+			{ type: 'finish', finishReason: 'stop', usage: finalUsage },
+			{ type: 'done', executionId: 'execution-1' },
+		]);
+		await sending;
+		await flushPromises();
+		expect(onUsageUpdated).toHaveBeenNthCalledWith(3, {
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			usage: finalUsage,
+			complete: false,
+		});
+		expect(onUsageUpdated).toHaveBeenLastCalledWith({
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			usage: undefined,
+			complete: true,
+		});
 	});
 
 	it('renders nested approval while preserving delegated tool input', async () => {

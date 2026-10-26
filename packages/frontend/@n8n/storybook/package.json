@@ -26,7 +26,6 @@
     "vue-tsc": "catalog:frontend"
   },
   "devDependencies": {
-    "@chromatic-com/storybook": "catalog:storybook",
     "@iconify/json": "catalog:",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",

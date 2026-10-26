@@ -523,9 +523,12 @@ export class SamlService {
 		this.isReloading = true;
 		try {
 			this.logger.debug('SAML configuration changed, starting to load it from the database');
-			await this.loadFromDbAndApplySamlPreferences(true, false);
-
+			// Read the method that the other main saved before the preferences
+			// apply. Otherwise this main still has `saml` when SAML login turned
+			// off, and it emits `sso-login-disabled` a second time.
 			await reloadAuthenticationMethod();
+
+			await this.loadFromDbAndApplySamlPreferences(true, false);
 
 			const samlLoginEnabled = isSamlLoginEnabled();
 
