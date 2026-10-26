@@ -58,6 +58,13 @@ export interface AuthorizationFlowResult {
  *   the authorize redirect. Both live in this request context's cookie jar.
  */
 export class McpOAuthApiHelper {
+	/**
+	 * Flow id of the authorization request the last `authorize` call started.
+	 * Each request has its own session cookie, so the consent calls have to name
+	 * the one they decide.
+	 */
+	private pendingFlowId = '';
+
 	constructor(private readonly api: ApiHelpers) {}
 
 	/** Generates a PKCE verifier and its S256 challenge (RFC 7636). */
@@ -128,7 +135,8 @@ export class McpOAuthApiHelper {
 	/**
 	 * Starts the authorization flow. Does not follow the redirect so tests can
 	 * assert on it. The OAuth session cookie from the response is stored in the
-	 * request context's cookie jar for the subsequent consent calls.
+	 * request context's cookie jar, and the flow id from the redirect is kept
+	 * for the subsequent consent calls.
 	 */
 	async authorize(params: {
 		clientId: string;
@@ -138,12 +146,20 @@ export class McpOAuthApiHelper {
 		resource?: string;
 		basePath?: OAuthEndpointBasePath;
 	}): Promise<APIResponse> {
-		return await this.api.request.get(this.buildAuthorizeUrl(params), { maxRedirects: 0 });
+		const response = await this.api.request.get(this.buildAuthorizeUrl(params), {
+			maxRedirects: 0,
+		});
+		const location = response.headers().location ?? '';
+		this.pendingFlowId = new URL(location, 'http://localhost').searchParams.get('flow') ?? '';
+		return response;
 	}
 
-	/** Requires a signed-in user and a pending OAuth session (see authorize). */
-	async getConsentDetails(): Promise<APIResponse> {
-		return await this.api.request.get('/rest/consent/details');
+	/**
+	 * Requires a signed-in user and a pending OAuth session (see authorize).
+	 * Defaults to the flow the last `authorize` call started.
+	 */
+	async getConsentDetails(flow = this.pendingFlowId): Promise<APIResponse> {
+		return await this.api.request.get(`/rest/consent/details?flow=${flow}`);
 	}
 
 	/**
@@ -151,10 +167,14 @@ export class McpOAuthApiHelper {
 	 * Approvals must grant at least one scope; when none are given, everything
 	 * the consent details offer is granted — mirroring the consent UI default.
 	 */
-	async approveConsent(approved: boolean, scopes?: string[]): Promise<APIResponse> {
+	async approveConsent(
+		approved: boolean,
+		scopes?: string[],
+		flow = this.pendingFlowId,
+	): Promise<APIResponse> {
 		let grantedScopes = scopes;
 		if (approved && !grantedScopes) {
-			const details = await this.getConsentDetails();
+			const details = await this.getConsentDetails(flow);
 			if (details.ok()) {
 				const body = (await details.json()) as { data: { scopes?: string[] } };
 				const available = body.data.scopes ?? [];
@@ -162,7 +182,7 @@ export class McpOAuthApiHelper {
 			}
 		}
 		return await this.api.request.post('/rest/consent/approve', {
-			data: { approved, ...(grantedScopes && { scopes: grantedScopes }) },
+			data: { approved, flow, ...(grantedScopes && { scopes: grantedScopes }) },
 		});
 	}
 
@@ -170,8 +190,12 @@ export class McpOAuthApiHelper {
 	 * Approves or denies the pending consent and returns the redirect URL the
 	 * client would be sent back to (carrying either the code or the error).
 	 */
-	async submitConsentOrFail(approved: boolean, scopes?: string[]): Promise<URL> {
-		const response = await this.approveConsent(approved, scopes);
+	async submitConsentOrFail(
+		approved: boolean,
+		scopes?: string[],
+		flow = this.pendingFlowId,
+	): Promise<URL> {
+		const response = await this.approveConsent(approved, scopes, flow);
 		if (!response.ok()) {
 			throw new TestError(
 				`Failed to submit consent: ${response.status()} ${await response.text()}`,

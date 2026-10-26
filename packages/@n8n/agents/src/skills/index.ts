@@ -17,6 +17,7 @@ export type {
 	RuntimeSkillLinkedFileGroup,
 	RuntimeSkillLinkedFiles,
 	RuntimeSkillLoader,
+	RuntimeSkillLoadError,
 	RuntimeSkillMcpServerDependency,
 	RuntimeSkillPolicyContract,
 	RuntimeSkillReferenceContract,
@@ -37,7 +38,9 @@ export {
 export {
 	createRuntimeSkillRegistry,
 	createRuntimeSkillSource,
+	extendRuntimeSkillSource,
 	filterRuntimeSkillSource,
+	hashRuntimeSkillRegistry,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,

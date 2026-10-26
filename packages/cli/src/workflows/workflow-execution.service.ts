@@ -1,6 +1,10 @@
 import type { ManualRunResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
+import {
+	EventService,
+	InstanceWriteAccessService,
+	WorkflowPublishedDataService,
+} from '@n8n/backend-services';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Project,
@@ -56,7 +60,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowRunner } from '@/workflow-runner';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
 @Service()

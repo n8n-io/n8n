@@ -11,6 +11,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 
 import AgentTriggersSection from '../components/AgentTriggersSection.vue';
+import { fileAccessJustApproved } from '../channels/teams/fileAccessConsent';
 
 enableAutoUnmount(afterEach);
 
@@ -43,20 +44,34 @@ const modelCredential = mock<ICredentialsResponse>({
 	type: 'openAiApi',
 });
 
+const { catalogItems, routeQuery, routerReplace } = vi.hoisted(function createRouteState() {
+	return {
+		catalogItems: { value: [] as Array<{ type: string; label: string; icon: string }> },
+		routeQuery: { value: {} as Record<string, string> },
+		routerReplace: vi.fn(),
+	};
+});
+
 vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 	useAgentIntegrationsCatalog: () => ({
-		catalog: { value: [] },
-		ensureLoaded: vi.fn().mockResolvedValue([]),
+		catalog: catalogItems,
+		ensureLoaded: vi.fn(async () => catalogItems.value),
 	}),
 }));
 
-const { fetchStatusSpy, disconnectSpy, loadRuntimeSpy, showErrorSpy } = vi.hoisted(
+vi.mock('vue-router', () => ({
+	useRoute: () => ({ query: routeQuery.value }),
+	useRouter: () => ({ replace: routerReplace }),
+}));
+
+const { fetchStatusSpy, disconnectSpy, loadRuntimeSpy, showErrorSpy, showMessageSpy } = vi.hoisted(
 	function createStatusSpy() {
 		return {
 			fetchStatusSpy: vi.fn().mockResolvedValue(undefined),
 			disconnectSpy: vi.fn(),
 			loadRuntimeSpy: vi.fn(),
 			showErrorSpy: vi.fn(),
+			showMessageSpy: vi.fn(),
 		};
 	},
 );
@@ -66,7 +81,7 @@ const configured = ref<Record<string, boolean>>({});
 const managedCredential = ref(false);
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: showErrorSpy }),
+	useToast: () => ({ showError: showErrorSpy, showMessage: showMessageSpy }),
 }));
 
 vi.mock('../channels/slack/useSlackChannelRuntime', async (importOriginal) => ({
@@ -158,6 +173,63 @@ describe('AgentTriggersSection', () => {
 			return { status: 'disconnected' };
 		});
 		n8nChatFlag.value = false;
+		catalogItems.value = [];
+		routeQuery.value = {};
+	});
+
+	it('opens the Teams settings when Microsoft returns from the file access consent', async () => {
+		catalogItems.value = [{ type: 'teams', label: 'Microsoft Teams', icon: 'teams' }];
+		routeQuery.value = { state: 'teams-file-access', admin_consent: 'True', tenant: 't-1' };
+
+		const wrapper = mountSection(undefined, true, { connectedTriggers: ['teams'] });
+		await flushPromises();
+
+		const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
+		expect(modal.attributes('data-view')).toBe('teams_edit');
+		expect(routerReplace).toHaveBeenCalledWith({ query: {} });
+		expect(fileAccessJustApproved.value).toBe(true);
+	});
+
+	it('opens the Teams settings before the agent config lists the channel', async () => {
+		catalogItems.value = [{ type: 'teams', label: 'Microsoft Teams', icon: 'teams' }];
+		routeQuery.value = { state: 'teams-file-access', admin_consent: 'True' };
+		configured.value = { teams: true };
+
+		const wrapper = mountSection(undefined, true, { connectedTriggers: [] });
+		await flushPromises();
+
+		const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
+		expect(modal.attributes('data-view')).toBe('teams_edit');
+	});
+
+	it('says so when the file access consent was not given', async () => {
+		catalogItems.value = [{ type: 'teams', label: 'Microsoft Teams', icon: 'teams' }];
+		routeQuery.value = {
+			state: 'teams-file-access',
+			error: 'access_denied',
+			error_description: 'AADSTS65004: User declined to consent',
+		};
+
+		const wrapper = mountSection(undefined, true, { connectedTriggers: ['teams'] });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').attributes('data-view')).toBe(
+			'teams_edit',
+		);
+		expect(fileAccessJustApproved.value).toBe(false);
+		expect(showMessageSpy).toHaveBeenCalledWith({
+			type: 'error',
+			title: 'agents.channels.teams.fileAccessConsentFailed',
+		});
+	});
+
+	it('opens nothing on an ordinary visit', async () => {
+		catalogItems.value = [{ type: 'teams', label: 'Microsoft Teams', icon: 'teams' }];
+
+		const wrapper = mountSection(undefined, true, { connectedTriggers: ['teams'] });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').exists()).toBe(false);
 	});
 
 	it.each(['credential-1', ''])(
@@ -178,6 +250,9 @@ describe('AgentTriggersSection', () => {
 				deleteExternalResource: undefined,
 			});
 			expect(wrapper.emitted('update:connected-triggers')).toEqual([[['telegram']]]);
+			expect(wrapper.emitted('trigger-removed')).toEqual([
+				[{ triggerType: 'slack', triggers: ['telegram'] }],
+			]);
 			expect(wrapper.emitted('agent-changed')).toEqual([[]]);
 			expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').exists()).toBe(false);
 		},
@@ -240,6 +315,7 @@ describe('AgentTriggersSection', () => {
 		await flushPromises();
 
 		expect(wrapper.emitted('update:connected-triggers')).toBeUndefined();
+		expect(wrapper.emitted('trigger-removed')).toBeUndefined();
 		expect(screen.getByRole('button', { name: 'slack' })).toBeEnabled();
 		expect(showErrorSpy).toHaveBeenCalledWith(error, 'agents.channels.modal.removeChannelError');
 
@@ -446,6 +522,23 @@ describe('AgentTriggersSection', () => {
 				view,
 			);
 			expect(wrapper.emitted('update:connected-triggers')).toBeUndefined();
+		});
+
+		it('reports n8n Chat as removed when the modal makes it unavailable', async () => {
+			n8nChatFlag.value = true;
+			const wrapper = mountSection(undefined, false, { connectedTriggers: ['n8n_chat', 'slack'] });
+			await flushPromises();
+			await findChip(wrapper, 'agents.channels.n8nChat.label')?.trigger('click');
+			await flushPromises();
+
+			wrapper
+				.findComponent({ name: 'AgentChannelModal' })
+				.vm.$emit('channel-disconnected', 'n8n_chat');
+
+			expect(wrapper.emitted('update:connected-triggers')).toEqual([[['slack']]]);
+			expect(wrapper.emitted('trigger-removed')).toEqual([
+				[{ triggerType: 'n8n_chat', triggers: ['slack'] }],
+			]);
 		});
 
 		it('shows the chip when n8n Chat is not a connected channel', async () => {

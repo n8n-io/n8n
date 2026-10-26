@@ -17,7 +17,7 @@ import {
 	prepareQuery,
 	simplifyOutput,
 } from './GenericFunctions';
-import { simplifyMemoryNotice } from './utils/descriptions';
+import { simplifyMemoryNotice, simplifyOutputShapeHint } from './utils/descriptions';
 import type {
 	GmailTriggerFilters,
 	GmailTriggerOptions,
@@ -155,8 +155,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				description:
 					'Whether to return a simplified version of the response instead of the raw data',
 				builderHint: {
-					propertyHint:
-						'Keep true by default. When true, returns lightweight metadata (id, threadId, labels, subject, from, to, snippet). When false, fetches and parses the full raw email (adds html, text, textAsHtml, headers, attachments), which uses much more memory and is a common cause of out-of-memory crashes. Only set false when the email body is actually required.',
+					propertyHint: simplifyOutputShapeHint,
 				},
 			},
 			simplifyMemoryNotice({ displayOptions: { show: { simple: [false] } } }),

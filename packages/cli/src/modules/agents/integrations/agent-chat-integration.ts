@@ -1,15 +1,20 @@
 import {
 	AgentIntegrationConfig,
 	type AgentIntegrationDisconnectWarning,
+	type AgentMessageAuthor,
+	type AgentMessageIntegrationOrigin,
 	type RichCardComponentType,
 } from '@n8n/api-types';
+import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Thread, Author, Message } from 'chat';
-import type { Logger } from 'n8n-workflow';
+import type { Attachment, Thread, Author, Message } from 'chat';
+import { UserError, type Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
 import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';
+import type { IntegrationErrorCode } from './integration-error-codes';
+import { normalizePlatformId } from './integration-helpers';
 import type { SlackThreadContext } from './platforms/slack/slack-bridge-behavior';
 import {
 	resolveIntegrationActionDefinitions,
@@ -26,6 +31,18 @@ import type {
 	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
+import type {
+	DecodedThread,
+	OriginDraft,
+	OriginInput,
+	OriginNames,
+} from './integration-origin-support';
+
+/**
+ * The platform refused an attachment download for a reason the user can fix.
+ * The message reaches the agent, so it can tell the user what to do.
+ */
+export class InboundAttachmentAccessError extends UserError {}
 
 /**
  * Channel identity, without the decrypted credential. Enough for checks that
@@ -35,6 +52,17 @@ export interface AgentChannelPreconditionContext {
 	agentId: string;
 	projectId: string;
 	credentialId: string;
+}
+
+/** Trusted source context of one incoming chat turn. */
+export interface EpisodicScopeContext {
+	agentId: string;
+	credentialId: string;
+	integrationType: string;
+	/** The platform conversation of the incoming message. */
+	threadId: string;
+	author: AgentMessageAuthor;
+	origin?: AgentMessageIntegrationOrigin;
 }
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
@@ -100,24 +128,37 @@ export interface PlatformAgentContext {
 
 export interface BridgeStatusHandle {
 	clearBeforeResponse(): Promise<void>;
+	/** Keep the status active while the reply is streamed or edited. */
+	keepDuringResponse?: boolean;
+	/** Restore the status when tools continue after a progress message. */
+	resumeAfterResponse?(): Promise<void>;
 }
 
 /**
- * Wrap a status handle so the underlying clear runs at most once, with every
- * caller awaiting the same in-flight clear. The bridge clears both from the
- * stream consumer (right before the first response) and from its cleanup
- * path, so this wrapper keeps platform handles free of dedupe concerns.
+ * Clear each active status once. Share the pending clear with cleanup callers.
+ * A resumed status needs its own clear before the next response or cleanup.
  */
 export function onceStatusHandle(
 	handle: BridgeStatusHandle | undefined,
 ): BridgeStatusHandle | undefined {
 	if (!handle) return undefined;
 	let clearing: Promise<void> | undefined;
+	const resume = handle.resumeAfterResponse?.bind(handle);
 	return {
+		keepDuringResponse: handle.keepDuringResponse,
 		clearBeforeResponse: async () => {
 			clearing ??= handle.clearBeforeResponse();
 			await clearing;
 		},
+		...(resume
+			? {
+					resumeAfterResponse: async () => {
+						await clearing;
+						clearing = undefined;
+						await resume();
+					},
+				}
+			: {}),
 	};
 }
 
@@ -330,11 +371,23 @@ export abstract class AgentChatIntegration {
 	readonly singleStreamedRunPerTurn: boolean = false;
 
 	/**
+	 * Most characters of reply text in one platform message. Longer replies
+	 * continue in a new message. `undefined` (default) means no limit.
+	 */
+	readonly maxMessageLength: number | undefined = undefined;
+
+	/**
 	 * True when this integration is an internal channel (e.g. the in-app n8n
 	 * chat) that must not appear in the public integrations catalog or the
 	 * add-trigger UI.
 	 */
 	readonly internal: boolean = false;
+
+	/**
+	 * True when an agent can hold only one connection of this type, because
+	 * inbound webhooks carry nothing that tells two connections apart.
+	 */
+	readonly singleConnectionPerAgent: boolean = false;
 
 	/**
 	 * True when this integration needs a platform Chat SDK instance (adapter +
@@ -365,6 +418,39 @@ export abstract class AgentChatIntegration {
 
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
+
+	/**
+	 * Builds the typed origin fields of an inbound message from the decoded adapter
+	 * thread ID and the message. Every channel must decide what it records. Return
+	 * `undefined` when the channel has no platform context to store. The result is
+	 * validated against `AgentMessageIntegrationOriginSchema`, so a new channel also
+	 * needs a variant there.
+	 */
+	abstract buildOriginDraft(
+		input: OriginInput,
+		decoded: DecodedThread,
+	): Promise<OriginDraft | undefined> | OriginDraft | undefined;
+
+	/**
+	 * Looks up the display names of a built origin. The bridge calls it after the
+	 * message is enqueued, so a slow lookup never delays the turn. A failed or slow
+	 * lookup may reject. Channels without names leave this undefined.
+	 */
+	fetchOriginNames?(
+		input: OriginInput,
+		origin: AgentMessageIntegrationOrigin,
+	): Promise<OriginNames | undefined>;
+
+	/**
+	 * Decides who owns the episodic memories of an incoming chat turn. Every
+	 * channel must decide. Build identifiers from trusted source context and
+	 * namespace them by agent, platform, and workspace or account. Return `null`
+	 * when the channel has no policy or the required identity is missing: the turn
+	 * then runs without episodic memory. There is no shared fallback.
+	 */
+	abstract resolveEpisodicScope(
+		context: EpisodicScopeContext,
+	): Promise<ResolvedEpisodicScope | null> | ResolvedEpisodicScope | null;
 
 	/** Validate platform settings before credentials or persistence are touched. */
 	validateConfig?(integration: AgentIntegrationConfig): void;
@@ -459,6 +545,24 @@ export abstract class AgentChatIntegration {
 	): Promise<void>;
 
 	/**
+	 * Converts a channel ID the model passes to `send_channel_message` into a
+	 * Chat SDK channel ID. By default a bare ID gets the `<platform>:` prefix.
+	 */
+	normalizeChannelId(channelId: string, _adapter: unknown): string {
+		return normalizePlatformId(this.type, channelId);
+	}
+
+	/**
+	 * Explains a failed send in words the agent can act on, for errors where the
+	 * platform message alone gives the model nothing to do next. Return
+	 * undefined to keep the default error.
+	 */
+	describeActionError?(
+		action: IntegrationAction,
+		error: unknown,
+	): { code: IntegrationErrorCode; message: string } | undefined;
+
+	/**
 	 * Optional hook run on EVERY main once the connection is live, regardless
 	 * of `skipExternalHooks`. Unlike `onAfterConnect`, this is for local runtime
 	 * state each main owns independently — e.g. Discord's leader-gated Gateway
@@ -535,6 +639,15 @@ export abstract class AgentChatIntegration {
 	prepareInboundText?(text: string, context: PlatformAgentContext): string;
 
 	/**
+	 * Files the webhook leaves out but the platform API has. They join the
+	 * message's own attachments.
+	 */
+	fetchInboundAttachments?(params: {
+		thread: Thread<unknown, unknown>;
+		message: Message<unknown>;
+	}): Promise<Attachment[]>;
+
+	/**
 	 * Optional per-message reply policy (see `ReplyExpectation`).
 	 * Default (no implementation): 'required'.
 	 */
@@ -553,6 +666,12 @@ export abstract class AgentChatIntegration {
 	 * the adapter's `editMessage()`.
 	 */
 	settleActionMessage?(params: SettleActionMessageParams): Promise<void>;
+
+	/** Filter inbound messages before attachments, session resets, or agent work. */
+	shouldHandleInboundMessage?(params: {
+		message: Message<unknown>;
+		integration: AgentIntegrationConfig;
+	}): boolean;
 
 	/**
 	 * Whether a new mention should subscribe the thread for follow-ups.
@@ -592,7 +711,15 @@ export abstract class AgentChatIntegration {
 		logger: Logger;
 		agentId: string;
 		slackThreadContext?: BridgeExecutionContext['slackThreadContext'];
+		/** The channel as stored, for platforms whose status depends on a setting. */
+		integration?: AgentIntegrationConfig;
 	}): Promise<BridgeResumeExecutionContext>;
+
+	/**
+	 * Whether the bridge downloads and stores the files in an inbound message.
+	 * Without it, every platform downloads them.
+	 */
+	shouldDownloadAttachments?(integration: AgentIntegrationConfig): boolean;
 
 	/**
 	 * Execute a context query that this platform owns (e.g. Linear `get_issue`,

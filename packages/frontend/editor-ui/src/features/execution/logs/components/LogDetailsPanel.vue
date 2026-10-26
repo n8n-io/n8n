@@ -20,7 +20,11 @@ import {
 	getSubtreeTotalConsumedTokens,
 	isPlaceholderLog,
 } from '@/features/execution/logs/logs.utils';
-import { LOG_DETAILS_PANEL_STATE } from '@/features/execution/logs/logs.constants';
+import {
+	LOG_DETAILS_PANEL_STATE,
+	MIN_IO_PANEL_WIDTH,
+} from '@/features/execution/logs/logs.constants';
+import { getRespondingModelName } from '@/features/ndv/runData/components/ai/utils';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
@@ -37,7 +41,6 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useMessageAgentSessionLink } from '@/features/agents/composables/useMessageAgentSessionLink';
-const MIN_IO_PANEL_WIDTH = 200;
 
 const {
 	isOpen,
@@ -74,7 +77,15 @@ const nodeTypeStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const uiStore = useUIStore();
-const { isRedacted, canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const {
+	isRedacted,
+	canReveal,
+	isDynamicCredentials,
+	isSubWorkflowRedaction,
+	revealData,
+	credentialToShare,
+	openCredentialSharing,
+} = useExecutionRedaction();
 
 const nodeEntry = computed(() => (isNodeLog(logEntry) ? logEntry : undefined));
 const groupEntry = computed(() => (isGroupLog(logEntry) ? logEntry : undefined));
@@ -100,6 +111,13 @@ watch(
 const groupInput = computed(() => groupEntry.value?.boundaries.inputs[selectedInputIndex.value]);
 const groupOutput = computed(() => groupEntry.value?.boundaries.outputs[selectedOutputIndex.value]);
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry, false));
+const respondingModel = computed(() =>
+	getRespondingModelName(
+		Object.values(nodeEntry.value?.runData?.data ?? {})
+			.flat()
+			.flat(),
+	),
+);
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
 const { link: messageAgentSessionLink } = useMessageAgentSessionLink(computed(() => logEntry));
 const container = useTemplateRef<HTMLElement>('container');
@@ -157,6 +175,7 @@ function handleResizeEnd() {
 						:consumed-tokens="consumedTokens"
 						:start-time="nodeEntry.runData.startTime"
 						:time-took="nodeEntry.runData.executionTime"
+						:responding-model="respondingModel"
 					/>
 				</div>
 			</template>
@@ -253,7 +272,10 @@ function handleResizeEnd() {
 					<RedactedDataState
 						:title="locale.baseText('ndv.output.redacted.title')"
 						:is-dynamic-credentials="isDynamicCredentials"
+						:is-sub-workflow-redaction="isSubWorkflowRedaction"
 						:can-reveal="canReveal"
+						:credential-to-share="credentialToShare"
+						@share-credential="openCredentialSharing"
 						wide
 						@open-settings="uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY)"
 						@reveal="revealData"
@@ -340,7 +362,10 @@ function handleResizeEnd() {
 					<RedactedDataState
 						:title="locale.baseText('ndv.output.redacted.title')"
 						:is-dynamic-credentials="isDynamicCredentials"
+						:is-sub-workflow-redaction="isSubWorkflowRedaction"
 						:can-reveal="canReveal"
+						:credential-to-share="credentialToShare"
+						@share-credential="openCredentialSharing"
 						wide
 						@open-settings="uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY)"
 						@reveal="revealData"

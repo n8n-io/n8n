@@ -25,11 +25,32 @@ export const importPackageRequestFieldDocs = {
 			'creates empty credential placeholders in the target project for missing references. ' +
 			'`create-with-values` also creates them, seeded from the expression data bundled in the ' +
 			'package (see the export option `credentialExportPolicy`); a reference the package ' +
-			'carries no data for falls back to an empty stub. Seeded credentials are listed under ' +
-			'`credentials.seeded` and only allow workflow publishing when the package confirms ' +
-			'that all source data was retained. Partial or unverified data blocks publishing ' +
-			'with `stub-credential`. ' +
+			'carries no data for falls back to an empty stub. A credential created with package data ' +
+			'is listed under `credentials.seeded` when the package confirms that all source data ' +
+			'was retained. ' +
+			'Otherwise, also when the package has no completeness flag, it is listed under ' +
+			'`credentials.incomplete` and blocks workflow publishing with `incomplete-credential`. ' +
+			'`create-with-values` requires the `credential:create` scope when the import creates ' +
+			'a credential. ' +
 			'`must-preexist` requires every referenced credential to already exist.',
+	},
+	credentialConflictPolicy: {
+		description:
+			'What to do when a credential reference matches an existing credential and the package ' +
+			'has different values for it. `keep-existing` (default) never changes a matched ' +
+			'credential. `overwrite` writes the package name and the expression values from the ' +
+			'package to a matched credential that a project of the import owns. It keeps all other ' +
+			'stored values: secrets, other fields, the OAuth connection, and array fields. It never ' +
+			'changes a global credential that a different project owns, or a managed, end-user ' +
+			'(resolvable) or instance-level credential. The import lists the source ids of changed ' +
+			'credentials under `credentials.updated`. An API key needs the `credential:update` scope ' +
+			'when the import changes a credential. `fail` rejects the import with a 409 ' +
+			'(`credential-conflict`) when `overwrite` would change a matched credential. Every policy ' +
+			'leaves a matched credential alone when the package values are the same as the stored ' +
+			'values. `overwrite` and `fail` compare stored values, so they need the ' +
+			'`credential:update` permission on each matched credential that a project of the import ' +
+			'owns, also when it would not change. Without it, the import is rejected with ' +
+			'`credential-update-forbidden`.',
 	},
 	bindings: {
 		type: 'string',

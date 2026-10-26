@@ -118,7 +118,14 @@ const node = computed(() => {
 
 const { hasNodeRun, workflowExecution, workflowRunData, nodeRunData } = useExecutionData({ node });
 
-const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const {
+	canReveal,
+	isDynamicCredentials,
+	isSubWorkflowRedaction,
+	revealData,
+	credentialToShare,
+	openCredentialSharing,
+} = useExecutionRedaction();
 
 const isTriggerNode = computed(() => {
 	return !!node.value && nodeTypesStore.isTriggerNode(node.value.type);
@@ -464,7 +471,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<RedactedDataState
 				:title="i18n.baseText('ndv.output.redacted.title')"
 				:is-dynamic-credentials="isDynamicCredentials"
+				:is-sub-workflow-redaction="isSubWorkflowRedaction"
 				:can-reveal="canReveal"
+				:credential-to-share="credentialToShare"
+				@share-credential="openCredentialSharing"
 				@open-settings="openWorkflowSettings"
 				@reveal="revealData"
 			/>
@@ -474,7 +484,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<RedactedDataState
 				:title="i18n.baseText('ndv.output.redacted.title')"
 				:is-dynamic-credentials="isDynamicCredentials"
+				:is-sub-workflow-redaction="isSubWorkflowRedaction"
 				:can-reveal="canReveal"
+				:credential-to-share="credentialToShare"
+				@share-credential="openCredentialSharing"
 				@open-settings="openWorkflowSettings"
 				@reveal="revealData"
 			/>

@@ -185,7 +185,7 @@ describe('transcript rendering', () => {
 		expect(html).toContain('<span class="transcript-inline-arg">workflow-builder</span>');
 	});
 
-	it('surfaces a skipped ask-user answer so it is not mistaken for unanswered', () => {
+	it('surfaces a skipped workflow_builder_ask_user answer so it is not mistaken for unanswered', () => {
 		const result: WorkflowTestCaseResult = {
 			testCase: TEST_CASE,
 			workflowBuildSuccess: true,
@@ -212,8 +212,42 @@ describe('transcript rendering', () => {
 		};
 		const html = generateWorkflowReport([result]);
 		expect(html).toContain('👤 (skipped)');
-		expect(html).toContain('ask-user (with answers)');
+		expect(html).toContain('workflow_builder_ask_user (with answers)');
 		expect(html).toContain('<code>single</code>');
+	});
+});
+
+describe('builder trace summary', () => {
+	function traceSummary(html: string): Record<string, unknown[]> {
+		const match = html.match(
+			/<summary>Builder trace summary<\/summary><pre class="json-block"><code>([\s\S]*?)<\/code>/,
+		);
+		const json = match![1]
+			.replace(/&quot;/g, '"')
+			.replace(/&#39;/g, "'")
+			.replace(/&lt;/g, '<')
+			.replace(/&gt;/g, '>')
+			.replace(/&amp;/g, '&');
+		return JSON.parse(json) as Record<string, unknown[]>;
+	}
+
+	it('counts calls recorded under former tool names', () => {
+		const result: WorkflowTestCaseResult = {
+			...resultWith(undefined),
+			buildTrace: {
+				finalText: '',
+				agentActivities: [],
+				toolCalls: [
+					{ toolCallId: 't1', toolName: 'nodes', args: { action: 'search' }, durationMs: 1 },
+					{ toolCallId: 't2', toolName: 'build-workflow', args: {}, durationMs: 1 },
+				],
+			},
+		};
+
+		const summary = traceSummary(generateWorkflowReport([result]));
+
+		expect(summary.nodeResearchCalls).toEqual([{ action: 'search' }]);
+		expect(summary.workflowWriteCalls).toHaveLength(1);
 	});
 });
 

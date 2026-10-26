@@ -13,13 +13,19 @@ import {
 	parseWaitSuspendPayload,
 } from './n8nChatInteraction';
 
-import { CHAT_MESSAGE_STATUS, INTERACTION_EXTENSION_TOOL_NAME, TOOL_CALL_STATE } from './constants';
+import {
+	CHAT_MESSAGE_ROLE,
+	CHAT_MESSAGE_STATUS,
+	INTERACTION_EXTENSION_TOOL_NAME,
+	TOOL_CALL_STATE,
+} from './constants';
 import type { ToolCallState } from './constants';
 import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
 import type { AgentsChatInteractionExtension } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
 import { isPolicyRefusedToolOutput } from './toolPolicyRefusal';
 import type {
+	AgentsChatHostEvent,
 	ApprovalInput,
 	ChatMessage,
 	ChatMessageAttachment,
@@ -252,7 +258,11 @@ export function convertDbMessages(
 		if (!msg.role || !Array.isArray(msg.content)) continue;
 
 		const role: ChatMessage['role'] | null =
-			msg.role === 'user' ? 'user' : msg.role === 'assistant' ? 'assistant' : null;
+			msg.role === CHAT_MESSAGE_ROLE.USER
+				? 'user'
+				: msg.role === CHAT_MESSAGE_ROLE.ASSISTANT
+					? 'assistant'
+					: null;
 		if (role === null) continue;
 
 		let text = '';
@@ -262,6 +272,7 @@ export function convertDbMessages(
 		const renderParts: ChatMessageRenderPart[] = [];
 		const interactives: InteractivePayload[] = [];
 		const attachments: ChatMessageAttachment[] = [];
+		const hostEvents: AgentsChatHostEvent[] = [];
 		let status: ChatMessage['status'];
 		const failed = msg.executionStatus === 'error' || msg.executionStatus === 'interrupted';
 		if (failed) status = CHAT_MESSAGE_STATUS.ERROR;
@@ -277,6 +288,13 @@ export function convertDbMessages(
 					fileName: part.fileName ?? 'attachment',
 					mimeType: part.mimeType ?? 'application/octet-stream',
 					sizeBytes: part.sizeBytes,
+				});
+			} else if (part.type === 'host-event' && typeof part.name === 'string' && part.name) {
+				hostEvents.push({
+					id: `${msg.id}:host-event:${partIndex}`,
+					name: part.name,
+					...(typeof part.key === 'string' && part.key ? { key: part.key } : {}),
+					payload: part.payload ?? null,
 				});
 			} else if (part.type === 'reasoning' && part.text) {
 				thinking += part.text;
@@ -353,9 +371,10 @@ export function convertDbMessages(
 			...(thinkingSegments.length > 0 && { thinkingSegments }),
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 			...(attachments.length > 0 && { attachments }),
+			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && hostEvents.length > 0 && { hostEvents }),
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),
-			...(role === 'assistant' && msg.backgroundTaskSignal
+			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && msg.backgroundTaskSignal
 				? { backgroundJobSignal: msg.backgroundTaskSignal }
 				: {}),
 			...(Number.isFinite(createdAt) && { createdAt }),

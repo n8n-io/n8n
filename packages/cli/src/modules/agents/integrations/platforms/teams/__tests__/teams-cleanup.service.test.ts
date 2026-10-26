@@ -24,7 +24,7 @@ describe('TeamsCleanupService', () => {
 		await expect(service.describeLeftovers(ctx)).resolves.toEqual({
 			integrationType: 'teams',
 			code: 'resources_not_deleted',
-			action: { type: 'open_url', url: expect.stringContaining('entra.microsoft.com') },
+			action: { type: 'open_url', url: expect.stringContaining('admin.teams.microsoft.com') },
 			details: { appId: 'app-1' },
 		});
 	});

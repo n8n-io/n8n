@@ -3,6 +3,7 @@ import type {
 	CreateTeamsManagerCredentialResponse,
 	TeamsAgentSetupState,
 	TeamsCredentialCheck,
+	TeamsFileAccessCheck,
 	TeamsAzureSubscription,
 	TeamsCatalogState,
 	TeamsManagedSetupState,
@@ -40,6 +41,18 @@ export const checkTeamsCredential = async (
 		context,
 		'POST',
 		`${integrationPath(projectId, agentId)}/check/${credentialId}`,
+	);
+
+export const checkTeamsFileAccess = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	credentialId: string,
+): Promise<TeamsFileAccessCheck> =>
+	await makeRestApiRequest(
+		context,
+		'GET',
+		`${integrationPath(projectId, agentId)}/file-access/${credentialId}`,
 	);
 
 /**

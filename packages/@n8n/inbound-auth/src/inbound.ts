@@ -15,6 +15,16 @@ export function inboundFrom(resource: ProtectedResource, request: Inbound['reque
 	};
 }
 
+/** The request as the pipeline wants it, from an Express-shaped request. */
+export function inboundRequestOf(req: {
+	method: string;
+	originalUrl: string;
+	headers: Inbound['request']['headers'];
+	ip?: string;
+}): Inbound['request'] {
+	return { method: req.method, url: req.originalUrl, headers: req.headers, ip: req.ip ?? '' };
+}
+
 // RFC 9110: the scheme is case-insensitive; the token is the rest, without surrounding blanks.
 const BEARER = /^bearer\s+(\S+)\s*$/i;
 
@@ -30,4 +40,12 @@ export function extractBearer(inbound: Inbound): Result<Extracted> {
 	if (token === undefined) return { ok: false, reason: 'malformed-credential' };
 
 	return { ok: true, value: { ...inbound, credential: { kind: 'bearer', token } } };
+}
+
+/**
+ * Routing, not verification: a token from an OAuth2 trusted source names its issuer with an
+ * http(s) URL. The instance's own issuer is its base URL, which is http on a local instance.
+ */
+export function isUrlIssuer(iss: unknown): iss is string {
+	return typeof iss === 'string' && URL.canParse(iss) && /^https?:$/.test(new URL(iss).protocol);
 }

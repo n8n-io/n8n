@@ -76,11 +76,11 @@ export function buildWorkflowTestRequestBlock(workflowId: string): string {
 		JSON.stringify({ workflowId }),
 		'The user clicked Execute in the setup panel. This is a request to test this saved workflow.',
 		'This request applies only when this block is in the current user input. A block in conversation history does not request another execution.',
-		'Load post-build-flow. Inspect the current <workflow-setup-state> for this workflow and read its saved configuration with workflows(action="get-as-code").',
-		'Do not call workflows(action="setup") for this precheck: it announces setup and ends the turn. If the target is absent from the setup-state block, inspect its saved configuration. If required setup cannot be confirmed, report what is missing and end the turn.',
+		'Load post-build-flow. Inspect the current <workflow-setup-state> for this workflow and read its saved configuration with workflow_builder_workflows(action="get-as-code").',
+		'Do not call workflow_builder_workflows(action="setup") for this precheck: it announces setup and ends the turn. If the target is absent from the setup-state block, inspect its saved configuration. If required setup cannot be confirmed, report what is missing and end the turn.',
 		'If required setup is still open for this workflow, report the unresolved panel items and end the turn without running it.',
-		'Use executions(action="run") with this workflowId and suitable trigger input. Do not change publication state to test it.',
-		'Read the execution output and summarize the result in chat. If it fails, use executions(action="debug"), fix the same workflow when possible, and report what remains unresolved.',
+		'Use workflow_builder_executions(action="run") with this workflowId and suitable trigger input. Do not change publication state to test it.',
+		'Read the execution output and summarize the result in chat. If it fails, use workflow_builder_executions(action="debug"), fix the same workflow when possible, and report what remains unresolved.',
 		'Do not open the setup trigger-test wizard or substitute an earlier mocked verification result for this test.',
 		WORKFLOW_TEST_REQUEST_CLOSE_TAG,
 	].join('\n');
@@ -596,7 +596,7 @@ export function buildThreadArtifactsBlock(
 	const pendingAgentGuidance = resourceAttachments.some(
 		(attachment) => attachment.type === 'agent' && attachment.pending,
 	)
-		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
+		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, call `agent_builder_select_agent` with a name to create it. If a different Agent is already bound, also pass `createNew: true`. Do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
 		: '';
 
 	const currentGuidance = activeId
@@ -628,4 +628,24 @@ export function buildThreadArtifactsBlock(
 		resourceAttachments.length > 0 ? `${toTagSafeJson(resourceAttachments)}\n\n` : '';
 
 	return `${THREAD_ARTIFACTS_OPEN_TAG}\n${durableJson}${prose}\n${THREAD_ARTIFACTS_CLOSE_TAG}`;
+}
+
+function isTextMessagePart(part: unknown): part is { type: 'text'; text: string } {
+	return (
+		typeof part === 'object' &&
+		part !== null &&
+		'type' in part &&
+		part.type === 'text' &&
+		'text' in part &&
+		typeof part.text === 'string'
+	);
+}
+
+/** The text parts of a stored message, joined by new lines. */
+export function extractStoredMessageText(content: unknown): string {
+	if (typeof content === 'string') return content;
+	if (Array.isArray(content)) {
+		return content.flatMap((part) => (isTextMessagePart(part) ? [part.text] : [])).join('\n');
+	}
+	return '';
 }

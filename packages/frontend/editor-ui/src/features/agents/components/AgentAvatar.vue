@@ -66,8 +66,7 @@ const accessibleLabel = computed(() =>
 		role="img"
 	>
 		<N8nIcon :class="$style.icon" :icon="icon" />
-		<span v-if="tone === 'warn'" :class="$style.badge" aria-hidden="true">!</span>
-		<span v-else-if="kind === 'strong'" :class="$style.sparkle" aria-hidden="true">✦</span>
+		<span v-if="kind === 'strong'" :class="$style.sparkle" aria-hidden="true">✦</span>
 	</span>
 </template>
 
@@ -143,23 +142,6 @@ const accessibleLabel = computed(() =>
 .neutral {
 	--fill-color: var(--background--subtle);
 	--ring-color: var(--border-color);
-}
-
-.badge {
-	position: absolute;
-	top: calc(var(--avatar-size) * -0.1);
-	right: calc(var(--avatar-size) * -0.1);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: calc(var(--avatar-size) * 0.3);
-	height: calc(var(--avatar-size) * 0.3);
-	border-radius: var(--radius--full);
-	background: var(--color--warning);
-	color: var(--color--warning--tint-2);
-	font-size: calc(var(--avatar-size) * 0.28);
-	line-height: 1;
-	font-weight: var(--font-weight--bold);
 }
 
 .sparkle {

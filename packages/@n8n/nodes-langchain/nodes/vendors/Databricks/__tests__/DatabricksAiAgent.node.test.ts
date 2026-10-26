@@ -26,4 +26,12 @@ describe('DatabricksAiAgent', () => {
 		const values = databricksProps[0].options?.map((o) => ('value' in o ? o.value : undefined));
 		expect(values).not.toContain('guardrails');
 	});
+
+	it('is visible in the node picker and links its docs page', () => {
+		const { description } = new DatabricksAiAgent();
+		expect(description.hidden).toBeUndefined();
+		expect(description.codex?.resources?.primaryDocumentation?.[0]?.url).toBe(
+			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.databricksaiagent/',
+		);
+	});
 });

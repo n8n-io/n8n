@@ -45,10 +45,11 @@ describe('credential type availability policy instance controller RBAC', () => {
 		expect(response.statusCode).toBe(403);
 	});
 
-	test('GET /credential-type-policies/instance rejects a member with 403', async () => {
-		const response = await testServer
-			.authAgentFor(member)
-			.get('/credential-type-policies/instance');
+	test.each([
+		'/credential-type-policies/instance',
+		'/credential-type-policies/scopes/does-not-exist/attachments',
+	])('GET %s rejects a member with 403', async (path) => {
+		const response = await testServer.authAgentFor(member).get(path);
 
 		expect(response.statusCode).toBe(403);
 	});
@@ -71,16 +72,65 @@ describe('credential type availability policy instance controller license gating
 		testServer.license.enable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 	});
 
-	test('rejects an owner with 403 when the license feature is disabled', async () => {
+	test.each([
+		'/credential-type-policies/instance',
+		'/credential-type-policies/scopes/does-not-exist/attachments',
+	])('GET %s rejects an owner with 403 when the license feature is disabled', async (path) => {
 		testServer.license.disable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 
-		const response = await testServer.authAgentFor(owner).get('/credential-type-policies/instance');
+		const response = await testServer.authAgentFor(owner).get(path);
 
 		expect(response.statusCode).toBe(403);
 	});
 });
 
 describe('credential type availability policy instance controller admin happy path', () => {
+	test('GET attachments returns rules and a version that PUT accepts without a read audit event', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const rule = { id: 'r1', action: 'deny', selector: { kind: 'name', value: 'slackApi' } };
+		const instance = await agent.put('/credential-type-policies/instance').send({
+			rules: [rule],
+			defaultAction: 'allow',
+			version: 0,
+		});
+		expect(instance.statusCode).toBe(200);
+		const path = `/credential-type-policies/scopes/${instance.body.data.scopeId}/attachments`;
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		const read = await agent.get(path);
+
+		expect(read.statusCode).toBe(200);
+		expect(read.body.data).toEqual({
+			attachments: [{ policyId: expect.any(String), rules: [rule], priority: 0, isFloor: false }],
+			version: instance.body.data.version,
+		});
+		expect(emitSpy).not.toHaveBeenCalled();
+		const updated = await agent
+			.put(path)
+			.send({ attachments: [], version: read.body.data.version });
+		expect(updated.statusCode).toBe(200);
+		expect(updated.body.data).toEqual({ attachments: [], version: read.body.data.version + 1 });
+		const empty = await agent.get(path);
+		expect(empty.body.data).toEqual(updated.body.data);
+	});
+
+	test('GET attachments returns 404 for an unknown scope and a node type scope', async () => {
+		const agent = testServer.authAgentFor(owner);
+		expect(
+			(await agent.get('/credential-type-policies/scopes/does-not-exist/attachments')).statusCode,
+		).toBe(404);
+		const other = await agent.put('/node-type-policies/instance').send({
+			rules: [],
+			defaultAction: 'allow',
+			version: 0,
+		});
+		expect(other.statusCode).toBe(200);
+		expect(
+			(await agent.get(`/credential-type-policies/scopes/${other.body.data.scopeId}/attachments`))
+				.statusCode,
+		).toBe(404);
+	});
+
 	test('PUT /instance persists and fires an audit event carrying the credential-types kind', async () => {
 		const eventService = Container.get(EventService);
 		const emitSpy = vi.spyOn(eventService, 'emit');
@@ -244,7 +294,10 @@ describe('credential type availability policy instance controller admin happy pa
 		const response = await testServer
 			.authAgentFor(owner)
 			.put(`/credential-type-policies/scopes/${scopeId}/attachments`)
-			.send({ attachments: [{ policyId, priority: 0, isFloor: false }] });
+			.send({
+				attachments: [{ policyId, priority: 0, isFloor: false }],
+				version: instancePut.body.data.version,
+			});
 
 		expect(response.statusCode).toBe(200);
 		expect(emitSpy).toHaveBeenCalledWith(
@@ -269,7 +322,7 @@ describe('credential type availability policy instance controller admin happy pa
 		const response = await testServer
 			.authAgentFor(owner)
 			.put(`/credential-type-policies/scopes/${nodeScopeId}/attachments`)
-			.send({ attachments: [] });
+			.send({ attachments: [], version: nodeInstancePut.body.data.version });
 
 		expect(response.statusCode).toBe(404);
 

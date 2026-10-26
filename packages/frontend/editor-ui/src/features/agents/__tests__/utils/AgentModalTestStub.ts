@@ -19,6 +19,14 @@ export const AgentModalTestStub = defineComponent({
 		disableOutsidePointerEvents: { type: Boolean, default: true },
 	},
 	emits: ['update:open', 'update:title', 'back', 'interactOutside'],
+	methods: {
+		/** Mirrors `AgentModal.focusTitle`. */
+		focusTitle() {
+			(this.$el as HTMLElement | null)
+				?.querySelector<HTMLInputElement>('[data-testid="agent-modal-title-input"]')
+				?.focus();
+		},
+	},
 	template: `
 		<section
 			v-if="open"

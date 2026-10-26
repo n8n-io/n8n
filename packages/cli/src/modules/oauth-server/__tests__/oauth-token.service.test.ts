@@ -11,7 +11,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { KeyObject } from 'node:crypto';
 import { createHmac, createPublicKey, generateKeyPairSync } from 'node:crypto';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService, type UrlService } from '@n8n/backend-services';
 
 import type { AccessToken } from '../database/entities/oauth-access-token.entity';
 import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
@@ -30,8 +30,7 @@ import {
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import type { UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const LEGACY_HMAC_SECRET = 'legacy-hmac-secret';
@@ -128,7 +127,7 @@ describe('OAuthTokenService', () => {
 			expect(decoded.sub).toBe(userId);
 			expect(decoded.aud).toBe(TEST_RESOURCE_URL);
 			expect(decoded.client_id).toBe(clientId);
-			expect(decoded.meta.isOAuth).toBe(true);
+			expect(decoded.meta).toBeUndefined();
 			expect(decoded.jti).toBeDefined();
 			expect(decoded.iat).toBeDefined();
 			expect(decoded.exp).toBeDefined();
@@ -1025,7 +1024,6 @@ describe('OAuthTokenService', () => {
 				iat: now,
 				exp: now + OAUTH_ACCESS_TOKEN_TTL_SECONDS,
 				scope: '',
-				meta: { isOAuth: true },
 			};
 		};
 

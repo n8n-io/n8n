@@ -183,7 +183,7 @@ const cardBreadcrumbs = computed<PathItem[]>(() => {
 						projectId: props.data.homeProject?.id,
 						folderId: props.data.parentFolder.id,
 					},
-				}).href,
+				}).fullPath,
 			},
 		];
 	}
@@ -822,6 +822,7 @@ const tags = computed(
 					:actions="actions"
 					placement="bottom-end"
 					theme="dark"
+					icon-size="medium"
 					data-test-id="workflow-card-actions"
 					@action="onAction"
 				/>

@@ -57,15 +57,15 @@ export function credentialMissingModeUsesPackageData(mode: CredentialMissingMode
 	return mode === 'create-with-values';
 }
 
-/** Package workflow ids that should not be published because they use stubbed credentials. */
+/** Package workflow ids that should not be published because they use one of the given credentials. */
 export function workflowsBlockedFromPublish(
 	requirements: PackageCredentialRequirement[] | undefined,
-	stubbedSourceIds: ReadonlySet<string>,
+	sourceIds: ReadonlySet<string>,
 ): Set<string> {
 	const blocked = new Set<string>();
 
 	for (const requirement of requirements ?? []) {
-		if (!stubbedSourceIds.has(requirement.id)) continue;
+		if (!sourceIds.has(requirement.id)) continue;
 
 		for (const sourceWorkflowId of getWorkflowConsumerIds(requirement)) {
 			blocked.add(sourceWorkflowId);

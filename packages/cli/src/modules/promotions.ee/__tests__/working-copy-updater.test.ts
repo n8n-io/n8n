@@ -144,7 +144,7 @@ describe('WorkingCopyUpdater', () => {
 
 	beforeEach(async () => {
 		root = await mkdtemp(path.join(tmpdir(), 'n8n-working-copy-'));
-		exportFolder = path.join(root, 'repository', 'n8n-export');
+		exportFolder = path.join(root, 'repository', 'n8n');
 		stagingFolder = path.join(root, 'staging');
 	});
 
@@ -903,7 +903,7 @@ describe('WorkingCopyUpdater', () => {
 			// e.g. a container volume mount or a symlinked home on the path.
 			const realHome = path.join(root, 'real-home');
 			const linkedHome = path.join(root, 'linked-home');
-			const linkedExport = path.join(linkedHome, 'repository', 'n8n-export');
+			const linkedExport = path.join(linkedHome, 'repository', 'n8n');
 			await mkdir(path.join(realHome, 'repository'), { recursive: true });
 			await symlink(realHome, linkedHome);
 			const staging = makeManifest({ projects: [alpha], workflows: [wf('w1')] });
@@ -922,7 +922,7 @@ describe('WorkingCopyUpdater', () => {
 
 			expect(
 				await readFile(
-					path.join(realHome, 'repository/n8n-export/projects/alpha/workflows/w1/workflow.json'),
+					path.join(realHome, 'repository/n8n/projects/alpha/workflows/w1/workflow.json'),
 					'utf-8',
 				),
 			).toBe(workflowFile('w1'));
@@ -942,13 +942,11 @@ describe('WorkingCopyUpdater', () => {
 
 			await overlaySelection(staging, selection({ workflowIds: ['w1'] }));
 
-			const tempCall = vi
-				.mocked(mkdtemp)
-				.mock.calls.find(([p]) => String(p).includes('n8n-export-'));
+			const tempCall = vi.mocked(mkdtemp).mock.calls.find(([p]) => String(p).includes('n8n-'));
 			expect(tempCall).toBeDefined();
 			// temp dir sits above the git clone (root), not inside it (root/repository)
 			expect(path.dirname(String(tempCall![0]))).toBe(root);
-			expect(await readdir(path.dirname(exportFolder))).toEqual(['n8n-export']);
+			expect(await readdir(path.dirname(exportFolder))).toEqual(['n8n']);
 		});
 
 		it('removes the old directory of a renamed credential a selected workflow still uses', async () => {
@@ -1273,7 +1271,7 @@ describe('WorkingCopyUpdater', () => {
 				?.at(1);
 			expect(aside).toEqual(expect.any(String));
 			expect(path.dirname(String(aside))).toBe(path.dirname(path.dirname(exportFolder)));
-			expect(path.basename(String(aside))).toMatch(/^\.n8n-export-bak-[0-9a-f-]{36}$/);
+			expect(path.basename(String(aside))).toMatch(/^\.n8n-bak-[0-9a-f-]{36}$/);
 			expect(aside).not.toBe(`${exportFolder}.bak`);
 		});
 	});

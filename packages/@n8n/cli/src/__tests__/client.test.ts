@@ -50,25 +50,24 @@ describe('N8nClient packages', () => {
 	});
 
 	describe('promotions', () => {
-		it('promotes and applies on the connection, not on one of its directions', async () => {
+		it('promotes and applies through the environment routes', async () => {
 			const promoted = {
-				connectionId: 'conn-1',
-				configId: 'cfg-1',
+				environmentId: 'env-1',
 				counts: { workflows: 2, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
 				git: { commitSha: 'abc123', branchName: 'main' },
 			};
 			fetchMock.mockResolvedValue(jsonResponse(200, promoted));
 
 			await expect(
-				client.promotePackage('conn-1', { commitMessage: 'promote projects', force: true }),
+				client.promotePackage('env-1', { commitMessage: 'promote projects', force: true }),
 			).resolves.toEqual(promoted);
 
-			fetchMock.mockResolvedValue(jsonResponse(200, { connectionId: 'conn-1' }));
-			await client.applyPackage('conn-1');
+			fetchMock.mockResolvedValue(jsonResponse(200, { environmentId: 'env-1' }));
+			await client.applyPackage('env-1');
 
 			expect(requestLines(fetchMock)).toEqual([
-				'POST https://n8n.example.com/api/v1/promotions/connections/conn-1/promote',
-				'POST https://n8n.example.com/api/v1/promotions/connections/conn-1/apply',
+				'POST https://n8n.example.com/api/v1/promotions/environments/env-1/promote',
+				'POST https://n8n.example.com/api/v1/promotions/environments/env-1/apply',
 			]);
 
 			const [, promoteInit] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -79,7 +78,7 @@ describe('N8nClient packages', () => {
 		});
 
 		const expectedSource = {
-			configId: 'cfg-2',
+			environmentId: 'env-1',
 			branchName: 'release',
 			commitSha: 'a'.repeat(40),
 		};
@@ -87,25 +86,25 @@ describe('N8nClient packages', () => {
 		it.each([
 			{
 				title: 'posts apply with no body when no expected source is given',
-				send: async () => await client.applyPackage('conn-1'),
+				send: async () => await client.applyPackage('env-1'),
 				path: 'apply',
 				body: undefined,
 			},
 			{
 				title: 'posts apply with the expected source in the body',
-				send: async () => await client.applyPackage('conn-1', expectedSource),
+				send: async () => await client.applyPackage('env-1', expectedSource),
 				path: 'apply',
 				body: { expectedSource },
 			},
 			{
 				title: 'posts continue to apply/continue with the expected source in the body',
-				send: async () => await client.continueApplyPackage('conn-1', expectedSource),
+				send: async () => await client.continueApplyPackage('env-1', expectedSource),
 				path: 'apply/continue',
 				body: { expectedSource },
 			},
 			{
 				title: 'posts continue with the confirmation of destructive data table changes',
-				send: async () => await client.continueApplyPackage('conn-1', expectedSource, true),
+				send: async () => await client.continueApplyPackage('env-1', expectedSource, true),
 				path: 'apply/continue',
 				body: { expectedSource, confirmDestructiveChanges: true },
 			},
@@ -115,7 +114,7 @@ describe('N8nClient packages', () => {
 			await send();
 
 			expect(requestLines(fetchMock)).toEqual([
-				`POST https://n8n.example.com/api/v1/promotions/connections/conn-1/${path}`,
+				`POST https://n8n.example.com/api/v1/promotions/environments/env-1/${path}`,
 			]);
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(typeof init.body === 'string' ? JSON.parse(init.body) : init.body).toEqual(body);
@@ -187,51 +186,74 @@ describe('N8nClient packages', () => {
 			});
 		});
 
-		it('clones and disconnects one direction of a connection', async () => {
+		const settings = { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true };
+
+		it.each([
+			{
+				send: async () => await client.getPromotionEnvironment('env-1'),
+				request: 'GET https://n8n.example.com/api/v1/promotions/environments/env-1',
+				body: undefined,
+			},
+			{
+				send: async () => await client.createPromotionEnvironment({ name: 'Production' }),
+				request: 'POST https://n8n.example.com/api/v1/promotions/environments',
+				body: { name: 'Production' },
+			},
+			{
+				send: async () => await client.updatePromotionEnvironment('env-1', { settings }),
+				request: 'PUT https://n8n.example.com/api/v1/promotions/environments/env-1',
+				body: { settings },
+			},
+			{
+				send: async () => await client.deletePromotionEnvironment('env-1'),
+				request: 'DELETE https://n8n.example.com/api/v1/promotions/environments/env-1',
+				body: undefined,
+			},
+			{
+				send: async () => await client.listPromotionEnvironmentProjects('env-1'),
+				request: 'GET https://n8n.example.com/api/v1/promotions/environments/env-1/projects',
+				body: undefined,
+			},
+			{
+				send: async () => await client.addProjectToPromotionEnvironment('env-1', 'proj-1'),
+				request:
+					'POST https://n8n.example.com/api/v1/promotions/environments/env-1/projects/proj-1',
+				body: undefined,
+			},
+			{
+				send: async () => await client.removeProjectFromPromotionEnvironment('env-1', 'proj-1'),
+				request:
+					'DELETE https://n8n.example.com/api/v1/promotions/environments/env-1/projects/proj-1',
+				body: undefined,
+			},
+		])('calls the promotion environment routes: $request', async ({ send, request, body }) => {
+			fetchMock.mockResolvedValue(jsonResponse(200, {}));
+
+			await send();
+
+			expect(requestLines(fetchMock)).toEqual([request]);
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(typeof init.body === 'string' ? JSON.parse(init.body) : init.body).toEqual(body);
+		});
+
+		it('connects and disconnects the checkout of an environment', async () => {
 			const checkout = {
-				connectionId: 'conn-1',
-				configId: 'cfg-1',
+				environmentId: 'env-1',
 				direction: 'promote',
 				branchName: 'main',
 				hasCheckout: true,
 			};
 			fetchMock.mockResolvedValue(jsonResponse(200, checkout));
 
-			await expect(client.clonePromotionCheckout('conn-1', 'promote')).resolves.toEqual(checkout);
+			await expect(client.connectPromotionCheckout('env-1')).resolves.toEqual(checkout);
 
 			fetchMock.mockResolvedValue(jsonResponse(200, { ...checkout, hasCheckout: false }));
-			await client.disconnectPromotionCheckout('conn-1', 'apply');
+			await client.disconnectPromotionCheckout('env-1');
 
 			expect(requestLines(fetchMock)).toEqual([
-				'POST https://n8n.example.com/api/v1/promotions/connections/conn-1/promote/clone',
-				'POST https://n8n.example.com/api/v1/promotions/connections/conn-1/apply/disconnect',
+				'POST https://n8n.example.com/api/v1/promotions/environments/env-1/connect',
+				'POST https://n8n.example.com/api/v1/promotions/environments/env-1/disconnect',
 			]);
-		});
-
-		it('writes and removes the settings of one direction', async () => {
-			const promoteConfig = {
-				settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
-			};
-			fetchMock.mockResolvedValue(jsonResponse(200, { id: 'cfg-1', ...promoteConfig }));
-			await client.setPromotionConfig('conn-1', 'promote', promoteConfig);
-
-			fetchMock.mockResolvedValue(jsonResponse(200, { id: 'cfg-2' }));
-			await client.setPromotionConfig('conn-1', 'apply', {
-				settings: { schemaVersion: 1, branchName: 'main' },
-			});
-
-			fetchMock.mockResolvedValue(jsonResponse(204, undefined));
-			await client.deletePromotionConfig('conn-1', 'apply');
-
-			expect(requestLines(fetchMock)).toEqual([
-				'PUT https://n8n.example.com/api/v1/promotions/connections/conn-1/configs/promote',
-				'PUT https://n8n.example.com/api/v1/promotions/connections/conn-1/configs/apply',
-				'DELETE https://n8n.example.com/api/v1/promotions/connections/conn-1/configs/apply',
-			]);
-
-			// A write replaces the whole config, so every setting has to reach the API.
-			const [, promoteInit] = fetchMock.mock.calls[0] as [string, RequestInit];
-			expect(JSON.parse(promoteInit.body as string)).toEqual(promoteConfig);
 		});
 
 		it('follows the cursor to read every page of a list', async () => {
@@ -272,13 +294,17 @@ describe('N8nClient packages', () => {
 			]);
 		});
 
-		it('narrows the connection list by scope and provider', async () => {
+		it('narrows the environment list by scope, direction, and provider', async () => {
 			fetchMock.mockResolvedValue(jsonResponse(200, { data: [], nextCursor: null }));
 
-			await client.listPromotionConnections({ scope: 'instance', providerId: 'prov-1' });
+			await client.listPromotionEnvironments({
+				scope: 'instance',
+				direction: 'promote',
+				providerId: 'prov-1',
+			});
 
 			expect(requestLines(fetchMock)).toEqual([
-				'GET https://n8n.example.com/api/v1/promotions/connections?scope=instance&providerId=prov-1',
+				'GET https://n8n.example.com/api/v1/promotions/environments?scope=instance&direction=promote&providerId=prov-1',
 			]);
 		});
 	});
@@ -575,6 +601,27 @@ describe('N8nClient packages', () => {
 			expect(form.get('credentialMissingMode')).toBe('create-stub');
 		});
 
+		it('sends credentialConflictPolicy when provided', async () => {
+			fetchMock.mockResolvedValue(
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [], updated: [] },
+				}),
+			);
+
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{
+					workflowConflictPolicy: 'fail',
+					credentialConflictPolicy: 'overwrite',
+				},
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('credentialConflictPolicy')).toBe('overwrite');
+		});
+
 		it('sends missingNodeTypeMode when provided', async () => {
 			fetchMock.mockResolvedValue(
 				jsonResponse(200, {
@@ -731,6 +778,7 @@ describe('N8nClient packages', () => {
 
 			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
 			expect(form.has('credentialMissingMode')).toBe(false);
+			expect(form.has('credentialConflictPolicy')).toBe(false);
 		});
 
 		it('throws an ApiError that preserves the blocking-issue details', async () => {

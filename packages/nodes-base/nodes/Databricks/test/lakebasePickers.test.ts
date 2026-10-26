@@ -10,6 +10,8 @@ import type {
 import { mockDeep } from 'vitest-mock-extended';
 
 import { resolveLakebaseSchemaUrl, resolveLakebaseTableUrl } from '../actions/lakebase/helpers';
+import { OPENAPI_DISABLED_NOTICE } from '../actions/lakebase/openApiDocument';
+import { LAKEBASE_ERROR_HINTS } from '../transport/lakebaseErrors';
 
 // The shared Lakebase transport waits before its schema-cache retry
 vi.mock('@n8n/utils/sleep', () => ({
@@ -86,14 +88,14 @@ const createLoadOptionsContext = (params: Record<string, Locator> = {}) => {
 	return context;
 };
 
-const createExecuteContext = (locators: Record<string, string>) => {
+const createExecuteContext = (locators: Record<string, string>, authentication = 'oAuth2') => {
 	const context = mockDeep<IExecuteFunctions>();
 	// Also satisfies the `'getInputData' in context` guard in getActiveCredentialType
 	context.getInputData.mockReturnValue([]);
 	context.getCredentials.mockResolvedValue({ host: HOST });
 	context.getNode.mockReturnValue(node);
 	context.getNodeParameter.mockImplementation((name: string, index: number) =>
-		name === 'authentication' ? 'oAuth2' : index === ITEM ? locators[name] : undefined,
+		name === 'authentication' ? authentication : index === ITEM ? locators[name] : undefined,
 	);
 	return context;
 };
@@ -501,21 +503,19 @@ describe('listSearch -> getLakebaseTables', () => {
 		expect(error.message).toBe(
 			'Turn on the "OpenAPI specification" setting of the Data API to list tables, or enter the table name By ID',
 		);
-		expect(error.description).toBe(
-			'In Databricks open the project, then Data API > API > Advanced settings, and enable OpenAPI specification.',
-		);
+		expect(error.description).toBe(OPENAPI_DISABLED_NOTICE);
 	});
 
-	it('rethrows other Data API errors untouched', async () => {
+	it('rethrows another Data API error with its own hint, not the OpenAPI one', async () => {
 		const context = createLoadOptionsContext(selectedSchema);
 		const error = apiErrorFromBody(401, { code: 'PGRST301', message: 'invalid token permissions' });
-		const { message: originalMessage, description: originalDescription } = error;
 		apiMock(context).mockResolvedValueOnce(endpointsResponse).mockRejectedValueOnce(error);
 
 		await expect(getLakebaseTables.call(context)).rejects.toBe(error);
 
-		expect(error.message).toBe(originalMessage);
-		expect(error.description).toBe(originalDescription);
+		expect(error.message).toBe('invalid token permissions');
+		expect(error.description).toBe(LAKEBASE_ERROR_HINTS.get('PGRST301'));
+		expect(error.description).not.toContain('OpenAPI');
 	});
 
 	it('surfaces a legible PERMISSION_DENIED from the endpoints lookup', async () => {
@@ -639,6 +639,20 @@ describe('resolveLakebaseRestBase', () => {
 	});
 });
 
+describe('resolveLakebaseRestBase auth', () => {
+	it('refuses personal access token auth before any request', async () => {
+		const context = createExecuteContext(defaultLocators(), 'accessToken');
+
+		const promise = resolveLakebaseRestBase(context, 'spike-test', 'production');
+
+		await expect(promise).rejects.toBeInstanceOf(NodeOperationError);
+		await expect(promise).rejects.toMatchObject({
+			message: 'Lakebase requires OAuth2 authentication',
+		});
+		expect(apiMock(context)).not.toHaveBeenCalled();
+	});
+});
+
 describe('resolveLakebaseRestBase memo', () => {
 	it('resolves each project and branch pair once per context', async () => {
 		const context = createExecuteContext(defaultLocators());
@@ -670,6 +684,18 @@ describe('resolveLakebaseRestBase memo', () => {
 });
 
 describe('resolveLakebaseSchemaUrl', () => {
+	it('refuses personal access token auth before any request', async () => {
+		const context = createExecuteContext(defaultLocators(), 'accessToken');
+
+		const promise = resolveLakebaseSchemaUrl(context, ITEM);
+
+		await expect(promise).rejects.toBeInstanceOf(NodeOperationError);
+		await expect(promise).rejects.toMatchObject({
+			message: 'Lakebase requires OAuth2 authentication',
+		});
+		expect(apiMock(context)).not.toHaveBeenCalled();
+	});
+
 	it('reads the four locators of the item and returns the encoded schema URL', async () => {
 		const context = createExecuteContext({ ...defaultLocators(), lakebaseSchema: 'my schema' });
 		apiMock(context).mockResolvedValueOnce(endpointsResponse);

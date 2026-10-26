@@ -95,15 +95,18 @@ import {
 	nodeTypeToNewMcpServer,
 } from '../composables/useMcpServerAdapter';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
+import {
+	isAiGatewayMcpEntry,
+	toMcpEntryAuth,
+	toMcpRegistryCredentialRefs,
+} from '../utils/mcpRegistryCredentialRefs';
 import { useAgentMcpDiscovery } from '../composables/useAgentMcpDiscovery';
 import {
 	DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS,
 	type AgentRegistryMcpDraft,
 } from '../composables/useAgentRegistryMcpConfig';
 import type { ToolPickerMode } from './AgentCapabilitiesSection.types';
-import type { WorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { toToolIconSource } from '../utils/toolIconSource';
-import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 import AgentToolConfigContent, { type AgentToolConfigData } from './AgentToolConfigContent.vue';
 import AgentToolConfigCredentialPicker from './AgentToolConfigCredentialPicker.vue';
 import AgentToolConfigTitleIcon from './AgentToolConfigTitleIcon.vue';
@@ -161,13 +164,8 @@ const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 const { createCredentialAdapter, fetchCatalog, preloadCredentials } = useAgentMcpDiscovery(
 	() => props.data.projectId,
 );
-const {
-	availableToolTypes,
-	availableWorkflows,
-	incompatibleWorkflows,
-	loadWorkflows,
-	resolveToolNodeType,
-} = useAgentToolCatalog();
+const { availableToolTypes, availableWorkflows, loadWorkflows, resolveToolNodeType } =
+	useAgentToolCatalog();
 const { installNode: installCommunityNode } = useInstallNode();
 const { warnIfRestricted } = useRestrictedNodeWarning();
 const usersStore = useUsersStore();
@@ -324,12 +322,35 @@ function handleInteractOutside(event: Event) {
 	if (isCredentialModalOpen.value) event.preventDefault();
 }
 
+const isLoadingCredentials = ref(false);
+
+/**
+ * Block until the project's credentials are in the store, so rows do not show as
+ * unconnected. A slice already fetched for this project refreshes in the background.
+ */
+async function loadCredentials() {
+	isLoadingCredentials.value = !credentialsStore.hasUsableCredentialsForScope({
+		projectId: props.data.projectId,
+	});
+	try {
+		await preloadCredentials();
+	} catch (error) {
+		console.error('Failed to fetch credentials', error);
+	} finally {
+		isLoadingCredentials.value = false;
+	}
+}
+
 onMounted(() => {
 	if (isWorkflow.value) void loadWorkflows(props.data.projectId);
 	if (!isWorkflow.value) {
 		void loadRegistryCatalog();
-		void preloadCredentials();
+		void loadCredentials();
 	}
+	// The builder loads the policy once and keeps it, so a policy that changed since then would
+	// still offer a blocked type here and the save would be refused. Refetch on open: this is the
+	// one place where the verdicts decide what the user may pick.
+	void typeAvailabilityPoliciesStore.reload();
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
 	// Config gates which tools are eligible for the n8n Connect section; the
@@ -481,6 +502,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			type: 'verified',
 			packageName: communityPackageNameFor(nodeType),
 			nodeType: stripToolSuffix(nodeType.name),
+			selectedNodeType: nodeType.name,
 			telemetry: { source: 'agent builder tools', hasQuickConnect: false },
 		});
 		if (!result.success) return;
@@ -494,7 +516,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			);
 			return;
 		}
-		if (warnIfRestricted(installed.name)) return;
+		if (result.restricted) return;
 		addNodeTool(installed);
 	} finally {
 		installingToolName.value = null;
@@ -779,13 +801,7 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 				? iconForMcpRegistryServer(registryServer.icons, uiStore.appliedTheme)
 				: { type: 'icon', name: 'mcp' },
 			credentials: registryServer
-				? registryServer.credentials.map(({ credentialType, name }) => ({
-						authType: credentialType,
-						displayName: name,
-						credentialId:
-							entry.server.authentication === credentialType ? entry.server.credential : undefined,
-						required: true,
-					}))
+				? toMcpRegistryCredentialRefs(registryServer, entry.server)
 				: [
 						{
 							authType: entry.server.authentication,
@@ -795,6 +811,7 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 					],
 			availableTools: registryServer?.tools.map(toMcpServerTool) ?? [],
 			isOfficial: registryServer?.isOfficial,
+			freeCredits: isAiGatewayMcpEntry(entry.server),
 			settings: entry.server.toolPermissions,
 			publisher:
 				registryServer && (registryServer.isOfficial || registryServer.websiteUrl)
@@ -838,6 +855,7 @@ function toMcpServerTool(tool: {
 }
 
 function availableRegistryItem(server: McpRegistryServerResponse): McpServerConnectionItem {
+	const credentials = toMcpRegistryCredentialRefs(server);
 	return {
 		id: `registry:${server.slug}`,
 		kind: 'mcp-server',
@@ -847,13 +865,10 @@ function availableRegistryItem(server: McpRegistryServerResponse): McpServerConn
 		longDescription: server.description,
 		status: 'none',
 		iconSource: iconForMcpRegistryServer(server.icons, uiStore.appliedTheme),
-		credentials: server.credentials.map(({ credentialType, name }) => ({
-			authType: credentialType,
-			displayName: name,
-			required: true,
-		})),
+		credentials,
 		availableTools: server.tools.map(toMcpServerTool),
 		isOfficial: server.isOfficial,
+		freeCredits: credentials.some(({ aiGateway }) => aiGateway),
 		publisher:
 			server.isOfficial || server.websiteUrl
 				? { name: server.title, url: server.websiteUrl }
@@ -892,16 +907,13 @@ function connectRegistryItem(
 ) {
 	const registryServer = registryServerForItem(item);
 	if (!registryServer) return;
+	const auth = toMcpEntryAuth(authType, credentialId);
 
 	const existingEntry = mcpEntryForItem(item);
 	if (existingEntry) {
 		openConfigForRegistryEntry({
 			...existingEntry,
-			server: {
-				...existingEntry.server,
-				authentication: authType,
-				credential: credentialId,
-			},
+			server: { ...existingEntry.server, ...auth },
 		});
 		return;
 	}
@@ -913,8 +925,7 @@ function connectRegistryItem(
 			(name, counter) => `${name}-${counter}`,
 		),
 		description: registryServer.description,
-		authentication: authType,
-		credential: credentialId,
+		...auth,
 		metadata: { nodeTypeName: registryServer.nodeTypeName },
 		toolPermissions: defaultAgentMcpToolPermissions(props.data.supportsToolApproval !== false),
 		connectionTimeoutMs: DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS,
@@ -1024,42 +1035,9 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 		workflowId: workflow.id,
 		title: workflow.name,
 		description: workflow.description ?? undefined,
-		// An unpublished workflow stays selectable; the warning tells the user the
-		// published agent cannot call it until they publish it.
-		warning:
-			workflow.activeVersionId === null
-				? i18n.baseText('agents.tools.workflow.notPublished')
-				: undefined,
 		status: 'none',
 		credentials: [],
 	};
-}
-
-function disabledWorkflowItem(
-	workflow: IWorkflowDb,
-	reason: WorkflowToolIncompatibilityReason,
-): WorkflowConnectionItem {
-	return {
-		id: `workflow-disabled:${workflow.id}`,
-		kind: 'workflow',
-		category: 'workflows',
-		workflowId: workflow.id,
-		title: workflow.name,
-		description: workflow.description ?? undefined,
-		status: 'none',
-		credentials: [],
-		disabled: true,
-		disabledReason: disabledWorkflowReasonText(reason),
-	};
-}
-
-function disabledWorkflowReasonText(reason: WorkflowToolIncompatibilityReason): string {
-	if (reason.reason === 'incompatible_nodes') {
-		return i18n.baseText('agents.tools.workflow.disabled.incompatibleNodes');
-	}
-	return i18n.baseText('agents.tools.workflow.disabled.noSupportedTrigger', {
-		interpolate: { trigger: workflowToolTriggerLabel() },
-	});
 }
 
 /**
@@ -1111,12 +1089,7 @@ const categories = computed<ToolCategoryKey[]>(() => {
 
 const items = computed<ToolConnectionItem[]>(() => {
 	if (isWorkflow.value) {
-		return [
-			...availableWorkflows.value.map(availableWorkflowItem),
-			...incompatibleWorkflows.value.map(({ workflow, reason }) =>
-				disabledWorkflowItem(workflow, reason),
-			),
-		];
+		return availableWorkflows.value.map(availableWorkflowItem);
 	}
 
 	const out: ToolConnectionItem[] = [];
@@ -1173,8 +1146,6 @@ function handleOpenDetail(item: ToolConnectionItem) {
 }
 
 function handleRowActivate(item: ToolConnectionItem) {
-	// Disabled rows (e.g. incompatible workflows) are visible-but-not-selectable;
-	// the row's own tooltip already explains why, so activating does nothing.
 	if (item.disabled) return;
 	if (item.status === 'connecting') return;
 	const isRestricted = item.kind === 'node' && Boolean(item.restriction);
@@ -1295,6 +1266,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 					: undefined
 			"
 			:create-action-loading="isCreatingWorkflow"
+			:loading="isLoadingCredentials"
 			:empty-message="isWorkflow ? i18n.baseText('agents.tools.workflow.empty.title') : undefined"
 			:no-results-message="
 				isWorkflow ? i18n.baseText('agents.tools.workflow.empty.noResults') : undefined

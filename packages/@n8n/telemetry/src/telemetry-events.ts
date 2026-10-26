@@ -1,7 +1,9 @@
 import type { TelemetryEventRegistry } from './define';
 import { AGENTS_TELEMETRY } from './events/agents';
+import { AUTH_TELEMETRY } from './events/auth';
 import { CONTEXT_TELEMETRY } from './events/context';
 import { CREDENTIALS_TELEMETRY } from './events/credentials';
+import { EXPRESSIONS_TELEMETRY } from './events/expressions';
 import { INSTANCE_TELEMETRY } from './events/instance';
 import { INSTANCE_AI_TELEMETRY } from './events/instance-ai';
 import { MCP_TELEMETRY } from './events/mcp';
@@ -16,8 +18,10 @@ export const TELEMETRY_EVENT = {
 	PLATFORM: PLATFORM_TELEMETRY,
 	POLICIES: POLICIES_TELEMETRY,
 	AGENTS: AGENTS_TELEMETRY,
+	AUTH: AUTH_TELEMETRY,
 	CREDENTIALS: CREDENTIALS_TELEMETRY,
 	CONTEXT: CONTEXT_TELEMETRY,
+	EXPRESSIONS: EXPRESSIONS_TELEMETRY,
 	INSTANCE: INSTANCE_TELEMETRY,
 	INSTANCE_AI: INSTANCE_AI_TELEMETRY,
 	MCP: MCP_TELEMETRY,

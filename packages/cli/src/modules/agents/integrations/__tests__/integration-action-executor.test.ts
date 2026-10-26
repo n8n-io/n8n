@@ -58,8 +58,9 @@ import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import type { IntegrationMessageContext } from '../integration-tool-types';
-import { LinearIntegration } from '../platforms/linear-integration';
+import { LinearIntegration } from '../platforms/linear/linear-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
+import { TeamsIntegration } from '../platforms/teams/teams-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
@@ -101,6 +102,14 @@ class ShortCallbackTelegramIntegration extends AgentChatIntegration {
 	];
 
 	readonly needsShortCallbackData = true;
+
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
 
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
@@ -172,6 +181,52 @@ describe('ChatIntegrationActionExecutor', () => {
 				updatedAt: expect.any(String),
 			},
 		});
+	});
+
+	it('lets a slow Slack message finish after the context query deadline', async () => {
+		vi.useFakeTimers();
+		try {
+			const sentMessage = { id: '123.456', threadId: 'slack:C123:123.456' };
+			const channel = {
+				post: vi.fn().mockImplementation(
+					async () =>
+						await new Promise((resolve) => {
+							setTimeout(() => resolve(sentMessage), 35_000);
+						}),
+				),
+			};
+			const chat = mock<ChatInstance>();
+			chat.channel.mockReturnValue(channel as never);
+			chat.thread.mockReturnValue({ subscribe: vi.fn().mockResolvedValue(undefined) } as never);
+			const service = mock<ChatIntegrationService>();
+			service.getChatInstanceForTools.mockResolvedValue(chat);
+			const executor = new ChatIntegrationActionExecutor(
+				service,
+				buildRegistry(),
+				new ChannelRateLimitGuard(),
+			);
+			const settled = vi.fn();
+			const result = executor.execute({
+				descriptor: getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0],
+				action: 'send_channel_message',
+				input: { channelId: 'C123', message: { text: 'Hello channel' } },
+				awaitResponse: false,
+			});
+			void result.then(settled, settled);
+
+			await vi.advanceTimersByTimeAsync(31_000);
+			expect(channel.post).toHaveBeenCalledTimes(1);
+			expect(settled).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(4_000);
+			await expect(result).resolves.toMatchObject({
+				ok: true,
+				messageContext: { messageId: sentMessage.id },
+			});
+			expect(channel.post).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('does not subscribe channel message threads for non-Slack integrations', async () => {
@@ -1615,5 +1670,93 @@ describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
 			},
 		});
 		expect(guard.isBlocked('slack:cred-a')).toBe(false);
+	});
+});
+
+describe('ChatIntegrationActionExecutor — Teams sends without an inbound message', () => {
+	const teams: AgentIntegrationConfig = { type: 'teams', credentialId: 'cred-teams' };
+
+	function setup(adapter: Record<string, unknown> = {}) {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new TeamsIntegration(mock<Logger>(), mock<AgentRepository>()));
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(adapter);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([teams], 'agent-1')[0];
+		return { chat, executor, descriptor };
+	}
+
+	it('opens a DM for an Entra object ID through the Teams adapter', async () => {
+		const objectId = '6b1f0c4e-1111-4222-8333-944455556666';
+		const thread = {
+			id: 'teams:dm',
+			post: vi.fn().mockResolvedValue({ id: 'msg-1', threadId: 'teams:dm' }),
+		};
+		const openDM = vi.fn().mockResolvedValue('teams:dm');
+		const { chat, executor, descriptor } = setup({ openDM });
+		chat.thread.mockReturnValue(thread as never);
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: objectId, message: { text: 'Morning brief' } },
+			awaitResponse: false,
+		});
+
+		expect(openDM).toHaveBeenCalledWith(objectId);
+		expect(chat.openDM).not.toHaveBeenCalled();
+		expect(thread.post).toHaveBeenCalledWith('Morning brief');
+		expect(result).toMatchObject({
+			ok: true,
+			messageContext: { target: { type: 'dm', userId: objectId, threadId: 'teams:dm' } },
+		});
+	});
+
+	it('posts to a raw Teams conversation ID', async () => {
+		const channel = { post: vi.fn().mockResolvedValue({ id: 'msg-1' }) };
+		const encodeThreadId = vi.fn(() => 'teams:encoded');
+		const { chat, executor, descriptor } = setup({ encodeThreadId });
+		chat.channel.mockReturnValue(channel as never);
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_channel_message',
+			input: { channelId: '19:abc@thread.tacv2', message: { text: 'Morning brief' } },
+			awaitResponse: false,
+		});
+
+		expect(encodeThreadId).toHaveBeenCalledWith(
+			expect.objectContaining({ conversationId: '19:abc@thread.tacv2' }),
+		);
+		expect(chat.channel).toHaveBeenCalledWith('teams:encoded');
+		expect(channel.post).toHaveBeenCalledWith('Morning brief');
+		expect(result).toMatchObject({ ok: true });
+	});
+
+	it('explains a refused send instead of passing the adapter error through', async () => {
+		const openDM = vi
+			.fn()
+			.mockRejectedValue(
+				Object.assign(new Error('Permission denied'), { code: 'PERMISSION_DENIED' }),
+			);
+		const { executor, descriptor } = setup({ openDM });
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: '29:abc', message: { text: 'Morning brief' } },
+			awaitResponse: false,
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: { code: 'PERMISSION_NOT_GRANTED', message: expect.stringContaining('installed') },
+		});
 	});
 });

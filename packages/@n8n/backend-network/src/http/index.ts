@@ -5,7 +5,7 @@ export {
 } from '../proxy/proxy-resolution';
 export { installGlobalProxyAgent } from './http-proxy';
 export { configureGlobalAxiosDefaults } from './axios/config';
-export { isFormDataInstance, tryParseUrl } from './axios/utils';
+export { buildTargetUrl, isFormDataInstance, tryParseUrl } from './axios/utils';
 export { removeEmptyBody } from './axios/request';
 export { parseIncomingMessage } from './parse-incoming-message';
 export { binaryToBuffer, streamToBuffer } from './binary-buffer';
@@ -29,4 +29,4 @@ export {
 	isTransportFailure,
 	markHttpRequestError,
 } from './client-request-error';
-export type { HttpRequestClientOptions } from './client-options';
+export type { HttpConnectionPoolOptions, HttpRequestClientOptions } from './client-options';

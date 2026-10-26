@@ -1,4 +1,4 @@
-import type { FrontendModuleSettings, FrontendSettings } from '@n8n/api-types';
+import type { FrontendSettings } from '@n8n/api-types';
 import { ROLE } from '@n8n/api-types';
 import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
 import { createPinia, setActivePinia } from 'pinia';
@@ -29,24 +29,6 @@ const settingsFor = ({
 		deployment: { type: deploymentType },
 		aiAssistant: { enabled: true, setup: true, cloudUbbEnabled },
 	});
-
-/** Load `instance-ai` module settings, honouring only the activation-capped bit. */
-const moduleSettingsFor = ({ activationCapped = false }: { activationCapped?: boolean } = {}) =>
-	({
-		'instance-ai': {
-			enabled: true,
-			mcpConnectionsAvailable: false,
-			localGatewayDisabled: false,
-			browserUseEnabled: false,
-			proxyEnabled: false,
-			cloudManaged: false,
-			sandboxEnabled: false,
-			workflowBuilderAvailable: true,
-			sandboxUnavailableReason: null,
-			runDebugEnabled: false,
-			activationCapped,
-		},
-	}) as FrontendModuleSettings;
 
 const setOwner = () => {
 	usersStore.addUsers([{ id: '1', isPending: false, role: ROLE.Owner }]);
@@ -82,7 +64,6 @@ describe('useAssistantTopUpEligibility', () => {
 		setOwner();
 		setTrialing(false);
 		settingsStore.setSettings(settingsFor({ deploymentType: 'default', cloudUbbEnabled: true }));
-		settingsStore.moduleSettings = moduleSettingsFor();
 
 		const { isEligible } = useAssistantTopUpEligibility();
 
@@ -93,7 +74,6 @@ describe('useAssistantTopUpEligibility', () => {
 		setMember();
 		setTrialing(false);
 		settingsStore.setSettings(settingsFor({ cloudUbbEnabled: true }));
-		settingsStore.moduleSettings = moduleSettingsFor();
 
 		const { isEligible } = useAssistantTopUpEligibility();
 
@@ -104,18 +84,6 @@ describe('useAssistantTopUpEligibility', () => {
 		setOwner();
 		setTrialing(true);
 		settingsStore.setSettings(settingsFor({ cloudUbbEnabled: true }));
-		settingsStore.moduleSettings = moduleSettingsFor();
-
-		const { isEligible } = useAssistantTopUpEligibility();
-
-		expect(isEligible.value).toBe(false);
-	});
-
-	test('is false for activation-capped instances even when the entitlement is on', () => {
-		setOwner();
-		setTrialing(false);
-		settingsStore.setSettings(settingsFor({ cloudUbbEnabled: true }));
-		settingsStore.moduleSettings = moduleSettingsFor({ activationCapped: true });
 
 		const { isEligible } = useAssistantTopUpEligibility();
 
@@ -126,7 +94,6 @@ describe('useAssistantTopUpEligibility', () => {
 		setOwner();
 		setTrialing(false);
 		settingsStore.setSettings(settingsFor({ cloudUbbEnabled: true }));
-		settingsStore.moduleSettings = moduleSettingsFor();
 
 		const { isEligible } = useAssistantTopUpEligibility();
 
@@ -137,7 +104,6 @@ describe('useAssistantTopUpEligibility', () => {
 		setOwner();
 		setTrialing(false);
 		settingsStore.setSettings(settingsFor({ cloudUbbEnabled: false }));
-		settingsStore.moduleSettings = moduleSettingsFor();
 
 		const { isEligible } = useAssistantTopUpEligibility();
 
@@ -148,7 +114,6 @@ describe('useAssistantTopUpEligibility', () => {
 		setOwner();
 		setTrialing(false);
 		settingsStore.setSettings(settingsFor({ cloudUbbEnabled: false }));
-		settingsStore.moduleSettings = moduleSettingsFor();
 		vi.setSystemTime(ASSISTANT_TOP_UP_GA_DATE);
 
 		const { isEligible } = useAssistantTopUpEligibility();

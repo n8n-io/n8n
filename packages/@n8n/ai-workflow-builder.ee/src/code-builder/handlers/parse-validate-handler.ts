@@ -11,6 +11,7 @@ import {
 	connectRequiredSubnodeInputs,
 	describeAddedSubnodeConnection,
 	parseWorkflowCodeToBuilder,
+	resolveNodePorts,
 	validateWorkflow,
 	workflow,
 } from '@n8n/workflow-sdk';
@@ -308,7 +309,14 @@ export class ParseValidateHandler {
 			);
 
 			// Convert to JSON with Dagre layout matching the FE's tidy-up
-			const workflowJson: WorkflowJSON = builder.toJSON({ tidyUp: true, existingGroupIdsByName });
+			const nodePorts = this.nodeTypesProvider
+				? await resolveNodePorts(json, this.nodeTypesProvider)
+				: undefined;
+			const workflowJson: WorkflowJSON = builder.toJSON({
+				tidyUp: true,
+				existingGroupIdsByName,
+				nodePorts,
+			});
 			// A fresh serialization, so the links added above have to be re-added.
 			for (const link of this.connectRequiredInputs(workflowJson)) {
 				allWarnings.push(describeAddedSubnodeConnection(link));

@@ -217,6 +217,11 @@ describe('useAgentNavigationCommands', () => {
 			});
 		});
 
+		// AI-2833: All resource creation actions must use the plus icon.
+		it('uses the plus icon for agent creation', () => {
+			expect(findCreateCommand()).toMatchObject({ icon: { props: { icon: 'plus' } } });
+		});
+
 		it('hides the create command when agents are disabled', () => {
 			settingsStore.isAgentsEnabled = false;
 

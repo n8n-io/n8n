@@ -1867,6 +1867,88 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('deprecated nodes', () => {
+		const deprecatedType = 'n8n-nodes-base.function';
+		const replacementType = 'n8n-nodes-base.code';
+
+		const setupDeprecatedNode = () => {
+			useNodeTypesStore().nodeTypes = {
+				[deprecatedType]: {
+					1: mockNodeTypeDescription({ name: deprecatedType, deprecated: true }),
+				},
+			};
+			const node = createTestNode({ id: 'deprecated', name: 'Function', type: deprecatedType });
+			workflowDocumentStoreInstance.allNodes = [node];
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue([node]);
+			return node;
+		};
+
+		it('should not toggle a deprecated node', () => {
+			const node = setupDeprecatedNode();
+			const updateNodePropertiesSpy = vi.spyOn(
+				workflowDocumentStoreInstance,
+				'updateNodeProperties',
+			);
+
+			useCanvasOperations().toggleNodesDisabled([node.id]);
+
+			expect(updateNodePropertiesSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not duplicate a deprecated node', async () => {
+			const node = setupDeprecatedNode();
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			expect(await useCanvasOperations().duplicateNodes([node.id])).toEqual([]);
+			expect(addNodeSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not rename a deprecated node', async () => {
+			const node = setupDeprecatedNode();
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(node);
+			const cloneSpy = vi.spyOn(workflowDocumentStoreInstance, 'cloneWorkflowObject');
+
+			expect(await useCanvasOperations().renameNode(node.name, 'Renamed')).toBe(false);
+			expect(cloneSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not cut a deprecated node', async () => {
+			const node = setupDeprecatedNode();
+			const startRecordingUndoSpy = vi.spyOn(useHistoryStore(), 'startRecordingUndo');
+
+			await useCanvasOperations().cutNodes([node.id]);
+
+			expect(useClipboard().copy).not.toHaveBeenCalled();
+			expect(startRecordingUndoSpy).not.toHaveBeenCalled();
+		});
+
+		it('should add a deprecated node unchanged', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+
+			nodeTypesStore.nodeTypes = {
+				[deprecatedType]: {
+					1: mockNodeTypeDescription({
+						name: deprecatedType,
+						deprecated: true,
+						replacedByNodeType: replacementType,
+					}),
+				},
+				[replacementType]: { 1: mockNodeTypeDescription({ name: replacementType }) },
+			};
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodes } = useCanvasOperations();
+			const added = await addNodes([{ type: deprecatedType }], {});
+
+			expect(addNodeSpy).toHaveBeenCalledTimes(1);
+			expect(addNodeSpy.mock.calls[0][0].type).toBe(deprecatedType);
+			expect(added[0].type).toBe(deprecatedType);
+			expect(toast.showMessage).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('revertAddNode', () => {
 		it('deletes node if it exists', async () => {
 			const node = createTestNode();
@@ -2618,6 +2700,31 @@ describe('useCanvasOperations', () => {
 				},
 			});
 		});
+		it('should not toggle a selection that contains a restricted node type', () => {
+			const toast = useToast();
+			const nodes = [
+				createTestNode({ id: '1', name: 'A', type: 'n8n-nodes-base.slack' }),
+				createTestNode({ id: '2', name: 'B' }),
+			];
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			const updateNodePropertiesSpy = vi.spyOn(
+				workflowDocumentStoreInstance,
+				'updateNodeProperties',
+			);
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
+			);
+
+			useCanvasOperations().toggleNodesDisabled(['1', '2']);
+
+			expect(updateNodePropertiesSpy).not.toHaveBeenCalled();
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					message: expect.stringContaining('n8n-nodes-base.slack'),
+				}),
+			);
+		});
 	});
 
 	describe('revertToggleNodeDisabled', () => {
@@ -2738,6 +2845,40 @@ describe('useCanvasOperations', () => {
 			// Verify no pinning or unpinning occurred
 			expect(setDataMock).not.toHaveBeenCalled();
 			expect(unsetDataMock).not.toHaveBeenCalled();
+		});
+
+		it('should not pin a selection that contains a restricted node type', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			const toast = useToast();
+
+			const restrictedNode = createTestNode({
+				id: '1',
+				name: 'RestrictedNode',
+				type: 'n8n-nodes-base.slack',
+			});
+			const pinnableNode = createTestNode({ id: '2', name: 'PinnableNode' });
+
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue([
+				restrictedNode,
+				pinnableNode,
+			]);
+			canPinNodeMock.mockReturnValue(true);
+			getInputDataWithPinnedMock.mockReturnValue([{ json: { test: 'data' } }]);
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
+			);
+
+			useCanvasOperations().toggleNodesPinned(['1', '2'], 'pin-icon-click');
+
+			expect(setDataMock).not.toHaveBeenCalled();
+			expect(unsetDataMock).not.toHaveBeenCalled();
+			expect(historyStore.startRecordingUndo).not.toHaveBeenCalled();
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					message: expect.stringContaining('n8n-nodes-base.slack'),
+				}),
+			);
 		});
 	});
 
@@ -5109,20 +5250,25 @@ describe('useCanvasOperations', () => {
 			expect(copiedData.nodeGroups).toBeUndefined();
 		});
 
-		it('should not copy a selection that contains a restricted node type', async () => {
+		it('should copy a selection that contains a restricted node type', async () => {
+			const toast = useToast();
 			const nodes = buildImportNodes();
 			nodes[1].type = 'n8n-nodes-base.slack';
 			workflowDocumentStoreInstance.allNodes = nodes;
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
 			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
 				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
 			);
 
 			const { copyNodes } = useCanvasOperations();
-			const copied = await copyNodes(['1', '2']);
+			await copyNodes(['1', '2']);
 
-			expect(copied).toBe(false);
-			expect(useClipboard().copy).not.toHaveBeenCalled();
+			const copiedData = JSON.parse(vi.mocked(useClipboard().copy).mock.calls[0][0] as string);
+			expect(copiedData.nodes.map((node: INodeUi) => node.type)).toContain('n8n-nodes-base.slack');
+			expect(toast.showMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'warning' }),
+			);
 		});
 
 		it('should include nodeGroups when all group members are copied', async () => {
@@ -5328,6 +5474,28 @@ describe('useCanvasOperations', () => {
 			await cutNodes(['1', '2']);
 			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
 			expect(vi.mocked(useClipboard().copy).mock.calls).toMatchSnapshot();
+		});
+
+		it('should cut a selection that contains a restricted node type', async () => {
+			const nodes = buildImportNodes();
+			nodes[1].type = 'n8n-nodes-base.slack';
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodes.find((node) => node.id === id),
+			);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+			const removeNodeByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'removeNodeById');
+
+			const { cutNodes } = useCanvasOperations();
+			await cutNodes(['1', '2']);
+
+			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
+			expect(removeNodeByIdSpy).toHaveBeenCalledWith('2');
 		});
 
 		it('does not restore an anchor when cutting an explicitly selected group', async () => {
@@ -7402,6 +7570,28 @@ describe('useCanvasOperations', () => {
 
 			expect(duplicatedNodeIds).toHaveLength(1);
 			expect(workflowDocumentStoreInstance.createGroup).not.toHaveBeenCalled();
+		});
+
+		it('should not duplicate a selection that contains a restricted node type', async () => {
+			const toast = useToast();
+			const nodes = buildImportNodes();
+			nodes[1].type = 'n8n-nodes-base.slack';
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
+			);
+
+			const duplicatedNodeIds = await useCanvasOperations().duplicateNodes(['1', '2']);
+
+			expect(duplicatedNodeIds).toEqual([]);
+			expect(workflowDocumentStoreInstance.addNode).not.toHaveBeenCalled();
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					message: expect.stringContaining('n8n-nodes-base.slack'),
+				}),
+			);
 		});
 
 		it('should show max node type error when duplicating nodes that exceed maxNodes limit', async () => {

@@ -24,14 +24,6 @@ export interface LoadPrebakedWorkspaceBundleOptions<TBundle> {
 	schemaVersion: number;
 	resourceLabel: string;
 	logger: Logger;
-	invalidManifestLogMessage: string;
-	staleManifestLogMessage: string;
-	staleManifestLogKeys: {
-		expected: string;
-		actual: string;
-	};
-	successLogMessage: string;
-	successLogContext: (bundle: TBundle) => Record<string, unknown>;
 	buildBundle: () => Promise<TBundle | undefined> | TBundle | undefined;
 }
 
@@ -47,22 +39,21 @@ export async function loadPrebakedWorkspaceBundle<TBundle extends { files: Map<s
 	let decision = 'reused';
 	let actualHash: string | undefined;
 	const { verifiedBundles } = options;
-	return await traceSandboxOperation(
+	const bundle = await traceSandboxOperation(
 		'check-bundle',
 		{
 			kind: 'batch',
 			inputs: { manifestPath: options.manifestPath, expectedHash: options.expectedHash },
-			processResult: (bundle) => ({
-				outputs: { decision, actualHash, fileCount: bundle?.files.size ?? 0 },
+			processResult: (result) => ({
+				outputs: { decision, actualHash, fileCount: result?.files.size ?? 0 },
 			}),
 		},
 		async () => {
 			if (verifiedBundles?.get(options.manifestPath) === options.expectedHash) {
 				decision = 'cached';
-				actualHash = options.expectedHash;
-				const bundle = await options.buildBundle();
-				if (!bundle) decision = 'empty';
-				return bundle;
+				const cachedBundle = await options.buildBundle();
+				if (!cachedBundle) decision = 'empty';
+				return cachedBundle;
 			}
 
 			const manifestRaw = await readWorkspaceFile(options.workspace, options.manifestPath, {
@@ -80,34 +71,33 @@ export async function loadPrebakedWorkspaceBundle<TBundle extends { files: Map<s
 			});
 			if (!manifest) {
 				decision = 'invalid';
-				options.logger.debug(options.invalidManifestLogMessage, {
-					manifestPath: options.manifestPath,
-				});
 				return undefined;
 			}
 
 			actualHash = manifest.hash;
 			if (manifest.hash !== options.expectedHash) {
 				decision = 'stale';
-				options.logger.debug(options.staleManifestLogMessage, {
-					manifestPath: options.manifestPath,
-					[options.staleManifestLogKeys.expected]: options.expectedHash,
-					[options.staleManifestLogKeys.actual]: manifest.hash,
-				});
 				return undefined;
 			}
 
-			const bundle = await options.buildBundle();
-			if (!bundle) {
+			const prebakedBundle = await options.buildBundle();
+			if (!prebakedBundle) {
 				decision = 'empty';
 				return undefined;
 			}
 
 			verifiedBundles?.set(options.manifestPath, options.expectedHash);
-			options.logger.debug(options.successLogMessage, options.successLogContext(bundle));
-			return bundle;
+			return prebakedBundle;
 		},
 	);
+	options.logger.debug('Checked prebaked workspace bundle', {
+		resource: options.resourceLabel,
+		manifestPath: options.manifestPath,
+		decision,
+		expectedHash: options.expectedHash,
+		...(actualHash !== undefined ? { actualHash } : {}),
+	});
+	return bundle;
 }
 
 export interface MaterializeWorkspaceBundleOptions<
@@ -121,8 +111,6 @@ export interface MaterializeWorkspaceBundleOptions<
 	buildBundle: () => Promise<TBundle> | TBundle;
 	/** Hash that the bundle manifest records. */
 	bundleHash: (bundle: TBundle) => string;
-	materializedLogMessage: string;
-	materializedLogContext: (bundle: TBundle) => Record<string, unknown>;
 }
 
 /** Materialize a workspace bundle, skipping writes when a valid prebaked manifest exists. */
@@ -154,6 +142,7 @@ export async function materializeWorkspaceBundle<
 				return prebaked;
 			}
 
+			const startedAt = Date.now();
 			const bundle = await options.buildBundle();
 			const payloadFiles = new Map(bundle.files);
 			payloadFiles.delete(bundle.manifestPath);
@@ -171,8 +160,19 @@ export async function materializeWorkspaceBundle<
 				});
 			}
 
-			options.verifiedBundles?.set(bundle.manifestPath, options.bundleHash(bundle));
-			options.logger.debug(options.materializedLogMessage, options.materializedLogContext(bundle));
+			const hash = options.bundleHash(bundle);
+			options.verifiedBundles?.set(bundle.manifestPath, hash);
+			options.logger.debug('Wrote workspace bundle', {
+				resource: options.resourceLabel,
+				manifestPath: bundle.manifestPath,
+				hash,
+				fileCount: bundle.files.size,
+				bytes: [...bundle.files.values()].reduce(
+					(sum, content) => sum + sandboxFileBytes(content),
+					0,
+				),
+				durationMs: Date.now() - startedAt,
+			});
 			return bundle;
 		},
 	);

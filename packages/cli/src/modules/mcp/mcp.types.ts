@@ -4,7 +4,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
-import type { Mcpauth_type, McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
+import type { Mcpauth_type, McpCallerAuth } from '@n8n/backend-services/auth';
 
 import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';

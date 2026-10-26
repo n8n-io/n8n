@@ -4,9 +4,6 @@ tags:
 summary: Retrieve a test run
 description: Retrieve a single evaluation test run of a workflow, including its aggregated metrics and final result.
 x-required-scope: testRun:read
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

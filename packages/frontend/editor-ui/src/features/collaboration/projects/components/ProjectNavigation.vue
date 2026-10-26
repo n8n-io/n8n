@@ -24,12 +24,12 @@ import {
 } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
-import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
-import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
 import {
 	AGENT_N8N_CHAT_VIEW,
 	AGENT_N8N_CHAT_RECENT_THREADS_LIMIT,
 } from '@/features/agents/constants';
+import N8nChatHintPopover from '@/features/agents/components/N8nChatHintPopover.vue';
 import { useAgentsN8nChatFlag } from '@/features/agents/composables/useAgentsN8nChatFlag';
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useAgentN8nChatThreadsStore } from '@/features/agents/n8nChatPage/n8nChatThreads.store';
@@ -180,7 +180,6 @@ const instanceAi = computed<IMenuItem>(() => ({
 		? locale.baseText('instanceAi.thread.new')
 		: locale.baseText('projects.menu.instanceAi'),
 	route: { to: { name: INSTANCE_AI_VIEW } },
-	preview: true,
 }));
 
 function onNewChatClick(): void {
@@ -212,13 +211,13 @@ function onChatItemClick(item: RecentChatItem): void {
 	agentTelemetry.trackClickedSidebarItem({ item: 'chat', chatType: item.kind });
 }
 
-const { isWorkflowReviewsEnabled: isWorkflowReviewsNavVisible } = useWorkflowReviewsFeature();
+const isInboxVisible = computed(() => settingsStore.settings.inbox?.enabled === true);
 
-const workflowReviews = computed<IMenuItem>(() => ({
-	id: 'workflow-reviews',
-	icon: 'message-square-text',
-	label: locale.baseText('workflowReviews.menu.title'),
-	route: { to: { name: WORKFLOW_REVIEW_REQUESTS_VIEW } },
+const inbox = computed<IMenuItem>(() => ({
+	id: 'inbox',
+	icon: 'inbox',
+	label: locale.baseText('inbox.title'),
+	route: { to: { name: INBOX_VIEW } },
 }));
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',
@@ -250,19 +249,27 @@ onBeforeUnmount(() => {
 <template>
 	<div :class="$style.projects">
 		<div :class="[$style.home, props.collapsed ? $style.collapsed : '']">
-			<N8nMenuItem
+			<N8nChatHintPopover
 				v-if="isInstanceAiNavVisible"
-				:item="instanceAi"
-				:compact="props.collapsed"
-				:active="
-					activeTabId === 'instance-ai' && !isInstanceAiThreadView && !isAgentN8nChatThreadView
-				"
-				:class="{
-					[$style.instanceAiParentInactive]: isInstanceAiThreadView || isAgentN8nChatThreadView,
-				}"
-				data-test-id="project-instance-ai-menu-item"
-				@click="onNewChatClick"
-			/>
+				hint="new_chat_sidebar"
+				:active="isAgentsN8nChatFlag"
+				:title="locale.baseText('agents.n8nChatHint.newChatSidebar.title')"
+				:body="locale.baseText('agents.n8nChatHint.newChatSidebar.body')"
+				side="right"
+			>
+				<N8nMenuItem
+					:item="instanceAi"
+					:compact="props.collapsed"
+					:active="
+						activeTabId === 'instance-ai' && !isInstanceAiThreadView && !isAgentN8nChatThreadView
+					"
+					:class="{
+						[$style.instanceAiParentInactive]: isInstanceAiThreadView || isAgentN8nChatThreadView,
+					}"
+					data-test-id="project-instance-ai-menu-item"
+					@click="onNewChatClick"
+				/>
+			</N8nChatHintPopover>
 			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
@@ -290,11 +297,11 @@ onBeforeUnmount(() => {
 				data-test-id="project-shared-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="isWorkflowReviewsNavVisible"
-				:item="workflowReviews"
+				v-if="isInboxVisible"
+				:item="inbox"
 				:compact="props.collapsed"
-				:active="sidebarActiveTabId === 'workflow-reviews'"
-				data-test-id="project-workflow-reviews-menu-item"
+				:active="sidebarActiveTabId === 'inbox'"
+				data-test-id="project-inbox-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"

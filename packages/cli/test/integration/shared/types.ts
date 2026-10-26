@@ -56,6 +56,7 @@ type EndpointGroup =
 	| 'module-settings'
 	| 'promotions'
 	| 'security-settings'
+	| 'public-api-rate-limit-settings'
 	| 'data-table'
 	| 'third-party-licenses'
 	| 'mcp'
@@ -67,6 +68,7 @@ type EndpointGroup =
 	| 'type-availability-policies';
 
 type ModuleName =
+	| 'inbox'
 	| 'insights'
 	| 'external-secrets'
 	| 'community-packages'
@@ -86,7 +88,8 @@ type ModuleName =
 	| 'policy-infrastructure'
 	| 'workflow-reviews'
 	| 'type-availability-policies'
-	| 'inbound-auth-core';
+	| 'inbound-auth-core'
+	| 'scim';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

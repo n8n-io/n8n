@@ -1,14 +1,19 @@
-import type {
-	ApplyPackageDto,
-	ApplyPackageResultDto,
-	ApplySelectionDto,
-	ContinueApplyPackageDto,
-	ContinueApplySelectionDto,
-	PromotePackageDto,
-	PromotePackageResultDto,
-	PromoteRequest,
-	PromotionCheckoutPublicDto,
-	PromotionDirection,
+import {
+	parsePromotionRunDetails,
+	promotionRunTypeSchema,
+	type ApplyCheckResult,
+	type ApplyPackageDto,
+	type ApplyPackageResultDto,
+	type ApplySelectionDto,
+	type ContinueApplyPackageDto,
+	type ContinueApplySelectionDto,
+	type PromotePackageDto,
+	type PromotePackageResultDto,
+	type PromoteRequest,
+	type PromotionBindingConflict,
+	type PromotionCheckoutPublicDto,
+	type PromotionDirection,
+	type PromotionRunContents,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
@@ -27,7 +32,9 @@ import {
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
+import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import {
+	CredentialConflictPolicy,
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
 	ExportDependencyPolicy,
@@ -50,15 +57,16 @@ import {
 import { ProjectService } from '@/services/project.service.ee';
 
 import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-files';
+import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
 import {
-	GIT_DEFAULT_COMMIT_EMAIL,
-	GIT_DEFAULT_COMMIT_NAME,
-	PACKAGE_SUBFOLDER,
-	PROMOTE_SELECTION_COMMIT_MESSAGE,
-} from './constants';
+	buildInstancePromotionCommitMessage,
+	buildSelectionPromotionCommitMessage,
+} from './promotion-commit-message';
 import { PromotionBindingPreflightService } from './promotion-binding-preflight.service';
-import { PromotionConfigResolver } from './promotion-config.resolver';
+import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
+import { PromotionRunRepository } from './database/repositories/promotion-run.repository';
+import { PromotionReviewsService } from './promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
 import {
@@ -69,13 +77,29 @@ import {
 } from './promotions-git.utils';
 import type {
 	BranchPackage,
+	PackageCommit,
 	PromotionCacheDescriptor,
 	PromotionGitCredentials,
 	PromotionOperationInput,
 } from './promotions.types';
-import { WorkingCopyUpdater, type SelectivePushOptions } from './working-copy-updater';
+import {
+	WorkingCopyUpdater,
+	type ScannedBranch,
+	type SelectivePushOptions,
+} from './working-copy-updater';
 
 type ProjectReconciliationResult = { deletedProjectIds: string[] };
+
+type PushedPromotion = {
+	commitSha: string;
+	counts: PromotePackageResultDto['counts'];
+	commitMessage: string;
+};
+
+/** Conflicts that `confirmDestructiveChanges` lets the apply continue past. */
+function isConfirmableConflict(code: PromotionBindingConflict['code']): boolean {
+	return code === 'destructive-change' || code === 'project-deletion';
+}
 
 // Apply treats the package as source of truth. Callers cannot override this policy,
 // but a confirmed Continue uses `overwrite` for data tables.
@@ -87,6 +111,7 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	missingNodeTypeMode: MissingNodeTypeMode.Fail,
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
+	credentialConflictPolicy: CredentialConflictPolicy.Overwrite,
 	folderConflictPolicy: FolderConflictPolicy.Overwrite,
 	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 	dataTableMatchingMode: 'by-id',
@@ -105,7 +130,7 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 @Service()
 export class PromotionsService {
 	constructor(
-		private readonly resolver: PromotionConfigResolver,
+		private readonly resolver: PromotionEnvironmentResolver,
 		private readonly providersService: PromotionProvidersService,
 		private readonly workingDirectory: PromotionWorkingDirectoryService,
 		private readonly workingCopy: WorkingCopyUpdater,
@@ -117,25 +142,24 @@ export class PromotionsService {
 		private readonly bindingPreflight: PromotionBindingPreflightService,
 		private readonly inventoryReader: PackageDirectoryInventoryReader,
 		private readonly packageImportConfig: PackageImportConfig,
+		private readonly runRepository: PromotionRunRepository,
+		private readonly reviewsService: PromotionReviewsService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
 	}
 
-	/** Clones one direction into local storage. Safe to call repeatedly. */
-	async clone(
-		connectionId: string,
-		direction: PromotionDirection,
-	): Promise<PromotionCheckoutPublicDto> {
-		const input = await this.resolver.resolveForConnection(connectionId, direction);
+	/** Clones the environment's branch into local storage. Safe to call repeatedly. */
+	async clone(environmentId: string): Promise<PromotionCheckoutPublicDto> {
+		const input = await this.resolver.resolveForEnvironment(environmentId);
 		const branchName = checkoutBranchName(input.config);
 
 		await this.gitService.clone({
 			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
-			paths: this.workingDirectory.paths(input.configId),
+			paths: this.workingDirectory.paths(input.environmentId),
 			branchName,
-			configId: input.configId,
+			environmentId: input.environmentId,
 		});
 		// Only a finished clone gets a descriptor, so a failed one stays unusable.
 		await this.workingDirectory.writeDescriptor(this.descriptorFor(input));
@@ -144,15 +168,12 @@ export class PromotionsService {
 	}
 
 	/**
-	 * Removes this direction's local checkout. Keeps the pinned SSH host keys, and
+	 * Removes the environment's local checkout. Keeps the pinned SSH host keys, and
 	 * changes no branch, package, or instance content.
 	 */
-	async disconnect(
-		connectionId: string,
-		direction: PromotionDirection,
-	): Promise<PromotionCheckoutPublicDto> {
-		const input = await this.resolver.resolveForConnection(connectionId, direction);
-		await this.workingDirectory.resetCheckout(input.configId);
+	async disconnect(environmentId: string): Promise<PromotionCheckoutPublicDto> {
+		const input = await this.resolver.resolveForEnvironment(environmentId);
+		await this.workingDirectory.resetCheckout(input.environmentId);
 		return {
 			...this.checkoutIdentity(input),
 			branchName: checkoutBranchName(input.config),
@@ -162,36 +183,33 @@ export class PromotionsService {
 
 	/** Exports every team project and pushes the package to the configured branch. */
 	async promote(
-		connectionId: string,
+		environmentId: string,
 		actor: User,
 		request: PromotePackageDto & { canExportVariableValues: boolean },
 	): Promise<PromotePackageResultDto> {
-		const input = await this.resolver.resolveForConnection(connectionId, 'promote');
-		if (input.config.direction !== 'promote') {
-			throw new UnexpectedError('Resolved an invalid promotion direction');
-		}
+		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
 		this.assertInstanceScope(input, 'Promote');
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
 		const credentials = await this.credentialsFor(input);
 		const targetBranchName = await this.prepareTargetBranch(input, branchName, credentials);
-		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
+		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
 
-		// The instance connection covers every team project, including projects with
-		// their own connection. Personal projects stay out of scope.
+		// The instance environment covers every team project, including projects with
+		// their own environment. Personal projects stay out of scope.
 		const projectIds = await this.projectRepository.findTeamProjectIds();
 
 		this.logger.info('Exporting projects for a promotion', {
-			connectionId,
-			configId: input.configId,
+			environmentId,
 			projectCount: projectIds.length,
 		});
 
 		await mkdir(repositoryFolder, { recursive: true });
 		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${PACKAGE_SUBFOLDER}-`));
 
+		let pushed: PushedPromotion;
 		try {
 			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
 				{
@@ -218,38 +236,139 @@ export class PromotionsService {
 			if (targetBranchName) {
 				// The commit moves the local base branch. Remove trust before it moves, and
 				// restore trust only after the base branch is back on its own commit.
-				await this.workingDirectory.invalidateDescriptor(input.configId);
+				await this.workingDirectory.invalidateDescriptor(input.environmentId);
 			}
 
+			const commitMessage =
+				request.commitMessage ??
+				buildInstancePromotionCommitMessage({
+					projectCount: projectIds.length,
+					workflowCount: exportResult.counts.workflows,
+				});
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
 				credentials,
-				paths: this.workingDirectory.paths(input.configId),
+				paths: this.workingDirectory.paths(input.environmentId),
 				branchName,
 				targetBranchName,
-				configId: input.configId,
+				environmentId: input.environmentId,
 				author: this.commitAuthor(actor),
-				commitMessage: request.commitMessage,
+				commitMessage,
 				// A promotion branch must be new, so force does not apply.
 				force: targetBranchName ? false : (request.force ?? false),
 				stagePathspec: PACKAGE_SUBFOLDER,
 				onCheckoutRestored: async () =>
 					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
 			});
-
-			return {
-				connectionId: input.connectionId,
-				configId: input.configId,
-				counts: exportResult.counts,
-				git: { commitSha, branchName: targetBranchName ?? branchName },
-			};
+			pushed = { commitSha, counts: exportResult.counts, commitMessage };
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
+		}
+
+		return {
+			environmentId: input.environmentId,
+			counts: pushed.counts,
+			git: { commitSha: pushed.commitSha, branchName: targetBranchName ?? branchName },
+			...(await this.openReview(input, actor, {
+				promotionBranchName: targetBranchName,
+				commitSha: pushed.commitSha,
+				commitMessage: pushed.commitMessage,
+				promotionRunContents: { projectIds },
+			})),
+		};
+	}
+
+	/** Records the push, then opens a review for a promotion branch. This does not throw. */
+	private async openReview(
+		input: PromotionOperationInput,
+		actor: User,
+		push: {
+			promotionBranchName: string | undefined;
+			commitSha: string;
+			commitMessage: string;
+			promotionRunContents: PromotionRunContents;
+		},
+	): Promise<Pick<PromotePackageResultDto, 'review' | 'warnings'>> {
+		const recorded = await this.recordPromoteRun(input, actor, {
+			branchName: push.promotionBranchName ?? checkoutBranchName(input.config),
+			commitSha: push.commitSha,
+			// Only a promotion branch has a review, and the review gate reads the project list.
+			...(push.promotionBranchName && { promotionRunContents: push.promotionRunContents }),
+		});
+		// A review without a run cannot be rendered: the branch and commit live on the run.
+		if (!recorded.runId) {
+			const opensMergeRequest = input.providerType === 'gitlab' && !!push.promotionBranchName;
+			return {
+				warnings: [
+					{
+						message: opensMergeRequest
+							? 'The push succeeded, but n8n could not record the promotion run, so no merge request was opened.'
+							: 'The push succeeded, but n8n could not record the promotion run.',
+					},
+				],
+			};
+		}
+		if (!push.promotionBranchName) return {};
+		// The first line becomes the merge request title, the rest its description.
+		const lines = push.commitMessage.split('\n');
+		const titleIndex = lines.findIndex((line) => line.trim() !== '');
+		if (titleIndex === -1) {
+			return {
+				warnings: [
+					{
+						message: 'No merge request was opened.',
+					},
+				],
+			};
+		}
+		const { review, warnings } = await this.reviewsService.openMergeRequest(
+			input,
+			actor,
+			{
+				branchName: push.promotionBranchName,
+				baseBranchName: checkoutBranchName(input.config),
+				commitSha: push.commitSha,
+				title: lines[titleIndex].trim(),
+				body: lines.slice(titleIndex + 1).join('\n'),
+			},
+			recorded.runId,
+		);
+		return {
+			...(review && { review }),
+			...(warnings.length > 0 && { warnings }),
+		};
+	}
+
+	/** Writes the run after the push. A failure becomes a warning. The push stays. */
+	private async recordPromoteRun(
+		input: PromotionOperationInput,
+		actor: User,
+		git: { branchName: string; commitSha: string; promotionRunContents?: PromotionRunContents },
+	): Promise<{ runId?: string }> {
+		try {
+			const type = promotionRunTypeSchema.parse('git');
+			const run = await this.runRepository.insertRun({
+				environmentId: input.environmentId,
+				createdById: actor.id,
+				direction: input.config.direction,
+				type,
+				details: parsePromotionRunDetails(type, {
+					schemaVersion: 1,
+					branchName: git.branchName,
+					commitSha: git.commitSha,
+					...(git.promotionRunContents && { contents: git.promotionRunContents }),
+				}),
+				reviewId: null,
+			});
+			return { runId: run.id };
+		} catch (error) {
+			this.logger.error('Could not record the promotion run', { error });
+			return {};
 		}
 	}
 
 	/**
-	 * Selective promote against an already-resolved connection. Unselected workflows
+	 * Selective promote against an already-resolved environment. Unselected workflows
 	 * keep their content. A renamed project or folder moves its branch directory,
 	 * so the unselected workflows inside it move with it. A promotion branch is
 	 * always new, so force never applies.
@@ -257,38 +376,38 @@ export class PromotionsService {
 	private async promoteSelectionResolved(
 		input: PromotionOperationInput,
 		actor: User,
-		request: { commitMessage: string; canExportVariableValues: boolean },
+		request: { commitMessage?: string; canExportVariableValues: boolean },
 		selection: SelectivePushOptions,
 	): Promise<PromotePackageResultDto> {
 		// NOTE: This assertion needs adjusting once we add full support for project-scoped promotions.
 		this.assertInstanceScope(input, 'Promote');
 
 		this.workingCopy.validateSelection(selection);
-		await this.assertTeamProject(selection.projectId);
+		const project = await this.assertTeamProject(selection.projectId);
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
 		const credentials = await this.credentialsFor(input);
-		// A branched config resets the checkout to the latest base here, so the
+		// A branched environment resets the checkout to the latest base here, so the
 		// selection applies on top of it and pushes to a fresh promotion branch.
 		const targetBranchName = await this.prepareTargetBranch(input, branchName, credentials);
 
-		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
+		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
 		// No package yet means this selection becomes the first export.
 		const packageExisted = await pathExists(packageFolder);
 		if (
 			!(await pathExists(path.join(packageFolder, MANIFEST_FILE))) &&
 			(await this.gitService.hasCommittedPath({
-				paths: this.workingDirectory.paths(input.configId),
+				paths: this.workingDirectory.paths(input.environmentId),
 				branchName,
-				configId: input.configId,
+				environmentId: input.environmentId,
 				pathspec: `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`,
 			}))
 		) {
 			// The commit holds a manifest the checkout lost. A push would drop branch content or metadata.
 			throw new BadRequestError(
-				'The local copy of the promote branch is incomplete. Disconnect and connect it again in the instance connection settings.',
+				'The local copy of the promote branch is incomplete. Disconnect and connect it again in the instance environment settings.',
 			);
 		}
 
@@ -299,6 +418,7 @@ export class PromotionsService {
 		let backedUp = false;
 		let keepPrePushBackup = false;
 
+		let pushed: PushedPromotion;
 		try {
 			if (packageExisted) {
 				await rm(prePushBackup, { recursive: true, force: true });
@@ -336,18 +456,21 @@ export class PromotionsService {
 			if (targetBranchName) {
 				// The commit moves the local base branch. Remove trust before it moves, and
 				// restore trust only after the base branch is back on its own commit.
-				await this.workingDirectory.invalidateDescriptor(input.configId);
+				await this.workingDirectory.invalidateDescriptor(input.environmentId);
 			}
 
+			const commitMessage =
+				request.commitMessage ??
+				this.defaultSelectionCommitMessage(project.name, selection, staging, branch);
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
 				credentials,
-				paths: this.workingDirectory.paths(input.configId),
+				paths: this.workingDirectory.paths(input.environmentId),
 				branchName,
 				targetBranchName,
-				configId: input.configId,
+				environmentId: input.environmentId,
 				author: this.commitAuthor(actor),
-				commitMessage: request.commitMessage,
+				commitMessage,
 				// A promotion branch must be new, so force never applies.
 				force: false,
 				stagePathspec: PACKAGE_SUBFOLDER,
@@ -355,13 +478,7 @@ export class PromotionsService {
 				onCheckoutRestored: async () =>
 					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
 			});
-
-			return {
-				connectionId: input.connectionId,
-				configId: input.configId,
-				counts,
-				git: { commitSha, branchName: targetBranchName ?? branchName },
-			};
+			pushed = { commitSha, counts, commitMessage };
 		} catch (error) {
 			if (backedUp) {
 				await rm(packageFolder, { recursive: true, force: true }).catch((restoreError: unknown) => {
@@ -399,6 +516,18 @@ export class PromotionsService {
 				this.logger.warn('Failed to remove the selection staging folder', { stagingFolder, error });
 			});
 		}
+
+		return {
+			environmentId: input.environmentId,
+			counts: pushed.counts,
+			git: { commitSha: pushed.commitSha, branchName: targetBranchName ?? branchName },
+			...(await this.openReview(input, actor, {
+				promotionBranchName: targetBranchName,
+				commitSha: pushed.commitSha,
+				commitMessage: pushed.commitMessage,
+				promotionRunContents: { projectIds: [selection.projectId] },
+			})),
+		};
 	}
 
 	/**
@@ -416,8 +545,8 @@ export class PromotionsService {
 			throw new BadRequestError('workflowIds contains duplicates');
 		}
 
-		// Resolve like the change preview does, so the promote pushes to the connection
-		// the user previewed. resolveForProject validates the project and connection too.
+		// Resolve like the change preview does, so the promote pushes to the environment
+		// the user previewed. resolveForProject validates the project and environment too.
 		const input = await this.resolver.resolveForProject(projectId, 'promote');
 
 		const selection = await this.classifySelection(projectId, request.workflowIds);
@@ -426,7 +555,7 @@ export class PromotionsService {
 			input,
 			actor,
 			{
-				commitMessage: request.commitMessage ?? PROMOTE_SELECTION_COMMIT_MESSAGE,
+				commitMessage: request.commitMessage,
 				canExportVariableValues: request.canExportVariableValues,
 			},
 			selection,
@@ -468,20 +597,20 @@ export class PromotionsService {
 
 	/** Checks package bindings and imports only when no blocking issues remain. */
 	async apply(
-		connectionId: string,
+		environmentId: string,
 		actor: User,
 		expectedSource?: ApplyPackageDto['expectedSource'],
 	): Promise<ApplyPackageResultDto> {
-		return await this.applyFromSource(connectionId, actor, expectedSource);
+		return await this.applyFromSource(environmentId, actor, expectedSource);
 	}
 
 	async continueApply(
-		connectionId: string,
+		environmentId: string,
 		actor: User,
 		request: ContinueApplyPackageDto,
 	): Promise<ApplyPackageResultDto> {
 		return await this.applyFromSource(
-			connectionId,
+			environmentId,
 			actor,
 			request.expectedSource,
 			request.confirmDestructiveChanges === true,
@@ -519,7 +648,7 @@ export class PromotionsService {
 		inventory: PackageDirectoryInventory,
 		projectId: string,
 		workflowIds: string[],
-	): Promise<ImportSelection> {
+	): Promise<{ selection: ImportSelection; movedWorkflowIds: string[] }> {
 		const branchWorkflowIds = new Set(
 			inventory.workflows
 				.filter((workflow) => workflow.projectId === projectId)
@@ -556,14 +685,83 @@ export class PromotionsService {
 			);
 		}
 
-		if (movedWorkflowIds.length > 0) {
-			// Mirror the import engine, which rejects a move-shaped change with 409.
-			throw new ConflictError(
-				`These workflows moved to another project: ${movedWorkflowIds.join(', ')}. A selective apply cannot move them. Apply all projects instead.`,
+		return {
+			selection: { selectedProjectId: projectId, selectedWorkflowIds, deletedWorkflowIds },
+			movedWorkflowIds,
+		};
+	}
+
+	/**
+	 * Runs the Apply preflight for every workflow that the Apply preview of the project can list.
+	 * It reads the package at the preview's commit and writes nothing. Moved workflows are
+	 * returned instead of rejected.
+	 */
+	async checkApplyBlockers(projectId: string, commitSha: string): Promise<ApplyCheckResult> {
+		const input = await this.resolver.resolveForProject(projectId, 'apply');
+		await this.assertCheckoutReady(input, 'checking Apply blockers');
+
+		const branchName = checkoutBranchName(input.config);
+		const files = await this.gitService.readTreeAtCommit({
+			remoteUrl: repositoryUrl(input),
+			credentials: await this.credentialsFor(input),
+			paths: this.workingDirectory.paths(input.environmentId),
+			branchName,
+			environmentId: input.environmentId,
+			commitSha,
+			directory: PACKAGE_SUBFOLDER,
+			limits: this.packageImportConfig,
+		});
+		if (files.size === 0) {
+			throw new BadRequestError(
+				'The remote branch has no exported package to import. Promote to it first.',
 			);
 		}
+		const inventory = await this.inventoryReader.read({
+			listEntries: async () => [...files.keys()],
+			readFile: async (entryPath) => {
+				const content = files.get(entryPath);
+				if (!content) throw new BadRequestError(`Package does not contain entry: ${entryPath}`);
+				return content;
+			},
+		});
 
-		return { selectedProjectId: projectId, selectedWorkflowIds, deletedWorkflowIds };
+		const branchWorkflowIds = inventory.workflows
+			.filter((workflow) => workflow.projectId === projectId)
+			.map(({ id }) => id);
+		const ownedWorkflowIds = await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([
+			projectId,
+		]);
+		const { selection, movedWorkflowIds } = await this.classifyApplySelection(
+			inventory,
+			projectId,
+			[...new Set([...branchWorkflowIds, ...ownedWorkflowIds])],
+		);
+		const preflight = await this.bindingPreflight.checkInventory({
+			inventory,
+			selection: {
+				selectedProjectId: projectId,
+				selectedWorkflowIds: selection.selectedWorkflowIds,
+			},
+		});
+
+		const projects = new Map(inventory.projects.map(({ id, name }) => [id, { id, name }]));
+		const movedWorkflows = inventory.workflows
+			.filter(({ id }) => movedWorkflowIds.includes(id))
+			.map(({ id, name, projectId: branchProjectId }) => {
+				const project = projects.get(branchProjectId);
+				// The reader requires a project file for every project directory.
+				if (!project)
+					throw new UnexpectedError(`Package inventory has no project "${branchProjectId}"`);
+				return { id, name, project };
+			})
+			.sort((a, b) => a.id.localeCompare(b.id));
+
+		return {
+			environmentId: input.environmentId,
+			git: { commitSha, branchName },
+			preflight,
+			movedWorkflows,
+		};
 	}
 
 	private async applySelectionFromSource(
@@ -577,23 +775,22 @@ export class PromotionsService {
 		await this.assertCheckoutReady(input, 'applying');
 
 		const branchName = checkoutBranchName(input.config);
-		const paths = this.workingDirectory.paths(input.configId);
+		const paths = this.workingDirectory.paths(input.environmentId);
 		const { commitSha } = await this.gitService.refreshCheckout({
 			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
 			paths,
 			branchName,
-			configId: input.configId,
+			environmentId: input.environmentId,
 		});
 
 		const identity = {
-			connectionId: input.connectionId,
-			configId: input.configId,
+			environmentId: input.environmentId,
 			git: { commitSha, branchName },
 		};
 		if (
 			expectedSource &&
-			(expectedSource.configId !== input.configId ||
+			(expectedSource.environmentId !== input.environmentId ||
 				expectedSource.branchName !== branchName ||
 				expectedSource.commitSha !== commitSha)
 		) {
@@ -613,7 +810,17 @@ export class PromotionsService {
 
 		const reader = new DirectoryPackageReader(packageFolder, this.packageImportConfig);
 		const inventory = await this.inventoryReader.read(reader);
-		const selection = await this.classifyApplySelection(inventory, projectId, workflowIds);
+		const { selection, movedWorkflowIds } = await this.classifyApplySelection(
+			inventory,
+			projectId,
+			workflowIds,
+		);
+		if (movedWorkflowIds.length > 0) {
+			// Mirror the import engine, which rejects a move-shaped change with 409.
+			throw new ConflictError(
+				`These workflows moved to another project: ${movedWorkflowIds.join(', ')}. A selective apply cannot move them. Apply all projects instead.`,
+			);
+		}
 		const preflight = await this.bindingPreflight.checkInventory({
 			inventory,
 			selection: {
@@ -622,7 +829,7 @@ export class PromotionsService {
 			},
 		});
 		const blockingConflicts = confirmDestructiveChanges
-			? preflight.conflicts.filter(({ code }) => code !== 'destructive-change')
+			? preflight.conflicts.filter(({ code }) => !isConfirmableConflict(code))
 			: preflight.conflicts;
 		if (
 			preflight.missingBindings.length > 0 ||
@@ -657,6 +864,8 @@ export class PromotionsService {
 				dataTableSchemaConflictPolicy: confirmDestructiveChanges
 					? DataTableSchemaConflictPolicy.Overwrite
 					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
+				tagConflictPolicy: IMPORT_POLICY.tagConflictPolicy,
+				credentialConflictPolicy: IMPORT_POLICY.credentialConflictPolicy,
 			},
 			{ sourceDir: packageFolder },
 			selection,
@@ -674,34 +883,33 @@ export class PromotionsService {
 	}
 
 	private async applyFromSource(
-		connectionId: string,
+		environmentId: string,
 		actor: User,
 		expectedSource?: ApplyPackageDto['expectedSource'],
 		confirmDestructiveChanges = false,
 	): Promise<ApplyPackageResultDto> {
-		const input = await this.resolver.resolveForConnection(connectionId, 'apply');
+		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
 		this.assertInstanceScope(input, 'Apply');
 		await this.assertCheckoutReady(input, 'applying');
 
 		const branchName = checkoutBranchName(input.config);
-		const paths = this.workingDirectory.paths(input.configId);
+		const paths = this.workingDirectory.paths(input.environmentId);
 
 		const { commitSha } = await this.gitService.refreshCheckout({
 			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
 			paths,
 			branchName,
-			configId: input.configId,
+			environmentId: input.environmentId,
 		});
 
 		const identity = {
-			connectionId: input.connectionId,
-			configId: input.configId,
+			environmentId: input.environmentId,
 			git: { commitSha, branchName },
 		};
 		if (
 			expectedSource &&
-			(expectedSource.configId !== input.configId ||
+			(expectedSource.environmentId !== input.environmentId ||
 				expectedSource.branchName !== branchName ||
 				expectedSource.commitSha !== commitSha)
 		) {
@@ -723,7 +931,7 @@ export class PromotionsService {
 			sourceDir: packageFolder,
 		});
 		const blockingConflicts = confirmDestructiveChanges
-			? preflight.conflicts.filter(({ code }) => code !== 'destructive-change')
+			? preflight.conflicts.filter(({ code }) => !isConfirmableConflict(code))
 			: preflight.conflicts;
 		if (
 			preflight.missingBindings.length > 0 ||
@@ -744,8 +952,7 @@ export class PromotionsService {
 		}
 
 		this.logger.info('Importing a package', {
-			connectionId,
-			configId: input.configId,
+			environmentId,
 			confirmDestructiveChanges,
 		});
 
@@ -760,7 +967,14 @@ export class PromotionsService {
 			{ sourceDir: packageFolder },
 		);
 		const importedProjectIds = result.projects.map((project) => project.localId);
-		const projectReconciliation = await this.reconcileTeamProjects(actor, importedProjectIds);
+		const confirmedProjectIds = preflight.conflicts.flatMap((conflict) =>
+			conflict.code === 'project-deletion' ? conflict.project.id : [],
+		);
+		const projectReconciliation = await this.reconcileTeamProjects(
+			actor,
+			importedProjectIds,
+			confirmedProjectIds,
+		);
 
 		return {
 			status: 'applied',
@@ -777,19 +991,19 @@ export class PromotionsService {
 		const input = await this.resolver.resolveForProject(projectId, direction);
 		await this.assertCheckoutReady(input, 'listing branch files');
 
-		const paths = this.workingDirectory.paths(input.configId);
+		const paths = this.workingDirectory.paths(input.environmentId);
 		const branchName = checkoutBranchName(input.config);
 		const { commitSha, lsTreeOutput } = await this.gitService.listBranchTree({
 			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
 			paths,
 			branchName,
-			configId: input.configId,
+			environmentId: input.environmentId,
 			pathspecs: BASE_BRANCH_DIRECTORIES.map((directory) => `${PACKAGE_SUBFOLDER}/${directory}/`),
 		});
 
 		return {
-			configId: input.configId,
+			environmentId: input.environmentId,
 			branchName,
 			commitSha,
 			files: parseBaseBranchFiles(lsTreeOutput, { exportRoot: PACKAGE_SUBFOLDER, projectId }),
@@ -802,7 +1016,7 @@ export class PromotionsService {
 				return await this.gitService.readFilesAtCommit({
 					paths,
 					branchName,
-					configId: input.configId,
+					environmentId: input.environmentId,
 					commitSha,
 					filePaths,
 				});
@@ -811,8 +1025,82 @@ export class PromotionsService {
 	}
 
 	/**
-	 * Resolves the branch one promotion pushes to, honoring the resolved config.
-	 * When the config creates a branch per promotion, this validates the new name
+	 * Reads files at a commit that an earlier change preview reported. The branch may have
+	 * moved since then, so this reads the commit and not the branch tip. Paths that the commit
+	 * does not hold are left out, for example the manifest before the first promotion.
+	 */
+	async readBranchFilesAtCommit(
+		projectId: string,
+		direction: PromotionDirection,
+		commitSha: string,
+		filePaths: readonly string[],
+	): Promise<Map<string, string>> {
+		const input = await this.resolver.resolveForProject(projectId, direction);
+		await this.assertCheckoutReady(input, 'reading branch files');
+		return await this.readExistingFiles(
+			{
+				paths: this.workingDirectory.paths(input.environmentId),
+				branchName: checkoutBranchName(input.config),
+				environmentId: input.environmentId,
+				commitSha,
+			},
+			filePaths,
+		);
+	}
+
+	/**
+	 * Fetches the head and the baseline of a promotion review into the checkout of its
+	 * environment, and returns the package at each. The Git service chooses the baseline.
+	 */
+	async readReviewCommits(
+		environmentId: string,
+		request: {
+			headRef: string;
+			headCommitSha: string;
+			baseline: { targetBranchName: string } | { commitSha: string; targetBranchName?: string };
+		},
+	): Promise<{ baseline: PackageCommit; head: PackageCommit }> {
+		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
+		await this.assertCheckoutReady(input, 'reading a review');
+		const operation = {
+			paths: this.workingDirectory.paths(input.environmentId),
+			branchName: checkoutBranchName(input.config),
+			environmentId: input.environmentId,
+		};
+		const { baselineCommitSha } = await this.gitService.fetchReviewCommits({
+			...operation,
+			...request,
+			remoteUrl: repositoryUrl(input),
+			credentials: await this.credentialsFor(input),
+		});
+		const atCommit = (commitSha: string): PackageCommit => ({
+			commitSha,
+			listFiles: async () =>
+				await this.gitService.listFilesAtCommit({
+					...operation,
+					commitSha,
+					directory: PACKAGE_SUBFOLDER,
+				}),
+			readFiles: async (filePaths) =>
+				await this.readExistingFiles({ ...operation, commitSha }, filePaths),
+		});
+		return { baseline: atCommit(baselineCommitSha), head: atCommit(request.headCommitSha) };
+	}
+
+	private async readExistingFiles(
+		operation: Omit<Parameters<PromotionsGitService['readFilesAtCommit']>[0], 'filePaths'>,
+		filePaths: readonly string[],
+	): Promise<Map<string, string>> {
+		const existing = await this.gitService.findPathsAtCommit({ ...operation, filePaths });
+		return await this.gitService.readFilesAtCommit({
+			...operation,
+			filePaths: filePaths.filter((path) => existing.has(path)),
+		});
+	}
+
+	/**
+	 * Resolves the branch one promotion pushes to, honoring the resolved environment.
+	 * When the environment creates a branch per promotion, this validates the new name
 	 * and resets the checkout to the latest base, so the promotion builds on it.
 	 * Otherwise the push targets the base branch and there is nothing to prepare.
 	 */
@@ -829,22 +1117,22 @@ export class PromotionsService {
 		await this.gitService.prepareCheckoutForPromotion({
 			remoteUrl: repositoryUrl(input),
 			credentials,
-			paths: this.workingDirectory.paths(input.configId),
+			paths: this.workingDirectory.paths(input.environmentId),
 			branchName,
-			configId: input.configId,
+			environmentId: input.environmentId,
 		});
 		return targetBranchName;
 	}
 
 	/**
-	 * Project connections can be configured and resolved, but running a package
+	 * Project environments can be configured and resolved, but running a package
 	 * operation on one is not implemented. The current export and import cover the
 	 * whole instance, so this rejects before any export, import, or Git write.
 	 */
 	private assertInstanceScope(input: PromotionOperationInput, operation: string) {
-		if (input.connectionScope !== 'instance') {
+		if (input.scope !== 'instance') {
 			throw new BadRequestError(
-				`${operation} is only available on the instance connection. Project connections are not supported yet.`,
+				`${operation} is only available on an instance environment. Project environments are not supported yet.`,
 			);
 		}
 	}
@@ -853,40 +1141,58 @@ export class PromotionsService {
 		const project = await this.projectRepository.findOneBy({ id: projectId });
 		if (!project) throw new NotFoundError('Project not found');
 		if (project.type !== 'team') {
-			throw new BadRequestError('Only team projects can use a promotion connection');
+			throw new BadRequestError('Only team projects can use a promotion environment');
 		}
+		return project;
+	}
+
+	/** A selected workflow the branch already holds counts as updated, otherwise as added. */
+	private defaultSelectionCommitMessage(
+		projectName: string,
+		selection: SelectivePushOptions,
+		staging: PackageManifest,
+		branch: ScannedBranch,
+	): string {
+		const onBranch = new Map((branch.state.workflows ?? []).map((w) => [w.id, w.name]));
+		const exported = new Map((staging.workflows ?? []).map((w) => [w.id, w.name]));
+		const pushed = selection.workflowIds.map((id) => ({ id, name: exported.get(id) ?? id }));
+
+		return buildSelectionPromotionCommitMessage({
+			projectName,
+			added: pushed.filter(({ id }) => !onBranch.has(id)),
+			updated: pushed.filter(({ id }) => onBranch.has(id)),
+			removed: selection.deletedWorkflowIds.map((id) => ({ id, name: onBranch.get(id) ?? id })),
+		});
 	}
 
 	/**
 	 * A checkout counts as ready only when it exists and was cloned from the
-	 * configuration we just resolved. Another process may have changed the remote or
+	 * environment we just resolved. Another process may have changed the remote or
 	 * the branch, which cannot invalidate this machine's cache.
 	 */
 	private async assertCheckoutReady(input: PromotionOperationInput, gerund: string) {
-		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
+		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
 		const cloned = await this.gitService.hasCheckout(repositoryFolder);
 		const current =
 			cloned && (await this.workingDirectory.matchesDescriptor(this.descriptorFor(input)));
 		if (!current) {
 			throw new BadRequestError(
-				`This ${input.config.direction} configuration is not cloned. Clone it before ${gerund}.`,
+				`This ${input.config.direction} environment is not connected. Connect it before ${gerund}.`,
 			);
 		}
 	}
 
 	private descriptorFor(input: PromotionOperationInput): PromotionCacheDescriptor {
 		return buildCacheDescriptor({
-			connectionId: input.connectionId,
-			configId: input.configId,
-			target: input.target,
+			environmentId: input.environmentId,
+			remote: input.remote,
 			config: input.config,
 		});
 	}
 
 	private checkoutIdentity(input: PromotionOperationInput) {
 		return {
-			connectionId: input.connectionId,
-			configId: input.configId,
+			environmentId: input.environmentId,
 			direction: input.config.direction,
 		};
 	}
@@ -899,13 +1205,18 @@ export class PromotionsService {
 		});
 	}
 
+	/** Deletes only the projects that the user confirmed and that the import did not keep. */
 	private async reconcileTeamProjects(
 		actor: User,
 		importedProjectIds: string[],
+		confirmedProjectIds: string[],
 	): Promise<ProjectReconciliationResult> {
 		const imported = new Set(importedProjectIds);
+		const confirmed = new Set(confirmedProjectIds);
 		const teamProjectIds = await this.projectRepository.findTeamProjectIds();
-		const removedProjectIds = teamProjectIds.filter((projectId) => !imported.has(projectId));
+		const removedProjectIds = teamProjectIds.filter(
+			(projectId) => confirmed.has(projectId) && !imported.has(projectId),
+		);
 
 		for (const projectId of removedProjectIds) {
 			await this.projectService.deleteProject(actor, projectId);
@@ -957,6 +1268,7 @@ export class PromotionsService {
 			credentials: {
 				matched: importResult.credentials.matched.length,
 				stubbed: importResult.credentials.stubbed.length,
+				updated: importResult.credentials.updated.length,
 			},
 			dataTables: {
 				matched: importResult.dataTables.matched,

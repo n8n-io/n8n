@@ -150,7 +150,28 @@ export class PromotionBindingPreflightService {
 		this.checkCredentials(credentials, targetCredentials, personalProjectIds, projectOf, result);
 		this.checkVariables(variables, targetVariables, personalProjectIds, projectOf, result);
 		this.checkDataTables(destructiveChanges, projectOf, result);
+		// Only a full apply deletes projects.
+		if (!selection) await this.checkProjectDeletions(packageInventory, result);
 		return result;
+	}
+
+	/** Reports the team projects that a full apply deletes: the ones that the package does not hold. */
+	private async checkProjectDeletions(
+		inventory: PackageDirectoryInventory,
+		result: PromotionBindingPreflightResult,
+	): Promise<void> {
+		const packageProjectIds = new Set(inventory.projects.map(({ id }) => id));
+		const deletedIds = (await this.projectRepository.findTeamProjectIds()).filter(
+			(id) => !packageProjectIds.has(id),
+		);
+		if (deletedIds.length === 0) return;
+
+		const projects = await this.projectRepository.findTeamProjectInfoByIds(deletedIds);
+		for (const { id, name } of projects.sort(
+			(a, b) => compare(a.name, b.name) || compare(a.id, b.id),
+		)) {
+			result.conflicts.push({ kind: 'project', code: 'project-deletion', project: { id, name } });
+		}
 	}
 
 	private checkProjects(

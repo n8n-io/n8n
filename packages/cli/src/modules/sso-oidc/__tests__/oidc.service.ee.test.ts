@@ -31,8 +31,7 @@ vi.mock('openid-client', async (importOriginal) => {
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { JwtService, UrlService } from '@n8n/backend-services';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
 import { OIDC_PREFERENCES_DB_KEY } from '../constants';
@@ -403,6 +402,47 @@ describe('OidcService', () => {
 
 			// Should not attempt to import Publisher in single main setup
 			expect(mockPublisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('sso-login-disabled', () => {
+		beforeEach(() => {
+			mockInstance(Publisher, { publishCommand: vi.fn() });
+			settingsRepository.save = vi.fn().mockResolvedValue(mockConfigFromDB);
+			vi.mocked(client.discovery).mockResolvedValue({} as client.Configuration);
+			vi.spyOn(ssoHelpers, 'emitSsoLoginDisabled').mockResolvedValue();
+		});
+
+		const updateLoginEnabled = async (loginEnabled: boolean) =>
+			await oidcService.updateConfig({ ...mockOidcConfig, loginEnabled } as any as OidcConfigDto);
+
+		it('is emitted when OIDC login turns off', async () => {
+			vi.spyOn(ssoHelpers, 'getCurrentAuthenticationMethod').mockReturnValue('oidc');
+
+			await updateLoginEnabled(false);
+
+			expect(ssoHelpers.setCurrentAuthenticationMethod).toHaveBeenCalledWith('email');
+			expect(ssoHelpers.emitSsoLoginDisabled).toHaveBeenCalledExactlyOnceWith('oidc');
+		});
+
+		it.each(['email', 'saml', 'ldap'] as const)(
+			'is not emitted when OIDC is off and the method is %s',
+			async (method) => {
+				vi.spyOn(ssoHelpers, 'getCurrentAuthenticationMethod').mockReturnValue(method);
+
+				await updateLoginEnabled(false);
+
+				expect(ssoHelpers.emitSsoLoginDisabled).not.toHaveBeenCalled();
+			},
+		);
+
+		it('is not emitted when OIDC login turns on', async () => {
+			vi.spyOn(ssoHelpers, 'getCurrentAuthenticationMethod').mockReturnValue('email');
+
+			await updateLoginEnabled(true);
+
+			expect(ssoHelpers.setCurrentAuthenticationMethod).toHaveBeenCalledWith('oidc');
+			expect(ssoHelpers.emitSsoLoginDisabled).not.toHaveBeenCalled();
 		});
 	});
 

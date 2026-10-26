@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
+import { OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { ClientOAuth2, resolveClientAuthOptions } from '@n8n/client-oauth2';
 import { Get, RestController } from '@n8n/decorators';
@@ -13,7 +14,6 @@ import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ExternalHooks } from '@/external-hooks';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OauthService, OauthVersion } from '@/oauth/oauth.service';
 import { OAuthRequest } from '@/requests';
 
@@ -39,6 +39,7 @@ export class OAuth2CredentialController {
 	/** Verify and store app code. Generate access tokens and store for respective credential */
 	@Get('/callback', { usesTemplates: true, allowUnauthenticated: true })
 	async handleCallback(req: OAuthRequest.OAuth2Credential.Callback, res: Response) {
+		let credentialType: string | undefined;
 		try {
 			const { code, state: encodedState } = req.query;
 			if (!code || !encodedState) {
@@ -76,6 +77,7 @@ export class OAuth2CredentialController {
 
 			const [credential, decryptedDataOriginal, oauthCredentials, state, flowState] =
 				await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
+			credentialType = credential.type;
 
 			if (typeof state.resource === 'string') {
 				oauthCredentials.resource = state.resource;
@@ -201,7 +203,7 @@ export class OAuth2CredentialController {
 			this.logger.error('OAuth2 callback failed', { error, cause: error.cause });
 			return this.oauthService.renderCallbackError(
 				res,
-				error.message,
+				this.oauthService.extractCallbackErrorMessage(error, credentialType),
 				this.oauthService.extractCallbackErrorReason(error),
 			);
 		}

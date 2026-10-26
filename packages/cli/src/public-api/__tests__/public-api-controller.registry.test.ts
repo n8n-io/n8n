@@ -1,6 +1,7 @@
 import { ListTagsQueryDto, publicApiUploadedFileSchema, Z } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, type Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
+import type { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
@@ -32,8 +33,9 @@ import {
 	OptionalWidgetBodyDto,
 	WidgetBodyDto,
 } from '@/public-api/__tests__/public-api-controller-test-utils';
+import type { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
-import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
+import type { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
@@ -42,6 +44,8 @@ describe('PublicApiControllerRegistry', () => {
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();
 	const lastActiveAtService = mock<LastActiveAtService>();
 	const eventService = mock<EventService>();
+	const idempotencyKeyService = mock<IdempotencyKeyService>();
+	const logger = mock<Logger>();
 	const authenticatedUser = mock<User>({ id: 'user-1' });
 
 	function activate(): express.Express {
@@ -58,6 +62,9 @@ describe('PublicApiControllerRegistry', () => {
 			authStrategyRegistry,
 			lastActiveAtService,
 			eventService,
+			mock<PublicApiRateLimitService>({ createRouteLimiters: () => [] }),
+			idempotencyKeyService,
+			logger,
 		).activate(router, 'v1');
 		// mirrors the production mount, `apiController.use('/api/v1', ..., controllerRouter)`
 		app.use('/api/v1', router);
@@ -66,13 +73,111 @@ describe('PublicApiControllerRegistry', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		logger.scoped.mockReturnThis();
 		// mirrors the real strategies, which set `req.user` on success
 		authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
 			req.user = authenticatedUser;
-			return true;
+			return { authenticated: true };
 		});
 		lastActiveAtService.updateLastActiveIfStale.mockResolvedValue(undefined);
 		Container.set(ControllerRegistryMetadata, new ControllerRegistryMetadata());
+	});
+
+	it('answers 405 for a known path that no controller serves with the method', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const app = activate();
+
+		await request(app).put('/api/v1/widgets').expect(405, { message: 'PUT method not allowed' });
+		await request(app).get('/api/v1/widgets').expect(200, { ok: true });
+	});
+
+	it('answers 405 for a nested path with an ID that no controller serves with the method', async () => {
+		@Service()
+		class PartsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(PartsPublicController as Controller, '/widgets/:widgetId/parts');
+
+		const app = activate();
+
+		await request(app)
+			.put('/api/v1/widgets/w-1/parts')
+			.expect(405, { message: 'PUT method not allowed' });
+		await request(app).get('/api/v1/widgets/w-1/parts').expect(200, { ok: true });
+	});
+
+	it('lists every method the path serves in the Allow header of its 405 response', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			list() {
+				return { ok: true };
+			}
+
+			@Post('/')
+			@ApiResponse(201)
+			create() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		await request(activate()).put('/api/v1/widgets').expect(405).expect('Allow', 'GET, POST');
+	});
+
+	it('lists the methods of every route template that matches the URL in Allow', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/:widgetId/:versionId')
+			@ApiResponse(200)
+			version() {
+				return { ok: true };
+			}
+
+			@Post('/:widgetId/archive')
+			@ApiResponse(200)
+			archive() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		await request(activate())
+			.put('/api/v1/widgets/w-1/archive')
+			.expect(405)
+			.expect('Allow', 'GET, POST');
+	});
+
+	it('rejects HEAD with 405 without running the GET handler, and omits HEAD from Allow', async () => {
+		const handler = vi.fn(() => ({ ok: true }));
+
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return handler();
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		await request(activate()).head('/api/v1/widgets').expect(405).expect('Allow', 'GET');
+		await request(activate()).head('/api/v1/WIDGETS').expect(405).expect('Allow', 'GET');
+		expect(handler).not.toHaveBeenCalled();
 	});
 
 	it('emits the Deprecation header for a route marked @Deprecated', async () => {
@@ -96,7 +201,7 @@ describe('PublicApiControllerRegistry', () => {
 
 	it('emits the Deprecation header even when authentication fails', async () => {
 		const since = new Date('2026-07-23T00:00:00Z');
-		authStrategyRegistry.authenticate.mockResolvedValue(false);
+		authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
 
 		@Service()
 		class WidgetsPublicController {
@@ -112,6 +217,49 @@ describe('PublicApiControllerRegistry', () => {
 		const response = await request(activate()).get('/api/v1/widgets').expect(401);
 
 		expect(response.headers.deprecation).toBe(`@${Math.floor(since.getTime() / 1000)}`);
+	});
+
+	it('sets WWW-Authenticate on the 401 from the collected challenges, comma-separated', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		authStrategyRegistry.authenticate.mockResolvedValue({
+			authenticated: false,
+			challenges: ['Bearer resource_metadata="https://n8n.test/.well-known/x"', 'Basic'],
+		});
+
+		const response = await request(activate())
+			.get('/api/v1/widgets')
+			.expect(401, { message: 'Unauthorized' });
+
+		expect(response.headers['www-authenticate']).toBe(
+			'Bearer resource_metadata="https://n8n.test/.well-known/x", Basic',
+		);
+	});
+
+	it('sends the 401 without WWW-Authenticate when no strategy offered a challenge', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
+
+		const response = await request(activate())
+			.get('/api/v1/widgets')
+			.expect(401, { message: 'Unauthorized' });
+
+		expect(response.headers['www-authenticate']).toBeUndefined();
 	});
 
 	it('omits the Deprecation header when @Deprecated is absent', async () => {
@@ -324,7 +472,7 @@ describe('PublicApiControllerRegistry', () => {
 		});
 
 		it('keeps 401 ahead of parameter validation for an unauthenticated caller', async () => {
-			authStrategyRegistry.authenticate.mockResolvedValue(false);
+			authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
 			registerScopedRoute();
 
 			await request(activate()).get('/api/v1/widgets/abc').expect(401);
@@ -544,7 +692,10 @@ describe('PublicApiControllerRegistry', () => {
 			});
 
 			it('keeps 401 ahead of multipart parsing for an unauthenticated caller', async () => {
-				authStrategyRegistry.authenticate.mockResolvedValue(false);
+				authStrategyRegistry.authenticate.mockResolvedValue({
+					authenticated: false,
+					challenges: [],
+				});
 				registerUploadLimitedRoute(() => ({ fileSize: 2 }));
 
 				// The file is bigger than the configured limit; a 413 here would mean the body was
@@ -560,7 +711,7 @@ describe('PublicApiControllerRegistry', () => {
 				authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
 					req.user = authenticatedUser;
 					req.tokenGrant = { scopes: [], apiKeyScopes: [], subject: authenticatedUser };
-					return true;
+					return { authenticated: true };
 				});
 
 				@Service()
@@ -705,7 +856,7 @@ describe('PublicApiControllerRegistry', () => {
 					apiKeyScopes: ['workflow:read'],
 					subject: authenticatedUser,
 				};
-				return true;
+				return { authenticated: true };
 			});
 
 			@Service()
@@ -942,6 +1093,156 @@ describe('PublicApiControllerRegistry', () => {
 			const response = await request(activate()).get('/api/v1/widgets').expect(404);
 
 			expect(response.headers['content-type']).toMatch(/text\/plain/);
+		});
+	});
+
+	describe('idempotency', () => {
+		it('replays a stored response and does not run the handler', async () => {
+			let calls = 0;
+			idempotencyKeyService.claim.mockResolvedValue({
+				outcome: 'replay',
+				responseStatus: 200,
+				responseBody: { id: 'cached' },
+			});
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				method() {
+					calls += 1;
+					return { id: 'new' };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(200);
+
+			expect(response.body).toEqual({ id: 'cached' });
+			expect(calls).toBe(0);
+			expect(idempotencyKeyService.complete).not.toHaveBeenCalled();
+		});
+
+		it('stores a successful response and returns it', async () => {
+			idempotencyKeyService.claim.mockResolvedValue({ outcome: 'claimed', id: 'row-1' });
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(201)
+				method() {
+					return { id: 'new' };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(201);
+
+			expect(response.body).toEqual({ id: 'new' });
+			expect(idempotencyKeyService.complete).toHaveBeenCalledWith('row-1', 201, { id: 'new' });
+			expect(idempotencyKeyService.release).not.toHaveBeenCalled();
+		});
+
+		it('stores an empty 201 and sends no body', async () => {
+			idempotencyKeyService.claim.mockResolvedValue({ outcome: 'claimed', id: 'row-1' });
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(201)
+				method() {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(201);
+
+			expect(response.text).toBe('');
+			expect(idempotencyKeyService.complete).toHaveBeenCalledWith('row-1', 201, null);
+		});
+
+		it('does not claim a key when controller middleware rejects the request', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Middleware()
+				reject(_req: express.Request, res: express.Response) {
+					res.status(400).json({ message: 'nope' });
+				}
+
+				@Post('/')
+				@ApiResponse(200)
+				method() {
+					return { id: 'new' };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(400);
+
+			expect(response.body).toEqual({ message: 'nope' });
+			expect(idempotencyKeyService.claim).not.toHaveBeenCalled();
+		});
+
+		it('releases the key when the handler fails', async () => {
+			idempotencyKeyService.claim.mockResolvedValue({ outcome: 'claimed', id: 'row-1' });
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				method() {
+					throw new NotFoundError('missing');
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(404);
+
+			expect(idempotencyKeyService.release).toHaveBeenCalledWith('row-1');
+			expect(idempotencyKeyService.complete).not.toHaveBeenCalled();
+		});
+
+		it('releases the key when storing the response fails', async () => {
+			idempotencyKeyService.claim.mockResolvedValue({ outcome: 'claimed', id: 'row-1' });
+			idempotencyKeyService.complete.mockRejectedValue(new Error('db down'));
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(201)
+				method() {
+					return { id: 'new' };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(201);
+
+			expect(response.body).toEqual({ id: 'new' });
+			expect(idempotencyKeyService.release).toHaveBeenCalledWith('row-1');
 		});
 	});
 });

@@ -35,7 +35,7 @@ function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
 	return subNodes;
 }
 
-/** Node types that bypass the HTTP mock handler (non-HTTP protocols or non-helper HTTP). */
+/** Node types that bypass the HTTP mock handler (non-HTTP protocols or non-helper HTTP). The run-time node mock answers for them. */
 const BYPASS_NODE_TYPES = new Set([
 	'n8n-nodes-base.redis',
 	'n8n-nodes-base.mongoDb',
@@ -103,51 +103,27 @@ const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector',
 ]);
 
-/** Data Table row-read operations. Their output is the scenario's "stored state" — left
- * unpinned they read the REAL eval-instance table, polluted by the builder's own
- * verification runs, so scenario outcomes become a coin flip on build-phase leftovers.
- * A table the harness reseeded for the scenario holds only its rows, so reads of it run live. */
-const DATA_TABLE_READ_OPERATIONS = new Set(['get', 'rowExists', 'rowNotExists']);
-
-/** Of the read operations, only `get` emits stored rows — `rowExists`/`rowNotExists`
- *  return the input item passed straight through, so the table's column contract
- *  does not describe their output. */
-const DATA_TABLE_ROW_EMITTING_OPERATIONS = new Set(['get']);
-
-export function isDataTableRead(node: INode): boolean {
-	if (node.type !== 'n8n-nodes-base.dataTable') return false;
-	const params = node.parameters as { resource?: string; operation?: string } | undefined;
-	// Node defaults: resource 'row', operation 'insert' (a write) — only pin explicit reads.
-	return (
-		(params?.resource ?? 'row') === 'row' &&
-		DATA_TABLE_READ_OPERATIONS.has(params?.operation ?? 'insert')
-	);
-}
-
-/** True for Data Table reads whose output IS stored rows — the only reads a real
- *  column contract applies to. Still pinned like any other read; they just get
- *  prompt-only generation instead of enforced column names. */
-export function emitsDataTableRows(node: INode): boolean {
-	if (!isDataTableRead(node)) return false;
-	const params = node.parameters as { operation?: string } | undefined;
-	return DATA_TABLE_ROW_EMITTING_OPERATIONS.has(params?.operation ?? 'insert');
-}
-
-/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`), bypass-protocol nodes, and Data Table reads (unless in `liveReads`). */
+/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`). */
 export function identifyNodesForPinData(
 	workflow: IWorkflowBase,
 	exclusionSet?: Set<string>,
-	liveReads?: Set<string>,
 ): INode[] {
 	const aiRootNodes = findAiRootNodeNames(workflow.connections);
 
 	return workflow.nodes.filter((node) => {
 		if (node.disabled) return false;
-		if (aiRootNodes.has(node.name) && !exclusionSet?.has(node.name)) return true;
-		if (BYPASS_NODE_TYPES.has(node.type)) return true;
-		if (isDataTableRead(node)) return !liveReads?.has(node.name);
-		return false;
+		return aiRootNodes.has(node.name) && !exclusionSet?.has(node.name);
 	});
+}
+
+/** Returns the nodes the run-time node mock answers for: nodes the HTTP mock cannot reach, and
+ *  send-and-wait nodes, which park the run until a person answers. */
+export function identifyNodesForRunMock(workflow: IWorkflowBase): INode[] {
+	return workflow.nodes.filter(
+		(node) =>
+			!node.disabled &&
+			(BYPASS_NODE_TYPES.has(node.type) || node.parameters?.operation === 'sendAndWait'),
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -604,7 +580,7 @@ export const TRIGGER_CONTENT_CORRECTION =
 const SYSTEM_PROMPT = `You are a test data planner for n8n workflow automation. Your job is to create a consistent data context, trigger output data, and per-node hints that will guide an API mock server to generate realistic, coherent responses across all nodes in a workflow.
 
 RULES:
-1. Create a "globalContext" that defines the shared world — user IDs, entity names, channel names, email addresses, and relationships that ALL nodes should reference consistently.
+1. Create a "globalContext" that defines the shared world — user IDs, entity names, channel names, email addresses, and relationships that ALL nodes should reference consistently. State it as plain facts. Never describe a response layout, JSON, field paths, or what an n8n node outputs.
 2. Create a "triggerContent" object that represents the exact output the workflow's trigger/start node would produce. This is used as pin data (the node's output), so it must match what downstream nodes reference:
    - Look at the trigger node's type to determine the output structure
    - For webhook triggers: include { headers: {}, query: {}, body: { ...fields } } since downstream nodes reference $json.body.fieldName
@@ -615,12 +591,12 @@ RULES:
    - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
    - CRITICAL: when the workflow has MULTIPLE trigger nodes, pick the ONE the Test Scenario targets (the trigger whose firing the scenario describes, e.g. "The weekly Schedule Trigger fires") and return its exact node name in a "startNodeName" field. triggerContent must be THAT trigger's output.
    - CRITICAL: triggerContent must NEVER contain binary file CONTENT — no base64 blobs, no fake file-bytes placeholders. When the trigger carries a file (form upload, email attachment, incoming media), declare it with a METADATA-ONLY binary map instead: "binary": { "<propertyKey>": { "mimeType": "<real MIME>", "fileName": "<name.ext>" } } — the harness synthesizes real file bytes from that metadata and attaches them at the item level. For a PDF or text file whose words the scenario states, also add "text": "<those words as plain text>" to its entry — the harness writes them into the file. The MIME type and file name MUST match the scenario: an image/png upload scenario needs mimeType "image/png" and a .png fileName, never a generic application/octet-stream. Use "data" as the propertyKey unless downstream nodes reference a different binary property name.
-3. Create a "nodeHints" object with one entry per node. Each hint describes what data that specific node's API response should contain, referencing entities from the global context.
-4. Hints should describe the DATA CONTENT, not the API response format. The mock server already knows the API schema.
-5. Ensure data flows logically through the workflow. If node A fetches items that node B processes, the items in A's hint should match what B expects.
+3. Create a "nodeHints" object with one entry per node that calls an external service. Each hint states the DATA the service holds for that node: the records, field values, counts, IDs, dates and statuses, using entities from the global context. One node can send several requests (for example it reads a sheet's metadata and rows, then appends a row). Write each hint in two parts: "Before the node runs:" with what the service already holds, then "The node writes:" with what the node adds, changes or sends (or "nothing"). A read that happens before the write sees only the "Before the node runs" data.
+4. A hint states data, never a response layout. Do not write JSON, braces, field paths, wrapper keys, status envelopes or "return {...}". Do not describe what the n8n node outputs after its own processing (simplified records, rows keyed by column header, parsed JSON, fields such as json.data or output[0].content[0].text). The mock server writes each response in the real API's wire format and only needs the facts. Write facts as plain sentences, e.g. "Sheet 'Leads' has columns Name, Email, Status and 2 rows: Ann Lee, ann@x.example, new; Bo Chan, bo@x.example, won."
+5. Ensure data flows logically through the workflow. If node A fetches items that node B processes, A's hint lists the items B needs. Expressions such as $json.field read the node's OUTPUT, not the API response: use them to know which facts matter, not how to lay them out.
 6. Use realistic but clearly fake values (e.g., "jane@example.com", "U_abc123").
 7. **If a "Test Scenario" section is provided, it OVERRIDES your default data generation.** Use the exact names, emails, numeric magnitudes (amounts, percentages, counts, thresholds), and conditions described in the scenario. If the scenario says "no name field", do NOT include a name. If it says "email is not-an-email", use that exact value. The scenario defines the test — follow it precisely.
-8. **Allocate scenario error conditions explicitly.** When the Test Scenario describes an error, failure, or missing-data condition for a SPECIFIC subset of the workflow's requests (one channel out of three, one user, one record), the affected node's hint MUST make it unambiguous: name the exact entity and identifier (channel name/ID, user ID), state the exact API error response the mock must return for requests targeting that entity (e.g. Slack conversations.history for #product → { "ok": false, "error": "channel_not_found" }), and state that requests for all OTHER entities succeed normally. The mock server handles one request at a time and can only distinguish requests by their parameters — an error condition left implicit ("one channel fails") never gets simulated, and the scenario cannot be evaluated.
+8. **Allocate scenario error conditions explicitly.** When the Test Scenario describes an error, failure, or missing-data condition for a SPECIFIC subset of the workflow's requests (one channel out of three, one user, one record), the affected node's hint MUST make it unambiguous: name the exact entity and identifier (channel name/ID, user ID), name the request that fails and the error as the API reports it (the HTTP status and the API's own error code or message, e.g. Slack conversations.history for #product fails with error channel_not_found), without writing the error body, and state that requests for all OTHER entities succeed normally. The mock server handles one request at a time and can only distinguish requests by their parameters — an error condition left implicit ("one channel fails") never gets simulated, and the scenario cannot be evaluated.
 9. **Dates and timestamps.** The user prompt ends with a "## Date anchors" block listing today's real date plus relative anchors. EVERY date or timestamp you emit — in globalContext, triggerContent, and nodeHints — MUST be derived from those anchors, never from training data. Workflows compare mock data against the real execution clock ($now, Date.now()): a "recent" record dated months ago gets silently filtered out and the test fails. When the scenario describes a relative window ("issues from the last 2 weeks", "yesterday's orders"), compute concrete dates from the anchors and place records safely INSIDE the window (e.g. 2-5 days ago), never on its boundary. State those concrete dates in globalContext and nodeHints so every node's mock uses the same ones.
 10. Return ONLY valid JSON, no explanation or markdown fencing.`;
 
@@ -674,7 +650,9 @@ function buildUserPrompt(
 	sections.push('  "nodeHints": {');
 	for (let i = 0; i < Math.min(nodeNames.length, 3); i++) {
 		const comma = i < Math.min(nodeNames.length, 3) - 1 ? ',' : '';
-		sections.push(`    "${nodeNames[i]}": "What data to return..."${comma}`);
+		sections.push(
+			`    "${nodeNames[i]}": "Data this node's service holds and what the node writes..."${comma}`,
+		);
 	}
 	if (nodeNames.length > 3) sections.push('    ...');
 	sections.push('  }', '}', '```');

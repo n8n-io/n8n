@@ -1,5 +1,9 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import {
+	EventService,
+	type RedactableExecution,
+	ExecutionRedactionServiceProxy,
+} from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
@@ -37,9 +41,9 @@ import {
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { RedactableExecution } from '@/executions/execution-redaction';
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+
 import { ExternalHooks } from '@/external-hooks';
+import { MemoryStoppedExecutions } from '@/memory-guard/memory-stopped-executions';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { isWorkflowIdValid } from '@/utils';
@@ -171,6 +175,7 @@ function hookFunctionsWorkflowEvents(
 		const { executionId, workflowData, mode } = this;
 		eventService.emit('workflow-pre-execute', {
 			executionId,
+			userId,
 			data: workflowData,
 			mode,
 			projectId,
@@ -216,6 +221,20 @@ function hookFunctionsWorkflowEvents(
 			...(source ? { source } : {}),
 			...(telemetryMetadata ? { telemetryMetadata } : {}),
 		});
+	});
+}
+
+/** Must be the first `workflowExecuteAfter` handler, so that every later handler sees a stop. */
+function hookFunctionsMemoryGuard(hooks: ExecutionLifecycleHooks) {
+	const memoryStoppedExecutions = Container.get(MemoryStoppedExecutions);
+	hooks.addHandler('workflowExecuteBefore', function () {
+		memoryStoppedExecutions.onWorkflowExecuteStart(this.executionId);
+	});
+	hooks.addHandler('workflowExecuteResume', function () {
+		memoryStoppedExecutions.onWorkflowExecuteStart(this.executionId);
+	});
+	hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
+		memoryStoppedExecutions.onWorkflowExecuteAfter(this.executionId, fullRunData);
 	});
 }
 
@@ -285,6 +304,7 @@ function hookFunctionsPush(
 	const pushInstance = Container.get(Push);
 	const redactionProxy = Container.get(ExecutionRedactionServiceProxy);
 	const userRepository = Container.get(UserRepository);
+	const memoryStoppedExecutions = Container.get(MemoryStoppedExecutions);
 
 	// Lazy user resolution — resolved once, reused across all node events in this execution
 	let resolvedUser: User | null | undefined; // undefined = not yet resolved
@@ -325,6 +345,9 @@ function hookFunctionsPush(
 	});
 	hooks.addHandler('nodeExecuteAfter', async function (nodeName, data, executionData) {
 		const { executionId } = this;
+		// Do not push node data of a stopped execution. The editor clears it at the end.
+		if (memoryStoppedExecutions.isStopped(executionId)) return;
+
 		// Push data to session which started workflow after each rendered node
 		logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
 			executionId,
@@ -384,6 +407,9 @@ function hookFunctionsPush(
 			});
 			return;
 		}
+
+		// The guard can stop the execution while the user or the redaction is awaited.
+		if (memoryStoppedExecutions.isStopped(executionId)) return;
 
 		// We send the node execution data as a WS binary message to the FE. Not
 		// because it's more efficient on the wire: the content is a JSON string
@@ -516,13 +542,16 @@ function hookFunctionsSaveProgress(
 	{ saveSettings }: HooksSetupParameters,
 ) {
 	if (!saveSettings.progress) return;
+	const memoryStoppedExecutions = Container.get(MemoryStoppedExecutions);
 	hooks.addHandler('nodeExecuteAfter', async function (nodeName, data, executionData) {
+		if (memoryStoppedExecutions.isStopped(this.executionId)) return;
 		await saveExecutionProgress(
 			this.workflowData.id,
 			this.executionId,
 			nodeName,
 			data,
 			executionData,
+			memoryStoppedExecutions.enabled,
 		);
 	});
 }
@@ -655,11 +684,19 @@ function hookFunctionsSave(
 					);
 				}
 
-				await executionPersistence.deleteInFlightExecution({
-					workflowId: this.workflowData.id,
-					executionId: this.executionId,
-					storedAt: fullRunData.storedAt,
-				});
+				await executionPersistence.deleteInFlightExecution(
+					{
+						workflowId: this.workflowData.id,
+						executionId: this.executionId,
+						storedAt: fullRunData.storedAt,
+					},
+					{
+						status: fullRunData.status,
+						// oxlint-disable-next-line typescript/no-deprecated
+						finished: fullRunData.finished ?? false,
+						stoppedAt: fullRunData.stoppedAt,
+					},
+				);
 
 				return;
 			}
@@ -837,6 +874,7 @@ export function getLifecycleHooksForSubExecutions(
 ): ExecutionLifecycleHooks {
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
+	hookFunctionsMemoryGuard(hooks);
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
@@ -894,7 +932,10 @@ export function getLifecycleHooksForScalingWorker(
 		hookFunctionsPush(hooks, optionalParameters, data.userId, data.source);
 	}
 
-	Container.get(ModulesHooksRegistry).addHooks(hooks, source);
+	Container.get(ModulesHooksRegistry).addHooks(
+		hooks,
+		source ?? data.executionData?.manualData?.source,
+	);
 
 	return hooks;
 }
@@ -963,11 +1004,19 @@ export function getLifecycleHooksForScalingMain(
 			(fullRunData.status !== 'success' && !saveSettings.error);
 
 		if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
-			await executionPersistence.deleteInFlightExecution({
-				workflowId: this.workflowData.id,
-				executionId: this.executionId,
-				storedAt: fullRunData.storedAt,
-			});
+			await executionPersistence.deleteInFlightExecution(
+				{
+					workflowId: this.workflowData.id,
+					executionId: this.executionId,
+					storedAt: fullRunData.storedAt,
+				},
+				{
+					status: fullRunData.status,
+					// oxlint-disable-next-line typescript/no-deprecated
+					finished: fullRunData.finished ?? false,
+					stoppedAt: fullRunData.stoppedAt,
+				},
+			);
 		} else {
 			// Only save metadata if execution is being kept
 			await updateExistingExecutionMetadata(
@@ -983,7 +1032,11 @@ export function getLifecycleHooksForScalingMain(
 	hooks.handlers.nodeExecuteBefore = [];
 	hooks.handlers.nodeExecuteAfter = [];
 
-	Container.get(ModulesHooksRegistry).addHooks(hooks, source, { executedInThisProcess: false });
+	Container.get(ModulesHooksRegistry).addHooks(
+		hooks,
+		source ?? data.executionData?.manualData?.source,
+		{ executedInThisProcess: false },
+	);
 
 	return hooks;
 }
@@ -1021,6 +1074,7 @@ export function getLifecycleHooksForRegularMain(
 		source,
 		suppressErrorWorkflow,
 	};
+	hookFunctionsMemoryGuard(hooks);
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
@@ -1030,6 +1084,9 @@ export function getLifecycleHooksForRegularMain(
 	hookFunctionsStatistics(hooks, source);
 	hookFunctionsPreExecute(hooks, source);
 	hookFunctionsPostExecute(hooks);
-	Container.get(ModulesHooksRegistry).addHooks(hooks, source);
+	Container.get(ModulesHooksRegistry).addHooks(
+		hooks,
+		source ?? data.executionData?.manualData?.source,
+	);
 	return hooks;
 }

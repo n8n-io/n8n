@@ -179,15 +179,13 @@ function warnOnMisfireGrace(logger: Logger, config: GlobalConfig['scheduler']): 
  * running.
  */
 function warnOnDrainRate(logger: Logger, config: GlobalConfig['scheduler']): void {
-	const { materializationIntervalSeconds, minIntervalSeconds } = config;
-	// The fastest a schedule can legally fire: the operator's floor if they set
-	// one, otherwise the fastest an interval can be at all.
-	const fastestIntervalSeconds = minIntervalSeconds > 0 ? minIntervalSeconds : 1;
-	const drainSeconds = DEFAULT_MATERIALIZER_OPTIONS.maxPerJob * fastestIntervalSeconds;
+	const { materializationIntervalSeconds } = config;
+	// The fastest a schedule can fire is once per second.
+	const drainSeconds = DEFAULT_MATERIALIZER_OPTIONS.maxPerJob;
 	if (materializationIntervalSeconds > drainSeconds) {
 		logger.warn(
 			'Scheduler materialization interval is long enough that a pass may never fully drain the busiest possible schedule; under the coalesce misfire policy such a schedule could stop producing catch-up runs entirely',
-			{ materializationIntervalSeconds, fastestIntervalSeconds },
+			{ materializationIntervalSeconds },
 		);
 	}
 }

@@ -140,10 +140,10 @@ describe('Lakebase -> Get Many', () => {
 		expect(qsOf(context, 1)).toEqual(expect.objectContaining({ offset: capped }));
 	});
 
-	it('stops at the page cap rather than looping forever', async () => {
+	it('fails rather than return a truncated table as the whole table', async () => {
 		const { context, result } = feedPages([rows(1, LAKEBASE_PAGE_SIZE)], { returnAll: true });
 
-		expect(await result).toHaveLength(LAKEBASE_PAGE_SIZE * LAKEBASE_MAX_PAGES);
+		await expect(result).rejects.toThrow('more rows than one run can read');
 		expect(apiMock(context)).toHaveBeenCalledTimes(LAKEBASE_MAX_PAGES);
 	});
 
@@ -193,7 +193,9 @@ describe('Lakebase -> Get Many', () => {
 		expect(qsOf(context, 1).order).toBeUndefined();
 	});
 
-	it('keeps the user sort rule instead of the primary key', async () => {
+	// A user sort need not be unique, so without the key as a tie-breaker two rows
+	// sharing a sku can swap between offset requests and be sent twice or skipped.
+	it('adds the primary key after the user sort rule', async () => {
 		vi.mocked(fetchLakebaseColumns).mockResolvedValue([
 			{ name: 'id', hasDefault: true, isRequired: true, isReadOnly: false, isPrimaryKey: true },
 		]);
@@ -203,8 +205,20 @@ describe('Lakebase -> Get Many', () => {
 		});
 		await result;
 
-		expect(qsOf(context, 1).order).toBe('sku.asc');
-		expect(fetchLakebaseColumns).not.toHaveBeenCalled();
+		expect(qsOf(context, 1).order).toBe('sku.asc,id.asc');
+	});
+
+	it('does not repeat a primary key the user already sorted on', async () => {
+		vi.mocked(fetchLakebaseColumns).mockResolvedValue([
+			{ name: 'id', hasDefault: true, isRequired: true, isReadOnly: false, isPrimaryKey: true },
+		]);
+		const { context, result } = feedPages([rows(1, 1000), rows(1001, 1)], {
+			returnAll: true,
+			'sort.values': [{ column: 'id', direction: 'desc' }],
+		});
+		await result;
+
+		expect(qsOf(context, 1).order).toBe('id.desc');
 	});
 
 	it('reads the item index it was handed', async () => {

@@ -6,6 +6,7 @@ import type {
 	SharedWorkflow,
 	User,
 	WorkflowEntity,
+	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -15,7 +16,7 @@ import { WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsFinderService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
@@ -23,13 +24,8 @@ import type { PolicyEnforcementService } from '@/policy/policy-enforcement.servi
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
-const flags = { credSharingEnabled: false };
-vi.mock('@/constants/credential-sharing', () => ({
-	isCredSharingEnabled: () => flags.credSharingEnabled,
-}));
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 describe('EnterpriseWorkflowService', () => {
 	let service: EnterpriseWorkflowService;
@@ -47,11 +43,11 @@ describe('EnterpriseWorkflowService', () => {
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const nodeTypes = mock<NodeTypes>();
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
+	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		nodeTypes.getByNameAndVersion.mockReset();
-		flags.credSharingEnabled = false;
 		service = new EnterpriseWorkflowService(
 			mock(), // logger
 			mock(), // sharedWorkflowRepository
@@ -70,6 +66,7 @@ describe('EnterpriseWorkflowService', () => {
 			policyEnforcementService,
 			nodeTypes,
 			credentialsPermissionChecker,
+			workflowHistoryRepository,
 		);
 	});
 
@@ -290,34 +287,7 @@ describe('EnterpriseWorkflowService', () => {
 			);
 		});
 
-		it('describes every referenced credential regardless of access', async () => {
-			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
-			const workflow = buildWorkflow();
-
-			await service.addCredentialsToWorkflow(workflow, user);
-
-			expect(workflow.usedCredentials).toMatchObject([
-				{ id: 'cred-1', name: 'Google', type: 'googlePalmApi', currentUserCanUse: false },
-			]);
-		});
-
-		it('when the flag is off, asks the project-scoped check', async () => {
-			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-				mock({ id: 'cred-1' }),
-			]);
-			const workflow = buildWorkflow();
-
-			await service.addCredentialsToWorkflow(workflow, user);
-
-			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
-				workflowId: 'workflow-1',
-			});
-			expect(credentialsPermissionChecker.findUnusableInWorkflow).not.toHaveBeenCalled();
-			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: true }]);
-		});
-
-		it('when the flag is on, asks the rule a run acting as the user follows', async () => {
-			flags.credSharingEnabled = true;
+		it('asks the rule a run acting as the user follows', async () => {
 			credentialsPermissionChecker.findUnusableInWorkflow.mockResolvedValue([]);
 			const workflow = buildWorkflow();
 
@@ -328,12 +298,10 @@ describe('EnterpriseWorkflowService', () => {
 				['cred-1'],
 				user.id,
 			);
-			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
 			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: true }]);
 		});
 
-		it('when the flag is on, a credential that rule rejects is unusable', async () => {
-			flags.credSharingEnabled = true;
+		it('describes a credential that rule rejects, and marks it unusable', async () => {
 			credentialsPermissionChecker.findUnusableInWorkflow.mockResolvedValue([
 				{ id: 'cred-1', name: 'Google', exists: true, ownerProject: null },
 			]);
@@ -341,7 +309,9 @@ describe('EnterpriseWorkflowService', () => {
 
 			await service.addCredentialsToWorkflow(workflow, user);
 
-			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: false }]);
+			expect(workflow.usedCredentials).toMatchObject([
+				{ id: 'cred-1', name: 'Google', type: 'googlePalmApi', currentUserCanUse: false },
+			]);
 		});
 	});
 
@@ -719,12 +689,27 @@ describe('EnterpriseWorkflowService', () => {
 			expect(result.nodes[0]).toEqual(switched);
 		});
 
-		describe('restoring a history version', () => {
+		describe('a node as a history version stored it', () => {
 			const historyNode = () =>
 				httpNode(
 					{ httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } },
 					{ url: 'https://v1.test' },
 				);
+
+			it('keeps a node renamed, moved and disabled since the version stored it', () => {
+				const previousVersion = { nodes: [] } as unknown as IWorkflowBase;
+				const edited = { ...historyNode(), name: 'Renamed', position: [10, 20], disabled: true };
+				const newVersion = { nodes: [edited] } as unknown as IWorkflowBase;
+
+				const result = service.validateWorkflowCredentialUsage(
+					newVersion,
+					previousVersion,
+					accessible,
+					[historyNode()],
+				);
+
+				expect(result.nodes[0]).toEqual(edited);
+			});
 
 			it('keeps a node exactly as the restored version stored it', () => {
 				// The current version dropped the node; the user cannot use its credential.
@@ -933,6 +918,160 @@ describe('EnterpriseWorkflowService', () => {
 			};
 
 			expect(() => save([agentNode('new-agent', remoteReference)])).not.toThrow();
+		});
+	});
+
+	describe('preventTampering() - a credential switched back from the workflow history', () => {
+		const user = mock<User>({ id: 'bob', role: { scopes: [] } });
+		const httpNode = (credentialId: string, url = 'https://v1.test') =>
+			({
+				id: 'node-1',
+				name: 'Call',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters: { url },
+				credentials: { httpHeaderAuth: { id: credentialId, name: credentialId } },
+			}) as unknown as INode;
+		const version = (versionId: string, nodes: INode[]) => ({ versionId, nodes });
+
+		beforeEach(() => {
+			workflowRepository.get.mockResolvedValue({
+				nodes: [httpNode('own-cred')],
+			} as unknown as WorkflowEntity);
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				mock({ id: 'own-cred' }),
+			]);
+		});
+
+		it('saves a node switched back to a credential an earlier version stored, with its position', async () => {
+			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([
+				version('v3', [httpNode('own-cred')]),
+				version('v2', [httpNode('foreign-cred')]),
+			]);
+			const submitted = { ...httpNode('foreign-cred'), position: [10, 20] };
+
+			const result = await service.preventTampering(
+				{ nodes: [submitted] } as IWorkflowBase,
+				'w1',
+				user,
+			);
+
+			expect(result.nodes[0]).toEqual(submitted);
+			expect(workflowHistoryRepository.findNewestVersionNodes).toHaveBeenCalledWith('w1', 20);
+		});
+
+		it('matches a stored node after its credential was renamed, also when disabled', async () => {
+			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([
+				version('v2', [httpNode('foreign-cred')]),
+			]);
+			const submitted = { ...httpNode('foreign-cred'), disabled: true };
+			submitted.credentials!.httpHeaderAuth.name = 'Renamed';
+
+			const result = await service.preventTampering(
+				{ nodes: [submitted] } as IWorkflowBase,
+				'w1',
+				user,
+			);
+
+			expect(result.nodes[0]).toEqual(submitted);
+		});
+
+		it('rejects a node that no version stored with that credential', async () => {
+			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([
+				version('v3', [httpNode('own-cred')]),
+			]);
+
+			await expect(
+				service.preventTampering(
+					{ nodes: [httpNode('foreign-cred')] } as IWorkflowBase,
+					'w1',
+					user,
+				),
+			).rejects.toThrow(/credentials in the 'Call' node/);
+		});
+
+		it('reads only the newest versions, so an older match does not count', async () => {
+			// The repository returns what it was asked for: the limit is the lookback.
+			workflowHistoryRepository.findNewestVersionNodes.mockImplementation(
+				async (_workflowId, limit) =>
+					Array.from({ length: limit }, (_, i) => version(`v${limit - i}`, [httpNode('own-cred')])),
+			);
+
+			await expect(
+				service.preventTampering(
+					{ nodes: [httpNode('foreign-cred')] } as IWorkflowBase,
+					'w1',
+					user,
+				),
+			).rejects.toThrow(/credentials in the 'Call' node/);
+			expect(workflowHistoryRepository.findNewestVersionNodes).toHaveBeenCalledTimes(1);
+			expect(workflowHistoryRepository.findNewestVersionNodes).toHaveBeenCalledWith('w1', 20);
+		});
+
+		it('rejects a node whose other parameters changed since the version stored it', async () => {
+			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([
+				version('v2', [httpNode('foreign-cred')]),
+			]);
+
+			await expect(
+				service.preventTampering(
+					{ nodes: [httpNode('foreign-cred', 'https://changed.test')] } as IWorkflowBase,
+					'w1',
+					user,
+				),
+			).rejects.toThrow(/credentials in the 'Call' node/);
+		});
+
+		it('reads no history when the user can use every credential in the save', async () => {
+			const result = await service.preventTampering(
+				{ nodes: [httpNode('own-cred', 'https://changed.test')] } as IWorkflowBase,
+				'w1',
+				user,
+			);
+
+			expect(result.nodes[0].parameters).toEqual({ url: 'https://changed.test' });
+			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
+		});
+
+		it('reads no history for a node without an id', async () => {
+			const { id: _, ...withoutId } = httpNode('foreign-cred');
+
+			await expect(
+				service.preventTampering({ nodes: [withoutId] } as IWorkflowBase, 'w1', user),
+			).rejects.toThrow(/credentials in the 'Call' node/);
+			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
+		});
+
+		it('reads no history for a node blocked only by a sub-workflow source it cannot inspect', async () => {
+			const urlSourcedNode = {
+				id: 'sub-1',
+				name: 'Sub',
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: { source: 'url', workflowUrl: 'https://example.com/workflow.json' },
+			} as unknown as INode;
+
+			await expect(
+				service.preventTampering({ nodes: [urlSourcedNode] } as IWorkflowBase, 'w1', user),
+			).rejects.toThrow();
+			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
+		});
+
+		it('reads no history for a node that is read only already', async () => {
+			workflowRepository.get.mockResolvedValue({
+				nodes: [httpNode('foreign-cred')],
+			} as unknown as WorkflowEntity);
+
+			const result = await service.preventTampering(
+				{ nodes: [httpNode('foreign-cred', 'https://changed.test')] } as IWorkflowBase,
+				'w1',
+				user,
+			);
+
+			expect(result.nodes[0]).toEqual(httpNode('foreign-cred'));
+			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
 		});
 	});
 

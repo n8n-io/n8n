@@ -13,10 +13,11 @@ import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 import type { BindingContext } from 'samlify/types/src/entity';
 
+import config from '@/config';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { CacheService } from '@n8n/backend-services';
+import type { CacheService, EventService } from '@n8n/backend-services';
 import type { UrlService } from '@n8n/backend-services';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
@@ -169,6 +170,7 @@ describe('SamlService', () => {
 	let cacheService: Mocked<CacheService>;
 	let outboundHttp: Mocked<OutboundHttp>;
 	let urlService: MockProxy<UrlService>;
+	let eventService: MockProxy<EventService>;
 	let httpRequest: Mock;
 	const validator = new SamlValidator(mock());
 	const logger = mockLogger();
@@ -229,11 +231,15 @@ describe('SamlService', () => {
 		outboundHttp = mock<OutboundHttp>();
 		outboundHttp.requests.mockReturnValue(mock<HttpRequestClient>({ request: httpRequest }));
 		urlService = mock<UrlService>({ getInstanceBaseUrl: () => 'http://localhost:5678' });
+		eventService = mock<EventService>();
 
 		vi.spyOn(ssoHelpers, 'reloadAuthenticationMethod').mockImplementation(
 			async () => await Promise.resolve(),
 		);
 		vi.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(true);
+		// The tests share the authentication method, so a test can turn SAML
+		// off. The event reads other services from the container.
+		vi.spyOn(ssoHelpers, 'emitSsoLoginDisabled').mockResolvedValue();
 
 		samlService = new SamlService(
 			logger,
@@ -247,6 +253,7 @@ describe('SamlService', () => {
 			cacheService,
 			outboundHttp,
 			authIdentityRepository,
+			eventService,
 		);
 		// Mock GlobalConfig container access
 		Container.set(require('@n8n/config').GlobalConfig, globalConfig);
@@ -530,28 +537,53 @@ describe('SamlService', () => {
 			});
 		});
 
-		it('resolves the user by SAML identity even when the response carries another email', async () => {
-			const samlAttributes = {
-				email: 'other@bar.com',
-				firstName: 'Foo',
-				lastName: 'Bar',
-				userPrincipalName: 'foo-upn',
-			};
+		describe('identity hit whose user has another email', () => {
 			const identityUser = { id: '123', email: 'foo@bar.com', authIdentities: [] } as any;
-			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				mapped: samlAttributes,
-				raw: {},
+			let updateUserSpy: MockInstance<typeof samlHelpers.updateUserFromSamlAttributes>;
+
+			const loginWithEmail = async (email: string) => {
+				vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+					mapped: { email, firstName: 'Foo', lastName: 'Bar', userPrincipalName: 'foo-upn' },
+					raw: {},
+				});
+				return await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+			};
+
+			beforeEach(() => {
+				authIdentityRepository.findByProviderIdWithUser.mockResolvedValue({
+					user: identityUser,
+				} as any);
+				updateUserSpy = vi.spyOn(samlHelpers, 'updateUserFromSamlAttributes');
 			});
-			authIdentityRepository.findByProviderIdWithUser.mockResolvedValue({
-				user: identityUser,
-			} as any);
-			const updateUserSpy = vi.spyOn(samlHelpers, 'updateUserFromSamlAttributes');
 
-			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+			it('still resolves the user by the identity and reports the email conflict', async () => {
+				const loginResult = await loginWithEmail('Other@bar.com');
 
-			expect(loginResult.authenticatedUser).toBe(identityUser);
-			expect(userRepository.findOne).not.toHaveBeenCalled();
-			expect(updateUserSpy).not.toHaveBeenCalled();
+				expect(loginResult.authenticatedUser).toBe(identityUser);
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(updateUserSpy).not.toHaveBeenCalled();
+				expect(provisioningService.provisionInstanceRoleForUser).toHaveBeenCalledWith(
+					identityUser,
+					undefined,
+				);
+				expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+					userId: '123',
+					providerId: 'foo-upn',
+				});
+				expect(eventService.emit).toHaveBeenCalledWith('user-login-email-conflict', {
+					user: identityUser,
+					authenticationMethod: 'saml',
+					assertedEmail: 'other@bar.com',
+				});
+			});
+
+			it('does not report a conflict when the emails differ only in case', async () => {
+				const loginResult = await loginWithEmail('Foo@Bar.com');
+
+				expect(loginResult.authenticatedUser).toBe(identityUser);
+				expect(logger.warn).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('linking an existing user by email', () => {
@@ -1686,6 +1718,36 @@ describe('SamlService', () => {
 
 			await samlService.reload();
 			expect(samlService.loadFromDbAndApplySamlPreferences).toHaveBeenCalledTimes(2);
+		});
+
+		// The main that turned SAML login off emitted the event. This main only
+		// follows the saved state.
+		test('does not emit sso-login-disabled when it applies SAML login off from another main', async () => {
+			const authenticationMethod = 'userManagement.authenticationMethod';
+			const previousMethod = config.getEnv(authenticationMethod);
+			config.set(authenticationMethod, 'saml');
+			settingsRepository.findOne = vi.fn().mockResolvedValue({
+				...mockConfigFromDB,
+				value: JSON.stringify({ ...mockSamlConfig, loginEnabled: false }),
+			});
+			vi.mocked(ssoHelpers.reloadAuthenticationMethod).mockImplementation(async () => {
+				config.set(authenticationMethod, 'email');
+			});
+			vi.spyOn(ssoHelpers, 'setCurrentAuthenticationMethod').mockResolvedValue();
+			vi.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+			vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue(
+				mock<IdentityProviderInstance>(),
+			);
+
+			try {
+				await samlService.reload();
+
+				expect(logger.error).not.toHaveBeenCalled();
+				expect(config.getEnv(authenticationMethod)).toBe('email');
+				expect(ssoHelpers.emitSsoLoginDisabled).not.toHaveBeenCalled();
+			} finally {
+				config.set(authenticationMethod, previousMethod);
+			}
 		});
 
 		test('should update GlobalConfig with login status', async () => {

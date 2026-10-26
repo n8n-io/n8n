@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentApproval, AgentJsonConfig } from '@n8n/api-types';
+import type { AgentApproval } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nIcon, N8nText, type DropdownMenuItemProps } from '@n8n/design-system';
@@ -13,6 +13,7 @@ import {
 } from '../channels/registry';
 import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import type {
+	AgentChannelRestart,
 	AgentChannelRuntime,
 	AgentChannelView,
 	AgentChannelViewExpose,
@@ -37,7 +38,6 @@ interface Props {
 	isPublished?: boolean;
 	simpleSetup?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
-	personalisation?: AgentJsonConfig['personalisation'] | null;
 	/** n8n Chat's saved description, seeded into its view when opened. */
 	savedDescription?: string;
 	/** Persists n8n Chat's description. It skips the request when nothing changed. */
@@ -49,7 +49,6 @@ const props = withDefaults(defineProps<Props>(), {
 	isPublished: false,
 	simpleSetup: false,
 	ensureAgentPersisted: undefined,
-	personalisation: null,
 });
 
 const emit = defineEmits<{
@@ -282,10 +281,11 @@ const {
 	disabled: () => props.disabled || channelActionInFlight.value || channelViewLoading.value,
 	status: integrationStatus,
 	runtimeFor,
-	onRemoved: (channelType) => {
+	onRemoved: (channelType, { restartWith }) => {
 		if (!isIntegrationConfigured(channelType)) emit('channel-disconnected', channelType);
 		emit('agent-changed');
-		completeAndClose();
+		if (restartWith) restartSetup(channelType, restartWith);
+		else completeAndClose();
 	},
 });
 
@@ -321,17 +321,13 @@ watch(
 
 // n8n Chat's setup view also needs a footer ("Make available"), unlike every
 // other channel's setup, which connects straight from its own view.
-/**
- * A setup that outlives its connect gets the footer too, so its Done button
- * sits where every other dialog's does rather than at the end of the scroll.
- */
 const setupCanFinish = computed(
 	() => isSetupMode.value && channelViewRef.value?.canFinish === true,
 );
 const showFooterActions = computed(
 	() =>
 		selectedChannelType.value !== null &&
-		(isEditMode.value || (isSetupMode.value && isN8nChatSelected.value) || setupCanFinish.value),
+		(isEditMode.value || (isSetupMode.value && isN8nChatSelected.value)),
 );
 
 const currentChannelCredentialId = computed(() =>
@@ -419,6 +415,7 @@ function completeAndClose() {
  * from the agent. Staying open on a failure keeps the reason on screen.
  */
 async function finishSetup() {
+	if (!setupCanFinish.value) return completeAndClose();
 	if (await writeChannelConfig()) completeAndClose();
 }
 
@@ -591,13 +588,22 @@ function handlePlatformConnected() {
 	finishConnect(channelType);
 }
 
-function removeCurrentChannel() {
+function removeCurrentChannel(restartWith?: AgentChannelRestart) {
 	const channelType = selectedChannelType.value;
 	if (!channelType) return;
 	void requestDisconnect(
 		channelType,
 		credentialIdAtEditOpen.value || connectedCredentials.value[channelType] || '',
+		restartWith,
 	);
+}
+
+function restartSetup(channelType: string, restart: AgentChannelRestart) {
+	runtimeFor(channelType).reset?.(restart);
+	prepareChannelEdit(null);
+	selectedCredentials.value[channelType] = restart.credentialId;
+	viewSession.value += 1;
+	goToSetup(channelType);
 }
 
 /** The list's "Make unavailable" menu item. n8n Chat has no credential to carry. */
@@ -708,11 +714,11 @@ watch(
 					"
 					:error-is-conflict="errorIsConflict[currentIntegration.type]"
 					:saved-settings="integrationSettings[currentIntegration.type]"
+					:saved-credential-id="connectedCredentials[currentIntegration.type] ?? ''"
 					:is-published="isPublished"
 					:agent-name="agentId"
 					:project-id="projectId"
 					:agent-id="agentId"
-					:personalisation="personalisation"
 					:ensure-agent-persisted="ensureAgentPersisted"
 					:persist-channel="writeChannelConfig"
 					:force-new-credential="false"
@@ -724,8 +730,20 @@ watch(
 					@connect="saveChannelConfig"
 					@persist="writeChannelConfig"
 					@connected="handlePlatformConnected"
-					@done="completeAndClose"
-				/>
+					@done="finishSetup"
+					@restart="removeCurrentChannel"
+				>
+					<template
+						v-if="isEditMode && currentIntegration.type === 'slack' && approvableActions.length > 0"
+						#additionalSettings
+					>
+						<AgentChannelApprovalSetting
+							v-model="channelApproval"
+							:actions="approvableActions"
+							@update:valid="channelApprovalValid = $event"
+						/>
+					</template>
+				</component>
 				<N8nText
 					v-if="saveAttempted && !currentChannelCredentialId"
 					size="small"
@@ -736,7 +754,7 @@ watch(
 				</N8nText>
 
 				<AgentChannelApprovalSetting
-					v-if="isEditMode && approvableActions.length > 0"
+					v-if="isEditMode && currentIntegration.type !== 'slack' && approvableActions.length > 0"
 					v-model="channelApproval"
 					:actions="approvableActions"
 					@update:valid="channelApprovalValid = $event"
@@ -751,24 +769,14 @@ watch(
 				:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
 				:disabled="disabled || actionInFlight || !selectedChannelType"
 				data-testid="agent-channel-remove-channel"
-				@click="removeCurrentChannel"
+				@click="removeCurrentChannel()"
 			>
 				<template v-if="!isN8nChatSelected" #icon><N8nIcon icon="trash-2" :size="16" /></template>
 				{{ removeChannelLabel }}
 			</N8nButton>
 		</template>
 		<template v-if="showFooterActions" #footerActions>
-			<N8nButton
-				v-if="setupCanFinish"
-				variant="solid"
-				size="medium"
-				:loading="actionInFlight"
-				data-testid="agent-channel-setup-done"
-				@click="finishSetup"
-			>
-				{{ i18n.baseText('generic.done') }}
-			</N8nButton>
-			<template v-else-if="isN8nChatSelected">
+			<template v-if="isN8nChatSelected">
 				<N8nButton
 					variant="ghost"
 					size="medium"

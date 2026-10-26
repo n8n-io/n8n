@@ -4,6 +4,7 @@ import type {
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { toPathSegment } from 'n8n-workflow';
 
 import {
 	databricksApiRequest,
@@ -19,8 +20,8 @@ import {
 import type { DatabricksJobRun } from '../actions/interfaces';
 import { getRunOutcome } from '../actions/job/runState';
 import { getSelectedLakebaseTarget } from '../actions/lakebase/helpers';
+import { fetchLakebaseFunctions } from '../actions/lakebase/schema';
 import {
-	assertLakebaseOAuth,
 	collectPages,
 	explainLakebaseSchemaError,
 	lakebaseApiRequest,
@@ -717,8 +718,6 @@ export async function getLakebaseTables(
 	if (!schema) {
 		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
 	}
-	// A PAT can read the endpoints, so check before the lookup to name the real cause
-	assertLakebaseOAuth(this);
 	try {
 		const base = await resolveLakebaseRestBase(this, project, branch);
 		const doc: { components?: { schemas?: Record<string, unknown> } } = await lakebaseApiRequest(
@@ -739,6 +738,45 @@ export async function getLakebaseTables(
 		explainLakebaseSchemaError(
 			error,
 			'Turn on the "OpenAPI specification" setting of the Data API to list tables, or enter the table name By ID',
+		);
+	}
+}
+
+/** Databricks ships helper functions into user schemas; hide them from the list. UX only: grants decide what a user can run */
+const INTERNAL_FUNCTION_PREFIX = /^(databricks_|pg_databricks_|_dbx_|grant_)/;
+
+export async function getLakebaseFunctions(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const { project, branch, database, schema } = getSelectedLakebaseTarget(this);
+	if (!project) {
+		return { results: [{ name: 'Please Select a Project First', value: '' }] };
+	}
+	if (!branch) {
+		return { results: [{ name: 'Please Select a Branch First', value: '' }] };
+	}
+	if (!database) {
+		return { results: [{ name: 'Please Select a Database First', value: '' }] };
+	}
+	if (!schema) {
+		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
+	}
+	try {
+		const base = await resolveLakebaseRestBase(this, project, branch);
+		const names = await fetchLakebaseFunctions(
+			this,
+			`${base}/${toPathSegment(database)}/${toPathSegment(schema)}`,
+		);
+		const results = names
+			.filter((name) => !INTERNAL_FUNCTION_PREFIX.test(name))
+			.map((name) => ({ name, value: name }))
+			.filter(byText(filter));
+		return { results };
+	} catch (error) {
+		explainLakebaseSchemaError(
+			error,
+			'Turn on the "OpenAPI specification" setting of the Data API to list functions, or enter the function name By ID',
 		);
 	}
 }

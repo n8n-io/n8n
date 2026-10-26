@@ -15,6 +15,7 @@ import {
 import type { TeamsCredentialCheckService } from '../integrations/platforms/teams/teams-credential-check.service';
 import type { TeamsBotProvisioningService } from '../integrations/platforms/teams/teams-bot-provisioning.service';
 import type { TeamsCatalogService } from '../integrations/platforms/teams/teams-catalog.service';
+import type { TeamsCredentialNotesService } from '../integrations/platforms/teams/teams-credential-notes.service';
 import type { TeamsEntraProvisioningService } from '../integrations/platforms/teams/teams-entra-provisioning.service';
 import type { TeamsSetupTelemetryService } from '../integrations/platforms/teams/teams-setup-telemetry.service';
 import type { TeamsManagedSetupService } from '../integrations/platforms/teams/teams-managed-setup.service';
@@ -62,6 +63,7 @@ describe('AgentTeamsIntegrationsController', () => {
 					mock<TeamsBotProvisioningService>(),
 					mock<TeamsCatalogService>(),
 					mock<TeamsSetupTelemetryService>(),
+					mock<TeamsCredentialNotesService>(),
 				),
 			};
 		};
@@ -151,6 +153,7 @@ describe('AgentTeamsIntegrationsController', () => {
 					botProvisioningService,
 					mock<TeamsCatalogService>(),
 					setupTelemetry,
+					mock<TeamsCredentialNotesService>(),
 				),
 			};
 		};
@@ -197,6 +200,43 @@ describe('AgentTeamsIntegrationsController', () => {
 			});
 		});
 	});
+	describe('the package download', () => {
+		it('records what it handed over, so the settings can tell Teams is behind', async () => {
+			const setupService = mock<TeamsSetupService>();
+			const credentialNotes = mock<TeamsCredentialNotesService>();
+			setupService.buildPackage.mockResolvedValue({
+				archive: Buffer.from('zip'),
+				fingerprint: 'fingerprint-1',
+				credentialId: 'cred-1',
+			});
+			const controller = new AgentTeamsIntegrationsController(
+				setupService,
+				mock<TeamsCredentialCheckService>(),
+				mock<TeamsManagedSetupService>(),
+				mock<TeamsEntraProvisioningService>(),
+				mock<TeamsBotProvisioningService>(),
+				mock<TeamsCatalogService>(),
+				mock<TeamsSetupTelemetryService>(),
+				credentialNotes,
+			);
+			const user = mock<User>({ id: 'user-1' });
+
+			await controller.downloadPackage(
+				mock<AuthenticatedRequest<{ projectId: string }>>({
+					params: { projectId: 'project-1' },
+					user,
+				}),
+				mock<Response>(),
+				'agent-1',
+				mock({ credentialId: 'cred-1', settings: undefined }),
+			);
+
+			expect(credentialNotes.write).toHaveBeenCalledWith(user, 'cred-1', {
+				teamsAppFingerprint: 'fingerprint-1',
+			});
+		});
+	});
+
 	/**
 	 * The publish call is where the two routes Microsoft offers are told apart,
 	 * and the route is what the ladder reports. The service answers four states
@@ -217,6 +257,7 @@ describe('AgentTeamsIntegrationsController', () => {
 					mock<TeamsBotProvisioningService>(),
 					catalogService,
 					setupTelemetry,
+					mock<TeamsCredentialNotesService>(),
 				),
 			};
 		};

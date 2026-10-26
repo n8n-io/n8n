@@ -5,12 +5,6 @@ import { Config, Env } from '../decorators';
 import { positiveIntSchema } from '../schemas';
 
 /**
- * Allows 0 (the clamp disabled) in addition to any positive value. Used for a
- * setting where 0 is a meaningful "off", not just a smaller number.
- */
-const nonNegativeIntSchema = z.number({ coerce: true }).int().nonnegative();
-
-/**
  * A jitter ratio: a fraction in [0, 1). 0 disables jitter; 1 or above would
  * allow a zero or negative delay between ticks, so they are rejected.
  */
@@ -232,18 +226,6 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_JITTER_RATIO', jitterRatioSchema)
 	jitterRatio: number = 0.1;
-
-	/**
-	 * The smallest gap, in seconds, allowed between consecutive runs of the same
-	 * schedule. A schedule set to run more often than this is slowed down to this
-	 * gap. Defaults to 0, which disables the limit and honours whatever interval
-	 * each schedule specifies.
-	 *
-	 * Set it to put a floor on how frequently any schedule can run, for example to
-	 * stop a misconfigured every-second schedule from overloading the instance.
-	 */
-	@Env('N8N_SCHEDULER_MIN_INTERVAL', nonNegativeIntSchema)
-	minIntervalSeconds: number = 0;
 
 	/**
 	 * How a Schedule Trigger node's "every N seconds/minutes" schedules run under

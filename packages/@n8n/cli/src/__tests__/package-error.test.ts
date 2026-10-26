@@ -204,6 +204,28 @@ describe('toPackagesError', () => {
 		);
 	});
 
+	it('names the matched credential when policy refused its update', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'credential-policy-violation',
+						sourceId: 'c1',
+						targetId: 't1',
+						name: 'Prod GitHub',
+						credentialType: 'githubApi',
+						usedBy: [{ kind: 'workflow', id: 'w1' }],
+						violations: [{ kind: 'k', checkId: 'a', message: 'Not allowed' }],
+					},
+				],
+			}),
+		);
+
+		expect((result as ApiError).hint ?? '').toContain(
+			'update of credential t1 (githubApi) from package credential "Prod GitHub" (c1) refused by policy: Not allowed, used by workflow w1',
+		);
+	});
+
 	it.each([
 		{
 			usedBy: [{ kind: 'workflow', id: 'w1' }],
@@ -258,6 +280,62 @@ describe('toPackagesError', () => {
 		expect(hint).toContain('w1');
 		expect(hint).toContain('variable "DB_URL" in the global scope holds a different value');
 		expect(hint).toContain('w2');
+	});
+
+	it('lists credential-conflict issues for a 409, by kind', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'credential-conflict',
+						kind: 'differs',
+						targetId: 'c1',
+						sourceIds: ['s1'],
+						name: 'GitHub',
+						usedBy: [{ kind: 'workflow', id: 'w1' }],
+					},
+					{
+						type: 'credential-conflict',
+						kind: 'divergent',
+						targetId: 'c2',
+						sourceIds: ['s2', 's3'],
+						name: 'Slack',
+						usedBy: [
+							{ kind: 'workflow', id: 'w2' },
+							{ kind: 'agent', id: 'a1' },
+						],
+					},
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain(
+			'credential "GitHub" (c1) differs from package credential s1, used by workflow w1',
+		);
+		expect(hint).toContain(
+			'credential "Slack" (c2) receives different values from package credentials s2, s3, used by workflow w2, agent a1',
+		);
+	});
+
+	it('lists credential-update-forbidden issues for a 422', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'credential-update-forbidden',
+						targetId: 'c1',
+						sourceIds: ['s1'],
+						name: 'GitHub',
+						usedBy: [{ kind: 'workflow', id: 'w1' }],
+					},
+				],
+			}),
+		);
+
+		expect((result as ApiError).hint).toContain(
+			'credential "GitHub" (c1) matches package credential s1, but you lack permission to update it. Use keep-existing or ask its owner. Used by workflow w1',
+		);
 	});
 
 	it('lists variable-limit-exceeded issues for a 422', () => {

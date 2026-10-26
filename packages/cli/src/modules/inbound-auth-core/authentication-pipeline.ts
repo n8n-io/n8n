@@ -30,6 +30,13 @@ export class InboundAuthPipeline extends AuthenticationPipeline {
 		if (!context.ok) {
 			return this.reject(extracted, context, verified.value.source.id);
 		}
+		this.logger.info('Inbound authentication accepted', {
+			surface: extracted.surface,
+			resource: extracted.resource.url,
+			sourceId: verified.value.source.id,
+			authMethod: context.value.authMethod,
+			userId: context.value.subject.id,
+		});
 		return context;
 	}
 

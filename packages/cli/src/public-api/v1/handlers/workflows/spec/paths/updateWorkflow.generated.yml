@@ -4,9 +4,6 @@ tags:
 summary: Update a workflow
 description: 'Update a workflow. If the workflow is published, the updated version will be automatically re-published unless `publishIfActive` is set to `false`. Because that re-publication puts a new version live, it additionally requires the `workflow:activate` API key scope and the `workflow:publish` project permission. A caller without either can still save: the new version is stored as a draft and the response is a `403` naming the missing permission, leaving the published version live. Saving an unpublished workflow, or saving with `publishIfActive=false`, only needs `workflow:update`.'
 x-required-scope: workflow:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -202,6 +199,11 @@ requestBody:
                   - separate
                   - combined
                 description: Controls how binary data is resolved from a node's input. This is a derived, internal setting rather than something intended to be set programmatically. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
+              engineType:
+                type: string
+                nullable: true
+                description: The execution engine that runs this workflow. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
+                example: v1
               callerPolicy:
                 type: string
                 enum:
@@ -252,6 +254,10 @@ requestBody:
                   - `manual-only`: Redact manually triggered executions only.
                   - `all`: Redact all executions, manual and production.
                 example: non-manual
+              redactCallerExecutions:
+                type: boolean
+                description: Controls whether a workflow that calls this workflow as a sub-workflow has its executions redacted on the same channels as this workflow. The calling execution keeps a copy of the output of this workflow. Defaults to true. Turn it off only when the output of this workflow is not sensitive. Redaction that this workflow received from its own sub-workflows always passes to the caller.
+                example: true
               availableInMCP:
                 type: boolean
                 description: Controls whether this workflow is reachable over the Model Context Protocol (MCP). Defaults to false. The workflow must be active and must hold at least one active Webhook node.
@@ -695,12 +701,6 @@ responses:
                           required:
                             - key
                             - value
-                  createdAt:
-                    type: string
-                    format: date-time
-                  updatedAt:
-                    type: string
-                    format: date-time
             connections:
               type: object
               description: Connections between nodes, keyed by source node name
@@ -785,6 +785,11 @@ responses:
                     - separate
                     - combined
                   description: Controls how binary data is resolved from a node's input. This is a derived, internal setting rather than something intended to be set programmatically. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
+                engineType:
+                  type: string
+                  nullable: true
+                  example: v1
+                  description: The execution engine that runs this workflow. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
                 callerPolicy:
                   type: string
                   enum:
@@ -835,6 +840,10 @@ responses:
                     - `non-manual`: Redact production (non-manually triggered) executions only.
                     - `manual-only`: Redact manually triggered executions only.
                     - `all`: Redact all executions, manual and production.
+                redactCallerExecutions:
+                  type: boolean
+                  example: true
+                  description: Controls whether a workflow that calls this workflow as a sub-workflow has its executions redacted on the same channels as this workflow. The calling execution keeps a copy of the output of this workflow. Defaults to true. Turn it off only when the output of this workflow is not sensitive. Redaction that this workflow received from its own sub-workflows always passes to the caller.
                 availableInMCP:
                   type: boolean
                   example: false
@@ -988,12 +997,6 @@ responses:
                               required:
                                 - key
                                 - value
-                      createdAt:
-                        type: string
-                        format: date-time
-                      updatedAt:
-                        type: string
-                        format: date-time
                 connections:
                   type: object
                   description: Connections between nodes, keyed by source node name

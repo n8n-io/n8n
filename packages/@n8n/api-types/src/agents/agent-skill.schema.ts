@@ -33,6 +33,8 @@ const agentSkillReferenceSchema = z
 	})
 	.strict();
 
+export const agentSkillReferencePathSchema = agentSkillReferenceSchema.shape.path;
+
 const agentSkillReferencesSchema = z
 	.array(agentSkillReferenceSchema)
 	.max(AGENT_SKILL_REFERENCE_MAX_COUNT)
@@ -63,8 +65,10 @@ const agentSkillReferencesSchema = z
  * config as `{ type: 'skill', id }` refs (mirroring tasks), so it is
  * intentionally not part of the body.
  */
+export const AGENT_SKILL_NAME_MAX_LENGTH = 128;
+
 export const agentSkillShape = {
-	name: z.string().min(1).max(128),
+	name: z.string().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH),
 	description: z.string().min(1).max(512),
 	// Measured in characters like the name, description and reference limits,
 	// so the editor can show the user the same count the server enforces.
@@ -90,6 +94,16 @@ export const agentSkillAvailabilitySchema = z.enum(['project', 'agent', 'instanc
 
 export type AgentSkillAvailability = z.infer<typeof agentSkillAvailabilitySchema>;
 
+/**
+ * How a person made a new skill in the skill modal: typed it, or uploaded a SKILL.md file
+ * or folder. The browser parses an upload, so only the client knows. Telemetry reads it
+ * and the server does not store it.
+ */
+export const skillCreateMethodSchema = z.enum(['manual', 'upload']);
+
+export type SkillCreateMethod = z.infer<typeof skillCreateMethodSchema>;
+
 export const createAgentSkillSchema = agentSkillSchema.extend({
 	availableTo: agentSkillAvailabilitySchema.optional(),
+	method: skillCreateMethodSchema.optional(),
 });

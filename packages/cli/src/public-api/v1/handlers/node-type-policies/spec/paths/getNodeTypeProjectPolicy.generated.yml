@@ -1,15 +1,12 @@
 operationId: getNodeTypeProjectPolicy
 tags:
   - NodeTypePolicy
-summary: "Beta: Retrieve a project's node type policy"
+summary: "Preview: Retrieve a project's node type policy"
 description: |-
-  **Beta** — breaking changes may still occur without major version bump.
+  **Preview** — breaking changes may still occur without major version bump.
 
   Returns the project's own composed policy, not the result of combining it with the instance policy. A project that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.
 x-required-scope: nodeTypePolicy:manage
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

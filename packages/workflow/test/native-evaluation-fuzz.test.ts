@@ -16,18 +16,24 @@ import type { IDataObject } from '../src';
 import { createRunExecutionData } from '../src';
 import { Expression } from '../src/expression';
 import { CALLABLE_METHODS, ITERATOR_METHODS } from '../src/expressions/native-evaluation';
+import { EXTENSION_METHODS } from '../src/expressions/native-evaluation/grammar';
 import { Workflow } from '../src/workflow';
 
-// Three pre-existing, flag-independent quickjs bridge behaviours are kept out
+// Four pre-existing, flag-independent quickjs bridge behaviours are kept out
 // of the comparison: a string is truncated at its first NUL character on the
 // way across, a lone surrogate (which indexing an astral character yields)
-// comes back as U+FFFD replacement characters, and undefined inside an array
-// result comes back as null (vm keeps undefined; native sides with vm). Data
-// strings stay NUL-free and inside the Basic Multilingual Plane; the array
-// case is skipped below. quickjs and V8 also use different shortest-digit
+// comes back as U+FFFD replacement characters, undefined inside an array
+// result comes back as null, and -0 inside an object or array result comes
+// back as 0 (vm keeps both; native sides with vm). Data strings stay NUL-free
+// and inside the Basic Multilingual Plane; the other two cases are skipped
+// below. quickjs and V8 also use different shortest-digit
 // algorithms for Number.prototype.toString with a radix other than 10, which
 // the spec permits; expressions that pass a radix are skipped under quickjs.
 const noNul = (s: string) => !s.includes('\0');
+const hasNestedNegativeZero = (value: unknown): boolean =>
+	typeof value === 'object' &&
+	value !== null &&
+	Object.values(value).some((v) => Object.is(v, -0) || hasNestedNegativeZero(v));
 const bmpString = (maxLength: number) =>
 	fc
 		.string({ unit: 'binary', maxLength })
@@ -150,7 +156,7 @@ const { expr } = fc.letrec<{ expr: string }>((tie) => ({
 			.tuple(
 				fc.oneof({ weight: 3, arbitrary: path }, tie('expr')),
 				hop,
-				fc.constantFrom(...CALLABLE_METHODS),
+				fc.constantFrom(...CALLABLE_METHODS, ...EXTENSION_METHODS),
 				fc.array(fc.oneof(literal, path), { maxLength: 2 }),
 			)
 			.map(([recv, h, method, args]) => `(${recv})${h}${method}(${args.join(', ')})`),
@@ -242,13 +248,14 @@ describe('Expression - fast native evaluation fuzz parity', () => {
 				const viaEngine = outcome(expr, json, false);
 				const viaNative = outcome(expr, json, true);
 
+				const quickjs = Expression.getActiveImplementation() === 'quickjs';
 				const holesAsNull =
-					Expression.getActiveImplementation() === 'quickjs' &&
+					quickjs &&
 					Array.isArray(viaNative.value) &&
 					viaNative.value.some((element) => element === undefined);
-				const radixToString =
-					Expression.getActiveImplementation() === 'quickjs' && /\.toString\([^)]/.test(expr);
-				if (holesAsNull || radixToString) return;
+				const nestedNegativeZero = quickjs && hasNestedNegativeZero(viaNative.value);
+				const radixToString = quickjs && /\.toString\([^)]/.test(expr);
+				if (holesAsNull || nestedNegativeZero || radixToString) return;
 
 				if (viaEngine.error) {
 					expect(viaNative.error).toBeInstanceOf(viaEngine.error.constructor);

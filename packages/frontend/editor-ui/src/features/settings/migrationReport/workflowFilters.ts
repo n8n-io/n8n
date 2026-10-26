@@ -1,11 +1,18 @@
-import type { BreakingChangeRuleDetailWorkflow } from '@n8n/api-types';
+import type {
+	BreakingChangeRuleDetailWorkflow,
+	MigrationFindingListedStatus,
+	MigrationFindingTriageStatus,
+} from '@n8n/api-types';
 import { TIME } from '@/app/constants';
 
 export type AgeFilter = 'any' | 'under30Days' | 'under6Months' | 'over12Months';
 export type ExecutionsFilter = 'any' | 'none' | 'under100' | 'over1000';
 export type PublishedFilter = 'any' | 'published' | 'notPublished';
+export type StateFilter = 'any' | MigrationFindingTriageStatus;
 /** `any`, `unassigned`, or the id of the owner. */
 export type OwnerFilter = string;
+/** `any`, `personal` for all personal projects, or the id of a team project. */
+export type ProjectFilter = string;
 
 export interface WorkflowFilters {
 	lastRun: AgeFilter;
@@ -13,6 +20,8 @@ export interface WorkflowFilters {
 	executions: ExecutionsFilter;
 	published: PublishedFilter;
 	owner: OwnerFilter;
+	project: ProjectFilter;
+	state: StateFilter;
 }
 
 export const DEFAULT_WORKFLOW_FILTERS: WorkflowFilters = {
@@ -21,9 +30,12 @@ export const DEFAULT_WORKFLOW_FILTERS: WorkflowFilters = {
 	executions: 'any',
 	published: 'any',
 	owner: 'any',
+	project: 'any',
+	state: 'any',
 };
 
 export const UNASSIGNED_OWNER = 'unassigned';
+export const PERSONAL_PROJECTS = 'personal';
 
 /** The number of filters that differ from the default. */
 export function countActiveFilters(filters: WorkflowFilters): number {
@@ -55,16 +67,41 @@ function matchesOwner(workflow: BreakingChangeRuleDetailWorkflow, filter: OwnerF
 	return workflow.owner?.id === filter;
 }
 
+function matchesProject(
+	workflow: BreakingChangeRuleDetailWorkflow,
+	filter: ProjectFilter,
+): boolean {
+	if (filter === 'any') return true;
+	if (filter === PERSONAL_PROJECTS) return workflow.homeProjectType === 'personal';
+	return workflow.homeProjectId === filter;
+}
+
+// A notified finding still needs a fix, so it filters as open.
+function matchesState(
+	state: MigrationFindingListedStatus | 'migrated',
+	filter: StateFilter,
+): boolean {
+	if (filter === 'any') return true;
+	return state === filter || (filter === 'open' && state === 'notified');
+}
+
+/**
+ * `state` is the state that the page shows. A migrated row shows as `migrated`,
+ * so it matches no state filter.
+ */
 export function matchesWorkflowFilters(
 	workflow: BreakingChangeRuleDetailWorkflow,
 	filters: WorkflowFilters,
 	now = Date.now(),
+	state: MigrationFindingListedStatus | 'migrated' = workflow.status,
 ): boolean {
 	return (
+		matchesState(state, filters.state) &&
 		matchesAge(workflow.lastExecutedAt, filters.lastRun, now) &&
 		matchesAge(workflow.lastUpdatedAt, filters.lastUpdated, now) &&
 		matchesExecutions(workflow.numberOfExecutions, filters.executions) &&
 		(filters.published === 'any' || workflow.active === (filters.published === 'published')) &&
-		matchesOwner(workflow, filters.owner)
+		matchesOwner(workflow, filters.owner) &&
+		matchesProject(workflow, filters.project)
 	);
 }

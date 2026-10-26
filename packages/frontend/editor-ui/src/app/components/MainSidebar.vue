@@ -1,4 +1,8 @@
 <script setup lang="ts">
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
+// EOF Experiment cleanup
+
 import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -70,7 +74,7 @@ const {
 	toggleCollapse,
 } = useSidebarLayout();
 
-const { settingsItems, handleSettingsItemSelect } = useSettingsItems();
+const { settingsItems, settingsSections, handleSettingsItemSelect } = useSettingsItems();
 const { fetchWallet, isEnabled: isAiGatewayEnabled } = useAiGateway();
 
 // Component data
@@ -94,7 +98,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'cloud-admin',
 		position: 'bottom',
-		label: 'Admin Panel',
+		label: i18n.baseText('mainSidebar.cloudConsole'),
 		icon: 'cloud',
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 	},
@@ -396,8 +400,12 @@ useKeybindings({
 				/>
 			</N8nScrollArea>
 		</div>
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+		<ClaudeEntryPoint placement="sidebar" :collapsed="isCollapsed" />
+		<!-- EOF Experiment cleanup -->
 		<BottomMenu
 			:items="visibleMenuItems"
+			:settings-sections="settingsSections"
 			:is-collapsed="isCollapsed"
 			@logout="onLogout"
 			@select="handleSelect"

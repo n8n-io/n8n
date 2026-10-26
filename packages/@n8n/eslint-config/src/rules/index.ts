@@ -25,7 +25,6 @@ import { NoRekaUiPaginationRule } from './no-reka-ui-pagination.js';
 import { NoRestrictedSleepDefinitionRule } from './no-restricted-sleep-definition.js';
 import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
 import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-api-handler.js';
-import { RequirePublicApiControllerRule } from './require-public-api-controller.js';
 import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
 import { NoUnsealedCredentialsEntityWriteRule } from './no-unsealed-credentials-entity-write.js';
 import { RequireEscapedQueryValuesRule } from './require-escaped-query-values.js';
@@ -61,7 +60,6 @@ export const rules = {
 	'no-restricted-sleep-definition': NoRestrictedSleepDefinitionRule,
 	'no-restricted-sleep-import': NoRestrictedSleepImportRule,
 	'no-repository-in-public-api-handler': NoRepositoryInPublicApiHandlerRule,
-	'require-public-api-controller': RequirePublicApiControllerRule,
 	'no-unsealed-workflow-entity-write': NoUnsealedWorkflowEntityWriteRule,
 	'no-unsealed-credentials-entity-write': NoUnsealedCredentialsEntityWriteRule,
 	'require-escaped-query-values': RequireEscapedQueryValuesRule,

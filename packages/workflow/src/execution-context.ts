@@ -234,6 +234,16 @@ const ExecutionContextSchemaV1 = z.object({
 	redaction: RedactionSettingSchema.optional(),
 
 	/**
+	 * Redaction channels that the sub-workflows of this execution reported to it.
+	 * A sub-workflow reports the channels it redacts (and what its own
+	 * sub-workflows reported), because the caller keeps a copy of its output.
+	 * Kept apart from `redaction`, which stays the snapshot taken at start, so
+	 * the read path can tell why an execution is redacted. Readers combine the
+	 * two fields, strictest per channel. A channel is never lowered.
+	 */
+	subWorkflowRedaction: z.object({ production: z.boolean(), manual: z.boolean() }).optional(),
+
+	/**
 	 * The n8n user the execution ran as. Stamped at context establishment by
 	 * deriving the user from the identity carrier with the same identifier that
 	 * credential resolution uses, so the redaction owner cannot drift from the
@@ -301,6 +311,9 @@ export function toErrorWorkflowContext(
 			parentExecutionId: context.parentExecutionId,
 		}),
 		...(context.redaction !== undefined && { redaction: context.redaction }),
+		...(context.subWorkflowRedaction !== undefined && {
+			subWorkflowRedaction: context.subWorkflowRedaction,
+		}),
 		...(context.executedByUserId !== undefined && {
 			executedByUserId: context.executedByUserId,
 		}),

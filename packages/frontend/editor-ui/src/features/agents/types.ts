@@ -1,9 +1,11 @@
 import type { BaseResource } from '@/Interface';
 import type {
 	AgentJsonToolConfig,
+	AgentCreationState,
 	AgentReasoningLevel,
 	AgentSkill,
 	AgentSkillReference,
+	AgentTokenUsage,
 } from '@n8n/api-types';
 import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
 
@@ -12,6 +14,14 @@ export type { ToolDescriptor, CustomToolEntry, AgentSkill, AgentSkillReference }
 export interface AgentContinueLoadedEvent {
 	sessionId: string;
 	count: number;
+}
+
+export interface AgentUsageUpdate {
+	sessionId: string;
+	executionId: string;
+	usage?: AgentTokenUsage;
+	duration?: number;
+	complete: boolean;
 }
 
 export interface AgentFixWithAssistantFailure {
@@ -43,6 +53,8 @@ export type AgentResource = BaseResource &
 	Agent & {
 		resourceType: 'agent';
 	};
+
+export type AgentCreationResource = AgentResource & AgentCreationState;
 
 // Extend the ModuleResources interface to include Agent
 declare module '@/Interface' {

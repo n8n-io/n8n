@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import {
 	N8nButton,
+	N8nExternalLink,
 	N8nIcon,
 	N8nLink,
 	N8nSettingsLayout,
@@ -28,10 +29,13 @@ import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import type { BreakingChangeLightReportResult, BreakingChangeRuleImpact } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useToast } from '@n8n/composables/useToast';
+import { saveAs } from 'file-saver';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
 const i18n = useI18n();
+const toast = useToast();
 
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
@@ -47,7 +51,7 @@ const versionQuery = MIGRATION_REPORT_TARGET_VERSION
 
 const targetVersionMajor = MIGRATION_REPORT_TARGET_VERSION?.slice(1) ?? '2';
 const targetVersionDisplay = `${targetVersionMajor}.0.0`;
-const documentationUrl = `https://docs.n8n.io/${targetVersionMajor}-0-breaking-changes/`;
+const documentationUrl = 'https://docs.n8n.io/changelog/v30-breaking-changes';
 
 type WorkflowRuleResult = BreakingChangeLightReportResult['report']['workflowResults'][number];
 
@@ -80,6 +84,24 @@ async function refreshReport() {
 	await execute(0, true);
 }
 
+const isExporting = ref(false);
+
+// The server builds and names the file, so an instance without telemetry can still share its counts.
+async function exportReport() {
+	isExporting.value = true;
+	try {
+		const { blob, filename } = await breakingChangesApi.exportReport(
+			rootStore.restApiContext,
+			versionQuery,
+		);
+		saveAs(blob, filename);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.migrationReport.export.error.title'));
+	} finally {
+		isExporting.value = false;
+	}
+}
+
 const tabs = computed(() => {
 	const workflowIssues = {
 		label: i18n.baseText('settings.migrationReport.tabs.workflowIssues'),
@@ -102,6 +124,9 @@ const tabs = computed(() => {
 const workflowTooltips = computed<Record<BreakingChangeRuleImpact, string>>(() => ({
 	upgradeBlocked: i18n.baseText('settings.migrationReport.workflowTooltip.upgradeBlocked'),
 	executionsFail: i18n.baseText('settings.migrationReport.workflowTooltip.executionsFail'),
+	executionsMightFail: i18n.baseText(
+		'settings.migrationReport.workflowTooltip.executionsMightFail',
+	),
 	behaviorChanges: i18n.baseText('settings.migrationReport.workflowTooltip.behaviorChanges'),
 	capabilityRemoved: i18n.baseText('settings.migrationReport.workflowTooltip.capabilityRemoved'),
 }));
@@ -109,6 +134,9 @@ const workflowTooltips = computed<Record<BreakingChangeRuleImpact, string>>(() =
 const instanceTooltips = computed<Record<BreakingChangeRuleImpact, string>>(() => ({
 	upgradeBlocked: i18n.baseText('settings.migrationReport.instanceTooltip.upgradeBlocked'),
 	executionsFail: i18n.baseText('settings.migrationReport.instanceTooltip.executionsFail'),
+	executionsMightFail: i18n.baseText(
+		'settings.migrationReport.instanceTooltip.executionsMightFail',
+	),
 	behaviorChanges: i18n.baseText('settings.migrationReport.instanceTooltip.behaviorChanges'),
 	capabilityRemoved: i18n.baseText('settings.migrationReport.instanceTooltip.capabilityRemoved'),
 }));
@@ -143,8 +171,9 @@ function ruleDetailRoute(ruleId: string) {
 const impactOrder: Record<BreakingChangeRuleImpact, number> = {
 	upgradeBlocked: 0,
 	executionsFail: 1,
-	behaviorChanges: 2,
-	capabilityRemoved: 3,
+	executionsMightFail: 2,
+	behaviorChanges: 3,
+	capabilityRemoved: 4,
 };
 
 // Resolved rules come last. They stay listed so a user can open them and undo a won't fix.
@@ -237,6 +266,15 @@ const sortedInstanceResults = computed(() => {
 						{{ i18n.baseText('settings.migrationReport.neverUpdated') }}
 					</N8nText>
 					<N8nButton
+						variant="outline"
+						:label="i18n.baseText('settings.migrationReport.exportButton')"
+						icon="download"
+						:loading="isExporting"
+						:disabled="isLoading || isExporting || !state"
+						data-test-id="migration-report-export"
+						@click="exportReport"
+					/>
+					<N8nButton
 						v-if="canManageReport"
 						variant="outline"
 						:label="i18n.baseText('settings.migrationReport.refreshButton')"
@@ -294,19 +332,13 @@ const sortedInstanceResults = computed(() => {
 							</div>
 							<N8nText tag="p" color="text-base">
 								{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
-								<N8nLink
+								<N8nExternalLink
 									v-if="issue.ruleDocumentationUrl"
-									theme="text"
+									inline
+									size="small"
 									:href="issue.ruleDocumentationUrl"
-									target="_blank"
-									rel="noopener noreferrer"
-									:class="$style.NoLineBreak"
+									>{{ i18n.baseText('settings.migrationReport.documentation') }}</N8nExternalLink
 								>
-									<span :class="$style.UnderlinedText">{{
-										i18n.baseText('settings.migrationReport.documentation')
-									}}</span>
-									↗
-								</N8nLink>
 							</N8nText>
 							<div :class="$style.FindingCounts" data-test-id="migration-rule-finding-counts">
 								<N8nText
@@ -382,19 +414,13 @@ const sortedInstanceResults = computed(() => {
 							</div>
 							<N8nText tag="p" color="text-base">
 								{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
-								<N8nLink
+								<N8nExternalLink
 									v-if="issue.ruleDocumentationUrl"
-									theme="text"
+									inline
+									size="small"
 									:href="issue.ruleDocumentationUrl"
-									target="_blank"
-									rel="noopener noreferrer"
-									:class="$style.NoLineBreak"
+									>{{ i18n.baseText('settings.migrationReport.documentation') }}</N8nExternalLink
 								>
-									<span :class="$style.UnderlinedText">{{
-										i18n.baseText('settings.migrationReport.documentation')
-									}}</span>
-									↗
-								</N8nLink>
 							</N8nText>
 						</template>
 					</N8nSettingsRow>
@@ -457,10 +483,6 @@ const sortedInstanceResults = computed(() => {
 	:global(.el-skeleton__p) {
 		margin-top: 0;
 	}
-}
-
-.UnderlinedText {
-	text-decoration: underline;
 }
 
 .TitleLink {

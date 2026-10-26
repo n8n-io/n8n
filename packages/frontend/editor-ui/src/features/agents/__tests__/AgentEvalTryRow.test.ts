@@ -435,6 +435,36 @@ describe('AgentEvalTryRow', () => {
 
 			expect(getByTestId('row-delete-check')).toBeDisabled();
 		});
+
+		it.each([
+			['a passing case, after "Run check"', 'pass', 'row-run-check'],
+			['a case that needs work, after "Actually fine"', 'work', 'row-actually-fine'],
+		] as const)(
+			'puts delete at the end of the actions for %s',
+			async (_label, status, lastAction) => {
+				const user = userEvent.setup();
+				const { getByTestId } = renderWithRule({ testId: 'row', status, output: 'y' });
+				await user.click(getByTestId('row-toggle'));
+
+				const action = getByTestId(lastAction);
+				const deleteButton = getByTestId('row-delete-check');
+				expect(action.compareDocumentPosition(deleteButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+				expect(getByTestId('row-edit-rule').compareDocumentPosition(action)).toBe(
+					Node.DOCUMENT_POSITION_FOLLOWING,
+				);
+			},
+		);
+
+		it('keeps delete available while the rule is being edited', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = renderWithRule({ testId: 'row' });
+			await user.click(getByTestId('row-toggle'));
+
+			await user.click(getByTestId('row-edit-rule'));
+
+			expect(queryByTestId('row-edit-rule')).not.toBeInTheDocument();
+			expect(getByTestId('row-delete-check')).toBeEnabled();
+		});
 	});
 
 	describe('practice run banner', () => {

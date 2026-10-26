@@ -11,6 +11,7 @@ import {
 	UrlService,
 	CredentialsFinderService,
 } from '@n8n/backend-services';
+import { OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -68,7 +69,6 @@ import {
 } from './types';
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { Time } from '@n8n/constants';
 
@@ -94,6 +94,7 @@ export type OauthFlowState = {
 
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';
 const OAUTH_REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds; // This might be added to a OAuth Config (there is currently none)
+const OFFLINE_ACCESS_SCOPE = 'offline_access';
 
 export interface OAuth2CredentialRefreshResult {
 	headers: Record<string, string>;
@@ -114,6 +115,21 @@ export function shouldSkipAuthOnOAuthCallback() {
 export const skipAuthOnOAuthCallback = shouldSkipAuthOnOAuthCallback();
 
 export { OauthVersion, type OAuth1CredentialData, type CreateCsrfStateData, type CsrfState };
+
+/**
+ * `offline_access` asks the authorization server for a refresh token. It grants no
+ * access to the resource, so a protected resource document (RFC 9728) has no reason
+ * to list it, and most do not. Taking the resource scopes verbatim therefore drops it
+ * even where the authorization server offers it, and the credential is then issued
+ * without a refresh token. `shouldRefreshMcpOAuth2Token` returns false without one, so
+ * the connection stops working at the first token expiry with nothing to recover it.
+ */
+function withOfflineAccess(resourceScopes: string[], authServerScopes?: string[]): string[] {
+	const offered = authServerScopes?.includes(OFFLINE_ACCESS_SCOPE) ?? false;
+	return offered && !resourceScopes.includes(OFFLINE_ACCESS_SCOPE)
+		? [...resourceScopes, OFFLINE_ACCESS_SCOPE]
+		: resourceScopes;
+}
 
 /** The user who started the flow. An externally started dynamic-credential flow has none. */
 const csrfUserId = (csrfData: CreateCsrfStateData) =>
@@ -645,6 +661,21 @@ export class OauthService {
 	}
 
 	/**
+	 * Derive the heading for the OAuth callback error page.
+	 * Some token endpoints (e.g. Meta Graph API) send `error` as an object with its own text.
+	 * The page shows that text only when the credential type fixes the token endpoint,
+	 * so a user cannot point the request at a host of their choice.
+	 * Callers log the full error before rendering.
+	 */
+	extractCallbackErrorMessage(error: Error, credentialType?: string): string {
+		const hasServerText = error instanceof OAuth2AuthError && error.fromErrorObject;
+		if (hasServerText && !(credentialType && this.hasFixedTokenEndpoint(credentialType))) {
+			return 'The OAuth2 server rejected the token request';
+		}
+		return error.message;
+	}
+
+	/**
 	 * Derive a human-readable reason for the OAuth callback error page.
 	 * Surfaces the fixed OAuth2 error code when the authorization server returned one,
 	 * then falls back to the wrapped `cause` chain so errors like
@@ -907,6 +938,25 @@ export class OauthService {
 				});
 			},
 		});
+	}
+
+	/**
+	 * Whether the credential type sets `accessTokenUrl` to a static hidden value.
+	 * Stored data never overrides a hidden endpoint (see `OAUTH_PINNED_FIELDS`).
+	 */
+	private hasFixedTokenEndpoint(credentialType: string): boolean {
+		try {
+			const tokenUrl = this.credentialsHelper
+				.getCredentialsProperties(credentialType)
+				.find((property) => property.name === 'accessTokenUrl');
+			return (
+				tokenUrl?.type === 'hidden' &&
+				typeof tokenUrl.default === 'string' &&
+				!tokenUrl.default.startsWith('=')
+			);
+		} catch {
+			return false;
+		}
 	}
 
 	/**
@@ -1174,7 +1224,7 @@ export class OauthService {
 		// authorization server's scopes_supported (RFC 8414). Some servers only
 		// advertise the required scopes on the protected resource document.
 		const effectiveScopes = discoveredResourceScopes?.length
-			? discoveredResourceScopes
+			? withOfflineAccess(discoveredResourceScopes, scopes_supported)
 			: scopes_supported;
 		const scope = effectiveScopes?.length ? effectiveScopes.join(' ') : undefined;
 		if (scope) {
@@ -1446,7 +1496,7 @@ export class OauthService {
 	/**
 	 * Fetches a `.well-known` discovery document and returns its parsed JSON body.
 	 * Only a 200 is accepted (RFC 8414 / RFC 9728 / OpenID Connect discovery endpoints respond with 200).
-	 * Any other status, or a transport/SSRF failure, throws,
+	 * Any other status, a non-object body, or a transport/SSRF failure throws,
 	 * so the discovery loops can uniformly catch and fall through to the next candidate URL.
 	 */
 	private async fetchDiscoveryDocument(url: string): Promise<unknown> {
@@ -1458,6 +1508,9 @@ export class OauthService {
 		});
 		if (response.statusCode !== 200) {
 			throw new OperationalError(`Request failed with status code ${response.statusCode}`);
+		}
+		if (!isRecord(response.body)) {
+			throw new OperationalError('Discovery response must be a JSON object');
 		}
 		return response.body;
 	}

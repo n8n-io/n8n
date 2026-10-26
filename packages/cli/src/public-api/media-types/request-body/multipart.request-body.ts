@@ -13,7 +13,7 @@ import { formatValidationError } from '@/public-api/public-api-validation-error'
 import { loadMultipartParser } from './multipart-parser';
 import type { RequestBodyHandler } from './types';
 
-// Same regexes express-openapi-validator 5.5.3 used in legacy EOV handlers.
+// Multer error codes and messages that map to public API statuses.
 const PAYLOAD_TOO_BIG_CODE = /LIMIT_(FILE|PART)_(SIZE|COUNT)/;
 const UNEXPECTED_FILE_CODE = /LIMIT_UNEXPECTED_FILE/;
 const MISSING_BOUNDARY = /Multipart: Boundary not found/i;
@@ -23,7 +23,7 @@ function isMulterError(error: unknown): error is MulterError {
 }
 
 /**
- * Maps a multer parsing error to a serializable public API error matching the legacy EOV handlers.
+ * Maps a multer parsing error to a serializable public API error.
  */
 export function toPublicApiError(error: unknown): Error {
 	if (isMulterError(error)) {

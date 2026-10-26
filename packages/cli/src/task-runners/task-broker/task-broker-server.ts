@@ -8,6 +8,7 @@ import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import { ErrorReporter } from 'n8n-core';
 import * as a from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import { once } from 'node:events';
 import {
 	type IncomingMessage,
 	STATUS_CODES,
@@ -140,12 +141,9 @@ export class TaskBrokerServer {
 			}
 		});
 
-		await new Promise<void>((resolve) => {
-			a.ok(this.server);
-			this.server.listen(port, address, () => resolve());
-		});
+		await once(this.server.listen(port, address), 'listening');
 
-		this.logger.info(`n8n Task Broker ready on ${address}, port ${port}`);
+		this.logger.info(`n8n Task Broker ready on ${address}, port ${this.port}`);
 	}
 
 	/** Creates WebSocket server for handling upgrade requests */

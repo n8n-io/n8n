@@ -4,13 +4,13 @@ import { OperationalError } from 'n8n-workflow';
 
 import type { AgentSkillRefsService } from '../agent-skill-refs.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
-import type { Agent } from '../entities/agent.entity';
+import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { AgentSkillRefs } from '../json-config/agent-document';
 
 /** The agent content that a run uses: the draft or the published version. */
-export interface AgentRunSource {
+export interface AgentRunSource<T extends Agent = ProjectAgent> {
 	/** The agent draft, or the agent with the content of its published version. */
-	agent: Agent;
+	agent: T;
 	skillRefs: AgentSkillRefs;
 	/** Skill bodies from the skills hub, keyed by skill id: the draft's or the pinned ones. */
 	skills: Record<string, AgentSkill>;
@@ -26,25 +26,25 @@ function getPublishedVersion(agentEntity: Agent): AgentHistory {
 	return activeVersion;
 }
 
-function getPublishedAgentSnapshot(agentEntity: Agent): Agent {
+function getPublishedAgentSnapshot<T extends Agent>(agentEntity: T): T {
 	const activeVersion = getPublishedVersion(agentEntity);
 	return {
 		...agentEntity,
 		schema: activeVersion.schema,
 		tools: activeVersion.tools ?? {},
-	} as Agent;
+	};
 }
 
 /**
  * Select the draft or the published version of an agent for a run, with the
  * skill refs of the same draft or version.
  */
-export async function resolveAgentRunSource(
-	agentEntity: Agent,
+export async function resolveAgentRunSource<T extends Agent>(
+	agentEntity: T,
 	usePublishedVersion: boolean,
 	agentSkillRefs: AgentSkillRefsService,
 	ctx: OperationContext,
-): Promise<AgentRunSource> {
+): Promise<AgentRunSource<T>> {
 	if (!usePublishedVersion) {
 		return { agent: agentEntity, ...(await agentSkillRefs.readDraft(agentEntity, ctx)) };
 	}

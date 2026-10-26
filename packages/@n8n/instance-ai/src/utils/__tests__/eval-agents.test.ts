@@ -5,6 +5,8 @@ type MockAgentInstance = {
 	instructions: Mock;
 	thinking: Mock;
 	configuration: Mock;
+	telemetry: Mock;
+	modelFetch: Mock;
 };
 
 const mockAgentInstances: MockAgentInstance[] = [];
@@ -15,11 +17,14 @@ vi.mock('@n8n/agents', () => ({
 		this.instructions = vi.fn().mockReturnThis();
 		this.thinking = vi.fn().mockReturnThis();
 		this.configuration = vi.fn().mockReturnThis();
+		this.telemetry = vi.fn().mockReturnThis();
+		this.modelFetch = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Tool: vi.fn(),
 }));
 
+import type { GenerateResult } from '@n8n/agents';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -27,6 +32,8 @@ import path from 'node:path';
 import {
 	JUDGE_MODEL,
 	createEvalAgent,
+	extractText,
+	isRetryableEvalError,
 	resolveEvalModelConfig,
 	resolveJudgeModel,
 } from '../eval-agents';
@@ -37,6 +44,8 @@ const MODEL_ENV_KEYS = [
 	'N8N_INSTANCE_AI_EVAL_MODEL',
 	'N8N_INSTANCE_AI_MODEL_API_KEY',
 	'N8N_INSTANCE_AI_MODEL_URL',
+	'N8N_INSTANCE_AI_EVAL_MODEL_URL',
+	'N8N_INSTANCE_AI_EVAL_MODEL_API_KEY',
 	'EVAL_MODAL_LLM_HEADERS',
 	'N8N_AI_ANTHROPIC_KEY',
 	'ANTHROPIC_API_KEY',
@@ -67,12 +76,24 @@ describe('eval agent model config', () => {
 		process.env = ORIGINAL_ENV;
 	});
 
+	it('attaches caller telemetry to helper agents', () => {
+		process.env.N8N_AI_ANTHROPIC_KEY = 'test';
+		const telemetry = {
+			enabled: true,
+			recordInputs: false,
+			recordOutputs: false,
+			integrations: [],
+		};
+		createEvalAgent('helper', { instructions: 'test', telemetry });
+		expect(mockAgentInstances[0]?.telemetry).toHaveBeenCalledWith(telemetry);
+	});
+
 	it('keeps the legacy Anthropic key fallback for eval models', () => {
 		process.env.N8N_AI_ANTHROPIC_KEY = 'legacy-anthropic-key';
 
 		const config = resolveEvalModelConfig();
 
-		expect(config.modelId).toBe('anthropic/claude-sonnet-4-6');
+		expect(config.modelId).toBe('anthropic/claude-sonnet-5-5');
 		expect(config.apiKey).toBe('legacy-anthropic-key');
 	});
 
@@ -111,13 +132,16 @@ describe('eval agent model config', () => {
 			url: 'https://proxy.example.com/anthropic/v1',
 			apiKey: 'proxy-token',
 		};
+		const modelFetch = vi.fn();
 
 		createEvalAgent('test-agent', {
 			instructions: 'Do the task.',
 			fallbackModelConfig,
+			modelFetch,
 		});
 
 		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(fallbackModelConfig);
+		expect(mockAgentInstances[0]?.modelFetch).toHaveBeenCalledWith(modelFetch);
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
 			mode: 'adaptive',
 			effort: 'medium',
@@ -133,7 +157,7 @@ describe('eval agent model config', () => {
 		});
 
 		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith({
-			id: 'anthropic/claude-sonnet-4-6',
+			id: 'anthropic/claude-sonnet-5-5',
 			apiKey: 'env-key',
 			url: undefined,
 		});
@@ -213,6 +237,58 @@ describe('eval agent model config', () => {
 		});
 	});
 
+	it('routes a dedicated eval model to its own URL and key, never the builder key', () => {
+		process.env.N8N_INSTANCE_AI_MODEL = 'anthropic/claude-sonnet-4-6';
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY = 'builder-key';
+		process.env.ANTHROPIC_API_KEY = 'anthropic-key';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'custom/deepseek/deepseek-v4.1-flash';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL = 'https://router.example.com/v1';
+
+		expect(resolveEvalModelConfig()).toEqual({
+			modelId: 'custom/deepseek/deepseek-v4.1-flash',
+			provider: 'custom',
+			providerModelId: 'deepseek/deepseek-v4.1-flash',
+			apiKey: '',
+			url: 'https://router.example.com/v1',
+			headers: undefined,
+		});
+
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_API_KEY = 'router-key';
+		expect(resolveEvalModelConfig().apiKey).toBe('router-key');
+	});
+
+	it('uses the eval model URL and key when no builder model is set', () => {
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'custom/deepseek/deepseek-v4.1-flash';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL = 'https://router.example.com/v1';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_API_KEY = 'router-key';
+
+		expect(resolveEvalModelConfig()).toMatchObject({
+			apiKey: 'router-key',
+			url: 'https://router.example.com/v1',
+		});
+	});
+
+	it('keeps judges and fixed helper ids off the eval model URL', () => {
+		process.env.N8N_INSTANCE_AI_MODEL = 'anthropic/claude-sonnet-4-6';
+		process.env.ANTHROPIC_API_KEY = 'anthropic-key';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'custom/deepseek/deepseek-v4.1-flash';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL = 'https://router.example.com/v1';
+
+		expect(resolveEvalModelConfig('anthropic/claude-haiku-4-5-20251001')).toMatchObject({
+			apiKey: 'anthropic-key',
+			url: undefined,
+		});
+	});
+
+	it('requires the eval key for a provider-native model on the eval model URL', () => {
+		process.env.N8N_INSTANCE_AI_MODEL = 'anthropic/claude-sonnet-4-6';
+		process.env.ANTHROPIC_API_KEY = 'anthropic-key';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'openai/gpt-5.6-sol';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL = 'https://gateway.example.com/v1';
+
+		expect(() => resolveEvalModelConfig()).toThrow(/N8N_INSTANCE_AI_EVAL_MODEL_API_KEY/);
+	});
+
 	it('prefers Anthropic keys over a non-Anthropic builder MODEL_API_KEY for the eval model', () => {
 		process.env.N8N_INSTANCE_AI_MODEL = 'openai/gpt-5.6-sol';
 		process.env.N8N_INSTANCE_AI_MODEL_API_KEY = 'openai-builder-key';
@@ -224,6 +300,73 @@ describe('eval agent model config', () => {
 			apiKey: 'anthropic-eval-key',
 			url: undefined,
 		});
+	});
+});
+
+describe('extractText', () => {
+	const failed = (error: unknown) =>
+		({ messages: [], finishReason: 'error', error }) as unknown as GenerateResult;
+
+	it('joins the assistant text parts', () => {
+		const result = {
+			messages: [
+				{ role: 'user', content: [{ type: 'text', text: 'ignored' }] },
+				{
+					role: 'assistant',
+					content: [
+						{ type: 'text', text: '{"a":' },
+						{ type: 'text', text: '1}' },
+					],
+				},
+			],
+			finishReason: 'stop',
+		} as unknown as GenerateResult;
+		expect(extractText(result)).toBe('{"a":1}');
+	});
+
+	it('throws the model error with its status instead of returning empty text', () => {
+		const apiError = Object.assign(new Error('invalid x-api-key'), {
+			statusCode: 401,
+			isRetryable: false,
+		});
+		expect(() => extractText(failed(apiError))).toThrow(
+			'Eval model provider call failed (HTTP 401): invalid x-api-key',
+		);
+	});
+
+	it('reads the status from the last error when the SDK retries ran out', () => {
+		const lastError = Object.assign(new Error('Service Unavailable'), {
+			statusCode: 503,
+			isRetryable: true,
+		});
+		const retryError = Object.assign(
+			new Error('Failed after 3 attempts. Last error: Service Unavailable'),
+			{ lastError },
+		);
+		expect(() => extractText(failed(retryError))).toThrow(
+			'Eval model provider call failed (HTTP 503): Failed after 3 attempts. Last error: Service Unavailable',
+		);
+	});
+
+	it('throws a failure that is not a provider error as it is', () => {
+		const runtimeError = new Error('memory store unavailable');
+		expect(() => extractText(failed(runtimeError))).toThrow(runtimeError);
+		expect(() => extractText(failed('socket closed'))).toThrow(/^socket closed$/);
+	});
+
+	it('marks a failure the provider will not recover from as not retryable', () => {
+		const call = (error: unknown) => {
+			try {
+				extractText(failed(error));
+			} catch (thrown) {
+				return thrown;
+			}
+			throw new Error('expected a throw');
+		};
+		expect(isRetryableEvalError(call({ statusCode: 401, isRetryable: false }))).toBe(false);
+		expect(isRetryableEvalError(call({ statusCode: 529, isRetryable: true }))).toBe(true);
+		expect(isRetryableEvalError(call(new Error('fetch failed')))).toBe(true);
+		expect(isRetryableEvalError(new Error('unusable shape'))).toBe(true);
 	});
 });
 
@@ -262,7 +405,7 @@ describe('eval agent judge and effort settings', () => {
 		expect(modelId()).toBe('anthropic/claude-sonnet-5');
 
 		createEvalAgent('proxy', { instructions: 'x' });
-		expect(modelId()).toBe('anthropic/claude-sonnet-4-6');
+		expect(modelId()).toBe('anthropic/claude-sonnet-5-5');
 	});
 
 	it('routes the eval effort to agents without a pinned model only', () => {

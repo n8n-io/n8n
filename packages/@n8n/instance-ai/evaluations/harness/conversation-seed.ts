@@ -7,6 +7,7 @@ import {
 	instanceAiEvalSeedAgentSchema,
 	instanceAiEvalSeedArtifactIdSchema,
 	instanceAiEvalSeedFolderSchema,
+	resolveBuilderToolName,
 } from '@n8n/api-types';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
@@ -14,11 +15,11 @@ import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
+import { isAgentTargetingToolName } from '../../src/tools/orchestration/agent-target-binding';
+import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 import {
 	extractAskUserAnswers,
 	extractAskUserQuestions,
-	extractPlanTasks,
 	extractSetupCardRequests,
 	extractSetupWizardOutcome,
 } from '../outcome/transcript-from-events';
@@ -579,15 +580,8 @@ const interpretAskUser: SeedStepInterpreter = (call) => {
 	return { kind: 'ask-user', questions: parsed, answers };
 };
 
-const interpretPlan: SeedStepInterpreter = (call) => {
-	const tasks = call.input?.tasks;
-	if (call.toolName !== ORCHESTRATION_TOOL_IDS.CREATE_TASKS || !Array.isArray(tasks)) return null;
-	const parsed = extractPlanTasks(tasks);
-	return parsed.length > 0 ? { kind: 'plan', tasks: parsed } : null;
-};
-
 // The applied setup outcome: which nodes were configured / skipped (same
-// rendering as the live `workflows` result).
+// rendering as the live `workflow_builder_workflows` result).
 const interpretSetupWizard: SeedStepInterpreter = (call) => {
 	const { output } = call;
 	// `skippedNodes` is the pre-split key, kept so seeded fixtures recorded then still parse.
@@ -614,7 +608,7 @@ const interpretSetupCard: SeedStepInterpreter = (call) => {
 	return requests.length > 0 ? { kind: 'setup-card', requests, outcome: 'pending' } : null;
 };
 
-// A HITL confirmation other than ask-user/setup-card (plan-review, resource decision, …):
+// A HITL confirmation other than ask-user/setup-card (resource decision, …):
 // the request is in the resume block's input, the decision in its output.
 const interpretConfirmation: SeedStepInterpreter = (call) => {
 	const reasonRaw = call.input?.resumeReason ?? call.input?.inputType;
@@ -631,16 +625,13 @@ const interpretConfirmation: SeedStepInterpreter = (call) => {
 		toolName: typeof toolNameRaw === 'string' ? toolNameRaw : call.toolName,
 		resumeReason,
 		approved: typeof approvedRaw === 'boolean' ? approvedRaw : undefined,
-		// Plan-review prompts are boilerplate; the plan renders separately.
-		message:
-			resumeReason === 'plan-review' || typeof messageRaw !== 'string' ? undefined : messageRaw,
+		message: typeof messageRaw !== 'string' ? undefined : messageRaw,
 		feedback: typeof feedbackRaw === 'string' ? feedbackRaw : undefined,
 	};
 };
 
 const SEED_STEP_INTERPRETERS: SeedStepInterpreter[] = [
 	interpretAskUser,
-	interpretPlan,
 	interpretSetupWizard,
 	interpretSetupCard,
 	interpretConfirmation,
@@ -650,7 +641,9 @@ const SEED_STEP_INTERPRETERS: SeedStepInterpreter[] = [
  *  else a generic tool-call). */
 function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
 	const call: SeedToolCall = {
-		toolName: typeof block.toolName === 'string' ? block.toolName : 'unknown-tool',
+		// Seeded histories can carry a former builder tool name.
+		toolName:
+			typeof block.toolName === 'string' ? resolveBuilderToolName(block.toolName) : 'unknown-tool',
 		input: isRecord(block.input) ? block.input : undefined,
 		output: isRecord(block.output) ? block.output : undefined,
 	};
@@ -671,7 +664,8 @@ function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
  * and so the one a case grades and executes.
  *
  * Mirrors the server's own binding rule (`seedAgentBuilderTargetMetadata`): the last
- * resolved `build-agent` call, ordered by `(createdAt, id)` because that is how the
+ * resolved targeting call (`agent_builder_build_agent` or `agent_builder_select_agent`), ordered
+ * by `(createdAt, id)` because that is how the
  * message store reads a thread back. Seed-ARRAY order is an authoring artifact, so a
  * parent/helper seed would otherwise have the harness grade one agent while the
  * thread continues the other.
@@ -691,7 +685,7 @@ export function activeSeedAgentId(seed: ConversationSeed): string | undefined {
 		if (!Array.isArray(message.content)) continue;
 		for (const block of message.content) {
 			if (!isRecord(block) || block.type !== 'tool-call') continue;
-			if (block.toolName !== ORCHESTRATION_TOOL_IDS.BUILD_AGENT) continue;
+			if (!isAgentTargetingToolName(block.toolName)) continue;
 			const output = isRecord(block.output) ? block.output : undefined;
 			if (typeof output?.agentId === 'string') active = output.agentId;
 		}

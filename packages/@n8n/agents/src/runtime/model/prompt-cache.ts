@@ -1,12 +1,15 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
+import {
+	getModelPromptCachingCapability,
+	getProviderPrefix,
+	isAzureFoundryAnthropicModel,
+	isGoogleVertexAnthropicModel,
+} from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 import type { ModelMessage, SystemModelMessage, ToolSet } from 'ai';
 import { createHash } from 'crypto';
 
-import { isGoogleVertexAnthropicModel } from './google-vertex';
 import type { PromptCachingConfig } from '../../types/sdk/agent';
-import type { JSONObject } from '../../types/utils/json';
 
 /** Anthropic hard-errors past this many `cacheControl` breakpoints in one request. */
 const MAX_ANTHROPIC_CACHE_BREAKPOINTS = 4;
@@ -18,7 +21,7 @@ export function mergeProviderOptions(
 	const defined = options.filter((o): o is ProviderOptions => o !== undefined);
 	if (defined.length === 0) return undefined;
 
-	const merged: Record<string, JSONObject> = {};
+	const merged: ProviderOptions = {};
 	for (const opts of defined) {
 		for (const [provider, providerOpts] of Object.entries(opts)) {
 			merged[provider] = { ...merged[provider], ...providerOpts };
@@ -42,7 +45,10 @@ export function getEffectiveAnthropicCacheTtl(
 	config: PromptCachingConfig | undefined,
 	modelId: string,
 ): '5m' | '1h' | undefined {
-	if (!isAnthropicMessagesProvider(modelId) || !isEnabledForProvider(config, 'anthropic')) {
+	if (
+		getModelPromptCachingCapability(modelId) !== 'ttl' ||
+		!isEnabledForProvider(config, 'anthropic')
+	) {
 		return undefined;
 	}
 	return getAnthropicCacheTtl(config);
@@ -62,7 +68,8 @@ export function isAnthropicMessagesProvider(modelId: string): boolean {
 	return (
 		provider === 'anthropic' ||
 		provider === 'google-vertex-anthropic' ||
-		isGoogleVertexAnthropicModel(modelId)
+		isGoogleVertexAnthropicModel(modelId) ||
+		isAzureFoundryAnthropicModel(modelId)
 	);
 }
 
@@ -94,10 +101,14 @@ function buildAnthropicCacheControl(config: PromptCachingConfig | undefined): Pr
 	};
 }
 
-/** True when `providerOptions` carries an Anthropic `cacheControl` marker. */
-function hasAnthropicCacheControl(providerOptions: ProviderOptions | undefined): boolean {
+/** True when `providerOptions` carries an Anthropic cache marker. */
+export function hasAnthropicCacheControl(providerOptions: ProviderOptions | undefined): boolean {
 	const anthropic = providerOptions?.anthropic;
-	return isRecord(anthropic) && isRecord(anthropic.cacheControl);
+	return isRecord(anthropic) && isRecord(anthropic.cacheControl ?? anthropic.cache_control);
+}
+
+export function isAnthropicToolDeferred(tool: ToolSet[string]): boolean {
+	return tool.providerOptions?.anthropic?.deferLoading === true;
 }
 
 /**
@@ -256,7 +267,11 @@ export function applyRuntimeCacheBreakpoints(params: {
 		const staticTool = aiTools[staticToolCacheName];
 		// A caller marker on the static tool already anchors this breakpoint (and
 		// is counted in `used`); re-marking would evict the caller's cacheControl.
-		if (staticTool && !hasAnthropicCacheControl(staticTool.providerOptions)) {
+		if (
+			staticTool &&
+			!isAnthropicToolDeferred(staticTool) &&
+			!hasAnthropicCacheControl(staticTool.providerOptions)
+		) {
 			nextTools = {
 				...aiTools,
 				[staticToolCacheName]: {

@@ -17,7 +17,11 @@ import {
 	createAgentSkillSchema,
 } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
-import { N8N_CHAT_INTEGRATION_TYPE } from './types';
+import {
+	AGENT_MEMORY_FILTER_SOURCES,
+	AGENT_MEMORY_SOURCE_FACETS,
+	N8N_CHAT_INTEGRATION_TYPE,
+} from './types';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
 import { threadTitleSearchSchema } from '../schemas/thread-title-search.schema';
@@ -126,6 +130,15 @@ export type AgentSessionQueryFilters = Pick<
 	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
 >;
 
+export class ListAgentMemoryEntriesQueryDto extends Z.class({
+	cursor: z.string().min(1).optional(),
+	limit: z.string().optional(),
+	source: z.enum(AGENT_MEMORY_FILTER_SOURCES).optional(),
+	/** Narrows `source` to one user, channel or team. Requires `source` and `sourceFacetId`. */
+	sourceFacet: z.enum(AGENT_MEMORY_SOURCE_FACETS).optional(),
+	sourceFacetId: z.string().min(1).max(255).optional(),
+}) {}
+
 /** Cross-agent n8n Chat thread list: cursor + limit only, no status/origin/scope filters. */
 export class ListN8nChatThreadsQueryDto extends Z.class({
 	// The cursor is a thread's `updatedAt` ISO string (see `paginateByUpdatedAt`).
@@ -159,9 +172,10 @@ export class UpdateAgentsMcpAvailabilityDto extends Z.class({
  */
 export const clientMintedAgentIdSchema = z.string().regex(/^[0-9A-Za-z]{16}$/);
 
-export class CreateAgentDto extends Z.class({
+const createAgentShape = {
 	name: z.string().min(1),
 	id: clientMintedAgentIdSchema.optional(),
+	config: z.record(z.unknown()).optional(),
 	schema: AgentJsonConfigSchema.optional(),
 	tools: z
 		.record(
@@ -169,7 +183,43 @@ export class CreateAgentDto extends Z.class({
 		)
 		.optional(),
 	skills: z.record(agentSkillSchema).optional(),
-}) {}
+};
+
+const createAgentSchema = z
+	.object(createAgentShape)
+	.refine(({ config, schema }) => config === undefined || schema === undefined, {
+		message: 'Use config for initial configuration or schema for duplication, not both.',
+	});
+
+type CreateAgent = z.infer<typeof createAgentSchema>;
+
+export class CreateAgentDto implements CreateAgent {
+	declare name: CreateAgent['name'];
+
+	declare id?: CreateAgent['id'];
+
+	declare config?: CreateAgent['config'];
+
+	declare schema?: CreateAgent['schema'];
+
+	declare tools?: CreateAgent['tools'];
+
+	declare skills?: CreateAgent['skills'];
+
+	static schema = createAgentSchema;
+
+	constructor(data: CreateAgent) {
+		Object.assign(this, createAgentSchema.parse(data));
+	}
+
+	static safeParse(data: unknown) {
+		return createAgentSchema.safeParse(data);
+	}
+
+	static parse(data: unknown) {
+		return createAgentSchema.parse(data);
+	}
+}
 
 export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),
@@ -453,3 +503,11 @@ export interface VectorStoreTestResult {
 	message?: string;
 	warning?: string;
 }
+
+export class AgentChatCancelDto extends Z.class({
+	scope: z.enum(['foreground', 'all']).optional(),
+}) {}
+
+export class AgentTaskCancellationDto extends Z.class({
+	planId: z.string().uuid().toLowerCase().nullable(),
+}) {}

@@ -61,7 +61,24 @@ const tagUnresolved = (
 	usedBy: [{ kind: 'workflow', id: 'w1' }],
 });
 
+const credentialConflict = (kind: 'differs' | 'divergent'): BlockingIssue => ({
+	type: 'credential-conflict',
+	kind,
+	targetId: 'c1',
+	sourceIds: ['s1'],
+	name: 'GitHub',
+	usedBy: [{ kind: 'workflow', id: 'w1' }],
+});
+
 describe('toImportBlockedError', () => {
+	it.each(['differs', 'divergent'] as const)(
+		'maps a %s credential-conflict to 409 Conflict',
+		(kind) => {
+			const error = toImportBlockedError([credentialConflict(kind), credentialUnresolved]);
+			expect(error).toBeInstanceOf(ConflictError);
+		},
+	);
+
 	it('maps a folder-conflict to 409 Conflict', () => {
 		const error = toImportBlockedError([folderConflict]);
 		expect(error).toBeInstanceOf(ConflictError);
@@ -84,6 +101,19 @@ describe('toImportBlockedError', () => {
 
 	it('maps a credential-policy-violation to 422', () => {
 		const error = toImportBlockedError([credentialPolicyViolation]);
+		expect(error).toBeInstanceOf(UnprocessableRequestError);
+	});
+
+	it('maps a credential-update-forbidden to 422', () => {
+		const error = toImportBlockedError([
+			{
+				type: 'credential-update-forbidden',
+				targetId: 'c1',
+				sourceIds: ['s1'],
+				name: 'GitHub',
+				usedBy: [{ kind: 'workflow', id: 'w1' }],
+			},
+		]);
 		expect(error).toBeInstanceOf(UnprocessableRequestError);
 	});
 

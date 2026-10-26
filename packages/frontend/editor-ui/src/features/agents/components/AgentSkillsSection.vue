@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
-import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
@@ -40,23 +39,6 @@ const skillIssueMessages = computed(() =>
 );
 const outdatedSkillIds = computed(() => new Set(props.outdatedSkillIds));
 const outdatedWarning = computed(() => [i18n.baseText('agents.builder.skills.outdated.warning')]);
-const toast = useToast();
-
-/**
- * An outdated skill cannot be edited: the hub refuses a save based on an older version.
- * Tell the user to remove the skill and add it again instead of opening the editor.
- */
-function onOpenSkill(id: string) {
-	if (outdatedSkillIds.value.has(id)) {
-		toast.showMessage({
-			type: 'warning',
-			title: i18n.baseText('agents.builder.skills.outdated.title'),
-			message: i18n.baseText('agents.builder.skills.outdated.warning'),
-		});
-		return;
-	}
-	emit('open-skill', id);
-}
 </script>
 
 <template>
@@ -80,7 +62,7 @@ function onOpenSkill(id: string) {
 					:disabled="props.disabled"
 					:class="$style.skillChip"
 					data-testid="agent-capabilities-skill-row"
-					@click="onOpenSkill(id)"
+					@click="emit('open-skill', id)"
 				>
 					{{ skill.name || id }}
 				</AgentChipButton>

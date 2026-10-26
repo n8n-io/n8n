@@ -4,9 +4,6 @@ tags:
 summary: Retrieve a log streaming destination
 description: Retrieve a single log streaming destination by id. Requires the `eventBusDestination:read` scope and the Log Streaming feature to be licensed.
 x-required-scope: eventBusDestination:read
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

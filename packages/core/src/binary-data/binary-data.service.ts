@@ -159,11 +159,33 @@ export class BinaryDataService {
 	}
 
 	async deleteMany(locations: BinaryData.FileLocation[]) {
-		const manager = this.managers[this.mode];
+		// Filesystem and filesystem-v2 share one manager, so the Set calls it once.
+		// Azure also clears a disk copy left behind by a switch to blob storage.
+		const managers = new Set(
+			[
+				this.managers[this.mode],
+				this.mode === 'azure' ? this.managers.filesystem : undefined,
+			].filter((manager): manager is BinaryData.Manager => manager !== undefined),
+		);
 
-		if (!manager) return;
+		const results = await Promise.allSettled(
+			[...managers].map(async (manager) => await manager.deleteMany?.(locations)),
+		);
 
-		if (manager.deleteMany) await manager.deleteMany(locations);
+		// Report each failure, then throw once both stores finished, so one store never skips the other.
+		const failures: Error[] = [];
+		for (const result of results) {
+			if (result.status === 'rejected') {
+				const reason: unknown = result.reason;
+				const error = reason instanceof Error ? reason : new Error(String(reason));
+				this.errorReporter.error(error);
+				failures.push(error);
+			}
+		}
+
+		if (failures.length > 0) {
+			throw new AggregateError(failures, 'Failed to delete binary data');
+		}
 	}
 
 	async deleteManyByBinaryDataId(ids: string[]) {

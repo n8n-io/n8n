@@ -25,6 +25,7 @@ import { mock, captor } from 'vitest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -72,6 +73,7 @@ describe('WaitTracker', () => {
 		logger = mock<Logger>();
 		(logger.scoped as Mock).mockReturnValue(logger);
 		Container.set(ExecutionPersistence, executionPersistence);
+		mockInstance(CredentialsPermissionChecker).getCredentialIdsForNodes.mockReturnValue([]);
 		executionRepository.findParkedOnSubExecution.mockResolvedValue([]);
 		waitTracker = new WaitTracker(
 			logger,
@@ -237,6 +239,44 @@ describe('WaitTracker', () => {
 				false,
 				expect.anything(),
 			);
+		});
+
+		it('waits for the old local segment before registering a suspended resume', async () => {
+			const oldCompletion = createDeferredPromise<IRun | undefined>();
+			const suspended = {
+				...execution,
+				status: 'waiting' as const,
+				data: { ...execution.data, waitReason: 'suspended' as const },
+			};
+			executionPersistence.findSingleExecution
+				.calledWith(execution.id)
+				.mockResolvedValue(suspended);
+			activeExecutions.has.mockReturnValueOnce(true);
+			activeExecutions.getPostExecutePromise.mockReturnValueOnce(oldCompletion.promise);
+
+			const resuming = waitTracker.startExecution(execution.id);
+			await vi.waitFor(() => expect(activeExecutions.getPostExecutePromise).toHaveBeenCalled());
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+
+			oldCompletion.resolve(undefined);
+			await resuming;
+			expect(workflowRunner.run).toHaveBeenCalledOnce();
+		});
+
+		it('skips a suspended resume when the row is already running', async () => {
+			const claimed = {
+				...execution,
+				status: 'running' as const,
+				data: { ...execution.data, waitReason: 'suspended' as const },
+			};
+			executionPersistence.findSingleExecution.calledWith(execution.id).mockResolvedValue(claimed);
+			activeExecutions.has.mockReturnValueOnce(true);
+
+			await expect(waitTracker.startExecution(execution.id)).rejects.toThrow(
+				ExecutionAlreadyResumingError,
+			);
+			expect(activeExecutions.getPostExecutePromise).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('should reject when another process is already resuming the execution', async () => {
@@ -1210,6 +1250,24 @@ describe('WaitTracker', () => {
 	});
 
 	describe('multi-main setup', () => {
+		it('should re-arm waiting executions after leader takeover', async () => {
+			const startExecutionSpy = vi.spyOn(waitTracker, 'startExecution').mockResolvedValue();
+			executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
+
+			waitTracker.init();
+			await waitTracker.getWaitingExecutions();
+			expect(waitTracker.has(execution.id)).toBe(true);
+
+			waitTracker.stopTracking();
+
+			waitTracker.init();
+			await waitTracker.getWaitingExecutions();
+			await vi.advanceTimersByTimeAsync(2_000);
+
+			expect(startExecutionSpy).toHaveBeenCalledWith(execution.id);
+			waitTracker.stopTracking();
+		});
+
 		it('should start tracking if leader', () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 

@@ -121,6 +121,8 @@ describe('variable error consumers', () => {
 				requirements: [],
 				matchingMode: 'id-only',
 				missingMode: 'must-preexist',
+				conflictPolicy: 'keep-existing',
+				updateScope: { projectIds: new Set([project.id]) },
 			},
 			dataTableRequest: {
 				requirements: [],
@@ -157,6 +159,7 @@ describe('variable error consumers', () => {
 				folderConflictPolicy: 'merge',
 				overwriteDeletionPolicy: 'archive',
 			},
+			checkRootPlacement: false,
 		};
 
 		const blockedPlan = await orchestrator.plan(input);

@@ -43,6 +43,8 @@ export interface ErrorResponse {
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
+export type RateLimitAccessName = 'read' | 'write';
+
 /** Multer limits for a `multipart/form-data` `@Body`. Every key matches multer's own `limits` option. */
 export interface MultipartUploadLimits {
 	fieldNameSize?: number;
@@ -115,6 +117,8 @@ export interface RouteMetadata {
 	licenseFeature?: BooleanLicenseFeature;
 	/** Public API only: gate the route on the instance being within its licensed users quota. */
 	requiresUserQuota?: boolean;
+	/** Public API only: counts the route as a read or a write, in place of what the HTTP method implies. */
+	rateLimitAccess?: RateLimitAccessName;
 	accessScope?: AccessScope;
 	apiKeyScope?: ApiKeyScopeRequirement;
 	responseDto?: ResponseDtoClass;

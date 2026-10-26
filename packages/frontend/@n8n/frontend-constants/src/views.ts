@@ -58,6 +58,7 @@ export enum VIEWS {
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
+	AUTHENTICATION_SETTINGS = 'AuthenticationSettings',
 	ENCRYPTION_KEYS_SETTINGS = 'EncryptionKeysSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
@@ -98,5 +99,6 @@ export enum VIEWS {
 	RESOLVERS = 'Resolvers',
 	SETTINGS_CONTEXT = 'SettingsContext',
 	SETTINGS_CONTEXT_PREFERENCES = 'SettingsContextPreferences',
+	SETTINGS_CONTEXT_SKILLS = 'SettingsContextSkills',
 	RESOURCE_CENTER = 'ResourceCenter',
 }

@@ -1,22 +1,70 @@
 import { randomBytes } from 'crypto';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { isRecord } from '@n8n/utils/is-record';
 import type { IHookFunctions, IDataObject, IWebhookFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { TeamResponse, ChannelResponse, SubscriptionResponse } from './types';
+import type {
+	TeamResponse,
+	ChannelResponse,
+	SubscriptionResponse,
+	LifecycleNotification,
+} from './types';
 import { verifySignature as verifySignatureGeneric } from '../../../../../utils/webhook-signature-verification';
 import {
 	buildTeamsPath,
 	getTeamsCredentialType,
 	joinedTeamsEndpoint,
 	microsoftApiRequest,
+	microsoftApiRequestAllItems,
 	SERVICE_PRINCIPAL_AUTH,
 } from '../transport';
+import { CHAT_SUBSCRIPTION_FORBIDDEN } from '../transport/forbiddenHints';
 
 export function generateClientState(): string {
 	return randomBytes(32).toString('hex');
 }
 
-export async function fetchAllTeams(this: IHookFunctions): Promise<TeamResponse[]> {
+// Graph caps Teams subscriptions at 4320 minutes. 4318 keeps a margin for clock skew.
+const SUBSCRIPTION_TTL_MINUTES = 4318;
+
+// A subscription this close to its expiry counts as gone, so the node replaces it in time.
+const SUBSCRIPTION_LIVENESS_MARGIN_MS = 5 * 60 * 1000;
+
+function newSubscriptionExpiry(): string {
+	return new Date(Date.now() + SUBSCRIPTION_TTL_MINUTES * 60 * 1000).toISOString();
+}
+
+export function isLiveSubscription(subscription: SubscriptionResponse): boolean {
+	const expiresAt = new Date(subscription.expirationDateTime).getTime();
+	return expiresAt - Date.now() > SUBSCRIPTION_LIVENESS_MARGIN_MS;
+}
+
+/** The stored clientState. An empty string counts as none, as in `verifyWebhook`. */
+export function getStoredSecret(webhookData: IDataObject): string | undefined {
+	const secret = webhookData.webhookSecret;
+	return typeof secret === 'string' && secret.length > 0 ? secret : undefined;
+}
+
+/** Deletes one subscription. A `404` counts as done, for example after it expired. */
+export async function deleteSubscription(
+	this: IHookFunctions | IWebhookFunctions,
+	subscriptionId: string,
+): Promise<void> {
+	try {
+		await microsoftApiRequest.call(
+			this,
+			'DELETE',
+			buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id: subscriptionId }]),
+		);
+	} catch (error) {
+		if (!(error instanceof NodeApiError && error.httpCode === '404')) throw error;
+	}
+}
+
+export async function fetchAllTeams(
+	this: IHookFunctions | IWebhookFunctions,
+): Promise<TeamResponse[]> {
 	const { value: teams } = (await microsoftApiRequest.call(
 		this,
 		'GET',
@@ -26,7 +74,7 @@ export async function fetchAllTeams(this: IHookFunctions): Promise<TeamResponse[
 }
 
 export async function fetchAllChannels(
-	this: IHookFunctions,
+	this: IHookFunctions | IWebhookFunctions,
 	teamId: string,
 ): Promise<ChannelResponse[]> {
 	// Route through buildTeamsPath so `teamId` is validated before interpolation
@@ -40,12 +88,12 @@ export async function fetchAllChannels(
 }
 
 export async function createSubscription(
-	this: IHookFunctions,
+	this: IHookFunctions | IWebhookFunctions,
 	webhookUrl: string,
 	resourcePath: string,
-	clientState?: string,
+	clientState: string,
 ): Promise<SubscriptionResponse> {
-	const expirationTime = new Date(Date.now() + 4318 * 60 * 1000).toISOString();
+	const expirationTime = newSubscriptionExpiry();
 	const body: IDataObject = {
 		changeType: 'created',
 		notificationUrl: webhookUrl,
@@ -53,11 +101,8 @@ export async function createSubscription(
 		expirationDateTime: expirationTime,
 		latestSupportedTlsVersion: 'v1_2',
 		lifecycleNotificationUrl: webhookUrl,
+		clientState,
 	};
-
-	if (clientState) {
-		body.clientState = clientState;
-	}
 
 	const response = (await microsoftApiRequest.call(
 		this,
@@ -69,10 +114,201 @@ export async function createSubscription(
 	return response;
 }
 
+export async function listOwnSubscriptions(
+	this: IHookFunctions | IWebhookFunctions,
+	webhookUrl: string | undefined,
+): Promise<SubscriptionResponse[]> {
+	const subscriptions = (await microsoftApiRequestAllItems.call(
+		this,
+		'value',
+		'GET',
+		'/v1.0/subscriptions',
+	)) as SubscriptionResponse[];
+	return subscriptions.filter((subscription) => subscription.notificationUrl === webhookUrl);
+}
+
+// Anything with a `lifecycleEvent` is a lifecycle item and never a workflow item; the
+// handler checks the id before it uses it.
+export function isLifecycleNotification(item: unknown): item is LifecycleNotification {
+	return isRecord(item) && typeof item.lifecycleEvent === 'string';
+}
+
+/**
+ * Runs after `webhook()` sent the 202. Never throws: a throw skips the static-data
+ * save and core would answer an ended response. Lists the subscriptions at most once
+ * per request.
+ */
+export async function handleLifecycleNotifications(
+	this: IWebhookFunctions,
+	items: LifecycleNotification[],
+): Promise<void> {
+	const webhookData = this.getWorkflowStaticData('node');
+	const meta = { workflowId: this.getWorkflow().id, nodeName: this.getNode().name };
+	const log = (level: 'debug' | 'warn', message: string, fields: Record<string, unknown>) =>
+		this.logger[level](`Microsoft Teams Trigger: ${message}`, { ...meta, ...fields });
+
+	// Without a stored secret `verifyWebhook` accepts any sender, so no Graph call may
+	// follow. The subscriptions expire and the next publish replaces them with a secret.
+	const clientState = getStoredSecret(webhookData);
+	if (clientState === undefined) {
+		log('warn', 'skipped lifecycle notifications: no stored secret, republish the workflow', {});
+		return;
+	}
+	const webhookUrl = this.getNodeWebhookUrl('default');
+	// Type narrowing only: the subscriptions were created with this URL.
+	if (webhookUrl === undefined) return;
+	const rawIds: unknown[] = Array.isArray(webhookData.subscriptionIds)
+		? webhookData.subscriptionIds
+		: [];
+	const storedIds = rawIds.filter((id): id is string => typeof id === 'string');
+
+	// One listing per request; a rejected listing is never fetched again.
+	let ownList: Promise<SubscriptionResponse[]> | undefined;
+	const ownSubscriptions = async () =>
+		await (ownList ??= listOwnSubscriptions.call(this, webhookUrl));
+
+	// Classify first, so the order inside the batch does not change the outcome. Logged
+	// request values are capped: the sender holds the secret, but the body is still input.
+	const gone = new Set<string>();
+	const toRenew = new Set<string>();
+	for (const { subscriptionId, lifecycleEvent } of items) {
+		if (typeof subscriptionId !== 'string') {
+			log('debug', 'ignored lifecycle event without a subscription id', {
+				lifecycleEvent: lifecycleEvent.slice(0, 64),
+			});
+		} else if (lifecycleEvent === 'subscriptionRemoved') {
+			gone.add(subscriptionId);
+		} else if (lifecycleEvent === 'reauthorizationRequired') {
+			toRenew.add(subscriptionId);
+		} else {
+			log('debug', 'ignored lifecycle event', {
+				subscriptionId: subscriptionId.slice(0, 64),
+				lifecycleEvent: lifecycleEvent.slice(0, 64),
+			});
+		}
+	}
+
+	const unresolved = new Set<string>();
+	const renewed = new Set<string>();
+	let needsReconcile = gone.size > 0;
+
+	for (const subscriptionId of toRenew) {
+		if (gone.has(subscriptionId)) continue;
+
+		let isOwn: boolean;
+		try {
+			isOwn =
+				storedIds.includes(subscriptionId) ||
+				(await ownSubscriptions()).some((subscription) => subscription.id === subscriptionId);
+		} catch {
+			// Route to the reconcile, which awaits the same rejected listing and warns once.
+			unresolved.add(subscriptionId);
+			needsReconcile = true;
+			continue;
+		}
+		if (!isOwn) {
+			log('debug', 'skipped renewal: unknown subscription', {
+				subscriptionId: subscriptionId.slice(0, 64),
+			});
+			needsReconcile = true;
+			continue;
+		}
+
+		try {
+			await microsoftApiRequest.call(
+				this,
+				'PATCH',
+				buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id: subscriptionId }]),
+				{ expirationDateTime: newSubscriptionExpiry() },
+			);
+			renewed.add(subscriptionId);
+			log('debug', 'renewed subscription', { subscriptionId });
+		} catch (error) {
+			if (error instanceof NodeApiError && error.httpCode === '404') {
+				gone.add(subscriptionId);
+				needsReconcile = true;
+				log('debug', 'subscription gone, will re-create', { subscriptionId });
+			} else {
+				log('warn', 'failed to renew subscription', {
+					subscriptionId,
+					error: ensureError(error).message,
+				});
+			}
+		}
+	}
+
+	if (!needsReconcile) {
+		// Store the ids that the listing proved to be own, so `delete()` removes them on unpublish.
+		const discovered = [...renewed].filter((id) => !storedIds.includes(id));
+		if (discovered.length > 0) webhookData.subscriptionIds = [...storedIds, ...discovered];
+		return;
+	}
+
+	const affectedIds = [...gone, ...unresolved].slice(0, 20).map((id) => id.slice(0, 64));
+	let subscriptions: SubscriptionResponse[];
+	let requiredResources: string[];
+	try {
+		subscriptions = await ownSubscriptions();
+		const resourcePaths = await getResourcePath.call(
+			this,
+			this.getNodeParameter('event') as string,
+		);
+		requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
+	} catch (error) {
+		log('warn', 'failed to list subscriptions or resolve resources, skipped re-create', {
+			subscriptionIds: affectedIds,
+			error: ensureError(error).message,
+		});
+		return;
+	}
+
+	// Partition once: an id renewed in this request stays live even when its listed expiry
+	// passed meanwhile, and the awaited deletes below must not move the line.
+	const live = subscriptions.filter(
+		(subscription) =>
+			!gone.has(subscription.id) &&
+			(renewed.has(subscription.id) || isLiveSubscription(subscription)),
+	);
+	const liveIds = new Set(live.map((subscription) => subscription.id));
+	// Every other own subscription is removed before its replacement is created, so the two
+	// never deliver together and Graph does not reject the replacement as a duplicate. One
+	// that Graph already removed answers 404, which counts as done.
+	for (const { id } of subscriptions) {
+		if (liveIds.has(id)) continue;
+		try {
+			await deleteSubscription.call(this, id);
+		} catch (error) {
+			log('debug', 'failed to remove a stale subscription', {
+				subscriptionId: id,
+				error: ensureError(error).message,
+			});
+		}
+	}
+	const liveResources = new Set(live.map((subscription) => subscription.resource));
+	const created: string[] = [];
+	for (const resource of requiredResources.filter((path) => !liveResources.has(path))) {
+		try {
+			const subscription = await createSubscription.call(this, webhookUrl, resource, clientState);
+			created.push(subscription.id);
+			log('debug', 're-created subscription', { resource, subscriptionId: subscription.id });
+		} catch (error) {
+			log('warn', 'failed to re-create subscription', {
+				resource,
+				subscriptionIds: affectedIds,
+				error: ensureError(error).message,
+			});
+		}
+	}
+	const nextIds = [...live.map((subscription) => subscription.id), ...created];
+	// Every save is a DB write and widens the last-write-wins window, so save on change only.
+	const unchanged = nextIds.length === rawIds.length && nextIds.every((id) => rawIds.includes(id));
+	if (!unchanged) webhookData.subscriptionIds = nextIds;
+}
+
 export function verifyWebhook(this: IWebhookFunctions): boolean {
 	const req = this.getRequestObject();
 	const webhookData = this.getWorkflowStaticData('node');
-	const expectedSecret = webhookData.webhookSecret;
+	const expectedSecret = getStoredSecret(webhookData);
 
 	const body = req.body as { value?: unknown } | undefined;
 	const notifications = body?.value;
@@ -87,8 +323,7 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 				? (notification as { clientState?: unknown }).clientState
 				: undefined;
 		return verifySignatureGeneric({
-			getExpectedSignature: () =>
-				typeof expectedSecret === 'string' && expectedSecret.length > 0 ? expectedSecret : null,
+			getExpectedSignature: () => expectedSecret ?? null,
 			skipIfNoExpectedSignature: true,
 			getActualSignature: () => (typeof actualClientState === 'string' ? actualClientState : null),
 		});
@@ -96,7 +331,7 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 }
 
 export async function getResourcePath(
-	this: IHookFunctions,
+	this: IHookFunctions | IWebhookFunctions,
 	event: string,
 ): Promise<string | string[]> {
 	// Path-interpolated ids are validated + interpolated via buildTeamsPath under
@@ -217,17 +452,12 @@ export async function getResourcePath(
 /**
  * Chat triggers subscribe to `/me/chats[...]`, which has no app-only equivalent.
  * Throws a static `NodeOperationError` before composing any `/me` path under the
- * Service Principal credential.
+ * Service Principal credential. The copy lives on the chat 403 hint, so the two
+ * cannot drift.
  */
-function throwChatTriggerUnsupported(this: IHookFunctions): never {
-	throw new NodeOperationError(
-		this.getNode(),
-		'Chat triggers are not available with the Service Principal credential',
-		{
-			description:
-				'App-only Microsoft Graph cannot subscribe to the chats of a signed-in user. Use an OAuth2 credential for chat triggers.',
-		},
-	);
+function throwChatTriggerUnsupported(this: IHookFunctions | IWebhookFunctions): never {
+	const { message, description } = CHAT_SUBSCRIPTION_FORBIDDEN;
+	throw new NodeOperationError(this.getNode(), message, { description });
 }
 
 /**
@@ -236,7 +466,7 @@ function throwChatTriggerUnsupported(this: IHookFunctions): never {
  * (option b). The UI hides the toggles; this guard backs that at runtime for
  * hand-edited workflows, throwing a static error before any fan-out request.
  */
-function throwWatchAllUnsupported(this: IHookFunctions): never {
+function throwWatchAllUnsupported(this: IHookFunctions | IWebhookFunctions): never {
 	throw new NodeOperationError(
 		this.getNode(),
 		'Watching all teams/channels is not available with the Service Principal credential',
@@ -252,7 +482,7 @@ function throwWatchAllUnsupported(this: IHookFunctions): never {
  * validated and interpolated. A malformed `%` sequence makes `decodeURIComponent`
  * throw a raw `URIError`; convert it to a static `NodeOperationError`.
  */
-function decodeSelectedId(this: IHookFunctions, id: string): string {
+function decodeSelectedId(this: IHookFunctions | IWebhookFunctions, id: string): string {
 	try {
 		// A missing selection arrives as a non-string — keep it empty (not the
 		// string "undefined") so validation raises the required-ID error

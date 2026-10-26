@@ -22,10 +22,10 @@ import { inspect } from 'util';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@n8n/backend-services';
+import { JwtService, UrlService } from '@n8n/backend-services';
 import {
 	assertAuthenticationMethodCanBeEnabled,
+	emitSsoLoginDisabled,
 	getCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
 	reloadAuthenticationMethod,
@@ -780,6 +780,8 @@ export class OidcService {
 
 		Container.get(GlobalConfig).sso.oidc.loginEnabled = enabled;
 		await setCurrentAuthenticationMethod(enabled ? 'oidc' : targetAuthenticationMethod);
+
+		if (!enabled && currentAuthenticationMethod === 'oidc') await emitSsoLoginDisabled('oidc');
 	}
 
 	private cachedOidcConfiguration:

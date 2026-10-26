@@ -1,4 +1,3 @@
-import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { SerializableAgentState } from '@n8n/agents';
 import { LockService } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
@@ -7,9 +6,11 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@n8n/errors';
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
+import { PARENT_TASK_CANCELLED_REASON } from '../background/sub-agent-background-state';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
@@ -17,6 +18,8 @@ import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
+import type { SystemAgentProvider } from '../system-agents/system-agent.types';
 
 const context = {
 	projectId: 'project-1',
@@ -48,7 +51,7 @@ const checkpoint = mock<SerializableAgentState>({
 	pendingToolCalls: {
 		question: {
 			toolCallId: 'question',
-			toolName: 'ask_questions',
+			toolName: 'agent_builder_ask_questions',
 			input: {},
 			suspended: true,
 			suspendPayload: {},
@@ -58,6 +61,11 @@ const checkpoint = mock<SerializableAgentState>({
 	},
 });
 
+/** Makes the agent of the test thread a system agent. */
+function registerSystemAgent(systemAgents: SystemAgentRegistry) {
+	systemAgents.register(mock<SystemAgentProvider>({ agentId: 'agent-1', name: 'System agent' }));
+}
+
 function makeService(isMultiMain = true) {
 	const repository = mock<AgentExecutionRepository>();
 	const executionService = mock<AgentExecutionService>();
@@ -66,6 +74,7 @@ function makeService(isMultiMain = true) {
 	const updates = mock<AgentExecutionUpdateBroadcaster>();
 	const steering = mock<AgentMessageSteeringService>();
 	const backgroundJobs = mock<AgentBackgroundJobService>();
+	const systemAgents = new SystemAgentRegistry();
 	const service = new AgentChatExecutionService(
 		Container.get(LockService),
 		repository,
@@ -76,6 +85,7 @@ function makeService(isMultiMain = true) {
 		updates,
 		steering,
 		backgroundJobs,
+		systemAgents,
 	);
 	executionService.findThreadById.mockResolvedValue(thread);
 	repository.findOneBy.mockImplementation(async (where) =>
@@ -89,6 +99,7 @@ function makeService(isMultiMain = true) {
 	checkpointStorage.cancelSuspended.mockResolvedValue(true);
 	return {
 		service,
+		systemAgents,
 		repository,
 		executionService,
 		checkpointStorage,
@@ -130,6 +141,22 @@ it('leaves background children running when a connection closes during suspensio
 	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
 });
 
+it('releases the cancellation controller when finalization fails', async () => {
+	const { service } = makeService();
+	const controller = new AbortController();
+	service.register(context, controller);
+	const failure = new Error('Recording failed');
+	await expect(
+		service.settle(context.executionId, async () => {
+			throw failure;
+		}),
+	).rejects.toBe(failure);
+
+	await service.onCancelForegroundExecution(context);
+
+	expect(controller.signal.aborted).toBe(false);
+});
+
 it.each([
 	{ userId: 'other-user' },
 	{ projectId: 'other-project' },
@@ -143,7 +170,7 @@ it.each([
 	await expect(service.requestCancel({ ...context, ...other })).rejects.toBeInstanceOf(
 		NotFoundError,
 	);
-	await service.handleCancel({ ...context, ...other });
+	await service.onCancelExecution({ ...context, ...other });
 	expect(controller.signal.aborted).toBe(false);
 	expect(publisher.publishCommand).not.toHaveBeenCalled();
 	expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
@@ -165,21 +192,21 @@ it('relays Stop to the owning main and leaves other and later executions running
 	const { surface: _surface, ...wireContext } = context;
 	expect(mainB.publisher.publishCommand).toHaveBeenCalledExactlyOnceWith({
 		command: 'cancel-agent-chat-execution',
-		payload: { ...wireContext, productionN8nChat: false },
+		payload: { ...wireContext, surface: 'preview', productionN8nChat: false },
 	});
-	await mainA.service.handleCancel(context);
+	await mainA.service.onCancelExecution(context);
 	expect(mainA.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
 		'agent-1',
 		'thread-1',
 		'draft-chat:user-1',
 	);
-	await mainA.service.handleCancel(context);
+	await mainA.service.onCancelExecution(context);
 	expect(controller.signal.aborted).toBe(true);
 	expect(other.signal.aborted).toBe(false);
 	await mainA.service.settle(context.executionId, async () => {});
 	const next = new AbortController();
 	mainA.service.register({ ...context, executionId: 'execution-3' }, next);
-	await mainA.service.handleCancel(context);
+	await mainA.service.onCancelExecution(context);
 	expect(next.signal.aborted).toBe(false);
 });
 
@@ -197,11 +224,11 @@ it('keeps pubsub wire compatibility with a main still on the old productionN8nCh
 	const { surface: _surface, ...wireContext } = production;
 	expect(mainB.publisher.publishCommand).toHaveBeenCalledExactlyOnceWith({
 		command: 'cancel-agent-chat-execution',
-		payload: { ...wireContext, productionN8nChat: true },
+		payload: { ...wireContext, surface: 'n8n-chat', productionN8nChat: true },
 	});
 
 	// An old main on the previous version relays this shape, with no `surface` field.
-	await mainA.service.handleCancel({ ...wireContext, productionN8nChat: true });
+	await mainA.service.onCancelExecution({ ...wireContext, productionN8nChat: true });
 	expect(controller.signal.aborted).toBe(true);
 	expect(mainA.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
 		'agent-1',
@@ -210,27 +237,133 @@ it('keeps pubsub wire compatibility with a main still on the old productionN8nCh
 	);
 });
 
-it.each(['local', 'remote', 'during validation'] as const)(
-	'applies an early %s Stop when the execution registers',
-	async (arrival) => {
-		const { service, repository } = makeService(arrival !== 'local');
+it.each(['foreground', 'all'] as const)(
+	'relays %s Stop of a system-agent turn with its own surface and memory scope',
+	async (scope) => {
+		const mainA = makeService();
+		const mainB = makeService();
+		for (const main of [mainA, mainB]) registerSystemAgent(main.systemAgents);
 		const controller = new AbortController();
-		if (arrival === 'during validation') {
-			repository.findOneBy.mockImplementationOnce(async () => {
-				service.register(context, controller);
-				return running;
-			});
+		const system = { ...context, surface: 'system' as const };
+		mainA.service.register(system, controller);
+		const systemExecution = { ...running, source: 'system_chat' };
+		mainA.repository.findOneBy.mockResolvedValue(systemExecution);
+		mainB.repository.findOneBy.mockResolvedValue(systemExecution);
+
+		expect(await mainB.service.requestCancel({ ...system, scope })).toBe(true);
+		const { surface: _surface, ...wireContext } = system;
+		expect(mainB.publisher.publishCommand).toHaveBeenCalledExactlyOnceWith({
+			command:
+				scope === 'foreground' ? 'cancel-agent-chat-foreground' : 'cancel-agent-chat-execution',
+			payload: { ...wireContext, surface: 'system', productionN8nChat: false },
+		});
+
+		const payload = {
+			...wireContext,
+			surface: 'system' as const,
+			productionN8nChat: false,
+		};
+		if (scope === 'foreground') {
+			await mainA.service.onCancelForegroundExecution(payload);
+		} else {
+			await mainA.service.onCancelExecution(payload);
 		}
-		if (arrival === 'local') expect(await service.requestCancel(context)).toBe(true);
-		else await service.handleCancel(context);
-		if (arrival !== 'during validation') service.register(context, controller);
 		expect(controller.signal.aborted).toBe(true);
-		await service.settle(context.executionId, async () => {});
-		const next = new AbortController();
-		service.register({ ...context, executionId: 'execution-2' }, next);
-		expect(next.signal.aborted).toBe(false);
+		for (const main of [mainA, mainB]) {
+			if (scope === 'foreground') {
+				expect(main.backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+			} else {
+				expect(main.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
+					'agent-1',
+					'thread-1',
+					'system-chat:user-1',
+				);
+			}
+		}
 	},
 );
+
+it('does not let the Preview surface stop a system-agent turn', async () => {
+	const { service, repository, systemAgents } = makeService(false);
+	registerSystemAgent(systemAgents);
+	repository.findOneBy.mockResolvedValue({ ...running, source: 'system_chat' });
+
+	await expect(service.requestCancel(context)).rejects.toThrow('Execution not found');
+});
+
+it('does not let the Preview surface stop a system-agent turn with a Preview source', async () => {
+	const { service, systemAgents } = makeService(false);
+	registerSystemAgent(systemAgents);
+
+	await expect(service.requestCancel(context)).rejects.toThrow('Execution not found');
+});
+
+it('does not let the system surface stop a turn of a project agent', async () => {
+	const { service, repository } = makeService(false);
+	repository.findOneBy.mockResolvedValue({ ...running, source: 'system_chat' });
+
+	await expect(service.requestCancel({ ...context, surface: 'system' })).rejects.toThrow(
+		'Execution not found',
+	);
+});
+
+describe.each(['foreground', 'all'] as const)('%s Stop during startup', (scope) => {
+	it.each(['local', 'remote'] as const)(
+		'waits for registration on the %s main',
+		async (arrival) => {
+			const owner = makeService(arrival === 'remote');
+			const caller = arrival === 'local' ? owner : makeService();
+			const controller = new AbortController();
+			const creating = createDeferredPromise();
+			const created = createDeferredPromise();
+			const lock = vi.spyOn(Container.get(LockService), 'withLease');
+			const startup = owner.service.withTurnLock(context.threadId, async () => {
+				creating.resolve();
+				await created.promise;
+				owner.service.register(context, controller);
+			});
+			await creating.promise;
+			caller.publisher.publishCommand.mockImplementation(async () => {
+				if (scope === 'foreground') await owner.service.onCancelForegroundExecution(context);
+				else await owner.service.onCancelExecution(context);
+			});
+
+			const stopping = caller.service.requestCancel({ ...context, scope });
+			try {
+				await vi.waitFor(() => expect(lock).toHaveBeenCalledTimes(2));
+				expect(caller.repository.findOneBy).not.toHaveBeenCalled();
+				expect(caller.publisher.publishCommand).not.toHaveBeenCalled();
+				expect(controller.signal.aborted).toBe(false);
+			} finally {
+				created.resolve();
+			}
+			await startup;
+			await expect(stopping).resolves.toBe(true);
+
+			if (scope === 'foreground') {
+				expect(controller.signal.reason).toMatchObject({ name: 'AbortError' });
+				expect(owner.backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+				expect(caller.backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+			} else {
+				expect(controller.signal.reason).toBe(PARENT_TASK_CANCELLED_REASON);
+				expect(owner.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
+					context.agentId,
+					context.threadId,
+					'draft-chat:user-1',
+				);
+			}
+			if (arrival === 'remote') {
+				const { surface: _surface, ...wireContext } = context;
+				expect(caller.publisher.publishCommand).toHaveBeenCalledExactlyOnceWith({
+					command:
+						scope === 'foreground' ? 'cancel-agent-chat-foreground' : 'cancel-agent-chat-execution',
+					payload: { ...wireContext, surface: 'preview', productionN8nChat: false },
+				});
+			}
+			await owner.service.settle(context.executionId, async () => {});
+		},
+	);
+});
 
 it.each([false, true])(
 	'cleans a raced suspension before releasing control, finalization failed=%s',
@@ -267,7 +400,7 @@ it.each([false, true])(
 			id: 'execution-2',
 			hitlStatus: 'suspended',
 		});
-		await service.handleCancel(context);
+		await service.onCancelExecution(context);
 		expect(checkpointStorage.delete).toHaveBeenCalledOnce();
 		expect(next.signal.aborted).toBe(false);
 	},
@@ -280,7 +413,7 @@ it('cancels the recorded suspension if the relay arrives after the execution set
 		status: 'success',
 		hitlStatus: 'suspended',
 	});
-	await service.handleCancel(context);
+	await service.onCancelExecution(context);
 	expect(checkpointStorage.delete).toHaveBeenCalledExactlyOnceWith('run-1', 'agent-1');
 	expect(updates.notify).toHaveBeenCalledWith({
 		projectId: context.projectId,
@@ -289,7 +422,7 @@ it('cancels the recorded suspension if the relay arrives after the execution set
 		executionId: context.executionId,
 	});
 	checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
-	await service.handleCancel(context);
+	await service.onCancelExecution(context);
 	expect(checkpointStorage.delete).toHaveBeenCalledOnce();
 });
 
@@ -350,6 +483,33 @@ it('requires the production source before cancelling a suspended run', async () 
 	);
 });
 
+describe('cancel access for a task thread', () => {
+	const taskThread = mock<AgentExecutionThread>({
+		id: context.threadId,
+		projectId: context.projectId,
+		agentId: context.agentId,
+		accessScope: 'user',
+		ownerId: context.userId,
+		parentThreadId: null,
+		taskId: 'task-1',
+	});
+
+	it('refuses it on the Preview surface, like the Preview continue rule', async () => {
+		const { service, executionService } = makeService(false);
+		executionService.findThreadById.mockResolvedValue(taskThread);
+
+		await expect(service.requestCancel(context)).rejects.toThrow('Execution not found');
+	});
+
+	it('keeps the own cancel rule of n8n Chat, which does not check the task', async () => {
+		const { service, executionService, repository } = makeService(false);
+		executionService.findThreadById.mockResolvedValue(taskThread);
+		repository.findOneBy.mockResolvedValue({ ...running, source: 'n8n_chat_production' });
+
+		await expect(service.requestCancel({ ...context, surface: 'n8n-chat' })).resolves.toBe(true);
+	});
+});
+
 it('rejects preview and foreign executions on the production cancel route', async () => {
 	const { service, repository } = makeService();
 	const production = { ...context, surface: 'n8n-chat' as const };
@@ -358,4 +518,83 @@ it('rejects preview and foreign executions on the production cancel route', asyn
 	await expect(
 		service.requestCancel({ ...production, userId: 'other-user' }),
 	).rejects.toBeInstanceOf(NotFoundError);
+});
+
+it('foreground Stop leaves detached jobs running locally and on other mains', async () => {
+	const { service, backgroundJobs, publisher } = makeService();
+	const controller = new AbortController();
+	service.register(context, controller);
+	await service.requestCancel({ ...context, scope: 'foreground' });
+	expect(controller.signal.aborted).toBe(true);
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+	await service.onCancelForegroundExecution(context);
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+	expect(publisher.publishCommand).not.toHaveBeenCalled();
+});
+
+it('foreground Stop removes a suspended checkpoint without canceling detached jobs', async () => {
+	const { service, repository, checkpointStorage, backgroundJobs } = makeService();
+	const suspended = { ...running, status: 'success' as const, hitlStatus: 'suspended' as const };
+	repository.findOneBy.mockResolvedValue(suspended);
+	repository.findLatestByThreadId.mockResolvedValue(suspended);
+	await service.requestCancel({ ...context, scope: 'foreground' });
+	expect(checkpointStorage.delete).toHaveBeenCalledWith('run-1', 'agent-1');
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+});
+
+it('relays cancel-all after the foreground reply settles', async () => {
+	const mainA = makeService();
+	const mainB = makeService();
+	const controller = new AbortController();
+	mainA.service.register(context, controller);
+	await mainA.service.requestCancel({ ...context, scope: 'foreground' });
+	await mainA.service.settle(context.executionId, async () => {});
+	const cancelled = { ...running, status: 'cancelled' as const };
+	for (const main of [mainA, mainB]) {
+		main.repository.findOneBy.mockResolvedValue(cancelled);
+		main.repository.findLatestByThreadId.mockResolvedValue(cancelled);
+	}
+
+	await mainB.service.requestCancel({ ...context, scope: 'all' });
+	const { surface: _surface, ...wireContext } = context;
+	const payload = { ...wireContext, surface: 'preview' as const, productionN8nChat: false };
+	expect(mainB.publisher.publishCommand).toHaveBeenCalledWith({
+		command: 'cancel-agent-chat-execution',
+		payload,
+	});
+	await mainA.service.onCancelExecution(payload);
+	expect(mainA.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
+		context.agentId,
+		context.threadId,
+		'draft-chat:user-1',
+	);
+});
+
+it('ignores a delayed cancel-all relay after a later reply settles', async () => {
+	const { service, repository, backgroundJobs } = makeService();
+	repository.findOneBy.mockResolvedValue({ ...running, status: 'cancelled' });
+	repository.findLatestByThreadId.mockResolvedValue({
+		...running,
+		id: 'execution-2',
+		status: 'success',
+	});
+	await service.onCancelExecution(context);
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+});
+
+it.each([
+	['foreground', 'all'],
+	['all', 'foreground'],
+] as const)('cancels detached jobs when requests arrive as %s then %s', async (first, second) => {
+	const { service, backgroundJobs } = makeService();
+	const controller = new AbortController();
+	service.register(context, controller);
+	await service.requestCancel({ ...context, scope: first });
+	await service.requestCancel({ ...context, scope: second });
+	expect(controller.signal.aborted).toBe(true);
+	expect(backgroundJobs.cancelForParent).toHaveBeenCalledExactlyOnceWith(
+		context.agentId,
+		context.threadId,
+		'draft-chat:user-1',
+	);
 });

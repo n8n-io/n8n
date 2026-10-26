@@ -3,10 +3,26 @@ import type {
 	PromotionChanges,
 	PromotionChangesQueryDto,
 	PromotionDirection,
+	PromotionPreview,
+	PromotionResourceDetail,
+	PromotionResourceDetails,
+	PromotionResourceDetailsRequestDto,
+	PromotionResourceType,
 	PromotionVariableScope,
+	SerializedWorkflow,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
 import {
+	serializedCredentialSchema,
+	serializedDataTableSchema,
+	serializedFolderSchema,
+	serializedProjectSchema,
+	serializedTagSchema,
+	serializedVariableSchema,
+	serializedWorkflowSchema,
+} from '@n8n/api-types';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import {
+	CredentialsRepository,
 	VariablesRepository,
 	WorkflowRepository,
 	type User,
@@ -17,9 +33,16 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
+import type { z } from 'zod';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
+import { DataTableService } from '@/modules/data-table/data-table.service';
+import { diffDataTableSchema } from '@/modules/n8n-packages/entities/data-table/data-table-compat';
+import { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
+import { TagImporter } from '@/modules/n8n-packages/entities/tag/tag-importer';
+import { serializeTag } from '@/modules/n8n-packages/entities/tag/tag.exporter';
+import { formatEntityFile } from '@/modules/n8n-packages/io/entity-file-format';
+import { gitBlobSha, HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,
@@ -38,16 +61,23 @@ import {
 	type PackageManifest,
 } from '@/modules/n8n-packages/spec/manifest.schema';
 import { getWorkflowConsumerIds } from '@/modules/n8n-packages/spec/requirement-consumers';
-import type {
-	PackageRequirementConsumer,
-	PackageRequirements,
-} from '@/modules/n8n-packages/spec/requirements.schema';
-import type { SerializedWorkflow } from '@/modules/n8n-packages/spec/serialized/workflow.schema';
+import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { diffPackageFiles } from './diff-package-files';
+import {
+	buildPreview,
+	indexSide,
+	scopeManifestToProject,
+	variableResourceKey,
+	type ApplyDestination,
+	type PreviewSide,
+} from './promotion-preview';
+import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
+import { PromotionReviewGateService } from './promotion-review-gate.service';
 import { PromotionsService } from './promotions.service';
+import { checkoutBranchName } from './promotions-git.utils';
 import type { BranchPackage } from './promotions.types';
 
 const DEPENDENCY_COLLECTIONS = {
@@ -72,7 +102,27 @@ type DesiredPackage = {
 	manifest: PackageManifest;
 };
 
-type InstancePackage = DesiredPackage & { archiveState: ReadonlyMap<string, boolean> };
+type InstancePackage = DesiredPackage & {
+	archiveState: ReadonlyMap<string, boolean>;
+	/** File content by package path, for the files that the caller asked to keep. */
+	contents: ReadonlyMap<string, string>;
+};
+
+type ProjectComparison = {
+	branch: BranchPackage;
+	/** Read for Apply only. Promote reads it when the preview needs it. */
+	branchManifest: PackageManifest | null;
+	instance: InstancePackage;
+	destinationVariables: readonly VariableKeyScope[] | null;
+	archiveState: ReadonlyMap<string, boolean>;
+	rows: PromotableResource[];
+};
+
+type LocalDataTable = { content: string; blobSha: string };
+
+type LocalTag = LocalDataTable & { id: string; name: string };
+
+export type DetailSide = { content: string | null; blobSha: string | null };
 
 type PackageDiff = {
 	changedIds: Set<string>;
@@ -91,6 +141,13 @@ export class PromotionChangeService {
 		private readonly packagesService: N8nPackagesService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly variablesRepository: VariablesRepository,
+		private readonly credentialsRepository: CredentialsRepository,
+		private readonly tagImporter: TagImporter,
+		private readonly dataTableService: DataTableService,
+		private readonly dataTableSerializer: DataTableSerializer,
+		private readonly moduleRegistry: ModuleRegistry,
+		private readonly environmentResolver: PromotionEnvironmentResolver,
+		private readonly reviewGate: PromotionReviewGateService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
@@ -108,6 +165,178 @@ export class PromotionChangeService {
 		direction: PromotionDirection,
 		query: PromotionChangesQueryDto,
 	): Promise<PromotionChanges> {
+		return toChanges(await this.compareProject(user, projectId, direction), query);
+	}
+
+	/**
+	 * The change list, plus every resource that the operation changes. Each resource has its
+	 * place in the project and folder tree, and the workflows that use it.
+	 */
+	async getPreview(
+		user: User,
+		projectId: string,
+		direction: PromotionDirection,
+		query: PromotionChangesQueryDto,
+	): Promise<PromotionPreview> {
+		if (direction === 'promote') {
+			// The gate runs before the git and export work, so a blocked project skips both.
+			this.assertCanPreview(user, direction);
+			const input = await this.environmentResolver.resolveForProject(projectId, direction);
+			// Only a branched promote opens a review. A direct push has nothing to wait for, even
+			// when an older review of the environment is still open.
+			const blocker =
+				input.config.direction === 'promote' && input.config.settings.createBranchOnPromotion
+					? await this.reviewGate.findPromoteBlocker(projectId, input.environmentId)
+					: null;
+			if (blocker) {
+				return {
+					commitSha: null,
+					source: {
+						environmentId: input.environmentId,
+						branchName: checkoutBranchName(input.config),
+					},
+					changes: [],
+					resources: [],
+					dependencies: [],
+					blocker,
+				};
+			}
+		}
+		const comparison = await this.compareProject(user, projectId, direction);
+		const { branch, instance, archiveState } = comparison;
+		const branchSide: PreviewSide = {
+			manifest:
+				comparison.branchManifest ?? (await this.readPromoteBaseManifest(branch, projectId)),
+			blobByPath: blobsByPath(branch.files),
+		};
+		const instanceSide: PreviewSide = {
+			manifest: instance.manifest,
+			blobByPath: blobsByPath(instance.files),
+		};
+		const destination =
+			direction === 'apply'
+				? await this.loadApplyDestination(
+						branchSide.manifest,
+						instance.manifest,
+						comparison.destinationVariables,
+					)
+				: null;
+		const { resources, dependencies } = buildPreview({
+			operation: { direction, destination },
+			projectIds: [projectId],
+			base: direction === 'promote' ? branchSide : instanceSide,
+			desired: direction === 'promote' ? instanceSide : branchSide,
+			isArchived: (path) => archiveState.get(path) ?? false,
+		});
+		return { ...toChanges(comparison, query), resources, dependencies };
+	}
+
+	/**
+	 * The file content of each requested resource on both sides, for the change cards.
+	 * The branch side is read at the commit of the summary. The instance side is read now,
+	 * so its blob SHA tells the caller whether the resource changed after the summary.
+	 */
+	async getDetails(
+		user: User,
+		projectId: string,
+		direction: PromotionDirection,
+		{ commitSha, keys }: PromotionResourceDetailsRequestDto,
+	): Promise<PromotionResourceDetails> {
+		this.assertCanPreview(user, direction);
+		const requestedIds = new Set(keys.map((key) => key.slice(key.lastIndexOf(':') + 1)));
+		const readBranch = async (paths: readonly string[]) =>
+			commitSha === null
+				? new Map<string, string>()
+				: await this.promotionsService.readBranchFilesAtCommit(
+						projectId,
+						direction,
+						commitSha,
+						paths,
+					);
+		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
+		const [branchFiles, instance] = await Promise.all([
+			readBranch([manifestPath]),
+			this.exportInstancePackage(user, projectId, {
+				// Keep the content of the requested resources only. Variables match by name, not by ID.
+				keepContent: (path) =>
+					requestedIds.has(entityIdOfPath(path)) ||
+					path.includes(`/${PACKAGE_ENTITY_LAYOUT.variables.directory}/`),
+			}),
+		]);
+		const branchManifest = parseBranchManifest(branchFiles.get(manifestPath), projectId);
+		const branchIndex = indexSide({ manifest: branchManifest, blobByPath: new Map() }, projectId);
+		const instanceIndex = indexSide(
+			{ manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
+			projectId,
+		);
+		// A resource can disappear after the summary, for example when a local workflow is deleted.
+		const missingKeys = keys.filter((key) => !branchIndex.has(key) && !instanceIndex.has(key));
+
+		const branchContents = await readBranch(
+			keys.flatMap((key) => branchIndex.get(key)?.path ?? []),
+		);
+		// Apply reuses a data table that exists on this instance, even when no local workflow uses it.
+		const localTables =
+			direction === 'apply'
+				? await this.loadLocalDataTables(
+						keys.flatMap((key) => {
+							const resource = branchIndex.get(key);
+							return resource?.type === 'dataTable' && !instanceIndex.has(key) ? [resource.id] : [];
+						}),
+					)
+				: new Map<string, LocalDataTable>();
+		// Apply also reuses a tag that exists on this instance, by ID or by name.
+		const localTags =
+			direction === 'apply'
+				? await this.loadLocalTags(
+						keys.flatMap((key) => {
+							const resource = branchIndex.get(key);
+							return resource?.type === 'tag' && !instanceIndex.has(key) ? [resource] : [];
+						}),
+					)
+				: new Map<string, LocalTag>();
+		const canSeeVariableValues = hasGlobalScope(user, 'variable:list');
+
+		const details = keys.flatMap((key): PromotionResourceDetail[] => {
+			const fromBranch = branchIndex.get(key);
+			const fromInstance = instanceIndex.get(key);
+			const resource = fromInstance ?? fromBranch;
+			if (!resource) return [];
+			const branchContent = fromBranch && branchContents.get(fromBranch.path);
+			const localCopy =
+				fromBranch && (fromBranch.type === 'tag' ? localTags : localTables).get(fromBranch.id);
+			const branchSide: DetailSide =
+				branchContent === undefined
+					? { content: null, blobSha: null }
+					: { content: branchContent, blobSha: gitBlobSha(branchContent) };
+			const instanceSide: DetailSide = fromInstance
+				? {
+						content: instance.contents.get(fromInstance.path) ?? null,
+						blobSha: fromInstance.blobSha,
+					}
+				: localCopy
+					? { content: localCopy.content, blobSha: localCopy.blobSha }
+					: { content: null, blobSha: null };
+			const [before, after] =
+				direction === 'promote' ? [branchSide, instanceSide] : [instanceSide, branchSide];
+			return [
+				toDetail({
+					key,
+					type: resource.type,
+					before,
+					after,
+					hideVariableValues: resource.type === 'variable' && !canSeeVariableValues,
+				}),
+			];
+		});
+		return { details, missingKeys };
+	}
+
+	private async compareProject(
+		user: User,
+		projectId: string,
+		direction: PromotionDirection,
+	): Promise<ProjectComparison> {
 		this.assertCanPreview(user, direction);
 		const branch = await this.promotionsService.readBranchPackage(projectId, direction);
 		// Apply reads the branch manifest before the export, so an empty branch fails without one.
@@ -140,9 +369,12 @@ export class PromotionChangeService {
 		const rows = buildPromotableResources({ ...diff, base, archiveState, metadata });
 
 		return {
-			commitSha: branch.commitSha,
-			source: { configId: branch.configId, branchName: branch.branchName },
-			changes: applyQuery(rows, query),
+			branch,
+			branchManifest: branchDesired?.manifest ?? null,
+			instance,
+			destinationVariables,
+			archiveState,
+			rows,
 		};
 	}
 
@@ -240,9 +472,14 @@ export class PromotionChangeService {
 		};
 	}
 
-	private async exportInstancePackage(user: User, projectId: string): Promise<InstancePackage> {
+	private async exportInstancePackage(
+		user: User,
+		projectId: string,
+		{ keepContent }: { keepContent?: (path: string) => boolean } = {},
+	): Promise<InstancePackage> {
 		const writer = new HashingPackageWriter();
 		const archiveState = new Map<string, boolean>();
+		const contents = new Map<string, string>();
 		const { manifest } = await this.packagesService.exportPackageToWriter(
 			{
 				user,
@@ -258,10 +495,12 @@ export class PromotionChangeService {
 				writeDirectory: (path) => writer.writeDirectory(path),
 				writeFile(path, content) {
 					writer.writeFile(path, content);
+					const packagePath = `${PACKAGE_SUBFOLDER}/${path}`;
 					if (path.endsWith(`/${PACKAGE_ENTITY_LAYOUT.workflows.fileName}`)) {
 						const workflow = jsonParse<SerializedWorkflow>(String(content));
-						archiveState.set(`${PACKAGE_SUBFOLDER}/${path}`, workflow.isArchived);
+						archiveState.set(packagePath, workflow.isArchived);
 					}
+					if (keepContent?.(packagePath)) contents.set(packagePath, String(content));
 				},
 			},
 		);
@@ -272,7 +511,7 @@ export class PromotionChangeService {
 			})),
 			{ exportRoot: PACKAGE_SUBFOLDER, projectId },
 		);
-		return { files, manifest, archiveState };
+		return { files, manifest, archiveState, contents };
 	}
 
 	private async readBranchDesired(
@@ -280,13 +519,89 @@ export class PromotionChangeService {
 		projectId: string,
 	): Promise<DesiredPackage> {
 		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
-		const manifest = packageManifestSchema.safeParse(
-			parseBranchJson((await branch.readFiles([manifestPath])).get(manifestPath) ?? ''),
+		const manifest = parseBranchManifest(
+			(await branch.readFiles([manifestPath])).get(manifestPath),
+			projectId,
 		);
-		if (!manifest.success) {
+		if (!manifest) {
 			throw new BadRequestError('The package manifest on the branch cannot be read');
 		}
-		return { files: branch.files, manifest: scopeManifestToProject(manifest.data, projectId) };
+		return { files: branch.files, manifest };
+	}
+
+	/**
+	 * Promote compares with the branch manifest to see renames and moves.
+	 * A branch without package files has no manifest yet.
+	 */
+	private async readPromoteBaseManifest(
+		branch: BranchPackage,
+		projectId: string,
+	): Promise<PackageManifest | null> {
+		if (branch.files.length === 0) return null;
+		return (await this.readBranchDesired(branch, projectId)).manifest;
+	}
+
+	/**
+	 * Apply reuses credentials, tags, variables, and data tables that already exist on this
+	 * instance. The local export holds only those that local workflows use, so the others are
+	 * looked up here. Otherwise the preview would show them as new.
+	 */
+	private async loadApplyDestination(
+		branchManifest: PackageManifest | null,
+		instanceManifest: PackageManifest,
+		variables: readonly VariableKeyScope[] | null,
+	): Promise<ApplyDestination> {
+		const requirements = branchManifest?.requirements;
+		const exportedTableIds = new Set(instanceManifest.dataTables?.map(({ id }) => id));
+		const [credentials, tags, dataTables] = await Promise.all([
+			this.credentialsRepository.findNamesByIds(
+				requirements?.credentials?.map(({ id }) => id) ?? [],
+			),
+			this.loadLocalTags(requirements?.tags ?? []),
+			this.loadLocalDataTables(
+				(requirements?.dataTables ?? [])
+					.map(({ id }) => id)
+					.filter((id) => !exportedTableIds.has(id)),
+			),
+		]);
+		return {
+			credentialNames: new Map(credentials.map(({ id, name }) => [id, name])),
+			tags,
+			variableKeys: new Set(
+				(variables ?? []).map(({ key, projectId }) => variableResourceKey(key, projectId)),
+			),
+			dataTables,
+		};
+	}
+
+	/**
+	 * Finds the local tag that Apply uses for each branch tag: the tag with the same ID, else the tag
+	 * with the same name. Serializes each tag as the package stores it, so it compares with branch files.
+	 */
+	private async loadLocalTags(
+		branchTags: ReadonlyArray<{ id: string; name: string }>,
+	): Promise<Map<string, LocalTag>> {
+		const local = await this.tagImporter.findLocalTags(branchTags);
+		return new Map(
+			branchTags.flatMap(({ id, name }): Array<[string, LocalTag]> => {
+				const tag = local.byId.get(id) ?? local.byName.get(name.trim());
+				if (!tag) return [];
+				const content = formatEntityFile(serializeTag(tag));
+				return [[id, { id: tag.id, name: tag.name, content, blobSha: gitBlobSha(content) }]];
+			}),
+		);
+	}
+
+	/** Serializes local data tables as the package stores them, so they compare with branch files. */
+	private async loadLocalDataTables(ids: string[]): Promise<Map<string, LocalDataTable>> {
+		if (ids.length === 0 || !this.moduleRegistry.isActive('data-table')) return new Map();
+		const tables = await this.dataTableService.findDataTablesByIds(ids);
+		return new Map(
+			tables.map((table) => {
+				const content = formatEntityFile(this.dataTableSerializer.serialize(table));
+				return [table.id, { content, blobSha: gitBlobSha(content) }];
+			}),
+		);
 	}
 }
 
@@ -295,6 +610,100 @@ function parseBranchJson<T = unknown>(raw: string): T | undefined {
 		return jsonParse<T>(raw);
 	} catch {
 		return undefined;
+	}
+}
+
+/** Parses a package manifest read from Git. `null` when the file is missing or invalid. */
+export function parsePackageManifest(raw: string | undefined): PackageManifest | null {
+	const manifest = packageManifestSchema.safeParse(parseBranchJson(raw ?? ''));
+	return manifest.success ? manifest.data : null;
+}
+
+/** Parses the branch manifest and keeps this project's part. `null` when the file is missing or invalid. */
+function parseBranchManifest(raw: string | undefined, projectId: string): PackageManifest | null {
+	const manifest = parsePackageManifest(raw);
+	return manifest && scopeManifestToProject(manifest, projectId);
+}
+
+function blobsByPath(files: readonly PackageFile[]): Map<string, string> {
+	return new Map(files.map(({ path, blobSha }) => [path, blobSha]));
+}
+
+/** Entity directories end with `-<id>`, and the entity file sits inside that directory. */
+function entityIdOfPath(path: string): string {
+	const segments = path.split('/');
+	const directory = segments[segments.length - 2] ?? '';
+	return directory.slice(directory.lastIndexOf('-') + 1);
+}
+
+function toChanges(
+	{ branch, rows }: ProjectComparison,
+	query: PromotionChangesQueryDto,
+): PromotionChanges {
+	return {
+		commitSha: branch.commitSha,
+		source: { environmentId: branch.environmentId, branchName: branch.branchName },
+		changes: applyQuery(rows, query),
+	};
+}
+
+/**
+ * Reads one side of a resource. `null` when the side has no file, or when its file does not
+ * match the package format.
+ */
+function parseContent<Schema extends z.ZodTypeAny>(
+	schema: Schema,
+	content: string | null,
+): z.output<Schema> | null {
+	if (content === null) return null;
+	const parsed = schema.safeParse(parseBranchJson(content));
+	return parsed.success ? parsed.data : null;
+}
+
+export function toDetail({
+	key,
+	type,
+	before,
+	after,
+	hideVariableValues,
+}: {
+	key: string;
+	type: PromotionResourceType;
+	before: DetailSide;
+	after: DetailSide;
+	hideVariableValues: boolean;
+}): PromotionResourceDetail {
+	const parseSides = <Schema extends z.ZodTypeAny>(schema: Schema) => ({
+		key,
+		before: parseContent(schema, before.content),
+		after: parseContent(schema, after.content),
+		revision: { before: before.blobSha, after: after.blobSha },
+	});
+	switch (type) {
+		case 'project':
+			return { type, ...parseSides(serializedProjectSchema) };
+		case 'folder':
+			return { type, ...parseSides(serializedFolderSchema) };
+		case 'workflow':
+			return { type, ...parseSides(serializedWorkflowSchema) };
+		case 'credential':
+			return { type, ...parseSides(serializedCredentialSchema) };
+		case 'tag':
+			return { type, ...parseSides(serializedTagSchema) };
+		case 'variable': {
+			const detail = { type, ...parseSides(serializedVariableSchema) };
+			if (!hideVariableValues) return detail;
+			for (const content of [detail.before, detail.after]) {
+				if (content) delete content.value;
+			}
+			return { ...detail, valueHidden: true };
+		}
+		case 'dataTable': {
+			const detail = { type, ...parseSides(serializedDataTableSchema) };
+			const { before: current, after: incoming } = detail;
+			if (!current || !incoming) return detail;
+			return { ...detail, dataTableChanges: diffDataTableSchema(incoming, current) };
+		}
 	}
 }
 
@@ -309,53 +718,6 @@ async function readBranchArchiveState(
 			parseBranchJson<SerializedWorkflow>(raw)?.isArchived ?? false,
 		]),
 	);
-}
-
-/**
- * Keeps only this project's workflows, the requirement rows they use, and the
- * variables they can see, so a dependency change on the branch cannot list
- * another project's workflows or resolve a name to another project's variable.
- */
-export function scopeManifestToProject(
-	manifest: PackageManifest,
-	projectId: string,
-): PackageManifest {
-	const projectTarget = manifest.projects?.find(({ id }) => id === projectId)?.target;
-	const inProject = ({ target }: ManifestEntry) =>
-		projectTarget !== undefined && target.startsWith(`${projectTarget}/`);
-	const workflows = (manifest.workflows ?? []).filter(inProject);
-	const workflowIds = new Set(workflows.map(({ id }) => id));
-	// Variables resolve by name, and the project's own variable shadows the global one.
-	const variables = new Map<string, ManifestEntry>();
-	for (const entry of manifest.variables ?? []) {
-		const isGlobal = !entry.target.startsWith(`${PACKAGE_ENTITY_LAYOUT.projects.directory}/`);
-		if (inProject(entry) || (isGlobal && !variables.has(entry.name))) {
-			variables.set(entry.name, entry);
-		}
-	}
-	const scopeRows = <T extends { usedBy: PackageRequirementConsumer[] }>(rows: T[] | undefined) => {
-		const kept = rows
-			?.map((row) => ({
-				...row,
-				usedBy: row.usedBy.filter(({ kind, id }) => kind === 'workflow' && workflowIds.has(id)),
-			}))
-			.filter((row) => row.usedBy.length > 0);
-		return kept?.length ? kept : undefined;
-	};
-	const { requirements } = manifest;
-	return {
-		...manifest,
-		workflows,
-		variables: [...variables.values()],
-		requirements: requirements && {
-			credentials: scopeRows(requirements.credentials),
-			dataTables: scopeRows(requirements.dataTables),
-			workflows: scopeRows(requirements.workflows),
-			variables: scopeRows(requirements.variables),
-			tags: scopeRows(requirements.tags),
-			nodeTypes: scopeRows(requirements.nodeTypes),
-		},
-	};
 }
 
 function applyQuery(

@@ -9,6 +9,11 @@ import { EnvProxyHttpsAgent } from './env-proxy-https-agent';
 import { createProxiedHttpAgent, createProxiedHttpsAgent } from '../proxy/proxied-agents';
 import type { SsrfBridge } from '../ssrf';
 
+export interface NodeAgents {
+	httpAgent: http.Agent;
+	httpsAgent: https.Agent;
+}
+
 /**
  * An explicit proxy URL for routing all requests from this client.
  * Only HTTP(S) forward proxies are supported: both the Node.js agents
@@ -93,7 +98,7 @@ export function buildNodeAgents(
 	proxy: ProxyOption,
 	ssrf: SsrfOption,
 	agentOptions?: NodeAgentOptions,
-): { httpAgent: http.Agent; httpsAgent: https.Agent } {
+): NodeAgents {
 	if (agentOptions?.lookup) {
 		throw new UserError(
 			'`agentOptions.lookup` is not supported: DNS resolution is managed by the SSRF policy. Remove it from `agentOptions`.',
