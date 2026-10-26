@@ -233,8 +233,17 @@ function onKeydown(event: KeyboardEvent) {
 			</div>
 		</div>
 		<CollapsibleContent as-child>
-			<div v-if="description || slots.description" :id="`${id}-details`" :class="$style.body">
-				<div role="region" tabindex="0" :aria-label="descriptionLabel ?? title">
+			<div
+				v-if="description || slots.description || formattedArgs"
+				:id="`${id}-details`"
+				:class="$style.body"
+			>
+				<div
+					v-if="description || slots.description"
+					role="region"
+					tabindex="0"
+					:aria-label="descriptionLabel ?? title"
+				>
 					<slot name="description"
 						><N8nText step="sm">{{ description }}</N8nText></slot
 					>

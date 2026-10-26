@@ -1,3 +1,4 @@
+import { i18nInstance } from '@n8n/i18n';
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { AgentBackgroundJobDto, AgentChatResumeDto, PushMessage } from '@n8n/api-types';
@@ -190,7 +191,7 @@ function mountPanel(
 		...(options.attachTo ? { attachTo: options.attachTo } : {}),
 		props: { projectId: 'p1', agentId: 'a1', threadId: 't1', ...props },
 		global: {
-			plugins: [createPinia()],
+			plugins: [createPinia(), i18nInstance],
 			stubs: {
 				...stubs,
 				...(options.renderTimelineTable ? { SessionTimelineTable: false } : {}),
@@ -217,8 +218,8 @@ describe('AgentSessionTimelinePanel', () => {
 		backgroundJobs.value = [approvalJob];
 		let resolveResponse: (() => void) | undefined;
 		respondToApproval.mockImplementation(
-			() =>
-				new Promise<void>((resolve) => {
+			async () =>
+				await new Promise<void>((resolve) => {
 					resolveResponse = resolve;
 				}),
 		);
@@ -253,8 +254,8 @@ describe('AgentSessionTimelinePanel', () => {
 		backgroundJobs.value = [approvalJob];
 		let rejectResponse: ((error: Error) => void) | undefined;
 		respondToApproval.mockImplementation(
-			() =>
-				new Promise<void>((_resolve, reject) => {
+			async () =>
+				await new Promise<void>((_resolve, reject) => {
 					rejectResponse = reject;
 				}),
 		);

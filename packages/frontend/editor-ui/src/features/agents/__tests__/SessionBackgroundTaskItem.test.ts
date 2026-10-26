@@ -1,3 +1,4 @@
+import { i18nInstance } from '@n8n/i18n';
 import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AgentBackgroundJobDto, AgentChatResumeDto } from '@n8n/api-types';
@@ -37,6 +38,7 @@ describe('SessionBackgroundTaskItem', () => {
 			.fn<(payload: AgentChatResumeDto) => Promise<void>>()
 			.mockResolvedValue(undefined);
 		const wrapper = mount(SessionBackgroundTaskItem, {
+			global: { plugins: [i18nInstance] },
 			props: {
 				item: backgroundTasksToTimelineItems([job])[0],
 				selected: false,
@@ -58,7 +60,9 @@ describe('SessionBackgroundTaskItem', () => {
 	it('shows the agent name in the approval sentence', async () => {
 		const { wrapper } = mountApproval();
 		await wrapper.setProps({ agentName: 'Research agent' });
-		expect(wrapper.text()).toContain('Research agent wants to use Send message');
+		expect(wrapper.text().replace(/\s+/g, ' ')).toContain(
+			'Research agent wants to use Send message',
+		);
 	});
 
 	it.each([
@@ -114,6 +118,7 @@ describe('SessionBackgroundTaskItem', () => {
 
 	it('does not show active choices without a response handler', () => {
 		const wrapper = mount(SessionBackgroundTaskItem, {
+			global: { plugins: [i18nInstance] },
 			props: { item: backgroundTasksToTimelineItems([suspendedTask])[0], selected: false },
 		});
 		expect(wrapper.find('[data-testid="agent-approval-card"]').exists()).toBe(false);
@@ -136,6 +141,7 @@ describe('SessionBackgroundTaskItem', () => {
 
 	it('shows only the task name and grid spinner while running', () => {
 		const wrapper = mount(SessionBackgroundTaskItem, {
+			global: { plugins: [i18nInstance] },
 			props: { item: backgroundTasksToTimelineItems([task])[0], selected: false },
 		});
 		expect(wrapper.get('button').text()).toBe(task.title);
@@ -154,6 +160,7 @@ describe('SessionBackgroundTaskItem', () => {
 		'shows the current $status state',
 		({ status, label, icon }) => {
 			const wrapper = mount(SessionBackgroundTaskItem, {
+				global: { plugins: [i18nInstance] },
 				props: { item: backgroundTasksToTimelineItems([{ ...task, status }])[0], selected: false },
 			});
 			expect(wrapper.get('button').text()).toBe(`${task.title} • ${label}`);

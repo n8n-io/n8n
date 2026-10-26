@@ -102,12 +102,26 @@ describe('N8nApprovalCard', () => {
 		expect(emitted('select')).toEqual([['allow-once']]);
 	});
 
-	it('shows arguments by default', () => {
-		const { getByTestId } = render(N8nApprovalCard, {
-			props: { title: 'Approval required', args: { query: 'Example' } },
-		});
-		expect(getByTestId('approval-card-args')).toBeVisible();
-	});
+	it.each([false, true])(
+		'toggles arguments without a description with defaultCollapsed=%s',
+		async (defaultCollapsed) => {
+			const { getByRole, getByTestId, queryByTestId } = render(N8nApprovalCard, {
+				props: { title: 'Approval required', args: { query: 'Example' }, defaultCollapsed },
+			});
+			const trigger = getByRole('button', { name: 'Approval required' });
+			expect(trigger).toHaveAttribute('aria-expanded', String(!defaultCollapsed));
+			if (defaultCollapsed) expect(queryByTestId('approval-card-args')).toBeNull();
+			else {
+				expect(getByTestId('approval-card-args')).toBeVisible();
+				expect(getByTestId('approval-card-args')).toHaveTextContent('Example');
+			}
+
+			await userEvent.click(trigger);
+			expect(trigger).toHaveAttribute('aria-expanded', String(defaultCollapsed));
+			if (defaultCollapsed) expect(getByTestId('approval-card-args')).toBeVisible();
+			else expect(queryByTestId('approval-card-args')).toBeNull();
+		},
+	);
 
 	it('does not show a collapse control without arguments', () => {
 		const { queryByRole } = render(N8nApprovalCard, {

@@ -1,3 +1,4 @@
+import { i18nInstance } from '@n8n/i18n';
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi } from 'vitest';
 import { mount, type VueWrapper } from '@vue/test-utils';
@@ -82,7 +83,7 @@ function mountTable(
 	return mount(SessionTimelineTable, {
 		...(attachTo ? { attachTo } : {}),
 		props,
-		global: { plugins: [makeRouter()] },
+		global: { plugins: [makeRouter(), i18nInstance] },
 	});
 }
 
@@ -91,7 +92,7 @@ describe('SessionTimelineTable', () => {
 		const items = makeItems();
 		const w = mount(SessionTimelineTable, {
 			props: { items, selectedIndex: null, visibleKinds: new Set<string>() },
-			global: { plugins: [makeRouter()], stubs: { SessionTimelineRow: true } },
+			global: { plugins: [makeRouter(), i18nInstance], stubs: { SessionTimelineRow: true } },
 		});
 		const original = w.get('[data-timeline-row-id="event-1"]').element;
 		const task: TimelineItem = {
@@ -151,8 +152,8 @@ describe('SessionTimelineTable', () => {
 			await choice.trigger('click');
 			expect(respondToApproval).not.toHaveBeenCalled();
 			await wrapper.setProps({ pendingApprovalRunIds: new Set<string>() });
-			await wrapper.get('[role="listbox"]').trigger('keydown', { key: 'ArrowDown' });
-			await wrapper.get('[role="listbox"]').trigger('keydown', { key: 'Enter' });
+			await wrapper.get('[role="toolbar"]').trigger('keydown', { key: 'ArrowDown' });
+			await wrapper.get('[data-test-id="approval-card-deny"]').trigger('click');
 			expect(respondToApproval).toHaveBeenCalledWith({
 				runId: 'run-1',
 				toolCallId: 'gate-1',
@@ -723,7 +724,7 @@ describe('SessionTimelineTable', () => {
 			return mount(SessionTimelineTable, {
 				props: { items: makeItems(), selectedIndex: null, visibleKinds, noticeIndex: 2 },
 				slots: { notice: '<div data-test-id="notice-content" />' },
-				global: { plugins: [makeRouter()] },
+				global: { plugins: [makeRouter(), i18nInstance] },
 			});
 		}
 

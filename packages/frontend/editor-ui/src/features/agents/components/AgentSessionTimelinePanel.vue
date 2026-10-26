@@ -89,10 +89,6 @@ const { allJobs, respondToApproval } = useAgentBackgroundJobs({
 });
 
 async function respondToBackgroundApproval(payload: AgentChatResumeDto) {
-	if (stubStore.active) {
-		stubStore.respondToApproval(payload);
-		return;
-	}
 	const approval = allJobs.value.find(
 		(job) =>
 			job.status === 'suspended' &&
