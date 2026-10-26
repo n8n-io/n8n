@@ -8,9 +8,12 @@ import { User } from './user';
 export class ServiceAccount extends User {
 	override readonly kind = 'service' as const;
 
-	/** Undefined when the query did not load it. Null when no details row exists. */
+	/**
+	 * Every service account has one. `ServiceAccountRepository.create` writes both
+	 * rows in one transaction. Only set when the query loads the relation.
+	 */
 	@OneToOne('ServiceAccountDetails', 'serviceAccount')
-	details?: Relation<ServiceAccountDetails> | null;
+	details: Relation<ServiceAccountDetails>;
 
 	/** A service account never waits for an invite. */
 	override computeIsPending(): void {

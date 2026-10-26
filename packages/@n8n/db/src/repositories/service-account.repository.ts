@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
 import { type Role, ServiceAccount, ServiceAccountDetails } from '../entities';
@@ -39,8 +40,15 @@ export class ServiceAccountRepository {
 		});
 	}
 
-	/** Creates the `user` row and the details row in one transaction. */
+	/**
+	 * Creates the `user` row and the details row in one transaction. If one
+	 * insert fails, neither row is saved. The name must not be blank.
+	 */
 	async create({ name, role }: NewServiceAccount, ctx: OperationContext = {}) {
+		if (name.trim() === '') {
+			throw new UnexpectedError('A service account needs a name');
+		}
+
 		return await this.table.runInTransaction(ctx, async (tx) => {
 			const serviceAccount = await tx.save(tx.create(ServiceAccount, { role }));
 			serviceAccount.details = await tx.save(

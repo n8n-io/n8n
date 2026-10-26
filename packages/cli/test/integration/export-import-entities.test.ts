@@ -1,12 +1,6 @@
 import { testDb } from '@n8n/backend-test-utils';
-import {
-	GLOBAL_MEMBER_ROLE,
-	ServiceAccount,
-	ServiceAccountRepository,
-	UserRepository,
-} from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, ServiceAccountRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -40,10 +34,10 @@ describe('export:entities and import:entities', () => {
 	it('exports the user table once and imports people and service accounts back', async () => {
 		const owner = await createOwner();
 		const member = await createMember();
-		const serviceAccounts = Container.get(DataSource).getRepository(ServiceAccount);
-		const serviceAccount = await serviceAccounts.save(
-			serviceAccounts.create({ role: GLOBAL_MEMBER_ROLE }),
-		);
+		const serviceAccount = await Container.get(ServiceAccountRepository).create({
+			name: 'Deploy bot',
+			role: GLOBAL_MEMBER_ROLE,
+		});
 
 		await Container.get(ExportService).exportEntities(outputDir, new Set(), undefined, {
 			includeDataTableRows: false,
@@ -85,6 +79,6 @@ describe('export:entities and import:entities', () => {
 		await Container.get(ImportService).importEntities(outputDir, true, undefined, true);
 
 		const loaded = await serviceAccountRepository.findById(id);
-		expect(loaded?.details?.name).toBe('Deploy bot');
+		expect(loaded?.details.name).toBe('Deploy bot');
 	});
 });
