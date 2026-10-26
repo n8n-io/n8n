@@ -6,7 +6,7 @@ const failureKind = z
 	.enum(['user', 'git_remote', 'unexpected'])
 	.optional()
 	.describe(
-		"Set only when the outcome is 'failed'. 'user' = the request or state was wrong (4xx or promotion conflict); 'git_remote' = a call to the Git remote or its host failed, such as a clone, push, fetch or merge request call; 'unexpected' = anything else",
+		"Set only when the outcome is 'failed'. 'user' = the request or state was wrong (4xx or promotion conflict); 'git_remote' = a Git call to the remote failed (clone, fetch, push, pull or ls-remote), or the Git host timed out, was unreachable or rate-limited the request; 'unexpected' = anything else, such as a failed local Git step. A Git host that rejects the token, a TLS or DNS failure, and a malformed host response report as 'user', because the provider settings need a fix",
 	);
 
 const scope = z
@@ -69,7 +69,7 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 	USER_UPDATED_PROMOTION_ENVIRONMENT: {
 		name: 'User updated promotion environment',
 		description:
-			'A promotion environment was updated. Fires once per successful update. A failed or conflicted update does not fire it.',
+			'A promotion environment was updated. Fires once per successful update that changes at least one field. A failed or conflicted update does not fire it, and neither does an update that only resends the current provider.',
 		properties: z.object({
 			user_id: z.string(),
 			environment_id: z.string(),
@@ -107,7 +107,7 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 	USER_PROMOTED_CHANGES: {
 		name: 'User promoted changes',
 		description:
-			'A user pushed changes to the promotion repository, for the whole instance or for one project. Fires once per attempt that passed validation, on success and on failure.',
+			'A user pushed changes to the promotion repository, for the whole instance or for one project. Fires once per attempt after n8n resolves the environment, on success and on failure. Later checks, such as the scope, checkout or package checks, also fire it when they fail.',
 		properties: z.object({
 			user_id: z.string(),
 			environment_id: z.string(),
@@ -139,7 +139,7 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 	USER_APPLIED_PROMOTION_CHANGES: {
 		name: 'User applied promotion changes',
 		description:
-			'A user applied changes from the promotion repository, for the whole instance or for one project. Fires once per attempt that passed validation, on every outcome, including continued applies.',
+			'A user applied changes from the promotion repository, for the whole instance or for one project. Fires once per attempt after n8n resolves the environment, on every outcome, including continued applies. Later checks, such as the scope, checkout or package checks, also fire it when they fail.',
 		properties: z.object({
 			user_id: z.string(),
 			environment_id: z.string(),

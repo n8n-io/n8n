@@ -529,6 +529,10 @@ describe('PromotionsService', () => {
 					webUrl: 'https://gitlab/mr/3',
 				});
 				expect(result.warnings).toBeUndefined();
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'promotion-promoted',
+					expect.objectContaining({ outcome: 'success', openedReview: true }),
+				);
 			});
 
 			it('does not open a review for a direct push to the base branch', async () => {
@@ -918,6 +922,10 @@ describe('PromotionsService', () => {
 				'run-1',
 			);
 			expect(result.warnings).toEqual([{ message: 'no merge request' }]);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-promoted',
+				expect.objectContaining({ outcome: 'success_with_warnings', openedReview: false }),
+			);
 			// The package keeps the pushed selection. No rollback happened.
 			await expect(
 				readFile(path.join(packageFolder, 'projects/alpha/workflows/w1/workflow.json'), 'utf8'),
