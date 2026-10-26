@@ -48,13 +48,29 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const { contextPreferencesEnabledMock, contextSkillsEnabledMock, routerPushMock, confirmMock } =
-	vi.hoisted(() => ({
-		contextPreferencesEnabledMock: vi.fn(() => true),
-		contextSkillsEnabledMock: vi.fn(() => true),
-		routerPushMock: vi.fn(),
-		confirmMock: vi.fn(),
-	}));
+const {
+	contextPreferencesEnabledMock,
+	contextSkillsEnabledMock,
+	routerPushMock,
+	confirmMock,
+	testSavedCredentialMock,
+} = vi.hoisted(() => ({
+	contextPreferencesEnabledMock: vi.fn(() => true),
+	contextSkillsEnabledMock: vi.fn(() => true),
+	routerPushMock: vi.fn(),
+	confirmMock: vi.fn(),
+	testSavedCredentialMock: vi.fn(),
+}));
+
+vi.mock('../composables/useInstanceCredentialTest', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../composables/useInstanceCredentialTest')>();
+	return {
+		useInstanceCredentialTest: () => ({
+			...actual.useInstanceCredentialTest(),
+			testSavedCredential: testSavedCredentialMock,
+		}),
+	};
+});
 
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: confirmMock }),
@@ -114,6 +130,7 @@ describe('SettingsInstanceAiView', () => {
 		vi.clearAllMocks();
 		vi.mocked(fetchSettings).mockResolvedValue(null as never);
 		vi.mocked(hasPermission).mockReturnValue(true);
+		testSavedCredentialMock.mockResolvedValue(true);
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		fetchCredentialTypesSpy = vi
@@ -467,6 +484,63 @@ describe('SettingsInstanceAiView', () => {
 			await waitFor(() => expect(persistEnabled).toHaveBeenCalledExactlyOnceWith(true));
 			expect(save).toHaveBeenCalledOnce();
 			expect(store.settings?.sandboxEnabled).toBe(true);
+		});
+
+		describe('with a saved model credential', () => {
+			const savedModel = {
+				modelCredentialId: 'openai-id',
+				modelName: 'gpt-4o',
+				sandboxEnabled: true,
+				sandboxEnvConfigured: true,
+				searchDisabled: true,
+			};
+
+			beforeEach(() => {
+				disable(savedModel);
+				store.$patch({
+					instanceModelCredentials: [{ id: 'openai-id', name: 'OpenAI', type: 'openAiApi' }],
+				});
+			});
+
+			it('opens the model dialog without saving enabled when the credential test fails', async () => {
+				testSavedCredentialMock.mockResolvedValue(false);
+				const persistEnabled = mockPersistEnabled();
+				const { findByTestId, getByTestId } = renderComponent();
+
+				await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+
+				expect(await findByTestId(modelSaveDialog)).toBeVisible();
+				expect(testSavedCredentialMock).toHaveBeenCalledExactlyOnceWith(
+					'openai-id',
+					'OpenAI',
+					'openAiApi',
+				);
+				expect(persistEnabled).not.toHaveBeenCalled();
+			});
+
+			it('saves enabled when the credential test passes', async () => {
+				const persistEnabled = mockPersistEnabled();
+				const { getByTestId, queryByTestId } = renderComponent();
+
+				await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+
+				await waitFor(() => expect(persistEnabled).toHaveBeenCalledExactlyOnceWith(true));
+				expect(testSavedCredentialMock).toHaveBeenCalledOnce();
+				expect(queryByTestId(modelSaveDialog)).toBeNull();
+			});
+
+			it('does not test credentials when the admin cannot manage instance credentials', async () => {
+				vi.mocked(hasPermission).mockImplementation(
+					(_, options) => options?.rbac?.scope !== 'credential:manageInstance',
+				);
+				const persistEnabled = mockPersistEnabled();
+				const { getByTestId } = renderComponent();
+
+				await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+
+				await waitFor(() => expect(persistEnabled).toHaveBeenCalledExactlyOnceWith(true));
+				expect(testSavedCredentialMock).not.toHaveBeenCalled();
+			});
 		});
 
 		it.each([

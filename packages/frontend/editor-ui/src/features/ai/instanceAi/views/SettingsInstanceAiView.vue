@@ -37,6 +37,7 @@ import {
 	isContextSkillsEnabled,
 } from '@/features/settings/context/context.utils';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
+import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSetupPageViewTelemetry } from '../instanceAiSetup.telemetry';
 import type { InstanceAiConnectionKind } from '../constants';
@@ -50,9 +51,11 @@ const router = useRouter();
 const settingsStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const store = useInstanceAiSettingsStore();
+const { isTestingCredential, testSavedCredential } = useInstanceCredentialTest();
 const {
 	modelCredential,
 	modelConfigured: isModelConfigured,
+	sandboxCredentialId,
 	sandboxConfigured: isSandboxConfigured,
 	searchCredential,
 	searchState,
@@ -254,6 +257,8 @@ const setupChain = ref(false);
 /** The switch shows on while the walkthrough runs; `enabled` is saved only once setup is complete. */
 const isEnabling = ref(false);
 const isSwitchOn = computed(() => isEnabled.value || isEnabling.value);
+/** Saved credentials that turning on still has to test. Each one is tested at most once. */
+let credentialsToTest = new Set<'model' | 'sandbox'>();
 
 function setDialogOpen(kind: InstanceAiConnectionKind, isOpen: boolean) {
 	if (isOpen) {
@@ -284,11 +289,34 @@ function openSearchDialog() {
 	activeDialog.value = 'search';
 }
 
+/** A saved credential can stop working, so turning on tests it once. Other paths skip the test. */
+async function savedCredentialWorks(kind: 'model' | 'sandbox'): Promise<boolean> {
+	if (!isEnabling.value || !credentialsToTest.delete(kind)) return true;
+	if (kind === 'model') {
+		const id = store.settings?.modelCredentialId;
+		const credential = modelCredential.value;
+		if (!id) return true;
+		return !!credential && (await testSavedCredential(id, credential.name, credential.type));
+	}
+	if (!sandboxCredentialId.value) return true;
+	const type = store.settings?.sandboxProvider === 'daytona' ? 'daytonaApi' : 'httpHeaderAuth';
+	return await testSavedCredential(sandboxCredentialId.value, 'n8n Assistant sandbox', type);
+}
+
 async function nextSetupDialog(): Promise<InstanceAiConnectionKind | null> {
-	if (showCredentialsRows.value && !isModelConfigured.value) return 'model';
+	if (
+		showCredentialsRows.value &&
+		(!isModelConfigured.value || !(await savedCredentialWorks('model')))
+	) {
+		return 'model';
+	}
 	// An environment-configured sandbox has no dialog. It only needs to be switched on.
 	if (!(await enableEnvironmentSandboxIfNeeded())) return null;
-	if (showSandboxRow.value && !isSandboxConfigured.value && !isSandboxEnvManaged.value) {
+	if (
+		showSandboxRow.value &&
+		!isSandboxEnvManaged.value &&
+		(!isSandboxConfigured.value || !(await savedCredentialWorks('sandbox')))
+	) {
 		return 'sandbox';
 	}
 	if (showCredentialsRows.value && searchState.value === 'notset') return 'search';
@@ -305,6 +333,8 @@ async function continueSetup() {
 	if (!setupChain.value) return;
 	setupChain.value = next !== null;
 	activeDialog.value = next;
+	// The admin saves this credential in its dialog, so the walkthrough does not test it again.
+	if (next === 'model' || next === 'sandbox') credentialsToTest.delete(next);
 	if (next !== null || !isEnabling.value) return;
 	if (isSetupComplete.value) await store.persistEnabled(true);
 	isEnabling.value = false;
@@ -333,7 +363,10 @@ onMounted(() => {
 });
 
 async function enable() {
-	if (isSetupComplete.value) {
+	credentialsToTest = new Set(
+		showCredentialsRows.value && store.canManageInstanceCredentials ? ['model', 'sandbox'] : [],
+	);
+	if (isSetupComplete.value && credentialsToTest.size === 0) {
 		await store.persistEnabled(true);
 		return;
 	}
@@ -402,7 +435,7 @@ function openAiUsageSettings() {
 			:heading="i18n.baseText('settings.n8nAgent.empty.title')"
 			:description="i18n.baseText('settings.n8nAgent.empty.description')"
 			:button-text="isAdmin ? i18n.baseText('settings.n8nAgent.empty.enable') : undefined"
-			:button-disabled="store.isSaving || isEnabling"
+			:button-disabled="store.isSaving || isEnabling || isTestingCredential"
 			button-variant="solid"
 			@click:button="enable"
 		>
@@ -423,7 +456,7 @@ function openAiUsageSettings() {
 						<template #action>
 							<N8nSwitch
 								:model-value="isSwitchOn"
-								:disabled="store.isSaving || isEnabling"
+								:disabled="store.isSaving || isEnabling || isTestingCredential"
 								:aria-label="i18n.baseText('settings.n8nAgent.enable.label')"
 								data-test-id="n8n-agent-enable-toggle"
 								@update:model-value="handleEnabledToggle"

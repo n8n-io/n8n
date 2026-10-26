@@ -3,6 +3,7 @@ import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { SettingsRepository } from '@n8n/db';
 import { LicenseManager } from '@n8n_io/license-sdk';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import type { MockedClass } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -522,16 +523,20 @@ describe('License', () => {
 
 		it('should load the renewed cert before calling callbacks', async () => {
 			const { calls, instances } = (LicenseManager as MockedClass<typeof LicenseManager>).mock;
+			const certLoaded = createDeferredPromise();
+			vi.mocked(instances[instances.length - 1]).reloadStoredCert.mockReturnValue(
+				certLoaded.promise,
+			);
 			const subscriber = vi.fn();
 			license.onCertRefresh(subscriber);
 
 			calls[calls.length - 1][0].onLicenseRenewed!();
 			await new Promise(setImmediate);
+			expect(subscriber).not.toHaveBeenCalled();
 
-			const manager = vi.mocked(instances[instances.length - 1]);
-			expect(manager.reloadStoredCert.mock.invocationCallOrder[0]).toBeLessThan(
-				subscriber.mock.invocationCallOrder[0],
-			);
+			certLoaded.resolve();
+			await new Promise(setImmediate);
+			expect(subscriber).toHaveBeenCalledTimes(1);
 		});
 
 		it('should call multiple registered callbacks', async () => {
