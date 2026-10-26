@@ -424,6 +424,10 @@ describe('GlobalConfig', () => {
 		ai: {
 			enabled: false,
 		},
+		mcpServer: {
+			sessionIdleTtl: 3600000,
+			sessionSweepInterval: 300000,
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

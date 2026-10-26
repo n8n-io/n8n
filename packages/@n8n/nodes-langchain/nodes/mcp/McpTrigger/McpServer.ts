@@ -1,4 +1,6 @@
 import type { Tool } from '@langchain/core/tools';
+import { McpServerConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import type {
@@ -72,16 +74,28 @@ export class McpServerManager {
 
 	private resolveFunctions: { [callId: string]: CallableFunction } = {};
 
+	private lastActivityAt: { [sessionId: string]: number } = {};
+
+	private idleTtlMs: number;
+
+	private sweepIntervalMs: number;
+
+	private sweepTimer?: ReturnType<typeof setInterval>;
+
 	logger: Logger;
 
 	private constructor(logger: Logger) {
 		this.logger = logger;
+		const config = Container.get(McpServerConfig);
+		this.idleTtlMs = config.sessionIdleTtl;
+		this.sweepIntervalMs = config.sessionSweepInterval;
 		this.logger.debug('MCP Server created');
 	}
 
 	static instance(logger: Logger): McpServerManager {
 		if (!McpServerManager.#instance) {
 			McpServerManager.#instance = new McpServerManager(logger);
+			McpServerManager.#instance.startSweep();
 			logger.debug('Created singleton MCP manager');
 		}
 
@@ -115,9 +129,7 @@ export class McpServerManager {
 
 		resp.on('close', async () => {
 			this.logger.debug(`Deleting transport for ${sessionId}`);
-			delete this.tools[sessionId];
-			delete this.transports[sessionId];
-			delete this.servers[sessionId];
+			this.releaseSession(sessionId);
 		});
 		await server.connect(transport);
 
@@ -163,12 +175,11 @@ export class McpServerManager {
 					this.logger.debug(`New session initialized: ${sessionId}`);
 					transport.onclose = () => {
 						this.logger.debug(`Deleting transport for ${sessionId}`);
-						delete this.tools[sessionId];
-						delete this.transports[sessionId];
-						delete this.servers[sessionId];
+						this.releaseSession(sessionId);
 					};
 					this.transports[sessionId] = transport;
 					this.servers[sessionId] = server;
+					this.lastActivityAt[sessionId] = Date.now();
 				},
 			},
 			resp,
@@ -190,6 +201,8 @@ export class McpServerManager {
 		const sessionId = this.getSessionId(req);
 		const transport = this.getTransport(sessionId as string);
 		if (sessionId && transport) {
+			// Only Streamable HTTP sessions are tracked. SSE sessions are released when the connection closes.
+			if (sessionId in this.lastActivityAt) this.lastActivityAt[sessionId] = Date.now();
 			// We need to add a promise here because the `handlePostMessage` will send something to the
 			// MCP Server, that will run in a different context. This means that the return will happen
 			// almost immediately, and will lead to marking the sub-node as "running" in the final execution
@@ -241,6 +254,52 @@ export class McpServerManager {
 		}
 
 		resp.status(404).send('Session not found');
+	}
+
+	private releaseSession(sessionId: string) {
+		delete this.tools[sessionId];
+		delete this.transports[sessionId];
+		delete this.servers[sessionId];
+		delete this.lastActivityAt[sessionId];
+	}
+
+	private startSweep(): void {
+		if (this.sweepTimer) return;
+		this.sweepTimer = setInterval(() => {
+			void this.runSweep();
+		}, this.sweepIntervalMs);
+		this.sweepTimer.unref?.();
+	}
+
+	stopSweep(): void {
+		if (this.sweepTimer) {
+			clearInterval(this.sweepTimer);
+			this.sweepTimer = undefined;
+		}
+	}
+
+	private async runSweep(now: number = Date.now()): Promise<void> {
+		for (const [sessionId, lastActivityAt] of Object.entries(this.lastActivityAt)) {
+			if (now - lastActivityAt < this.idleTtlMs) continue;
+			// Don't evict a session whose tool call is still awaiting a result.
+			if (this.hasInFlightWork(sessionId)) continue;
+			const server = this.servers[sessionId];
+			try {
+				this.logger.debug(`Evicting idle MCP session ${sessionId}`);
+				this.releaseSession(sessionId);
+				await server?.close();
+			} catch (error) {
+				this.logger.error(
+					`Failed to evict idle MCP session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+	}
+
+	private hasInFlightWork(sessionId: string): boolean {
+		return Object.keys(this.resolveFunctions).some(
+			(callId) => callId === sessionId || callId.startsWith(`${sessionId}_`),
+		);
 	}
 
 	setUpHandlers(server: Server) {

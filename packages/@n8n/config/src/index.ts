@@ -20,6 +20,7 @@ import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
+import { McpServerConfig } from './configs/mcp-server.config';
 import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
@@ -52,6 +53,7 @@ export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
 export * from './custom-types';
 export { DeploymentConfig } from './configs/deployment.config';
+export { McpServerConfig } from './configs/mcp-server.config';
 export { MfaConfig } from './configs/mfa.config';
 export { HiringBannerConfig } from './configs/hiring-banner.config';
 export { PersonalizationConfig } from './configs/personalization.config';
@@ -222,4 +224,7 @@ export class GlobalConfig {
 
 	@Nested
 	dataTable: DataTableConfig;
+
+	@Nested
+	mcpServer: McpServerConfig;
 }
