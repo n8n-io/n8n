@@ -6,6 +6,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { RoleService } from '@n8n/backend-services';
 import {
+	ProjectRelationRepository,
 	ProjectRepository,
 	RoleRepository,
 	SharedWorkflowRepository,
@@ -16,7 +17,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import type { Scope } from '@n8n/permissions';
+import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -36,6 +37,7 @@ export class SelfHealingConfigurationService {
 		private readonly configurations: SelfHealingConfigurationRepository,
 		private readonly workflows: WorkflowFinderService,
 		private readonly ownership: SharedWorkflowRepository,
+		private readonly projectRelations: ProjectRelationRepository,
 		private readonly projects: ProjectRepository,
 		private readonly users: UserRepository,
 		private readonly roles: RoleService,
@@ -47,6 +49,16 @@ export class SelfHealingConfigurationService {
 
 	async afterWorkflowsTransferred(workflowIds: string[]): Promise<void> {
 		await this.configurations.removeWorkflowSelections(workflowIds);
+	}
+
+	async canConfigure(user: User, projectId: string) {
+		const [project] = await this.projects.findTypesByIds([projectId]);
+		if (project?.type !== 'personal') {
+			return await userHasScopes(user, ['project:update'], false, { projectId });
+		}
+
+		const [relation] = await this.projectRelations.findByUserAndProjects(user.id, [projectId]);
+		return relation?.role.slug === PROJECT_OWNER_ROLE_SLUG;
 	}
 
 	async list(projectId: string) {
