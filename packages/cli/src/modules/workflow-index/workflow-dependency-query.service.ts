@@ -520,7 +520,9 @@ export class WorkflowDependencyQueryService {
 			result[resourceId] = {
 				dependencies,
 				inaccessibleCount,
-				inaccessibleAffectedCount: inaccessibleAffectedIds.size,
+				...(inaccessibleAffectedIds.size > 0
+					? { inaccessibleAffectedCount: inaccessibleAffectedIds.size }
+					: {}),
 			};
 		}
 
