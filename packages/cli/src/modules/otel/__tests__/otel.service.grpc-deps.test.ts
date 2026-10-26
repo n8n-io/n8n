@@ -4,6 +4,7 @@ import type { OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { OtelConfigureHook } from '../otel-configure-hook';
 import { OtelExporterFactory } from '../otel-exporter.factory';
 import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
 import { OtelService } from '../otel.service';
@@ -59,6 +60,7 @@ describe('OtelService with real gRPC dependencies', () => {
 			mock<ModuleRegistry>(),
 			mock<Publisher>(),
 			mock<ExternalHooks>(),
+			mock<OtelConfigureHook>(),
 		);
 	});
 
