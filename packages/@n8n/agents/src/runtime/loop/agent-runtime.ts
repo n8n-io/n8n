@@ -60,7 +60,7 @@ import { sanitizeOffloadedToolResultsForMemory } from '../memory/tool-result-mem
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { createModelTokenCounter } from '../model/model-token-counter';
-import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
+import { getEffectiveAnthropicCacheTtl, getPromptCacheRetentionMs } from '../model/prompt-cache';
 import { ActiveSkills } from '../skills/active-skills';
 import { activateSkillDependencyTools } from '../skills/skill-dependency-tools';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
@@ -889,20 +889,6 @@ export class AgentRuntime {
 		return messages.length > 0;
 	}
 
-	/**
-	 * How long the provider keeps this agent's prompt cache warm. Anthropic uses the
-	 * configured TTL. Other providers cache on their own terms, so assume the
-	 * longest common retention: expiring too late wastes tokens, expiring too early
-	 * pays a cache rewrite.
-	 */
-	private promptCacheTtlMs(): number {
-		const anthropicTtl = getEffectiveAnthropicCacheTtl(
-			this.config.promptCaching,
-			this.context.modelId,
-		);
-		return anthropicTtl === '5m' ? 5 * 60_000 : 60 * 60_000;
-	}
-
 	private async prepareLoop(ctx: LoopContext): Promise<{
 		prepared: PreparedLoopContext;
 		state: LoopState;
@@ -910,7 +896,7 @@ export class AgentRuntime {
 		const { list, options } = ctx;
 		await this.activeSkills?.restore(list, options?.persistence, {
 			freshRun: ctx.isFreshRun,
-			cacheTtlMs: this.promptCacheTtlMs(),
+			cacheTtlMs: getPromptCacheRetentionMs(this.config.promptCaching, this.context.modelId),
 		});
 		this.context.hydrateDeferredToolsFromList(list);
 		// This note reaches the model but is not stored in conversation history.

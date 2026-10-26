@@ -54,8 +54,8 @@ export class ActiveSkills {
 	 *
 	 * Collapsing a load rewrites every cached message after it, so a turn skill
 	 * expires only when that rewrite is free: the prompt cache has gone cold
-	 * (`cacheTtlMs` since the last message), or observational memory masked the
-	 * load. A warm follow-up or a resumed run keeps the skill.
+	 * (`cacheTtlMs` since the last message), or observational memory masked its
+	 * recorded load. A warm follow-up or a resumed run keeps the skill.
 	 */
 	async restore(
 		list: AgentMessageList,
@@ -120,13 +120,16 @@ export class ActiveSkills {
 		const cacheIsCold = options.cacheTtlMs === undefined || now - lastActivity > options.cacheTtlMs;
 		if (cacheIsCold) return new Set(turnSkills);
 
+		// On a warm cache, expire only a skill whose recorded load observation masked:
+		// that rewrite already happened. A skill without any record already rides in
+		// the system block, so dropping it would rewrite the warm prefix.
 		const deliverable = this.deliverableToolResults();
+		const records = [...this.recordedLoads(list), ...this.stampedActivations(list)];
+		const recorded = new Set(records.map(([, skillId]) => skillId));
 		const anchored = new Set(
-			[...this.recordedLoads(list), ...this.stampedActivations(list)]
-				.filter(([toolCallId]) => deliverable.has(toolCallId))
-				.map(([, skillId]) => skillId),
+			records.filter(([toolCallId]) => deliverable.has(toolCallId)).map(([, skillId]) => skillId),
 		);
-		return new Set(turnSkills.filter((id) => !anchored.has(id)));
+		return new Set(turnSkills.filter((id) => recorded.has(id) && !anchored.has(id)));
 	}
 
 	async load(

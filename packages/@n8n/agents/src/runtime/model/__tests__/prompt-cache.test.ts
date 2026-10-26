@@ -7,6 +7,7 @@ import {
 	buildSkillInstructionCacheOptions,
 	getEffectiveAnthropicCacheTtl,
 	mergeProviderOptions,
+	getPromptCacheRetentionMs,
 } from '../prompt-cache';
 
 const ANTHROPIC_CACHE_CONTROL = { anthropic: { cacheControl: { type: 'ephemeral' as const } } };
@@ -487,5 +488,33 @@ describe('applyRuntimeCacheBreakpoints', () => {
 		expect(result.aiTools.tool_b?.providerOptions).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
+	});
+});
+
+describe('getPromptCacheRetentionMs', () => {
+	const HOUR = 60 * 60_000;
+
+	it('uses the configured Anthropic TTL', () => {
+		expect(
+			getPromptCacheRetentionMs(
+				{ enabled: true, anthropic: { ttl: '5m' } },
+				'anthropic/claude-sonnet-4-5',
+			),
+		).toBe(5 * 60_000);
+		expect(getPromptCacheRetentionMs({ enabled: true }, 'anthropic/claude-sonnet-4-5')).toBe(HOUR);
+	});
+
+	it('uses the OpenAI retention, which defaults to 24 hours', () => {
+		expect(getPromptCacheRetentionMs({ enabled: true }, 'openai/gpt-5')).toBe(24 * HOUR);
+		expect(
+			getPromptCacheRetentionMs(
+				{ enabled: true, openai: { promptCacheRetention: 'in_memory' } },
+				'openai/gpt-5',
+			),
+		).toBe(HOUR);
+	});
+
+	it('falls back to one hour for other providers', () => {
+		expect(getPromptCacheRetentionMs({ enabled: true }, 'google/gemini-2.5-flash')).toBe(HOUR);
 	});
 });

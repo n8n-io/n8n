@@ -123,7 +123,20 @@ describe('skill lifetime', () => {
 
 		await active.restore(list, scope, freshRun());
 
+		expect(list.activeSkillIds).not.toContain('router');
 		expect(active.instructions() ?? '').not.toContain('Pick a route.');
+	});
+
+	// The skill already rides in the system block, so dropping it would rewrite the warm cache.
+	it('keeps a stored turn-lifetime skill that has no load record on a warm cache', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['router']);
+		const active = new ActiveSkills(turnSource, 'assistant', memory.skillState);
+		const list = threadWithLoads(60_000);
+
+		await active.restore(list, scope, freshRun());
+
+		expect(list.activeSkillIds).toEqual(['router']);
 	});
 
 	it('keeps a turn-lifetime skill when a run resumes', async () => {
