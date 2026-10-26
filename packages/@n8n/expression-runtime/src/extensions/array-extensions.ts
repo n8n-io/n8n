@@ -116,33 +116,33 @@ function sum(value: unknown[]): number {
 function min(value: unknown[]): number {
 	ensureNumberArray(value, { fnName: 'min' });
 
-	return Math.min(
-		...value.map((v) => {
-			if (typeof v === 'string') {
-				return parseFloat(v);
-			}
-			if (typeof v !== 'number') {
-				return NaN;
-			}
-			return v;
-		}),
-	);
+	// Math.min(...value) passes every element as an argument and throws
+	// "Maximum call stack size exceeded" for arrays of ~125k numbers or more.
+	return value.reduce<number>((result, v) => {
+		if (typeof v === 'string') {
+			return Math.min(result, parseFloat(v));
+		}
+		if (typeof v !== 'number') {
+			return NaN;
+		}
+		return Math.min(result, v);
+	}, Infinity);
 }
 
 function max(value: unknown[]): number {
 	ensureNumberArray(value, { fnName: 'max' });
 
-	return Math.max(
-		...value.map((v) => {
-			if (typeof v === 'string') {
-				return parseFloat(v);
-			}
-			if (typeof v !== 'number') {
-				return NaN;
-			}
-			return v;
-		}),
-	);
+	// Math.max(...value) passes every element as an argument and throws
+	// "Maximum call stack size exceeded" for arrays of ~125k numbers or more.
+	return value.reduce<number>((result, v) => {
+		if (typeof v === 'string') {
+			return Math.max(result, parseFloat(v));
+		}
+		if (typeof v !== 'number') {
+			return NaN;
+		}
+		return Math.max(result, v);
+	}, -Infinity);
 }
 
 export function average(value: unknown[]) {
