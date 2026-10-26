@@ -67,6 +67,7 @@ import { pruneConfigForEval } from '@/modules/agents/evaluation/evaluation-confi
 import { resolveCanonicalMcpCatalogs } from './agent-execution.service';
 import { createLlmCompletionMockHandler } from './llm-completion-mock';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
+import { normalizeFormTriggerContent } from './form-trigger-content';
 import { createMcpMockFetch } from './mcp-mock-fetch';
 import { createWebSearchMock } from './web-search-mock';
 import { EvalTimings } from './eval-timings';
@@ -956,10 +957,13 @@ export class EvalExecutionService {
 				: {};
 		}
 
-		// Mirror any LLM-embedded binary map as real item-level binary; json stays
-		// untouched so $json.binary.* references keep resolving.
-		const embedded = readEmbeddedBinaryMeta(triggerContent);
-		const item: INodeExecutionData = { json: triggerContent as IDataObject };
+		// The model sometimes writes a Form Trigger's output in the Webhook's shape.
+		const content = normalizeFormTriggerContent(startNode, triggerContent);
+
+		// Mirror any LLM-embedded binary map as real item-level binary; json keeps the
+		// map so $json.binary.* references keep resolving.
+		const embedded = readEmbeddedBinaryMeta(content);
+		const item: INodeExecutionData = { json: content as IDataObject };
 		const binary: IBinaryKeyData = {};
 
 		// The embedded files are what the trigger emits; the requirement only fills in when they name none.
