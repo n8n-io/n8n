@@ -67,7 +67,9 @@ import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 mockInstance(ActiveWorkflowManager);
 mockInstance(Telemetry);
 mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
-beforeAll(async () => await testModules.loadModules(['skills', 'n8n-packages', 'agents', 'data-table']));
+beforeAll(
+	async () => await testModules.loadModules(['skills', 'n8n-packages', 'agents', 'data-table']),
+);
 const server = setupTestServer({
 	endpointGroups: ['publicApi'],
 	enabledFeatures: [
