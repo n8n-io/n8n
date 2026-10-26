@@ -19,6 +19,8 @@ import type {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
+
+import type { N8nChatFlagService } from '../integrations/platforms/n8n-chat-flag.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -335,6 +337,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			mock<AgentSetupCompletionService>(),
 			skillRefs,
+			mock<N8nChatFlagService>(),
 		);
 		agentValidationService = new AgentValidationService(
 			agentRepository,
@@ -384,6 +387,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			new AgentPolicyService(new PolicyEnforcementService()),
 			skillRefs,
 			transactionRunner,
+			mock<N8nChatFlagService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(
