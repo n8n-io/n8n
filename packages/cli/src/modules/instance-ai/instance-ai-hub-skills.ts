@@ -35,7 +35,7 @@ export interface HubRunSkills {
 	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
 }
 
-type LoadedHubSkill = RuntimeSkillContent & Pick<RuntimeSkillRegistryEntry, 'linkedFiles'>;
+type LoadedHubSkill = RuntimeSkillContent & Pick<RuntimeSkillRegistryEntry, 'hash' | 'linkedFiles'>;
 
 export async function loadHubRunSkills(
 	builtIns: RuntimeSkillSource,

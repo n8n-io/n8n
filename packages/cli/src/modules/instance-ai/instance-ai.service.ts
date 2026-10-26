@@ -3972,10 +3972,7 @@ export class InstanceAiService {
 		let contextSegmentReported = false;
 		let blockedForQuota = false;
 		const observedContextWork = new WorkSummaryAccumulator();
-		const contextEventBus = this.createRunEventBus(
-			observedContextWork,
-			opts.orchestrationContext,
-		);
+		const contextEventBus = this.createRunEventBus(observedContextWork, opts.orchestrationContext);
 		/**
 		 * Set once the model run has yielded output. The catch below also wraps
 		 * post-result finalization, so without this a finalization failure after a

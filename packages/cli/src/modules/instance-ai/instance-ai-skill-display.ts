@@ -1,8 +1,14 @@
-import { SKILL_LOAD_TOOL_NAME, type RuntimeSkillContent } from '@n8n/agents';
+import {
+	SKILL_LOAD_TOOL_NAME,
+	type RuntimeSkillContent,
+	type RuntimeSkillRegistryEntry,
+} from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
-export function createHubSkillDisplayMapper(loaded: ReadonlyMap<string, RuntimeSkillContent>) {
+export function createHubSkillDisplayMapper(
+	loaded: ReadonlyMap<string, RuntimeSkillContent & Pick<RuntimeSkillRegistryEntry, 'hash'>>,
+) {
 	const skillCalls = new Map<string, string>();
 	return (event: InstanceAiEvent): InstanceAiEvent => {
 		if (event.type === 'tool-call' && event.payload.toolName === SKILL_LOAD_TOOL_NAME) {
