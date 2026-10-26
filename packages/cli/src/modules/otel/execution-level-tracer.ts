@@ -310,7 +310,6 @@ export class ExecutionLevelTracer {
 				executionId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			throw error;
 		}
 	}
 
