@@ -35,10 +35,13 @@ import {
 import { TOOL_CALL_STATE } from '../constants';
 import { parseToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
 import AgentChatToolPolicyRefusal from './AgentChatToolPolicyRefusal.vue';
+import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
+import { getToolOutputAttachments } from '../utils/tool-output-files';
 
 const props = defineProps<{
 	toolCalls: ToolCall[];
 	projectId?: string;
+	agentId?: string;
 	canFixWithAssistant?: boolean;
 	dismissedToolCallIds?: string[];
 	executionId?: string;
@@ -53,6 +56,14 @@ const i18n = useI18n();
 const showFix = computed(() => Boolean(props.canFixWithAssistant && props.executionId));
 
 const dismissedToolCallIds = computed(() => new Set(props.dismissedToolCallIds ?? []));
+
+const outputFilesByToolCallId = computed(
+	() => new Map(props.toolCalls.map((tc) => [tc.toolCallId, getToolOutputAttachments(tc.output)])),
+);
+
+function outputFiles(tc: ToolCall) {
+	return outputFilesByToolCallId.value.get(tc.toolCallId) ?? [];
+}
 
 const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 	if (!showFix.value) return [];
@@ -309,6 +320,13 @@ function hasActiveToolCall(): boolean {
 							</div>
 						</div>
 					</N8nAiActivityStep>
+					<AgentChatMessageAttachments
+						v-if="outputFiles(tc).length && projectId && agentId"
+						:class="$style.outputFiles"
+						:attachments="outputFiles(tc)"
+						:project-id="projectId"
+						:agent-id="agentId"
+					/>
 				</template>
 			</N8nAiActivityStepGroup>
 		</template>
@@ -381,6 +399,13 @@ function hasActiveToolCall(): boolean {
 						</div>
 					</template>
 				</N8nAiActivityStep>
+				<AgentChatMessageAttachments
+					v-if="outputFiles(tc).length && projectId && agentId"
+					:class="$style.outputFiles"
+					:attachments="outputFiles(tc)"
+					:project-id="projectId"
+					:agent-id="agentId"
+				/>
 			</template>
 		</template>
 
@@ -446,6 +471,10 @@ function hasActiveToolCall(): boolean {
 
 .errorList li + li {
 	margin-top: var(--spacing--4xs);
+}
+
+.outputFiles {
+	margin: var(--spacing--4xs) 0 var(--spacing--2xs);
 }
 
 .childProgress {
