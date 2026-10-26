@@ -836,3 +836,156 @@ describe('Typed RPC: $getPairedItem() routes via getPairedItem', () => {
 		expect(result).toBeUndefined();
 	});
 });
+
+describe('Typed RPC: items that structured clone rejects (e.g. vm2 proxies)', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	// The legacy Code node (vm2) hands out its items as Proxy objects, which
+	// isolated-vm refuses to copy. A plain Proxy fails the copy the same way.
+	const makeItem = () =>
+		new Proxy(
+			{
+				json: {
+					name: 'Alice',
+					nested: new Proxy({ list: [1, { deep: 'x' }] }, {}),
+					when: new Date('2026-01-02T03:04:05.000Z'),
+					map: new Map([['k', new Proxy({ v: 1 }, {})]]),
+					set: new Set([1, 2]),
+					fn: () => 1,
+				},
+			},
+			{},
+		);
+
+	const makeData = () => {
+		const item = makeItem();
+		const items = [makeItem(), item];
+		return {
+			$: (_nodeName: string) => ({
+				first: () => item,
+				last: () => item,
+				all: () => items,
+				pairedItem: () => item,
+				itemMatching: () => item,
+				get item() {
+					return item;
+				},
+			}),
+			$input: { first: () => item, last: () => item, all: () => items },
+			$items: () => items,
+		};
+	};
+
+	const accessors = [
+		["$('Code').first()", "node 'Code'", 'json.fn'],
+		["$('Code').last()", "node 'Code'", 'json.fn'],
+		["$('Code').all()[1]", "node 'Code'", '[1].json.fn'],
+		["$('Code').item", "node 'Code'", 'json.fn'],
+		["$('Code').pairedItem()", "node 'Code'", 'json.fn'],
+		["$('Code').itemMatching(0)", "node 'Code'", 'json.fn'],
+		['$input.first()', 'the input node', 'json.fn'],
+		['$input.last()', 'the input node', 'json.fn'],
+		['$input.all()[1]', 'the input node', '[1].json.fn'],
+		['$items()[1]', 'the input node', '[1].json.fn'],
+		["$items('Code')[1]", "node 'Code'", '[1].json.fn'],
+	];
+
+	it.each(accessors)('%s returns JSON values, Dates, Maps and Sets', (accessor) => {
+		const data = makeData();
+		const evaluate = (expr: string) => evaluator.evaluate(`{{ ${expr} }}`, data, caller);
+
+		expect(evaluate(`${accessor}.json.name`)).toBe('Alice');
+		expect(evaluate(`${accessor}.json.nested.list[1].deep`)).toBe('x');
+		expect(evaluate(`${accessor}.json.when instanceof Date`)).toBe(true);
+		expect(evaluate(`${accessor}.json.when.toISOString()`)).toBe('2026-01-02T03:04:05.000Z');
+		expect(evaluate(`${accessor}.json.map.get('k').v`)).toBe(1);
+		expect(evaluate(`${accessor}.json.set.has(2)`)).toBe(true);
+	});
+
+	it.each(accessors)(
+		'%s throws an ExpressionError naming %s and the path when a function is read',
+		(accessor, source, path) => {
+			const data = makeData();
+
+			expect(() => evaluator.evaluate(`{{ ${accessor}.json.fn }}`, data, caller)).toThrow(
+				expect.objectContaining({
+					name: 'ExpressionError',
+					message: `Can't use ${path} from ${source} in an expression: it is a function`,
+				}),
+			);
+		},
+	);
+
+	it('leaves values that cannot be copied out of JSON.stringify, Object.keys and spread', () => {
+		const data = makeData();
+		const evaluate = (expr: string) => evaluator.evaluate(`{{ ${expr} }}`, data, caller);
+
+		expect(evaluate("Object.keys($('Code').first().json)")).toEqual([
+			'name',
+			'nested',
+			'when',
+			'map',
+			'set',
+		]);
+		expect(evaluate("'fn' in { ...$('Code').first().json }")).toBe(false);
+		expect(evaluate("JSON.parse(JSON.stringify($('Code').first().json)).name")).toBe('Alice');
+	});
+
+	it.each([
+		['a symbol', Symbol('s')],
+		['a Map that contains a function', new Map([['k', () => 1]])],
+		['a Set that contains a symbol', new Set([Symbol('s')])],
+	])('throws when reading a value that is %s', (kind, value) => {
+		const data = { $: () => ({ first: () => new Proxy({ json: { value } }, {}) }) };
+
+		expect(() => evaluator.evaluate("{{ $('Code').first().json.value }}", data, caller)).toThrow(
+			`Can't use json.value from node 'Code' in an expression: it is ${kind}`,
+		);
+	});
+
+	it('throws when reading a circular reference', () => {
+		const json: Record<string, unknown> = { name: 'Alice' };
+		json.self = json;
+		const data = { $: () => ({ first: () => new Proxy({ json }, {}) }) };
+		const evaluate = (expr: string) => evaluator.evaluate(`{{ ${expr} }}`, data, caller);
+
+		expect(evaluate("$('Code').first().json.name")).toBe('Alice');
+		expect(() => evaluate("$('Code').first().json.self")).toThrow(
+			"Can't use json.self from node 'Code' in an expression: it is a circular reference",
+		);
+	});
+
+	it('reuses the rebuilt item within one node run and rebuilds it for another node or run', () => {
+		const json = { value: 'before' };
+		const item = new Proxy({ json }, {});
+		const dataFor = ($nodeId: string, $runIndex: number) => ({
+			$nodeId,
+			$runIndex,
+			$: () => ({ first: () => item }),
+		});
+		const evaluate = (data: Record<string, unknown>) =>
+			evaluator.evaluate("{{ $('Code').first().json.value }}", data, caller);
+
+		expect(evaluate(dataFor('node-a', 0))).toBe('before');
+		json.value = 'after';
+		expect(evaluate(dataFor('node-a', 0))).toBe('before');
+		expect(evaluate(dataFor('node-a', 1))).toBe('after');
+		json.value = 'again';
+		expect(evaluate(dataFor('node-b', 1))).toBe('again');
+	});
+});
