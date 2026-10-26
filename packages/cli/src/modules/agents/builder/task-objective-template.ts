@@ -8,8 +8,8 @@
  * objective supplies run-specific context beneath the target-agent instructions,
  * and must say where the result is delivered because nobody is watching the run.
  *
- * Shared by the `agent_builder_create_tasks` builder tool, the `agent-builder-target-tasks`
- * skill, and the builder prompt so the guidance is identical everywhere.
+ * The `agent-builder-target-tasks` skill shows it. The builder tools only check the
+ * section headings, so the always-loaded tool schemas stay small.
  */
 export const TASK_OBJECTIVE_TEMPLATE = `## Objective
 <One sentence: the run-specific outcome to achieve and why it matters. Do not repeat the agent's overall purpose.>
@@ -39,5 +39,15 @@ export const TASK_OBJECTIVE_FORMAT_RULE =
 	'chat and follow this exact Markdown structure, with every section filled in with concrete, ' +
 	'specific content — no placeholders or angle-bracket text:';
 
-/** The rule followed by the template, for embedding in tool / field descriptions. */
-export const TASK_OBJECTIVE_GUIDANCE = `${TASK_OBJECTIVE_FORMAT_RULE}\n\n${TASK_OBJECTIVE_TEMPLATE}`;
+/** The section headings of the template, in order. */
+export const TASK_OBJECTIVE_SECTIONS = [...TASK_OBJECTIVE_TEMPLATE.matchAll(/^## (.+)$/gm)].map(
+	(match) => match[1],
+);
+
+/** The template sections that an objective does not have as a `## ` heading. */
+export function missingObjectiveSections(objective: string): string[] {
+	const headings = new Set(
+		[...objective.matchAll(/^##\s+(.+?)\s*$/gm)].map((match) => match[1].toLowerCase()),
+	);
+	return TASK_OBJECTIVE_SECTIONS.filter((section) => !headings.has(section.toLowerCase()));
+}

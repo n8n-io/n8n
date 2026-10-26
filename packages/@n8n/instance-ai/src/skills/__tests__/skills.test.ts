@@ -321,6 +321,9 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('## Agent UI labels');
 		expect(loaded?.instructions).toContain('Sessions tab');
 		expect(loaded?.instructions).toContain('Never say Runs tab');
+		// The skill and task tools no longer carry the templates, so these load gates must stay.
+		expect(loaded?.instructions).toContain('Load `agent-builder-target-skills`');
+		expect(loaded?.instructions).toContain('Load `agent-builder-target-tasks`');
 	});
 
 	it('loads the bundled Browser Use credential setup skill', async () => {

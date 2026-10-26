@@ -5,6 +5,7 @@ import {
 } from '@n8n/agents';
 
 import { getBuilderRuntimeSkills } from '..';
+import { TASK_OBJECTIVE_SECTIONS } from '../../task-objective-template';
 
 describe('getBuilderRuntimeSkills', () => {
 	const baseSource = createRuntimeSkillSource([
@@ -37,5 +38,32 @@ describe('getBuilderRuntimeSkills', () => {
 		for (const skill of builderSkills) {
 			expect(catalog).not.toContain(`id: "${skill.id}"`);
 		}
+	});
+
+	function instructionsOf(skillId: string): string {
+		const skill = getBuilderRuntimeSkills().find((entry) => entry.id === skillId);
+		return skill?.instructions ?? '';
+	}
+
+	it('keeps the skill templates and rules in the target-skills reference', () => {
+		const instructions = instructionsOf('agent-builder-target-skills');
+
+		for (const heading of ['Overview', 'Inputs', 'Steps', 'Rules', 'Example', 'Gotchas']) {
+			expect(instructions).toContain(`## ${heading}\n`);
+		}
+		expect(instructions).toContain('routing contract');
+		expect(instructions).toContain('unique in the project');
+		expect(instructions).toContain('References are not automatically loaded');
+		expect(instructions).toContain('Do not invent tool names or file paths');
+	});
+
+	it('keeps the objective template and rules in the target-tasks reference', () => {
+		const instructions = instructionsOf('agent-builder-target-tasks');
+
+		for (const heading of TASK_OBJECTIVE_SECTIONS) {
+			expect(instructions).toContain(`## ${heading}\n`);
+		}
+		expect(instructions).toContain('before you call `agent_builder_create_tasks`');
+		expect(instructions).toContain('fails at runtime');
 	});
 });

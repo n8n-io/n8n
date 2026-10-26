@@ -89,8 +89,7 @@ import type {
 	FinishSetupConfigWrites,
 } from './interactive/finish-setup.tool';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
-import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
-import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
+import { missingObjectiveSections } from './task-objective-template';
 import { buildVerifyMcpServerTool, type McpCredentialApplyResult } from './verify-mcp-server.tool';
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
@@ -216,6 +215,21 @@ type EditorLockFailure = { ok: false; errors: ConfigValidationError[] };
 const STALE_SKILL_ERROR_MESSAGE =
 	'Skill changed. Call agent-context with type "skill", then retry with its skill and skillHash.';
 
+/** Asks for a fix when a saved task objective misses sections of the objective template. */
+function incompleteObjectivesNextStep(
+	tasks: Array<{ name: string; objective: string }>,
+): string | undefined {
+	const gaps = tasks.flatMap(({ name, objective }) => {
+		const missing = missingObjectiveSections(objective);
+		return missing.length > 0 ? [`"${name}" (${missing.join(', ')})`] : [];
+	});
+	if (gaps.length === 0) return undefined;
+	return (
+		`These objectives miss template sections: ${gaps.join('; ')}. Load ` +
+		`agent-builder-target-tasks and replace each objective with ${BUILDER_TOOLS.UPDATE_TASK}.`
+	);
+}
+
 /** A taken name is a conflict too, but a retry with a fresh hash would fail the same way. */
 function updateSkillErrorMessage(error: unknown, message: string): string {
 	if (error instanceof SkillNameTakenError) return skillNameTakenToolMessage(error.skillName);
@@ -236,17 +250,12 @@ const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
 
 const createSkillInputSchema = z
 	.object({
-		name: agentSkillSchema.shape.name.describe(
-			'Human-readable skill name. It must be unique in the project: no other skill of this ' +
-				'project may have a name like it (case, spaces, hyphens and underscores do not count).',
-		),
-		description: agentSkillSchema.shape.description.describe(SKILL_DESCRIPTION_RULE),
-		instructions: agentSkillSchema.shape.instructions.describe(SKILL_BODY_GUIDANCE),
+		name: agentSkillSchema.shape.name.describe('Must be unique in the project'),
+		description: agentSkillSchema.shape.description.describe('Routing contract'),
+		instructions: agentSkillSchema.shape.instructions.describe('Body in the template'),
 		references: agentSkillSchema.shape.references
 			.optional()
-			.describe(
-				'Markdown-only supporting files under references/... paths. References are not automatically loaded; instructions must say exactly when to load each reference by path.',
-			),
+			.describe('Markdown files under references/'),
 	})
 	.strict();
 
@@ -258,28 +267,20 @@ const updateSkillFieldsSchema = z
 		description: agentSkillSchema.shape.description.optional(),
 		instructions: agentSkillSchema.shape.instructions
 			.optional()
-			.describe('Complete replacement body. Use only for a rewrite of most of the body.'),
+			.describe('Complete replacement body'),
 		instructionEdits: z
 			.array(
 				z
 					.object({
-						oldText: z
-							.string()
-							.min(1)
-							.describe(
-								'Exact text from the current instructions. It must match exactly one place.',
-							),
-						newText: z.string().describe('Replacement text. Use an empty string to delete.'),
+						oldText: z.string().min(1).describe('Exact text that matches one place'),
+						newText: z.string().describe('Empty string deletes'),
 					})
 					.strict(),
 			)
 			.min(1)
 			.max(20)
 			.optional()
-			.describe(
-				'Targeted replacements in the current instructions, applied in order. Prefer this to ' +
-					'`instructions` for a partial change. Do not pass both.',
-			),
+			.describe('Partial body edits, applied in order. Do not pass with `instructions`.'),
 		references: agentSkillSchema.shape.references
 			.unwrap()
 			.refine((references) => references.length > 0, 'Pass null to clear references.')
@@ -296,15 +297,13 @@ const updateSkillFieldsSchema = z
 
 const updateSkillInputSchema = z
 	.object({
-		skillId: z.string().min(1).describe('Persisted target-agent skill id to update.'),
+		skillId: z.string().min(1),
 		baseSkillHash: z
 			.string()
 			.min(1)
-			.describe(
-				'skillHash from the immediately preceding agent-context with type "skill" result for this skill.',
-			),
+			.describe('skillHash from the preceding agent-context type "skill" result'),
 		updates: updateSkillFieldsSchema.describe(
-			'Only the fields to change. Pass null for references to remove them; an empty array is invalid.',
+			'Only the fields to change. Pass null for references to remove them.',
 		),
 	})
 	.strict();
@@ -314,16 +313,11 @@ type UpdateSkillInput = z.infer<typeof updateSkillInputSchema>;
 const updateTaskFieldsSchema = z
 	.object({
 		name: agentTaskSchema.shape.name.optional(),
-		// agent_builder_create_tasks is always loaded with this tool and shows the full template.
 		objective: agentTaskSchema.shape.objective
 			.optional()
-			.describe(
-				`Complete replacement objective. Follow the objective template of ${BUILDER_TOOLS.CREATE_TASKS}.`,
-			),
+			.describe('Complete replacement objective'),
 		cronExpression: agentTaskSchema.shape.cronExpression.optional(),
-		timezone: agentTaskSchema.shape.timezone.describe(
-			'IANA zone the cron runs in. Pass null to move the task back to the instance timezone.',
-		),
+		timezone: agentTaskSchema.shape.timezone.describe('Pass null for the instance timezone'),
 	})
 	.strict()
 	.refine((updates) => Object.keys(updates).length > 0, {
@@ -332,8 +326,8 @@ const updateTaskFieldsSchema = z
 
 const updateTaskInputSchema = z
 	.object({
-		taskId: z.string().min(1).describe('Persisted target-agent task id to update.'),
-		updates: updateTaskFieldsSchema.describe('Only the task fields to change.'),
+		taskId: z.string().min(1),
+		updates: updateTaskFieldsSchema.describe('Only the fields to change'),
 	})
 	.strict();
 
@@ -1165,49 +1159,26 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.CREATE_TASKS)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.CREATE_TASKS))
 			.description(
-				'Create one or more recurring scheduled tasks for the target agent (name + objective + cron ' +
-					'schedule per task) in a single call. Pass every task you currently know how to write in one ' +
-					"`tasks` array — do not spread multiple fully-specified tasks across separate calls; each task's " +
-					'objective field carries its own structured template. The whole batch is all-or-nothing: an ' +
-					'invalid cron or objective rejects every task in the call. This adds a `{ type: "task", id, ' +
-					'enabled }` ref per task to the agent config (config.tasks) and each task starts running once ' +
-					'the agent is (re)published via `agent_builder_publish_agent`. Returns { ok: true, configMutated: true, agentId, ' +
-					'configHash, tasks: [{ id, name, enabled }, ...] } (same order as input, objectives and crons are ' +
-					'not echoed back) or { ok: false, errors }. Use the returned configHash as baseConfigHash for your ' +
-					'next config write.',
-			)
-			.systemInstruction(
-				'Never create a task with a vague, broad, or placeholder objective, an objective missing any ' +
-					'required section, or an unclear schedule. Each objective must follow the required structured ' +
-					'Markdown template (Objective, Context, Steps, Output, Constraints, Success criteria) with every ' +
-					'section filled in with concrete, run-specific content. Agent Instructions still apply and ' +
-					'configured Skills remain available during scheduled runs, so never repeat universal rules or ' +
-					"copy reusable procedures into an objective. If anything is ambiguous, derive it from the user's goal as " +
-					'stated assumptions listed in your summary; ask the user clarifying questions with agent_builder_ask_questions ' +
-					'only when even a reasonable assumption is impossible, before calling ' +
-					'agent_builder_create_tasks. A task can only use tools the agent already has: if any step in an objective ' +
-					'requires a tool, integration, or web search the agent is missing, you MUST add it to the agent ' +
-					'config (agent_builder_patch_config/agent_builder_write_config) BEFORE calling agent_builder_create_tasks — otherwise the task will fail at ' +
-					'runtime. Batch every task you currently know how to write into one call.',
+				'Create recurring scheduled tasks for the target agent. Load agent-builder-target-tasks ' +
+					'first: it has the required objective template and the task rules. Pass every task you ' +
+					'can write in one `tasks` array; the batch is all-or-nothing. Tasks run after the next ' +
+					'agent_builder_publish_agent.',
 			)
 			.input(
 				z.object({
 					tasks: z
 						.array(
 							z.object({
-								name: agentTaskSchema.shape.name.describe('Short, human-readable task name.'),
-								objective: agentTaskSchema.shape.objective.describe(TASK_OBJECTIVE_GUIDANCE),
-								cronExpression: agentTaskSchema.shape.cronExpression.describe(
-									'A 5-field cron expression for when the task runs, e.g. "0 9 * * 1-5" = weekdays at 09:00.',
-								),
+								name: agentTaskSchema.shape.name,
+								objective: agentTaskSchema.shape.objective.describe('Objective in the template'),
+								cronExpression: agentTaskSchema.shape.cronExpression,
 								timezone: agentTaskSchema.shape.timezone.describe(
-									'IANA timezone the cron runs in, e.g. "Europe/London". Set it when the user names a timezone or a location; omit it to use the instance timezone.',
+									'Set when the user names a timezone or location',
 								),
 							}),
 						)
 						.min(1)
-						.max(20)
-						.describe('Every task to create, in the order they should be created.'),
+						.max(20),
 				}),
 			)
 			.handler(
@@ -1243,10 +1214,12 @@ export class AgentsBuilderToolsService {
 						};
 					}
 
+					const nextStep = incompleteObjectivesNextStep(tasks);
 					return {
 						ok: true,
 						configHash: created.configHash,
 						tasks: created.tasks.map(({ id, name }) => ({ id, name, enabled: true as const })),
+						...(nextStep ? { nextStep } : {}),
 					};
 				},
 			)
@@ -1257,9 +1230,8 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.UPDATE_TASK)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.UPDATE_TASK))
 			.description(
-				'Update selected body fields of an existing target-agent scheduled task in place, preserving ' +
-					'its id and config reference. Returns { ok: true, id, name, configMutated: true, agentId } ' +
-					'or { ok: false, errors }.',
+				'Update fields of an existing target-agent task in place. It keeps the task id and config ' +
+					'ref. Load agent-builder-target-tasks before you replace an objective.',
 			)
 			.input(updateTaskInputSchema)
 			.handler(async ({ taskId, updates }: UpdateTaskInput) => {
@@ -1276,7 +1248,17 @@ export class AgentsBuilderToolsService {
 							modifiedBy: 'builder',
 						},
 					);
-					return { ok: true, id: task.id, name: task.name, ...(changed ? {} : { changed }) };
+					const nextStep =
+						updates.objective === undefined
+							? undefined
+							: incompleteObjectivesNextStep([{ name: task.name, objective: updates.objective }]);
+					return {
+						ok: true,
+						id: task.id,
+						name: task.name,
+						...(changed ? {} : { changed }),
+						...(nextStep ? { nextStep } : {}),
+					};
 				} catch (e) {
 					return {
 						ok: false,
@@ -1291,17 +1273,10 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.UPDATE_SKILL)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.UPDATE_SKILL))
 			.description(
-				'Update selected fields of an existing target-agent skill in place, preserving its id and ' +
-					'agent config reference. Requires baseSkillHash from the immediately preceding agent-context with type "skill" ' +
-					'result. To change part of the body, pass instructionEdits with oldText/newText pairs ' +
-					'instead of rewriting instructions. Pass null for references to remove all references; an ' +
-					'empty array is invalid. The skill is shared: the update saves its next version, and every ' +
-					'agent draft that follows the latest version runs that version. Published versions keep ' +
-					'the version they pinned. Returns ' +
-					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. A failed edit ' +
-					'saves nothing: fix oldText so it matches exactly one place and retry with the same ' +
-					'baseSkillHash. On a stale skill error, ' +
-					'call agent-context with type "skill" and retry once with its fresh skillHash.',
+				'Update fields of an existing target-agent skill in place. It keeps the skill id and ' +
+					'config ref. Load agent-builder-target-skills first. The skill is shared: the update ' +
+					'saves its next version for every draft that follows the latest version. Published ' +
+					'versions keep the version they pinned.',
 			)
 			.input(updateSkillInputSchema)
 			.handler(async ({ skillId, baseSkillHash, updates }: UpdateSkillInput) => {
@@ -1341,36 +1316,14 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.CREATE_SKILLS)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.CREATE_SKILLS))
 			.description(
-				'Create and store one or more agent skills (reusable, load-on-demand capabilities) in a ' +
-					'single call. Pass every skill you currently know how to write in one `skills` array — do ' +
-					"not spread multiple fully-specified skills across separate calls; each skill's instructions " +
-					'field carries its own structured template. The whole batch is all-or-nothing: an invalid or ' +
-					'duplicate-named skill rejects every skill in the call. It also attaches a `{ type: "skill", id }` ' +
-					'ref per skill to the agent config (config.skills), so do not patch them in yourself; the agent ' +
-					'config must already exist. Returns { ok: true, configMutated: true, agentId, configHash, skills: ' +
-					'[{ id, name }, ...] } (same order as input, bodies are not echoed back) or { ok: false, errors }. ' +
-					'Use the returned configHash as baseConfigHash for your next config write.',
-			)
-			.systemInstruction(
-				'Never create a vague or placeholder skill. The description field is the routing contract the ' +
-					'runtime uses to decide when to load the skill; the instructions must follow the required ' +
-					'structured Markdown template (Overview, Inputs, Steps, Rules, Example, Gotchas) with each ' +
-					'applicable section filled in with concrete, specific content. If you do not have enough domain ' +
-					"detail to write a genuinely useful skill, derive it from the user's goal as stated assumptions " +
-					'listed in your summary; ask the user clarifying questions only when even a reasonable ' +
-					'assumption is impossible. Use references ' +
-					'only for markdown supporting files under the references/ directory — references are not ' +
-					'automatically loaded, so instructions must say exactly when to load each one by path; scripts and ' +
-					'non-markdown linked files are not supported. Do not invent tool names or reference paths. Batch ' +
-					'every skill you currently know how to write into one call.',
+				'Create target-agent skills and attach a ref for each to config.skills. Do not patch the ' +
+					'refs yourself. The agent config must exist. Load agent-builder-target-skills first: it ' +
+					'has the required description and body templates and the skill rules. Pass every skill ' +
+					'you can write in one `skills` array; the batch is all-or-nothing.',
 			)
 			.input(
 				z.object({
-					skills: z
-						.array(createSkillInputSchema)
-						.min(1)
-						.max(20)
-						.describe('Every skill to create, in the order they should be created.'),
+					skills: z.array(createSkillInputSchema).min(1).max(20),
 				}),
 			)
 			.handler(async ({ skills }: { skills: CreateSkillInput[] }) => {
