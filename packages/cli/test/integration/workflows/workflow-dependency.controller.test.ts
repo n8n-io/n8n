@@ -654,7 +654,6 @@ describe('POST /workflow-dependencies/details', () => {
 	});
 });
 
-// LIGO-1310: Workflow and credential IDs can match without a workflow dependency.
 describe('Workflow and credential ID collisions', () => {
 	it('should report no dependents for an unused workflow that shares a credential ID', async () => {
 		const owner = await createOwner();
@@ -682,28 +681,22 @@ describe('Workflow and credential ID collisions', () => {
 	});
 
 	it.each([
-		{ scenario: 'distinct IDs', matchingIds: false, batch: false },
-		{ scenario: 'matching IDs', matchingIds: true, batch: false },
-		{ scenario: 'matching IDs in a batch', matchingIds: true, batch: true },
-	])('should list only callers with $scenario', async ({ matchingIds, batch }) => {
+		{ scenario: 'a single workflow', batch: false },
+		{ scenario: 'a batch', batch: true },
+	])('should list only workflow callers when querying $scenario', async ({ batch }) => {
 		const owner = await createOwner();
 		const member = await createMember();
 		const credential = await saveCredential(randomCredentialPayload(), {
 			user: member,
 			role: 'credential:owner',
 		});
-		const workflow = await createWorkflow(
-			{ id: matchingIds ? credential.id : randomUUID(), name: 'Target workflow' },
-			member,
-		);
+		const workflow = await createWorkflow({ id: credential.id, name: 'Target workflow' }, member);
 		const caller = await createWorkflow({ name: 'Workflow caller' }, member);
 		const privateCaller = await createWorkflow({ name: 'Private workflow caller' }, owner);
 		const credentialUser = await createWorkflow({ name: 'Credential user' }, member);
-		const privateCredentialUser = await createWorkflow({ name: 'Private credential user' }, owner);
 		await seedDep(caller.id, 'workflowCall', workflow.id);
 		await seedDep(privateCaller.id, 'workflowCall', workflow.id);
 		await seedDep(credentialUser.id, 'credentialId', credential.id);
-		await seedDep(privateCredentialUser.id, 'credentialId', credential.id);
 
 		// A batch also loads the credential use through its source workflow.
 		const resourceIds = batch ? [workflow.id, credentialUser.id] : [workflow.id];

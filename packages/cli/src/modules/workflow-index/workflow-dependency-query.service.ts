@@ -11,7 +11,7 @@ import {
 	WorkflowDependencyRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { User, WorkflowDependency, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In, type FindManyOptions } from '@n8n/typeorm';
@@ -31,7 +31,10 @@ const DEFAULT_NODE_USAGE_WORKFLOW_LIMIT = 10;
  *  otherwise returns every type in use. */
 const DEFAULT_NODE_USAGE_TYPE_LIMIT = 100;
 
-const RESOURCE_DEPENDENCY_TYPES: Record<DependencyResourceType, string[]> = {
+const RESOURCE_DEPENDENCY_TYPES: Record<
+	DependencyResourceType,
+	Array<WorkflowDependency['dependencyType']>
+> = {
 	workflow: ['workflowCall', 'errorWorkflow'],
 	credential: ['credentialId'],
 	dataTable: ['dataTableId'],
@@ -327,28 +330,11 @@ export class WorkflowDependencyQueryService {
 		if (accessibleInputIds.length === 0) return null;
 
 		const [rawDeps, agentDeps] = await Promise.all([
-			this.dependencyRepository.find({
-				where: [
-					...(resourceType === 'workflow'
-						? [
-								{
-									workflowId: In(accessibleInputIds),
-									dependencyType: In([
-										'credentialId',
-										'dataTableId',
-										'errorWorkflow',
-										'workflowCall',
-									]),
-								},
-							]
-						: []),
-					{
-						dependencyKey: In(accessibleInputIds),
-						dependencyType: In(RESOURCE_DEPENDENCY_TYPES[resourceType]),
-					},
-				],
-				select: ['workflowId', 'dependencyType', 'dependencyKey'],
-			}),
+			this.dependencyRepository.findDependenciesForResources(
+				accessibleInputIds,
+				RESOURCE_DEPENDENCY_TYPES[resourceType],
+				resourceType === 'workflow',
+			),
 			this.loadAgentDeps(resourceType, accessibleInputIds),
 		]);
 
@@ -366,7 +352,7 @@ export class WorkflowDependencyQueryService {
 	}
 
 	private buildDepMaps(
-		rawDeps: Array<{ workflowId: string; dependencyType: string; dependencyKey: string }>,
+		rawDeps: Array<Pick<WorkflowDependency, 'workflowId' | 'dependencyType' | 'dependencyKey'>>,
 		agentDeps: Array<{ agentId: string; resourceId: string }>,
 		resourceType: DependencyResourceType,
 	): RawDepMaps {
