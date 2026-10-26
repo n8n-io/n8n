@@ -99,7 +99,7 @@ export function exceedsAllEndpointsLimit(
 	return endpointLimit > globalLimit && Number(endpoint.window) <= Number(global.window);
 }
 
-export function formatGroupSummary(
+export function summarizeLimits(
 	settings: PublicApiRateLimitSettings,
 	group: RateLimitGroup,
 	i18n: ReturnType<typeof useI18n>,

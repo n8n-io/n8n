@@ -23,7 +23,7 @@ import * as rateLimitSettingsApi from '@n8n/rest-api-client/api/public-api-rate-
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import ApiKeyRateLimitsDialog from './ApiKeyRateLimitsDialog.vue';
-import { RATE_LIMIT_GROUP_KEYS, formatGroupSummary } from './rateLimits';
+import { RATE_LIMIT_GROUP_KEYS, summarizeLimits } from './rateLimits';
 
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -149,7 +149,7 @@ async function persist(next: PublicApiRateLimitSettings) {
 									</N8nTooltip>
 								</div>
 								<N8nText size="small" :data-test-id="`rate-limits-summary-${group}`">
-									{{ formatGroupSummary(settings, group, i18n) }}
+									{{ summarizeLimits(settings, group, i18n) }}
 								</N8nText>
 							</div>
 						</div>

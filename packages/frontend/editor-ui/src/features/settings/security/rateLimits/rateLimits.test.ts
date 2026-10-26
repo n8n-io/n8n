@@ -3,7 +3,7 @@ import { useI18n } from '@n8n/i18n';
 
 import {
 	exceedsAllEndpointsLimit,
-	formatGroupSummary,
+	summarizeLimits,
 	parseInputs,
 	getRowError,
 	hasNoLimits,
@@ -100,7 +100,7 @@ describe('rateLimits', () => {
 		});
 	});
 
-	describe('formatGroupSummary', () => {
+	describe('summarizeLimits', () => {
 		it.each([
 			{
 				case: 'both limits with the same window',
@@ -128,7 +128,7 @@ describe('rateLimits', () => {
 				text: 'no limit on reads or writes',
 			},
 		])('writes $case', ({ values, text }) => {
-			expect(formatGroupSummary({ ...settings, ...values }, 'allEndpoints', i18n)).toBe(text);
+			expect(summarizeLimits({ ...settings, ...values }, 'allEndpoints', i18n)).toBe(text);
 		});
 	});
 });
