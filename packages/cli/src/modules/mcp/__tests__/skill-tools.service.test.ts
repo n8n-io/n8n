@@ -124,6 +124,18 @@ describe('McpSkillToolsService', () => {
 
 			expect(JSON.stringify(result.structuredContent)).not.toContain('someone@example.com');
 		});
+
+		it('returns no agent fields, because a skill belongs to a project or the instance', async () => {
+			skillsApi.list.mockResolvedValue({ count: 1, data: [listItem] });
+
+			const result = await callTool('search_n8n_skills', { limit: 50, skip: 0 });
+
+			const [skill] = (result.structuredContent as { skills: Array<Record<string, unknown>> })
+				.skills;
+			expect(skill).toBeDefined();
+			expect(skill).not.toHaveProperty('agentId');
+			expect(skill).not.toHaveProperty('agentName');
+		});
 	});
 
 	describe('get_skill', () => {

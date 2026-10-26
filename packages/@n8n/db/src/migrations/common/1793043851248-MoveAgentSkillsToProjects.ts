@@ -24,6 +24,9 @@ type FileRow = { path: string; content: string };
 /** `skill_version.name` is varchar(128). */
 const NAME_MAX_LENGTH = 128;
 
+/** The longest agent name a new skill name holds, so the attempt number always fits. */
+const AGENT_LABEL_MAX_LENGTH = NAME_MAX_LENGTH / 2;
+
 const BATCH_SIZE = 100;
 
 /**
@@ -209,17 +212,13 @@ function nameKey(name: string): string {
 /** The name, or "<name> (<agent name>)" with a number after it until it is free. */
 function freeName(name: string, agentName: string, taken: Set<string>): string {
 	if (!taken.has(nameKey(name))) return name;
+	// A long agent name is cut, so the tail and its number always fit next to the name.
+	const label = agentName.slice(0, AGENT_LABEL_MAX_LENGTH).trimEnd();
 	for (let attempt = 1; ; attempt++) {
-		const tail = attempt === 1 ? ` (${agentName})` : ` (${agentName}) ${attempt}`;
-		const candidate = withTail(name, tail);
+		const tail = attempt === 1 ? ` (${label})` : ` (${label}) ${attempt}`;
+		const candidate = `${name.slice(0, NAME_MAX_LENGTH - tail.length).trimEnd()}${tail}`;
 		if (!taken.has(nameKey(candidate))) return candidate;
 	}
-}
-
-/** Shortens the name, not the tail, so the result fits the name column. */
-function withTail(name: string, tail: string): string {
-	if (tail.length >= NAME_MAX_LENGTH) return `${name}${tail}`.slice(0, NAME_MAX_LENGTH);
-	return `${name.slice(0, NAME_MAX_LENGTH - tail.length).trimEnd()}${tail}`;
 }
 
 type SkillContent = {

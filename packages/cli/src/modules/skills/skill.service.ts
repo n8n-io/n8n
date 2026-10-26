@@ -434,14 +434,19 @@ export class SkillService {
 		return name;
 	}
 
-	/** `freeName` for many names, in one query. Each name counts as taken for the next ones. */
-	async freeNames(requested: string[], target: SkillTarget, ctx: OperationContext = {}) {
+	/**
+	 * `freeName` for many names, in one query. Each name counts as taken for the next ones,
+	 * and so does each name in `alsoTaken`.
+	 */
+	async freeNames(
+		requested: string[],
+		target: SkillTarget,
+		ctx: OperationContext = {},
+		alsoTaken: string[] = [],
+	) {
 		if (requested.length === 0) return [];
-		const taken = new Set(
-			(await this.skillRepository.findLatestNamesInTarget(target, ctx)).map(({ name }) =>
-				skillNameKey(name),
-			),
-		);
+		const inTarget = await this.skillRepository.findLatestNamesInTarget(target, ctx);
+		const taken = new Set([...inTarget.map(({ name }) => name), ...alsoTaken].map(skillNameKey));
 		return requested.map((name) => {
 			const free = firstFreeName(name.trim(), taken);
 			taken.add(skillNameKey(free));

@@ -172,6 +172,30 @@ describe('MoveAgentSkillsToProjects migration', () => {
 		expect(skillTable?.findColumnByName('agentId')).toBeUndefined();
 	});
 
+	it('keeps published pins on the version they pinned', async () => {
+		await insertSkill({ projectId }, ['Research']);
+		const agentId = await insertAgent('Scout', projectId);
+		const skillId = await insertSkill({ agentId }, ['Research']);
+		const [pinned] = await versionsOf(skillId);
+		const agentVersionId = randomUUID();
+		await insertRow('agent_history', { versionId: agentVersionId, agentId, author: 'Ricardo' });
+		await insertRow('agent_version_skill_dependency', {
+			agentVersionId,
+			skillId,
+			skillVersionId: pinned.id,
+		});
+
+		await migrate();
+
+		const pins = await select<{ skillId: string; skillVersionId: string }>(
+			`SELECT ${column('skillId')}, ${column('skillVersionId')} FROM ${table('agent_version_skill_dependency')}
+			 WHERE ${column('agentVersionId')} = :agentVersionId`,
+			{ agentVersionId },
+		);
+		expect(pins).toEqual([{ skillId, skillVersionId: pinned.id }]);
+		expect(await latestName(skillId)).toBe('Research (Scout)');
+	});
+
 	it('keeps the skill when its agent is deleted after the move', async () => {
 		const agentId = await insertAgent('Writer', projectId);
 		const skillId = await insertSkill({ agentId }, ['Tone']);
@@ -264,6 +288,27 @@ describe('MoveAgentSkillsToProjects migration', () => {
 
 		expect(await latestName(skillId)).toBe('Research');
 		expect(await latestName(instanceSkillId)).toBe('Research (Helper)');
+	});
+
+	it('finds a free name when the skill and agent names are as long as allowed', async () => {
+		const longName = 'R'.repeat(128);
+		const agentName = 'A'.repeat(128);
+		await insertSkill({ projectId }, [longName]);
+		const first = await insertSkill({ agentId: await insertAgent(agentName, projectId) }, [
+			longName,
+		]);
+		const second = await insertSkill({ agentId: await insertAgent(agentName, projectId) }, [
+			longName,
+		]);
+
+		await migrate();
+
+		const firstName = await latestName(first);
+		const secondName = await latestName(second);
+		expect(firstName).toHaveLength(128);
+		expect(secondName).toHaveLength(128);
+		expect(firstName.endsWith(` (${'A'.repeat(64)})`)).toBe(true);
+		expect(secondName.endsWith(` (${'A'.repeat(64)}) 2`)).toBe(true);
 	});
 
 	it('shortens a long name so the new name fits', async () => {

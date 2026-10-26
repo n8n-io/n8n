@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
 import type { AgentJsonSkillConfig } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
+import { ForbiddenError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -315,6 +316,7 @@ describe('AgentSkillRefsService', () => {
 			agentSkillUsage.checkRefs.mockImplementation(async (_agent, refs) => refs);
 			skillService.create.mockResolvedValue('skill_created');
 			skillService.freeNames.mockImplementation(async (names) => names);
+			skillRepository.findLatestSummaries.mockResolvedValue(new Map());
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 		});
 
@@ -355,9 +357,9 @@ describe('AgentSkillRefsService', () => {
 			);
 		});
 
-		it('creates a project skill without a project skill scope', async () => {
+		it('refuses to create a project skill without the skill create permission there', async () => {
 			skillRepository.findByIds.mockResolvedValue([]);
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			skillService.assertCanCreate.mockRejectedValue(new ForbiddenError('No'));
 
 			await expect(
 				service.createDraftRefs(
@@ -367,19 +369,18 @@ describe('AgentSkillRefsService', () => {
 					user,
 					ctx,
 				),
-			).resolves.toEqual([{ type: 'skill', id: 'skill_created' }]);
-			// The caller already checked the agent permission, which is enough.
-			expect(userHasScopes).not.toHaveBeenCalled();
+			).rejects.toThrow(ForbiddenError);
+			expect(skillService.assertCanCreate).toHaveBeenCalledWith(user, { projectId: 'project-1' });
+			expect(skillService.create).not.toHaveBeenCalled();
 		});
 
 		it('needs no skill permission for refs to hub skills', async () => {
 			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'shared' })]);
-			vi.mocked(userHasScopes).mockResolvedValue(false);
 
 			await expect(
 				service.createDraftRefs(agent, [{ type: 'skill', id: 'shared' }], {}, user, ctx),
 			).resolves.toEqual([{ type: 'skill', id: 'shared' }]);
-			expect(userHasScopes).not.toHaveBeenCalled();
+			expect(skillService.assertCanCreate).not.toHaveBeenCalled();
 		});
 
 		it('gives a new skill a free name in the project', async () => {
@@ -394,10 +395,41 @@ describe('AgentSkillRefsService', () => {
 				ctx,
 			);
 
-			expect(skillService.freeNames).toHaveBeenCalledWith(['New'], { projectId: 'project-1' }, ctx);
+			expect(skillService.freeNames).toHaveBeenCalledWith(
+				['New'],
+				{ projectId: 'project-1' },
+				ctx,
+				[],
+			);
 			expect(skillService.create).toHaveBeenCalledWith(
 				expect.objectContaining({ skill: { ...body, name: 'New 2' } }),
 				ctx,
+			);
+		});
+
+		it('gives a new skill a name that differs from the skills the draft keeps', async () => {
+			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'shared' })]);
+			skillRepository.findLatestSummaries.mockResolvedValue(
+				new Map([['shared', { name: 'New', description: 'Shared', version: 1 }]]),
+			);
+
+			await service.createDraftRefs(
+				agent,
+				[
+					{ type: 'skill', id: 'shared' },
+					{ type: 'skill', id: 'seed_skill' },
+				],
+				{ seed_skill: body },
+				user,
+				ctx,
+			);
+
+			expect(skillRepository.findLatestSummaries).toHaveBeenCalledWith(['shared'], ctx);
+			expect(skillService.freeNames).toHaveBeenCalledWith(
+				['New'],
+				{ projectId: 'project-1' },
+				ctx,
+				['New'],
 			);
 		});
 

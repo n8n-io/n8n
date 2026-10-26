@@ -503,6 +503,24 @@ describe('SkillService', () => {
 		});
 	});
 
+	describe('freeNames', () => {
+		const target = { projectId: PROJECT };
+
+		it('counts each picked name and each extra name as taken, in one query', async () => {
+			skills.findLatestNamesInTarget.mockResolvedValue([{ skillId: 'a', name: 'Tone' }]);
+
+			const names = await service.freeNames(['Tone', 'Tone', 'Notes'], target, {}, ['notes']);
+
+			expect(names).toEqual(['Tone 2', 'Tone 3', 'Notes 2']);
+			expect(skills.findLatestNamesInTarget).toHaveBeenCalledTimes(1);
+		});
+
+		it('reads nothing when no name is requested', async () => {
+			expect(await service.freeNames([], target)).toEqual([]);
+			expect(skills.findLatestNamesInTarget).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('save', () => {
 		const skill = skillRow('skill_a', { projectId: PROJECT });
 

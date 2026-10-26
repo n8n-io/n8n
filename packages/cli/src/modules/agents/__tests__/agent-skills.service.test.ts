@@ -2,7 +2,7 @@
 import type { AgentJsonSkillConfig, AgentSkill } from '@n8n/api-types';
 import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { TransactionRunner, User } from '@n8n/db';
+import type { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Mocked } from 'vitest';

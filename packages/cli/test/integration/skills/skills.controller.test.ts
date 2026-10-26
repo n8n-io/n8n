@@ -360,10 +360,8 @@ describe('SkillsController', () => {
 				skill: { ...body, name: 'Team rules' },
 			});
 
-			const attachable = await editor
-				.get('/skills')
-				.query({ attachableTo: support.id })
-				.expect(200);
+			// The owner sees every project, so only the attachableTo filter keeps "Theirs" out.
+			const attachable = await owner.get('/skills').query({ attachableTo: support.id }).expect(200);
 
 			expect(attachable.body.data.data.map((s: { name: string }) => s.name).sort()).toEqual([
 				'Shared rules',

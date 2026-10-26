@@ -205,8 +205,8 @@ export class AgentSkillRefsService {
 	 * stays a ref. A ref with a body but no hub skill gets a new skill in the agent's
 	 * project, with a free name there. The ref points to the new id. A ref with
 	 * neither is dropped, and so is a ref with only a body when no user creates the
-	 * skill. The new skills need no skill scope: the caller already checked the agent
-	 * permission. Returns the refs that the draft now has.
+	 * skill. The new skills belong to the project, so the user needs the skill create
+	 * permission there. Returns the refs that the draft now has.
 	 */
 	async createDraftRefs(
 		agent: Pick<Agent, 'id' | 'projectId' | 'schema'>,
@@ -231,10 +231,21 @@ export class AgentSkillRefsService {
 				? [{ refId: ref.id, body, createdById: creator.id }]
 				: [];
 		});
+		if (creator !== null && toCreate.length > 0) {
+			await this.skillService.assertCanCreate(creator, target);
+		}
+		// A new name must also differ from the skills this draft keeps referring to.
+		const keptNames =
+			toCreate.length > 0
+				? [...(await this.skillRepository.findLatestSummaries([...found], ctx)).values()].map(
+						({ name }) => name,
+					)
+				: [];
 		const names = await this.skillService.freeNames(
 			toCreate.map(({ body }) => body.name),
 			target,
 			ctx,
+			keptNames,
 		);
 		const createdIds = new Map<string, string>();
 		for (const [index, { refId, body, createdById }] of toCreate.entries()) {
