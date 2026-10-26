@@ -1,4 +1,4 @@
-import type { SkillUsedBy } from '@n8n/api-types';
+import type { SkillAgentOption, SkillUsedBy } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -50,6 +50,19 @@ export class SkillUsageProxy extends SkillUsage {
 	async findUsingAgentIds(skillId: string, ctx: OperationContext = {}) {
 		if (!this.impl) return [];
 		return await this.impl.findUsingAgentIds(skillId, ctx);
+	}
+
+	async findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext = {}) {
+		if (!this.impl) return [];
+		return await this.impl.findSkillIdsUsedByAgent(agentId, ctx);
+	}
+
+	async findAgentSummaries(
+		projectIds: string[] | null,
+		filter: { search?: string; limit: number },
+	): Promise<SkillAgentOption[]> {
+		if (!this.impl || projectIds?.length === 0) return [];
+		return await this.impl.findAgentSummaries(projectIds, filter);
 	}
 
 	async assertRenameKeepsNamesApart(

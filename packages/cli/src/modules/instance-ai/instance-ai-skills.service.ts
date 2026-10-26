@@ -1,8 +1,4 @@
-import {
-	filterRuntimeSkillSource,
-	type RuntimeSkillContent,
-	type RuntimeSkillSource,
-} from '@n8n/agents';
+import { filterRuntimeSkillSource, type RuntimeSkillContent } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { loadInstanceAiPromptSkills, type PromptProfile } from '@n8n/instance-ai';
 import { UnexpectedError } from 'n8n-workflow';
@@ -10,10 +6,17 @@ import { UnexpectedError } from 'n8n-workflow';
 import {
 	type AssistantSkillContent,
 	type AssistantSkillContext,
+	type AssistantSkillFileContent,
 	AssistantSkillsFlagGate,
 	type AssistantSkillSummary,
 	SkillRuntimeService,
 } from '@/modules/skills';
+
+import {
+	loadHubRunSkills,
+	type AssistantSkillReader,
+	type HubRunSkills,
+} from './instance-ai-hub-skills';
 
 import type { InstanceAiFeatureFlags } from './instance-ai.adapter.service';
 
@@ -40,9 +43,7 @@ export interface InstanceAiSkillScope {
 	agentBuildingEnabled: boolean;
 }
 
-export interface InstanceAiRunSkills {
-	/** The active skills, which the run can load. */
-	source: RuntimeSkillSource;
+export interface InstanceAiRunSkills extends HubRunSkills {
 	/** Tools that the prompt profile turns off. */
 	disabledTools: string[];
 }
@@ -71,34 +72,52 @@ const SKILL_GATES: ReadonlyArray<{
 
 /** Loads the active skills of Instance AI: the prompt-profile skills that the gates leave on. */
 @Service()
-export class InstanceAiSkillsService {
+export class InstanceAiSkillsService implements AssistantSkillReader {
 	constructor(
 		private readonly assistantSkillsGate: AssistantSkillsFlagGate,
 		private readonly skillRuntime: SkillRuntimeService,
 	) {}
 
-	async listUserSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
-		if (!(await this.assistantSkillsGate.isEnabled())) return [];
+	async isEnabled(): Promise<boolean> {
+		return await this.assistantSkillsGate.isEnabled();
+	}
+
+	async listSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
+		if (!(await this.isEnabled())) return [];
 		return await this.skillRuntime.listForAssistant(context);
 	}
 
-	async readUserSkill(
+	async readSkill(
 		context: AssistantSkillContext,
 		skillId: string,
+		versionId?: string,
 	): Promise<AssistantSkillContent | null> {
-		if (!(await this.assistantSkillsGate.isEnabled())) return null;
-		return await this.skillRuntime.readForAssistant(context, skillId);
+		if (!(await this.isEnabled())) return null;
+		return await this.skillRuntime.readForAssistant(context, skillId, versionId);
+	}
+
+	async readFile(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId: string,
+		path: string,
+	): Promise<AssistantSkillFileContent | null> {
+		if (!(await this.isEnabled())) return null;
+		return await this.skillRuntime.readFileForAssistant(context, skillId, versionId, path);
 	}
 
 	/** The active skills, and the tools that the prompt profile turns off. */
-	async loadSkills(scope: InstanceAiSkillScope): Promise<InstanceAiRunSkills> {
+	async loadSkills(
+		scope: InstanceAiSkillScope,
+		context?: AssistantSkillContext,
+	): Promise<InstanceAiRunSkills> {
 		const { source, disabledTools } = await loadInstanceAiPromptSkills(scope.profile);
 		const inactive = inactiveSkillIds(scope);
 
-		return {
-			source: inactive.length > 0 ? filterRuntimeSkillSource(source, inactive) : source,
-			disabledTools,
-		};
+		const builtIns = inactive.length > 0 ? filterRuntimeSkillSource(source, inactive) : source;
+		const skills = context ? await loadHubRunSkills(builtIns, this, context) : { source: builtIns };
+
+		return { ...skills, disabledTools };
 	}
 
 	/** One active skill, or `null` when the skill is not active. */

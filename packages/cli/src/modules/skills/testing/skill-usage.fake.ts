@@ -1,6 +1,6 @@
 // An in-memory `SkillUsage` for unit tests. It passes the contract cases in
 // `skill-usage.contract.ts`, as the real one of the agents module does.
-import type { SkillUsedBy } from '@n8n/api-types';
+import type { SkillAgentOption, SkillUsedBy } from '@n8n/api-types';
 import { UserError } from '@n8n/errors';
 
 import { SkillUsage, type SkillAgent } from '../services/skill-usage.contracts';
@@ -81,6 +81,27 @@ export class FakeSkillUsage extends SkillUsage {
 			...this.draftsOf(skillId).map((ref) => ref.agent),
 			...pinning.map((publish) => publish.agent),
 		]);
+	}
+
+	async findSkillIdsUsedByAgent(agentId: string): Promise<string[]> {
+		return unique([
+			...this.world.drafts.filter((ref) => ref.agent === agentId).map((ref) => ref.skill),
+			...this.world.publishes
+				.filter((publish) => publish.agent === agentId)
+				.flatMap((publish) => publish.pins.map((pin) => pin.skill)),
+		]);
+	}
+
+	async findAgentSummaries(
+		projectIds: string[] | null,
+		filter: { search?: string; limit: number },
+	): Promise<SkillAgentOption[]> {
+		const search = filter.search?.toLowerCase();
+		return this.world.agents
+			.filter((agent) => projectIds === null || projectIds.includes(agent.project))
+			.filter((agent) => !search || agent.name.toLowerCase().includes(search))
+			.slice(0, filter.limit)
+			.map((agent) => ({ id: agent.key, name: agent.name }));
 	}
 
 	async assertRenameKeepsNamesApart(skillId: string, oldName: string, newName: string) {

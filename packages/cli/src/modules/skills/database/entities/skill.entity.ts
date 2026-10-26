@@ -26,6 +26,9 @@ export class Skill extends WithTimestamps {
 	@Column({ type: 'boolean', default: false })
 	availableToAssistant: boolean;
 
+	@Column({ type: 'boolean', default: false })
+	availableToMCP: boolean;
+
 	/**
 	 * How the skill was created: `ui`, `agent`, `mcp`, `assistant`, or `github` for a synced
 	 * skill (see `SkillSource`). The column has no CHECK, so a new value needs no migration.

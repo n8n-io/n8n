@@ -88,7 +88,12 @@ describe('InstanceAiVerificationService', () => {
 		it('verifies a draft connection with restored credential data', async () => {
 			const connection = { type: 'openAiApi', data: { apiKey: '__redacted__' } };
 			const restored = { type: 'openAiApi', data: { apiKey: 'saved-key' } };
-			const modelConfig = { id: 'openai/gpt-5.4', url: '', apiKey: 'saved-key' } as const;
+			const modelConfig = {
+				kind: 'endpoint',
+				id: 'openai/gpt-5.4',
+				url: '',
+				apiKey: 'saved-key',
+			} as const;
 			settingsService.resolveModelConnectionForVerification.mockResolvedValue(restored);
 			settingsService.buildModelConfigForConnection.mockReturnValue(modelConfig);
 

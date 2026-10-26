@@ -76,8 +76,19 @@ export interface AssistantSkillSummary {
 export interface AssistantSkillContent extends AssistantSkillSummary {
 	instructions: string;
 	frontmatter: Record<string, unknown> | null;
-	files: Array<{ path: string; content: string }>;
+	/** Reference paths only. The Assistant reads a body on demand with `readFileForAssistant`. */
+	files: Array<{ path: string }>;
 }
+
+export interface AssistantSkillFileContent {
+	skillId: string;
+	versionId: string;
+	path: string;
+	content: string;
+}
+
+/** A skill as the MCP skills extension serves it: the latest saved version. */
+export type McpSkillContent = { id: string; projectId: string | null; skill: AgentSkill };
 
 /**
  * The content of one version. Skills ignore `allowedTools`: the frontmatter, the

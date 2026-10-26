@@ -8,6 +8,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
 import type { AgentScope } from '@/modules/agents/entities/agent.entity';
@@ -21,8 +22,11 @@ import {
 	SkillRepository,
 	type SkillVisibility,
 } from '../../database/repositories/skill.repository';
+import { Skill } from '../../database/entities/skill.entity';
+import { AssistantSkillsFlagGate } from '../../services/assistant-skills-flag-gate';
 import { SkillRuntimeService } from '../../services/skill-runtime.service';
 import { SkillService } from '../../services/skill.service';
+import type { AssistantSkillContext } from '../../utils/skill-content';
 import * as fixtures from '../../testing';
 import { PostHogClient } from '@/posthog';
 
@@ -68,6 +72,23 @@ describe('SkillRepository', () => {
 		project = await createTeamProject('Team');
 		otherProject = await createTeamProject('Other team');
 	});
+
+	/** The Assistant reads as `InstanceAiSkillsService` gates them. */
+	const assistantSkills = {
+		readSkill: async (context: AssistantSkillContext, skillId: string, versionId?: string) =>
+			(await Container.get(AssistantSkillsFlagGate).isEnabled())
+				? await skillRuntime.readForAssistant(context, skillId, versionId)
+				: null,
+		readFile: async (
+			context: AssistantSkillContext,
+			skillId: string,
+			versionId: string,
+			path: string,
+		) =>
+			(await Container.get(AssistantSkillsFlagGate).isEnabled())
+				? await skillRuntime.readFileForAssistant(context, skillId, versionId, path)
+				: null,
+	};
 
 	beforeEach(() => {
 		postHog.getFeatureFlagForInstance.mockImplementation(
@@ -117,7 +138,7 @@ describe('SkillRepository', () => {
 		expect(await skills.findAssistantSkill(scoped, project.id)).toMatchObject({
 			skill: { id: scoped, projectId: project.id },
 			version: { id: versionId, version: 2, instructions: 'Updated instructions.' },
-			files: [{ path: 'references/style.md', content: 'Style guide.' }],
+			files: [{ path: 'references/style.md' }],
 		});
 		expect(await skills.findAssistantSkill(instance, null)).toMatchObject({
 			skill: { id: instance, projectId: null },
@@ -127,6 +148,67 @@ describe('SkillRepository', () => {
 		expect(await skills.findAssistantSkill(other, project.id)).toBeNull();
 		expect(await skills.findAssistantSkill(disabled, project.id)).toBeNull();
 		expect(await skills.findAssistantSkill('skill_missing', project.id)).toBeNull();
+	});
+
+	it('reads a selected saved version with current availability and scope checks', async () => {
+		const id = await createSkill(
+			{ projectId: project.id },
+			content({ files: [{ path: 'references/guide.md', content: 'Original guide.' }] }),
+		);
+		await skills.setAssistantAvailability(id, true, {});
+		const v1 = await latestVersionId(id);
+		const v2 = await skills.insertSavedVersion(
+			id,
+			2,
+			content({ files: [{ path: 'references/guide.md', content: 'Updated guide.' }] }),
+			null,
+		);
+		const context = { user: owner, projectId: project.id };
+		const selected = await assistantSkills.readSkill(context, id, v1);
+		expect(selected?.versionId).toBe(v1);
+		expect(selected?.files).toEqual([{ path: 'references/guide.md' }]);
+		expect(await assistantSkills.readSkill(context, id)).toMatchObject({
+			versionId: v2,
+			files: [{ path: 'references/guide.md' }],
+		});
+		expect(await assistantSkills.readFile(context, id, v1, 'references/guide.md')).toEqual({
+			skillId: id,
+			versionId: v1,
+			path: 'references/guide.md',
+			content: 'Original guide.',
+		});
+		expect(await assistantSkills.readFile(context, id, v2, 'references/guide.md')).toMatchObject({
+			content: 'Updated guide.',
+		});
+		expect(await assistantSkills.readFile(context, id, v1, 'references/missing.md')).toBeNull();
+		expect(
+			await assistantSkills.readFile(context, id, randomUUID(), 'references/guide.md'),
+		).toBeNull();
+		expect(await assistantSkills.readSkill(context, id, randomUUID())).toBeNull();
+		const other = await createSkill({ projectId: project.id });
+		expect(await assistantSkills.readSkill(context, id, await latestVersionId(other))).toBeNull();
+		for (const denied of [
+			{ user: owner, projectId: otherProject.id },
+			{ user, projectId: project.id },
+			{ user },
+		]) {
+			expect(await assistantSkills.readSkill(denied, id, v1)).toBeNull();
+			expect(await assistantSkills.readFile(denied, id, v1, 'references/guide.md')).toBeNull();
+		}
+		expect(
+			await assistantSkills.readFile(
+				context,
+				id,
+				await latestVersionId(other),
+				'references/guide.md',
+			),
+		).toBeNull();
+		postHog.getFeatureFlagForInstance.mockResolvedValue(false);
+		expect(await assistantSkills.readFile(context, id, v1, 'references/guide.md')).toBeNull();
+		postHog.getFeatureFlagForInstance.mockResolvedValue(true);
+		await skills.setAssistantAvailability(id, false, {});
+		expect(await assistantSkills.readFile(context, id, v1, 'references/guide.md')).toBeNull();
+		expect(await assistantSkills.readSkill(context, id, v1)).toBeNull();
 	});
 
 	it.each(['project', 'instance'] as const)(
@@ -230,6 +312,14 @@ describe('SkillRepository', () => {
 			projectIds,
 			agentIds: projectIds === 'all' ? 'all' : await agentSkills.findAgentIdsInProjects(projectIds),
 		};
+	}
+
+	/** Sets columns that no repository method writes, such as the creator or the change time. */
+	async function updateSkillRow(
+		id: string,
+		fields: Partial<Pick<Skill, 'createdById' | 'updatedAt'>>,
+	) {
+		await Container.get(DataSource).manager.update(Skill, { id }, fields);
 	}
 
 	async function latestVersionId(skillId: string): Promise<string> {
@@ -479,6 +569,104 @@ describe('SkillRepository', () => {
 			expect(ids(page)).toEqual([percent]);
 		});
 
+		it('filters by the skills an agent uses and its own skills, with the other filters', async () => {
+			const support = await createAgent('Support');
+			const used = await createSkill({}, content({ name: 'Used one' }));
+			const usedOther = await createSkill({ projectId: otherProject.id });
+			const own = await createSkill({ agentId: support.id });
+			await createSkill();
+			await createSkill({ agentId: (await createAgent('Sales')).id });
+
+			const page = async (filter: { search?: string; projectIds?: string[] | 'all' } = {}) =>
+				ids(
+					await skills.findVisiblePage(await visibleTo(filter.projectIds ?? 'all'), {
+						skip: 0,
+						usedBy: { agentId: support.id, skillIds: [used, usedOther] },
+						search: filter.search,
+					}),
+				).sort();
+
+			expect(await page()).toEqual([used, usedOther, own].sort());
+			expect(await page({ search: 'used' })).toEqual([used]);
+			// The filter narrows the visible skills, it never adds to them.
+			expect(await page({ projectIds: [project.id] })).toEqual([used, own].sort());
+		});
+
+		it('lists only its own skills for an agent that uses none', async () => {
+			const support = await createAgent('Support');
+			const own = await createSkill({ agentId: support.id });
+			await createSkill();
+
+			const page = await skills.findVisiblePage(await visibleTo('all'), {
+				skip: 0,
+				usedBy: { agentId: support.id, skillIds: [] },
+			});
+
+			expect(ids(page)).toEqual([own]);
+		});
+
+		it('filters by creator', async () => {
+			const other = await createUser();
+			const mine = await createSkill();
+			await updateSkillRow(mine, { createdById: user.id });
+			const theirs = await createSkill();
+			await updateSkillRow(theirs, { createdById: other.id });
+			await createSkill();
+
+			const page = await skills.findVisiblePage(await visibleTo('all'), {
+				skip: 0,
+				createdById: user.id,
+			});
+
+			expect(ids(page)).toEqual([mine]);
+		});
+
+		it('sorts by the latest name without case, both ways, with the id as tie break', async () => {
+			const beta = await createSkill({}, content({ name: 'old' }));
+			await skills.insertSavedVersion(beta, 2, content({ name: 'beta' }), null);
+			const alpha = await createSkill({}, content({ name: 'Alpha' }));
+			const gamma1 = await createSkill({}, content({ name: 'Gamma' }));
+			const gamma2 = await createSkill({}, content({ name: 'gamma' }));
+			const visibility = { projectIds: [], agentIds: [] };
+			const gammas = [gamma1, gamma2].sort();
+
+			const asc = await skills.findVisiblePage(visibility, {
+				skip: 0,
+				sort: { by: 'name', order: 'ASC' },
+			});
+			const desc = await skills.findVisiblePage(visibility, {
+				skip: 0,
+				sort: { by: 'name', order: 'DESC' },
+			});
+			const secondPage = await skills.findVisiblePage(visibility, {
+				skip: 2,
+				take: 1,
+				sort: { by: 'name', order: 'ASC' },
+			});
+
+			expect(ids(asc)).toEqual([alpha, beta, ...gammas]);
+			expect(ids(desc)).toEqual([...gammas, beta, alpha]);
+			expect(ids(secondPage)).toEqual([gammas[0]]);
+			expect(secondPage.count).toBe(4);
+		});
+
+		it('sorts by last change, oldest first on request', async () => {
+			const first = await createSkill();
+			const second = await createSkill();
+			await updateSkillRow(first, { updatedAt: new Date('2026-01-01T00:00:00.000Z') });
+			await updateSkillRow(second, { updatedAt: new Date('2026-02-01T00:00:00.000Z') });
+			const visibility = { projectIds: [], agentIds: [] };
+
+			const asc = await skills.findVisiblePage(visibility, {
+				skip: 0,
+				sort: { by: 'updatedAt', order: 'ASC' },
+			});
+			const byDefault = await skills.findVisiblePage(visibility, { skip: 0 });
+
+			expect(ids(asc)).toEqual([first, second]);
+			expect(ids(byDefault)).toEqual([second, first]);
+		});
+
 		it('cuts the page with skip and take, and answers past the end with the full count', async () => {
 			for (let i = 0; i < 3; i++) await createSkill();
 			const visibility = { projectIds: [], agentIds: [] };
@@ -491,6 +679,26 @@ describe('SkillRepository', () => {
 			expect(ids(second)).toEqual([ids(all)[1]]);
 			expect(second.count).toBe(3);
 			expect(past).toEqual({ skills: [], count: 3 });
+		});
+	});
+
+	describe('findVisibleCreatorIds', () => {
+		it('lists each creator of a visible skill once', async () => {
+			const other = await createUser();
+			const hidden = await createUser();
+			const instance = await createSkill();
+			const team = await createSkill({ projectId: project.id });
+			const again = await createSkill();
+			const otherTeam = await createSkill({ projectId: otherProject.id });
+			await createSkill();
+			await updateSkillRow(instance, { createdById: user.id });
+			await updateSkillRow(again, { createdById: user.id });
+			await updateSkillRow(team, { createdById: other.id });
+			await updateSkillRow(otherTeam, { createdById: hidden.id });
+
+			const creators = await skills.findVisibleCreatorIds(await visibleTo([project.id]));
+
+			expect(creators.sort()).toEqual([user.id, other.id].sort());
 		});
 	});
 

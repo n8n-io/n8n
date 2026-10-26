@@ -3,11 +3,15 @@ import { ProjectScopeService } from '@n8n/backend-services';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { SkillRepository } from '../database/repositories/skill.repository';
+import {
+	SkillRepository,
+	type AssistantSkillAccess,
+} from '../database/repositories/skill.repository';
 import {
 	toAgentSkill,
 	type AssistantSkillContent,
 	type AssistantSkillContext,
+	type AssistantSkillFileContent,
 	type AssistantSkillSummary,
 	type ResolvedSkillRow,
 	type SkillRef,
@@ -34,33 +38,45 @@ export class SkillRuntimeService {
 		);
 	}
 
+	/** Reads the requested version, or the latest saved version when `versionId` is absent. */
 	async readForAssistant(
 		context: AssistantSkillContext,
 		skillId: string,
+		versionId?: string,
 	): Promise<AssistantSkillContent | null> {
 		const projectId = await this.authorizedAssistantProject(context);
-		const row = await this.skillRepository.findAssistantSkill(skillId, projectId);
+		const row = await this.skillRepository.findAssistantSkill(skillId, projectId, versionId);
 		if (!row) return null;
 		const { skill, version, files } = row;
-		if (
-			skill.agentId !== null ||
-			!skill.availableToAssistant ||
-			!(await this.skillAccess.canAccess(context.user, skill, 'read'))
-		)
-			return null;
-		const skillProjectId = skill.projectId;
-		if (skillProjectId !== null && skillProjectId !== projectId) return null;
+		if (!(await this.canReadForAssistant(context, skill, projectId))) return null;
 		return {
 			id: skill.id,
-			projectId: skillProjectId,
+			projectId: skill.projectId,
 			name: version.name,
 			description: version.description,
 			versionId: version.id,
 			version: version.version,
 			instructions: version.instructions,
 			frontmatter: version.frontmatter,
-			files: files.map(({ path, content }) => ({ path, content })),
+			files: files.map(({ path }) => ({ path })),
 		};
+	}
+
+	async readFileForAssistant(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId: string,
+		path: string,
+	): Promise<AssistantSkillFileContent | null> {
+		const projectId = await this.authorizedAssistantProject(context);
+		const row = await this.skillRepository.findAssistantSkillFile(
+			skillId,
+			projectId,
+			versionId,
+			path,
+		);
+		if (!row || !(await this.canReadForAssistant(context, row.skill, projectId))) return null;
+		return { skillId, versionId, path: row.file.path, content: row.file.content };
 	}
 
 	/**
@@ -169,6 +185,19 @@ export class SkillRuntimeService {
 			if (row) rows.set(ref.id, row);
 		}
 		return rows;
+	}
+
+	private async canReadForAssistant(
+		context: AssistantSkillContext,
+		skill: AssistantSkillAccess,
+		projectId: string | null,
+	): Promise<boolean> {
+		return (
+			skill.agentId === null &&
+			skill.availableToAssistant &&
+			(skill.projectId === null || skill.projectId === projectId) &&
+			(await this.skillAccess.canAccess(context.user, skill, 'read'))
+		);
 	}
 
 	private async authorizedAssistantProject({

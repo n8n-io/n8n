@@ -45,14 +45,13 @@ describe('InstanceAiSkillsService', () => {
 	});
 
 	describe('loadSkills', () => {
-		it('returns the profile skills and disabled tools when every gate is open', async () => {
+		it('returns no disabled tools for the progressive profile', async () => {
 			const skills = await service.loadSkills({
 				...openScope,
 				profile: resolvePromptProfile({ mode: 'progressive' }).profile,
 			});
 
-			expect(skills.disabledTools).toEqual(['workflow_builder_create_tasks']);
-			expect(skills.source.registry.skills.map(({ id }) => id)).not.toContain('planning');
+			expect(skills.disabledTools).toEqual([]);
 		});
 
 		it.each(gatedSkills)('removes the skills that %s turns off', async (_, scope, skillIds) => {
@@ -127,19 +126,56 @@ describe('Assistant reads of user skills', () => {
 	it('reads nothing while Assistant skills are off', async () => {
 		gate.isEnabled.mockResolvedValue(false);
 
-		expect(await service.listUserSkills(context)).toEqual([]);
-		expect(await service.readUserSkill(context, summary.id)).toBeNull();
+		expect(await service.isEnabled()).toBe(false);
+		expect(await service.listSkills(context)).toEqual([]);
+		expect(await service.readSkill(context, summary.id)).toBeNull();
+		expect(
+			await service.readFile(context, summary.id, summary.versionId, 'references/a.md'),
+		).toBeNull();
 		expect(skillRuntime.listForAssistant).not.toHaveBeenCalled();
 		expect(skillRuntime.readForAssistant).not.toHaveBeenCalled();
-		expect((await service.loadSkills(openScope)).source.registry.skills.length).toBeGreaterThan(0);
+		expect(skillRuntime.readFileForAssistant).not.toHaveBeenCalled();
+		const run = await service.loadSkills(openScope, context);
+		expect(run.source.registry.skills.length).toBeGreaterThan(0);
+		expect(run.availabilityNotice).toBeUndefined();
 	});
 
 	it('reads the skills of the user while Assistant skills are on', async () => {
 		gate.isEnabled.mockResolvedValue(true);
+		const file = {
+			skillId: summary.id,
+			versionId: summary.versionId,
+			path: 'references/a.md',
+			content: 'A.',
+		};
+		skillRuntime.readFileForAssistant.mockResolvedValue(file);
 
-		expect(await service.listUserSkills(context)).toEqual([summary]);
-		expect(await service.readUserSkill(context, summary.id)).toEqual(content);
+		expect(await service.listSkills(context)).toEqual([summary]);
+		expect(await service.readSkill(context, summary.id, summary.versionId)).toEqual(content);
+		expect(await service.readFile(context, summary.id, summary.versionId, file.path)).toEqual(file);
 		expect(skillRuntime.listForAssistant).toHaveBeenCalledWith(context);
-		expect(skillRuntime.readForAssistant).toHaveBeenCalledWith(context, summary.id);
+		expect(skillRuntime.readForAssistant).toHaveBeenCalledWith(
+			context,
+			summary.id,
+			summary.versionId,
+		);
+		expect(skillRuntime.readFileForAssistant).toHaveBeenCalledWith(
+			context,
+			summary.id,
+			summary.versionId,
+			file.path,
+		);
+	});
+
+	it('combines the user skills with the active built-ins', async () => {
+		gate.isEnabled.mockResolvedValue(true);
+
+		const result = await service.loadSkills(openScope, context);
+
+		expect(
+			result.source.registry.skills.some(({ metadata }) => metadata?.hubSkillId === summary.id),
+		).toBe(true);
+		expect(skillRuntime.listForAssistant).toHaveBeenCalledWith(context);
+		expect(skillRuntime.readForAssistant).not.toHaveBeenCalled();
 	});
 });

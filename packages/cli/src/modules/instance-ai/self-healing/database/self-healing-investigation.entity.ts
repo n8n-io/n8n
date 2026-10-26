@@ -1,12 +1,4 @@
-import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
-import {
-	DateTimeColumn,
-	JsonColumn,
-	Project,
-	User,
-	WorkflowEntity,
-	WithTimestampsAndStringId,
-} from '@n8n/db';
+import { DateTimeColumn, Project, User, WorkflowEntity, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
 import { SelfHealingResult } from './self-healing-result.entity';
@@ -58,8 +50,8 @@ export class SelfHealingInvestigation extends WithTimestampsAndStringId {
 	@Column({ type: 'uuid' })
 	runId: string;
 
-	@JsonColumn()
-	baseline: WorkflowSuggestionBaseline;
+	@Column({ type: 'varchar', length: 36 })
+	publishedVersionId: string;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	resultId: string | null;

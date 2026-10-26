@@ -10,7 +10,7 @@ import { SkillSyncedError } from '@/modules/skills/testing';
 describe('InstanceAiSkillsAdapterService', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	const skillService = mock<SkillService>();
-	const service = new InstanceAiSkillsAdapterService(skillService).createService(user);
+	const service = new InstanceAiSkillsAdapterService(skillService).createService(user, true);
 	const skill = { name: 'Brand voice', description: 'd', instructions: 'Be kind.' };
 
 	beforeEach(() => {
@@ -38,6 +38,22 @@ describe('InstanceAiSkillsAdapterService', () => {
 		expect(skillService.create).toHaveBeenCalledWith(
 			user,
 			{ scope: 'project', projectId: 'project-1', skill },
+			'assistant',
+		);
+	});
+
+	it('exposes whether the n8n Assistant can use skills', () => {
+		expect(service.assistantSkillsEnabled).toBe(true);
+	});
+
+	it('creates the skill with the Assistant availability the tool sent', async () => {
+		skillService.create.mockResolvedValue(mock<SkillDetail>());
+
+		await service.create({ scope: 'instance', skill, availableToAssistant: true });
+
+		expect(skillService.create).toHaveBeenCalledWith(
+			user,
+			{ scope: 'instance', skill, availableToAssistant: true },
 			'assistant',
 		);
 	});
