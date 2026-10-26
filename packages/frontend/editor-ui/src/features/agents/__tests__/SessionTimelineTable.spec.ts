@@ -633,13 +633,15 @@ describe('SessionTimelineTable', () => {
 		const rows = w.findAll('[data-test-id="timeline-row"]');
 
 		expect(rows.map((row) => row.attributes('data-timeline-row-id'))).toEqual([
-			'event-3',
-			'event-2',
-			'event-1',
 			'event-0',
+			'event-1',
+			'event-2',
+			'event-3',
 		]);
-		await rows[0].trigger('click');
-		expect(w.emitted('select')).toEqual([[3]]);
+		for (const row of rows) {
+			await row.trigger('click');
+		}
+		expect(w.emitted('select')).toEqual([[3], [2], [1], [0]]);
 	});
 
 	it('renders a message Markdown link that does not select its row when activated', async () => {
