@@ -1,0 +1,27 @@
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-temporary-workflow-markers.ts
+  s_ec79774a9352ba::t_dd6b0c9fd4414a 3-4
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  ai_agent 1985,4830-4845
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-runtime.ts
+  s_ec79774a9352ba::t_dd6b0c9fd4414a 17-18
+packages/cli/src/modules/instance-ai/temporary-workflow-markers.ts
+  s_ec79774a9352ba::t_dd6b0c9fd4414a 1-11
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  ai_agent 249,1880-1883
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9a72e4ef3069e30527f15e45a785c0a4bbfd8e7b",
+  "prompts": {},
+  "sessions": {
+    "s_ec79774a9352ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a52c7a06-2cc8-4e0f-94da-51d19a42e63c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
