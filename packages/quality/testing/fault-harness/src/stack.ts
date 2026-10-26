@@ -119,6 +119,12 @@ export class HarnessStack {
 		return harness;
 	}
 
+	main(index = 1): Container {
+		const found = this.mains()[index - 1];
+		if (!found) throw new Error(`main ${index} not found`);
+		return found;
+	}
+
 	mains(): Container[] {
 		return byName(this.stack.findContainers(/-n8n(-main-\d+)?$/));
 	}
