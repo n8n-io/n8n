@@ -1,0 +1,39 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_ea8398b491aecc::t_dbabb4fdcd6190 211-215
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
+  s_ea8398b491aecc::t_0cf42d09240013 172-180,182
+  s_ea8398b491aecc::t_4d585cf2db79ef 153-161,163
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_ea8398b491aecc::t_693280477706b0 1812
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionOperation.test.ts
+  s_ea8398b491aecc::t_693280477706b0 69,98
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_ea8398b491aecc::t_33626a89a4cab1 1596-1622
+  s_ea8398b491aecc::t_3e60ac47d3f210 352-386
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ea8398b491aecc::t_70cba573aa29f9 10074,10076
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_ea8398b491aecc::t_5766839cb4d263 544-568
+  s_ea8398b491aecc::t_693280477706b0 530
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_ea8398b491aecc::t_348edb2b7723ce 692,697,710,721-730,734-735
+  s_ea8398b491aecc::t_9db43fb6fe5f28 1446-1454,1456-1458,1460-1469,1472
+  s_ea8398b491aecc::t_1151532191c5ba 1410-1414,1418-1419,1421-1424
+  s_ea8398b491aecc::t_0c2744d38d45fb 731-733
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b7be75f0c9a41066dd66ad6062eb7f91fdef09de",
+  "prompts": {},
+  "sessions": {
+    "s_ea8398b491aecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79fa3697-e88c-41ac-8b49-e4829ac9b740",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
