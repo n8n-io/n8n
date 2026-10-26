@@ -1,7 +1,5 @@
 import { sleep } from '@n8n/utils/sleep';
 
-import { until } from './process';
-
 const OWNER = { email: 'owner@example.com', password: 'SuperSecret123' };
 
 export interface Response {
@@ -92,21 +90,5 @@ export class N8nClient {
 				return { status: res.status, body };
 			await sleep(250);
 		}
-	}
-
-	/** Waits until a production webhook path is registered, without starting the workflow. */
-	async waitForWebhook(path: string, timeoutMs = 15_000) {
-		await until(
-			`webhook ${path} registered`,
-			async () => {
-				const res = await fetch(`${this.baseUrl}/webhook/${path}`, {
-					method: 'OPTIONS',
-					headers: { origin: this.baseUrl, 'access-control-request-method': 'POST' },
-				});
-				return !isUnregistered(res.status, await res.text());
-			},
-			timeoutMs,
-			250,
-		);
 	}
 }
