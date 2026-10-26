@@ -17,6 +17,7 @@ function setup(owned = true) {
 	const req = mock<Request>();
 	const res = mock<Response>({ headersSent: false });
 	res.set.mockReturnValue(res);
+	res.status.mockReturnValue(res);
 	return { hosts, service, req, res };
 }
 
@@ -63,5 +64,50 @@ describe('AppsHostingService', () => {
 		void service.dispatch(req, res, next);
 		expect(next).not.toHaveBeenCalled();
 		expect(res.sendStatus).toHaveBeenCalledWith(404);
+	});
+
+	it('returns 400 for a router URIError', () => {
+		const { service, req, res } = setup();
+		const router = service.router as typeof service.router & { handle: RequestHandler };
+		vi.spyOn(router, 'handle').mockImplementation((_req, _res, next) => next(new URIError()));
+		const next = vi.fn();
+
+		void service.dispatch(req, res, next);
+
+		expect(res.sendStatus).toHaveBeenCalledExactlyOnceWith(400);
+		expect(res.json).not.toHaveBeenCalled();
+		expect(next).not.toHaveBeenCalled();
+	});
+
+	it('returns an uncached public JSON response for a router error', () => {
+		const { service, req, res } = setup();
+		const router = service.router as typeof service.router & { handle: RequestHandler };
+		vi.spyOn(router, 'handle').mockImplementation((_req, _res, next) =>
+			next(new Error('App lookup failed.')),
+		);
+		const next = vi.fn();
+
+		void service.dispatch(req, res, next);
+
+		expect(res.set).toHaveBeenCalledWith('Cache-Control', 'no-store');
+		expect(res.status).toHaveBeenCalledExactlyOnceWith(500);
+		expect(res.json).toHaveBeenCalledExactlyOnceWith({ message: 'Internal server error' });
+		expect(next).not.toHaveBeenCalled();
+	});
+
+	it('destroys the response when a router error occurs after headers were sent', () => {
+		const { service, req, res } = setup();
+		const router = service.router as typeof service.router & { handle: RequestHandler };
+		vi.spyOn(router, 'handle').mockImplementation((_req, _res, next) => next(new Error()));
+		Object.defineProperty(res, 'headersSent', { value: true });
+		const next = vi.fn();
+
+		void service.dispatch(req, res, next);
+
+		expect(res.destroy).toHaveBeenCalledOnce();
+		expect(res.sendStatus).not.toHaveBeenCalled();
+		expect(res.status).not.toHaveBeenCalled();
+		expect(res.json).not.toHaveBeenCalled();
+		expect(next).not.toHaveBeenCalled();
 	});
 });
