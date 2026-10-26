@@ -116,7 +116,7 @@ describe('SkillRepository', () => {
 		expect(await skills.findAssistantSkill(scoped, project.id)).toMatchObject({
 			skill: { id: scoped, projectId: project.id },
 			version: { id: versionId, version: 2, instructions: 'Updated instructions.' },
-			files: [{ path: 'references/style.md', content: 'Style guide.' }],
+			files: [{ path: 'references/style.md' }],
 		});
 		expect(await skills.findAssistantSkill(instance, null)).toMatchObject({
 			skill: { id: instance, projectId: null },
@@ -126,6 +126,67 @@ describe('SkillRepository', () => {
 		expect(await skills.findAssistantSkill(other, project.id)).toBeNull();
 		expect(await skills.findAssistantSkill(disabled, project.id)).toBeNull();
 		expect(await skills.findAssistantSkill('skill_missing', project.id)).toBeNull();
+	});
+
+	it('reads a selected saved version with current availability and scope checks', async () => {
+		const id = await createSkill(
+			{ projectId: project.id },
+			content({ files: [{ path: 'references/guide.md', content: 'Original guide.' }] }),
+		);
+		await skills.update(id, { availableToAssistant: true });
+		const v1 = await latestVersionId(id);
+		const v2 = await skills.insertSavedVersion(
+			id,
+			2,
+			content({ files: [{ path: 'references/guide.md', content: 'Updated guide.' }] }),
+			null,
+		);
+		const context = { user: owner, projectId: project.id };
+		const selected = await assistantSkills.readSkill(context, id, v1);
+		expect(selected?.versionId).toBe(v1);
+		expect(selected?.files).toEqual([{ path: 'references/guide.md' }]);
+		expect(await assistantSkills.readSkill(context, id)).toMatchObject({
+			versionId: v2,
+			files: [{ path: 'references/guide.md' }],
+		});
+		expect(await assistantSkills.readFile(context, id, v1, 'references/guide.md')).toEqual({
+			skillId: id,
+			versionId: v1,
+			path: 'references/guide.md',
+			content: 'Original guide.',
+		});
+		expect(await assistantSkills.readFile(context, id, v2, 'references/guide.md')).toMatchObject({
+			content: 'Updated guide.',
+		});
+		expect(await assistantSkills.readFile(context, id, v1, 'references/missing.md')).toBeNull();
+		expect(
+			await assistantSkills.readFile(context, id, randomUUID(), 'references/guide.md'),
+		).toBeNull();
+		expect(await assistantSkills.readSkill(context, id, randomUUID())).toBeNull();
+		const other = await createSkill({ projectId: project.id });
+		expect(await assistantSkills.readSkill(context, id, await latestVersionId(other))).toBeNull();
+		for (const denied of [
+			{ user: owner, projectId: otherProject.id },
+			{ user, projectId: project.id },
+			{ user },
+		]) {
+			expect(await assistantSkills.readSkill(denied, id, v1)).toBeNull();
+			expect(await assistantSkills.readFile(denied, id, v1, 'references/guide.md')).toBeNull();
+		}
+		expect(
+			await assistantSkills.readFile(
+				context,
+				id,
+				await latestVersionId(other),
+				'references/guide.md',
+			),
+		).toBeNull();
+		postHog.getFeatureFlagForInstance.mockResolvedValue(false);
+		expect(await assistantSkills.readFile(context, id, v1, 'references/guide.md')).toBeNull();
+		postHog.getFeatureFlagForInstance.mockResolvedValue(true);
+		await skills.update(id, { availableToAssistant: false });
+		expect(await assistantSkills.readFile(context, id, v1, 'references/guide.md')).toBeNull();
+		expect(await assistantSkills.readSkill(context, id, v1)).toBeNull();
 	});
 
 	it.each(['project', 'instance'] as const)(

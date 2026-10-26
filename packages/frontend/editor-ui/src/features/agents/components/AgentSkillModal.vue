@@ -89,7 +89,7 @@ export type AgentSkillModalData = {
 	 */
 	scopeOptions?: AgentSkillModalScopeOption[];
 	initialScope?: string;
-	/** Settings only. Absent hides the Assistant toggle. */
+	/** Settings only. Absent disables Assistant availability editing for every scope. */
 	availableToAssistant?: boolean;
 	availableToMCP?: boolean;
 	/**
@@ -177,7 +177,11 @@ const isSaving = ref(false);
 const serverNameError = ref('');
 const scope = ref(props.data.initialScope ?? props.data.scopeOptions?.[0]?.value ?? '');
 const availableToAssistant = ref(props.data.availableToAssistant ?? false);
-const showAssistantAvailability = computed(() => props.data.availableToAssistant !== undefined);
+const showAssistantAvailability = computed(
+	() =>
+		props.data.availableToAssistant !== undefined &&
+		(scope.value === 'instance' || scope.value.startsWith('project:')),
+);
 const assistantAvailabilityChanged = computed(
 	() =>
 		showAssistantAvailability.value &&

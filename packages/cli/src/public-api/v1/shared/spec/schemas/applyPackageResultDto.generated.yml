@@ -116,9 +116,13 @@ oneOf:
               stubbed:
                 type: integer
                 minimum: 0
+              updated:
+                type: integer
+                minimum: 0
             required:
               - matched
               - stubbed
+              - updated
           dataTables:
             type: object
             properties:

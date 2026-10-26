@@ -505,8 +505,8 @@ Skip this follow-up when:
 
 - The workflow you just built is itself an error workflow or starts with an
   Error Trigger.
-- The build is a supporting workflow, repair, small edit, planned-task
-  subtask, or workflow-level settings patch.
+- The build is a supporting workflow, repair, small edit, or workflow-level
+  settings patch.
 - The user already asked for an error workflow in the original request, already
   declined one, or the target workflow already has the desired error workflow
   set.

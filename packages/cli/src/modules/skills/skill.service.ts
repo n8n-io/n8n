@@ -4,6 +4,7 @@ import {
 	ProjectScopeService,
 	type AssistantSkillContext,
 	type AssistantSkillContent,
+	type AssistantSkillFileContent,
 	type AssistantSkillSummary,
 } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
@@ -20,7 +21,12 @@ import { getSkillHash } from './skill-hash';
 import { SkillNameTakenError } from './skill-name-taken.error';
 import type { SkillFrontmatter } from './skill-version.entity';
 import type { Skill, SkillSource } from './skill.entity';
-import { SkillRepository, type ResolvedSkillRow, type SkillTarget } from './skill.repository';
+import {
+	SkillRepository,
+	type AssistantSkillAccess,
+	type ResolvedSkillRow,
+	type SkillTarget,
+} from './skill.repository';
 
 export type McpSkillContent = { id: string; projectId: string | null; skill: AgentSkill };
 
@@ -142,19 +148,14 @@ export class SkillService {
 	async readForAssistant(
 		context: AssistantSkillContext,
 		skillId: string,
+		versionId?: string,
 	): Promise<AssistantSkillContent | null> {
 		const projectId = await this.authorizedAssistantProject(context);
-		const row = await this.skillRepository.findAssistantSkill(skillId, projectId);
+		const row = await this.skillRepository.findAssistantSkill(skillId, projectId, versionId);
 		if (!row) return null;
 		const { skill, version, files } = row;
-		if (
-			skill.agentId !== null ||
-			!skill.availableToAssistant ||
-			!(await this.canAccess(context.user, skill, 'read'))
-		)
-			return null;
+		if (!(await this.canReadForAssistant(context, skill, projectId))) return null;
 		const skillProjectId = skill.projectId;
-		if (skillProjectId !== null && skillProjectId !== projectId) return null;
 		return {
 			id: skill.id,
 			projectId: skillProjectId,
@@ -164,7 +165,7 @@ export class SkillService {
 			version: version.version,
 			instructions: version.instructions,
 			frontmatter: version.frontmatter,
-			files: files.map(({ path, content }) => ({ path, content })),
+			files: files.map(({ path }) => ({ path })),
 		};
 	}
 
@@ -199,6 +200,36 @@ export class SkillService {
 			return null;
 		}
 		return toMcpSkillContent(row);
+	}
+
+	async readFileForAssistant(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId: string,
+		path: string,
+	): Promise<AssistantSkillFileContent | null> {
+		const projectId = await this.authorizedAssistantProject(context);
+		const row = await this.skillRepository.findAssistantSkillFile(
+			skillId,
+			projectId,
+			versionId,
+			path,
+		);
+		if (!row || !(await this.canReadForAssistant(context, row.skill, projectId))) return null;
+		return { skillId, versionId, path: row.file.path, content: row.file.content };
+	}
+
+	private async canReadForAssistant(
+		context: AssistantSkillContext,
+		skill: AssistantSkillAccess,
+		projectId: string | null,
+	): Promise<boolean> {
+		return (
+			skill.agentId === null &&
+			skill.availableToAssistant &&
+			(skill.projectId === null || skill.projectId === projectId) &&
+			(await this.canAccess(context.user, skill, 'read'))
+		);
 	}
 
 	private async authorizedAssistantProject({

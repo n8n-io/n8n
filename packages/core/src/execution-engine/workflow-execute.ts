@@ -1146,7 +1146,10 @@ export class WorkflowExecute {
 		let closingError: Error | undefined;
 
 		try {
-			if (customOperation) {
+			const evalMockOutput = await additionalData.evalNodeMockHandler?.(context);
+			if (evalMockOutput) {
+				data = evalMockOutput;
+			} else if (customOperation) {
 				data = await customOperation.call(context);
 			} else if (nodeType.execute) {
 				data = isNodeClassInstance(nodeType)
