@@ -44,3 +44,13 @@ export class ScimTokenConflictError extends UserError {
 		super('The SCIM token changed during this request. Load the token state again and retry.');
 	}
 }
+
+/**
+ * SCIM provisioning cannot turn on while SAML or OIDC single sign-on is off.
+ * Maps to HTTP 400 on `PATCH /rest/scim/config`.
+ */
+export class ScimSsoRequiredError extends UserError {
+	constructor() {
+		super('Turn on SAML or OIDC single sign-on before you enable SCIM provisioning.');
+	}
+}

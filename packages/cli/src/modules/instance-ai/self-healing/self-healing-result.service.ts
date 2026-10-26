@@ -323,7 +323,8 @@ export class SelfHealingResultService {
 			resultId,
 		);
 		const suggestionId = result.suggestionId;
-		if (result.outcome !== 'fix_ready' || !suggestionId) {
+		const allowedOutcomes = action === 'apply' ? ['fix_ready', 'needs_you'] : ['fix_ready'];
+		if (!suggestionId || !allowedOutcomes.includes(result.outcome)) {
 			throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
 		}
 
@@ -359,7 +360,7 @@ export class SelfHealingResultService {
 	}
 
 	async dismiss(user: User, projectId: string, workflowId: string, resultId: string) {
-		const found = await this.txRunner.run({}, async (ctx) => {
+		const outcome = await this.txRunner.run({}, async (ctx) => {
 			const { result, reviewer } = await this.getResultForEditor(
 				user,
 				projectId,
@@ -367,34 +368,39 @@ export class SelfHealingResultService {
 				resultId,
 				ctx,
 			);
-			if (result.dismissedAt) return true;
+			if (result.dismissedAt) return 'already_closed';
 
 			const suggestionId = result.suggestionId;
 			if (suggestionId) {
-				const outcome = await this.actions.discardPending(
+				const discardOutcome = await this.actions.discardPending(
 					reviewer,
 					projectId,
 					workflowId,
 					suggestionId,
 					ctx,
 				);
-				if (outcome === 'unavailable') return false;
-				if (outcome === 'already_closed') return true;
+				if (discardOutcome !== 'discarded') return discardOutcome;
 			} else {
 				await this.requireCurrentProject(workflowId, projectId, ctx);
 			}
 
-			if (result.outcome === 'needs_you') {
-				await this.results.dismissResult(result.id, user.id, ctx);
+			if (
+				result.outcome === 'needs_you' &&
+				!(await this.results.dismissResult(result.id, user.id, ctx))
+			) {
+				throw new ConflictError('This result is already closed.');
 			}
-			return true;
+			return 'dismissed';
 		});
 
 		// Commit outdated reconciliation before rejecting a stale project route.
-		if (!found) {
+		if (outcome === 'unavailable') {
 			throw new NotFoundError(
 				'This result is no longer available in this project. Refresh the page.',
 			);
+		}
+		if (outcome === 'already_closed') {
+			throw new ConflictError('This result is already closed.');
 		}
 		return await this.getDetail(user, projectId, workflowId, resultId);
 	}

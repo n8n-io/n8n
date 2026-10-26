@@ -25,6 +25,8 @@ export { Tool };
 // ---------------------------------------------------------------------------
 
 export const SONNET_MODEL = 'anthropic/claude-sonnet-4-6';
+/** Default for eval agents with no model set. CI uses the same model for its mocks. */
+const EVAL_MODEL = 'anthropic/claude-sonnet-5-5';
 export const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001';
 export const JUDGE_MODEL = 'anthropic/claude-sonnet-5-5';
 const JUDGE_EFFORT: AnthropicThinkingEffort = 'high';
@@ -54,7 +56,7 @@ function getModelId(model?: string): string {
 		model ??
 		process.env.N8N_INSTANCE_AI_EVAL_MODEL ??
 		process.env.N8N_INSTANCE_AI_MODEL ??
-		SONNET_MODEL;
+		EVAL_MODEL;
 	return modelId;
 }
 

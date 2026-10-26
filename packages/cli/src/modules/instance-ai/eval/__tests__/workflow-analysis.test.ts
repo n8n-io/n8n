@@ -214,6 +214,21 @@ describe('identifyNodesForRunMock', () => {
 
 		expect(result.map((n) => n.type)).toEqual(runMockTypes);
 	});
+
+	it('selects send-and-wait nodes, which park the run until a person answers', () => {
+		const nodes = [
+			makeNode({
+				name: 'Ask Approval',
+				type: 'n8n-nodes-base.slack',
+				parameters: { operation: 'sendAndWait' },
+			}),
+			makeNode({ name: 'Post', type: 'n8n-nodes-base.slack', parameters: { operation: 'post' } }),
+		];
+
+		const result = identifyNodesForRunMock(makeWorkflow(nodes));
+
+		expect(result.map((n) => n.name)).toEqual(['Ask Approval']);
+	});
 });
 
 describe('partitionAiRoots', () => {

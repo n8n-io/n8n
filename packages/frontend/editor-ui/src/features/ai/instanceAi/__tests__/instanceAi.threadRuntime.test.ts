@@ -494,7 +494,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				preferences: [{ id: 'pref-1', scope: 'instance' }],
 				renderedLength: 40,
 				injectedThisTurn: false,
-				carriedFromRunId: 'run-0',
 			},
 		});
 
@@ -502,7 +501,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		await runtime.loadHistoricalMessages();
 
 		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['pref-1']);
-		expect(runtime.appliedPreferences?.carriedFromRunId).toBe('run-0');
+		expect(runtime.appliedPreferences?.injectedThisTurn).toBe(false);
 	});
 
 	test('a live payload that arrived during restore is not overwritten by the persisted one', async () => {

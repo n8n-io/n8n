@@ -41,7 +41,7 @@ vi.mock('@ai-sdk/openai', () => {
 	// error (an `APICallError` carries `statusCode`) when the endpoint rejects it.
 	const buildModel =
 		(opts: ProviderOpts | undefined, api?: 'chat-completions') => (model: string) => {
-			const callEndpoint = async () => {
+			const callEndpoint = async (options?: { providerOptions?: unknown }) => {
 				const base = (opts?.baseURL ?? 'https://api.openai.com/v1').replace(/\/+$/, '');
 				const url = `${base}${api === 'chat-completions' ? '/chat/completions' : '/responses'}`;
 				const response = await (opts?.fetch ?? globalThis.fetch)(url, { method: 'POST' });
@@ -51,7 +51,7 @@ vi.mock('@ai-sdk/openai', () => {
 						url,
 					});
 				}
-				return { api, url };
+				return { api, url, providerOptions: options?.providerOptions };
 			};
 			return {
 				provider: 'openai',
@@ -318,7 +318,9 @@ vi.mock('undici', () => ({
 
 /** What the mocked OpenAI stubs report back about the endpoint they reached. */
 type EndpointModel = {
-	doGenerate: (options: unknown) => Promise<{ api?: string; url: string }>;
+	doGenerate: (
+		options: unknown,
+	) => Promise<{ api?: string; url: string; providerOptions?: unknown }>;
 	doStream: (options: unknown) => Promise<{ api?: string; url: string }>;
 };
 
@@ -420,6 +422,21 @@ describe('createModel', () => {
 				url: 'https://proxy.example/v1/responses',
 			});
 			expect(paths).toEqual(['/v1/responses']);
+		});
+
+		it('sends Responses calls to a custom endpoint with store disabled', async () => {
+			// Reported failure: LiteLLM serves /responses without storing items, so the
+			// SDK default `store: true` replayed history as unresolvable item_reference.
+			const { fetchFn } = fakeEndpoint({ '/v1/responses': 200 });
+			const model = build({ url: 'https://litellm.example/v1' }, fetchFn);
+
+			const result = await model.doGenerate({
+				prompt: [],
+				providerOptions: { openai: { reasoningEffort: 'low' } },
+			});
+			expect(result.providerOptions).toEqual({
+				openai: { store: false, reasoningEffort: 'low' },
+			});
 		});
 
 		it('moves to chat completions when the endpoint has no /responses route', async () => {

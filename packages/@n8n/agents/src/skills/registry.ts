@@ -62,7 +62,7 @@ function createRegistryFromNormalized(normalizedSkills: RuntimeSkill[]): Runtime
 
 	return {
 		schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-		skillsHash: hashRegistry(entries),
+		skillsHash: hashRuntimeSkillRegistry(entries),
 		skills: entries,
 	};
 }
@@ -91,7 +91,7 @@ export function filterRuntimeSkillSource(
 		...source,
 		registry: {
 			...source.registry,
-			skillsHash: hashRegistry(skills),
+			skillsHash: hashRuntimeSkillRegistry(skills),
 			skills,
 		},
 		loadSkill: async (skillId) => (excluded.has(skillId) ? null : await source.loadSkill(skillId)),
@@ -134,7 +134,7 @@ export function extendRuntimeSkillSource(
 	const addedIds = new Set(added.registry.skills.map((skill) => skill.id));
 	const mergeRegistry = (base: RuntimeSkillRegistry): RuntimeSkillRegistry => {
 		const entries = [...base.skills, ...added.registry.skills].sort(compareRegistryEntries);
-		return { ...base, skillsHash: hashRegistry(entries), skills: entries };
+		return { ...base, skillsHash: hashRuntimeSkillRegistry(entries), skills: entries };
 	};
 	const { loadFile, prepare } = source;
 
@@ -681,7 +681,7 @@ function normalizeLinkedFilePath(filePath: string): string | null {
 	return normalizedPath;
 }
 
-function hashRegistry(skills: RuntimeSkillRegistryEntry[]): string {
+export function hashRuntimeSkillRegistry(skills: RuntimeSkillRegistryEntry[]): string {
 	return hashJson({
 		schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
 		skills: skills.map(toRegistryHashEntry),

@@ -32,7 +32,7 @@ Call the matching method on `WorkflowSuggestionActionsService` with the acting u
 | `apply()`             | Save the reviewed fix once without publication. The caller decides whether to open the editor. |
 | `discard()`           | Close a pending suggestion without changing the workflow.                                      |
 
-Use **Approve and publish** as the action label. Only `fix_ready` permits Apply. All actions require current edit access. Approval also requires publish access. Save and publication respect editor write locks. Publication runs credential checks and enterprise review guards.
+Use **Apply and publish** as the action label for `approveAndPublish()`. Apply accepts `fix_ready` and `needs_you` suggestions. `approveAndPublish()` accepts only `fix_ready`. All actions require current edit access. Approval also requires publish access. Save and publication respect editor write locks. Publication runs credential checks and enterprise review guards.
 
 Apply calls `WorkflowService.prepareUpdate()` for normal save validation and preparation. Inside a transaction, it locks the workflow and rechecks the baseline and edit access. `savePreparedUpdate()` saves the workflow and required history. The action records the applied version, closes the suggestion, and adds human activity before commit. `finishUpdate()` runs after-save hooks and events after commit.
 
@@ -40,11 +40,11 @@ Apply passes `propagateVersionHistoryErrors: true` to `savePreparedUpdate()`. A 
 
 A failed transaction rolls back the workflow, history, suggestion closure, and activity. Apply returns the save error to the caller. A save error does not close the suggestion as outdated. Workflow events and later actions update that state. A competing action can cause Apply to return a conflict. After-save hook failures are logged and leave the committed application intact.
 
-Approve and publish calls the normal publisher with the saved version and checksum. A publish failure leaves the suggestion applied and returns `publishError`. Applied means saved, not published or verified fixed. The editor owns publication status, errors, and retries.
+`approveAndPublish()` calls the normal publisher with the saved version and checksum. A publish failure leaves the suggestion applied and returns `publishError`. Applied means saved, not published or verified fixed. The editor owns publication status, errors, and retries.
 
 After either Apply action, the caller must check `closedReason` before opening the editor or showing success. Open the editor only when it is `applied`. If it is `outdated`, keep the review open and explain that the workflow has changed. If the save fails, keep the review open and show the error.
 
-Only the request that applies the fix can start publication. Repeated actions return the recorded result without another save or publish request. After a failed request or lost response, use the editor to check publication status and publish the saved fix if needed. Proposal reads do not retry publication.
+Only the request that applies the fix can start publication. Apply and Approve and publish return a conflict for an applied or discarded suggestion. They do not save or publish again. An outdated suggestion still returns its closure. After a failed request or lost response, use the editor to check publication status and publish the saved fix if needed. Proposal reads do not retry publication.
 
 `discard()` commits the suggestion closure and activity in its own transaction.
 
