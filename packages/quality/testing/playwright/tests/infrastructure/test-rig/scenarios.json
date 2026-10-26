@@ -53,12 +53,6 @@
 		"before": "n8nio/n8n:2.42.2",
 		"after": "n8nio/n8n:2.44.0"
 	},
-	"worker-drain-fetched-on-complete": {
-		"issue": "CAT-4728",
-		"spec": "worker-drain-fetched-on-complete.spec.ts",
-		"before": "n8nio/n8n:2.42.2",
-		"after": "n8nio/n8n:2.44.0"
-	},
 	"worker-drain-pending-task-request": {
 		"issue": "CAT-4749",
 		"spec": "worker-drain-pending-task-request.spec.ts",
