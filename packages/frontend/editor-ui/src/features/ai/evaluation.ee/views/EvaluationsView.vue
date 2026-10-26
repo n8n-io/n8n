@@ -337,24 +337,12 @@ watch(runningTestRun, (run) => {
 	border-bottom-right-radius: 0;
 }
 
-// Match the left-side radius to the split button. Only the standalone
-// caret-less variant inherits the design-system's default radius.
-.runTestGroup .runTestButtonWithCaret {
-	border-top-left-radius: var(--radius--full);
-	border-bottom-left-radius: var(--radius--full);
-}
-
 .runTestGroup .caretButton {
-	// Figma uses a caret slightly wider than the small button height.
-	width: calc(var(--height--sm) + var(--spacing--5xs));
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
-	border-top-right-radius: var(--radius--2xs);
-	border-bottom-right-radius: var(--radius--2xs);
-
-	svg {
-		transition: transform var(--duration--snappy) ease;
-	}
+	border-top-right-radius: var(--radius--full);
+	border-bottom-right-radius: var(--radius--full);
+	border-left: 1px solid var(--color--white-alpha-100);
 }
 
 // Open state: rotate the caret 180° for an unmistakable open/closed cue.
