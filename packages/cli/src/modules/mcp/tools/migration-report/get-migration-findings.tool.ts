@@ -1,3 +1,7 @@
+import {
+	breakingChangeWorkflowIssueSchema,
+	migrationFindingListedStatusSchema,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { OperationalError, UserError } from 'n8n-workflow';
 import z from 'zod';
@@ -14,12 +18,12 @@ import {
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { createLimitSchema } from '../schemas';
 import { trackAndReturnToolError } from '../tool-error.utils';
+import { toolResult } from '../tool-result.utils';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 import {
 	byImpact,
 	getReportUrl,
 	getWorkflowUrl,
-	issueSchema,
 	ruleOutputShape,
 	toRuleOutput,
 	workflowRuleResolution,
@@ -54,18 +58,16 @@ const workflowEntrySchema = z.object({
 	name: z.string(),
 	url: z.string(),
 	published: z.boolean().describe('Whether the workflow has a published version'),
-	status: z
-		.enum(['open', 'notified', 'wont_fix'])
-		.describe(
-			'open: still to fix. notified: still to fix, and the owner got a notification. wont_fix: a user accepted the change',
-		),
+	status: migrationFindingListedStatusSchema.describe(
+		'open: still to fix. notified: still to fix, and the owner got a notification. wont_fix: a user accepted the change',
+	),
 	availableInMCP: z
 		.boolean()
 		.describe('MCP tools can only read and edit the workflow when this is true'),
 	numberOfExecutions: z.number().int().min(0).optional(),
 	lastExecutedAt: z.string().optional(),
 	issues: z
-		.array(issueSchema)
+		.array(breakingChangeWorkflowIssueSchema)
 		.optional()
 		.describe('What to fix, per node. Left out when the workflow is not available in MCP.'),
 });
@@ -124,9 +126,11 @@ export const createGetMigrationFindingsTool = (
 
 	/** Every workflow one rule flags, within what the user may read. */
 	const findingsOfRule = async (ruleId: string, limit: number): Promise<Output> => {
-		const scope = await resolveReportScope(user, deps.workflowFinderService);
 		// A partial scan is not recorded, so the next read scans again.
-		const complete = await deps.syncService.syncIfStale(deps.targetVersion);
+		const [scope, complete] = await Promise.all([
+			resolveReportScope(user, deps.workflowFinderService),
+			deps.syncService.syncIfStale(deps.targetVersion),
+		]);
 		const detail = await deps.queryService.getRuleFindings(deps.targetVersion, ruleId, scope);
 
 		// Unresolved findings first: they are the ones left to fix.
@@ -204,7 +208,9 @@ export const createGetMigrationFindingsTool = (
 				'Could not re-check this workflow against the migration report. Try again.',
 			);
 		}
-		const findings = (await deps.queryService.getWorkflowFindings(deps.targetVersion, workflowId))
+		const findings = (
+			(await deps.queryService.getWorkflowFindings(deps.targetVersion, workflowId)) ?? []
+		)
 			.filter((finding) => ruleId === undefined || finding.ruleId === ruleId)
 			.map((finding) => ({
 				...toRuleOutput(finding, workflowRuleResolution(deps.ruleRegistry, finding.ruleId)),
@@ -283,10 +289,7 @@ export const createGetMigrationFindingsTool = (
 				};
 				deps.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-				return {
-					content: [{ type: 'text', text: JSON.stringify(payload) }],
-					structuredContent: payload,
-				};
+				return toolResult(payload);
 			} catch (error) {
 				return trackAndReturnToolError(deps.telemetry, telemetryPayload, error);
 			}

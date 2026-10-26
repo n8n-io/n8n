@@ -1,7 +1,9 @@
-import type {
-	BreakingChangeRecommendation,
-	BreakingChangeRuleImpact,
-	BreakingChangeVersion,
+import {
+	breakingChangeRuleImpactSchema,
+	breakingChangeWorkflowIssueSchema,
+	type BreakingChangeRecommendation,
+	type BreakingChangeRuleImpact,
+	type BreakingChangeVersion,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { UrlService } from '@n8n/backend-services';
@@ -48,19 +50,9 @@ const IMPACT_ORDER: Record<BreakingChangeRuleImpact, number> = {
 export const byImpact = (a: { impact: BreakingChangeRuleImpact }, b: typeof a) =>
 	IMPACT_ORDER[a.impact] - IMPACT_ORDER[b.impact];
 
-export const impactSchema = z
-	.enum([
-		'upgradeBlocked',
-		'executionsFail',
-		'executionsMightFail',
-		'behaviorChanges',
-		'capabilityRemoved',
-	])
-	.describe(
-		'What happens if the issue is not fixed before the update: upgradeBlocked (the instance does not start or the update cannot proceed), executionsFail (affected executions error), executionsMightFail (a default changes, so affected executions can error depending on the workload; an admin can keep the current value through configuration), behaviorChanges (executions run with a different result), capabilityRemoved (a removed capability, no runtime impact)',
-	);
-
-export type RuleResolution = 'workflowEdit' | 'userConfirmation' | 'instanceConfiguration';
+export const impactSchema = breakingChangeRuleImpactSchema.describe(
+	'What happens if the issue is not fixed before the update: upgradeBlocked (the instance does not start or the update cannot proceed), executionsFail (affected executions error), executionsMightFail (a default changes, so affected executions can error depending on the workload; an admin can keep the current value through configuration), behaviorChanges (executions run with a different result), capabilityRemoved (a removed capability, no runtime impact)',
+);
 
 export const resolutionSchema = z
 	.enum(['workflowEdit', 'userConfirmation', 'instanceConfiguration'])
@@ -68,17 +60,11 @@ export const resolutionSchema = z
 		'How a finding is resolved: workflowEdit (fix the workflow; the finding clears on save), userConfirmation (no workflow edit clears it; once the user confirms the change is handled, set the finding to wont_fix), instanceConfiguration (change the deployment or environment; no workflow edit applies)',
 	);
 
+type RuleResolution = z.infer<typeof resolutionSchema>;
+
 /** The resolution a workflow rule declares, `workflowEdit` unless it says otherwise. */
 export const workflowRuleResolution = (ruleRegistry: RuleRegistry, ruleId: string) =>
 	ruleRegistry.getRule(ruleId)?.getMetadata().resolution ?? 'workflowEdit';
-
-export const issueSchema = z.object({
-	nodeId: z.string().optional(),
-	nodeName: z.string().optional(),
-	title: z.string(),
-	description: z.string(),
-	level: z.enum(['info', 'warning', 'error']),
-});
 
 /** The rule fields every migration report tool returns. */
 export const ruleOutputShape = {
@@ -128,7 +114,7 @@ export const workflowMigrationFindingsSchema = z
 					title: z.string(),
 					impact: impactSchema,
 					resolution: resolutionSchema,
-					issues: z.array(issueSchema),
+					issues: z.array(breakingChangeWorkflowIssueSchema),
 				}),
 			)
 			.describe('Findings still open on this workflow. Empty when nothing is left to fix.'),
@@ -167,12 +153,7 @@ export async function readWorkflowMigrationFindings(
 		throw new OperationalError('Could not re-check the workflow against the migration report');
 	}
 	const findings = await deps.queryService.getWorkflowFindings(deps.targetVersion, workflowId);
-	if (
-		findings.length === 0 &&
-		!(await deps.queryService.hasWorkflowFindings(deps.targetVersion, workflowId))
-	) {
-		return undefined;
-	}
+	if (!findings) return undefined;
 
 	// A notification does not resolve a finding, so a notified one is still open.
 	const open = findings.filter((finding) => finding.status !== 'wont_fix');

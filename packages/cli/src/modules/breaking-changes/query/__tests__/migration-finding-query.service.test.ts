@@ -4,6 +4,7 @@ import type {
 	BreakingChangeWorkflowIssue,
 	BreakingChangeWorkflowRuleResult,
 	MigrationFindingListedStatus,
+	MigrationFindingStatus,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
@@ -675,21 +676,21 @@ describe('MigrationFindingQueryService', () => {
 	});
 	describe('getWorkflowFindings', () => {
 		/** A stored finding of one workflow, as the table returns it. */
-		const storedFinding = (id: number, ruleId: string, status: MigrationFindingListedStatus) =>
+		const storedFinding = (id: number, ruleId: string, status: MigrationFindingStatus) =>
 			({
 				id,
 				ruleId,
 				workflowId: 'wf-1',
 				targetVersion: TARGET_VERSION,
 				status,
-			}) as MigrationFinding & {
-				status: MigrationFindingListedStatus;
-			};
+			}) as MigrationFinding;
 
-		it('returns each open or wont_fix finding with its rule and the current issues of that rule', async () => {
-			findingRepository.listListedForWorkflow.mockResolvedValue([
+		it('returns each open, notified or wont_fix finding with its rule and current issues, oldest first', async () => {
+			findingRepository.listForWorkflows.mockResolvedValue([
+				storedFinding(3, 'rule-a', 'notified'),
 				storedFinding(1, 'rule-a', 'open'),
 				storedFinding(2, 'rule-b', 'wont_fix'),
+				storedFinding(4, 'rule-b', 'fixed'),
 			]);
 			workflowRepository.findByIds.mockResolvedValue([
 				workflowWithNodes('wf-1', ['n8n-nodes-base.a', 'n8n-nodes-base.b']),
@@ -697,9 +698,9 @@ describe('MigrationFindingQueryService', () => {
 
 			const result = await service.getWorkflowFindings(TARGET_VERSION, 'wf-1');
 
-			expect(findingRepository.listListedForWorkflow).toHaveBeenCalledWith(
+			expect(findingRepository.listForWorkflows).toHaveBeenCalledWith(
 				TARGET_VERSION,
-				'wf-1',
+				['wf-1'],
 				expect.anything(),
 			);
 			expect(result).toEqual([
@@ -716,13 +717,28 @@ describe('MigrationFindingQueryService', () => {
 					status: 'wont_fix',
 					issues: [expect.objectContaining({ nodeId: 'wf-1-node-1' })],
 				}),
+				expect.objectContaining({ ruleId: 'rule-a', status: 'notified' }),
 			]);
+		});
+
+		it('returns undefined for a workflow the report never flagged', async () => {
+			findingRepository.listForWorkflows.mockResolvedValue([]);
+			workflowRepository.findByIds.mockResolvedValue([workflowWithNodes('wf-1', [])]);
+
+			expect(await service.getWorkflowFindings(TARGET_VERSION, 'wf-1')).toBeUndefined();
+		});
+
+		it('returns an empty list once every finding of the workflow is fixed', async () => {
+			findingRepository.listForWorkflows.mockResolvedValue([storedFinding(1, 'rule-a', 'fixed')]);
+			workflowRepository.findByIds.mockResolvedValue([workflowWithNodes('wf-1', [])]);
+
+			expect(await service.getWorkflowFindings(TARGET_VERSION, 'wf-1')).toEqual([]);
 		});
 
 		it('lists a batch rule finding without issues, since one workflow cannot decide it', async () => {
 			const batch = batchRule('batch-rule');
 			ruleRegistry.getRule.mockReturnValue(batch);
-			findingRepository.listListedForWorkflow.mockResolvedValue([
+			findingRepository.listForWorkflows.mockResolvedValue([
 				storedFinding(1, 'batch-rule', 'open'),
 			]);
 			workflowRepository.findByIds.mockResolvedValue([workflowWithNodes('wf-1', [])]);
@@ -733,7 +749,7 @@ describe('MigrationFindingQueryService', () => {
 		});
 
 		it('skips a finding whose rule is no longer registered', async () => {
-			findingRepository.listListedForWorkflow.mockResolvedValue([
+			findingRepository.listForWorkflows.mockResolvedValue([
 				storedFinding(1, 'retired-rule', 'open'),
 			]);
 			workflowRepository.findByIds.mockResolvedValue([workflowWithNodes('wf-1', [])]);
@@ -742,33 +758,10 @@ describe('MigrationFindingQueryService', () => {
 		});
 
 		it('returns nothing for a workflow that no longer exists', async () => {
-			findingRepository.listListedForWorkflow.mockResolvedValue([
-				storedFinding(1, 'rule-a', 'open'),
-			]);
+			findingRepository.listForWorkflows.mockResolvedValue([storedFinding(1, 'rule-a', 'open')]);
 			workflowRepository.findByIds.mockResolvedValue([]);
 
 			expect(await service.getWorkflowFindings(TARGET_VERSION, 'wf-1')).toEqual([]);
-		});
-	});
-
-	describe('hasWorkflowFindings', () => {
-		it('counts a finding in any status, fixed included', async () => {
-			findingRepository.listForWorkflows.mockResolvedValue([
-				{ id: 1, ruleId: 'rule-a', workflowId: 'wf-1', status: 'fixed' } as MigrationFinding,
-			]);
-
-			expect(await service.hasWorkflowFindings(TARGET_VERSION, 'wf-1')).toBe(true);
-			expect(findingRepository.listForWorkflows).toHaveBeenCalledWith(
-				TARGET_VERSION,
-				['wf-1'],
-				expect.anything(),
-			);
-		});
-
-		it('is false for a workflow the report never flagged', async () => {
-			findingRepository.listForWorkflows.mockResolvedValue([]);
-
-			expect(await service.hasWorkflowFindings(TARGET_VERSION, 'wf-1')).toBe(false);
 		});
 	});
 });

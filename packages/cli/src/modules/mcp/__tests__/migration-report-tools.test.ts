@@ -564,8 +564,7 @@ describe('get_migration_findings', () => {
 describe('readWorkflowMigrationFindings', () => {
 	it('reports nothing for a workflow the report never flagged', async () => {
 		const deps = makeDeps();
-		deps.queryService.getWorkflowFindings.mockResolvedValue([]);
-		deps.queryService.hasWorkflowFindings.mockResolvedValue(false);
+		deps.queryService.getWorkflowFindings.mockResolvedValue(undefined);
 
 		expect(await readWorkflowMigrationFindings(deps, 'wf-1')).toBeUndefined();
 		expect(deps.syncService.awaitWorkflowSync).toHaveBeenCalledWith('wf-1');
@@ -586,7 +585,6 @@ describe('readWorkflowMigrationFindings', () => {
 	it('reports an empty list once every finding of the workflow is fixed', async () => {
 		const deps = makeDeps();
 		deps.queryService.getWorkflowFindings.mockResolvedValue([]);
-		deps.queryService.hasWorkflowFindings.mockResolvedValue(true);
 
 		expect(await readWorkflowMigrationFindings(deps, 'wf-1')).toEqual({
 			targetVersion: 'v3',
@@ -691,7 +689,6 @@ describe('migrate_workflow', () => {
 	it('applies the fix as an MCP save and reports what is still open', async () => {
 		const deps = readyToMigrate();
 		deps.queryService.getWorkflowFindings.mockResolvedValue([]);
-		deps.queryService.hasWorkflowFindings.mockResolvedValue(true);
 
 		const result = await createMigrateWorkflowTool(owner, deps).handler({
 			ruleId: 'ai-transform-deprecated',

@@ -1,3 +1,4 @@
+import { breakingChangeInstanceIssueSchema } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import z from 'zod';
 
@@ -10,6 +11,7 @@ import {
 } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { trackAndRethrowToolError } from '../tool-error.utils';
+import { toolResult } from '../tool-result.utils';
 import {
 	byImpact,
 	getReportUrl,
@@ -59,13 +61,7 @@ const outputSchema = {
 		.array(
 			z.object({
 				...ruleOutputShape,
-				issues: z.array(
-					z.object({
-						title: z.string(),
-						description: z.string(),
-						level: z.enum(['info', 'warning', 'error']),
-					}),
-				),
+				issues: z.array(breakingChangeInstanceIssueSchema),
 			}),
 		)
 		.describe(
@@ -106,10 +102,12 @@ export const createGetMigrationReportTool = (
 		};
 
 		try {
-			const scope = await resolveReportScope(user, deps.workflowFinderService);
 			// A first read, or a rule set that changed with an update, runs a full scan first.
 			// A partial scan is not recorded, so the next read scans again.
-			const complete = await deps.syncService.syncIfStale(deps.targetVersion);
+			const [scope, complete] = await Promise.all([
+				resolveReportScope(user, deps.workflowFinderService),
+				deps.syncService.syncIfStale(deps.targetVersion),
+			]);
 			const { report, totalWorkflows, totalAffectedWorkflows } =
 				await deps.queryService.getLightReport(deps.targetVersion, scope);
 
@@ -149,10 +147,7 @@ export const createGetMigrationReportTool = (
 			};
 			deps.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(payload) }],
-				structuredContent: payload,
-			};
+			return toolResult(payload);
 		} catch (error) {
 			trackAndRethrowToolError(deps.telemetry, telemetryPayload, error);
 		}

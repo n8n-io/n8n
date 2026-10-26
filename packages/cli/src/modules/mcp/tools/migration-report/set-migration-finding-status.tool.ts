@@ -12,6 +12,7 @@ import {
 } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { trackAndReturnToolError } from '../tool-error.utils';
+import { toolResult } from '../tool-result.utils';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 import type { MigrationReportToolDeps } from './migration-report.utils';
 
@@ -78,10 +79,7 @@ export const createSetMigrationFindingStatusTool = (
 			telemetryPayload.results = { success: true, data: { rule_id: ruleId, status } };
 			deps.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-			};
+			return toolResult(output);
 		} catch (error) {
 			return trackAndReturnToolError(deps.telemetry, telemetryPayload, error, (message) => ({
 				success: false,

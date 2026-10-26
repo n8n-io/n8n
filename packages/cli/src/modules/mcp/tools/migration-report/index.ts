@@ -43,15 +43,16 @@ const resolveDeps = (targetVersion: BreakingChangeVersion): MigrationReportToolD
 });
 
 /**
- * Registers the migration report tools for a user who may read the report. The
- * built-in fixes and finding statuses need `breakingChanges:migrate`, like their
- * REST routes, so only owners and admins get those two.
+ * Registers the migration report tools for a user who may read the report, and returns
+ * the reader update_workflow uses to report the findings of the workflow it saved. The
+ * built-in fixes and finding statuses need `breakingChanges:migrate`, so only owners and
+ * admins get those two.
  */
 export function registerMigrationReportTools(
 	registerTool: RegisterToolFn,
 	user: User,
 	targetVersion: BreakingChangeVersion,
-): void {
+): ReadWorkflowMigrationFindings {
 	const deps = resolveDeps(targetVersion);
 
 	registerTool(createGetMigrationReportTool(user, deps));
@@ -61,12 +62,6 @@ export function registerMigrationReportTools(
 		registerTool(createMigrateWorkflowTool(user, deps));
 		registerTool(createSetMigrationFindingStatusTool(user, deps));
 	}
-}
 
-/** The reader update_workflow uses to report the findings of the workflow it saved. */
-export function createWorkflowMigrationFindingsReader(
-	targetVersion: BreakingChangeVersion,
-): ReadWorkflowMigrationFindings {
-	const deps = resolveDeps(targetVersion);
 	return async (workflowId) => await readWorkflowMigrationFindings(deps, workflowId);
 }

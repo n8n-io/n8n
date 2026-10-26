@@ -854,9 +854,17 @@ export class McpService {
 
 		// Not builder-gated: reading the report and running its built-in fixes need no builder.
 		// The tools belong to the `breaking-changes` module, so they load only when it serves a report.
+		// update_workflow reports the findings of a saved workflow only to a caller the report
+		// instructions are for: one whose role and grant reach the report.
+		let readMigrationFindings: ReadWorkflowMigrationFindings | undefined;
 		if (migrationReportReadable && MIGRATION_REPORT_TARGET_VERSION) {
 			const { registerMigrationReportTools } = await import('./tools/migration-report/index.js');
-			registerMigrationReportTools(registerIfAllowed, user, MIGRATION_REPORT_TARGET_VERSION);
+			const reader = registerMigrationReportTools(
+				registerIfAllowed,
+				user,
+				MIGRATION_REPORT_TARGET_VERSION,
+			);
+			if (migrationReportInstructionsEnabled) readMigrationFindings = reader;
 		}
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
@@ -869,6 +877,7 @@ export class McpService {
 				registerIfAllowed,
 				registerResource,
 				allowedToolNames,
+				readMigrationFindings,
 				clientInfo,
 			);
 		}
@@ -927,26 +936,6 @@ export class McpService {
 	}
 
 	/**
-	 * The reader update_workflow reports migration findings with, for a caller whose role and
-	 * grant reach the migration report. Anyone else gets no findings in the update result.
-	 */
-	private async getMigrationFindingsReader(
-		user: User,
-		allowedToolNames: Set<string> | undefined,
-	): Promise<ReadWorkflowMigrationFindings | undefined> {
-		if (!MIGRATION_REPORT_TARGET_VERSION || !canReadMigrationReport(this.moduleRegistry, user)) {
-			return undefined;
-		}
-		if (allowedToolNames && !allowedToolNames.has(MCP_GET_MIGRATION_REPORT_TOOL_NAME)) {
-			return undefined;
-		}
-		const { createWorkflowMigrationFindingsReader } = await import(
-			'./tools/migration-report/index.js'
-		);
-		return createWorkflowMigrationFindingsReader(MIGRATION_REPORT_TARGET_VERSION);
-	}
-
-	/**
 	 * Register the community-package install tool, when it is available at all.
 	 * See {@link isCommunityNodeInstallAvailable} for why the gate sits here
 	 * rather than in the handler.
@@ -987,6 +976,7 @@ export class McpService {
 		registerIfAllowed: RegisterToolFn,
 		registerResource: RegisterResourceFn,
 		allowedToolNames: Set<string> | undefined,
+		readMigrationFindings: ReadWorkflowMigrationFindings | undefined,
 		clientInfo?: McpClientInfo,
 	) {
 		await this.nodeCatalogService.initialize();
@@ -1154,7 +1144,7 @@ export class McpService {
 			this.aiGatewayService,
 			{
 				...uninstalledNodeOptions,
-				readMigrationFindings: await this.getMigrationFindingsReader(user, allowedToolNames),
+				readMigrationFindings,
 			},
 			this.logger,
 			this.postSaveMetrics,

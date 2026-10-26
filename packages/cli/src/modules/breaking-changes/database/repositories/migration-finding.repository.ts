@@ -182,23 +182,6 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	}
 
 	/**
-	 * Findings of one workflow for the version that the rule detail lists (open,
-	 * notified and won't fix), oldest first.
-	 */
-	async listListedForWorkflow(
-		targetVersion: BreakingChangeVersion,
-		workflowId: string,
-		ctx: OperationContext,
-	): Promise<(MigrationFinding & { status: MigrationFindingListedStatus })[]> {
-		const rows = await this.managerFor(ctx).find(MigrationFinding, {
-			where: { targetVersion, workflowId, status: In(LISTED_STATUSES) },
-			order: { id: 'ASC' },
-		});
-		// The query already filters by status. The guard only narrows the type.
-		return rows.filter(hasListedStatus);
-	}
-
-	/**
 	 * Sets the status a user picked on one finding. Returns `false` when the finding
 	 * does not exist or is in a status only the scan sets, for example `fixed`.
 	 * A notified finding can be set like an open one; setting it to `open` drops

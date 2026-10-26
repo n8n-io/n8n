@@ -1,13 +1,14 @@
-import type {
-	BreakingChangeAffectedWorkflow,
-	BreakingChangeLightReportResult,
-	BreakingChangeRuleDetailResult,
-	BreakingChangeRuleDetailWorkflow,
-	BreakingChangeVersion,
-	BreakingChangeWorkflowIssue,
-	BreakingChangeWorkflowOwner,
-	BreakingChangeWorkflowRuleResult,
-	MigrationFindingListedStatus,
+import {
+	migrationFindingListedStatusSchema,
+	type BreakingChangeAffectedWorkflow,
+	type BreakingChangeLightReportResult,
+	type BreakingChangeRuleDetailResult,
+	type BreakingChangeRuleDetailWorkflow,
+	type BreakingChangeVersion,
+	type BreakingChangeWorkflowIssue,
+	type BreakingChangeWorkflowOwner,
+	type BreakingChangeWorkflowRuleResult,
+	type MigrationFindingListedStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -212,41 +213,35 @@ export class MigrationFindingQueryService {
 	}
 
 	/**
-	 * The open and won't fix findings of one workflow, oldest first. It reads the
-	 * finding table, so a caller that needs a save it just made reflected runs the
-	 * sync service's single-workflow re-check first.
+	 * The open, notified, and won't fix findings of one workflow, oldest first.
+	 * Returns `undefined` when the report never flagged the workflow, in any status.
+	 * It reads the finding table, so a caller that needs a save it just made
+	 * reflected runs the sync service's single-workflow re-check first.
 	 */
 	async getWorkflowFindings(
 		targetVersion: BreakingChangeVersion,
 		workflowId: string,
-	): Promise<WorkflowFinding[]> {
-		const [findings, [workflow]] = await Promise.all([
-			this.findingRepository.listListedForWorkflow(targetVersion, workflowId, {}),
+	): Promise<WorkflowFinding[] | undefined> {
+		const [rows, [workflow]] = await Promise.all([
+			this.findingRepository.listForWorkflows(targetVersion, [workflowId], {}),
 			this.workflowRepository.findByIds([workflowId], { fields: WORKFLOW_FIELDS }),
 		]);
+		if (rows.length === 0) return undefined;
 		if (!workflow) return [];
 
 		const result: WorkflowFinding[] = [];
-		for (const finding of findings) {
+		for (const finding of rows.sort((a, b) => a.id - b.id)) {
+			const status = migrationFindingListedStatusSchema.safeParse(finding.status);
 			const rule = this.ruleRegistry.getRule(finding.ruleId);
-			if (!rule || !isWorkflowLevelRule(rule)) continue;
+			if (!status.success || !rule || !isWorkflowLevelRule(rule)) continue;
 			// A batch rule decides from all workflows at once, so one workflow has no issue list of its own.
 			const issues =
 				'detectWorkflow' in rule
 					? ((await this.issuesFromRecheck(rule, [workflow])).get(workflow.id) ?? [])
 					: [];
-			result.push({ ...(await this.describeRule(rule)), status: finding.status, issues });
+			result.push({ ...(await this.describeRule(rule)), status: status.data, issues });
 		}
 		return result;
-	}
-
-	/** Whether the report has a finding for the workflow in any status, fixed included. */
-	async hasWorkflowFindings(
-		targetVersion: BreakingChangeVersion,
-		workflowId: string,
-	): Promise<boolean> {
-		const findings = await this.findingRepository.listForWorkflows(targetVersion, [workflowId], {});
-		return findings.length > 0;
 	}
 
 	private async describeRule(
