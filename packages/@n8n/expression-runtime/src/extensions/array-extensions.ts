@@ -118,15 +118,18 @@ function min(value: unknown[]): number {
 
 	// Math.min(...value) passes every element as an argument and throws
 	// "Maximum call stack size exceeded" for arrays of ~125k numbers or more.
-	return value.reduce<number>((result, v) => {
+	// A plain loop (not reduce) visits holes in sparse arrays as undefined.
+	let result = Infinity;
+	for (const v of value) {
 		if (typeof v === 'string') {
-			return Math.min(result, parseFloat(v));
+			result = Math.min(result, parseFloat(v));
+		} else if (typeof v !== 'number') {
+			result = NaN;
+		} else {
+			result = Math.min(result, v);
 		}
-		if (typeof v !== 'number') {
-			return NaN;
-		}
-		return Math.min(result, v);
-	}, Infinity);
+	}
+	return result;
 }
 
 function max(value: unknown[]): number {
@@ -134,15 +137,18 @@ function max(value: unknown[]): number {
 
 	// Math.max(...value) passes every element as an argument and throws
 	// "Maximum call stack size exceeded" for arrays of ~125k numbers or more.
-	return value.reduce<number>((result, v) => {
+	// A plain loop (not reduce) visits holes in sparse arrays as undefined.
+	let result = -Infinity;
+	for (const v of value) {
 		if (typeof v === 'string') {
-			return Math.max(result, parseFloat(v));
+			result = Math.max(result, parseFloat(v));
+		} else if (typeof v !== 'number') {
+			result = NaN;
+		} else {
+			result = Math.max(result, v);
 		}
-		if (typeof v !== 'number') {
-			return NaN;
-		}
-		return Math.max(result, v);
-	}, -Infinity);
+	}
+	return result;
 }
 
 export function average(value: unknown[]) {

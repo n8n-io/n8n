@@ -166,5 +166,11 @@ describe('min() and max()', () => {
 		expect(max([])).toBe(-Infinity);
 		expect(min([1, NaN, 2])).toBeNaN();
 		expect(max([1, NaN, 2])).toBeNaN();
+		// eslint-disable-next-line no-sparse-arrays
+		expect(min([1, , 3])).toBeNaN();
+		// eslint-disable-next-line no-sparse-arrays
+		expect(max([1, , 3])).toBeNaN();
+		expect(min(new Array(3))).toBeNaN();
+		expect(max(new Array(3))).toBeNaN();
 	});
 });
