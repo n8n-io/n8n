@@ -110,13 +110,10 @@ function subtitleOf(task: CloudBrowserTask): string {
 						/>
 					</span>
 				</div>
-				<button
+				<div
 					v-if="task.state === 'running'"
-					type="button"
 					:class="$style.thumbnail"
-					:aria-label="i18n.baseText('instanceAi.cloudBrowser.openBrowser')"
 					data-test-id="instance-ai-cloud-browser-live-view"
-					@click="openCloudBrowserTab?.(task.taskId)"
 				>
 					<iframe
 						v-if="liveViewUrl"
@@ -128,12 +125,18 @@ function subtitleOf(task: CloudBrowserTask): string {
 						aria-hidden="true"
 						sandbox="allow-same-origin allow-scripts"
 					/>
-					<span :class="$style.thumbnailOverlay">
+					<!-- Next to the frame, not around it: a button cannot hold an iframe. -->
+					<button
+						type="button"
+						:class="$style.thumbnailOverlay"
+						data-test-id="instance-ai-cloud-browser-open"
+						@click="openCloudBrowserTab?.(task.taskId)"
+					>
 						<span :class="$style.openButton">
 							{{ i18n.baseText('instanceAi.cloudBrowser.openBrowser') }}
 						</span>
-					</span>
-				</button>
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -226,20 +229,12 @@ function subtitleOf(task: CloudBrowserTask): string {
 /* The live view laid out at 4x its box and scaled down, so the page renders at desktop size. */
 .thumbnail {
 	position: relative;
-	display: block;
 	width: 100%;
-	padding: 0;
 	aspect-ratio: 16 / 10;
 	overflow: hidden;
 	border: var(--border);
 	border-radius: var(--radius);
 	background: var(--color--background--shade-1);
-	cursor: pointer;
-
-	&:hover .thumbnailOverlay,
-	&:focus-visible .thumbnailOverlay {
-		opacity: 1;
-	}
 }
 
 .thumbnailFrame {
@@ -257,9 +252,18 @@ function subtitleOf(task: CloudBrowserTask): string {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	padding: 0;
+	border: 0;
 	background: var(--color--black-alpha-300);
+	font: inherit;
 	opacity: 0;
+	cursor: pointer;
 	transition: opacity 0.15s ease;
+
+	&:hover,
+	&:focus-visible {
+		opacity: 1;
+	}
 }
 
 .openButton {

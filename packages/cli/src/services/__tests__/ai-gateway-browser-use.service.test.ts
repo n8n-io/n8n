@@ -125,6 +125,21 @@ describe('AiGatewayBrowserUseService', () => {
 			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages: [] });
 		});
 
+		it('reads a tab list it cannot read as no tabs, and keeps the first tab link', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+				pages: [{ id: 'target-1' }],
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess-1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages: [] });
+		});
+
 		it('throws when the response has no live view link', async () => {
 			aiGatewayService.sendProviderRequest.mockResolvedValue({ pages: [] });
 

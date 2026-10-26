@@ -1128,6 +1128,38 @@ describe('CloudBrowserLocalMcpServer', () => {
 				expect(currentWindow()).toBe('page-1');
 			});
 
+			it('moves the tools to a window that a tool call opened only after the call returns', async () => {
+				const { server, toolOn, openWindow, currentWindow, click } = await setupWithSession();
+				const listener = vi.fn();
+				server.setCurrentWindowListener(listener);
+				let windowWhileRunning: string | undefined;
+				vi.mocked(toolOn('browser_click').execute).mockImplementationOnce(async () => {
+					openWindow('page-2');
+					// The toolkit builds the result from the active page at this point.
+					windowWhileRunning = currentWindow();
+					return { content: [{ type: 'text', text: 'clicked e1' }] };
+				});
+
+				await click();
+
+				expect(windowWhileRunning).toBe('page-1');
+				expect(currentWindow()).toBe('page-2');
+				// The live view still shows the new window at once.
+				expect(listener).toHaveBeenCalledTimes(1);
+			});
+
+			it('moves the tools to the current window when a tool call fails', async () => {
+				const { toolOn, openWindow, currentWindow, click } = await setupWithSession();
+				vi.mocked(toolOn('browser_click').execute).mockImplementationOnce(async () => {
+					openWindow('page-2');
+					throw new Error('Click failed');
+				});
+
+				await click();
+
+				expect(currentWindow()).toBe('page-2');
+			});
+
 			it('keeps the top window current when a window below it closes', async () => {
 				const { openWindow, closeWindow, currentWindow } = await setupWithSession();
 				openWindow('page-2');

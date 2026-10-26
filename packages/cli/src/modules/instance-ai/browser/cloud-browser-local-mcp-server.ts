@@ -139,6 +139,8 @@ interface ActiveSession {
 	windows: string[];
 	/** The current window when the agent's last call returned. Its next result notes any change since then. */
 	windowSeenByAgent?: string;
+	/** True while a browser tool runs. See `executeBrowserToolOnSession`. */
+	isBrowserToolRunning: boolean;
 }
 
 /** Browser tools on a Browserbase session, for one background task. */
@@ -329,7 +331,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 				return browserErrorResult('Unknown browser tool: browser_navigate');
 			}
 			// No access check: the URL was checked before the session opened.
-			return await executeBrowserTool(navigate, { url: args.data.url }, this.options.toolContext);
+			return await this.executeBrowserToolOnSession(session, navigate, { url: args.data.url });
 		});
 	}
 
@@ -363,10 +365,10 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 
 		// The check runs here, after the session lock, so it reads the session the tool runs on.
 		// If `getAffectedResources` throws, the helper returns an error and the tool does not run.
-		const result = await executeBrowserTool(
+		const result = await this.executeBrowserToolOnSession(
+			session,
 			tool,
 			args,
-			this.options.toolContext,
 			async (parsedArgs) =>
 				await this.gateAccess(
 					await tool.getAffectedResources(parsedArgs, this.options.toolContext),
@@ -393,13 +395,28 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 
 		const current = windows.at(-1);
 		if (current === before) return;
-		try {
-			session.connection.getConnection().activePageId = current ?? '';
-		} catch {
-			// The connection is gone. The next tool call releases the session.
-			return;
+		// While a tool runs, the tools move to the new window after it returns.
+		if (!session.isBrowserToolRunning) {
+			const isConnected = setActivePageToCurrentWindow(session);
+			// The next tool call releases a session whose connection is gone.
+			if (!isConnected) return;
 		}
 		if (session === this.activeSession) this.onCurrentWindowChange?.();
+	}
+
+	private async executeBrowserToolOnSession(
+		session: ActiveSession,
+		tool: ToolDefinition,
+		args: Record<string, unknown>,
+		checkAccess?: (args: unknown) => Promise<McpToolCallResult | undefined>,
+	): Promise<McpToolCallResult> {
+		session.isBrowserToolRunning = true;
+		try {
+			return await executeBrowserTool(tool, args, this.options.toolContext, checkAccess);
+		} finally {
+			session.isBrowserToolRunning = false;
+			setActivePageToCurrentWindow(session);
+		}
 	}
 
 	/**
@@ -464,6 +481,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			toolsByName: new Map(this.getAvailableToolsFromToolkit(toolkit).map((t) => [t.name, t])),
 			windows: activePageId ? [activePageId] : [],
 			windowSeenByAgent: activePageId || undefined,
+			isBrowserToolRunning: false,
 		};
 		adapter.onPageChange = (change) => this.onPageChange(session, change);
 		return session;
@@ -545,6 +563,16 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
  */
 function isNoHostResource(resource: AffectedResource): boolean {
 	return resource.kind === 'host' && resource.resource === 'browser';
+}
+
+/** Makes the current window the page the tools act on. Returns false when the connection is gone. */
+function setActivePageToCurrentWindow(session: ActiveSession): boolean {
+	try {
+		session.connection.getConnection().activePageId = session.windows.at(-1) ?? '';
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 /** The tab the session's tools act on by default, or `undefined` when the connection is gone. */

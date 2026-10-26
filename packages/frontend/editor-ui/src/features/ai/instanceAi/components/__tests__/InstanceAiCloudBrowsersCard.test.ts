@@ -124,14 +124,16 @@ describe('InstanceAiCloudBrowsersCard', () => {
 
 	it('opens the browser tab when the user clicks the live view', async () => {
 		const openCloudBrowserTab = vi.fn();
-		const { getByTestId } = render(
+		const { getByTestId, container } = render(
 			makeTask(),
 			{ status: 'live', liveViewUrl: 'https://live.example.com/1', windowId: 'window-1' },
 			openCloudBrowserTab,
 		);
 
-		await fireEvent.click(getByTestId('instance-ai-cloud-browser-live-view'));
+		await fireEvent.click(getByTestId('instance-ai-cloud-browser-open'));
 
 		expect(openCloudBrowserTab).toHaveBeenCalledWith('task-1');
+		// The frame sits next to the button: a button cannot hold an iframe.
+		expect(container.querySelector('button iframe')).toBeNull();
 	});
 });

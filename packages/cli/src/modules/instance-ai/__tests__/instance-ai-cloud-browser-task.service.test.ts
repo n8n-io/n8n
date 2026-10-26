@@ -582,6 +582,26 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 			);
 		});
 
+		it("publishes a change of the browser's current window to the thread", async () => {
+			const { service, run, eventBus, cloudBrowserService, records, runSpawnedTask } = setup();
+			const mcpServer = mock<CloudBrowserLocalMcpServer>();
+			cloudBrowserService.createServer.mockResolvedValue(mcpServer);
+			await service.startTask(task, run);
+			const [{ agentId }] = await records();
+			await runSpawnedTask();
+			const [onCurrentWindowChange] = mcpServer.setCurrentWindowListener.mock.calls[0];
+
+			onCurrentWindowChange();
+
+			expect(eventBus.publish).toHaveBeenCalledWith(THREAD_ID, {
+				type: 'cloud-browser-window-changed',
+				runId: 'run-1',
+				agentId,
+				detachedFromTurn: true,
+				payload: {},
+			});
+		});
+
 		it('marks the task alive while it runs, and stops when it ends', async () => {
 			const { service, run, records, runSpawnedTask } = setup();
 			let finishAgent = () => {};

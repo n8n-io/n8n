@@ -147,6 +147,23 @@ describe('useOpenArtifactTabs', () => {
 		expect(tabs.openTabs.value).toEqual([]);
 	});
 
+	it('keeps the place of an open artifact that joined after the stored tabs when it is shown again', async () => {
+		const { storage, finishLoad } = createStorage({
+			tabs: [{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' }],
+			closedTabs: [],
+			activeTab: null,
+		});
+		const { tabs } = setup(
+			[workflowTab('wf-1'), workflowTab('wf-2'), workflowTab('wf-3')],
+			storage,
+		);
+		await finishLoad();
+
+		tabs.reopenTab('wf-3');
+
+		expect(ids(tabs.openTabs.value)).toEqual(['wf-1', 'wf-2', 'wf-3']);
+	});
+
 	it('opens a closed artifact again', () => {
 		const { tabs } = setup([workflowTab('wf-1'), workflowTab('wf-2')]);
 		tabs.closeTab('wf-1');

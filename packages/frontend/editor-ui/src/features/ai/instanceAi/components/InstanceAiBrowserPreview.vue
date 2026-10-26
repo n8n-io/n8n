@@ -3,8 +3,9 @@
  * The live view of a running cloud browser task, in a preview tab. It keeps Browserbase's own
  * bar, which shows the address of the page. The view is read-only.
  */
+import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, inject } from 'vue';
+import { computed, inject, ref } from 'vue';
 
 import {
 	CloudBrowserLiveViewsKey,
@@ -31,13 +32,25 @@ const frames = computed(() => {
 	return view.background ? [{ ...view.background, isCurrent: false }, current] : [current];
 });
 
-const placeholder = computed(() => {
-	const status = liveView.value?.status;
-	if (status === 'disconnected' || status === 'not-found') {
-		return i18n.baseText('instanceAi.cloudBrowser.disconnected');
-	}
-	return i18n.baseText('instanceAi.cloudBrowser.opening');
-});
+const isDisconnected = computed(
+	() => liveView.value?.status === 'disconnected' || liveView.value?.status === 'not-found',
+);
+const placeholder = computed(() =>
+	i18n.baseText(
+		isDisconnected.value
+			? 'instanceAi.cloudBrowser.disconnected'
+			: 'instanceAi.cloudBrowser.opening',
+	),
+);
+
+// The placeholder stays over the frames until the current window's frame has loaded.
+const loadedWindowIds = ref(new Set<string>());
+function onFrameLoad(windowId: string) {
+	loadedWindowIds.value = new Set([...loadedWindowIds.value, windowId]);
+}
+const showsPlaceholder = computed(
+	() => !frames.value.some((frame) => frame.isCurrent && loadedWindowIds.value.has(frame.windowId)),
+);
 </script>
 
 <template>
@@ -45,13 +58,21 @@ const placeholder = computed(() => {
 		<div :class="$style.stage">
 			<div :class="$style.window">
 				<div
-					v-if="!frames.length"
+					v-if="showsPlaceholder"
 					:class="$style.placeholder"
 					data-test-id="instance-ai-browser-preview-placeholder"
 				>
+					<N8nIcon
+						v-if="!isDisconnected"
+						icon="loader-circle"
+						size="small"
+						spin
+						aria-hidden="true"
+						data-test-id="instance-ai-browser-preview-spinner"
+					/>
 					{{ placeholder }}
 				</div>
-				<template v-else>
+				<template v-if="frames.length">
 					<iframe
 						v-for="frame in frames"
 						:key="frame.windowId"
@@ -70,6 +91,7 @@ const placeholder = computed(() => {
 								? 'instance-ai-browser-preview-frame'
 								: 'instance-ai-browser-preview-background-frame'
 						"
+						@load="onFrameLoad(frame.windowId)"
 					/>
 				</template>
 			</div>
@@ -109,11 +131,13 @@ const placeholder = computed(() => {
 	box-shadow: var(--shadow--xs);
 }
 .placeholder {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 100%;
-	height: 100%;
+	gap: var(--spacing--2xs);
 	background: var(--color--background--light-2);
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--sm);
