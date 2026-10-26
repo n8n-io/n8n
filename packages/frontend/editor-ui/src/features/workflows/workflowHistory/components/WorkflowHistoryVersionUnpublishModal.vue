@@ -81,7 +81,11 @@ const hiddenAffectedCount = computed(() => {
 	return Math.max(0, total - visibleCount);
 });
 
-const hasAffected = computed(() => affectedDependencies.value.length > 0 || hiddenAffectedCount.value > 0);
+const affectedCount = computed(() => {
+	const counts = getDependencyCounts(props.data.workflowId, 'workflow');
+	if (!counts) return affectedDependencies.value.length;
+	return Math.max(affectedDependencies.value.length, AFFECTED_TYPES.reduce((sum, type) => sum + counts[type], 0));
+});
 
 const closeModal = () => {
 	uiStore.closeModal(props.modalName);
@@ -121,10 +125,13 @@ onBeforeUnmount(() => {
 							})
 						}}
 					</N8nText>
-					<template v-if="hasAffected">
+					<template v-if="affectedCount > 0">
 						<N8nText size="medium">
 							{{
-								i18n.baseText('workflowHistory.action.unpublish.modal.affected')
+								i18n.baseText('workflowHistory.action.unpublish.modal.affected', {
+									adjustToNumber: affectedCount,
+									interpolate: { count: affectedCount },
+								})
 							}}
 						</N8nText>
 						<div :class="$style.affected" data-test-id="workflow-unpublish-affected-resources">
