@@ -1,3 +1,4 @@
+import type { SkillScope } from '@n8n/api-types';
 import type { AssistantSkillSummary } from '@n8n/backend-services';
 import {
 	BaseRepository,
@@ -43,13 +44,13 @@ export type SkillVisibility = {
 
 /** Narrows the visible skills of `findVisiblePage` and cuts one page. */
 export type SkillListFilter = {
-	scope?: 'project' | 'instance';
+	scope?: SkillScope;
 	/** The skills of this project. */
 	projectId?: string;
 	/** What an agent of this project may attach: instance skills and the project's skills. */
-	attachableTo?: { projectId: string };
+	attachableToProjectId?: string;
 	/** The skills an agent uses. */
-	usedBy?: { skillIds: string[] };
+	usedBySkillIds?: string[];
 	createdById?: string;
 	search?: string;
 	/** Most recently changed first when absent. */
@@ -88,10 +89,9 @@ export class SkillRepository extends BaseRepository<Skill> {
 		if (filter.projectId !== undefined) {
 			query.andWhere('skill.projectId = :filterProjectId', { filterProjectId: filter.projectId });
 		}
-		if (filter.usedBy) {
-			const { skillIds } = filter.usedBy;
-			if (skillIds.length === 0) return { skills: [], count: 0 };
-			query.andWhere('skill.id IN (:...usedSkillIds)', { usedSkillIds: skillIds });
+		if (filter.usedBySkillIds) {
+			if (filter.usedBySkillIds.length === 0) return { skills: [], count: 0 };
+			query.andWhere('skill.id IN (:...usedSkillIds)', { usedSkillIds: filter.usedBySkillIds });
 		}
 		if (filter.createdById !== undefined) {
 			query.andWhere('skill.createdById = :createdById', { createdById: filter.createdById });
@@ -145,7 +145,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 	/** The skills `visibility` allows, narrowed by scope or by the agent that attaches them. */
 	private visibleQuery(
 		visibility: SkillVisibility,
-		filter: Pick<SkillListFilter, 'scope' | 'attachableTo'>,
+		filter: Pick<SkillListFilter, 'scope' | 'attachableToProjectId'>,
 		ctx: OperationContext,
 	) {
 		const manager = this.managerFor(ctx);
@@ -154,8 +154,9 @@ export class SkillRepository extends BaseRepository<Skill> {
 		if (!filter.scope || filter.scope === 'instance') {
 			branches.push('skill.projectId IS NULL');
 		}
-		if (filter.attachableTo !== undefined) {
-			if (projectIds === 'all' || projectIds.includes(filter.attachableTo.projectId)) {
+		const { attachableToProjectId } = filter;
+		if (attachableToProjectId !== undefined) {
+			if (projectIds === 'all' || projectIds.includes(attachableToProjectId)) {
 				branches.push('skill.projectId = :attachProjectId');
 			}
 		} else if (!filter.scope || filter.scope === 'project') {
@@ -169,9 +170,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 			.where(new Brackets((qb) => branches.forEach((branch) => qb.orWhere(`(${branch})`))))
 			.setParameters({
 				projectIds,
-				...(filter.attachableTo !== undefined && {
-					attachProjectId: filter.attachableTo.projectId,
-				}),
+				...(attachableToProjectId !== undefined && { attachProjectId: attachableToProjectId }),
 			});
 	}
 

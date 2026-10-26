@@ -10,6 +10,9 @@ type AgentSkillRow = {
 	versionId: string;
 	version: number;
 	name: string;
+};
+
+type VersionContentRow = {
 	description: string;
 	instructions: string;
 	/** A JSON string on SQLite, an object on Postgres. */
@@ -79,16 +82,9 @@ export class MoveAgentSkillsToProjects1793043851248 implements IrreversibleMigra
 		await runInBatches<AgentSkillRow>(
 			`SELECT ${s('id')} AS ${as('skillId')}, a.${escape.columnName('projectId')} AS ${as('projectId')},
 				a.${escape.columnName('name')} AS ${as('agentName')}, ${v('id')} AS ${as('versionId')},
-				${v('version')} AS ${as('version')}, ${v('name')} AS ${as('name')},
-				${v('description')} AS ${as('description')}, ${v('instructions')} AS ${as('instructions')},
-				${v('frontmatter')} AS ${as('frontmatter')}
-			FROM ${escape.tableName('skill')} s
+				${v('version')} AS ${as('version')}, ${v('name')} AS ${as('name')}
+			${skillsWithLatestVersion(context)}
 			JOIN ${escape.tableName('agents')} a ON a.${escape.columnName('id')} = ${s('agentId')}
-			JOIN ${escape.tableName('skill_version')} v ON ${v('skillId')} = ${s('id')}
-				AND ${v('version')} = (
-					SELECT MAX(v2.${escape.columnName('version')}) FROM ${escape.tableName('skill_version')} v2
-					WHERE v2.${escape.columnName('skillId')} = ${s('id')}
-				)
 			WHERE ${s('agentId')} IS NOT NULL
 			ORDER BY ${s('createdAt')}, ${s('id')}`,
 			async (rows) => {
@@ -116,23 +112,18 @@ export class MoveAgentSkillsToProjects1793043851248 implements IrreversibleMigra
 
 	/** Name keys of the latest versions of the project skills, or of the instance skills. */
 	private async namesInTarget(
-		{ escape, runQuery }: MigrationContext,
+		context: MigrationContext,
 		projectId: string | null,
 	): Promise<Set<string>> {
+		const { escape, runQuery } = context;
 		const s = (column: string) => `s.${escape.columnName(column)}`;
-		const v = (column: string) => `v.${escape.columnName(column)}`;
 		const target =
 			projectId === null
 				? `${s('projectId')} IS NULL AND ${s('agentId')} IS NULL`
 				: `${s('projectId')} = :projectId`;
 		const rows = await runQuery<Array<{ name: string }>>(
-			`SELECT ${v('name')} AS ${escape.columnName('name')}
-			FROM ${escape.tableName('skill')} s
-			JOIN ${escape.tableName('skill_version')} v ON ${v('skillId')} = ${s('id')}
-				AND ${v('version')} = (
-					SELECT MAX(v2.${escape.columnName('version')}) FROM ${escape.tableName('skill_version')} v2
-					WHERE v2.${escape.columnName('skillId')} = ${s('id')}
-				)
+			`SELECT v.${escape.columnName('name')} AS ${escape.columnName('name')}
+			${skillsWithLatestVersion(context)}
 			WHERE ${target}`,
 			projectId === null ? {} : { projectId },
 		);
@@ -142,17 +133,22 @@ export class MoveAgentSkillsToProjects1793043851248 implements IrreversibleMigra
 	/** Adds the next version of the skill: the latest content with the new name. */
 	private async insertRenamedVersion(context: MigrationContext, row: AgentSkillRow, name: string) {
 		const { escape, runQuery, parseJson } = context;
+		const [version] = await runQuery<VersionContentRow[]>(
+			`SELECT ${['description', 'instructions', 'frontmatter'].map((column) => escape.columnName(column)).join(', ')}
+			FROM ${escape.tableName('skill_version')} WHERE ${escape.columnName('id')} = :versionId`,
+			{ versionId: row.versionId },
+		);
 		const files = await runQuery<FileRow[]>(
 			`SELECT ${escape.columnName('path')}, ${escape.columnName('content')}
 			FROM ${escape.tableName('skill_file')} WHERE ${escape.columnName('skillVersionId')} = :versionId`,
 			{ versionId: row.versionId },
 		);
 		const frontmatter =
-			row.frontmatter === null ? null : parseJson<Record<string, unknown>>(row.frontmatter);
+			version.frontmatter === null ? null : parseJson<Record<string, unknown>>(version.frontmatter);
 		const hash = contentHash({
 			name,
-			description: row.description,
-			instructions: row.instructions,
+			description: version.description,
+			instructions: version.instructions,
 			frontmatter,
 			files,
 		});
@@ -186,6 +182,16 @@ export class MoveAgentSkillsToProjects1793043851248 implements IrreversibleMigra
 			{ id, versionId: row.versionId },
 		);
 	}
+}
+
+/** `FROM` skills `s`, joined to their latest version `v`. */
+function skillsWithLatestVersion({ escape }: MigrationContext): string {
+	const version = escape.columnName('version');
+	const skillId = escape.columnName('skillId');
+	const versions = escape.tableName('skill_version');
+	return `FROM ${escape.tableName('skill')} s
+		JOIN ${versions} v ON v.${skillId} = s.${escape.columnName('id')}
+			AND v.${version} = (SELECT MAX(v2.${version}) FROM ${versions} v2 WHERE v2.${skillId} = s.${escape.columnName('id')})`;
 }
 
 /**

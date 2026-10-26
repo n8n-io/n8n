@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
 	AGENT_SKILL_NAME_MAX_LENGTH,
+	agentSkillAvailabilitySchema,
 	agentSkillSchema,
 	agentSkillShape,
 	skillCreateMethodSchema,
@@ -25,7 +26,7 @@ const optionalTake = z
 	.transform((value) => (value === undefined ? undefined : Math.min(value, SKILLS_MAX_PAGE_SIZE)));
 
 /** Who owns a skill: one project, or the instance. */
-export const skillScopeSchema = z.enum(['project', 'instance']);
+export const skillScopeSchema = agentSkillAvailabilitySchema;
 
 export type SkillScope = z.infer<typeof skillScopeSchema>;
 

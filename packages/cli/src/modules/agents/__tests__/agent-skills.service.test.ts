@@ -2,13 +2,11 @@
 import type { AgentJsonSkillConfig, AgentSkill } from '@n8n/api-types';
 import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { GLOBAL_MEMBER_ROLE, type TransactionRunner, type User } from '@n8n/db';
+import type { TransactionRunner, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
@@ -26,8 +24,6 @@ import {
 	type FakeAgentSkillRefsService,
 	createAgentSkillRefsService,
 } from './test-utils/stored-agent-config';
-
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -104,7 +100,6 @@ describe('AgentSkillsService', () => {
 		agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 		transactionRunner = mock<TransactionRunner>();
 		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
-		vi.mocked(userHasScopes).mockResolvedValue(true);
 		skillsTelemetry = mock<SkillsTelemetry>();
 		projectScopeService = mock<ProjectScopeService>();
 		projectScopeService.getProjectIds.mockResolvedValue([projectId]);
@@ -158,9 +153,7 @@ describe('AgentSkillsService', () => {
 				'agent',
 				{},
 			);
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:create'], false, {
-				projectId,
-			});
+			expect(skillService.assertCanCreate).toHaveBeenCalledWith(user, { projectId });
 			const refs: AgentJsonSkillConfig[] = [
 				{ type: 'skill', id: 'existing' },
 				{ type: 'skill', id: 'skill_new1' },
@@ -236,20 +229,14 @@ describe('AgentSkillsService', () => {
 			);
 		});
 
-		it('refuses an instance skill without the global skill create permission', async () => {
+		it('checks the create permission for the instance when the skill is for the instance', async () => {
 			givenAgent({ schema: baseConfig });
-
-			const member = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			skillService.assertCanCreate.mockRejectedValue(new ForbiddenError('No'));
 
 			await expect(
-				service.createAndAttachSkill(
-					agentId,
-					projectId,
-					skill,
-					{ ...context, user: member },
-					'instance',
-				),
-			).rejects.toThrow('You are not allowed to create skills for the whole instance.');
+				service.createAndAttachSkill(agentId, projectId, skill, context, 'instance'),
+			).rejects.toThrow(ForbiddenError);
+			expect(skillService.assertCanCreate).toHaveBeenCalledWith(user, { projectId: null });
 			expect(skillRefs.createSkills).not.toHaveBeenCalled();
 		});
 
@@ -271,7 +258,7 @@ describe('AgentSkillsService', () => {
 
 		it('rejects a user who may not create skills in the project', async () => {
 			givenAgent({ schema: baseConfig });
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			skillService.assertCanCreate.mockRejectedValue(new ForbiddenError('No'));
 
 			await expect(
 				service.createAndAttachSkills(agentId, projectId, [skill], context),
@@ -348,7 +335,6 @@ describe('AgentSkillsService', () => {
 			});
 			skillRefs.availabilityOf.mockResolvedValue('instance');
 			skillService.assertCanMove.mockResolvedValue({ projectId: null });
-			vi.mocked(userHasScopes).mockResolvedValue(true);
 
 			await service.updateSkill(
 				agentId,

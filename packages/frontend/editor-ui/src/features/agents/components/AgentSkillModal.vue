@@ -305,10 +305,7 @@ const cannotEdit = computed(
 );
 /** Save sends a snapshot, so the editor is locked until the answer comes back. */
 const editorLocked = computed(() => isReadOnly.value || isSaving.value);
-const savedTarget = computed<AgentSkillAvailability | undefined>(() => {
-	if (!skillAccess.value) return undefined;
-	return skillAccess.value.scope === 'instance' ? 'instance' : 'project';
-});
+const savedTarget = computed<AgentSkillAvailability | undefined>(() => skillAccess.value?.scope);
 const showAvailabilitySelect = computed(() => {
 	if (!props.data.hubSkillsEnabled || step.value === 'preview') return false;
 	if (!isEditing.value) return true;

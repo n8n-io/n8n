@@ -14,7 +14,7 @@ import { getSkillHash } from '../skill-hash';
 import type { SkillVersion } from '../skill-version.entity';
 import type { Skill } from '../skill.entity';
 import type { ResolvedSkillRow, SkillRepository } from '../skill.repository';
-import type { SkillService } from '../skill.service';
+import { SkillService } from '../skill.service';
 import { SkillsApiService } from '../skills-api.service';
 import type { SkillsTelemetry } from '../skills-telemetry';
 import type { AssistantSkillsRollout } from '../assistant-skills-rollout';
@@ -100,6 +100,10 @@ describe('SkillsApiService', () => {
 		visible = Object.keys(NAMES).map((id) => skill(id));
 		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
 		vi.mocked(hasGlobalScope).mockReturnValue(false);
+		// The real check: these tests cover the create permission through the API.
+		skillService.assertCanCreate.mockImplementation(
+			async (...args) => await SkillService.prototype.assertCanCreate.apply(skillService, args),
+		);
 		repository.findVisiblePage.mockImplementation(async () => ({
 			skills: visible,
 			count: visible.length,
@@ -250,7 +254,7 @@ describe('SkillsApiService', () => {
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({
-					usedBy: { skillIds: ['skill_a', 'skill_b'] },
+					usedBySkillIds: ['skill_a', 'skill_b'],
 					search: 'voice',
 				}),
 			);
@@ -283,7 +287,7 @@ describe('SkillsApiService', () => {
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({
-					attachableTo: { projectId: 'project-1' },
+					attachableToProjectId: 'project-1',
 					search: 'voice',
 				}),
 			);

@@ -5,10 +5,12 @@ import { useDebounceFn } from '@vueuse/core';
 import { saveAs } from 'file-saver';
 import {
 	SKILLS_SORT_OPTIONS,
+	skillScopeSchema,
 	type AgentSkill,
 	type SkillCreateMethod,
 	type SkillAgentOption,
 	type SkillListItem,
+	type SkillScope,
 	type SkillUserDto,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -134,7 +136,8 @@ function creatorLabel(creator: SkillUserDto): string {
 }
 
 function scopeQuery(scope: string): Pick<SkillListQuery, 'scope'> {
-	return scope === 'instance' || scope === 'project' ? { scope } : {};
+	const parsed = skillScopeSchema.safeParse(scope);
+	return parsed.success ? { scope: parsed.data } : {};
 }
 
 // Paging, sort, search and filters run on the server: the count and the page both
@@ -190,7 +193,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 });
 
 /** The scope and project of a scope picker value. */
-function parseScope(value: string): { scope: 'project' | 'instance'; projectId?: string } {
+function parseScope(value: string): { scope: SkillScope; projectId?: string } {
 	if (value.startsWith(PROJECT_SCOPE_PREFIX)) {
 		return { scope: 'project', projectId: value.slice(PROJECT_SCOPE_PREFIX.length) };
 	}

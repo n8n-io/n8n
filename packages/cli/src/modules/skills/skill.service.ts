@@ -297,8 +297,9 @@ export class SkillService {
 
 	// ---------------------------------------------------------------- writes
 
-	/** Creates a skill with its v1. Returns the new id. */
 	/**
+	 * Creates a skill with its v1. Returns the new id.
+	 *
 	 * `checkNameTaken` is for a name that a user or the builder chose. A caller that took a
 	 * name from `freeName` skips the check.
 	 */
@@ -429,18 +430,23 @@ export class SkillService {
 	 * free number after it ("New skill 2"), as workflow names get.
 	 */
 	async freeName(requested: string, target: SkillTarget, ctx: OperationContext = {}) {
+		const [name] = await this.freeNames([requested], target, ctx);
+		return name;
+	}
+
+	/** `freeName` for many names, in one query. Each name counts as taken for the next ones. */
+	async freeNames(requested: string[], target: SkillTarget, ctx: OperationContext = {}) {
+		if (requested.length === 0) return [];
 		const taken = new Set(
-			(
-				await this.skillRepository.findLatestNamesInTarget({ projectId: target.projectId }, ctx)
-			).map(({ name }) => skillNameKey(name)),
+			(await this.skillRepository.findLatestNamesInTarget(target, ctx)).map(({ name }) =>
+				skillNameKey(name),
+			),
 		);
-		const base = requested.trim();
-		if (!taken.has(skillNameKey(base))) return base;
-		for (let n = 2; ; n++) {
-			const suffix = ` ${n}`;
-			const candidate = `${base.slice(0, AGENT_SKILL_NAME_MAX_LENGTH - suffix.length)}${suffix}`;
-			if (!taken.has(skillNameKey(candidate))) return candidate;
-		}
+		return requested.map((name) => {
+			const free = firstFreeName(name.trim(), taken);
+			taken.add(skillNameKey(free));
+			return free;
+		});
 	}
 
 	/**
@@ -454,6 +460,7 @@ export class SkillService {
 		ctx: OperationContext,
 	): Promise<void> {
 		const key = skillNameKey(name);
+		// Callers may pass a whole skill, so only its target goes to the query.
 		const names = await this.skillRepository.findLatestNamesInTarget(
 			{ projectId: target.projectId },
 			ctx,
@@ -604,6 +611,20 @@ export class SkillService {
 		return hasGlobalScope(user, `skill:${operation}`);
 	}
 
+	/** A create needs `projectSkill:create` in the project, or the global `skill:create`. */
+	async assertCanCreate(user: User, target: SkillTarget): Promise<void> {
+		const { projectId } = target;
+		if (projectId === null) {
+			if (!hasGlobalScope(user, 'skill:create')) {
+				throw new ForbiddenError('You are not allowed to create skills for the whole instance.');
+			}
+			return;
+		}
+		if (!(await userHasScopes(user, ['projectSkill:create'], false, { projectId }))) {
+			throw new ForbiddenError('You are not allowed to create skills for this project.');
+		}
+	}
+
 	async canEdit(user: User, skill: Pick<Skill, 'projectId'>): Promise<boolean> {
 		return await this.canAccess(user, skill, 'update');
 	}
@@ -676,5 +697,14 @@ export class SkillService {
 			await this.skillRepository.deleteSkill(skillId, txCtx);
 		});
 		this.logger.debug('Deleted skill', { skillId });
+	}
+}
+
+function firstFreeName(base: string, taken: Set<string>): string {
+	if (!taken.has(skillNameKey(base))) return base;
+	for (let n = 2; ; n++) {
+		const suffix = ` ${n}`;
+		const candidate = `${base.slice(0, AGENT_SKILL_NAME_MAX_LENGTH - suffix.length)}${suffix}`;
+		if (!taken.has(skillNameKey(candidate))) return candidate;
 	}
 }

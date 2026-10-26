@@ -8,14 +8,12 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
-import { TransactionRunner, type User } from '@n8n/db';
+import { TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
 
-import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { hasGlobalScope } from '@n8n/permissions';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { findIntroducedNameClashes, findNameClashGroups } from '@/modules/skills/skill-names';
 import {
 	SkillService,
@@ -150,7 +148,9 @@ export class AgentSkillsService {
 		// Skills ignore `allowedTools`, and get the trimmed name the hub stores, so the
 		// answer and its hash match the saved skill.
 		const bodies = skills.map((skill) => withTrimmedName(toStoredSkill(this.validateSkill(skill))));
-		await this.assertCanCreateSkills(context.user, entity.projectId, availableTo);
+		await this.skillService.assertCanCreate(context.user, {
+			projectId: availableTo === 'project' ? entity.projectId : null,
+		});
 
 		const previous = await this.agentSkillRefs.readDraft(entity, {});
 		this.assertNoNameClashes(previous.skills, bodies);
@@ -251,7 +251,9 @@ export class AgentSkillsService {
 		if (nextAvailability) {
 			await this.skillService.assertCanEdit(context.user, [skillId]);
 			const checkedSource = await this.skillService.assertCanMove(context.user, skillId);
-			await this.assertCanCreateSkills(context.user, entity.projectId, nextAvailability);
+			await this.skillService.assertCanCreate(context.user, {
+				projectId: nextAvailability === 'project' ? entity.projectId : null,
+			});
 			// A refused move names only the agents the user may read.
 			const agentProjectIds = await this.projectScopeService.getProjectIds(context.user, [
 				'agent:read',
@@ -412,22 +414,6 @@ export class AgentSkillsService {
 			);
 		}
 		return result.data;
-	}
-
-	private async assertCanCreateSkills(
-		user: User,
-		projectId: string,
-		availableTo: AgentSkillAvailability,
-	): Promise<void> {
-		if (availableTo === 'instance') {
-			if (!hasGlobalScope(user, 'skill:create')) {
-				throw new ForbiddenError('You are not allowed to create skills for the whole instance.');
-			}
-			return;
-		}
-		if (!(await userHasScopes(user, ['projectSkill:create'], false, { projectId }))) {
-			throw new ForbiddenError('You are not allowed to create skills for this project.');
-		}
 	}
 
 	/** New names must be easy to tell apart from the agent's skills and from each other. */

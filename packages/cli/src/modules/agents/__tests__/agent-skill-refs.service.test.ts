@@ -314,7 +314,7 @@ describe('AgentSkillRefsService', () => {
 		beforeEach(() => {
 			agentSkillUsage.checkRefs.mockImplementation(async (_agent, refs) => refs);
 			skillService.create.mockResolvedValue('skill_created');
-			skillService.freeName.mockImplementation(async (name) => name);
+			skillService.freeNames.mockImplementation(async (names) => names);
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 		});
 
@@ -384,7 +384,7 @@ describe('AgentSkillRefsService', () => {
 
 		it('gives a new skill a free name in the project', async () => {
 			skillRepository.findByIds.mockResolvedValue([]);
-			skillService.freeName.mockResolvedValue('New 2');
+			skillService.freeNames.mockResolvedValue(['New 2']);
 
 			await service.createDraftRefs(
 				agent,
@@ -394,7 +394,7 @@ describe('AgentSkillRefsService', () => {
 				ctx,
 			);
 
-			expect(skillService.freeName).toHaveBeenCalledWith('New', { projectId: 'project-1' }, ctx);
+			expect(skillService.freeNames).toHaveBeenCalledWith(['New'], { projectId: 'project-1' }, ctx);
 			expect(skillService.create).toHaveBeenCalledWith(
 				expect.objectContaining({ skill: { ...body, name: 'New 2' } }),
 				ctx,

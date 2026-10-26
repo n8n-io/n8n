@@ -8,7 +8,6 @@ import type {
 	SkillListResponse,
 	SkillSaveResponse,
 	SaveSkillDto,
-	SkillScope,
 	SkillSortOption,
 	SkillUserDto,
 	SkillNewNameQueryDto,
@@ -18,13 +17,10 @@ import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
-import { hasGlobalScope } from '@n8n/permissions';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { SkillAgentsProxy } from './skill-agents-proxy.service';
 import { getSkillHash } from './skill-hash';
-import type { Skill } from './skill.entity';
+import { scopeOf, type Skill } from './skill.entity';
 import {
 	SkillRepository,
 	type SkillListSort,
@@ -41,10 +37,6 @@ const LIST_SORTS: Record<SkillSortOption, SkillListSort> = {
 	'updatedAt:asc': { by: 'updatedAt', order: 'ASC' },
 	'updatedAt:desc': { by: 'updatedAt', order: 'DESC' },
 };
-
-function scopeOf(skill: Pick<Skill, 'projectId'>): SkillScope {
-	return skill.projectId ? 'project' : 'instance';
-}
 
 /**
  * Skills as the settings page sees them: list, read, create, save and delete. The
@@ -73,16 +65,16 @@ export class SkillsApiService {
 		if (query.projectId && projectIds !== null && !projectIds.includes(query.projectId)) {
 			return { count: 0, data: [] };
 		}
-		const [usedBy, attachableTo] = await Promise.all([
+		const [usedBySkillIds, attachableToProjectId] = await Promise.all([
 			this.usedByFilter(user, query.agentId),
 			this.attachTarget(query.attachableTo),
 		]);
-		if (usedBy === null) return { count: 0, data: [] };
+		if (usedBySkillIds === null) return { count: 0, data: [] };
 		const { skills, count } = await this.skillRepository.findVisiblePage(visibilityOf(projectIds), {
 			scope: query.scope,
 			projectId: query.projectId || undefined,
-			attachableTo,
-			usedBy,
+			attachableToProjectId,
+			usedBySkillIds,
 			createdById: query.createdById,
 			search: query.search,
 			sort: query.sortBy && LIST_SORTS[query.sortBy],
@@ -280,7 +272,7 @@ export class SkillsApiService {
 	private async usedByFilter(
 		user: User,
 		agentId: string | undefined,
-	): Promise<{ skillIds: string[] } | undefined | null> {
+	): Promise<string[] | undefined | null> {
 		if (agentId === undefined) return undefined;
 		const [agents, readable] = await Promise.all([
 			this.skillAgents.findAgents([agentId]),
@@ -289,17 +281,15 @@ export class SkillsApiService {
 		const agent = agents.get(agentId);
 		if (!agent) return null;
 		if (readable !== null && !readable.includes(agent.projectId)) return null;
-		return { skillIds: await this.skillAgents.findSkillIdsUsedByAgent(agentId) };
+		return await this.skillAgents.findSkillIdsUsedByAgent(agentId);
 	}
 
 	/** The project of an `attachableTo` agent. An unknown agent can attach nothing. */
-	private async attachTarget(
-		agentId: string | undefined,
-	): Promise<{ projectId: string } | undefined> {
+	private async attachTarget(agentId: string | undefined): Promise<string | undefined> {
 		if (agentId === undefined) return undefined;
 		const agent = (await this.skillAgents.findAgents([agentId])).get(agentId);
 		if (!agent) throw new NotFoundError('Agent not found');
-		return { projectId: agent.projectId };
+		return agent.projectId;
 	}
 
 	/** Where a create or a move puts the skill. The user needs the create permission there. */
@@ -310,14 +300,12 @@ export class SkillsApiService {
 		switch (payload.scope) {
 			case 'instance':
 				if (payload.projectId) throw new UserError('An instance skill has no project.');
-				if (!hasGlobalScope(user, 'skill:create')) {
-					throw new ForbiddenError('You are not allowed to create skills for the whole instance.');
-				}
+				await this.skillService.assertCanCreate(user, { projectId: null });
 				return { projectId: null };
 			case 'project': {
 				const { projectId } = payload;
 				if (!projectId) throw new UserError('A project skill needs a project id.');
-				await this.assertCanCreateIn(user, projectId);
+				await this.skillService.assertCanCreate(user, { projectId });
 				// A global scope passes without looking at the project, so check that it exists.
 				if (!(await this.skillRepository.findProjects([projectId])).has(projectId)) {
 					throw new NotFoundError('Project not found');
@@ -325,12 +313,6 @@ export class SkillsApiService {
 				// A personal project keeps its own skills, as a team project does.
 				return { projectId };
 			}
-		}
-	}
-
-	private async assertCanCreateIn(user: User, projectId: string): Promise<void> {
-		if (!(await userHasScopes(user, ['projectSkill:create'], false, { projectId }))) {
-			throw new ForbiddenError('You are not allowed to create skills for this project.');
 		}
 	}
 

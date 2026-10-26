@@ -1,3 +1,4 @@
+import { skillScopeSchema } from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -38,7 +39,7 @@ const optionalUserId = z
 
 /** Where a skill lives. */
 const skillScope = z
-	.enum(['project', 'instance'])
+	.enum(skillScopeSchema.options)
 	.describe('Where the skill lives: one project, or the whole instance');
 
 const skillId = z.string().describe('The skill. Its name and text are never reported');

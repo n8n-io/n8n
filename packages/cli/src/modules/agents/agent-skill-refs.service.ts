@@ -8,6 +8,7 @@ import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
+import { scopeOf } from '@/modules/skills/skill.entity';
 import { SkillRepository } from '@/modules/skills/skill.repository';
 import {
 	SkillService,
@@ -224,25 +225,34 @@ export class AgentSkillRefsService {
 			).map((skill) => skill.id),
 		);
 		const target = { projectId: agent.projectId };
-		const next: AgentJsonSkillConfig[] = [];
-		for (const ref of refs) {
-			if (found.has(ref.id)) {
-				next.push({ type: 'skill', id: ref.id });
-				continue;
-			}
+		const toCreate = refs.flatMap((ref) => {
 			const body = Object.hasOwn(bodies, ref.id) ? bodies[ref.id] : undefined;
-			if (!body || creator === null) continue;
+			return !found.has(ref.id) && body && creator !== null
+				? [{ refId: ref.id, body, createdById: creator.id }]
+				: [];
+		});
+		const names = await this.skillService.freeNames(
+			toCreate.map(({ body }) => body.name),
+			target,
+			ctx,
+		);
+		const createdIds = new Map<string, string>();
+		for (const [index, { refId, body, createdById }] of toCreate.entries()) {
 			const id = await this.skillService.create(
 				{
 					target,
-					skill: { ...body, name: await this.skillService.freeName(body.name, target, ctx) },
+					skill: { ...body, name: names[index] },
 					source: 'agent',
-					createdById: creator.id,
+					createdById,
 				},
 				ctx,
 			);
-			next.push({ type: 'skill', id });
+			createdIds.set(refId, id);
 		}
+		const next: AgentJsonSkillConfig[] = refs.flatMap((ref) => {
+			const id = found.has(ref.id) ? ref.id : createdIds.get(ref.id);
+			return id ? [{ type: 'skill' as const, id }] : [];
+		});
 		await this.replaceDraftRefs(agent, next, ctx);
 		return toSkillRefs(next);
 	}
@@ -309,7 +319,7 @@ export class AgentSkillRefsService {
 	): Promise<AgentSkillAvailability | undefined> {
 		const [skill] = await this.skillRepository.findByIds([skillId], ctx);
 		if (!skill) return undefined;
-		return skill.projectId ? 'project' : 'instance';
+		return scopeOf(skill);
 	}
 
 	async setAvailability(

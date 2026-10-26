@@ -90,6 +90,7 @@ export const agentSkillShape = {
 
 export const agentSkillSchema = z.object(agentSkillShape).strict();
 
+/** Who owns a skill: one project, or the instance. `skillScopeSchema` is the same enum. */
 export const agentSkillAvailabilitySchema = z.enum(['project', 'instance']);
 
 export type AgentSkillAvailability = z.infer<typeof agentSkillAvailabilitySchema>;

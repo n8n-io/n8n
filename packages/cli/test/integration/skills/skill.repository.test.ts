@@ -422,7 +422,7 @@ describe('SkillRepository', () => {
 				ids(
 					await skills.findVisiblePage(visibleTo(projectIds), {
 						skip: 0,
-						attachableTo: { projectId: project.id },
+						attachableToProjectId: project.id,
 					}),
 				).sort();
 
@@ -475,7 +475,7 @@ describe('SkillRepository', () => {
 				ids(
 					await skills.findVisiblePage(visibleTo(filter.projectIds ?? 'all'), {
 						skip: 0,
-						usedBy: { skillIds: [used, usedOther] },
+						usedBySkillIds: [used, usedOther],
 						search: filter.search,
 					}),
 				).sort();
@@ -491,7 +491,7 @@ describe('SkillRepository', () => {
 
 			const page = await skills.findVisiblePage(visibleTo('all'), {
 				skip: 0,
-				usedBy: { skillIds: [] },
+				usedBySkillIds: [],
 			});
 
 			expect(page).toEqual({ skills: [], count: 0 });
