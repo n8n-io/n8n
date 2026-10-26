@@ -1,3 +1,6 @@
+import type { User } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
+import { AssistantSkillProviderProxy } from '@n8n/backend-services';
 import { loadInstanceAiSkills, resolvePromptProfile } from '@n8n/instance-ai';
 
 import {
@@ -32,7 +35,7 @@ const gatedSkills: Array<[string, InstanceAiSkillScope, SkillId[]]> = [
 ];
 
 describe('InstanceAiSkillsService', () => {
-	const service = new InstanceAiSkillsService();
+	const service = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
 
 	it('refers only to skills that exist', () => {
 		const bundled = loadInstanceAiSkills().registry.skills.map(({ id }) => id);
@@ -41,14 +44,13 @@ describe('InstanceAiSkillsService', () => {
 	});
 
 	describe('loadSkills', () => {
-		it('returns the profile skills and disabled tools when every gate is open', async () => {
+		it('returns no disabled tools for the progressive profile', async () => {
 			const skills = await service.loadSkills({
 				...openScope,
 				profile: resolvePromptProfile({ mode: 'progressive' }).profile,
 			});
 
-			expect(skills.disabledTools).toEqual(['workflow_builder_create_tasks']);
-			expect(skills.source.registry.skills.map(({ id }) => id)).not.toContain('planning');
+			expect(skills.disabledTools).toEqual([]);
 		});
 
 		it.each(gatedSkills)('removes the skills that %s turns off', async (_, scope, skillIds) => {
@@ -96,5 +98,16 @@ describe('InstanceAiSkillsService', () => {
 				'Skill "config-evals" is not active',
 			);
 		});
+	});
+});
+
+describe('Assistant Hub provider boundary', () => {
+	const context = { user: mock<User>(), projectId: 'project-1' };
+
+	it('supplies no Hub skills without a registered provider', async () => {
+		const service = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
+		expect(await service.listHubSkills(context)).toEqual([]);
+		expect(await service.readHubSkill(context, 'unknown')).toBeNull();
+		expect((await service.loadSkills(openScope)).source.registry.skills.length).toBeGreaterThan(0);
 	});
 });

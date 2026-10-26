@@ -1,4 +1,8 @@
-import { CREDENTIAL_DESCRIPTIONS_FLAG, INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
+import {
+	ASSISTANT_SKILLS_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+} from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Application, Request, RequestHandler, Response } from 'express';
@@ -225,37 +229,49 @@ describe('PostHog', () => {
 	describe('getFeatureFlags', () => {
 		const createdAt = new Date();
 
-		it('uses one instance result for all users and backend consumers', async () => {
-			(PostHog.prototype.evaluateFlags as Mock).mockImplementation(async (distinctId: string) =>
-				mockEvaluatedFlags({
-					[CREDENTIAL_DESCRIPTIONS_FLAG]: distinctId === `company_${instanceId}`,
-				}),
-			);
-			const ph = new PostHogClient(instanceSettings, globalConfig);
-			await ph.init();
+		it.each(['editor', 'backend'])(
+			'shares one batched instance evaluation across users and backend reads (%s first)',
+			async (firstReader) => {
+				(PostHog.prototype.evaluateFlags as Mock).mockImplementation(async (distinctId: string) =>
+					mockEvaluatedFlags({
+						[CREDENTIAL_DESCRIPTIONS_FLAG]: distinctId === `company_${instanceId}`,
+						[ASSISTANT_SKILLS_FLAG]: distinctId === `company_${instanceId}`,
+					}),
+				);
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
 
-			for (const id of ['user-1', 'user-2']) {
-				const flags = await ph.getFeatureFlags({ id, createdAt });
-				expect(flags[CREDENTIAL_DESCRIPTIONS_FLAG]).toBe(true);
-			}
-			expect(await ph.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)).toBe(true);
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(3);
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`company_${instanceId}`, {
-				groups: { company: instanceId },
-				flagKeys: [CREDENTIAL_DESCRIPTIONS_FLAG],
-			});
-		});
+				if (firstReader === 'backend') {
+					expect(await ph.getFeatureFlagForInstance(ASSISTANT_SKILLS_FLAG)).toBe(true);
+				}
+				for (const id of ['user-1', 'user-2']) {
+					const flags = await ph.getFeatureFlags({ id, createdAt });
+					expect(flags[CREDENTIAL_DESCRIPTIONS_FLAG]).toBe(true);
+					expect(flags[ASSISTANT_SKILLS_FLAG]).toBe(true);
+				}
+				expect(await ph.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)).toBe(true);
+				expect(await ph.getFeatureFlagForInstance(ASSISTANT_SKILLS_FLAG)).toBe(true);
+				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(3);
+				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`company_${instanceId}`, {
+					groups: { company: instanceId },
+					flagKeys: [CREDENTIAL_DESCRIPTIONS_FLAG, ASSISTANT_SKILLS_FLAG],
+				});
+			},
+		);
 
 		it.each([false, undefined, 'true', 'variant'])(
-			'keeps descriptions disabled when the instance result is %s',
+			'keeps instance features disabled when the instance result is %s',
 			async (instanceResult) => {
 				(PostHog.prototype.evaluateFlags as Mock).mockImplementation(async (distinctId: string) =>
 					mockEvaluatedFlags(
 						distinctId === `company_${instanceId}`
 							? instanceResult === undefined
 								? {}
-								: { [CREDENTIAL_DESCRIPTIONS_FLAG]: instanceResult }
-							: { [CREDENTIAL_DESCRIPTIONS_FLAG]: true },
+								: {
+										[CREDENTIAL_DESCRIPTIONS_FLAG]: instanceResult,
+										[ASSISTANT_SKILLS_FLAG]: instanceResult,
+									}
+							: { [CREDENTIAL_DESCRIPTIONS_FLAG]: true, [ASSISTANT_SKILLS_FLAG]: true },
 					),
 				);
 				const ph = new PostHogClient(instanceSettings, globalConfig);
@@ -263,6 +279,7 @@ describe('PostHog', () => {
 
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 				expect(flags[CREDENTIAL_DESCRIPTIONS_FLAG]).toBe(false);
+				expect(flags[ASSISTANT_SKILLS_FLAG]).toBe(false);
 			},
 		);
 
@@ -293,7 +310,11 @@ describe('PostHog', () => {
 			await ph.init();
 
 			const expected = {
-				featureFlags: { ...flags, [CREDENTIAL_DESCRIPTIONS_FLAG]: false },
+				featureFlags: {
+					...flags,
+					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+					[ASSISTANT_SKILLS_FLAG]: false,
+				},
 				featureFlagPayloads: payloads,
 			};
 
@@ -316,8 +337,16 @@ describe('PostHog', () => {
 			const first = await ph.getFeatureFlags({ id: userId, createdAt });
 			const second = await ph.getFeatureFlags({ id: userId, createdAt });
 
-			expect(first).toEqual({ ...flags, [CREDENTIAL_DESCRIPTIONS_FLAG]: false });
-			expect(second).toEqual({ ...flags, [CREDENTIAL_DESCRIPTIONS_FLAG]: false });
+			expect(first).toEqual({
+				...flags,
+				[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+				[ASSISTANT_SKILLS_FLAG]: false,
+			});
+			expect(second).toEqual({
+				...flags,
+				[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+				[ASSISTANT_SKILLS_FLAG]: false,
+			});
 			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
 		});
 
@@ -473,6 +502,7 @@ describe('PostHog', () => {
 
 				expect(flags).toEqual({
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+					[ASSISTANT_SKILLS_FLAG]: false,
 					'some-other-flag': true,
 					'multivariate-flag': 'variant',
 					'boolean-flag': true,
@@ -492,6 +522,7 @@ describe('PostHog', () => {
 
 				expect(flags).toEqual({
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+					[ASSISTANT_SKILLS_FLAG]: false,
 					'contested-flag': 'variant',
 				});
 			});
@@ -527,6 +558,7 @@ describe('PostHog', () => {
 				expect(data).toEqual({
 					featureFlags: {
 						[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+						[ASSISTANT_SKILLS_FLAG]: false,
 						'value-only-flag': 'variant',
 						'payload-flag': 'variant',
 						'untouched-flag': true,
@@ -551,7 +583,11 @@ describe('PostHog', () => {
 
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
-				expect(flags).toEqual({ [CREDENTIAL_DESCRIPTIONS_FLAG]: false, 'live-flag': false });
+				expect(flags).toEqual({
+					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+					[ASSISTANT_SKILLS_FLAG]: false,
+					'live-flag': false,
+				});
 			});
 
 			// A dedicated per-feature env var must have the final say, so the
@@ -579,7 +615,11 @@ describe('PostHog', () => {
 
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
-				expect(flags).toEqual({ [CREDENTIAL_DESCRIPTIONS_FLAG]: false, 'some-other-flag': true });
+				expect(flags).toEqual({
+					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+					[ASSISTANT_SKILLS_FLAG]: false,
+					'some-other-flag': true,
+				});
 			});
 
 			it('falls back to env overrides when PostHog throws', async () => {
@@ -593,6 +633,7 @@ describe('PostHog', () => {
 
 				expect(flags).toEqual({
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+					[ASSISTANT_SKILLS_FLAG]: false,
 					'084_eval_collections': true,
 				});
 			});
@@ -618,7 +659,11 @@ describe('PostHog', () => {
 
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
-				expect(flags).toEqual({ [CREDENTIAL_DESCRIPTIONS_FLAG]: false, '101_agent_evals': true });
+				expect(flags).toEqual({
+					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+					[ASSISTANT_SKILLS_FLAG]: false,
+					'101_agent_evals': true,
+				});
 			});
 
 			it('force-enables the canvas-node-context flag when N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED is set', async () => {
@@ -648,6 +693,7 @@ describe('PostHog', () => {
 
 				expect(flags).toEqual({
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+					[ASSISTANT_SKILLS_FLAG]: false,
 					'104_canvas_aia_node_context': true,
 				});
 			});
@@ -667,6 +713,7 @@ describe('PostHog', () => {
 
 				expect(flags).toEqual({
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+					[ASSISTANT_SKILLS_FLAG]: false,
 					'084_eval_collections': true,
 					'088_config_evaluations': 'variant',
 					'101_agent_evals': true,

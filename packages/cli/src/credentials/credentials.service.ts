@@ -1090,6 +1090,15 @@ export class CredentialsService {
 		}
 	}
 
+	/**
+	 * Decrypts the credentials data without redaction. Unlike `decrypt`, throws
+	 * `CredentialDataError` when the stored data is missing or unreadable, for a caller that
+	 * must not treat unreadable data as empty.
+	 */
+	async decryptOrFail(credential: CredentialsEntity): Promise<ICredentialDataDecryptedObject> {
+		return await createCredentialsFromCredentialsEntity(credential).getData();
+	}
+
 	async update(
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
@@ -1517,6 +1526,11 @@ export class CredentialsService {
 
 	async test(userId: User['id'], credentials: ICredentialsDecrypted) {
 		return await this.credentialsTester.testCredentials(userId, credentials.type, credentials);
+	}
+
+	/** Whether n8n can run a connection test for this credential type at all. */
+	hasConnectionTest(credentialType: string): boolean {
+		return this.credentialsTester.getCredentialTestFunction(credentialType) !== undefined;
 	}
 
 	/**

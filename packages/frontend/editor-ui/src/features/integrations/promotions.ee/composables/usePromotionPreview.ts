@@ -1,10 +1,10 @@
-import type { PromotionDirection, PromotionPreview } from '@n8n/api-types';
+import type { ApplyCheckResult, PromotionDirection, PromotionPreview } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
 
-import { getPromotionPreview } from '../promotions.api';
+import { getApplyBlockers, getPromotionPreview } from '../promotions.api';
 import { buildSelectionGraph } from '../promotionPreview.selection';
 import { repositoryDisplayName } from '../promotionsSettings.utils';
 import { useInstancePromotionConnection } from './useInstancePromotionConnection';
@@ -16,10 +16,15 @@ type PromotionPreviewState =
 	/** The instance has no environment for this direction. */
 	| 'disconnected'
 	| 'error'
+	/** An open review holds the changes, so the preview lists none. */
+	| 'blocked'
 	| 'empty'
 	| 'ready';
 
-/** Loads the preview of one project and direction for the preview page. */
+/**
+ * Loads the preview of one project and direction for the preview page. On Apply, it also loads
+ * the blockers at the commit of the preview, so both describe the same source.
+ */
 export function usePromotionPreview(projectId: Ref<string>, direction: Ref<PromotionDirection>) {
 	const rootStore = useRootStore();
 	const { next } = useLatestFetch();
@@ -31,6 +36,8 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 
 	const state = ref<PromotionPreviewState>('loading');
 	const preview = shallowRef<PromotionPreview | null>(null);
+	/** The Apply check. `null` on Promote, and when the branch has no commit yet. */
+	const check = shallowRef<ApplyCheckResult | null>(null);
 	const refreshing = ref(false);
 	/** True when a refresh failed. The page keeps the last preview and says so. */
 	const refreshFailed = ref(false);
@@ -58,6 +65,7 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 			if (connectionFailed.value || !environment.value) {
 				state.value = connectionFailed.value ? 'connectionFailed' : 'disconnected';
 				preview.value = null;
+				check.value = null;
 				return;
 			}
 
@@ -66,10 +74,15 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 				requested.projectId,
 				requested.direction,
 			);
+			const blockers =
+				requested.direction === 'apply' && result.commitSha && result.resources.length > 0
+					? await getApplyBlockers(rootStore.restApiContext, requested.projectId, result.commitSha)
+					: null;
 			if (!isLatest()) return;
 			preview.value = result;
+			check.value = blockers;
 			lastRefreshedAt.value = new Date();
-			state.value = result.resources.length === 0 ? 'empty' : 'ready';
+			state.value = result.blocker ? 'blocked' : result.resources.length === 0 ? 'empty' : 'ready';
 		} catch {
 			if (!isLatest()) return;
 			// Only the changes view shows the refresh warning. Other states show the error.
@@ -77,6 +90,7 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 				refreshFailed.value = true;
 			} else {
 				preview.value = null;
+				check.value = null;
 				state.value = 'error';
 			}
 		} finally {
@@ -88,6 +102,7 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 		[projectId, direction],
 		async () => {
 			preview.value = null;
+			check.value = null;
 			lastRefreshedAt.value = null;
 			await load();
 		},
@@ -97,7 +112,9 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 	return {
 		state,
 		preview,
+		check,
 		graph,
+		environment,
 		repositoryName,
 		refreshing,
 		refreshFailed,

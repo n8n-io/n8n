@@ -25,6 +25,7 @@ type Case = {
 };
 
 const revision = { before: 'b', after: 'a' };
+const readOnly = (checked: boolean) => ({ checked, indeterminate: false, disabled: true });
 
 const cases: Case[] = [
 	{
@@ -63,6 +64,42 @@ const cases: Case[] = [
 			'Reports',
 			"Apply can't move a folder that already exists on this instance",
 		],
+	},
+	{
+		name: 'that Apply renames a tag in other projects too',
+		direction: 'apply',
+		resource: resource({
+			key: 'tag:g1',
+			name: 'finance',
+			previousName: 'fin',
+			change: 'modified',
+		}),
+		detail: {
+			key: 'tag:g1',
+			type: 'tag',
+			before: { id: 'g1', name: 'fin' },
+			after: { id: 'g1', name: 'finance' },
+			revision,
+		},
+		shows: [
+			'Renamed',
+			'fin',
+			'finance',
+			'All projects on this instance share tags, so Apply also renames this tag in other projects.',
+		],
+	},
+	{
+		name: 'that Apply links a local tag with the same name to the branch tag',
+		direction: 'apply',
+		resource: resource({ key: 'tag:g1', name: 'finance', previousId: 'local', change: 'modified' }),
+		detail: {
+			key: 'tag:g1',
+			type: 'tag',
+			before: { id: 'local', name: 'finance' },
+			after: { id: 'g1', name: 'finance' },
+			revision,
+		},
+		shows: ['Linked', 'Apply links it to the tag on the branch. The name stays the same.'],
 	},
 	{
 		name: 'the exported expressions of a new credential',
@@ -152,7 +189,7 @@ describe('PromotionChangeCard', () => {
 				graph: buildSelectionGraph(billingPreview(), 'promote'),
 				direction,
 				entry: detail ? { status: 'loaded', detail } : undefined,
-				included: false,
+				selection: readOnly(false),
 				inspected: false,
 			},
 		});
@@ -182,7 +219,7 @@ describe('PromotionChangeCard', () => {
 						],
 					},
 				},
-				included: false,
+				selection: readOnly(false),
 				inspected: false,
 			},
 		});
@@ -200,7 +237,7 @@ describe('PromotionChangeCard', () => {
 				resource: billingResources.stripe,
 				graph: buildSelectionGraph(billingPreview(), 'promote'),
 				direction: 'apply',
-				included: false,
+				selection: readOnly(false),
 				inspected: false,
 			},
 		});
@@ -219,26 +256,48 @@ describe('PromotionChangeCard', () => {
 			resource: billingResources.stripe,
 			graph: buildSelectionGraph(billingPreview(), 'promote'),
 			direction: 'promote' as const,
-			included: false,
+			selection: readOnly(false),
 			inspected: false,
 		};
 		const included = renderComponent({
 			pinia: createTestingPinia(),
-			props: { ...props, included: true },
+			props: { ...props, selection: readOnly(true) },
 		});
-		expect(included.getByTestId('promotion-preview-card-status')).toHaveAttribute(
-			'aria-label',
-			'Included',
-		);
+		const checkbox = included.getByTestId('promotion-preview-card-checkbox');
+		expect(checkbox).toBeChecked();
+		expect(checkbox).toBeDisabled();
 		expect(included.getByTestId('promotion-preview-card-inclusion')).toHaveTextContent(
 			'Used by Invoice reconciliation',
 		);
 
 		included.unmount();
 		const notIncluded = renderComponent({ pinia: createTestingPinia(), props });
-		expect(notIncluded.getByTestId('promotion-preview-card-status')).toHaveAttribute(
+		expect(notIncluded.getByTestId('promotion-preview-card-checkbox')).not.toBeChecked();
+	});
+
+	it('should say that Apply needs a credential that this instance does not have, instead of creating it', () => {
+		const { getByTestId } = renderComponent({
+			pinia: createTestingPinia(),
+			props: {
+				resource: { ...billingResources.stripe, change: 'added' },
+				graph: buildSelectionGraph(billingPreview(), 'apply'),
+				direction: 'apply',
+				selection: readOnly(false),
+				inspected: false,
+				blockers: [
+					{ kind: 'missing', resourceKey: 'credential:c1', workflowKeys: ['workflow:w1'] },
+				],
+			},
+		});
+
+		expect(getByTestId('promotion-preview-card-toggle')).toHaveTextContent('Not on this instance');
+		const blocker = getByTestId('promotion-preview-card-blocker');
+		expect(blocker).not.toHaveTextContent('Blocker');
+		expect(blocker).toHaveAttribute(
 			'aria-label',
-			'Not included',
+			expect.stringContaining(
+				"This credential isn't on this instance, and 1 workflow depends on it.",
+			),
 		);
 	});
 });

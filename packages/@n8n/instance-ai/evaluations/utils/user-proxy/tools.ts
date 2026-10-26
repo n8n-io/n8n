@@ -104,9 +104,9 @@ const pickResourceDecisionSchema = z.object({
  *  - `auto`   → `{kind:'credentialAutoSetup', credentialType}` — triggers an
  *    agent rebuild server-side (tool State 4). Live-captured tool result:
  *    `{success:false, needsBrowserSetup:true, credentialType:"slackApi", docsUrl:"...", requiredFields:[...]}`,
- *    followed by the assistant loading the `credential-setup-with-computer-use`
+ *    followed by the assistant loading the `credential-setup-with-browser-use`
  *    skill as designed. Reachable and its shape is real, but not further
- *    implemented — the harness has no Computer Use tools attached, so a case
+ *    implemented — the harness has no Browser Use tools attached, so a case
  *    scripting this will stall afterward. Do not push such a case to the
  *    gated CI suite.
  *  - `skip`   → `{kind:'approval', approved:false}` — tool State 2 (deferred).
@@ -257,7 +257,7 @@ export const CONFIRMATION_TOOL_DESCRIPTIONS = `Available actions — confirmatio
 
 - apply_setup_wizard(nodeParametersJson, nodeCredentialsJson?, workingCredentialTypes?): The agent fired a setup-wizard / "configure your workflow" setup card with placeholder parameters and/or credential slots (the event's payload has \`setupRequests\`). \`nodeParametersJson\` decodes to { "<setup node name>": { "<paramName>": <value>, ... }, ... } — fill every non-credential placeholder with a plausible value (stated → implied → invented). Credential slots (a request entry with \`credentialType\`) stay unset by default — omit \`nodeCredentialsJson\` or leave that node/type out of it — UNLESS a stage direction governing this exact card tells the user to engage; then set \`nodeCredentialsJson\` to { "<setup node name>": { "<credentialType>": "<id>" } }. What \`<id>\` should be depends on that request's \`existingCredentials\`: zero entries → put any placeholder string, a real credential will be created for you; exactly one → put its \`id\`; two or more → put the \`id\` of the one the direction names (match by its \`name\`). This is the ONLY correct way to fill a setup card — do NOT answer it with answer_questions. To deliberately leave a value unset (e.g. a stage direction says the user skips it), dismiss the whole card with approve_or_reject(approved=false) instead of filling it. Whenever you fill a credential slot, list that slot's credential type in \`workingCredentialTypes\` — completing a setup card means the credential the user entered authenticates, which is what the real product requires before it will let the card be applied. Leave a type out ONLY when a stage direction says that particular credential is invalid, expired, revoked or otherwise won't authenticate; with several credentials on one card a direction may make one work and another fail, so list exactly the working ones.
 
-- approve_or_reject(approved, userInput?): A plan-review or free-text confirmation widget is on screen (the event's inputType is plan-review or text). Approve if the plan matches user intent; reject with reason if it diverges. This action only exists as a response to such a widget.
+- approve_or_reject(approved, userInput?): A free-text confirmation widget is on screen (the event's inputType is text). Approve if the proposal matches user intent; reject with reason if it diverges. This action only exists as a response to such a widget.
 
 - respond_to_domain_access(response): The agent is asking permission to reach the network — either a specific domain (fetch-url) or a web search. Pick allow_once, allow_all, or deny. Default to allow_all; pick deny ONLY when a [stage direction] tells the user to refuse this kind of access.
 

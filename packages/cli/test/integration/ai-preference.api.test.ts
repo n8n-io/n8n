@@ -636,6 +636,58 @@ describe('GET /ai-preferences?ids=', () => {
 	});
 });
 
+describe('GET /ai-preferences?search=', () => {
+	test('returns the rows whose text contains the term, ignoring case, and counts only them', async () => {
+		await seed({ content: 'Keep replies SHORT.', userId: member.id });
+		await seed({ content: 'Short names for nodes', projectId: project.id });
+		await seed({ content: 'Use British spelling' });
+
+		const response = await memberAgent.get('/ai-preferences').query({ search: ' short ' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(2);
+		expect(contentsOf(response).sort()).toEqual(['Keep replies SHORT.', 'Short names for nodes']);
+	});
+
+	test('matches the wildcard characters literally', async () => {
+		await seed({ content: 'Cap retries at 100%', userId: member.id });
+		await seed({ content: 'Cap retries at 1000', userId: member.id });
+		await seed({ content: 'snake_case names', userId: member.id });
+		await seed({ content: 'snakeXcase names', userId: member.id });
+
+		const percent = await memberAgent.get('/ai-preferences').query({ search: '100%' });
+		const underscore = await memberAgent.get('/ai-preferences').query({ search: 'snake_case' });
+
+		expect(contentsOf(percent)).toEqual(['Cap retries at 100%']);
+		expect(contentsOf(underscore)).toEqual(['snake_case names']);
+	});
+
+	test('does not widen what the caller may see', async () => {
+		await seed({ content: 'Short, theirs', userId: outsider.id });
+		await seed({ content: 'Short, mine', userId: member.id });
+
+		const response = await memberAgent.get('/ai-preferences').query({ search: 'short' });
+
+		expect(contentsOf(response)).toEqual(['Short, mine']);
+	});
+
+	test('returns every row for a blank term', async () => {
+		await seed({ content: 'one', userId: member.id });
+		await seed({ content: 'two', userId: member.id });
+
+		const response = await memberAgent.get('/ai-preferences').query({ search: '   ' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(2);
+	});
+
+	test('refuses a term that is too long', async () => {
+		const response = await memberAgent.get('/ai-preferences').query({ search: 'a'.repeat(201) });
+
+		expect(response.statusCode).toBe(400);
+	});
+});
+
 describe('GET /ai-preferences/count', () => {
 	test('returns the size of the list the caller would see, without rows', async () => {
 		await seed({ content: 'Instance' });

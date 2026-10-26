@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { defineComponent, h, ref, computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
-import { render, waitFor } from '@testing-library/vue';
+import { fireEvent, render, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { NodeDiffStatus } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
@@ -50,48 +50,6 @@ vi.mock('@/app/plugins/telemetry', () => ({
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ instanceId: 'test-instance' }),
 }));
-
-// Mock element-plus dropdown components to make @visible-change testable in jsdom
-vi.mock('element-plus', async (importOriginal) => {
-	const actual = await importOriginal<Record<string, unknown>>();
-	return {
-		...actual,
-		ElDropdown: defineComponent({
-			props: ['trigger', 'popperOptions', 'popperClass'],
-			emits: ['visible-change'],
-			setup(_, { slots, emit }) {
-				return () =>
-					h('div', [
-						h(
-							'button',
-							{
-								'data-test-id': 'el-dropdown-trigger',
-								onClick: () => emit('visible-change', true),
-							},
-							slots.default?.(),
-						),
-						h('div', { 'data-test-id': 'el-dropdown-content' }, slots.dropdown?.()),
-					]);
-			},
-		}),
-		ElDropdownMenu: defineComponent({
-			setup(_, { slots }) {
-				return () => h('div', slots.default?.());
-			},
-		}),
-		ElDropdownItem: defineComponent({
-			emits: ['click'],
-			setup(_, { slots, emit }) {
-				return () =>
-					h(
-						'li',
-						{ class: 'workflow-diff-node-item', onClick: (e: Event) => emit('click', e) },
-						slots.default?.(),
-					);
-			},
-		}),
-	};
-});
 
 // Mock stores
 vi.mock('@/app/stores/nodeTypes.store', () => ({
@@ -166,6 +124,14 @@ describe('WorkflowDiffView', () => {
 		capturedApplyLayoutProps = { top: undefined, bottom: undefined };
 		createTestingPinia();
 		vi.mocked(useWorkflowDiff).mockReturnValue(defaultWorkflowDiffMock());
+	});
+
+	it('names the navigation actions for assistive technology', () => {
+		const { getByRole } = render(WorkflowDiffView, { props: { showBackButton: true } });
+
+		expect(getByRole('button', { name: 'generic.back' })).toBeInTheDocument();
+		expect(getByRole('button', { name: 'workflowDiff.previousChange' })).toBeInTheDocument();
+		expect(getByRole('button', { name: 'workflowDiff.nextChange' })).toBeInTheDocument();
 	});
 
 	describe('tidyUp prop', () => {
@@ -277,7 +243,7 @@ describe('WorkflowDiffView', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('el-dropdown-trigger'));
+			await userEvent.click(getByTestId('workflow-diff-changes-menu'));
 
 			await waitFor(() => {
 				expect(telemetry.track).toHaveBeenCalledWith('user_opens_diff_changes_list', {
@@ -311,7 +277,7 @@ describe('WorkflowDiffView', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('el-dropdown-trigger'));
+			await userEvent.click(getByTestId('workflow-diff-changes-menu'));
 
 			await waitFor(() => expect(getByText('Test Node')).toBeInTheDocument());
 			await userEvent.click(getByText('Test Node'));
@@ -325,6 +291,68 @@ describe('WorkflowDiffView', () => {
 					node_status: NodeDiffStatus.Added,
 					source: 'push_pull_modal',
 				});
+			});
+		});
+
+		describe('canvas focus', () => {
+			it('releases wheel events until activated and after clicking outside or pressing Escape', async () => {
+				const { getByTestId, getByText, queryByText } = renderView({
+					props: { sourceWorkflow, targetWorkflow, requireCanvasFocus: true },
+				});
+				const viewer = getByTestId('workflow-diff-view');
+
+				expect(viewer).toHaveClass('nowheel');
+				expect(getByText('promotions.preview.workflow.activateCanvas')).toBeVisible();
+
+				await userEvent.click(viewer);
+				expect(viewer).not.toHaveClass('nowheel');
+				expect(queryByText('promotions.preview.workflow.activateCanvas')).not.toBeInTheDocument();
+
+				await userEvent.click(document.body);
+				expect(viewer).toHaveClass('nowheel');
+
+				await userEvent.click(viewer);
+				await userEvent.keyboard('{Escape}');
+				expect(viewer).toHaveClass('nowheel');
+			});
+
+			it('supports keyboard focus and releases wheel events when focus leaves', async () => {
+				const { getByTestId } = renderView({
+					props: { sourceWorkflow, targetWorkflow, requireCanvasFocus: true },
+				});
+				const viewer = getByTestId('workflow-diff-view');
+
+				expect(viewer).toHaveAttribute('tabindex', '0');
+				await fireEvent.focusIn(viewer);
+				expect(viewer).not.toHaveClass('nowheel');
+				await fireEvent.focusOut(viewer, { relatedTarget: document.body });
+				expect(viewer).toHaveClass('nowheel');
+			});
+
+			it('enables wheel navigation in fullscreen and resets it on return', async () => {
+				const { getByTestId } = renderView({
+					props: {
+						sourceWorkflow,
+						targetWorkflow,
+						requireCanvasFocus: true,
+						showFullscreenButton: true,
+					},
+				});
+
+				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));
+				expect(getByTestId('workflow-diff-view')).not.toHaveClass('nowheel');
+				await userEvent.keyboard('{Escape}');
+				expect(getByTestId('workflow-diff-view')).toHaveClass('nowheel');
+			});
+
+			it('keeps wheel navigation enabled by default', () => {
+				const { getByTestId, queryByText } = renderView({
+					props: { sourceWorkflow, targetWorkflow },
+				});
+
+				expect(getByTestId('workflow-diff-view')).not.toHaveClass('nowheel');
+				expect(getByTestId('workflow-diff-view')).not.toHaveAttribute('tabindex');
+				expect(queryByText('promotions.preview.workflow.activateCanvas')).not.toBeInTheDocument();
 			});
 		});
 

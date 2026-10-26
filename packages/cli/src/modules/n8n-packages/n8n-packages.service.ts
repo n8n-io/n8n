@@ -45,6 +45,7 @@ import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
 import {
+	CredentialConflictPolicy,
 	CredentialExportPolicy,
 	DataTableSchemaConflictPolicy,
 	ExportDependencyPolicy,
@@ -96,8 +97,8 @@ type DirectoryProjectPackage =
  * A cherry-pick import acts only on its selection, so most policies are fixed here. Deletion mode is
  * left to the caller (`overwriteDeletionPolicy`): promotion passes `hard-delete` for diff convergence,
  * while the public selection import defaults to the safe `archive`. The caller also sets
- * `dataTableSchemaConflictPolicy`, which defaults to `fail`, and `tagConflictPolicy`, which defaults
- * to `skip`.
+ * `dataTableSchemaConflictPolicy`, which defaults to `fail`, `tagConflictPolicy`, which defaults to
+ * `skip`, and `credentialConflictPolicy`, which defaults to `keep-existing`.
  */
 const CHERRY_PICK_IMPORT_POLICY = {
 	projectConflictPolicy: 'merge',
@@ -106,7 +107,6 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	missingNodeTypeMode: 'fail',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
-	credentialConflictPolicy: 'keep-existing',
 	dataTableMatchingMode: 'by-id',
 	dataTableMissingMode: 'create',
 	variableMissingMode: 'must-preexist',
@@ -125,6 +125,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'workflowIdPolicy'
 	| 'dataTableSchemaConflictPolicy'
 	| 'tagConflictPolicy'
+	| 'credentialConflictPolicy'
 >;
 
 @Service()
@@ -631,6 +632,8 @@ export class N8nPackagesService {
 			dataTableSchemaConflictPolicy:
 				request.dataTableSchemaConflictPolicy ?? DataTableSchemaConflictPolicy.Fail,
 			tagConflictPolicy: request.tagConflictPolicy ?? TagConflictPolicy.Skip,
+			credentialConflictPolicy:
+				request.credentialConflictPolicy ?? CredentialConflictPolicy.KeepExisting,
 			selection,
 		};
 
@@ -739,7 +742,7 @@ function emptyImportResult(manifest: PackageManifest): ImportResult {
 		folders: [],
 		projects: [],
 		bindings: createBindings(),
-		credentials: { matched: [], stubbed: [], seeded: [], incomplete: [] },
+		credentials: { matched: [], stubbed: [], seeded: [], incomplete: [], updated: [] },
 		dataTables: { matched: 0, created: 0, updated: 0 },
 		variables: { matched: [], created: [], stubbed: [], updated: [], missing: [] },
 		tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },

@@ -49,6 +49,7 @@ describe('AppsModule', () => {
 		expect(Container.get(AppBuildResultStore)).toBe(buildResults);
 		expect((await module.systemTasks()).map((task) => task.name)).toEqual([
 			'AppStorageCleanupTask',
+			'AppBuildReconciliationTask',
 		]);
 		expect(logger.warn).toHaveBeenCalledWith('The apps module is experimental.');
 		expect(await module.settings()).toEqual({ enabled: true });

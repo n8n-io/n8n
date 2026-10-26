@@ -218,7 +218,6 @@ function nodeHasContent(node: InstanceAiAgentNode | undefined): boolean {
 		(node.timeline?.length ?? 0) > 0 ||
 		(node.toolCalls?.length ?? 0) > 0 ||
 		(node.children?.length ?? 0) > 0 ||
-		(node.planItems?.length ?? 0) > 0 ||
 		!!node.statusMessage ||
 		!!node.result ||
 		!!node.error ||
@@ -563,9 +562,6 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.tasks = event.payload.tasks;
-				if (event.payload.planItems) {
-					agent.planItems = event.payload.planItems;
-				}
 			}
 			break;
 		}
@@ -681,7 +677,6 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 
 		// `preferences-applied` names the saved preferences the turn carried. The chat and
 		// the plus menu read it from the durable log, so the run tree holds no copy.
-		case 'filesystem-request':
 		case 'thread-title-updated':
 		case 'preferences-applied': {
 			// Handled externally — no state change

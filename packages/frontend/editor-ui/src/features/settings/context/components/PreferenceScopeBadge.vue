@@ -19,14 +19,15 @@ const usersStore = useUsersStore();
 
 const audience = computed(() => preferenceAudience(props.preference, usersStore.currentUser?.id));
 
-const icon = computed<IconOrEmoji | null>(() => {
+const icon = computed<IconOrEmoji>(() => {
 	switch (audience.value.kind) {
 		case 'project':
 			return props.preference.project?.icon ?? DEFAULT_PROJECT_ICON;
+		case 'user':
 		case 'personalProject':
 			return { type: 'icon', value: 'user' };
-		default:
-			return null;
+		case 'instance':
+			return { type: 'icon', value: 'globe' };
 	}
 });
 
@@ -52,41 +53,35 @@ const label = computed(() => {
 			return scope.name ?? i18n.baseText('settings.context.preferences.scope.project');
 	}
 });
-
-const theme = computed(() =>
-	audience.value.kind === 'user' || audience.value.kind === 'personalProject'
-		? 'filled'
-		: 'outline',
-);
 </script>
 
 <template>
-	<N8nBadge :variant="theme" :class="$style.badge" data-test-id="preference-scope-badge">
-		<!-- The badge wraps its slot in a text span, so the flex row has to live inside the slot. -->
-		<span :class="$style.content">
-			<N8nText v-if="icon?.type === 'emoji'" :class="$style.emoji">{{ icon.value }}</N8nText>
-			<N8nIcon v-else-if="icon" :icon="icon.value" size="small" />
-			<span :class="$style.label">{{ label }}</span>
-		</span>
+	<N8nBadge variant="outline" :class="$style.badge" data-test-id="preference-scope-badge">
+		<!-- The leading slot is a direct flex child of the badge, so the icon centres with the label. -->
+		<template #leading>
+			<N8nText v-if="icon.type === 'emoji'" :class="[$style.icon, $style.emoji]">{{
+				icon.value
+			}}</N8nText>
+			<N8nIcon v-else :class="$style.icon" :icon="icon.value" size="small" />
+		</template>
+		{{ label }}
 	</N8nBadge>
 </template>
 
 <style lang="scss" module>
 .badge {
 	max-width: 100%;
+
+	// Geist sits high in its line box, so the inherited line height leaves the label above the
+	// icon. Padding keeps descenders clear of the label's ellipsis clip.
+	> :global(.n8n-text):not(.emoji) {
+		line-height: 1;
+		padding-block: var(--spacing--5xs);
+	}
 }
 
-.content {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	min-width: 0;
-}
-
-.label {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+.icon {
+	flex-shrink: 0;
 }
 
 .emoji {

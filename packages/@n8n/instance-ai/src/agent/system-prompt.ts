@@ -1,17 +1,17 @@
 import { DateTime } from 'luxon';
 
+import { getBrowserUsePrompt } from './browser-use-prompt';
 import { COMMUNICATION_STYLE_SECTION } from './communication-style.prompt';
-import { getComputerUsePrompt } from './computer-use-prompt';
 import {
 	SCOPE_GROUNDING_GUARDRAIL,
 	SECRET_ASK_GUARDRAIL,
 	SECRET_PASTE_GUARDRAIL,
 } from './credential-guardrails.prompt';
 import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
-import type { ComputerUseState } from '../types';
+import type { BrowserUseState } from '../types';
 
 interface SystemPromptOptions {
-	computerUseState?: ComputerUseState;
+	browserUseState?: BrowserUseState;
 	toolSearchEnabled?: boolean;
 	mcpToolSearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
@@ -57,7 +57,7 @@ function getToolDiscoverySection(
 
 ${mcpSearchGuidance}When the available tools do not cover the user's request, remember that you have access to more tools. Use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation. When a loaded skill names a tool you do not see, search for that tool name and load it before proceeding.
 
-Example: ${mcpExamples}search "create tasks" for \`workflow_builder_create_tasks\`.
+Example: ${mcpExamples}search "verify workflow" for \`workflow_builder_verify_built_workflow\`.
 
 For questions about n8n itself — how a node behaves, the shape of its output, what a parameter does, product semantics — prefer \`n8n-docs\` and the node type definitions, both already loaded and needing no search, over web search, which is for third-party services and APIs.
 `;
@@ -93,7 +93,7 @@ This conversation is scoped to a single n8n project, named by the \`<project-con
 - **Never answer an inventory question from a filtered lookup.** For "what's in this project", its status, or what to do next, list the project's resources unfiltered — \`workflow_builder_workflows(action="list")\` with no \`query\`, and page through with \`limit\` if the result says more exist. Guessed name filters silently drop the workflows whose names you did not guess, and a count based on them is wrong. Only claim a total you listed without a filter.
 - **To read another project, name it — don't widen and guess.** Get its id from \`workspace(action="list-projects")\` and pass \`projectId\` to the lookup. Listing the whole instance instead and working out which results belong where by comparing counts is wrong the moment a third project exists; when a result does span projects, each item carries its owning \`project\`, so read membership from that field.
 
-If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in. **Check the project they name against the project you are in BEFORE you build, not after** — from \`<project-context>\` when the turn carries it, otherwise from \`workspace(action="list-projects")\`. Building in this project and mentioning the mismatch afterwards leaves them a workflow they did not ask for, in a project they did not choose.`;
+If the user asks you to create something in, change or run something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in. **Check the project they name against the project you are in BEFORE you build, not after** — from \`<project-context>\` when the turn carries it, otherwise from \`workspace(action="list-projects")\`. Building in this project and mentioning the mismatch afterwards leaves them a workflow they did not ask for, in a project they did not choose.`;
 }
 
 /**
@@ -246,7 +246,7 @@ function getCredentialSetupBullet(setupPanelEnabled?: boolean): string {
 export function createSystemPromptRenderer(communicationStyleSection: string) {
 	return function getSystemPromptForStyle(options: SystemPromptOptions = {}): string {
 		const {
-			computerUseState,
+			browserUseState,
 			toolSearchEnabled,
 			mcpToolSearchEnabled,
 			licenseHints,
@@ -299,7 +299,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 
 ${UNTRUSTED_CONTENT_DOCTRINE}
 
-${getComputerUsePrompt({ state: computerUseState })}
+${getBrowserUsePrompt({ state: browserUseState })}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly)}
 ${getLimitedModeSection(parameterValuesHidden)}
