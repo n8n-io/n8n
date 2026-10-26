@@ -61,7 +61,10 @@ const subtitle = computed(() => {
 
 <template>
 	<div
-		:class="[$style.identity, { [$style.identityReady]: ready }]"
+		:class="[
+			$style.identity,
+			{ [$style.identityReady]: ready, [$style.locked]: showConnect && !ready },
+		]"
 		data-testid="whatsapp-identity"
 	>
 		<img
@@ -127,6 +130,10 @@ const subtitle = computed(() => {
 .identityReady {
 	background: light-dark(var(--color--neutral-50), var(--color--white-alpha-50));
 	border-color: light-dark(var(--border-color--subtle), var(--border-color));
+}
+
+.locked {
+	opacity: 0.45;
 }
 
 .avatar {

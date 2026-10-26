@@ -2,6 +2,7 @@ import type {
 	AgentJsonSkillConfig,
 	AgentSkill,
 	AgentSkillAvailability,
+	SkillSource,
 	StoredAgentConfig,
 } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
@@ -46,7 +47,7 @@ export interface AgentSkillsSnapshot {
  * version, and for the skill bodies they resolve to. All other code reads and
  * writes skill refs through this service.
  *
- * With the skills hub on (`N8N_AGENTS_SKILLS_HUB_ENABLED`), the refs of a draft are the
+ * With the skills hub on (`SkillsHubRollout.isEnabled`), the refs of a draft are the
  * `agent_skill_dependency` rows and the refs of a published version are the
  * `agent_version_skill_dependency` pins, in attach order. The skill bodies come
  * from the skills hub.
@@ -328,8 +329,8 @@ export class AgentSkillRefsService {
 			if (!body || creator === null) continue;
 			const id = await this.skillService.create(
 				{
-					// An inline body or a copy becomes a skill of this agent only, as the startup
-					// copy does. It takes its project from the agent, and goes with the agent.
+					// An inline body or a copy becomes a skill of this agent only, as the data
+					// migration does. It takes its project from the agent, and goes with the agent.
 					target: { projectId: null, agentId: agent.id },
 					skill: body,
 					source: 'agent',
@@ -348,6 +349,7 @@ export class AgentSkillRefsService {
 		skills: AgentSkill[],
 		creatorId: string,
 		availableTo: AgentSkillAvailability,
+		source: SkillSource,
 		ctx: OperationContext,
 	): Promise<string[]> {
 		if (!this.usesSkillsHub) {
@@ -368,7 +370,7 @@ export class AgentSkillRefsService {
 					{
 						target: targetFor(agent, availableTo),
 						skill,
-						source: 'agent',
+						source,
 						createdById: creatorId,
 						checkNameTaken: true,
 					},

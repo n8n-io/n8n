@@ -4,6 +4,7 @@ import {
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
 } from '@n8n/api-types';
 import type {
 	InstanceAiMessage,
@@ -167,7 +168,8 @@ const ARTIFACT_TOOLS = new Set<string>([
 	REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
 	WORKFLOW_BUILDER_TOOL_NAMES.APPLY_WORKFLOW_CREDENTIALS,
 	WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS,
-	WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS,
+	SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
+	SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS,
 	SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
 	'insert-data-table-rows',
 	'update-data-table-rows',
@@ -257,7 +259,7 @@ function extractFromSkillsResult(tc: InstanceAiToolCallState, col: Collections):
 function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {
 	extractFromAgentBuilderResult(tc, col);
 	extractFromSkillsResult(tc, col);
-	if (!ARTIFACT_TOOLS.has(tc.toolName)) return;
+	if (!ARTIFACT_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action))) return;
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
 
@@ -273,7 +275,9 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	// workflow_builder_build_workflow / build-workflow-with-agent / submit-workflow:
 	// { workflowId, workflowName? } — produced. Patch calls may omit the name,
 	// so fall back to the existing entry before regressing to 'Untitled'.
-	if (typeof result.workflowId === 'string') {
+	// A failed build still names its target workflow and the unsaved name, so
+	// skip it to keep the existing entry as it was.
+	if (typeof result.workflowId === 'string' && result.success !== false) {
 		const existing = col.produced.get(result.workflowId);
 		const name =
 			optionalString(result.workflowName) ??

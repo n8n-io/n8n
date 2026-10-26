@@ -1,4 +1,5 @@
 import { snakeCase } from 'change-case';
+import { createHmac } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -11,6 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import { verifySignature } from '../../utils/webhook-signature-verification';
 import { workableApiRequest } from './GenericFunctions';
 
 export class WorkableTrigger implements INodeType {
@@ -187,6 +189,24 @@ export class WorkableTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const { accessToken } = await this.getCredentials<{ accessToken: string }>('workableApi');
+		const req = this.getRequestObject();
+
+		const isValid = verifySignature({
+			getExpectedSignature: () =>
+				req.rawBody ? createHmac('sha256', accessToken).update(req.rawBody).digest('hex') : null,
+			getActualSignature: () => req.header('x-workable-signature') ?? null,
+		});
+
+		if (!isValid) {
+			this.logger.warn(
+				'Workable Trigger rejected a request with an invalid signature. If you changed the access token in the credential, reactivate the workflow.',
+			);
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return { noWebhookResponse: true };
+		}
+
 		const bodyData = this.getBodyData();
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData)],

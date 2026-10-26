@@ -7,14 +7,34 @@ describe('withModelName', () => {
 		['anthropic/claude-opus-5-5', 'claude-haiku-4-5', 'anthropic/claude-haiku-4-5'],
 		['claude-opus-5-5', 'claude-haiku-4-5', 'custom/claude-haiku-4-5'],
 		[
-			{ id: 'anthropic/claude-opus-5-5', url: 'https://anthropic.example', apiKey: 'main-key' },
+			{
+				kind: 'endpoint',
+				id: 'anthropic/claude-opus-5-5',
+				url: 'https://anthropic.example',
+				apiKey: 'main-key',
+			},
 			'claude-haiku-4-5',
-			{ id: 'anthropic/claude-haiku-4-5', url: 'https://anthropic.example', apiKey: 'main-key' },
+			{
+				kind: 'endpoint',
+				id: 'anthropic/claude-haiku-4-5',
+				url: 'https://anthropic.example',
+				apiKey: 'main-key',
+			},
 		],
 		[
-			{ id: 'google-vertex-anthropic/claude-opus-5-5', project: 'acme', location: 'us-east5' },
+			{
+				kind: 'vertex-anthropic',
+				id: 'google-vertex-anthropic/claude-opus-5-5',
+				project: 'acme',
+				location: 'us-east5',
+			},
 			'claude-haiku-4-5',
-			{ id: 'google-vertex-anthropic/claude-haiku-4-5', project: 'acme', location: 'us-east5' },
+			{
+				kind: 'vertex-anthropic',
+				id: 'google-vertex-anthropic/claude-haiku-4-5',
+				project: 'acme',
+				location: 'us-east5',
+			},
 		],
 	])('keeps the provider and credentials of %j', (config, modelName, expected) => {
 		expect(withModelName(config, modelName)).toEqual(expected);
@@ -44,6 +64,7 @@ describe('withModelName', () => {
 		'reads the name like the main model env with dropMainProviderPrefix: main %s with %s uses %s',
 		(mainId, modelName, expectedId) => {
 			const config: ModelConfig = {
+				kind: 'endpoint',
 				id: mainId as `${string}/${string}`,
 				url: 'https://provider.example',
 				apiKey: 'main-key',

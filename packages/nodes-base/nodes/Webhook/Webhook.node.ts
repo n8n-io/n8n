@@ -22,6 +22,7 @@ import { pipeline } from 'stream/promises';
 import { file as tmpFile } from 'tmp-promise';
 import { v4 as uuid } from 'uuid';
 
+import { listBearerTrustedSources } from '../../utils/trusted-source';
 import {
 	authenticationProperty,
 	credentialsProperty,
@@ -36,6 +37,7 @@ import {
 	responseDataProperty,
 	responseModeProperty,
 	responseModePropertyStreaming,
+	trustedSourceProperty,
 } from './description';
 import { WebhookAuthorizationError } from './error';
 import {
@@ -155,6 +157,7 @@ export class Webhook extends Node {
 				builderHint: inboundTriggerAuthenticationBuilderHint,
 			},
 			requireExecuteAccessProperty(this.authPropertyName),
+			trustedSourceProperty(this.authPropertyName),
 			responseModeProperty,
 			responseModePropertyStreaming,
 			{
@@ -222,6 +225,12 @@ export class Webhook extends Node {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			listTrustedSources: listBearerTrustedSources,
+		},
+	};
+
 	async webhook(context: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const { typeVersion: nodeVersion, type: nodeType } = context.getNode();
 		const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
@@ -271,7 +280,13 @@ export class Webhook extends Node {
 					// Token missing/invalid: the helper already sent the response.
 					return { noWebhookResponse: true };
 				}
-				await context.establishTriggerIdentity(authResult.token, authResult.resource);
+				// Seal the resolved user, so the run never re-verifies the token and still
+				// resolves credentials after the token expired (e.g. after a long Wait).
+				await context.establishTriggerIdentity(
+					authResult.token,
+					authResult.resource,
+					authResult.user.id,
+				);
 			} else {
 				validationData = await this.validateAuth(context);
 			}

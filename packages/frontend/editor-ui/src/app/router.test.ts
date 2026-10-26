@@ -135,6 +135,11 @@ describe('router', () => {
 			VIEWS.EXTERNAL_SECRETS_SETTINGS,
 			['externalSecretsProvider:list', 'externalSecretsProvider:update'],
 		],
+		['/settings/authentication', VIEWS.WORKFLOWS, []],
+		['/settings/authentication', VIEWS.AUTHENTICATION_SETTINGS, ['saml:manage']],
+		['/settings/authentication', VIEWS.AUTHENTICATION_SETTINGS, ['ldap:manage']],
+		['/settings/authentication/sso', VIEWS.SSO_SETTINGS, ['saml:manage']],
+		// Old flat paths redirect to the nested method pages.
 		['/settings/sso', VIEWS.WORKFLOWS, []],
 		['/settings/sso', VIEWS.SSO_SETTINGS, ['saml:manage']],
 		['/settings/community-nodes', VIEWS.WORKFLOWS, []],
@@ -143,6 +148,7 @@ describe('router', () => {
 			VIEWS.COMMUNITY_NODES,
 			['communityPackage:list', 'communityPackage:update'],
 		],
+		['/settings/authentication/ldap', VIEWS.LDAP_SETTINGS, ['ldap:manage']],
 		['/settings/ldap', VIEWS.WORKFLOWS, []],
 		['/settings/ldap', VIEWS.LDAP_SETTINGS, ['ldap:manage']],
 		['/settings/security', VIEWS.WORKFLOWS, []],
@@ -290,7 +296,6 @@ describe('router', () => {
 			enabled: true,
 			mcpConnectionsAvailable: true,
 			setupCompleted: true,
-			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			proxyEnabled: false,
 			cloudManaged: false,
@@ -298,6 +303,7 @@ describe('router', () => {
 			workflowBuilderAvailable: true,
 			sandboxUnavailableReason: null,
 			runDebugEnabled: false,
+			workflowSuggestionsEnabled: false,
 		};
 
 		const runRootRedirect = () => {

@@ -91,6 +91,7 @@ function onPageSizeChange(size: number): void {
 				:loading="!loadFailed && isLoading"
 				:include-assistant="includeAssistant"
 				source="library"
+				@agent-made-available="retry"
 			/>
 			<N8nEmptyState
 				v-if="loadFailed"

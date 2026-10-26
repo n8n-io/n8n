@@ -438,6 +438,26 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		});
 	}
 
+	/**
+	 * Top-level private sessions of one user with any instance (system) agent,
+	 * in every project, oldest first. It does not check that a provider is
+	 * registered for the agent, so user deletion finds every session.
+	 */
+	async findOwnedSystemAgentSessions(
+		ownerId: string,
+	): Promise<Array<Pick<AgentExecutionThread, 'id' | 'agentId' | 'projectId'>>> {
+		return await this.find({
+			select: ['id', 'agentId', 'projectId'],
+			where: {
+				ownerId,
+				accessScope: 'user',
+				parentThreadId: IsNull(),
+				agent: { scope: 'instance' },
+			},
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
 	/** One top-level private session of a user with an agent. */
 	async findOwnedById(
 		agentId: string,
@@ -468,8 +488,9 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 
 	/**
 	 * Move a top-level private session of a user with an agent to another
-	 * project. Returns false when no such session exists. The caller must check
-	 * that the user can use the target project.
+	 * project, with its chat attachments. Returns false when no such session
+	 * exists. The caller must check that the user can use the target project,
+	 * and run this in a transaction.
 	 */
 	async moveOwned(
 		agentId: string,
@@ -478,12 +499,16 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		projectId: string,
 		ctx: OperationContext,
 	): Promise<boolean> {
-		const result = await this.managerFor(ctx).update(
+		const manager = this.managerFor(ctx);
+		const result = await manager.update(
 			AgentExecutionThread,
 			ownedSessionWhere(agentId, ownerId, threadId),
 			{ projectId },
 		);
-		return result.affected === 1;
+		if (result.affected !== 1) return false;
+		// Attachment lookups and session deletion filter on the project of the thread.
+		await manager.update(AgentChatAttachment, { agentId, threadId }, { projectId });
+		return true;
 	}
 
 	/**
@@ -526,6 +551,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		const hasMore = threads.length > limit;
 		if (hasMore) threads.pop();
 		return { threads, hasMore };
+	}
+
+	async findIdsByAgentId(agentId: string): Promise<string[]> {
+		const threads = await this.find({ select: { id: true }, where: { agentId } });
+		return threads.map((thread) => thread.id);
 	}
 
 	/** Sessions of an agent last updated before `cutoff`, oldest first, for pruning. */

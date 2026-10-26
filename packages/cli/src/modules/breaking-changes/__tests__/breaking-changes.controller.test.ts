@@ -281,6 +281,80 @@ describe('BreakingChangesController', () => {
 		});
 	});
 
+	describe('GET /report/export', () => {
+		beforeEach(() => {
+			vi.useFakeTimers({ now: new Date('2026-10-20T10:00:00.000Z'), toFake: ['Date'] });
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('syncs when stale, then sends the overview as a CSV attachment', async () => {
+			const callOrder: string[] = [];
+			syncService.syncIfStale.mockImplementation(async () => {
+				callOrder.push('syncIfStale');
+			});
+			queryService.getLightReport.mockImplementation(async () => {
+				callOrder.push('getLightReport');
+				return lightReport(new Date('2026-01-01T00:00:00Z'));
+			});
+
+			await controller.exportReport(req, res, { version: 'v3' });
+
+			expect(syncService.syncIfStale).toHaveBeenCalledWith('v3');
+			expect(queryService.getLightReport).toHaveBeenCalledWith('v3', INSTANCE);
+			expect(callOrder).toEqual(['syncIfStale', 'getLightReport']);
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/csv; charset=utf-8');
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Content-Disposition',
+				'attachment; filename="migration-report-v3-2026-10-20.csv"',
+			);
+			// A cross-origin editor, as in local development, reads the file name only when exposed.
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Access-Control-Expose-Headers',
+				'Content-Disposition',
+			);
+			expect(res.send).toHaveBeenCalledTimes(1);
+			const [body] = res.send.mock.calls[0];
+			expect(body).toMatch(/^target_version,current_version,synced_at,/);
+			expect(body).toContain('v2,2.0.0,2026-01-01T00:00:00.000Z,3,2,0');
+		});
+
+		it('does not count as a view for telemetry', async () => {
+			queryService.getLightReport.mockResolvedValue(lightReport(new Date()));
+
+			await controller.exportReport(req, res, { version: 'v3' });
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('scopes the file to the workflows a user without global edit access can edit', async () => {
+			req.user = member;
+			queryService.getLightReport.mockResolvedValue(lightReport(new Date()));
+
+			await controller.exportReport(req, res, { version: 'v3' });
+
+			expect(queryService.getLightReport).toHaveBeenCalledWith('v3', {
+				kind: 'workflows',
+				workflowIds: ['wf-1', 'wf-2'],
+			});
+		});
+
+		it('defaults the target version to v2', async () => {
+			queryService.getLightReport.mockResolvedValue(lightReport(new Date()));
+
+			await controller.exportReport(req, res, {});
+
+			expect(syncService.syncIfStale).toHaveBeenCalledWith('v2');
+			expect(queryService.getLightReport).toHaveBeenCalledWith('v2', INSTANCE);
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Content-Disposition',
+				'attachment; filename="migration-report-v2-2026-10-20.csv"',
+			);
+		});
+	});
+
 	describe('GET /report/:ruleId', () => {
 		// Plain objects, not proxies: the controller tells rule kinds apart by their methods.
 		function registerRule(ruleId: string, version: 'v2' | 'v3', kind: 'workflow' | 'instance') {

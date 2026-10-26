@@ -3,6 +3,7 @@ import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
 import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
@@ -20,6 +21,7 @@ describe('Agent thread repository queries for system agents', () => {
 	let queueRepo: AgentMessageQueueRepository;
 	let messageRepo: AgentMessageRepository;
 	let executionRepo: AgentExecutionRepository;
+	let attachmentRepo: AgentChatAttachmentRepository;
 	let projectId: string;
 	let agentId: string;
 	let otherAgentId: string;
@@ -35,6 +37,7 @@ describe('Agent thread repository queries for system agents', () => {
 		queueRepo = Container.get(AgentMessageQueueRepository);
 		messageRepo = Container.get(AgentMessageRepository);
 		executionRepo = Container.get(AgentExecutionRepository);
+		attachmentRepo = Container.get(AgentChatAttachmentRepository);
 		ownerId = (await createMember()).id;
 		otherUserId = (await createMember()).id;
 	});
@@ -46,6 +49,7 @@ describe('Agent thread repository queries for system agents', () => {
 	});
 
 	afterEach(async () => {
+		await attachmentRepo.delete({});
 		await queueRepo.delete({});
 		await executionRepo.delete({});
 		await threadRepo.delete({});
@@ -169,6 +173,37 @@ describe('Agent thread repository queries for system agents', () => {
 				title: 'Title',
 				projectId: otherProjectId,
 			});
+		});
+
+		it('moves the chat attachments of the session with it', async () => {
+			const thread = await createThread();
+			const other = await createThread();
+			const otherProjectId = (await createTeamProject()).id;
+			const attach = async (threadId: string) =>
+				await attachmentRepo.save(
+					attachmentRepo.create({
+						agentId,
+						projectId,
+						threadId,
+						binaryDataId: 'filesystem-v2:file',
+						fileName: 'file.txt',
+						mimeType: 'text/plain',
+						fileSizeBytes: 1,
+						source: 'chat',
+					}),
+				);
+			const moved = await attach(thread.id);
+			const kept = await attach(other.id);
+
+			await threadRepo.moveOwned(agentId, ownerId, thread.id, otherProjectId, {});
+
+			expect(
+				await attachmentRepo.findByIdInThread(moved.id, {
+					projectId: otherProjectId,
+					threadId: thread.id,
+				}),
+			).toMatchObject({ id: moved.id });
+			expect(await attachmentRepo.findOneByOrFail({ id: kept.id })).toMatchObject({ projectId });
 		});
 
 		it('does not move a session of another owner, another agent or a parent session', async () => {
@@ -305,6 +340,15 @@ describe('Agent thread repository queries for system agents', () => {
 			const second = await createThread({ title: 'Report B' }, '2024-02-01T00:00:00.000Z');
 
 			expect(await readAllPages(1, 'report')).toEqual([[first.id], [second.id]]);
+		});
+	});
+
+	describe('findIdsByAgentId', () => {
+		it('returns only the session ids of the agent', async () => {
+			const threads = [await createThread(), await createThread({ ownerId: otherUserId })];
+			await createThread({ agentId: otherAgentId });
+
+			expect((await threadRepo.findIdsByAgentId(agentId)).sort()).toEqual(ids(threads).sort());
 		});
 	});
 

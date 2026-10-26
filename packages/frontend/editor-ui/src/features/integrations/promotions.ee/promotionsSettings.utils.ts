@@ -59,6 +59,20 @@ export const isSamePromotionHostUrl = (current: string, next: string): boolean =
 	}
 };
 
+/**
+ * A short repository name, such as `acme/workflows`. GitLab remotes store their full path. For
+ * other remotes, the name comes from the clone URL. A URL in an unknown form shows as is.
+ */
+export const repositoryDisplayName = (remote: PromotionEnvironment['remote']): string => {
+	if (remote.repositoryPath) return remote.repositoryPath;
+	const url = remote.remoteUrl.replace(/\/+$/, '').replace(/\.git$/, '');
+	// `https://host/acme/workflows`, `ssh://git@host:2222/acme/workflows`, `git@host:acme/workflows`
+	// or `host:acme/workflows`
+	const match =
+		/^[a-z][a-z\d+.-]*:\/\/[^/]+\/(.+)$/i.exec(url) ?? /^(?:[^@/\s]+@)?[^:/\s]+:(.+)$/.exec(url);
+	return match ? match[1] : url;
+};
+
 export const emptyProviderForm = (type: PromotionProviderType = 'git'): ProviderFormState => ({
 	name: '',
 	type,

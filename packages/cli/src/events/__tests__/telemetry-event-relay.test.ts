@@ -3499,6 +3499,7 @@ describe('TelemetryEventRelay', () => {
 					credentials: {
 						matched: 2,
 						created: 1,
+						updated: 4,
 						requirements: 3,
 					},
 					dataTables: {
@@ -3556,6 +3557,7 @@ describe('TelemetryEventRelay', () => {
 				folders_removed: 1,
 				credentials_matched: 2,
 				credentials_created: 1,
+				credentials_updated: 4,
 				credentials_required: 3,
 				data_tables_matched: 1,
 				data_tables_created: 1,
@@ -3780,6 +3782,46 @@ describe('TelemetryEventRelay', () => {
 				was_disabled_ldap_user: false,
 			});
 		});
+
+		it('should track on `user-mfa-enabled` event', () => {
+			const event: RelayEventMap['user-mfa-enabled'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+			};
+
+			eventService.emit('user-mfa-enabled', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AUTH.USER_ENABLED_MFA, {
+				user_id: 'user123',
+			});
+		});
+
+		it.each(['mfaCode', 'recoveryCode'] as const)(
+			'should track on `user-mfa-disabled` event with %s',
+			(disableMethod) => {
+				const event: RelayEventMap['user-mfa-disabled'] = {
+					user: {
+						id: 'user123',
+						email: 'user@example.com',
+						firstName: 'John',
+						lastName: 'Doe',
+						role: { slug: GLOBAL_OWNER_ROLE.slug },
+					},
+					disableMethod,
+				};
+
+				eventService.emit('user-mfa-disabled', event);
+
+				expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AUTH.USER_DISABLED_MFA, {
+					user_id: 'user123',
+				});
+			},
+		);
 
 		it('should track on `user-submitted-personalization-survey` event', () => {
 			const event: RelayEventMap['user-submitted-personalization-survey'] = {
@@ -5199,6 +5241,21 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User updated instance policies', {
 				user_id: 'user-redaction',
 				data_redaction_enforcement_floor: 'all',
+			});
+		});
+
+		it('should track public_api_rate_limit update', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: { id: 'user-rate-limit' },
+				settingName: 'public_api_rate_limit',
+				value: true,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated instance policies', {
+				user_id: 'user-rate-limit',
+				public_api_rate_limit: true,
 			});
 		});
 	});

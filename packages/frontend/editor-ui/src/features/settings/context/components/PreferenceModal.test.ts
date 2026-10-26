@@ -28,11 +28,12 @@ vi.mock('@n8n/design-system', async () => {
 	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
 	const N8nDialog = {
 		name: 'N8nDialog',
-		props: ['open', 'size', 'header'],
+		props: ['open', 'size', 'header', 'description'],
 		emits: ['update:open'],
 		template: `
 			<div v-if="open" role="dialog" data-test-id="preference-modal">
 				<h2>{{ header }}</h2>
+				<p v-if="description" data-test-id="preference-modal-description">{{ description }}</p>
 				<slot />
 			</div>
 		`,
@@ -114,20 +115,20 @@ describe('PreferenceModal', () => {
 			expect(findOption('Just you · Personal project')).toBeDefined();
 		});
 
-		it('hides "Everyone" from a user who is not an instance owner or admin', () => {
+		it('hides "Global" from a user who is not an instance owner or admin', () => {
 			usersStore.currentUser = currentUser([]);
 
 			renderModal({ props: { open: true, preference: null }, pinia });
 
-			expect(findOption('Everyone')).toBeUndefined();
+			expect(findOption('Global')).toBeUndefined();
 		});
 
-		it('offers "Everyone" to an instance owner or admin', () => {
+		it('offers "Global" to an instance owner or admin', () => {
 			usersStore.currentUser = currentUser(['aiPreference:create']);
 
 			renderModal({ props: { open: true, preference: null }, pinia });
 
-			expect(findOption('Everyone')).toBeDefined();
+			expect(findOption('Global')).toBeDefined();
 		});
 
 		it('offers only the projects the user may write', () => {
@@ -305,6 +306,76 @@ describe('PreferenceModal', () => {
 			renderModal({ props: { open: false, preference: null }, pinia });
 
 			expect(trackMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('starting from an example', () => {
+		const example = {
+			id: 'answers' as const,
+			content: 'Summarize your changes in 3 bullet points.',
+		};
+
+		it('fills the text with the example and saves nothing yet', () => {
+			const { getByTestId } = renderModal({
+				props: { open: true, preference: null, example },
+				pinia,
+			});
+
+			expect(getByTestId('preference-modal-text-input').querySelector('textarea')).toHaveValue(
+				example.content,
+			);
+			expect(contextStore.createPreference).not.toHaveBeenCalled();
+		});
+
+		it('asks the user to change the example', () => {
+			const { getByTestId } = renderModal({
+				props: { open: true, preference: null, example },
+				pinia,
+			});
+
+			expect(getByTestId('preference-modal-description')).toHaveTextContent(
+				'Change the example so it fits how you work.',
+			);
+		});
+
+		it('shows no subtitle without an example', () => {
+			const { queryByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
+
+			expect(queryByTestId('preference-modal-description')).not.toBeInTheDocument();
+		});
+
+		it('reports the example on the open', () => {
+			renderModal({ props: { open: true, preference: null, example }, pinia });
+
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_OPENED_PREFERENCE_MODAL, {
+				mode: 'new',
+				example_id: 'answers',
+			});
+		});
+
+		it('saves the changed example with the default scope and reports the example', async () => {
+			const { getByTestId } = renderModal({
+				props: { open: true, preference: null, example },
+				pinia,
+			});
+
+			await userEvent.type(
+				getByTestId('preference-modal-text-input').querySelector('textarea')!,
+				' Skip greetings.',
+			);
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+
+			const content = `${example.content} Skip greetings.`;
+			expect(contextStore.createPreference).toHaveBeenCalledWith({
+				content,
+				scope: 'user',
+				projectId: null,
+			});
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_CREATED_PREFERENCE, {
+				scope_type: 'user',
+				text_length: content.length,
+				example_id: 'answers',
+			});
 		});
 	});
 

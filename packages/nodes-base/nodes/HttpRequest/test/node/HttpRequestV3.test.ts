@@ -79,6 +79,7 @@ describe('HttpRequestV3', () => {
 			sendMessageToUI: vi.fn(),
 			continueOnFail: vi.fn(),
 			getMode: vi.fn(),
+			getExecutionCancelSignal: vi.fn(),
 		} as unknown as IExecuteFunctions;
 	});
 
@@ -269,6 +270,59 @@ describe('HttpRequestV3', () => {
 		const result = await node.execute.call(executeFunctions);
 
 		expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+	});
+
+	describe('Batching and execution cancellation', () => {
+		const mockThreeItems = (batchInterval: number) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return { ...options, batching: { batch: { batchSize: 1, batchInterval } } };
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			});
+		};
+
+		it('should stop sending requests when the execution is cancelled during the batch interval', async () => {
+			mockThreeItems(60_000);
+			const controller = new AbortController();
+			(executeFunctions.getExecutionCancelSignal as Mock).mockReturnValue(controller.signal);
+
+			const execution = node.execute.call(executeFunctions);
+			setTimeout(() => controller.abort(), 10);
+
+			await expect(execution).rejects.toThrow('The execution was canceled');
+			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not continue with the next items when "Continue On Fail" is enabled', async () => {
+			mockThreeItems(60_000);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+			const controller = new AbortController();
+			(executeFunctions.getExecutionCancelSignal as Mock).mockReturnValue(controller.signal);
+
+			const execution = node.execute.call(executeFunctions);
+			setTimeout(() => controller.abort(), 10);
+
+			await expect(execution).rejects.toThrow('The execution was canceled');
+			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	it('should handle authentication', async () => {

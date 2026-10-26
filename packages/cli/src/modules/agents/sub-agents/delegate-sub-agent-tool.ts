@@ -4,6 +4,7 @@ import {
 	INLINE_SUB_AGENT_ID,
 	type InlineSubAgentProviderToolsResolver,
 	type ModelConfig,
+	readEpisodicScopeDecision,
 	type SubAgentTaskDifficulty,
 } from '@n8n/agents';
 import type { BudgetGuardrailConfig, SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
@@ -13,6 +14,7 @@ import { ResponseError } from '@n8n/errors';
 
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
+import { hostMetadataExecutionId } from '../types/agent-queued-message';
 import { formatSubAgentToolOutput } from './format-sub-agent-tool-output';
 import type { SubAgentRunContext, SubAgentRunner } from './sub-agent-runner';
 
@@ -66,6 +68,11 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				};
 			}
 			const parentSandboxScope = decodeAgentSandboxHostMetadata(request.parentHostMetadata);
+			// A child never inherits a parent's scope, but it must not re-enable memory the parent turned off.
+			const parentDecision = readEpisodicScopeDecision(request.parentHostMetadata);
+			const parentEpisodicScope =
+				parentDecision && 'disabled' in parentDecision ? parentDecision : undefined;
+			const parentExecutionId = hostMetadataExecutionId(request.parentHostMetadata);
 
 			const result = await runner.run(
 				{
@@ -79,6 +86,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 					...(request.parentThreadId !== undefined
 						? { parentThreadId: request.parentThreadId }
 						: {}),
+					...(parentExecutionId !== undefined ? { parentExecutionId } : {}),
 					...(request.parentResourceId !== undefined
 						? { parentResourceId: request.parentResourceId }
 						: {}),
@@ -89,6 +97,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				},
 				{
 					...runContext,
+					...(parentEpisodicScope !== undefined ? { parentEpisodicScope } : {}),
 					...rootBudgetSession(runContext, parentBudget, request.parentThreadId),
 					...(request.parentExecutionCounter !== undefined
 						? { executionCounter: request.parentExecutionCounter }

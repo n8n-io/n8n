@@ -8,7 +8,8 @@ dependencies:
     - workflow_builder_executions
 description: >-
   Load before workflow_builder_build_workflow and before scoping or planning new workflows and
-  feature additions, including requests spanning multiple workflows. Implement
+  feature additions, including requests spanning multiple workflows. For a new
+  kept build, load intent-recognition first when it is listed. Implement
   one increment per user message. Finish setup and inspect a successful real
   execution before offering another increment. Then wait for the next user
   reply. Partial setup is incomplete. A first setup or test refusal pauses
@@ -52,7 +53,6 @@ Ask a single-choice question if several named services are equally central.
 Otherwise state a reasonable starting assumption. Do not offer a multi-select
 list that adds services or triggers to the first version.
 
-The `planning` skill and `workflow_builder_create_tasks` tool are unavailable in this mode.
 Keep additional workflows as later roadmap items.
 
 ## Build, set up, and run

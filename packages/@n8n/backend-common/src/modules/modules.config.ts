@@ -48,6 +48,7 @@ export const MODULE_NAMES = [
 	'scim',
 	'skills',
 	'apps',
+	'knowledge',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

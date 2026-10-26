@@ -14,11 +14,11 @@ export const API_KEY_SCOPE_GROUPS: Array<{ key: string; resources: ApiKeyResourc
 	{ key: 'projects', resources: ['project'] },
 	{ key: 'foldersTags', resources: ['folder', 'tag'] },
 	{ key: 'members', resources: ['user'] },
+	{ key: 'environments', resources: ['sourceControl'] },
 	{
 		key: 'instanceOperations',
 		resources: [
 			'securityAudit',
-			'sourceControl',
 			'communityPackage',
 			'insights',
 			'nodeTypePolicy',

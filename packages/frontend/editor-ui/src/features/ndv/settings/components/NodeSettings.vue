@@ -37,6 +37,7 @@ import { useNodeCredentialOptions } from '@/features/credentials/composables/use
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	RestrictedNodePanel,
+	RestrictedSubWorkflowCallout,
 	useNodeTypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
@@ -44,6 +45,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import NodeStorageLimitCallout from '@/features/core/dataTable/components/NodeStorageLimitCallout.vue';
+import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
 import { RenameNodeCommand } from '@/app/models/history';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -69,7 +71,7 @@ import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCredit
 import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
-import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { N8nBlockUi, N8nCallout, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -178,11 +180,35 @@ const hasForeignCredential = computed(() => props.foreignCredentials.length > 0)
 const isHomeProjectTeam = computed(
 	() => currentWorkflow.value?.homeProject?.type === ProjectTypes.Team,
 );
+const isDeprecated = computed(() => Boolean(nodeType.value?.deprecated));
+
+const replacementNodeType = computed(() =>
+	nodeType.value?.replacedByNodeType
+		? nodeTypesStore.getNodeType(nodeType.value.replacedByNodeType)
+		: null,
+);
+
+const deprecatedNotice = computed(() =>
+	replacementNodeType.value
+		? i18n.baseText('node.deprecatedWithReplacement', {
+				interpolate: { nodeTypeName: replacementNodeType.value.displayName },
+			})
+		: i18n.baseText('node.deprecated'),
+);
+
 const isReadOnly = computed(
-	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
+	() =>
+		props.readOnly ||
+		isDeprecated.value ||
+		(hasForeignCredential.value && !isHomeProjectTeam.value),
 );
 const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
-const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => node.value?.type);
+
+const { labelOf } = usePolicyViolationLabels();
+const canCheckSubWorkflowPolicy = computed(
+	() => !props.readOnly && workflowDocumentStore.value.scopes.includes('workflow:update'),
+);
+const { isRestricted, restriction } = useNodeTypeRestriction(() => node.value?.type);
 
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
@@ -229,7 +255,7 @@ const executeButtonTooltip = computed(() => {
 });
 
 const nodeVersionTag = computed(() => {
-	if (!nodeType.value || nodeType.value.hidden) {
+	if (!nodeType.value || nodeType.value.hidden || nodeType.value.deprecated) {
 		return i18n.baseText('nodeSettings.deprecated');
 	}
 
@@ -336,7 +362,7 @@ const hasOutputConnection = computed(() => {
 
 const valueChanged = (parameterData: IUpdateInformation) => {
 	// The event bus and the curl import write here too, so hidden inputs alone do not lock the node.
-	if (isRestricted.value) {
+	if (isRestricted.value || isDeprecated.value) {
 		return;
 	}
 
@@ -687,7 +713,7 @@ function handleSelectAction(params: INodeParameters) {
 			v-if="isEmbeddedInCanvas && node"
 			:node="node"
 			:selected-tab="openPanel"
-			:read-only="readOnly || isRestricted"
+			:read-only="isReadOnly || isRestricted"
 			:hide-tabs="isRestricted"
 			:node-type="nodeType"
 			:push-ref="pushRef"
@@ -710,7 +736,9 @@ function handleSelectAction(params: INodeParameters) {
 			:node-name="node.name"
 			:node-type="nodeType"
 			:execute-button-tooltip="executeButtonTooltip"
-			:hide-execute="props.hideExecute || !isExecutable || blockUI || !node || !nodeValid"
+			:hide-execute="
+				props.hideExecute || !isExecutable || blockUI || !node || !nodeValid || isDeprecated
+			"
 			:disable-execute="outputPanelEditMode.enabled && !isTriggerNode"
 			:hide-tabs="!nodeValid"
 			:hide-docs="props.hideDocs"
@@ -730,7 +758,7 @@ function handleSelectAction(params: INodeParameters) {
 		<RestrictedNodePanel
 			v-if="node && nodeValid && isRestricted"
 			:node-type-name="nodeType?.displayName ?? node.type"
-			:scope="restrictionScope"
+			:restriction="restriction"
 			:show-replace="!isEmbeddedInCanvas && !readOnly"
 			@replace-node="emit('replaceNode', node.id)"
 		/>
@@ -746,6 +774,14 @@ function handleSelectAction(params: INodeParameters) {
 			data-test-id="node-parameters"
 			@wheel.capture="emit('captureWheelBody', $event)"
 		>
+			<N8nCallout
+				v-if="isDeprecated"
+				theme="danger"
+				class="mt-xs"
+				data-test-id="node-deprecated-notice"
+			>
+				{{ deprecatedNotice }}
+			</N8nCallout>
 			<N8nNotice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
@@ -756,6 +792,13 @@ function handleSelectAction(params: INodeParameters) {
 			/>
 			<FreeAiCreditsCallout />
 			<NodeStorageLimitCallout />
+			<RestrictedSubWorkflowCallout
+				v-if="node"
+				:parent-workflow-id="workflowDocumentStore.workflowId"
+				:node="node"
+				:enabled="canCheckSubWorkflowPolicy"
+				:label-of="labelOf"
+			/>
 			<NodeActionsList
 				v-if="openPanel === 'action'"
 				class="action-tab"
@@ -765,7 +808,7 @@ function handleSelectAction(params: INodeParameters) {
 			<NodeCredentials
 				v-if="openPanel === 'credential'"
 				:node="node"
-				:readonly="readOnly"
+				:readonly="readOnly || isDeprecated"
 				:show-all="true"
 				:hide-issues="hiddenIssuesInputs.includes('credentials')"
 				:hide-ask-assistant="hideCredentialHelp"
@@ -803,7 +846,7 @@ function handleSelectAction(params: INodeParameters) {
 					<NodeCredentials
 						v-if="!isEmbeddedInCanvas && !isDemoPreview"
 						:node="node"
-						:readonly="readOnly"
+						:readonly="readOnly || isDeprecated"
 						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
 						:hide-ask-assistant="hideCredentialHelp"

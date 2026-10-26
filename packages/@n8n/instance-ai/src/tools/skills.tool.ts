@@ -44,7 +44,7 @@ const projectIdField = z
 const scopeField = z
 	.enum(['project', 'instance'])
 	.describe(
-		'project: one project can use the skill. instance: every project can use it. On update, a new scope moves the skill, which is refused while an agent uses it',
+		'project: one project can use the skill. instance: every project can use it. On update, a new scope moves the skill. The move is refused if an agent that uses the skill cannot use it in the new scope',
 	);
 
 const skillContentShape = {

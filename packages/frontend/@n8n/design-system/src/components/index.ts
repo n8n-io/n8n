@@ -114,7 +114,7 @@ export { default as N8nNodeCreatorNode } from './N8nNodeCreatorNode';
 export { default as N8nNodeIcon } from './N8nNodeIcon';
 export { default as N8nNotice } from './N8nNotice';
 export { default as N8nOption } from './N8nOption';
-export { default as N8nPagination } from './N8nPagination';
+export { default as N8nPagination, PAGINATION_ALL_ITEMS_PER_PAGE } from './N8nPagination';
 export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
 export { default as N8nSelectedItemsInfo } from './N8nSelectedItemsInfo';
@@ -136,6 +136,7 @@ export type { SettingsSaveBarProps } from './N8nSettingsSaveBar';
 export { default as N8nSettingsSection } from './N8nSettingsSection';
 export type { SettingsSectionProps } from './N8nSettingsSection';
 export { default as N8nPreviewBadge } from './PreviewBadge/PreviewBadge.vue';
+export { default as N8nEnterpriseReadinessBadge } from './EnterpriseReadinessBadge/EnterpriseReadinessBadge.vue';
 export { default as N8nNewBadge } from './NewBadge/NewBadge.vue';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility

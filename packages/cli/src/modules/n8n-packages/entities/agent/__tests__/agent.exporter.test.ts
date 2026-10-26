@@ -267,7 +267,7 @@ describe('AgentExporter', () => {
 		expect(JSON.parse(writer.files[1].content)).toEqual(expected.metadata);
 	});
 
-	it('keeps authored bytes and hashes stable when only publication metadata changes', async () => {
+	it('keeps authored bytes and hashes stable when publication metadata changes', async () => {
 		const { agent, exporter } = setup();
 		const before = (await exporter.prepare(agent))!;
 		agent.versionId = 'new-draft-version';

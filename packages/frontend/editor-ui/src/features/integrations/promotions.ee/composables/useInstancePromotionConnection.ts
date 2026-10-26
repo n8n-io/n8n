@@ -5,7 +5,9 @@ import {
 	type PromotionEnvironmentSummary,
 } from '../promotionsSettings.api';
 
-let instanceEnvironments: Promise<PromotionEnvironmentSummary[]> | undefined;
+type EnvironmentLookup = { environments: PromotionEnvironmentSummary[]; failed: boolean };
+
+let instanceEnvironments: Promise<EnvironmentLookup> | undefined;
 
 export function invalidateInstancePromotionConnection() {
 	instanceEnvironments = undefined;
@@ -15,15 +17,21 @@ export function invalidateInstancePromotionConnection() {
 export function useInstancePromotionConnection() {
 	const rootStore = useRootStore();
 	const environments = ref<PromotionEnvironmentSummary[]>([]);
+	/** True when the last lookup failed, so a caller can tell it apart from "no environment". */
+	const failed = ref(false);
 
 	async function load() {
 		instanceEnvironments ??= fetchPromotionEnvironments(rootStore.publicApiContext, {
 			scope: 'instance',
-		}).catch(() => {
-			invalidateInstancePromotionConnection();
-			return [];
-		});
-		environments.value = await instanceEnvironments;
+		})
+			.then((found) => ({ environments: found, failed: false }))
+			.catch(() => {
+				invalidateInstancePromotionConnection();
+				return { environments: [], failed: true };
+			});
+		const lookup = await instanceEnvironments;
+		environments.value = lookup.environments;
+		failed.value = lookup.failed;
 	}
 
 	const hasPromoteConfig = computed(() =>
@@ -33,5 +41,5 @@ export function useInstancePromotionConnection() {
 		environments.value.some(({ direction }) => direction === 'apply'),
 	);
 
-	return { environments, hasPromoteConfig, hasApplyConfig, load };
+	return { environments, failed, hasPromoteConfig, hasApplyConfig, load };
 }

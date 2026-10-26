@@ -2,6 +2,7 @@ import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { ForbiddenError } from '@n8n/errors';
+import { PROJECT_ROOT } from 'n8n-workflow';
 import {
 	WorkflowCreationService,
 	type WorkflowCreateBatchContext,
@@ -15,7 +16,6 @@ import {
 	type WorkflowArchiveTransition,
 } from './workflow-archive-transition';
 import { decideWorkflowConflictAction } from './workflow-conflict-policy';
-import { decideWorkflowId } from './workflow-id-policy';
 import {
 	WorkflowImportMatchService,
 	type WorkflowIdConflict,
@@ -32,6 +32,7 @@ import type {
 	WorkflowPlanItem,
 	WorkflowPlannedAction,
 } from './workflow-import.types';
+import { LayoutConflictPolicy } from '../../n8n-packages.types';
 import type {
 	ImportBindingMap,
 	ImportContext,
@@ -40,6 +41,7 @@ import type {
 	WorkflowIdPolicy,
 } from '../../n8n-packages.types';
 import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
+import { decideImportId } from '../import-id-policy';
 
 export interface WorkflowImportResult {
 	outcomes: PersistedWorkflowOutcome[];
@@ -64,7 +66,10 @@ export class WorkflowImporter {
 		context: ImportContext,
 		prepared: PreparedWorkflow[],
 		options: ImportWorkflowProperties,
-		{ checkRootPlacement }: { checkRootPlacement: boolean },
+		{
+			checkRootPlacement,
+			layoutConflictPolicy,
+		}: { checkRootPlacement: boolean; layoutConflictPolicy?: LayoutConflictPolicy },
 	): Promise<WorkflowImportPlan> {
 		const { matches: existingBySourceWorkflowId, lineageConflicts } =
 			await this.workflowImportMatchService.findBySourceWorkflowIds(
@@ -121,6 +126,10 @@ export class WorkflowImporter {
 			if (item.action === 'update' && (targetFolderId !== null || checkRootPlacement)) {
 				const existingParentFolderId = item.existing.parentFolder?.id ?? null;
 				if (existingParentFolderId !== targetFolderId) {
+					if (layoutConflictPolicy === LayoutConflictPolicy.FollowPackage) {
+						item.moveToFolderId = targetFolderId;
+						continue;
+					}
 					folderConflicts.push({
 						sourceWorkflowId: workflow.sourceWorkflowId,
 						existingWorkflowId: item.existing.id,
@@ -289,6 +298,9 @@ export class WorkflowImporter {
 			publicApi: true,
 			source: 'import',
 			allowArchivedUpdate: item.existing.isArchived,
+			...(item.moveToFolderId !== undefined
+				? { parentFolderId: item.moveToFolderId ?? PROJECT_ROOT }
+				: {}),
 			// `settings.errorWorkflow` is a package reference this importer rebinds. The
 			// handler it now points at can still be unwritten (later in this loop) and is
 			// unpublished until the package-wide sweep, so the write-time check on that
@@ -388,7 +400,7 @@ function toPlanItem(
 	if (existing === null) {
 		return {
 			action: 'create',
-			decidedId: decideWorkflowId(idPolicy, prepared.sourceWorkflowId),
+			decidedId: decideImportId(idPolicy, prepared.sourceWorkflowId),
 			...prepared,
 		};
 	}
@@ -411,7 +423,7 @@ function toPlanItem(
 			// Only `fail` reaches here with a match; it records a conflict the gate rejects first.
 			return {
 				action,
-				decidedId: decideWorkflowId(idPolicy, prepared.sourceWorkflowId),
+				decidedId: decideImportId(idPolicy, prepared.sourceWorkflowId),
 				...prepared,
 			};
 	}

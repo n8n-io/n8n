@@ -685,6 +685,123 @@ describe('openai api-style selection (real SDK)', () => {
 		expect(paths(calls)).toEqual(['/v1/responses']);
 	});
 
+	const MISSING_FIELD_BODIES: Array<[string, Record<string, unknown>]> = [
+		['role', { message: "'role'", type: 'InternalServerError', code: 500 }],
+		['content', { message: "'content'", type: 'InternalServerError', param: null, code: 500 }],
+	];
+
+	it.each(MISSING_FIELD_BODIES)(
+		'falls back to chat on a 500 for a missing %s field, then stays there',
+		async (_label, error) => {
+			const { fetchFn, calls } = fakeEndpoint({
+				'/v1/responses': {
+					status: 500,
+					body: JSON.stringify({ error }),
+					contentType: 'application/json',
+				},
+				'/v1/chat/completions': CHAT_OK,
+			});
+			const model = build({ url: PROXY }, fetchFn);
+
+			expect((await generateText({ model, prompt: 'hi' })).text).toBe('from chat');
+			expect((await generateText({ model, prompt: 'hi' })).text).toBe('from chat');
+			expect(paths(calls)).toEqual([
+				'/v1/responses',
+				'/v1/chat/completions',
+				'/v1/chat/completions',
+			]);
+		},
+	);
+
+	it('falls back to chat on doStream when a 500 reports a missing field', async () => {
+		const { fetchFn, calls } = fakeEndpoint({
+			'/v1/responses': {
+				status: 500,
+				body: JSON.stringify({ error: MISSING_FIELD_BODIES[0][1] }),
+				contentType: 'application/json',
+			},
+			'/v1/chat/completions': CHAT_STREAM_OK,
+		});
+		const model = build({ url: PROXY }, fetchFn) as unknown as EndpointModel;
+
+		const parts = await readStream((await model.doStream({ prompt: PROMPT })).stream);
+
+		expect(parts).toContainEqual(
+			expect.objectContaining({ type: 'text-delta', delta: 'from chat' }),
+		);
+		expect(paths(calls)).toEqual(['/v1/responses', '/v1/chat/completions']);
+	});
+
+	const OTHER_SERVER_ERRORS: Array<[string, Record<string, unknown>]> = [
+		[
+			'a generic server error',
+			{ message: 'The server had an error processing your request.', type: 'server_error' },
+		],
+		[
+			'an engine failure',
+			{ message: 'CUDA out of memory', type: 'InternalServerError', code: 500 },
+		],
+		[
+			'a sentence that quotes a field',
+			{ message: "'role' must be set", type: 'InternalServerError', code: 500 },
+		],
+	];
+
+	it.each(OTHER_SERVER_ERRORS)(
+		'keeps a 500 with %s from a working /responses route',
+		async (_label, error) => {
+			const { fetchFn, calls } = fakeEndpoint({
+				'/v1/responses': {
+					status: 500,
+					body: JSON.stringify({ error }),
+					contentType: 'application/json',
+				},
+				'/v1/chat/completions': CHAT_OK,
+			});
+
+			await expect(
+				generateText({ model: build({ url: PROXY }, fetchFn), prompt: 'hi', maxRetries: 0 }),
+			).rejects.toThrow(String(error.message));
+			expect(paths(calls)).toEqual(['/v1/responses']);
+		},
+	);
+
+	it.each([502, 503])('keeps a missing-field body at %i', async (status) => {
+		const { fetchFn, calls } = fakeEndpoint({
+			'/v1/responses': {
+				status,
+				body: JSON.stringify({ error: MISSING_FIELD_BODIES[0][1] }),
+				contentType: 'application/json',
+			},
+			'/v1/chat/completions': CHAT_OK,
+		});
+
+		await expect(
+			generateText({ model: build({ url: PROXY }, fetchFn), prompt: 'hi', maxRetries: 0 }),
+		).rejects.toThrow("'role'");
+		expect(paths(calls)).toEqual(['/v1/responses']);
+	});
+
+	it('keeps a missing-field 500 on an explicitly pinned /responses route', async () => {
+		const { fetchFn, calls } = fakeEndpoint({
+			'/v1/responses': {
+				status: 500,
+				body: JSON.stringify({ error: MISSING_FIELD_BODIES[0][1] }),
+				contentType: 'application/json',
+			},
+			'/v1/chat/completions': CHAT_OK,
+		});
+
+		await expect(
+			generateText({
+				model: build({ url: PROXY, apiStyle: 'responses' }, fetchFn),
+				prompt: 'hi',
+				maxRetries: 0,
+			}),
+		).rejects.toThrow("'role'");
+		expect(paths(calls)).toEqual(['/v1/responses']);
+	});
+
 	it('falls back to chat on an HTML page answered with HTTP 200', async () => {
 		// A reverse proxy with a catch-all route answers the unknown path with its
 		// own page. The SDK reports that as `Invalid JSON response` at status 200.
@@ -1744,6 +1861,36 @@ describe('openai api-style selection (real SDK)', () => {
 			expect(await generate()).toBe('from responses');
 
 			expect(calls).toEqual([
+				'/v1/responses',
+				'/v1/responses',
+				'/v1/chat/completions',
+				'/v1/responses',
+			]);
+		});
+
+		it('keeps a known /responses endpoint after a prompt it could not read', async () => {
+			let missingField = false;
+			const { fetchFn, calls } = fakeEndpoint((call) => {
+				if (call.path === '/v1/chat/completions') return CHAT_OK;
+				if (!missingField) return RESPONSES_OK;
+				return {
+					status: 500,
+					body: JSON.stringify({
+						error: { message: "'role'", type: 'InternalServerError', code: 500 },
+					}),
+					contentType: 'application/json',
+				};
+			});
+			const generate = async () =>
+				(await generateText({ model: build({ url: PROXY }, fetchFn), prompt: 'hi' })).text;
+
+			expect(await generate()).toBe('from responses');
+			missingField = true;
+			expect(await generate()).toBe('from chat');
+			missingField = false;
+			expect(await generate()).toBe('from responses');
+
+			expect(paths(calls)).toEqual([
 				'/v1/responses',
 				'/v1/responses',
 				'/v1/chat/completions',

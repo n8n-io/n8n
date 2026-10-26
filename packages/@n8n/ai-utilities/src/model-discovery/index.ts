@@ -64,9 +64,13 @@ export {
 export { listAlibabaModels, shouldIncludeAlibabaModel } from './providers/alibaba';
 export { listAnthropicModels } from './providers/anthropic';
 export {
+	AZURE_AI_FOUNDRY_AUDIENCE,
+	AzureProjectNotFoundError,
+	getAzureFoundryOrigin,
 	listAzureOpenAiModels,
 	shouldIncludeAzureModel,
 	type AzureOpenAiListModelsOptions,
+	type AzureDeploymentModel,
 } from './providers/azure';
 export { listCohereModels } from './providers/cohere';
 export { listDeepSeekModels } from './providers/deepseek';
