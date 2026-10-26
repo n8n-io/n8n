@@ -186,7 +186,7 @@ These only run if specific files changed:
 
 | Event                      | Workflow                    | Condition                                            |
 |----------------------------|-----------------------------|------------------------------------------------------|
-| Review submitted or dismissed | `util-notify-pr-status.yml` | Triggers required-review checks for fork PRs; sends notifications for PRs without the community label |
+| Review submitted or dismissed | `util-notify-pr-status.yml` | Triggers required-review checks for fork PRs; notifies only for approved or dismissed reviews on PRs without the community label |
 
 **Why Instance AI evals fire once per PR state-change, not per push:** the
 workflow eval is the most expensive job in PR CI (LLM-bound builds). Running it
