@@ -237,7 +237,13 @@ export interface CustomAgentMessages {
 	___dummyCustomMessage: { dummy: string };
 	runtimeSkillUpdate: {
 		type: 'n8n:runtime-skill-update';
-		skillUpdate: { skillId: string; version: string | null; content: string };
+		skillUpdate: {
+			skillId: string;
+			version: string | null;
+			content: string;
+			name?: string;
+			change?: 'updated' | 'restored' | 'unavailable';
+		};
 	};
 	// Apps can add message types through declaration merging.
 }

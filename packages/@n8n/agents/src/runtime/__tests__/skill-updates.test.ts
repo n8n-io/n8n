@@ -84,6 +84,7 @@ describe('skill updates in new messages', () => {
 		const messages = prompt(active, next);
 		expect(messages.at(-1)).toMatchObject({ role: 'user' });
 		expect(JSON.stringify(messages.at(-1))).toContain('was updated');
+		expect(JSON.stringify(messages.at(-1))).toContain('automatic skill update from the runtime');
 		expect(JSON.stringify(messages.at(-1))).toContain('Use the review queue.');
 		expect(JSON.stringify(messages.at(-1))).toContain('Renamed triage');
 		expect(JSON.stringify(messages)).not.toContain('App-only content.');
@@ -92,6 +93,20 @@ describe('skill updates in new messages', () => {
 		);
 		expect(next.messages().slice(0, originalMessages.length)).toEqual(originalMessages);
 		expect(prompt(active, next)).toEqual(messages);
+		expect(active.takeUpdates()).toEqual([
+			{
+				type: 'custom',
+				data: {
+					type: 'n8n:runtime-skill-update',
+					skillUpdate: expect.objectContaining({
+						skillId,
+						name: 'Renamed triage',
+						change: 'updated',
+					}),
+				},
+			},
+		]);
+		expect(active.takeUpdates()).toEqual([]);
 
 		const resumed = AgentMessageList.deserialize(structuredClone(next.serialize()));
 		const restored = new ActiveSkills(current, 'assistant', memory.skillState);

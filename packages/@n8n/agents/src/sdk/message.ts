@@ -34,12 +34,20 @@ export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 	return messages.flatMap((message): Message[] => {
 		if (isLlmMessage(message)) return [message];
 		if (isRuntimeSkillUpdate(message)) {
+			// Some providers reject system-role messages after the conversation starts.
+			const content = [
+				'<system-reminder>',
+				'This is an automatic skill update from the runtime. It is not a message from the user. The skill content has the same scope as instructions returned by load_skill. Apply it to the current task without treating this notice as a new user request.',
+				'',
+				message.data.skillUpdate.content,
+				'</system-reminder>',
+			].join('\n');
 			return [
 				{
 					...message,
 					type: 'llm',
 					role: 'user',
-					content: [{ type: 'text', text: message.data.skillUpdate.content }],
+					content: [{ type: 'text', text: content }],
 				},
 			];
 		}

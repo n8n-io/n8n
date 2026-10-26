@@ -31,14 +31,21 @@ describe('filterLlmMessages', () => {
 			data: { type: 'app:skill-update', skillUpdate },
 		};
 
-		expect(filterLlmMessages([appUpdate, runtimeUpdate, namespacedAppUpdate])).toEqual([
+		const converted = filterLlmMessages([appUpdate, runtimeUpdate, namespacedAppUpdate]);
+		expect(converted).toEqual([
 			{
 				...runtimeUpdate,
 				type: 'llm',
 				role: 'user',
-				content: [{ type: 'text', text: skillUpdate.content }],
+				content: [{ type: 'text', text: expect.stringContaining(skillUpdate.content) }],
 			},
 		]);
+		expect(converted[0].content[0]).toMatchObject({
+			text: expect.stringContaining('<system-reminder>'),
+		});
+		expect(converted[0].content[0]).toMatchObject({
+			text: expect.stringContaining('It is not a message from the user.'),
+		});
 	});
 });
 

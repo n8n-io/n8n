@@ -10,6 +10,7 @@ import {
 	type RuntimeSkillStateStore,
 } from '../../skills/types';
 import type { AgentPersistenceOptions } from '../../types/sdk/agent';
+import type { CustomAgentMessage } from '../../types/sdk/message';
 import type { AgentMessageList } from '../model/message-list';
 
 /**
@@ -45,6 +46,7 @@ export class ActiveSkills {
 	private list?: AgentMessageList;
 	private scope?: RuntimeSkillStateScope;
 	private pendingSave = Promise.resolve();
+	private pendingUpdates: CustomAgentMessage[] = [];
 
 	constructor(
 		private readonly source: RuntimeSkillSource,
@@ -54,6 +56,7 @@ export class ActiveSkills {
 
 	async restore(list: AgentMessageList, persistence?: AgentPersistenceOptions): Promise<void> {
 		this.loaded.clear();
+		this.pendingUpdates = [];
 		this.list = list;
 		this.scope = persistence
 			? {
@@ -121,6 +124,13 @@ export class ActiveSkills {
 			await this.persist();
 		}
 		return skill;
+	}
+
+	/** Stream each new notice once. The message list owns its persisted copy. */
+	takeUpdates(): CustomAgentMessage[] {
+		const updates = this.pendingUpdates;
+		this.pendingUpdates = [];
+		return updates;
 	}
 
 	/**
@@ -315,12 +325,21 @@ export class ActiveSkills {
 			const content = body
 				? `Skill ${JSON.stringify(skillId)} ${changed ? 'was updated' : 'is active'}. Use these current instructions when relevant. They replace earlier instructions and reference content for this skill.\n\n${body}`
 				: `Skill ${JSON.stringify(skillId)} is unavailable. Do not use its earlier instructions or reference content. Load it again if it becomes available and is needed.`;
-			list.addInput([
-				{
-					type: 'custom',
-					data: { type: 'n8n:runtime-skill-update', skillUpdate: { skillId, version, content } },
+			const update: CustomAgentMessage = {
+				type: 'custom',
+				data: {
+					type: 'n8n:runtime-skill-update',
+					skillUpdate: {
+						skillId,
+						version,
+						content,
+						name: this.source.registry.skills.find((entry) => entry.id === skillId)?.name,
+						change: body ? (changed ? 'updated' : 'restored') : 'unavailable',
+					},
 				},
-			]);
+			};
+			list.addInput([update]);
+			this.pendingUpdates.push(update);
 		}
 	}
 
