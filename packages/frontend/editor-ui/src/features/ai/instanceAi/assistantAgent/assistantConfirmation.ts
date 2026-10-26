@@ -63,13 +63,17 @@ export function parseAssistantConfirmationInput(
 	const message = typeof value.message === 'string' ? value.message : '';
 	const parsed = lenientConfirmationSchema.safeParse(value);
 	if (parsed.success) return { ...parsed.data, requestId: value.requestId, message };
-	// A field failed validation: keep only what the fallback card needs. Without a valid
-	// severity, treat the action as destructive, so the card offers no "Always allow".
+	// A field failed validation: keep only what the fallback card needs. The card cannot
+	// see the fields that it drops, so treat the action as destructive, with no "Always
+	// allow", when the severity is invalid or the payload names a cross-target or
+	// credential-destination action.
 	const severity = instanceAiConfirmationSeveritySchema.safeParse(value.severity);
+	const blocksAlwaysAllow =
+		value.targetApproval !== undefined || value.credentialDestination !== undefined;
 	return {
 		requestId: value.requestId,
 		message,
-		severity: severity.success ? severity.data : 'destructive',
+		severity: severity.success && !blocksAlwaysAllow ? severity.data : 'destructive',
 		...(typeof value.toolName === 'string' ? { toolName: value.toolName } : {}),
 	};
 }

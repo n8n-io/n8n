@@ -74,6 +74,21 @@ describe('parseAssistantConfirmationInput', () => {
 		).toEqual({ requestId: 'req-6', message: 'Run it?', severity: 'info' });
 	});
 
+	it.each([
+		['a cross-target approval', { targetApproval: { toolName: 'send_email' } }],
+		['a credential destination', { credentialDestination: { origin: 'not-a-list' } }],
+	])('marks the fallback destructive for %s, whatever its severity says', (_name, fields) => {
+		expect(
+			parseAssistantConfirmationInput({
+				requestId: 'req-7',
+				message: 'Allow it?',
+				severity: 'info',
+				questions: 'not-a-list',
+				...fields,
+			}),
+		).toEqual({ requestId: 'req-7', message: 'Allow it?', severity: 'destructive' });
+	});
+
 	it('ignores payloads of other tools', () => {
 		expect(parseAssistantConfirmationInput({ type: 'approval', toolName: 'x' })).toBeUndefined();
 		expect(parseAssistantConfirmationInput({ requestId: 'req-4', message: 'hi' })).toBeUndefined();
