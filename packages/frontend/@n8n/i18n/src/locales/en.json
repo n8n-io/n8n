@@ -4894,6 +4894,8 @@
 	"settings.migrationReport.description": "{compatibleCount} of your {totalCount} workflows are already compatible with version {version}. Review the details below to understand and resolve any compatibility problems. Learn more about all breaking changes in our",
 	"settings.migrationReport.documentationLink": "documentation",
 	"settings.migrationReport.progress.label": "{compatibleCount} of {totalCount} compatible",
+	"settings.migrationReport.export.error.title": "Could not export the report",
+	"settings.migrationReport.exportButton": "Export",
 	"settings.migrationReport.refreshButton": "Refresh",
 	"settings.migrationReport.scopeNote": "This report only includes the workflows you can edit.",
 	"settings.migrationReport.lastUpdated": "Last updated {time}",
