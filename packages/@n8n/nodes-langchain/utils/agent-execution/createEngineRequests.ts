@@ -249,7 +249,8 @@ export function createEngineRequests(
 			let input: IDataObject = toolInput;
 			if (metadata.isFromToolkit) {
 				input = { ...input };
-				if ('tool' in input && !(INTERNAL_TOOL_ARG_STASH_KEY in input)) {
+				delete input[INTERNAL_TOOL_ARG_STASH_KEY];
+				if ('tool' in input) {
 					input[INTERNAL_TOOL_ARG_STASH_KEY] = input.tool;
 				}
 				input.tool = toolCall.tool;

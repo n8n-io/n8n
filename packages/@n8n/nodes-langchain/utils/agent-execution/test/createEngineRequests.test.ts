@@ -1047,7 +1047,7 @@ describe('createEngineRequests', () => {
 			expect('_n8nOriginalToolArg' in (result[0].input as Record<string, unknown>)).toBe(false);
 		});
 
-		it('does not overwrite existing stash key (defensive guard)', () => {
+		it('discards an incoming stash key before stashing the user `tool` argument', () => {
 			const tools = [
 				createMockTool('MCP_Client_search', {
 					sourceNodeName: 'MCP_Client',
@@ -1058,7 +1058,7 @@ describe('createEngineRequests', () => {
 			const toolCalls: ToolCallRequest[] = [
 				{
 					tool: 'MCP_Client_search',
-					toolInput: { tool: 'user', _n8nOriginalToolArg: 'existing', extra: 1 },
+					toolInput: { tool: 'user', _n8nOriginalToolArg: 'injected', extra: 1 },
 					toolCallId: 'call_123',
 				},
 			];
@@ -1068,9 +1068,58 @@ describe('createEngineRequests', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
 				tool: 'MCP_Client_search',
-				_n8nOriginalToolArg: 'existing',
+				_n8nOriginalToolArg: 'user',
 				extra: 1,
 			});
+		});
+
+		it('does not let a model-supplied stash key override the user `tool` argument', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'REAL', _n8nOriginalToolArg: 'INJECTED' },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				_n8nOriginalToolArg: 'REAL',
+			});
+			expect(JSON.stringify(result)).not.toContain('INJECTED');
+		});
+
+		it('discards an incoming stash key when user `tool` is absent', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { _n8nOriginalToolArg: 'INJECTED', extra: 1 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({ tool: 'MCP_Client_search', extra: 1 });
+			expect(JSON.stringify(result)).not.toContain('INJECTED');
 		});
 
 		it.each([
