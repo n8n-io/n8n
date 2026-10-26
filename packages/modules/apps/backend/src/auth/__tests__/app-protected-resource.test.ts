@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
-import { RoleService } from '@n8n/backend-services';
+import { RoleService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
+import { GlobalConfig } from '@n8n/config';
 import { ProjectRelationRepository } from '@n8n/db';
 import type { ResourcePrincipal } from '@n8n/inbound-auth';
 import { mock } from 'vitest-mock-extended';
@@ -8,12 +9,13 @@ import { mock } from 'vitest-mock-extended';
 import { AppProtectedResource } from '../app-protected-resource';
 import type { App } from '../../app.entity';
 import { AppRepository } from '../../app.repository';
+import { AppsConfig } from '../../apps.config';
 import { AppHostService } from '../../serving/app-host.service';
 
 const id = '11111111-1111-4111-8111-111111111111';
 const url = `https://sales.apps.example.com/_n8n/auth/${id}/callback`;
 
-function setup() {
+function setup(deploymentType = 'default') {
 	const app = mock<App>({
 		id,
 		namespace: 'sales',
@@ -23,11 +25,17 @@ function setup() {
 	});
 	const apps = mock<AppRepository>();
 	apps.findById.mockResolvedValue(app);
-	const hosts = mock<AppHostService>({
-		baseUrl: new URL('https://apps.example.com'),
-		callbackUrl: () => url,
-		origin: (namespace) => (namespace === 'sales' ? 'https://sales.apps.example.com' : null),
-	});
+	const hosts = new AppHostService(
+		mock<AppsConfig>({ baseUrl: 'https://apps.example.com' }),
+		mock<GlobalConfig>({
+			host: 'foo.app.n8n.cloud',
+			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),
+		}),
+		mock<UrlService>({
+			getInstanceBaseUrl: () => 'https://foo.app.n8n.cloud',
+			getWebhookBaseUrl: () => 'https://foo.app.n8n.cloud',
+		}),
+	);
 	const roles = mock<RoleService>();
 	roles.rolesWithScope.mockResolvedValue(['project:viewer']);
 	const projects = mock<ProjectRelationRepository>();
@@ -74,6 +82,37 @@ describe('AppProtectedResource', () => {
 			resource.matchesVirtualClientUrl(url.replace('apps.example.com', 'other.example.com')),
 		).toBe(false);
 		expect((await resource.resolveByUrl(url))?.getAudiences()).toEqual([url]);
+	});
+
+	it('resolves Cloud callbacks only for the configured instance and namespace', async () => {
+		const { resource, apps } = setup('cloud');
+		const cloudUrl = url.replace('sales.apps', 'sales--foo.apps');
+
+		for (const value of [
+			url,
+			url.replace('sales.apps', 'foo--sales.apps'),
+			cloudUrl.replace('--foo', '--bar'),
+			cloudUrl.replace('https:', 'http:'),
+			cloudUrl.replace('.com/', '.com:1234/'),
+			cloudUrl + '?extra=1',
+			cloudUrl + '#extra',
+			cloudUrl.replace('https://', 'https://user@'),
+		]) {
+			expect(resource.matchesVirtualClientUrl(value)).toBe(false);
+			await expect(resource.resolveByUrl(value)).resolves.toBeUndefined();
+		}
+		expect(apps.findById).not.toHaveBeenCalled();
+
+		expect(resource.matchesVirtualClientUrl(cloudUrl)).toBe(true);
+		const descriptor = await resource.resolveByUrl(cloudUrl);
+		expect(descriptor?.getResourceUrl()).toBe(cloudUrl);
+		expect(descriptor?.getAudiences()).toEqual([cloudUrl]);
+		expect(await descriptor?.getAllowedRedirectUris?.()).toEqual([cloudUrl]);
+		expect(apps.findById).toHaveBeenCalledExactlyOnceWith(id);
+
+		await expect(
+			resource.resolveByUrl(cloudUrl.replace('sales', 'other')),
+		).resolves.toBeUndefined();
 	});
 
 	it('checks current project grants and visibility', async () => {

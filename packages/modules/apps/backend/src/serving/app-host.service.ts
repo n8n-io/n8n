@@ -9,10 +9,12 @@ import { isIP } from 'node:net';
 import { AppsConfig } from '../apps.config';
 
 const FQDN_MAX_LENGTH = 253;
+const DNS_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 @Service()
 export class AppHostService {
 	readonly baseUrl: URL;
+	private readonly hostSuffix: string = '';
 
 	constructor(
 		config: AppsConfig,
@@ -33,9 +35,7 @@ export class AppHostService {
 				url.hash ||
 				isIP(url.hostname) ||
 				url.hostname.length > FQDN_MAX_LENGTH ||
-				!url.hostname
-					.split('.')
-					.every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))
+				!url.hostname.split('.').every((label) => DNS_LABEL_PATTERN.test(label))
 			)
 				throw new Error('Invalid apps URL');
 			for (const serviceUrl of [urls.getInstanceBaseUrl(), urls.getWebhookBaseUrl()]) {
@@ -50,13 +50,24 @@ export class AppHostService {
 				'Set N8N_APPS_BASE_URL to a separate parent URL without a path, query, or fragment.',
 			);
 		}
+		if (globalConfig.deployment.type === 'cloud') {
+			const instanceName = globalConfig.host.split('.')[0].toLowerCase();
+			if (!DNS_LABEL_PATTERN.test(instanceName)) {
+				throw new BadRequestError(
+					'Set N8N_HOST to a valid instance hostname before enabling apps on Cloud.',
+				);
+			}
+			this.hostSuffix = `--${instanceName}`;
+		}
 	}
 
 	origin(namespace: string): string | null {
 		if (!appNamespaceSchema.safeParse(namespace).success) return null;
-		if (namespace.length + this.baseUrl.hostname.length + 1 > FQDN_MAX_LENGTH) return null;
+		const label = `${namespace}${this.hostSuffix}`;
+		if (label.length > 63 || label.length + this.baseUrl.hostname.length + 1 > FQDN_MAX_LENGTH)
+			return null;
 		const url = new URL(this.baseUrl);
-		url.hostname = `${namespace}.${url.hostname}`;
+		url.hostname = `${label}.${url.hostname}`;
 		return url.origin;
 	}
 
@@ -89,11 +100,14 @@ export class AppHostService {
 
 	namespace(req: IncomingMessage): string | undefined {
 		const host = this.parseHost(this.requestHost(req));
-		if (!host || host.port !== this.baseUrl.port) return undefined;
-		const suffix = `.${this.baseUrl.hostname}`;
-		if (!host.hostname.endsWith(suffix)) return undefined;
-		const namespace = host.hostname.slice(0, -suffix.length);
-		return appNamespaceSchema.safeParse(namespace).success ? namespace : undefined;
+		return host ? this.namespaceFromUrl(host) : undefined;
+	}
+
+	namespaceFromUrl(url: URL): string | undefined {
+		const suffix = `${this.hostSuffix}.${this.baseUrl.hostname}`;
+		if (!url.hostname.endsWith(suffix)) return undefined;
+		const namespace = url.hostname.slice(0, -suffix.length);
+		return this.origin(namespace) === url.origin ? namespace : undefined;
 	}
 
 	private isAppsHostRange(value: string | undefined): boolean {

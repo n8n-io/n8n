@@ -61,18 +61,10 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 	matchesVirtualClientUrl(value: string): boolean {
 		try {
 			const url = new URL(value);
-			const base = this.hosts.baseUrl;
-			if (
-				url.protocol !== base.protocol ||
-				url.port !== base.port ||
-				url.username ||
-				url.password ||
-				url.search ||
-				url.hash
-			)
-				return false;
-			const namespace = url.hostname.slice(0, -(base.hostname.length + 1));
-			return this.appId(url.pathname) !== undefined && this.hosts.origin(namespace) === url.origin;
+			if (url.username || url.password || url.search || url.hash) return false;
+			return (
+				this.appId(url.pathname) !== undefined && this.hosts.namespaceFromUrl(url) !== undefined
+			);
 		} catch {
 			return false;
 		}
