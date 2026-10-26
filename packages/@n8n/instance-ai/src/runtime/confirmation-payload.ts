@@ -44,8 +44,6 @@ export interface ConfirmationData {
 	}>;
 	/** User's resource-access decision (e.g. 'allowForSession'). */
 	resourceDecision?: string;
-	/** Plan-review hard denial — distinct from a feedback-driven rejection. */
-	denied?: boolean;
 	/** `'session'` means the user chose "always allow": the resuming tool should
 	 *  persist a thread-level grant so the same action isn't re-asked. */
 	scope?: 'once' | 'session';
@@ -59,8 +57,8 @@ export interface ConfirmationData {
  *  relevant to the submitted kind are populated — everything else stays undefined.
  *
  *  Most kinds carry implicit approval (you wouldn't be submitting answers,
- *  selected credentials, or a setup action otherwise) — only `approval`,
- *  `domainAccessDeny`, and `planDeny` carry a denial path. */
+ *  selected credentials, or a setup action otherwise) — only `approval`
+ *  and `domainAccessDeny` carry a denial path. */
 export function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
 	switch (request.kind) {
 		case 'approval':
@@ -69,8 +67,6 @@ export function toConfirmationData(request: InstanceAiConfirmRequest): Confirmat
 			return { approved: true, domainAccessAction: request.domainAccessAction };
 		case 'domainAccessDeny':
 			return { approved: false };
-		case 'planDeny':
-			return { approved: false, denied: true };
 		case 'questions':
 			return { approved: true, answers: request.answers };
 		case 'credentialSelection':
@@ -130,7 +126,6 @@ export function buildResumeData(data: ConfirmationData): Record<string, unknown>
 		...(data.scope ? { scope: data.scope } : {}),
 		...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 		...(data.credentialDestination ? { credentialDestination: data.credentialDestination } : {}),
-		...(data.denied ? { denied: true } : {}),
 		...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),
 	};
 }
