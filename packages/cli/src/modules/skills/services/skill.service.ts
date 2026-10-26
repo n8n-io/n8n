@@ -20,6 +20,7 @@ import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
+import type { SkillFrontmatter } from '../database/entities/skill-version.entity';
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
 import { SkillRepository } from '../database/repositories/skill.repository';
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
@@ -234,12 +235,14 @@ export class SkillService {
 	/**
 	 * Creates a skill with its v1. Returns the new id. `checkNameTaken` is for a name that a
 	 * user or the builder chose. A copy of an agent skill for a new agent keeps the name of
-	 * the skill it copies, so it skips the check.
+	 * the skill it copies, so it skips the check. `frontmatter` holds the SKILL.md keys
+	 * other than name and description, stored as given.
 	 */
 	async createTrusted(
 		input: {
 			target: SkillTarget;
 			skill: AgentSkill;
+			frontmatter?: SkillFrontmatter;
 			source: SkillSource;
 			createdById: string;
 			checkNameTaken?: boolean;
@@ -254,7 +257,7 @@ export class SkillService {
 		const id = `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
 			{ id, target: input.target, source: input.source, createdById: input.createdById },
-			toSkillContent(skill),
+			toSkillContent(skill, input.frontmatter),
 			ctx,
 		);
 		this.logger.debug('Created skill', { skillId: id });

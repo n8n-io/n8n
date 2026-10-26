@@ -59,6 +59,24 @@ describe('SkillService', () => {
 			);
 		});
 
+		it('stores every frontmatter key of v1', async () => {
+			const frontmatter = { 'allowed-tools': ['Read'], license: 'MIT', metadata: { team: 'a' } };
+
+			await service.createTrusted({
+				target: { projectId: PROJECT, agentId: null },
+				skill: { name: 'n', description: 'd', instructions: 'i' },
+				frontmatter,
+				source: 'github',
+				createdById: user.id,
+			});
+
+			expect(skills.createSkill).toHaveBeenCalledWith(
+				expect.objectContaining({ source: 'github' }),
+				expect.objectContaining({ frontmatter }),
+				expect.anything(),
+			);
+		});
+
 		it('refuses blank instructions', async () => {
 			await expect(
 				service.createTrusted({
