@@ -1,6 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { VIEWS, WORKFLOW_HISTORY_VERSION_UNPUBLISH } from '@/app/constants';
 import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
@@ -91,9 +91,10 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 		// 5 dependents in the counts, 3 visible: the 2 hidden credentials do not count
 		expect(affected).toHaveTextContent('+2 not accessible to you');
 		expect(affected).toHaveTextContent('Used by');
-		expect(getByText('5 resources use this workflow and may be affected by unpublishing it.')).toBeInTheDocument();
+		expect(
+			getByText('5 resources use this workflow and may be affected by unpublishing it.'),
+		).toBeInTheDocument();
 	});
-
 
 	it('lists a workflow once when it both calls and uses the target as its error workflow', async () => {
 		vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({
@@ -114,7 +115,9 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 		const affected = await findByTestId('workflow-unpublish-affected-resources');
 		expect(getAllByText('Order intake')).toHaveLength(1);
 		expect(affected).not.toHaveTextContent('not accessible to you');
-		expect(queryByText('1 resource uses this workflow and may be affected by unpublishing it.')).toBeInTheDocument();
+		expect(
+			queryByText('1 resource uses this workflow and may be affected by unpublishing it.'),
+		).toBeInTheDocument();
 	});
 
 	it('shows only the generic warning when nothing runs the published version', async () => {
@@ -130,9 +133,7 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 		});
 
 		const { queryByTestId, getByText } = renderModal('wf-2');
-		await waitFor(() =>
-			expect(workflowDependenciesApi.getResourceDependencies).toHaveBeenCalled(),
-		);
+		await flushPromises();
 
 		expect(getByText(/Unpublishing “Example workflow”/)).toBeInTheDocument();
 		expect(queryByTestId('workflow-unpublish-affected-resources')).not.toBeInTheDocument();
