@@ -13,13 +13,19 @@ pnpm install
 pnpm turbo build --filter='@n8n/fault-harness^...' > build.log 2>&1
 ```
 
+Docker must be running. A stack starts Postgres, Redis, a main and its workers as separate containers.
+
 ## How it works
 
 The harness builds on the `n8n-containers` stacks. It loads a preload script into every n8n process through `NODE_OPTIONS`. The preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container. It reads hits from `[fault-harness]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`.
 
+`HarnessStack.start` starts a stack with the hooks it declares. The stack has a REST client (`harness.api`), a Postgres probe (`harness.db`) and a Redis probe (`harness.redis`). The `scale` option divides the Bull lock, lock renewal and stall timeouts and the graceful shutdown window, so a test that waits for a stalled job takes seconds rather than minutes. It must be 1 or more, and `env` can override any single value. The `workflows` helpers build simple workflows: `chain(name, nodes)` connects the nodes in order, with `nodes.webhook` and `nodes.code`.
+
+Single-main stacks always start with an empty licence, so a licence in your shell cannot change their results.
+
 ### Hook specs
 
-A hook wraps one method in a compiled n8n file. By default it pauses the call until the test releases it. It can also only log the call. A `set` hook wraps no method: it writes fixed values into the module when the file loads, before n8n reads them. The test arms a hook with `hook(containers, point).arm()`, waits for it with `waitHit`, and lets the call continue with `release`.
+A hook wraps one method in a compiled n8n file. By default it pauses the call until the test releases it. It can also only log the call. A `set` hook wraps no method: it writes fixed values into the module when the file loads, before n8n reads them. The test arms a hook with `hook(containers, point).arm()`, waits for it with `waitHit`, and lets the call continue with `release`. `HarnessStack.start` checks every spec and fails at once if a hook did not install, so a wrong file or method name shows up before the test starts.
 
 | Field | Meaning |
 |---|---|
@@ -42,3 +48,24 @@ Paths in `where` and `detail` start at `args`, `this`, `scope.args` or `result`.
 ## Limits
 
 Hooks depend on compiled file paths and on class and method names, so a refactor in n8n can break them. The install check names every hook that does not install. Log text can change between versions.
+
+The runners image follows `TEST_IMAGE_N8N` with the same tag (`n8nio/runners:<tag>`). The `image` option of `HarnessStack.start` changes only the n8n image, so use it only with internal runners.
+
+Shortened timeouts keep runs short. A test shows the mechanism of a bug, not its timing in production.
+
+## Clean up
+
+A stack stops when its test calls `stopAllStacks`, which the tests do after each test. If a process dies before that, remove what is left:
+
+```bash
+docker ps -aq --filter 'name=^harness-' | xargs docker rm -f
+docker network prune -f --filter 'label=org.testcontainers=true'
+```
+
+## Test the harness
+
+```bash
+pnpm test:docker
+```
+
+The Docker test starts a real stack on `n8nio/n8n:2.42.2`, or on the image in `TEST_IMAGE_N8N`.
