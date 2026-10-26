@@ -22,8 +22,9 @@ export interface PendingSkillRefs {
 }
 
 /** Complete authored content, before integrations are split from the configuration. */
-export interface CompleteAgentDefinition extends Pick<Agent, 'name' | 'tools' | 'skills'> {
+export interface CompleteAgentDefinition extends Pick<Agent, 'name' | 'tools'> {
 	config: AgentJsonConfig | null;
+	skills: Record<string, AgentSkill>;
 	tasks: ReadonlyMap<string, AgentTaskConfig>;
 }
 

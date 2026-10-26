@@ -12,6 +12,7 @@ import {
 	CredentialsRepository,
 	ProjectRepository,
 	ProjectRelationRepository,
+	TransactionRunner,
 	type Project,
 	type User,
 } from '@n8n/db';
@@ -31,12 +32,16 @@ import { CredentialTypes } from '@/credential-types';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
 import { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
+import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
+import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { SkillRepository } from '@/modules/skills/skill.repository';
+import { toSkillContent } from '@/modules/skills/skill.service';
 import { PolicyDecisionService } from '@/modules/policy-infrastructure/policy-decision.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -93,8 +98,9 @@ let tasks: AgentTaskRepository;
 let orchestrator: ImportOrchestrator;
 
 beforeAll(async () => {
-	await testModules.loadModules(['agents', 'n8n-packages']);
+	await testModules.loadModules(['skills', 'agents', 'n8n-packages']);
 	await testDb.init();
+	registerSkillAgentsProvider();
 	license.mockLicenseState(Container.get(LicenseState));
 	license.setDefaults({
 		features: ['feat:projectRole:admin', 'feat:folders'],
@@ -281,11 +287,20 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	expect(saved.id).not.toBe(workflow.id);
 	expect(saved).toMatchObject({
 		id: first.id,
-		skills: first.skills,
 		tools: first.tools,
 		availableInMCP: true,
 		activeVersionId: null,
 	});
+	const importedSkills = await Container.get(AgentSkillRefsService).readDraft(saved, {});
+	expect(importedSkills.skillRefs).toEqual(first.config!.skills);
+	expect(Object.values(importedSkills.skills)).toEqual(
+		Object.values(first.skills).map(({ allowedTools: _allowedTools, ...body }) => body),
+	);
+	const childSkills = await Container.get(AgentSkillRefsService).readDraft(child, {});
+	expect(childSkills.skillRefs).toEqual(second.config!.skills);
+	expect(Object.values(childSkills.skills)).toEqual(
+		Object.values(second.skills).map(({ allowedTools: _allowedTools, ...body }) => body),
+	);
 	expect(saved.versionId).not.toBe('draft-version');
 	expect(saved.schema).toMatchObject({
 		credential: credential.id,
@@ -330,6 +345,38 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	expect(input).toEqual(original);
 });
 
+it.each(['project', 'agent'] as const)(
+	'rejects a skill ID owned by another %s without replacing its content',
+	async (scope) => {
+		const input = fixture();
+		input.manifest.agents.splice(1);
+		await agents.save({ id: 'other-agent', name: 'Other', projectId: project.id });
+		const body = {
+			name: 'Existing skill',
+			description: 'Keep this skill.',
+			instructions: 'Keep these instructions.',
+		};
+		const repository = Container.get(SkillRepository);
+		await repository.createSkill(
+			{
+				id: 'support_source_skill',
+				target:
+					scope === 'project'
+						? { projectId: project.id, agentId: null }
+						: { projectId: null, agentId: 'other-agent' },
+				source: 'ui',
+				createdById: owner.id,
+			},
+			toSkillContent(body),
+		);
+		const before = await repository.findLatestSaved(['support_source_skill']);
+		await expect(importSelected(input)).rejects.toBeInstanceOf(ConflictError);
+		expect(await repository.findLatestSaved(['support_source_skill'])).toEqual(before);
+		expect(await agents.findById('support_source')).toBeNull();
+		await repository.deleteSkill('support_source_skill');
+	},
+);
+
 it('reuses destination IDs, replaces removed content, skips writes and preserves null configurations', async () => {
 	const input = fixture();
 	input.manifest.agents.splice(1);
@@ -338,14 +385,37 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 	telemetry.track.mockClear();
 	const [task] = await tasks.findByAgentId(initial.id);
 	const history = Container.get(AgentHistoryRepository);
-	await history.saveVersion({
-		agentId: initial.id,
-		versionId: initial.versionId!,
-		schema: initial.schema,
-		tools: initial.tools,
-		publishedBy: 'Test',
+	const skillRefs = Container.get(AgentSkillRefsService);
+	const initialSkills = await skillRefs.readDraft(initial, {});
+	await Container.get(TransactionRunner).run({}, async (ctx) => {
+		const pins = await skillRefs.versionSnapshot(initial, ctx);
+		await history.saveVersion(
+			{
+				agentId: initial.id,
+				versionId: initial.versionId!,
+				schema: initial.schema,
+				tools: initial.tools,
+				publishedBy: 'Test',
+			},
+			ctx,
+		);
+		await skillRefs.pinVersion(initial.versionId!, pins, ctx);
 	});
 	await agents.update(initial.id, { activeVersionId: initial.versionId });
+	first.skills.support_source_skill.instructions = 'Promoted skill instructions';
+	first.skills.support_source_skill.references = [];
+	await importSelected(input);
+	const promotedSkills = await skillRefs.readDraft(initial, {});
+	expect(promotedSkills.skillRefs).toEqual(initialSkills.skillRefs);
+	expect(promotedSkills.skills.support_source_skill.instructions).toBe(
+		'Promoted skill instructions',
+	);
+	expect(promotedSkills.skills.support_source_skill).not.toHaveProperty('references');
+	expect(await skillRefs.readVersion({ versionId: initial.versionId! }, {})).toEqual(initialSkills);
+	await importSelected(input);
+	expect(
+		await Container.get(SkillRepository).findLatestSummaries(['support_source_skill']),
+	).toEqual(new Map([['support_source_skill', expect.objectContaining({ version: 2 })]]));
 	await tasks.insert({
 		id: 'destination-only-task',
 		agentId: initial.id,
@@ -367,7 +437,6 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 		agent: {
 			id: initial.id,
 			activeVersionId: initial.versionId,
-			skills: {},
 			tools: {},
 			availableInMCP: false,
 		},
@@ -382,11 +451,16 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 		expect.anything(),
 	);
 	expect(updated.agent.schema).not.toHaveProperty('mcpServers');
+	expect(await Container.get(AgentSkillRefsService).readDraft(updated.agent, {})).toEqual({
+		skillRefs: [],
+		skills: {},
+	});
 	expect(await tasks.findByAgentId(initial.id)).toMatchObject([
 		{ id: task.id, objective: 'Updated objective' },
 	]);
 	expect(await tasks.count()).toBe(1);
 	expect(await history.count()).toBe(1);
+	expect(await skillRefs.readVersion({ versionId: initial.versionId! }, {})).toEqual(initialSkills);
 	expect(schedule).not.toHaveBeenCalled();
 	const before = await agents.findById(initial.id);
 	const completion = vi.spyOn(Container.get(AgentSaveCompletionService), 'definitionSaved');
@@ -402,7 +476,6 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 	expect(await agents.findById(initial.id)).toMatchObject({
 		schema: null,
 		integrations: [],
-		skills: {},
 		tools: {},
 		activeVersionId: initial.versionId,
 	});
@@ -473,6 +546,10 @@ it.each(['create', 'update'] as const)(
 		expect(plan.blockingIssues).toEqual([]);
 		const beforeAgent = await agents.findById('research_source');
 		const beforeTasks = await tasks.findByAgentId('research_source');
+		const skillRefs = Container.get(AgentSkillRefsService);
+		const beforeSkills = await skillRefs.readDraft({ id: 'research_source' }, {});
+		const skillRepository = Container.get(SkillRepository);
+		const beforeSkillCount = await skillRepository.countBy({ agentId: 'research_source' });
 		const original = structuredClone(plan.agentPlan);
 		const replace = tasks.replaceForAgent.bind(tasks);
 		vi.spyOn(tasks, 'replaceForAgent').mockImplementation(async (...args) => {
@@ -484,6 +561,8 @@ it.each(['create', 'update'] as const)(
 		await expect(orchestrator.apply(plan)).rejects.toThrow('Task write failed');
 		expect(await agents.findById('research_source')).toEqual(beforeAgent);
 		expect(await tasks.findByAgentId('research_source')).toEqual(beforeTasks);
+		expect(await skillRefs.readDraft({ id: 'research_source' }, {})).toEqual(beforeSkills);
+		expect(await skillRepository.countBy({ agentId: 'research_source' })).toBe(beforeSkillCount);
 		expect(await agents.findById('support_source')).toMatchObject({
 			schema: { instructions: 'Keep this earlier save.' },
 		});
@@ -595,8 +674,8 @@ it.each(['skill', 'body', 'task', 'credential', 'policy'] as const)(
 		const item = plan.agentPlan!.items[0];
 		if (failure === 'skill')
 			item.skills.duplicate = {
-				...item.skills['shared-skill'],
-				name: item.skills['shared-skill'].name.toUpperCase(),
+				...item.skills['support_source_skill'],
+				name: item.skills['support_source_skill'].name.toUpperCase(),
 			};
 		else if (failure === 'body') item.skills = {};
 		else if (failure === 'task')

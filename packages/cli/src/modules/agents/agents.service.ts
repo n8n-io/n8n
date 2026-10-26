@@ -394,7 +394,6 @@ export class AgentsService {
 				name: definition.config?.name ?? definition.name,
 				schema: storedConfig,
 				integrations,
-				skills: definition.skills,
 				tools: definition.tools,
 				availableInMCP: metadata?.availableInMCP ?? false,
 				versionId: uuid(),
@@ -403,18 +402,31 @@ export class AgentsService {
 			}),
 			{ projectId },
 		);
-		await Container.get(TransactionRunner).run({}, async (ctx) => {
+		const importedSkillRefs = await Container.get(TransactionRunner).run({}, async (ctx) => {
 			try {
 				await this.agentRepository.insertNew(agent, ctx);
 			} catch (error) {
 				if (isUniqueConstraintError(error)) throw new ConflictError('Agent already exists');
 				throw error;
 			}
-			await this.agentSkillRefs.replaceDraftRefs(agent, skillRefs, ctx);
+			const imported = await this.agentSkillRefs.importDraftSkills(
+				agent,
+				skillRefs,
+				definition.skills,
+				user.id,
+				ctx,
+			);
 			await this.agentTaskRepository.replaceForAgent(id, definition.tasks, ctx);
+			return imported;
 		});
 		await Container.get(AgentSaveCompletionService).definitionSaved(
-			buildAgentMutationEvent(agent, skillRefs, projectId, { user, modifiedBy: 'user' }, []),
+			buildAgentMutationEvent(
+				agent,
+				importedSkillRefs,
+				projectId,
+				{ user, modifiedBy: 'user' },
+				[],
+			),
 			[],
 			credentialProvider,
 			definition.tasks,

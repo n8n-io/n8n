@@ -21,7 +21,6 @@ import {
 	writesField,
 	type ConfigReplacement,
 } from './agent-config-preparation.service';
-import { AgentDefinitionService } from './agent-definition.service';
 import { AgentPolicyService } from './agent-policy.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
@@ -136,22 +135,30 @@ export class AgentConfigService {
 		const decomposed = content.config
 			? decomposeJsonConfig(content.config)
 			: { schemaConfig: null, integrations: [] };
+		const { config, skillRefs: incomingSkillRefs } = decomposed.schemaConfig
+			? fromAgentDocument(decomposed.schemaConfig)
+			: { config: null, skillRefs: undefined };
 		agent.name = content.config?.name ?? content.name;
 		agent.integrations = decomposed.integrations;
+		agent.schema = config;
+		agent.tools = structuredClone(content.tools);
 		markAgentDraftDirty(agent);
-		const tasksChanged = await Container.get(AgentDefinitionService).replaceDraft(
-			agent,
-			{
-				schema: decomposed.schemaConfig,
-				skills: content.skills,
-				tools: content.tools,
-				tasks: content.tasks,
-			},
-			{},
-			undefined,
-			options.metadata,
-		);
-		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
+		const { skillRefs, tasksChanged } = await this.transactionRunner.run({}, async (ctx) => {
+			await saveAgentDraftFenced(this.agentRepository, agent, ctx, options.metadata);
+			const skillRefs = await this.agentSkillRefs.importDraftSkills(
+				agent,
+				incomingSkillRefs,
+				content.skills,
+				user.id,
+				ctx,
+			);
+			const tasksChanged = await this.agentTaskRepository.replaceForAgent(
+				agent.id,
+				content.tasks,
+				ctx,
+			);
+			return { skillRefs, tasksChanged };
+		});
 		await this.saveCompletion.definitionSaved(
 			buildAgentMutationEvent(
 				agent,
