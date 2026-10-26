@@ -81,7 +81,7 @@
 		"issue": "CAT-4753",
 		"spec": "ecs-style-stop-runner-gone.spec.ts",
 		"before": "n8nio/n8n:2.39.0",
-		"after": "n8nio/n8n:2.44.0"
+		"after": null
 	},
 	"fetched-before-lock": {
 		"issue": "CAT-4776",
