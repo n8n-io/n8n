@@ -798,6 +798,16 @@ describe('AgentBackgroundJobRepository', () => {
 		}
 	});
 
+	it('stores the files of a settled job', async () => {
+		const id = uuid();
+		const file = { fileId: 'file-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 3 };
+		await insertJob({ id, parentThreadId: 'thread-1', status: 'running' });
+
+		await repository.settleIfActive(id, { status: 'completed', files: [file] });
+
+		expect((await repository.findById(id))?.files).toEqual([file]);
+	});
+
 	it('deletes old settled jobs only if their results are marked as delivered', async () => {
 		const old = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000);
 		const consumedId = uuid();
