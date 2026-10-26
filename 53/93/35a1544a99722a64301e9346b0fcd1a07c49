@@ -1,0 +1,33 @@
+packages/@n8n/instance-ai/src/agent/communication-style.prompt.ts
+  s_2c573839e2200b::t_00990cd3d5dfbd 1,15,77
+packages/@n8n/instance-ai/skills/progressive-building/SKILL.md
+  s_2c573839e2200b::t_00990cd3d5dfbd 11
+packages/@n8n/instance-ai/src/tools/shared/ask-user.tool.ts
+  s_2c573839e2200b::t_00990cd3d5dfbd 56-58
+packages/@n8n/instance-ai/src/skills/__tests__/skills.test.ts
+  s_2c573839e2200b::t_00990cd3d5dfbd 392
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_2c573839e2200b::t_00990cd3d5dfbd 4,6,14-17
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_2c573839e2200b::t_00990cd3d5dfbd 146-147
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_2c573839e2200b::t_00990cd3d5dfbd 4-5,149-151,283,285-291,357-359,397-404
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_2c573839e2200b::t_bce53f826b773d 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "539335a1544a99722a64301e9346b0fcd1a07c49",
+  "prompts": {},
+  "sessions": {
+    "s_2c573839e2200b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26cfe557-3584-4ba5-95fe-b4de47de22be",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
