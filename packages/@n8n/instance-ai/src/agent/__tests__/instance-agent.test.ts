@@ -118,12 +118,8 @@ vi.mock('../../tools', () => ({
 		(context: { runId: string }) =>
 			new Map([
 				[
-					'workflow_builder_create_tasks',
-					mockBuiltTool(`workflow_builder_create_tasks-${context.runId}`),
-				],
-				[
-					'workflow_builder_complete_checkpoint',
-					mockBuiltTool(`workflow_builder_complete_checkpoint-${context.runId}`),
+					'workflow_builder_task_control',
+					mockBuiltTool(`workflow_builder_task_control-${context.runId}`),
 				],
 				[
 					'workflow_builder_verify_built_workflow',
@@ -243,9 +239,9 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 		const secondRunAttachedTools = getAttachedTools(1);
-		expect(attachedTools['workflow_builder_create_tasks-run-1']).toBeUndefined();
-		expect(deferredTools['workflow_builder_create_tasks-run-1']).toMatchObject({
-			name: 'workflow_builder_create_tasks-run-1',
+		expect(attachedTools['workflow_builder_task_control-run-1']).toBeUndefined();
+		expect(deferredTools['workflow_builder_task_control-run-1']).toMatchObject({
+			name: 'workflow_builder_task_control-run-1',
 		});
 		expect(attachedTools['plan-run-1']).toBeUndefined();
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
@@ -289,40 +285,14 @@ describe('createInstanceAgent', () => {
 			context: { runLabel: 'profile' },
 			orchestrationContext: {
 				runId: 'profile',
-				disabledToolNames: new Set(['workflow_builder_create_tasks', 'search_nodes']),
+				disabledToolNames: new Set(['workflow_builder_task_control', 'search_nodes']),
 			},
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
-		expect(getDeferredTools()).not.toHaveProperty('workflow_builder_create_tasks-profile');
+		expect(getDeferredTools()).not.toHaveProperty('workflow_builder_task_control-profile');
 		expect(getAttachedTools()).not.toHaveProperty('search_nodes-profile');
 		expect(getAttachedTools()).toHaveProperty('workflow_builder_build_workflow-profile');
-	});
-
-	it('eager-loads checkpoint settlement tools only for checkpoint follow-up runs', async () => {
-		await createInstanceAgent({
-			modelId: 'test-model',
-			context: {
-				runLabel: 'checkpoint-run',
-				browserUseState: undefined,
-				licenseHints: undefined,
-				localMcpServer: undefined,
-			},
-			orchestrationContext: {
-				runId: 'checkpoint-run',
-				isCheckpointFollowUp: true,
-			},
-			memoryConfig: {},
-			mcpManager: createMcpManagerStub(),
-		} as never);
-
-		const attachedTools = getAttachedTools();
-		const deferredTools = getDeferredTools();
-
-		expect(attachedTools['workflow_builder_complete_checkpoint-checkpoint-run']).toMatchObject({
-			name: 'workflow_builder_complete_checkpoint-checkpoint-run',
-		});
-		expect(deferredTools['workflow_builder_complete_checkpoint-checkpoint-run']).toBeUndefined();
 	});
 
 	it('keeps workflow-builder skill tool names always loaded', async () => {

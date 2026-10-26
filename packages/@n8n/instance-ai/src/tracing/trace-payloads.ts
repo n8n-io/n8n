@@ -1131,7 +1131,6 @@ function classifyToolCategory(name: string): string {
 	)
 		return 'node';
 	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execution';
-	if (name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) return 'planning';
 	const baseName = unprefixedToolName(name);
 	if (baseName.includes('credential')) return 'credential';
 	if (baseName.includes('browser')) return 'browser';
@@ -1140,7 +1139,6 @@ function classifyToolCategory(name: string): string {
 		return 'workflow';
 	}
 	if (baseName.includes('research')) return 'research';
-	if (baseName.includes('plan')) return 'planning';
 	if (baseName.startsWith('workspace_')) return 'workspace';
 	if (baseName.includes('file') || baseName.includes('filesystem')) return 'filesystem';
 	return 'other';

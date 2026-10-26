@@ -256,8 +256,8 @@ export async function runOrchestratorTurn(
 			instanceEvents.push(event);
 		});
 
-		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `workflow_builder_create_tasks` and skills. Discovery scenarios measure first-step
+		// `OrchestrationContext` is required for the orchestrator to receive orchestration
+		// tools and skills. Discovery scenarios measure first-step
 		// tool-call decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,

@@ -135,7 +135,6 @@ function getBuildAgentOperationKey(operation: unknown): BaseTextKey | undefined 
 
 export function getToolIcon(rawToolName: string): IconName {
 	const toolName = resolveBuilderToolName(rawToolName);
-	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.COMPLETE_CHECKPOINT) return 'circle-check';
 	if (toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'resolve_integration') return 'share';
 	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs') return 'book-open';

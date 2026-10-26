@@ -66,14 +66,6 @@ vi.mock('../orchestration/builder-tools', () => ({
 	]),
 }));
 
-vi.mock('../orchestration/complete-checkpoint.tool', () => ({
-	createCompleteCheckpointTool: vi.fn(() => ({ id: 'workflow_builder_complete_checkpoint' })),
-}));
-
-vi.mock('../orchestration/plan.tool', () => ({
-	createPlanTool: vi.fn(() => ({ id: 'workflow_builder_create_tasks' })),
-}));
-
 vi.mock('../orchestration/report-verification-verdict.tool', () => ({
 	createReportVerificationVerdictTool: vi.fn(() => ({
 		id: 'workflow_builder_report_verification_verdict',
@@ -302,12 +294,13 @@ describe('domain tool construction', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('agent-context')).toBe(true);
 	});
 
-	it('constructs workflow_builder_create_tasks for the agent to apply profile exclusions', () => {
+	it('does not construct removed orchestration tools', () => {
 		const context = mock<OrchestrationContext>();
 
 		const orchestrationTools = createOrchestrationTools(context);
 
-		expect(orchestrationTools.has('workflow_builder_create_tasks')).toBe(true);
+		expect(orchestrationTools.has('workflow_builder_create_tasks')).toBe(false);
+		expect(orchestrationTools.has('workflow_builder_complete_checkpoint')).toBe(false);
 		expect(orchestrationTools.has('plan')).toBe(false);
 		expect(orchestrationTools.has('delegate')).toBe(false);
 		expect(orchestrationTools.has('eval-setup-with-agent')).toBe(false);

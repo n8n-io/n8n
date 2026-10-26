@@ -64,10 +64,6 @@ function makeToolCall(overrides: Partial<InstanceAiToolCallState> = {}): Instanc
 }
 
 describe('getToolIcon', () => {
-	test('returns circle-check for the complete checkpoint tool', () => {
-		expect(getToolIcon('workflow_builder_complete_checkpoint')).toBe('circle-check');
-	});
-
 	test('returns default icon for removed delegate tool', () => {
 		expect(getToolIcon('delegate')).toBe('wrench');
 	});
@@ -148,12 +144,10 @@ describe('getToolIcon', () => {
 
 	test('keeps the wrench icon for prefixed builder tools without a dedicated mapping', () => {
 		expect(getToolIcon('workflow_builder_ask_user')).toBe('wrench');
-		expect(getToolIcon('workflow_builder_create_tasks')).toBe('wrench');
 		expect(getToolIcon('workflow_builder_build_workflow')).toBe('workflow');
 	});
 
 	test('resolves legacy builder tool names to the current icon', () => {
-		expect(getToolIcon('complete-checkpoint')).toBe('circle-check');
 		expect(getToolIcon('data-tables')).toBe('table');
 		expect(getToolIcon('workflows')).toBe('workflow');
 		expect(getToolIcon('credentials')).toBe('key-round');
