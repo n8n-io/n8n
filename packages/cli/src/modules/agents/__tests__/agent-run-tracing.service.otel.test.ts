@@ -7,6 +7,7 @@ import { OtelTestProvider } from '@/modules/otel/__tests__/support/otel-test-pro
 import { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
 import type { OtelSettingsService } from '@/modules/otel/otel-settings.service';
 import { OtelCustomAttributesConfig } from '@/modules/otel/otel.config';
+import type { OtelService } from '@/modules/otel/otel.service';
 
 import { AgentRunTracingService } from '../agent-run-tracing.service';
 
@@ -61,6 +62,7 @@ describe('AgentRunTracingService (real OTel provider)', () => {
 				mock<OtelSettingsService>({ getSettings: () => ({ injectOutbound: false }) as never }),
 				mock<Logger>(),
 				new OtelCustomAttributesConfig(),
+				mock<OtelService>(),
 			);
 			const executionId = 'exec-1';
 			const node = { id: 'node-1', name: 'Message an Agent', type: 'test', typeVersion: 1 };

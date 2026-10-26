@@ -12,6 +12,7 @@ import type { OtelConfig } from '../otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from '../otel.constants';
 import { OtelService } from '../otel.service';
 
+import type { ExternalHooks } from '@/external-hooks';
 import type { OtelSdk } from '@/observability/otel-sdk';
 import { TRACING_OFF } from '@/observability/swappable-pipeline';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -198,6 +199,7 @@ describe('OtelService', () => {
 			sdk,
 			moduleRegistry,
 			publisher,
+			mock<ExternalHooks>(),
 		);
 
 	beforeEach(() => {

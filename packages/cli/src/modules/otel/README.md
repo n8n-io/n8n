@@ -33,7 +33,8 @@ Only these tracers export spans:
 - Workflow spans never join a trace that is active in the process. An inbound `traceparent`
   header still sets the parent.
 - n8n sends `traceparent` on outbound requests only when OTel is on and
-  `N8N_OTEL_TRACES_INJECT_OUTBOUND=true`. It never sends `baggage`.
+  `N8N_OTEL_TRACES_INJECT_OUTBOUND=true`. It sends `baggage` next to it only when an
+  `otel.configure` external hook registers an outbound baggage mapper (see below).
 
 `OTEL_*` env vars fill in what the n8n settings do not set:
 
@@ -102,6 +103,48 @@ replaces them with a JSON object, for example `{"project":"","node":""}`.
 - n8n compares the key after it adds the prefix. If that key matches a built-in key in `ATTR`, n8n drops it and keeps the built-in value.
 - Node metadata from the Tools Agent (`ai.agent.*`) uses the node prefix too.
 - Set the same value on main, workers and webhook processes.
+
+### The `otel.configure` external hook
+
+An operator can change what n8n sends to the OTel backend with one
+[external hook](https://docs.n8n.io/deploy/host-n8n/configure-n8n/external-hooks) file.
+`OtelService` runs the hook once at startup, on main, worker and webhook processes, and gives
+it an API with two functions. Each mapper gets the attributes of one span and returns a plain
+object. n8n keeps only string values.
+
+- `registerResourceAttributeMapper((spanAttributes) => attributes)`: the result is merged into
+  the resource of each exported span. n8n's own resource attributes (`service.name`,
+  `service.version`, `n8n.instance.*`) win over the hook. Without a mapper, n8n does not wrap
+  the exporter.
+- `registerOutboundBaggageMapper(({ spanAttributes }) => entries)`: the result is sent as a
+  `baggage` header next to `traceparent` on outbound requests. Without a mapper, n8n sends no
+  `baggage` header.
+
+A mapper that throws logs one warning for each call and n8n keeps the span as it is. A hook
+that throws while it registers stops the start of n8n, like every other external hook.
+
+Example hook file. Load it with `EXTERNAL_HOOK_FILES=/absolute/path/to/otel-project-resource.hook.js`:
+
+```js
+const projectIdFrom = (spanAttributes) => {
+	const projectId = spanAttributes['n8n.project.id'];
+	return typeof projectId === 'string' ? { 'project.id': projectId } : {};
+};
+
+module.exports = {
+	otel: {
+		configure: [
+			async (api) => {
+				api.registerResourceAttributeMapper((spanAttributes) => projectIdFrom(spanAttributes));
+				api.registerOutboundBaggageMapper(({ spanAttributes }) => projectIdFrom(spanAttributes));
+			},
+		],
+	},
+};
+```
+
+With this file, each exported span carries `project.id` as a resource attribute, and each
+outbound request from a workflow carries `baggage: project.id=<id>`.
 
 ### Module architecture
 ```mermaid

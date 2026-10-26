@@ -10,6 +10,7 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { Attributes } from '@opentelemetry/api';
 import { ErrorReporter } from 'n8n-core';
 import type {
 	IRun,
@@ -68,6 +69,15 @@ export function toWorkflowLifecycleHookActor(user?: User): WorkflowLifecycleHook
 	};
 }
 
+export type OtelResourceAttributeMapper = (spanAttributes: Attributes) => Record<string, string>;
+export type OtelOutboundBaggageMapper = (input: {
+	spanAttributes: Attributes;
+}) => Record<string, string>;
+export type OtelConfigureHookApi = {
+	registerResourceAttributeMapper(mapper: OtelResourceAttributeMapper): void;
+	registerOutboundBaggageMapper(mapper: OtelOutboundBaggageMapper): void;
+};
+
 type ExternalHooksMap = {
 	'n8n.ready': [server: AbstractServer, config: Config];
 	'n8n.stop': never;
@@ -92,6 +102,8 @@ type ExternalHooksMap = {
 	'oauth2.authenticate': [oAuthOptions: ClientOAuth2Options];
 	'oauth2.callback': [oAuthOptions: ClientOAuth2Options];
 	'oauth2.dynamicClientRegistration': [registerPayload: { redirect_uris: string[] }];
+
+	'otel.configure': [api: OtelConfigureHookApi];
 
 	'tag.beforeCreate': [tag: TagEntity];
 	'tag.afterCreate': [tag: TagEntity];

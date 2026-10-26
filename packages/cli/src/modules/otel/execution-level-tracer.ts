@@ -5,11 +5,17 @@ import {
 	context,
 	defaultTextMapGetter,
 	defaultTextMapSetter,
+	propagation,
 	ROOT_CONTEXT,
 	SpanStatusCode,
 	trace,
 } from '@opentelemetry/api';
-import { isTimeInputHrTime, W3CTraceContextPropagator } from '@opentelemetry/core';
+import {
+	isTimeInputHrTime,
+	W3CBaggagePropagator,
+	W3CTraceContextPropagator,
+} from '@opentelemetry/core';
+import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import type { ExecutionStatus } from 'n8n-workflow';
 
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
@@ -33,9 +39,11 @@ import {
 import { OtelSettingsService } from './otel-settings.service';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from './otel.config';
 import { ATTR, BUILT_IN_ATTRIBUTE_KEYS } from './otel.constants';
+import { OtelService } from './otel.service';
 import type { TracingContext } from './tracing-context';
 
 const propagator = new W3CTraceContextPropagator();
+const baggagePropagator = new W3CBaggagePropagator();
 const UNKNOWN_ERROR_TYPE = 'UnknownError';
 const OBJECT_ERROR_TYPE = 'Object';
 
@@ -58,6 +66,7 @@ export class ExecutionLevelTracer {
 		private readonly otelSettingsService: OtelSettingsService,
 		private readonly logger: Logger,
 		private readonly customAttributesConfig: OtelCustomAttributesConfig,
+		private readonly otelService: OtelService,
 	) {}
 
 	private get tracer() {
@@ -310,7 +319,9 @@ export class ExecutionLevelTracer {
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
 
-			propagator.inject(trace.setSpan(ROOT_CONTEXT, span), headers, defaultTextMapSetter);
+			const ctx = trace.setSpan(ROOT_CONTEXT, span);
+			propagator.inject(ctx, headers, defaultTextMapSetter);
+			this.injectBaggageHeader(ctx, span, headers);
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,
@@ -318,6 +329,16 @@ export class ExecutionLevelTracer {
 			});
 			throw error;
 		}
+	}
+
+	private injectBaggageHeader(ctx: Context, span: Span, headers: Record<string, string>): void {
+		const entries = this.otelService.buildOutboundBaggage(getAttributes(span));
+		if (Object.keys(entries).length === 0) return;
+
+		const baggage = propagation.createBaggage(
+			Object.fromEntries(Object.entries(entries).map(([key, value]) => [key, { value }])),
+		);
+		baggagePropagator.inject(propagation.setBaggage(ctx, baggage), headers, defaultTextMapSetter);
 	}
 
 	private emitStartMarker(
@@ -415,6 +436,14 @@ function toTracingParentContext(span: Span, identity: ExecutionIdentity): Tracin
 	const carrier: Record<string, string> = {};
 	propagator.inject(trace.setSpan(ROOT_CONTEXT, span), carrier, defaultTextMapSetter);
 	return { traceparent: carrier.traceparent, tracestate: carrier.tracestate, identity };
+}
+
+function hasAttributes(span: Span): span is Span & Pick<ReadableSpan, 'attributes'> {
+	return 'attributes' in span && typeof span.attributes === 'object' && span.attributes !== null;
+}
+
+function getAttributes(span: Span): Attributes {
+	return hasAttributes(span) ? span.attributes : {};
 }
 
 // Only a recorded SDK span has a start time. The API span type does not expose it.
