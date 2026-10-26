@@ -12,6 +12,7 @@ import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
+import NDVEmptyState from './NDVEmptyState.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -385,7 +386,9 @@ const onNodeExecute = () => {
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div
+		:class="[$style.container, { [$style.webhookIdle]: isWebhookNode && !isListeningForEvents }]"
+	>
 		<Transition name="fade" mode="out-in">
 			<div v-if="hasIssues || hideContent" key="empty"></div>
 			<div
@@ -455,12 +458,53 @@ const onNodeExecute = () => {
 					/>
 				</div>
 			</div>
-			<div
-				v-else
-				key="default"
-				:data-ndv-empty-state="isWebhookNode ? '' : undefined"
-				:data-ndv-pane-min="isWebhookNode ? undefined : ''"
-			>
+			<NDVEmptyState v-else-if="isWebhookNode" key="webhook" :title="header" align-action>
+				<span :class="$style.fullListen">
+					<NodeExecuteButton
+						data-test-id="trigger-execute-button"
+						:node-name="nodeName"
+						size="medium"
+						telemetry-source="inputs"
+						@execute="onNodeExecute"
+					/>
+				</span>
+				<span :class="$style.compactListen">
+					<NodeExecuteButton
+						icon-only
+						hide-label
+						size="medium"
+						:node-name="nodeName"
+						:aria-label="i18n.baseText('ndv.execute.listenForTestEvent')"
+						:tooltip="i18n.baseText('ndv.execute.listenForTestEvent')"
+						telemetry-source="inputs"
+						data-test-id="trigger-execute-button-compact"
+						@execute="onNodeExecute"
+					/>
+				</span>
+				<template #footer>
+					<div :class="$style.hints">
+						<N8nText v-if="activationHint" size="small" @click="onLinkClick">
+							<span v-n8n-html="activationHint"></span>&nbsp;
+						</N8nText>
+						<N8nLink
+							v-if="activationHint && executionsHelp"
+							size="small"
+							@click="expandExecutionHelp"
+							>{{ i18n.baseText('ndv.trigger.moreInfo') }}</N8nLink
+						>
+						<N8nInfoAccordion
+							v-if="executionsHelp"
+							ref="help"
+							:class="$style.accordion"
+							:title="i18n.baseText('ndv.trigger.executionsHint.question')"
+							:description="executionsHelp"
+							:event-bus="executionsHelpEventBus"
+							@click:body="onLinkClick"
+						></N8nInfoAccordion>
+					</div>
+				</template>
+			</NDVEmptyState>
+			<div v-else key="default" data-ndv-pane-min>
 				<div v-if="isActivelyPolling" class="mb-xl">
 					<N8nSpinner type="ring" />
 				</div>
@@ -475,32 +519,7 @@ const onNodeExecute = () => {
 						</N8nText>
 					</div>
 
-					<template v-if="isWebhookNode">
-						<span :class="$style.fullListen">
-							<NodeExecuteButton
-								data-test-id="trigger-execute-button"
-								:node-name="nodeName"
-								size="medium"
-								telemetry-source="inputs"
-								@execute="onNodeExecute"
-							/>
-						</span>
-						<span :class="$style.compactListen">
-							<NodeExecuteButton
-								icon-only
-								hide-label
-								size="medium"
-								:node-name="nodeName"
-								:aria-label="i18n.baseText('ndv.execute.listenForTestEvent')"
-								:tooltip="i18n.baseText('ndv.execute.listenForTestEvent')"
-								telemetry-source="inputs"
-								data-test-id="trigger-execute-button-compact"
-								@execute="onNodeExecute"
-							/>
-						</span>
-					</template>
 					<NodeExecuteButton
-						v-else
 						data-test-id="trigger-execute-button"
 						:node-name="nodeName"
 						size="medium"
@@ -552,6 +571,11 @@ const onNodeExecute = () => {
 	> * {
 		width: 100%;
 	}
+}
+
+.webhookIdle {
+	// Match the output data area below its header.
+	padding-top: calc(var(--ndv--header--height) + var(--spacing--sm));
 }
 
 .header {

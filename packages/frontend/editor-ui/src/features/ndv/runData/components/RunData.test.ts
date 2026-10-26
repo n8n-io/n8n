@@ -96,6 +96,11 @@ describe('RunData', () => {
 		resolveRelatedExecutionUrl.mockReturnValue('execution.url/123');
 	});
 
+	afterEach(async () => {
+		// Panel assertions can finish while a lazy data view still loads.
+		await vi.dynamicImportSettled();
+	});
+
 	it("should render pin button in output panel disabled when there's binary data", () => {
 		const { getByTestId } = render({
 			defaultRunItems: [
