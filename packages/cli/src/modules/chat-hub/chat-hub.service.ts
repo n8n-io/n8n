@@ -240,7 +240,7 @@ export class ChatHubService {
 		const enabledTools = await this.chatHubToolService.getEnabledTools(user.id, trx);
 		const toolIds = enabledTools.map((t) => t.id);
 		if (toolIds.length > 0) {
-			await this.chatHubToolService.setSessionTools(sessionId, toolIds, trx);
+			await this.chatHubToolService.setSessionTools(sessionId, user.id, toolIds, trx);
 		}
 
 		return session;
@@ -378,11 +378,14 @@ export class ChatHubService {
 		if (updates.title !== undefined) sessionUpdates.title = updates.title;
 		if (updates.credentialId !== undefined) sessionUpdates.credentialId = updates.credentialId;
 
-		await this.sessionRepository.updateChatSession(sessionId, sessionUpdates);
-
-		if (updates.toolIds !== undefined) {
-			await this.chatHubToolService.setSessionTools(sessionId, updates.toolIds);
-		}
+		// One transaction: a rejected tool or a failed field update leaves the session unchanged
+		const { toolIds } = updates;
+		await this.sessionRepository.runInTransaction({}, async (trx) => {
+			if (toolIds !== undefined) {
+				await this.chatHubToolService.setSessionTools(sessionId, user.id, toolIds, trx);
+			}
+			await this.sessionRepository.updateChatSession(sessionId, sessionUpdates, trx);
+		});
 	}
 
 	/**

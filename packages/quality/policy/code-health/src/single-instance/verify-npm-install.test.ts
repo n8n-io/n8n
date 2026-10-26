@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { resolve } from 'node:path';
 
 import {
 	closureOf,
+	findWorkspacePackageJsonFiles,
 	filesTriggerFullRun,
 	matchChangedFiles,
 	resolveTargets,
@@ -40,6 +42,21 @@ const byName = new Map([
 	['solo', ws('solo', [['ext', 'dependencies']])],
 	['dev-only', ws('dev-only', [['a', 'devDependencies']])],
 ]) as unknown as Parameters<typeof closureOf>[1];
+
+describe('findWorkspacePackageJsonFiles', () => {
+	it('excludes package fixtures that are not part of the pnpm workspace', () => {
+		const rootDir = resolve(process.cwd(), '../../../..');
+		const files = findWorkspacePackageJsonFiles(rootDir);
+
+		expect(files).toContain(resolve(rootDir, 'packages/quality/policy/code-health/package.json'));
+		expect(files).not.toContain(
+			resolve(
+				rootDir,
+				'packages/quality/testing/playwright/fixtures/community-packages/packages/n8n-nodes-compat-v1-1.0.0/package.json',
+			),
+		);
+	});
+});
 
 describe('closureOf', () => {
 	it('follows dependencies, peerDependencies and optionalDependencies transitively', () => {

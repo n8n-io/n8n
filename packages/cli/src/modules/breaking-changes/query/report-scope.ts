@@ -1,6 +1,7 @@
-import type { WorkflowSharingService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
+
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { ReportScope } from './migration-finding-query.service';
 
@@ -12,12 +13,11 @@ import type { ReportScope } from './migration-finding-query.service';
  */
 export async function resolveReportScope(
 	user: User,
-	workflowSharingService: WorkflowSharingService,
+	workflowFinderService: Pick<WorkflowFinderService, 'findAllWorkflowIdsForUser'>,
 ): Promise<ReportScope> {
 	if (hasGlobalScope(user, 'workflow:update')) return { kind: 'instance' };
-	const workflowIds = await workflowSharingService.getSharedWorkflowIdsForScopes(user, [
+	const workflowIds = await workflowFinderService.findAllWorkflowIdsForUser(user, [
 		'workflow:update',
 	]);
-	// A workflow shared into two of the user's projects comes back twice.
-	return { kind: 'workflows', workflowIds: [...new Set(workflowIds)] };
+	return { kind: 'workflows', workflowIds };
 }

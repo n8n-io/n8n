@@ -151,6 +151,8 @@ export interface IExecutingWorkflowData {
 	startedAt: Date;
 	/** This promise rejects when the execution is stopped. When the execution finishes (successfully or not), the promise resolves. */
 	postExecutePromise: IDeferredPromise<IRun | undefined>;
+	/** True once `postExecutePromise` has settled, so the run has stopped writing execution data. */
+	postExecuteSettled?: boolean;
 	/** HTTPResponse needed for streaming responses */
 	httpResponse?: Response;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
@@ -221,6 +223,7 @@ export interface IAgentExecutionTrackProperties extends ITelemetryTrackPropertie
 	 */
 	user_id?: string;
 	run_type: AgentRunTelemetryType;
+	source?: string;
 	/**
 	 * Fresh user turns only. Resume continuations and delegated child runs do not
 	 * increment this count.
@@ -258,6 +261,7 @@ export interface IAgentTurnFinishedTrackProperties extends ITelemetryTrackProper
 	/** Internal aggregation key only. This must never be emitted to telemetry. */
 	thread_id: string;
 	run_type: AgentRunTelemetryType;
+	source?: string;
 	/** Absent for saved agents; 'inline' for node-embedded agent definitions. */
 	agent_type?: 'inline';
 	turn_status: AgentTurnTelemetryStatus;
@@ -271,6 +275,9 @@ export interface IAgentTurnFinishedTrackProperties extends ITelemetryTrackProper
 	 */
 	token_count: number;
 	tool_call_count: number;
+	/** Successful `load_skill` calls that activated a skill in this turn. */
+	skill_load_count?: number;
+	loaded_skill_ids?: string[];
 }
 
 // ----------------------------------

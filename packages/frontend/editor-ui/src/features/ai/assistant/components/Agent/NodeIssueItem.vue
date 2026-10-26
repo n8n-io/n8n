@@ -83,7 +83,7 @@ function handleEditClick() {
 }
 
 .nodeName {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	flex-shrink: 0;
 }
 

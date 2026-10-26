@@ -103,6 +103,7 @@ describe('scheduled repositories', () => {
 		fireAt: null,
 		nextRunAt: secondsFromNow(-60),
 		maxAttempts: 1,
+		timeoutSeconds: 300,
 		...overrides,
 	});
 
@@ -144,6 +145,7 @@ describe('scheduled repositories', () => {
 						scheduledFor,
 						runAt: scheduledFor,
 						maxAttempts: 1,
+						timeoutSeconds: 300,
 					},
 				]);
 			});
@@ -168,6 +170,7 @@ describe('scheduled repositories', () => {
 							scheduledFor,
 							runAt: scheduledFor,
 							maxAttempts: 1,
+							timeoutSeconds: 300,
 						},
 					]);
 					await jobRepository.advanceMany(trx, [
@@ -199,6 +202,7 @@ describe('scheduled repositories', () => {
 						scheduledFor,
 						runAt: scheduledFor,
 						maxAttempts: 1,
+						timeoutSeconds: 300,
 					},
 				]),
 			).rejects.toThrow('insertIgnoringDuplicates must run within a transaction');
@@ -584,6 +588,7 @@ describe('scheduled repositories', () => {
 				async (trx) =>
 					await jobRepository.updateRunOptions(trx, [updated.id], {
 						maxAttempts: 5,
+						timeoutSeconds: 300,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,
 						concurrencyLimit: null,
@@ -610,6 +615,7 @@ describe('scheduled repositories', () => {
 				async (trx) =>
 					await jobRepository.updateRunOptions(trx, [job.id], {
 						maxAttempts: job.maxAttempts,
+						timeoutSeconds: 300,
 						misfirePolicy: job.misfirePolicy,
 						misfireGraceSeconds: job.misfireGraceSeconds,
 						concurrencyLimit: 3,
@@ -628,6 +634,7 @@ describe('scheduled repositories', () => {
 				async (trx) =>
 					await jobRepository.updateRunOptions(trx, [job.id], {
 						maxAttempts: job.maxAttempts,
+						timeoutSeconds: 300,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 60,
 						concurrencyLimit: null,
@@ -644,6 +651,7 @@ describe('scheduled repositories', () => {
 				async (trx) =>
 					await jobRepository.updateRunOptions(trx, [], {
 						maxAttempts: job.maxAttempts,
+						timeoutSeconds: 300,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,
 						concurrencyLimit: null,
@@ -768,6 +776,7 @@ describe('scheduled repositories', () => {
 							scheduledFor,
 							runAt: scheduledFor,
 							maxAttempts: 1,
+							timeoutSeconds: 300,
 						},
 					]),
 			);
@@ -794,6 +803,7 @@ describe('scheduled repositories', () => {
 							scheduledFor,
 							runAt: scheduledFor,
 							maxAttempts: 1,
+							timeoutSeconds: 300,
 						},
 					]),
 			);
@@ -817,6 +827,7 @@ describe('scheduled repositories', () => {
 				scheduledFor,
 				runAt: scheduledFor,
 				maxAttempts: 1,
+				timeoutSeconds: 300,
 			};
 
 			const first = await dataSource.transaction(
@@ -844,6 +855,7 @@ describe('scheduled repositories', () => {
 					scheduledFor: when,
 					runAt: when,
 					maxAttempts: 1,
+					timeoutSeconds: 300,
 				};
 			});
 
@@ -869,6 +881,7 @@ describe('scheduled repositories', () => {
 					scheduledFor,
 					runAt: scheduledFor,
 					maxAttempts: 1,
+					timeoutSeconds: 300,
 				};
 
 				const [first, second] = await Promise.all([

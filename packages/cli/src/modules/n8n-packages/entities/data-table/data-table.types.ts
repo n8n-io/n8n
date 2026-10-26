@@ -1,3 +1,4 @@
+import type { SerializedDataTable } from '@n8n/api-types';
 import type { DataTableColumnType } from 'n8n-workflow';
 
 import type {
@@ -6,7 +7,9 @@ import type {
 	DataTableSchemaConflictPolicy,
 } from '../../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
-import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
+import type { RequirementSource } from '../requirement-source';
+
+export type DataTableRequirement = RequirementSource & { dataTableId: string };
 
 export interface WorkflowDataTableRequirement {
 	workflowId: string;
@@ -48,7 +51,6 @@ export type DataTableResolutionFailure = {
 	conflictingTableId?: string;
 	/** For a rename `name-conflict`: the matched table's current name. */
 	currentName?: string;
-	usedByWorkflows: string[];
 };
 
 export function createFailure(
@@ -72,12 +74,11 @@ export function createFailure(
 		kind,
 		sourceId: requirement.id,
 		name: requirement.name,
-		usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
 		...details,
 	};
 }
 
-/** `destructive` operations delete the data in a column. */
+/** `destructive` operations remove the values in a column. */
 export type DataTableSchemaOperation =
 	| { kind: 'add-column'; column: string; type: DataTableColumnType; destructive: false }
 	| { kind: 'remove-column'; column: string; type: DataTableColumnType; destructive: true }
@@ -88,6 +89,7 @@ export type DataTableSchemaOperation =
 			to: DataTableColumnType;
 			destructive: true;
 	  }
+	| { kind: 'rename-column'; from: string; to: string; destructive: false }
 	| { kind: 'reorder-columns'; destructive: false }
 	| { kind: 'rename-table'; from: string; to: string; destructive: false };
 
@@ -110,6 +112,8 @@ export interface DataTableImportPlan {
 	creations: SerializedDataTable[];
 	/** Matched tables to change to the package schema under the `overwrite` and `overwrite-non-destructive` policies. */
 	updates: DataTableUpdate[];
+	/** Matched tables that differ only in column ids or column positions. Applied like updates, but counted as matched. */
+	columnAlignments: SerializedDataTable[];
 	failures: DataTableResolutionFailure[];
 	/** Requirements resolved to an existing compatible table, used as-is. Carried for telemetry. */
 	matchedCount: number;

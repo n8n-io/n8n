@@ -1,5 +1,9 @@
 export { GetNodeTypesByIdentifierRequestDto } from './node-types/get-node-types-by-identifier.dto';
 
+export { CreateAppDto } from './app/create-app.dto';
+export { UpdateAppDto } from './app/update-app.dto';
+export { ListAppsQueryDto } from './app/list-apps-query.dto';
+
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
 export {
@@ -18,6 +22,10 @@ export {
 	AiGatewayConfigDto,
 	AiGatewayProviderConfigEntry,
 } from './ai/ai-gateway-config-response.dto';
+export {
+	AiGatewayMcpServersResponse,
+	type AiGatewayMcpServer,
+} from './ai/ai-gateway-mcp-servers-response.dto';
 export { AiGatewayUsageQueryDto } from './ai/ai-gateway-usage-response.dto';
 export type {
 	AiGatewayUsageEntry,
@@ -54,6 +62,9 @@ export type { DiscoverDataPublic } from './discover/discover-public.dto';
 
 export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
 export { UpdateMigrationFindingStatusRequestDto } from './breaking-changes/update-migration-finding-status-request.dto';
+export { UpdateMigrationFindingStatusesRequestDto } from './breaking-changes/update-migration-finding-statuses-request.dto';
+export { AssignMigrationOwnerDto } from './breaking-changes/assign-migration-owner.dto';
+export { NotifyMigrationOwnersRequestDto } from './breaking-changes/notify-migration-owners-request.dto';
 
 export {
 	AuditPublicDto,
@@ -92,6 +103,7 @@ export { UpdateProjectDto, UpdateProjectWithRelationsDto } from './project/updat
 export { DeleteProjectDto } from './project/delete-project.dto';
 export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
 export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
+export { TransferPreviewQueryDto } from './project/transfer-preview-query.dto';
 export { ListProjectsQueryDto } from './project/list-projects-query.dto';
 export {
 	projectPublicSchema,
@@ -167,6 +179,7 @@ export { SourceControlPullResponsePublicDto } from './source-control/source-cont
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { TestCredentialRequestDto } from './credentials/test-credential-request.dto';
+export { CredentialOptionsRequestDto } from './credentials/credential-options-request.dto';
 export {
 	CredentialPublicDto,
 	CredentialListPublicDto,
@@ -185,6 +198,8 @@ export {
 	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
 	AI_PREFERENCES_MAX_IDS_FILTER,
 	AI_PREFERENCES_MAX_PAGE_SIZE,
+	AI_PREFERENCES_SORT_OPTIONS,
+	type AiPreferenceSortOption,
 } from './ai-preference/ai-preference-list-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {
@@ -234,6 +249,11 @@ export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
+export {
+	DependencyListPublicDto,
+	ListDependenciesQueryDto,
+	type DependencyPublicType,
+} from './dependencies/dependency-public.dto';
 export { TagIdsPublicDto, WorkflowTagsPublicDto } from './workflows/workflow-tags-public.dto';
 export { CreateWorkflowPublicDto } from './workflows/create-workflow-public.dto';
 export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
@@ -241,17 +261,25 @@ export { UpdateWorkflowPublicDto } from './workflows/update-workflow-public.dto'
 export { UpdateWorkflowQueryDto } from './workflows/update-workflow-query.dto';
 export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
+	ListCallableSubworkflowsQueryDto,
+	type CallableSubworkflow,
+	type CallableSubworkflowsResponse,
+} from './workflows/list-callable-subworkflows-query.dto';
+export {
 	WorkflowPublicDto,
 	CreatedWorkflowPublicDto,
+	RetrievedWorkflowPublicDto,
 	WorkflowListPublicDto,
 	WorkflowPublishPublicDto,
 	workflowPublicSchema,
 	createdWorkflowPublicSchema,
+	retrievedWorkflowPublicSchema,
 	workflowPublishPublicSchema,
 	workflowListItemPublicSchema,
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
 	workflowParentFolderPublicSchema,
+	workflowParentFolderRefPublicSchema,
 	DeletedWorkflowPublicDto,
 	UpdatedWorkflowPublicDto,
 } from './workflows/workflow-public.dto';
@@ -286,11 +314,20 @@ export {
 	CommunityPackageListPublicDto,
 	CommunityPackagePublicDto,
 	InstallCommunityPackagePublicDto,
+	InstallCommunityPackageResponsePublicDto,
 	ListCommunityPackagesQueryDto,
 	UpdateCommunityPackagePublicDto,
 	communityPackagePublicSchema,
+	installCommunityPackageResponsePublicSchema,
 	type CommunityPackagePublic,
+	type InstallCommunityPackageResponsePublic,
 } from './community-packages/community-package-public.dto';
+export {
+	packagePolicyRestrictionsSchema,
+	restrictedPackageTypeSchema,
+	type PackagePolicyRestrictions,
+	type RestrictedPackageType,
+} from './community-packages/package-policy-restrictions';
 
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
@@ -352,26 +389,49 @@ export {
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 
 export type {
+	NodeTypePolicyRule,
+	NodeTypePolicySelector,
 	NonDelegatingPolicyAction,
 	NonDelegatingPolicyRule,
 	PolicyAction,
 	PolicyRule,
 	PolicySelector,
 } from './type-availability-policies/policy-rule.types';
-export { policySelectorSchema } from './type-availability-policies/policy-selector.schema';
+export { isNodeTypePolicyRule } from './type-availability-policies/policy-rule.types';
 export {
+	credentialTypePolicySelectorSchema,
+	nodeTypePolicySelectorSchema,
+} from './type-availability-policies/policy-selector.schema';
+export {
+	credentialTypePolicyRuleSchemas,
+	nodeTypePolicyRuleSchemas,
 	nonDelegatingPolicyActionSchema,
-	nonDelegatingPolicyRuleListSchema,
 	policyActionSchema,
-	policyRuleListSchema,
-	policyRuleSchema,
 } from './type-availability-policies/policy-rule.schema';
-export { PutInstancePolicyDto } from './type-availability-policies/put-instance-policy.dto';
-export { PutProjectPolicyDto } from './type-availability-policies/put-project-policy.dto';
-export { CreatePolicyDocumentDto } from './type-availability-policies/create-policy-document.dto';
-export { UpdatePolicyDocumentDto } from './type-availability-policies/update-policy-document.dto';
+export {
+	PutCredentialTypeInstancePolicyDto,
+	PutInstancePolicyDto,
+} from './type-availability-policies/put-instance-policy.dto';
+export {
+	PutCredentialTypeProjectPolicyDto,
+	PutProjectPolicyDto,
+} from './type-availability-policies/put-project-policy.dto';
+export {
+	CreateCredentialTypePolicyDocumentDto,
+	CreatePolicyDocumentDto,
+} from './type-availability-policies/create-policy-document.dto';
+export {
+	UpdateCredentialTypePolicyDocumentDto,
+	UpdatePolicyDocumentDto,
+} from './type-availability-policies/update-policy-document.dto';
 export { ReplaceAttachmentsDto } from './type-availability-policies/replace-attachments.dto';
 export {
+	CredentialTypePolicyAttachmentsPublicDto,
+	CredentialTypePolicyDocumentListPublicDto,
+	CredentialTypePolicyDocumentPublicDto,
+	CredentialTypePolicyDocumentWriteResultPublicDto,
+	CredentialTypePolicyEffectivePublicDto,
+	CredentialTypePolicyEffectiveWriteResultPublicDto,
 	ListNodeTypePolicyDocumentsQueryDto,
 	PolicyAttachmentsPublicDto,
 	PolicyDocumentListPublicDto,
@@ -491,6 +551,7 @@ export {
 export { ExportPackageRequestDto } from './packages/export-package-request.dto';
 export {
 	importBlockingIssueSchema,
+	packageRequirementConsumerSchema,
 	type ImportBlockingIssue,
 } from './packages/import-blocking-issue.schema';
 export {
@@ -498,6 +559,14 @@ export {
 	ImportBlockedErrorDto,
 	importResultSchema,
 } from './packages/import-result.dto';
+export * from './packages/credential.schema';
+export * from './packages/data-table.schema';
+export * from './packages/folder.schema';
+export * from './packages/project.schema';
+export * from './packages/tag.schema';
+export * from './packages/variable.schema';
+export * from './packages/workflow-metadata.schema';
+export * from './packages/workflow.schema';
 export { CommunityPackageRequestDto } from './community-packages/community-package-request.dto';
 
 export * from './evaluations';
@@ -616,7 +685,8 @@ export {
 	type WorkflowReviewRequestList,
 } from './workflow-reviews/list-workflow-review-requests-query.dto';
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
-export * from './workflow-reviews/list-workflow-review-inbox.dto';
+export type { WorkflowReviewInboxItem } from './workflow-reviews/list-workflow-review-inbox.dto';
+export { ListInboxQueryDto } from './inbox/list-inbox.dto';
 export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
 export {
 	ListWorkflowReviewActivityQueryDto,
@@ -642,6 +712,11 @@ export {
 	OtelTestTraceRequestPublicDto,
 	OtelTestTraceResultPublicDto,
 } from './otel/otel-test-trace-public.dto';
+export {
+	UpdatePublicApiRateLimitSettingsDto,
+	type PublicApiRateLimitSettings,
+	type PublicApiRateLimitSettingsResponse,
+} from './public-api-rate-limit-settings/update-public-api-rate-limit-settings.dto';
 
 export {
 	PromotionChangesDto,
@@ -665,6 +740,8 @@ export {
 
 export {
 	PROMOTION_BRANCH_PREFIX,
+	PROMOTION_COMMIT_MESSAGE_MAX_LENGTH,
+	promotionCommitMessageSchema,
 	promotionDisplayNameSchema,
 } from './promotions/promotion-common.dto';
 export {
@@ -674,7 +751,11 @@ export {
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
 	UpdatePromotionProviderDto,
+	isPromotionGitHostType,
+	supportsPromotionAuthType,
 	promotionGitConfigSchemas,
+	promotionGitHostBaseUrlSchema,
+	promotionGitHostConfigSchema,
 	promotionGitSshKeyAuthInputSchema,
 	promotionGitSshKeyAuthUpdateSchema,
 	promotionGitSshKeyConfigSchema,
@@ -686,8 +767,11 @@ export {
 	promotionProviderConfigSchema,
 	promotionProviderPublicSchema,
 	promotionProviderSummarySchema,
+	promotionProviderTypeCapabilities,
 	promotionProviderTypeSchema,
 	promotionSshKeyTypeSchema,
+	type PromotionGitHostConfig,
+	type PromotionGitHostType,
 	type PromotionProviderAuthInput,
 	type PromotionProviderAuthType,
 	type PromotionProviderAuthUpdate,
@@ -696,51 +780,50 @@ export {
 	type PromotionSshKeyType,
 } from './promotions/promotion-provider.dto';
 export {
-	PromotionApplyConfigPublicDto,
-	PromotionPromoteConfigPublicDto,
-	UpsertPromotionApplyConfigDto,
-	UpsertPromotionPromoteConfigDto,
-	promotionApplyConfigPublicSchema,
-	promotionConfigCheckoutSchema,
-	promotionConfigSettingsSchema,
-	promotionConnectionConfigsPublicSchema,
-	promotionConnectionConfigsSummarySchema,
-	promotionDirectionSchema,
-	promotionGitApplySettingsSchema,
-	promotionGitPromoteSettingsSchema,
-	promotionGitSettingsSchemas,
-	promotionApplyConfigSummarySchema,
-	promotionPromoteConfigSummarySchema,
-	promotionPromoteConfigPublicSchema,
-	type PromotionConfigCheckout,
-	type PromotionConfigSettings,
-	type PromotionConnectionConfigsPublic,
-	type PromotionConnectionConfigsSummary,
-	type PromotionDirection,
-} from './promotions/promotion-config.dto';
+	ListPromotionBranchesQueryDto,
+	ListPromotionRepositoriesQueryDto,
+	MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE,
+	PromotionBranchListPublicDto,
+	PromotionRepositoryListPublicDto,
+	promotionBranchSchema,
+	promotionRepositoryIdParamSchema,
+	promotionRepositorySchema,
+	type PromotionBranch,
+	type PromotionRepository,
+} from './promotions/promotion-repository.dto';
 export {
 	PromotionCheckoutPublicDto,
 	promotionCheckoutPublicSchema,
 } from './promotions/promotion-checkout.dto';
 export * from './promotions/promotion-binding-preflight.dto';
+export * from './promotions/promotion-preview.dto';
 export {
-	CreatePromotionConnectionDto,
-	ListPromotionConnectionsQueryDto,
-	PromotionConnectionListPublicDto,
-	PromotionConnectionProjectListPublicDto,
-	PromotionConnectionProjectPublicDto,
-	PromotionConnectionPublicDto,
-	UpdatePromotionConnectionDto,
-	promotionConnectionProjectPublicSchema,
-	promotionConnectionPublicSchema,
-	promotionConnectionScopeSchema,
-	promotionConnectionSummarySchema,
-	promotionConnectionTargetSchema,
-	type PromotionConnectionSummary,
-	type PromotionConnectionScope,
-	type PromotionConnectionTarget,
-} from './promotions/promotion-connection.dto';
+	CreatePromotionEnvironmentDto,
+	ListPromotionEnvironmentsQueryDto,
+	PromotionEnvironmentListPublicDto,
+	PromotionEnvironmentProjectListPublicDto,
+	PromotionEnvironmentProjectPublicDto,
+	PromotionEnvironmentPublicDto,
+	UpdatePromotionEnvironmentDto,
+	promotionEnvironmentRemoteSchema,
+	promotionDirectionSchema,
+	promotionEnvironmentCheckoutSchema,
+	promotionEnvironmentProjectPublicSchema,
+	promotionEnvironmentPublicSchema,
+	promotionEnvironmentScopeSchema,
+	promotionEnvironmentSettingsSchema,
+	promotionEnvironmentSummarySchema,
+	promotionGitApplySettingsSchema,
+	promotionGitPromoteSettingsSchema,
+	type PromotionEnvironmentRemote,
+	type PromotionDirection,
+	type PromotionEnvironmentCheckout,
+	type PromotionEnvironmentScope,
+	type PromotionEnvironmentSettings,
+	type PromotionEnvironmentSummary,
+} from './promotions/promotion-environment.dto';
 export {
+	ApplyCheckQueryDto,
 	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ApplySelectionDto,
@@ -753,6 +836,53 @@ export {
 	promotePackageCountsSchema,
 	promotePackageResultSchema,
 	promotionGitResultSchema,
+	promotionPromoteWarningSchema,
+	type PromotionPromoteWarning,
+	type ApplyCheckResult,
 } from './promotions/promotion-operations.dto';
+export {
+	parsePromotionRunDetails,
+	promotionGitRunDetailsSchema,
+	promotionRunContentsSchema,
+	promotionRunDetailsSchemas,
+	promotionRunTypeSchema,
+	type PromotionGitRunDetails,
+	type PromotionRunContents,
+	type PromotionRunDetails,
+	type PromotionRunType,
+} from './promotions/promotion-run.dto';
+export {
+	ApprovePromotionReviewDto,
+	ListPromotionReviewsQueryDto,
+	PromotionReviewDetailsRequestDto,
+	PromotionReviewListPublicDto,
+	promotionReviewChangesSchema,
+	promotionReviewWarningSchema,
+	promotionReviewResultSchema,
+	promotionReviewListPublicSchema,
+	gitLabRemoteReviewIdSchema,
+	parseRemoteReviewId,
+	promotionRemoteReviewIdSchemas,
+	promotionReviewStateSchema,
+	promotionReviewSummarySchema,
+	promotionReviewTabSchema,
+	promotionReviewTypeSchema,
+	type PromotionReviewChanges,
+	type PromotionReviewWarning,
+	type PromotionReviewResult,
+	type PromotionReviewRemote,
+	type PromotionReviewRemoteError,
+	type PromotionReviewState,
+	type PromotionReviewSummary,
+	type PromotionReviewType,
+	type PromotionReviewTab,
+} from './promotions/promotion-review.dto';
 
-export { ScimConfigPatchDto } from './scim';
+export {
+	ScimConfigPatchDto,
+	ScimPatchRequestDto,
+	ScimQueryDto,
+	ScimUserCreateDto,
+} from './scim';
+export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
+export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';

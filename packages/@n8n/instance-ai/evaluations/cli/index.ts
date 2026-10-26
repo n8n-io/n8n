@@ -179,7 +179,11 @@ async function main(): Promise<void> {
 			experimentName: args.experimentName,
 		});
 	} finally {
-		await cleanupLanes(lanes, cleanupBuiltWorkflows, logger);
+		await cleanupLanes(
+			lanes,
+			{ workflows: cleanupBuiltWorkflows, buildUsers: !args.keepWorkflows },
+			logger,
+		);
 	}
 }
 

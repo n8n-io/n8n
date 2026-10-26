@@ -145,6 +145,15 @@ describe('TrustedSourceConfigSchema refinement rules', () => {
 			path: ['identity', 'roleMapping', 'fallbackInstanceRole'],
 		},
 		{
+			rule: 'jit provisioning requires email linking',
+			document: withIdentity({
+				linkByEmail: 'off',
+				provision: { human: 'jit' },
+				roleMapping: { mode: 'on-provision', fallbackInstanceRole: 'global:member' },
+			}),
+			path: ['identity', 'linkByEmail'],
+		},
+		{
 			rule: 'manual discovery with jwks-uri keys requires jwksUri or metadataUrl',
 			document: withAuthentication({ discovery: { mode: 'manual' } }),
 			path: ['authentication', 'discovery'],

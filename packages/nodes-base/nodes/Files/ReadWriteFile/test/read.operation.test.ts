@@ -1,4 +1,4 @@
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { IBinaryData, IExecuteFunctions, INode } from 'n8n-workflow';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -6,6 +6,7 @@ import path from 'node:path';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { execute } from '../actions/read.operation';
+import * as readWriteUtils from '../helpers/utils';
 
 describe('Read/Write Files from Disk, read operation', () => {
 	let directory: string;
@@ -70,6 +71,36 @@ describe('Read/Write Files from Disk, read operation', () => {
 		expect(error).toBeInstanceOf(NodeApiError);
 		return error as NodeApiError;
 	};
+
+	describe('shared glob budget', () => {
+		afterEach(() => vi.restoreAllMocks());
+
+		// A timed-out item must still spend the shared budget; otherwise, with
+		// Continue On Fail, the next item would start over with a full budget.
+		it('charges the budget for a timed-out item instead of refunding the next one', async () => {
+			const budgets: Array<number | undefined> = [];
+			vi.spyOn(readWriteUtils, 'globWithDeadline').mockImplementation(
+				async (node, _pattern, _options, itemIndex, budgetMs) => {
+					budgets.push(budgetMs);
+					await new Promise((resolve) => setTimeout(resolve, 60));
+					throw new NodeOperationError(node, 'File(s) Selector is too complex', { itemIndex });
+				},
+			);
+
+			const context = mockDeep<IExecuteFunctions>();
+			context.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
+			context.getNodeParameter.mockImplementation((name) =>
+				name === 'fileSelector' ? '/x/*a*a*a*b' : {},
+			);
+			context.continueOnFail.mockReturnValue(true);
+
+			await execute.call(context, [{ json: {} }, { json: {} }]);
+
+			expect(budgets).toHaveLength(2);
+			expect(budgets[0]).toBe(readWriteUtils.GLOB_TIMEOUT_MS);
+			expect(budgets[1]!).toBeLessThan(budgets[0]!);
+		});
+	});
 
 	describe('by default', () => {
 		it('matches an exact path containing literal square brackets', async () => {

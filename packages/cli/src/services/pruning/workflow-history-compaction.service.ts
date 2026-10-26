@@ -2,19 +2,16 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import { WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
 import { DateTime } from 'luxon';
 import { DiffMetaData, DiffRule, RULES, SKIP_RULES } from 'n8n-workflow';
-import { strict } from 'node:assert';
 
 import { RelayEventMap } from '@/events/maps/relay.event-map';
 
-import { getCompactionWindowDeltas, isTrimmingEnabled } from './workflow-history-compaction.utils';
+import { getCompactionWindowDeltas } from './workflow-history-compaction.utils';
 
 /**
  * Responsible for compacting auto saved workflow history entries in the database.
@@ -51,60 +48,14 @@ export class WorkflowHistoryCompactionService {
 	private isOptimizingHistories = false;
 	private isTrimmingHistories = false;
 
-	/** Aborts the detached startup passes, which no system task run owns. */
-	private startupAbort = new AbortController();
-
 	constructor(
 		private readonly config: WorkflowHistoryCompactionConfig,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
-		private readonly instanceSettings: InstanceSettings,
-		private readonly dbConnection: DbConnection,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-history-compaction');
-	}
-
-	init() {
-		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
-
-		if (this.instanceSettings.isLeader) this.runStartupCompaction();
-	}
-
-	get isEnabled() {
-		return this.instanceSettings.instanceType === 'main' && this.instanceSettings.isLeader;
-	}
-
-	// One-shot catch-up pass on startup and on leader change, so a gap between
-	// leaders is compacted without waiting a full task interval. Not `runOnTakeover`
-	// on the tasks: `trimOnStartUp` forces a trim only here, and a task run cannot
-	// tell a takeover from a scheduled tick.
-	@OnLeaderTakeover()
-	runStartupCompaction() {
-		const { connectionState } = this.dbConnection;
-		if (!this.isEnabled || !connectionState.migrated) return;
-		if (this.config.skipOnStartUp) return;
-
-		this.startupAbort = new AbortController();
-		const { signal } = this.startupAbort;
-
-		void this.optimizeHistories(signal);
-
-		if (
-			this.config.trimOnStartUp &&
-			isTrimmingEnabled(this.globalConfig.workflowHistory, this.config)
-		) {
-			void this.trimLongRunningHistories(signal);
-		}
-	}
-
-	// A startup pass runs detached, so losing leadership has to reach it here.
-	// The task-driven passes get their signal from the system task runner.
-	@OnLeaderStepdown()
-	@OnShutdown()
-	stopStartupCompaction(): void {
-		this.startupAbort.abort();
 	}
 
 	/**

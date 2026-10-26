@@ -3,8 +3,14 @@ import '../../openapi-extend';
 import { z } from 'zod';
 
 import {
+	credentialConflictFieldDocs,
+	credentialConflictIssueOpenApi,
+	credentialPolicyViolationFieldDocs,
+	credentialPolicyViolationIssueOpenApi,
 	credentialUnresolvedFieldDocs,
 	credentialUnresolvedIssueOpenApi,
+	credentialUpdateForbiddenFieldDocs,
+	credentialUpdateForbiddenIssueOpenApi,
 	dataTableSchemaOperationOpenApi,
 	dataTableUnresolvedFieldDocs,
 	dataTableUnresolvedIssueOpenApi,
@@ -41,6 +47,13 @@ import {
 } from './import-blocking-issue.openapi';
 import { dataTableColumnTypeSchema } from '../../schemas/data-table.schema';
 import { policyViolationSchema } from '../../schemas/policy-violation.schema';
+
+export const packageRequirementConsumerSchema = z
+	.object({
+		kind: z.enum(['workflow', 'agent']),
+		id: z.string().min(1),
+	})
+	.openapi('PackageRequirementConsumer');
 
 /**
  * A reason an import cannot proceed, matching the `BlockingIssue` union in
@@ -95,7 +108,7 @@ const workflowFolderConflictIssueSchema = z
 			.string()
 			.nullable()
 			.openapi(workflowFolderConflictFieldDocs.existingParentFolderId),
-		targetFolderId: z.string().openapi(workflowFolderConflictFieldDocs.targetFolderId),
+		targetFolderId: z.string().nullable().openapi(workflowFolderConflictFieldDocs.targetFolderId),
 		name: z.string(),
 	})
 	.openapi(workflowFolderConflictIssueOpenApi);
@@ -121,9 +134,32 @@ const credentialUnresolvedIssueSchema = z
 		targetId: z.string().optional().openapi(credentialUnresolvedFieldDocs.targetId),
 		expectedType: z.string().optional().openapi(credentialUnresolvedFieldDocs.expectedType),
 		actualType: z.string().optional().openapi(credentialUnresolvedFieldDocs.actualType),
-		usedByWorkflows: z.array(z.string()),
+		usedBy: z.array(packageRequirementConsumerSchema),
 	})
 	.openapi(credentialUnresolvedIssueOpenApi);
+
+const credentialConflictIssueSchema = z
+	.object({
+		type: z.literal('credential-conflict'),
+		kind: z.enum(['differs', 'divergent']).openapi(credentialConflictFieldDocs.kind),
+		targetId: z.string().openapi(credentialConflictFieldDocs.targetId),
+		sourceIds: z.array(z.string()).openapi(credentialConflictFieldDocs.sourceIds),
+		name: z.string().openapi(credentialConflictFieldDocs.name),
+		usedBy: z.array(packageRequirementConsumerSchema).openapi(credentialConflictFieldDocs.usedBy),
+	})
+	.openapi(credentialConflictIssueOpenApi);
+
+const credentialUpdateForbiddenIssueSchema = z
+	.object({
+		type: z.literal('credential-update-forbidden'),
+		targetId: z.string().openapi(credentialUpdateForbiddenFieldDocs.targetId),
+		sourceIds: z.array(z.string()).openapi(credentialUpdateForbiddenFieldDocs.sourceIds),
+		name: z.string().openapi(credentialUpdateForbiddenFieldDocs.name),
+		usedBy: z
+			.array(packageRequirementConsumerSchema)
+			.openapi(credentialUpdateForbiddenFieldDocs.usedBy),
+	})
+	.openapi(credentialUpdateForbiddenIssueOpenApi);
 
 const projectConflictIssueSchema = z
 	.object({
@@ -185,7 +221,7 @@ const folderRemovalForbiddenIssueSchema = z
 	})
 	.openapi(folderRemovalForbiddenIssueOpenApi);
 
-/** `destructive` operations delete the data in a column. */
+/** `destructive` operations remove the values in a column. */
 const dataTableSchemaOperationSchema = z
 	.discriminatedUnion('kind', [
 		z.object({
@@ -206,6 +242,12 @@ const dataTableSchemaOperationSchema = z
 			from: dataTableColumnTypeSchema,
 			to: dataTableColumnTypeSchema,
 			destructive: z.literal(true),
+		}),
+		z.object({
+			kind: z.literal('rename-column'),
+			from: z.string(),
+			to: z.string(),
+			destructive: z.literal(false),
 		}),
 		z.object({
 			kind: z.literal('reorder-columns'),
@@ -265,7 +307,7 @@ const dataTableUnresolvedIssueSchema = z
 			.optional()
 			.openapi(dataTableUnresolvedFieldDocs.conflictingTableId),
 		currentName: z.string().optional().openapi(dataTableUnresolvedFieldDocs.currentName),
-		usedByWorkflows: z.array(z.string()),
+		usedBy: z.array(packageRequirementConsumerSchema),
 	})
 	.openapi(dataTableUnresolvedIssueOpenApi);
 
@@ -287,7 +329,7 @@ const tagUnresolvedIssueSchema = z
 			.openapi(tagUnresolvedFieldDocs.missingScope),
 		existingTagId: z.string().optional().openapi(tagUnresolvedFieldDocs.existingTagId),
 		existingName: z.string().optional().openapi(tagUnresolvedFieldDocs.existingName),
-		usedByWorkflows: z.array(z.string()).openapi(tagUnresolvedFieldDocs.usedByWorkflows),
+		usedBy: z.array(packageRequirementConsumerSchema).openapi(tagUnresolvedFieldDocs.usedBy),
 	})
 	.openapi(tagUnresolvedIssueOpenApi);
 
@@ -295,7 +337,7 @@ const variableUnresolvedIssueSchema = z
 	.object({
 		type: z.literal('variable-unresolved'),
 		name: z.string().openapi(variableUnresolvedFieldDocs.name),
-		usedByWorkflows: z.array(z.string()),
+		usedBy: z.array(packageRequirementConsumerSchema),
 	})
 	.openapi(variableUnresolvedIssueOpenApi);
 
@@ -304,7 +346,7 @@ const variableConflictIssueSchema = z
 		type: z.literal('variable-conflict'),
 		name: z.string().openapi(variableConflictFieldDocs.name),
 		projectId: z.string().optional().openapi(variableConflictFieldDocs.projectId),
-		usedByWorkflows: z.array(z.string()),
+		usedBy: z.array(packageRequirementConsumerSchema),
 	})
 	.openapi(variableConflictIssueOpenApi);
 
@@ -316,7 +358,9 @@ const variableLimitExceededIssueSchema = z
 		remaining: z.number().int().openapi(variableLimitExceededFieldDocs.remaining),
 		requested: z.number().int().openapi(variableLimitExceededFieldDocs.requested),
 		names: z.array(z.string()).openapi(variableLimitExceededFieldDocs.names),
-		usedByWorkflows: z.array(z.string()).openapi(variableLimitExceededFieldDocs.usedByWorkflows),
+		usedBy: z
+			.array(packageRequirementConsumerSchema)
+			.openapi(variableLimitExceededFieldDocs.usedBy),
 	})
 	.openapi(variableLimitExceededIssueOpenApi);
 
@@ -325,7 +369,7 @@ const missingNodeTypeIssueSchema = z
 		type: z.literal('missing-node-type'),
 		nodeType: z.string().openapi(missingNodeTypeFieldDocs.nodeType),
 		typeVersion: z.number().openapi(missingNodeTypeFieldDocs.typeVersion),
-		usedByWorkflows: z.array(z.string()).openapi(missingNodeTypeFieldDocs.usedByWorkflows),
+		usedBy: z.array(packageRequirementConsumerSchema).openapi(missingNodeTypeFieldDocs.usedBy),
 	})
 	.openapi(missingNodeTypeIssueOpenApi);
 
@@ -338,6 +382,20 @@ const policyViolationIssueSchema = z
 	})
 	.openapi(policyViolationIssueOpenApi);
 
+const credentialPolicyViolationIssueSchema = z
+	.object({
+		type: z.literal('credential-policy-violation'),
+		sourceId: z.string().openapi(credentialPolicyViolationFieldDocs.sourceId),
+		targetId: z.string().optional().openapi(credentialPolicyViolationFieldDocs.targetId),
+		name: z.string().optional(),
+		credentialType: z.string(),
+		usedBy: z
+			.array(packageRequirementConsumerSchema)
+			.openapi(credentialPolicyViolationFieldDocs.usedBy),
+		violations: z.array(policyViolationSchema),
+	})
+	.openapi(credentialPolicyViolationIssueOpenApi);
+
 export const importBlockingIssueSchema = z
 	.discriminatedUnion('type', [
 		workflowConflictIssueSchema,
@@ -346,6 +404,8 @@ export const importBlockingIssueSchema = z
 		workflowFolderConflictIssueSchema,
 		workflowArchiveForbiddenIssueSchema,
 		credentialUnresolvedIssueSchema,
+		credentialConflictIssueSchema,
+		credentialUpdateForbiddenIssueSchema,
 		projectConflictIssueSchema,
 		folderConflictIssueSchema,
 		workflowRemovalForbiddenIssueSchema,
@@ -358,6 +418,7 @@ export const importBlockingIssueSchema = z
 		variableLimitExceededIssueSchema,
 		missingNodeTypeIssueSchema,
 		policyViolationIssueSchema,
+		credentialPolicyViolationIssueSchema,
 	])
 	.openapi('ImportBlockingIssue');
 

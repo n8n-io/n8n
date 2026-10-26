@@ -23,6 +23,10 @@ export function useRedactionHint() {
 		if (info?.reason === 'dynamic_credentials') {
 			return i18n.baseText('expressionModalInput.redacted.dynamicCredentials');
 		}
+		// Without permission, the generic no-permission hint applies below.
+		if (info?.reason === 'sub_workflow_redaction_policy' && info.canReveal) {
+			return i18n.baseText('expressionModalInput.redacted.subWorkflow');
+		}
 		// Live push data supplies a provisional canReveal:false before the finished
 		// execution metadata arrives. Show the neutral prompt until we know.
 		if (!info?.provisional && info?.canReveal !== true) {

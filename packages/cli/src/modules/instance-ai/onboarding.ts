@@ -6,13 +6,8 @@ import type {
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	ASK_USER_TOOL_ID,
-	loadInstanceAiRuntimeSkillSource,
-	orchestratorAgentId,
-} from '@n8n/instance-ai';
+import { ASK_USER_TOOL_ID, orchestratorAgentId } from '@n8n/instance-ai';
 import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
-import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -30,19 +25,14 @@ import { buildOnboardingAnswerMessage } from './internal-messages';
 import { ONBOARDING_OPENING } from './onboarding-opening';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 
-/** Folder id under `@n8n/instance-ai/skills` of the skill preloaded on onboarding threads. */
-export const ONBOARDING_SKILL_ID = 'suggest-automations';
-
 /**
  * Marks the host-seeded card's confirmation request so the confirm endpoint can tell it from a
  * card that has a run behind it. Fits the 36-char `requestId` column together with a nanoid.
  */
 const CARD_REQUEST_ID_PREFIX = 'onboarding-';
-/** Start of the `${N8N_*}` placeholders the sandbox materializer substitutes; split so the lint rule for interpolation does not fire. */
-const PRELOAD_FORBIDDEN_PLACEHOLDER_PREFIX = '$' + '{N8N_';
 type Question = InstanceAiQuestion;
 type GivenAnswer = Extract<InstanceAiConfirmRequest, { kind: 'questions' }>['answers'][number];
-/** One answer in the `ask-user` result shape: the wire answer plus the question text. */
+/** One answer in the `workflow_builder_ask_user` result shape: the wire answer plus the question text. */
 type Answer = GivenAnswer & { question: string };
 
 /**
@@ -133,24 +123,8 @@ function mentionApps(apps: string[]): string {
 }
 
 /**
- * Body of the preloaded skill, sent with the opening turn as is. The sandbox materializer
- * substitutes `${N8N_*}` placeholders only in the skills it writes to the workspace, so a
- * placeholder here would reach the shell as an unset variable.
- */
-export async function loadOnboardingSkill(): Promise<string> {
-	const skill = await loadInstanceAiRuntimeSkillSource().loadSkill(ONBOARDING_SKILL_ID);
-	if (!skill) throw new UnexpectedError(`Runtime skill "${ONBOARDING_SKILL_ID}" not found`);
-	if (skill.instructions.includes(PRELOAD_FORBIDDEN_PLACEHOLDER_PREFIX)) {
-		throw new UnexpectedError(
-			`Runtime skill "${ONBOARDING_SKILL_ID}" is preloaded and must not use \${N8N_*} placeholders`,
-		);
-	}
-	return skill.instructions;
-}
-
-/**
  * The agent-first onboarding thread. The greeting and one question card are stored before the
- * agent's first turn, the card as a finished synthetic run whose `ask-user` call still waits
+ * agent's first turn, the card as a finished synthetic run whose `workflow_builder_ask_user` call still waits
  * for an answer. The UI shows, answers and restores the card through the same HITL path as a
  * live one. The answer settles the card and posts the follow-up question the same way, with no
  * model turn; the task the user types next starts the first real turn. Free text in the card
@@ -245,7 +219,7 @@ export class InstanceAiOnboardingService {
 		const { survey, surveySource } = surveyOf(metadata?.sourceContext);
 		const { questions, shown, answered } = applySurvey(ONBOARDING_OPENING.questions, survey);
 		const given = request.answers;
-		// One answer per shown step in card order, with the question text like the `ask-user` tool adds.
+		// One answer per shown step in card order, with the question text like the `workflow_builder_ask_user` tool adds.
 		const answerFor = (question: Question): Answer => ({
 			...(given.find((answer) => answer.questionId === question.id) ?? {
 				questionId: question.id,
@@ -255,7 +229,7 @@ export class InstanceAiOnboardingService {
 			question: question.question,
 		});
 		const answers = shown.map(answerFor);
-		// Same result shape as the `ask-user` tool, so the UI and the agent read it the same way.
+		// Same result shape as the `workflow_builder_ask_user` tool, so the UI and the agent read it the same way.
 		this.eventBus.publish(row.threadId, {
 			type: 'tool-result',
 			runId: row.runId,
@@ -322,7 +296,7 @@ export class InstanceAiOnboardingService {
 
 	/**
 	 * Store a host-written assistant turn as a finished synthetic run. With `card`, the run also
-	 * holds an `ask-user` call that still waits for an answer, plus the pending row `answerCard`
+	 * holds an `workflow_builder_ask_user` call that still waits for an answer, plus the pending row `answerCard`
 	 * claims. Returns the run id.
 	 */
 	private async seedTurn(turn: {

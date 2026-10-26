@@ -12,8 +12,12 @@ import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
+import {
+	type AgentFixtureOverrides,
+	createAgentSkillRefsService,
+} from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -31,7 +35,7 @@ const descriptor: ToolDescriptor = {
 	providerOptions: null,
 };
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): ProjectAgent {
 	return {
 		id: agentId,
 		projectId,
@@ -48,7 +52,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		skills: {},
 		updatedAt: new Date('2025-01-01T00:00:00Z'),
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function makeService() {
@@ -67,6 +71,7 @@ function makeService() {
 			agentUpdateBroadcaster,
 			modificationTelemetry,
 		),
+		createAgentSkillRefsService(),
 	);
 
 	return {
@@ -266,7 +271,6 @@ describe('AgentCustomToolsService', () => {
 			expect.objectContaining({
 				by: 'user',
 				changedParts: ['tools'],
-				wasUnconfigured: false,
 			}),
 		);
 	});

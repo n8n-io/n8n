@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ICredentialsResponse } from '../credentials.types';
+import type { ICredentialsResponse, IUsedCredential } from '../credentials.types';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type {
 	ICredentialType,
@@ -9,8 +9,17 @@ import type {
 	INodeParameters,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { resolveSupportedCredentialActivation } from 'n8n-workflow';
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { isMcpAiGatewayAuthentication, resolveSupportedCredentialActivation } from 'n8n-workflow';
+import {
+	computed,
+	inject,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	watch,
+	type DeepReadonly,
+} from 'vue';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
@@ -32,6 +41,7 @@ import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
+	AI_GATEWAY_CREDITS_DOCS_URL,
 	AI_GATEWAY_UNSUPPORTED_NODE_TYPES,
 	ChatHubToolContextKey,
 	CREDENTIAL_ONLY_NODE_PREFIX,
@@ -56,7 +66,6 @@ import {
 } from '../composables/useNodeCredentialOptions';
 import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
-import { useCredentialSharing } from '../composables/useCredentialSharing';
 import { getCredentialOwnerShortName } from '../composables/useUnusableWorkflowCredentials';
 import {
 	AI_GATEWAY_MANAGED_TAG,
@@ -103,6 +112,8 @@ type Props = {
 	standalone?: boolean;
 	/** Project ID to scope new credential creation to the correct project. */
 	projectId?: string;
+	/** Limit the picker to credentials that agents support. */
+	forAgent?: boolean;
 	/** Pre-fill the credential name when creating a new credential. */
 	suggestedCredentialName?: string;
 	/** Hide the "Ask n8n AI" assistant button inside the credential editor.
@@ -247,6 +258,13 @@ const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion),
 );
 
+// An MCP registry server that offers Gateway credits and nothing else: the user has
+// nothing to pick. A server that also offers its own credential keeps the picker.
+const isAiGatewayOnlyMcpServer = computed(() => {
+	const declared = nodeType.value?.credentials ?? [];
+	return declared.length > 0 && declared.every(({ name }) => isMcpAiGatewayAuthentication(name));
+});
+
 const {
 	mainNodeAuthField,
 	credentialTypesNodeDescriptionDisplayed,
@@ -259,9 +277,8 @@ const {
 	() => props.overrideCredType,
 	() => props.showAll,
 	() => props.credentials,
+	() => props.forAgent === true,
 );
-
-const { isEnabled: isCredentialSharingEnabled } = useCredentialSharing();
 
 const credentialTypeNames = computed(() => {
 	const returnData: Record<string, string> = {};
@@ -293,7 +310,6 @@ function isListed(credentialType: string, credentialId: string): boolean {
  * through an instance-wide scope.
  */
 function getUnlistedSelected(credentialType: string) {
-	if (!isCredentialSharingEnabled.value) return undefined;
 	const id = selected.value[credentialType]?.id;
 	if (!id || isListed(credentialType, id)) return undefined;
 	return workflowDocumentStore?.value.usedCredentials?.[id];
@@ -306,30 +322,45 @@ function getUnusableSelected(credentialType: string) {
 
 /** A credential the workflow references and that exists, usable or not. */
 function isKnownCredentialId(id: string | null | undefined): boolean {
-	if (!isCredentialSharingEnabled.value || !id) return false;
+	if (!id) return false;
 	return workflowDocumentStore?.value.usedCredentials?.[id] !== undefined;
 }
 
-function getUnlistedOwnerName(credentialType: string): string {
+function getOwnerName(credential: UsedCredential | undefined): string {
 	return (
-		getCredentialOwnerShortName(getUnlistedSelected(credentialType)) ??
+		getCredentialOwnerShortName(credential) ??
 		i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback')
 	);
 }
 
-function getUnusableDisplayName(credentialType: string): string {
+function getUnusableDisplayName(
+	credentialType: string,
+	credential: UsedCredential | undefined,
+): string {
 	return i18n.baseText('nodeCredentials.unusable.displayName', {
 		interpolate: {
-			owner: getUnlistedOwnerName(credentialType),
+			owner: getOwnerName(credential),
 			type: credentialTypeNames.value[credentialType] ?? credentialType,
 		},
 	});
 }
 
 /**
+ * A credential the user cannot use and just switched away from. It stays in the
+ * list while this panel is open, so the switch is not a one-way door.
+ */
+type UsedCredential = DeepReadonly<IUsedCredential>;
+const leftBehind = ref<Record<string, UsedCredential>>({});
+
+/**
  * Resolve a picked credential from the rows the dropdown is showing before
  * consulting the store. A host-supplied `credentials` list can hold ids the
  * flat map has not (yet) loaded — the store lookup alone would be `undefined`.
+ *
+ * Always allow the usable-slice fallback so private Connect still resolves after
+ * an unrelated credential list replaces the flat map. Ghost reselection after
+ * delete is prevented in the store listener by limiting candidates to the
+ * currently displayed host rows when `props.credentials` is set.
  */
 function findDisplayedCredential(
 	credentialType: string,
@@ -340,6 +371,7 @@ function findDisplayedCredential(
 	);
 	return (
 		typeEntry?.options.find((option) => option.id === credentialId) ??
+		credentialsStore.getUsableCredentialById(credentialId) ??
 		credentialsStore.getCredentialById(credentialId)
 	);
 }
@@ -502,7 +534,7 @@ watch(
 		const autoSelected = getAutoSelectedCredential(
 			node.value,
 			props.overrideCredType,
-			props.credentials,
+			props.forAgent ? types.flatMap(({ options }) => options) : props.credentials,
 		);
 		if (autoSelected) {
 			onCredentialSelected(
@@ -538,16 +570,17 @@ watch(
 );
 
 function getCredentialFetchScope(): CredentialFetchScope | undefined {
-	if (props.workflowId) return { workflowId: props.workflowId };
+	const forAgent = props.forAgent ? { forAgent: true } : {};
+	if (props.workflowId) return { workflowId: props.workflowId, ...forAgent };
 	const workflowId = workflowDocumentStore?.value.workflowId;
 	if (workflowId && !workflowsStore.isNewWorkflow) {
-		return { workflowId };
+		return { workflowId, ...forAgent };
 	}
 
 	const projectId =
 		props.projectId ?? projectsStore.currentProject?.id ?? projectsStore.personalProject?.id;
 
-	return projectId ? { projectId } : undefined;
+	return projectId ? { projectId, ...forAgent } : undefined;
 }
 
 onMounted(() => {
@@ -587,7 +620,17 @@ onMounted(() => {
 
 			const current = selected.value[credentialType];
 			let credentialsOfType: ICredentialsResponse[] = [];
-			if (props.showAll) {
+			if (props.credentials) {
+				// Host-supplied lists are authoritative for delete/create reselection.
+				// Use the currently displayed rows (already filtered for deleted override
+				// ids) so a usable-slice "ghost" id that is not in the host list cannot
+				// be applied — while findDisplayedCredential still falls back to the
+				// usable slice for private Connect after the flat map is cleared.
+				const typeEntry = credentialTypesNodeDescriptionDisplayed.value.find(
+					({ type }) => type.name === credentialType,
+				);
+				credentialsOfType = typeEntry?.options ?? [];
+			} else if (props.showAll) {
 				if (props.node) {
 					credentialsOfType = [...(credentialsStore.allUsableCredentialsForNode(props.node) || [])];
 				}
@@ -669,8 +712,9 @@ function getSelectedName(type: string) {
 	if (isAiGatewayManagedCredentials(type)) {
 		return N8N_CREDITS_LABEL;
 	}
-	if (getUnusableSelected(type)) {
-		return getUnusableDisplayName(type);
+	const unusable = getUnusableSelected(type);
+	if (unusable) {
+		return getUnusableDisplayName(type, unusable);
 	}
 	return selected.value?.[type]?.name;
 }
@@ -765,6 +809,8 @@ function onCredentialSelected(
 		return;
 	}
 
+	if (props.forAgent && findDisplayedCredential(credentialType, credentialId)?.isResolvable) return;
+
 	telemetry.track('User selected credential from node modal', {
 		credential_type: credentialType,
 		node_type: props.node.type,
@@ -788,9 +834,24 @@ function onCredentialSelected(
 		});
 	}
 
-	const selectedCredentials = findDisplayedCredential(credentialType, credentialId);
+	// Switching away from a credential the user cannot use keeps it in the list.
+	const unusableCurrent = getUnusableSelected(credentialType);
+	if (unusableCurrent && unusableCurrent.id !== credentialId) {
+		leftBehind.value[credentialType] = unusableCurrent;
+	}
+
+	const reselected =
+		leftBehind.value[credentialType]?.id === credentialId
+			? leftBehind.value[credentialType]
+			: undefined;
+	const displayed = findDisplayedCredential(credentialType, credentialId);
+	const selectedCredentials = displayed ?? reselected;
 	if (!selectedCredentials) return;
-	const selectedCredentialsType = props.showAll ? selectedCredentials.type : credentialType;
+	const selectedCredentialsType = props.showAll
+		? displayed
+			? displayed.type
+			: credentialType
+		: credentialType;
 	const oldCredentials: INodeCredentialsDetails | string | null =
 		props.node.credentials?.[selectedCredentialsType] ?? null;
 	const invalidCredentials =
@@ -1115,8 +1176,8 @@ function onSelectVisibleChange(credentialType: string, isVisible: boolean) {
 	}
 }
 
-function matches(needle: string, haystack: string) {
-	return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
+function matches(needle: string, haystack: string | undefined) {
+	return (haystack ?? '').toLocaleLowerCase().includes(needle.toLocaleLowerCase());
 }
 
 /**
@@ -1128,11 +1189,20 @@ function matches(needle: string, haystack: string) {
 type CredentialRow =
 	| { kind: 'header'; key: string; label: string }
 	| { kind: 'option'; key: string; option: CredentialDropdownOption }
-	| { kind: 'current'; key: string; id: string; name: string; meta: string; usable: boolean };
+	| {
+			kind: 'current';
+			key: string;
+			id: string;
+			name: string;
+			meta: string;
+			usable: boolean;
+			// Disabled unless it is one the user left, which they can go back to.
+			selectable: boolean;
+			credential: UsedCredential;
+	  };
 
 const YOURS_GROUP_KEY = '__credential-group-yours';
 const SHARED_GROUP_KEY = '__credential-group-shared';
-const UNUSABLE_GROUP_KEY = '__credential-group-unusable';
 
 /** The project the workflow being edited lives in, for the group heading. */
 const pickerHomeProject = computed(
@@ -1164,23 +1234,24 @@ const sharedGroupLabel = computed(() => {
 
 /**
  * The dropdown lines for one credential type, type-ahead filter already
- * applied. Yours first because that is the one people reach for: what only you
- * can use here, then what the project carries for everyone in it, then the
- * current credential if you cannot use it. Filtering before grouping is what
- * keeps a heading from surviving its last option.
+ * applied. The current credential comes first when you cannot use it, so you see
+ * why the field is flagged. Then yours, because that is the one people reach
+ * for: what only you can use here, then what the project carries for everyone
+ * in it. Filtering before grouping is what keeps a heading from surviving its
+ * last option.
  */
 function buildCredentialRows(
 	credentialType: string,
 	options: CredentialDropdownOption[],
 ): CredentialRow[] {
-	return [...buildUsableRows(credentialType, options), ...buildUnusableRows(credentialType)];
+	return [...buildUnusableRows(credentialType), ...buildUsableRows(credentialType, options)];
 }
 
 /** The current credential as a row, when the options do not list it. */
 function buildCurrentRow(credentialType: string, usable: boolean): CredentialRow | undefined {
 	const credential = getUnlistedSelected(credentialType);
 	if (!credential || (credential.currentUserCanUse !== false) !== usable) return undefined;
-	const name = usable ? credential.name : getUnusableDisplayName(credentialType);
+	const name = usable ? credential.name : getUnusableDisplayName(credentialType, credential);
 	if (!matches(filter.value, name)) return undefined;
 
 	return {
@@ -1188,8 +1259,29 @@ function buildCurrentRow(credentialType: string, usable: boolean): CredentialRow
 		key: credential.id,
 		id: credential.id,
 		name,
-		meta: ownerMeta(credentialType, usable),
+		meta: ownerMeta(credential, usable),
 		usable,
+		selectable: false,
+		credential,
+	};
+}
+
+/** The unusable credential the user switched away from, offered to go back to. */
+function buildLeftBehindRow(credentialType: string): CredentialRow | undefined {
+	const credential = leftBehind.value[credentialType];
+	if (!credential || credential.id === selected.value[credentialType]?.id) return undefined;
+	const name = getUnusableDisplayName(credentialType, credential);
+	if (!matches(filter.value, name)) return undefined;
+
+	return {
+		kind: 'current',
+		key: credential.id,
+		id: credential.id,
+		name,
+		meta: ownerMeta(credential, false),
+		usable: false,
+		selectable: true,
+		credential,
 	};
 }
 
@@ -1197,7 +1289,7 @@ function buildCurrentRow(credentialType: string, usable: boolean): CredentialRow
  * Who owns the current credential, and where it is missing: the project the
  * workflow lives in, which a personal space does not name.
  */
-function ownerMeta(credentialType: string, usable: boolean): string {
+function ownerMeta(credential: UsedCredential, usable: boolean): string {
 	const projectName = !isPersonalSpace.value ? pickerHomeProject.value?.name : undefined;
 
 	// The owner is already part of the name of a credential the user cannot use.
@@ -1209,7 +1301,7 @@ function ownerMeta(credentialType: string, usable: boolean): string {
 			: '';
 	}
 
-	const owner = getUnlistedOwnerName(credentialType);
+	const owner = getOwnerName(credential);
 
 	return projectName
 		? i18n.baseText('nodeCredentials.unusable.ownerNotShared', {
@@ -1219,55 +1311,22 @@ function ownerMeta(credentialType: string, usable: boolean): string {
 }
 
 /**
- * The current credential, when the user cannot use it, in a group of its own
- * after the ones they can pick. It stays so the field is not blank; other
- * credentials the user cannot use are not offered.
+ * The current credential, when the user cannot use it, above the ones they can
+ * pick, with no heading. It stays so the field is not blank; other credentials
+ * the user cannot use are not offered.
  */
 function buildUnusableRows(credentialType: string): CredentialRow[] {
-	const row = buildCurrentRow(credentialType, false);
-	if (!row) return [];
-
-	return [
-		{
-			kind: 'header',
-			key: UNUSABLE_GROUP_KEY,
-			label: i18n.baseText('nodeCredentials.group.notAvailableToYou'),
-		},
-		row,
-	];
+	const row = buildCurrentRow(credentialType, false) ?? buildLeftBehindRow(credentialType);
+	return row ? [row] : [];
 }
 
-/** The tooltip on the warning next to the field, naming the owner to ask. */
-function unusableTooltip(credentialType: string): { title: string; lines: string[] } {
-	const credential = getUnusableSelected(credentialType);
+/** The tooltip on the warning and on the list row, naming the owner to ask. */
+function unusableTooltip(credential: UsedCredential | undefined): string {
 	const ownerName = getCredentialOwnerShortName(credential);
-	const owner = getUnlistedOwnerName(credentialType);
-	const projectName = pickerHomeProject.value?.name;
-	// A person is addressed by first name where the copy is personal; the full
-	// name says who exactly holds the credential. A team keeps its whole name.
-	const isPersonalOwner = credential?.homeProject?.type === ProjectTypes.Personal;
-	const shortOwner = isPersonalOwner && ownerName ? ownerName.split(/\s+/)[0] : owner;
 
-	return {
-		title: ownerName
-			? i18n.baseText('nodeCredentials.unusable.tooltip.title', {
-					interpolate: { owner: shortOwner },
-				})
-			: i18n.baseText('nodeCredentials.unusable.tooltip.title.unknownOwner'),
-		lines: [
-			i18n.baseText('nodeCredentials.unusable.tooltip.onlyOwner', {
-				interpolate: { owner, credential: getUnusableDisplayName(credentialType) },
-			}),
-			i18n.baseText('nodeCredentials.unusable.tooltip.canEdit'),
-			!isPersonalSpace.value && projectName
-				? i18n.baseText('nodeCredentials.unusable.tooltip.switch', {
-						interpolate: { owner: shortOwner, project: projectName },
-					})
-				: i18n.baseText('nodeCredentials.unusable.tooltip.switch.personal', {
-						interpolate: { owner: shortOwner },
-					}),
-		],
-	};
+	return ownerName
+		? i18n.baseText('nodeCredentials.unusable.tooltip', { interpolate: { owner: ownerName } })
+		: i18n.baseText('nodeCredentials.unusable.tooltip.unknownOwner');
 }
 
 function buildUsableRows(
@@ -1280,8 +1339,6 @@ function buildUsableRows(
 		key: option.id,
 		option,
 	});
-
-	if (!isCredentialSharingEnabled.value) return visible.map(toRow);
 
 	// Yours either because it travels with you into this project, or because
 	// this is your own space and the credential is not published instance-wide.
@@ -1462,6 +1519,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		>
 			<N8nInputLabel
 				:label="getCredentialsFieldLabel(type)"
+				:required="type.required"
 				:bold="false"
 				size="small"
 				color="text-dark"
@@ -1498,6 +1556,40 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								data-test-id="node-credential-private-icon"
 							/>
 						</N8nTooltip>
+					</div>
+				</div>
+				<div v-else-if="isAiGatewayOnlyMcpServer" :class="$style.input">
+					<N8nTooltip
+						as-child
+						placement="top"
+						:content-class="$style.aiGatewayOnlyTooltip"
+						:content="
+							i18n.baseText('aiGateway.picker.gatewayCreditsOnly', {
+								interpolate: { docURL: AI_GATEWAY_CREDITS_DOCS_URL },
+							})
+						"
+					>
+						<div :class="$style.aiGatewayOnly" data-test-id="node-credentials-ai-gateway-only">
+							<N8nIcon icon="wallet" size="large" :class="$style.optionIcon" />
+							<N8nText size="small">{{ N8N_CREDITS_LABEL }}</N8nText>
+							<N8nBadge
+								v-if="balancePill"
+								size="xxsmall"
+								:variant="balancePill.type === 'danger' ? 'danger' : 'success'"
+								:class="$style.aiGatewayOnlyPill"
+							>
+								{{ balancePill.text }}
+							</N8nBadge>
+						</div>
+					</N8nTooltip>
+					<div :class="$style.edit">
+						<N8nIcon
+							icon="settings"
+							class="clickable"
+							data-test-id="credential-topup-button"
+							:title="i18n.baseText('aiGateway.toggle.topUp')"
+							@click="onTopUp(type.name)"
+						/>
 					</div>
 				</div>
 				<div
@@ -1703,27 +1795,40 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									:class="{ [$style.unusableOption]: !row.usable }"
 									:label="row.name"
 									:value="row.id"
-									:disabled="!row.usable"
+									:disabled="!row.usable && !row.selectable"
 								>
-									<div :class="$style.credentialOption">
-										<N8nIcon
-											:icon="row.usable ? 'key-round' : 'user-lock'"
-											size="large"
-											:class="$style.optionIcon"
-										/>
-										<div :class="$style.credentialOptionName">
-											<N8nText :class="$style.optionName">{{ row.name }}</N8nText>
+									<N8nTooltip
+										as-child
+										:disabled="row.usable"
+										:content="unusableTooltip(row.credential)"
+										:offset="16"
+										placement="top"
+									>
+										<div :class="$style.credentialOption">
+											<N8nIcon
+												:icon="row.usable ? 'key-round' : 'user-lock'"
+												size="large"
+												:class="$style.optionIcon"
+											/>
+											<div :class="$style.credentialOptionName">
+												<N8nText :class="$style.optionName">{{ row.name }}</N8nText>
+											</div>
+											<N8nText
+												size="small"
+												color="text-light"
+												:class="$style.optionMeta"
+												data-test-id="node-credentials-select-item-owner-meta"
+											>
+												{{ row.meta }}
+											</N8nText>
+											<N8nIcon
+												v-if="getSelectedId(type) === row.id"
+												icon="check"
+												size="large"
+												:class="$style.checkIcon"
+											/>
 										</div>
-										<N8nText
-											size="small"
-											color="text-light"
-											:class="$style.optionMeta"
-											data-test-id="node-credentials-select-item-owner-meta"
-										>
-											{{ row.meta }}
-										</N8nText>
-										<N8nIcon icon="check" size="large" :class="$style.checkIcon" />
-									</div>
+									</N8nTooltip>
 								</N8nOption>
 								<N8nOption
 									v-else
@@ -1823,15 +1928,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						:class="[$style.warning, $style.unusableWarning]"
 						data-test-id="node-credentials-unusable-warning"
 					>
-						<N8nTooltip placement="top">
-							<template #content>
-								<div :class="$style.unusableTooltip">
-									<strong>{{ unusableTooltip(type.name).title }}</strong>
-									<p v-for="line in unusableTooltip(type.name).lines" :key="line">
-										{{ line }}
-									</p>
-								</div>
-							</template>
+						<N8nTooltip :content="unusableTooltip(getUnusableSelected(type.name))" placement="top">
 							<N8nIcon icon="triangle-alert" />
 						</N8nTooltip>
 					</div>
@@ -1963,20 +2060,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	color: var(--color--warning);
 }
 
-.unusableTooltip {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-
-	strong {
-		font-weight: var(--font-weight--bold);
-	}
-
-	p {
-		margin: 0;
-	}
-}
-
 // Not selectable, but it is the current value, so its name stays readable.
 .unusableOption:global(.is-disabled) {
 	cursor: default;
@@ -2000,6 +2083,25 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 .input {
 	display: flex;
 	align-items: center;
+}
+
+.aiGatewayOnly {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	height: var(--height--sm);
+	padding: 0 var(--spacing--2xs);
+	border-radius: var(--radius--3xs);
+	box-shadow: 0 0 0 1px var(--border-color);
+	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+	color: var(--color--text--shade-1);
+	cursor: default;
+}
+
+// As wide as the parameter hint tooltips, so it reads as part of the field.
+:global(.n8n-tooltip).aiGatewayOnlyTooltip {
+	max-width: 400px;
 }
 
 .selectContainer {
@@ -2227,6 +2329,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 .balanceIndicator > span:not(.balanceLabelSizer),
 .credentialOption > .optionName + span,
+.aiGatewayOnlyPill,
 .entryPill {
 	padding: var(--spacing--5xs) var(--spacing--3xs);
 	border-radius: var(--radius);

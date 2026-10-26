@@ -577,6 +577,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 									scheduledFor: earlier,
 									runAt: earlier,
 									maxAttempts: 1,
+									timeoutSeconds: 300,
 									missedAfter: null,
 								},
 							]),

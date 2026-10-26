@@ -190,6 +190,14 @@ describe('ChatInputBase', () => {
 		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
 	});
 
+	it('hides the built-in attach button when showAttachButton is false', () => {
+		const { queryByTestId } = renderComponent({
+			props: makeProps({ showAttach: true, showAttachButton: false, acceptedMimeTypes: 'image/*' }),
+		});
+
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+	});
+
 	it('shows the drop overlay and emits dropped files', async () => {
 		const file = new File(['image'], 'image.png', { type: 'image/png' });
 		const { getByRole, getByTestId, queryByTestId, emitted } = renderComponent({

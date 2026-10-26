@@ -51,7 +51,6 @@ export type TagResolutionFailure = {
 	existingTagId?: string;
 	/** For `rename-drift`: the current name of the same-id target tag. */
 	existingName?: string;
-	usedByWorkflows: string[];
 };
 
 export interface TagImportRequest {
@@ -81,10 +80,6 @@ export function droppedTagIds(plan: TagImportPlan): ReadonlySet<string> {
 	return new Set(plan.dropped.map(({ id }) => id));
 }
 
-export function sortedUnique(values: string[]): string[] {
-	return [...new Set(values)].sort();
-}
-
 /**
  * Gates package tags that lay contradictory claims on one target tag row.
  * Example: the package carries tag X `prod` (project A) and tag H `staging`
@@ -97,11 +92,9 @@ export function sortedUnique(values: string[]): string[] {
  * gate. Identical reconciles in several scopes are the multi-scope union case
  * and stay allowed.
  */
-export function contestedReconcileTargetFailures(
-	scopes: Array<{ tagPlan: TagImportPlan; workflows: ReferencingWorkflow[] }>,
-): TagResolutionFailure[] {
+export function contestedReconcileTargetFailures(plans: TagImportPlan[]): TagResolutionFailure[] {
 	const reconcilesByKey = new Map<string, TagReconcile>();
-	for (const { tagPlan } of scopes) {
+	for (const tagPlan of plans) {
 		for (const reconcile of tagPlan.reconciles) {
 			reconcilesByKey.set(JSON.stringify([reconcile.id, reconcile.oldId]), reconcile);
 		}
@@ -110,7 +103,7 @@ export function contestedReconcileTargetFailures(
 	const reconciles = [...reconcilesByKey.values()];
 
 	const claimedTargetIds = new Set(
-		scopes.flatMap(({ tagPlan }) => [
+		plans.flatMap((tagPlan) => [
 			...tagPlan.matched.map(({ id }) => id),
 			...tagPlan.renames.map(({ id }) => id),
 		]),
@@ -120,13 +113,6 @@ export function contestedReconcileTargetFailures(
 		oldIdCounts.set(oldId, (oldIdCounts.get(oldId) ?? 0) + 1);
 	}
 
-	const sourceWorkflowIdsReferencing = (tagId: string) =>
-		scopes.flatMap(({ workflows }) =>
-			workflows
-				.filter(({ tagIds }) => tagIds?.includes(tagId))
-				.map(({ sourceWorkflowId }) => sourceWorkflowId),
-		);
-
 	return reconciles
 		.filter(({ oldId }) => claimedTargetIds.has(oldId) || (oldIdCounts.get(oldId) ?? 0) > 1)
 		.map(({ id, name, oldId }) => ({
@@ -134,6 +120,5 @@ export function contestedReconcileTargetFailures(
 			sourceId: id,
 			name,
 			existingTagId: oldId,
-			usedByWorkflows: sortedUnique(sourceWorkflowIdsReferencing(id)),
 		}));
 }

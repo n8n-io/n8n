@@ -1,15 +1,29 @@
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	REMOVED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+} from '@n8n/api-types';
 import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
 import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user.
  *  `leave-onboarding` ends the turn right after the model's reply: hiding it keeps
  *  that reply a user-facing final message instead of narration before a tool call. */
-export const HIDDEN_TOOLS = new Set(['updateWorkingMemory', 'leave-onboarding']);
+export const HIDDEN_TOOLS = new Set([
+	'updateWorkingMemory',
+	'leave-onboarding',
+	// Removed plan tools: older threads still contain these calls.
+	REMOVED_BUILDER_TOOL_NAMES.CREATE_TASKS,
+	REMOVED_BUILDER_TOOL_NAMES.COMPLETE_CHECKPOINT,
+	'create-tasks',
+	'complete-checkpoint',
+]);
 
 /** Render hints whose tool calls produce no output in the timeline — they are
  *  represented elsewhere (child agent sections, artifact cards). */
@@ -39,16 +53,15 @@ type TextEntry = Extract<InstanceAiTimelineEntry, { type: 'text' }>;
  *
  * A `thinking` block is a maximal run of trace content — reasoning segments,
  * generic tool calls, and the intermediate narration text the model emits
- * between them — split only by user-facing content (answer text, plan
- * reviews, answered questions, task checklists, child agents). Invisible
- * entries (hidden tools, builder/planner hints, pending questions) are
+ * between them — split only by user-facing content (answer text, answered
+ * questions, task checklists, child agents). Invisible entries (hidden
+ * tools, builder hints, pending questions) are
  * dropped without splitting a run.
  */
 export type TimelineBlock =
 	| { type: 'thinking'; key: string; entries: InstanceAiTimelineEntry[]; active: boolean }
 	| { type: 'text'; key: string; entry: TextEntry }
 	| { type: 'tasks'; key: string; toolCall: InstanceAiToolCallState }
-	| { type: 'plan-review'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'mcp-connect'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'preference'; key: string; toolCall: InstanceAiToolCallState }
@@ -58,7 +71,6 @@ export type TimelineBlock =
 type ToolCallKind =
 	| 'hidden'
 	| 'tasks'
-	| 'plan-review'
 	| 'mcp-connect'
 	| 'questions'
 	| 'questions-pending'
@@ -67,11 +79,11 @@ type ToolCallKind =
 
 /**
  * How a tool call renders in the timeline. `trace` rows join thinking blocks;
- * `tasks`/`plan-review`/`mcp-connect`/`questions`/`preference` render standalone
+ * `tasks`/`mcp-connect`/`questions`/`preference` render standalone
  * UI; `hidden` calls are dropped without splitting a run.
  *
  * Builder calls delegated to a sub-agent (`*-with-agent`) are hidden — the
- * child agent section represents them. In-thread builds (`build-workflow`)
+ * child agent section represents them. In-thread builds (`workflow_builder_build_workflow`)
  * render as trace rows so the build step is visible inside the thinking block.
  */
 function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
@@ -84,9 +96,7 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	if (tc.toolName === SAVE_USER_PREFERENCE_TOOL_NAME) {
 		return isPreferenceWriteOutcome(tc) ? 'preference' : 'hidden';
 	}
-	if (tc.confirmation?.inputType === 'plan-review') return 'plan-review';
 	if (tc.confirmation?.mcpConnectRequest) return 'mcp-connect';
-	if (tc.renderHint === 'planner') return 'hidden';
 	if (tc.confirmation?.inputType === 'questions') {
 		return tc.isLoading ? 'questions-pending' : 'questions';
 	}
@@ -143,7 +153,7 @@ export function buildTimelineBlocks(
 				// Keep the explanation before a confirmation outside the trace.
 				tc.confirmation === undefined &&
 				!(
-					tc.toolName === 'build-agent' &&
+					tc.toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT &&
 					hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
 				)
 			) {
@@ -227,7 +237,7 @@ export function buildTimelineBlocks(
 		const tc = toolCallsById[entry.toolCallId];
 		if (!tc) return;
 		if (
-			tc.toolName === 'build-agent' &&
+			tc.toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT &&
 			hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
 		) {
 			return;
@@ -235,9 +245,6 @@ export function buildTimelineBlocks(
 		switch (classifyToolCall(tc)) {
 			case 'tasks':
 				pushStandalone({ type: 'tasks', key: `tasks-${idx}`, toolCall: tc });
-				return;
-			case 'plan-review':
-				pushStandalone({ type: 'plan-review', key: `plan-${idx}`, toolCall: tc });
 				return;
 			case 'mcp-connect':
 				pushStandalone({ type: 'mcp-connect', key: `mcp-connect-${idx}`, toolCall: tc });
@@ -318,9 +325,13 @@ export interface ArtifactInfo {
 	completedAt?: string;
 }
 
-/** The workflow a build-workflow / submit-workflow call wrote, if it wrote one. */
+/** The workflow a workflow_builder_build_workflow / submit-workflow call wrote, if it wrote one. */
 function workflowArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
-	if (tc.toolName !== 'build-workflow' && tc.toolName !== 'submit-workflow') return undefined;
+	if (
+		tc.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
+		tc.toolName !== REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW
+	)
+		return undefined;
 	if (!tc.result || typeof tc.result !== 'object') return undefined;
 	const result = tc.result as Record<string, unknown>;
 	if (typeof result.workflowId !== 'string') return undefined;
@@ -354,6 +365,45 @@ export function extractBuiltWorkflowArtifacts(
 		if (workflow && !artifacts.has(workflow.resourceId)) {
 			artifacts.set(workflow.resourceId, workflow);
 		}
+	}
+	return [...artifacts.values()];
+}
+
+/** The Agent an orchestrator builder call created or changed, if it did. */
+function agentArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
+	if (tc.isLoading || !isRecord(tc.result)) return undefined;
+	const result = tc.result;
+	if (typeof result.agentId !== 'string') return undefined;
+	const changed =
+		tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT
+			? result.ok === true && result.agentChange === 'created'
+			: result.configMutated === true;
+	if (!changed) return undefined;
+
+	return {
+		type: 'agent',
+		resourceId: result.agentId,
+		name: typeof result.agentName === 'string' ? result.agentName : '',
+		...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
+		completedAt: tc.completedAt,
+	};
+}
+
+/**
+ * Agents the orchestrator created or changed with its own builder tool calls.
+ * Each Agent appears once, with the name and project of its latest change.
+ */
+export function extractBuiltAgentArtifacts(toolCalls: InstanceAiToolCallState[]): ArtifactInfo[] {
+	const artifacts = new Map<string, ArtifactInfo>();
+	for (const tc of toolCalls) {
+		const agent = agentArtifactFromToolCall(tc);
+		if (!agent) continue;
+		const previous = artifacts.get(agent.resourceId);
+		artifacts.set(agent.resourceId, {
+			...agent,
+			name: firstNonBlank(agent.name, previous?.name) ?? 'Untitled',
+			projectId: agent.projectId ?? previous?.projectId,
+		});
 	}
 	return [...artifacts.values()];
 }

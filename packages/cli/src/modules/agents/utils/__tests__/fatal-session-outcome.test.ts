@@ -24,10 +24,13 @@ function record(overrides: Partial<MessageRecord> = {}): MessageRecord {
 		finishReason: 'stop',
 		usage: null,
 		totalCost: null,
+		cacheReadTokens: null,
+		cacheWriteTokens: null,
 		timeline: [],
 		startTime: 0,
 		duration: 1,
 		error: null,
+		guardrailCode: null,
 		...overrides,
 	};
 }

@@ -77,7 +77,7 @@ describe('SecuritySettings', () => {
 			expect(getSecuritySettings).toHaveBeenCalled();
 		});
 
-		expect(getByText('Security & policies')).toBeInTheDocument();
+		expect(getByText('Policies')).toBeInTheDocument();
 		expect(getByText('Personal space')).toBeInTheDocument();
 	});
 
@@ -937,6 +937,25 @@ describe('SecuritySettings', () => {
 				});
 				expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
 			});
+		});
+
+		it('updates Inbox access after saving the policy without reloading settings', async () => {
+			settingsStore.settings.activeModules = ['inbox', 'workflow-reviews'];
+			settingsStore.settings.inbox = { enabled: false, availableTypes: [], failedTypes: [] };
+			updateSecuritySettings.mockResolvedValue({ workflowReviews: { enabled: true } });
+			const { findByTestId } = renderView();
+			const toggle = await findByTestId('security-workflow-reviews-toggle');
+			await userEvent.click(toggle);
+			await waitFor(() => expect(showToast).toHaveBeenCalled());
+			expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
+			expect(settingsStore.settings.inbox).toEqual({
+				enabled: true,
+				availableTypes: ['workflow_review'],
+				failedTypes: [],
+			});
+			expect(toggle).not.toHaveClass('is-disabled');
+			expect(showError).not.toHaveBeenCalled();
+			expect(settingsStore.getSettings).not.toHaveBeenCalled();
 		});
 
 		it('should disable workflow reviews toggle when managed by env', async () => {

@@ -87,10 +87,13 @@ describe('buildSkillInstructionCacheOptions', () => {
 });
 
 describe('buildInstructionPromptCacheOptions — Anthropic', () => {
-	it('defaults to a 1h cache breakpoint when enabled with no ttl override', () => {
-		expect(
-			buildInstructionPromptCacheOptions({ enabled: true }, 'anthropic/claude-sonnet-4-5'),
-		).toEqual({
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'google-vertex-anthropic/claude-opus-4-8',
+		'google-vertex/claude-opus-5@default',
+		'azure-openai/anthropic/my-claude',
+	])('defaults to a 1h cache breakpoint for %s', (modelId) => {
+		expect(buildInstructionPromptCacheOptions({ enabled: true }, modelId)).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
 	});
@@ -106,9 +109,12 @@ describe('buildInstructionPromptCacheOptions — Anthropic', () => {
 		});
 	});
 
-	it('returns undefined for a non-Anthropic model', () => {
-		expect(buildInstructionPromptCacheOptions({ enabled: true }, 'openai/gpt-5.1')).toBeUndefined();
-	});
+	it.each(['openai/gpt-5.1', 'google-vertex/gemini-3-flash-preview'])(
+		'returns undefined for %s without Anthropic caching',
+		(modelId) => {
+			expect(buildInstructionPromptCacheOptions({ enabled: true }, modelId)).toBeUndefined();
+		},
+	);
 
 	it('returns undefined when config is disabled', () => {
 		expect(
@@ -212,10 +218,12 @@ describe('createOpenAIPromptCacheKey (via buildCallPromptCacheOptions)', () => {
 });
 
 describe('getEffectiveAnthropicCacheTtl', () => {
-	it('returns the configured TTL (default 1h) for an Anthropic model with caching enabled', () => {
-		expect(getEffectiveAnthropicCacheTtl({ enabled: true }, 'anthropic/claude-sonnet-4-5')).toBe(
-			'1h',
-		);
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'google-vertex/claude-opus-5@default',
+		'openrouter/anthropic/claude-sonnet-4.5',
+	])('returns the default 1h TTL for %s with caching enabled', (modelId) => {
+		expect(getEffectiveAnthropicCacheTtl({ enabled: true }, modelId)).toBe('1h');
 	});
 
 	it('returns an explicit 5m override for an Anthropic model', () => {
@@ -269,22 +277,38 @@ describe('mergeProviderOptions', () => {
 });
 
 describe('applyRuntimeCacheBreakpoints', () => {
-	it('marks the last conversation message with an Anthropic cache breakpoint', () => {
-		const messages = [makeUserMessage('hi'), makeUserMessage('there')];
+	it.each(['anthropic/claude-sonnet-4-5', 'google-vertex/claude-opus-5@default'])(
+		'marks the last conversation message with an Anthropic cache breakpoint for %s',
+		(modelId) => {
+			const messages = [makeUserMessage('hi'), makeUserMessage('there')];
 
-		const { messages: result } = applyRuntimeCacheBreakpoints({
+			const { messages: result } = applyRuntimeCacheBreakpoints({
+				system: anthropicSystem,
+				messages,
+				aiTools: {},
+				promptCaching: { enabled: true },
+				modelId,
+				staticToolCacheName: undefined,
+			});
+
+			expect(result[0].providerOptions).toBeUndefined();
+			expect(result[1].providerOptions).toEqual({
+				anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+			});
+		},
+	);
+
+	it('does not generate a cache marker on a deferred tool', () => {
+		const aiTools = { lookup: makeTool({ anthropic: { deferLoading: true } }) };
+		const result = applyRuntimeCacheBreakpoints({
 			system: anthropicSystem,
-			messages,
-			aiTools: {},
+			messages: [],
+			aiTools,
 			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
-			staticToolCacheName: undefined,
+			modelId: 'anthropic/claude-sonnet-4-6',
+			staticToolCacheName: 'lookup',
 		});
-
-		expect(result[0].providerOptions).toBeUndefined();
-		expect(result[1].providerOptions).toEqual({
-			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
-		});
+		expect(result.aiTools.lookup.providerOptions?.anthropic?.cacheControl).toBeUndefined();
 	});
 
 	it('marks the static tool with a cache breakpoint when staticToolCacheName is provided', () => {
@@ -342,7 +366,10 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			makeUserMessage('a', ANTHROPIC_CACHE_CONTROL),
 			makeUserMessage('b', ANTHROPIC_CACHE_CONTROL),
 		];
-		const aiTools = { tool_a: makeTool(ANTHROPIC_CACHE_CONTROL), tool_b: makeTool() };
+		const aiTools = {
+			tool_a: makeTool({ anthropic: { cache_control: { type: 'ephemeral' } } }),
+			tool_b: makeTool(),
+		};
 
 		// Budget already exhausted: system (1) + 2 messages (2) + tool_a (1) = 4.
 		const result = applyRuntimeCacheBreakpoints({
@@ -408,32 +435,34 @@ describe('applyRuntimeCacheBreakpoints', () => {
 		});
 	});
 
-	it('leaves a caller-supplied cacheControl on the static tool untouched', () => {
-		const aiTools = {
-			tool_a: makeTool(),
-			tool_b: makeTool({ anthropic: { cacheControl: { type: 'ephemeral', ttl: '5m' } } }),
-		};
-		const messages = [makeUserMessage('hi')];
+	it.each(['cacheControl', 'cache_control'])(
+		'preserves a caller %s marker on the static tool',
+		(marker) => {
+			const callerOptions = { anthropic: { [marker]: { type: 'ephemeral', ttl: '5m' } } };
+			const aiTools = {
+				tool_a: makeTool(),
+				tool_b: makeTool(callerOptions),
+			};
+			const messages = [makeUserMessage('hi')];
 
-		const result = applyRuntimeCacheBreakpoints({
-			system: plainSystem,
-			messages,
-			aiTools,
-			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
-			staticToolCacheName: 'tool_b',
-		});
+			const result = applyRuntimeCacheBreakpoints({
+				system: plainSystem,
+				messages,
+				aiTools,
+				promptCaching: { enabled: true },
+				modelId: 'anthropic/claude-sonnet-4-5',
+				staticToolCacheName: 'tool_b',
+			});
 
-		// The caller's 5m marker on the static tool must survive untouched, not be
-		// overwritten by the runtime's (1h default) marker.
-		expect(result.aiTools.tool_b?.providerOptions).toEqual({
-			anthropic: { cacheControl: { type: 'ephemeral', ttl: '5m' } },
-		});
-		// The message breakpoint is unaffected by the tool already being marked.
-		expect(result.messages[0]?.providerOptions).toEqual({
-			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
-		});
-	});
+			// The caller's 5m marker on the static tool must survive untouched, not be
+			// overwritten by the runtime's (1h default) marker.
+			expect(result.aiTools.tool_b?.providerOptions).toEqual(callerOptions);
+			// The message breakpoint is unaffected by the tool already being marked.
+			expect(result.messages[0]?.providerOptions).toEqual({
+				anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+			});
+		},
+	);
 
 	it('skips a marker already on the last content part (not just message-level)', () => {
 		// The marker lives on the last content part; a message-level marker from the

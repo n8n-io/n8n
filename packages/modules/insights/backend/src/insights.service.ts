@@ -333,6 +333,22 @@ export class InsightsService {
 		);
 	}
 
+	async getDailyBillableExecutions({
+		startDate,
+		endDate,
+	}: { startDate: Date; endDate: Date }): Promise<Map<string, number>> {
+		const rows = await this.insightsByPeriodRepository.getDailyBillableExecutions({
+			startDate,
+			endDate,
+		});
+
+		return new Map(rows.map(({ day, billable }) => [day, billable]));
+	}
+
+	async getFirstBillableDay(): Promise<string | null> {
+		return await this.insightsByPeriodRepository.getFirstBillableDay();
+	}
+
 	private async queryInsightsByTime({
 		user,
 		startDate,

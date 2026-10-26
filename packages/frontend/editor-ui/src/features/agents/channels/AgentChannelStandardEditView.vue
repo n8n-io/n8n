@@ -23,7 +23,8 @@ defineExpose({ currentSettings, validationError, saveLabel, beforeSave, afterSav
 </script>
 
 <template>
-	<div :class="$style.editView">
+	<!-- The modal focuses this rather than the credential select, which opens on focus. -->
+	<div :class="$style.editView" tabindex="-1" data-agent-modal-autofocus>
 		<AgentIntegrationCredentialConnection
 			v-model="credentialId"
 			:integration-type="integration.type"
@@ -55,6 +56,8 @@ defineExpose({ currentSettings, validationError, saveLabel, beforeSave, afterSav
 			:agent-name="agentName"
 			:project-id="projectId"
 			:agent-id="agentId"
+			:managed-runtime="runtime"
+			:persist-channel="persistChannel"
 		/>
 	</div>
 </template>
@@ -64,5 +67,9 @@ defineExpose({ currentSettings, validationError, saveLabel, beforeSave, afterSav
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
+
+	&:focus {
+		outline: none;
+	}
 }
 </style>

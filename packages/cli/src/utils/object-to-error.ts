@@ -4,8 +4,11 @@ import type { Workflow } from 'n8n-workflow';
 
 /**
  * Optional properties that should be propagated from an error object to the new Error instance.
+ *
+ * `violations` keeps a sub-workflow's policy refusal readable in the parent. The
+ * `isPolicyRefusal` marker is left out: the parent's own graph was not refused.
  */
-const errorProperties = ['description', 'stack', 'executionId', 'workflowId'];
+const errorProperties = ['description', 'stack', 'executionId', 'workflowId', 'violations'];
 
 export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	// TODO: Expand with other error types

@@ -87,15 +87,11 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 	const lastProvisionedGrace = () => lastRequest().misfireGraceSeconds;
 
-	const makeRegistrar = ({
-		schedulerEnabled = true,
-		publicationEnabled = true,
-		allowSkipDurableScheduler = false,
-	} = {}) =>
+	const makeRegistrar = ({ schedulerEnabled = true, publicationEnabled = true } = {}) =>
 		new ScheduleTriggerJobRegistrar(
 			mockLogger(),
 			mock<GlobalConfig>({
-				scheduler: { enabled: schedulerEnabled, allowSkipDurableScheduler },
+				scheduler: { enabled: schedulerEnabled },
 				generic: { timezone: 'UTC' },
 			}),
 			mock<WorkflowsConfig>({ useWorkflowPublicationService: publicationEnabled }),
@@ -141,39 +137,13 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			expect(makeRegistrar().interceptsNode(other)).toBe(false);
 		});
 
-		// Only the Schedule Trigger declares `skipDurableScheduler`; the Workflow
-		// constructor strips it from any other node, so the toggle cases use that type.
-		it('does not intercept a node opted out via skip when the escape hatch is enabled', () => {
-			const skippingNode = mock<INode>({
+		it('ignores a stale saved skipDurableScheduler parameter', () => {
+			const staleNode = mock<INode>({
 				id: NODE_ID,
 				type: SCHEDULE_TRIGGER_NODE_TYPE,
 				parameters: { skipDurableScheduler: true },
 			});
-			expect(makeRegistrar({ allowSkipDurableScheduler: true }).interceptsNode(skippingNode)).toBe(
-				false,
-			);
-		});
-
-		it('still intercepts a skipping node when the escape hatch is disabled', () => {
-			const skippingNode = mock<INode>({
-				id: NODE_ID,
-				type: SCHEDULE_TRIGGER_NODE_TYPE,
-				parameters: { skipDurableScheduler: true },
-			});
-			expect(makeRegistrar({ allowSkipDurableScheduler: false }).interceptsNode(skippingNode)).toBe(
-				true,
-			);
-		});
-
-		it('intercepts a node that has not opted out even when the escape hatch is enabled', () => {
-			const keepingNode = mock<INode>({
-				id: NODE_ID,
-				type: SCHEDULE_TRIGGER_NODE_TYPE,
-				parameters: { skipDurableScheduler: false },
-			});
-			expect(makeRegistrar({ allowSkipDurableScheduler: true }).interceptsNode(keepingNode)).toBe(
-				true,
-			);
+			expect(makeRegistrar().interceptsNode(staleNode)).toBe(true);
 		});
 	});
 
@@ -977,7 +947,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				const registrar = new ScheduleTriggerJobRegistrar(
 					mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) }),
 					mock<GlobalConfig>({
-						scheduler: { enabled: true, allowSkipDurableScheduler: false },
+						scheduler: { enabled: true },
 						generic: { timezone: 'UTC' },
 					}),
 					mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),

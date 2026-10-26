@@ -7,7 +7,11 @@ import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { createStubServices, resolveEvalNodeDefinitionDirs } from '../harness/stub-services';
+import {
+	createStubServices,
+	missingEvalNodeData,
+	resolveEvalNodeDefinitionDirs,
+} from '../harness/stub-services';
 
 async function writeNodesJson(entries: unknown[]): Promise<string> {
 	const dir = await fs.mkdtemp(path.join(tmpdir(), 'eval-stub-services-'));
@@ -149,6 +153,41 @@ describe('resolveEvalNodeDefinitionDirs', () => {
 			expect(dir.endsWith('node-definitions')).toBe(true);
 		}
 	});
+});
+
+describe('missingEvalNodeData', () => {
+	const roots: string[] = [];
+	afterAll(async () => {
+		await Promise.all(roots.map(async (root) => await fs.rm(root, { recursive: true })));
+	});
+
+	async function createNodeData() {
+		const root = await fs.mkdtemp(path.join(tmpdir(), 'eval-node-data-'));
+		roots.push(root);
+		const paths = {
+			nodesJson: path.join(root, 'nodes.json'),
+			nodesBase: path.join(root, 'nodes-base', 'dist', 'node-definitions'),
+			nodesLangchain: path.join(root, '@n8n', 'nodes-langchain', 'dist', 'node-definitions'),
+		};
+		await fs.writeFile(paths.nodesJson, '[]', 'utf8');
+		await fs.mkdir(paths.nodesBase, { recursive: true });
+		await fs.mkdir(paths.nodesLangchain, { recursive: true });
+		return { root, paths };
+	}
+
+	it('returns no paths when all node data exists', async () => {
+		const { root, paths } = await createNodeData();
+		expect(missingEvalNodeData(paths.nodesJson, root)).toEqual([]);
+	});
+
+	it.each(['nodesJson', 'nodesBase', 'nodesLangchain'] as const)(
+		'returns the %s path when it is missing',
+		async (key) => {
+			const { root, paths } = await createNodeData();
+			await fs.rm(paths[key], { recursive: true });
+			expect(missingEvalNodeData(paths.nodesJson, root)).toEqual([paths[key]]);
+		},
+	);
 });
 
 describe('createStubServices with a seed', () => {

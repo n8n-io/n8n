@@ -16,6 +16,7 @@ import {
 	N8nInput,
 	N8nText,
 	N8nTimeAgo,
+	N8nTooltip,
 	type TextColor,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -24,6 +25,7 @@ import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { usePracticeRunBannerDismissal } from '../composables/usePracticeRunBannerDismissal';
 import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
+import AgentEvalSuggestionCard from './AgentEvalSuggestionCard.vue';
 import EvalInitialSample from './EvalInitialSample.vue';
 
 const props = defineProps<{
@@ -58,6 +60,10 @@ const props = defineProps<{
 	hideRevise?: boolean;
 	/** The complete view was opened on this case: expand it and scroll it into view. */
 	focused?: boolean;
+	/** The judge's proposed instruction for a failed check. Not `suggestion`: that is the correction note below. */
+	fixSuggestion?: string | null;
+	/** True from "Apply suggestion" until the rewrite and rerun settle. */
+	applyingSuggestion?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -70,6 +76,8 @@ const emit = defineEmits<{
 	'save-what-to-check': [text: string];
 	/** The trash icon's confirmed delete — this case and its example. */
 	'delete-check': [];
+	/** "Apply suggestion": rewrite the agent's instructions with the fix, then rerun. */
+	'apply-suggestion': [];
 	/** Small view only: the chevron or row was clicked. */
 	open: [];
 }>();
@@ -87,11 +95,28 @@ const root = ref<HTMLElement | null>(null);
 // say what should have happened instead — a passed or not-yet-run case has
 // nothing to correct.
 const needsCorrection = computed(() => props.status === 'work' || props.status === 'fail');
+
+// "Keep as is" hides the card only until a different suggestion arrives (a rerun failed
+// again), so a new proposal is never swallowed by an old dismissal.
+const suggestionDismissed = ref(false);
+watch(
+	() => props.fixSuggestion,
+	() => {
+		suggestionDismissed.value = false;
+	},
+);
+const showFixSuggestion = computed(
+	() =>
+		props.view === 'complete' &&
+		needsCorrection.value &&
+		Boolean(props.fixSuggestion?.trim()) &&
+		!suggestionDismissed.value,
+);
 // A "couldn't finish" case often has no output at all — it must still expand
 // to reach the correction form, so this isn't gated on output alone.
 const canExpand = computed(() => props.output !== null || needsCorrection.value);
 
-type StatusText = { labelKey: BaseTextKey; color: TextColor };
+type StatusText = { labelKey: BaseTextKey; color?: TextColor; warning?: boolean };
 
 // Only `view="complete"` reads this — the plain row's header already says its
 // own thing in place of a status line (the scenario `label`, or the identical
@@ -101,12 +126,13 @@ const STATUS_TEXT: Record<AgentAvatarKind, StatusText> = {
 	strong: { labelKey: 'agents.builder.agentEvals.checks.status.passes', color: 'success' },
 	waiting: { labelKey: 'agents.builder.agentEvals.checks.status.running', color: 'text-light' },
 	idle: { labelKey: 'agents.builder.agentEvals.checks.status.neverRan', color: 'text-light' },
-	work: { labelKey: 'agents.builder.agentEvals.checks.status.needsWork', color: 'warning' },
+	work: { labelKey: 'agents.builder.agentEvals.checks.status.needsWork', warning: true },
 	fail: { labelKey: 'agents.builder.agentEvals.checks.status.needsWork', color: 'danger' },
 };
 
 const statusText = computed(() => i18n.baseText(STATUS_TEXT[props.status].labelKey));
 const statusColor = computed(() => STATUS_TEXT[props.status].color);
+const statusIsWarning = computed(() => STATUS_TEXT[props.status].warning === true);
 
 function toggleExpanded() {
 	if (!canExpand.value) return;
@@ -197,7 +223,12 @@ watch(
 				<N8nText color="text-dark" size="medium" bold :class="$style.headerTitleText">{{
 					input
 				}}</N8nText>
-				<N8nText :color="statusColor" size="small">{{ statusText }}</N8nText>
+				<N8nText
+					:color="statusColor"
+					:class="{ [$style.statusWarning]: statusIsWarning }"
+					size="small"
+					>{{ statusText }}</N8nText
+				>
 			</div>
 
 			<N8nText color="text-light" size="small">
@@ -240,44 +271,11 @@ watch(
 			:class="$style.sample"
 			:data-test-id="testId && `${testId}-placeholder`"
 		>
-			<div :class="$style.whatToCheck">
-				<div :class="$style.whatToCheckHeader">
-					<N8nText v-if="whatToCheck" bold color="text-dark" size="medium">{{
+			<div v-if="whatToCheck" :class="$style.whatToCheck">
+				<div :class="$style.whatToCheckBody">
+					<N8nText bold color="text-dark" size="medium">{{
 						i18n.baseText('instanceAi.testAgentPreview.rule')
 					}}</N8nText>
-					<div v-if="!editingWhatToCheck" :class="$style.whatToCheckActions">
-						<!-- Only the rule is editable; a case with no criteria column can still be deleted. -->
-						<N8nButton
-							v-if="whatToCheck"
-							variant="subtle"
-							size="small"
-							icon-only
-							:disabled="disabled || runningCheck"
-							:aria-label="i18n.baseText('instanceAi.testAgentPreview.editRule')"
-							:data-test-id="testId && `${testId}-edit-rule`"
-							@click="onStartEditWhatToCheck"
-						>
-							<template #icon>
-								<N8nIcon icon="pencil" size="small" />
-							</template>
-						</N8nButton>
-						<N8nButton
-							variant="subtle"
-							size="small"
-							icon-only
-							:disabled="disabled"
-							:aria-label="i18n.baseText('instanceAi.testAgentPreview.deleteCheck.label')"
-							:data-test-id="testId && `${testId}-delete-check`"
-							@click="onDeleteCheck"
-						>
-							<template #icon>
-								<N8nIcon icon="trash-2" size="small" />
-							</template>
-						</N8nButton>
-					</div>
-				</div>
-
-				<template v-if="whatToCheck">
 					<N8nText v-if="!editingWhatToCheck" color="text-dark" size="medium">{{
 						whatToCheck
 					}}</N8nText>
@@ -300,7 +298,7 @@ watch(
 							{{ i18n.baseText('generic.save') }}
 						</N8nButton>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="small"
 							:data-test-id="testId && `${testId}-rule-cancel`"
 							@click="onCancelEditWhatToCheck"
@@ -308,7 +306,21 @@ watch(
 							{{ i18n.baseText('generic.cancel') }}
 						</N8nButton>
 					</div>
-				</template>
+				</div>
+				<N8nButton
+					v-if="!editingWhatToCheck"
+					variant="outline"
+					size="small"
+					icon-only
+					:disabled="disabled || runningCheck"
+					:aria-label="i18n.baseText('instanceAi.testAgentPreview.editRule')"
+					:data-test-id="testId && `${testId}-edit-rule`"
+					@click="onStartEditWhatToCheck"
+				>
+					<template #icon>
+						<N8nIcon icon="pencil" size="small" />
+					</template>
+				</N8nButton>
 			</div>
 			<N8nText bold color="text-dark" size="medium">{{
 				i18n.baseText('instanceAi.testAgentPreview.conversation')
@@ -321,6 +333,7 @@ watch(
 					:status="status"
 					:tool-calls="toolCalls"
 					:project-id="projectId"
+					:joined-below="!practiceBannerDismissed"
 				/>
 				<div v-if="!practiceBannerDismissed" :class="$style.practiceBanner">
 					<N8nText size="small">
@@ -339,6 +352,16 @@ watch(
 			</div>
 
 			<template v-if="needsCorrection">
+				<AgentEvalSuggestionCard
+					v-if="showFixSuggestion && fixSuggestion"
+					:class="$style.fixSuggestion"
+					:suggestion="fixSuggestion"
+					:applying="applyingSuggestion"
+					:disabled="disabled"
+					:test-id="testId && `${testId}-suggestion-card`"
+					@apply="emit('apply-suggestion')"
+					@dismiss="suggestionDismissed = true"
+				/>
 				<template v-if="!hideRevise">
 					<N8nText bold color="text-dark" :class="$style.correctionHint">
 						{{ i18n.baseText('instanceAi.testAgentPreview.inputCorrectionHint') }}
@@ -354,34 +377,35 @@ watch(
 						@keydown.ctrl.enter="onSaveCheck"
 					/>
 				</template>
-				<div :class="$style.correctionActions">
-					<N8nButton
-						v-if="!hideRevise"
-						variant="solid"
-						size="small"
-						:disabled="disabled || !suggestion.trim()"
-						:loading="savingCheck"
-						:data-test-id="testId && `${testId}-save-check`"
-						@click="onSaveCheck"
-					>
-						{{ i18n.baseText('instanceAi.testAgentPreview.saveCorrection') }}
-					</N8nButton>
-					<N8nButton
-						variant="ghost"
-						size="small"
-						:disabled="disabled || savingCheck"
-						:data-test-id="testId && `${testId}-actually-fine`"
-						@click="onActuallyFine"
-					>
-						{{ i18n.baseText('instanceAi.testAgentPreview.actuallyFine') }}
-					</N8nButton>
-				</div>
 			</template>
-			<template v-else>
-				<div :class="$style.correctionActions">
+			<div :class="$style.correctionActions">
+				<div :class="$style.primaryActions">
+					<template v-if="needsCorrection">
+						<N8nButton
+							v-if="!hideRevise"
+							variant="solid"
+							size="small"
+							:disabled="disabled || !suggestion.trim()"
+							:loading="savingCheck"
+							:data-test-id="testId && `${testId}-save-check`"
+							@click="onSaveCheck"
+						>
+							{{ i18n.baseText('instanceAi.testAgentPreview.saveCorrection') }}
+						</N8nButton>
+						<N8nButton
+							variant="ghost"
+							size="small"
+							:disabled="disabled || savingCheck"
+							:data-test-id="testId && `${testId}-actually-fine`"
+							@click="onActuallyFine"
+						>
+							{{ i18n.baseText('instanceAi.testAgentPreview.actuallyFine') }}
+						</N8nButton>
+					</template>
 					<N8nButton
+						v-else
 						size="small"
-						variant="subtle"
+						variant="outline"
 						:disabled="disabled"
 						:loading="runningCheck"
 						:data-test-id="testId && `${testId}-run-check`"
@@ -390,7 +414,26 @@ watch(
 						{{ i18n.baseText('instanceAi.testAgentPreview.runCheck') }}
 					</N8nButton>
 				</div>
-			</template>
+				<!-- Ghost, so it never outranks Run check or Actually fine. -->
+				<N8nTooltip
+					:content="i18n.baseText('instanceAi.testAgentPreview.deleteCheck.label')"
+					placement="top-end"
+				>
+					<N8nButton
+						variant="ghost"
+						size="medium"
+						icon-only
+						:disabled="disabled"
+						:aria-label="i18n.baseText('instanceAi.testAgentPreview.deleteCheck.label')"
+						:data-test-id="testId && `${testId}-delete-check`"
+						@click="onDeleteCheck"
+					>
+						<template #icon>
+							<N8nIcon icon="trash-2" size="small" />
+						</template>
+					</N8nButton>
+				</N8nTooltip>
+			</div>
 		</div>
 	</div>
 </template>
@@ -411,6 +454,10 @@ watch(
 	min-width: 0;
 }
 
+.statusWarning {
+	color: var(--callout--color--text--secondary);
+}
+
 .headerTitleText {
 	display: block;
 	overflow: hidden;
@@ -427,23 +474,17 @@ watch(
 
 .whatToCheck {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	margin-bottom: var(--spacing--2xs);
-}
-
-.whatToCheckHeader {
-	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--sm);
+	padding-bottom: var(--spacing--lg);
 }
 
-.whatToCheckActions {
+.whatToCheckBody {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	margin-left: auto;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
 }
 
 .whatToCheckEdit {
@@ -469,7 +510,7 @@ watch(
 
 .sample {
 	border-left: var(--border);
-	padding: var(--spacing--2xs) var(--spacing--sm) var(--spacing--sm) 32px;
+	padding: var(--spacing--lg) var(--spacing--sm) var(--spacing--sm) 32px;
 	margin-left: var(--spacing--xs);
 }
 
@@ -479,11 +520,21 @@ watch(
 	margin-bottom: var(--spacing--2xs);
 }
 
+.fixSuggestion {
+	margin-top: var(--spacing--sm);
+}
+
 .correctionActions {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
+	padding-top: var(--spacing--xs);
+}
+
+.primaryActions {
+	display: flex;
+	align-items: center;
 	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--2xs);
 }
 
 .practiceBanner {

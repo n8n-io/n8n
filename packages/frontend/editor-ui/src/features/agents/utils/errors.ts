@@ -1,5 +1,5 @@
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
-import { CHAT_MESSAGE_STATUS } from '../constants';
+import { CHAT_MESSAGE_ROLE, CHAT_MESSAGE_STATUS } from '../constants';
 
 const EMPTY_MODEL_RESPONSE_ERROR =
 	'The model finished without returning an answer. Try again or use another model.';
@@ -9,7 +9,7 @@ const MODEL_STREAM_STALL_ERROR =
 /** Live errors and saved history carry the server's error text without a retry code. */
 export function isRetryableChatError(message: ChatMessage | undefined): boolean {
 	return (
-		message?.role === 'assistant' &&
+		message?.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
 		message.status === CHAT_MESSAGE_STATUS.ERROR &&
 		(EMPTY_MODEL_RESPONSE_ERROR === message.content ||
 			MODEL_STREAM_STALL_ERROR.test(message.content))

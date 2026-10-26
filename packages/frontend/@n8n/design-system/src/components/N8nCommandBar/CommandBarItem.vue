@@ -156,7 +156,7 @@ function onClick(event: MouseEvent) {
 
 .content {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 	gap: var(--spacing--xs);
 	flex: 1;
 	min-width: 0;

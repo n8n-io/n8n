@@ -14,6 +14,11 @@ frontend, and extensible node-based workflow engine.
 - Write all technical text (code comments, PR descriptions, issue and ticket
   descriptions, docs) in ASD-STE100 Simplified Technical English: use short
   sentences, the active voice, and one instruction for each sentence
+- **JSDoc on `@Env(...)` config properties is public documentation.** The
+  docs team exports these comments into the environment variable reference on
+  docs.n8n.io. Write them for a self-hosting operator and follow the
+  `n8n:env-var-docs` skill, which applies the n8n docs style guide and
+  overrides the ASD-STE100 rule above for these comments
 - **Secrets on the command line:** if a developer opted into anonymous dev
   metrics (`scripts/dev-metrics`), pnpm command arguments are recorded. Arguments
   of secret-carrying words (`config`, `login`, `publish`, `token`) — whether a
@@ -69,10 +74,15 @@ are namespaced under `n8n:`. Use `n8n:` prefix when invoking them (e.g.
 
 ## Essential Commands
 
-For full-repo lint and typecheck, use `pnpm agent:lint` and
-`pnpm agent:typecheck`. They save full logs and return compact results.
+For routine pre-commit checks, follow [Verify changes](#verify-changes).
 For focused tests, use `pnpm agent:test` or `pnpm agent:playwright`.
-Run each command with `--help` for its package, script, and file options.
+Pass test files and worker limits after `--`. Run each command with `--help`
+for its options.
+
+`pnpm agent:lint` and `pnpm agent:typecheck` run full-repo checks by default.
+With `--filter <package>`, they still check the whole package. These wrappers
+save logs and reduce console output. They do not reduce CPU or memory use.
+Do not use them as routine pre-commit checks.
 
 ### Fresh checkout / agent setup
 
@@ -243,18 +253,36 @@ baseline. A new business-logic import fails CI.
   repository methods you call. `run` **requires** a context — pass an empty `{}`
   at the operation entry point, and reuse the one you were handed everywhere
   below it (a context that already carries a transaction is joined, not nested).
-  Repositories extend `BaseRepository` and resolve the right `EntityManager` with
-  `this.managerFor(ctx)`; the `Transaction` handle is opaque and never exposes a
-  driver type to business logic. See `oauth-token.service.ts` +
-  `oauth-*-token.repository.ts` for a worked example.
+  The `Transaction` handle is opaque and never exposes a driver type to
+  business logic. See `oauth-token.service.ts` for a worked service example
+  (its repositories predate the composition rule below; do not copy their shape).
+- **Repositories compose, they don't extend.** A repository is the boundary
+  that keeps TypeORM out of business logic. If it extended `BaseRepository`,
+  every service that injects it would also get `find`, `save`, `delete`,
+  `createQueryBuilder` and `.manager` for free, and TypeORM would leak through
+  inferred types that no lint rule can see. So a repository is a plain
+  `@Service()` class that holds a **file-private `BaseRepository` subclass (the
+  table)** as a private field and resolves the manager with
+  `this.table.managerFor(ctx)`. The table is never exported or registered with
+  DI. Every data access is a named use-case method on the repository that
+  calls the table internally; there is no generic `find`/`save`/`delete`
+  unless you write it for one operation. See
+  `packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts`
+  for a worked example. The existing `extends BaseRepository` / `extends
+  Repository` repositories are legacy. Do not copy them, and do not convert them
+  in unrelated PRs. This rule is not yet lint-enforced.
 - **Anti-patterns reviewers reject** — they hide the dependency instead of
   removing it:
   - String-matching TypeORM errors, e.g. `error.name === 'QueryFailedError'`.
   - Relabeling the import from `@n8n/typeorm` to `@n8n/db` to silence the rule
     (`@n8n/db` re-exports several operators/types, but this relabels the
     dependency rather than removing it).
-  - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
-    operator import — trades a visible leak for an invisible one.
+  - Pushing `.manager` / `createQueryBuilder` / `repo.managerFor(ctx)` into
+    business logic to avoid an operator import — trades a visible leak for an
+    invisible one.
+  - A repository that `extends BaseRepository` / `extends Repository`, or that
+    exposes its table (public property, getter, or a `find(options)`
+    passthrough) — the inherited TypeORM surface must stay private to the table.
 
 ### ESLint configuration layers
 
@@ -314,9 +342,20 @@ extends one of those layers):
 
 ### Verify changes
 
-- Run focused tests from the owning package: `pnpm test <test-file>`.
-- Run that package's `pnpm lint` and `pnpm typecheck` before committing code.
-  Build first when shared types or cross-package dependencies change.
+- Before committing, run formatting and lint checks on changed files. Use
+  the package's configured tools through `pnpm exec` with explicit file paths.
+  Do not append file paths to `pnpm lint`; package scripts can still check
+  the whole package.
+- Run tests that cover the changed behavior from the owning package:
+  `pnpm test <test-file> --maxWorkers=1`. Or use the root wrapper:
+  `pnpm agent:test --filter <package> -- <test-file> --maxWorkers=1`.
+  For Playwright, use `pnpm agent:playwright -- <spec-file> --workers=1`.
+- For routine commits, run checks one at a time. Use one test worker by
+  default. Do not run full frontend typechecks locally. Use CI for
+  comprehensive lint, typechecks, and test suites.
+- For documentation-only changes, review the diff and run `git diff --check`.
+  Skip code tests when no behavior changed.
+- Report which checks ran and which checks were left to CI.
 - Use Vitest for unit tests. Use
   [Playwright](packages/quality/testing/playwright/AGENTS.md) when a test needs its
   browser, fixtures, or managed containers.

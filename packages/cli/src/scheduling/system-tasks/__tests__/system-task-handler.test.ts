@@ -1,6 +1,6 @@
 import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { ClaimedTask, DispatchReporter } from '@n8n/scheduler';
+import type { ClaimedTask, DispatchReporter, TaskRun } from '@n8n/scheduler';
 import { createDispatchReporter, LeaseLostError } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -8,12 +8,13 @@ import { mock } from 'vitest-mock-extended';
 import { SystemTaskHandler } from '../system-task-handler';
 import { DummySystemTask } from './dummy.task';
 
+const runOf = (signal: AbortSignal): TaskRun => ({ signal, remainingMs: () => 60_000 });
+
 describe('SystemTaskHandler', () => {
 	const claimed = mock<ClaimedTask>({ id: 'task-1', jobId: 2 });
 
-	function setup(effects: DummySystemTask['effects']) {
+	function setup() {
 		const task = new DummySystemTask();
-		task.effects = effects;
 		const report = mock<DispatchReporter>();
 		const onRunError = vi.fn();
 		const eventService = mock<EventService>();
@@ -39,9 +40,9 @@ describe('SystemTaskHandler', () => {
 	}
 
 	it('runs the task', async () => {
-		const { task, report, handler } = setup('idempotent');
+		const { task, report, handler } = setup();
 
-		await handler.execute(claimed, report, new AbortController().signal);
+		await handler.execute(claimed, report, runOf(new AbortController().signal));
 
 		expect(task.runCount).toBe(1);
 	});
@@ -49,13 +50,13 @@ describe('SystemTaskHandler', () => {
 	it.each(['shutdownController', 'leaseController'] as const)(
 		'hands the run a signal that aborts with the %s',
 		async (source) => {
-			const context = setup('idempotent');
+			const context = setup();
 			let seenSignal: AbortSignal | undefined;
 			context.task.onRun = async (signal) => {
 				seenSignal = signal;
 			};
 
-			await context.handler.execute(claimed, context.report, context.leaseController.signal);
+			await context.handler.execute(claimed, context.report, runOf(context.leaseController.signal));
 			expect(seenSignal?.aborted).toBe(false);
 			context[source].abort();
 
@@ -64,13 +65,13 @@ describe('SystemTaskHandler', () => {
 	);
 
 	it('does not report a run that rejects once the claim was lost', async () => {
-		const { task, report, handler, onRunError, leaseController } = setup('idempotent');
+		const { task, report, handler, onRunError, leaseController } = setup();
 		task.onRun = async (signal) =>
 			await new Promise<void>((_, reject) => {
 				signal.addEventListener('abort', () => reject(new Error('aborted')));
 			});
 
-		const executing = handler.execute(claimed, report, leaseController.signal);
+		const executing = handler.execute(claimed, report, runOf(leaseController.signal));
 		leaseController.abort();
 
 		await expect(executing).rejects.toThrow();
@@ -78,15 +79,14 @@ describe('SystemTaskHandler', () => {
 	});
 
 	it('propagates the lease error when the run resolves after its claim is lost', async () => {
-		const { task, report, handler, onRunError, eventService, leaseController } =
-			setup('idempotent');
+		const { task, report, handler, onRunError, eventService, leaseController } = setup();
 		task.onRun = async (signal) =>
 			await new Promise<void>((resolve) => {
 				signal.addEventListener('abort', () => resolve(), { once: true });
 			});
 		const error = new LeaseLostError();
 
-		const executing = handler.execute(claimed, report, leaseController.signal);
+		const executing = handler.execute(claimed, report, runOf(leaseController.signal));
 		leaseController.abort(error);
 
 		await expect(executing).rejects.toBe(error);
@@ -98,78 +98,68 @@ describe('SystemTaskHandler', () => {
 		);
 	});
 
-	it.each(['idempotent', 'non-idempotent'] as const)(
-		'marks %s work dispatched only after the run',
-		async (effects) => {
-			const { task, handler } = setup(effects);
-			const runCountsAtDispatch: number[] = [];
-			const report = createDispatchReporter(() => {
-				runCountsAtDispatch.push(task.runCount);
-			});
+	it('marks the occurrence dispatched only after the run', async () => {
+		const { task, handler } = setup();
+		const runCountsAtDispatch: number[] = [];
+		const report = createDispatchReporter(() => {
+			runCountsAtDispatch.push(task.runCount);
+		});
 
-			await handler.execute(claimed, report, new AbortController().signal);
+		await handler.execute(claimed, report, runOf(new AbortController().signal));
 
-			expect(runCountsAtDispatch).toEqual([1]);
-		},
-	);
+		expect(runCountsAtDispatch).toEqual([1]);
+	});
 
-	it.each(['idempotent', 'non-idempotent'] as const)(
-		'returns the dispatched token for %s work',
-		async (effects) => {
-			const task = new DummySystemTask();
-			task.effects = effects;
-			const report = createDispatchReporter(vi.fn());
-			const handler = new SystemTaskHandler(
-				task,
-				new AbortController().signal,
-				mockLogger(),
-				mock<EventService>(),
-				new Tracing(),
-				vi.fn(),
-			);
+	it('returns the dispatched token', async () => {
+		const task = new DummySystemTask();
+		const report = createDispatchReporter(vi.fn());
+		const handler = new SystemTaskHandler(
+			task,
+			new AbortController().signal,
+			mockLogger(),
+			mock<EventService>(),
+			new Tracing(),
+			vi.fn(),
+		);
 
-			const returned = await handler.execute(claimed, report, new AbortController().signal);
+		const returned = await handler.execute(claimed, report, runOf(new AbortController().signal));
 
-			expect(returned).toBe(report.dispatched());
-		},
-	);
+		expect(returned).toBe(report.dispatched());
+	});
 
 	it('lets a failing run reach the executor', async () => {
-		const { task, report, handler } = setup('idempotent');
+		const { task, report, handler } = setup();
 		task.onRun = async () => {
 			throw new Error('failed');
 		};
 
-		await expect(handler.execute(claimed, report, new AbortController().signal)).rejects.toThrow(
-			'failed',
-		);
+		await expect(
+			handler.execute(claimed, report, runOf(new AbortController().signal)),
+		).rejects.toThrow('failed');
 	});
 
-	it.each(['idempotent', 'non-idempotent'] as const)(
-		'reports a failing run of %s work, which the executor would not',
-		async (effects) => {
-			const { task, report, handler, onRunError } = setup(effects);
-			const error = new Error('failed');
-			task.onRun = async () => {
-				throw error;
-			};
+	it('reports a failing run, which the executor would not', async () => {
+		const { task, report, handler, onRunError } = setup();
+		const error = new Error('failed');
+		task.onRun = async () => {
+			throw error;
+		};
 
-			await expect(handler.execute(claimed, report, new AbortController().signal)).rejects.toThrow(
-				error,
-			);
+		await expect(
+			handler.execute(claimed, report, runOf(new AbortController().signal)),
+		).rejects.toThrow(error);
 
-			expect(onRunError).toHaveBeenCalledWith(error);
-		},
-	);
+		expect(onRunError).toHaveBeenCalledWith(error);
+	});
 
 	it('does not report a run that rejects once shutdown aborted its signal', async () => {
-		const { task, report, handler, onRunError, shutdownController } = setup('idempotent');
+		const { task, report, handler, onRunError, shutdownController } = setup();
 		task.onRun = async (signal) =>
 			await new Promise<void>((_, reject) => {
 				signal.addEventListener('abort', () => reject(new Error('aborted')));
 			});
 
-		const executing = handler.execute(claimed, report, new AbortController().signal);
+		const executing = handler.execute(claimed, report, runOf(new AbortController().signal));
 		shutdownController.abort();
 
 		await expect(executing).rejects.toThrow();
@@ -177,21 +167,21 @@ describe('SystemTaskHandler', () => {
 	});
 
 	it('runs the task and reports nothing although a metrics listener throws', async () => {
-		const { task, report, handler, onRunError, eventService } = setup('idempotent');
+		const { task, report, handler, onRunError, eventService } = setup();
 		eventService.emit.mockImplementation(() => {
 			throw new Error('sink');
 		});
 
-		await handler.execute(claimed, report, new AbortController().signal);
+		await handler.execute(claimed, report, runOf(new AbortController().signal));
 
 		expect(task.runCount).toBe(1);
 		expect(onRunError).not.toHaveBeenCalled();
 	});
 
 	it('does not report a run that succeeds', async () => {
-		const { report, handler, onRunError } = setup('idempotent');
+		const { report, handler, onRunError } = setup();
 
-		await handler.execute(claimed, report, new AbortController().signal);
+		await handler.execute(claimed, report, runOf(new AbortController().signal));
 
 		expect(onRunError).not.toHaveBeenCalled();
 	});
@@ -206,12 +196,12 @@ describe('SystemTaskHandler', () => {
 		});
 
 		it('emits a durable run as started, then settled as a success with its duration', async () => {
-			const { task, report, handler, eventService } = setup('idempotent');
+			const { task, report, handler, eventService } = setup();
 			task.onRun = async () => {
 				await vi.advanceTimersByTimeAsync(250);
 			};
 
-			await handler.execute(claimed, report, new AbortController().signal);
+			await handler.execute(claimed, report, runOf(new AbortController().signal));
 
 			expect(eventService.emit.mock.calls).toEqual([
 				['system-task-run-started', { name: 'dummy', mode: 'durable' }],
@@ -223,14 +213,14 @@ describe('SystemTaskHandler', () => {
 		});
 
 		it('settles a failing run as a failure', async () => {
-			const { task, report, handler, eventService } = setup('idempotent');
+			const { task, report, handler, eventService } = setup();
 			task.onRun = async () => {
 				throw new Error('failed');
 			};
 
-			await expect(handler.execute(claimed, report, new AbortController().signal)).rejects.toThrow(
-				'failed',
-			);
+			await expect(
+				handler.execute(claimed, report, runOf(new AbortController().signal)),
+			).rejects.toThrow('failed');
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'system-task-run-settled',
@@ -239,13 +229,13 @@ describe('SystemTaskHandler', () => {
 		});
 
 		it('settles a run that resolves once shutdown aborted its signal as aborted', async () => {
-			const { task, report, handler, eventService, shutdownController } = setup('idempotent');
+			const { task, report, handler, eventService, shutdownController } = setup();
 			task.onRun = async (signal) =>
 				await new Promise<void>((resolve) => {
 					signal.addEventListener('abort', () => resolve());
 				});
 
-			const executing = handler.execute(claimed, report, new AbortController().signal);
+			const executing = handler.execute(claimed, report, runOf(new AbortController().signal));
 			shutdownController.abort();
 			await executing;
 
@@ -256,13 +246,13 @@ describe('SystemTaskHandler', () => {
 		});
 
 		it('settles a run that rejects once shutdown aborted its signal as aborted', async () => {
-			const { task, report, handler, eventService, shutdownController } = setup('idempotent');
+			const { task, report, handler, eventService, shutdownController } = setup();
 			task.onRun = async (signal) =>
 				await new Promise<void>((_, reject) => {
 					signal.addEventListener('abort', () => reject(new Error('aborted')));
 				});
 
-			const executing = handler.execute(claimed, report, new AbortController().signal);
+			const executing = handler.execute(claimed, report, runOf(new AbortController().signal));
 			shutdownController.abort();
 			await expect(executing).rejects.toThrow();
 
@@ -273,13 +263,13 @@ describe('SystemTaskHandler', () => {
 		});
 
 		it('settles a run that rejects once its claim was lost as lease_lost', async () => {
-			const { task, report, handler, eventService, leaseController } = setup('idempotent');
+			const { task, report, handler, eventService, leaseController } = setup();
 			task.onRun = async (signal) =>
 				await new Promise<void>((_, reject) => {
 					signal.addEventListener('abort', () => reject(new Error('aborted')));
 				});
 
-			const executing = handler.execute(claimed, report, leaseController.signal);
+			const executing = handler.execute(claimed, report, runOf(leaseController.signal));
 			leaseController.abort();
 			await expect(executing).rejects.toThrow();
 

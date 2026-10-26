@@ -42,7 +42,12 @@ function getOrCreateAgent(name: string, modelId: string, instructions: string): 
 	const key = `${name}:${modelId}`;
 	let agent = agentCache.get(key);
 	if (!agent) {
-		agent = createEvalAgent(`eval-binary-${name}`, { model: modelId, instructions, cache: true });
+		agent = createEvalAgent(`eval-binary-${name}`, {
+			model: modelId,
+			instructions,
+			cache: true,
+			judge: true,
+		});
 		agentCache.set(key, agent);
 	}
 	return agent;

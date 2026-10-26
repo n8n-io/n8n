@@ -38,8 +38,8 @@
 	}
 
 	@include mixins.e(title) {
-		line-height: normal;
-		font-weight: var(--font-weight--bold);
+		line-height: var.$notification-icon-size;
+		font-weight: var(--font-weight--medium);
 		font-size: var.$notification-title-font-size;
 		color: var.$notification-title-color;
 		margin: 0;

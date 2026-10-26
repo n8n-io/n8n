@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
-import type { ModuleInterface } from '@n8n/decorators';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
+import type { ModuleInterface, SystemTaskClass } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -10,6 +10,10 @@ export class AgentsModule implements ModuleInterface {
 	async init() {
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
+
+		// The skills module starts before this module. Tell it which agents use skills.
+		const { registerSkillAgentsProvider } = await import('./register-skill-agents-provider.js');
+		registerSkillAgentsProvider();
 
 		// Imported for its `@OnLifecycleEvent` registration, which happens at
 		// class-decoration time — nothing else references this service.
@@ -22,11 +26,14 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');
 		await import('./agent-knowledge.controller.js');
+		await import('./agent-memory.controller.js');
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
+		await import('./system-agents/system-agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
 		await import('./agent-slack-integrations.controller.js');
 		await import('./agent-teams-integrations.controller.js');
+		await import('./agent-whatsapp-integrations.controller.js');
 		await import('./agent-vector-stores.controller.js');
 		await import('./agent-tasks.controller.js');
 		await import('./agent-sandbox.controller.js');
@@ -40,6 +47,9 @@ export class AgentsModule implements ModuleInterface {
 
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
+
+		const { registerUserDeletionHandler } = await import('./register-user-deletion-handler.js');
+		registerUserDeletionHandler();
 
 		// Register blob backends for agent execution logs and knowledge files.
 		// The fs backend is always available; s3/az reuse the clients base-command
@@ -88,17 +98,23 @@ export class AgentsModule implements ModuleInterface {
 			'./integrations/platforms/slack/slack-integration.js'
 		);
 		const { TelegramIntegration } = await import(
-			'./integrations/platforms/telegram-integration.js'
+			'./integrations/platforms/telegram/telegram-integration.js'
 		);
-		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
-		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
+		const { LinearIntegration } = await import(
+			'./integrations/platforms/linear/linear-integration.js'
+		);
+		const { DiscordIntegration } = await import(
+			'./integrations/platforms/discord/discord-integration.js'
+		);
 		const { WhatsAppIntegration } = await import(
-			'./integrations/platforms/whatsapp-integration.js'
+			'./integrations/platforms/whatsapp/whatsapp-integration.js'
 		);
 		const { TeamsIntegration } = await import(
 			'./integrations/platforms/teams/teams-integration.js'
 		);
-		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
+		const { N8nChatIntegration } = await import(
+			'./integrations/platforms/n8n-chat/n8n-chat-integration.js'
+		);
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
@@ -205,20 +221,38 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentInterruptedExecutionSweepTask } = await import(
 			'./agent-interrupted-execution-sweep.task.js'
 		);
-		return [AgentCheckpointPruningTask, AgentInterruptedExecutionSweepTask];
+		const { AgentChannelMediaRetentionTask } = await import(
+			'./agent-channel-media-retention.task.js'
+		);
+
+		const tasks: SystemTaskClass[] = [
+			AgentCheckpointPruningTask,
+			AgentInterruptedExecutionSweepTask,
+			AgentChannelMediaRetentionTask,
+		];
+
+		// Like `telemetry-pulse`: make sure no job is scheduled when telemetry is off.
+		if (Container.get(GlobalConfig).diagnostics.enabled) {
+			const { AgentKnowledgeSnapshotTask } = await import('./agent-knowledge-snapshot.task.js');
+			tasks.push(AgentKnowledgeSnapshotTask);
+		}
+
+		return tasks;
 	}
 
 	async settings() {
 		const config = Container.get(AgentsConfig);
 		const { AgentsSettingsService } = await import('./agents-settings.service.js');
 		const { AiService } = await import('@/services/ai.service.js');
-		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
+		const { KnowledgeAvailabilityService } = await import(
+			'@/modules/knowledge/knowledge-availability.service.js'
+		);
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
 			enabled: await Container.get(AgentsSettingsService).getEnabled(),
 			modules: [...config.modules],
-			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
+			knowledgeBaseEnabled: Container.get(KnowledgeAvailabilityService).isFileKnowledgeEnabled(),
 			proxyEnabled,
 		};
 	}
@@ -274,6 +308,10 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentMemoryEntrySourceEntity } = await import(
 			'./entities/agent-memory-entry-source.entity.js'
 		);
+		const { AgentSkillDependency } = await import('./entities/agent-skill-dependency.entity.js');
+		const { AgentVersionSkillDependency } = await import(
+			'./entities/agent-version-skill-dependency.entity.js'
+		);
 
 		return [
 			Agent,
@@ -308,6 +346,8 @@ export class AgentsModule implements ModuleInterface {
 			AgentMemoryEntryCandidateEntity,
 			AgentMemoryEntryLockEntity,
 			AgentMemoryEntrySourceEntity,
+			AgentSkillDependency,
+			AgentVersionSkillDependency,
 		];
 	}
 

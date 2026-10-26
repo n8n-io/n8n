@@ -58,6 +58,7 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 import { JobProcessor } from '../job-processor';
 import type { Job } from '../scaling.types';
 import { WebhookResponseRelay } from '../webhook-response-relay';
+import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(VariablesService, {
@@ -75,6 +76,7 @@ mockInstance(OwnershipService, {
 });
 
 const processRunExecutionDataMock = vi.fn();
+const workflowExecuteSuspendMock = vi.fn();
 vi.mock('n8n-core', async () => {
 	const original = await vi.importActual<typeof import('n8n-core')>('n8n-core');
 
@@ -82,7 +84,10 @@ vi.mock('n8n-core', async () => {
 	return {
 		...original,
 		WorkflowExecute: vi.fn(function () {
-			return { processRunExecutionData: processRunExecutionDataMock };
+			return {
+				processRunExecutionData: processRunExecutionDataMock,
+				suspend: workflowExecuteSuspendMock,
+			};
 		}),
 	};
 });
@@ -370,6 +375,325 @@ describe('JobProcessor', () => {
 
 			expect(jobProcessor.getTrackedJobIds()).not.toContain('job-1');
 			expect(jobProcessor.getJobsInPreflight()).toEqual([]);
+		});
+	});
+
+	describe('suspension', () => {
+		beforeEach(() => {
+			workflowExecuteSuspendMock.mockClear();
+			logger.info.mockClear();
+		});
+
+		const createJobProcessor = (executionPersistence: ExecutionPersistence) =>
+			new JobProcessor(
+				logger,
+				mock<ExecutionRepository>(),
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				createManualExecutionServiceMock(),
+				executionsConfig,
+				mock(),
+				mock(),
+			);
+
+		it('should wire a suspend handle to the engine for a suspendable job', async () => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					mode: 'webhook',
+					workflowData: { nodes: [], staticData: {} },
+					data: mock<IRunExecutionData>(),
+				}),
+			);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+			const jobProcessor = createJobProcessor(executionPersistence);
+
+			let resolveRun!: (run: IRun) => void;
+			processRunExecutionDataMock.mockReturnValue(new Promise<IRun>((r) => (resolveRun = r)));
+
+			const job = mock<Job>({
+				id: 'job-1',
+				data: {
+					executionId: 'exec-1',
+					loadStaticData: false,
+					streamingEnabled: false,
+					isMcpExecution: false,
+					callerAwaitsOutcome: 'none',
+				},
+			});
+
+			const processPromise = jobProcessor.processJob(job);
+			await vi.waitFor(() => expect(jobProcessor.getRunningJobsSummary()).not.toEqual([]));
+
+			jobProcessor.suspendRunningJobs();
+			expect(workflowExecuteSuspendMock).toHaveBeenCalledTimes(1);
+			expect(logger.info).toHaveBeenCalledWith(
+				expect.stringContaining('Requested suspension of 1 execution(s)'),
+			);
+			expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('exec-1'));
+
+			resolveRun(successRun());
+			await processPromise;
+		});
+
+		it('should suspend a suspendable job that registers after suspension was requested', async () => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			let resolveExecution!: (execution: IExecutionResponse) => void;
+			executionPersistence.findSingleExecution.mockReturnValue(
+				new Promise<IExecutionResponse>((r) => (resolveExecution = r)),
+			);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+			const jobProcessor = createJobProcessor(executionPersistence);
+
+			let resolveRun!: (run: IRun) => void;
+			processRunExecutionDataMock.mockReturnValue(new Promise<IRun>((r) => (resolveRun = r)));
+
+			const job = mock<Job>({
+				id: 'job-1',
+				data: {
+					executionId: 'exec-1',
+					loadStaticData: false,
+					streamingEnabled: false,
+					isMcpExecution: false,
+					callerAwaitsOutcome: 'none',
+				},
+			});
+
+			const processPromise = jobProcessor.processJob(job);
+
+			// Shutdown arrives while the job is still in its preflight reads.
+			jobProcessor.suspendRunningJobs();
+			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
+
+			resolveExecution(
+				mock<IExecutionResponse>({
+					mode: 'webhook',
+					workflowData: { nodes: [], staticData: {} },
+					data: mock<IRunExecutionData>(),
+				}),
+			);
+			await vi.waitFor(() => expect(jobProcessor.getRunningJobsSummary()).not.toEqual([]));
+			expect(workflowExecuteSuspendMock).toHaveBeenCalledTimes(1);
+
+			resolveRun(successRun());
+			await processPromise;
+		});
+
+		const startWebhookJob = async (
+			jobData: Partial<Job['data']>,
+			mode: IExecutionResponse['mode'] = 'webhook',
+		) => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					mode,
+					workflowData: { nodes: [], staticData: {} },
+					data: mock<IRunExecutionData>(),
+				}),
+			);
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+			const jobProcessor = createJobProcessor(executionPersistence);
+
+			let resolveRun!: (run: IRun) => void;
+			processRunExecutionDataMock.mockReturnValue(new Promise<IRun>((r) => (resolveRun = r)));
+
+			const job = mock<Job>({
+				id: 'job-1',
+				data: {
+					executionId: 'exec-1',
+					loadStaticData: false,
+					streamingEnabled: false,
+					isMcpExecution: false,
+					...jobData,
+				},
+			});
+			const processPromise = jobProcessor.processJob(job);
+			await vi.waitFor(() => expect(jobProcessor.getRunningJobsSummary()).not.toEqual([]));
+
+			const finish = async () => {
+				resolveRun(successRun());
+				await processPromise;
+			};
+			return { jobProcessor, hooks: additionalData.hooks!, finish };
+		};
+
+		it('should not suspend a webhook job while its response is still pending', async () => {
+			const { jobProcessor, finish } = await startWebhookJob({ callerAwaitsOutcome: 'response' });
+
+			jobProcessor.suspendRunningJobs();
+			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
+			expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining('Requested suspension'));
+
+			await finish();
+		});
+
+		it.each(['webhook', 'trigger'] as const)(
+			'should treat a %s job without the flag (older main) as awaited to completion',
+			async (mode) => {
+				const { jobProcessor, hooks, finish } = await startWebhookJob(
+					{ callerAwaitsOutcome: undefined },
+					mode,
+				);
+
+				jobProcessor.suspendRunningJobs();
+				await hooks.runHook('sendResponse', [{ body: {}, headers: {}, statusCode: 200 }]);
+				expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
+
+				await finish();
+			},
+		);
+
+		it('should suspend a webhook job once it has relayed its response', async () => {
+			const { jobProcessor, hooks, finish } = await startWebhookJob({
+				callerAwaitsOutcome: 'response',
+			});
+
+			jobProcessor.suspendRunningJobs();
+			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
+
+			await hooks.runHook('sendResponse', [{ body: {}, headers: {}, statusCode: 200 }]);
+			expect(workflowExecuteSuspendMock).toHaveBeenCalledTimes(1);
+
+			await finish();
+		});
+
+		it('should not suspend a trigger job whose outcome is awaited on main', async () => {
+			const { jobProcessor, finish } = await startWebhookJob(
+				{ callerAwaitsOutcome: 'completion' },
+				'trigger',
+			);
+
+			jobProcessor.suspendRunningJobs();
+			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
+
+			await finish();
+		});
+
+		it('should not treat a relayed response as satisfying a trigger done promise', async () => {
+			const { jobProcessor, hooks, finish } = await startWebhookJob(
+				{ callerAwaitsOutcome: 'completion' },
+				'trigger',
+			);
+
+			jobProcessor.suspendRunningJobs();
+			await hooks.runHook('sendResponse', [{ body: {}, headers: {}, statusCode: 200 }]);
+			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
+
+			await finish();
+		});
+
+		it('should suspend a fire-and-forget trigger job', async () => {
+			const { jobProcessor, finish } = await startWebhookJob(
+				{ callerAwaitsOutcome: 'none' },
+				'trigger',
+			);
+
+			jobProcessor.suspendRunningJobs();
+			expect(workflowExecuteSuspendMock).toHaveBeenCalledTimes(1);
+
+			await finish();
+		});
+
+		it('should not attach a suspend handle to a non-suspendable job', async () => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					mode: 'webhook',
+					workflowData: { nodes: [], staticData: {} },
+					data: mock<IRunExecutionData>(),
+				}),
+			);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+			const jobProcessor = createJobProcessor(executionPersistence);
+
+			let resolveRun!: (run: IRun) => void;
+			processRunExecutionDataMock.mockReturnValue(new Promise<IRun>((r) => (resolveRun = r)));
+
+			const job = mock<Job>({
+				id: 'job-1',
+				data: {
+					executionId: 'exec-1',
+					loadStaticData: false,
+					streamingEnabled: true,
+					isMcpExecution: false,
+				},
+			});
+
+			const processPromise = jobProcessor.processJob(job);
+			await vi.waitFor(() => expect(jobProcessor.getRunningJobsSummary()).not.toEqual([]));
+
+			jobProcessor.suspendRunningJobs();
+			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
+			expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining('Requested suspension'));
+
+			resolveRun(successRun());
+			await processPromise;
+		});
+
+		describe('isJobSuspendable', () => {
+			const jobProcessor = createJobProcessor(mock<ExecutionPersistence>());
+			const cleanJob = mock<Job>({
+				data: { streamingEnabled: false, isMcpExecution: false },
+			});
+			const cleanExecution = mock<IExecutionResponse>({
+				mode: 'webhook',
+				workflowData: { nodes: [] },
+				data: mock<IRunExecutionData>(),
+			});
+			// @ts-expect-error private method
+			const isJobSuspendable = jobProcessor.isJobSuspendable.bind(jobProcessor) as (
+				job: Job,
+				execution: IExecutionResponse,
+			) => boolean;
+
+			it.each(['webhook', 'trigger', 'retry'] as const)(
+				'should allow a clean %s execution',
+				(mode) => {
+					expect(isJobSuspendable(cleanJob, { ...cleanExecution, mode })).toBe(true);
+				},
+			);
+
+			it.each(['manual', 'evaluation', 'integrated', 'error'] as const)(
+				'should refuse a %s execution',
+				(mode) => {
+					expect(isJobSuspendable(cleanJob, { ...cleanExecution, mode })).toBe(false);
+				},
+			);
+
+			it('should refuse a streaming execution', () => {
+				const job = mock<Job>({ data: { streamingEnabled: true, isMcpExecution: false } });
+				expect(isJobSuspendable(job, cleanExecution)).toBe(false);
+			});
+
+			it('should refuse an MCP execution', () => {
+				const job = mock<Job>({ data: { streamingEnabled: false, isMcpExecution: true } });
+				expect(isJobSuspendable(job, cleanExecution)).toBe(false);
+			});
+
+			it('should refuse a workflow with a chat trigger', () => {
+				const execution = {
+					...cleanExecution,
+					workflowData: { nodes: [{ type: CHAT_TRIGGER_NODE_TYPE, disabled: false }] },
+				} as unknown as IExecutionResponse;
+				expect(isJobSuspendable(cleanJob, execution)).toBe(false);
+			});
+
+			it('should refuse an execution without run state', () => {
+				const execution = {
+					...cleanExecution,
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				};
+				expect(isJobSuspendable(cleanJob, execution)).toBe(false);
+			});
 		});
 	});
 

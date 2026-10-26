@@ -1,3 +1,4 @@
+import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { z } from 'zod';
 
 const apiKeyCreds = z.object({
@@ -36,6 +37,20 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 		headers: z.record(z.string(), z.string()).optional(),
 	}),
 	google: apiKeyCreds,
+	'google-vertex': z.object({
+		sdk: z.string().optional(),
+		project: z.string().trim().min(1, 'Google Cloud project ID is required'),
+		location: z
+			.string()
+			.trim()
+			.min(1, 'Google Cloud region is required')
+			.regex(
+				/^(?:global|eu|us|[a-z]+-[a-z]+\d+)$/,
+				'Use a Google Cloud region such as us-central1, global, eu, or us',
+			),
+		clientEmail: z.string().trim().min(1, 'Service account email is required'),
+		privateKey: z.string().trim().min(1, 'Service account private key is required'),
+	}),
 	xai: apiKeyCreds,
 	groq: apiKeyCreds,
 	deepseek: apiKeyCreds,
@@ -61,11 +76,11 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			 */
 			endpointType: z.enum(['classic', 'foundry']).optional(),
 			/**
-			 * User-defined Azure deployment name for classic endpoints. The catalog
-			 * model id is not the deployment id, so the agent flow must carry this
-			 * separately. Only used by the classic branch.
+			 * Catalog id of the model a Foundry deployment serves, for example
+			 * `azure-openai/claude-opus-4-5`. The SDK reads limits and thinking
+			 * support from the model id, and a deployment name does not reveal them.
 			 */
-			deploymentName: z.string().optional(),
+			catalogModelId: z.string().optional(),
 			/**
 			 * Entra OAuth2 fields. The model factory mints a Bearer token from these
 			 * via `@n8n/client-oauth2` (client-credentials), mirroring the LangChain
@@ -77,6 +92,12 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			oauthScope: z.string().optional(),
 			oauthAuthentication: z.enum(['body', 'header']).optional(),
 			oauthTokenData: z.object({ access_token: z.string() }).passthrough().optional(),
+			/** Validates the Entra token URL against the instance's outbound policy. */
+			ssrfBridge: z
+				.custom<NonNullable<ClientOAuth2Options['ssrfBridge']>>(
+					(value) => typeof value === 'object' && value !== null,
+				)
+				.optional(),
 		})
 		.superRefine((data, ctx) => {
 			const hasApiKey = hasAzureApiKey(data);
@@ -129,7 +150,10 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			}
 		}),
 	'aws-bedrock': z.object({
-		region: z.string().min(1, 'AWS region is required'),
+		region: z
+			.string()
+			.min(1, 'AWS region is required')
+			.regex(/^[a-z]{2}(-[a-z]+)+-\d+$/, 'Use an AWS region such as us-east-1'),
 		accessKeyId: z.string().min(1, 'AWS accessKeyId is required'),
 		secretAccessKey: z.string().min(1, 'AWS secretAccessKey is required'),
 		sessionToken: z.string().optional(),

@@ -11,7 +11,10 @@ import {
 } from 'n8n-workflow';
 import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
-import { validateAndResolveMongoCredentials } from 'n8n-nodes-base/dist/nodes/MongoDb/GenericFunctions';
+import {
+	sanitizeMongoUriInMessage,
+	validateAndResolveMongoCredentials,
+} from 'n8n-nodes-base/dist/nodes/MongoDb/GenericFunctions';
 
 /**
  * Constants for the name of the credentials and Node parameters.
@@ -169,15 +172,22 @@ export async function createMongoClient(
 	const node = context.getNode();
 	const { connectionString } = validateAndResolveMongoCredentials(node, credentials);
 
-	const client = new MongoClient(connectionString, {
-		appName: 'devrel.integration.n8n_vector_integ',
-		driverInfo: {
-			name: 'n8n_vector',
-			version: version.toString(),
-		},
-	});
-	await client.connect();
-	return client;
+	try {
+		const client = new MongoClient(connectionString, {
+			appName: 'devrel.integration.n8n_vector_integ',
+			driverInfo: {
+				name: 'n8n_vector',
+				version: version.toString(),
+			},
+		});
+		await client.connect();
+		return client;
+	} catch (error) {
+		throw new NodeOperationError(
+			node,
+			`MongoDB connection error: ${sanitizeMongoUriInMessage(error, connectionString)}`,
+		);
+	}
 }
 
 /**

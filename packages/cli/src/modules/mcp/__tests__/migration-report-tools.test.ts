@@ -2,11 +2,11 @@ import type {
 	BreakingChangeLightReportResult,
 	BreakingChangeRuleDetailResult,
 	BreakingChangeRuleImpact,
-	MigrationFindingTriageStatus,
+	MigrationFindingListedStatus,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import { UrlService, type WorkflowSharingService } from '@n8n/backend-services';
+import { UrlService } from '@n8n/backend-services';
 import {
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
@@ -73,7 +73,6 @@ const makeDeps = () => {
 		queryService: mock<MigrationFindingQueryService>(),
 		triageService: mock<MigrationFindingTriageService>(),
 		migrationService: mock<BreakingChangeMigrationService>(),
-		workflowSharingService: mock<WorkflowSharingService>(),
 		workflowRepository: mock<WorkflowRepository>(),
 		workflowFinderService: mock<WorkflowFinderService>(),
 		collaborationService: mock<CollaborationService>(),
@@ -131,7 +130,7 @@ const withRules = (deps: ReturnType<typeof makeDeps>, ...rules: IBreakingChangeW
 const workflowFinding = (
 	ruleId: string,
 	impact: BreakingChangeRuleImpact,
-	status: MigrationFindingTriageStatus,
+	status: MigrationFindingListedStatus,
 	nodeName = 'Old',
 ): WorkflowFinding => ({
 	...ruleFields(ruleId, impact),
@@ -198,7 +197,7 @@ describe('get_migration_report', () => {
 
 		expect(deps.syncService.syncIfStale).toHaveBeenCalledWith('v3');
 		expect(deps.queryService.getLightReport).toHaveBeenCalledWith('v3', { kind: 'instance' });
-		expect(deps.workflowSharingService.getSharedWorkflowIdsForScopes).not.toHaveBeenCalled();
+		expect(deps.workflowFinderService.findAllWorkflowIdsForUser).not.toHaveBeenCalled();
 		expect(result.structuredContent).toMatchObject({
 			targetVersion: 'v3',
 			currentVersion: '2.43.0',
@@ -251,13 +250,9 @@ describe('get_migration_report', () => {
 		});
 	});
 
-	it('reads only the workflows a member can edit, once each', async () => {
+	it('reads only the workflows a member can edit', async () => {
 		const deps = makeDeps();
-		deps.workflowSharingService.getSharedWorkflowIdsForScopes.mockResolvedValue([
-			'wf-1',
-			'wf-1',
-			'wf-2',
-		]);
+		deps.workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(['wf-1', 'wf-2']);
 		deps.queryService.getLightReport.mockResolvedValue({
 			...lightReport(),
 			report: { ...lightReport().report, instanceResults: [] },
@@ -265,6 +260,9 @@ describe('get_migration_report', () => {
 
 		const result = await createGetMigrationReportTool(member, deps).handler({});
 
+		expect(deps.workflowFinderService.findAllWorkflowIdsForUser).toHaveBeenCalledWith(member, [
+			'workflow:update',
+		]);
 		expect(deps.queryService.getLightReport).toHaveBeenCalledWith('v3', {
 			kind: 'workflows',
 			workflowIds: ['wf-1', 'wf-2'],
@@ -597,12 +595,13 @@ describe('readWorkflowMigrationFindings', () => {
 		});
 	});
 
-	it('lists the open findings most severe first and counts the accepted ones', async () => {
+	it('lists the open and notified findings most severe first and counts the accepted ones', async () => {
 		const deps = makeDeps();
 		withRules(deps, workflowRule('embedded-chat', { resolution: 'userConfirmation' }));
 		deps.queryService.getWorkflowFindings.mockResolvedValue([
 			workflowFinding('embedded-chat', 'behaviorChanges', 'open', 'Chat'),
-			workflowFinding('removed-node', 'executionsFail', 'open'),
+			// A notification does not resolve the finding.
+			workflowFinding('removed-node', 'executionsFail', 'notified'),
 			workflowFinding('always-output', 'behaviorChanges', 'wont_fix'),
 		]);
 

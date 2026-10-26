@@ -38,7 +38,7 @@ export const ManagedBySchema = z.enum(['system', 'admin']);
 export type ManagedBy = z.infer<typeof ManagedBySchema>;
 
 // An admin-supplied endpoint is fetched server-side, so it must be https.
-const HttpsUrl = z
+export const HttpsUrl = z
 	.string()
 	.url()
 	.refine((url) => url.startsWith('https://'), { message: 'must be an https URL' });
@@ -181,6 +181,14 @@ export const TrustedSourceConfigSchema = z
 				code: z.ZodIssueCode.custom,
 				message: 'manual discovery with jwks-uri keys requires jwksUri or metadataUrl',
 				path: ['authentication', 'discovery'],
+			});
+		}
+		// Without a lookup, provisioning would create a second user for an email that exists.
+		if (identity.provision.human === 'jit' && identity.linkByEmail === 'off') {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'jit provisioning requires email linking',
+				path: ['identity', 'linkByEmail'],
 			});
 		}
 		if (identity.provision.human === 'jit' && identity.roleMapping.mode === 'off') {

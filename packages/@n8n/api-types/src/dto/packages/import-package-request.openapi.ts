@@ -1,6 +1,5 @@
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 
-/** Field docs for {@link ImportPackageRequestDto}, kept out of the DTO file for readability. */
 export const importPackageRequestFieldDocs = {
 	package: { description: 'Gzip-compressed tar package (`.n8np`).' },
 	projectId: {
@@ -24,7 +23,34 @@ export const importPackageRequestFieldDocs = {
 		description:
 			'What to do when a credential reference cannot be resolved. `create-stub` (default) ' +
 			'creates empty credential placeholders in the target project for missing references. ' +
+			'`create-with-values` also creates them, seeded from the expression data bundled in the ' +
+			'package (see the export option `credentialExportPolicy`); a reference the package ' +
+			'carries no data for falls back to an empty stub. A credential created with package data ' +
+			'is listed under `credentials.seeded` when the package confirms that all source data ' +
+			'was retained. ' +
+			'Otherwise, also when the package has no completeness flag, it is listed under ' +
+			'`credentials.incomplete` and blocks workflow publishing with `incomplete-credential`. ' +
+			'`create-with-values` requires the `credential:create` scope when the import creates ' +
+			'a credential. ' +
 			'`must-preexist` requires every referenced credential to already exist.',
+	},
+	credentialConflictPolicy: {
+		description:
+			'What to do when a credential reference matches an existing credential and the package ' +
+			'has different values for it. `keep-existing` (default) never changes a matched ' +
+			'credential. `overwrite` writes the package name and the expression values from the ' +
+			'package to a matched credential that a project of the import owns. It keeps all other ' +
+			'stored values: secrets, other fields, the OAuth connection, and array fields. It never ' +
+			'changes a global credential that a different project owns, or a managed, end-user ' +
+			'(resolvable) or instance-level credential. The import lists the source ids of changed ' +
+			'credentials under `credentials.updated`. An API key needs the `credential:update` scope ' +
+			'when the import changes a credential. `fail` rejects the import with a 409 ' +
+			'(`credential-conflict`) when `overwrite` would change a matched credential. Every policy ' +
+			'leaves a matched credential alone when the package values are the same as the stored ' +
+			'values. `overwrite` and `fail` compare stored values, so they need the ' +
+			'`credential:update` permission on each matched credential that a project of the import ' +
+			'owns, also when it would not change. Without it, the import is rejected with ' +
+			'`credential-update-forbidden`.',
 	},
 	bindings: {
 		type: 'string',
@@ -140,16 +166,16 @@ export const importPackageRequestFieldDocs = {
 			'target table can have extra columns. `fail` rejects any difference, including ' +
 			'target-only columns. Under `keep-existing` and `fail`, a missing package column or a ' +
 			'type mismatch rejects the import, and the target table does not change.\n\n' +
-			'`overwrite` changes the matched target table to match the package and can delete data ' +
-			'in specific columns while preserving rows. Removing, retyping, or renaming a column ' +
-			'deletes the data in that column. The changes apply to all workflows that use the ' +
-			'table. A blocked `keep-existing`, `fail`, or `overwrite-non-destructive` import lists ' +
-			'them in `overwriteChanges`. Requires the `dataTable:update` scope only when a matched ' +
-			'table changes.\n\n' +
-			'`overwrite-non-destructive` makes the same changes as `overwrite`, but only when none ' +
-			'of them deletes data — removing or retyping a column (a target-only or renamed column ' +
-			"counts as removed). If any matched table's change would delete data, the import writes " +
-			'nothing.',
+			'`overwrite` changes the matched target table to match the package. It can remove or ' +
+			'retype columns. The values in those columns are removed. Rows and other columns are ' +
+			'kept. When the package has column ids, a column that is only renamed keeps its ' +
+			'values. The changes apply to all workflows that use the table. A blocked ' +
+			'`keep-existing`, `fail`, or `overwrite-non-destructive` import lists them in ' +
+			'`overwriteChanges`. Requires the `dataTable:update` scope only when a matched table ' +
+			'changes.\n\n' +
+			'`overwrite-non-destructive` makes the same changes as `overwrite`, but rejects the ' +
+			'import and writes nothing when a change removes or retypes a column. A target-only ' +
+			'column counts as removed.',
 	},
 	variableMissingMode: {
 		description:
@@ -219,5 +245,52 @@ export const importPackageRequestFieldDocs = {
 			'both need an API key carrying the `tag:update` scope when the import would rename or ' +
 			'reconcile a tag. A drifted tag whose package name is held by another tag still rejects ' +
 			'the import (rename degrades to fail).',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const importPackageSelectionRequestFieldDocs = {
+	selectedProjectId: {
+		description:
+			'Id of the single source project the selection is scoped to, as it appears in the package.',
+	},
+	selectedWorkflowIds: {
+		type: 'string',
+		description:
+			'JSON-encoded array of source workflow ids to import from `selectedProjectId`, e.g. ' +
+			'`["wf-1","wf-2"]`. An empty array (`[]`) is allowed — useful for a delete-only request. ' +
+			'Ids outside the scoped project are dropped.',
+	},
+	deletedWorkflowIds: {
+		type: 'string',
+		description:
+			'Optional JSON-encoded array of destination workflow ids to remove from the scoped ' +
+			'project, e.g. `["wf-3"]`. Removal happens even under the additive profile, and the ' +
+			'manner of removal follows `overwriteDeletionPolicy` (archive by default). An absent id ' +
+			'is a no-op unless it is also a selected destination. Must not contain a selected ' +
+			"workflow's destination id. Needs the `workflow:delete` scope.",
+	},
+	workflowConflictPolicy: {
+		description:
+			'What happens when a selected workflow matches an existing workflow by source id in the ' +
+			'target project. `new-version` (default) updates it and creates a new version; `fail` ' +
+			'rejects the import when any matching workflow exists; `skip` leaves matching workflows ' +
+			'unchanged. An archive state change also needs the `workflow:delete` scope.',
+	},
+	workflowIdPolicy: {
+		description:
+			'Controls the id each newly created workflow receives. `source` (default) reuses the ' +
+			"package's own workflow id on the target instance; `new` mints a fresh id and records " +
+			'the package id as `sourceWorkflowId`. Workflows matched to an existing workflow keep ' +
+			"that workflow's current id, regardless of policy.",
+	},
+	overwriteDeletionPolicy: {
+		description:
+			'How the ids in `deletedWorkflowIds` are removed. `archive` (default) archives each one, ' +
+			'so it stays recoverable along with its execution history. `hard-delete` archives it — ' +
+			'the step that unpublishes it, which a delete will not do on its own — and then deletes ' +
+			'the workflow and its executions permanently. Each entry in `removedWorkflows` reports ' +
+			'what actually happened in its `deletion` field: a `hard-delete` whose row cannot be ' +
+			'dropped yet, because unpublishing defers trigger teardown, is left `archived` rather ' +
+			'than failing an import whose content is already written.',
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;

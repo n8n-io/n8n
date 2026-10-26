@@ -95,10 +95,14 @@ directly on that object — there is no \`value\` wrapper. For example:
   integrations; use update_agent_integration for those.
 - config.patch: Set \`patch\` to an array of RFC 6902 operations (add, remove, replace, move, copy,
   test). Paths under /integrations are rejected; use update_agent_integration for those.
-- skill.upsert: Set \`skill\` to the complete skill body. Omit \`skillId\` to create and attach a new
-  skill, or pass it to replace an existing skill body. When replacing, also pass \`baseSkillHash\`
-  from get_agent's \`skillHashes\` so a skill edited elsewhere in the meantime is not overwritten.
-- skill.delete: Set \`skillId\` to the skill to delete; its config reference is removed.
+- skill.upsert: Set \`skill\` to the complete skill body. Omit \`skillId\` to create a new skill in
+  the Agent's project and attach it, or pass it to save a new version of an attached skill. When
+  replacing, also pass \`baseSkillHash\` from get_agent's \`skillHashes\` so a skill edited elsewhere
+  in the meantime is not overwritten. Skills ignore \`allowedTools\`.
+- skill.delete: Set \`skillId\` to the skill to detach. The skill stays available to other Agents.
+- A skill ref with \`versionId\` pins that saved version of the skill. get_agent lists the pinned
+  skills that have a newer version in \`outdatedSkillIds\`. To use the latest version, remove
+  \`versionId\` from the ref with config.patch. Do not delete and add the skill again.
 - task.upsert: Set \`task\` to the complete task body. Omit \`taskId\` to create and attach a new
   scheduled task, or pass it to replace an existing one. \`enabled\` controls the task config reference.
   On a replace, an omitted \`timezone\` keeps the zone the task already has; send \`null\` to move it
@@ -206,10 +210,10 @@ Before writing an entry into mcpServers, call verify_agent_mcp_server with the s
 transport, authentication, and credential. The server does not need to be attached to the Agent
 first: verification opens a temporary connection and returns the server's live tools. validate_agent
 never performs this handshake, so an unverified entry can pass validation and still fail at runtime.
-Confirm the returned tools cover the requested capability and use the list to populate toolFilter
-instead of guessing tool names. If verification fails, report the error and resolve it with the user
-instead of persisting a broken server. Only when the user cannot supply the URL or credential yet,
-persist the known fields without inventing values and skip verification.
+Confirm the returned tools cover the requested capability and use the verified list instead of
+guessing tool names. If verification fails, report the error and resolve it with the user instead of
+persisting a broken server. Only when the user cannot supply the URL or credential yet, persist the
+known fields without inventing values and skip verification.
 `;
 
 export const AGENT_BUILDER_REFERENCE = `${AGENT_BUILDER_GUIDE}

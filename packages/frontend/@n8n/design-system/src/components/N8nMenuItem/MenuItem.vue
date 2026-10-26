@@ -3,7 +3,6 @@ import { useResizeObserver } from '@vueuse/core';
 import type { ComponentPublicInstance } from 'vue';
 import { computed, ref } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
 import type { IMenuItem } from '../../types';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
@@ -12,8 +11,7 @@ import N8nRoute from '../N8nRoute';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
-
-const { t } = useI18n();
+import NewBadge from '../NewBadge/NewBadge.vue';
 
 const props = defineProps<{
 	item: IMenuItem;
@@ -26,8 +24,9 @@ const props = defineProps<{
 	scrollLabelOnOverflow?: boolean;
 }>();
 
+// The click carries its event, so a trigger that wraps the item (as-child) can read it.
 const emit = defineEmits<{
-	click: [];
+	click: [event: MouseEvent];
 }>();
 
 const menuItemTextViewport = ref<HTMLElement | null>(null);
@@ -62,11 +61,11 @@ const to = computed(() => {
 	return undefined;
 });
 
-const handleClick = () => {
+const handleClick = (event: MouseEvent) => {
 	if (props.item.disabled) {
 		return;
 	}
-	emit('click');
+	emit('click', event);
 };
 
 const icon = computed<IconName | (string & {}) | undefined>(() => {
@@ -146,7 +145,12 @@ const tooltipPlacement = computed(() => {
 							:class="$style.menuItemEmoji"
 							>{{ item.icon.value }}</N8nText
 						>
-						<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />
+						<N8nIcon
+							v-else-if="icon"
+							:color="iconColor"
+							:icon="icon"
+							:size="props.compact ? 'medium' : undefined"
+						/>
 					</slot>
 				</div>
 				<div :class="$style.menuItemLabel">
@@ -175,25 +179,24 @@ const tooltipPlacement = computed(() => {
 						</N8nText>
 					</div>
 					<PreviewBadge v-if="!compact && item.preview" />
-					<N8nBadge
-						v-if="!compact && item.new"
-						size="xxsmall"
-						variant="filled"
-						:class="$style.newBadge"
-					>
-						{{ t('menuItem.new') }}
-					</N8nBadge>
+					<NewBadge v-if="!compact && item.new" :class="$style.newBadge" />
 					<N8nBadge v-if="!compact && item.creditsTag" size="xxsmall" variant="success">
 						{{ item.creditsTag }}
 					</N8nBadge>
 				</div>
-				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
+				<N8nIcon
+					v-if="item.children && !compact"
+					icon="chevron-right-12"
+					:size="12"
+					color="text-light"
+				/>
 			</N8nRoute>
 		</N8nTooltip>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/_focus.scss';
 @use '../../css/mixins/mixins' as scroll-mask;
 @use '../../css/mixins/motion' as motion;
 
@@ -210,13 +213,12 @@ const tooltipPlacement = computed(() => {
 	justify-content: center;
 	// Match the height of items with icons (24px icon + 2 * 4px padding), so
 	// icon-less items (e.g. modal sidebar tabs) don't render shorter.
-	min-height: var(--spacing--xl);
+	height: var(--spacing--xl);
 	padding: var(--spacing--4xs);
 	gap: var(--spacing--4xs);
-	cursor: pointer;
-	color: var(--color--text);
-	border-radius: var(--spacing--4xs);
-	cursor: pointer;
+	color: var(--text-color);
+	border-radius: var(--radius);
+	border: 1px solid transparent;
 	min-width: 0;
 	width: 100%;
 	position: relative;
@@ -237,11 +239,19 @@ const tooltipPlacement = computed(() => {
 
 	&.compact {
 		gap: 0;
+		border-radius: var(--radius--full);
+		height: var(--height--sm);
+		width: var(--height--sm);
+		margin-inline: auto;
+
+		.menuItemLabel {
+			display: none;
+		}
 	}
 }
 
 .menuItem:focus-visible {
-	outline: 1px solid var(--color--secondary);
+	@include focus.focus-ring-with-border;
 	outline-offset: -1px;
 }
 

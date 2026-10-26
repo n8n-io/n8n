@@ -12,11 +12,13 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
+import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -239,8 +241,11 @@ export class WorkflowCreationService {
 		if (this.licenseState.isSharingLicensed()) {
 			// This is a new workflow, so we simply check if the user has access to
 			// all used credentials
-			const { ids: credentialIds, hasUnresolved } =
-				this.enterpriseWorkflowService.collectCredentialReferences(newWorkflow);
+			const {
+				ids: credentialIds,
+				hasUnresolved,
+				hasUninspectableSource,
+			} = this.enterpriseWorkflowService.collectCredentialReferences(newWorkflow);
 			if (batchContext) {
 				const uncheckedIds = [...credentialIds].filter(
 					(id) => !batchContext.checkedCredentialIds.has(id),
@@ -270,8 +275,15 @@ export class WorkflowCreationService {
 				this.enterpriseWorkflowService.validateCredentialPermissionsToUser(
 					newWorkflow,
 					hasUnresolved ? new Set() : accessibleCredentialIds,
+					{
+						allowUninspectableSource:
+							hasUninspectableSource && this.enterpriseWorkflowService.canUseEveryCredential(user),
+					},
 				);
 			} catch (error) {
+				if (error instanceof UninspectableSubworkflowSourceError) {
+					throw new BadRequestError(error.message);
+				}
 				throw new BadRequestError(
 					'The workflow you are trying to save contains credentials that are not shared with you',
 				);
@@ -317,7 +329,7 @@ export class WorkflowCreationService {
 					user,
 					effectiveProjectId,
 					['workflow:create'],
-					transactionManager,
+					ctx,
 				);
 
 				if (project === null) {
@@ -437,7 +449,7 @@ export class WorkflowCreationService {
 			return await this.mcpSettingsService.getAutoExposeNewWorkflows();
 		} catch (error) {
 			this.logger.warn('Failed to resolve auto-expose setting for new workflow', {
-				cause: error instanceof Error ? error.message : String(error),
+				cause: getErrorMessage(error),
 			});
 			return false;
 		}
@@ -506,7 +518,7 @@ export class WorkflowCreationService {
 			if (!(await this.mcpSettingsService.getAutoExposeNewWorkflows(transactionManager))) return;
 		} catch (error) {
 			this.logger.warn('Failed to resolve auto-expose setting for new workflow', {
-				cause: error instanceof Error ? error.message : String(error),
+				cause: getErrorMessage(error),
 			});
 			return;
 		}

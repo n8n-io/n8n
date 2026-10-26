@@ -22,6 +22,8 @@ const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettin
 	tracesSampleRate: 1.0,
 	startupConnectivityTimeoutMs: 2000,
 	includeNodeSpans: true,
+	emitWorkflowStartSpan: false,
+	emitNodeStartSpan: false,
 	injectOutbound: true,
 	productionExecutionsOnly: true,
 	envManagedFields: [],

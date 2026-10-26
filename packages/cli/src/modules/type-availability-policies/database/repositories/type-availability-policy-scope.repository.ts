@@ -9,7 +9,7 @@ import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not, type EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { PolicyAction, PolicyScopeKey } from '../../policy-rule.types';
+import type { PolicyAction } from '../../policy-rule.types';
 import { TypeAvailabilityPolicyScope } from '../entities/type-availability-policy-scope.entity';
 
 type NewPolicyScope = {
@@ -20,6 +20,8 @@ type NewPolicyScope = {
 };
 
 export type ProjectPolicyScope = TypeAvailabilityPolicyScope & { projectId: string };
+
+export type ScopeFingerprint = { count: number; versionSum: number; newestCreatedAt: number };
 
 const isProjectScope = (scope: TypeAvailabilityPolicyScope): scope is ProjectPolicyScope =>
 	scope.projectId !== null;
@@ -130,24 +132,33 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		return found;
 	}
 
+	/** Every scope of every kind, for loading the in-process snapshot in one read. */
+	async findAllScopes(ctx: OperationContext): Promise<TypeAvailabilityPolicyScope[]> {
+		return await this.managerFor(ctx).find(TypeAvailabilityPolicyScope);
+	}
+
 	/**
-	 * The reader-facing identity of each named scope. A policy edit fans out over scope ids,
-	 * but a reader addresses a scope by `(kind, projectId)`, so this translates between the
-	 * two. Chunked like `lockScopesByIds`, for the same reason.
+	 * Changes whenever a scope is written. A delete lowers the count, an update bumps a version,
+	 * and an insert sets the newest `createdAt`, even when it replaces a deleted row.
 	 */
-	async findScopeKeysByIds(ids: string[], ctx: OperationContext): Promise<PolicyScopeKey[]> {
-		const manager = this.managerFor(ctx);
-		const keys: PolicyScopeKey[] = [];
+	async readFingerprint(ctx: OperationContext): Promise<ScopeFingerprint> {
+		const row = await this.managerFor(ctx)
+			.createQueryBuilder(TypeAvailabilityPolicyScope, 'scope')
+			.select('COUNT(*)', 'count')
+			.addSelect('COALESCE(SUM(scope.version), 0)', 'versionSum')
+			.addSelect('MAX(scope.createdAt)', 'newestCreatedAt')
+			.getRawOne<{
+				count: string | number;
+				versionSum: string | number;
+				newestCreatedAt: string | Date | null;
+			}>();
 
-		for (const batch of chunkIds(ids)) {
-			const rows = await manager.find(TypeAvailabilityPolicyScope, {
-				select: { kind: true, projectId: true },
-				where: { id: In(batch) },
-			});
-			keys.push(...rows.map(({ kind, projectId }) => ({ kind, projectId })));
-		}
-
-		return keys;
+		// Postgres returns the aggregates as strings, and SQLite returns the timestamp as text.
+		return {
+			count: Number(row?.count ?? 0),
+			versionSum: Number(row?.versionSum ?? 0),
+			newestCreatedAt: row?.newestCreatedAt ? new Date(row.newestCreatedAt).getTime() : 0,
+		};
 	}
 
 	async findProjectScopes(kind: string, ctx: OperationContext): Promise<ProjectPolicyScope[]> {
@@ -187,6 +198,8 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	 *
 	 * Joins the caller's transaction when `ctx` carries one, so the read-back lock is held
 	 * for the rest of the caller's work; opens one otherwise, since the lock needs it.
+	 *
+	 * The new row starts at version 1, which is the first write's own bump.
 	 */
 	async createScopeIfAbsent(
 		input: NewPolicyScope,
@@ -242,6 +255,9 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	 * Call this under the same `ctx` as whatever changed the scope's *effective* policy —
 	 * an attachment added, removed or reordered, or an attached policy's content edited —
 	 * so the version and the change commit together.
+	 *
+	 * One write moves the version once. Do not call this in a write that also ran
+	 * `createScopeIfAbsent` or `updateDefaultAction`: each of those sets the version itself.
 	 */
 	async bumpVersion(id: string, ctx: OperationContext): Promise<void> {
 		await this.managerFor(ctx).increment(TypeAvailabilityPolicyScope, { id }, 'version', 1);

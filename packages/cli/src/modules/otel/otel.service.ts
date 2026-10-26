@@ -30,6 +30,7 @@ import { NodeTracerProvider, TraceIdRatioBasedSampler } from '@opentelemetry/sdk
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
+import { ExecutionIdentitySpanProcessor } from './execution-identity';
 import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelConfig } from './otel.config';
@@ -168,7 +169,7 @@ export class OtelService {
 		this.provider = new NodeTracerProvider({
 			resource: this.buildResource(settings.exporterServiceName),
 			sampler: new TraceIdRatioBasedSampler(settings.tracesSampleRate),
-			spanProcessors: [new BatchSpanProcessor(traceExporter)],
+			spanProcessors: [new ExecutionIdentitySpanProcessor(), new BatchSpanProcessor(traceExporter)],
 		});
 		this.registerGlobalApi(this.provider);
 		return this.provider;

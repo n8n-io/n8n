@@ -69,7 +69,7 @@ describe('NodeMailer', () => {
 		);
 
 		mockTransport = mock<Transporter>();
-		mockTransport.sendMail.mockResolvedValue({});
+		mockTransport.sendMail.mockResolvedValue(undefined);
 		// Replace the private transport with our mock
 		Object.defineProperty(nodeMailer, 'transport', { value: mockTransport });
 	});

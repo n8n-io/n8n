@@ -239,7 +239,7 @@ onUnmounted(clearTimers);
 
 .headerName {
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: light-dark(#000, #f5f5f5);
 	line-height: 1.25;
 }

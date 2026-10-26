@@ -1,6 +1,6 @@
 import type { BreakingChangeVersion } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { UrlService, WorkflowSharingService } from '@n8n/backend-services';
+import { UrlService } from '@n8n/backend-services';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -34,7 +34,6 @@ const resolveDeps = (targetVersion: BreakingChangeVersion): MigrationReportToolD
 	queryService: Container.get(MigrationFindingQueryService),
 	triageService: Container.get(MigrationFindingTriageService),
 	migrationService: Container.get(BreakingChangeMigrationService),
-	workflowSharingService: Container.get(WorkflowSharingService),
 	workflowRepository: Container.get(WorkflowRepository),
 	workflowFinderService: Container.get(WorkflowFinderService),
 	collaborationService: Container.get(CollaborationService),

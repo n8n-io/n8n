@@ -56,7 +56,8 @@ type TemplateName =
 	| 'mcp-client-revoked'
 	| 'email-change-requested'
 	| 'email-change-completed'
-	| 'agent-budget-alert';
+	| 'agent-budget-alert'
+	| 'migration-findings';
 
 @Service()
 export class UserManagementMailer {
@@ -207,6 +208,38 @@ export class UserManagementMailer {
 		});
 	}
 
+	/** Asks the owner of the listed workflows to resolve one migration finding on them. */
+	async migrationFindings(data: {
+		email: string;
+		firstName?: string | null;
+		notifierName: string;
+		ruleTitle: string;
+		targetVersion: string;
+		workflows: Array<{ id: string; name: string }>;
+		reportUrl: string;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const template = await this.getTemplate('migration-findings');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: `Your workflows need changes before the upgrade to n8n ${data.targetVersion}`,
+			body: template({
+				...this.basePayload,
+				firstName: data.firstName || 'there',
+				notifierName: data.notifierName,
+				ruleTitle: data.ruleTitle,
+				targetVersion: data.targetVersion,
+				workflows: data.workflows.map((workflow) => ({
+					name: workflow.name,
+					url: `${baseUrl}/workflow/${workflow.id}`,
+				})),
+				reportUrl: data.reportUrl,
+			}),
+		});
+	}
+
 	async workflowFailure(data: {
 		email: string;
 		firstName?: string;
@@ -298,12 +331,27 @@ export class UserManagementMailer {
 	async notifyWorkflowAutodeactivated({
 		recipient,
 		workflow,
+		reason = 'crashes',
 	}: {
 		recipient: User;
 		workflow: IWorkflowBase;
+		reason?: 'crashes' | 'memory-pressure';
 	}): Promise<SendEmailResult> {
 		const recipients = await this.userRepository.getEmailsByIds([recipient.id]);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const text = {
+			crashes: {
+				reason: 'its executions repeatedly crashed',
+				nextStep:
+					'Please review its recent executions and resolve any issues before reactivating it.',
+			},
+			'memory-pressure': {
+				reason:
+					'n8n repeatedly stopped its executions to keep the instance from running out of memory',
+				nextStep:
+					"Each time, this workflow's execution held the most data on the instance. Memory can also run high because of other work. Reactivate the workflow when ready.",
+			},
+		}[reason];
 
 		return await this.sendNotificationEmails({
 			mailerTemplate: 'workflow-deactivated',
@@ -312,6 +360,7 @@ export class UserManagementMailer {
 			getTemplateData: () => ({
 				workflowName: workflow.name,
 				workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
+				...text,
 			}),
 			subjectBuilder: () => 'n8n has automatically autodeactivated a workflow',
 			messageType: 'Workflow auto-deactivated',

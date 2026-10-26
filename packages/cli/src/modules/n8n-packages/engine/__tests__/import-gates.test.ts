@@ -2,8 +2,9 @@ import type { WorkflowEntity } from '@n8n/db';
 
 import { ForbiddenError } from '@n8n/errors';
 
+import type { CredentialUpdateCandidate } from '../../entities/credential/credential.types';
 import type { WorkflowImportPlan } from '../../entities/workflow/workflow-import.types';
-import { assertArchiveTransitionsAllowed } from '../import-gates';
+import { assertArchiveTransitionsAllowed, assertCredentialUpdatesAllowed } from '../import-gates';
 
 function workflowPlan(archiveTransition: 'archive' | 'unarchive' | null): WorkflowImportPlan {
 	const workflow = { id: 'workflow-1', name: 'Workflow' } as WorkflowEntity;
@@ -47,6 +48,50 @@ describe('assertArchiveTransitionsAllowed', () => {
 	it('does not require workflow:delete when archived state stays the same', () => {
 		expect(() =>
 			assertArchiveTransitionsAllowed(['workflow:import'], [workflowPlan(null)]),
+		).not.toThrow();
+	});
+});
+
+describe('assertCredentialUpdatesAllowed', () => {
+	const update: CredentialUpdateCandidate = {
+		sourceId: 'source-1',
+		targetId: 'credential-1',
+		targetName: 'GitHub',
+		targetType: 'githubApi',
+		ownerProjectId: 'project-1',
+		name: 'Renamed',
+		usedBy: [],
+	};
+
+	it('requires no scope when no plan updates a credential', () => {
+		expect(() =>
+			assertCredentialUpdatesAllowed(['workflow:import'], 'overwrite', [{ updates: [] }]),
+		).not.toThrow();
+	});
+
+	it('requires credential:update when a plan updates a credential under overwrite', () => {
+		expect(() =>
+			assertCredentialUpdatesAllowed(['workflow:import'], 'overwrite', [
+				{ updates: [] },
+				{ updates: [update] },
+			]),
+		).toThrow(ForbiddenError);
+		expect(() =>
+			assertCredentialUpdatesAllowed(['workflow:import', 'credential:update'], 'overwrite', [
+				{ updates: [update] },
+			]),
+		).not.toThrow();
+	});
+
+	it('skips the check without API key scopes', () => {
+		expect(() =>
+			assertCredentialUpdatesAllowed(undefined, 'overwrite', [{ updates: [update] }]),
+		).not.toThrow();
+	});
+
+	it.each(['fail', 'keep-existing'] as const)('requires no scope under %s', (policy) => {
+		expect(() =>
+			assertCredentialUpdatesAllowed(['workflow:import'], policy, [{ updates: [update] }]),
 		).not.toThrow();
 	});
 });

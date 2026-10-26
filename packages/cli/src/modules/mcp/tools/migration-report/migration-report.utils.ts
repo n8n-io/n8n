@@ -4,7 +4,7 @@ import type {
 	BreakingChangeVersion,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { UrlService, WorkflowSharingService } from '@n8n/backend-services';
+import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowRepository } from '@n8n/db';
 import { OperationalError } from 'n8n-workflow';
 import z from 'zod';
@@ -28,7 +28,6 @@ export type MigrationReportToolDeps = {
 	queryService: MigrationFindingQueryService;
 	triageService: MigrationFindingTriageService;
 	migrationService: BreakingChangeMigrationService;
-	workflowSharingService: WorkflowSharingService;
 	workflowRepository: WorkflowRepository;
 	workflowFinderService: WorkflowFinderService;
 	collaborationService: CollaborationService;
@@ -41,17 +40,24 @@ export type MigrationReportToolDeps = {
 const IMPACT_ORDER: Record<BreakingChangeRuleImpact, number> = {
 	upgradeBlocked: 0,
 	executionsFail: 1,
-	behaviorChanges: 2,
-	capabilityRemoved: 3,
+	executionsMightFail: 2,
+	behaviorChanges: 3,
+	capabilityRemoved: 4,
 };
 
 export const byImpact = (a: { impact: BreakingChangeRuleImpact }, b: typeof a) =>
 	IMPACT_ORDER[a.impact] - IMPACT_ORDER[b.impact];
 
 export const impactSchema = z
-	.enum(['upgradeBlocked', 'executionsFail', 'behaviorChanges', 'capabilityRemoved'])
+	.enum([
+		'upgradeBlocked',
+		'executionsFail',
+		'executionsMightFail',
+		'behaviorChanges',
+		'capabilityRemoved',
+	])
 	.describe(
-		'What happens if the issue is not fixed before the update: upgradeBlocked (the instance does not start or the update cannot proceed), executionsFail (affected executions error), behaviorChanges (executions run with a different result), capabilityRemoved (a removed capability, no runtime impact)',
+		'What happens if the issue is not fixed before the update: upgradeBlocked (the instance does not start or the update cannot proceed), executionsFail (affected executions error), executionsMightFail (a default changes, so affected executions can error depending on the workload; an admin can keep the current value through configuration), behaviorChanges (executions run with a different result), capabilityRemoved (a removed capability, no runtime impact)',
 	);
 
 export type RuleResolution = 'workflowEdit' | 'userConfirmation' | 'instanceConfiguration';
@@ -168,7 +174,8 @@ export async function readWorkflowMigrationFindings(
 		return undefined;
 	}
 
-	const open = findings.filter((finding) => finding.status === 'open');
+	// A notification does not resolve a finding, so a notified one is still open.
+	const open = findings.filter((finding) => finding.status !== 'wont_fix');
 	return {
 		targetVersion: deps.targetVersion,
 		openFindings: open

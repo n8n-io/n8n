@@ -1,6 +1,6 @@
 import type { BinaryCheck } from '../types';
 
-// Fails when a turn exceeds this many FAILED build-workflow calls (error-forced rebuilds). Lenient for now; tighten as we gather signal.
+// Fails when a turn exceeds this many FAILED workflow_builder_build_workflow calls (error-forced rebuilds). Lenient for now; tighten as we gather signal.
 const THRASHING_THRESHOLD = 4;
 
 export const noExcessiveBuildFailures: BinaryCheck = {
@@ -17,7 +17,7 @@ export const noExcessiveBuildFailures: BinaryCheck = {
 
 		return {
 			pass: false,
-			comment: `build-workflow failed ${String(max)} times within a single turn — the agent repeatedly failed to build`,
+			comment: `workflow_builder_build_workflow failed ${String(max)} times within a single turn — the agent repeatedly failed to build`,
 		};
 	},
 };

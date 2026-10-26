@@ -1,5 +1,5 @@
 import { InviteUsersRequestDto } from '@n8n/api-types';
-import { type EventService, UrlService, type RoleService } from '@n8n/backend-services';
+import { type EventService, UrlService, type RoleService, JwtService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -30,7 +30,6 @@ import { UserService } from '@/services/user.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import type { UserManagementMailer } from '@/user-management/email';
 
-import { JwtService } from '../jwt.service';
 import type { OwnershipTransferService } from '../ownership-transfer/ownership-transfer.service';
 import type { OwnershipService } from '../ownership.service';
 import type { ProjectService } from '../project.service.ee';
@@ -960,6 +959,33 @@ describe('UserService', () => {
 			await userService.deleteUser(actor, userToDelete.id);
 
 			expect(ownershipTransferService.enforceTransferPolicy).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['without a transferee', undefined],
+			['with a transferee', transfereeProject.id],
+		])(
+			'deletes the private module resources of the user before the delete transaction, %s',
+			async (_case, transferId) => {
+				await userService.deleteUser(actor, userToDelete.id, transferId);
+
+				expect(
+					ownershipTransferService.deleteUserOwnedModuleResources,
+				).toHaveBeenCalledExactlyOnceWith([userToDelete.id]);
+				expect(
+					ownershipTransferService.deleteUserOwnedModuleResources.mock.invocationCallOrder[0],
+				).toBeLessThan(manager.transaction.mock.invocationCallOrder[0]);
+			},
+		);
+
+		it('deletes the project module resources only without a transferee', async () => {
+			await userService.deleteUser(actor, userToDelete.id, transfereeProject.id);
+			expect(ownershipTransferService.deleteModuleOwnedResources).not.toHaveBeenCalled();
+
+			await userService.deleteUser(actor, userToDelete.id);
+			expect(ownershipTransferService.deleteModuleOwnedResources).toHaveBeenCalledExactlyOnceWith([
+				personalProject.id,
+			]);
 		});
 	});
 

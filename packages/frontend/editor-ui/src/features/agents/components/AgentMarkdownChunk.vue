@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import VueMarkdown from 'vue-markdown-render';
+import { N8nMarkdown } from '@n8n/design-system';
 import { inject } from 'vue';
 import { useRouter } from 'vue-router';
 import { resolveAgentPreviewLink } from '../utils/agentPreviewUrl';
@@ -38,13 +38,5 @@ function handleLinkClick(event: MouseEvent) {
 </script>
 
 <template>
-	<VueMarkdown :source="source" :class="$style.markdown" @click="handleLinkClick" />
+	<N8nMarkdown :content="source" @click="handleLinkClick" />
 </template>
-
-<style lang="scss" module>
-@use '@n8n/design-system/css/mixins/markdown';
-
-.markdown {
-	@include markdown.markdown-content;
-}
-</style>

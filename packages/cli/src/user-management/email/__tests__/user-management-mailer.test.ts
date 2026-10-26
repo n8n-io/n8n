@@ -159,6 +159,40 @@ describe('UserManagementMailer', () => {
 			});
 		});
 
+		it.each([
+			[
+				'crashes' as const,
+				'because its executions repeatedly crashed',
+				'Please review its recent executions',
+			],
+			[
+				'memory-pressure' as const,
+				'because n8n repeatedly stopped its executions to keep the instance from running out of memory',
+				'Memory can also run high because of other work.',
+			],
+		])(
+			'should name the reason %s in workflow deactivation emails',
+			async (reason, text, nextStep) => {
+				const recipient = mock<User>({ id: 'owner-1' });
+				const workflow = mock<IWorkflowBase>({ id: 'workflow1', name: 'Test Workflow' });
+				userRepository.getEmailsByIds.mockResolvedValue([
+					{ id: 'owner-1', email: 'owner@user.com' },
+				] as User[]);
+
+				const result = await userManagementMailer.notifyWorkflowAutodeactivated({
+					recipient,
+					workflow,
+					reason,
+				});
+
+				expect(result.emailSent).toBe(true);
+				const body = nodeMailer.sendMail.mock.calls[0][0].body as string;
+				expect(body.replace(/\s+/g, ' ')).toContain(text);
+				expect(body.replace(/\s+/g, ' ')).toContain(nextStep);
+				expect(body).toContain('href="https://n8n.url/workflow/workflow1"');
+			},
+		);
+
 		it('should send api key revoked notifications', async () => {
 			const apiKey = mock<ApiKey>({
 				id: 'key-1',
@@ -281,6 +315,36 @@ describe('UserManagementMailer', () => {
 					`You have been added to the <b>${project.name}</b> project as ${sharee.role.replace('project:', '')}`,
 				);
 			});
+		});
+
+		it('should send a migration findings email with one link per workflow', async () => {
+			const result = await userManagementMailer.migrationFindings({
+				email,
+				firstName: 'Grace',
+				notifierName: 'Ada Lovelace',
+				ruleTitle: 'Removed nodes',
+				targetVersion: 'v3',
+				workflows: [
+					{ id: 'wf-1', name: 'Billing sync' },
+					{ id: 'wf-2', name: 'Lead intake' },
+				],
+				reportUrl: 'https://n8n.url/settings/migration-report/removed-nodes-v3',
+			});
+
+			expect(result.emailSent).toBe(true);
+			expect(nodeMailer.sendMail).toHaveBeenCalledWith({
+				body: expect.stringContaining(
+					'href="https://n8n.url/settings/migration-report/removed-nodes-v3"',
+				),
+				emailRecipients: email,
+				subject: 'Your workflows need changes before the upgrade to n8n v3',
+			});
+			const callBody = nodeMailer.sendMail.mock.calls[0][0].body;
+			expect(callBody).toContain('Hi Grace,');
+			expect(callBody).toContain('Ada Lovelace asked you');
+			expect(callBody).toContain('Removed nodes');
+			expect(callBody).toContain('<a href="https://n8n.url/workflow/wf-1">Billing sync</a>');
+			expect(callBody).toContain('<a href="https://n8n.url/workflow/wf-2">Lead intake</a>');
 		});
 
 		it('should send an agent budget alert email', async () => {

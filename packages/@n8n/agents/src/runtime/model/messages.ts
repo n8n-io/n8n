@@ -162,7 +162,7 @@ function normalizeReasoningFileData(
  * `providerOptions` values win.
  */
 function toReasoningProviderOptions(block: ContentReasoning): ProviderOptions | undefined {
-	const additions: Record<string, JSONObject> = {};
+	const additions: ProviderOptions = {};
 
 	for (const [provider, quirks] of Object.entries(PROVIDER_QUIRKS)) {
 		const replayKeys = quirks.reasoningReplayKeys;
@@ -276,6 +276,7 @@ function toolCallToResultPart(
 			type: 'tool-result',
 			toolCallId,
 			toolName: block.toolName,
+			...(block.resultProviderOptions && { providerOptions: block.resultProviderOptions }),
 			output: isContentToolResultOutput(block.output)
 				? block.output
 				: { type: 'json', value: block.output },
@@ -290,6 +291,7 @@ function toolCallToResultPart(
 			type: 'tool-result',
 			toolCallId,
 			toolName: block.toolName,
+			...(block.resultProviderOptions && { providerOptions: block.resultProviderOptions }),
 			output: block.providerExecuted
 				? { type: 'error-json', value: errorValue }
 				: { type: 'error-text', value: errorValue },
@@ -299,6 +301,7 @@ function toolCallToResultPart(
 		type: 'tool-result',
 		toolCallId,
 		toolName: block.toolName,
+		...(block.resultProviderOptions && { providerOptions: block.resultProviderOptions }),
 		output: { type: 'error-json', value: errorValue as JSONValue },
 	};
 }
@@ -531,12 +534,13 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 			if (part.type !== 'tool-result') continue;
 			const block = toolCallIndex.get(part.toolCallId);
 			if (!block) continue; // orphan — drop
+			if (part.providerOptions) block.resultProviderOptions = part.providerOptions;
 
 			const { output } = part;
 			if (output.type === 'json' || output.type === 'text') {
 				const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
 				mutableBlock.state = 'resolved';
-				mutableBlock.output = output.value;
+				mutableBlock.output = output.value as JSONValue;
 			} else if (output.type === 'content') {
 				const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
 				mutableBlock.state = 'resolved';
@@ -604,7 +608,9 @@ export function fromAiFinishReason(reason: AiFinishReason): FinishReason {
 			return 'tool-calls';
 		case 'error':
 			return 'error';
+		// `interrupted`: the stream ended without a completion signal. Providers reported `other` for this before.
 		case 'other':
+		case 'interrupted':
 			return 'other';
 	}
 }

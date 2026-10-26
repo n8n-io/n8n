@@ -25,6 +25,9 @@ export class UpdateOtelSettingsDto extends Z.class({
 	tracesSampleRate: z.number().min(0).max(1),
 	startupConnectivityTimeoutMs: z.number().int().nonnegative(),
 	includeNodeSpans: z.boolean(),
+	// Defaulted so a body from before these fields existed still parses.
+	emitWorkflowStartSpan: z.boolean().default(false),
+	emitNodeStartSpan: z.boolean().default(false),
 	injectOutbound: z.boolean(),
 	productionExecutionsOnly: z.boolean(),
 }) {}

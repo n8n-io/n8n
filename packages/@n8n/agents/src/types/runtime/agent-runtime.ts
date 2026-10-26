@@ -24,7 +24,12 @@ import type {
 	ThinkingConfig,
 	TitleGenerationConfig,
 } from '../index';
-import type { AgentPersistenceOptions, ModelConfig, PromptCachingConfig } from '../sdk/agent';
+import type {
+	AgentPersistenceOptions,
+	ModelConfig,
+	NativeToolDeferralConfig,
+	PromptCachingConfig,
+} from '../sdk/agent';
 
 export interface VolatileInstructionsContext {
 	persistence?: AgentPersistenceOptions;
@@ -38,8 +43,8 @@ export interface AgentRuntimeConfig {
 	name: string;
 	model: ModelConfig;
 	/**
-	 * Proxy-aware `fetch` used for all model calls in this runtime (main model and
-	 * title generation). When unset, model construction falls back to the ambient
+	 * Proxy-aware `fetch` used for all model calls in this runtime (main model,
+	 * title generation and memory tasks). When unset, model construction falls back to the ambient
 	 * HTTP_PROXY resolver.
 	 */
 	modelFetch?: FetchFn;
@@ -49,6 +54,7 @@ export interface AgentRuntimeConfig {
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
 	workspaceFilesystem?: WorkspaceFilesystem;
+	nativeToolDeferral?: NativeToolDeferralConfig;
 	toolSearch?: {
 		topK?: number;
 	};

@@ -91,7 +91,8 @@ oneOf:
         description: Folder that currently contains the matched workflow, or null when it lives at the project root.
       targetFolderId:
         type: string
-        description: Folder the import was requested to land in.
+        nullable: true
+        description: Folder the import was requested to land in, or null when a project package puts the workflow at the project root.
       name:
         type: string
     required:
@@ -101,7 +102,7 @@ oneOf:
       - existingParentFolderId
       - targetFolderId
       - name
-    description: A workflow whose source id already matches one in the target project but lives outside the requested import folder. Folder-targeted imports cannot update workflows in place at a different location.
+    description: A workflow whose source id already matches one in the target project but lives in a different folder than the import target. An import cannot move a workflow while it updates it in place. For a project package, the project root is a target too.
   - type: object
     properties:
       type:
@@ -155,16 +156,81 @@ oneOf:
       actualType:
         type: string
         description: 'For `type_mismatch`: the actual type of the resolved target credential.'
-      usedByWorkflows:
+      usedBy:
         type: array
         items:
-          type: string
+          $ref: packageRequirementConsumer.generated.yml
     required:
       - type
       - kind
       - sourceId
-      - usedByWorkflows
+      - usedBy
     description: A credential reference that could not be resolved in the target project.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - credential-conflict
+      kind:
+        type: string
+        enum:
+          - differs
+          - divergent
+        description: '`differs`: under `credentialConflictPolicy=fail`, the package would change the name or values of the destination credential. `divergent`: under `overwrite`, two or more package credentials with different names or values resolve to one destination credential. The import does not select one of them.'
+      targetId:
+        type: string
+        description: Id of the destination credential.
+      sourceIds:
+        type: array
+        items:
+          type: string
+        description: Ids of the package credentials that resolve to the destination credential. For `differs`, the package credentials that would change it.
+      name:
+        type: string
+        description: Name of the destination credential.
+      usedBy:
+        type: array
+        items:
+          $ref: packageRequirementConsumer.generated.yml
+        description: Package consumers that use the listed package credentials.
+    required:
+      - type
+      - kind
+      - targetId
+      - sourceIds
+      - name
+      - usedBy
+    description: 'A matched credential that the credential conflict policy does not let the import change. Only a credential that the import can update is checked: a credential owned by a project of the import. Values are never reported.'
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - credential-update-forbidden
+      targetId:
+        type: string
+        description: Id of the destination credential.
+      sourceIds:
+        type: array
+        items:
+          type: string
+        description: Ids of the package credentials that resolve to it.
+      name:
+        type: string
+        description: Name of the destination credential.
+      usedBy:
+        type: array
+        items:
+          $ref: packageRequirementConsumer.generated.yml
+        description: Package consumers that use the listed package credentials.
+    required:
+      - type
+      - targetId
+      - sourceIds
+      - name
+      - usedBy
+    description: A matched credential that the import can update, but the caller has no `credential:update` permission on it. Only under `credentialConflictPolicy` `overwrite` or `fail`. The import does not read its values, so this blocks also when the package would not change it. Use `keep-existing` to bind it without a change.
   - type: object
     properties:
       type:
@@ -415,6 +481,25 @@ oneOf:
                 kind:
                   type: string
                   enum:
+                    - rename-column
+                from:
+                  type: string
+                to:
+                  type: string
+                destructive:
+                  type: boolean
+                  enum:
+                    - false
+              required:
+                - kind
+                - from
+                - to
+                - destructive
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
                     - reorder-columns
                 destructive:
                   type: boolean
@@ -442,7 +527,7 @@ oneOf:
                 - from
                 - to
                 - destructive
-          description: A single change `dataTableSchemaConflictPolicy=overwrite` would make (or made) to a matched target table's schema. `destructive` operations delete the data in a column.
+          description: A single change `dataTableSchemaConflictPolicy=overwrite` would make (or made) to a matched target table's schema. `destructive` operations remove the values in a column.
           type: object
         description: 'For `schema-incompatible`: the changes `overwrite` would make to the target table.'
       missingScope:
@@ -457,14 +542,14 @@ oneOf:
       currentName:
         type: string
         description: "For a rename `name-conflict`: the matched table's current name."
-      usedByWorkflows:
+      usedBy:
         type: array
         items:
-          type: string
+          $ref: packageRequirementConsumer.generated.yml
     required:
       - type
       - kind
-      - usedByWorkflows
+      - usedBy
     description: A data table referenced by the package's workflows that could not be resolved against the target project — under `dataTableMissingMode=must-preexist` or `dataTableSchemaConflictPolicy`, or because the data table module is disabled on this instance, or the caller lacks the scope the resolution needs.
   - type: object
     properties:
@@ -498,15 +583,15 @@ oneOf:
       existingName:
         type: string
         description: 'For `rename-drift`: the current name of the same-id target tag.'
-      usedByWorkflows:
+      usedBy:
         type: array
         items:
-          type: string
-        description: Package workflow ids (non-skipped) that reference the source tag — not workflows attached to the contested target tag.
+          $ref: packageRequirementConsumer.generated.yml
+        description: Package consumers that reference the source tag. This excludes skipped consumers and workflows attached to the contested target tag.
     required:
       - type
       - kind
-      - usedByWorkflows
+      - usedBy
     description: "A tag referenced by the package's workflows that could not be resolved on the target instance. `kind` distinguishes the cause: `rename-drift` (the same-id target tag carries a different name — under `tagConflictPolicy=fail`, or `rename` when the package name is held by another tag), `name-collision` (the id is free but the name belongs to a different tag under `tagMissingMode=create` with `tagConflictPolicy=fail`; also raised when two package tags collide with each other, or when the target tag a reconcile would re-key is claimed by another package tag), `invalid-name` / `invalid-id` (the package tag's name or id cannot be written on this instance), or `permission-denied` (the importing user lacks the global `tag:create` / `tag:update` scope the plan needs)."
   - type: object
     properties:
@@ -517,14 +602,14 @@ oneOf:
       name:
         type: string
         description: Requirement name with no match in the target project or global scope.
-      usedByWorkflows:
+      usedBy:
         type: array
         items:
-          type: string
+          $ref: packageRequirementConsumer.generated.yml
     required:
       - type
       - name
-      - usedByWorkflows
+      - usedBy
     description: A variable reference that could not be resolved in the target project or the global scope, under `variableMissingMode=must-preexist`.
   - type: object
     properties:
@@ -538,14 +623,14 @@ oneOf:
       projectId:
         type: string
         description: Project owning the resolved variable. Absent when it resolved at the global scope.
-      usedByWorkflows:
+      usedBy:
         type: array
         items:
-          type: string
+          $ref: packageRequirementConsumer.generated.yml
     required:
       - type
       - name
-      - usedByWorkflows
+      - usedBy
     description: A variable that resolved in the target project or the global scope, but whose value differs from the one the package bundles for it, under `variableConflictPolicy=fail`. Also reported under `overwrite`, once per scope, when the projects of a package resolve one row and disagree about the value it should hold. Values are never reported — only the name and the scope the variable was found in.
   - type: object
     properties:
@@ -567,18 +652,18 @@ oneOf:
         items:
           type: string
         description: The unique variable names the import would create.
-      usedByWorkflows:
+      usedBy:
         type: array
         items:
-          type: string
-        description: Package workflow ids that reference any of the listed variables.
+          $ref: packageRequirementConsumer.generated.yml
+        description: Package consumers that reference any of the listed variables.
     required:
       - type
       - limit
       - remaining
       - requested
       - names
-      - usedByWorkflows
+      - usedBy
     description: Creating the package's variables under `create-stub` or `create-with-value` would exceed the instance variable quota (`quota:maxVariables`). Reported once for the whole import; nothing is created.
   - type: object
     properties:
@@ -592,16 +677,16 @@ oneOf:
       typeVersion:
         type: number
         description: Node type version the package's workflows use.
-      usedByWorkflows:
+      usedBy:
         type: array
         items:
-          type: string
-        description: Package workflow ids that use this node type and version.
+          $ref: packageRequirementConsumer.generated.yml
+        description: Package consumers that use this node type and version.
     required:
       - type
       - nodeType
       - typeVersion
-      - usedByWorkflows
+      - usedBy
     description: A node type — or a version of a node type — used by a package workflow that this instance does not have, under `missingNodeTypeMode=fail`. One issue is reported per missing `(nodeType, typeVersion)` pair.
   - type: object
     properties:
@@ -633,6 +718,10 @@ oneOf:
               type: string
             matchedRuleId:
               type: string
+            projectId:
+              type: string
+            optInAvailable:
+              type: boolean
           required:
             - kind
             - checkId
@@ -643,4 +732,59 @@ oneOf:
       - name
       - violations
     description: 'A workflow the content-import policy refused. Takes down the whole package rather than skipping the workflow: the import rewrites cross-workflow references to the ids each workflow would get, so dropping one leaves the workflows that call it pointing at a row nothing ever wrote.'
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - credential-policy-violation
+      sourceId:
+        type: string
+        description: Credential id as it appears in the package.
+      targetId:
+        type: string
+        description: Id of the matched credential on the target instance. Set when the policy refused an update of this credential under `credentialConflictPolicy=overwrite`. Absent when the policy refused a credential that the import would create.
+      name:
+        type: string
+      credentialType:
+        type: string
+      usedBy:
+        type: array
+        items:
+          $ref: packageRequirementConsumer.generated.yml
+        description: Package consumers that use this credential.
+      violations:
+        type: array
+        items:
+          type: object
+          properties:
+            kind:
+              type: string
+            checkId:
+              type: string
+            message:
+              type: string
+            subject:
+              type: string
+            subjectType:
+              type: string
+            scope:
+              type: string
+            matchedRuleId:
+              type: string
+            projectId:
+              type: string
+            optInAvailable:
+              type: boolean
+          required:
+            - kind
+            - checkId
+            - message
+    required:
+      - type
+      - sourceId
+      - credentialType
+      - usedBy
+      - violations
+    description: A credential the import would write that a credential-save or content-import policy refused, for example a stub of a credential type this instance does not allow, or an update of a matched credential. The import stops before any writes.
 type: object

@@ -111,6 +111,8 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			connections,
 			nodes,
 			nodeGroups: nodeGroups ?? [],
+			// Lets the server keep this version's nodes, including credentials the user cannot use.
+			restoredFromVersionId: workflowVersionId,
 		};
 
 		return await workflowsStore

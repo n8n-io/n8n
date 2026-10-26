@@ -6,11 +6,11 @@ const packageColumns = [
 ];
 
 const identicalTarget = [
-	{ name: 'email', type: 'string', index: 0 },
-	{ name: 'age', type: 'number', index: 1 },
+	{ name: 'email', type: 'string' as const, index: 0 },
+	{ name: 'age', type: 'number' as const, index: 1 },
 ];
 
-const supersetTarget = [...identicalTarget, { name: 'extra', type: 'boolean', index: 2 }];
+const supersetTarget = [...identicalTarget, { name: 'extra', type: 'boolean' as const, index: 2 }];
 
 describe('findSchemaConflict', () => {
 	describe('keep-existing', () => {
@@ -67,6 +67,59 @@ describe('findSchemaConflict', () => {
 				missingColumns: ['age'],
 				typeMismatches: [],
 			});
+		});
+	});
+
+	describe('overwrite-non-destructive', () => {
+		it('blocks columns that swap their names and types', () => {
+			expect(
+				findSchemaConflict(
+					'overwrite-non-destructive',
+					[
+						{ id: 'c1', name: 'b', type: 'number', index: 0 },
+						{ id: 'c2', name: 'a', type: 'string', index: 1 },
+					],
+					[
+						{ id: 'c1', name: 'a', type: 'string', index: 0 },
+						{ id: 'c2', name: 'b', type: 'number', index: 1 },
+					],
+				),
+			).toEqual({
+				missingColumns: [],
+				typeMismatches: [
+					{ column: 'b', expectedType: 'number', actualType: 'string' },
+					{ column: 'a', expectedType: 'string', actualType: 'number' },
+				],
+			});
+		});
+
+		it('reports a renamed and retyped column as a type change on its new name', () => {
+			expect(
+				findSchemaConflict(
+					'overwrite-non-destructive',
+					[{ id: 'c1', name: 'score', type: 'number', index: 0 }],
+					[{ id: 'c1', name: 'points', type: 'string', index: 0 }],
+				),
+			).toEqual({
+				missingColumns: [],
+				typeMismatches: [{ column: 'score', expectedType: 'number', actualType: 'string' }],
+			});
+		});
+
+		it('blocks the removal of a column when a renamed column takes its name', () => {
+			expect(
+				findSchemaConflict(
+					'overwrite-non-destructive',
+					[
+						{ id: 'c1', name: 'b', type: 'string', index: 0 },
+						{ id: 'c3', name: 'a', type: 'string', index: 1 },
+					],
+					[
+						{ id: 'c1', name: 'a', type: 'string', index: 0 },
+						{ id: 'c2', name: 'b', type: 'string', index: 1 },
+					],
+				),
+			).toEqual({ missingColumns: [], typeMismatches: [], extraColumns: ['b'] });
 		});
 	});
 });

@@ -9,7 +9,6 @@ import type {
 	AgentEvalVerdict,
 	InstanceAiAgentNode,
 	InstanceAiHandoffContext,
-	InstanceAiMessage,
 } from '@n8n/api-types';
 import { USER_TYPED_MESSAGE } from '../prefills';
 import { setActivePinia } from 'pinia';
@@ -20,10 +19,7 @@ import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import {
-	INSTANCE_AI_SETUP_PANEL_EXPERIMENT,
-	INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT,
-} from '@/app/constants/experiments';
+import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from '../constants';
 import { LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
@@ -44,7 +40,6 @@ import {
 	inputSetTextSpy,
 	inputState,
 	makeThread,
-	planEditSubmitState,
 } from './createThreadComponentRenderer';
 
 const mockWindowSizeState = vi.hoisted(() => ({
@@ -382,56 +377,6 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 	},
 });
 
-function makePlanReviewMessage(): InstanceAiMessage {
-	const orchestrator: InstanceAiAgentNode = {
-		agentId: 'root',
-		role: 'orchestrator',
-		status: 'completed',
-		textContent: '',
-		reasoning: '',
-		toolCalls: [
-			{
-				toolCallId: 'tc-plan',
-				toolName: 'create-tasks',
-				args: {},
-				isLoading: true,
-				confirmationStatus: 'pending',
-				confirmation: {
-					requestId: 'req-plan',
-					inputThreadId: 'input-thread-1',
-					severity: 'info',
-					message: 'Review the plan',
-					inputType: 'plan-review',
-					planItems: [
-						{
-							id: 'workflow',
-							title: "Build 'Lead routing' workflow",
-							kind: 'build-workflow',
-							spec: 'Route qualified leads to sales.',
-							deps: [],
-						},
-					],
-				},
-			},
-		],
-		children: [],
-		timeline: [{ type: 'tool-call', toolCallId: 'tc-plan' }],
-	};
-
-	return {
-		id: 'msg-plan',
-		role: 'assistant',
-		content: '',
-		reasoning: '',
-		isStreaming: true,
-		createdAt: '2026-04-01T00:00:00.000Z',
-		agentTree: {
-			...orchestrator,
-			status: 'active',
-		},
-	};
-}
-
 describe('InstanceAiThreadView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
 	let recentWorkflowsStore: ReturnType<typeof mockedStore<typeof useRecentWorkflowsStore>>;
@@ -449,7 +394,6 @@ describe('InstanceAiThreadView', () => {
 		workflowPreviewEmit = null;
 
 		thread = makeThread();
-		thread.requestPlanChanges = vi.fn().mockResolvedValue(true);
 
 		store = mockedStore(useInstanceAiStore);
 		recentWorkflowsStore = mockedStore(useRecentWorkflowsStore);
@@ -480,7 +424,6 @@ describe('InstanceAiThreadView', () => {
 		telemetryTrackSpy.mockClear();
 		routerPushSpy.mockClear();
 		routerReplaceSpy.mockClear();
-		planEditSubmitState.message = 'Make the plan simpler';
 		mockRouteState.params = { threadId: 'thread-1' };
 		localStorageState.store.clear();
 		inputState.initialDraft = '';
@@ -1722,7 +1665,7 @@ describe('InstanceAiThreadView', () => {
 				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
 				toolCall: {
 					toolCallId: 'tc-1',
-					toolName: 'workflows',
+					toolName: 'workflow_builder_workflows',
 					args: { action: 'run' },
 					isLoading: true,
 					confirmationStatus: 'pending',
@@ -1744,7 +1687,7 @@ describe('InstanceAiThreadView', () => {
 				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
 				toolCall: {
 					toolCallId: 'tc-q',
-					toolName: 'ask-user',
+					toolName: 'workflow_builder_ask_user',
 					args: {},
 					isLoading: true,
 					confirmationStatus: 'pending',
@@ -1913,7 +1856,7 @@ describe('InstanceAiThreadView', () => {
 				toolCalls: [
 					{
 						toolCallId: 'tc-create-agent',
-						toolName: 'build-agent',
+						toolName: 'agent_builder_build_agent',
 						args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
 						isLoading: false,
 						result: { ok: true, builderReply: 'Created the agent.' },
@@ -2109,7 +2052,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId,
-							toolName: 'build-workflow',
+							toolName: 'workflow_builder_build_workflow',
 							args: {},
 							isLoading: false,
 							result: { success: true, workflowId },
@@ -2222,7 +2165,7 @@ describe('InstanceAiThreadView', () => {
 				toolCalls: [
 					{
 						toolCallId: 'tc-build-agent',
-						toolName: 'build-agent',
+						toolName: 'agent_builder_build_agent',
 						args: { message: 'Build me an SEO auditor', name: 'SEO Auditor' },
 						isLoading: true,
 					},
@@ -2389,7 +2332,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-build',
-							toolName: 'build-workflow',
+							toolName: 'workflow_builder_build_workflow',
 							args: {},
 							isLoading: false,
 							result: { success: true, workflowId },
@@ -2486,18 +2429,8 @@ describe('InstanceAiThreadView', () => {
 			outcome: 'pass',
 			reasoning: 'It answered the question.',
 		};
-		const FAIL_VERDICT: AgentEvalVerdict = {
-			status: 'completed',
-			outcome: 'fail',
-			reasoning: 'It did not answer the question.',
-		};
 
-		function seedPreviewVariant(verdict: AgentEvalVerdict = PASS_VERDICT) {
-			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
-				flag === INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.name
-					? INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.variant
-					: undefined,
-			);
+		function seedPreviewRun(verdict: AgentEvalVerdict = PASS_VERDICT) {
 			const evalsStore = mockedStore(useAgentEvalsStore);
 			evalsStore.previewRun.mockResolvedValueOnce({
 				status: 'completed',
@@ -2510,9 +2443,9 @@ describe('InstanceAiThreadView', () => {
 			return evalsStore;
 		}
 
-		it('renders the preview panel instead of the generic offer when the experiment is on', async () => {
+		it('renders the preview panel instead of the generic offer when the main eval flag is on', async () => {
 			seedReadyAgent();
-			seedPreviewVariant();
+			seedPreviewRun();
 
 			const { queryByTestId, findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -2524,7 +2457,7 @@ describe('InstanceAiThreadView', () => {
 		// cannot be reported as a first check. The panel runs and judges its own.
 		it("does not reuse the builder's own test call, since it has no rule or verdict", async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewVariant();
+			const evalsStore = seedPreviewRun();
 			thread.messages.push({
 				id: 'msg-builder',
 				role: 'assistant',
@@ -2547,7 +2480,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-call-1',
-							toolName: 'call_agent',
+							toolName: 'agent_builder_call_agent',
 							args: { message: 'Summarize the thread about the outage' },
 							isLoading: false,
 							result: {
@@ -2575,7 +2508,7 @@ describe('InstanceAiThreadView', () => {
 
 		it('persists the dismissal on "Later" without requesting the evals focus', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewVariant();
+			const evalsStore = seedPreviewRun();
 			const user = userEvent.setup();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -2587,24 +2520,9 @@ describe('InstanceAiThreadView', () => {
 			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 		});
 
-		it('persists the dismissal after "Fix this check" and then skipping, without requesting the evals focus', async () => {
-			seedReadyAgent();
-			const evalsStore = seedPreviewVariant(FAIL_VERDICT);
-			const user = userEvent.setup();
-			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-			await user.click(await findByTestId('instance-ai-test-agent-preview-needs-work'));
-			await user.click(await findByTestId('instance-ai-test-agent-preview-dont-create-evals'));
-
-			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
-				dismissedContextKeys: ['test-agent:agent-1'],
-			});
-			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
-		});
-
 		it('persists the dismissal on "Looks good" without requesting the evals focus yet', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewVariant();
+			const evalsStore = seedPreviewRun();
 			evalsStore.generateDraftCases.mockResolvedValueOnce({
 				datasetId: 'dataset-2',
 				dataTableId: 'table-2',
@@ -2623,7 +2541,7 @@ describe('InstanceAiThreadView', () => {
 
 		it('drops the preview panel if the dataset cache populates from elsewhere before the user commits', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewVariant();
+			const evalsStore = seedPreviewRun();
 
 			// `isLoaded`/`getDatasets` are automocked vi.fn()s, so a plain
 			// `mockReturnValue` change is invisible to Vue's reactivity system —
@@ -2658,17 +2576,21 @@ describe('InstanceAiThreadView', () => {
 
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			const panel = await findByTestId('instance-ai-test-agent-panel');
-			expect(panel).toHaveTextContent('Test your agent');
+			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 		});
 
-		it('stays hidden while the flag is off', () => {
+		it.each([false, true])('stays hidden while the main flag is off, with force=%s', (force) => {
 			seedReadyAgent();
 			testAgentOfferState.evalsFlagEnabled = false;
+			useSettingsStore().settings.evaluation = {
+				...useSettingsStore().settings.evaluation,
+				forceAgentWorthTesting: force,
+			};
 
 			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument();
 		});
 
 		it('stays hidden until the builder has persisted an agent', () => {
@@ -2678,6 +2600,7 @@ describe('InstanceAiThreadView', () => {
 			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument();
 		});
 
 		it('stays hidden while the agent is still being built', () => {
@@ -2687,6 +2610,7 @@ describe('InstanceAiThreadView', () => {
 			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument();
 		});
 
 		it('stays hidden once the agent already has test cases', () => {
@@ -2698,6 +2622,7 @@ describe('InstanceAiThreadView', () => {
 			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument();
 		});
 
 		it('still suggests when the dataset list has loaded and is empty', async () => {
@@ -2708,7 +2633,7 @@ describe('InstanceAiThreadView', () => {
 
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			expect(await findByTestId('instance-ai-test-agent-panel')).toBeInTheDocument();
+			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 		});
 
 		it('stays hidden for an agent with no tools or skills', () => {
@@ -2722,6 +2647,7 @@ describe('InstanceAiThreadView', () => {
 			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument();
 		});
 
 		it('offers the suggestion when forced, even for an agent with no tools or skills', async () => {
@@ -2738,13 +2664,12 @@ describe('InstanceAiThreadView', () => {
 
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			// forceAgentWorthTesting also forces the preview experiment on — one
-			// flag gets a local/QA environment the full preview flow without a
-			// separate PostHog override.
+			// The main eval flag enables the preview. The force setting bypasses
+			// the capability check for this agent with no tools or skills.
 			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 		});
 
-		it('offers the preview variant when forced, with no PostHog override at all', async () => {
+		it('offers the preview when forced, with no PostHog override at all', async () => {
 			seedReadyAgent();
 			const evalsStore = mockedStore(useAgentEvalsStore);
 			evalsStore.previewRun.mockResolvedValueOnce({
@@ -2776,6 +2701,7 @@ describe('InstanceAiThreadView', () => {
 			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument();
 		});
 
 		it('still suggests when a different agent was dismissed', async () => {
@@ -2787,21 +2713,19 @@ describe('InstanceAiThreadView', () => {
 
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			expect(await findByTestId('instance-ai-test-agent-panel')).toBeInTheDocument();
+			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 		});
 
-		it('requests the evals surface with generation and dismisses on the CTA', async () => {
+		it('runs the initial preview without automatically starting saved checks', async () => {
 			seedReadyAgent();
-			const user = userEvent.setup();
-			const evalsStore = mockedStore(useAgentEvalsStore);
+			const evalsStore = seedPreviewRun();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			await user.click(await findByTestId('instance-ai-test-agent-generate'));
+			await findByTestId('instance-ai-test-agent-preview-example');
 
-			expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', true);
-			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
-				dismissedContextKeys: ['test-agent:agent-1'],
-			});
+			expect(evalsStore.previewRun).toHaveBeenCalledTimes(1);
+			expect(evalsStore.startRun).not.toHaveBeenCalled();
+			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 		});
 
 		it('still suggests when a finished run left a confirmation unresolved', async () => {
@@ -2812,7 +2736,7 @@ describe('InstanceAiThreadView', () => {
 
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			expect(await findByTestId('instance-ai-test-agent-panel')).toBeInTheDocument();
+			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 		});
 
 		it('drops an unclaimed focus request when the thread is left', () => {
@@ -2836,13 +2760,13 @@ describe('InstanceAiThreadView', () => {
 			expect(evalsStore.clearEvalsFocus).not.toHaveBeenCalled();
 		});
 
-		it('persists the dismissal without requesting generation on "Maybe later"', async () => {
+		it('persists the dismissal without requesting generation on "Later"', async () => {
 			seedReadyAgent();
 			const user = userEvent.setup();
-			const evalsStore = mockedStore(useAgentEvalsStore);
+			const evalsStore = seedPreviewRun();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			await user.click(await findByTestId('instance-ai-test-agent-dismiss'));
+			await user.click(await findByTestId('instance-ai-test-agent-preview-later'));
 
 			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
@@ -2893,7 +2817,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-call-1',
-							toolName: 'call_agent',
+							toolName: 'agent_builder_call_agent',
 							args: { message: 'Summarize the thread about the outage' },
 							isLoading: false,
 							result: {
@@ -2933,7 +2857,7 @@ describe('InstanceAiThreadView', () => {
 
 		it('clears the latch and opens the evals surface from "Open evals", without requesting generation', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewVariant();
+			const evalsStore = seedPreviewRun();
 			const user = userEvent.setup();
 			const { findByTestId, queryByTestId } = renderView({
 				props: { threadId: 'thread-1' },
@@ -2979,7 +2903,7 @@ describe('InstanceAiThreadView', () => {
 		});
 		it('opens the evals surface on one case without clearing the latch', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewVariant();
+			const evalsStore = seedPreviewRun();
 			const user = userEvent.setup();
 			const { findByTestId, queryByTestId } = renderView({
 				props: { threadId: 'thread-1' },
@@ -3042,7 +2966,7 @@ describe('InstanceAiThreadView', () => {
 
 			it('drops the card when the agent starts working again before the user commits', async () => {
 				seedReadyAgent();
-				seedPreviewVariant();
+				seedPreviewRun();
 				const { findByTestId, queryByTestId } = renderWithStub();
 				await findByTestId('preview-stub');
 
@@ -3053,7 +2977,7 @@ describe('InstanceAiThreadView', () => {
 
 			it('keeps the card once the user has committed, even though the live offer is gone', async () => {
 				seedReadyAgent();
-				seedPreviewVariant();
+				seedPreviewRun();
 				const user = userEvent.setup();
 				const { findByTestId, queryByTestId } = renderWithStub();
 				await user.click(await findByTestId('preview-stub-confirm'));
@@ -3066,7 +2990,7 @@ describe('InstanceAiThreadView', () => {
 
 			it('retargets to another agent built in the same thread, instead of staying on the first', async () => {
 				seedReadyAgent();
-				seedPreviewVariant();
+				seedPreviewRun();
 				const metadata = ref<Record<string, unknown>>({
 					instanceAiAgentBuilderTarget: AGENT_TARGET,
 				});
@@ -3087,22 +3011,22 @@ describe('InstanceAiThreadView', () => {
 				);
 			});
 
-			it('shows the generic offer only while the live offer exists', async () => {
+			it('shows the unclaimed preview only while the live offer exists', async () => {
 				seedReadyAgent();
 				const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
-				expect(await findByTestId('instance-ai-test-agent-panel')).toBeInTheDocument();
+				expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 
 				thread.isStreaming = true;
 
 				await vi.waitFor(() =>
-					expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument(),
+					expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument(),
 				);
 			});
 		});
 
 		it('opens the offered agent’s chat preview from "Try agent yourself", keeping the panel and not touching evals', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewVariant();
+			const evalsStore = seedPreviewRun();
 			const user = userEvent.setup();
 			const { findByTestId, queryByTestId } = renderView({
 				props: { threadId: 'thread-1' },
@@ -3143,145 +3067,6 @@ describe('InstanceAiThreadView', () => {
 			expect(queryByTestId('instance-ai-test-agent-preview-try-agent-stub')).toBeInTheDocument();
 			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 		});
-	});
-
-	/** Put the thread in the suspended-on-plan-review state the runtime derives. */
-	function seedPendingPlanReview() {
-		thread.messages = [makePlanReviewMessage()];
-		thread.isStreaming = true;
-		thread.pendingPlanReview = {
-			requestId: 'req-plan',
-			inputThreadId: 'input-thread-1',
-			taskCount: 1,
-		};
-	}
-
-	it('hands the composer a live plan-review state while the run is suspended', async () => {
-		seedPendingPlanReview();
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-mode')).toHaveTextContent('plan-review');
-		});
-	});
-
-	// The live composer is the one way to ask for edits, so the card must not
-	// offer a second one that only points back at it.
-	it('renders the plan card without an ask-for-edits action', async () => {
-		seedPendingPlanReview();
-
-		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-plan-approve')).toBeInTheDocument();
-		});
-
-		expect(queryByTestId('instance-ai-plan-ask-for-edits')).not.toBeInTheDocument();
-	});
-
-	it('routes a typed message to the plan without any prior click', async () => {
-		seedPendingPlanReview();
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
-		});
-		await getByTestId('instance-ai-input-submit').click();
-
-		expect(thread.requestPlanChanges).toHaveBeenCalledWith('req-plan', 'Make the plan simpler');
-		expect(thread.sendMessage).not.toHaveBeenCalled();
-	});
-
-	it('scrubs credential patterns from plan feedback telemetry but sends the raw text on', async () => {
-		seedPendingPlanReview();
-		planEditSubmitState.message = 'use sk-proj-abcdef1234567890XYZ to call the API';
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
-		});
-		await getByTestId('instance-ai-input-submit').click();
-
-		expect(telemetryTrackSpy).toHaveBeenCalledWith(
-			'User finished providing input',
-			expect.objectContaining({
-				feedback: 'use [REDACTED] to call the API',
-				plan_feedback_type: 'changes_requested',
-				num_tasks: 1,
-				input_thread_id: 'input-thread-1',
-			}),
-		);
-		expect(thread.requestPlanChanges).toHaveBeenCalledWith(
-			'req-plan',
-			'use sk-proj-abcdef1234567890XYZ to call the API',
-		);
-	});
-
-	it('restores the draft when the plan change request fails', async () => {
-		seedPendingPlanReview();
-		vi.mocked(thread.requestPlanChanges).mockResolvedValueOnce(false);
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
-		});
-		await getByTestId('instance-ai-input-submit').click();
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Make the plan simpler');
-		});
-	});
-
-	// A submission the run never saw is not feedback. It reports one revision per
-	// accepted request, so a dropped or failed submit must record nothing.
-	it('reports no plan feedback telemetry when the change request is not sent', async () => {
-		seedPendingPlanReview();
-		vi.mocked(thread.requestPlanChanges).mockResolvedValueOnce(false);
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
-		});
-		await getByTestId('instance-ai-input-submit').click();
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Make the plan simpler');
-		});
-		expect(telemetryTrackSpy).not.toHaveBeenCalledWith(
-			'User finished providing input',
-			expect.objectContaining({ plan_feedback_type: 'changes_requested' }),
-		);
-	});
-
-	// `confirmAction` never touches the send counter, so without this the composer
-	// stays live through the round trip and a second Enter is silently dropped.
-	it('holds the composer busy while a plan change request is in flight', async () => {
-		seedPendingPlanReview();
-		thread.updatingPlanRequestIds = new Set(['req-plan']);
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-busy')).toHaveTextContent('busy');
-		});
-	});
-
-	// The runtime refuses to route feedback into a card a newer turn stranded, so
-	// the card must not offer to approve that same abandoned run either.
-	it('renders a plan card stranded by a newer turn without its actions', async () => {
-		seedPendingPlanReview();
-		thread.pendingPlanReview = null;
-
-		const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		expect(await findByTestId('instance-ai-plan-review')).toBeInTheDocument();
-		expect(queryByTestId('instance-ai-plan-approve')).not.toBeInTheDocument();
-		expect(queryByTestId('instance-ai-plan-deny')).not.toBeInTheDocument();
 	});
 
 	describe('runtime disposal on unmount', () => {

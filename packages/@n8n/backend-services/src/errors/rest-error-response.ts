@@ -74,11 +74,6 @@ export function serializePublicApiError(descriptor: RestErrorDescriptor): {
 				status: 500,
 				body: { message: GENERIC_PUBLIC_MESSAGE },
 			};
-		case RestErrorKind.httpError:
-			return {
-				status: descriptor.status,
-				body: { message: descriptor.message },
-			};
 	}
 }
 
@@ -109,11 +104,6 @@ export function serializeInternalRestError(descriptor: RestErrorDescriptor): {
 		case RestErrorKind.serverError:
 			return {
 				status: 500,
-				body: { code: 0, message: descriptor.message },
-			};
-		case RestErrorKind.httpError:
-			return {
-				status: descriptor.status,
 				body: { code: 0, message: descriptor.message },
 			};
 	}

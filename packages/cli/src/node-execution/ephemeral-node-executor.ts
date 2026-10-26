@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import { CredentialAccessRepository, CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { Tool as LangChainTool, type Tool as LangChainToolType } from '@langchain/core/tools';
@@ -28,6 +28,7 @@ import { v4 as uuid } from 'uuid';
 
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { findPolicyViolations, type NonEmptyViolations } from '@/policy/policy-violation.error';
 import { withExpressionIsolate } from '@/utils';
 import { getBase } from '@/workflow-execute-additional-data';
 
@@ -56,7 +57,7 @@ export interface InlineNodeExecutionRequest {
 	/** Credential type name → credential instance display name (resolved at execution). */
 	credentials?: Record<string, string>;
 	/**
-	 * Pre-resolved credential ids (e.g. from ToolFromNode which has { id, name } from list_credentials).
+	 * Pre-resolved credential ids (e.g. from ToolFromNode which has { id, name } from credentials setup).
 	 */
 	credentialDetails?: Record<string, INodeCredentialsDetails>;
 	inputData: INodeExecutionData[];
@@ -71,6 +72,23 @@ export interface NodeExecutionResult {
 	status: 'success' | 'error';
 	data: INodeExecutionData[];
 	error?: string;
+	/** Set when a policy refused the run. */
+	violations?: NonEmptyViolations;
+}
+
+type SupplyDataToolOutcome<T> =
+	| { ok: true; value: T }
+	| { ok: false; error: string; violations?: NonEmptyViolations };
+
+/** The `{ status: 'error' }` result for a caught error, keeping a refusal's violations. */
+function errorResult(error: unknown): NodeExecutionResult {
+	const violations = findPolicyViolations(error);
+	return {
+		status: 'error',
+		data: [],
+		error: getErrorMessage(error),
+		...(violations && { violations }),
+	};
 }
 
 /**
@@ -154,9 +172,9 @@ export class EphemeralNodeExecutor {
 	constructor(
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly logger: Logger,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly credentialAccessRepository: CredentialAccessRepository,
 	) {}
 
 	/**
@@ -171,7 +189,7 @@ export class EphemeralNodeExecutor {
 			return null;
 		}
 
-		const accessible = await this.credentialsRepository.findAllCredentialsForProject(projectId);
+		const accessible = await this.credentialsRepository.findCredentialsUsableInProject(projectId);
 
 		const resolved: Record<string, INodeCredentialsDetails> = {};
 
@@ -222,24 +240,29 @@ export class EphemeralNodeExecutor {
 				);
 			}
 
-			const sharedCredential = await this.sharedCredentialsRepository.findOne({
-				where: { credentialsId: d.id, projectId },
-				relations: { credentials: true },
-			});
+			const [credential] = await this.credentialsRepository.findCredentialsUsableInProject(
+				projectId,
+				[d.id],
+			);
 
-			if (!sharedCredential) {
-				throw new UserError(`Credential "${d.name}" is not accessible or does not exist.`, {
-					extra: { credType, credentialId: d.id },
-				});
+			if (!credential) {
+				const [currentCredential] = await this.credentialAccessRepository.findCredentialNames([
+					d.id,
+				]);
+				const name = currentCredential ? ` "${currentCredential.name}"` : '';
+				throw new UserError(
+					`Credential${name} with ID "${d.id}" is not accessible or does not exist.`,
+					{ extra: { credType, credentialId: d.id } },
+				);
 			}
 
-			if (sharedCredential.credentials.type !== credType) {
+			if (credential.type !== credType) {
 				throw new UserError(
-					`Credential "${sharedCredential.credentials.name}" has type "${sharedCredential.credentials.type}" but the node expects credential slot "${credType}".`,
+					`Credential "${credential.name}" has type "${credential.type}" but the node expects credential slot "${credType}".`,
 					{
 						extra: {
 							credType,
-							actualType: sharedCredential.credentials.type,
+							actualType: credential.type,
 							credentialId: d.id,
 						},
 					},
@@ -247,8 +270,8 @@ export class EphemeralNodeExecutor {
 			}
 
 			verified[credType] = {
-				id: sharedCredential.credentials.id,
-				name: sharedCredential.credentials.name,
+				id: credential.id,
+				name: credential.name,
 			};
 		}
 
@@ -392,9 +415,9 @@ export class EphemeralNodeExecutor {
 			);
 			return executionResult;
 		} catch (error) {
-			const message = getErrorMessage(error);
-			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: message });
-			return { status: 'error', data: [], error: message };
+			const result = errorResult(error);
+			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: result.error });
+			return result;
 		}
 	}
 
@@ -514,7 +537,7 @@ export class EphemeralNodeExecutor {
 		tool: EphemeralWorkflowToolLike,
 		inputItems: INodeExecutionData[],
 		onTool: (response: LangChainToolType | StructuredToolkit) => Promise<T> | T,
-	): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
+	): Promise<SupplyDataToolOutcome<T>> {
 		const closeFunctions: CloseFunction[] = [];
 
 		try {
@@ -560,8 +583,8 @@ export class EphemeralNodeExecutor {
 				};
 			});
 		} catch (error) {
-			const message = getErrorMessage(error);
-			return { ok: false, error: message };
+			const violations = findPolicyViolations(error);
+			return { ok: false, error: getErrorMessage(error), ...(violations && { violations }) };
 		} finally {
 			for (const closeFunction of closeFunctions) {
 				try {
@@ -611,7 +634,12 @@ export class EphemeralNodeExecutor {
 				nodeType: tool.nodeType,
 				error: result.error,
 			});
-			return { status: 'error', data: [], error: result.error };
+			return {
+				status: 'error',
+				data: [],
+				error: result.error,
+				...(result.violations && { violations: result.violations }),
+			};
 		}
 
 		return {

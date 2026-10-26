@@ -16,7 +16,7 @@ const execution: ExecutionRecord = {
 	workflowId: 'wf-1',
 	status: 'running',
 	mode: 'production',
-	graph: { nodes: [], edges: [] },
+	graph: { nodes: [], edges: [], seeded: [] },
 	workflow: {},
 	triggerOutputs: null,
 	callerContext: { hostMode: 'trigger' },
@@ -35,6 +35,7 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		cancelExecution: vi
 			.fn()
 			.mockResolvedValue({ finishedAt: new Date('2026-09-30T08:00:00.000Z') }),
+		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
 		refreshLiveStatus: vi.fn(),
 		...overrides,
 	};

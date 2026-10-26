@@ -221,6 +221,64 @@ describe('ClientOAuth2', () => {
 			expect(result).toBeInstanceOf(AuthError);
 			expect(result.message).toEqual(ERROR_RESPONSES.access_denied);
 			expect(result.body).toEqual({ error: 'access_denied' });
+			expect(result.fromErrorObject).toBe(false);
+		});
+
+		it('should use the nested message when the error field is an object', async () => {
+			const body = {
+				error: {
+					message: "Can't load URL: The domain of this URL isn't included in the app's domains.",
+					type: 'OAuthException',
+					code: 191,
+					fbtrace_id: 'AbCdEf123',
+				},
+			};
+			mockTokenResponse({
+				status: 400,
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body),
+			});
+
+			const result = await makeTokenCall().catch((err) => err);
+			expect(result).toBeInstanceOf(AuthError);
+			expect(result.message).toBe(body.error.message);
+			expect(result.body).toEqual(body);
+			expect(result.fromErrorObject).toBe(true);
+		});
+
+		it('should use a fixed message when the error object has no string message', async () => {
+			const body = { error: { code: 42, message: { text: 'nested' } } };
+			mockTokenResponse({
+				status: 400,
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body),
+			});
+
+			const result = await makeTokenCall().catch((err) => err);
+			expect(result).toBeInstanceOf(AuthError);
+			expect(result.message).toBe('The OAuth2 server rejected the request');
+			expect(result.body).toEqual(body);
+			expect(result.fromErrorObject).toBe(false);
+		});
+
+		it.each([
+			['an unknown error code', { error: 'custom_error', error_description: 'Server description' }],
+			['no error field', { error_description: 'Server description' }],
+			[
+				'an error object',
+				{ error: { message: 'Nested' }, error_description: 'Server description' },
+			],
+		])('should use error_description when the body has %s', async (_, body) => {
+			mockTokenResponse({
+				status: 400,
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body),
+			});
+
+			const result = await makeTokenCall().catch((err) => err);
+			expect(result).toBeInstanceOf(AuthError);
+			expect(result.message).toBe('Server description');
+			expect(result.fromErrorObject).toBe(false);
 		});
 
 		it('should reject 3xx responses with response errors', async () => {

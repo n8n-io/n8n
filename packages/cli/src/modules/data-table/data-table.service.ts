@@ -116,11 +116,16 @@ export class DataTableService {
 	}
 
 	/**
-	 * `id` is package-import-only: it keeps the id the table had on the exporting
-	 * instance (mirrors `FolderService.createFolder`). REST callers never pass it —
-	 * the public create endpoint always mints a fresh id.
+	 * `id` and `columnIds` are package-import-only: they keep the ids the table and
+	 * its columns had on the exporting instance (mirrors `FolderService.createFolder`).
+	 * REST callers never pass them. The public create endpoint always mints fresh ids.
 	 */
-	async createDataTable(projectId: string, dto: CreateDataTableDto, id?: string) {
+	async createDataTable(
+		projectId: string,
+		dto: CreateDataTableDto,
+		id?: string,
+		columnIds?: Array<string | undefined>,
+	) {
 		if (dto.fileId && dto.columns.length === 0) {
 			throw new DataTableValidationError(
 				'At least one column must be included when importing from CSV',
@@ -135,6 +140,7 @@ export class DataTableService {
 			dto.columns,
 			undefined,
 			id,
+			columnIds,
 		);
 
 		if (dto.fileId) {
@@ -175,6 +181,13 @@ export class DataTableService {
 			where: { id: In(dataTableIds) },
 			relations: { columns: true },
 		});
+	}
+
+	/** Instance-wide column id lookup used by package import to detect column ids that another table uses. */
+	async findTableIdsByColumnIds(
+		columnIds: string[],
+	): Promise<Array<Pick<DataTableColumn, 'id' | 'dataTableId'>>> {
+		return await this.dataTableColumnRepository.findTableIdsByColumnIds(columnIds);
 	}
 
 	/** Project-scoped name lookup used by package import to detect name conflicts before creating tables. */
@@ -287,7 +300,10 @@ export class DataTableService {
 	async replaceSchema(
 		dataTableId: string,
 		projectId: string,
-		schema: { name: string; columns: Array<Pick<DataTableColumn, 'name' | 'type'>> },
+		schema: {
+			name: string;
+			columns: Array<Pick<DataTableColumn, 'name' | 'type'> & { id?: string }>;
+		},
 	) {
 		const table = await this.validateDataTableExists(dataTableId, projectId);
 		if (table.name !== schema.name) await this.validateUniqueName(schema.name, projectId);

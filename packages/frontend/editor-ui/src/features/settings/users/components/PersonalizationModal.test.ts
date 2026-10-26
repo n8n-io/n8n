@@ -3,6 +3,10 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems } from '@/__tests__/utils';
 import PersonalizationModal from './PersonalizationModal.vue';
 import { createTestingPinia } from '@pinia/testing';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
 import {
 	COMPANY_TYPE_KEY,
 	COMPANY_INDUSTRY_EXTENDED_KEY,
@@ -13,6 +17,7 @@ import {
 	ROLE_OTHER_KEY,
 	DEVOPS_AUTOMATION_GOAL_OTHER_KEY,
 	DEVOPS_AUTOMATION_GOAL_KEY,
+	REPORTED_SOURCE_KEY,
 } from '../users.constants';
 
 vi.mock('vue-router', () => ({
@@ -147,5 +152,57 @@ describe('PersonalizationModal', () => {
 
 		await userEvent.click(otherItem);
 		expect(getByTestId(OTHER_MARKETING_AUTOMATION_GOAL_KEY)).toBeInTheDocument();
+	});
+
+	describe('Community Plus enrollment after submit', () => {
+		const submitSurvey = async (deploymentType: 'default' | 'cloud') => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const settingsStore = useSettingsStore(pinia);
+			const usersStore = useUsersStore(pinia);
+			const uiStore = useUIStore(pinia);
+
+			settingsStore.settings.deployment = { type: deploymentType };
+			usersStore.currentUserId = 'owner';
+			usersStore.usersById = {
+				owner: { id: 'owner', globalScopes: ['community:register'] } as never,
+			};
+			vi.spyOn(usersStore, 'submitPersonalizationSurvey').mockResolvedValue(undefined);
+			const openModalWithData = vi.spyOn(uiStore, 'openModalWithData');
+
+			const { getByTestId, getByText } = renderModal({ pinia });
+
+			const companyTypeSelect = getByTestId(COMPANY_TYPE_KEY);
+			await userEvent.click(
+				[...(await getDropdownItems(companyTypeSelect))].find(
+					(node) => node.textContent === "I'm not using n8n for work",
+				) as Element,
+			);
+
+			const sourceSelect = getByTestId(REPORTED_SOURCE_KEY);
+			await userEvent.click([...(await getDropdownItems(sourceSelect))][0]);
+
+			await userEvent.click(getByText('Get started'));
+
+			return openModalWithData;
+		};
+
+		it('opens the enrollment modal on self-hosted when the user can register', async () => {
+			const openModalWithData = await submitSurvey('default');
+
+			await vi.waitFor(() =>
+				expect(openModalWithData).toHaveBeenCalledWith(
+					expect.objectContaining({ name: COMMUNITY_PLUS_ENROLLMENT_MODAL }),
+				),
+			);
+		});
+
+		it('does not open the enrollment modal on cloud', async () => {
+			const openModalWithData = await submitSurvey('cloud');
+
+			await vi.waitFor(() =>
+				expect(useUsersStore().submitPersonalizationSurvey).toHaveBeenCalled(),
+			);
+			expect(openModalWithData).not.toHaveBeenCalled();
+		});
 	});
 });

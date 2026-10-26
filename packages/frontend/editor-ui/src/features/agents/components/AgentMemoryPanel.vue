@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nText,
@@ -34,6 +35,10 @@ const settingsStore = useSettingsStore();
 const projectId = useAgentProjectId();
 const episodicMemory = computed(() => props.config?.memory?.episodicMemory ?? null);
 const episodicMemoryEnabled = computed(() => episodicMemory.value?.enabled === true);
+const episodicMemoryCredentialId = computed(() => {
+	const memory = episodicMemory.value;
+	return memory?.enabled === true ? memory.credential : null;
+});
 const isAiAssistantProxyEnabled = computed(
 	() => settingsStore.moduleSettings.agents?.proxyEnabled === true,
 );
@@ -103,8 +108,8 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 			</N8nText>
 		</template>
 
-		<div :class="$style.row">
-			<div :class="$style.titleGroup">
+		<div :class="shared.settingRow">
+			<div :class="shared.settingLabel">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.memory.episodicMemory.label') }}
 				</N8nText>
@@ -128,7 +133,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 			<N8nSwitch
 				:model-value="episodicMemoryEnabled"
 				:disabled="props.disabled"
-				:class="$style.switch"
+				:class="shared.settingControl"
 				data-testid="agent-episodic-memory-toggle"
 				@update:model-value="(value) => onEpisodicMemoryToggle(Boolean(value))"
 			/>
@@ -147,41 +152,46 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 					}}
 				</N8nDialogTitle>
 			</N8nDialogHeader>
-			<div :class="$style.dialogContent">
-				<div :class="$style.row">
-					<div :class="$style.titleGroup">
-						<N8nText step="sm" bold :class="shared.dataEntryLabel">
-							{{
-								i18n.baseText(
-									'agents.builder.memory.episodicMemory.credential.label' as BaseTextKey,
-								)
-							}}
-						</N8nText>
-						<N8nText size="small" color="text-light">
-							{{
-								i18n.baseText('agents.builder.memory.episodicMemory.credential.hint' as BaseTextKey)
-							}}
-						</N8nText>
-					</div>
-					<div :class="$style.credentialPicker">
-						<CredentialPicker
-							app-name="OpenAI"
-							size="medium"
-							button-size="large"
-							:credential-type="AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE"
-							:selected-credential-id="null"
-							:project-id="projectId"
-							:show-delete="false"
-							:hide-create-new="false"
-							:teleported="false"
-							credential-modal-append-to-body
-							:class="$style.credentialPicker"
-							data-testid="agent-episodic-memory-credential-picker"
-							@credential-selected="onCredentialSelected"
-						/>
+			<N8nDialogBody>
+				<div :class="$style.dialogContent">
+					<div :class="$style.row">
+						<div :class="$style.titleGroup">
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">
+								{{
+									i18n.baseText(
+										'agents.builder.memory.episodicMemory.credential.label' as BaseTextKey,
+									)
+								}}
+							</N8nText>
+							<N8nText size="small" color="text-light">
+								{{
+									i18n.baseText(
+										'agents.builder.memory.episodicMemory.credential.hint' as BaseTextKey,
+									)
+								}}
+							</N8nText>
+						</div>
+						<div :class="$style.credentialPicker">
+							<!-- Keep the dropdown outside the scrollable dialog body. -->
+							<CredentialPicker
+								app-name="OpenAI"
+								size="medium"
+								button-size="large"
+								:credential-type="AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE"
+								:selected-credential-id="episodicMemoryCredentialId"
+								:project-id="projectId"
+								:show-delete="false"
+								:hide-create-new="false"
+								teleported
+								credential-modal-append-to-body
+								:class="$style.credentialPicker"
+								data-testid="agent-episodic-memory-credential-picker"
+								@credential-selected="onCredentialSelected"
+							/>
+						</div>
 					</div>
 				</div>
-			</div>
+			</N8nDialogBody>
 		</N8nDialog>
 	</AgentPanel>
 </template>
@@ -206,16 +216,10 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	min-width: 0;
 }
 
-.titleGroup > :global(.n8n-text) {
-	max-width: 100%;
-	overflow-wrap: anywhere;
-}
-
 .dialogContent {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
-	padding-top: var(--spacing--lg);
 }
 
 .dialogContent .row {
@@ -240,10 +244,6 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
-}
-
-.switch {
-	flex-shrink: 0;
 }
 
 .changeCredentialButton {

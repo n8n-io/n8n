@@ -45,6 +45,16 @@ describe('CreatePromotionProviderDto', () => {
 		});
 	});
 
+	it('accepts GitLab token authentication without a username', () => {
+		const result = CreatePromotionProviderDto.parse({
+			name: 'GitLab',
+			type: 'gitlab',
+			config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+			auth: { authType: 'token', password: 'secret' },
+		});
+		expect(result.auth).toEqual({ authType: 'token', password: 'secret' });
+	});
+
 	// The auth type lives inside `auth`, so credentials cannot be paired with
 	// another auth type's fields.
 	it('rejects an auth payload that mixes the two auth types', () => {
@@ -125,11 +135,15 @@ describe('UpdatePromotionProviderDto', () => {
 		expect(result.data.auth).toEqual({ authType: 'ssh-key' });
 	});
 
-	it('still requires both credentials for a token provider', () => {
+	it('requires a token password and leaves the username requirement to the provider service', () => {
 		expect(UpdatePromotionProviderDto.safeParse({ auth: { authType: 'token' } }).success).toBe(
 			false,
 		);
 		expect(UpdatePromotionProviderDto.safeParse({ auth: tokenAuth }).success).toBe(true);
+		expect(
+			UpdatePromotionProviderDto.parse({ auth: { authType: 'token', password: 'replacement' } })
+				.auth,
+		).toEqual({ authType: 'token', password: 'replacement' });
 	});
 
 	it('rejects a change to the provider type or the config', () => {
@@ -157,5 +171,25 @@ describe('provider responses', () => {
 		if (!result.success) throw result.error;
 		expect(result.data.data[0]).not.toHaveProperty('config');
 		expect(JSON.stringify(result.data)).not.toContain('AAAAKEY');
+	});
+});
+
+describe('Git host configuration', () => {
+	const gitlab = { name: 'GitLab', type: 'gitlab', auth: tokenAuth };
+
+	it.each([
+		'gitlab.com',
+		'ssh://gitlab.com',
+		'file:///etc',
+		'https://user:password@gitlab.com',
+		'https://gitlab.com?token=example',
+		'https://gitlab.com/#top',
+		'https://git\nlab.com',
+		'https://gitlab.com/\u0000',
+	])('rejects an invalid host URL: %s', (baseUrl) => {
+		expect(
+			CreatePromotionProviderDto.safeParse({ ...gitlab, config: { schemaVersion: 1, baseUrl } })
+				.success,
+		).toBe(false);
 	});
 });

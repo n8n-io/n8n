@@ -55,6 +55,10 @@ export { FolderRepository } from './folder.repository';
 export { FolderAccessRepository } from './folder-access.repository';
 export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
 export { ScopeRepository } from './scope.repository';
+export {
+	IdempotencyKeyRepository,
+	type IdempotencyKeyForClaim,
+} from './idempotency-key.repository';
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
 export { InstanceCredentialAssignmentRepository } from './instance-credential-assignment.repository';
 export { LicenseMetricsRepository } from './license-metrics.repository';
@@ -126,7 +130,7 @@ export {
 export { WorkflowReviewLifecycleRepository } from './workflow-review-lifecycle.repository';
 export {
 	WorkflowReviewInboxRepository,
-	type InboxCursor,
+	type WorkflowReviewInboxBoundary,
 	type InboxVisibility,
 } from './workflow-review-inbox.repository';
 export {
@@ -147,6 +151,8 @@ export {
 	type NodeUsageScope,
 } from './workflow-dependency.repository';
 export { WebhookRepository } from './webhook.repository';
+export { PersonRepository } from './person.repository';
+export { ServiceAccountRepository } from './service-account.repository';
 export { UserRepository } from './user.repository';
 export { SecretsProviderConnectionRepository } from './secrets-provider-connection.repository.ee';
 export { ProjectSecretsProviderAccessRepository } from './project-secrets-provider-access.repository.ee';

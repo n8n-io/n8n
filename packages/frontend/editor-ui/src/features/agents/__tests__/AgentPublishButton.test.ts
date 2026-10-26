@@ -3,8 +3,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { ref } from 'vue';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { AgentResource } from '../types';
 import type { AgentVersion } from '../agent.types';
+
+const trackMock = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackMock }),
+}));
 
 vi.mock('../composables/useAgentApi', () => ({
 	publishAgent: vi.fn(),
@@ -25,7 +31,7 @@ vi.mock('../composables/useAgentPermissions', () => ({
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext: {} }),
+	useRootStore: () => ({ restApiContext: {}, pushRef: 'editor-session' }),
 }));
 
 vi.mock('@n8n/i18n', () => ({
@@ -37,6 +43,10 @@ vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	return { useToast: () => ({ showMessage, showError }) };
 });
+
+vi.mock('../composables/useAgentsN8nChatFlag', () => ({
+	useAgentsN8nChatFlag: () => ({ value: false }),
+}));
 
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
@@ -118,6 +128,13 @@ const blockingIssue: AgentConfigValidationIssue = {
 	capability: { kind: 'agent' },
 };
 
+const restrictedIssue: AgentConfigValidationIssue = {
+	code: 'restricted_node_type',
+	path: 'tools.0.node.nodeType',
+	capability: { kind: 'tool', toolType: 'node', id: 'Post message', index: 0 },
+	restriction: { nodeType: 'n8n-nodes-base.slackTool', scope: 'instance' },
+};
+
 const notPublishedIssue: AgentConfigValidationIssue = {
 	code: 'incompatible_reference',
 	reason: 'not_published',
@@ -156,6 +173,7 @@ describe('AgentPublishButton', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		trackMock.mockReset();
 	});
 
 	it('publishes with Shift+P when Publish is enabled', async () => {
@@ -295,26 +313,39 @@ describe('AgentPublishButton', () => {
 		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 	});
 
-	it('calls revertAgentToPublished and emits reverted from the dropdown action', async () => {
-		const { revertAgentToPublished } = await import('../composables/useAgentApi');
-		const beforeRevertToPublished = vi.fn();
-		const updatedAgent = createAgent({
-			versionId: 'v1',
-			activeVersionId: 'v1',
-			activeVersion,
-		});
-		vi.mocked(revertAgentToPublished).mockResolvedValue(updatedAgent);
+	it.each([false, true])(
+		'records a successful revert when telemetry failure is %s',
+		async (telemetryFails) => {
+			const { revertAgentToPublished } = await import('../composables/useAgentApi');
+			const beforeRevertToPublished = vi.fn();
+			const updatedAgent = createAgent({
+				versionId: 'v1',
+				activeVersionId: 'v1',
+				activeVersion,
+			});
+			vi.mocked(revertAgentToPublished).mockResolvedValue(updatedAgent);
+			if (telemetryFails) {
+				trackMock.mockImplementationOnce(() => {
+					throw new Error('telemetry unavailable');
+				});
+			}
 
-		const agent = createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion });
-		const wrapper = await renderComponent({ agent, beforeRevertToPublished });
-		await wrapper.find('[data-action="revert-to-published"]').trigger('click');
-		await getModalCallbacks().onConfirm();
-		await flushPromises();
+			const agent = createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion });
+			const wrapper = await renderComponent({ agent, beforeRevertToPublished });
+			await wrapper.find('[data-action="revert-to-published"]').trigger('click');
+			expect(trackMock).not.toHaveBeenCalled();
+			await getModalCallbacks().onConfirm();
+			await flushPromises();
 
-		expect(beforeRevertToPublished).toHaveBeenCalled();
-		expect(revertAgentToPublished).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
-		expect(wrapper.emitted('reverted')?.[0]).toEqual([updatedAgent]);
-	});
+			expect(beforeRevertToPublished).toHaveBeenCalled();
+			expect(revertAgentToPublished).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+			expect(wrapper.emitted('reverted')).toEqual([[updatedAgent]]);
+			expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_REVERTED_CHANGES_ON_AGENT,
+				{ agent_id: 'agent-1', push_ref: 'editor-session' },
+			);
+		},
+	);
 
 	it('does not show the revert action when the agent is not published', async () => {
 		const wrapper = await renderComponent({ agent: createAgent({ activeVersionId: null }) });
@@ -335,6 +366,7 @@ describe('AgentPublishButton', () => {
 		await flushPromises();
 
 		expect(revertAgentToPublished).not.toHaveBeenCalled();
+		expect(trackMock).not.toHaveBeenCalled();
 	});
 
 	it('does not revert when the confirmation modal is cancelled', async () => {
@@ -348,6 +380,21 @@ describe('AgentPublishButton', () => {
 
 		expect(revertAgentToPublished).not.toHaveBeenCalled();
 		expect(wrapper.emitted('reverted')).toBeUndefined();
+		expect(trackMock).not.toHaveBeenCalled();
+	});
+
+	it('does not record a revert when the request fails', async () => {
+		const { revertAgentToPublished } = await import('../composables/useAgentApi');
+		vi.mocked(revertAgentToPublished).mockRejectedValueOnce(new Error('revert failed'));
+		const agent = createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion });
+		const wrapper = await renderComponent({ agent });
+
+		await wrapper.find('[data-action="revert-to-published"]').trigger('click');
+		await getModalCallbacks().onConfirm();
+		await flushPromises();
+
+		expect(wrapper.emitted('reverted')).toBeUndefined();
+		expect(trackMock).not.toHaveBeenCalled();
 	});
 
 	// Dropdown — unpublish action
@@ -461,6 +508,51 @@ describe('AgentPublishButton', () => {
 			expect(
 				publishedWrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled'),
 			).toBe('true');
+		});
+
+		it('blocks publishing while a policy restricts a tool node type', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'invalid',
+				configValidationIssues: [restrictedIssue],
+			});
+
+			expect(
+				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([false]);
+		});
+
+		it('blocks publishing while a policy restricts an MCP server node type', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'invalid',
+				configValidationIssues: [
+					{
+						code: 'restricted_node_type',
+						path: 'mcpServers.0',
+						capability: { kind: 'mcpServer', id: 'Docs', index: 0 },
+						restriction: { nodeType: '@n8n/n8n-nodes-langchain.mcpClientTool', scope: 'project' },
+					},
+				],
+			});
+
+			expect(
+				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
+		});
+
+		it('allows publishing again once the restricted tool is removed', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'valid',
+				configValidationIssues: [],
+			});
+
+			expect(
+				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeUndefined();
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([true]);
 		});
 
 		it('reports readiness when tool credentials and validation change', async () => {

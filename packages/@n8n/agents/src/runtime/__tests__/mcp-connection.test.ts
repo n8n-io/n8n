@@ -625,4 +625,37 @@ describe('McpConnection — approval declaration', () => {
 
 		expect(conn.declaresApproval()).toBe(true);
 	});
+
+	it('does not declare approval for non-interrupting tool configuration', () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			configureTools: () => ({ toolFilter: { mode: 'exclude', tools: ['x'] } }),
+			configureToolsNonInterrupting: true,
+		});
+
+		expect(conn.declaresApproval()).toBe(false);
+	});
+
+	it('ignores the non-interrupting flag when there is no tool configuration', () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			configureToolsNonInterrupting: true,
+		});
+
+		expect(conn.declaresApproval()).toBe(false);
+	});
+
+	it('still declares approval for a static requireApproval with non-interrupting tool configuration', () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			configureTools: () => ({}),
+			configureToolsNonInterrupting: true,
+			requireApproval: ['delete'],
+		});
+
+		expect(conn.declaresApproval()).toBe(true);
+	});
 });

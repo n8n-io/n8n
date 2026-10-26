@@ -239,8 +239,11 @@ function handleTaskKeydown(event: KeyboardEvent): void {
 	padding-inline: var(--spacing--3xs);
 	height: var(--height--md);
 	border-radius: var(--radius--full);
-	background-color: var(--color--purple-100);
-	color: var(--color--purple-900);
+	background-color: light-dark(
+		var(--color--purple-100),
+		color-mix(in oklch, var(--color--purple-500), transparent 50%)
+	);
+	color: light-dark(var(--color--purple-900), var(--text-color));
 
 	@include motion.fade-in;
 	animation-delay: calc(var(--duration--slow) / 2);
@@ -248,12 +251,18 @@ function handleTaskKeydown(event: KeyboardEvent): void {
 
 	&:hover,
 	&[data-state='open'] {
-		background-color: var(--color--purple-200);
+		background-color: light-dark(
+			var(--color--purple-100),
+			color-mix(in oklch, var(--color--purple-500), transparent 30%)
+		);
 	}
 
 	&:focus-visible,
 	&[data-state='open'] {
-		background-color: var(--color--purple-200);
+		background-color: light-dark(
+			var(--color--purple-100),
+			color-mix(in oklch, var(--color--purple-500), transparent 30%)
+		);
 		@include focus.focus-ring-with-border;
 	}
 
@@ -288,12 +297,18 @@ function handleTaskKeydown(event: KeyboardEvent): void {
 	background: linear-gradient(
 		110deg,
 		transparent 20%,
-		var(--color--pink-300) 38%,
-		var(--color--blue-300) 50%,
-		var(--color--orange-300) 62%,
+		light-dark(var(--color--pink-300), color-mix(in oklch, var(--color--pink-500), transparent 50%))
+			38%,
+		light-dark(var(--color--blue-300), color-mix(in oklch, var(--color--blue-500), transparent 50%))
+			50%,
+		light-dark(
+				var(--color--orange-300),
+				color-mix(in oklch, var(--color--orange-500), transparent 50%)
+			)
+			62%,
 		transparent 80%
 	);
-	mix-blend-mode: overlay;
+	mix-blend-mode: screen;
 	background-size: 200% 100%;
 	background-repeat: repeat-x;
 	opacity: 0;
@@ -356,7 +371,7 @@ function handleTaskKeydown(event: KeyboardEvent): void {
 	stroke: var(--border-color);
 }
 .progressValue {
-	stroke: var(--color--secondary);
+	stroke: light-dark(var(--color--purple-500), var(--color--purple-200));
 	animation: progressFill var(--duration--snappy) var(--easing--ease-out) var(--duration--slow)
 		backwards;
 

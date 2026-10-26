@@ -753,6 +753,11 @@ describe('Slack setup services', () => {
 				},
 			],
 		});
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'project-1',
+			excludePersonalRoute: true,
+			excludeResolvable: true,
+		});
 	});
 
 	it('refreshes the manager token during icon setup and auto-installs the bot credential', async () => {
@@ -1222,6 +1227,11 @@ describe('Slack setup services', () => {
 		expect(fetchParams(requestMock, 0).get('app_id')).toBe('A123');
 		expect(fetchParams(requestMock, 0).get('token')).toBe('xoxp-manager');
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledTimes(2);
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'project-1',
+			excludePersonalRoute: true,
+			excludeResolvable: true,
+		});
 	});
 
 	it('updates the live manifest', async () => {

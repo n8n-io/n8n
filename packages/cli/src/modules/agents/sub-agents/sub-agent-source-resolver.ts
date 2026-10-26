@@ -10,6 +10,8 @@ import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@n8n/errors';
 
+import { AgentSkillRefsService } from '../agent-skill-refs.service';
+import { toAgentDocument } from '../json-config/agent-document';
 import { getAgentOrThrow } from '../utils/get-agent-or-throw';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentRepository } from '../repositories/agent.repository';
@@ -36,6 +38,7 @@ export class SubAgentSourceResolver {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly agentHistoryRepository: AgentHistoryRepository,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -90,13 +93,14 @@ export class SubAgentSourceResolver {
 				);
 			}
 
+			const { skillRefs, skills } = await this.agentSkillRefs.readVersion(version, {});
 			return {
 				source: {
 					sourceId: source.agentId,
 					versionId: source.versionId,
-					config: this.toRunnableConfig(version.schema),
+					config: this.toRunnableConfig(toAgentDocument(version.schema, skillRefs)),
 				},
-				...getAgentRuntimeAssets(version),
+				...getAgentRuntimeAssets(version, skills),
 			};
 		}
 
@@ -108,13 +112,14 @@ export class SubAgentSourceResolver {
 				);
 			}
 
+			const { skillRefs, skills } = await this.agentSkillRefs.readVersion(activeVersion, {});
 			return {
 				source: {
 					sourceId: source.agentId,
 					versionId: activeVersion.versionId,
-					config: this.toRunnableConfig(activeVersion.schema),
+					config: this.toRunnableConfig(toAgentDocument(activeVersion.schema, skillRefs)),
 				},
-				...getAgentRuntimeAssets(activeVersion),
+				...getAgentRuntimeAssets(activeVersion, skills),
 			};
 		}
 
@@ -122,12 +127,13 @@ export class SubAgentSourceResolver {
 			throw new UserError(`Sub-agent "${source.agentId}" has no config`);
 		}
 
+		const { skillRefs, skills } = await this.agentSkillRefs.readDraft(agent, {});
 		return {
 			source: {
 				sourceId: source.agentId,
-				config: this.toRunnableConfig(agent.schema),
+				config: this.toRunnableConfig(toAgentDocument(agent.schema, skillRefs)),
 			},
-			...getAgentRuntimeAssets(agent),
+			...getAgentRuntimeAssets(agent, skills),
 		};
 	}
 

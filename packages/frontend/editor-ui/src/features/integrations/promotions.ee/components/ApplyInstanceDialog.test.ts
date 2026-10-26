@@ -1,5 +1,6 @@
+import { ResponseError } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { defineComponent, h } from 'vue';
 
@@ -13,7 +14,6 @@ import ApplyInstanceDialog from './ApplyInstanceDialog.vue';
 const api = vi.hoisted(() => ({
 	applyPromotion: vi.fn<typeof PromotionsApi.applyPromotion>(),
 	continueApplyPromotion: vi.fn<typeof PromotionsApi.continueApplyPromotion>(),
-	continueApplyProjectSelection: vi.fn<typeof PromotionsApi.continueApplyProjectSelection>(),
 }));
 
 vi.mock('../promotionsSettings.api', () => api);
@@ -26,13 +26,27 @@ vi.mock('@n8n/composables/useToast', () => ({
 }));
 
 const renderComponent = createComponentRenderer(ApplyInstanceDialog, {
-	props: { open: true, connectionId: 'connection-1', branchName: 'main' },
+	props: { open: true, environmentId: 'environment-1', branchName: 'main' },
 });
 
 describe('ApplyInstanceDialog', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		createTestingPinia();
+	});
+
+	it('submits the body form from the footer button', async () => {
+		api.applyPromotion.mockResolvedValue(applied);
+		const { findByTestId } = renderComponent();
+
+		const button = await findByTestId('apply-confirm-button');
+		const form = button instanceof HTMLButtonElement ? button.form : null;
+		expect(form).toHaveAttribute('id', 'apply-instance-form');
+		await fireEvent.submit(form!);
+
+		await waitFor(() =>
+			expect(api.applyPromotion).toHaveBeenCalledWith(expect.anything(), 'environment-1'),
+		);
 	});
 
 	it('applies the whole branch and reports success', async () => {
@@ -54,7 +68,7 @@ describe('ApplyInstanceDialog', () => {
 
 		// The whole-branch apply carries no expectedSource, so the branch tip is applied.
 		await waitFor(() =>
-			expect(api.applyPromotion).toHaveBeenCalledWith(expect.anything(), 'connection-1'),
+			expect(api.applyPromotion).toHaveBeenCalledWith(expect.anything(), 'environment-1'),
 		);
 		// Project counts are reported too, because an instance apply can delete projects.
 		expect(mockShowMessage).toHaveBeenCalledWith(
@@ -66,6 +80,58 @@ describe('ApplyInstanceDialog', () => {
 			}),
 		);
 		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
+	});
+
+	it('says how many workflows and folders the apply moved and how many folders it renamed', async () => {
+		api.applyPromotion.mockResolvedValue({
+			...applied,
+			counts: {
+				...applied.counts,
+				folders: { ...applied.counts.folders, updated: 2, moved: 2, renamed: 1 },
+				workflows: {
+					...applied.counts.workflows,
+					moved: 1,
+					publishing: { published: 3, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
+				},
+			},
+		});
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() =>
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.stringMatching(
+						/Moved within their projects: 1 updated workflow and 2 folders\. Renamed: 1 folder\.$/,
+					),
+				}),
+			),
+		);
+	});
+
+	it('says how many folders the apply renamed when it moved nothing', async () => {
+		api.applyPromotion.mockResolvedValue({
+			...applied,
+			counts: {
+				...applied.counts,
+				folders: { ...applied.counts.folders, updated: 1, renamed: 1 },
+			},
+		});
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() =>
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.not.stringContaining('Moved within'),
+				}),
+			),
+		);
+		expect(mockShowMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ message: expect.stringMatching(/ Renamed: 1 folder\.$/) }),
+		);
 	});
 
 	it('reloads the project list after a successful apply', async () => {
@@ -116,14 +182,12 @@ describe('ApplyInstanceDialog', () => {
 			global: {
 				stubs: {
 					PromotionBindingsFlow: defineComponent({
-						props: { continueWith: { type: Object, required: true } },
 						emits: ['applied', 'update:open'],
 						setup:
-							(props, { emit }) =>
+							(_props, { emit }) =>
 							() =>
 								h('button', {
 									'data-test-id': 'stub-applied',
-									'data-continue-kind': props.continueWith.kind,
 									// Same order as the bindings dialog after a successful Continue.
 									onClick: () => {
 										emit('applied', applied);
@@ -137,7 +201,6 @@ describe('ApplyInstanceDialog', () => {
 
 		await userEvent.click(await findByTestId('apply-confirm-button'));
 		const flow = await findByTestId('stub-applied');
-		expect(flow).toHaveAttribute('data-continue-kind', 'instance');
 		await userEvent.click(flow);
 
 		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));
@@ -186,8 +249,7 @@ describe('ApplyInstanceDialog', () => {
 	it('warns and closes when the source changed', async () => {
 		api.applyPromotion.mockResolvedValue({
 			status: 'source-changed',
-			connectionId: 'connection-1',
-			configId: 'config-apply',
+			environmentId: 'environment-1',
 			git: { branchName: 'main', commitSha: 'b'.repeat(40) },
 		});
 		const { findByTestId, emitted } = renderComponent();
@@ -222,6 +284,23 @@ describe('ApplyInstanceDialog', () => {
 		);
 		expect(mockShowMessage).not.toHaveBeenCalled();
 		expect(emitted('update:open')).toBeUndefined();
+	});
+
+	it('says that nothing was applied when the server refuses the apply with a 409', async () => {
+		const refusal = new ResponseError(
+			'Apply can\'t move workflows or folders between projects: workflow "Invoices" (w1) is in project "Alpha" here and in project "Beta" on the branch.',
+			{ httpStatusCode: 409 },
+		);
+		api.applyPromotion.mockRejectedValueOnce(refusal);
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() =>
+			expect(mockShowError).toHaveBeenCalledWith(refusal, "Couldn't apply to the instance", {
+				message: 'Nothing was applied. Resolve the issue in the message, then try again.',
+			}),
+		);
 	});
 
 	it('reloads the project list when the apply fails', async () => {

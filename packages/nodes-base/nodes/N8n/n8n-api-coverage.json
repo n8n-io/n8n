@@ -68,6 +68,9 @@
 		"POST /credentials/{credentialId}/test": {
 			"status": "gap"
 		},
+		"GET /credentials/{credentialId}/dependencies": {
+			"status": "gap"
+		},
 		"GET /community-packages": {
 			"status": "gap"
 		},
@@ -190,6 +193,9 @@
 		"PUT /workflows/{id}/tags": {
 			"status": "gap"
 		},
+		"GET /workflows/{workflowId}/dependencies": {
+			"status": "gap"
+		},
 		"GET /workflows/{workflowId}/test-runs": {
 			"status": "gap"
 		},
@@ -244,46 +250,43 @@
 		"DELETE /promotions/providers/{promotionProviderId}": {
 			"status": "gap"
 		},
-		"GET /promotions/connections": {
+		"GET /promotions/providers/{promotionProviderId}/repositories": {
 			"status": "gap"
 		},
-		"POST /promotions/connections": {
+		"GET /promotions/providers/{promotionProviderId}/repositories/{repositoryId}/branches": {
 			"status": "gap"
 		},
-		"GET /promotions/connections/{promotionConnectionId}": {
+		"GET /promotions/environments": {
 			"status": "gap"
 		},
-		"PUT /promotions/connections/{promotionConnectionId}": {
+		"POST /promotions/environments": {
 			"status": "gap"
 		},
-		"DELETE /promotions/connections/{promotionConnectionId}": {
+		"GET /promotions/environments/{promotionEnvironmentId}": {
 			"status": "gap"
 		},
-		"PUT /promotions/connections/{promotionConnectionId}/configs/apply": {
+		"PUT /promotions/environments/{promotionEnvironmentId}": {
 			"status": "gap"
 		},
-		"PUT /promotions/connections/{promotionConnectionId}/configs/promote": {
+		"DELETE /promotions/environments/{promotionEnvironmentId}": {
 			"status": "gap"
 		},
-		"DELETE /promotions/connections/{promotionConnectionId}/configs/{direction}": {
+		"POST /promotions/environments/{promotionEnvironmentId}/connect": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/{direction}/clone": {
+		"POST /promotions/environments/{promotionEnvironmentId}/disconnect": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/{direction}/disconnect": {
+		"GET /promotions/environments/{promotionEnvironmentId}/projects": {
 			"status": "gap"
 		},
-		"GET /promotions/connections/{promotionConnectionId}/projects": {
+		"POST /promotions/environments/{promotionEnvironmentId}/projects/{projectId}": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/projects/{projectId}": {
+		"DELETE /promotions/environments/{promotionEnvironmentId}/projects/{projectId}": {
 			"status": "gap"
 		},
-		"DELETE /promotions/connections/{promotionConnectionId}/projects/{projectId}": {
-			"status": "gap"
-		},
-		"POST /promotions/connections/{promotionConnectionId}/promote": {
+		"POST /promotions/environments/{promotionEnvironmentId}/promote": {
 			"status": "gap"
 		},
 		"POST /promotions/projects/{projectId}/promote": {
@@ -295,10 +298,10 @@
 		"POST /promotions/projects/{projectId}/apply/continue": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/apply/continue": {
+		"POST /promotions/environments/{promotionEnvironmentId}/apply/continue": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/apply": {
+		"POST /promotions/environments/{promotionEnvironmentId}/apply": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {
@@ -359,6 +362,9 @@
 			"status": "gap"
 		},
 		"GET /data-tables/{dataTableId}": {
+			"status": "gap"
+		},
+		"GET /data-tables/{dataTableId}/dependencies": {
 			"status": "gap"
 		},
 		"PATCH /data-tables/{dataTableId}": {
@@ -422,7 +428,8 @@
 			"status": "gap"
 		},
 		"POST /projects/{projectId}/users": {
-			"status": "gap"
+			"status": "covered",
+			"nodeOperation": "project:addUser"
 		},
 		"DELETE /projects/{projectId}/users/{userId}": {
 			"status": "gap"
@@ -478,6 +485,9 @@
 		"DELETE /node-type-policies/policies/{policyId}": {
 			"status": "gap"
 		},
+		"GET /node-type-policies/scopes/{scopeId}/attachments": {
+			"status": "gap"
+		},
 		"PUT /node-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		},
@@ -506,6 +516,9 @@
 			"status": "gap"
 		},
 		"DELETE /credential-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"GET /credential-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		},
 		"PUT /credential-type-policies/scopes/{scopeId}/attachments": {

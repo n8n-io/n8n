@@ -164,6 +164,7 @@ async function onAction(action: string) {
 			description: locale.baseText('agents.delete.modal.description', {
 				interpolate: { name: props.agent.name },
 			}),
+			isDestructive: true,
 			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
 			cancelButtonText: locale.baseText('generic.cancel'),
 		});
@@ -263,14 +264,9 @@ async function toggleMCPAccess(enabled: boolean) {
 @use '@n8n/design-system/css/mixins/breakpoints';
 
 .cardLink {
-	transition: box-shadow 0.3s ease;
 	cursor: pointer;
 	padding: 0;
 	align-items: stretch;
-
-	&:hover {
-		box-shadow: var(--shadow--card-hover);
-	}
 }
 
 .cardHeading {

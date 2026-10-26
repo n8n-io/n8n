@@ -37,7 +37,6 @@ describe('production n8n Chat HTTP route', () => {
 				schema: { name: 'Agent', model: 'openai:gpt-4o-mini', instructions: 'Help' },
 				integrations: [chatIntegration],
 				tools: {},
-				skills: {},
 				versionId: randomUUID(),
 			}),
 		);
@@ -56,7 +55,6 @@ describe('production n8n Chat HTTP route', () => {
 				integrations: enabled ? [chatIntegration] : [],
 			},
 			tools: {},
-			skills: {},
 			publishedBy: 'test',
 		});
 		await Container.get(AgentRepository).update({ id: agentId }, { activeVersionId: versionId });

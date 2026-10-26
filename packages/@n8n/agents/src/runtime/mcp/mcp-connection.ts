@@ -302,9 +302,9 @@ export class McpConnection {
 	 * without requiring a network connection.
 	 */
 	declaresApproval(): boolean {
-		const { configureTools, requireApproval } = this.config;
+		const { configureTools, configureToolsNonInterrupting, requireApproval } = this.config;
 		return (
-			configureTools !== undefined ||
+			(configureTools !== undefined && !configureToolsNonInterrupting) ||
 			requireApproval === true ||
 			(Array.isArray(requireApproval) && requireApproval.length > 0)
 		);

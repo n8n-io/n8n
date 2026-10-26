@@ -94,6 +94,16 @@ describe('wrapLangChainParserError', () => {
 			}
 		});
 
+		it("keeps the error's own description instead of the class-name fallback", () => {
+			const original = Object.assign(new Error('rate limited'), { description: 'hint' });
+
+			const wrapped = wrapLangChainParserError(original, node, undefined, {
+				enrichNonParserErrors: true,
+			});
+
+			expect((wrapped as NodeOperationError).description).toBe('hint');
+		});
+
 		it('preserves the underlying class name in the description', () => {
 			const original = new TypeError('not a function');
 
@@ -104,6 +114,65 @@ describe('wrapLangChainParserError', () => {
 			expect(wrapped.message).toBe('not a function');
 			expect((wrapped as NodeOperationError).description).toBe('Original error: TypeError');
 			expect((wrapped as NodeOperationError).cause).toBe(original);
+		});
+
+		it('shows the root cause of a nested connection error in the description', () => {
+			const socketError = Object.assign(new Error('write EPROTO bad signature'), {
+				code: 'EPROTO',
+			});
+			const fetchError = new TypeError('fetch failed', { cause: socketError });
+			class APIConnectionError extends Error {}
+			const original = new APIConnectionError('Connection error.', { cause: fetchError });
+
+			const wrapped = wrapLangChainParserError(original, node, undefined, {
+				enrichNonParserErrors: true,
+			});
+
+			expect(wrapped.message).toBe('Connection error.');
+			expect((wrapped as NodeOperationError).description).toBe(
+				'Original error: APIConnectionError. Cause: write EPROTO bad signature',
+			);
+			expect((wrapped as NodeOperationError).cause).toBe(original);
+		});
+
+		it('adds the error code to the root cause when the message does not contain it', () => {
+			const socketError = Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' });
+			const original = new Error('Connection error.', { cause: socketError });
+
+			const wrapped = wrapLangChainParserError(original, node, undefined, {
+				enrichNonParserErrors: true,
+			});
+
+			expect((wrapped as NodeOperationError).description).toBe(
+				'Original error: Error. Cause: ECONNRESET: socket hang up',
+			);
+		});
+
+		it('shows the error code when the root cause has no message', () => {
+			// Node 20+ reports a failed connection attempt as an AggregateError without a message
+			const socketError = Object.assign(new AggregateError([], ''), { code: 'ECONNREFUSED' });
+			const original = new Error('Connection error.', { cause: socketError });
+
+			const wrapped = wrapLangChainParserError(original, node, undefined, {
+				enrichNonParserErrors: true,
+			});
+
+			expect((wrapped as NodeOperationError).description).toBe(
+				'Original error: Error. Cause: ECONNREFUSED',
+			);
+		});
+
+		it('removes URL query strings from the root cause', () => {
+			const socketError = new Error('request to https://api.example.com/v1?key=secret123 failed');
+			const original = new Error('Connection error.', { cause: socketError });
+
+			const wrapped = wrapLangChainParserError(original, node, undefined, {
+				enrichNonParserErrors: true,
+			});
+
+			const { description } = wrapped as NodeOperationError;
+			expect(description).toContain('https://api.example.com/v1 failed');
+			expect(description).not.toContain('secret123');
 		});
 
 		it('uses constructor.name in the description for a custom subclass that inherits name "Error"', () => {

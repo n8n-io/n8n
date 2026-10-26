@@ -2,6 +2,7 @@ import type { ZodClass } from '@n8n/api-types';
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { Constructable } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
+import type { Readable } from 'node:stream';
 import type { RequestHandler, Router } from 'express';
 import type { ZodTypeAny } from 'zod';
 
@@ -14,6 +15,24 @@ export type ApiKeyScopeRequirement =
 
 export type ResponseDtoClass = Pick<ZodClass, 'parse'>;
 
+export const BINARY_RESPONSE_MEDIA_TYPES = ['application/gzip'] as const;
+export type BinaryResponseMediaType = (typeof BINARY_RESPONSE_MEDIA_TYPES)[number];
+
+export interface ResponseHeader {
+	description: string;
+}
+
+export interface BinaryResponse {
+	mediaType: BinaryResponseMediaType;
+	description?: string;
+	headers?: Record<string, ResponseHeader>;
+}
+
+export interface BinaryResult {
+	body: Buffer | Readable;
+	headers?: Record<string, string | number | readonly string[]>;
+}
+
 export type SuccessStatus = 200 | 201 | 202 | 204;
 
 export interface ErrorResponse {
@@ -23,6 +42,8 @@ export interface ErrorResponse {
 }
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
+
+export type RateLimitAccessName = 'read' | 'write';
 
 /** Multer limits for a `multipart/form-data` `@Body`. Every key matches multer's own `limits` option. */
 export interface MultipartUploadLimits {
@@ -96,9 +117,13 @@ export interface RouteMetadata {
 	licenseFeature?: BooleanLicenseFeature;
 	/** Public API only: gate the route on the instance being within its licensed users quota. */
 	requiresUserQuota?: boolean;
+	/** Public API only: counts the route as a read or a write, in place of what the HTTP method implies. */
+	rateLimitAccess?: RateLimitAccessName;
 	accessScope?: AccessScope;
 	apiKeyScope?: ApiKeyScopeRequirement;
 	responseDto?: ResponseDtoClass;
+	/** Mutually exclusive with `responseDto`. */
+	binaryResponse?: BinaryResponse;
 	/** OpenAPI HTTP status sent on success, and documented as such. */
 	successStatus?: SuccessStatus;
 	/** OpenAPI operation summary. */

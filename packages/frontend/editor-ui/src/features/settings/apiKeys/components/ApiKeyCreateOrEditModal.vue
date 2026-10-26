@@ -367,10 +367,11 @@ async function handleEnterKey(event: KeyboardEvent) {
 					<N8nCopyInput
 						:value="rawApiKey"
 						:display-value="apiKeyDisplay"
+						:label="i18n.baseText('generic.apiKey')"
 						size="large"
 						:copy-label="i18n.baseText('generic.copy')"
 						:copied-label="i18n.baseText('generic.copiedToClipboard')"
-						class="ph-no-capture"
+						redact
 						data-test-id="copy-input"
 						@copy="onApiKeyCopied"
 					/>

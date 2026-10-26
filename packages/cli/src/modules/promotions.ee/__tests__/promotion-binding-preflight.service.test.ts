@@ -123,6 +123,7 @@ function useInventory(inventory: Partial<PackageDirectoryInventory>) {
 		credentials: [],
 		variables: [],
 		dataTables: [],
+		folders: [],
 		...inventory,
 	});
 }
@@ -167,6 +168,7 @@ describe('PromotionBindingPreflightService', () => {
 		credentialsRepository.findPromotionBindingAccess.mockResolvedValue([]);
 		variablesRepository.findKeysInProjectsOrGlobal.mockResolvedValue([]);
 		dataTableImporter.findDestructiveChanges.mockResolvedValue([]);
+		projectRepository.findTeamProjectIds.mockResolvedValue([]);
 		projectRepository.findTypesByIds.mockResolvedValue(
 			[PROJECT_A, PROJECT_B, PROJECT_C].map(({ id }) => ({ id, type: 'team' })),
 		);
@@ -259,6 +261,7 @@ describe('PromotionBindingPreflightService', () => {
 			],
 			variables: [],
 			dataTables: [],
+			folders: [],
 		};
 		const selection = { selectedProjectId: PROJECT_A.id, selectedWorkflowIds: ['wf-1'] };
 		inventoryReader.read.mockResolvedValue(inventory);

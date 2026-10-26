@@ -156,6 +156,7 @@ function preferenceRow(overrides: Partial<Preference> = {}): Preference {
 		projectId: null,
 		project: null,
 		source: 'aia',
+		createdBy: null,
 		scopes: [],
 		createdAt: '2026-09-24T00:00:00.000Z',
 		updatedAt: '2026-09-24T00:00:00.000Z',
@@ -226,7 +227,7 @@ describe('PreferenceCard', () => {
 			// Only the chevron icon stays. No bookmark, no warning.
 			const icons = header.querySelectorAll('[data-icon]');
 			expect(Array.from(icons).map((icon) => icon.getAttribute('data-icon'))).toEqual([
-				'chevron-right',
+				'chevron-right-12',
 			]);
 		});
 
@@ -395,7 +396,7 @@ describe('PreferenceCard', () => {
 		});
 
 		it('renders nothing for another tool that answers in the saved shape', () => {
-			renderActive({ toolName: 'workflows' });
+			renderActive({ toolName: 'workflow_builder_workflows' });
 
 			expect(screen.queryByTestId('instance-ai-preference-card')).toBeNull();
 		});

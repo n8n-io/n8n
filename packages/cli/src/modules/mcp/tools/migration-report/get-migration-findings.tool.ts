@@ -55,8 +55,10 @@ const workflowEntrySchema = z.object({
 	url: z.string(),
 	published: z.boolean().describe('Whether the workflow has a published version'),
 	status: z
-		.enum(['open', 'wont_fix'])
-		.describe('open: still to fix. wont_fix: a user accepted the change'),
+		.enum(['open', 'notified', 'wont_fix'])
+		.describe(
+			'open: still to fix. notified: still to fix, and the owner got a notification. wont_fix: a user accepted the change',
+		),
 	availableInMCP: z
 		.boolean()
 		.describe('MCP tools can only read and edit the workflow when this is true'),
@@ -78,7 +80,7 @@ const outputSchema = {
 					.number()
 					.int()
 					.min(0)
-					.describe('Workflows with an open or wont_fix finding for this rule'),
+					.describe('Workflows with an open, notified, or wont_fix finding for this rule'),
 				workflows: z.array(workflowEntrySchema),
 				truncated: z.boolean().optional().describe('The limit cut the list short'),
 			}),
@@ -122,12 +124,12 @@ export const createGetMigrationFindingsTool = (
 
 	/** Every workflow one rule flags, within what the user may read. */
 	const findingsOfRule = async (ruleId: string, limit: number): Promise<Output> => {
-		const scope = await resolveReportScope(user, deps.workflowSharingService);
+		const scope = await resolveReportScope(user, deps.workflowFinderService);
 		// A partial scan is not recorded, so the next read scans again.
 		const complete = await deps.syncService.syncIfStale(deps.targetVersion);
 		const detail = await deps.queryService.getRuleFindings(deps.targetVersion, ruleId, scope);
 
-		// Open findings first: they are the ones left to fix.
+		// Unresolved findings first: they are the ones left to fix.
 		const findings = [...detail.affectedWorkflows].sort(
 			(a, b) => Number(a.status === 'wont_fix') - Number(b.status === 'wont_fix'),
 		);

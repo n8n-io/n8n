@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Tool-discovery scenario types — guards browser/computer-use discoverability.
+// Tool-discovery scenario types — guards Browser Use discoverability.
 //
 // Discovery scenarios run the orchestrator against a user message that should
 // (or should not) cause a specific tool / sub-agent to be reached for, and
@@ -9,7 +9,7 @@
 // ---------------------------------------------------------------------------
 
 import type { DiscoveryMcpState } from './stub-mcp-registry';
-import type { ComputerUseState } from '../../src/types';
+import type { BrowserUseState } from '../../src/types';
 import type { CaseSeed } from '../harness/schema';
 import type { ConversationTurn, TestCaseCredential } from '../types';
 
@@ -57,11 +57,11 @@ export interface ExpectedToolInvocations {
 
 /**
  * Optional instance configuration overrides for a discovery scenario.
- * Mirrors a subset of `SystemPromptOptions` so a scenario can pin the gateway
- * status (e.g. `disabledGlobally` to test the "explain how to enable" branch).
+ * Mirrors a subset of `SystemPromptOptions` so a scenario can pin the Browser Use
+ * status (e.g. `unavailable` to test the "explain how to enable" branch).
  */
 export interface DiscoveryInstanceState {
-	computerUse?: ComputerUseState;
+	browserUse?: BrowserUseState;
 	mcp?: DiscoveryMcpState;
 	/** Turn the folder-exploration capability on for the run (default off). */
 	folderExploration?: boolean;

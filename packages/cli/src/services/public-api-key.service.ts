@@ -24,7 +24,7 @@ import { randomUUID } from 'crypto';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { UserManagementMailer } from '@/user-management/email';
 
-import { JwtService } from './jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 export const API_KEY_AUDIENCE: ApiKeyAudience = 'public-api';
 export const API_KEY_ISSUER = 'n8n';

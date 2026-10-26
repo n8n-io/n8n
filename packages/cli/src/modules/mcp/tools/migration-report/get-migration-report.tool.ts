@@ -26,7 +26,10 @@ const inputSchema = {} satisfies z.ZodRawShape;
 const outputSchema = {
 	targetVersion: z.string().describe('The n8n version the report checks against, e.g. "v3"'),
 	currentVersion: z.string().describe('The n8n version this instance runs'),
-	generatedAt: z.string().describe('ISO timestamp of the last scan'),
+	generatedAt: z
+		.string()
+		.optional()
+		.describe('ISO timestamp of the last complete scan. Left out until one completes.'),
 	coverage: z
 		.enum(['instance', 'editableWorkflows'])
 		.describe(
@@ -103,7 +106,7 @@ export const createGetMigrationReportTool = (
 		};
 
 		try {
-			const scope = await resolveReportScope(user, deps.workflowSharingService);
+			const scope = await resolveReportScope(user, deps.workflowFinderService);
 			// A first read, or a rule set that changed with an update, runs a full scan first.
 			// A partial scan is not recorded, so the next read scans again.
 			const complete = await deps.syncService.syncIfStale(deps.targetVersion);
@@ -113,7 +116,7 @@ export const createGetMigrationReportTool = (
 			const payload = {
 				targetVersion: report.targetVersion,
 				currentVersion: report.currentVersion,
-				generatedAt: report.generatedAt.toISOString(),
+				...(report.generatedAt ? { generatedAt: report.generatedAt.toISOString() } : {}),
 				coverage:
 					scope.kind === 'instance' ? ('instance' as const) : ('editableWorkflows' as const),
 				reportUrl: getReportUrl(deps.urlService),

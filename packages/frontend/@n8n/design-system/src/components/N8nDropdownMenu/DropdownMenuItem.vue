@@ -329,27 +329,27 @@ onBeforeUnmount(() => {
 						:ui="trailingProps"
 					/>
 					<Icon
-						icon="chevron-right"
+						icon="chevron-right-12"
 						:class="$style['sub-indicator']"
 						:color="disabled ? 'text-xlight' : 'text-light'"
-						size="large"
+						:size="12"
 					/>
 				</span>
 				<span v-else-if="slots['item-trailing']" :class="$style['sub-indicator-action']">
 					<slot name="item-trailing" :item="props" :ui="trailingProps" />
 					<Icon
-						icon="chevron-right"
+						icon="chevron-right-12"
 						:class="$style['sub-indicator']"
 						:color="disabled ? 'text-xlight' : 'text-light'"
-						size="large"
+						:size="12"
 					/>
 				</span>
 				<Icon
 					v-else
-					icon="chevron-right"
+					icon="chevron-right-12"
 					:class="$style['sub-indicator']"
 					:color="disabled ? 'text-xlight' : 'text-light'"
-					size="large"
+					:size="12"
 				/>
 			</DropdownMenuSubTrigger>
 
@@ -593,11 +593,11 @@ onBeforeUnmount(() => {
 	color: var(--text-color);
 
 	&:not([data-disabled]) {
-		&:hover,
+		cursor: pointer;
+
 		&[data-highlighted],
 		&[data-virtual-highlighted] {
 			background-color: var(--background--hover);
-			cursor: pointer;
 		}
 	}
 
@@ -607,7 +607,6 @@ onBeforeUnmount(() => {
 	}
 
 	&.destructive.destructive:not([data-disabled]) {
-		&:hover,
 		&[data-highlighted],
 		&[data-virtual-highlighted] {
 			.item-label.item-label {
@@ -622,10 +621,23 @@ onBeforeUnmount(() => {
 		}
 	}
 
+	// Searchable menus keep Reka focus on the row under the pointer.
+	// Hide that highlight when keyboard focus is on a different row.
 	:global([data-menu-items]:has([data-virtual-highlighted])) &:not([data-virtual-highlighted]) {
-		&:hover,
 		&[data-highlighted] {
 			background-color: transparent;
+
+			&.destructive.destructive {
+				.item-label.item-label {
+					color: var(--text-color);
+				}
+
+				.icon.icon,
+				.item-check.item-check,
+				.sub-indicator.sub-indicator {
+					color: var(--color--text--tint-1) !important;
+				}
+			}
 		}
 	}
 }

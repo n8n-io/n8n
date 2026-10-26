@@ -108,16 +108,11 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 		await seedIncrements();
 		const { lockSkips } = holdFirstFoldUntilLockSkip();
 
-		await Promise.all(
-			Array.from(
-				{ length: OVERLAPPING_RUNS },
-				async () => await task.run(signal, { durable: true }),
-			),
-		);
+		await Promise.all(Array.from({ length: OVERLAPPING_RUNS }, async () => await task.run(signal)));
 		expect(lockSkips()).toBeGreaterThan(0);
 		// A run that lost the lock stops early, so finish any backlog it left.
 		while ((await pendingIncrements()) > 0) {
-			await task.run(signal, { durable: true });
+			await task.run(signal);
 		}
 
 		const counters = await repository.findBy({ name: StatisticsNames.productionSuccess });

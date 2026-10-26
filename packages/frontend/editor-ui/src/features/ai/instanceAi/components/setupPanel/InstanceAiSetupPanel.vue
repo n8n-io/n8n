@@ -814,7 +814,7 @@ async function onConfirmParameters() {
 			<template #action="{ item }">
 				<N8nButton
 					size="small"
-					variant="subtle"
+					variant="outline"
 					:disabled="
 						item.disabled ||
 						Boolean(connectingItemId && (connectingItemId !== item.id || !reopenAuthorization))

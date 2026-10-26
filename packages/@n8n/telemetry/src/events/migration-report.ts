@@ -33,8 +33,9 @@ export const MIGRATION_REPORT_TELEMETRY = defineTelemetryEvents({
 				.describe('One entry per workflow rule with at least one open finding'),
 			synced_at: z
 				.string()
+				.optional()
 				.describe(
-					'ISO time the finding table was last filled, which the overview shows as the report date',
+					'ISO time the finding table was last filled, which the overview shows as the report date. Absent before the first sync',
 				),
 		}),
 	},

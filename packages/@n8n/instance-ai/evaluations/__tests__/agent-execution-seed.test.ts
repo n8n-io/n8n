@@ -119,4 +119,30 @@ describe('executeAgentScenario', () => {
 		expect(reseedScenarioTables).not.toHaveBeenCalled();
 		expect(calls).toEqual(['execute']);
 	});
+
+	it('runs the agent in the project it was built in', async () => {
+		const client = clientRecording([]);
+
+		await executeAgentScenario(
+			client,
+			'agent-1',
+			scenario,
+			'AGENT CONTEXT',
+			silentLogger,
+			10_000,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			'build-project',
+		);
+
+		expect(client.executeAgentWithLlmMock).toHaveBeenCalledWith(
+			'agent-1',
+			'build-project',
+			scenario.dataSetup,
+			10_000,
+		);
+		expect(client.getPersonalProjectId).not.toHaveBeenCalled();
+	});
 });

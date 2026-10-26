@@ -6,6 +6,7 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 	IHookFunctions,
+	IWebhookFunctions,
 	INode,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, UnexpectedError } from 'n8n-workflow';
@@ -119,6 +120,13 @@ export function validateMicrosoftGraphId(id: string, node: INode): string {
 
 export type MicrosoftGraphPathSegment = string | { id: string };
 
+/** Every n8n context that can call Graph through this transport. */
+export type MicrosoftGraphContext =
+	| IExecuteFunctions
+	| ILoadOptionsFunctions
+	| IHookFunctions
+	| IWebhookFunctions;
+
 /**
  * Single, non-bypassable path builder for every Graph path that interpolates a
  * user-supplied id. `segments` is an ordered mix of literal strings and id parts
@@ -127,7 +135,7 @@ export type MicrosoftGraphPathSegment = string | { id: string };
  * validation (not encoding) is the guard.
  */
 export function buildMicrosoftGraphPath(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	this: MicrosoftGraphContext,
 	segments: MicrosoftGraphPathSegment[],
 ): string {
 	const node = this.getNode();
@@ -148,9 +156,7 @@ export function buildMicrosoftGraphPath(
  * literal fallback `0`; both resolve to `undefined` here so callers fall back to
  * a generic message instead of surfacing "0 not found".
  */
-function nodeResourceName(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-): string | undefined {
+function nodeResourceName(this: MicrosoftGraphContext): string | undefined {
 	try {
 		const resource = this.getNodeParameter('resource', 0);
 		if (typeof resource === 'string' && resource !== '') {
@@ -224,9 +230,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	 * Shared by the action node, its `listSearch` helpers and the Trigger's
 	 * webhook hooks, since all of them authenticate through `microsoftApiRequest`.
 	 */
-	function getCredentialType(
-		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-	): MicrosoftGraphCredentialType<TDefault> {
+	function getCredentialType(this: MicrosoftGraphContext): MicrosoftGraphCredentialType<TDefault> {
 		// `0` is the execute item index; in load-options/hook contexts getNodeParameter
 		// treats the 2nd arg as the FALLBACK value, so don't switch this to the 3-arg form.
 		// Use an explicit allow-list (not `selected ?? default`): in load-options/hooks a
@@ -249,9 +253,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	 * so a second copy of this logic would let an operation that builds an absolute
 	 * Graph URL (e.g. `user@odata.bind`) drift from the host the request goes to.
 	 */
-	async function getGraphBaseUrl(
-		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-	): Promise<string> {
+	async function getGraphBaseUrl(this: MicrosoftGraphContext): Promise<string> {
 		const credentials = await this.getCredentials(getCredentialType.call(this));
 		const baseUrl = (
 			typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
@@ -281,7 +283,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	}
 
 	async function microsoftApiRequest(
-		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+		this: MicrosoftGraphContext,
 		method: IHttpRequestMethods,
 		resource: string,
 		body: any = {},
@@ -408,7 +410,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	}
 
 	async function microsoftApiRequestAllItems(
-		this: IExecuteFunctions | ILoadOptionsFunctions,
+		this: MicrosoftGraphContext,
 		propertyName: string,
 		method: IHttpRequestMethods,
 		endpoint: string,

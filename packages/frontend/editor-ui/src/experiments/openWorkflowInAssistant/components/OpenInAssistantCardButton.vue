@@ -39,7 +39,7 @@ async function onClick() {
 		placement="top"
 	>
 		<N8nButton
-			variant="subtle"
+			variant="outline"
 			icon-only
 			size="small"
 			:aria-label="i18n.baseText('experiments.openWorkflowInAssistant.cardButtonTooltip')"

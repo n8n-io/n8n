@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import { N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
-import type { AgentsChatInteractionRenderer } from '@/features/ai/shared/agentsChat/interactionRegistry';
+import {
+	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	type AgentsChatInteractionRenderer,
+} from '@/features/ai/shared/agentsChat/interactionRegistry';
+import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
 import InteractionRenderer from '@/features/ai/shared/agentsChat/components/InteractionRenderer.vue';
 import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 import N8nChatActionCard from './N8nChatActionCard.vue';
@@ -10,7 +14,8 @@ import N8nChatActionCard from './N8nChatActionCard.vue';
  * Single dispatch point for inline cards. `chat_action` and `wait`
  * dispatch by `toolName` — their payload shape isn't shared
  * with any other surface, so `toolName` is a reliable, TS-narrowing
- * discriminant for both `matches` and `getProps`.
+ * discriminant for both `matches` and `getProps`. Cards of host
+ * extensions dispatch by `extensionKey`.
  */
 const props = defineProps<{
 	payload: InteractivePayload;
@@ -28,7 +33,7 @@ const emit = defineEmits<{
  */
 const disabled = computed(() => !!props.payload.resolvedAt || !props.payload.runId);
 
-const interactiveRenderers = [
+const builtInRenderers = [
 	{
 		key: 'chat_action',
 		component: N8nChatActionCard,
@@ -56,6 +61,31 @@ const interactiveRenderers = [
 		},
 	},
 ] satisfies AgentsChatInteractionRenderer[];
+
+const extensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
+
+/**
+ * The host extensions of the chat render their own cards, keyed by
+ * `extensionKey`. A card without a matching extension renders nothing.
+ * Extensions without `component` have no card, so they add no renderer.
+ */
+const interactiveRenderers = computed<AgentsChatInteractionRenderer[]>(() => [
+	...builtInRenderers,
+	...(extensions?.value ?? []).flatMap((extension): AgentsChatInteractionRenderer[] => {
+		const { component } = extension;
+		if (!component) return [];
+		return [
+			{
+				key: extension.key,
+				component,
+				matches: (payload) =>
+					payload.toolName === INTERACTION_EXTENSION_TOOL_NAME &&
+					payload.extensionKey === extension.key,
+				getProps: (payload) => extension.getProps?.(payload.input) ?? { input: payload.input },
+			},
+		];
+	}),
+]);
 
 function onSubmit(resumeData: unknown) {
 	emit('submit', resumeData);

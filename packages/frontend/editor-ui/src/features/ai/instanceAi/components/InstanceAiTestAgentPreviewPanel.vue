@@ -1,51 +1,35 @@
 <script setup lang="ts">
 /**
- * Post-setup suggestion to test the agent that was just built — the preview
- * variant. Instead of a generic "want to test this?" offer, it runs one real
- * case and reports whether that first check passed, with the example message
- * and what the judge found. The case comes from the builder's own test run
- * only when that run already has a rule and a verdict (`initialCase`);
- * otherwise the panel drafts, runs and judges one case of its own. Behind the
- * `INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT` flag, alongside the original
- * `InstanceAiTestAgentPanel`.
+ * Runs and judges the first check with mocked tools before offering a full suite.
+ * The preview is not persisted until the user saves the checks.
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { AgentEvalDraftCase, AgentEvalVerdict } from '@n8n/api-types';
-import { N8nButton, N8nInput, N8nSpinner, N8nText, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nSpinner, N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
+import { useApplyAgentEvalSuggestions } from '@/features/agents/composables/useApplyAgentEvalSuggestions';
 import type { AgentEvalCase } from '@/features/agents/agentEvals.types';
 import {
 	readAgentAnswer,
 	readErrorMessage,
 	readVerdictReasoning,
+	readVerdictSuggestion,
 	toAvatarKind,
 } from '@/features/agents/utils/agent-eval-review';
 import { toDisplayToolCalls } from '@/features/agents/utils/agent-eval-tool-calls';
 import { resolveCaseColumns } from '@/features/agents/utils/agentEvalCases.utils';
 import AgentAvatar from '@/features/agents/components/AgentAvatar.vue';
+import AgentEvalSuggestionCard from '@/features/agents/components/AgentEvalSuggestionCard.vue';
 import EvalInitialSample from '@/features/agents/components/EvalInitialSample.vue';
 import InstanceAiTestAgentExamplesPanel, {
 	type SuiteCaseRun,
 } from './InstanceAiTestAgentExamplesPanel.vue';
-import CapabilityChip from '@/features/agents/components/CapabilityChip.vue';
 
 const props = defineProps<{
 	target: { agentId: string; projectId: string };
-	/**
-	 * A real input/output pair from the agent builder's own "Testing agent"
-	 * step, when one exists. Reused only when it also carries the rule it was
-	 * checked against and the judge's verdict: without both there is no first
-	 * check to report, so the panel drafts, runs and judges a case of its own.
-	 */
-	initialCase?: {
-		message: string;
-		response: string;
-		whatToCheck?: string | null;
-		verdict?: AgentEvalVerdict | null;
-	} | null;
 }>();
 
 const emit = defineEmits<{
@@ -59,33 +43,21 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const store = useAgentEvalsStore();
+const {
+	applyingIds: applyingSuggestionIds,
+	applySuggestions,
+	applyingPreview,
+	applyPreviewSuggestion,
+} = useApplyAgentEvalSuggestions(() => props.target);
 
-type Phase =
-	| 'generating-preview'
-	| 'awaiting-confirmation'
-	| 'awaiting-sample-input'
-	| 'generating-suite'
-	| 'suite-ready';
-// The builder's own test run, when it is a complete first check. Read once: the
-// card must not change under the user if a newer builder run lands later.
-const reusedCase =
-	props.initialCase?.whatToCheck && props.initialCase.verdict
-		? {
-				message: props.initialCase.message,
-				response: props.initialCase.response,
-				whatToCheck: props.initialCase.whatToCheck,
-				verdict: props.initialCase.verdict,
-			}
-		: null;
-// Skips straight to the result when the builder already ran a judged test —
-// there is nothing to generate or wait on.
-const phase = ref<Phase>(reusedCase ? 'awaiting-confirmation' : 'generating-preview');
+type Phase = 'generating-preview' | 'awaiting-confirmation' | 'generating-suite' | 'suite-ready';
+const phase = ref<Phase>('generating-preview');
 // The drafted test message and the agent's real answer to it — set directly
 // from `previewRun`'s response, which already ran the agent and returned the
 // final text. No run id, no polling: unlike the suite below, this never
 // touches a Data Table, dataset, or eval-run row at all.
-const previewRequest = ref<string | null>(null);
-const previewAnswer = ref<string | null>(null);
+const previewInput = ref('');
+const previewOutput = ref('');
 // Generated with `save: false` — a preview, not yet persisted. Nothing backs
 // these rows until "Check your agent" commits them, so dismissing or
 // refreshing mid-preview leaves no orphaned dataset behind.
@@ -109,25 +81,11 @@ const startingSuiteRun = ref(false);
 // retry, since the rows would otherwise sit "waiting" for a run that isn't there.
 const suiteRunFailed = ref(false);
 const stoppingSuiteRun = ref(false);
-const sampleInput = ref('');
-// Cleared once the user submits their own sample, so the display switches
-// over to that new run instead of sticking with the builder's original test.
-const useInitialCase = ref(Boolean(reusedCase));
-// The generated preview case's scenario tag. Null when reusing the builder's
-// own test result (`initialCase`), which was never scenario-generated.
 const previewScenario = ref<string | null>(null);
-// The rule the preview case was checked against, and the judge's call on it.
-const previewWhatToCheck = ref(reusedCase?.whatToCheck ?? '');
-const previewVerdict = ref<AgentEvalVerdict | null>(reusedCase?.verdict ?? null);
+const previewWhatToCheck = ref('');
+const previewVerdict = ref<AgentEvalVerdict | null>(null);
 // Whether the full example conversation is shown under "What we found".
 const conversationExpanded = ref(false);
-
-const previewInput = computed(() =>
-	useInitialCase.value ? (reusedCase?.message ?? '') : (previewRequest.value ?? ''),
-);
-const previewOutput = computed(() =>
-	useInitialCase.value ? (reusedCase?.response ?? '') : (previewAnswer.value ?? ''),
-);
 
 // Nothing failed when the judge passed the answer, or when the case had no rule to
 // grade it against (`skipped`) — the card still shows, as a pass. A judge error is
@@ -137,10 +95,19 @@ const firstCheckPassed = computed(
 		previewVerdict.value?.status === 'skipped' ||
 		(previewVerdict.value?.status === 'completed' && previewVerdict.value.outcome === 'pass'),
 );
-// A judge that ran and failed the answer is a real "needs work". Anything else
-// means the answer was never graded, so the user can still go on to harder cases.
-const firstCheckFailed = computed(
-	() => previewVerdict.value?.status === 'completed' && previewVerdict.value.outcome === 'fail',
+// The confirmed try's own state in the examples panel. A try that was never graded
+// reads as a pass there, except a judge error, which `toAvatarKind` keeps as needs work.
+const previewStatus = computed(() => toAvatarKind('success', previewVerdict.value));
+const previewReasoning = computed(() => readVerdictReasoning(previewVerdict.value));
+// "Keep as is" hides the card until a different suggestion arrives, so a new proposal is
+// never swallowed by an old dismissal.
+const previewSuggestion = computed(() => readVerdictSuggestion(previewVerdict.value));
+const suggestionDismissed = ref(false);
+watch(previewSuggestion, () => {
+	suggestionDismissed.value = false;
+});
+const showSuggestion = computed(
+	() => previewSuggestion.value !== null && !suggestionDismissed.value,
 );
 const findings = computed(() => {
 	const verdict = previewVerdict.value;
@@ -190,6 +157,7 @@ const suiteCaseRuns = computed<SuiteCaseRun[] | null>(() => {
 			// same row (a case that errored is never judged), so either reader
 			// filling this in is unambiguous.
 			errorMessage: readErrorMessage(result.errorDetails) ?? readVerdictReasoning(result.verdict),
+			fixSuggestion: readVerdictSuggestion(result.verdict),
 		};
 	});
 });
@@ -206,13 +174,10 @@ function failAndDismiss(error: unknown) {
 	emit('dismiss');
 }
 
-/** Feedback on a case that already ran, asking for a replacement that addresses it. */
-type PreviewRevision = { suggestion: string; previousInput: string; previousOutput: string };
-
-async function runGeneratedPreview(revision?: PreviewRevision) {
+async function runGeneratedPreview() {
 	try {
 		const { projectId, agentId } = props.target;
-		const result = await store.previewRun(projectId, agentId, revision);
+		const result = await store.previewRun(projectId, agentId);
 		if (!isMounted) return;
 		if (result.status !== 'completed') {
 			failAndDismiss(new Error('Preview run did not complete successfully'));
@@ -221,8 +186,8 @@ async function runGeneratedPreview(revision?: PreviewRevision) {
 		previewScenario.value = result.scenario || null;
 		previewWhatToCheck.value = result.whatToCheck;
 		previewVerdict.value = result.verdict;
-		previewRequest.value = result.input;
-		previewAnswer.value = result.response;
+		previewInput.value = result.input;
+		previewOutput.value = result.response;
 		conversationExpanded.value = false;
 		phase.value = 'awaiting-confirmation';
 	} catch (error) {
@@ -230,12 +195,7 @@ async function runGeneratedPreview(revision?: PreviewRevision) {
 	}
 }
 
-function generatePreviewCase() {
-	if (reusedCase) return;
-	return runGeneratedPreview();
-}
-
-onMounted(generatePreviewCase);
+onMounted(runGeneratedPreview);
 onBeforeUnmount(() => {
 	isMounted = false;
 	store.stopPollingRun();
@@ -458,25 +418,32 @@ async function onStopSuiteRun() {
 	}
 }
 
-function onNeedsWork() {
-	if (phase.value !== 'awaiting-confirmation') return;
-	sampleInput.value = '';
-	phase.value = 'awaiting-sample-input';
-}
-
-async function onSubmitSampleInput() {
-	const suggestion = sampleInput.value.trim();
-	if (!suggestion || phase.value !== 'awaiting-sample-input') return;
-	// Read before resetting state below — once cleared these computeds have
-	// nothing left to read the prior try's input/output from.
-	const previousInput = previewInput.value;
-	const previousOutput = previewOutput.value ?? '';
-	useInitialCase.value = false;
-	previewRequest.value = null;
-	previewAnswer.value = null;
-	previewVerdict.value = null;
-	phase.value = 'generating-preview';
-	await runGeneratedPreview({ suggestion, previousInput, previousOutput });
+// The first check failed and the judge proposed a fix: rewrite the agent's instructions
+// with it, then run the same case again. Reused cases have no scenario of their own, so
+// `previewScenario` and the rule stay as they are.
+async function onApplySuggestion() {
+	const suggestion = previewSuggestion.value;
+	if (!suggestion || phase.value !== 'awaiting-confirmation' || applyingPreview.value) return;
+	const applied = await applyPreviewSuggestion({
+		input: previewInput.value,
+		whatToCheck: previewWhatToCheck.value,
+		suggestion,
+	});
+	if (!applied || !isMounted) return;
+	const { preview } = applied;
+	if (preview.status !== 'completed') {
+		// The instructions are already saved, so the old suggestion must not be offered again.
+		suggestionDismissed.value = true;
+		toast.showError(
+			new Error('Preview run did not complete successfully'),
+			i18n.baseText('agents.builder.agentEvals.suggestion.rerunError'),
+		);
+		return;
+	}
+	previewInput.value = preview.input;
+	previewOutput.value = preview.response;
+	previewVerdict.value = preview.verdict;
+	conversationExpanded.value = false;
 }
 
 function onDontCreateEvals() {
@@ -568,12 +535,20 @@ function onDontCreateEvals() {
 					<EvalInitialSample
 						v-if="conversationExpanded"
 						:preview-input="previewInput"
-						:preview-output="previewOutput ?? ''"
+						:preview-output="previewOutput"
 						hide-banner
 					/>
 				</div>
 
-				<N8nText color="text-base" size="small">
+				<AgentEvalSuggestionCard
+					v-if="showSuggestion && previewSuggestion"
+					:suggestion="previewSuggestion"
+					:applying="applyingPreview"
+					test-id="instance-ai-test-agent-preview-suggestion"
+					@apply="onApplySuggestion"
+					@dismiss="suggestionDismissed = true"
+				/>
+				<N8nText v-else color="text-base" size="small">
 					{{
 						i18n.baseText(
 							firstCheckPassed
@@ -594,81 +569,26 @@ function onDontCreateEvals() {
 							{{ i18n.baseText('instanceAi.testAgentPreview.checkHarderCases') }}
 						</N8nButton>
 					</template>
-					<template v-else>
-						<N8nButton
-							variant="solid"
-							size="small"
-							data-test-id="instance-ai-test-agent-preview-needs-work"
-							@click="onNeedsWork"
-						>
-							{{ i18n.baseText('instanceAi.testAgentPreview.fixThisCheck') }}
-						</N8nButton>
-						<!-- Only when the answer was never graded (judge error, no rule): a real
-						     fail is the user's cue to fix the check first. -->
-						<N8nButton
-							v-if="!firstCheckFailed"
-							variant="outline"
-							size="small"
-							data-test-id="instance-ai-test-agent-preview-check-harder"
-							@click="onConfirm"
-						>
-							{{ i18n.baseText('instanceAi.testAgentPreview.checkHarderCasesAnyway') }}
-						</N8nButton>
-					</template>
+					<!-- A failed check with a fix on screen offers that fix instead. -->
+					<N8nButton
+						v-else-if="!showSuggestion"
+						variant="outline"
+						size="small"
+						data-test-id="instance-ai-test-agent-preview-check-harder"
+						@click="onConfirm"
+					>
+						{{ i18n.baseText('instanceAi.testAgentPreview.checkHarderCasesAnyway') }}
+					</N8nButton>
 					<N8nButton
 						variant="ghost"
 						size="small"
+						:disabled="applyingPreview"
 						data-test-id="instance-ai-test-agent-preview-later"
 						@click="onDontCreateEvals"
 					>
 						{{ i18n.baseText('instanceAi.testAgentPreview.later') }}
 					</N8nButton>
 				</div>
-			</div>
-		</template>
-
-		<template v-else-if="phase === 'awaiting-sample-input'">
-			<CapabilityChip
-				:text="i18n.baseText('instanceAi.testAgentPreview.needsWork')"
-				status="fail"
-			/>
-			<EvalInitialSample
-				:preview-input="previewInput"
-				:preview-output="previewOutput ?? ''"
-				hide-banner
-			/>
-			<N8nText bold>{{ i18n.baseText('instanceAi.testAgentPreview.inputCorrectionHint') }}</N8nText>
-			<N8nInput
-				v-model="sampleInput"
-				:autosize="{ minRows: 1, maxRows: 6 }"
-				:placeholder="i18n.baseText('instanceAi.testAgentPreview.inputCorrectionPlaceholder')"
-				data-test-id="instance-ai-test-agent-preview-sample-input"
-				@keydown.meta.enter="onSubmitSampleInput"
-				@keydown.enter="onSubmitSampleInput"
-				@keydown.ctrl.enter="onSubmitSampleInput"
-			>
-				<template #prefix>
-					<N8nIcon icon="sparkle" size="xsmall" color="primary" />
-				</template>
-			</N8nInput>
-			<div :class="$style.options">
-				<N8nButton
-					variant="solid"
-					size="small"
-					:disabled="!sampleInput.trim()"
-					data-test-id="instance-ai-test-agent-preview-submit-sample"
-					@click="onSubmitSampleInput"
-				>
-					{{ i18n.baseText('instanceAi.testAgentPreview.saveCorrection') }}
-				</N8nButton>
-				<N8nButton
-					variant="outline"
-					size="small"
-					data-test-id="instance-ai-test-agent-preview-dont-create-evals"
-					@click="onDontCreateEvals"
-				>
-					{{ i18n.baseText('instanceAi.testAgentPreview.skip') }}
-				</N8nButton>
 			</div>
 		</template>
 
@@ -687,20 +607,25 @@ function onDontCreateEvals() {
 		<template v-else-if="phase === 'suite-ready'">
 			<InstanceAiTestAgentExamplesPanel
 				:preview-input="previewInput"
-				:preview-output="previewOutput ?? ''"
+				:preview-output="previewOutput"
 				:preview-scenario="previewScenario"
+				:preview-status="previewStatus"
+				:preview-reasoning="previewReasoning"
 				:project-id="target.projectId"
 				:examples="suiteCases"
 				:case-runs="suiteCaseRuns"
 				:starting-run="startingSuiteRun"
 				:stopping-run="stoppingSuiteRun"
 				:run-failed="suiteRunFailed"
+				:applying-suggestion-ids="applyingSuggestionIds"
 				@add-example="onAddExample"
 				@check-agent="onCheckAgent"
 				@stop-run="onStopSuiteRun"
 				@retry-run="onRetrySuiteRun"
 				@try-agent="emit('try-agent')"
 				@open-case="emit('open-evals', $event)"
+				@apply-suggestion="applySuggestions([$event])"
+				@apply-suggestions="applySuggestions($event)"
 			/>
 		</template>
 	</div>

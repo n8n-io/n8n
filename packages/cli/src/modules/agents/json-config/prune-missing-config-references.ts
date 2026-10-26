@@ -2,19 +2,16 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 
 import type { AgentDefinition } from '../utils/agent-definition';
 
-/** Preserve existing and disabled refs while new refs require an available body. */
+/**
+ * Preserve existing and disabled refs while new refs require an available body.
+ * Skill refs are not pruned here: `AgentSkillRefsService.replaceDraftRefs`
+ * checks them against the skills hub.
+ */
 export function pruneMissingConfigReferences(
 	config: AgentJsonConfig,
 	previousSchema: AgentJsonConfig | null,
-	available: Pick<AgentDefinition, 'tools' | 'skills'> & { taskIds: ReadonlySet<string> },
+	available: Pick<AgentDefinition, 'tools'> & { taskIds: ReadonlySet<string> },
 ): void {
-	if (config.skills !== undefined) {
-		const existingIds = new Set((previousSchema?.skills ?? []).map((ref) => ref.id));
-		config.skills = config.skills.filter(
-			(ref) =>
-				ref.enabled === false || existingIds.has(ref.id) || Object.hasOwn(available.skills, ref.id),
-		);
-	}
 	if (config.tools !== undefined) {
 		const existingIds = new Set(
 			(previousSchema?.tools ?? []).filter((ref) => ref.type === 'custom').map((ref) => ref.id),

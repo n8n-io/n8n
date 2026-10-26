@@ -11,7 +11,7 @@ interface OnboardingOpening {
 	 */
 	greeting: string;
 	/**
-	 * Steps of the ONE `ask-user` card shown before the agent's first turn, in this order. A
+	 * Steps of the ONE `workflow_builder_ask_user` card shown before the agent's first turn, in this order. A
 	 * `required` step has no Skip button; the card's own "Something else" free text is the way out
 	 * of a `single` or `multi` step. The host skips a step the signup survey already answered; that
 	 * answer still reaches the agent. The answers reach the agent in an `<onboarding-answer>` block,

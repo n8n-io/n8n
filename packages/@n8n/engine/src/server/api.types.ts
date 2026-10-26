@@ -6,11 +6,17 @@ import type {
 	StepStatus,
 	WorkflowDocument,
 } from '../execution';
-import type { ExecutionListQuery } from '../execution/execution-view-store';
-import type { WorkflowGraph } from '../graph';
+import type { ExecutionListFilter, ExecutionListQuery } from '../execution/execution-view-store';
+import type { StoredWorkflowGraph } from '../graph';
 
 /** A read-only search. The control plane supplies the visibility decision. */
 export type SearchExecutionsRequest = ExecutionListQuery;
+
+/**
+ * `POST /search/latest` body: the search filter without its paging. The
+ * response is the newest match as `GET /:id?includeSteps=true` reports it.
+ */
+export type FindLatestExecutionRequest = ExecutionListFilter;
 
 /**
  * `POST /:id/cancel` response. Only ever `cancelled`: any other status answers
@@ -50,7 +56,7 @@ export interface ExecutionSnapshot {
 	/** The host's finer execution mode. */
 	hostMode: string;
 	/** The graph captured at start, immutable for the execution's lifetime. */
-	graph: WorkflowGraph;
+	graph: StoredWorkflowGraph;
 	/**
 	 * The workflow the run came from, captured at start. Reported so a caller can
 	 * render the execution against the workflow that ran, not the current one.

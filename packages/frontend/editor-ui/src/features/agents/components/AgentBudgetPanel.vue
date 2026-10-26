@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { getAgentBudgetSpend } from '../composables/useAgentApi';
+import { useAgentExecutionUpdates } from '../composables/useAgentExecutionUpdates';
 import type { AgentJsonConfig } from '../types';
 import { formatBudgetUsd, parseBudgetAmount } from '../utils/budget-config';
 import AgentBudgetMonthlyModal from './AgentBudgetMonthlyModal.vue';
@@ -46,14 +47,15 @@ const usagePercent = computed(() => {
 	return Math.min(100, Math.round((spent / limit) * 100));
 });
 
-async function loadSpend() {
+async function loadSpend(silent = false) {
 	const request = ++spendRequest;
 	if (monthlyBudget.value === undefined || !props.projectId || !props.agentId) {
 		spendState.value = 'idle';
 		spentUsd.value = undefined;
 		return;
 	}
-	spendState.value = 'loading';
+	// A silent refresh keeps the shown value while it re-reads, so the usage line does not flash.
+	if (!silent) spendState.value = 'loading';
 	try {
 		const result = await getAgentBudgetSpend(
 			rootStore.restApiContext,
@@ -65,8 +67,13 @@ async function loadSpend() {
 		spendState.value = 'ready';
 	} catch {
 		if (request !== spendRequest) return;
-		spentUsd.value = undefined;
-		spendState.value = 'error';
+		// Keep the last shown value when a silent refresh fails
+		if (!silent || spentUsd.value === undefined) {
+			spentUsd.value = undefined;
+			spendState.value = 'error';
+		} else {
+			spendState.value = 'ready';
+		}
 	}
 }
 
@@ -78,6 +85,14 @@ watch(
 		});
 	},
 	{ immediate: true },
+);
+
+useAgentExecutionUpdates(
+	{
+		projectId: computed(() => props.projectId),
+		agentId: computed(() => props.agentId),
+	},
+	() => loadSpend(true),
 );
 
 const monthlyValue = computed(() => {
@@ -247,7 +262,14 @@ const sessionValue = computed(() => {
 
 .usageHeader {
 	display: flex;
+	align-items: flex-start;
 	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
+.usageHeader > :last-child {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .spent {
@@ -272,6 +294,7 @@ const sessionValue = computed(() => {
 .rowValue {
 	display: flex;
 	align-items: center;
+	flex-shrink: 0;
 	gap: var(--spacing--xs);
 }
 
@@ -280,6 +303,7 @@ const sessionValue = computed(() => {
 	flex-direction: column;
 	align-items: flex-end;
 	gap: var(--spacing--4xs);
+	white-space: nowrap;
 }
 
 .track {
@@ -314,7 +338,9 @@ const sessionValue = computed(() => {
 .rowLabel {
 	opacity: var(--agent-row-label-opacity, 1);
 	display: flex;
+	flex: 1 1 auto;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+	min-width: 0;
 }
 </style>

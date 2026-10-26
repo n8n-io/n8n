@@ -17,6 +17,7 @@ describe('fetchProviderCatalog', () => {
 					openai: {
 						id: 'openai',
 						name: 'OpenAI',
+						npm: '@ai-sdk/openai',
 						models: {
 							'gpt-5': {
 								id: 'gpt-5',
@@ -28,6 +29,18 @@ describe('fetchProviderCatalog', () => {
 								id: 'gpt-4.1-mini',
 								name: 'GPT-4.1 mini',
 								reasoning: false,
+							},
+						},
+					},
+					'google-vertex': {
+						id: 'google-vertex',
+						name: 'Vertex',
+						npm: '@ai-sdk/google-vertex',
+						models: {
+							'claude-opus-5@default': {
+								id: 'claude-opus-5@default',
+								name: 'Claude Opus 5',
+								provider: { npm: '@ai-sdk/google-vertex/anthropic' },
 							},
 						},
 					},
@@ -68,6 +81,10 @@ describe('fetchProviderCatalog', () => {
 		const catalog = await fetchProviderCatalog({ signal: abortController.signal });
 
 		expect(catalog.openai.models['gpt-5'].toolCall).toBe(true);
+		expect(catalog.openai.models['gpt-5'].sdk).toBe('@ai-sdk/openai');
+		expect(catalog['google-vertex'].models['claude-opus-5@default'].sdk).toBe(
+			'@ai-sdk/google-vertex/anthropic',
+		);
 		expect(catalog.openai.models['gpt-5'].toolCallKnown).toBe(true);
 		expect(catalog.openai.models['gpt-5'].modalities).toEqual({
 			input: ['text', 'image'],

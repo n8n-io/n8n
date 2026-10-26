@@ -6,6 +6,10 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 
+import { attachMetric } from './metrics';
+
+export { attachMetric };
+
 interface HeapSnapshotResult {
 	success: boolean;
 	filePath?: string;
@@ -42,30 +46,6 @@ export async function getAllPerformanceMetrics(page: Page) {
 		const measures = performance.getEntriesByType('measure') as PerformanceMeasure[];
 		measures.forEach((m) => (metrics[m.name] = m.duration));
 		return metrics;
-	});
-}
-
-/** Attach a performance metric for collection by the metrics reporter */
-export async function attachMetric(
-	testInfo: TestInfo,
-	metricName: string,
-	value: number,
-	unit?: string,
-	dimensions?: Record<string, string | number>,
-): Promise<void> {
-	await testInfo.attach(`metric:${metricName}`, {
-		body: JSON.stringify({ value, unit, dimensions }),
-	});
-
-	// Currents native format — surfaces metrics in their analytics dashboard
-	testInfo.annotations.push({
-		type: 'currents:metric',
-		description: JSON.stringify({
-			name: metricName,
-			value,
-			type: Number.isInteger(value) ? 'integer' : 'float',
-			...(unit && { unit: unit.toLowerCase() }),
-		}),
 	});
 }
 

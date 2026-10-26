@@ -112,7 +112,7 @@ function minimalNodeType(name: string, properties: INodeProperties[] = []): INod
 	};
 }
 
-function buildDefaultNodes(): INodeTypeData {
+export function buildDefaultNodes(): INodeTypeData {
 	ScheduleTrigger.prototype.trigger = async () => ({});
 	return {
 		'n8n-nodes-base.manualTrigger': {

@@ -94,6 +94,25 @@ describe('executionData.store', () => {
 			expect(store.execution?.data?.resultData.runData.OtherNode).toBeDefined();
 		});
 
+		it('keeps the last node data when the run was parked at worker shutdown', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			store.setExecution(
+				createTestExecution({
+					data: {
+						waitTill: new Date(),
+						waitReason: 'suspended',
+						resultData: {
+							lastNodeExecuted: 'LastDone',
+							runData: { LastDone: [{ executionStatus: 'success' } as never] },
+						},
+					} as never,
+				}),
+			);
+
+			expect(store.execution?.data?.resultData.runData.LastDone).toHaveLength(1);
+		});
+
 		it('honors stripWaitingTaskData=false', () => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
 
@@ -1099,6 +1118,25 @@ describe('executionData.store', () => {
 				...overrides,
 			});
 		}
+
+		it('returns nothing for a run parked at worker shutdown', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const node = createTestNode({
+				id: 'wait-1',
+				name: 'Wait',
+				type: WAIT_NODE_TYPE,
+				parameters: { resume: 'webhook' },
+			});
+
+			setWaitingExecution(store, node, {
+				data: {
+					waitReason: 'suspended',
+					resultData: { runData: {}, lastNodeExecuted: node.name },
+				} as never,
+			});
+
+			expect(store.executionWaitingByNodeId.get('wait-1')?.value).toBeUndefined();
+		});
 
 		it('returns the webhook message for a wait node resuming on webhook', () => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));

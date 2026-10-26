@@ -2,6 +2,7 @@ import {
 	escapeQualifiedSqlIdentifier,
 	escapeSqlIdentifier,
 	findUnsafeMetadataFilterKey,
+	findUnsupportedJsonPathFilterKey,
 	isSafeQualifiedSqlIdentifier,
 	isSafeSqlIdentifier,
 } from './sqlIdentifier';
@@ -95,6 +96,58 @@ describe('sqlIdentifier', () => {
 		it('returns the offending key when it contains a quote or backslash', () => {
 			expect(findUnsafeMetadataFilterKey({ "x'); DROP": '1' })).toBe("x'); DROP");
 			expect(findUnsafeMetadataFilterKey({ ok: '1', 'a\\b': '2' })).toBe('a\\b');
+		});
+	});
+
+	describe('findUnsupportedJsonPathFilterKey', () => {
+		it.each([
+			['a plain name', { userId: 'alice' }],
+			['an underscored name', { user_id: 'alice' }],
+			['a leading underscore', { _internal: true }],
+			['mixed case', { UserID: 'alice' }],
+			['trailing digits', { field2: 'x' }],
+			['several names at once', { project: 'n8n', category: 'movies', author: 'a' }],
+			['an array value', { author: ['a', 'b'] }],
+			['an operator in value position', { rating: { $gte: 4.5 } }],
+			['an operator the store does not know', { nested: { flag: true } }],
+			['names nested under $and', { $and: [{ project: 'n8n' }, { language: 'en' }] }],
+			['names nested under $or', { $or: [{ project: 'n8n' }] }],
+			['no filter at all', undefined],
+		])('accepts %s', (_name, filter) => {
+			expect(findUnsupportedJsonPathFilterKey(filter)).toBeUndefined();
+		});
+
+		it.each([
+			['a quote', "x'"],
+			['a backslash', 'a\\b'],
+			['a double quote', 'a"b'],
+			['a path predicate', 'userId?(@ == "bob")'],
+			['a dot', 'user.id'],
+			['a hyphen', 'file-name'],
+			['a space', 'my key'],
+			['a dollar sign', 'a$b'],
+			['a leading digit', '1field'],
+			['an empty name', ''],
+		])('rejects %s', (_name, key) => {
+			expect(findUnsupportedJsonPathFilterKey({ [key]: 'value' })).toBe(key);
+		});
+
+		it('reports a name nested under $and', () => {
+			const filter = { $and: [{ project: 'n8n' }, { "x'": 'alice' }] };
+
+			expect(findUnsupportedJsonPathFilterKey(filter)).toBe("x'");
+		});
+
+		it('reports a name nested under $or inside $and', () => {
+			const filter = { $and: [{ $or: [{ ok: 1 }, { 'a.b': 2 }] }] };
+
+			expect(findUnsupportedJsonPathFilterKey(filter)).toBe('a.b');
+		});
+
+		it('reports the first unsupported name when several are present', () => {
+			const filter = { good: 1, "bad'one": 2, 'bad.two': 3 };
+
+			expect(findUnsupportedJsonPathFilterKey(filter)).toBe("bad'one");
 		});
 	});
 });

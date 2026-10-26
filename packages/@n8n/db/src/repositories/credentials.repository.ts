@@ -318,6 +318,24 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 	}
 
+	/**
+	 * Finds a project credential that has no `shared_credentials` row at all. Such a credential has
+	 * no owner, so the project-scoped lookups cannot find it. Returns `null` if the credential does
+	 * not exist or still has any `shared_credentials` row — even a non-owner share keeps the
+	 * credential reachable through the regular, access-checked delete path, so it is not orphaned.
+	 */
+	async findProjectCredentialWithoutOwner(
+		credentialId: string,
+		ctx: OperationContext = {},
+	): Promise<CredentialsEntity | null> {
+		const credential = await this.managerFor(ctx).findOne(CredentialsEntity, {
+			where: { id: credentialId, usageScope: 'project' },
+			relations: { shared: true },
+		});
+		if (!credential || credential.shared.length > 0) return null;
+		return credential;
+	}
+
 	async deleteInstanceCredentialIfUnassigned(
 		credentialId: string,
 		ctx: OperationContext = {},
@@ -589,6 +607,27 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	 */
 	async findAllCredentialsForProject(projectId: string): Promise<CredentialsEntity[]> {
 		return await this.findBy({ usageScope: 'project', shared: { projectId } });
+	}
+
+	/** Read execution metadata for credentials shared with this project or all projects. */
+	async findCredentialsUsableInProject(
+		projectId: string,
+		credentialIds?: string[],
+	): Promise<Array<Pick<CredentialsEntity, 'id' | 'name' | 'type'>>> {
+		if (credentialIds?.length === 0) return [];
+
+		const filter = this.excludePendingAuthorization({
+			usageScope: 'project',
+			...(credentialIds ? { id: In(credentialIds) } : {}),
+		});
+
+		return await this.find({
+			where: [
+				{ ...filter, shared: { projectId } },
+				{ ...filter, isGlobal: true },
+			],
+			select: ['id', 'name', 'type'],
+		});
 	}
 
 	/**

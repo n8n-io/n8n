@@ -552,7 +552,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				category: CORE_NODES_CATEGORY,
 				properties: {
 					title: TRANSFORM_DATA_SUBCATEGORY,
-					icon: 'pen',
+					icon: 'pencil',
 					sections: [
 						{
 							key: 'popular',
@@ -597,7 +597,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				category: CORE_NODES_CATEGORY,
 				properties: {
 					title: FLOWS_CONTROL_SUBCATEGORY,
-					icon: 'git-branch',
+					icon: 'flow',
 					sections: [
 						{
 							key: 'popular',
@@ -613,7 +613,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				category: CORE_NODES_CATEGORY,
 				properties: {
 					title: HELPERS_SUBCATEGORY,
-					icon: 'toolbox',
+					icon: 'briefcase',
 					sections: [
 						{
 							key: 'popular',
@@ -639,7 +639,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				category: HUMAN_IN_THE_LOOP_CATEGORY,
 				properties: {
 					title: HITL_SUBCATEGORY,
-					icon: 'badge-check',
+					icon: 'user',
 					sections: [
 						{
 							key: 'sendAndWait',
@@ -674,7 +674,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				type: 'view',
 				properties: {
 					title: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTrigger'),
-					icon: 'bolt-filled',
+					icon: 'zap',
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTriggerDescription'),
 				},
 			} satisfies ViewCreateElement,

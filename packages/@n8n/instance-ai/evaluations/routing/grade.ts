@@ -31,15 +31,11 @@ import { ASK_USER_TOOL_ID, DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 const READ_ONLY_ACTIONS: Readonly<Record<string, ReadonlySet<unknown>>> = {
 	// `load_skill` has no action.
 	load_skill: new Set([undefined]),
-	[DOMAIN_TOOL_IDS.NODES]: new Set([
-		'list',
-		'search',
-		'describe',
-		'type-definition',
-		'suggested',
-		'explore-resources',
-	]),
-	[DOMAIN_TOOL_IDS.CREDENTIALS]: new Set(['list', 'get', 'search-types']),
+	[DOMAIN_TOOL_IDS.SEARCH_NODES]: new Set([undefined]),
+	[DOMAIN_TOOL_IDS.GET_NODE_TYPES]: new Set([undefined]),
+	[DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS]: new Set([undefined]),
+	[DOMAIN_TOOL_IDS.LIST_CREDENTIALS]: new Set([undefined]),
+	[DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES]: new Set([undefined]),
 	[DOMAIN_TOOL_IDS.N8N_DOCS]: new Set(['lookup', 'search', 'read']),
 	[DOMAIN_TOOL_IDS.RESEARCH]: new Set(['web-search', 'fetch-url']),
 };
@@ -224,11 +220,13 @@ export function routeLabel(resolution: RouteResolution): string {
 		.join('>');
 }
 
-// `<route>:agent` passes a steer toward an Agent; `<route>:open` passes any steer except workflow only.
+// `<route>:agent` passes a steer toward an Agent, and `<route>:workflow` a steer toward a workflow.
+// `<route>:open` passes any steer except workflow only.
 function acceptTokenMatches(token: AcceptToken, { route, steer }: RouteResolution): boolean {
 	const [tokenRoute, tokenSteer] = token.split(':');
 	if (route !== tokenRoute) return false;
 	if (tokenSteer === 'agent') return steer === 'agent' || steer === 'both';
+	if (tokenSteer === 'workflow') return steer === 'workflow' || steer === 'both';
 	if (tokenSteer === 'open') return steer !== undefined && steer !== 'workflow';
 	return true;
 }
@@ -252,7 +250,13 @@ export function trialPasses(routingCase: RoutingCase, resolution: RouteResolutio
 	return routingCase.accepts.some((token) => acceptTokenMatches(token, resolution));
 }
 
-/** A case passes when at least 2 of 3 trials pass; other trial counts keep the ratio. */
-export function casePasses(passedTrials: number, totalTrials: number): boolean {
-	return totalTrials > 0 && passedTrials * 3 >= totalTrials * 2;
+/**
+ * A case passes when more than half of its graded trials pass. A trial with no route is not graded.
+ * LangTracer applies the same rule to the counts in `eval-results.json`, so the two verdicts agree.
+ */
+export function casePasses(
+	trials: Array<{ resolution: RouteResolution; passed: boolean }>,
+): boolean {
+	const graded = trials.filter((trial) => trial.resolution.route !== 'none');
+	return graded.filter((trial) => trial.passed).length * 2 > graded.length;
 }

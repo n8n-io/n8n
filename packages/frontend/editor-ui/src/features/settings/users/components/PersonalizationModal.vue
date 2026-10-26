@@ -89,6 +89,7 @@ import type { IFormInputs } from '@/Interface';
 import type { IPersonalizationLatestVersion } from '@n8n/rest-api-client/api/users';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -108,6 +109,7 @@ const { showError } = useToast();
 const i18n = useI18n();
 const rootStore = useRootStore();
 const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
 const posthogStore = usePostHog();
 const route = useRoute();
 const router = useRouter();
@@ -574,7 +576,8 @@ const closeCallback = () => {
 const closeDialog = () => {
 	modalBus.emit('close');
 
-	if (userPermissions.value.community.register) {
+	// Community Plus enrollment is only offered on self-hosted instances.
+	if (settingsStore.deploymentType === 'default' && userPermissions.value.community.register) {
 		uiStore.openModalWithData({
 			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
 			data: {

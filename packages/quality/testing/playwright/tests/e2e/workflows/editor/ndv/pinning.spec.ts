@@ -27,7 +27,7 @@ const pinnedWebhookRequirements: TestRequirements = {
 test.describe(
 	'Data pinning',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Knowledge' }],
 	},
 	() => {
 		const maxPinnedDataSize = 16384;
