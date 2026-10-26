@@ -12,7 +12,6 @@ export const HOOKED_METHODS: HookedMethod[] = [
 	{ file: FILES.bullQueue, target: 'prototype', method: 'moveToActive' },
 	{ file: FILES.bullQueue, target: 'prototype', method: 'processJob' },
 	{ file: FILES.bullScripts, target: '', method: 'extendLock' },
-	{ file: FILES.bullScripts, target: '', method: 'moveToCompleted' },
 	{
 		file: FILES.executionPersistence,
 		target: 'ExecutionPersistence.prototype',
