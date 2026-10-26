@@ -47,6 +47,24 @@ const MAX_AVAILABILITY_PAGES = 5;
 /** Display name for the managed n8n Connect credential slot in node parameter option lookups. */
 const N8N_CONNECT_DISPLAY_NAME = 'Gateway credits';
 
+type CredentialReference = Pick<ExploreResourcesParams, 'credentialId' | 'credentialType'>;
+
+/** The credentials a parameter option lookup uses: the `credentials` map, or the single credential. */
+export function getParameterOptionsCredentialReferences(
+	params: Pick<ResolveParameterOptionsParams, 'credentials' | 'credentialId' | 'credentialType'>,
+): CredentialReference[] {
+	if (params.credentials && Object.keys(params.credentials).length > 0) {
+		return Object.entries(params.credentials).map(([credentialType, { id }]) => ({
+			credentialId: id,
+			credentialType,
+		}));
+	}
+	if (params.credentialId && params.credentialType) {
+		return [{ credentialId: params.credentialId, credentialType: params.credentialType }];
+	}
+	return [];
+}
+
 /**
  * Looks up dynamic resource locator and load-options values for a node on
  * behalf of a user, after verifying credential ownership.
@@ -213,32 +231,20 @@ export class NodeResourceExplorerService {
 		}
 
 		let credentials: INodeCredentials | undefined;
-		if (params.credentials && Object.keys(params.credentials).length > 0) {
-			credentials = {};
-			for (const [credType, cred] of Object.entries(params.credentials)) {
-				if (cred.id === AI_GATEWAY_MANAGED_TAG) {
-					credentials[credType] = {
-						id: null,
-						name: N8N_CONNECT_DISPLAY_NAME,
-						__aiGatewayManaged: true,
-					};
-				} else {
-					credentials[credType] = { id: cred.id, name: cred.name };
+		try {
+			const references = getParameterOptionsCredentialReferences(params);
+			if (references.length > 0) {
+				credentials = {};
+				for (const reference of references) {
+					Object.assign(credentials, await this.resolveExploreCredentials(user, reference));
 				}
 			}
-		} else if (params.credentialId && params.credentialType) {
-			try {
-				credentials = await this.resolveExploreCredentials(user, {
-					credentialId: params.credentialId,
-					credentialType: params.credentialType,
-				});
-			} catch (error) {
-				return {
-					ok: false,
-					code: 'lookup_failed',
-					message: error instanceof Error ? error.message : String(error),
-				};
-			}
+		} catch (error) {
+			return {
+				ok: false,
+				code: 'lookup_failed',
+				message: error instanceof Error ? error.message : String(error),
+			};
 		}
 
 		const credentialSlots = getRequiredNodeCredentialSlots(nodeTypeDescription.description);
@@ -370,10 +376,7 @@ export class NodeResourceExplorerService {
 	 * Run the credential access and type check `exploreResources` runs, without the
 	 * provider lookup. Throws as `exploreResources` does when the check fails.
 	 */
-	async assertExploreCredentialAccess(
-		user: User,
-		params: Pick<ExploreResourcesParams, 'credentialId' | 'credentialType'>,
-	): Promise<void> {
+	async assertExploreCredentialAccess(user: User, params: CredentialReference): Promise<void> {
 		await this.resolveExploreCredentials(user, params);
 	}
 

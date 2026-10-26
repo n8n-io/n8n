@@ -214,7 +214,10 @@ import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
 import { FolderService } from '@/services/folder.service';
-import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
+import {
+	getParameterOptionsCredentialReferences,
+	NodeResourceExplorerService,
+} from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
@@ -4350,11 +4353,28 @@ export class InstanceAiAdapterService {
 
 			resolveParameterOptions: async (
 				params: ResolveParameterOptionsParams,
-			): Promise<ResolveParameterOptionsResult> =>
-				await this.nodeResourceExplorerService.resolveParameterOptions(user, {
+			): Promise<ResolveParameterOptionsResult> => {
+				// Eval-only: the same seeded-credential bypass as `exploreResources` above.
+				const references = getParameterOptionsCredentialReferences(params);
+				if (references.some(({ credentialId }) => shouldBypassCredentialTest?.(credentialId))) {
+					try {
+						for (const reference of references) {
+							await this.nodeResourceExplorerService.assertExploreCredentialAccess(user, reference);
+						}
+					} catch (error) {
+						return {
+							ok: false,
+							code: 'lookup_failed',
+							message: error instanceof Error ? error.message : String(error),
+						};
+					}
+					return { ok: false, code: 'lookup_failed', message: RESOURCE_EXPLORATION_UNAVAILABLE };
+				}
+				return await this.nodeResourceExplorerService.resolveParameterOptions(user, {
 					...params,
 					...(boundProjectId ? { projectId: boundProjectId } : {}),
-				}),
+				});
+			},
 
 			findUnavailableLocatorValues: async (params): Promise<UnavailableLocatorValue[]> =>
 				await this.nodeResourceExplorerService.findUnavailableResourceLocatorValues(user, params),

@@ -860,6 +860,51 @@ describe('NodeResourceExplorerService', () => {
 			});
 		}
 
+		beforeEach(() => {
+			mockCredentialOwned();
+		});
+
+		test('rejects a credentials map entry the user cannot access', async () => {
+			mockSlackNode();
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+			const result = await service.resolveParameterOptions(user, resolveParams);
+
+			expect(result).toEqual({
+				ok: false,
+				code: 'lookup_failed',
+				message: 'Credential cred-1 not found or not accessible',
+			});
+			expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
+		});
+
+		test('rejects a credentials map entry of another type', async () => {
+			mockSlackNode();
+			mockCredentialOwned({ type: 'gmailOAuth2' });
+
+			const result = await service.resolveParameterOptions(user, resolveParams);
+
+			expect(result).toMatchObject({ ok: false, code: 'lookup_failed' });
+			expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
+		});
+
+		test('uses the stored credential name for a credentials map entry', async () => {
+			mockSlackNode();
+			mockCredentialOwned({ name: 'Stored Slack' });
+			dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValue({
+				results: [],
+			} as never);
+
+			await service.resolveParameterOptions(user, resolveParams);
+
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
+				'credential:read',
+			]);
+			expect(dynamicNodeParametersService.getResourceLocatorResults.mock.calls[0]?.[5]).toEqual({
+				slackApi: { id: 'cred-1', name: 'Stored Slack' },
+			});
+		});
+
 		test('returns node_type_not_found when the node type cannot be loaded', async () => {
 			nodeTypes.getByNameAndVersion.mockImplementation(() => {
 				throw new Error('Unknown node type');
