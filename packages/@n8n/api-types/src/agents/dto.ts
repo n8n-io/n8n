@@ -126,6 +126,11 @@ export type AgentSessionQueryFilters = Pick<
 	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
 >;
 
+export class ListAgentMemoryEntriesQueryDto extends Z.class({
+	cursor: z.string().min(1).optional(),
+	limit: z.string().optional(),
+}) {}
+
 /** Cross-agent n8n Chat thread list: cursor + limit only, no status/origin/scope filters. */
 export class ListN8nChatThreadsQueryDto extends Z.class({
 	// The cursor is a thread's `updatedAt` ISO string (see `paginateByUpdatedAt`).
