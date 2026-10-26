@@ -10266,7 +10266,7 @@ describe('AgentRuntime — empty model responses', () => {
 		};
 	}
 
-	it.each(['other', 'unknown', 'content-filter'])(
+	it.each(['other', 'unknown', 'interrupted', 'content-filter'])(
 		'stream: yields an error chunk when the model returns no output with finish reason "%s"',
 		async (finishReason) => {
 			streamText.mockReturnValue(makeEmptyStream(finishReason));

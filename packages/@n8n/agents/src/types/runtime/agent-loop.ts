@@ -1,3 +1,4 @@
+import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type {
 	LanguageModel,
 	LanguageModelCallOptions,
@@ -13,7 +14,6 @@ import type { FinishReason, SerializableAgentState, TokenUsage } from '../index'
 import type { GuardrailStop } from '../sdk/guardrail';
 import type { ExecutionOptions, RunOptions } from '../sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../sdk/message';
-import type { JSONObject } from '../utils/json';
 import type { AgentMessageList } from '../../runtime/model/message-list';
 import type { ToolCallBatchResult, ToolCallInput, ToolCallSuspension } from './tool-execution';
 
@@ -63,7 +63,7 @@ export interface ModelCallContext {
 	hasTools: boolean;
 	aiTools: ToolSet;
 	reasoning?: LanguageModelCallOptions['reasoning'];
-	providerOptions?: Record<string, JSONObject>;
+	providerOptions?: ProviderOptions;
 	outputSpec?: ReturnType<typeof Output.object>;
 	maxOutputTokens?: number;
 	onInputRejected?: (error: unknown) => Promise<void>;

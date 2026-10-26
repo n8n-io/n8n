@@ -28,6 +28,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import PromotionBlockers from '../components/preview/PromotionBlockers.vue';
 import PromotionChangeCards from '../components/preview/PromotionChangeCards.vue';
 import PromotionResourceTree from '../components/preview/PromotionResourceTree.vue';
+import PromotionReviewBlocker from '../components/preview/PromotionReviewBlocker.vue';
 import { usePromotionOperation } from '../composables/usePromotionOperation';
 import { usePromotionResourceDetails } from '../composables/usePromotionResourceDetails';
 import { usePromotionPreview } from '../composables/usePromotionPreview';
@@ -365,6 +366,7 @@ const treeResizer = useResizablePanel({
 			data-test-id="promotion-preview-error"
 			@click:button="refresh"
 		/>
+		<PromotionReviewBlocker v-else-if="state === 'blocked'" :class="$style.state" />
 		<N8nEmptyState
 			v-else-if="state === 'empty'"
 			:class="$style.state"
@@ -452,13 +454,18 @@ const treeResizer = useResizablePanel({
 						:order="order"
 						:graph="graph"
 						:direction="direction"
+						:selected="selection.selected.value"
 						:inclusion="selection.inclusion.value"
+						:disabled="blockers.blocked"
+						:locked="operation.isBusy.value"
 						:entries="details.entries.value"
 						:inspected-key="inspectedKey"
 						:blockers="blockers"
 						@retry="details.retry"
 						@refresh="refresh"
 						@inspect="inspect"
+						@toggle="selection.toggle"
+						@toggle-container="selection.toggleAllInside"
 					/>
 				</section>
 			</div>
