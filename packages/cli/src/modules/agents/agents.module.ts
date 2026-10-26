@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
-import type { ModuleInterface } from '@n8n/decorators';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
+import type { ModuleInterface, SystemTaskClass } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -50,6 +50,9 @@ export class AgentsModule implements ModuleInterface {
 
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
+
+		const { registerUserDeletionHandler } = await import('./register-user-deletion-handler.js');
+		registerUserDeletionHandler();
 
 		// Register blob backends for agent execution logs and knowledge files.
 		// The fs backend is always available; s3/az reuse the clients base-command
@@ -224,11 +227,20 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentChannelMediaRetentionTask } = await import(
 			'./agent-channel-media-retention.task.js'
 		);
-		return [
+
+		const tasks: SystemTaskClass[] = [
 			AgentCheckpointPruningTask,
 			AgentInterruptedExecutionSweepTask,
 			AgentChannelMediaRetentionTask,
 		];
+
+		// Like `telemetry-pulse`: make sure no job is scheduled when telemetry is off.
+		if (Container.get(GlobalConfig).diagnostics.enabled) {
+			const { AgentKnowledgeSnapshotTask } = await import('./agent-knowledge-snapshot.task.js');
+			tasks.push(AgentKnowledgeSnapshotTask);
+		}
+
+		return tasks;
 	}
 
 	async settings() {

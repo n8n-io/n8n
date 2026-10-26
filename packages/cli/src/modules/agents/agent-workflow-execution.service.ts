@@ -112,6 +112,8 @@ interface WorkflowAgentStreamConsumption {
 	streamError: Error | undefined;
 	executionError: unknown;
 	executionStarted: boolean;
+	/** Run id of the agent runtime. Absent when the runtime never started. */
+	runId?: string;
 }
 
 interface WorkflowAgentStreamState extends WorkflowAgentStreamConsumption {
@@ -418,6 +420,7 @@ export class AgentWorkflowExecutionService {
 			bindExecutionInput(params.message, params.admission?.inputMessageIds ?? []),
 			options,
 		);
+		state.runId = resultStream.runId;
 		for await (const value of streamAgentChunks(resultStream.stream)) {
 			this.recordWorkflowChunk(value, params.outputSchema, recorder, state);
 			await streamAdapter.observe(value);
@@ -550,7 +553,7 @@ export class AgentWorkflowExecutionService {
 			agentExecutionId = admission.executionId;
 		}
 
-		const { structuredOutput, toolCalls, streamError, executionError, executionStarted } =
+		const { structuredOutput, toolCalls, streamError, executionError, executionStarted, runId } =
 			await this.consumeWorkflowAgentStream({ ...params, admission }, recorder, streamAdapter);
 
 		const messageRecord = recorder.getMessageRecord();
@@ -560,6 +563,7 @@ export class AgentWorkflowExecutionService {
 				executionStarted,
 				executionError,
 				params: { ...recordingParams, record: messageRecord },
+				runId,
 			});
 		}
 

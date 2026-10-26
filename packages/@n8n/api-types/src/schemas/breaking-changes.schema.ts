@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { projectTypeSchema } from './project.schema';
+
 // Enums
 
 /**
@@ -126,6 +128,8 @@ const affectedWorkflowSchema = z.object({
 	owner: workflowOwnerSchema.optional(),
 	// The project that owns the workflow, so an owner picker can list its members.
 	homeProjectId: z.string().optional(),
+	homeProjectName: z.string().optional(),
+	homeProjectType: projectTypeSchema.optional(),
 });
 export type BreakingChangeAffectedWorkflow = z.infer<typeof affectedWorkflowSchema>;
 

@@ -47,10 +47,18 @@ export type SkillListFilter = {
 	project?: { id: string; agentIds: string[] };
 	/** What this agent may attach: instance skills, its project's skills and its own. */
 	attachableTo?: { agentId: string; projectId: string };
+	/** The skills this agent uses (`skillIds`) and its own agent skills. */
+	usedBy?: { agentId: string; skillIds: string[] };
+	createdById?: string;
 	search?: string;
+	/** Most recently changed first when absent. */
+	sort?: SkillListSort;
 	skip: number;
 	take?: number;
 };
+
+/** Name sorts by the latest version, without case. */
+export type SkillListSort = { by: 'name' | 'updatedAt'; order: 'ASC' | 'DESC' };
 
 /** Latest version of a skill without its content. */
 export type SkillSummary = { name: string; description: string; version: number };
@@ -63,16 +71,94 @@ export class SkillRepository extends BaseRepository<Skill> {
 	}
 
 	/**
-	 * One page of the skills the user may see, newest change first, and the count of all
-	 * matches. The filters, the search and the page cut run in the query, so the read grows
-	 * with the page, not with the skills on the instance. The search matches the name or
-	 * the description of the latest version. Without `take` every match is returned.
+	 * One page of the skills the user may see, newest change first unless `sort` says
+	 * otherwise, and the count of all matches. The filters, the search, the sort and the page
+	 * cut run in the query, so the read grows with the page, not with the skills on the
+	 * instance. The search matches the name or the description of the latest version.
+	 * Without `take` every match is returned.
 	 */
 	async findVisiblePage(
 		visibility: SkillVisibility,
 		filter: SkillListFilter,
 		ctx: OperationContext = {},
 	): Promise<{ skills: Skill[]; count: number }> {
+		const query = this.visibleQuery(visibility, filter, ctx);
+		if (!query) return { skills: [], count: 0 };
+		if (filter.project) {
+			const { id, agentIds: projectAgentIds } = filter.project;
+			query.andWhere(
+				new Brackets((qb) => {
+					qb.where('skill.projectId = :projectId');
+					if (projectAgentIds.length > 0) qb.orWhere('skill.agentId IN (:...projectAgentIds)');
+				}),
+				{ projectId: id, projectAgentIds },
+			);
+		}
+		if (filter.usedBy) {
+			const { agentId, skillIds } = filter.usedBy;
+			query.andWhere(
+				new Brackets((qb) => {
+					qb.where('skill.agentId = :usedByAgentId');
+					if (skillIds.length > 0) qb.orWhere('skill.id IN (:...usedSkillIds)');
+				}),
+				{ usedByAgentId: agentId, usedSkillIds: skillIds },
+			);
+		}
+		if (filter.createdById !== undefined) {
+			query.andWhere('skill.createdById = :createdById', { createdById: filter.createdById });
+		}
+		const sortByName = filter.sort?.by === 'name';
+		if (filter.search || sortByName) {
+			query.innerJoin(SkillVersion, 'latest', 'latest.skillId = skill.id').andWhere((qb) => {
+				const highest = qb
+					.subQuery()
+					.select('MAX(later.version)')
+					.from(SkillVersion, 'later')
+					.where('later.skillId = skill.id')
+					.getQuery();
+				return `latest.version = ${highest}`;
+			});
+		}
+		if (filter.search) {
+			query.andWhere(
+				new Brackets((qb) =>
+					qb
+						.where(`LOWER(latest.name) LIKE :search ${LIKE_ESCAPE_CLAUSE}`)
+						.orWhere(`LOWER(latest.description) LIKE :search ${LIKE_ESCAPE_CLAUSE}`),
+				),
+				{ search: `%${escapeLike(filter.search.toLowerCase())}%` },
+			);
+		}
+		const order = filter.sort?.order ?? 'DESC';
+		query.orderBy(sortByName ? 'LOWER(latest.name)' : 'skill.updatedAt', order);
+		// The id breaks ties, so a skill never shows on two pages or on none.
+		query.addOrderBy('skill.id', 'ASC').offset(filter.skip);
+		if (filter.take !== undefined) query.limit(filter.take);
+		const [skills, count] = await query.getManyAndCount();
+		return { skills, count };
+	}
+
+	/** The distinct creators of the skills the user may see, for the creator filter. */
+	async findVisibleCreatorIds(
+		visibility: SkillVisibility,
+		ctx: OperationContext = {},
+	): Promise<string[]> {
+		const query = this.visibleQuery(visibility, {}, ctx);
+		if (!query) return [];
+		const rows = await query
+			.andWhere('skill.createdById IS NOT NULL')
+			.select('skill.createdById', 'createdById')
+			.distinct(true)
+			.getRawMany<{ createdById: string }>();
+		return rows.map((row) => row.createdById);
+	}
+
+	/** The skills `visibility` allows, narrowed by scope or by the agent that attaches them. */
+	private visibleQuery(
+		visibility: SkillVisibility,
+		filter: Pick<SkillListFilter, 'scope' | 'attachableTo'>,
+		ctx: OperationContext,
+	) {
 		const manager = this.managerFor(ctx);
 		// An agent skill has no projectId: it is visible through its agent, one of `agentIds`.
 		const { projectIds, agentIds } = visibility;
@@ -94,9 +180,9 @@ export class SkillRepository extends BaseRepository<Skill> {
 				else if (agentIds.length > 0) branches.push('skill.agentId IN (:...agentIds)');
 			}
 		}
-		if (branches.length === 0) return { skills: [], count: 0 };
+		if (branches.length === 0) return null;
 
-		const query = manager
+		return manager
 			.createQueryBuilder(Skill, 'skill')
 			.where(new Brackets((qb) => branches.forEach((branch) => qb.orWhere(`(${branch})`))))
 			.setParameters({
@@ -107,41 +193,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 					attachAgentId: filter.attachableTo.agentId,
 				}),
 			});
-		if (filter.project) {
-			const { id, agentIds: projectAgentIds } = filter.project;
-			query.andWhere(
-				new Brackets((qb) => {
-					qb.where('skill.projectId = :projectId');
-					if (projectAgentIds.length > 0) qb.orWhere('skill.agentId IN (:...projectAgentIds)');
-				}),
-				{ projectId: id, projectAgentIds },
-			);
-		}
-		if (filter.search) {
-			query
-				.innerJoin(SkillVersion, 'latest', 'latest.skillId = skill.id')
-				.andWhere((qb) => {
-					const highest = qb
-						.subQuery()
-						.select('MAX(later.version)')
-						.from(SkillVersion, 'later')
-						.where('later.skillId = skill.id')
-						.getQuery();
-					return `latest.version = ${highest}`;
-				})
-				.andWhere(
-					new Brackets((qb) =>
-						qb
-							.where(`LOWER(latest.name) LIKE :search ${LIKE_ESCAPE_CLAUSE}`)
-							.orWhere(`LOWER(latest.description) LIKE :search ${LIKE_ESCAPE_CLAUSE}`),
-					),
-					{ search: `%${escapeLike(filter.search.toLowerCase())}%` },
-				);
-		}
-		query.orderBy('skill.updatedAt', 'DESC').addOrderBy('skill.id', 'ASC').offset(filter.skip);
-		if (filter.take !== undefined) query.limit(filter.take);
-		const [skills, count] = await query.getManyAndCount();
-		return { skills, count };
 	}
 
 	async findAssistantSkillSummaries(projectId: string | null): Promise<AssistantSkillSummary[]> {

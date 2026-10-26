@@ -354,6 +354,23 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 		return unique([...drafts, ...pins].map((row) => row.agentId));
 	}
 
+	/** The skills one agent uses: a draft ref or a pin of any of its published versions. */
+	async findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext = {}): Promise<string[]> {
+		const manager = this.managerFor(ctx);
+		const drafts = await manager.find(AgentSkillDependency, {
+			select: ['skillId'],
+			where: { agentId },
+		});
+		const pins = await manager
+			.createQueryBuilder(AgentVersionSkillDependency, 'pin')
+			.innerJoin(AgentHistory, 'history', 'history.versionId = pin.agentVersionId')
+			.where('history.agentId = :agentId', { agentId })
+			.select('pin.skillId', 'skillId')
+			.distinct(true)
+			.getRawMany<{ skillId: string }>();
+		return unique([...drafts, ...pins].map((row) => row.skillId));
+	}
+
 	/** Distinct agents per skill, drafts and pins together. Skills nobody uses are left out. */
 	async countUsingAgents(
 		skillIds: string[],
