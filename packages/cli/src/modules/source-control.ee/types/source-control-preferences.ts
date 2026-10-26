@@ -1,3 +1,4 @@
+import { ENVIRONMENTS_VERSIONS, type EnvironmentsVersion } from '@n8n/api-types';
 import { IsBoolean, IsHexColor, IsOptional, IsString, IsIn, Matches } from 'class-validator';
 
 import { KeyPairType } from './key-pair-type';
@@ -50,8 +51,8 @@ export class SourceControlPreferences {
 	httpsPassword?: string;
 
 	@IsOptional()
-	@IsIn(['v1', 'v2'])
-	environmentsVersion?: 'v1' | 'v2';
+	@IsIn(ENVIRONMENTS_VERSIONS)
+	environmentsVersion?: EnvironmentsVersion;
 
 	static fromJSON(json: Partial<SourceControlPreferences>): SourceControlPreferences {
 		return new SourceControlPreferences(json);

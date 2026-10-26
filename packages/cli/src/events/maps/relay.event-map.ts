@@ -2,6 +2,7 @@ import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
+	EnvironmentsVersion,
 	ProjectRelation,
 	RedactionFloor,
 } from '@n8n/api-types';
@@ -760,7 +761,7 @@ export type RelayEventMap = {
 
 	'source-control-environments-version-switched': {
 		userId: string;
-		version: 'v1' | 'v2';
+		version: EnvironmentsVersion;
 	};
 
 	'source-control-user-started-pull-ui': {

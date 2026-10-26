@@ -103,7 +103,6 @@ export class SourceControlController {
 					if (this.sourceControlPreferencesService.getPreferences().branchName !== '') {
 						await this.sourceControlPreferencesService.setPreferences({
 							connected: true,
-							environmentsVersion: 'v1',
 						});
 					}
 				} catch (error) {
@@ -165,7 +164,12 @@ export class SourceControlController {
 					true,
 				);
 			}
-			await this.sourceControlService.start();
+			// A version switch changes no git state, so Classic Git keeps running as it is.
+			const versionOnly =
+				sanitizedPreferences.branchName === undefined &&
+				sanitizedPreferences.branchColor === undefined &&
+				sanitizedPreferences.branchReadOnly === undefined;
+			if (!versionOnly) await this.sourceControlService.start();
 			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
 			if (
 				sanitizedPreferences.environmentsVersion &&

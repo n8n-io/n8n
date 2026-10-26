@@ -80,7 +80,7 @@ describe('Source Control API', () => {
 			expect(data.publicKey).toEqual(expect.stringMatching(/^ssh-/));
 		});
 
-		test('should return only branch read-only state to members without source-control access', async () => {
+		test('should return only the branch read-only state and the environments version to members without source-control access', async () => {
 			const res = await authMemberAgent.get('/source-control/preferences').expect(200);
 			const data = res.body.data ?? res.body;
 

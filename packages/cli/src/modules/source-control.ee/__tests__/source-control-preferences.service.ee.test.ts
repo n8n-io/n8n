@@ -5,7 +5,7 @@ import { readFile, writeFile, access, mkdir } from 'fs/promises';
 import type { InstanceSettings, Cipher } from 'n8n-core';
 import os from 'os';
 import path from 'path';
-import { mock, type MockProxy } from 'vitest-mock-extended';
+import { mock, mockReset } from 'vitest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
@@ -470,16 +470,15 @@ describe('SourceControlPreferencesService', () => {
 	});
 
 	describe('loadFromDbAndApplySourceControlPreferences', () => {
-		let repository: MockProxy<SettingsRepository>;
 		let loader: SourceControlPreferencesService;
 
 		beforeEach(() => {
-			repository = mock<SettingsRepository>();
+			mockReset(mockSettingsRepository);
 			loader = new SourceControlPreferencesService(
 				instanceSettings,
 				mockLogger,
 				mockCipher,
-				repository,
+				mockSettingsRepository,
 				mock(),
 				mock(),
 			);
@@ -490,7 +489,7 @@ describe('SourceControlPreferencesService', () => {
 		});
 
 		const savedVersion = () => {
-			const [saved] = repository.save.mock.calls[0] as [{ value: string }];
+			const [saved] = mockSettingsRepository.save.mock.calls[0] as [{ value: string }];
 			return JSON.parse(saved.value).environmentsVersion;
 		};
 
@@ -500,31 +499,31 @@ describe('SourceControlPreferencesService', () => {
 		])(
 			'writes the environments version once for a row without one (connected: %s -> %s)',
 			async (connected, version) => {
-				repository.findOne.mockResolvedValue({
+				mockSettingsRepository.findOne.mockResolvedValue({
 					value: JSON.stringify({ connected, branchName: 'main' }),
 				} as never);
 
 				await loader.loadFromDbAndApplySourceControlPreferences();
 
-				expect(repository.save).toHaveBeenCalledTimes(1);
+				expect(mockSettingsRepository.save).toHaveBeenCalledTimes(1);
 				expect(savedVersion()).toBe(version);
 				expect(loader.getPreferences().environmentsVersion).toBe(version);
 			},
 		);
 
 		it('keeps the stored environments version and does not write', async () => {
-			repository.findOne.mockResolvedValue({
+			mockSettingsRepository.findOne.mockResolvedValue({
 				value: JSON.stringify({ connected: true, environmentsVersion: 'v2' }),
 			} as never);
 
 			await loader.loadFromDbAndApplySourceControlPreferences();
 
-			expect(repository.save).not.toHaveBeenCalled();
+			expect(mockSettingsRepository.save).not.toHaveBeenCalled();
 			expect(loader.getPreferences().environmentsVersion).toBe('v2');
 		});
 
 		it('starts a new instance on v2', async () => {
-			repository.findOne.mockResolvedValue(null);
+			mockSettingsRepository.findOne.mockResolvedValue(null);
 
 			await loader.loadFromDbAndApplySourceControlPreferences();
 

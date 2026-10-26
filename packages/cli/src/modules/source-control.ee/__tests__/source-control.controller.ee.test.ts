@@ -234,29 +234,6 @@ describe('SourceControlController', () => {
 		});
 	});
 
-	describe('setPreferences', () => {
-		it('marks the instance as v1 when a repository connects', async () => {
-			(sourceControlPreferencesService.setPreferences as Mock).mockResolvedValue({
-				branchName: 'main',
-			});
-			(sourceControlPreferencesService.getPreferences as Mock).mockReturnValue({
-				branchName: 'main',
-				repositoryUrl: 'git@github.com:acme/repo.git',
-			});
-			const req = mock<SourceControlRequest.UpdatePreferences>({
-				user: mock<User>({ id: 'user-1' }),
-				body: { repositoryUrl: 'git@github.com:acme/repo.git', initRepo: true },
-			});
-
-			await controller.setPreferences(req);
-
-			expect(sourceControlPreferencesService.setPreferences).toHaveBeenLastCalledWith({
-				connected: true,
-				environmentsVersion: 'v1',
-			});
-		});
-	});
-
 	describe('updatePreferences', () => {
 		const buildReq = (body: SourceControlRequest.UpdatePreferences['body']) =>
 			mock<SourceControlRequest.UpdatePreferences>({ user: mock<User>({ id: 'user-1' }), body });
@@ -282,6 +259,24 @@ describe('SourceControlController', () => {
 				'source-control-environments-version-switched',
 				{ userId: 'user-1', version: 'v2' },
 			);
+		});
+
+		it('switches the version even when Classic Git cannot initialize', async () => {
+			(sourceControlService.start as Mock).mockRejectedValue(
+				new Error('Failed to create SSH private key file'),
+			);
+
+			await expect(
+				controller.updatePreferences(buildReq({ environmentsVersion: 'v2' })),
+			).resolves.toBeDefined();
+
+			expect(sourceControlPreferencesService.setPreferences).toHaveBeenCalledWith(
+				expect.objectContaining({ environmentsVersion: 'v2' }),
+				true,
+			);
+			await expect(
+				controller.updatePreferences(buildReq({ branchColor: '#000000' })),
+			).rejects.toThrow('Failed to create SSH private key file');
 		});
 	});
 
