@@ -29,7 +29,7 @@ pnpm scenarios worker-drain-long-task --runs 1     # one scenario, one run per v
 pnpm scenarios --variant before                    # only the before images
 ```
 
-A `before` run passes only when it shows the bug as the spec describes. A `before` run that fails for another reason counts as a failure. An image that cannot be pulled shows `image missing` and fails the run. The command exits with a non-zero code when any variant did not pass on every run.
+A `before` run passes only when it shows the bug as the spec describes. A `before` run that fails for another reason counts as a failure. An image that cannot be pulled shows `image missing` and fails the run. A variant with no image shows `no image` and is skipped. The command exits with a non-zero code when any variant did not pass on every run.
 
 ## Read the results
 
@@ -102,9 +102,9 @@ test('worker drain: a running job finishes before the worker exits', async () =>
 
 Always wait on something the product does: a log line that names an execution id, a process exit, a row in Postgres, or a state in Bull. Never wait a fixed time, because Docker timing varies from run to run. Log text can change between versions, so when the line you need differs between the `before` and `after` images, add an `observe` hook on the method instead and wait for its hit.
 
-Checks are plain data. `s.verify` takes `before`, `after` and `always` lists of `[label, value, expectation]` entries, runs the lists for the current variant together with `always`, and returns the labels that failed. The expectations are `is`, `isNot`, `below`, `includes` and `anything`. Use `s.mark`, `s.step` and `s.race` to add steps to the timeline, and `s.set` to record values in the record. `s.run` stops the stack and attaches the record to the test whatever happens, and it fails the test when a check failed or the stack did not stop. `s.collectLogs` saves the container logs and returns them by container name.
+Checks are plain data. `s.verify` takes `before`, `after` and `always` lists of `[label, value, expectation]` entries, runs the lists for the current variant together with `always`, and returns the labels that failed. The expectations are `is`, `isNot`, `below`, `includes`, `excludes` and `anything`. Use `s.mark`, `s.step` and `s.race` to add steps to the timeline, and `s.set` to record values in the record. `s.run` stops the stack and attaches the record to the test whatever happens, and it fails the test when a check failed or the stack did not stop. `s.collectLogs` saves the container logs and returns them by container name.
 
-To add the scenario to `pnpm scenarios`, give it an entry in `scenarios.json`. The key is the scenario name, in lower case with dashes. The entry names the `spec` file, the released `before` and `after` images, the `issue` it reproduces, and optionally `env` values whose names start with `TEST_RIG_`. Two entries can share one spec and differ only in `env`; the external runner variants do this with `TEST_RIG_RUNNERS=external`.
+To add the scenario to `pnpm scenarios`, give it an entry in `scenarios.json`. The key is the scenario name, in lower case with dashes. The entry names the `spec` file, the released `before` and `after` images (`null` when no release has the fix yet), the `issue` it reproduces, and optionally `env` values whose names start with `TEST_RIG_`. Two entries can share one spec and differ only in `env`; the external runner variants do this with `TEST_RIG_RUNNERS=external`.
 
 When a spec hooks a method for the first time, add it to `src/hooks/catalogue.ts`, with `since` if older releases do not have it. A unit test fails when a spec hooks a method the catalogue does not list.
 
