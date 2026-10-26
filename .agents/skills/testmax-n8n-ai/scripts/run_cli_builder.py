@@ -474,7 +474,7 @@ class QuestionAnswerer:
 		screen = subprocess.run(['docker', 'exec', self.container, 'tmux', 'capture-pane', '-p', '-t', 'run'],
 		                        capture_output=True, text=True).stdout
 		if not any(marker in screen for marker in QUESTION_MARKERS):
-			self.seen_at = None
+			self.last_screen, self.seen_at = None, None
 			return None
 		# Wait until the picker stops changing, so a key press does not land while it draws.
 		if screen != self.last_screen:

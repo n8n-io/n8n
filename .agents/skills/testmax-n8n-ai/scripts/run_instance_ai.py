@@ -83,17 +83,25 @@ class Recorder:
 
 
 ANTHROPIC_EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
+CUSTOM_EFFORTS = ('none', 'minimal', *ANTHROPIC_EFFORTS)
+# Keep in sync with instance-ai.config.ts and CUSTOM_MODEL_DEFAULTS in utils/custom-model-defaults.ts.
+DEFAULT_INSTANCE_AI_MODEL = 'anthropic/claude-opus-4-8'
+CUSTOM_MODEL_EFFORTS = (('kimi-k3', 'low'), ('glm-5.2', 'medium'))
 
 
 def configured_effort():
 	"""The orchestrator effort that n8n uses for N8N_INSTANCE_AI_MODEL, with the rules of
 	packages/@n8n/instance-ai/src/agent/apply-agent-thinking.ts. n8n does not report the effort, so this
 	reads the settings that the server reads. None when the provider has no fixed effort."""
-	model = (setting('N8N_INSTANCE_AI_MODEL') or '').lower()
+	model = (setting('N8N_INSTANCE_AI_MODEL') or DEFAULT_INSTANCE_AI_MODEL).lower()
 	provider = model.split('/', 1)[0] if '/' in model else ''
+	effort = (setting('N8N_INSTANCE_AI_REASONING_EFFORT') or '').strip().lower()
 	if provider in ('anthropic', 'google-vertex-anthropic'):
-		effort = (setting('N8N_INSTANCE_AI_REASONING_EFFORT') or '').lower()
 		return effort if effort in ANTHROPIC_EFFORTS else 'medium'
+	if provider in ('custom', 'moonshotai'):
+		if effort in CUSTOM_EFFORTS:
+			return effort
+		return next((e for match, e in CUSTOM_MODEL_EFFORTS if match in model), None)
 	if provider == 'openai':
 		return 'medium' if 'gpt-5.6' in model else 'high'
 	if provider == 'xai' and 'grok-4.5' in model:
@@ -278,6 +286,8 @@ def main():
 
 	finished_at = (datetime.fromtimestamp(finish_ts / 1000, timezone.utc).isoformat() if finish_ts
 	               else now_iso())
+	# Background tasks can still call the LLM after run-finish, so the usage window ends at idle.
+	usage_finished_at = now_iso()
 	stop.set()
 	events_file.close()
 	recorder.stop()
@@ -301,6 +311,7 @@ def main():
 		'threadId': thread_id,
 		'startedAt': started_at,
 		'finishedAt': finished_at,
+		'usageFinishedAt': usage_finished_at,
 		'workflowIds': workflow_ids,
 		'workflowId': workflow_ids[-1] if workflow_ids else None,
 		'langsmithRunIds': langsmith_run_ids,

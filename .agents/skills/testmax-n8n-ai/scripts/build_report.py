@@ -114,8 +114,10 @@ def read_jsonl(path):
 
 def run_seconds(meta):
 	# A CLI run also spends time on container start-up, the prompt paste wait and shutdown.
-	if meta.get('turnStartedAt') and meta.get('turnFinishedAt'):
-		return ts(meta['turnFinishedAt']) - ts(meta['turnStartedAt'])
+	if 'turnStartedAt' in meta or 'turnFinishedAt' in meta:
+		if meta.get('turnStartedAt') and meta.get('turnFinishedAt'):
+			return ts(meta['turnFinishedAt']) - ts(meta['turnStartedAt'])
+		return None
 	return ts(meta['finishedAt']) - ts(meta['startedAt']) if meta.get('finishedAt') and meta.get('startedAt') else None
 
 
