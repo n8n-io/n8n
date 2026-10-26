@@ -15,6 +15,8 @@ export interface CredentialMatcherContext {
 	projectId: string;
 	user: User;
 	credentialBindings?: ImportBindingMap;
+	/** Leave out the user's own personal credentials that only the personal route makes usable. */
+	excludePersonalRoute?: boolean;
 }
 
 /** A credential the importing user can use in the target project, as returned by `CredentialsService`. */
@@ -77,7 +79,7 @@ export abstract class CredentialMatcher {
 			failures: [
 				...orphanFailures,
 				...unknownTypeFailures,
-				...notFoundFailures,
+				...(await this.withNotFoundReasons(notFoundFailures)),
 				...typeMismatchFailures,
 			],
 		};
@@ -89,10 +91,9 @@ export abstract class CredentialMatcher {
 	): Promise<Map<string, ResolvedCredentialMatch>> {
 		const located = new Map<string, ResolvedCredentialMatch>();
 
-		for (const excludePersonalRoute of [false, true]) {
+		for (const usedByAgent of [false, true]) {
 			const references = requirements.filter(
-				(reference) =>
-					reference.usedBy.some(({ kind }) => kind === 'agent') === excludePersonalRoute,
+				(reference) => reference.usedBy.some(({ kind }) => kind === 'agent') === usedByAgent,
 			);
 			if (references.length === 0) continue;
 
@@ -100,7 +101,7 @@ export abstract class CredentialMatcher {
 				context.user,
 				{
 					projectId: context.projectId,
-					excludePersonalRoute,
+					excludePersonalRoute: usedByAgent || context.excludePersonalRoute === true,
 				},
 			);
 			const usableTypesById = new Map(
@@ -116,6 +117,26 @@ export abstract class CredentialMatcher {
 		}
 
 		return located;
+	}
+
+	/** Adds the reason to each `not_found` failure whose credential the matcher looked up by id. */
+	private async withNotFoundReasons(
+		failures: CredentialResolutionFailure[],
+	): Promise<CredentialResolutionFailure[]> {
+		const lookupId = ({ sourceId, targetId }: CredentialResolutionFailure) =>
+			targetId ?? (this.matchesById ? sourceId : undefined);
+		const ids = [...new Set(failures.flatMap((failure) => lookupId(failure) ?? []))];
+		if (ids.length === 0) return failures;
+
+		const usageScopes = await this.credentialsService.findUsageScopes(ids);
+		return failures.map((failure): CredentialResolutionFailure => {
+			const id = lookupId(failure);
+			if (id === undefined) return failure;
+			const usageScope = usageScopes.get(id);
+			if (usageScope === undefined) return { ...failure, reason: 'not-on-instance' };
+			if (usageScope !== 'project') return { ...failure, reason: 'incompatible-usage-scope' };
+			return { ...failure, reason: 'access-required' };
+		});
 	}
 
 	/**

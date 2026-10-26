@@ -5,6 +5,7 @@ import type { Readable } from 'node:stream';
 
 import type {
 	CredentialConflict,
+	CredentialNotFoundReason,
 	CredentialUpdateForbidden,
 } from './entities/credential/credential.types';
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
@@ -179,6 +180,16 @@ export const CredentialConflictPolicy = {
 	Fail: 'fail',
 } as const;
 
+/**
+ * Whether the credential matcher may bind the user's own personal credential in a team project
+ * the user is a member of. Promotions use `exclude`: a credential must be usable by the
+ * project, not only by the user who runs the import.
+ */
+export const CredentialPersonalRoute = {
+	Allow: 'allow',
+	Exclude: 'exclude',
+} as const;
+
 export const VariableParentPolicy = {
 	Project: 'project',
 	Global: 'global',
@@ -239,6 +250,9 @@ export type VariableConflictPolicy =
 export type CredentialConflictPolicy =
 	(typeof CredentialConflictPolicy)[keyof typeof CredentialConflictPolicy];
 
+export type CredentialPersonalRoute =
+	(typeof CredentialPersonalRoute)[keyof typeof CredentialPersonalRoute];
+
 export type VariableParentPolicy = (typeof VariableParentPolicy)[keyof typeof VariableParentPolicy];
 
 export type TagMissingMode = (typeof TagMissingMode)[keyof typeof TagMissingMode];
@@ -279,6 +293,8 @@ export type ImportRequest = {
 	apiKeyScopes?: string[];
 	/** Omit to import the whole package. */
 	selection?: ImportSelection;
+	/** Promotions only, the public API does not set it. Omitted means `allow`. */
+	credentialPersonalRoute?: CredentialPersonalRoute;
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
 	ImportProjectProperties &
@@ -325,6 +341,7 @@ export type ImportSelectionRequest = {
 	tagConflictPolicy?: TagConflictPolicy;
 	/** Omitted means `keep-existing`. */
 	credentialConflictPolicy?: CredentialConflictPolicy;
+	credentialPersonalRoute?: CredentialPersonalRoute;
 } & PromotionLayoutProperties;
 
 export type ImportPackageSelectionRequest = ImportSelectionRequest & {
@@ -619,6 +636,14 @@ export interface ImportedProjectSummary {
 }
 
 /**
+ * How an import plan runs its gates.
+ * - `enforce`: policy checks write audit events. A refusal that the import reports as an error
+ *   throws that error.
+ * - `check`: policy checks write no audit events, and refusals become issues.
+ */
+export type ImportPlanMode = 'enforce' | 'check';
+
+/**
  * A reason the import cannot proceed, produced by some policy from any subsystem.
  * Discriminated by `type` so new gates add a variant rather than a new throw site.
  * The import aborts when any are present.
@@ -633,6 +658,8 @@ export type BlockingIssue =
 	| {
 			type: 'credential-unresolved';
 			kind: 'not_found' | 'unknown_type' | 'source_not_found' | 'type_mismatch';
+			/** For `not_found` of a credential named by id: why the user cannot use it. */
+			reason?: CredentialNotFoundReason;
 			sourceId: string;
 			targetId?: string;
 			/** For `type_mismatch`: the credential type the package's workflow node requires. */
@@ -676,6 +703,14 @@ export type BlockingIssue =
 			violations: PolicyViolation[];
 	  }
 	| {
+			/**
+			 * A policy check that crashed or timed out in `check` mode. The plan cannot tell whether
+			 * the import is allowed. In `enforce` mode the same failure fails the import.
+			 */
+			type: 'policy-check-failed';
+			point: 'contentImport' | 'credentialSave';
+	  }
+	| {
 			/** A credential write that a `credentialSave` or `contentImport` policy check refused. */
 			type: 'credential-policy-violation';
 			sourceId: string;
@@ -716,8 +751,15 @@ export interface FolderRemovalFailure {
 	projectId: string;
 }
 
+/**
+ * - `fail-policy`: the project exists and `projectConflictPolicy` is `fail`.
+ * - `not-team`: the project id belongs to a personal project on the target.
+ * - `update-forbidden`: the project exists and the user cannot update it.
+ * - `create-forbidden`: the project is new and the user cannot create projects.
+ * - `license`: the project is new and the license does not allow team projects.
+ */
 export interface ProjectConflict {
-	kind: 'fail-policy';
+	kind: 'fail-policy' | 'not-team' | 'update-forbidden' | 'create-forbidden' | 'license';
 	sourceProjectId: string;
 	name: string;
 }

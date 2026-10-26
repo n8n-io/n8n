@@ -105,6 +105,7 @@ describe('CredentialImporter', () => {
 		vi.clearAllMocks();
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+		credentialsService.findUsageScopes.mockResolvedValue(new Map());
 		Container.set(
 			IdBasedCredentialMatcher,
 			new IdBasedCredentialMatcher(credentialTypes, credentialsService),
@@ -163,6 +164,7 @@ describe('CredentialImporter', () => {
 		expect(credentialResolution.failures).toEqual([
 			{
 				kind: 'not_found',
+				reason: 'not-on-instance',
 				sourceId: 'cred-missing',
 				name: 'Missing',
 				type: 'githubApi',
@@ -171,6 +173,7 @@ describe('CredentialImporter', () => {
 		expect(importer.blockingFailures(request, credentialResolution)).toEqual([
 			{
 				kind: 'not_found',
+				reason: 'not-on-instance',
 				sourceId: 'cred-missing',
 				name: 'Missing',
 				type: 'githubApi',
@@ -242,6 +245,7 @@ describe('CredentialImporter', () => {
 		expect(credentialResolution.failures).toEqual([
 			{
 				kind: 'not_found',
+				reason: 'not-on-instance',
 				sourceId: 'source-cred',
 				name: 'Source GitHub',
 				type: 'githubApi',

@@ -3,6 +3,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { ForbiddenError } from '@n8n/errors';
+import { UnexpectedError } from 'n8n-workflow';
 
 import {
 	credentialUpdateScope,
@@ -14,7 +15,8 @@ import type {
 } from '../entities/credential/credential.types';
 import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
-import { ProjectImporter } from '../entities/project/project-importer';
+import { ProjectImporter, projectRefusalError } from '../entities/project/project-importer';
+import type { ProjectImportPlan } from '../entities/project/project-import.types';
 import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-importer';
@@ -26,6 +28,7 @@ import type {
 	ImportBindingMap,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
+	ImportPlanMode,
 	ImportSelection,
 	ResolvedImportRequest,
 	ImportTagSummary,
@@ -63,6 +66,17 @@ import { N8nPackageParser } from './n8n-package-parser';
 import { PackageImportPreflight } from './package-import-preflight';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 
+/** Everything an import will do, read before its first write. */
+export interface PackageImportPlan {
+	request: ResolvedImportRequest;
+	manifest: PackageManifest;
+	projectPlan: ProjectImportPlan;
+	/** Empty when a project conflict stops the import before its contents are planned. */
+	scopes: Array<{ project: ManifestEntry; plan: ImportPlan }>;
+	/** Everything that blocks the import, from every stage that could run. */
+	issues: BlockingIssue[];
+}
+
 @Service()
 export class ProjectPackageImporter {
 	constructor(
@@ -79,6 +93,23 @@ export class ProjectPackageImporter {
 		manifest: PackageManifest,
 		importSource: PackageImportSource,
 	): Promise<ImportOutcome> {
+		const plan = await this.planImport(request, reader, manifest, importSource, 'enforce');
+		if (plan.issues.length > 0) throw toImportBlockedError(plan.issues);
+		return await this.applyPlan(plan);
+	}
+
+	/**
+	 * Plans every project of the import and collects the issues that block it. Writes no data.
+	 * In `enforce` mode, policy checks write audit events and refusals that the import reports as
+	 * an error throw.
+	 */
+	async planImport(
+		request: ResolvedImportRequest,
+		reader: PackageReader,
+		manifest: PackageManifest,
+		importSource: PackageImportSource,
+		mode: ImportPlanMode,
+	): Promise<PackageImportPlan> {
 		this.assertAdequatePermissions(request, manifest);
 
 		const { selection } = request;
@@ -95,14 +126,22 @@ export class ProjectPackageImporter {
 			projects,
 			request.projectConflictPolicy,
 		);
+		if (mode === 'enforce') {
+			const refusal = projectPlan.conflicts.map(projectRefusalError).find((error) => error);
+			if (refusal) throw refusal;
+		}
 		// A refused project decides the whole import, so report it before reading any project's
 		// contents — planning work that is certain to be discarded only delays the same failure.
 		if (projectPlan.conflicts.length > 0) {
-			throw toImportBlockedError(
-				projectPlan.conflicts.map(
+			return {
+				request,
+				manifest,
+				projectPlan,
+				scopes: [],
+				issues: projectPlan.conflicts.map(
 					(conflict): BlockingIssue => ({ type: 'project-conflict', ...conflict }),
 				),
-			);
+			};
 		}
 
 		const bundledVariables = needsBundledVariableValues(
@@ -143,9 +182,26 @@ export class ProjectPackageImporter {
 			);
 			inputs.push(input);
 		}
-		const draftPlans = await this.importOrchestrator.planPackage(inputs);
-		const plans = await this.importPreflight.prepare(draftPlans, reader, request.apiKeyScopes);
-		const planned = selectedProjects.map((project, index) => ({ project, plan: plans[index] }));
+		const draftPlans = await this.importOrchestrator.planPackage(inputs, mode);
+		const { plans, issues } = await this.importPreflight.check(
+			draftPlans,
+			reader,
+			request.apiKeyScopes,
+			mode,
+		);
+		const scopes = selectedProjects.map((project, index) => ({ project, plan: plans[index] }));
+
+		return { request, manifest, projectPlan, scopes, issues };
+	}
+
+	/** Writes a plan that has no issues. */
+	async applyPlan(plan: PackageImportPlan): Promise<ImportOutcome> {
+		const { request, manifest, projectPlan, scopes: planned } = plan;
+		if (plan.issues.length > 0) {
+			throw new UnexpectedError('An import plan with blocking issues cannot be applied');
+		}
+
+		await this.importOrchestrator.assertCanUpdateCredentials(planned.map(({ plan }) => plan));
 
 		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan.items);
 
@@ -213,7 +269,7 @@ export class ProjectPackageImporter {
 			dataTablesUpdated += content.dataTablePlan.updates.length;
 			seeded.push(...content.credentialResult.seeded);
 			incomplete.push(...content.credentialResult.incomplete);
-			variablesMatched.push(...content.variablePlan.matched);
+			variablesMatched.push(...content.variablePlan.matched.map(({ name }) => name));
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
 			variablesCreated.push(...content.variableResult.created);
 			variablesStubbed.push(...content.variableResult.stubbed);
@@ -312,6 +368,7 @@ export class ProjectPackageImporter {
 				requirements,
 			),
 			conflictPolicy: resolveCredentialConflictPolicy(request.credentialConflictPolicy),
+			personalRoute: request.credentialPersonalRoute,
 			packageCredentials: importWide.packageCredentials,
 			updateScope: importWide.credentialUpdateScope,
 		};
