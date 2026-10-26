@@ -18,6 +18,7 @@ export * from './instance-registry-types';
 export type * from './instance-reporting';
 export type * from './worker-pools';
 export * from './node-type-availability';
+export type * from './sub-workflow-policy-check';
 export type * from './credential-type-availability';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
@@ -419,7 +420,6 @@ export {
 	instanceAiEventSchema,
 	taskItemSchema,
 	taskListSchema,
-	plannedTaskArgSchema,
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
 	agentSpawnedPayloadSchema,
@@ -710,7 +710,6 @@ export type {
 	InstanceAiBrowserStatusResponse,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
-	PlannedTaskArg,
 	InstanceAiEvalNodeExecutionMode,
 	InstanceAiEvalInterceptedRequest,
 	InstanceAiEvalNodeResult,

@@ -61,13 +61,6 @@ const loadGetSessionTool = lazyMod(
 	() =>
 		require('./orchestration/get-session.tool') as typeof import('./orchestration/get-session.tool'),
 );
-const loadCompleteCheckpointTool = lazyMod(
-	() =>
-		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
-);
-const loadPlanTool = lazyMod(
-	() => require('./orchestration/plan.tool') as typeof import('./orchestration/plan.tool'),
-);
 const loadReportVerificationVerdictTool = lazyMod(
 	() =>
 		require('./orchestration/report-verification-verdict.tool') as typeof import('./orchestration/report-verification-verdict.tool'),
@@ -221,19 +214,15 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 }
 
 /**
- * Creates orchestration-only tools (task planning, task control).
+ * Creates orchestration-only tools (task control, verification).
  * These tools are given to the orchestrator agent but never to sub-agents.
  */
 export function createOrchestrationTools(context: OrchestrationContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [];
-	tools.push([ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)]);
-	tools.push(
-		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, loadTaskControlTool().createTaskControlTool(context)],
-		[
-			ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
-			loadCompleteCheckpointTool().createCompleteCheckpointTool(context),
-		],
-	);
+	tools.push([
+		ORCHESTRATION_TOOL_IDS.TASK_CONTROL,
+		loadTaskControlTool().createTaskControlTool(context),
+	]);
 
 	if (context.workflowTaskService) {
 		tools.push([

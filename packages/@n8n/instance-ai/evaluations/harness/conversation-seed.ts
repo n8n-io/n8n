@@ -16,11 +16,10 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 import { isAgentTargetingToolName } from '../../src/tools/orchestration/agent-target-binding';
-import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
+import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 import {
 	extractAskUserAnswers,
 	extractAskUserQuestions,
-	extractPlanTasks,
 	extractSetupCardRequests,
 	extractSetupWizardOutcome,
 } from '../outcome/transcript-from-events';
@@ -581,13 +580,6 @@ const interpretAskUser: SeedStepInterpreter = (call) => {
 	return { kind: 'ask-user', questions: parsed, answers };
 };
 
-const interpretPlan: SeedStepInterpreter = (call) => {
-	const tasks = call.input?.tasks;
-	if (call.toolName !== ORCHESTRATION_TOOL_IDS.CREATE_TASKS || !Array.isArray(tasks)) return null;
-	const parsed = extractPlanTasks(tasks);
-	return parsed.length > 0 ? { kind: 'plan', tasks: parsed } : null;
-};
-
 // The applied setup outcome: which nodes were configured / skipped (same
 // rendering as the live `workflow_builder_workflows` result).
 const interpretSetupWizard: SeedStepInterpreter = (call) => {
@@ -616,7 +608,7 @@ const interpretSetupCard: SeedStepInterpreter = (call) => {
 	return requests.length > 0 ? { kind: 'setup-card', requests, outcome: 'pending' } : null;
 };
 
-// A HITL confirmation other than ask-user/setup-card (plan-review, resource decision, …):
+// A HITL confirmation other than ask-user/setup-card (resource decision, …):
 // the request is in the resume block's input, the decision in its output.
 const interpretConfirmation: SeedStepInterpreter = (call) => {
 	const reasonRaw = call.input?.resumeReason ?? call.input?.inputType;
@@ -633,16 +625,13 @@ const interpretConfirmation: SeedStepInterpreter = (call) => {
 		toolName: typeof toolNameRaw === 'string' ? toolNameRaw : call.toolName,
 		resumeReason,
 		approved: typeof approvedRaw === 'boolean' ? approvedRaw : undefined,
-		// Plan-review prompts are boilerplate; the plan renders separately.
-		message:
-			resumeReason === 'plan-review' || typeof messageRaw !== 'string' ? undefined : messageRaw,
+		message: typeof messageRaw !== 'string' ? undefined : messageRaw,
 		feedback: typeof feedbackRaw === 'string' ? feedbackRaw : undefined,
 	};
 };
 
 const SEED_STEP_INTERPRETERS: SeedStepInterpreter[] = [
 	interpretAskUser,
-	interpretPlan,
 	interpretSetupWizard,
 	interpretSetupCard,
 	interpretConfirmation,

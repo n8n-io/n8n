@@ -601,6 +601,27 @@ describe('N8nClient packages', () => {
 			expect(form.get('credentialMissingMode')).toBe('create-stub');
 		});
 
+		it('sends credentialConflictPolicy when provided', async () => {
+			fetchMock.mockResolvedValue(
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [], updated: [] },
+				}),
+			);
+
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{
+					workflowConflictPolicy: 'fail',
+					credentialConflictPolicy: 'overwrite',
+				},
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('credentialConflictPolicy')).toBe('overwrite');
+		});
+
 		it('sends missingNodeTypeMode when provided', async () => {
 			fetchMock.mockResolvedValue(
 				jsonResponse(200, {
@@ -757,6 +778,7 @@ describe('N8nClient packages', () => {
 
 			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
 			expect(form.has('credentialMissingMode')).toBe(false);
+			expect(form.has('credentialConflictPolicy')).toBe(false);
 		});
 
 		it('throws an ApiError that preserves the blocking-issue details', async () => {

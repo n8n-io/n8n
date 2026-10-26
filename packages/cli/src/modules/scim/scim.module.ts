@@ -14,9 +14,6 @@ export class ScimModule implements ModuleInterface {
 		await import('./scim.controller.js');
 		await import('./scim-discovery.controller.js');
 		await import('./scim-token.controller.js');
-
-		const { ScimTokenRevocationListener } = await import('./scim-token-revocation.listener.js');
-		Container.get(ScimTokenRevocationListener);
 	}
 
 	/**

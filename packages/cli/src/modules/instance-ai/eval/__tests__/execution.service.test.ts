@@ -2001,6 +2001,46 @@ describe('EvalExecutionService', () => {
 			expect(Object.keys(item?.binary ?? {})).toEqual(['CV_0']);
 		});
 
+		it('pins Form Trigger content in the Form Trigger shape when it comes back webhook-shaped', async () => {
+			const formTrigger = {
+				id: 'node-1',
+				name: 'Feedback Form',
+				type: 'n8n-nodes-base.formTrigger',
+				typeVersion: 2.6,
+				position: [0, 0],
+				parameters: {
+					formFields: { values: [{ fieldLabel: 'Email', fieldName: 'email', fieldType: 'email' }] },
+				},
+			} as INode;
+			mockGetStartNode.mockReturnValue(formTrigger);
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({ nodes: [formTrigger] }) as never,
+			);
+			const hints = makeEmptyHints();
+			hints.triggerContent = { headers: {}, query: {}, body: { email: 'test@example.com' } };
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			expect(runData.pinData?.['Feedback Form']?.[0]?.json).toEqual({
+				email: 'test@example.com',
+				submittedAt: expect.any(String),
+				formMode: 'production',
+			});
+		});
+
+		it('keeps the body envelope of a Webhook trigger', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = { headers: {}, query: {}, body: { email: 'test@example.com' } };
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			expect(runData.pinData?.['Webhook']?.[0]?.json).toEqual(hints.triggerContent);
+		});
+
 		it('does not create pin data when triggerContent is empty', async () => {
 			const hints = makeEmptyHints();
 			hints.triggerContent = {};
