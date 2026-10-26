@@ -16,6 +16,7 @@ import {
 	isSubscriptionResponse,
 	listOwnSubscriptions,
 	reconcileSubscriptions,
+	storedSubscriptionsCover,
 	verifyWebhook,
 } from '../../v2/helpers/utils-trigger';
 import {
@@ -1049,6 +1050,102 @@ describe('Microsoft Teams Helpers Functions', () => {
 					expect(staticData.subscriptionIds !== raw).toBe(written);
 				},
 			);
+		});
+
+		describe('storedSubscriptionsCover', () => {
+			const TEAM1 = '/teams/team1/channels';
+			const TEAM2 = '/teams/team2/channels';
+			// GET by id answers from the table and 404s for any other id; every other GET is the
+			// teams listing of arrange().
+			const answerById = (byId: Record<string, unknown>) =>
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, _method: string, path: string) => {
+						if (!path.startsWith('/v1.0/subscriptions/')) {
+							return { value: [{ id: 'team1' }, { id: 'team2' }] };
+						}
+						const found = byId[path.slice('/v1.0/subscriptions/'.length)];
+						if (found === undefined) {
+							throw new NodeApiError(mock<INode>(), { message: 'Not found', httpCode: '404' });
+						}
+						return found;
+					},
+				);
+			const reads = () =>
+				calls('GET')
+					.map((call) => call[2])
+					.filter((path) => String(path).startsWith('/v1.0/subscriptions/'));
+
+			it('covers the required resource with a live stored subscription at this URL', async () => {
+				const { ctx, staticData } = arrange();
+				answerById({ sub1: subscription('sub1', '/me/chats', minutes(60)) });
+
+				await expect(storedSubscriptionsCover.call(ctx, webhookUrl, 'newChat')).resolves.toBe(true);
+				expect(reads()).toEqual(['/v1.0/subscriptions/sub1']);
+				expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
+			});
+
+			it.each([
+				['Graph answers 404', {}],
+				[
+					'the subscription posts to another URL',
+					{ sub1: subscription('sub1', '/me/chats', minutes(60), 'https://other.url') },
+				],
+				[
+					'the subscription expires within the liveness margin',
+					{ sub1: subscription('sub1', '/me/chats', minutes(2)) },
+				],
+				['the answer names another id', { sub1: subscription('other', '/me/chats', minutes(60)) }],
+				[
+					'the subscription watches another resource',
+					{ sub1: subscription('sub1', TEAM1, minutes(60)) },
+				],
+			])('does not cover when %s', async (_label, byId) => {
+				const { ctx } = arrange();
+				answerById(byId);
+
+				await expect(storedSubscriptionsCover.call(ctx, webhookUrl, 'newChat')).resolves.toBe(
+					false,
+				);
+			});
+
+			it('needs every required resource under Watch All', async () => {
+				const { ctx } = arrange({
+					staticData: { subscriptionIds: ['a', 'b'], webhookSecret: 'secret' },
+					params: { event: 'newChannel', watchAllTeams: true },
+				});
+				const a = subscription('a', TEAM1, minutes(60));
+
+				answerById({ a });
+				await expect(storedSubscriptionsCover.call(ctx, webhookUrl, 'newChannel')).resolves.toBe(
+					false,
+				);
+
+				answerById({ a, b: subscription('b', TEAM2, minutes(60)) });
+				await expect(storedSubscriptionsCover.call(ctx, webhookUrl, 'newChannel')).resolves.toBe(
+					true,
+				);
+			});
+
+			it('skips a stored id that fails validation without a request', async () => {
+				const { ctx } = arrange({
+					staticData: { subscriptionIds: ['bad/../x', 'sub1'], webhookSecret: 'secret' },
+				});
+				answerById({ sub1: subscription('sub1', '/me/chats', minutes(60)) });
+
+				await expect(storedSubscriptionsCover.call(ctx, webhookUrl, 'newChat')).resolves.toBe(true);
+				expect(reads()).toEqual(['/v1.0/subscriptions/sub1']);
+			});
+
+			it.each([
+				['no id is stored', { subscriptionIds: [], webhookSecret: 'secret' }, 'newChat'],
+				['the resources cannot be resolved', undefined, 'bogus'],
+			])('does not cover when %s', async (_label, staticData, event) => {
+				const { ctx } = arrange({ staticData, params: { event } });
+				answerById({ sub1: subscription('sub1', '/me/chats', minutes(60)) });
+
+				await expect(storedSubscriptionsCover.call(ctx, webhookUrl, event)).resolves.toBe(false);
+				expect(reads()).toEqual([]);
+			});
 		});
 
 		describe('handleLifecycleNotifications', () => {

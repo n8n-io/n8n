@@ -556,6 +556,7 @@ describe('Microsoft Teams Transport', () => {
 				hooks.helpers.requestOAuth2 = vi.fn().mockRejectedValue(graphError(MEMBERS_403));
 				hooks.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
 				hooks.getNode.mockReturnValue(mockNode);
+				hooks.getWorkflow.mockReturnValue({ id: 'wf1', active: true });
 				hooks.getNodeWebhookUrl.mockReturnValue('https://n8n.example.com/webhook/teams');
 				hooks.getWorkflowStaticData.mockReturnValue({});
 				const parameters: Partial<Record<string, string>> = {

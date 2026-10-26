@@ -290,6 +290,47 @@ export async function reconcileSubscriptions(
 	return { ids, failures: [...deleteFailures, ...createFailures] };
 }
 
+/**
+ * Whether the stored ids alone cover every required resource with a live subscription at
+ * this URL. Reads each stored id with GET by id, which has its own budget: 2000 requests per
+ * 20 s for an app across all tenants, against 40 for the listing. Never throws.
+ */
+export async function storedSubscriptionsCover(
+	this: IHookFunctions | IWebhookFunctions,
+	webhookUrl: string,
+	event: string,
+): Promise<boolean> {
+	let required: string[];
+	try {
+		required = [await getResourcePath.call(this, event)].flat();
+	} catch {
+		return false;
+	}
+	const covered = new Set<string>();
+	await Promise.all(
+		getStoredIds(this.getWorkflowStaticData('node')).map(async (id) => {
+			try {
+				const answer: unknown = await microsoftApiRequest.call(
+					this,
+					'GET',
+					buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id }]),
+				);
+				if (
+					isSubscriptionResponse(answer) &&
+					answer.id === id &&
+					answer.notificationUrl === webhookUrl &&
+					isLiveSubscription(answer)
+				) {
+					covered.add(answer.resource);
+				}
+			} catch {
+				// A stored id that Graph does not show covers nothing.
+			}
+		}),
+	);
+	return required.every((resource) => covered.has(resource));
+}
+
 // Anything with a `lifecycleEvent` is a lifecycle item and never a workflow item; the
 // handler checks the id before it uses it.
 export function isLifecycleNotification(item: unknown): item is LifecycleNotification {

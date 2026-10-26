@@ -1,6 +1,5 @@
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
-import { sleep } from '@n8n/utils/sleep';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -12,7 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
-import type { WebhookNotification } from './v2/helpers/types';
+import type { SubscriptionResponse, WebhookNotification } from './v2/helpers/types';
 import {
 	createSubscriptions,
 	deleteSubscriptions,
@@ -25,6 +24,7 @@ import {
 	listOwnSubscriptions,
 	logTrigger,
 	reconcileSubscriptions,
+	storedSubscriptionsCover,
 	verifyWebhook,
 } from './v2/helpers/utils-trigger';
 import { listSearch } from './v2/methods';
@@ -362,22 +362,31 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				// `create()` owns the "Invalid Notification URL" error.
 				if (!webhookUrl?.startsWith('https://')) return false;
 
-				// An activation that cannot see Graph must not claim success and must not create
-				// blind. The error reaches core, which removes everything own through `delete()`,
-				// shows it and retries on init.
-				const subscriptions = await listOwnSubscriptions
-					.call(this, webhookUrl)
-					.catch(async (error: unknown) => {
-						if (!(error instanceof NodeApiError && error.httpCode === '429')) throw error;
-						// ponytail: one fixed wait with jitter for the documented list budget (25 per
-						// 20 s per app per tenant, 40 per 20 s per app across tenants); the transport
-						// does not expose Retry-After.
-						await sleep(20_000 + Math.floor(Math.random() * 10_000));
-						return await listOwnSubscriptions.call(this, webhookUrl);
-					});
-
 				const storedIds = getStoredIds(webhookData);
 				const clientState = getStoredSecret(webhookData);
+
+				// An activation that cannot see Graph must not create blind. A throw reaches core: it
+				// runs `delete()`, which also removes the stored subscriptions, and tries the
+				// activation up to 5 times before it marks the trigger failed. The legacy activation
+				// manager retries a failure at instance start later instead. So stored subscriptions
+				// that GET by id shows live stay: the listing allows only 40 requests per 20 s for an
+				// app across all tenants, and the next listing reconciles.
+				let subscriptions: SubscriptionResponse[];
+				try {
+					subscriptions = await listOwnSubscriptions.call(this, webhookUrl);
+				} catch (error) {
+					if (
+						clientState !== undefined &&
+						(await storedSubscriptionsCover.call(this, webhookUrl, event))
+					) {
+						logTrigger.call(this, 'warn', 'failed to list subscriptions, kept the stored ones', {
+							error: ensureError(error).message,
+						});
+						return true;
+					}
+					throw error;
+				}
+
 				if (clientState === undefined) {
 					// Without the secret nothing own can be verified and no stored id can be
 					// trusted, so `create()` starts clean.

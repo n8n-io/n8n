@@ -10,7 +10,7 @@ import { NodeApiError } from 'n8n-workflow';
 
 import { MicrosoftTeamsTrigger } from '../../MicrosoftTeamsTrigger.node';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../v2/transport';
-import type { Mock, MockInstance } from 'vitest';
+import type { Mock } from 'vitest';
 import type * as _transport from '../../v2/transport';
 
 type WebhookRequest = ReturnType<IWebhookFunctions['getRequestObject']>;
@@ -391,90 +391,76 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
 			});
 
-			it('throws when the listing fails', async () => {
-				const ctx = hookCtx({ webhookSecret: 'secret' }, { event: 'newChat' });
-				(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(
-					new Error('API request failed'),
-				);
-
-				await expect(checkExists(ctx)).rejects.toThrow('API request failed');
-				expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
-				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
-			});
-
-			describe('when the listing is throttled', () => {
-				const tooManyRequests = (ctx: TriggerContext) =>
+			describe('when the listing fails', () => {
+				const throttled = (ctx: TriggerContext) =>
 					new NodeApiError(ctx.getNode(), { message: 'Too many requests', httpCode: '429' });
-				// A counter instead of a once-queue: a case that fails early must not leak its
-				// answers into the next one.
-				const listings = (answers: Array<() => unknown>) => {
-					let index = 0;
-					(microsoftApiRequestAllItems.call as Mock).mockImplementation(
-						async () => await answers[index++](),
+				// GET by id answers from the table and 404s for any other id.
+				const answerById = (answers: Record<string, unknown>) =>
+					(microsoftApiRequest.call as Mock).mockImplementation(
+						async (_ctx: unknown, method: string, path: string) => {
+							if (method !== 'GET') return {};
+							const answer = answers[path.slice('/v1.0/subscriptions/'.length)];
+							if (answer === undefined) {
+								throw new NodeApiError(mock<INode>(), { message: 'Not found', httpCode: '404' });
+							}
+							return answer;
+						},
 					);
-				};
-				let randomSpy: MockInstance;
 
-				beforeEach(() => {
-					vi.useFakeTimers({ toFake: ['setTimeout'] });
-					// Pins the jitter: the wait is 20 s plus half of the 10 s spread.
-					randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+				it.each([
+					['a plain error', (_ctx: TriggerContext) => new Error('API request failed')],
+					['a 403', (ctx: TriggerContext) => forbidden(ctx)],
+					['a 429', (ctx: TriggerContext) => throttled(ctx)],
+				])('throws %s at once when no secret is stored', async (_label, makeError) => {
+					const ctx = hookCtx({ subscriptionIds: ['sub1'] }, { event: 'newChat' });
+					const error = makeError(ctx);
+					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(error);
+
+					await expect(checkExists(ctx)).rejects.toBe(error);
+					expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+					expect(microsoftApiRequest.call).not.toHaveBeenCalled();
 				});
 
-				afterEach(() => {
-					randomSpy.mockRestore();
-					vi.useRealTimers();
+				it('keeps the stored subscriptions without a write when GET by id shows them live', async () => {
+					const ids = ['sub1'];
+					const staticData: Record<string, unknown> = {
+						subscriptionIds: ids,
+						webhookSecret: 'secret',
+					};
+					const ctx = hookCtx(staticData, { event: 'newChat' });
+					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(throttled(ctx));
+					answerById({ sub1: own('sub1', '/me/chats', HOUR) });
+
+					await expect(checkExists(ctx)).resolves.toBe(true);
+					expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+					expect(graphCalls()).toEqual([['GET', '/v1.0/subscriptions/sub1']]);
+					expect(staticData.subscriptionIds).toBe(ids);
+					expect(ctx.logger.warn).toHaveBeenCalledWith(
+						'Microsoft Teams Trigger: failed to list subscriptions, kept the stored ones',
+						expect.objectContaining({ workflowId: 'wf1', error: expect.any(String) }),
+					);
 				});
 
-				it('retries the listing once after a 429 and then adopts', async () => {
+				it.each([
+					['Graph does not show the stored id', {}],
+					[
+						'the stored subscription expires within the margin',
+						{ sub1: own('sub1', '/me/chats', 2 * 60 * 1000) },
+					],
+				])('throws the listing error and writes nothing when %s', async (_label, answers) => {
 					const staticData: Record<string, unknown> = {
 						subscriptionIds: ['sub1'],
 						webhookSecret: 'secret',
 					};
 					const ctx = hookCtx(staticData, { event: 'newChat' });
-					listings([
-						() => {
-							throw tooManyRequests(ctx);
-						},
-						() => [own('sub1', '/me/chats', HOUR)],
-					]);
+					const error = throttled(ctx);
+					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(error);
+					answerById(answers);
 
-					const pending = checkExists(ctx);
-					let settled = false;
-					const mark = () => {
-						settled = true;
-					};
-					void pending.then(mark, mark);
-					await vi.advanceTimersByTimeAsync(24_999);
-					expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
-					expect(settled).toBe(false);
-
-					await vi.advanceTimersByTimeAsync(1);
-
-					await expect(pending).resolves.toBe(true);
-					expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(2);
-					expect(microsoftApiRequest.call).not.toHaveBeenCalled();
-				});
-
-				it('throws when the listing fails twice with 429', async () => {
-					const ctx = hookCtx({ webhookSecret: 'secret' }, { event: 'newChat' });
-					const secondError = tooManyRequests(ctx);
-					listings([
-						() => {
-							throw tooManyRequests(ctx);
-						},
-						() => {
-							throw secondError;
-						},
-					]);
-
-					const assertion = expect(checkExists(ctx)).rejects.toBe(secondError);
-					await vi.advanceTimersByTimeAsync(24_999);
-					await vi.advanceTimersByTimeAsync(1);
-
-					await assertion;
-					expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(2);
-					expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+					await expect(checkExists(ctx)).rejects.toBe(error);
+					expect(calls('DELETE')).toHaveLength(0);
+					expect(calls('POST')).toHaveLength(0);
+					expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
 				});
 			});
 
