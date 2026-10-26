@@ -11,6 +11,7 @@ import AppsListView from './AppsListView.vue';
 vi.mock('../apps.api');
 
 const route = vi.hoisted(() => ({ params: {} as Record<string, string> }));
+const setCurrentPage = vi.hoisted(() => vi.fn());
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => route,
@@ -19,6 +20,12 @@ vi.mock('vue-router', async (importOriginal) => ({
 const ResourcesListLayoutStub = defineComponent({
 	props: ['resources', 'initialize'],
 	emits: ['update:search', 'update:pagination-and-sort'],
+	methods: {
+		async setCurrentPage(page: number) {
+			setCurrentPage(page);
+			this.$emit('update:pagination-and-sort', { page });
+		},
+	},
 	mounted() {
 		this.$emit('update:pagination-and-sort', { pageSize: 50 });
 		void this.initialize();
@@ -158,6 +165,46 @@ describe('AppsListView', () => {
 			expect.anything(),
 			undefined,
 			expect.objectContaining({ sortBy: 'updatedAt:desc' }),
+		);
+	});
+
+	it('keeps the newest list when an older request finishes later', async () => {
+		let resolveFirst: (value: { data: AppResponse[]; count: number }) => void = () => {};
+		vi.mocked(listApps)
+			.mockImplementationOnce(async () => await new Promise((resolve) => (resolveFirst = resolve)))
+			.mockResolvedValueOnce({ data: [app('2')], count: 1 });
+		const { getByTestId, findAllByTestId } = renderComponent();
+
+		await userEvent.click(getByTestId('search'));
+		expect(await findAllByTestId('app-card')).toHaveLength(1);
+		resolveFirst({ data: [app('1'), app('2'), app('3')], count: 3 });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(await findAllByTestId('app-card')).toHaveLength(1);
+	});
+
+	it('moves the layout to the previous page when a delete empties the page', async () => {
+		vi.mocked(listApps).mockResolvedValue({ data: [app('51')], count: 51 });
+		const { findAllByTestId, getByTestId } = renderComponent();
+		await findAllByTestId('app-card');
+		await userEvent.click(getByTestId('sort'));
+		await waitFor(() =>
+			expect(listApps).toHaveBeenLastCalledWith(
+				expect.anything(),
+				undefined,
+				expect.objectContaining({ skip: 50 }),
+			),
+		);
+
+		await userEvent.click(getByTestId('delete-51'));
+
+		expect(setCurrentPage).toHaveBeenCalledWith(1);
+		await waitFor(() =>
+			expect(listApps).toHaveBeenLastCalledWith(
+				expect.anything(),
+				undefined,
+				expect.objectContaining({ skip: 0 }),
+			),
 		);
 	});
 

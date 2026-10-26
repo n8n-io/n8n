@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { AppResponse } from '@n8n/api-types';
 import { useDebounce } from '@n8n/composables/useDebounce';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nEmptyState } from '@n8n/design-system';
 import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
 import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { listApps } from '../apps.api';
@@ -19,9 +20,12 @@ const route = useRoute();
 const rootStore = useRootStore();
 const toast = useToast();
 const { debounce } = useDebounce();
+const latestFetch = useLatestFetch();
 
 const ResourcesListLayout = computed(() => componentRegistry.get('resources-list-layout'));
 const ProjectHeader = computed(() => componentRegistry.get('project-header'));
+// The layout keeps its own page state; changing the page through it keeps its pagination in sync.
+const layout = useTemplateRef<{ setCurrentPage: (page: number) => Promise<void> }>('layout');
 
 const projectId = computed(() =>
 	typeof route.params.projectId === 'string' ? route.params.projectId : undefined,
@@ -40,6 +44,7 @@ function isSortKey(key: string): key is keyof typeof APPS_SORT_MAP {
 }
 
 async function fetchApps() {
+	const isLatest = latestFetch.next();
 	loading.value = true;
 	try {
 		const { data, count } = await listApps(rootStore.restApiContext, projectId.value, {
@@ -48,13 +53,14 @@ async function fetchApps() {
 			sortBy: currentSort.value,
 			name: filters.value.search || undefined,
 		});
+		if (!isLatest()) return;
 		apps.value = data;
 		totalApps.value = count;
 	} catch (error) {
+		if (!isLatest()) return;
 		toast.showError(error, i18n.baseText('apps.list.error'));
-	} finally {
-		loading.value = false;
 	}
+	loading.value = false;
 }
 
 const fetchAppsDebounced = debounce(fetchApps, {
@@ -87,13 +93,15 @@ async function onPaginationAndSortUpdated(payload: {
 	await fetchAppsDebounced();
 }
 
-function onAppDeleted(appId: string) {
+async function onAppDeleted(appId: string) {
 	apps.value = apps.value.filter((app) => app.id !== appId);
 	totalApps.value = Math.max(0, totalApps.value - 1);
-	if (apps.value.length === 0 && currentPage.value > 1) {
-		currentPage.value -= 1;
+	if (apps.value.length === 0 && currentPage.value > 1 && layout.value) {
+		// Emits `update:pagination-and-sort`, which refetches.
+		await layout.value.setCurrentPage(currentPage.value - 1);
+		return;
 	}
-	void fetchApps();
+	await fetchApps();
 }
 </script>
 
@@ -101,6 +109,7 @@ function onAppDeleted(appId: string) {
 	<component
 		:is="ResourcesListLayout"
 		v-if="ResourcesListLayout"
+		ref="layout"
 		v-model:filters="filters"
 		resource-key="apps"
 		type="list-paginated"

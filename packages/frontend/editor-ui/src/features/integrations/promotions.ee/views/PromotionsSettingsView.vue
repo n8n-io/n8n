@@ -24,7 +24,7 @@ import { I18nT } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
