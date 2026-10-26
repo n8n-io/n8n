@@ -709,7 +709,12 @@ watch(
 				v-if="group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL"
 				:class="[$style.message, $style.assistant]"
 			>
-				<AgentChatBackgroundJobSignal :class="$style.content" :signal="group.signal" />
+				<AgentChatBackgroundJobSignal
+					:class="$style.content"
+					:signal="group.signal"
+					:project-id="projectId"
+					:agent-id="agentId"
+				/>
 			</div>
 			<div
 				v-else-if="group.kind === DISPLAY_GROUP_KIND.TOOL_RUN"

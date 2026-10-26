@@ -1,6 +1,6 @@
 import type { AgentPlanTaskRef } from './task-cancellation';
 
-import type { AgentBuilderOpenSuspension } from './types';
+import type { AgentBuilderOpenSuspension, AgentToolOutputFile } from './types';
 
 export interface AgentBackgroundJobDto {
 	planTask?: AgentPlanTaskRef;
@@ -25,6 +25,8 @@ export interface AgentBackgroundJobSignal {
 	tasks: Array<
 		Pick<AgentBackgroundJobDto, 'id' | 'title' | 'kind'> & {
 			status: Exclude<AgentBackgroundJobDto['status'], 'running' | 'suspended' | 'paused'>;
+			/** Files that the job returned. The chat shows them as thumbnails. */
+			files?: AgentToolOutputFile[];
 		}
 	>;
 }
