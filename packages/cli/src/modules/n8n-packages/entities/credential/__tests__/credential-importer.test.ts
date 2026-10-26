@@ -708,6 +708,7 @@ describe('CredentialImporter', () => {
 
 		const plan = (updates: CredentialUpdateCandidate[]): CredentialImportPlan => ({
 			successes: new Map(updates.map(({ sourceId, targetId }) => [sourceId, targetId])),
+			stubIds: new Map(),
 			failures: [],
 			candidates: updates,
 			updates,
