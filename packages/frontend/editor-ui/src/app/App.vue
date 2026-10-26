@@ -24,13 +24,12 @@ import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
-import { locale } from '@n8n/design-system';
+import { locale, N8nTooltipProvider } from '@n8n/design-system';
 import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
-import { TooltipProvider } from 'reka-ui';
 import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStyles } from '@n8n/composables/useStyles';
@@ -42,9 +41,6 @@ import type {
 	WorkflowDocumentId,
 	WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-
-/** Keep nearby tooltips instant for two seconds after one closes. */
-const tooltipSkipDelayDuration = 2_000;
 
 const route = useRoute();
 const router = useRouter();
@@ -143,7 +139,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 </script>
 
 <template>
-	<TooltipProvider :skip-delay-duration="tooltipSkipDelayDuration">
+	<N8nTooltipProvider>
 		<LoadingView v-if="loading" />
 		<BaseLayout v-else id="n8n-app" :class="$style.app">
 			<template #banners>
@@ -165,7 +161,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 				<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />
 			</template>
 		</BaseLayout>
-	</TooltipProvider>
+	</N8nTooltipProvider>
 </template>
 
 <style lang="scss" module>

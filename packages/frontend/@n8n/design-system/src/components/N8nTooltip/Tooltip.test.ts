@@ -6,6 +6,7 @@ import { h } from 'vue';
 
 // eslint-disable-next-line import-x/no-duplicates -- ?raw imports the source as a string
 import Tooltip from './Tooltip.vue';
+import N8nTooltipProvider from './TooltipProvider.vue';
 // eslint-disable-next-line import-x/no-duplicates -- ?raw imports the source as a string
 import tooltipSource from './Tooltip.vue?raw';
 
@@ -52,8 +53,8 @@ describe('components/N8nTooltip', () => {
 			const wrapper = mount({
 				render() {
 					return h(
-						TooltipProvider,
-						{ skipDelayDuration: 2_000 },
+						N8nTooltipProvider,
+						{},
 						{
 							default: () =>
 								h(
