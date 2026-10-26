@@ -4,6 +4,7 @@ import type { EngineRequest, ExecuteNodeResult, IDataObject, INode, ITaskData } 
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { RequestResponseMetadata } from './types';
+import { INTERNAL_TOOL_ARG_STASH_KEY } from './types';
 
 type ConnectedTool = DynamicStructuredTool | Tool;
 type Action = EngineRequest<RequestResponseMetadata>['actions'][number];
@@ -30,7 +31,12 @@ export async function executeEngineAction(
 
 	try {
 		// `input.tool` is a toolkit-dispatch marker added by createEngineRequests; strip before invoking.
-		const output = await tool.invoke(omit(action.input, 'tool'));
+		const originalToolArg = action.input[INTERNAL_TOOL_ARG_STASH_KEY];
+		const toolArguments = omit(action.input, ['tool', INTERNAL_TOOL_ARG_STASH_KEY]);
+		if (originalToolArg !== undefined) {
+			toolArguments.tool = originalToolArg;
+		}
+		const output = await tool.invoke(toolArguments);
 		return {
 			action,
 			data: {
