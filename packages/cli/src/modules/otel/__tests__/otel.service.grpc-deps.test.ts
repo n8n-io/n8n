@@ -8,6 +8,7 @@ import { OtelExporterFactory } from '../otel-exporter.factory';
 import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
 import { OtelService } from '../otel.service';
 
+import type { ExternalHooks } from '@/external-hooks';
 import type { OtelSdk } from '@/observability/otel-sdk';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -57,6 +58,7 @@ describe('OtelService with real gRPC dependencies', () => {
 			mock<OtelSdk>(),
 			mock<ModuleRegistry>(),
 			mock<Publisher>(),
+			mock<ExternalHooks>(),
 		);
 	});
 
