@@ -114,8 +114,8 @@ object. n8n keeps only string values.
 
 - `registerResourceAttributeMapper((spanAttributes) => attributes)`: the result is merged into
   the resource of each exported span. n8n's own resource attributes (`service.name`,
-  `service.version`, `n8n.instance.*`) win over the hook. Without a mapper, n8n does not wrap
-  the exporter.
+  `service.version`, `n8n.instance.*`) win over the hook. Without a mapper, n8n adds no hook
+  wrapper around the exporter.
 - `registerOutboundBaggageMapper((spanAttributes) => entries)`: the result is sent as a
   `baggage` header next to `traceparent` on outbound requests. Without a mapper, n8n sends no
   `baggage` header.
