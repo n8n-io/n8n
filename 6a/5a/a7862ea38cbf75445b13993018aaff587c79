@@ -1,0 +1,11 @@
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  ai_agent 497-511
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  ai_agent 680-702,1170-1192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6a5aa7862ea38cbf75445b13993018aaff587c79",
+  "prompts": {}
+}

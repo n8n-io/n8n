@@ -1,0 +1,145 @@
+packages/cli/src/collaboration/collaboration.service.ts
+  ai_agent 27,642
+packages/cli/src/modules/agents/integrations/integrations-sync.ts
+  ai_agent 5,19
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  ai_agent 25,330
+packages/cli/src/modules/agents/integrations/__tests__/slack-methods.service.test.ts
+  ai_agent 12,45
+packages/cli/test/integration/database/repositories/agent-instance-scope.repository.test.ts
+  ai_agent 1-132
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  ai_agent 16,72
+packages/cli/src/modules/agents/repositories/skill.repository.ts
+  ai_agent 19,427-428,443-444,446,670,680-681
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  ai_agent 12,191
+packages/cli/src/modules/agents/__tests__/agent-telemetry.test.ts
+  ai_agent 7,10-13,21
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  ai_agent 24,31,76,82,102,109,278,319-322,345,370,393,426-429,445
+packages/cli/src/modules/agents/agent-mcp-access.service.ts
+  ai_agent 9,120
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  ai_agent 49,243,251,617-620,2773,2804,2831,2893
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  ai_agent 17,25,36
+packages/cli/src/modules/agents/__tests__/agent-integration-management.service.test.ts
+  ai_agent 13,29,36,84
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  ai_agent 57,826,2317,2352,2464,2472,2524
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  ai_agent 26,55,68,72,417,474,493,506,529,564,589,594,606,622,647,665,688,708,737,782
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  ai_agent 15,38,55
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  ai_agent 12,22,41,55,698-707,1229,1296
+packages/cli/src/modules/agents/integrations/__tests__/agent-channel-reconciler.service.test.ts
+  ai_agent 10,48-49
+packages/cli/src/modules/agents/register-favorite-resolver.ts
+  ai_agent 17-18
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  ai_agent 16,77
+packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
+  ai_agent 26
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-setup.service.test.ts
+  ai_agent 11,46,300
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  ai_agent 29,63,99,639
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  ai_agent 12,17-22,26,29-30,33-36,68-70,74,81,85,89-93,96,140,144,159,183,185,192,208,235-238,246,352-358,373,375-405,414,419,427,430,432,434,437,439-444,449,456,462-464,467,469,480,486,492,494-495,497,501,527,555-556,558,560,566,579,590,613-616,656-666,815,826,861-863
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  ai_agent 12,43-44,54
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  ai_agent 48,152,165,612,655,689,709,1105,1154-1156
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-pending-agent.service.test.ts
+  ai_agent 11,81,104,120,137,154-156,181,194,209,236,260
+packages/cli/test/integration/agents/agent-conversation-state.test.ts
+  ai_agent 141
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  ai_agent 19,91,99
+packages/cli/src/modules/agents/repositories/agent-workflow-dependency.repository.ts
+  ai_agent 12,46-47
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  ai_agent 37,133,261
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-context.adapter.test.ts
+  ai_agent 19,76,274
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-source-resolver.test.ts
+  ai_agent 8,60,72
+packages/cli/src/modules/agents/integrations/agent-channel-reconciler.service.ts
+  ai_agent 18,27,352,369,394
+packages/cli/src/modules/agents/utils/get-agent-or-throw.ts
+  ai_agent 1,3,6-19,25,27-29
+packages/cli/src/modules/agents/agent-config.service.ts
+  ai_agent 25,180,205,217,262,279,296,363,382,402
+packages/cli/src/modules/agents/__tests__/test-utils/stored-agent-config.ts
+  ai_agent 155-156,158
+packages/cli/src/collaboration/__tests__/collaboration.service.agent.test.ts
+  ai_agent 4,7,50,265-275
+packages/cli/src/modules/agents/skills/skill.service.ts
+  ai_agent 350,363
+packages/cli/src/modules/n8n-packages/entities/agent/agent.exporter.ts
+  ai_agent 6,33-38
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-setup.service.ts
+  ai_agent 12,198,251,262,308
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  ai_agent 51,1115,1219,1231,1630,1796-1800,1825,1870,1935,1992
+packages/cli/src/modules/agent-evals/__tests__/agent-eval.service.test.ts
+  ai_agent 17,133
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  ai_agent 29,57,72
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  ai_agent 39,597,749,831,880,1328,1367
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  ai_agent 18,49,60,452
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  ai_agent 8-28,34,36,38-48
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  ai_agent 38,59,70,502,1521
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  ai_agent 21,195
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-managed-setup.service.ts
+  ai_agent 35,379-383,402,657,779,799,871
+packages/cli/src/modules/agents/utils/agent-published-snapshot.ts
+  ai_agent 7,11,13,29,35,42-43,47
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  ai_agent 13,32
+packages/cli/src/modules/agents/__tests__/agent.repository.test.ts
+  ai_agent 31,47,54,78,93,97,142-143,146,156-157,214-215,232-236,381,388
+packages/cli/src/modules/agents/agent-execution.service.ts
+  ai_agent 43,1310-1313
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  ai_agent 8,353
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  ai_agent 30,107,203
+packages/cli/src/modules/mcp/tools/agents/agent-slack-setup.ts
+  ai_agent 8,43,115,134,148,161
+packages/cli/test/integration/agents/agent-skills-hub.test.ts
+  ai_agent 29-33,127-130,133
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  ai_agent 54,120,133,227
+packages/cli/src/modules/agents/agents.service.ts
+  ai_agent 40,42,51,137-141,165,175-188,190,273,358,514,578,591,616,677,680
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  ai_agent 24,46,135,183,206,250
+packages/cli/src/modules/agents/integrations/__tests__/teams-integration.test.ts
+  ai_agent 9,204
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-cleanup.service.test.ts
+  ai_agent 6,14,24
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.integration.test.ts
+  ai_agent 21,80,140,209
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  ai_agent 22,605,626,654,691-693
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  ai_agent 10,88,203,578,594,633,646
+packages/cli/src/modules/agents/agent-publish.service.ts
+  ai_agent 47,97,201,258,273,314,385,410,426,436,503,594,616,651,677,697
+packages/cli/src/modules/agents/agent-task.service.ts
+  ai_agent 28,143,274,320,358-363,384,486,534,626,729
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e08bb189ba91763263cbbcae66e0516ca5302a3e",
+  "prompts": {}
+}

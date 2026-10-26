@@ -1,0 +1,50 @@
+packages/nodes-base/nodes/Webflow/test/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_bfeaf7699e885e 1-71,76-78,82
+  s_2e1fa95fc44f8f::t_aa400d0b87d551 72-75,79
+  s_2e1fa95fc44f8f::t_25c1bff61a76fc 80-81
+  s_2e1fa95fc44f8f::t_9f58fa995f6c46 83-85
+  s_2c07c5453ed851::t_accba040bd590e 86-99
+packages/nodes-base/nodes/Webflow/test/RequestUrls.test.ts
+  s_2e1fa95fc44f8f::t_9b3d154fe546cb 7-15,17-28,30-53,55-61,63-76,78-111
+  s_2e1fa95fc44f8f::t_5ba999a1638d81 1-5
+  s_2e1fa95fc44f8f::t_b158f3eb98fe3e 16
+  s_2e1fa95fc44f8f::t_2be17ab1e40668 6
+  s_2e1fa95fc44f8f::t_48512bff9f535a 29
+  s_2e1fa95fc44f8f::t_2457410790f515 54
+  s_2e1fa95fc44f8f::t_c6defa234da0eb 62
+  s_2e1fa95fc44f8f::t_8d877a81815ec7 77
+packages/nodes-base/nodes/Webflow/test/workflow/request-urls.workflow.json
+  s_7c77f9db616763::t_ee069623fb658d 1-587
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "54c41d822107049cb996a287b827a2677b3ed259",
+  "prompts": {},
+  "sessions": {
+    "s_2c07c5453ed851": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6d2183ee1ce2e34",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_7c77f9db616763": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac440d417d200475a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

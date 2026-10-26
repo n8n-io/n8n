@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/tools/__tests__/task-control.tool.test.ts
+  s_db74c72b258827::t_83e88f02225d58 43
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/plan.tool.test.ts
+  s_db74c72b258827::t_de3f7db5e19848 115-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "faa8e084a5c9b24314cb64a1325e4e57f70f2c2e",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

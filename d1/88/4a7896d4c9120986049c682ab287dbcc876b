@@ -1,0 +1,22 @@
+scripts/minimal-instance/README.md
+  s_500a601df8e54f::t_a8a61a24125779 9-11,13,22-24,34-49,62
+  s_500a601df8e54f::t_5f7ac0c0445a36 63-64
+scripts/minimal-instance/run.sh
+  s_500a601df8e54f::t_666feea23ec0bc 9-13,23-28,39,42,88,90-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d1884a7896d4c9120986049c682ab287dbcc876b",
+  "prompts": {},
+  "sessions": {
+    "s_500a601df8e54f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6130741-9dd4-44ac-b1bb-607f4caa4fdc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/data-table/data-table-column.repository.ts
+  s_a5c113d3dab7cc::t_ffb29b51faa50e 143
+packages/@n8n/cli/src/commands/package/import.ts
+  s_a5c113d3dab7cc::t_ffb29b51faa50e 89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b7bc0463507c60760fac997dc4c70daed7c4935",
+  "prompts": {},
+  "sessions": {
+    "s_a5c113d3dab7cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aff32f9-b97d-43bb-b0cd-f1499312b90b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

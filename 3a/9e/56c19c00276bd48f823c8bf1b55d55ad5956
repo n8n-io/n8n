@@ -1,0 +1,73 @@
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  s_df6c397ba2c129::t_db176c40985324 96
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.vue
+  s_df6c397ba2c129::t_db176c40985324 255,359-361
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/NodeCreation.vue
+  s_df6c397ba2c129::t_db176c40985324 315-320
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.vue
+  s_df6c397ba2c129::t_db176c40985324 224
+packages/frontend/editor-ui/src/app/views/LoadingView.vue
+  s_df6c397ba2c129::t_db176c40985324 8
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_df6c397ba2c129::t_db176c40985324 351,359
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_df6c397ba2c129::t_db176c40985324 5535-5539
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_df6c397ba2c129::t_db176c40985324 964
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_df6c397ba2c129::t_db176c40985324 78,797-798,813,829,834
+packages/frontend/editor-ui/src/app/components/MainSidebarHeader.vue
+  s_df6c397ba2c129::t_db176c40985324 205-206,229-233
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasControlButtons.vue
+  s_df6c397ba2c129::t_db176c40985324 62,182-188
+  s_df6c397ba2c129::t_8a40b74db2b506 189
+packages/frontend/editor-ui/src/features/ai/shared/styles/_question-option-rows.scss
+  s_df6c397ba2c129::t_db176c40985324 71,76
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue
+  s_df6c397ba2c129::t_db176c40985324 110
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionAnnotationTags.ee.vue
+  s_df6c397ba2c129::t_db176c40985324 102,128,131-132
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiQuestions.vue
+  s_df6c397ba2c129::t_db176c40985324 670
+packages/frontend/editor-ui/src/app/components/SettingsSidebar.vue
+  s_df6c397ba2c129::t_db176c40985324 31-33,68,71-76
+  s_df6c397ba2c129::t_9daf37c48d5810 77
+packages/frontend/editor-ui/src/features/agents/components/AgentPanel.vue
+  s_df6c397ba2c129::t_db176c40985324 48
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectCreateResource.vue
+  s_df6c397ba2c129::t_db176c40985324 58-59
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_df6c397ba2c129::t_db176c40985324 652
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_df6c397ba2c129::t_db176c40985324 272,356,384-385,514,563,567
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_df6c397ba2c129::t_db176c40985324 226
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionAnnotationPanel.ee.vue
+  s_df6c397ba2c129::t_db176c40985324 57
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ProjectSelect.vue
+  s_df6c397ba2c129::t_db176c40985324 4-11,38-46,78-81,85-112,114-132,138,140-141,145,160
+packages/frontend/editor-ui/src/features/core/auth/views/AuthView.vue
+  s_df6c397ba2c129::t_db176c40985324 58
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_df6c397ba2c129::t_db176c40985324 514,522
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_df6c397ba2c129::t_db176c40985324 47,85
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/DitherTrailGrid.vue
+  s_df6c397ba2c129::t_db176c40985324 1-622
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3a9e56c19c00276bd48f823c8bf1b55d55ad5956",
+  "prompts": {},
+  "sessions": {
+    "s_df6c397ba2c129": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f6f8-24d9-73c1-a804-786ea56c9af8",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

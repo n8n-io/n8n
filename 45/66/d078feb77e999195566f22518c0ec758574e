@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Calendly/test/CalendlyTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_d78ed86bf242e0 236
+packages/nodes-base/nodes/Calendly/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_c7f13d3ab15620 11,38,52-63
+packages/nodes-base/nodes/Calendly/test/CalendlyTrigger.requests.test.ts
+  s_2e1fa95fc44f8f::t_69eafbd1b323f6 99-108
+packages/nodes-base/nodes/Calendly/v1/CalendlyTriggerV1.node.ts
+  s_2e1fa95fc44f8f::t_fc06d40bdc4b5b 17,262
+packages/nodes-base/nodes/Calendly/v2/CalendlyTriggerV2.node.ts
+  s_2e1fa95fc44f8f::t_f760550197f3a3 17,231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4566d078feb77e999195566f22518c0ec758574e",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

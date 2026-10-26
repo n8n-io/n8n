@@ -1,0 +1,24 @@
+packages/workflow/test/dynamic-credentials-helpers.test.ts
+  s_fb30b1b6ca962d::t_d190c547b14caf 113-124
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_fb30b1b6ca962d::t_9159237e618098 1334-1354,1356-1370
+  s_fb30b1b6ca962d::t_91fbad272b2c71 1355
+packages/core/src/execution-engine/__tests__/workflow-execute-process-process-run-execution-data.test.ts
+  s_fb30b1b6ca962d::t_b39c9d9ff40fc6 361-409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6bd2b80e0cca428b655ce6c7fc951a08679255ee",
+  "prompts": {},
+  "sessions": {
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

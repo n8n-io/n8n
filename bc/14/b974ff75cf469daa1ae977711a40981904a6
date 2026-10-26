@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Microsoft/AzureCosmosDb/descriptions/container/Container.resource.ts
+  s_2e1fa95fc44f8f::t_6464e6559d763f 44,67
+packages/nodes-base/nodes/Microsoft/AzureCosmosDb/descriptions/item/Item.resource.ts
+  s_2e1fa95fc44f8f::t_95dad489e13d0b 35,56,82,100,123,155
+packages/nodes-base/nodes/Microsoft/AzureCosmosDb/test/container/delete.test.ts
+  s_2e1fa95fc44f8f::t_9d13654a346e4d 14-15,21
+packages/nodes-base/nodes/Microsoft/AzureCosmosDb/test/container/deleteEncoded.workflow.json
+  s_2e1fa95fc44f8f::t_594ac118d398bc 1-60
+packages/nodes-base/nodes/Microsoft/AzureCosmosDb/test/item/delete.test.ts
+  s_2e1fa95fc44f8f::t_fafd8c64e8ecd6 10-40,45-47,49-50,56
+packages/nodes-base/nodes/Microsoft/AzureCosmosDb/test/item/deleteEncoded.workflow.json
+  s_2e1fa95fc44f8f::t_a1efd03f73b909 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc14b974ff75cf469daa1ae977711a40981904a6",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

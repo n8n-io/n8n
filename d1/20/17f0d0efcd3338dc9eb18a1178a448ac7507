@@ -1,0 +1,26 @@
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_aa4b7fe9018279::t_b85dc6acecca69 2693
+  s_aa4b7fe9018279::t_ed2644297b597e 224,2688-2692,2694-2700
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_aa4b7fe9018279::t_3741e6719b8444 51
+packages/cli/test/integration/agents/agents-settings.test.ts
+  s_aa4b7fe9018279::t_3741e6719b8444 68
+packages/cli/src/modules/agents/agents-settings.service.ts
+  s_aa4b7fe9018279::t_ed2644297b597e 12,28,65-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d12017f0d0efcd3338dc9eb18a1178a448ac7507",
+  "prompts": {},
+  "sessions": {
+    "s_aa4b7fe9018279": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5239b743-2f2d-45bb-bd36-9393ca537b43",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

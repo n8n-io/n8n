@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_fcc77b2931f263::t_eeae0f2e2f33c5 374-393,396-411,415-416,418-425,429-430,432-433,445-456,458,460,462-464
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_fcc77b2931f263::t_e0d17b8e68de54 528,553,556-558,561,587,638-640
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_fcc77b2931f263::t_22722b61c9f5a0 1,8-23,28-269,295-527,529-552,554-610,612-623,728,746-747,756,771-772,774
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-chat.controller.test.ts
+  s_fcc77b2931f263::t_990df833365abc 237-238,250-268
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_fcc77b2931f263::t_c08fef74c2b5d3 810-818,821-825,832-835,837-845
+packages/@n8n/api-types/src/agents/types.ts
+  s_fcc77b2931f263::t_afbbcc74ff1d99 408,411,416,418,422-423,426,431-435,447,451-452
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "59667f213b881d4c465dc66bfb7743de66e8bd8a",
+  "prompts": {},
+  "sessions": {
+    "s_fcc77b2931f263": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95e12481-8f3d-4649-a397-a7b2425a401f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

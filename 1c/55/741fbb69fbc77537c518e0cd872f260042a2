@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_a5c113d3dab7cc::t_acfd328eeef2f8 1025,1028,1035-1038
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_a5c113d3dab7cc::t_481d2e757f1cdb 47,100,214,264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1c55741fbb69fbc77537c518e0cd872f260042a2",
+  "prompts": {},
+  "sessions": {
+    "s_a5c113d3dab7cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aff32f9-b97d-43bb-b0cd-f1499312b90b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

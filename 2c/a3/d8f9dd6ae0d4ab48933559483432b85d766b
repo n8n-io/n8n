@@ -1,0 +1,33 @@
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_ef8ec210e9460d::t_45a25913c2f019 135-151
+packages/cli/test/integration/scheduling/system-task-durable-metrics.test.ts
+  s_ef8ec210e9460d::t_20dd65221fc942 1-80
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_8dc716be670026::t_db2f8becc9825a 118
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_ef8ec210e9460d::t_c0075fc97c91bc 159-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2ca3d8f9dd6ae0d4ab48933559483432b85d766b",
+  "prompts": {},
+  "sessions": {
+    "s_8dc716be670026": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d45d6141-7e75-456f-98db-82de2c5066ac",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_ef8ec210e9460d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83a29753-5048-4f9b-8a2b-a7cb65d804b3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

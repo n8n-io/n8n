@@ -1,0 +1,24 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4e35a572f67cdf::t_0f1803997afdb6 4433
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.utils.test.ts
+  s_4e35a572f67cdf::t_fee3b36131524a 91
+  s_4e35a572f67cdf::t_a63e8bd7c15bf2 85-90,92-102
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.constants.ts
+  s_4e35a572f67cdf::t_2f523383fa8d0a 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7405401c96714e03cc5a28ed2c39862bea841c70",
+  "prompts": {},
+  "sessions": {
+    "s_4e35a572f67cdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26f73b61-9ece-4878-9dfa-c9c5772f53e2",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

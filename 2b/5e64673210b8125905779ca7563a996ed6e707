@@ -1,0 +1,23 @@
+packages/cli/src/modules/token-exchange/services/token-exchange.service.ts
+  s_5b85161403cb3c::t_c6b9c4632386e6 96
+packages/cli/src/modules/token-exchange/services/jwks-resolver.ts
+  s_5b85161403cb3c::t_c6b9c4632386e6 48,71,77,79
+packages/cli/src/modules/token-exchange/services/trusted-key.service.ts
+  s_5b85161403cb3c::t_c6b9c4632386e6 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b5e64673210b8125905779ca7563a996ed6e707",
+  "prompts": {},
+  "sessions": {
+    "s_5b85161403cb3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10dcb3c0-c4f9-4155-9b96-4af4ab2eb20d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

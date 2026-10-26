@@ -1,0 +1,57 @@
+packages/@n8n/db/src/repositories/api-key.repository.ts
+  s_52a7a22cb4d171::t_19704d320644cb 22-27,32-121,126,128-130,147,149,152,156-159,163,167-170,172-174,203-209,216-230
+  s_52a7a22cb4d171::t_aa115ed69cf981 212-213
+packages/cli/src/services/public-api-key.service.ts
+  s_52a7a22cb4d171::t_2f78d9f27feb59 41-47,106-110,113-114,133,142,149,158-161,222-223,229-233
+packages/cli/src/modules/mcp/__tests__/mcp.settings.controller.api.test.ts
+  s_52a7a22cb4d171::t_eb5c4a3f198028 105
+  s_52a7a22cb4d171::t_aa115ed69cf981 164,287
+packages/cli/test/integration/api-keys.api.test.ts
+  s_52a7a22cb4d171::t_eb5c4a3f198028 81,120,151,182,210,267,283,397,428,459,780,793
+packages/cli/src/modules/mcp/mcp-api-key.service.ts
+  s_52a7a22cb4d171::t_827f482ca28ff6 1,32,35,42-43,45,47-48,50-55,111-112,129,140-142
+packages/cli/test/integration/public-api/endpoints-with-scopes-enabled.test.ts
+  s_52a7a22cb4d171::t_eb5c4a3f198028 333,362
+packages/cli/src/services/__tests__/api-key-auth.strategy.integration.test.ts
+  s_52a7a22cb4d171::t_eb5c4a3f198028 7,42,95
+  s_52a7a22cb4d171::t_aa115ed69cf981 140,146,159,161
+packages/cli/src/services/api-key-auth.strategy.ts
+  s_52a7a22cb4d171::t_aa115ed69cf981 74-76
+  s_52a7a22cb4d171::t_2c06db4af3df27 44
+packages/cli/src/modules/mcp/__tests__/mcp-api-key.service.integration.test.ts
+  s_52a7a22cb4d171::t_eb5c4a3f198028 5,127,178
+packages/cli/src/services/__tests__/public-api-key.service.test.ts
+  s_52a7a22cb4d171::t_eb5c4a3f198028 50-51,61-62,72-73,93,112,124-127,129,136,139,144,150
+packages/cli/src/modules/mcp/__tests__/mcp-api-key.service.test.ts
+  s_52a7a22cb4d171::t_eb5c4a3f198028 2,25-30,92,102
+packages/cli/src/services/__tests__/public-api-key.service.integration.test.ts
+  s_52a7a22cb4d171::t_eb5c4a3f198028 90,105,118,120-122,143
+packages/cli/src/modules/mcp-discovery/__tests__/enrollment.service.test.ts
+  s_5a94d40a19f16d::t_59f546b06e768a 52,237,239,291
+packages/cli/src/modules/mcp-discovery/enrollment.service.ts
+  s_5a94d40a19f16d::t_52ce7282eda2b8 76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fb74bf39028c4b75dba09bbe1d8af4c6b548125c",
+  "prompts": {},
+  "sessions": {
+    "s_52a7a22cb4d171": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb1b7f2e-6150-4623-ac33-e43f4fbe8623",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_5a94d40a19f16d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a44f1ca3-68e2-4497-bcf5-878b24c07975",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

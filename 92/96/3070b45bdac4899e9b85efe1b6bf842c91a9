@@ -1,0 +1,24 @@
+packages/core/src/execution-engine/__tests__/routing-node.test.ts
+  s_f8bcded4ea5f7a::t_b9ea1ed5618bf2 875-876,1295-1331,2409-2412
+  s_f8bcded4ea5f7a::t_7397eb50b992e9 2413
+packages/core/src/execution-engine/routing-node.ts
+  s_f8bcded4ea5f7a::t_31b3effb9ba4c8 194,198-205
+  s_f8bcded4ea5f7a::t_b9ea1ed5618bf2 188-193,195-197,206,211,1272-1283
+  s_f8bcded4ea5f7a::t_29b494bc3492ab 1284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92963070b45bdac4899e9b85efe1b6bf842c91a9",
+  "prompts": {},
+  "sessions": {
+    "s_f8bcded4ea5f7a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f0403bfdbffegQkKvvwvumrkEY",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

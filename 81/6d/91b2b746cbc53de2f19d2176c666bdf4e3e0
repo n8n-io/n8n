@@ -1,0 +1,19 @@
+packages/quality/testing/playwright/fixtures/community-packages/index.ts
+  s_ef48d6974e8f56::t_86463b00f51344 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "816d91b2b746cbc53de2f19d2176c666bdf4e3e0",
+  "prompts": {},
+  "sessions": {
+    "s_ef48d6974e8f56": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ef571b149ffe7ORy1WtLiNzWgA",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

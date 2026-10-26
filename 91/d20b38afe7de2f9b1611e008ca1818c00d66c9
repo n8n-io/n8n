@@ -1,0 +1,30 @@
+packages/@n8n/db/src/connection/__tests__/db-connection-monitor.test.ts
+  s_4b11bf3d703a7c::t_debdbd05423aa8 603-605,738-743,893-895
+  s_4b11bf3d703a7c::t_6d91060963b62b 652,673-676,716-737,744-752,988,1638-1659
+  s_78e08d3ee6ec18::t_1832ec5f7c0973 9
+  s_78e08d3ee6ec18::t_3cffa6a527af4f 37,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "91d20b38afe7de2f9b1611e008ca1818c00d66c9",
+  "prompts": {},
+  "sessions": {
+    "s_4b11bf3d703a7c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ecda-c1da-7ad1-9af7-10db94f32833",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_78e08d3ee6ec18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "619b1607-7750-422e-bf87-979fc68026dc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

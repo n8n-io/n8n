@@ -1,0 +1,39 @@
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_852389bc7751db::t_f1131b84b207cd 70-73
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_852389bc7751db::t_f1131b84b207cd 2,1381-1388,1832-1833
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_852389bc7751db::t_f1131b84b207cd 57
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_852389bc7751db::t_8374f72f414136 3775-3778,3780
+  s_852389bc7751db::t_1990558ef0335c 3774,3781-3784,3786,3789-3819,3822-3824
+  s_852389bc7751db::t_668629379b4429 3779,3785,3787-3788,3820-3821
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_852389bc7751db::t_f1131b84b207cd 953
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_852389bc7751db::t_f1131b84b207cd 71
+packages/cli/src/modules/agents/integrations/__tests__/episodic-scope-resolver.test.ts
+  s_852389bc7751db::t_1990558ef0335c 31-42
+packages/cli/src/modules/agents/integrations/episodic-scope-resolver.ts
+  s_852389bc7751db::t_f1131b84b207cd 16,20-33
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_852389bc7751db::t_1990558ef0335c 233-263
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_852389bc7751db::t_7df88a658ddc14 3661
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1218a8871fbeb787b8af41bbefd09cad43ee916b",
+  "prompts": {},
+  "sessions": {
+    "s_852389bc7751db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39fb8af-51ee-491e-ab8c-cc0c219fdfa6",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

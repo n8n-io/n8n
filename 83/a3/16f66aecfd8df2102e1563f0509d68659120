@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_5da2fe073f2f3a::t_a8af6004b72182 14,88-96
+  s_5da2fe073f2f3a::t_d6b9ed1639766f 23-26,142,256-271,306
+  s_5da2fe073f2f3a::t_eb7b008912c828 272-274,298
+  s_5da2fe073f2f3a::t_fdff543684a6e1 275-297
+  s_5da2fe073f2f3a::t_33a06279d98d45 316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "83a316f66aecfd8df2102e1563f0509d68659120",
+  "prompts": {},
+  "sessions": {
+    "s_5da2fe073f2f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c08877c-0969-4b5a-9bc2-3d40e58743ff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

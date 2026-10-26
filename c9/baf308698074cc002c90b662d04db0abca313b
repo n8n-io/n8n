@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/skills/skills-hub-startup-copy.ts
+  s_5785bc20fb92a9::t_794b673a9c2235 114-115,117-121,123-124
+packages/cli/src/modules/agents/agents.module.ts
+  s_5785bc20fb92a9::t_794b673a9c2235 20-24
+packages/cli/test/integration/agents/skills-hub-startup-copy.test.ts
+  s_5785bc20fb92a9::t_794b673a9c2235 13,1041-1065
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c9baf308698074cc002c90b662d04db0abca313b",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

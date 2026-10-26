@@ -1,0 +1,21 @@
+packages/cli/src/services/pruning/workflow-history-pruning.task.ts
+  s_12d664be52403d::t_51ea9d0ef1fdce 16-21
+packages/cli/src/services/pruning/__tests__/workflow-history-pruning.task.test.ts
+  s_12d664be52403d::t_d98288fd91e31b 11,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba669ad6b94dc0f0cb72ea57d29a87fa85964c4c",
+  "prompts": {},
+  "sessions": {
+    "s_12d664be52403d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa3f695d-d7e2-45b3-883c-0c3bafe2e39e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

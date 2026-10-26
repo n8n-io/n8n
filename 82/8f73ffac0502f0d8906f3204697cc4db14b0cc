@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariableModal.test.ts
+  s_1ea9300180d93b::t_e5203fb1bfcee8 767-774,776,782,784,787-792
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "828f73ffac0502f0d8906f3204697cc4db14b0cc",
+  "prompts": {},
+  "sessions": {
+    "s_1ea9300180d93b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b988dd0-6dd7-4629-a998-852a38ae923a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

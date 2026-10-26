@@ -1,0 +1,9 @@
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  ai_agent 11,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aadbb7c498c2a624ae7c0811201f16b5085bc759",
+  "prompts": {}
+}

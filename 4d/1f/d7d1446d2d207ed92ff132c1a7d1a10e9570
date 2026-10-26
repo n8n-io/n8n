@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/mergeRecentChats.test.ts
+  s_6f3bf766fd9fe0::t_0ed32ebb5b5c7f 126-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4d1fd7d1446d2d207ed92ff132c1a7d1a10e9570",
+  "prompts": {},
+  "sessions": {
+    "s_6f3bf766fd9fe0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54b552f3-ed95-47f8-bae0-29b5254ca51c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

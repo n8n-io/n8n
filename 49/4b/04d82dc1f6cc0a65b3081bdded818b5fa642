@@ -1,0 +1,19 @@
+packages/cli/src/commands/__tests__/start-system-task-metrics.test.ts
+  s_ffef4e4976eefd::t_9dad6ad3d64f0f 7,21,95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "494b04d82dc1f6cc0a65b3081bdded818b5fa642",
+  "prompts": {},
+  "sessions": {
+    "s_ffef4e4976eefd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "570ec055-aa91-4ab5-864b-ec9e2a77216d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

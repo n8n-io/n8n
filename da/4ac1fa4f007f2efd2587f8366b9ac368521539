@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_5c6a509b3ada49::t_25d5328df7912a 124-132,498
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_5c6a509b3ada49::t_d48589f8bf9c7e 468,473-479
+  s_5c6a509b3ada49::t_a439b3dde8670a 480-481
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5c6a509b3ada49::t_25d5328df7912a 9299-9300
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da4ac1fa4f007f2efd2587f8366b9ac368521539",
+  "prompts": {},
+  "sessions": {
+    "s_5c6a509b3ada49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42f6ada8-869c-4a93-b84a-81f3200876c3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

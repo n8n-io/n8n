@@ -1,0 +1,20 @@
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_df8243638347b9::t_06881d641cc538 135-136
+  s_df8243638347b9::t_835139faa63d74 389-390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee940ec72b9274bc9a225337e756a5e758c4ccb8",
+  "prompts": {},
+  "sessions": {
+    "s_df8243638347b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10b2f-3eee-7921-b1a8-80453ec84034",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

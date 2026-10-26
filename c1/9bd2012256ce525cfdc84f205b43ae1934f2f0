@@ -1,0 +1,19 @@
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_acf8c35cebbb29::t_a742d64d7437b9 333,352,355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c19bd2012256ce525cfdc84f205b43ae1934f2f0",
+  "prompts": {},
+  "sessions": {
+    "s_acf8c35cebbb29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff4a3aa0-5a4c-439a-9d30-d8273d6c85f8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

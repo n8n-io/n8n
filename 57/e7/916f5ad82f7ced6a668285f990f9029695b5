@@ -1,0 +1,58 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.vue
+  s_ea8398b491aecc::t_d03693480cf8ea 175-177
+packages/cli/src/errors/__tests__/rest-error-response.test.ts
+  s_ea8398b491aecc::t_94bc829822fd1c 40
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ea8398b491aecc::t_94bc829822fd1c 9878,10036,10041
+packages/@n8n/cli/docs/commands/promotions.md
+  s_ea8398b491aecc::t_bf465d06c62d00 207-209,295-301,373-377
+packages/@n8n/cli/src/commands/promotion-environment/promote-selection.ts
+  s_ea8398b491aecc::t_bf465d06c62d00 7
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  ai_agent 5
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_ea8398b491aecc::t_b7e9eddc6eace5 1218-1219,1224
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.vue
+  s_ea8398b491aecc::t_d03693480cf8ea 189-191
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_ea8398b491aecc::t_13a144cc61e62a 1915-1940
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_ea8398b491aecc::t_94bc829822fd1c 540
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_ea8398b491aecc::t_69398ac7cf6a2d 1,289-303
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_ea8398b491aecc::t_bf465d06c62d00 527,651
+packages/cli/src/modules/promotions.ee/promotions-selective-push.error.ts
+  s_ea8398b491aecc::t_94bc829822fd1c 14
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  s_ea8398b491aecc::t_bf465d06c62d00 9
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  ai_agent 5
+packages/@n8n/cli/src/commands/promotion-environment/apply.ts
+  s_ea8398b491aecc::t_bf465d06c62d00 9
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_ea8398b491aecc::t_c06fe5f8326f28 302-307,313-315
+  s_ea8398b491aecc::t_b7e9eddc6eace5 310
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.test.ts
+  s_ea8398b491aecc::t_9073ec50e29f82 89-90
+  s_ea8398b491aecc::t_c954a385b78df1 8,55-69,71-87
+  s_ea8398b491aecc::t_e2e3254fd7ac47 70,88
+packages/@n8n/cli/src/commands/promotion-environment/promote.ts
+  s_ea8398b491aecc::t_bf465d06c62d00 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "57e7916f5ad82f7ced6a668285f990f9029695b5",
+  "prompts": {},
+  "sessions": {
+    "s_ea8398b491aecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79fa3697-e88c-41ac-8b49-e4829ac9b740",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

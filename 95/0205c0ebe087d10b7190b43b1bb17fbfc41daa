@@ -1,0 +1,36 @@
+packages/@n8n/instance-ai/src/workspace/workspace-manifest.ts
+  ai_agent 2,6-8,13-14,40,45-76
+packages/@n8n/instance-ai/docs/sandboxing.md
+  ai_agent 138-139,149-151
+packages/@n8n/instance-ai/src/workspace/__tests__/workspace-manifest.test.ts
+  ai_agent 1-5,48-106
+packages/@n8n/instance-ai/src/knowledge-base/materialize-knowledge-base.ts
+  ai_agent 32,86,292
+packages/@n8n/instance-ai/src/skills/__tests__/materialize-runtime-skills.test.ts
+  s_8661479fcacbbd::t_fb9c7bf8019859 29,31-35,409-439
+  s_8661479fcacbbd::t_b199ea453d12c3 367-408,440-481
+  ai_agent 30,155,157,220
+packages/@n8n/instance-ai/src/skills/materialize-runtime-skills.ts
+  s_8661479fcacbbd::t_fc1f85acd454a5 73,75-80,90-91,596,605-609,617,624,631-636,639,641,643,648-670,673,706-713
+  ai_agent 26,54,566
+packages/@n8n/instance-ai/src/workspace/__tests__/prebaked-workspace-bundle.test.ts
+  ai_agent 316,348-351
+packages/@n8n/instance-ai/src/workspace/prebaked-workspace-bundle.ts
+  ai_agent 8-12,45,53,85-91,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "950205c0ebe087d10b7190b43b1bb17fbfc41daa",
+  "prompts": {},
+  "sessions": {
+    "s_8661479fcacbbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dfa2039-345b-4ff7-9ade-5eebd300fbec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

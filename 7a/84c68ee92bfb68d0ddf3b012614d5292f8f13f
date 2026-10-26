@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Supabase/tests/workflow/Supabase.workflow.test.ts
+  s_2e1fa95fc44f8f::t_af00e199e599e6 16
+  s_2e1fa95fc44f8f::t_116ade52398811 1-15,17-35
+packages/nodes-base/nodes/Supabase/tests/workflow/requests.workflow.json
+  s_4ebde64ab825df::t_0c7dfac2c3d537 1-344
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a84c68ee92bfb68d0ddf3b012614d5292f8f13f",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4ebde64ab825df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9b9b2bb511b5c44a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

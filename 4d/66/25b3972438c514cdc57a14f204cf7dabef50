@@ -1,0 +1,37 @@
+packages/cli/src/modules/instance-ai/event-bus/durable-event-log.ts
+  s_2f3443ac9403d2::t_af3d67036ff2df 142,461,476,609,611
+  s_2f3443ac9403d2::t_fc6d6810c80817 610
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.reducer.test.ts
+  s_2f3443ac9403d2::t_a0939b98221768 265
+  s_2f3443ac9403d2::t_7bcc522a9dbf9c 264,266-279
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_2f3443ac9403d2::t_a0939b98221768 729
+  s_2f3443ac9403d2::t_fc6d6810c80817 704,716,733
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_2f3443ac9403d2::t_fc6d6810c80817 529,570
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.reducer.ts
+  s_2f3443ac9403d2::t_fc6d6810c80817 120-121
+  s_2f3443ac9403d2::t_af3d67036ff2df 201
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_2f3443ac9403d2::t_fc6d6810c80817 475,1295
+packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
+  s_2f3443ac9403d2::t_7bcc522a9dbf9c 33,121-124,279-288
+  s_2f3443ac9403d2::t_af3d67036ff2df 343,351
+  s_2f3443ac9403d2::t_f270ec8767a6c9 289-291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4d6625b3972438c514cdc57a14f204cf7dabef50",
+  "prompts": {},
+  "sessions": {
+    "s_2f3443ac9403d2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11bf3-b9fa-7581-9200-dcf2f203c629",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

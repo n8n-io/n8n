@@ -1,0 +1,134 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-activation-lock.test.ts
+  s_db74c72b258827::t_dea4c5eeb9c0e8 12,48,152,160,184,196,215,232
+  s_db74c72b258827::t_b61aa7fe341384 49-51
+packages/cli/src/modules/instance-ai/assistant-agent.provider.ts
+  s_db74c72b258827::t_708a12027201c4 1,5,7-18,20-21,23-25,27,29-30,33-34
+  s_db74c72b258827::t_3247f0c997283b 3,28
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_db74c72b258827::t_a4a0e43ea132f7 2542-2550,2557-2565,2820-2828,3071-3079,3709-3718
+  s_db74c72b258827::t_66786ae4b5dbee 1857-1873
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  ai_agent 307-312
+  s_db74c72b258827::t_4a0b12eb1e851f 33-36,281,359
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_db74c72b258827::t_708a12027201c4 46-57
+packages/cli/src/modules/instance-ai/instance-ai-credit.service.ts
+  s_db74c72b258827::t_d175533937d102 18,69
+  ai_agent 149-152,378-386
+  s_db74c72b258827::t_f09eaeaaa22c99 19-20,375-377
+  s_db74c72b258827::t_76c11eca92c1b5 3
+packages/cli/src/modules/instance-ai/instance-ai-temporary-workflow.service.ts
+  s_db74c72b258827::t_f09eaeaaa22c99 7,35,99,110
+  s_db74c72b258827::t_76c11eca92c1b5 120,124,133
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_db74c72b258827::t_db902fae7236d0 216
+packages/cli/src/modules/instance-ai/repositories/instance-ai-conversation-history.repository.ts
+  s_db74c72b258827::t_e243591f3376f6 12-14,57,67-71,105-107,110-135,151-152,174-175,195,245,255,262-263,267,284,290,316,352,359,363-373,376-377,380-382
+packages/cli/src/modules/instance-ai/instance-ai-terminal-outcome.service.ts
+  s_db74c72b258827::t_3cc538d3f48fe2 58-60
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_db74c72b258827::t_3cc538d3f48fe2 31-34,235,244-259,404-406
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  ai_agent 5-12
+  s_db74c72b258827::t_9d5eb8e163ce48 306-346
+packages/cli/src/modules/instance-ai/workflow-verification-task-projector.ts
+  s_db74c72b258827::t_5c5f46ccf7e637 218
+packages/cli/src/modules/instance-ai/instance-ai-test.controller.ts
+  s_db74c72b258827::t_877b00ad686bd0 10-11,21,99-102,109
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_db74c72b258827::t_39e44bcbb42194 78-80,198-204,208-227
+  ai_agent 205-207
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_db74c72b258827::t_8292331c9900fa 572,642,648-649
+  s_db74c72b258827::t_b2d8e0badfc397 681-685
+  s_db74c72b258827::t_b2068c47583053 17,30-43,281-342,344,364-365,372,391-392,394-397,408,413,415-419,421-436,458,498-502,507,515,540,554,565,574-575,657,659,661,665,669-680,686-697,710-714,719,723-725,752-755,775,784,791,819-821,823-824
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_db74c72b258827::t_4a0b12eb1e851f 3303-3307,3312-3335,3359-3387,3391-3417,3419-3421,3423-3448,3458-3466,3468-3472,3490-3491,3505-3520,3522-3566,3568-3573,3576-3579,3581-3583,3585-3587,3590-3593,3595-3596,3598,3602-3608,3610-3643,3645-3665,3667-3704,3706-3746,3748-3799,3801-3817,3819-3820,3822-3838,3840-3863,3865-3924,3927-3970,3972-3994,3996-4026,4028-4050,4053-4057,4059-4060,4065,4071-4077,4079-4080,4084,4093,4095-4097,4103,4105,4108,4114-4118,4120,4137-4138,4140-4143,4146,4150-4152,4159-4160,4163,4166,4169,4171,4180-4181,4183-4192,4200-4201,4215,4217,4219,4223,4226-4228,4233-4234,4236-4246,4253,4258-4267
+  s_db74c72b258827::t_361603cb91b856 2867
+  ai_agent 218,3599-3601,3747
+  s_db74c72b258827::t_877b00ad686bd0 901,919,940
+  s_db74c72b258827::t_14ef5579ef8ca9 3346
+  s_db74c72b258827::t_5c5f46ccf7e637 1785-1786,2083,4459
+  s_db74c72b258827::t_5c782569972c66 4371,4376,4378-4379,4381-4391,4394-4395,4397-4404,4603-4624,4627,4629-4638,4640-4681,4684-4686,4688,4691-4705,4707-4717,4719-4731,4733-4753,4758,4761-4764,4766-4770
+  s_db74c72b258827::t_42adc530054f6f 1228-1229,1242,1250-1252,1254-1260,1262,1266-1269,1376-1389,2974,3001-3011,3013-3015,3018-3019
+  s_db74c72b258827::t_3d8932b0025471 244,716,772,815-816,903,923,944,1179-1180,1184-1185
+  s_db74c72b258827::t_80375f2558b86a 131,3995
+  s_db74c72b258827::t_b5e3d5685ba808 231-234,236-243,245-250,769-770,3308-3311
+  s_db74c72b258827::t_30b380934d14c5 39
+  s_db74c72b258827::t_e98b1cd188a8c8 509-521,524-527,529-539
+  s_db74c72b258827::t_55a03b1ae158b9 4-5,130
+  s_db74c72b258827::t_db902fae7236d0 235,1071-1093,1096-1097,1100-1101,1105-1108,3336-3345,3347-3358,3418,3422
+packages/cli/src/modules/instance-ai/entities/instance-ai-iteration-log.entity.ts
+  s_db74c72b258827::t_aeaa4474904b20 10
+packages/cli/src/modules/instance-ai/__tests__/credit-counting.test.ts
+  s_db74c72b258827::t_4683aff80b9f60 5,13-16,28,43-46,55,76
+packages/cli/src/modules/agents/repositories/agent-thread-grant.repository.ts
+  s_db74c72b258827::t_3d8932b0025471 17-20
+packages/cli/src/modules/instance-ai/AGENTS_RUNTIME_POC.md
+  s_db74c72b258827::t_667748e99db7ee 428-446
+packages/@n8n/db/src/entities/ai-builder-temporary-workflow.ts
+  s_db74c72b258827::t_aeaa4474904b20 20
+packages/cli/src/modules/instance-ai/assistant-turn-options.ts
+  s_db74c72b258827::t_db902fae7236d0 45-46
+  s_db74c72b258827::t_31301c087f4730 1-8,10-11,13-18,21-23,25-26,28-43,48-49,51-54,56-62,64-65
+packages/cli/src/modules/instance-ai/entities/instance-ai-event-log-entry.entity.ts
+  s_db74c72b258827::t_aeaa4474904b20 4,20,22,24
+packages/cli/src/modules/instance-ai/entities/instance-ai-thread-tabs.entity.ts
+  s_db74c72b258827::t_aeaa4474904b20 5,17,19,21
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-conversation-history.service.test.ts
+  s_db74c72b258827::t_8292331c9900fa 5,75,81,86-95,101,117-118,416,534,536-541,835
+  s_db74c72b258827::t_a4ac117e24d381 77,83
+  s_db74c72b258827::t_907a328d192465 76
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_db74c72b258827::t_708a12027201c4 408
+  s_db74c72b258827::t_3cc538d3f48fe2 582-589
+  s_db74c72b258827::t_361603cb91b856 239,369,376-380
+  s_db74c72b258827::t_8292331c9900fa 399
+  s_db74c72b258827::t_06efcce4ce62ea 593,602,615,1052,1055-1057,1100
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_db74c72b258827::t_379640791b4cdb 532-533
+packages/cli/src/modules/instance-ai/event-bus/interrupted-run-sweeper.ts
+  s_db74c72b258827::t_1c4dccebffe7c0 3,8-11,201-215
+  s_db74c72b258827::t_1b2b6925f6b42c 4
+packages/@n8n/instance-ai/src/stream/agent-chunk-publisher.ts
+  s_db74c72b258827::t_7020a21f73d96b 118,120-122,153
+  s_db74c72b258827::t_9f7899739c94a5 1-4,7-11,13,15-23,25-35,37-71,73,75-78,80-110,112-117,119,123-124,126-128,130-151,154-160
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_db74c72b258827::t_379640791b4cdb 1739-1742,1749
+  s_db74c72b258827::t_ea9d87d68a7e9c 1874
+packages/cli/src/modules/instance-ai/workflow-verification-obligation-service.ts
+  s_db74c72b258827::t_5c5f46ccf7e637 26
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_db74c72b258827::t_66786ae4b5dbee 1178-1195
+packages/cli/src/modules/instance-ai/repositories/conversation-history-search.ts
+  s_db74c72b258827::t_e243591f3376f6 15-22,24,27-28,39,41-43
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-conversation-history.repository.integration.test.ts
+  s_db74c72b258827::t_23b278c511d420 31-32,49-50,78,123,148,287,323,342,351,354,357,816-852
+  s_db74c72b258827::t_b61aa7fe341384 137,278,329
+  s_db74c72b258827::t_81c47da7a86063 4,6,8-15,23,28,30,41,44-48,56-58,68,72-73,79-100,115-117,120,131-132,157,168,291,749-750
+packages/@n8n/db/src/migrations/common/1791239936967-MoveInstanceAiThreadsToAgents.ts
+  s_db74c72b258827::t_89de6e077a49d7 1,3,5-15,17,25-29,31-37,39-42,45-58,65-77,80-94,98-115
+  ai_agent 18-22,62-64
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.api.ts
+  s_db74c72b258827::t_ea9d87d68a7e9c 113,115,119,126
+packages/@n8n/instance-ai/src/index.ts
+  s_db74c72b258827::t_20f28565991664 30,135-137,602-609
+packages/cli/src/modules/instance-ai/instance-ai-conversation-history.service.ts
+  s_db74c72b258827::t_d175533937d102 16,20,123-130,209,404,503,519,542
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a18f74f5dfd515503e7791367e1bf25d5270b18d",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

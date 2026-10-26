@@ -1,0 +1,24 @@
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_fd6e130ca898c8::t_96deb031994c68 5,7-8,52-55,183-204,260-262,278-303,449-631
+packages/@n8n/instance-ai/evaluations/discovery/seeded-turn.ts
+  s_fd6e130ca898c8::t_3d28b825f9a87b 12-15,19
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_fd6e130ca898c8::t_96deb031994c68 1-2,776-835,846-878,895-1029,1033-1037,1061-1067
+  s_fd6e130ca898c8::t_34756fb8027494 1068
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "246a26fa25e67dde5886784becb7b9b17a2f1d9c",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e130ca898c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed1908b-631c-440c-bb45-2628551c070a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

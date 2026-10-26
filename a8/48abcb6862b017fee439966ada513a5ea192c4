@@ -1,0 +1,1594 @@
+packages/@n8n/mcp-apps/src/apps/workflow-preview/tokens.scss
+  s_df6c397ba2c129::t_65ef6d58de99e9 3,25
+packages/@n8n/mcp-browser-extension/src/ui/tokens.scss
+  s_df6c397ba2c129::t_79979ba2a0e2c8 3,29
+packages/frontend/@n8n/design-system/assets/fonts/Geist-OFL.txt
+  s_df6c397ba2c129::t_ce64b6c7a1c460 1-93
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/BlockMessage.vue
+  s_df6c397ba2c129::t_c6b64a9440c8bd 64,80,88
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/RestoreVersionConfirm.vue
+  s_df6c397ba2c129::t_39f1d36674567d 112,140
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/TextMessage.vue
+  s_df6c397ba2c129::t_76ec68b4003a2b 259,267
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/ToolMessage.vue
+  s_df6c397ba2c129::t_cc8dcb5ca42ff5 137
+packages/frontend/@n8n/design-system/src/components/AskAssistantText/AssistantText.vue
+  s_df6c397ba2c129::t_4ec9f556f6ece0 18
+packages/frontend/@n8n/design-system/src/components/CodeDiff/CodeDiff.vue
+  s_df6c397ba2c129::t_ee20b427128cce 153
+  s_df6c397ba2c129::t_214b94f2c62b62 116,131
+packages/frontend/@n8n/design-system/src/components/N8nAlert/Alert.vue
+  s_df6c397ba2c129::t_fbc7656587134e 231
+packages/frontend/@n8n/design-system/src/components/N8nAvatar/Avatar.vue
+  s_df6c397ba2c129::t_485f8c1d001f62 78
+packages/frontend/@n8n/design-system/src/components/N8nCallout/Callout.vue
+  s_df6c397ba2c129::t_ca8bc81c2e3c21 173
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.vue
+  s_df6c397ba2c129::t_bb7508f5a5c43f 530
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.vue
+  s_df6c397ba2c129::t_6fa933cef6894a 546
+packages/frontend/@n8n/design-system/src/components/N8nHeading/Heading.vue
+  s_df6c397ba2c129::t_3584f1a2a34db3 62
+packages/frontend/@n8n/design-system/src/components/N8nInfoAccordion/InfoAccordion.vue
+  s_df6c397ba2c129::t_59525bbd343ba5 125
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.vue
+  s_df6c397ba2c129::t_8f617e156d2308 316,321,395
+packages/frontend/@n8n/design-system/src/components/N8nNodeIcon/NodeIcon.vue
+  s_df6c397ba2c129::t_7ec31808cff26d 91
+packages/frontend/@n8n/design-system/src/components/N8nNotice/Notice.vue
+  s_df6c397ba2c129::t_128755cededff3 101
+  s_df6c397ba2c129::t_214b94f2c62b62 96-97,115-120,124-129,133-138,142-147
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_df6c397ba2c129::t_2807226ce729fd 253,378
+  s_df6c397ba2c129::t_214b94f2c62b62 201,234,322,362,366
+packages/frontend/@n8n/design-system/src/components/N8nUserStack/UserStack.vue
+  s_df6c397ba2c129::t_e1487a14384a2b 137,159
+packages/frontend/@n8n/design-system/src/components/TableBase/TableBase.vue
+  s_df6c397ba2c129::t_d5346f1c4aaf4d 77
+packages/frontend/@n8n/design-system/src/components/TableHeaderControlsButton/TableHeaderControlsButton.vue
+  s_df6c397ba2c129::t_6cec122fad6ffd 218
+  s_df6c397ba2c129::t_214b94f2c62b62 121
+packages/frontend/@n8n/design-system/src/css/_primitives.scss
+  s_df6c397ba2c129::t_1ac8b82e4830e2 235,237,249,259-261
+  s_df6c397ba2c129::t_214b94f2c62b62 3-15,272-275,277,317,331
+packages/frontend/@n8n/design-system/src/css/date-picker/date-table.scss
+  s_df6c397ba2c129::t_16cf43cf65a8cf 71
+packages/frontend/@n8n/design-system/src/css/date-picker/month-table.scss
+  s_df6c397ba2c129::t_cf4c3ab42c34d2 21
+packages/frontend/@n8n/design-system/src/css/date-picker/time-picker.scss
+  s_df6c397ba2c129::t_8fc59fdf4a975d 83
+packages/frontend/@n8n/design-system/src/css/date-picker/time-spinner.scss
+  s_df6c397ba2c129::t_1726401c15bed5 102
+packages/frontend/@n8n/design-system/src/css/date-picker/year-table.scss
+  s_df6c397ba2c129::t_21d40f6e9c0028 21
+packages/frontend/@n8n/design-system/src/css/fonts.scss
+  s_df6c397ba2c129::t_73fcf2fcf76116 3-4
+packages/frontend/@n8n/design-system/src/css/fonts/geist-mono.scss
+  s_df6c397ba2c129::t_587e5d84de3bea 1-17
+packages/frontend/@n8n/design-system/src/css/fonts/geist.scss
+  s_df6c397ba2c129::t_491514db57cb25 1-17
+packages/frontend/@n8n/design-system/src/css/markdown.scss
+  s_df6c397ba2c129::t_8b01d89039865a 62,103,143,327
+packages/frontend/@n8n/design-system/src/css/message-box.scss
+  s_df6c397ba2c129::t_f67954e87cdaf3 270
+  s_df6c397ba2c129::t_214b94f2c62b62 189,219-232
+packages/frontend/@n8n/design-system/src/css/mixins/markdown.scss
+  s_df6c397ba2c129::t_9ba3c94cc2f3df 35,76,108,229
+packages/frontend/@n8n/design-system/src/css/notification.scss
+  s_df6c397ba2c129::t_248cb8c48d4921 42
+packages/frontend/@n8n/design-system/src/css/option.scss
+  s_df6c397ba2c129::t_357005e9b29ca3 37
+packages/frontend/@n8n/design-system/src/css/reset.scss
+  s_df6c397ba2c129::t_ae940abea1fed3 118,219-224
+packages/frontend/@n8n/design-system/src/css/select-dropdown.scss
+  s_df6c397ba2c129::t_def833f4d6f658 31
+packages/frontend/@n8n/design-system/src/css/tooltip.scss
+  s_df6c397ba2c129::t_6df654994fdce1 25
+packages/frontend/editor-ui/src/app/components/CollectionWorkflowCard.vue
+  s_df6c397ba2c129::t_b7c4ea11c9cabb 48
+packages/frontend/editor-ui/src/app/components/NodeList.vue
+  s_df6c397ba2c129::t_381512c088236e 82
+packages/frontend/editor-ui/src/app/components/NpsSurvey.vue
+  s_df6c397ba2c129::t_820c863bc902d2 303
+  s_df6c397ba2c129::t_214b94f2c62b62 155
+packages/frontend/editor-ui/src/app/components/SaveButton.vue
+  s_df6c397ba2c129::t_f7fef540b11194 91
+packages/frontend/editor-ui/src/app/components/VersionCard.vue
+  s_df6c397ba2c129::t_5b6f0a5aacb360 110
+packages/frontend/editor-ui/src/app/components/scopes/ScopesSelector.vue
+  s_df6c397ba2c129::t_ba9685cd1a8312 570
+packages/frontend/editor-ui/src/app/css/_global.scss
+  s_df6c397ba2c129::t_2205693a9c6185 135,193
+packages/frontend/editor-ui/src/app/css/plugins/_codemirror.scss
+  s_df6c397ba2c129::t_8ac94944046603 106,296
+packages/frontend/editor-ui/src/app/dev/dev-panel/DevPanel.vue
+  s_df6c397ba2c129::t_21d060db38f9a2 738,833,942
+packages/frontend/editor-ui/src/app/dev/dev-panel/FlagPanel.vue
+  s_df6c397ba2c129::t_d01c7db3bf82ae 298,350,478,508,582
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/components/AppInstallModal.vue
+  s_df6c397ba2c129::t_a3f6891009cfb1 298
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/components/InstanceAiPersonalizedPromptSuggestions.vue
+  s_df6c397ba2c129::t_8d5cd604c1ba64 235,306
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewNode.vue
+  s_df6c397ba2c129::t_cf2ce6ef64b90f 160
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/visualizations/AgentBuilderVisualization.vue
+  s_df6c397ba2c129::t_0e8351081f302e 647,763,768
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/visualizations/InvoiceSpreadsheetVisualization.vue
+  s_df6c397ba2c129::t_e445325fa4c8a3 203
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/visualizations/SalesforceCardVisualization.vue
+  s_df6c397ba2c129::t_64759ca2799bc9 166
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/visualizations/SlackMessageVisualization.vue
+  s_df6c397ba2c129::t_c40e65865669b8 126
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/visualizations/TelegramChatVisualization.vue
+  s_df6c397ba2c129::t_41c751a76cac43 242
+packages/frontend/editor-ui/src/experiments/resourceCenter/components/ResourceFeatureCard.vue
+  s_df6c397ba2c129::t_ad34b82157c1e4 243
+packages/frontend/editor-ui/src/experiments/resourceCenter/views/ResourceCenterView.vue
+  s_df6c397ba2c129::t_5fe634b9b4ba48 391
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateTile.vue
+  s_df6c397ba2c129::t_370c056eeeb6a9 95
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/onboarding/MCPOnboardingModal.vue
+  s_df6c397ba2c129::t_fd0feed264550b 522,579,597
+packages/frontend/editor-ui/src/experiments/trialIntroModal/components/TrialIntroModal.vue
+  s_df6c397ba2c129::t_4d5438ebcc492f 460,519,565
+  s_df6c397ba2c129::t_214b94f2c62b62 386
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_df6c397ba2c129::t_13b117991c6e5a 1300,1322
+packages/frontend/editor-ui/src/features/agents/components/RichInteractionCard.vue
+  s_df6c397ba2c129::t_2bd57002a119c1 134,171,179,219
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_df6c397ba2c129::t_9fe282c1ee448b 508
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelinePill.vue
+  s_df6c397ba2c129::t_b9740f35f7b7fb 77
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_df6c397ba2c129::t_53e45296ce73ac 411
+packages/frontend/editor-ui/src/features/agents/components/ToolIoView.vue
+  s_df6c397ba2c129::t_4264a5149ceca8 241
+packages/frontend/editor-ui/src/features/agents/components/WorkflowExecutionLogViewer.vue
+  s_df6c397ba2c129::t_4da282ea2da334 275,292
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_df6c397ba2c129::t_94347f10f6fc53 600
+packages/frontend/editor-ui/src/features/ai/assistant/aiBuilderDiff.scss
+  s_df6c397ba2c129::t_12f75f968a4211 16
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/BuildModeEmptyState.vue
+  s_df6c397ba2c129::t_41adbcea187ce2 37
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/ChatVersionCard.vue
+  s_df6c397ba2c129::t_65c09262b213bc 231
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CollapsedMessagesGroup.vue
+  s_df6c397ba2c129::t_9e39f09b254670 217
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CredentialsSetupCard.vue
+  s_df6c397ba2c129::t_4438ac623787cd 111
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue
+  s_df6c397ba2c129::t_89b1a29aa85b99 197
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/ExecuteMessage.vue
+  s_df6c397ba2c129::t_190843e41469f3 508
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/NodeIssueItem.vue
+  s_df6c397ba2c129::t_dbf2bddb46de4e 86
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/PlanQuestionsMessage.vue
+  s_df6c397ba2c129::t_fed78395eecaf0 687
+packages/frontend/editor-ui/src/features/ai/assistant/components/AskModeCoachmark.vue
+  s_df6c397ba2c129::t_e6ad45a414a8bf 74
+packages/frontend/editor-ui/src/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue
+  s_df6c397ba2c129::t_60b6e4b20de74e 104
+packages/frontend/editor-ui/src/features/ai/assistant/components/Chat/AskModeEmptyState.vue
+  s_df6c397ba2c129::t_015e53401d93c4 40
+packages/frontend/editor-ui/src/features/ai/assistant/views/SettingsAIView.vue
+  s_df6c397ba2c129::t_bccbe166d590e2 141
+packages/frontend/editor-ui/src/features/ai/chatHub/components/CanvasChatHubPanel.vue
+  s_df6c397ba2c129::t_4a8f296bed7ba7 478
+  s_df6c397ba2c129::t_214b94f2c62b62 392
+packages/frontend/editor-ui/src/features/ai/chatHub/components/CanvasChatSessionDropdown.vue
+  s_df6c397ba2c129::t_6958aab5a25669 265,290
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatGreetings.vue
+  s_df6c397ba2c129::t_790bf89b42f949 100
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/MetricCriteria.vue
+  s_df6c397ba2c129::t_3b0f02f38155e2 106
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/ListRuns/MetricsChart.vue
+  s_df6c397ba2c129::t_5fb201dbd9d79f 89
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/RunDetail/MetricSummaryCard.vue
+  s_df6c397ba2c129::t_58123790ba0614 101
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupWizard/SetupWizard.vue
+  s_df6c397ba2c129::t_fc2c0609c91712 312
+  s_df6c397ba2c129::t_214b94f2c62b62 130,159,197,244,259
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/GroupedMetricChart.vue
+  s_df6c397ba2c129::t_cad5ca4d3e6ec0 232
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/StepIndicator.vue
+  s_df6c397ba2c129::t_1f35289a896250 39
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/TestTableBase.vue
+  s_df6c397ba2c129::t_f8d77c9cbb33f1 233
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/VersionAvatar.vue
+  s_df6c397ba2c129::t_136fa75273aaf1 51
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/TestRunDetailView.vue
+  s_df6c397ba2c129::t_a0ba1081ccd01f 287
+packages/frontend/editor-ui/src/features/ai/gateway/views/SettingsAiGatewayView.vue
+  s_df6c397ba2c129::t_6c0fc7e21c1db7 347
+  s_df6c397ba2c129::t_214b94f2c62b62 208
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiDebugPanel.vue
+  s_df6c397ba2c129::t_5190ec3327fd59 463,514,555,674
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiLlmStepsModal.vue
+  s_df6c397ba2c129::t_83aec7b5dc4780 437
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/PlanReviewPanel.vue
+  s_df6c397ba2c129::t_fa2039b359c854 359
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ToolResultTable.vue
+  s_df6c397ba2c129::t_afa2020f17a780 73
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/ComputerUseSetupContent.vue
+  s_df6c397ba2c129::t_797fdee3960bd6 343
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/McpConnectClientDialog.vue
+  s_df6c397ba2c129::t_f0f5589c8e26c9 417
+packages/frontend/editor-ui/src/features/ai/shared/styles/_question-option-rows.scss
+  s_df6c397ba2c129::t_f22df318523709 50
+packages/frontend/editor-ui/src/features/core/auth/components/MfaSetupModal.vue
+  s_df6c397ba2c129::t_cf79451c62971b 362
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue
+  s_df6c397ba2c129::t_1b0ce9cd1cd5f7 575,582
+  s_df6c397ba2c129::t_214b94f2c62b62 472,480
+packages/frontend/editor-ui/src/features/core/dataTable/components/ImportCsvModal.vue
+  s_df6c397ba2c129::t_cab480fe242521 359
+  s_df6c397ba2c129::t_214b94f2c62b62 286
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/ColumnHeader.vue
+  s_df6c397ba2c129::t_6ca9996ce0612e 321
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialInfo.vue
+  s_df6c397ba2c129::t_9574b1ce539b68 108
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionAnnotationPanel.ee.vue
+  s_df6c397ba2c129::t_89029d471182d9 191
+  s_df6c397ba2c129::t_214b94f2c62b62 53
+packages/frontend/editor-ui/src/features/integrations/logStreaming.ee/components/EventDestinationSettingsModal.vue
+  s_df6c397ba2c129::t_02453af396bf1d 602
+  s_df6c397ba2c129::t_214b94f2c62b62 417,432
+packages/frontend/editor-ui/src/features/ndv/panel/components/NDVEmptyState.vue
+  s_df6c397ba2c129::t_202eb6c41ccad5 50
+packages/frontend/editor-ui/src/features/ndv/panel/components/OutputPanel.vue
+  s_df6c397ba2c129::t_5478ed6bccef74 517
+  s_df6c397ba2c129::t_214b94f2c62b62 396,409
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AssignmentCollection/AssignmentCollection.vue
+  s_df6c397ba2c129::t_c9d0b5c3e4e7bf 346,350
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AssignmentCollection/TypeSelect.vue
+  s_df6c397ba2c129::t_0046fa5694832c 116
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ButtonParameter/ButtonParameter.vue
+  s_df6c397ba2c129::t_082d3a1b8e75d0 308
+  s_df6c397ba2c129::t_214b94f2c62b62 266
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FilterConditions/OperatorSelect.vue
+  s_df6c397ba2c129::t_6accf45b8d124f 170,175
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
+  s_df6c397ba2c129::t_03a355d2af8d60 1120
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceLocator/ResourceLocatorDropdown.vue
+  s_df6c397ba2c129::t_0852e40402c916 547,558
+packages/frontend/editor-ui/src/features/ndv/runData/components/BinaryEntryDataTable.vue
+  s_df6c397ba2c129::t_039acc786f2efa 168
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_df6c397ba2c129::t_4f8af5c6c57912 2683,2714
+  s_df6c397ba2c129::t_214b94f2c62b62 1623,1656
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataBinary.vue
+  s_df6c397ba2c129::t_9d772336c5aec5 191,215
+  s_df6c397ba2c129::t_214b94f2c62b62 148
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataMarkdown.vue
+  s_df6c397ba2c129::t_bcf7931ad506d0 47,91
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataTable.vue
+  s_df6c397ba2c129::t_29b246c8a5a387 947
+  s_df6c397ba2c129::t_214b94f2c62b62 537,701
+packages/frontend/editor-ui/src/features/ndv/runData/components/error/NodeErrorView.vue
+  s_df6c397ba2c129::t_9cc1273964e230 863
+  s_df6c397ba2c129::t_214b94f2c62b62 508
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_df6c397ba2c129::t_829922cc7acf04 908
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeWebhooks.vue
+  s_df6c397ba2c129::t_104c61a470641c 263,284
+packages/frontend/editor-ui/src/features/resolvers/components/CredentialResolverEditModal.vue
+  s_df6c397ba2c129::t_e2911d72b53c02 636
+  s_df6c397ba2c129::t_214b94f2c62b62 398,419
+packages/frontend/editor-ui/src/features/roles/components/RolesTable.vue
+  s_df6c397ba2c129::t_0ced35d3e93109 250
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/nodeCreator/CommunityNodeDetails.vue
+  s_df6c397ba2c129::t_2a38bfc3954219 174
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrateWorkflowModal.vue
+  s_df6c397ba2c129::t_f2005a2d5eb70c 291
+  s_df6c397ba2c129::t_214b94f2c62b62 214,230,245,253
+packages/frontend/editor-ui/src/features/settings/orchestration.ee/components/WorkerAccordion.vue
+  s_df6c397ba2c129::t_91fe4d6455ca15 67
+packages/frontend/editor-ui/src/features/settings/sso/provisioning/components/RuleList.vue
+  s_df6c397ba2c129::t_3882648c96a76f 117
+packages/frontend/editor-ui/src/features/settings/sso/provisioning/components/RuleSectionHeader.vue
+  s_df6c397ba2c129::t_d725e85289ebb1 23
+packages/frontend/editor-ui/src/features/settings/sso/provisioning/components/UserRoleProvisioningDropdown.vue
+  s_df6c397ba2c129::t_5f9ccf2acac444 155,181
+packages/frontend/editor-ui/src/features/settings/sso/styles/sso-form.module.scss
+  s_df6c397ba2c129::t_6db2a47210b5b9 8,34,101
+packages/frontend/editor-ui/src/features/settings/sso/views/SettingsLdapView.vue
+  s_df6c397ba2c129::t_8f3d433a32d61e 789
+  s_df6c397ba2c129::t_214b94f2c62b62 743
+packages/frontend/editor-ui/src/features/setupPanel/components/WebhookUrlPreview.vue
+  s_df6c397ba2c129::t_60a6dfc8764290 113
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/V1Banner.vue
+  s_df6c397ba2c129::t_9e3744273a151d 37
+packages/frontend/editor-ui/src/features/shared/editors/components/CodeNodeEditor/theme.ts
+  s_df6c397ba2c129::t_7cb13d4a5336ab 215
+packages/frontend/editor-ui/src/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue
+  s_df6c397ba2c129::t_0f7aca4deb780c 132
+packages/frontend/editor-ui/src/features/shared/editors/components/InlineExpressionEditor/InlineExpressionTip.vue
+  s_df6c397ba2c129::t_e24bef9a54ce08 166
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/CategoryItem.vue
+  s_df6c397ba2c129::t_bbbfbf7056b97f 51
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/LabelItem.vue
+  s_df6c397ba2c129::t_bf0ed76c25d51c 24
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/ActionsMode.vue
+  s_df6c397ba2c129::t_f69a12991121bd 405,415
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/NodeCreator.vue
+  s_df6c397ba2c129::t_b39753971bd606 212
+  s_df6c397ba2c129::t_214b94f2c62b62 180
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/NodeCreatorShortcutCoachmark.vue
+  s_df6c397ba2c129::t_0cf6e6f0329627 73
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.vue
+  s_df6c397ba2c129::t_cd982e46aeb187 419,431
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsDropdown.vue
+  s_df6c397ba2c129::t_e2979e301391d3 393
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeSettingsIcons.vue
+  s_df6c397ba2c129::t_b58fb535c5afa7 105
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue
+  s_df6c397ba2c129::t_823895119dbd41 210
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusMark.vue
+  s_df6c397ba2c129::t_f717d11b4c1ad1 36
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.vue
+  s_df6c397ba2c129::t_65b77665f6b670 1981,2016,2082
+packages/frontend/editor-ui/src/features/workflows/templates/components/SetupTemplateFormStep.vue
+  s_df6c397ba2c129::t_2f1dcf40d105e3 143
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/workflowDiff.module.scss
+  s_df6c397ba2c129::t_7d59e54a0db8ca 56
+packages/modules/insights/frontend/src/components/InsightsSummary.vue
+  s_df6c397ba2c129::t_8d7cc649975de5 261,279,296
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/vault--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/plus-circle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/x--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 5,14,27-34,74-157
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-up--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ndv/parameters/components/Collection/CollectionParameterNew.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 321,389
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/components/ManualEditorButton.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 36
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/variable--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/app/components/FreeAiCreditsCallout.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 80
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/pencil--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/folder-plus--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowPublishModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 339
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvaluationsView.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 155,207
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/file--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ToolSettingsModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 90
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/table--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/file-text--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/video-camera--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 266
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chat-bubbles--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsPreview.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 287,299,427,449,473,489
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 365,368,371
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/brackets-curly--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/file-text--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/text-b--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nCodeBlock/CodeBlock.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 151
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-up-right--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-down-left-up-right--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-right--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/clock--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-circle-down--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/lines-horizontal-3--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/magnifying-glass--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/speaker-waves--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 93,95,134,141,166
+packages/frontend/@n8n/design-system/src/components/N8nFormBox/FormBox.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 2-8,15-16,23,35,79
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chat-bubbles--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/dots-grip--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/components/AgentConfirmationModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 71
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/power--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectWorkflowsModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 86
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowExtractionNameModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 93
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevron-down--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nScrollArea/N8nScrollArea.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 54,112,161
+packages/frontend/editor-ui/src/features/roles/components/RoleEditorLayout.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 73
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariableModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 368
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/history--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nMenuItem/MenuItem.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 146-151,193,210,213-215,236-238,243
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevron-left--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/person-check--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalCasesCard.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 392
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-circle-right--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/crosshair--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/person--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/sidebar-left--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/play--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/text-italics--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 25
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/list-tree--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/paperplane--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/pencil-slash--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-out--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/lightbulb--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/people--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/plus--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/sidebar-right--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/plus--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-up--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-from-bracket-right-1--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/lightning--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatAgentCard.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 62
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ToolListItem.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 148,161
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-cw--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/magnifying-glass-minus--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/crosshair--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/speaker-waves--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/sticky-note--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/grid--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/circle--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/hash--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-down-left--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-u-up-left--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 199
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-in--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/IconPicker.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 84
+packages/frontend/editor-ui/src/features/core/folders/components/MoveToFolderModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 619
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/minus-circle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/SuiteConfig.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 125
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevron-down--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/speaker-x--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/trash--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIconButton/IconButton.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 62
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-cw--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/flag-hole--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/thumbs-down--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-down-left--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/components/OpenInAssistantCardButton.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 42
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/hard-drive-arrow-down--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-ccw--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/exclamation-circle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/TrialBanner.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 18
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 39
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chat-bubble-plus--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/hash--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/lock-locked--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-split--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevron-up--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/person-plus--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectRoleUpgradeDialog.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 46
+packages/frontend/editor-ui/src/features/ndv/parameters/components/Collection/CollectionParameterLegacy.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 235
+packages/frontend/@n8n/design-system/src/v2/components/Tree/Tree.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 317,355
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/gear--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/list-checks--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/components/AgentSectionEditor.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 157
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-left--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-circle-down--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/graph--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/plug--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FixedCollection/FixedCollectionParameterLegacy.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 631
+packages/frontend/editor-ui/src/features/ndv/panel/components/NDVSubConnections.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 339
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/list-tree--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelDiscordSetup.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 98
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectVariables.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 428,446
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/question-circle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-out--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesSearchView.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 348
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/workflow--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ToolsSelector.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 168,199
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/history--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-down--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatMessage.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 388
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/rss--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/AgentsTable.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 240
+packages/frontend/editor-ui/src/features/core/auth/views/MfaView.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 244
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/square--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-right-left--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-left-right--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowDescriptionModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 246
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/template--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/shield--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/eyes-slash--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevron-right--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chart-bars--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nCard/Card.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 2,13-18,20-26,57-60,103,107
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/thumbs-down--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/settings/sso/components/OidcSettingsForm.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 469
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/flask--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/person-pencil--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/square--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-corner-down-right--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/files--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/credentials/quickConnect/components/QuickConnectButton.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 59
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariablesForm.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 95
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsInvalidNodeWarning.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 132
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-from-bracket-right--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/paperplane--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/app/views/EntityNotFound.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 61
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 272
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/text-b--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 111
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/slash-circle--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/person-plus--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataParsedAiContent.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 138
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsManager/TagsView/TagsTable.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 185,198,211
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/workflow--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nLogo/logo-icon.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1-2
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/brackets-curly--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/file-arrow-in--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nDialog/Dialog.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 219
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-square-out--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevron-right--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/envelope--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/chatHub/components/AgentEditorModalFileRow.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 88
+packages/frontend/@n8n/design-system/src/components/N8nLogo/Logo.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 43,49-52,59,70-71,74,76-78,81-82,84-85,88-89,93-94,97-99
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/file-code--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/AddExecutionToDataset/AddExecutionToDatasetModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 294
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-up-right-left-down--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/database--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/minus-circle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-up--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 142
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/circle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/x--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/dots-vertical--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-shuffle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevron-left--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nSendStopButton/N8nSendStopButton.test.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 181,183,212
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/OAuthClientDetailsModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 119
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/thumbtack--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/mouse-pointer--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/star--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 179
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectExternalSecrets.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 328
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/play-circle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 51-64
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/archive-arrow-down--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nPopover/Popover.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 72,115
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-square-out--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/briefcase--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/exclamation-circle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionsFilter.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 77
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevron-up--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/corners--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 188
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-down-up--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/sun--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-from-bracket-up--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.test.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 85
+packages/frontend/editor-ui/src/features/agents/channels/fallback/AgentChannelFallbackView.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 52
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 148,204,211,218,225,232,237-261,265,277,290-293,295-298,300-302,430-431,434-435
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/globe--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/eyes--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-from-bracket-right--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/link-slash--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/folder--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/sparkle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/robot--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowShareModal.ee.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 379
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/exclamation-triangle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/MessageRating.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 73,81,124
+packages/frontend/editor-ui/src/experiments/mcpJsonNudge/components/McpJsonNudgeModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 105
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/lock-unlocked--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/play--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/sidebar-right--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/graph--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 22
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/RestoreVersionConfirm.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 1-38
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/AskAssistantChat.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 560
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-circle-right--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalResultRow.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 169,233,243,265,283
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-up-down--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPullModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 629,667
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-right-left--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/folder-plus--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/sticky-note--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/credentials/components/CredentialPicker/CredentialPicker.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 251
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-u-up-left--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedSummary.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 141
+packages/frontend/@n8n/design-system/src/components/N8nNodeIcon/NodeIcon.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 5-10,24,29,35-36,66,72,74,82
+packages/frontend/@n8n/design-system/src/components/N8nSettingsLayout/Examples.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 537,1362,2055
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/envelope--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 2253,2264
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatStarter.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 153
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/clock--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/experiments/templateRecoV2/components/TemplateCard.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 69
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/ToolMessage.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 1-72
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/squares--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/square--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackSetup.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 194,248
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/check--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-block-down--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/minus--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/sparkle-rays--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 427
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/ErrorMessage.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 30
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-block-right--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/folder--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/css/common/var.scss
+  s_df6c397ba2c129::t_214b94f2c62b62 257
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/dots-horizontal--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 724
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-circle-up--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/dots-vertical-circle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataPinButton.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 55
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/calendar--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/variable--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-corner-down-right--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-down-up--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/slash-circle--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewHeader.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 106
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-left-right--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/book-open--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nToggleGroup/ToggleGroup.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 22,67,189,211
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 230
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/book--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/components/DeleteSecretsProviderModal.ee.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 197
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/terminal--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FixedCollection/FixedCollectionItem.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 167
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-down--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chat-bubble-plus--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/list-todos--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/magnifying-glass-plus--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/settings/sso/components/SamlSettingsForm.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 367,388,506
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-right-to-line--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-left--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/person-square--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/minus--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/star--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/css/select.scss
+  s_df6c397ba2c129::t_214b94f2c62b62 3,43,82
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-up-left--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 188,322,345
+packages/frontend/editor-ui/src/features/core/dataTable/components/AddDataTableModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 476,496
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-right--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 307
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialModeSelector.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 235
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ImportCurlParameter.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 22
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/speaker-x--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-block-up--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/flag-hole--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-circle-up--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-right--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-left--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ndv/runData/components/VirtualSchema.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 635
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/square--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-down-left-up-right--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/flask--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/shield--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/package--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-up-down--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 11,15,45-48,50-52,55-57,61-62,64-74
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/clock--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatConversationHeader.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 107,116,123,133
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/McpAccessTokenTab.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 136
+packages/frontend/editor-ui/src/features/workflows/components/DuplicateWorkflowDialog.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 201
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/hourglass--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/template--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/spinner--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/seal--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/grid--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/mouse-pointer--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/clock--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/thumbs-up--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/magic-wand--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/components/CredentialSelectorModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 146
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/archive--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/settings/usage/components/EulaAcceptanceModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 78
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/x-circle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewActivityFeed.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 162,185
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/list-checks--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 55
+packages/frontend/editor-ui/src/features/ai/chatHub/components/AgentEditorModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 476,671,685
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/minus--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/check-seal--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatSemanticSearchSettings.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 268,322
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/list-plus--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/plus-circle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-up-right--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/lines-horizontal-2--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-right--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/blueprint--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/lightning--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 45-154,601,645,647-648,650-654,658,660-662,665,669,672,674-684,688-689,692-694,698-699,704,706-707,712-713,717,719,721-722,726-727,729-730,732,737-738,741-742,745,747,751-753,756-758,761,764-765,767-769,771,775-776,778,786-787,792,794-795,798-799,801-803,805,807,809,811-812,818,824,830,832-833,838-839,841-842,845-848,852,860,866-867,872,874-876,879-880
+packages/frontend/@n8n/design-system/src/styleguide/components/MotionExamples.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 100
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/dots-horizontal-circle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatProvidersTable.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 141
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-to-bracket-right--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsHeader.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 54
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-down--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-left--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/globe--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/git-branch--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/SelectedItemsInfo.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 44,52
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/paperclip--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/binoculars--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/plug--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 14,76,133,150,184,203,227-228
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-up-right-left-down--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/database--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/css/tag.scss
+  s_df6c397ba2c129::t_214b94f2c62b62 121-122
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/hard-drive--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-right-from-line--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevron-left--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevron-down--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/copy--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/link-slash--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsOverviewPanel.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 100
+packages/frontend/@n8n/design-system/src/components/CanvasCollaborationPill/CanvasCollaborationPill.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 47
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevrons-left--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/table--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/video-camera--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/canvas/experimental/components/ExperimentalFocusPanelHeader.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 64
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-u-up-right--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevron-up--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/cube--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/trash--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-u-up-right--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/spinner--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/CommunityPackageManageConfirmModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 273
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-split--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/briefcase--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/css/_tokens.legacy.scss
+  s_df6c397ba2c129::t_214b94f2c62b62 107-110
+packages/frontend/editor-ui/src/features/execution/executions/components/StopManyExecutionsModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 152
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FilterConditions/FilterConditions.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 242
+packages/frontend/@n8n/design-system/src/v2/components/Checkbox/Checkbox.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 70,81,86,98,103-104
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/smiley-square--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/git-branch--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/x--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/PreviewBadge/PreviewBadge.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 34-90
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackManagedSetup.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 198
+packages/frontend/editor-ui/src/features/ai/assistant/components/Chat/NewAssistantSessionModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 74
+packages/frontend/@n8n/design-system/src/components/N8nRadioGroup/RadioGroup.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 115,149,184,204
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeTrigger.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 103
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 191,290,300
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/link--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ndv/panel/components/InputPanel.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 515
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/rss--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nLogo/logo-text.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1-2
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/cloud--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/book--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 2277,2315
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalResultsPanel.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 205
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 341,440,502
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-right--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/execution/logs/components/LogDetailsPanel.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 167,180,193
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/sparkle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/plus--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/person-square--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nButtonList/ButtonList.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 45,64-66,83-85
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/thumbtack--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/magic-wand--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatView.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 780
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/lock-unlocked--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/n8n-assistant--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-down-right--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectAgentsModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 95
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-block-down--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/dots-grip--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/sidebar-left--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/binoculars--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/flag--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/settings/usage/views/SettingsUsageAndPlan.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 308,346
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-right-to-line--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/list-bullets--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/sun--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/templates/components/SetupWorkflowCredentialsButton.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 152,163
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-from-bracket-right-1--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-up--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/file-arrow-down--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/flag--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 294
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/thumbs-up--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FixedCollection/FixedCollectionParameterNew.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 678,698,780,798
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/archive--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-left--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/person-circle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/play-circle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/package--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/person-circle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/circle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-up--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-block-up--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/cloud--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/pencil-slash--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/css/mixins/_input.scss
+  s_df6c397ba2c129::t_214b94f2c62b62 6,12,18,24,30
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-to-bracket-right--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/components/ImportWorkflowUrlModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 72
+packages/frontend/editor-ui/src/features/roles/components/CustomRolesUpgradeModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 39
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-to-bracket-down--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 950,1257
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/slash-circle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/BlockMessage.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 1-40
+packages/frontend/@n8n/design-system/src/components/N8nIcon/brand-icons.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 1-108
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/cube--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/check-seal--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-right--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/calendar--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/layers--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/CommunityNodeItem.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 23
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-down--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/terminal--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/types/button.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 6,9
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/ConnectionParameter.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 74
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 1672,1684
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/group--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsLandingPage.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 50
+packages/frontend/editor-ui/src/features/roles/project/RoleProjectMembersModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 105
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/sparkle-rays--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSharing.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 352,383
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 580,668,675
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-down--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 160
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-block-left--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/circle--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/microphone--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelListItem.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 118
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-circle-left--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/gear--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/dots-horizontal--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigMcpApprovalSetting.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 119
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-block-left--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/readyToRun/components/ReadyToRunButton.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 60
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/check-circle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/bell--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/book-open--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-shuffle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/power--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/check--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/home--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/channels/telegram/AgentChannelTelegramSetup.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 116
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-down-right--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/corners--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/wrench--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-block-right--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/archive-arrow-up--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/file-arrow-down--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsManager/TagsManager.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 191
+packages/frontend/@n8n/design-system/src/components/N8nSendStopButton/N8nSendStopButton.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 42,47,53,56
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-right-from-line--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderCard.ee.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 151
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/paperclip--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/squares--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/robot--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/hourglass--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/n8n-assistant--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-up-left--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-circle-left--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/info-circle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/archive-arrow-down--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/file-code--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 640
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/magnifying-glass-minus--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ndv/parameters/components/MultipleParameter.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 187
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataJsonActions.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 200,217
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/sun--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/corners--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/css/_tokens.scss
+  s_df6c397ba2c129::t_214b94f2c62b62 6-9,13,33,37-41,68-69,271-272,284-287,335-336,662-665,691-695,721-724,964,1016,1246
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chart-bars--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/seal--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/home--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/microphone--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/bell--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/person-check--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/people--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/plug--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 2771
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/text-b--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffView.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 161,188,284,291,299
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/blueprint--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ProviderSettingsModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 397
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/TextMessage.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 1-66
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/at--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-from-bracket-up--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/info-circle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/list-plus--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/checks--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/list-todos--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/archive-arrow-up--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/files--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chat-bubble--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/file--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/magnifying-glass--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 12
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/file-diff--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/checks--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/hard-drive-arrow-down--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/corners--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/edges/CanvasEdgeToolbar.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 61,73
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-up--outline-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/file-diff--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/minus--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chat-bubble--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/pencil--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/lines-horizontal-3--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/person-pencil--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/DateRangePicker/DateRangePicker.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 51,66,70,119
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/text-italics--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/x-circle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/sun--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/list-bullets--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 367
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 279,303,414
+packages/frontend/@n8n/design-system/src/components/N8nAlertDialog/AlertDialog.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 112
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/dots-horizontal-circle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/plus--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/app/components/MainSidebarHeader.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 152
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/plug--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalCaseEditor.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 129
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-in--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/chatHub/components/SuggestedPromptsEditor.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 86
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/hard-drive--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/copy--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrows-ccw--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ModelByIdSelectorModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 94
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/slash-circle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/magnifying-glass-plus--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSettingsCustomTelemetryTags.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 145
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-to-bracket-down--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/link--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/AddColumnButton.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 157
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/paperclip--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/key--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/lock-locked--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/person--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/lightbulb--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 357
+packages/frontend/@n8n/design-system/src/components/N8nInput/Input.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 345
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/eyes-slash--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/question-circle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/dots-vertical-circle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryContent.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 173
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/check-circle--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/file-arrow-in--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/group--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/wrench--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/at--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 697,859
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/arrow-down--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/exclamation-triangle--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/layers--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/text-b--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/v2/components/TagsInput/TagsInput.stories.ts
+  s_df6c397ba2c129::t_214b94f2c62b62 63,96
+packages/frontend/editor-ui/src/features/agents/components/AgentVectorStoresModal.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 472
+packages/frontend/editor-ui/src/features/agents/channels/linear/AgentChannelLinearSetup.vue
+  s_df6c397ba2c129::t_214b94f2c62b62 128,216
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/chevron-right--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/x--solid-12.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/eyes--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/key--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/lines-horizontal-2--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/dots-vertical--outline-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/smiley-square--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/vault--solid-16.svg
+  s_df6c397ba2c129::t_214b94f2c62b62 1
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/__snapshots__/AskAssistantChat.test.ts.snap
+  s_df6c397ba2c129::t_5876c5b1862f01 291,303
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/__snapshots__/MessageRating.test.ts.snap
+  s_df6c397ba2c129::t_260035e480dbd1 6-7
+packages/frontend/@n8n/design-system/src/components/CodeDiff/__snapshots__/CodeDiff.test.ts.snap
+  s_df6c397ba2c129::t_349a7503edd58d 857,1150
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/__snapshots__/ChatInput.test.ts.snap
+  s_df6c397ba2c129::t_a6cd57e477debd 37,59,61,63-65,68-69,121,144,148
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/__snapshots__/DropdownMenu.test.ts.snap
+  s_df6c397ba2c129::t_b2cba76845e656 33,37,39,41-44,80,84,86,88-91
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/__snapshots__/DropdownMenuItem.test.ts.snap
+  s_df6c397ba2c129::t_913b38a5466a39 31,35,37,40-41,133,137,139,141-144,273,277,279,282
+packages/frontend/@n8n/design-system/src/components/N8nIcon/__snapshots__/Icon.test.ts.snap
+  s_df6c397ba2c129::t_95fdfd5834f9ed 4-5,10-11,16-17,22-23,28-29,34-35
+packages/frontend/@n8n/design-system/src/components/N8nLogo/__snapshots__/Logo.test.ts.snap
+  s_df6c397ba2c129::t_237b153174604b 4-7,12-13,20-23
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/__snapshots__/SelectedItemsInfo.test.ts.snap
+  s_df6c397ba2c129::t_9c6361da6875c1 5-6
+packages/frontend/@n8n/design-system/src/components/TableHeaderControlsButton/__snapshots__/TableHeaderControlsButton.test.ts.snap
+  s_df6c397ba2c129::t_9decff5cb50ebf 6,20,56,110,160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a848abcb6862b017fee439966ada513a5ea192c4",
+  "prompts": {},
+  "sessions": {
+    "s_df6c397ba2c129": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f6f8-24d9-73c1-a804-786ea56c9af8",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

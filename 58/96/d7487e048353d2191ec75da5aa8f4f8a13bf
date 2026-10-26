@@ -1,0 +1,51 @@
+packages/nodes-base/nodes/Venafi/Datacenter/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_4e90e9ac7b52d1 1-25
+packages/nodes-base/nodes/Venafi/Datacenter/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_c99724d6739c21 44-50
+  s_7cfdda65c751ad::t_04904ce873fae6 9-10,12,17,25,33,75,79,83,86-87
+packages/nodes-base/nodes/Venafi/Datacenter/VenafiTlsProtectDatacenterTrigger.node.ts
+  s_2e1fa95fc44f8f::t_ccba8a7cf687f5 9
+  s_7c77f9db616763::t_6a8768f2688c75 66
+packages/nodes-base/nodes/Venafi/Datacenter/VenafiTlsProtectDatacenter.node.ts
+  s_4ebde64ab825df::t_a0620c2850144f 8,94,106,135,158,178,187,210,232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5896d7487e048353d2191ec75da5aa8f4f8a13bf",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4ebde64ab825df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9b9b2bb511b5c44a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_7c77f9db616763": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac440d417d200475a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_7cfdda65c751ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9defdf3b8c9471ba",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+packages/cli/test/integration/agents/n8n-chat-page.api.test.ts
+  s_71e25d45a5ee90::t_86a7c0c8631f06 116-120,128-131
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_71e25d45a5ee90::t_9652e921d90565 947-960
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_71e25d45a5ee90::t_689459da2be8fd 1649-1654
+  s_71e25d45a5ee90::t_072ad3615c9247 57-60,70
+  s_71e25d45a5ee90::t_8992836b78980b 61-69,71-76
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_71e25d45a5ee90::t_a0d380f1b76cf1 684,692
+  s_71e25d45a5ee90::t_30c361e640e449 673,676
+packages/cli/src/auth/auth.service.ts
+  ai_agent 142
+  s_71e25d45a5ee90::t_0dd7bde7a47e5d 141,144
+packages/@n8n/api-types/src/agents/__tests__/list-n8n-chat-threads-query.dto.test.ts
+  s_71e25d45a5ee90::t_febbd02b9d418c 7,18,24-35
+packages/@n8n/api-types/src/agents/dto.ts
+  s_71e25d45a5ee90::t_f3c3d7e5aee055 31-33
+packages/cli/src/modules/agents/utils/__tests__/parse-thread-list-limit.test.ts
+  s_71e25d45a5ee90::t_15b734713675c2 12-15
+  s_71e25d45a5ee90::t_3a78688b87996d 1-11,16-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b20348ca7839d71af97f14617f287ae3147591f4",
+  "prompts": {},
+  "sessions": {
+    "s_71e25d45a5ee90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ca6b762-f376-4a31-af78-4066f186c7bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

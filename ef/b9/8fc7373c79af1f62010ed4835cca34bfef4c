@@ -1,0 +1,24 @@
+scripts/turbo-sizing.test.mjs
+  s_1c354657874f9f::t_8b61b4190e9518 89-90,94-95,99-100,104,108-112,115-128
+scripts/turbo-sizing.mjs
+  s_1c354657874f9f::t_0d933d37489cbf 110-111,113-121,124,128,130-132,137,140-143,187-189,192-198,200-201
+scripts/agent-setup.mjs
+  s_1c354657874f9f::t_27faedc90df8cb 15,31,110-118
+  s_1c354657874f9f::t_1e6586c2c60738 119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "efb98fc7373c79af1f62010ed4835cca34bfef4c",
+  "prompts": {},
+  "sessions": {
+    "s_1c354657874f9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f27a07ee-80c5-4235-9994-565fc70d78d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

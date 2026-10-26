@@ -1,0 +1,19 @@
+packages/cli/src/license.ts
+  s_12bdf0e8a0d4d6::t_ec00ceea65a182 176-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ebd5130a118ce8b3f048372ec1527cdec94c1d4",
+  "prompts": {},
+  "sessions": {
+    "s_12bdf0e8a0d4d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2d3eb5d-760e-40ce-9a45-87215c694e54",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

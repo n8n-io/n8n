@@ -1,0 +1,34 @@
+packages/cli/src/webhooks/hitl-interaction-webhooks.ts
+  s_3d68be55b2b8d8::t_872e8cf845a930 5
+  s_3d68be55b2b8d8::t_549a29956e0700 33-37
+packages/cli/src/webhooks/webhook-request-handler.ts
+  s_3d68be55b2b8d8::t_33af34c7f30624 189
+packages/cli/src/webhooks/__tests__/slack-interaction-webhooks.test.ts
+  s_3d68be55b2b8d8::t_e2d139d404afc3 322-327
+packages/cli/test/integration/webhooks.test.ts
+  s_3d68be55b2b8d8::t_b3ba98d2cdddb7 22
+  s_3d68be55b2b8d8::t_ea46117b90c46c 47-48
+packages/cli/src/webhooks/waiting-webhooks.ts
+  s_3d68be55b2b8d8::t_d91be815226466 78
+  s_3d68be55b2b8d8::t_d6f4b85fe762f0 12
+  s_3d68be55b2b8d8::t_106a3aed1078a0 111-118
+  s_3d68be55b2b8d8::t_d27778ae41ac1b 421
+packages/cli/src/webhooks/__tests__/webhook-request-handler.test.ts
+  s_3d68be55b2b8d8::t_8ccd62639b5453 189-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "48d3deff1c748d77e9ae41f2b3b7f5dfec72a7fa",
+  "prompts": {},
+  "sessions": {
+    "s_3d68be55b2b8d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97a3924d-ec1c-488a-b801-3e4314d24d92",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

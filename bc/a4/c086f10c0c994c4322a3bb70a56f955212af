@@ -1,0 +1,61 @@
+packages/@n8n/db/src/repositories/workflow-history.repository.ts
+  s_be34f2a9936255::t_aef7943f67ff3d 2,163,182,185-186
+packages/cli/test/integration/database/repositories/workflow-history.repository.test.ts
+  s_be34f2a9936255::t_90c39dffe1b0e0 267-289,297-313,315-320,338,351,357,378,407,416,435
+  s_be34f2a9936255::t_0d327f00742ab6 9
+  s_be34f2a9936255::t_7c0d5924d7763e 205,207,210-216,219-225,228-234,340,342-343,345,381,387-388,390,392,394-395,397,405,436,442-443,445-446,452-453,455,465,473
+  s_be34f2a9936255::t_84bc85790dac17 314
+  s_be34f2a9936255::t_cbee4a76baf5f1 140-164
+  s_be34f2a9936255::t_544e1019347fc5 59-83
+  s_be34f2a9936255::t_fdb4e848c66af7 30-32
+  s_be34f2a9936255::t_94b78e7e96189a 290-296
+  s_be34f2a9936255::t_e4205efc94773d 321-323,335-337
+  s_be34f2a9936255::t_762de075009339 339
+  s_be34f2a9936255::t_88fb5beeb0330e 341
+  s_be34f2a9936255::t_3e0fe463cd41e8 344
+  s_be34f2a9936255::t_23361ca242452e 346-350
+  s_be34f2a9936255::t_4ffef3e6ee9174 352-356
+  s_be34f2a9936255::t_5cb305509e508a 358-360,375-377
+  s_be34f2a9936255::t_f3e5cbe96d850f 379-380
+  s_be34f2a9936255::t_85bbffe6d4f3b9 382-386
+  s_be34f2a9936255::t_4149de7ec8252c 389
+  s_be34f2a9936255::t_b6797f36a0c7f9 391
+  s_be34f2a9936255::t_429e2845249770 393
+  s_be34f2a9936255::t_569fd42cbbddda 396
+  s_be34f2a9936255::t_1cf7aa8dd957fe 398-400,402-404
+  s_be34f2a9936255::t_06287d67f4187b 406
+  s_be34f2a9936255::t_a5218bee263d9c 408-410,413-415
+  s_be34f2a9936255::t_f44a399d2f7ec3 417-419,432-434
+  s_be34f2a9936255::t_345dd061e73cb5 437-441
+  s_be34f2a9936255::t_a24069b084f3c5 444
+  s_be34f2a9936255::t_3788dfb54c1e18 447-451
+  s_be34f2a9936255::t_b5357b196ffe57 454
+  s_be34f2a9936255::t_2c5f6758f92af0 456-458,462-464
+  s_be34f2a9936255::t_9a1162954e4f80 466-468,470-472
+  s_be34f2a9936255::t_ba3c2eaed0b45a 474-476
+  s_d75b8363dac464::t_75a3a13959ab68 324-334,361-374,401,411-412,420-431,459-461,469,477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bca4c086f10c0c994c4322a3bb70a56f955212af",
+  "prompts": {},
+  "sessions": {
+    "s_be34f2a9936255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a0f2c47-6407-4069-a583-c102c8290868",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_d75b8363dac464": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fb80-8808-7c11-a689-33b9db16d4a4",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

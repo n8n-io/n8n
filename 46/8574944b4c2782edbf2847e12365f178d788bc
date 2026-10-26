@@ -1,0 +1,89 @@
+biome.jsonc
+  s_3b685b78e90682::t_41a7a0830ea0ff 21-22
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_3b685b78e90682::t_50f58bcf79e762 303-314
+packages/@n8n/hooks-api/README.md
+  s_3b685b78e90682::t_89798fd647bf2f 1-72
+packages/@n8n/hooks-api/api/v1.d.ts
+  s_3b685b78e90682::t_92d19e2d6c2de5 1-106
+packages/@n8n/hooks-api/oxlint.config.mts
+  s_3b685b78e90682::t_1c9e336da80323 1-7
+packages/@n8n/hooks-api/package.json
+  s_3b685b78e90682::t_465c90c82b717e 1-35
+packages/@n8n/hooks-api/scripts/check-api.mjs
+  s_3b685b78e90682::t_659c9281c3c2c6 1-127
+packages/@n8n/hooks-api/src/index.ts
+  s_3b685b78e90682::t_7305ed4c18eeb6 1-17
+packages/@n8n/hooks-api/src/v1/errors.ts
+  s_3b685b78e90682::t_f845e16c83dbbf 1-7
+packages/@n8n/hooks-api/src/v1/hooks-api.ts
+  s_3b685b78e90682::t_f2141f067e261e 1-25
+packages/@n8n/hooks-api/src/v1/hooks.ts
+  s_3b685b78e90682::t_cbb88c12369d1f 1-35
+packages/@n8n/hooks-api/src/v1/http.ts
+  s_3b685b78e90682::t_eb8a5399f0c355 1-35
+packages/@n8n/hooks-api/src/v1/index.ts
+  s_3b685b78e90682::t_04b2a2217f3649 1-6
+packages/@n8n/hooks-api/src/v1/workflows.ts
+  s_3b685b78e90682::t_164c76a45b4c9f 1-6
+packages/@n8n/hooks-api/tsconfig.build.json
+  s_3b685b78e90682::t_fc0bc563274327 1-9
+packages/@n8n/hooks-api/tsconfig.json
+  s_3b685b78e90682::t_da47e9a685b3ba 1-7
+packages/cli/package.json
+  s_3b685b78e90682::t_7ec3df32ccbf66 175
+packages/cli/src/__tests__/external-hooks.test.ts
+  s_3b685b78e90682::t_6b43ee1d6c4ad3 22,35-40,105-132
+packages/cli/src/external-hooks.ts
+  s_3b685b78e90682::t_21e948fe996fb4 13,177-182,191-193,218-222,237,246-255
+packages/cli/src/hooks-api/__tests__/contract/v1-ownership.contract.integration.test.ts
+  s_3b685b78e90682::t_0bba342e692add 1-116
+packages/cli/src/hooks-api/__tests__/contract/v1-workflows.contract.integration.test.ts
+  s_3b685b78e90682::t_23b51dece4f537 1-61
+packages/cli/src/hooks-api/__tests__/hooks-api.service.test.ts
+  s_3b685b78e90682::t_9b8620f1f5a782 1-68
+packages/cli/src/hooks-api/__tests__/public-http.service.test.ts
+  s_3b685b78e90682::t_5daddde101166f 1-57
+packages/cli/src/hooks-api/__tests__/public-ownership.service.test.ts
+  s_3b685b78e90682::t_eb35f59c359548 1-54
+packages/cli/src/hooks-api/__tests__/public-workflow-hooks.service.test.ts
+  s_3b685b78e90682::t_cf5c389333f877 1-45
+packages/cli/src/hooks-api/hooks-api.error.ts
+  s_3b685b78e90682::t_5df03a59205c2d 1-11
+packages/cli/src/hooks-api/hooks-api.service.ts
+  s_3b685b78e90682::t_7bf6c594b2c829 1-70
+packages/cli/src/hooks-api/v1/public-http.service.ts
+  s_3b685b78e90682::t_35ad65c16c13a6 1-67
+packages/cli/src/hooks-api/v1/public-ownership.service.ts
+  s_3b685b78e90682::t_2812d449fbe151 1-50
+packages/cli/src/hooks-api/v1/public-workflow-hooks.service.ts
+  s_3b685b78e90682::t_c6e97d1409d797 1-28
+packages/cli/src/hooks-api/v1/public-workflows.service.ts
+  s_3b685b78e90682::t_2c2856fe8b4004 1-14
+packages/cli/src/scaling/worker-server.ts
+  s_3b685b78e90682::t_ae6e48cf2af380 4,105-109
+packages/cli/test/integration/hooks-api/fixtures/startup.hook.js
+  s_3b685b78e90682::t_34bf16df68e2b3 1-37
+packages/cli/test/integration/hooks-api/startup.test.ts
+  s_3b685b78e90682::t_25c71003b50014 1-264
+packages/cli/tsconfig.json
+  s_3b685b78e90682::t_51e27aa6c87141 40
+pnpm-lock.yaml
+  s_3b685b78e90682::t_cdb7c38619efda 3085-3102,4889-4891,29179,41621,41650
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "468574944b4c2782edbf2847e12365f178d788bc",
+  "prompts": {},
+  "sessions": {
+    "s_3b685b78e90682": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed21dabd-8c71-4666-a7d3-2ed06a5b1f24",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

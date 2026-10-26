@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiTestAgentExamplesPanel.test.ts
+  s_a26381a4168256::t_b1e0142556cd5b 247-299
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiTestAgentPreviewPanel.test.ts
+  s_a26381a4168256::t_acb54c11ba87a6 1319,1323,1644,1658,1723-1778
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentExamplesPanel.vue
+  s_a26381a4168256::t_e6bc3b0a62accc 33-34,49-50,97-99,101-102,106-110,140-141,143,173,229-239,241,256-257,286
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentPreviewPanel.vue
+  s_a26381a4168256::t_4c4be1788758ba 16-17,100-106,108-111,172,491,620
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "249327e0248841dd0e4f463a99ca412e7cac7974",
+  "prompts": {},
+  "sessions": {
+    "s_a26381a4168256": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "de9744d5-d4a6-4ca6-9d6e-70d7c82d2184",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

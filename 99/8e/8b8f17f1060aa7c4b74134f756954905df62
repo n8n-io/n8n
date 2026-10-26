@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/S3/__tests__/regression/requests.test.ts
+  s_2e1fa95fc44f8f::t_11d291c89c4084 297-298
+  s_2e1fa95fc44f8f::t_3789ccd8f5c055 348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "998e8b8f17f1060aa7c4b74134f756954905df62",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

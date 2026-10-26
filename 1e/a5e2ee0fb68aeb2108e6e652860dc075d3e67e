@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Git/test/Git.node.test.ts
+  s_86c15983859778::t_84cbfae789d2d4 5,9,42,654-680
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ea5e2ee0fb68aeb2108e6e652860dc075d3e67e",
+  "prompts": {},
+  "sessions": {
+    "s_86c15983859778": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e88e11e9-e2cd-42bd-b054-6227c330dd9f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

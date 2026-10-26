@@ -1,0 +1,21 @@
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_8987b8017e49de::t_375bee062031c6 615-617,619-621
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_8987b8017e49de::t_c18e421635645d 588,598-636
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "752dfa5f7cf899342afd5db2c98d6e47ae05fb02",
+  "prompts": {},
+  "sessions": {
+    "s_8987b8017e49de": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ce582f0f-6915-4be7-93ac-a2ac38c09dc8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/workflow-runner.ts
+  s_2188929fb00b57::t_aab62e8f155658 339-349
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bcabda04796588913aaa888c428bc925db3722ef",
+  "prompts": {},
+  "sessions": {
+    "s_2188929fb00b57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ea19524-3131-4b5b-a8e3-f7f398aaece0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

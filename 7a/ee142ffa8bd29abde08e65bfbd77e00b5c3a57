@@ -1,0 +1,50 @@
+packages/nodes-base/nodes/NextCloud/test/workflow/NextCloud.workflow.test.ts
+  s_2e1fa95fc44f8f::t_7750c2584c3a82 1-30,43-60,64-69
+  s_2e1fa95fc44f8f::t_39da9b574504db 31-42
+  s_2e1fa95fc44f8f::t_215c96c75f4a3e 61-63
+packages/nodes-base/nodes/Netlify/test/NetlifyTrigger.requests.test.ts
+  s_2e1fa95fc44f8f::t_061fc329dc4a1f 1-51
+packages/nodes-base/nodes/Netlify/test/workflow/Netlify.workflow.test.ts
+  s_2e1fa95fc44f8f::t_8a1b5138971c27 1-41,43-55
+  s_2e1fa95fc44f8f::t_839297469af683 42
+packages/nodes-base/nodes/Nasa/test/workflow/Nasa.workflow.test.ts
+  s_2e1fa95fc44f8f::t_a47bf5ceac3ef4 1-57
+packages/nodes-base/nodes/Netscaler/ADC/test/workflow/NetscalerAdc.workflow.test.ts
+  s_2e1fa95fc44f8f::t_1d47c137082b85 1-52
+packages/nodes-base/nodes/OneSimpleApi/test/workflow/OneSimpleApi.workflow.test.ts
+  s_2e1fa95fc44f8f::t_528def5803f1ee 1-64
+packages/nodes-base/nodes/Nasa/test/workflow/requests.workflow.json
+  s_c59331e96b0204::t_47bd0210f4acc7 1-198
+packages/nodes-base/nodes/Netlify/test/workflow/requests.workflow.json
+  s_c59331e96b0204::t_4ba181fb1ea536 1-284
+packages/nodes-base/nodes/Netscaler/ADC/test/workflow/requests.workflow.json
+  s_c59331e96b0204::t_7668a461bdc0de 1-160
+packages/nodes-base/nodes/NextCloud/test/workflow/requests.workflow.json
+  s_c59331e96b0204::t_7ef4d59cf539c2 1-263
+packages/nodes-base/nodes/OneSimpleApi/test/workflow/requests.workflow.json
+  s_c59331e96b0204::t_4f9b90e001ef4a 1-337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7aee142ffa8bd29abde08e65bfbd77e00b5c3a57",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c59331e96b0204": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a406bf384a0b0661a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

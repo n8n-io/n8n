@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCommandBar.test.ts
+  s_8e657ed96597bc::t_cb53827a87a3c7 110,171,207,402-418
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCommandBar.ts
+  s_8e657ed96597bc::t_4e45be5669f450 198-206
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_8e657ed96597bc::t_4e45be5669f450 5,445
+packages/@n8n/db/src/repositories/__tests__/credentials.repository.test.ts
+  s_8e657ed96597bc::t_db025ec5ed05d0 5,331-339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1b5452e8e4fa2fdf073bdb32a965e302907f4963",
+  "prompts": {},
+  "sessions": {
+    "s_8e657ed96597bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "beceef78-98c1-4119-bb42-ef1a026730e3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

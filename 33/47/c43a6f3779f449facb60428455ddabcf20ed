@@ -1,0 +1,964 @@
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 9,91
+.github/test-metrics/e2e-impact-map.json
+  s_20d484677b459f::t_cd3ccc81437cc3 1
+packages/cli/test/integration/skills/skill.repository.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 14,19-20,40,49,52,209-216,333,348,357,376,378-381,384-396,418-421,438,457,466,504-507,588-592,594-595,598,601,603,605-606,609-610,614,616,618-620,623,625-628,630,632-637,639,641,643,688,694,701,707
+  s_20d484677b459f::t_a6a820af29ff10 16-18,22,38-39,56-59,92,95,122,129-130,156-157
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreview.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-107
+packages/quality/testing/playwright/tests/e2e/type-availability-policies/credential-type-policy.spec.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 8,163-165
+packages/cli/test/integration/policy/available-credential-types.controller.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 14,90
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-103
+packages/cli/test/integration/policy/credential-type-policy.extends.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 26,121
+packages/cli/test/integration/policy/node-type-policy.fan-out.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 13,15,17,56,119-120,122-126,137,143-144,147-154,161,175-178
+docs/generated/postgres-schema/public.app_artifact.md
+  ai_agent 1-72
+packages/cli/src/modules/agents/utils/agent-config-hash.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1,32-33
+packages/cli/src/modules/skills/skill.repository.ts
+  s_20d484677b459f::t_e63cb74f503e98 1-2,150,167
+  s_20d484677b459f::t_169f7fb85de1f9 155
+  s_20d484677b459f::t_cd3ccc81437cc3 13,17-20,37-40,43,50,61,80-81,96-97,107,113-114,116-120,314-316,319-321,324-326,328,330-336,338,341-343,345,347-348,355-365,371,374-391
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 14,82
+packages/frontend/@n8n/stores/src/rbac.store.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 16
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 10-11,24-25,31,74,76,237-239,251-253,302
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionResourceDetails.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-103
+packages/cli/src/modules/agents/skills/skills-hub-startup-copy.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 2,9-13,17,107,110,113,116-117,200,203,316,322,352,362,375
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 37,481
+packages/frontend/@n8n/design-system/src/components/N8nMenuItem/MenuItem.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 14,181
+packages/cli/src/modules/skills/skills-hub-rollout.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 5-6,8-16,25,34
+packages/cli/src/modules/mcp/__tests__/skill-tools.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 6-7
+packages/cli/src/modules/mcp/tools/skills/skill-tools.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 18-19
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 139,160,173-174
+packages/cli/src/modules/skills/skill-name-taken.error.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-21
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOAuth.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 24,252,393,413
+packages/@n8n/api-types/src/dto/app/list-apps-query.dto.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-19
+packages/cli/eslint.config.mjs
+  s_20d484677b459f::t_cd3ccc81437cc3 73-96,215-232
+packages/cli/src/modules/agents/__tests__/agents-settings.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-75
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 436-445,454-460
+packages/modules/apps/backend/src/apps.controller.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-53
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 24,77,109-110,184,855-874,944-956
+packages/cli/test/integration/policy/node-type-policy.store-reads.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-2,4,8-10,14,16,18,21,23-24,61,119-121,123-124,127-128,130,132,135,137-140,142-144,146,149,153,155-157,159,162-163,165,168,171-172,174,176-179,181-183,185-188,190,192-196,198-222,226-227
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-169
+packages/modules/apps/backend/tsconfig.json
+  s_20d484677b459f::t_cd3ccc81437cc3 1-17
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPullModal.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 50,771-776
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 98,167,213,225,250,2638-2744,2827-2838,2840-2846,2849-2850,2855,2865-2868,2879,2901
+packages/cli/src/modules/mcp-discovery/__tests__/module.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-33
+packages/cli/src/modules/sso-saml/saml.service.ee.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 23,106,400-415
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 48,59-63,180-181,208,290,310,420-423,873-874,902
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-2,12,14,23-27,34-37,104,139-140,143,148,516-567,1438-1579,1717,1733-1737,1743,1745,1754-1755,1757-1763,1780,1789-1812
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 18,25,69,252-260,262-268
+packages/cli/src/modules/skills/AGENTS.md
+  s_20d484677b459f::t_cd3ccc81437cc3 1-17
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 147,550
+packages/frontend/@n8n/design-system/src/components/N8nNodeCreatorNode/NodeCreatorNode.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 9,74
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 604-607
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionSelection.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-67
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-2,6,19-22,107-108,281-349,794
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 115-125
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 29,152,788,886,1501
+packages/frontend/editor-ui/src/features/roles/instance/components/ScopeGroupSelector.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 14-15,20-45
+packages/cli/test/integration/policy/type-availability-policy-repositories.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 395-432
+packages/modules/apps/backend/oxlint.config.mts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-8
+packages/modules/apps/backend/src/__tests__/apps.module.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-38
+packages/modules/apps/backend/src/app-artifact.entity.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-27
+packages/quality/testing/playwright/tests/e2e/type-availability-policies/node-type-policy.spec.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 8,110-112
+docs/generated/postgres-schema/public.binary_data.md
+  ai_agent 21
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 58-60
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 86-88
+packages/cli/src/webhooks/waiting-webhooks.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 13,33,59-79,107-114,443
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/module.descriptor.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 11,13-17
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionResult.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-62
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 80,87,143,197-198
+packages/cli/src/webhooks/__tests__/webhook-request-handler.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 194-218
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/createMenu.module.scss
+  s_20d484677b459f::t_cd3ccc81437cc3 1-7
+packages/cli/test/integration/agents/agents-settings.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 68
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.api.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 6-8,21-41
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 471-473,482-483,488-491
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/index.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 2-4
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 95,151-152
+packages/cli/src/modules/mcp-discovery/__tests__/enrollment.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-296
+packages/cli/src/modules/skills/skill-agents-proxy.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-116
+packages/cli/src/modules/sso-saml/__tests__/saml.service.ee.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 19,172,233,252,536,538-552,555-574,576-582
+docs/generated/postgres-schema/public.project.md
+  ai_agent 12,47,169-178
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-2,5-9,11,59-163
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 42,285-294,381-384,396-410,419-420,431-432,864
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policies.module.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 9,15,18,20,99-104
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 8,223-242
+.github/workflows/docker-build-push.yml
+  s_20d484677b459f::t_cd3ccc81437cc3 58-63
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.tree.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-181
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 3,1506-1509,1552-1579
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 10,88-91
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 345-422
+packages/cli/tsconfig.json
+  s_20d484677b459f::t_cd3ccc81437cc3 43
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.utils.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 10,12,26-47,62-73,76,78,80
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/onboarding.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-43
+packages/cli/src/modules/mcp/mcp-tool-availability.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 8,35-40
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOAuth.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 29-30
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-3,7,42-45,87-144,154,157,199-204,211-222,242-246,252-273
+packages/modules/apps/backend/src/apps-list.controller.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-17
+packages/frontend/@n8n/design-system/src/components/N8nSlider/component-slider.md
+  s_20d484677b459f::t_cd3ccc81437cc3 1-196
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.content.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-146
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  ai_agent 10,13-14,41,67-69
+packages/cli/src/modules/mcp-discovery/__tests__/eligibility.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-104
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 4-8
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 27,37-38,80,96-104,109,196-200,235,262,320,347-353,373-375,378-380,387
+packages/cli/src/modules/mcp-discovery/mcp-discovery.controller.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-19
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 361-365
+packages/cli/test/integration/policy/node-type-policy.credential-decrypt.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 19,94
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 33,47,122-125
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.types.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-40
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.client.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-268
+packages/cli/src/modules/type-availability-policies/type-availability-policies.module.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 38-43
+packages/cli/src/modules/skills/skill-content-hash.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 3
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 291,748
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 28,75,88,90-93
+packages/cli/src/events/maps/relay.event-map.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 369-374
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 16,284,287-288,591,597,601-608,717,734,761
+packages/cli/test/integration/agents/agent-thread-repository-queries.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 6,24,40,52,178-206
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 37,198-202,204
+packages/cli/src/modules/agents/__tests__/agent-skill-usage.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-391
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/useInstancePromotionConnection.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 8-10,20-21,26-34,44
+packages/cli/src/modules/skills/__tests__/skills-telemetry.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 7-10,19-20,32
+packages/@n8n/telemetry/src/__tests__/registry-checks.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 172-235
+packages/cli/src/modules/agents/utils/agent-thread-access.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 2,22-33,60-67,71-72,75-76,86-87,90,94,98,100-126
+packages/@n8n/permissions/src/utilities/__tests__/get-resource-permissions.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 9,69-70,106
+packages/@n8n/telemetry/src/events/context.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 302,328,341,355
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 34,64,234-239,285
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 14,41,108
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 250-254
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscovery.store.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-529
+packages/cli/src/modules/mcp/__tests__/mcp-api-key.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 15-17,21-25,77-99
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsSetupView.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 49,67,214-247
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPushModal.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 187-215
+packages/cli/src/modules/skills/skill.entity.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 8
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 836-880
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 60-69,71-81,93-95,120,140-142,167
+packages/modules/apps/backend/src/app.repository.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-84
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 55,249
+packages/cli/src/public-api/v1/shared/spec/schemas/promotePackageResultDto.generated.yml
+  ai_agent 45-70
+packages/cli/src/modules/instance-ai/instance-ai-skills.adapter.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 11-12
+packages/@n8n/permissions/src/roles/__tests__/custom-role-scopes.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 103-125
+packages/frontend/@n8n/design-system/src/components/NewBadge/NewBadge.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-25
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscoverySettings.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-38
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsManagedSetup.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 9,23-25,71,89,228-329,391,400-402
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 2,5,7,9,15-16,21-23,27-28,30,32-37,40,45-46,50,52,55-57,63-64,66,69,71,73,84-87,90-103,105-114,116-121,123-130,132-134,139,145-162,166-167,169,172-212,214,220-221,223-228,230-231,235,238-254
+packages/@n8n/backend-services/src/services/oauth-token-verifier-proxy.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 35-36
+.github/workflows/build-v3-nightly.yml
+  s_20d484677b459f::t_cd3ccc81437cc3 150-151,200
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChannelRemoval.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 6,12,25,81,87-91,97,99,101
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionProviderDialog.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 2-3,6-23,30-31,34-36,38-48,50,52-56,58-69,71-78,80,82,84,86,89-112,116-118,120-121,123-129,131,133-159,162-165,167,169-170,172-178,181-184,186-204,207-211,213-214,217-226,228-229
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 10-12,40-42,71-73,188-192,205-211,345-347,360-362
+packages/cli/src/modules/agents/system-agents/system-agent-registry.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-29
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 1050,1086,1246
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentVersionHistory.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 4,14-18,49-52,202,229-232,247
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsManagedApp.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 41
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBudgetModals.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 3,57-59,61-70,80,133
+packages/frontend/editor-ui/src/features/roles/instance/components/ScopeGroupSelector.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 4-5,36-41
+docs/generated/postgres-schema/public.app_version.md
+  ai_agent 1-92
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-132
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 21-22,64-68,77,88,102,245,287-288,294-309,486-510
+packages/frontend/@n8n/stores/src/users.store.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 365,370
+packages/cli/src/modules/instance-registry/__tests__/instance-registry.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 9-10,63-67,258-294
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionCheckout.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1,3-5,7,9-10,12,14,16-19,21,23-28,30,32
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 10-14,94-98,165-169,234-235
+packages/frontend/@n8n/stores/src/users.store.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 17,31,44,128-162
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 105,633-641
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscoverySettings.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-22
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 23,25,55,116,183,209
+packages/frontend/@n8n/design-system/src/components/N8nSlider/Slider.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-292
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 101-106,229
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-704
+packages/frontend/@n8n/design-system/src/components/PreviewBadge/PreviewBadge.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 2-4,9-16
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 464-467,469,471-473
+packages/cli/src/modules/mcp/__tests__/mcp-tool-availability.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 146-147
+packages/cli/src/modules/skills/__tests__/test-utils/skills-hub-flag.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 4
+packages/modules/apps/backend/src/app.entity.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-31
+packages/frontend/@n8n/design-system/src/components/N8nCopyInput/CopyInput.stories.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 235-272
+packages/cli/test/integration/policy/workflow-list.restricted-node.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 24,111
+packages/cli/src/modules/mcp-discovery/__tests__/activity-events.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-138
+packages/cli/test/integration/policy/credential-type-policy.workflow.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 40,190
+packages/cli/src/modules/promotions.ee/git-hosts/__tests__/gitlab-merge-request.client.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-237
+packages/frontend/@n8n/design-system/src/components/NewBadge/NewBadge.stories.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-12,14-39,41-47,49
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 83,216
+packages/cli/src/modules/agents/register-skill-agents-provider.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-10
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionResourceDetails.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-89
+packages/@n8n/api-types/src/dto/index.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 3-6,812-813,829,842
+packages/cli/src/modules/skills/__tests__/skills.controller.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-29
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalExamplesSlider.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 9,127-131,153,161-164,166-168,171,275-276,278
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 15-17,49-50
+packages/cli/test/integration/public-api/n8n-packages-export-agents.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 17,40-42,44,157
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 667
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscovery.store.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-168
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsManagedSetup.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 40,42,73-74,243-272,460-464,466-467,469,657,659-660,681,683-684
+packages/frontend/editor-ui/src/app/components/MainSidebar.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 2-5,403-405
+packages/cli/test/integration/policy/credential-type-policy.credential-save.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 22,86
+packages/cli/test/integration/webhooks.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 22,47-48
+packages/cli/src/modules/agents/repositories/agent-chat-attachment.repository.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 29-38
+packages/frontend/editor-ui/src/features/agents/channels/teams/useTeamsSetupRestart.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-46
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 306
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateTile.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 3,48-51,53-55,86,91-94,98,100-101
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_20d484677b459f::t_cd3ccc81437cc3 63-66,99
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 25,142-146,148,151-155,157,160-163,168-173,1893-1894,1897,1903
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 117,231
+packages/cli/test/integration/policy/node-type-policy.publish-and-start.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 30,153
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/useInstancePromotionConnection.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 52,56,60,64
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 1-48
+packages/modules/apps/backend/package.json
+  s_20d484677b459f::t_cd3ccc81437cc3 1-61
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/McpConnectHint.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-94
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/preview.fixtures.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-95
+packages/cli/test/integration/agents/system-agent-turn-abort.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-217
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionGitHostSelect.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 3,11,56,104-113,134-141
+packages/frontend/editor-ui/src/features/agents/channels/teams/useTeamsChannelRuntime.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 18-22,40,43-44,47-54,100,209-212,251-252,254,406-420,428,432
+packages/modules/apps/backend/src/index.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-5
+packages/cli/src/modules/type-availability-policies/effective-policy.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-61
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_20d484677b459f::t_cd3ccc81437cc3 58-63
+packages/quality/testing/playwright/tests/e2e/type-availability-policies/credential-type-policy-worker.spec.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 2,6,46-60
+packages/cli/src/modules/agents/types/agent-turn-outcome.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-8
+packages/cli/src/modules/mcp-discovery/__tests__/activity.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-140
+packages/cli/src/modules/mcp-discovery/__tests__/mcp-discovery.controller.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-24
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/setup.md
+  s_20d484677b459f::t_cd3ccc81437cc3 1-60
+packages/cli/src/modules/mcp-discovery/activity.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-74
+packages/cli/src/modules/agents/integrations/single-connection.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-23
+packages/cli/src/modules/skills/__tests__/skill.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 10-18,82,85,96-97,293,307,467,469,471-472,475,477,481,486,496,501,511,514-517,520-527,551,557,567,576,595,614,623,643,660,672-673,692-694,712,717,746,844,848,858,880,891,900
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 6,10-14,34,165,305-337,358,372-386
+packages/cli/src/modules/skills/__tests__/hub-assistant-skill-provider.service.test.ts
+  s_20d484677b459f::t_a6a820af29ff10 105-114,121-125
+  s_20d484677b459f::t_169f7fb85de1f9 115-120
+  s_20d484677b459f::t_e63cb74f503e98 9-15,23-24,59,101-104
+packages/cli/test/integration/agents/agent-skill.repository.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-404
+packages/cli/src/modules/agents/__tests__/messages-envelope.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 4-8,354-419
+packages/cli/src/modules/skills/skill-version.entity.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-49
+packages/@n8n/api-types/src/dto/app/create-app.dto.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-11
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 38,55-56,60-63,98,219-220,258-260,314,317,782-839
+packages/cli/src/webhooks/__tests__/slack-interaction-webhooks.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 341-346
+packages/modules/apps/backend/src/app-version.entity.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-33
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 18-25
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-14,65-66,131-132,198,243-258,260-272,274-292,294-336,391,448,486-496
+packages/cli/test/integration/policy/credential-type-policy.credential-use.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 18,84
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 340,347,352,359
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 41-45
+packages/cli/src/modules/mcp-discovery/types.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-8
+packages/cli/test/integration/agents/system-agent-queue-access.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-76
+packages/cli/test/integration/skills/skills.controller.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 6,9-11,21,197
+packages/cli/src/modules/agents/agent-skill-refs.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 11,17-25,62,64,79-80,95,117,178,209,239,299,443,493
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/useClaudeCreateMenu.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-15,17-23,25-33
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/onboarding.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-21
+packages/cli/src/modules/instance-registry/instance-registry.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 10,129-130
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 32-36,38,214-240,383,397,412
+packages/@n8n/db/src/entities/binary-data-file.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 11
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-9,34-37,890-906,936-1065
+packages/modules/apps/backend/vitest.config.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-15
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 21,62-67,72-77,146-150,195,317-318,337-377
+packages/frontend/editor-ui/src/features/roles/project/projectRoleScopes.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 39-42
+packages/frontend/editor-ui/src/features/agents/composables/useAgentVersionHistory.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 9,27,109
+packages/cli/src/modules/skills/skills-telemetry.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 9-11,29-30,38,113
+packages/cli/src/modules/agents/utils/messages-envelope.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 167-192
+packages/frontend/@n8n/design-system/src/components/PreviewBadge/PreviewBadge.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 20,26-29
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 36,79,230,869,871-877,1176,1196-1199,1215-1218,1224
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-host.resolver.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-30,33-38,41-45,47-59,62-65,67-71,73-74,76-83
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-chat.controller.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-443
+packages/cli/src/modules/mcp-discovery/eligibility.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-44
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/mcpDiscoverySettings.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-21
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-skills.adapter.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 7-8
+packages/frontend/@n8n/design-system/src/css/fonts/geist.scss
+  s_20d484677b459f::t_cd3ccc81437cc3 7-8,17-18
+packages/frontend/editor-ui/src/app/stores/posthog.store.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 8-10,486-579
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 24-26,42-43,98,129-130,604-739
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1,6,12-15,97-108
+packages/@n8n/telemetry/src/events/agents.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 350-366,783-804
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-package.integration.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 12-13,17-18,23-24,26,76,78,147-148
+packages/cli/src/modules/promotions.ee/git-hosts/git-host-remote.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 116-120
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/spec.md
+  s_20d484677b459f::t_cd3ccc81437cc3 1-107
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeChoicePrompt.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 2-6,26-28,126-137
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalExamplesSlider.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 36-47
+docs/generated/sqlite-schema/binary_data.md
+  ai_agent 9,32
+packages/modules/apps/backend/src/apps.module.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-24
+packages/cli/src/scaling/pubsub/subscriber.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 200,202-203
+packages/cli/src/modules/mcp-discovery/mcp-discovery.dto.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-9
+packages/cli/src/modules/type-availability-policies/README.md
+  s_20d484677b459f::t_cd3ccc81437cc3 149-151,235-268,290-295,323-324
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.content.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-151
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 701-718
+packages/quality/testing/playwright/tests/e2e/type-availability-policies/policy-helpers.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 229-234,240-257
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/ClaudeEntryPoint.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 1-152
+packages/cli/test/integration/agents/skills-hub-startup-copy.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 3,11-12,19-21,24-28,47,55,57,61,127,136,184,189,299,330-334,344,347,463-465,467-468,483,537,819,878,880,901-902,1018-1024,1171
+docs/generated/postgres-schema/public.app.md
+  ai_agent 1-92
+packages/@n8n/api-types/src/dto/app/__tests__/app.dto.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-78
+packages/cli/src/modules/agents/utils/__tests__/agent-thread-access.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-82
+packages/cli/src/modules/mcp/__tests__/mcp.controller.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 102-104,191-196
+packages/@n8n/api-types/src/agents/types.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 479-491
+packages/cli/src/modules/mcp-discovery/__tests__/agent-activity.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-24,26-45,47-51,53-56,58-60,62-67,69-75,78-80,82-88,90-92,94-100,102,104-105,107-109,111-115,117-126,129-137
+packages/frontend/@n8n/design-system/src/components/N8nCopyInput/CopyInput.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 3,7-8,158-182
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 61-63,88-90
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsSetupView.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 6,25,55-56,149,168,174
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 11,44-50,56-59
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 23-26,47-48,150,182-183,186-187,197-199,231-239,242,248-257
+packages/cli/src/modules/ldap.ee/__tests__/ldap-login-concurrency.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-194
+packages/cli/src/modules/skills/skill.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 5,12,14,16-18,97-102,110,155,230,248-253,263,282,329,346,377,409,512
+packages/frontend/editor-ui/src/app/components/MainSidebarHeader.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 4-8,65-70,107,112-113,115,124,126-130
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 15-16,21,177-184,441-445,447
+packages/cli/src/modules/agents/system-agents/system-agent-chat.controller.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-340
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsSetup.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 30,34,72-73,92,104,109-118,227-229,423-431,577,676
+docs/generated/sqlite-schema/project.md
+  ai_agent 23,53,175-184
+packages/cli/test/integration/policy/credential-type-policy.credential-decrypt.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 20,97
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 56-57
+packages/modules/mcp/frontend/src/SettingsMCPView.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 45-49,297,300-303,305,343,345-351,354-366
+packages/frontend/editor-ui/src/features/agents/channels/teams/useTeamsChannelRuntime.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 82-120,255,291,296-306
+docs/generated/sqlite-schema/app_artifact.md
+  ai_agent 1-69
+docs/generated/sqlite-schema/README.md
+  ai_agent 53-55,259-264,900-930
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 25,106,114-127,150
+packages/@n8n/db/src/migrations/common/1792496430067-CreateApps.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-155
+packages/cli/src/modules/skills/skill-file.entity.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-15
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-2,164-165,912-957,1009
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-3,5,9-34,38,40-52,54-70,74-123,126-137,139-141,144-192,194,197-199,201-208,210-225,228-230,232-235,238-240,242-245,247-252,254,256,258-265,268-285,288-302,305-309,311-313,315-321,323-331,334-338,340-345,348-353,355,357-358,361-375,377-378,380-383,385-389,391-392,394-398,400-414,416-419,422-427,429-431,434-436,438,440-444,447-453,455-457,460-470,472,474,477-480,482-483,487-490,492-516,520-522,524-525,527-530,532,535-542,544-549,551-555,558-562,564-570,572-575,578-580,582-592,594-601,604-608,610-613,616-619,621-626,628-642,644-648,650-655,658-671,673-681,683-690,693-703,706-715,718-720,722-733,735-742,745-752,754-758,760,762,764-766,769-775,778-779,781-794,798-803,805-813,816-819,821-822,825-827,829-835,838,840-842,844-845,847-866,868-899,901-918,922-924,926-928,930-935,937,939-943,945-953,956-961,963-964,967-969,971-995,997,999-1002,1004-1080,1082-1084,1086-1087,1089-1091,1093-1138,1140,1143-1167,1169-1186,1188-1197,1200-1201,1203-1208,1210-1211,1215-1217,1220-1221,1223-1227,1230-1233,1235-1243,1246-1247,1249-1254,1256,1259-1263,1265-1272,1275-1282,1284-1293
+packages/cli/src/modules/type-availability-policies/type-availability-policy.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 2,22-28,31,33,35,176,179,187,195,253,255,352,405,408,411,576,762-763,873,881-883,888-891,907,913-914,921-922,924,928,931-936,938-941
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 4,6,12-17,20,25-34,36-42,45-47,52-53,58,60-88,90-96,98-102,104-107,109-117,120-141,143-151,153,155-158,161-166,168-170,173-175,178-183,186-188,191-194,197-212,214-230,232-234,236-237,239,241,243-248,252,255-258,260-269,273-290,292-302,304-314,317,319,321,323-333,335,337-404,406-411,413,415-435,437-441,443,445-491,493,497-503,509,513,515-524,527-533,535
+packages/frontend/editor-ui/src/features/ai/chatHub/composables/useDynamicCredentialsStatus.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 11,112,114-122,148,163,176-177
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 14,50,90
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsEditView.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 6,8,13-15,19,21,29-33
+packages/cli/src/modules/skills/__tests__/skills-hub-rollout.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 5-6,10,15-17,41-49
+packages/cli/src/modules/agents/__tests__/agent-skill-refs.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 7-12,15,20,45,47,56,58,63,65,69-70,75,91,101,112,118,140,168,180,186-189,200,205,216,220,231,236,245,250-251,259,273,330,365,403,432,441,515,548,552,569,598,612,629,654
+packages/cli/src/events/__tests__/event-map.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-3,19-21
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 54
+packages/cli/test/integration/agents/agent-skills-hub.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 19-20,36-38,74,76,229-231
+packages/cli/src/modules/promotions.ee/promotions.types.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 63-64
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeWebhooks.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 230-232,236,262,267-268,270,290-291,330-333,337
+packages/quality/testing/playwright/pages/settings-promotions-page.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-63
+packages/cli/src/modules/agents/agent-chat-relay.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 23-25,50-62
+packages/@n8n/telemetry/src/events/mcp.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 25-59
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 44-45,251,288
+packages/frontend/editor-ui/src/features/agents/components/BudgetAlertSlider.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 2,6,15-16,21-23,25-27,29
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvaluationsView.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 237
+packages/cli/src/telemetry/cluster-footprint.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-34
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 258
+docs/generated/sqlite-schema/app.md
+  ai_agent 1-97
+packages/cli/src/modules/agent-evals/agent-eval-case-generation.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 27,98,200,234,237-239,241-242,255,271-276,286
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/McpConnectHint.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 2,4-5,7,9-10,12-21,23-29,33-60,64-67,69-78,81,83-92
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionProviderDialog.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 2,44,56,80-83,278,284-286,436,451,458,493-495,507,510-512
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/ConcurrencySlider/ConcurrencySlider.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 2,5,10,12,23-34,38-41,44-47,49-50,56-58
+packages/cli/src/modules/agents/AGENTS.md
+  s_20d484677b459f::t_cd3ccc81437cc3 12-13,23-25
+packages/cli/src/modules/agents/system-agents/system-agent-access.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-22
+packages/cli/test/integration/agents/system-agent-thread-move.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-71
+docs/generated/postgres-schema/README.md
+  ai_agent 53-55,277-282,914-944
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 81
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 595
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPullModal.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 178-190
+packages/cli/src/modules/skills/skill-names.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-37
+packages/modules/apps/backend/tsconfig.build.json
+  s_20d484677b459f::t_cd3ccc81437cc3 1-10
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscovery.schema.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-10
+packages/cli/src/modules/ldap.ee/ldap.service.ee.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 5,154,194-197,201-203,205-223,225,227-228,230-237,247-249,253,259,293,359-362
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policy.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 16,18-19,85,95,102-105,211-212,919,1879-1881,1884-1888,1890-1891,1893-1895,1897,1899-1903,1905,1907-1919,1921,1924-1931,1933-1935,1937,1939-1943,1945-1949,1952-1966,1968,1970-1980,1982-1993,1995,1997-2002,2005-2007,2009-2020,2022-2026,2028-2031,2033,2036,2038-2039,2041,2043,2046,2049,2051,2054-2056,2059-2064,2066,2068
+packages/frontend/@n8n/design-system/src/components/NewBadge/NewBadge.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 1-182
+packages/cli/test/migration/1792496430067-create-apps.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-234
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 22-24,53,58-60,78,82-275
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 33,201,810-815,964-969,999-1004
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/claude.svg
+  s_20d484677b459f::t_cd3ccc81437cc3 1
+packages/frontend/@n8n/design-system/src/components/N8nSlider/Slider.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 1-429
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1,4-11,13-23,25-53,58-63
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 186-199,364-365
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 106-109
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 101,181-182
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 2-3,6,22-23,26-28,31,36-39,48,62-65,72-76,79,81,83-101,103,108,117-126,212-221,228-230,234-235,244-247,249-253,258-259,282,311,330,342,410-427
+packages/@n8n/api-types/src/schemas/app.schema.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-50
+packages/cli/src/modules/agents/agents-settings.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 12,28,65-69,80-90
+packages/modules/apps/backend/src/apps.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-7,10,12-28,32,34,38-40,43-47,50-53,56-59,62-64,66-69,72-77,81-83,87-89
+packages/@n8n/api-types/src/index.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 15
+packages/cli/test/integration/policy/shared/policy-snapshot.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 3,6,8-9,11-12
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 164-166,194-196
+packages/cli/src/modules/skills/__tests__/skill-content-hash.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1
+packages/frontend/@n8n/design-system/src/components/N8nSlider/index.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-5
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.stories.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 122-177
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 10,19,64-69
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/useClaudeCreateMenu.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-72
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeWebhooks.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-73
+packages/nodes-base/nodes/Transform/Summarize/utils.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 125-129
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionEnvironmentCard.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 3,6,8,10,15-17,22-31,35,37,39,41-54,57-65,69-82,84-125,127-128,130-136,138-141,143-150,152-156,158,160-162,165-171,174-178,180,182-204
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiTestAgentPreviewPanel.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 185,187,194-195,206,212,227-228,252-267
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1738-1766
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-case-generation.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1,12,57-58,91,103,125,604-610,614-618,635-641,760-766,777-783,793-797,812-818,837,842-848,857-863,875-881
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-123
+packages/cli/src/auth/auth.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 18-24,105-107,307,315-328,501-502
+packages/cli/src/modules/promotions.ee/promotion-review.utils.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-24
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 26,228
+packages/cli/src/modules/ldap.ee/__tests__/ldap.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 5,698-723,749-757,802-846,884,1217-1218,1235-1236,1256-1257,1281,1290-1304
+packages/cli/src/modules/skills/hub-assistant-skill-provider.service.ts
+  s_20d484677b459f::t_169f7fb85de1f9 29-31,34-35
+  s_20d484677b459f::t_e63cb74f503e98 10-11,22,27-28,33,36-39
+packages/cli/src/modules/agents/agents.module.ts
+  ai_agent 14-18,35,233
+packages/@n8n/permissions/src/scope-information.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 25-32
+packages/cli/src/modules/mcp/mcp-api-key.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 97-102
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.utils.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1,7,110-128
+packages/cli/src/modules/skills/__tests__/skill-names.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 5
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsSetup.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 42-44,546-617
+packages/cli/src/modules/agents/agent-conversation-state.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 2,19,22-23
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 43,66,68,78-119
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 29-31,77-78,96,146-147,150-151,424-519,538,814-855
+packages/cli/test/integration/policy/node-type-policy.save.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 29,153
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 97
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 14-15,898,932
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1,4-5,8,12-17,19-20,23-26,28-31,39,47-51,55-75,77-101,103-104,107-112,114,118-120,123-138,140-148,150,153-156,158,160-164,166-168,170-190,194-203,205-206,214-217
+packages/cli/src/modules/skills/skills.module.ts
+  s_20d484677b459f::t_dc8c14d6cfafd7 18
+  s_20d484677b459f::t_cd3ccc81437cc3 1-17,25-35
+  s_20d484677b459f::t_e63cb74f503e98 19-20,24
+  s_20d484677b459f::t_169f7fb85de1f9 21-23
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-integration.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 163-164
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-environments.spec.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-66
+docs/generated/sqlite-schema/app_version.md
+  ai_agent 1-97
+packages/cli/src/modules/agents/__tests__/agent-chat-relay.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-77
+packages/cli/src/modules/skills/skills.controller.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 21-22
+packages/cli/src/modules/mcp-discovery/mcp-discovery.module.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-16
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.constants.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 4-8
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeRenderer.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 3-5,14-16,28-29
+packages/cli/src/modules/mcp/mcp.controller.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 168-175
+packages/@n8n/api-types/src/dto/promotions/promotion-review.dto.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 142-143,145,148
+packages/cli/src/webhooks/hitl-interaction-webhooks.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 5,33-35
+packages/cli/src/modules/promotions.ee/promotion-review-host.resolver.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-50
+packages/cli/src/telemetry/index.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 3,33,265
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 17-22,48,230,236
+packages/frontend/editor-ui/src/features/agents/channels/types.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 52-64,68-69,76-77
+packages/cli/src/modules/mcp-discovery/activity-events.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-78
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.selection.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-155
+packages/quality/testing/playwright/pages/n8nPage.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 44,106,199
+packages/frontend/@n8n/design-system/src/components/N8nSlider/Slider.stories.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-115
+OWNERS
+  s_20d484677b459f::t_cd3ccc81437cc3 124-125
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 2,12,19,27,40,47-67,71-83,105,120,127,131,173-207,212
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 407-464
+packages/frontend/editor-ui/src/features/credentials/composables/oauthCallback.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 19-37
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 2-4,912-914,963-965,1055-1057
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 2,6,12,17,19,32,40-46,48,53-55,67-73,75-78,80,82-85,87-89,91-92
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsEditView.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 30-32,68,123-130,140-175
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-391
+packages/cli/src/modules/modules.manifest.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 11
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-3,53-55,57-59,747-771,779-781,1067-1069,1115-1117
+packages/cli/src/modules/skills/skill-hash.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-22
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1091-1093,1828-1833,1942-1947
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 8,2189-2192,2194,2196,2201-2204,2210,2222-2225,2336-2359,2361-2362,2364-2381,2737-2746,2953-3007
+packages/cli/src/modules/skills/__tests__/skills.module.test.ts
+  s_20d484677b459f::t_dc8c14d6cfafd7 2,10-11,22
+  s_20d484677b459f::t_169f7fb85de1f9 46-52
+  s_20d484677b459f::t_ac6f594e80ac62 1,3-9,12-21,23-45,53-64
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 341-342
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentPreviewPanel.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 3-4,54,59-60,85-86,189-190,198,443-444,538,610
+packages/cli/src/telemetry/__tests__/cluster-footprint.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-65
+packages/cli/src/modules/agents/agent-skill-usage.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-218
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 16,18,147-162,230,239-266,268-280,295-297,301-306
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/module.descriptor.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 2,7-11,14,32,46-60
+packages/cli/test/integration/policy/available-types.controller.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 14,94
+packages/frontend/@n8n/stores/src/constants.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 60-62
+packages/frontend/editor-ui/src/app/App.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 16-18,82-84
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 43
+packages/cli/src/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 12,24-25,135-139,141-142,144-161
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 2,11-49,51-144
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 53
+packages/cli/src/modules/mcp-discovery/events.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-27
+packages/cli/src/modules/type-availability-policies/type-availability-policy-snapshot.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-178
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.selection.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-245
+packages/frontend/editor-ui/src/features/ai/chatHub/composables/useDynamicCredentialsStatus.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1,4,268,334,381,402,410-490,505-506,524-525,529,547,567-578
+packages/@n8n/api-types/src/instance-registry-types.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 18-21
+pnpm-lock.yaml
+  ai_agent 4834-4836,7045-7104
+packages/cli/src/modules/agents/__tests__/agent-conversation-state.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 61-96
+packages/cli/src/modules/mcp-discovery/enrollment.service.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-108
+packages/cli/src/webhooks/webhook-request-handler.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 202
+packages/cli/package.json
+  s_20d484677b459f::t_cd3ccc81437cc3 161
+packages/cli/src/auth/__tests__/auth-service-browser-id-whitelist.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-3,26-28
+packages/cli/oxlint.config.mts
+  s_20d484677b459f::t_cd3ccc81437cc3 73-88,209-226
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/ClaudeLogo.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 1-27
+packages/frontend/editor-ui/src/features/roles/project/projectRoleScopes.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 25
+packages/nodes-base/nodes/Transform/Summarize/test/unitTests/splitData.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 314-341
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTelemetry.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 118-143
+packages/modules/apps/backend/src/__tests__/apps.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-160
+packages/cli/test/integration/policy/node-type-policy.sub-workflow.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 16,60
+packages/cli/src/modules/mcp-discovery/__tests__/mcp-discovery.dto.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-34
+packages/cli/src/modules/promotions.ee/git-hosts/README.md
+  s_20d484677b459f::t_cd3ccc81437cc3 22-24
+packages/frontend/@n8n/design-system/src/components/N8nNodeCreatorNode/NodeCreatorNode.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 13-30
+packages/frontend/editor-ui/src/app/capabilities.manifest.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 11-13,64-66
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.tree.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-51
+packages/cli/src/modules/promotions.ee/promotion-environment.resolver.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 11,101
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionGitHostSelect.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 74,76-78,80,91-94,96,154,193-195
+packages/@n8n/api-types/src/dto/app/update-app.dto.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-11
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 299
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policy-snapshot.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-476
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_20d484677b459f::t_cd3ccc81437cc3 38,1320
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_20d484677b459f::t_cd3ccc81437cc3 2-4,168,3090-3099,3212,3275,3309-3310,3744-3746,3760-3761,3763,3765,4094,4098,4100,4104,4120,4123,4127,4156,4163-4208,5225,5227,5292,6523-6524,9802-9804,9901-9903
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-3,2696-2698,2782-2784,2858-2859,2894-2895,2904-2906,2941-3002
+packages/@n8n/permissions/src/constants.ee.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 15
+packages/cli/src/scaling/pubsub/__tests__/subscriber.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 149-196
+packages/modules/apps/backend/src/__tests__/apps.controller.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-31
+packages/cli/test/integration/agents/system-agent-session.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-109
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 21-22
+packages/cli/src/modules/agents/repositories/agent-skill.repository.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-455
+packages/cli/src/webhooks/__tests__/waiting-webhooks.test.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 82-121
+packages/frontend/@n8n/design-system/src/components/N8nSlider/Slider.types.ts
+  s_20d484677b459f::t_cd3ccc81437cc3 1-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3347c43a6f3779f449facb60428455ddabcf20ed",
+  "prompts": {},
+  "sessions": {
+    "s_20d484677b459f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1541d-6ef7-7ef0-a84b-83bd91fd72c5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

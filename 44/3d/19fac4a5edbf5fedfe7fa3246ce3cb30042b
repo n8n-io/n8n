@@ -1,0 +1,21 @@
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_5d8e1da214783a::t_71d06d42b22ba9 856,862-872
+  s_5d8e1da214783a::t_4842a81ec2d7a3 861
+  s_5d8e1da214783a::t_a2246e7c8725d5 873
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "443d19fac4a5edbf5fedfe7fa3246ce3cb30042b",
+  "prompts": {},
+  "sessions": {
+    "s_5d8e1da214783a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efa07b59-cb7b-40e2-925d-e57994dabb42",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

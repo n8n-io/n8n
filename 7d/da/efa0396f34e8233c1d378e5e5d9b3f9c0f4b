@@ -1,0 +1,31 @@
+packages/frontend/@n8n/design-system/src/components/N8nSlider/component-slider.md
+  s_8fa8214e6c710b::t_33008e6df4c6a8 33,113
+  s_8fa8214e6c710b::t_4851e3cff65a58 114
+packages/frontend/@n8n/design-system/src/components/N8nSlider/Slider.types.ts
+  s_8fa8214e6c710b::t_5bc8a36996b206 28
+packages/frontend/@n8n/design-system/src/components/N8nSlider/Slider.vue
+  s_8fa8214e6c710b::t_0975ef32aef6b2 2,46
+  s_8fa8214e6c710b::t_9003e8741b847d 29-34,38-45,47,201,203,244,351-352
+  s_8fa8214e6c710b::t_a2b6176dd225ff 35-37
+packages/frontend/@n8n/design-system/src/components/N8nSlider/Slider.test.ts
+  s_8fa8214e6c710b::t_23855200959fad 5,56
+  s_8fa8214e6c710b::t_d1e3c3fb11e926 2,59
+  s_8fa8214e6c710b::t_3197858ca82309 3,57-58,60-106
+  s_8fa8214e6c710b::t_700208a94a9da2 107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ddaefa0396f34e8233c1d378e5e5d9b3f9c0f4b",
+  "prompts": {},
+  "sessions": {
+    "s_8fa8214e6c710b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a12fc2-65de-7643-b592-f7570dc2eec9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

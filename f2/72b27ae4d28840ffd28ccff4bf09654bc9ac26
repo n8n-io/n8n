@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_7887e2d350f40f::t_5a7748a385497d 1094
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f272b27ae4d28840ffd28ccff4bf09654bc9ac26",
+  "prompts": {},
+  "sessions": {
+    "s_7887e2d350f40f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62dd6632-b49e-473a-b9fb-b7945d59c21e",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

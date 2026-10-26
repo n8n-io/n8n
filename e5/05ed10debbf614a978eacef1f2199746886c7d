@@ -1,0 +1,27 @@
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_8631ec10eb1199::t_9abafcd312a515 72,82-84,208,223,228-233,236-239,244,252,259-260,268
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_8631ec10eb1199::t_f26aff0d9617bd 22
+  s_8631ec10eb1199::t_9abafcd312a515 3-4,8-16,18-21,23-28,35
+packages/cli/src/public-api/v1/controllers/__tests__/n8n-packages.public.controller.test.ts
+  s_8631ec10eb1199::t_8a6925e0862fb7 21,32,39-40,101,114,124,276,280,288,292,296,302,306-327
+  s_8631ec10eb1199::t_102d7aeff0965b 328
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  s_8631ec10eb1199::t_5d9460959a4bed 4,8-16,19-31,42-51,79,85,90,97,99,107,131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e505ed10debbf614a978eacef1f2199746886c7d",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "28bd124258f0d2c16b76c2485675dd6bbc92b4b9",
+  "prompts": {},
+  "humans": {
+    "h_b49cecddc99496": {
+      "author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

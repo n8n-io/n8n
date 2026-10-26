@@ -1,0 +1,52 @@
+packages/nodes-base/nodes/Microsoft/ToDo/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_48f3651296c36a 52-67,373-374,388,401,414,454,472,521,576,601,612
+  s_2e1fa95fc44f8f::t_dde1eed907b33d 372
+  s_2e1fa95fc44f8f::t_e98ebed964899c 473-474
+  s_2e1fa95fc44f8f::t_f7e2cbb28e6add 600
+  s_2e1fa95fc44f8f::t_1974b229f85de6 611
+  s_2e1fa95fc44f8f::t_a8a2bc043d6a0b 613-614
+  s_17dcd264474be0::t_6df31ce3a7fe4c 8-9,79,85,101,107,122,128,144,150,166,172,188,194,210,216,232,238,257,266,275,284,292,297,355,368,383,396,409,426,443,468,492,498-500,525-526,528,569-570,652-654,712
+packages/nodes-base/nodes/Microsoft/ToDo/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_a0ae3226fa0205 51
+  s_17dcd264474be0::t_24a3d112a0809e 10-11,13,53,56,73,92,97,112,115-125,150
+packages/nodes-base/nodes/Microsoft/ToDo/MicrosoftToDo.node.ts
+  s_6ba58fba7d49bc::t_5bb68e07b27231 11,133,172,187,203,220,230,251,297,311,326,342,352,395,417,429,442,456,466,484
+packages/nodes-base/nodes/Microsoft/ToDo/test/list.getAll.sp.perItem.test.ts
+  s_17dcd264474be0::t_a93c7bd694d61c 14,20
+packages/nodes-base/nodes/Microsoft/ToDo/test/list.getAll.sp.perItemContinueOnFail.test.ts
+  s_17dcd264474be0::t_fd1bedf74a1e02 13
+packages/nodes-base/nodes/Microsoft/ToDo/test/list.getAll.sp.test.ts
+  s_17dcd264474be0::t_6432c3604ccc9c 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eec8800eaa293c9c7586e2443f29cd69aa3e79fa",
+  "prompts": {},
+  "sessions": {
+    "s_17dcd264474be0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae5ccb607dc2571b3",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_6ba58fba7d49bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3fc4c89db18073c3",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

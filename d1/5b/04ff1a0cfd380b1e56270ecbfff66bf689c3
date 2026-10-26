@@ -1,0 +1,30 @@
+packages/cli/test/integration/public-api/variables.test.ts
+  s_dcb6bd65424655::t_df3a723f998bff 421-436
+  s_dcb6bd65424655::t_52b7a8b42867f9 366-368
+  s_dcb6bd65424655::t_af228d4083ffb3 355-365,369-387
+  s_dcb6bd65424655::t_8f3c63d450dca5 522-535
+packages/cli/test/integration/api-keys.api.test.ts
+  s_dcb6bd65424655::t_b8df4d5c7241eb 528-544
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_dcb6bd65424655::t_de32405876f83a 213-217
+  s_dcb6bd65424655::t_a0d4cad3784834 149-152
+packages/cli/src/services/__tests__/public-api-key.service.integration.test.ts
+  s_dcb6bd65424655::t_7f1c0dba294a5f 190-210
+  s_dcb6bd65424655::t_f649b25b23abee 73-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d15b04ff1a0cfd380b1e56270ecbfff66bf689c3",
+  "prompts": {},
+  "sessions": {
+    "s_dcb6bd65424655": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ce718b-17f3-42de-9a05-27fd10459d9c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

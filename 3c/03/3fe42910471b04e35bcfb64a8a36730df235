@@ -1,0 +1,50 @@
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets.module.test.ts
+  s_d22ec239ec3391::t_4ff00ce040f258 1-12
+packages/cli/src/modules/external-secrets.ee/external-secrets.config.ts
+  s_d22ec239ec3391::t_74b691dc756db3 10
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-manager.ee.test.ts
+  s_d22ec239ec3391::t_72e8afb4d90f15 165
+  s_d22ec239ec3391::t_59d1c829164981 141,144,146
+packages/cli/src/modules/external-secrets.ee/secrets-cache.service.ts
+  s_d22ec239ec3391::t_ad566107ff7313 5,12-13
+  s_d22ec239ec3391::t_34341e6482619e 34-35,37-40,43-48,50-52,59,62,67,73-76,78-95
+  s_d22ec239ec3391::t_25d1fd7ecf227a 49
+  s_d22ec239ec3391::t_fcfcc234d7e05c 33
+  s_d22ec239ec3391::t_43de95a5f4b461 14
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-refresh.task.test.ts
+  s_d22ec239ec3391::t_34569f6363ca28 27
+  s_d22ec239ec3391::t_2a2f005580bf38 1-26,28-34
+packages/cli/src/modules/external-secrets.ee/external-secrets-refresh.task.ts
+  s_d22ec239ec3391::t_a902dedbf2a906 1-34
+packages/cli/src/modules/external-secrets.ee/external-secrets.module.ts
+  s_d22ec239ec3391::t_fdbf09903ef985 26-30
+packages/cli/src/modules/external-secrets.ee/external-secrets-manager.ee.ts
+  s_d22ec239ec3391::t_b42808f97bb092 361-362
+packages/cli/src/modules/external-secrets.ee/__tests__/secrets-cache.service.test.ts
+  s_d22ec239ec3391::t_e41ed67b8cc48e 103
+  s_d22ec239ec3391::t_b2701b6f824889 104-107,176-186,192-193,195-219
+  s_d22ec239ec3391::t_e3a3086e566656 161-175
+  s_d22ec239ec3391::t_963714d60d2b67 187-191,194
+  s_d22ec239ec3391::t_74e842f0b02073 3
+  s_d22ec239ec3391::t_295d995ae37b9d 108-124
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets.config.test.ts
+  s_d22ec239ec3391::t_1612e66bea8f0e 22-30
+  s_d22ec239ec3391::t_32b79780fbeef4 13,16-19
+  s_d22ec239ec3391::t_b8a39d0a4915e6 20-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c033fe42910471b04e35bcfb64a8a36730df235",
+  "prompts": {},
+  "sessions": {
+    "s_d22ec239ec3391": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4696d96-20ed-484b-9853-6cf7b140d4a9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

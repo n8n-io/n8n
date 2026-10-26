@@ -1,0 +1,21 @@
+packages/cli/src/services/rate-limit.service.ts
+  s_925dcfedebf0c9::t_69badd40177784 7,9,18-38,99-101,105-106,109,112,114,122-133,135-152
+packages/cli/src/public-api/__tests__/public-api-rate-limit.test.ts
+  s_925dcfedebf0c9::t_478fa202b431e6 236-237,242-255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fe7f60a982f2ae34db8480f8bb444e235c496d3a",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

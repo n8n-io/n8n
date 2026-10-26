@@ -1,0 +1,27 @@
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-manager.ee.test.ts
+  s_d22ec239ec3391::t_35b50656bf29ba 719,731,1385,1400
+  s_d22ec239ec3391::t_5cdd9b29a9d8ab 32
+packages/cli/src/modules/external-secrets.ee/__tests__/secrets-cache.service.test.ts
+  s_d22ec239ec3391::t_576f2dd21563c5 140,154,160,168,175,188,385,395,400
+  s_d22ec239ec3391::t_c817c110b99a29 17
+packages/cli/src/modules/external-secrets.ee/secrets-cache.service.ts
+  s_d22ec239ec3391::t_96a3364f734e9c 38
+packages/cli/src/modules/external-secrets.ee/external-secrets-manager.ee.ts
+  s_d22ec239ec3391::t_8eb6e0c050e768 361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b6136c1a9348c36786b2736a600c35f0bd20442",
+  "prompts": {},
+  "sessions": {
+    "s_d22ec239ec3391": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4696d96-20ed-484b-9853-6cf7b140d4a9",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

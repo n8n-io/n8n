@@ -1,0 +1,19 @@
+packages/cli/test/integration/workflows/workflow.service.ee.test.ts
+  s_e744e6b8855b97::t_aaa6574e25d0c7 156,158-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6da9b9ccfb3f0f0de327f2462d24092c24aa11b7",
+  "prompts": {},
+  "sessions": {
+    "s_e744e6b8855b97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ff3b229-100e-4701-a81d-80afc2a9f472",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

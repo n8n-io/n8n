@@ -1,0 +1,63 @@
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_c87c69a870acf2::t_080f4f891d426b 29,152,788,886,1501
+packages/cli/src/modules/agents/utils/__tests__/agent-thread-access.test.ts
+  s_c87c69a870acf2::t_080f4f891d426b 28-38,44,48-80
+packages/cli/src/modules/agents/utils/agent-thread-access.ts
+  s_c87c69a870acf2::t_080f4f891d426b 60-67,71-72,75,87-88,91,98,102,104,112-113,117,119,121
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_c87c69a870acf2::t_080f4f891d426b 14,50,90
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_c87c69a870acf2::t_080f4f891d426b 63-64,67-72,485,569,586,633,642,673,675
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_c87c69a870acf2::t_d925c441c77e14 667
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_c87c69a870acf2::t_080f4f891d426b 220-277
+packages/cli/src/modules/agents/system-agents/system-agent-chat.controller.ts
+  s_c87c69a870acf2::t_080f4f891d426b 1-2,4-13,15-121,123-129,132-133,135,137-147,149-157,159-169,171-176,178-352
+  s_c87c69a870acf2::t_302bd415d1100a 3,14,122,130-131,134,136,148,158,170,177
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_c87c69a870acf2::t_080f4f891d426b 213
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_c87c69a870acf2::t_d925c441c77e14 658,684-685
+  s_c87c69a870acf2::t_080f4f891d426b 659-667,669-683,686-692
+  ai_agent 668
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_c87c69a870acf2::t_080f4f891d426b 347-353
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_c87c69a870acf2::t_080f4f891d426b 33,201,810-815,964-969,999-1004
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_c87c69a870acf2::t_080f4f891d426b 18,70,253,257,263,265
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-chat.controller.test.ts
+  s_c87c69a870acf2::t_7d959e7ea86ad6 191-209,336,364,385,422-437
+  s_c87c69a870acf2::t_080f4f891d426b 1-190,210-335,337-363,365-384,386-421,438-439
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_c87c69a870acf2::t_080f4f891d426b 115-125
+packages/cli/src/modules/agents/agents.module.ts
+  s_c87c69a870acf2::t_080f4f891d426b 35
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_c87c69a870acf2::t_080f4f891d426b 10,19,64-69
+packages/@n8n/api-types/src/agents/types.ts
+  s_c87c69a870acf2::t_080f4f891d426b 479-491
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_c87c69a870acf2::t_080f4f891d426b 83,216
+packages/cli/test/integration/agents/system-agent-queue-access.test.ts
+  s_c87c69a870acf2::t_080f4f891d426b 1-76
+packages/cli/src/modules/agents/repositories/agent-chat-attachment.repository.ts
+  s_c87c69a870acf2::t_080f4f891d426b 29-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9f2b898def7928425b8c48f863ac1467ec9ff4c9",
+  "prompts": {},
+  "sessions": {
+    "s_c87c69a870acf2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2f00248-1308-4aa6-b458-8fdf92492e42",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

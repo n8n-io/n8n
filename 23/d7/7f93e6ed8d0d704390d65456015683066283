@@ -1,0 +1,32 @@
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_0a1a804042c15b::t_1a02958b99a7a4 154-192,194-199,209,222,234
+packages/cli/src/modules/agents/background/background-job-messages.ts
+  s_0a1a804042c15b::t_2f055da014360a 48-49
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_0a1a804042c15b::t_b726b32cc44579 1,27-31,807-808,810-836,838-857
+  s_0a1a804042c15b::t_2f055da014360a 133-149,165-177,183
+  s_0a1a804042c15b::t_8c22f2806b5d43 809,837
+  s_0a1a804042c15b::t_6d3b8f4cb41225 858-860
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_0a1a804042c15b::t_b6f377eac502ec 748-806
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_0a1a804042c15b::t_d3f9a2bd88703e 2216,2237-2241
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_0a1a804042c15b::t_d53eaccea4bf43 11,66,104,109,242,248-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "23d77f93e6ed8d0d704390d65456015683066283",
+  "prompts": {},
+  "sessions": {
+    "s_0a1a804042c15b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f809-8653-78a0-a76c-4b8db92d8a2b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,79 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue
+  ai_agent 140-144,146-150
+  s_e3560b551eac11::t_fddcd064e44132 202-208
+  s_e3560b551eac11::t_8105b7c477d5a7 1-45,51-67,69-73,80-88,90-93,96-139,145,151-201,209-273
+  s_e3560b551eac11::t_c401752839db65 68,74-79
+  s_e3560b551eac11::t_5d182132a48107 94-95
+  s_e3560b551eac11::t_6b0ecfe26ca387 46-50,89
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatAgentPicker.test.ts
+  s_e3560b551eac11::t_1e44a5eec9256c 1-70,78-145,148,150-151,153,155,157,162,164-166,182,184,192,194-196
+  s_e3560b551eac11::t_fddcd064e44132 71-77
+  s_e3560b551eac11::t_2d8ea151705e28 167-171,174
+  s_e3560b551eac11::t_5f84074ca773b0 146-147,149,152,154,156,158-161,163,172-173,175-181,183,185-191,193
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_e3560b551eac11::t_5d182132a48107 35,318-326
+packages/@n8n/telemetry/src/events/agents.ts
+  s_e3560b551eac11::t_43e735707cd715 671
+  s_e3560b551eac11::t_5edddc61f8ee05 668
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_e3560b551eac11::t_b3f6653d0e0125 1513
+  s_e3560b551eac11::t_b57bfe2897c60f 282-286,294-297,299-315
+  s_e3560b551eac11::t_10835c6533feac 339,341
+  s_e3560b551eac11::t_a0e69769bbf2bb 36
+  s_e3560b551eac11::t_0e8d80b587874c 323
+  s_e3560b551eac11::t_3184258c755f41 287,293,298
+  s_e3560b551eac11::t_aa8fb65b85c773 105
+  s_e3560b551eac11::t_51c6c3eca3a285 288-292
+  s_e3560b551eac11::t_5d182132a48107 340,457-458
+  s_e3560b551eac11::t_ff542d81d05c12 456,459-464
+  s_e3560b551eac11::t_b732e9079a571e 552
+  s_e3560b551eac11::t_2411cd76711618 1427-1456,1458,1460-1469,1489-1512,1514-1520
+  s_e3560b551eac11::t_2d8ea151705e28 1457
+  s_e3560b551eac11::t_fddcd064e44132 1459,1470-1488
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_e3560b551eac11::t_5d182132a48107 101-102,459
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.vue
+  s_e3560b551eac11::t_6b0ecfe26ca387 16-17,19,118,124
+  s_e3560b551eac11::t_cb7b39dfb8f4f6 2
+  s_e3560b551eac11::t_0686c387b1c874 117,119-123,125
+  s_e3560b551eac11::t_1052982f7cff9a 12-15,18,20
+  s_e3560b551eac11::t_1ea3ac38cd2309 172-177
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_e3560b551eac11::t_c8d1a4265419ea 11
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.test.ts
+  s_e3560b551eac11::t_4eb541fcb1dd15 59-63,65-68
+  s_e3560b551eac11::t_7ad8dd6bbdf2d9 58
+  s_e3560b551eac11::t_6b0ecfe26ca387 64
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_e3560b551eac11::t_aca045025379eb 219
+  s_e3560b551eac11::t_380880342bab08 526-531,536,538
+  ai_agent 7-11,195
+  s_e3560b551eac11::t_5d182132a48107 532-535,839,844,847
+  s_e3560b551eac11::t_8f05b66c5e00c3 845
+  s_e3560b551eac11::t_cc90719ec860d9 188,202
+  s_e3560b551eac11::t_0cff550cf0ae9f 860-861,863
+  s_e3560b551eac11::t_6b0ecfe26ca387 424-426,537
+  s_e3560b551eac11::t_6627b14ae06e6a 94,96
+  s_e3560b551eac11::t_f8bf7ec1e8ecdc 625-634
+  s_e3560b551eac11::t_6cefce42a35b67 165-174
+  s_e3560b551eac11::t_01c6108a19d0da 412,417-423,427-428
+  s_e3560b551eac11::t_1f8b77052ab71c 817-822
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e3560b551eac11::t_ae50f80f10e509 8133-8137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0d8f4c7b26edca7f36ac5102a0336210243e77f4",
+  "prompts": {},
+  "sessions": {
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

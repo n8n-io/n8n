@@ -1,0 +1,9 @@
+packages/frontend/@n8n/design-system/src/components/N8nCommandBar/CommandBarItem.vue
+  ai_agent 159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d0b8f4d658a365d2175b28ba17cb01f4b95e5550",
+  "prompts": {}
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/plans/agent-plan-tools.ts
+  s_3998368f954809::t_7afde1996294fe 19,240
+packages/cli/src/modules/agents/plans/agent-plan.validation.ts
+  s_3998368f954809::t_c27ee02f173734 18-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "17c1007e19b8f5f07448bfd08f827cf95892b4f1",
+  "prompts": {},
+  "sessions": {
+    "s_3998368f954809": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a153e9-257d-7d33-839f-7c9136d01440",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

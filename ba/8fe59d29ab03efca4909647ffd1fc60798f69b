@@ -1,0 +1,167 @@
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/test/listSearch.test.ts
+  s_2e1fa95fc44f8f::t_63257c10315ded 2,61
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/test/operations.test.ts
+  s_2e1fa95fc44f8f::t_87eb25e6077c16 2,199,261,296,698
+packages/@n8n/nodes-langchain/nodes/vendors/Moonshot/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_5118f4bb4ed47f 2,19,30,44,50,57-58,60-63,65-68
+packages/@n8n/nodes-langchain/nodes/vendors/Ollama/Ollama.node.test.ts
+  s_2e1fa95fc44f8f::t_2c9af4c6b63daa 2,64,278,340,422,487,548,663
+packages/@n8n/nodes-langchain/nodes/vendors/Ollama/methods/listSearch.test.ts
+  s_2e1fa95fc44f8f::t_0c974f5be06273 2,41
+packages/@n8n/nodes-langchain/nodes/vendors/Ollama/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_092a63e1d56864 2,26,40,56,67,79,92,105,121,127,133-136,138-141,152,163,177,182,193,204,216,227
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v1/OpenAi.node.test.ts
+  s_2e1fa95fc44f8f::t_551cf760183786 4,99,152,213,216,255,258,297,300,339,371,400,424,471,506,540,571,678,700
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v2/actions/audio/transcribe.operation.test.ts
+  s_2e1fa95fc44f8f::t_6d1f52e126a4b4 2,114
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v2/actions/image/analyze.test.ts
+  s_2e1fa95fc44f8f::t_34600f26955ea3 2,114,179,239,293,372,454,573,633,669,716,849,905
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v2/actions/image/edit.operation.test.ts
+  s_2e1fa95fc44f8f::t_716dd512069744 2,115,674
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v2/actions/image/generate.operation.test.ts
+  s_2e1fa95fc44f8f::t_3e3459c76d8cc8 3,90,105,132,144,156,201,218,256,261
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v2/actions/text/classify.operation.test.ts
+  s_2e1fa95fc44f8f::t_90a8a55c207d81 2,39,67,95
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v2/actions/text/response.operation.test.ts
+  s_2e1fa95fc44f8f::t_c8ee7d658839ca 3,114,529,617
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v2/actions/video/generate.operation.test.ts
+  s_2e1fa95fc44f8f::t_82a5a4ea39df84 2,140,144-154,156
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v2/conversation.test.ts
+  s_2e1fa95fc44f8f::t_75414b0799c2e3 3,107,144,181,238-241,267-270,301-307,309
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/transport/test/transport.test.ts
+  s_2e1fa95fc44f8f::t_0200c5e847b56d 2,24-31,41,51-58,68,74-87,100
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/actions/audio/tts.operation.ts
+  s_37c824fcd51735::t_261540b4f1343b 7,229
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/actions/image/generate.operation.ts
+  s_37c824fcd51735::t_66a780105b81e1 7,137
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/actions/text/message.operation.ts
+  s_37c824fcd51735::t_24111ec37b9e00 8,267,311
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/methods/listSearch.ts
+  s_37c824fcd51735::t_6f4d7e68ce895b 2,10
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/test/transport.test.ts
+  s_768442b837c256::t_bcce15ecf0f301 3,45-52,58,69,77,90,95,101-112,124,132,203
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/transport/index.ts
+  s_110005f762b90a::t_3b468627c61199 5,7-8,11,28,31,37,42,60,106,142,163,178
+packages/@n8n/nodes-langchain/nodes/vendors/Moonshot/actions/image/analyze.operation.ts
+  s_37c824fcd51735::t_8b27f716eacad7 2,101
+packages/@n8n/nodes-langchain/nodes/vendors/Moonshot/actions/text/message.operation.ts
+  s_37c824fcd51735::t_25626fe1802af2 8,308,352
+packages/@n8n/nodes-langchain/nodes/vendors/Moonshot/methods/listSearch.ts
+  s_37c824fcd51735::t_29ac23f54f7b5d 2,10
+packages/@n8n/nodes-langchain/nodes/vendors/Moonshot/transport/index.ts
+  s_110005f762b90a::t_69aa50b679d7bf 5,7-8,10,21,24,29,34
+packages/@n8n/nodes-langchain/nodes/vendors/Ollama/actions/image/analyze.operation.ts
+  s_37c824fcd51735::t_c06fc8d8fa182a 2,447
+packages/@n8n/nodes-langchain/nodes/vendors/Ollama/actions/text/message.operation.ts
+  s_37c824fcd51735::t_8837102ed563f5 3,411,461
+packages/@n8n/nodes-langchain/nodes/vendors/Ollama/methods/listSearch.ts
+  s_37c824fcd51735::t_8cb4ea26b19669 2,11
+packages/@n8n/nodes-langchain/nodes/vendors/Ollama/transport/index.ts
+  s_110005f762b90a::t_32201401a98041 5,7-8,10,21,24,40,48
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/methods/listSearch.ts
+  s_110005f762b90a::t_9548523775351a 11,21,51,142-153,155
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/methods/loadOptions.ts
+  s_110005f762b90a::t_2149a17ea6f0d9 2,7-9
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/transport/index.ts
+  s_37c824fcd51735::t_b5c398c23e122c 6-8,10,15-18,24,31,46,51
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/create.operation.ts
+  s_37c824fcd51735::t_1e2a0b021910ba 7,196,277
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/deleteAssistant.operation.ts
+  s_37c824fcd51735::t_2c07e3eee28b11 2,21
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/list.operation.ts
+  s_37c824fcd51735::t_50393ffaa93afd 2,32
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/update.operation.ts
+  s_110005f762b90a::t_0e625b9a09faae 7-12,205,238
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/audio/generate.operation.ts
+  s_110005f762b90a::t_82041d96f65230 7,166-169
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/audio/transcribe.operation.ts
+  s_37c824fcd51735::t_14f06c77898a93 3,86
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/audio/translate.operation.ts
+  s_37c824fcd51735::t_18424164b4eea4 3,74
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/file/deleteFile.operation.ts
+  s_37c824fcd51735::t_08c92846083162 2,54
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/file/list.operation.ts
+  s_37c824fcd51735::t_3afdce97b4d1e6 7,61
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/file/upload.operation.ts
+  s_768442b837c256::t_84ae1ffe21cd78 3,76
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/image/analyze.operation.ts
+  s_768442b837c256::t_462ebbb138adfe 7,212
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/image/generate.operation.ts
+  s_37c824fcd51735::t_7108ff36215309 7,289
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/text/classify.operation.ts
+  s_37c824fcd51735::t_cd3982bb6e8eac 2,63
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/text/message.operation.ts
+  s_110005f762b90a::t_9b823d6c91613c 13,301,348
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/audio/generate.operation.ts
+  s_110005f762b90a::t_6896f20199f9dc 7,166-169
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/audio/transcribe.operation.ts
+  s_37c824fcd51735::t_8523343bc6ba33 3,86
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/audio/translate.operation.ts
+  s_37c824fcd51735::t_196aa19bfde4f2 3,74
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/conversation/create.operation.ts
+  s_37c824fcd51735::t_f8b0b1e6c7297f 7,102
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/conversation/get.operation.ts
+  s_110005f762b90a::t_9843e530610ada 2,30-34
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/conversation/remove.operation.ts
+  s_110005f762b90a::t_e9f4207c4d8b01 2,30-34
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/conversation/update.operation.ts
+  s_110005f762b90a::t_f508dc4a9e2e18 7,52-59
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/file/deleteFile.operation.ts
+  s_37c824fcd51735::t_81bf1408f61807 2,54
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/file/list.operation.ts
+  s_37c824fcd51735::t_3884969f62e61d 7,70
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/file/upload.operation.ts
+  s_768442b837c256::t_075943deac5046 3,85
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/image/analyze.operation.ts
+  s_37c824fcd51735::t_e0d06f429cd11e 7,195
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/image/edit.operation.ts
+  s_37c824fcd51735::t_7eec01bfee2217 9,686
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/image/generate.operation.ts
+  s_37c824fcd51735::t_bb04134da10501 7,116
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/text/classify.operation.ts
+  s_37c824fcd51735::t_b46e9be945dae6 2,72
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/text/response.operation.ts
+  s_110005f762b90a::t_e633a200c3a346 14,622,631-635,706
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/video/generate.operation.ts
+  s_37c824fcd51735::t_0528ecdf436af5 3,125,133,151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba8fe59d29ab03efca4909647ffd1fc60798f69b",
+  "prompts": {},
+  "sessions": {
+    "s_110005f762b90a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a004a1c7a9419a27f",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_37c824fcd51735": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af6a986a752076dde",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_768442b837c256": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a37cacb013e37b4c4",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

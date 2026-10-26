@@ -1,0 +1,23 @@
+packages/cli/test/integration/credentials/pending-authorization-cleanup.task.test.ts
+  s_b2836de8422dcf::t_db089a1d3d76c6 1-89
+packages/cli/src/credentials/pending-authorization-cleanup.task.ts
+  s_b2836de8422dcf::t_59d181545cb823 25-30
+packages/cli/src/credentials/__tests__/pending-authorization-cleanup.task.test.ts
+  s_b2836de8422dcf::t_3a768268bae3bb 1-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ac25442300db57ec3dbe804b5e2de113213eed15",
+  "prompts": {},
+  "sessions": {
+    "s_b2836de8422dcf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f1534cd-c648-4737-abc8-20f7240c9796",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

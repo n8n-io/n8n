@@ -1,0 +1,204 @@
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOptions.ts
+  s_9b00bc4d58fdcd::t_ba505dfe813b05 2,28-31,50,58-59,62,64-69,75-95,105,111
+  s_9dde2d3ceb6629::t_12e418b7aaafb9 1,3,10,12,14-21,25,33,37,48,74,96-97,99,102-103,106,108,110,112
+  s_9dde2d3ceb6629::t_5294a75502a1b0 4-9,11,13,22-24,26-27,32,34-36,38-47,49,51,53-57,60-61,63,70-73,98,100-101,104,109
+  s_9dde2d3ceb6629::t_c5c90d68811453 52,107
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialInputs.test.ts
+  s_9b00bc4d58fdcd::t_11d248067265b9 160,180-181,183-192,225-238,240-242,303,331-354,360
+  s_9b00bc4d58fdcd::t_714f11f78a909f 224
+  s_9b00bc4d58fdcd::t_fe8f7fc76647e9 295-302,304-313,315-330
+  s_9b00bc4d58fdcd::t_07597040fd4b3b 314
+  s_9dde2d3ceb6629::t_c8f78125789bd4 3-9,13-18,105-123,129-136,138-159,161,163-166,172-173,175-177,182,185-189,191,213,215,221-222,239,244-246,248-250,252-253,260-261,266-276,278-279,282-287,289-294,297,329-330
+  s_9dde2d3ceb6629::t_cb8eed119d3fec 367
+  s_9dde2d3ceb6629::t_41dc3be5189c99 124-128,137,162,167-171,178,180,216-219,243,247,251,254-259,262-265,277,280-281,288
+  s_9dde2d3ceb6629::t_96caff4ed4d5de 355-359,361-366
+  s_cf7e00ffefe182::t_bbf77aa37770a8 174,179,182,193-215,220,223
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9b00bc4d58fdcd::t_ba505dfe813b05 1052-1053
+  s_9dde2d3ceb6629::t_bff779c27bc98d 1051
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialOptionsInput.vue
+  s_9b00bc4d58fdcd::t_f7d43ea1a8d4ee 105
+  s_9b00bc4d58fdcd::t_fe8f7fc76647e9 2-9
+  s_9b00bc4d58fdcd::t_deb7f2b9120597 40-45
+  s_9b00bc4d58fdcd::t_ba505dfe813b05 30-39,46,50-60,81,83-85,98-104,106-107,110,117
+  s_9dde2d3ceb6629::t_b0b359392a438b 94-95
+  s_9dde2d3ceb6629::t_a64156d9454924 1,10-29,47-49,59-60,61-79,82,86,87,88,92-93,96-97,108,109,111-116,118-120
+  s_9dde2d3ceb6629::t_88fde8bf9898c0 90
+  s_9dde2d3ceb6629::t_dfc74d8a2f1fdf 80,89,91
+packages/nodes-base/google-service-account.js
+  s_9dde2d3ceb6629::t_a0e91a598f5325 1
+packages/nodes-base/package.json
+  s_9dde2d3ceb6629::t_a0e91a598f5325 10-12,36-37
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/test/EmbeddingsGoogleVertex.test.ts
+  s_9dde2d3ceb6629::t_a128df57385068 70
+  s_9dde2d3ceb6629::t_74d12239b46a7d 32,46,61,78
+  s_9dde2d3ceb6629::t_165a11d49bf422 42
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 62-64,66,68-69,71-76,79-81,83,85-89
+packages/nodes-base/credentials/common/google/regions.ts
+  s_9dde2d3ceb6629::t_a0e91a598f5325 1-207
+packages/@n8n/nodes-langchain/credentials/GoogleVertexAiApi.credentials.ts
+  s_9dde2d3ceb6629::t_e4cb155cfd12c2 1-2,5-7,10-11,13-16,30-32,35,82,83,86
+  s_9dde2d3ceb6629::t_cbd796c79ea06c 33-34,36
+  s_9dde2d3ceb6629::t_94349b6c270e1c 37
+  s_9dde2d3ceb6629::t_0b9a367b8e38d1 8-9
+  s_e99de54a53d3e4::t_f4468315263d26 40-82
+  s_9dde2d3ceb6629::t_c8f78125789bd4 4,84-85
+  s_9dde2d3ceb6629::t_33ac74ff29352b 3,17-29,37-38
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node.ts
+  s_9dde2d3ceb6629::t_a128df57385068 87
+  s_9dde2d3ceb6629::t_2df2b07bdba294 15-16,18,20,54,75,132
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 12,121-124
+  s_9dde2d3ceb6629::t_f4830428fd2896 13
+  s_e99de54a53d3e4::t_09e172f819007a 17,24
+  s_9dde2d3ceb6629::t_c8f78125789bd4 19,26-35
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.ts
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 25,138-141
+  s_9dde2d3ceb6629::t_a128df57385068 81
+  s_9dde2d3ceb6629::t_2df2b07bdba294 28-29,31,33,74,76,176
+  s_9dde2d3ceb6629::t_efc0abf42dc777 26
+  s_e99de54a53d3e4::t_bcf5d92d80a3cb 121
+  s_e99de54a53d3e4::t_09e172f819007a 30
+  s_9dde2d3ceb6629::t_c8f78125789bd4 32,123-132
+packages/nodes-base/credentials/common/google/utils.ts
+  s_9dde2d3ceb6629::t_3960b5642173b7 1-19
+packages/@n8n/nodes-langchain/credentials/icons/google.svg
+  s_9dde2d3ceb6629::t_2df2b07bdba294 1
+packages/@n8n/nodes-langchain/package.json
+  s_9dde2d3ceb6629::t_2df2b07bdba294 60
+packages/nodes-base/credentials/common/google/index.ts
+  s_9dde2d3ceb6629::t_3960b5642173b7 2
+  s_e99de54a53d3e4::t_09e172f819007a 1
+packages/@n8n/nodes-langchain/utils/tests/google-vertex.test.ts
+  s_9dde2d3ceb6629::t_676f96f082f88f 137-141,148-150,173-175
+  s_9dde2d3ceb6629::t_6ed1a9b0f48d77 12-14,129-135,154-159,169-171,177-180
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 166-168
+  s_9dde2d3ceb6629::t_a128df57385068 11,136,142-147,151-153,172,176
+  s_9dde2d3ceb6629::t_6e1201e6018b6a 127-128,160
+  s_9dde2d3ceb6629::t_ab5db37439bde6 2,123,165
+  s_e99de54a53d3e4::t_779f7137c0348c 1-8,10,20-24,161-164,181-186,191-196,198-204,224,240-245,250-282
+  s_e99de54a53d3e4::t_bcf5d92d80a3cb 246-249
+  s_9dde2d3ceb6629::t_c8f78125789bd4 25-42,66-74,95-103,105-116,118-128
+  s_9dde2d3ceb6629::t_395d36283ffc71 2-4,7-10,43-65
+  s_e99de54a53d3e4::t_611ed63bbd89e6 15-19
+  s_cf7e00ffefe182::t_daad2f66ab0e96 75-94,104,117
+  s_e99de54a53d3e4::t_3ca3f286bb722c 187-190,197,218-222
+  s_e99de54a53d3e4::t_eec471baa3207c 205-207,213-217,223-239
+  s_e99de54a53d3e4::t_be183c7fb0a649 208-212
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/test/LmChatGoogleVertex.test.ts
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 106-112,114-123,125-130,152-172,177-179
+  s_9dde2d3ceb6629::t_a128df57385068 124
+  s_9dde2d3ceb6629::t_165a11d49bf422 180
+  s_9dde2d3ceb6629::t_676f96f082f88f 82-84
+  s_9dde2d3ceb6629::t_74d12239b46a7d 105,151,173-176,181-184,188-189
+  s_9dde2d3ceb6629::t_e3a52530024aea 41
+  s_e99de54a53d3e4::t_09e172f819007a 113
+packages/@n8n/nodes-langchain/utils/google-vertex.ts
+  s_9dde2d3ceb6629::t_43c5a2c58f7c0d 60,66
+  s_9dde2d3ceb6629::t_a128df57385068 26
+  s_9dde2d3ceb6629::t_e4cb155cfd12c2 6-7,11,14-19,22-25,27-30,32-47,53-59,61,63-65,67-77,165
+  s_e99de54a53d3e4::t_09e172f819007a 1-5,9-10,12,31,78-88,92-111,113-125
+  s_9dde2d3ceb6629::t_c8f78125789bd4 8,13,127-129,131-137,144,146-164
+  s_9dde2d3ceb6629::t_5573b291b39044 165
+  s_9dde2d3ceb6629::t_43f2e10fa447a0 20-21
+  s_cf7e00ffefe182::t_e141b0328fb1a2 130,138-143,145
+  s_e99de54a53d3e4::t_eec471baa3207c 48-52,62,89-91,112
+packages/nodes-base/credentials/GoogleApi.credentials.ts
+  s_9dde2d3ceb6629::t_0b9a367b8e38d1 11,24-66
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_9dde2d3ceb6629::t_c8f78125789bd4 70-71,788-791
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialInputs.vue
+  s_9dde2d3ceb6629::t_c8f78125789bd4 12,23-25,73,75-79
+  s_9dde2d3ceb6629::t_78868e1155f6c4 74
+packages/cli/src/credentials/credentials.service.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 1050,1541,1563,1566,2441,2443-2444,2448,2451,2455-2458,2469-2470,2491,2508
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 1816,1905
+  s_9dde2d3ceb6629::t_41dc3be5189c99 30-35,1803-1815,1817-1880,1882-1904
+  s_9dde2d3ceb6629::t_3a7da48553ef09 1881
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 2261-2290
+packages/cli/src/credentials/credential-options.controller.ts
+  s_9dde2d3ceb6629::t_12e418b7aaafb9 1-8,10-18,20-28,30-39,41-42
+  s_9dde2d3ceb6629::t_165a11d49bf422 9,19,29,40
+packages/frontend/editor-ui/src/features/credentials/credentials.api.test.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 10-11,23,30-32,34-38,41,64
+  s_9dde2d3ceb6629::t_37e908373fa231 65
+  s_cf7e00ffefe182::t_b29367c534cb06 42-47,49-63
+  s_cf7e00ffefe182::t_7bc4972e8696b1 48
+  s_cf7e00ffefe182::t_17cec34f037a89 1,4,24-29,33,39-40
+packages/workflow/src/interfaces.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 441-449
+  s_9dde2d3ceb6629::t_2bd12bd08c934c 2032-2033
+packages/cli/src/credentials/__tests__/credential-options.controller.test.ts
+  s_9dde2d3ceb6629::t_12e418b7aaafb9 1-19
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 1-5,21,185-200
+  s_9dde2d3ceb6629::t_8f6efb057446ae 206-207
+  s_cf7e00ffefe182::t_2d091892703d64 201-205
+packages/@n8n/api-types/src/dto/index.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 171
+packages/cli/src/credentials/credential-options.service.ts
+  s_9dde2d3ceb6629::t_12e418b7aaafb9 1-32,34-47,49-107,109,112,114-132
+  s_9dde2d3ceb6629::t_c8f78125789bd4 33,48
+  s_9dde2d3ceb6629::t_549357a0fef838 108,110-111
+  s_9dde2d3ceb6629::t_a6979dfb69694e 113
+packages/@n8n/api-types/src/dto/credentials/credential-options-request.dto.ts
+  s_9dde2d3ceb6629::t_12e418b7aaafb9 1-26
+packages/cli/src/credentials/__tests__/credential-options.service.test.ts
+  s_9dde2d3ceb6629::t_12e418b7aaafb9 1-52,59-60,62-64,66-167,201-215
+  s_9dde2d3ceb6629::t_549357a0fef838 58,61
+  s_9dde2d3ceb6629::t_3c5ba4ec1b40a5 53-57,65
+  s_cf7e00ffefe182::t_b32ef47b6b6e24 168-200
+packages/cli/src/server.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 62
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_9dde2d3ceb6629::t_c8f78125789bd4 1740-1741
+packages/frontend/@n8n/design-system/src/components/N8nSelect/Select.test.ts
+  s_cf7e00ffefe182::t_c116bfa95b5568 47
+  s_cf7e00ffefe182::t_e9fbf2e3567e7b 30-33,35-46,48-68
+  s_cf7e00ffefe182::t_62b90c6420d484 34
+packages/frontend/@n8n/design-system/src/components/N8nSelect/Select.vue
+  s_cf7e00ffefe182::t_c8ab69e20979b9 4,87-95,97,100-105
+  s_cf7e00ffefe182::t_ad87c5de37a089 96,98-99
+  s_cf7e00ffefe182::t_63fe5b89cfa46d 106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b1a136b58ce1b75d44fe8a886872e1a82c8fa163",
+  "prompts": {},
+  "sessions": {
+    "s_9b00bc4d58fdcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1207a-0bd9-7c50-8eb8-14d91fa82095",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_9dde2d3ceb6629": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11ac2-6b8c-78c0-8c5b-f0f0c2840b03",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_cf7e00ffefe182": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11bae-5950-7d02-881b-ef39fcf7c2bf",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e99de54a53d3e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

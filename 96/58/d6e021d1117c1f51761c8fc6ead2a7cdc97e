@@ -1,0 +1,25 @@
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_3a9d0739deb6ee::t_0163f0cb1d384b 507
+  s_3a9d0739deb6ee::t_6648c2e99f4739 371-375
+  s_3a9d0739deb6ee::t_ef0a9d8fba5c06 7,25-29,381,386,388-391,393,397-398,400-403,406-409,411-423,484,521,1048,1069
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_3a9d0739deb6ee::t_0163f0cb1d384b 3092,3099-3104,3133-3138,3163,3167
+  s_3a9d0739deb6ee::t_3e9469b035cceb 3122,3142
+  s_3a9d0739deb6ee::t_1150b60fb3065d 3005,3020-3032,3052-3061,3063-3064,3066-3077,3079-3091,3093-3098,3108-3120,3124-3131,3141,3144-3151,3153-3156,3158-3162,3164-3166,3168-3169,3174-3176,3178-3193,3195-3206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9658d6e021d1117c1f51761c8fc6ead2a7cdc97e",
+  "prompts": {},
+  "sessions": {
+    "s_3a9d0739deb6ee": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f09c26b75ffe9497CHF56DArXC",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

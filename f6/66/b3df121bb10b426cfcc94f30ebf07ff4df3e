@@ -1,0 +1,132 @@
+packages/cli/src/modules/agents/agent-save-completion.service.ts
+  s_71ad2034164515::t_89ed4240b4498d 32-38
+  s_71ad2034164515::t_8d23d3b7c05e40 30-31,39-44
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_8d23d3b7c05e40 31,365-370,375-383
+  s_71ad2034164515::t_89ed4240b4498d 371-374
+  s_71ad2034164515::t_6d73989ff94a6f 384-385
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-context.adapter.test.ts
+  s_58620fba057bad::t_e952e34ac75da2 335
+  s_58620fba057bad::t_205eb1297efb20 1-10,12-14,15-18,20-31,33-40,41-51,52-68,70-74,75,77-84,85-233,234-303,305,306-307,311-346,347
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-pending-agent.service.test.ts
+  s_58620fba057bad::t_af15416c3de6a8 17
+  s_58620fba057bad::t_43ff7629690b67 17
+packages/cli/src/modules/agents/instance-ai-agent-context.adapter.ts
+  s_58620fba057bad::t_d7c0ef23295e5a 1-7,10-24,25,26-29,31-76,78-86,87-88,91-92,95-112,114-165,167-183,184,186-188,190-245,253-256
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_58620fba057bad::t_aca595935e946b 107,109
+packages/cli/src/modules/agents/builder/format-preview-context.ts
+  s_58620fba057bad::t_138951cd615e90 1-2,6-48,50-84,86-110,112,114-131,133-155,158-235
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_58620fba057bad::t_4166e6d972a528 723,728
+  s_58620fba057bad::t_5f05b1b0fab4f8 729
+packages/cli/src/modules/agents/agent-runtime-instrumentation.ts
+  s_58620fba057bad::t_610faffc360637 6-76
+  s_58620fba057bad::t_280b5863faaa47 2,4
+packages/cli/src/modules/agents/builder/__tests__/format-preview-context.test.ts
+  s_58620fba057bad::t_138951cd615e90 4-7,9,11-15,17-18,20-21,23-30,32-126,128-173,175-268
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_58620fba057bad::t_4166e6d972a528 42
+  s_58620fba057bad::t_280b5863faaa47 179
+packages/cli/src/modules/agents/__tests__/model-stream-stall-options.test.ts
+  s_58620fba057bad::t_d7c0ef23295e5a 1-2,4-45
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_58620fba057bad::t_aca595935e946b 650
+  s_58620fba057bad::t_4d22957a15f9c6 650
+packages/cli/src/modules/agents/model-stream-stall-options.ts
+  s_58620fba057bad::t_d7c0ef23295e5a 1-36
+docs/generated/sqlite-schema/user.md
+  ai_agent 83-84,84,392-406,399
+docs/generated/sqlite-schema/README.md
+  ai_agent 122-123,122,341-345,342,1525-1545,1532
+docs/generated/postgres-schema/README.md
+  ai_agent 122-123,122,359-363,360,1539-1559,1546
+docs/generated/postgres-schema/public.promotion_connection.md
+  ai_agent 8,45,72-82,78
+docs/generated/sqlite-schema/promotion_run.md
+  ai_agent 1-107,97
+docs/generated/postgres-schema/public.promotion_review.md
+  ai_agent 1-101,12,26,49,58
+docs/generated/sqlite-schema/promotion_config.md
+  ai_agent 21,48,68-76
+docs/generated/postgres-schema/public.promotion_run.md
+  ai_agent 1-99,89
+docs/generated/postgres-schema/public.promotion_config.md
+  ai_agent 10,43,63-71
+docs/generated/postgres-schema/public.user.md
+  ai_agent 77-78,78,386-400,393
+docs/generated/sqlite-schema/promotion_connection.md
+  ai_agent 19,50,77-87,83
+docs/generated/sqlite-schema/promotion_review.md
+  ai_agent 1-109,9,23,36-37,57,66
+packages/cli/src/modules/promotions.ee/database/entities/promotion-review.entity.ts
+  s_47d1e0264915a8::t_cd946e0cdd7379 78-80
+  s_47d1e0264915a8::t_e39de8cc933503 62-65
+packages/@n8n/db/src/migrations/common/1792072949221-CreatePromotionReviewTable.ts
+  s_47d1e0264915a8::t_8443d0949954c1 52-54
+  s_47d1e0264915a8::t_a7638bbabaf44b 66-71
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-review.repository.ts
+  s_47d1e0264915a8::t_1553ef6dc8be5c 11
+  s_47d1e0264915a8::t_d2ad66770d6c9b 29
+  s_47d1e0264915a8::t_7ed27c08253f6d 22
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review.repository.integration.test.ts
+  s_47d1e0264915a8::t_4ab3e21658ddc3 261
+  s_47d1e0264915a8::t_bb0e53ce3a3c77 273,280
+  s_47d1e0264915a8::t_ff490508dfe3fb 82
+  s_47d1e0264915a8::t_e9c45405c8953d 114,116
+  s_47d1e0264915a8::t_460bfc7f263d0e 136
+  s_47d1e0264915a8::t_c364c4c0d488cc 187-188
+  s_47d1e0264915a8::t_e84f464d2991f8 216
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_47d1e0264915a8::t_891696e18dbc58 138-139
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.client.ts
+  s_47d1e0264915a8::t_6c4dc78d1d230e 110
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_47d1e0264915a8::t_ab960bff3d5a64 279
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_47d1e0264915a8::t_d32702d1653121 493-509
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.service.test.ts
+  s_47d1e0264915a8::t_7707961949e9cc 117-131
+packages/cli/src/modules/promotions.ee/git-hosts/__tests__/gitlab-merge-request.client.test.ts
+  s_47d1e0264915a8::t_68a76ef3290cc7 102-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f666b3df121bb10b426cfcc94f30ebf07ff4df3e",
+  "prompts": {},
+  "sessions": {
+    "s_47d1e0264915a8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "60e62fb0-397a-40d4-9c2f-b454af702013",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_58620fba057bad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13f8e-afeb-7511-82e8-d8246a12076c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c9a35d8cddcbb4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11f7e-7db4-7830-bf57-7ad3a6bfde21",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

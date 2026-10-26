@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-node-diff.test.ts
+  s_3c534142b2065c::t_17be454d97447e 91-116
+packages/@n8n/instance-ai/src/tools/workflows/workflow-node-diff.ts
+  s_3c534142b2065c::t_e3a9b747173b1f 10-13,102-113,133-135,151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6efc0c1ddf1a432ab578c21ad2d2e1d67983df4",
+  "prompts": {},
+  "sessions": {
+    "s_3c534142b2065c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdc79e9e-95fa-4aec-bf3d-916979e7d2a4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

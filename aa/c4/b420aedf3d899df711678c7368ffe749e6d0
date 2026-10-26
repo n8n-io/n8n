@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_fa7df4b3f4577d::t_ef487cdf71140e 212
+  s_fa7df4b3f4577d::t_e9195394c2abba 234,439
+  s_fa7df4b3f4577d::t_65bc4d57426ee4 389,593
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_fa7df4b3f4577d::t_e9195394c2abba 202,204,206
+  s_fa7df4b3f4577d::t_a8606211e20eff 203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aac4b420aedf3d899df711678c7368ffe749e6d0",
+  "prompts": {},
+  "sessions": {
+    "s_fa7df4b3f4577d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1585d-1093-7f53-a90c-e85f9af32754",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

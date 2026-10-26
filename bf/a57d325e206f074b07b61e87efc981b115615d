@@ -1,0 +1,28 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_efd09e6b665113::t_95314493d74c40 4817,4823
+packages/frontend/editor-ui/src/features/settings/migrationReport/components/ImpactTag.test.ts
+  s_efd09e6b665113::t_97ea9068ee45ba 22-37
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.test.ts
+  s_efd09e6b665113::t_1c881ed1229802 866
+  s_efd09e6b665113::t_97ea9068ee45ba 511-533,846-865,867
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.vue
+  s_efd09e6b665113::t_a50dd3ff7f2cf1 375
+packages/frontend/editor-ui/src/features/settings/migrationReport/components/ImpactTag.vue
+  s_efd09e6b665113::t_a50dd3ff7f2cf1 10-16,35-50,54-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bfa57d325e206f074b07b61e87efc981b115615d",
+  "prompts": {},
+  "sessions": {
+    "s_efd09e6b665113": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10c00aad-a94d-49c4-93a5-9afcf4e9bef4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

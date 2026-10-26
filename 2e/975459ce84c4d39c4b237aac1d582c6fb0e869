@@ -1,0 +1,19 @@
+packages/cli/src/modules/data-table/data-table-column.repository.ts
+  s_a5c113d3dab7cc::t_c383a99472e1b9 2,148,150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2e975459ce84c4d39c4b237aac1d582c6fb0e869",
+  "prompts": {},
+  "sessions": {
+    "s_a5c113d3dab7cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aff32f9-b97d-43bb-b0cd-f1499312b90b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

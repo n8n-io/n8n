@@ -1,0 +1,11 @@
+packages/nodes-base/nodes/HttpRequest/V1/HttpRequestV1.node.ts
+  s_7c90f337629fca::t_00d042e99c5067 739-740
+packages/nodes-base/nodes/HttpRequest/V2/HttpRequestV2.node.ts
+  s_7c90f337629fca::t_00d042e99c5067 810-811
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bf59a1541e97c395b25cb96abef9cbfb73006558",
+  "prompts": {}
+}

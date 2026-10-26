@@ -1,0 +1,57 @@
+packages/cli/src/modules/agents/agent-checkpoint-pruning.task.ts
+  ai_agent 3,18,20-25
+packages/cli/src/modules/agents/__tests__/agent-checkpoint-pruning.task.test.ts
+  ai_agent 14-19
+packages/cli/src/modules/agents/agent-interrupted-execution-sweep.task.ts
+  ai_agent 2,18,20-22
+packages/cli/src/modules/data-table/data-table-file-cleanup.task.ts
+  ai_agent 3,19
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-refresh.task.test.ts
+  ai_agent 20
+packages/cli/src/modules/inbound-auth-core/trusted-source-discovery.task.ts
+  ai_agent 2,19
+packages/cli/src/modules/token-exchange/services/trusted-key-refresh.task.ts
+  ai_agent 2,19
+packages/cli/src/modules/data-table/__tests__/data-table-file-cleanup.task.test.ts
+  ai_agent 37
+packages/cli/src/modules/mcp-registry/mcp-registry-refresh.task.ts
+  ai_agent 3,21,23-25
+packages/cli/src/modules/instance-registry/__tests__/instance-registry-reconciliation.task.test.ts
+  ai_agent 19-24
+packages/cli/src/modules/external-secrets.ee/external-secrets-refresh.task.ts
+  ai_agent 2,17,20
+packages/cli/src/modules/instance-registry/__tests__/stale-member-cleanup.task.test.ts
+  ai_agent 21
+packages/cli/src/modules/agents/__tests__/agent-interrupted-execution-sweep.task.test.ts
+  ai_agent 14-19,25
+packages/cli/src/modules/instance-ai/instance-ai-checkpoint-pruning.task.ts
+  ai_agent 3,20,22-27
+packages/cli/src/modules/instance-registry/checks/instance-registry-reconciliation.task.ts
+  ai_agent 2,20,22-24
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.task.ts
+  ai_agent 3,13,15-17
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-refresh.task.test.ts
+  ai_agent 18-23,29,37
+packages/cli/src/modules/token-exchange/services/__tests__/jti-cleanup.task.test.ts
+  ai_agent 28
+packages/cli/src/modules/instance-registry/instance-registry-heartbeat.task.ts
+  ai_agent 2,19,22
+packages/cli/src/modules/inbound-auth-core/__tests__/trusted-source-discovery.task.test.ts
+  ai_agent 13
+packages/cli/src/modules/instance-registry/stale-member-cleanup.task.ts
+  ai_agent 3,20
+packages/cli/src/modules/token-exchange/services/__tests__/trusted-key-refresh.task.test.ts
+  ai_agent 13
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  ai_agent 3,20
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-checkpoint-pruning.task.test.ts
+  ai_agent 15-20
+packages/cli/src/modules/instance-registry/__tests__/instance-registry-heartbeat.task.test.ts
+  ai_agent 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "85635fedffeae6a48942276a6f50065e9f27a154",
+  "prompts": {}
+}

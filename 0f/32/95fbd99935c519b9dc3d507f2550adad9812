@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Metabase/QuestionsDescription.ts
+  s_2e1fa95fc44f8f::t_8128df1e0d6790 47
+packages/nodes-base/nodes/Metabase/test/Metabase.node.test.ts
+  s_2e1fa95fc44f8f::t_aa8c0e58effda7 51,53,63,65,75,77,87,89,107,111,150-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f3295fbd99935c519b9dc3d507f2550adad9812",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

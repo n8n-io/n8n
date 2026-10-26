@@ -1,0 +1,19 @@
+packages/cli/src/telemetry/telemetry-pulse.task.ts
+  s_9a7361ab934490::t_ce5c6cfef4c6c0 14-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc8920b378a1cc68faba1617ad9b7eeed80ef3a1",
+  "prompts": {},
+  "sessions": {
+    "s_9a7361ab934490": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf0f41e7-f5d0-4056-8505-89dbb02b2f7b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

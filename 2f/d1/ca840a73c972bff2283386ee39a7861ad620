@@ -1,0 +1,26 @@
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_8631ec10eb1199::t_e350ea01271b9a 84
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_8631ec10eb1199::t_e350ea01271b9a 116-120,135-136,145-146,156-161,166-170,175-179,183-191,196-208,213-219,222-226,231-236,262-273,280-297,302-308,312-317,321-330
+  s_8631ec10eb1199::t_61ea1115959eb9 244-255
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_8631ec10eb1199::t_e350ea01271b9a 15-33,35-363,365-418
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_8631ec10eb1199::t_e350ea01271b9a 23-51,55-63,67-85,89,91-99,106-108,112-116,118-123,127-142,145-160,167-205,207-237,239-252,257-274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2fd1ca840a73c972bff2283386ee39a7861ad620",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

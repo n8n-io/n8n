@@ -1,0 +1,29 @@
+packages/@n8n/engine/src/execution/step-prefetch.ts
+  s_a47817b8cc2ce4::t_b9671e8a863082 1-16
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_a47817b8cc2ce4::t_f9ddd293b77ebb 538-573
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_a47817b8cc2ce4::t_e1a8a3cbca3456 203-214
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_a47817b8cc2ce4::t_b0f482196c6cee 29,60-66,68-70,111-114,247-255
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_a47817b8cc2ce4::t_0e83d8cdb92126 8,24-25,28-41,64-70,72-74,91,96,128-151,165-173
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_a47817b8cc2ce4::t_ed05843fd27133 98-110,120-127,136,139-147,149,188-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "75b94ccad5b96fc2e2956a0ac1074664cedace11",
+  "prompts": {},
+  "sessions": {
+    "s_a47817b8cc2ce4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b6407dd-7a6c-47aa-87ab-cbe47ad961ef",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

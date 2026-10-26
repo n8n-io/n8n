@@ -1,0 +1,25 @@
+packages/cli/src/modules/breaking-changes/migrations/__tests__/agent-tools-v1-to-v2.migration.test.ts
+  s_3fccbadf582d3f::t_304f7b00438513 55-80
+  s_3fccbadf582d3f::t_fdd9b21a7295e7 1-54,81-82
+packages/cli/src/modules/breaking-changes/migrations/index.ts
+  s_3fccbadf582d3f::t_e586187174e8ae 1,6
+packages/cli/src/modules/breaking-changes/migrations/agent-tools-v1-to-v2.migration.ts
+  s_3fccbadf582d3f::t_1ebafeb70ea86a 1-11,16-20,23,31-44
+  s_3fccbadf582d3f::t_5f320f488cf66f 12-15,21-22,24-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "251b053269cc95459acd9ca4115ba786df3105d2",
+  "prompts": {},
+  "sessions": {
+    "s_3fccbadf582d3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55175171-4120-4448-8ac7-c712f2d2efc1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

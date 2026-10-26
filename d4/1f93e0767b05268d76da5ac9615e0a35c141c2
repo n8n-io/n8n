@@ -1,0 +1,27 @@
+packages/cli/src/scheduling/poll-trigger-node/durable-poller-chain.ts
+  s_3315aad9012485::t_b74c8fdf511fe8 17
+packages/cli/src/modules/agents/scheduling/agent-task-job-registrar.ts
+  s_3315aad9012485::t_b74c8fdf511fe8 48,123
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_3315aad9012485::t_b74c8fdf511fe8 54
+packages/cli/src/scheduling/poll-trigger-node/poll-job-provider.ts
+  s_3315aad9012485::t_b74c8fdf511fe8 31
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_3315aad9012485::t_b74c8fdf511fe8 122,125,129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d41f93e0767b05268d76da5ac9615e0a35c141c2",
+  "prompts": {},
+  "sessions": {
+    "s_3315aad9012485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "311a5fdb-9df3-411e-ae23-e86242fae0c3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

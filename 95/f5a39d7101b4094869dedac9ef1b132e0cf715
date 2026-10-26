@@ -1,0 +1,23 @@
+packages/modules/inbox/frontend/package.json
+  s_be8c96fdb8677d::t_d4735f4ffe55b8 32
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewChangesSection.test.ts
+  s_be8c96fdb8677d::t_38d340ce23e4d3 23-33,232-233
+pnpm-lock.yaml
+  s_be8c96fdb8677d::t_b30d85dffb12cb 7080-7082
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95f5a39d7101b4094869dedac9ef1b132e0cf715",
+  "prompts": {},
+  "sessions": {
+    "s_be8c96fdb8677d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14480-6735-7382-b6a4-b24d98bc9bf7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

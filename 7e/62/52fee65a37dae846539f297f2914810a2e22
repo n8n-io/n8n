@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_7887e2d350f40f::t_21411ad4c278eb 1354-1355
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_7887e2d350f40f::t_1c62e38548ebe9 686-759
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7e6252fee65a37dae846539f297f2914810a2e22",
+  "prompts": {},
+  "sessions": {
+    "s_7887e2d350f40f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62dd6632-b49e-473a-b9fb-b7945d59c21e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

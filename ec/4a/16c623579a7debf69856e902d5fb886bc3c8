@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/agents-settings.service.ts
+  s_b30ec406386d61::t_33f1e6e41b1d0d 9,16
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_b30ec406386d61::t_33f1e6e41b1d0d 42
+packages/cli/test/integration/agents/agents-settings.test.ts
+  s_b30ec406386d61::t_33f1e6e41b1d0d 1,38,40,53-54,78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ec4a16c623579a7debf69856e902d5fb886bc3c8",
+  "prompts": {},
+  "sessions": {
+    "s_b30ec406386d61": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fbac-6028-7b12-99ba-e8426f20ba57",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

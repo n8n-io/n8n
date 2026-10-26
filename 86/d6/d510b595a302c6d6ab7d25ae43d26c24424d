@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_081d6f325925c9::t_ee197b2cc549a5 4,16,653-657,667-668,674-682,684-693,697-698,703-721
+  s_081d6f325925c9::t_a773407a47404a 658-666,669-673,694-696
+  s_081d6f325925c9::t_19dc0719f86bcf 683,699-702
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_081d6f325925c9::t_fd803f420088bd 219-224
+  s_081d6f325925c9::t_972ee4ed61b0e3 135-148,191-193,195-200
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_081d6f325925c9::t_a773407a47404a 461-464
+  s_081d6f325925c9::t_ee197b2cc549a5 13,420,465-474
+  s_081d6f325925c9::t_bd83e916342e70 421-437,440-442,446-452,456-460
+  s_081d6f325925c9::t_10b0af2223e199 438-439,443-445,453-455
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_081d6f325925c9::t_fd803f420088bd 1138
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_081d6f325925c9::t_fd803f420088bd 149-152,176-188,194-197,782-788,791
+  s_081d6f325925c9::t_a773407a47404a 189-192,789-790
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "86d6d510b595a302c6d6ab7d25ae43d26c24424d",
+  "prompts": {},
+  "sessions": {
+    "s_081d6f325925c9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14556-73fa-7410-b968-ee927d435114",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

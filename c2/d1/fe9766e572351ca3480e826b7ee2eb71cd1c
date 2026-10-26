@@ -1,0 +1,63 @@
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/selects-foreground-execution-through-the-consolidated-tool.json
+  s_dd171702c7a424::t_79edb67d0c28d3 2-248
+  s_dd171702c7a424::t_06e8411b93114d 1
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_dd171702c7a424::t_a4aaef41920385 354
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_dd171702c7a424::t_175ca0afa62110 79-96
+  s_dd171702c7a424::t_a6266a0cc4eef3 15,19-20,66-78,106,108,119,122,135,138,148,151,161,164,174,177,188,192,211,242,266,285,288
+  s_dd171702c7a424::t_8875bcfcf4cc5c 212-217,245-251,269-275
+packages/cli/src/modules/agents/plans/agent-plan-tools.ts
+  s_dd171702c7a424::t_8875bcfcf4cc5c 211-212,214
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  s_dd171702c7a424::t_df68e8d8c8e551 4,10,208-218,229,233-236,241-255
+  s_dd171702c7a424::t_c50e7beb0a96c8 219-228
+  s_dd171702c7a424::t_8875bcfcf4cc5c 230-232,237-240
+  s_dd171702c7a424::t_96b48f881e3eb2 256
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_dd171702c7a424::t_df68e8d8c8e551 285-298
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_dd171702c7a424::t_175ca0afa62110 1001-1008,1022,1206-1213
+  s_dd171702c7a424::t_8875bcfcf4cc5c 1023-1025,1061-1063
+  s_dd171702c7a424::t_a6266a0cc4eef3 961,1045,1083,1087,1121-1122,1124,1172-1173,1175
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_dd171702c7a424::t_c600ef8c897b0c 63,65,80,88-90,100
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_dd171702c7a424::t_c600ef8c897b0c 28,39,52
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_dd171702c7a424::t_df68e8d8c8e551 4623-4665
+packages/@n8n/agents/src/__tests__/integration/delegate-sub-agent.test.ts
+  s_dd171702c7a424::t_7f25ac99ec4a77 18-59
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/selects-background-execution-through-the-consolidated-tool.json
+  s_dd171702c7a424::t_cf039685fe6871 1
+  s_dd171702c7a424::t_79edb67d0c28d3 2-244
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_dd171702c7a424::t_c600ef8c897b0c 1050-1061,1069,1105,1122,1141,1192,1195,1221-1229
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_dd171702c7a424::t_a4aaef41920385 11
+  s_dd171702c7a424::t_a292015e9044bc 1,13,103-107,121,125,132-152,223-232,236-254,307-308
+  s_dd171702c7a424::t_0ec806fc6d09f9 309
+packages/@n8n/agents/src/types/runtime/delegation.ts
+  s_dd171702c7a424::t_a4aaef41920385 67-75,141
+  s_dd171702c7a424::t_a292015e9044bc 15,112-117,306-310
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_dd171702c7a424::t_a292015e9044bc 65-70,74-76,82-83,86,92-93,101,105,115
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_dd171702c7a424::t_0cfda014101c15 4,47-69,71-83,85-113,115-118,121-123,125-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2d1fe9766e572351ca3480e826b7ee2eb71cd1c",
+  "prompts": {},
+  "sessions": {
+    "s_dd171702c7a424": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11a3d-30e8-73a3-9e06-925aae6a1701",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

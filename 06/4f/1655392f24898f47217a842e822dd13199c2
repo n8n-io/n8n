@@ -1,0 +1,57 @@
+packages/frontend/editor-ui/src/app/router.ts
+  ai_agent 26,311-318
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageAttachments.test.ts
+  ai_agent 6,16-19,22-26,48-53
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  ai_agent 47-49,212
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  ai_agent 19,29,73-78,112-122,144,226,231-236,343,371,433,1243-1248,1367,1530,1573,1588
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 8120-8123
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  ai_agent 4,36,57-58,78-79,92,112,142,151-161,227-229,234,288,369,399,810-814
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  ai_agent 7,10,123-124,151-187
+packages/frontend/editor-ui/src/features/agents/__tests__/module.descriptor.test.ts
+  ai_agent 1-98
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  ai_agent 143
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+  ai_agent 352-371
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  ai_agent 214-218,614,843,896,2276,3165,3290,3971,4020-4157
+packages/frontend/editor-ui/src/features/agents/composables/useBackOrFallback.ts
+  ai_agent 1-21
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPermissions.test.ts
+  ai_agent 128-150
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPermissions.ts
+  ai_agent 8,52
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.test.ts
+  ai_agent 1-290
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageAttachments.vue
+  ai_agent 2,8-9,19-20,42-48
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  ai_agent 5,34-65,106-117,616,621,632,637,648,653,668,678,683,687-696,726,731,741,746
+packages/frontend/editor-ui/src/features/agents/composables/useAgentsN8nChatFlag.ts
+  ai_agent 4-9,15-27
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  ai_agent 13-15
+packages/frontend/editor-ui/src/features/agents/components/agentChatInjectionKeys.ts
+  ai_agent 1-8
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/AgentN8nChatView.vue
+  ai_agent 1-281
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  ai_agent 3-4,8,15,28-29,88-107
+packages/frontend/editor-ui/src/features/agents/utils/errors.ts
+  ai_agent 1-9
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  ai_agent 28,308-310
+packages/frontend/editor-ui/src/features/settings/context/context.utils.ts
+  ai_agent 11,31-35,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "064f1655392f24898f47217a842e822dd13199c2",
+  "prompts": {}
+}

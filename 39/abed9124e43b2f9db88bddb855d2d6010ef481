@@ -1,0 +1,42 @@
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_5614fe25678684::t_a3ed42b5520789 295-297,507,509,578-579
+  s_923c8f43bce732::t_f0fd942ce4a3c3 386-393,395,480-487,489-493
+  s_923c8f43bce732::t_9ef6dbfd2d8d46 394,488
+  s_cc52d4d80ec002::t_5746233ba8b5c0 412,441,456,477,497
+  s_923c8f43bce732::t_4ae6d274cd7947 504
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_cc52d4d80ec002::t_b9b04192bf79b0 80,86,98,110,159,181-184,190,204,208,212,222
+  ai_agent 220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "39abed9124e43b2f9db88bddb855d2d6010ef481",
+  "prompts": {},
+  "sessions": {
+    "s_5614fe25678684": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fd0a-cb45-7481-96f9-d72826656d72",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_923c8f43bce732": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62147b38-e8f8-4987-be1c-87842a71352b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_cc52d4d80ec002": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14df1071-d247-4331-af4e-4ce488ddaae0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

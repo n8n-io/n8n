@@ -1,0 +1,24 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integration.test.ts
+  s_2397c9db9d923f::t_9f07c67712cfd9 408
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.export.yml
+  s_2397c9db9d923f::t_9f07c67712cfd9 21-28
+packages/cli/test/integration/public-api/n8n-packages-export-agents.test.ts
+  s_2397c9db9d923f::t_752101b569d0e4 133
+  s_2397c9db9d923f::t_9f07c67712cfd9 30,256-288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ecd9968116293a2a11ed222164c257f0454a8aa4",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

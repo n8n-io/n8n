@@ -1,0 +1,77 @@
+packages/nodes-base/nodes/Cockpit/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_372f8a857f4918 1-27
+packages/nodes-base/nodes/Cloudflare/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_a8cdfcf282557b 1-29
+packages/nodes-base/nodes/Contentful/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_071621e632c828 1-34
+packages/nodes-base/nodes/CoinGecko/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_56a139f12b2465 1-23
+packages/nodes-base/nodes/Cloudflare/Cloudflare.node.ts
+  s_55edf857ff6cab::t_35011d50dc3f46 10,59,91,104,122,132,153
+packages/nodes-base/nodes/Cloudflare/GenericFunctions.ts
+  s_55edf857ff6cab::t_b915e068949c5b 9-10,12,17,23,27,48
+packages/nodes-base/nodes/Cockpit/CollectionFunctions.ts
+  s_2e63c578eedb67::t_c3fb4e8012d482 2,24-29,85-90,96
+packages/nodes-base/nodes/Cockpit/FormFunctions.ts
+  s_2e63c578eedb67::t_310ea66dd2b92a 2,16-21
+packages/nodes-base/nodes/Cockpit/GenericFunctions.ts
+  s_55edf857ff6cab::t_0fdacbacb741a8 8-9,11,16,21,31
+packages/nodes-base/nodes/Cockpit/SingletonFunctions.ts
+  s_55edf857ff6cab::t_c1c06bf442ebc5 2,10,16
+packages/nodes-base/nodes/CoinGecko/CoinGecko.node.ts
+  s_2e63c578eedb67::t_2273cedae2fc83 11,64,78,99,111-115,130,175,188,200-206,233,242-248,268-274,286,310,320,343,367,380,412,443,452-458,476-482,500
+packages/nodes-base/nodes/CoinGecko/GenericFunctions.ts
+  s_1784f57a265e56::t_567874c9a981e0 8-9,11,16,21,29,48
+packages/nodes-base/nodes/Contentful/Contentful.node.ts
+  s_a8d7d542d666a7::t_c852b944c4225e 8,107,124,145,195,214,244,294,313,343,353
+packages/nodes-base/nodes/Contentful/GenericFunctions.ts
+  s_1784f57a265e56::t_acc048f1d8482f 8-9,11,16,25,29,50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "29382d13ae8947546883f415763a275a8a435031",
+  "prompts": {},
+  "sessions": {
+    "s_1784f57a265e56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae4316d2f9da06192",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e63c578eedb67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5a4e105bc6f439cf",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_55edf857ff6cab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aa2595f2b5dc240d0",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_a8d7d542d666a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-abbb49b4bb6e8c19c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Aws/S3/test/requests/v1.workflow.test.ts
+  s_2e1fa95fc44f8f::t_622db8baf66659 1-57
+packages/nodes-base/nodes/Aws/S3/test/requests/v2.workflow.test.ts
+  s_2e1fa95fc44f8f::t_de2d69d84bb947 1-64
+packages/nodes-base/nodes/Aws/S3/test/requests/v1.workflow.json
+  s_35387053693dfb::t_c9b4a5da2a393b 1-316
+packages/nodes-base/nodes/Aws/S3/test/requests/v2.workflow.json
+  s_35387053693dfb::t_12c62326464a35 1-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8eb5cd846f23f9d40e129a9cfdf6690a993df16",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_35387053693dfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2275bfda519068ec",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

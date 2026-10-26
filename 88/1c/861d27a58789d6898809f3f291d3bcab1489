@@ -1,0 +1,26 @@
+packages/quality/policy/code-health/src/rules/migration-timestamp.rule.ts
+  s_06db892f15055e::t_9884df9b8b5480 82-87,89-96,100-104,132-139
+  s_06db892f15055e::t_544d7fbe54c530 99,105-107,113-114
+  s_06db892f15055e::t_efc6b330ea7fa0 140-142
+packages/quality/policy/code-health/src/rules/migration-timestamp.rule.test.ts
+  s_06db892f15055e::t_a825bdddcd241e 143-181,266-278,333,341-345
+  s_06db892f15055e::t_544d7fbe54c530 183-193,291-293
+  s_06db892f15055e::t_2815487994d46a 182
+  s_06db892f15055e::t_e9605e0ff67465 279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "881c861d27a58789d6898809f3f291d3bcab1489",
+  "prompts": {},
+  "sessions": {
+    "s_06db892f15055e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_eeff64e40ffezZFtGcFP80ZbNI",
+        "model": "openai/gpt-6.1-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

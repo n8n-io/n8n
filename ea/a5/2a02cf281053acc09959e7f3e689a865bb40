@@ -1,0 +1,31 @@
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-handler.test.ts
+  s_193233a5374dba::t_3387b9afe5077c 97,280-294
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_193233a5374dba::t_101c168160bc77 68
+packages/cli/src/scheduling/system-tasks/system-task-handler.ts
+  s_193233a5374dba::t_101c168160bc77 39-40,51
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-run-observer.test.ts
+  s_193233a5374dba::t_3387b9afe5077c 170-196
+packages/cli/src/events/maps/system-task-metrics.event-map.ts
+  s_193233a5374dba::t_101c168160bc77 17-18,20
+packages/cli/src/scheduling/system-tasks/system-task-run-observer.ts
+  s_193233a5374dba::t_101c168160bc77 28-29,33-36,44,47,71,73,77
+  s_193233a5374dba::t_3387b9afe5077c 89
+  s_193233a5374dba::t_a9658a2ea85cde 48-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eaa52a02cf281053acc09959e7f3e689a865bb40",
+  "prompts": {},
+  "sessions": {
+    "s_193233a5374dba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "757ac64c-56f6-436e-bad2-0339baeba36a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

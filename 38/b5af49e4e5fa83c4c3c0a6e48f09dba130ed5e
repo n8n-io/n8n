@@ -1,0 +1,14 @@
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  h_5d40c27a8fdfd1 79-80,655,680,843
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "38b5af49e4e5fa83c4c3c0a6e48f09dba130ed5e",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

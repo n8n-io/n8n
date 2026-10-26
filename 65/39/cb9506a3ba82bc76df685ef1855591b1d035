@@ -1,0 +1,50 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/list/columns.test.ts
+  s_c162a99395ccc3::t_172ce82e39a7f9 6,14,505-515,532-550
+  s_c162a99395ccc3::t_d22d4de0fe8bdb 516-531
+  s_c162a99395ccc3::t_f62eed34b84151 551
+packages/nodes-base/nodes/Microsoft/SharePoint/test/methods/resourceMapping.test.ts
+  s_c162a99395ccc3::t_d22d4de0fe8bdb 877-883
+  s_c162a99395ccc3::t_45e0025085050c 3-4,7,854-876,884-896
+  s_c162a99395ccc3::t_d0febc384f2e9b 897
+packages/nodes-base/nodes/Microsoft/SharePoint/helpers/utils.ts
+  s_c162a99395ccc3::t_6018055d59a640 115-118
+  s_c162a99395ccc3::t_4df2814bfc66c6 99-100,127
+  s_c162a99395ccc3::t_d7c5327cfb8d2f 1,95-98,101-111,113-114,124-126,128-145
+  s_c162a99395ccc3::t_ef61e8408ec6e9 112,119-123
+  s_c162a99395ccc3::t_6ee6c81ed24cdd 146
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/create.test.ts
+  s_c162a99395ccc3::t_da592fe63fcda3 157-166
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/helpers/utils.ts
+  s_c162a99395ccc3::t_e17dc5b4c297ba 15,129-134,136
+  s_c162a99395ccc3::t_68207088b95434 135
+  s_c162a99395ccc3::t_b7640cfad168ba 137
+packages/nodes-base/nodes/Microsoft/SharePoint/test/fixtures/listColumnsReply.ts
+  s_c162a99395ccc3::t_fcbd2e645c15a1 1-2,5,19,64,84,89,129,148,181,194
+  s_c162a99395ccc3::t_6018055d59a640 3-4,52,101,118
+  s_c162a99395ccc3::t_d22d4de0fe8bdb 6-18,20-51,53-63,65-83,85-88,90-100,102-117,119-128,130-147,149-180,182-193
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/methods/resourceMapping.ts
+  s_c162a99395ccc3::t_89b91294ae6a7f 8,37-59,67
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/list/columns.ts
+  s_c162a99395ccc3::t_dba0f7dbc4d1e0 9,26,110-139,150,152-153
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v1/helpers/utils.test.ts
+  s_c162a99395ccc3::t_8f9a4c30185679 4-11,115-173
+  s_c162a99395ccc3::t_affac6ca81f2f3 174-175
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/item/index.ts
+  s_c162a99395ccc3::t_536c9c6faae905 15,165-168,172-176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6539cb9506a3ba82bc76df685ef1855591b1d035",
+  "prompts": {},
+  "sessions": {
+    "s_c162a99395ccc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8996d972-247f-4a96-9185-c254fb4bd9f6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

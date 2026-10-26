@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_4d7f501095fc5f::t_c06131e69e4d82 4-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "29969df038d475e0dafafd66b16c22e8e3395c7e",
+  "prompts": {},
+  "sessions": {
+    "s_4d7f501095fc5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d703c91c-a325-400f-ae25-49dc34889db7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

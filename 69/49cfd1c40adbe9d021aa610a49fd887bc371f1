@@ -1,0 +1,11 @@
+packages/cli/src/public-api/v1/controllers/log-streaming.public.controller.ts
+  ai_agent 144
+packages/@n8n/api-types/src/dto/log-streaming/log-streaming-public.dto.ts
+  ai_agent 190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6949cfd1c40adbe9d021aa610a49fd887bc371f1",
+  "prompts": {}
+}

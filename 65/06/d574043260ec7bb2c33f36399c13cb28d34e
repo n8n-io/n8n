@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionReview.content.test.ts
+  s_983eea3c47ac98::t_5110cbea6b8076 1-15,19-71,78-146
+  s_983eea3c47ac98::t_ee46a8f6e83936 16-18,72-77
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionReview.content.ts
+  s_983eea3c47ac98::t_ee46a8f6e83936 41
+  s_983eea3c47ac98::t_918c00323f5473 1-40,42,53-59,61-79,81-95,99,104,115-127,130-134,136-161
+  s_983eea3c47ac98::t_5932eacac8f0b7 43-52,60,80,96-98,100-103,105-114,128-129,135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6506d574043260ec7bb2c33f36399c13cb28d34e",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

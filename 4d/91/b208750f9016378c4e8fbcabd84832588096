@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  s_b30ec406386d61::t_ffd93e6ff92507 8,16-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4d91b208750f9016378c4e8fbcabd84832588096",
+  "prompts": {},
+  "sessions": {
+    "s_b30ec406386d61": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fbac-6028-7b12-99ba-e8426f20ba57",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

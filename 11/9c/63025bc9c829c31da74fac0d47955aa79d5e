@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentProjectBreadcrumb.ts
+  s_12f0cbc03fb343::t_b950c60933b019 28
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatMakeAvailableModal.vue
+  s_12f0cbc03fb343::t_22cafd124bc74a 75-77
+  s_12f0cbc03fb343::t_b950c60933b019 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "119c63025bc9c829c31da74fac0d47955aa79d5e",
+  "prompts": {},
+  "sessions": {
+    "s_12f0cbc03fb343": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc8c3696-1d2d-4de9-83cb-db7e13c76e39",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

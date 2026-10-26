@@ -1,0 +1,21 @@
+packages/cli/src/metrics/prometheus/prometheus.service.ts
+  ai_agent 6-7,11,69,126,131
+packages/cli/src/services/database-independent-routes.service.ts
+  ai_agent 1-20
+packages/cli/src/services/__tests__/database-independent-routes.service.test.ts
+  ai_agent 1-22
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  ai_agent 8-9,68,100,198
+packages/cli/src/abstract-server.ts
+  ai_agent 19,51-52,169-173,181-186
+packages/cli/src/metrics/prometheus/constant.ts
+  ai_agent 1-2
+packages/cli/src/metrics/prometheus/__tests__/db-pool-metrics-exposition.test.ts
+  ai_agent 1-238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7fb03b51c71d4109541617726862a24dda98ddc0",
+  "prompts": {}
+}

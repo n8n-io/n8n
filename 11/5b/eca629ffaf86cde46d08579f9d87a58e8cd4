@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_926800c6620d55::t_745d12c3b6e285 80,193,236,273,292-293,360-361
+  s_926800c6620d55::t_add5d97bb501a8 9-13
+  s_926800c6620d55::t_441a7c8ccb59fb 81-82,194-197,398-401,528-531,534-537
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_926800c6620d55::t_745d12c3b6e285 32,37,43,80,90,225,240,254,269,288
+  s_926800c6620d55::t_7d0302d5d03f9d 71-74,84-85
+  s_926800c6620d55::t_547252e491aa15 8-9,11-17
+  s_926800c6620d55::t_add5d97bb501a8 10
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_926800c6620d55::t_add5d97bb501a8 6
+  s_926800c6620d55::t_745d12c3b6e285 151-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "115beca629ffaf86cde46d08579f9d87a58e8cd4",
+  "prompts": {},
+  "sessions": {
+    "s_926800c6620d55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27672e48-6809-43ab-a0bd-a8e37d5c936e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

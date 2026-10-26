@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/review/PromotionChangeCard.test.ts
+  s_983eea3c47ac98::t_0788a1757ede81 7,167-168,170-185
+  s_983eea3c47ac98::t_5eff90b2fd82fc 187
+  s_983eea3c47ac98::t_88c433108625bb 169,186
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/review/PromotionChangeCard.vue
+  s_983eea3c47ac98::t_5741ab3fc75356 124-140,142-171,173,175-176,180,182-208,210-238
+  s_983eea3c47ac98::t_68588d14f27f6a 263
+  s_983eea3c47ac98::t_5fdfd19ac9c1ed 6-7,51-59,239,266-286
+  s_983eea3c47ac98::t_1ef8c32b3719b4 240-241,287-288
+  s_983eea3c47ac98::t_7afcdc65c3c398 174,177-179,181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4cf5355cda33c742c67451dc14a5462e54d6de1c",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

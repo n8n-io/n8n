@@ -1,0 +1,19 @@
+packages/modules/inbox/frontend/src/reviews/reviewDetail.store.ts
+  s_be8c96fdb8677d::t_baa9934bc7bbfc 32-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bae9b926006838eab0d53d2c1f2e142119682515",
+  "prompts": {},
+  "sessions": {
+    "s_be8c96fdb8677d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14480-6735-7382-b6a4-b24d98bc9bf7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

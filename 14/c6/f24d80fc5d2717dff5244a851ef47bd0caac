@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/S3/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_e3b72232051ad2 13,15,20,28-29,34,38,53,55,61,110,114,139,143,184,188
+packages/nodes-base/nodes/S3/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_5abaff84d7b9d4 11
+  s_2e1fa95fc44f8f::t_45d434030cd9fc 2,42-44
+  s_2e1fa95fc44f8f::t_c347ce7043fa4e 105,147
+  s_2e1fa95fc44f8f::t_a126db9ed9e79a 55,74,170,179,195,205,240
+packages/nodes-base/nodes/S3/__tests__/S3.node.operation.test.ts
+  s_2e1fa95fc44f8f::t_5f24be69cfd5ee 3,57-64
+packages/nodes-base/nodes/S3/S3.node.ts
+  s_2e1fa95fc44f8f::t_c010a15616790b 568-570
+  s_2e1fa95fc44f8f::t_e3b72232051ad2 11,18,153,170,187,196,241,253,266,294,300,307,336,347,361,399,432,444,458,572,611,621,670,680,713,725,739,771,779,847,866,886
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "14c6f24d80fc5d2717dff5244a851ef47bd0caac",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,89 @@
+packages/@n8n/db/src/migrations/common/1791212100192-CreatePromotionRunTable.ts
+  s_97fae976194563::t_babe463b1ee1ae 3-13,15-27,33-34,36-37,39-85,88-89
+  s_97fae976194563::t_e4f58673deabd1 1-2,14,86-87,90-91
+  s_97fae976194563::t_910035188ae825 28-32
+docs/generated/postgres-schema/public.promotion_run.md
+  ai_agent 1-131
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-run.repository.ts
+  s_97fae976194563::t_e2ac7fea67bcc8 4
+  s_97fae976194563::t_50be0bfab8ad2a 27-28
+  s_97fae976194563::t_7528a2d2207e8a 1-3,5-26,29-64,66,68-79,81-90
+  s_97fae976194563::t_e03aa4acf850ca 80
+  s_97fae976194563::t_d62740f2bb3579 65,67
+packages/@n8n/api-types/src/dto/index.ts
+  s_97fae976194563::t_22b825bf3053fe 736-756
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_97fae976194563::t_ba9ed6f377d557 191
+  s_97fae976194563::t_970d5ea3358a0b 77
+docs/generated/postgres-schema/public.project.md
+  ai_agent 12,55,223-243
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_97fae976194563::t_9c3fc6d0e365b0 1-13,15-208,210-307,309-399,401-603
+  s_97fae976194563::t_4ad42083ed4c2c 308
+  s_97fae976194563::t_074764bc4d43ac 604
+  s_97fae976194563::t_17aee9286dfc15 14
+docs/generated/postgres-schema/README.md
+  ai_agent 118,349-352,1489-1509
+docs/generated/postgres-schema/public.promotion_connection.md
+  ai_agent 8,45,72-92
+docs/generated/sqlite-schema/promotion_connection.md
+  ai_agent 19,50,77-97
+docs/generated/postgres-schema/public.user.md
+  ai_agent 11,74-75,360-380
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_97fae976194563::t_fda0795bf8cbc7 76
+  s_97fae976194563::t_c91c24f3d9c745 18-19
+  s_97fae976194563::t_eb925d0c656bf0 145,148
+docs/generated/sqlite-schema/promotion_run.md
+  ai_agent 1-132
+packages/cli/src/modules/promotions.ee/promotion-reviews.controller.ts
+  s_97fae976194563::t_45dab6be33b519 1-66
+docs/generated/sqlite-schema/project.md
+  ai_agent 23,61,229-249
+packages/cli/src/modules/promotions.ee/promotions.module.ts
+  s_97fae976194563::t_73c1cfe00424c5 15
+  s_97fae976194563::t_02fc2bc5d1374b 30-37
+docs/generated/sqlite-schema/user.md
+  ai_agent 22,80-81,366-386
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.client.ts
+  s_97fae976194563::t_3080901706794c 1-197,204-260
+  s_97fae976194563::t_630a0e7eb47bdf 198-203
+packages/cli/src/modules/promotions.ee/promotion-providers.service.ts
+  s_97fae976194563::t_69afbd37fe3a91 29
+  s_97fae976194563::t_098a76a69bac75 158-169
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_97fae976194563::t_85faa6fd720c73 101-105
+docs/generated/sqlite-schema/README.md
+  ai_agent 118,331-334,1475-1495
+packages/@n8n/api-types/src/dto/promotions/promotion-review.dto.ts
+  s_97fae976194563::t_e744daab0b5172 1-111
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_97fae976194563::t_209b26c6cedaa9 48-51
+  s_97fae976194563::t_292a1da70f3062 9
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_97fae976194563::t_080a9c60ae10f4 475-556
+packages/cli/src/modules/promotions.ee/database/entities/promotion-run.entity.ts
+  s_97fae976194563::t_bff72d64b819ec 32-38
+  s_97fae976194563::t_2c14dcca89cad7 1-31,39-90
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_97fae976194563::t_d9382c0f2de8df 245-250,257-281
+  s_97fae976194563::t_b69035ef43ffaf 120
+  s_97fae976194563::t_3ca32b844a0d55 62
+  s_97fae976194563::t_ebe4de1c9c4169 384-389
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "143e404f1a547a6f6deb221e42b7a882cfdaa084",
+  "prompts": {},
+  "sessions": {
+    "s_97fae976194563": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "afcd727d-38fa-4638-966d-feb3e6311121",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
