@@ -1,6 +1,7 @@
 import { createRuntimeSkillSource } from '../../skills/registry';
 import { createSkillLoadTool } from '../../skills/tools';
 import type { RuntimeSkillSource } from '../../skills/types';
+import type { AgentMessage } from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentMessageList } from '../model/message-list';
@@ -23,8 +24,10 @@ function prompt(active: ActiveSkills, list: AgentMessageList) {
 	return active.modelMessages(list.forLlm(instructions ?? '').messages, list);
 }
 
-async function activate(memory: InMemoryMemory) {
-	const original = source('Use the inbox queue.');
+async function activate(
+	memory: InMemoryMemory,
+	original: RuntimeSkillSource = source('Use the inbox queue.'),
+) {
 	const list = new AgentMessageList();
 	list.addInput([{ role: 'user', content: [{ type: 'text', text: 'Create a case.' }] }]);
 	const active = new ActiveSkills(original, 'assistant', memory.skillState);
@@ -64,6 +67,18 @@ describe('skill updates in new messages', () => {
 		next.addHistory(originalMessages);
 		next.addInput([{ role: 'user', content: [{ type: 'text', text: 'Create another case.' }] }]);
 		const current = source('Use the review queue.', 'Renamed triage');
+		next.addInput([
+			{
+				type: 'custom',
+				data: {
+					skillUpdate: {
+						skillId,
+						version: current.registry.skills[0].hash,
+						content: 'App-only content.',
+					},
+				},
+			} as AgentMessage,
+		]);
 		const active = new ActiveSkills(current, 'assistant', memory.skillState);
 		await active.restore(next, scope);
 		const messages = prompt(active, next);
@@ -71,6 +86,7 @@ describe('skill updates in new messages', () => {
 		expect(JSON.stringify(messages.at(-1))).toContain('was updated');
 		expect(JSON.stringify(messages.at(-1))).toContain('Use the review queue.');
 		expect(JSON.stringify(messages.at(-1))).toContain('Renamed triage');
+		expect(JSON.stringify(messages)).not.toContain('App-only content.');
 		expect(JSON.stringify(messages.find((message) => message.role === 'tool'))).toContain(
 			'Use the inbox queue.',
 		);
@@ -122,9 +138,21 @@ describe('skill updates in new messages', () => {
 		'does not reactivate old instructions after %s',
 		async (outcome) => {
 			const memory = new InMemoryMemory();
-			const list = await activate(memory);
+			const filePath = 'references/guide.md';
+			const original = source('Use the inbox queue.');
+			original.registry.skills[0].linkedFiles.references.push({ path: filePath });
+			const loadFile = vi.fn(async () => ({ skillId, filePath, content: 'Use the inbox guide.' }));
+			const linkedSource = { ...original, loadFile };
+			const list = await activate(memory, linkedSource);
+			expect(
+				await createSkillLoadTool(linkedSource).handler?.({ skillId, filePath }, {}),
+			).toMatchObject({
+				success: true,
+				content: 'Use the inbox guide.',
+			});
 			const unavailable: RuntimeSkillSource = {
 				...createRuntimeSkillSource([]),
+				loadFile,
 				getLoadError: () => ({
 					message: 'Unavailable.',
 					retryable: outcome === 'temporary failure',
@@ -135,6 +163,24 @@ describe('skill updates in new messages', () => {
 			expect(JSON.stringify(prompt(active, list).at(-1))).toContain('is unavailable');
 			expect(await active.load(skillId)).toBeNull();
 			expect(list.activeSkillIds).toEqual(outcome === 'revoked' ? [] : [skillId]);
+			const compactedUnavailable = new AgentMessageList();
+			compactedUnavailable.observationLogMemory = 'Earlier cases used the inbox guide.';
+			for (const history of [
+				list,
+				AgentMessageList.deserialize(list.serialize()),
+				compactedUnavailable,
+			]) {
+				await active.restore(history, scope);
+				expect(
+					await createSkillLoadTool(unavailable).handler?.(
+						{ skillId, filePath },
+						{
+							loadSkill: async (id) => await active.load(id),
+						},
+					),
+				).toMatchObject({ success: false, error: expect.stringContaining('Unknown skill') });
+			}
+			expect(loadFile).toHaveBeenCalledTimes(1);
 
 			const compacted = new AgentMessageList();
 			const next = new ActiveSkills(
@@ -153,6 +199,39 @@ describe('skill updates in new messages', () => {
 			expect(messages).not.toContain('Use the inbox queue.');
 		},
 	);
+
+	it('keeps persisted revocations when resuming an older checkpoint until an explicit reload', async () => {
+		const memory = new InMemoryMemory();
+		const list = await activate(memory);
+		const checkpoint = structuredClone(list.serialize());
+		const unavailable = new ActiveSkills(
+			createRuntimeSkillSource([]),
+			'assistant',
+			memory.skillState,
+		);
+		await unavailable.restore(list, scope);
+		expect(list.activeSkillIds).toEqual([]);
+
+		const current = source('Use the review queue.');
+		const load = vi.spyOn(current, 'loadSkill');
+		const resumed = AgentMessageList.deserialize(checkpoint);
+		const active = new ActiveSkills(current, 'assistant', memory.skillState);
+		await active.restore(resumed, scope);
+		expect(load).not.toHaveBeenCalled();
+		expect(resumed.activeSkillIds).toEqual([]);
+		expect(resumed.activeSkillVersions).toEqual({ [skillId]: null });
+		expect(JSON.stringify(prompt(active, resumed).at(-1))).toContain('is unavailable');
+		await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual({
+			skillIds: [],
+			versions: { [skillId]: null },
+		});
+
+		await expect(active.load(skillId)).resolves.toMatchObject({
+			instructions: 'Use the review queue.',
+		});
+		expect(resumed.activeSkillIds).toEqual([skillId]);
+		expect(JSON.stringify(prompt(active, resumed).at(-1))).toContain('Use the review queue.');
+	});
 
 	it('revokes a legacy selection after its history has been compacted', async () => {
 		const memory = new InMemoryMemory();

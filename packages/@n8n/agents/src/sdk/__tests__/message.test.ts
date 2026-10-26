@@ -1,9 +1,46 @@
 import type { AgentMessage } from '../../types/sdk/message';
-import { getCreatedAt } from '../message';
+import { filterLlmMessages, getCreatedAt } from '../message';
+
+declare module '../../types/sdk/message' {
+	interface CustomAgentMessages {
+		appSkillUpdate: {
+			type?: 'app:skill-update';
+			skillUpdate: { skillId: string; version: string; content: string };
+		};
+	}
+}
 
 function userMessage(partial: Partial<AgentMessage> & { createdAt?: unknown }): AgentMessage {
 	return partial as AgentMessage;
 }
+
+describe('filterLlmMessages', () => {
+	it('only converts skill updates with the runtime discriminator', () => {
+		const skillUpdate = {
+			skillId: 'skill-1',
+			version: 'v2',
+			content: 'Use the current instructions.',
+		};
+		const runtimeUpdate: AgentMessage = {
+			type: 'custom',
+			data: { type: 'n8n:runtime-skill-update', skillUpdate },
+		};
+		const appUpdate: AgentMessage = { type: 'custom', data: { skillUpdate } };
+		const namespacedAppUpdate: AgentMessage = {
+			type: 'custom',
+			data: { type: 'app:skill-update', skillUpdate },
+		};
+
+		expect(filterLlmMessages([appUpdate, runtimeUpdate, namespacedAppUpdate])).toEqual([
+			{
+				...runtimeUpdate,
+				type: 'llm',
+				role: 'user',
+				content: [{ type: 'text', text: skillUpdate.content }],
+			},
+		]);
+	});
+});
 
 describe('getCreatedAt', () => {
 	it('returns the Date when createdAt is a valid Date', () => {

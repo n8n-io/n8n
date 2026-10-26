@@ -1,5 +1,6 @@
 import type { ModelMessage, ToolResultPart } from 'ai';
 
+import { isRuntimeSkillUpdate } from '../../sdk/message';
 import { findReferenceByPath, formatActiveSkill } from '../../skills/tools';
 import {
 	SKILL_LOAD_TOOL_NAME,
@@ -61,20 +62,22 @@ export class ActiveSkills {
 					agentName: this.agentName,
 				}
 			: undefined;
-		const stored =
-			list.activeSkillIds === undefined && this.scope
-				? await this.store?.load(this.scope)
-				: undefined;
+		const stored = this.scope ? await this.store?.load(this.scope) : undefined;
 		const ids = list.activeSkillIds ??
 			stored?.skillIds ?? [
 				...this.recordedLoads(list).values(),
 				...this.stampedActivations(list).map(([, skillId]) => skillId),
 			];
-		this.previousVersions = { ...(list.activeSkillVersions ?? stored?.versions) };
+		this.previousVersions = { ...stored?.versions, ...list.activeSkillVersions };
+		// A checkpoint can predate a confirmed revocation in thread storage.
+		for (const [id, version] of Object.entries(stored?.versions ?? {})) {
+			if (version === null) this.previousVersions[id] = null;
+		}
 		const versions = { ...this.previousVersions };
 		const registered = new Set(this.source.registry.skills.map(({ id }) => id));
 		const retainedIds = new Set<string>();
 		for (const id of new Set(ids)) {
+			if (versions[id] === null) continue;
 			const skill = registered.has(id) ? await this.source.loadSkill(id) : null;
 			if (skill) this.loaded.set(id, skill);
 			if (skill || this.source.getLoadError?.(id)?.retryable) retainedIds.add(id);
@@ -284,7 +287,7 @@ export class ActiveSkills {
 		const visibleVersions = new Map<string, string | null>();
 		for (const message of list.llmVisibleMessages()) {
 			if (message.type === 'custom') {
-				if ('skillUpdate' in message.data) {
+				if (isRuntimeSkillUpdate(message)) {
 					const { skillId, version } = message.data.skillUpdate;
 					visibleVersions.set(skillId, version);
 				}
@@ -312,7 +315,12 @@ export class ActiveSkills {
 			const content = body
 				? `Skill ${JSON.stringify(skillId)} ${changed ? 'was updated' : 'is active'}. Use these current instructions when relevant. They replace earlier instructions and reference content for this skill.\n\n${body}`
 				: `Skill ${JSON.stringify(skillId)} is unavailable. Do not use its earlier instructions or reference content. Load it again if it becomes available and is needed.`;
-			list.addInput([{ type: 'custom', data: { skillUpdate: { skillId, version, content } } }]);
+			list.addInput([
+				{
+					type: 'custom',
+					data: { type: 'n8n:runtime-skill-update', skillUpdate: { skillId, version, content } },
+				},
+			]);
 		}
 	}
 

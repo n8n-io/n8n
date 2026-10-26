@@ -42,8 +42,9 @@ export async function loadHubRunSkills(
 	provider: AssistantSkillProvider,
 	context: AssistantSkillContext,
 ): Promise<HubRunSkills> {
-	const enabled = await provider.isEnabled().catch(() => false);
-	if (!enabled) return createDeferredHubSource(builtIns, provider, context, []);
+	const enabled = await provider.isEnabled().catch(() => null);
+	if (!enabled)
+		return createDeferredHubSource(builtIns, provider, context, enabled === null ? null : []);
 	const summaries = await provider.listSkills(context).catch(() => null);
 	return createDeferredHubSource(builtIns, provider, context, summaries);
 }
