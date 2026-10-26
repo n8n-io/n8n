@@ -7,7 +7,7 @@ const tableName = 'llm_usage';
  * foreign keys: rows are written in batches after the call, the target can be
  * deleted by then, and cost history must outlive workflows and projects.
  */
-export class CreateLlmUsageTable1792747631224 implements ReversibleMigration {
+export class CreateLlmUsageTable1793007369435 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column, createIndex } }: MigrationContext) {
 		await createTable(tableName)
 			.withColumns(
