@@ -15,6 +15,7 @@ import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
 import { ExecutionIdentitySpanProcessor } from './execution-identity';
+import { OtelConfigureHook } from './otel-configure-hook';
 import {
 	OtelExporterFactory,
 	type ExportField,
@@ -24,9 +25,10 @@ import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
 import type { OtelConfig } from './otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
-import { mergeResourceAttributes } from './otel-span-exporter';
+import { withResourceAttributes } from './otel-span-exporter';
 
 import { N8N_VERSION } from '@/constants';
+import { ExternalHooks } from '@/external-hooks';
 import { OtelSdk } from '@/observability/otel-sdk';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import {
@@ -74,9 +76,12 @@ export class OtelService {
 		private readonly otelSdk: OtelSdk,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly publisher: Publisher,
+		private readonly externalHooks: ExternalHooks,
+		private readonly configureHook: OtelConfigureHook,
 	) {}
 
 	async init(): Promise<void> {
+		await this.externalHooks.run('otel.configure', [this.configureHook.api]);
 		await this.applySavedSettings();
 	}
 
@@ -235,9 +240,10 @@ export class OtelService {
 		settings: ExportSettings,
 	): Promise<SpanProcessor[] | undefined> {
 		try {
-			const exporter = mergeResourceAttributes(
+			const exporter = withResourceAttributes(
 				await this.exporterFactory.createTraceExporter(settings),
 				this.resourceAttributes(settings.exporterServiceName),
+				(spanAttributes) => this.configureHook.mapResourceAttributes(spanAttributes),
 			);
 			return [new ExecutionIdentitySpanProcessor(), new BatchSpanProcessor(exporter)];
 		} catch (error) {
