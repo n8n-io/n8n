@@ -286,6 +286,43 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('memory guard events', () => {
+		it('should track on `memory-guard-execution-stopped` event and send it at once', () => {
+			const event: RelayEventMap['memory-guard-execution-stopped'] = {
+				executionId: 'execution123',
+				workflowId: 'workflow123',
+				mode: 'webhook',
+				reason: 'critical',
+				runningNodeType: 'n8n-nodes-base.httpRequest',
+				largestDataNodeType: 'n8n-nodes-base.code',
+				estimatedBytes: 300,
+				memoryUsedBytes: 960,
+				memoryLimitBytes: 1000,
+				freedMemory: true,
+				workflowDeactivationStarted: false,
+			};
+
+			eventService.emit('memory-guard-execution-stopped', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION,
+				{
+					workflow_id: 'workflow123',
+					execution_mode: 'webhook',
+					reason: 'critical',
+					running_node_type: 'n8n-nodes-base.httpRequest',
+					largest_data_node_type: 'n8n-nodes-base.code',
+					estimated_bytes: 300,
+					memory_used_bytes: 960,
+					memory_limit_bytes: 1000,
+					freed_memory: true,
+					workflow_deactivation_started: false,
+				},
+			);
+			expect(telemetry.flushQueue).toHaveBeenCalled();
+		});
+	});
+
 	describe('project events', () => {
 		it('should track on `team-project-updated` event', () => {
 			const event: RelayEventMap['team-project-updated'] = {
@@ -399,6 +436,21 @@ describe('TelemetryEventRelay', () => {
 				connection_type: 'ssh',
 			});
 		});
+
+		it.each([
+			['v2', TELEMETRY_EVENT.PROMOTIONS.USER_SWITCHED_TO_ENVIRONMENTS_V2],
+			['v1', TELEMETRY_EVENT.PROMOTIONS.USER_SWITCHED_BACK_TO_ENVIRONMENTS_V1],
+		] as const)(
+			'should track the switch to %s on `source-control-environments-version-switched` event',
+			(version, entry) => {
+				eventService.emit('source-control-environments-version-switched', {
+					userId: 'user123',
+					version,
+				});
+
+				expect(telemetry.track).toHaveBeenCalledWith(entry, { user_id: 'user123' });
+			},
+		);
 
 		it('should track on `source-control-user-started-pull-ui` event', () => {
 			const event: RelayEventMap['source-control-user-started-pull-ui'] = {

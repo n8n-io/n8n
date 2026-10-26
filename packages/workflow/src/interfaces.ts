@@ -1111,6 +1111,14 @@ export interface RequestHelperFunctions {
 	 * @param {UseDefaultSsrfPolicy} [useDefaultSsrfPolicy='safe'] how the instance policy applies to the returned filter
 	 */
 	getSecureEgressFilter(useDefaultSsrfPolicy?: UseDefaultSsrfPolicy): NodeEgressFilter;
+	/**
+	 * W3C trace context (`traceparent`, plus `tracestate` when set) for the node that
+	 * runs now, for clients that build their own HTTP transport. `httpRequest` and
+	 * `request` add these headers themselves. Empty when there is nothing to send, so
+	 * callers can use it unguarded. Call it for each request: one open transport
+	 * serves many spans.
+	 */
+	getTraceHeaders(): Record<string, string>;
 }
 
 export type SSHCredentials = {
@@ -4704,4 +4712,4 @@ export interface StructuredChunk {
 	};
 }
 
-export type ApiKeyAudience = 'public-api' | 'mcp-server-api' | 'scim-api';
+export type ApiKeyAudience = 'public-api' | 'mcp-server-api';

@@ -3,7 +3,9 @@ import { Service } from '@n8n/di';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
+import type { FolderPlanItem } from './folder-import.types';
 import type { FolderRemovalPlan } from './folder-removal.types';
+import { withPlannedParents } from '../planned-placements';
 import type { ImportContext, RemovedFolderSummary } from '../../n8n-packages.types';
 
 interface FolderPlacement {
@@ -29,12 +31,18 @@ export class FolderRemover {
 
 	async plan(
 		context: ImportContext,
-		input: { packageFolderIds: string[]; occupiedFolderIds: string[] },
+		input: {
+			packageFolderIds: string[];
+			occupiedFolderIds: string[];
+			/** The folder plan. Its moves run before removal, so emptiness and depth follow them. */
+			folderItems: FolderPlanItem[];
+		},
 	): Promise<FolderRemovalPlan> {
 		const nothingToRemove = { removals: [], failures: [] };
 
-		const placements = await this.folderService.getFolderPlacementsInProject(context.projectId);
-		if (placements.length === 0) return nothingToRemove;
+		const current = await this.folderService.getFolderPlacementsInProject(context.projectId);
+		if (current.length === 0) return nothingToRemove;
+		const placements = withPlannedParents(current, plannedFolderParents(input.folderItems));
 
 		const packageFolderIds = new Set(input.packageFolderIds);
 		const candidates = placements.filter(({ id }) => !packageFolderIds.has(id));
@@ -139,4 +147,16 @@ function folderDepths(placements: FolderPlacement[]): Map<string, number> {
 
 	for (const { id } of placements) depthOf(id);
 	return depths;
+}
+
+/** Existing folder id -> the parent a planned move puts it under (`null` is the project root). */
+function plannedFolderParents(items: FolderPlanItem[]): Map<string, string | null> {
+	return new Map(
+		items
+			.filter(({ moved }) => moved)
+			.map(({ sourceFolderId, targetParentFolderId }): [string, string | null] => [
+				sourceFolderId,
+				targetParentFolderId,
+			]),
+	);
 }

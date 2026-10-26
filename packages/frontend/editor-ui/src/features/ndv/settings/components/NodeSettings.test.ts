@@ -507,6 +507,39 @@ describe('NodeSettings', () => {
 		expect(workflowDocumentStore.getNodeByName(httpNode.name)?.parameters.url).toBeUndefined();
 	});
 
+	describe('sub-workflow restriction callout', () => {
+		const calloutStub = {
+			RestrictedSubWorkflowCallout: {
+				props: ['parentWorkflowId', 'node', 'enabled', 'labelOf'],
+				template:
+					'<div data-test-id="sub-workflow-callout-stub" :data-parent="parentWorkflowId" :data-enabled="String(enabled)" :data-node="node.name" />',
+			},
+		};
+
+		it('checks the active node for a builder who can update the workflow', async () => {
+			const { findByTestId, workflowDocumentStore } = renderNodeSettings({
+				stubs: calloutStub,
+				props: { readOnly: false },
+			});
+			workflowDocumentStore.setScopes(['workflow:update']);
+
+			const callout = await findByTestId('sub-workflow-callout-stub');
+			await vi.waitFor(() => expect(callout).toHaveAttribute('data-enabled', 'true'));
+			expect(callout).toHaveAttribute('data-parent', workflowDocumentStore.workflowId);
+			expect(callout).toHaveAttribute('data-node', httpNode.name);
+		});
+
+		it('does not check in a read-only panel', async () => {
+			const { findByTestId, workflowDocumentStore } = renderNodeSettings({ stubs: calloutStub });
+			workflowDocumentStore.setScopes(['workflow:update']);
+
+			expect(await findByTestId('sub-workflow-callout-stub')).toHaveAttribute(
+				'data-enabled',
+				'false',
+			);
+		});
+	});
+
 	describe('a node on a credential the user cannot use', () => {
 		const exposeReadOnlyStubs = {
 			ParameterInputList: {

@@ -571,5 +571,45 @@ test.describe(
 			const adamValue = await n8n.dataTableDetails.getCellValue(0, nameColumn, 'string');
 			expect(adamValue).toContain('Eve Adams');
 		});
+
+		// search() returns before the search results render. A follow-up
+		// toHaveCount(1) passes on the previous result, and getCellValue reads stale rows.
+		test('Should show new search results when search() resolves on a slow rows response', async ({
+			n8n,
+		}) => {
+			await expect(n8n.dataTableDetails.getPageWrapper()).toBeVisible();
+
+			await n8n.dataTableDetails.addColumn(COLUMN_NAMES.name, 'string', 'header');
+			const nameColumn = await n8n.dataTableDetails.getColumnIdByName(COLUMN_NAMES.name);
+
+			const names = ['Alice Johnson', 'Bob Smith', 'Charlie Brown'];
+			for (let i = 0; i < names.length; i++) {
+				await n8n.dataTableDetails.addRow();
+				await n8n.dataTableDetails.setCellValue(i, nameColumn, names[i], 'string', {
+					skipDoubleClick: true,
+				});
+			}
+			await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(3);
+
+			await n8n.dataTableDetails.search('Alice');
+			await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(1);
+			await expect(n8n.dataTableDetails.getCell(0, nameColumn)).toContainText('Alice Johnson');
+
+			// Simulate a slow backend, as on a loaded CI runner. The delay stays below
+			// the 1s threshold of the "Loading..." indicator that search() waits on.
+			await n8n.page.route(
+				(url) => url.pathname.endsWith('/rows') && url.searchParams.has('search'),
+				async (route) => {
+					await new Promise((resolve) => setTimeout(resolve, 800));
+					await route.continue();
+				},
+			);
+
+			// Same steps as 'Should search and filter rows globally'
+			await n8n.dataTableDetails.search('Smith');
+			await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(1);
+			const bobValue = await n8n.dataTableDetails.getCellValue(0, nameColumn, 'string');
+			expect(bobValue).toContain('Bob Smith');
+		});
 	},
 );
