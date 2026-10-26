@@ -4,6 +4,7 @@ export type {
 	WorkflowBuilder,
 	WorkflowBuilderStatic,
 	WorkflowBuilderOptions,
+	FromJSONOptions,
 	ToJSONOptions,
 	NodePorts,
 	WorkflowSettings,
