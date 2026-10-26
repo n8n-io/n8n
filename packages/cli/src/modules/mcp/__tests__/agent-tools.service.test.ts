@@ -35,6 +35,8 @@ import { ConflictError } from '@n8n/errors';
 import { SkillNameTakenError } from '@/modules/skills/skill-name-taken.error';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
+import type { AgentSessionDetail } from '@/modules/agents/agent-context.contracts';
+import { AgentContextService } from '@/modules/agents/agent-context.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
@@ -143,6 +145,7 @@ describe('McpAgentToolsService', () => {
 	const credentialsService = mockInstance(CredentialsService);
 	const agentsService = mockInstance(AgentsService);
 	const agentConfigService = mockInstance(AgentConfigService);
+	const agentContextService = mockInstance(AgentContextService);
 	const agentValidationService = mockInstance(AgentValidationService);
 	const agentPublishService = mockInstance(AgentPublishService);
 	const agentSkillsService = mockInstance(AgentSkillsService);
@@ -172,6 +175,7 @@ describe('McpAgentToolsService', () => {
 		credentialsService,
 		agentsService,
 		agentConfigService,
+		agentContextService,
 		agentValidationService,
 		agentPublishService,
 		agentSkillsService,
@@ -315,6 +319,8 @@ describe('McpAgentToolsService', () => {
 					'discover_agent_assets',
 					'get_agent',
 					'get_agent_builder_reference',
+					'get_agent_session',
+					'list_agent_sessions',
 					'list_agent_versions',
 					'mutate_agent',
 					'publish_agent',
@@ -427,6 +433,8 @@ describe('McpAgentToolsService', () => {
 			['unpublish_agent', 'agent:unpublish', identity],
 			['revert_agent', 'agent:update', identity],
 			['list_agent_versions', 'agent:read', identity],
+			['list_agent_sessions', 'agent:read', identity],
+			['get_agent_session', 'agent:read', { ...identity, sessionId: 'session-1' }],
 			['delete_agent', 'agent:delete', identity],
 			['discover_agent_assets', 'agent:read', { projectId: 'project-1', kind: 'models' }],
 			[
@@ -477,6 +485,8 @@ describe('McpAgentToolsService', () => {
 			['unpublish_agent', identity],
 			['revert_agent', identity],
 			['list_agent_versions', identity],
+			['list_agent_sessions', identity],
+			['get_agent_session', { ...identity, sessionId: 'session-1' }],
 			['delete_agent', identity],
 			[
 				'update_agent_integration',
@@ -1704,6 +1714,144 @@ describe('McpAgentToolsService', () => {
 				0,
 			);
 			expect(result.structuredContent).toEqual({ ok: true, data: versions, count: 1 });
+		});
+	});
+
+	describe('list_agent_sessions', () => {
+		it('lists sessions with the call_agent session id', async () => {
+			agentContextService.listSessions.mockResolvedValue({
+				sessions: [
+					{
+						threadId: 'session-1',
+						agentId: 'agent-1',
+						agentName: 'My Agent',
+						title: 'Session #1',
+						sessionNumber: 1,
+						createdAt: '2026-01-02T00:00:00.000Z',
+						updatedAt: '2026-01-02T00:01:00.000Z',
+						status: 'error',
+						origin: 'mcp',
+						failureCount: 1,
+						totalPromptTokens: 10,
+						totalCompletionTokens: 5,
+						totalDuration: 100,
+					},
+				],
+				nextCursor: 'cursor-2',
+			});
+
+			const result = await callTool('list_agent_sessions', {
+				agentId: 'agent-1',
+				limit: 20,
+				origin: 'mcp',
+			});
+
+			expect(agentContextService.listSessions).toHaveBeenCalledWith(user, 'project-1', 'agent-1', {
+				limit: 20,
+				origin: 'mcp',
+			});
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				data: [
+					expect.objectContaining({ sessionId: 'session-1', status: 'error', failureCount: 1 }),
+				],
+				count: 1,
+				nextCursor: 'cursor-2',
+			});
+			expect(result.structuredContent.data).toEqual([
+				expect.not.objectContaining({ threadId: expect.anything() }),
+			]);
+		});
+	});
+
+	describe('get_agent_session', () => {
+		const turn = (id: string): AgentSessionDetail['executions'][number] => ({
+			id,
+			status: 'success',
+			userMessage: `Message ${id}`,
+			model: 'anthropic/claude',
+			duration: 100,
+			totalTokens: 15,
+			error: null,
+			timeline: [{ type: 'text', content: `Reply ${id}`, timestamp: 1 }],
+		});
+		const sessionDetail: AgentSessionDetail = {
+			thread: {
+				id: 'session-1',
+				agentId: 'agent-1',
+				agentName: 'My Agent',
+				title: null,
+				sessionNumber: 1,
+				createdAt: new Date('2026-01-02T00:00:00.000Z'),
+				updatedAt: new Date('2026-01-02T00:01:00.000Z'),
+			},
+			executions: [turn('execution-1'), turn('execution-2')],
+		};
+
+		it('returns every turn of the session', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+			});
+
+			expect(agentContextService.readSession).toHaveBeenCalledWith(
+				user,
+				'project-1',
+				'agent-1',
+				'session-1',
+			);
+			const { id: _id, ...thread } = sessionDetail.thread;
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				session: { sessionId: 'session-1', ...thread },
+				executions: sessionDetail.executions,
+			});
+		});
+
+		it('returns only the requested turn', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				executionId: 'execution-2',
+			});
+
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				executions: [turn('execution-2')],
+			});
+		});
+
+		it('reports an unknown turn', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				executionId: 'execution-9',
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({ ok: false, code: 'execution_not_found' });
+		});
+
+		it('reports an unknown session', async () => {
+			agentContextService.readSession.mockResolvedValue(null);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'missing',
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toEqual({
+				ok: false,
+				code: 'session_not_found',
+				message: 'Session "missing" not found',
+			});
 		});
 	});
 
