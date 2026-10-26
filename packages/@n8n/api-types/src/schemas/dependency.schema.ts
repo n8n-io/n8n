@@ -24,6 +24,8 @@ export interface ResolvedDependenciesResult {
 	inaccessibleCount: number;
 	/** Counts by type for existing dependencies the user cannot view. Omitted when none exist. */
 	inaccessibleCounts?: Partial<Record<DependencyType, number>>;
+	/** Unique inaccessible workflows and agents that use this resource. Omitted when none exist. */
+	inaccessibleDependentCount?: number;
 }
 
 export type DependenciesBatchResponse = Record<string, ResolvedDependenciesResult>;

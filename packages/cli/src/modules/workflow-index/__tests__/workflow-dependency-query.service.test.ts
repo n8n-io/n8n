@@ -119,6 +119,51 @@ describe('WorkflowDependencyQueryService', () => {
 		});
 	});
 
+	describe('getResourceDependencies with overlapping parent types', () => {
+		it.each([true, false])(
+			'counts each hidden workflow and agent once when the workflow is accessible: %s',
+			async (visibleWorkflow) => {
+				const resourceIds = ['wf-1', 'wf-2'];
+				workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+					new Set([...resourceIds, ...(visibleWorkflow ? ['shared-id'] : [])]),
+				);
+				roleService.rolesWithScope.mockResolvedValue([]);
+				projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+				dependencyRepository.find.mockResolvedValue(
+					resourceIds.flatMap((resourceId) => [
+						mock({
+							workflowId: 'shared-id',
+							dependencyType: 'workflowCall',
+							dependencyKey: resourceId,
+						}),
+						mock({
+							workflowId: 'shared-id',
+							dependencyType: 'errorWorkflow',
+							dependencyKey: resourceId,
+						}),
+					]),
+				);
+				workflowRepository.find.mockResolvedValue([
+					mock({ id: 'shared-id', name: 'Order intake', shared: [] }),
+				]);
+				agentUsageProvider.findAgentUsages.mockResolvedValue(
+					resourceIds.map((resourceId) => ({ agentId: 'shared-id', resourceId })),
+				);
+				agentUsageProvider.findAgentSummaries.mockResolvedValue([
+					{ id: 'shared-id', name: 'Support agent', projectId: 'other' },
+				]);
+
+				const result = await service.getResourceDependencies(resourceIds, 'workflow', user);
+
+				for (const resourceId of resourceIds) {
+					expect(result[resourceId].inaccessibleDependentCount).toBe(visibleWorkflow ? 1 : 2);
+					expect(result[resourceId].inaccessibleCount).toBe(visibleWorkflow ? 1 : 3);
+					expect(result[resourceId].dependencies).toHaveLength(visibleWorkflow ? 2 : 0);
+				}
+			},
+		);
+	});
+
 	describe('getResourceDependencies with a credential the user cannot see', () => {
 		beforeEach(() => {
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
@@ -253,6 +298,7 @@ describe('WorkflowDependencyQueryService', () => {
 					workflowCall: 1,
 					workflowParent: 1,
 				},
+				inaccessibleDependentCount: 2,
 			});
 		});
 

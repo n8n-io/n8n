@@ -117,6 +117,68 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 		}
 	});
 
+	it.each([
+		{ includeAgent: false, count: 1 },
+		{ includeAgent: true, count: 2 },
+	])(
+		'counts a workflow with both parent types once with $count resources',
+		async ({ includeAgent, count }) => {
+			const workflowId = `wf-overlap-${count}`;
+			vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({
+				[workflowId]: {
+					dependencies: [
+						{ type: 'workflowParent', id: 'shared-id', name: 'Order intake' },
+						{ type: 'errorWorkflowParent', id: 'shared-id', name: 'Order intake' },
+						...(includeAgent
+							? [
+									{
+										type: 'agentUsage' as const,
+										id: 'shared-id',
+										name: 'Support agent',
+										projectId: 'proj-1',
+									},
+								]
+							: []),
+					],
+					inaccessibleCount: 0,
+				},
+			});
+
+			const { getAllByRole, getByText } = renderModal(workflowId);
+			await flushPromises();
+
+			expect(getAllByRole('link', { name: 'Order intake' })).toHaveLength(1);
+			expect(getAllByRole('listitem')).toHaveLength(count);
+			expect(
+				getByText(
+					count === 1
+						? '1 resource uses this workflow and may be affected by unpublishing it.'
+						: '2 resources use this workflow and may be affected by unpublishing it.',
+				),
+			).toBeInTheDocument();
+		},
+	);
+
+	it('uses the unique hidden dependent count for overlapping parent types', async () => {
+		vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({
+			'wf-hidden-overlap': {
+				dependencies: [],
+				inaccessibleCount: 3,
+				inaccessibleCounts: { workflowParent: 1, errorWorkflowParent: 1, credentialId: 1 },
+				inaccessibleDependentCount: 1,
+			},
+		});
+
+		const { getByText, queryByRole } = renderModal('wf-hidden-overlap');
+		await flushPromises();
+
+		expect(
+			getByText('1 resource uses this workflow and may be affected by unpublishing it.'),
+		).toBeInTheDocument();
+		expect(getByText('+1 not accessible to you')).toBeInTheDocument();
+		expect(queryByRole('list')).not.toBeInTheDocument();
+	});
+
 	it('lists the dependents that run the published version and counts the ones the user cannot see', async () => {
 		vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({
 			'wf-1': {
@@ -129,6 +191,7 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 				],
 				inaccessibleCount: 4,
 				inaccessibleCounts: { credentialId: 2, workflowParent: 1, agentUsage: 1 },
+				inaccessibleDependentCount: 2,
 			},
 		});
 		vi.mocked(workflowDependenciesApi.getResourceDependencyCounts).mockResolvedValue({
@@ -170,6 +233,7 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 				dependencies: [],
 				inaccessibleCount: 2,
 				inaccessibleCounts: { agentUsage: 1, credentialId: 1 },
+				inaccessibleDependentCount: 1,
 			},
 		});
 		vi.mocked(workflowDependenciesApi.getResourceDependencyCounts).mockResolvedValue({

@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { DependencyType, ResolvedDependency } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
+import uniqBy from 'lodash/uniqBy';
 import Modal from '@/app/components/Modal.vue';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { VIEWS } from '@/app/constants';
@@ -59,16 +60,19 @@ const hrefFor = (dep: ResolvedDependency): string | undefined => {
 
 const affectedDependencies = computed(() => {
 	const dependencies = getDependencies(props.data.workflowId, 'workflow')?.dependencies ?? [];
-	return AFFECTED_TYPES.flatMap((type) =>
-		dependencies.filter((dep) => dep.type === type).map((dep) => ({ ...dep, href: hrefFor(dep) })),
+	const affected = AFFECTED_TYPES.flatMap((type) =>
+		dependencies.filter((dep) => dep.type === type),
 	);
+	return uniqBy(
+		affected,
+		(dep) => `${dep.type === 'agentUsage' ? 'agent' : 'workflow'}:${dep.id}`,
+	).map((dep) => ({ ...dep, href: hrefFor(dep) }));
 });
 
 // The details response excludes deleted resources from both visible and hidden counts.
-const hiddenAffectedCount = computed(() => {
-	const counts = getDependencies(props.data.workflowId, 'workflow')?.inaccessibleCounts;
-	return AFFECTED_TYPES.reduce((sum, type) => sum + (counts?.[type] ?? 0), 0);
-});
+const hiddenAffectedCount = computed(
+	() => getDependencies(props.data.workflowId, 'workflow')?.inaccessibleDependentCount ?? 0,
+);
 
 const affectedCount = computed(() => affectedDependencies.value.length + hiddenAffectedCount.value);
 

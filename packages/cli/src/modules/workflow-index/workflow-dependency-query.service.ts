@@ -437,9 +437,15 @@ export class WorkflowDependencyQueryService {
 			const dependencies: ResolvedDependency[] = [];
 			let inaccessibleCount = 0;
 			const inaccessibleCounts: Partial<Record<DependencyType, number>> = {};
-			const countInaccessible = (type: DependencyType) => {
+			const inaccessibleDependentIds = new Set<string>();
+			const countInaccessible = (type: DependencyType, id: string) => {
 				inaccessibleCount++;
 				inaccessibleCounts[type] = (inaccessibleCounts[type] ?? 0) + 1;
+				if (type === 'agentUsage') {
+					inaccessibleDependentIds.add(`agent:${id}`);
+				} else if (type === 'workflowParent' || type === 'errorWorkflowParent') {
+					inaccessibleDependentIds.add(`workflow:${id}`);
+				}
 			};
 
 			for (const id of maps.agentUsageMap.get(resourceId) ?? []) {
@@ -453,7 +459,7 @@ export class WorkflowDependencyQueryService {
 						projectId: agent.projectId,
 					});
 				} else {
-					countInaccessible('agentUsage');
+					countInaccessible('agentUsage', id);
 				}
 			}
 
@@ -472,7 +478,7 @@ export class WorkflowDependencyQueryService {
 					} else if (type === 'credentialId' && unavailableName !== undefined) {
 						dependencies.push({ id, name: unavailableName, type, unavailable: true });
 					} else {
-						countInaccessible(type);
+						countInaccessible(type, id);
 					}
 				}
 			};
@@ -492,7 +498,7 @@ export class WorkflowDependencyQueryService {
 							projectId: workflow.projectId,
 						});
 					} else {
-						countInaccessible(type);
+						countInaccessible(type, id);
 					}
 				}
 			};
@@ -514,7 +520,7 @@ export class WorkflowDependencyQueryService {
 				if (dt) {
 					dependencies.push({ id, name: dt.name, type: 'dataTableId', projectId: dt.projectId });
 				} else {
-					countInaccessible('dataTableId');
+					countInaccessible('dataTableId', id);
 				}
 			}
 
@@ -522,6 +528,9 @@ export class WorkflowDependencyQueryService {
 				dependencies,
 				inaccessibleCount,
 				...(inaccessibleCount > 0 ? { inaccessibleCounts } : {}),
+				...(inaccessibleDependentIds.size > 0
+					? { inaccessibleDependentCount: inaccessibleDependentIds.size }
+					: {}),
 			};
 		}
 
