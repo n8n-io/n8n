@@ -16,6 +16,7 @@ import {
 
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { formatAgentUsage } from '../utils/agent-usage';
 
 interface SessionDropdownData {
 	date: string;
@@ -33,7 +34,7 @@ const props = withDefaults(
 		triggerIcon: IconName;
 		triggerLabel: string;
 		totalTokens: number;
-		totalCost: number;
+		totalCost: number | null;
 		durationLabel: string;
 		showLangsmithExport: boolean;
 		langsmithExportLoading: boolean;
@@ -52,6 +53,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const tokenSpendLabel = computed(() => formatAgentUsage(props.totalTokens, props.totalCost));
 
 const breadcrumbItems = computed(() =>
 	props.breadcrumbItems.map((item, index) =>
@@ -124,13 +126,20 @@ const breadcrumbItems = computed(() =>
 				<N8nIcon :icon="props.triggerIcon" :size="12" />
 				<span>{{ props.triggerLabel }}</span>
 			</span>
-			<span v-if="props.showMetrics" :class="$style.sep">·</span>
-			<span v-if="props.showMetrics" :class="$style.metricItem">
-				<N8nIcon icon="circle-dollar-sign" :size="12" />
-				<span>{{ props.totalTokens.toLocaleString() }}t (${{ props.totalCost.toFixed(4) }})</span>
+			<span
+				v-if="props.showMetrics && props.triggerSource && (tokenSpendLabel || props.durationLabel)"
+				:class="$style.sep"
+			>
+				·
 			</span>
-			<span v-if="props.showMetrics" :class="$style.sep">·</span>
-			<span v-if="props.showMetrics" :class="$style.metricItem">
+			<span v-if="props.showMetrics && tokenSpendLabel" :class="$style.metricItem">
+				<N8nIcon icon="circle-dollar-sign" :size="12" />
+				<span>{{ tokenSpendLabel }}</span>
+			</span>
+			<span v-if="props.showMetrics && tokenSpendLabel && props.durationLabel" :class="$style.sep">
+				·
+			</span>
+			<span v-if="props.showMetrics && props.durationLabel" :class="$style.metricItem">
 				<N8nIcon icon="clock" :size="12" />
 				<span>{{ props.durationLabel }}</span>
 			</span>
@@ -209,6 +218,7 @@ const breadcrumbItems = computed(() =>
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
 

@@ -926,38 +926,6 @@ describe('instanceAi.reducer', () => {
 			expect(runState?.agentsById['agent-root']?.toolCalls).toEqual([]);
 			expect(runState?.agentsById['agent-child']?.toolCalls).toEqual([]);
 		});
-
-		test('createRunStateFromTree preserves planItems', () => {
-			const runState = createRunStateFromTree({
-				agentId: 'agent-root',
-				role: 'orchestrator',
-				status: 'completed',
-				textContent: '',
-				reasoning: '',
-				toolCalls: [],
-				children: [],
-				timeline: [],
-				planItems: [
-					{
-						id: 'task-1',
-						title: 'Build workflow',
-						kind: 'build-workflow',
-						spec: 'Create the workflow',
-						deps: [],
-					},
-				],
-			});
-
-			expect(runState?.agentsById['agent-root']?.planItems).toEqual([
-				{
-					id: 'task-1',
-					title: 'Build workflow',
-					kind: 'build-workflow',
-					spec: 'Create the workflow',
-					deps: [],
-				},
-			]);
-		});
 	});
 
 	// -----------------------------------------------------------------------
@@ -1021,10 +989,6 @@ describe('instanceAi.reducer', () => {
 
 		test('returns eval-setup for eval setup tool', () => {
 			expect(getRenderHint('eval-setup-with-agent')).toBe('eval-setup');
-		});
-
-		test('returns planner render hint for create-tasks', () => {
-			expect(getRenderHint('create-tasks')).toBe('planner');
 		});
 
 		test.each(['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'])(

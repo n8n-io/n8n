@@ -168,6 +168,29 @@ describe('AgentExecutionService', () => {
 		return await service.finalizeExecution(executionId, params);
 	}
 
+	it('broadcasts public usage fields without changing saved totals', () => {
+		const context = {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			executionId: 'execution-1',
+		};
+		const usage = {
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+			cost: 0.01,
+			inputTokenDetails: { cacheRead: 4 },
+		};
+		service.reportUsage(context, usage, 2300);
+		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
+			...context,
+			duration: 2300,
+			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+		});
+		expect(agentExecutionThreadRepository.incrementUsage).not.toHaveBeenCalled();
+	});
+
 	describe('recordSideCallUsage', () => {
 		it('increments the execution cost and thread totalCost by the report cost in one transaction', async () => {
 			await service.recordSideCallUsage('execution-1', 'thread-1', {
@@ -801,6 +824,42 @@ describe('AgentExecutionService', () => {
 		);
 	});
 
+	it('publishes completion after the thread totals are saved', async () => {
+		const totalsWriteStarted = createDeferredPromise();
+		const totalsWrite = createDeferredPromise();
+		agentExecutionThreadRepository.incrementUsage.mockImplementationOnce(async () => {
+			totalsWriteStarted.resolve();
+			await totalsWrite.promise;
+		});
+		const finalized = service.finalizeExecution('execution-1', {
+			threadId: 'thread-1',
+			agentId: 'agent-1',
+			agentName: 'Agent',
+			projectId: 'project-1',
+			userMessage: null,
+			record: makeMessageRecord({
+				usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5 },
+				totalCost: 0.01,
+				duration: 1500,
+			}),
+		});
+		try {
+			await totalsWriteStarted.promise;
+			expect(executionUpdateBroadcaster.notify).not.toHaveBeenCalled();
+		} finally {
+			totalsWrite.resolve();
+			await finalized;
+		}
+		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledExactlyOnceWith({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			executionId: 'execution-1',
+			duration: 1500,
+			complete: true,
+		});
+	});
+
 	it('keeps terminal persistence successful when usage totals and model backfill fail', async () => {
 		agentExecutionThreadRepository.incrementUsage.mockRejectedValue(
 			new Error('usage update failed'),
@@ -966,6 +1025,8 @@ describe('AgentExecutionService', () => {
 				agentId: 'agent-1',
 				threadId: 'thread-1',
 				executionId: 'execution-1',
+				duration: record.duration,
+				complete: true,
 			});
 			expect(executionUpdateBroadcaster.notify).toHaveBeenCalledTimes(2);
 		});
@@ -2237,6 +2298,18 @@ describe('AgentExecutionService', () => {
 			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
 			expect(agentChatAttachmentService.deleteStoredData).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('deleteMemoryThreadsForAgent', () => {
+		it('deletes the memory threads of the agent sessions in bulk', async () => {
+			agentExecutionThreadRepository.findIdsByAgentId.mockResolvedValue(['thread-1', 'thread-2']);
+
+			await service.deleteMemoryThreadsForAgent('agent-1');
+
+			expect(agentExecutionThreadRepository.findIdsByAgentId).toHaveBeenCalledWith('agent-1');
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
+			expect(memoryBackend.deleteThreads).toHaveBeenCalledWith(['thread-1', 'thread-2']);
 		});
 	});
 

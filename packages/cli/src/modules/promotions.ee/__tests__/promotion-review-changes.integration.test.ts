@@ -4,6 +4,7 @@ import type { User } from '@n8n/db';
 import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher, type InstanceSettings } from 'n8n-core';
+import assert from 'node:assert';
 import { mkdtempSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -13,6 +14,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { buildWorkflowReferencingCredential } from '@/modules/n8n-packages/__tests__/utils/test-builders';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -52,6 +54,9 @@ let hostMergeRequests: Map<number, GitLabMergeRequest>;
 
 beforeAll(() => {
 	process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
+	Container.get(SourceControlPreferencesService).sourceControlPreferences = {
+		environmentsVersion: 'v2',
+	};
 });
 
 afterAll(async () => {
@@ -350,7 +355,18 @@ it('lists a workflow that moves to another project without other changes', async
 		{ workflowId: quote.id },
 		{ projectId: support.id },
 	);
+	// Promote now refuses a move between projects, but a branch can still get one from an older
+	// version or a hand edit, so the review must still show it. Skip the refusal to write one.
+	const guard = vi
+		.spyOn(
+			Container.get(PromotionsService) as unknown as {
+				assertNoProjectMovesSinceBranch: () => Promise<void>;
+			},
+			'assertNoProjectMovesSinceBranch',
+		)
+		.mockResolvedValue();
 	const review = await promote('Move');
+	guard.mockRestore();
 
 	const changes = await changesOf(review.reviewId);
 
@@ -387,14 +403,41 @@ it('reads a merged review from the target branch after the host deleted its head
 	]);
 }, 60_000);
 
-it('lists nothing when the manifest of the target branch cannot be read', async () => {
+const writeUnreadableManifest = async (folder: string) => {
+	await mkdir(path.join(folder, 'n8n'), { recursive: true });
+	await writeFile(path.join(folder, 'n8n', 'manifest.json'), '{ not json');
+};
+
+it('refuses a promote when the manifest of the target branch cannot be read', async () => {
 	const project = await createTeamProject('Sales', owner);
 	await createWorkflow({ name: 'Quote', nodes: [], connections: {} }, project);
-	await commitOnMain(async (folder) => {
-		await mkdir(path.join(folder, 'n8n'), { recursive: true });
-		await writeFile(path.join(folder, 'n8n', 'manifest.json'), '{ not json');
+	await commitOnMain(writeUnreadableManifest);
+	const mainBefore = (await simpleGit(remoteFolder).revparse(['main'])).trim();
+
+	await expect(promote('Changes')).rejects.toMatchObject({
+		httpStatusCode: 400,
+		message: expect.stringContaining('"n8n/manifest.json" on the branch is not readable'),
 	});
+	expect(hostMergeRequests.size).toBe(0);
+	expect((await simpleGit(remoteFolder).raw(['branch', '--list'])).trim()).toBe('* main');
+	expect((await simpleGit(remoteFolder).revparse(['main'])).trim()).toBe(mainBefore);
+}, 60_000);
+
+it('lists nothing when the recorded base of a closed review has an unreadable manifest', async () => {
+	const project = await createTeamProject('Sales', owner);
+	await createWorkflow({ name: 'Quote', nodes: [], connections: {} }, project);
 	const review = await promote('Changes');
+	// The manifest on `main` became unreadable after the promote, and the host recorded that
+	// commit as the base of the review when it closed.
+	await commitOnMain(writeUnreadableManifest);
+	const baseSha = (await simpleGit(remoteFolder).revparse(['main'])).trim();
+	const mergeRequest = hostMergeRequests.get(review.iid);
+	assert(mergeRequest);
+	hostMergeRequests.set(review.iid, {
+		...mergeRequest,
+		state: 'closed',
+		diff_refs: { base_sha: baseSha, head_sha: review.commitSha },
+	});
 
 	const changes = await changesOf(review.reviewId);
 
