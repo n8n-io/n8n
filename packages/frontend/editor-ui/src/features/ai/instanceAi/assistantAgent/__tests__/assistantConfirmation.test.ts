@@ -34,23 +34,24 @@ describe('parseAssistantConfirmationInput', () => {
 		});
 	});
 
-	it('detects a payload by a card field when inputType is absent', () => {
+	it('parses a payload without an inputType, such as domain access', () => {
 		expect(
 			parseAssistantConfirmationInput({
 				requestId: 'req-2',
 				message: 'Allow access?',
+				severity: 'info',
 				domainAccess: { url: 'https://example.com/a', host: 'example.com' },
 			}),
 		).toMatchObject({ requestId: 'req-2', domainAccess: { host: 'example.com' } });
 	});
 
-	it('keeps a minimal fallback, marked destructive, when the severity fails validation', () => {
+	it('keeps a minimal fallback, marked destructive, for a severity that it does not know', () => {
 		expect(
 			parseAssistantConfirmationInput({
 				requestId: 'req-3',
 				message: 'Do it?',
 				inputType: 'approval',
-				severity: 42,
+				severity: 'critical',
 			}),
 		).toEqual({ requestId: 'req-3', message: 'Do it?', severity: 'destructive' });
 	});
@@ -92,6 +93,9 @@ describe('parseAssistantConfirmationInput', () => {
 	it('ignores payloads of other tools', () => {
 		expect(parseAssistantConfirmationInput({ type: 'approval', toolName: 'x' })).toBeUndefined();
 		expect(parseAssistantConfirmationInput({ requestId: 'req-4', message: 'hi' })).toBeUndefined();
+		expect(
+			parseAssistantConfirmationInput({ requestId: 'req-4', message: 'hi', severity: 42 }),
+		).toBeUndefined();
 		expect(parseAssistantConfirmationInput(null)).toBeUndefined();
 	});
 });

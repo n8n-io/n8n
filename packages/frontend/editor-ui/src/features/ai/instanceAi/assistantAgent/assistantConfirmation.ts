@@ -5,6 +5,7 @@ import {
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { defineAsyncComponent } from 'vue';
+import { z } from 'zod';
 
 import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
@@ -25,21 +26,14 @@ export type AssistantConfirmationInput = Partial<InstanceAiConfirmationRequestPa
 	message: string;
 };
 
-/** Fields that only an Assistant confirmation payload carries. */
-const CARD_FIELDS = [
-	'questions',
-	'planItems',
-	'tasks',
-	'credentialRequests',
-	'setupRequests',
-	'domainAccess',
-	'webSearch',
-	'resourceDecision',
-	'mcpConnectRequest',
-	'channelConfig',
-	'testListener',
-	'credentialDestination',
-] as const;
+/**
+ * Every Assistant tool suspends with these fields, and no other tool sends a
+ * `requestId`. `severity` is any string here, so a value that this editor does
+ * not know yet still renders the fallback card.
+ */
+const assistantSuspendSchema = z
+	.object({ requestId: z.string(), message: z.string(), severity: z.string() })
+	.passthrough();
 
 const lenientConfirmationSchema = confirmationRequestPayloadSchema.partial().passthrough();
 
@@ -51,30 +45,25 @@ const lenientConfirmationSchema = confirmationRequestPayloadSchema.partial().pas
 export function parseAssistantConfirmationInput(
 	value: unknown,
 ): AssistantConfirmationInput | undefined {
-	if (!isRecord(value) || typeof value.requestId !== 'string') return undefined;
-	// A plain Assistant approval carries only requestId, message and severity.
-	const isPlainApproval = typeof value.message === 'string' && typeof value.severity === 'string';
-	const hasCardField =
-		isPlainApproval ||
-		typeof value.inputType === 'string' ||
-		CARD_FIELDS.some((field) => value[field] !== undefined);
-	if (!hasCardField) return undefined;
+	const suspend = assistantSuspendSchema.safeParse(value);
+	if (!suspend.success) return undefined;
+	const payload = suspend.data;
+	const { requestId, message } = payload;
 
-	const message = typeof value.message === 'string' ? value.message : '';
-	const parsed = lenientConfirmationSchema.safeParse(value);
-	if (parsed.success) return { ...parsed.data, requestId: value.requestId, message };
+	const parsed = lenientConfirmationSchema.safeParse(payload);
+	if (parsed.success) return { ...parsed.data, requestId, message };
 	// A field failed validation: keep only what the fallback card needs. The card cannot
 	// see the fields that it drops, so treat the action as destructive, with no "Always
 	// allow", when the severity is invalid or the payload names a cross-target or
 	// credential-destination action.
-	const severity = instanceAiConfirmationSeveritySchema.safeParse(value.severity);
+	const severity = instanceAiConfirmationSeveritySchema.safeParse(payload.severity);
 	const blocksAlwaysAllow =
-		value.targetApproval !== undefined || value.credentialDestination !== undefined;
+		payload.targetApproval !== undefined || payload.credentialDestination !== undefined;
 	return {
-		requestId: value.requestId,
+		requestId,
 		message,
 		severity: severity.success && !blocksAlwaysAllow ? severity.data : 'destructive',
-		...(typeof value.toolName === 'string' ? { toolName: value.toolName } : {}),
+		...(typeof payload.toolName === 'string' ? { toolName: payload.toolName } : {}),
 	};
 }
 
