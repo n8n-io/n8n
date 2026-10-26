@@ -1,0 +1,38 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-stream-consumer.test.ts
+  s_f5af8c164cba73::t_0aca4f381ead1f 242-277
+  s_f5af8c164cba73::t_41b19ca80dd365 239-241
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-integration.ts
+  s_f5af8c164cba73::t_79bbe79a2ce64c 144-146
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-integration.ts
+  s_f5af8c164cba73::t_79bbe79a2ce64c 110-113
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_f5af8c164cba73::t_0aca4f381ead1f 374-378
+  s_f5af8c164cba73::t_b6a76793684d39 373
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/stream-delivery.test.ts
+  s_f5af8c164cba73::t_0aca4f381ead1f 16,262-302
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_f5af8c164cba73::t_0aca4f381ead1f 276
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_f5af8c164cba73::t_0aca4f381ead1f 45-46,268-296
+  s_f5af8c164cba73::t_8e7fbe0227a459 11,297-298,302-303,400-404
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_f5af8c164cba73::t_0aca4f381ead1f 69-72
+packages/cli/src/modules/agents/integrations/message-split.ts
+  s_f5af8c164cba73::t_0ff897b4fdd9aa 1-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49c263db8d8d9b4db6ab9c67e8160b4c0052ff7a",
+  "prompts": {},
+  "sessions": {
+    "s_f5af8c164cba73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fde0483a-208b-4943-9c5a-fddb6937e64b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
