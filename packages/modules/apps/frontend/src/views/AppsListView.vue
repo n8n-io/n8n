@@ -18,7 +18,7 @@ const i18n = useI18n();
 const route = useRoute();
 const rootStore = useRootStore();
 const toast = useToast();
-const { callDebounced } = useDebounce();
+const { debounce } = useDebounce();
 
 const ResourcesListLayout = computed(() => componentRegistry.get('resources-list-layout'));
 const ProjectHeader = computed(() => componentRegistry.get('project-header'));
@@ -30,13 +30,13 @@ const projectId = computed(() =>
 const apps = ref<AppResponse[]>([]);
 const totalApps = ref(0);
 const loading = ref(true);
-const search = ref('');
+const filters = ref({ search: '', homeProject: '' });
 const currentPage = ref(1);
 const pageSize = ref(APPS_PAGE_SIZE);
 const currentSort = ref<AppsSortBy>('updatedAt:desc');
 
 function isSortKey(key: string): key is keyof typeof APPS_SORT_MAP {
-	return key in APPS_SORT_MAP;
+	return Object.hasOwn(APPS_SORT_MAP, key);
 }
 
 async function fetchApps() {
@@ -46,7 +46,7 @@ async function fetchApps() {
 			skip: (currentPage.value - 1) * pageSize.value,
 			take: pageSize.value,
 			sortBy: currentSort.value,
-			name: search.value || undefined,
+			name: filters.value.search || undefined,
 		});
 		apps.value = data;
 		totalApps.value = count;
@@ -57,10 +57,21 @@ async function fetchApps() {
 	}
 }
 
+const fetchAppsDebounced = debounce(fetchApps, {
+	debounceTime: DEBOUNCE_TIME.INPUT.SEARCH,
+	trailing: true,
+});
+
+// The layout emits `update:pagination-and-sort` right before it calls `initialize`.
+async function initialize() {
+	fetchAppsDebounced.cancel();
+	await fetchApps();
+}
+
 async function onSearchUpdated(value: string) {
-	search.value = value;
+	filters.value = { ...filters.value, search: value };
 	currentPage.value = 1;
-	await callDebounced(fetchApps, { debounceTime: DEBOUNCE_TIME.INPUT.SEARCH, trailing: true });
+	await fetchAppsDebounced();
 }
 
 async function onPaginationAndSortUpdated(payload: {
@@ -73,10 +84,7 @@ async function onPaginationAndSortUpdated(payload: {
 	if (payload.sort && isSortKey(payload.sort)) {
 		currentSort.value = APPS_SORT_MAP[payload.sort];
 	}
-	await callDebounced(fetchApps, {
-		debounceTime: DEBOUNCE_TIME.API.RESOURCE_SEARCH,
-		trailing: true,
-	});
+	await fetchAppsDebounced();
 }
 
 function onAppDeleted(appId: string) {
@@ -93,11 +101,12 @@ function onAppDeleted(appId: string) {
 	<component
 		:is="ResourcesListLayout"
 		v-if="ResourcesListLayout"
+		v-model:filters="filters"
 		resource-key="apps"
 		type="list-paginated"
 		tab-key="apps"
 		:resources="apps"
-		:initialize="fetchApps"
+		:initialize="initialize"
 		:loading="false"
 		:resources-refreshing="loading"
 		:disabled="false"

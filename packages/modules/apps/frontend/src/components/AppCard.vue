@@ -15,7 +15,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
 
 import { deleteApp } from '../apps.api';
-import { useAppPermissions } from '../composables/useAppPermissions';
+import { getAppPermissions } from '../apps.permissions';
 
 const props = defineProps<{ app: AppResponse }>();
 
@@ -25,7 +25,7 @@ const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
 const rootStore = useRootStore();
-const { canDelete } = useAppPermissions(() => props.app.projectId);
+const canDelete = computed(() => getAppPermissions(props.app.projectId).canDelete);
 
 const isPublished = computed(() => props.app.publishedVersionId !== null);
 const actions = computed(() => [{ label: i18n.baseText('generic.delete'), value: 'delete' }]);

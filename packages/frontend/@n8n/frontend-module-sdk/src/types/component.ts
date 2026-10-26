@@ -1,4 +1,5 @@
 import type { WorkflowReviewVersionSnapshot } from '@n8n/api-types';
+import type { DatatableColumn } from '@n8n/design-system';
 
 /**
  * UI a module renders but does not own.
@@ -66,3 +67,57 @@ export type PromotionChangesState =
 	| { status: 'loading' }
 	| { status: 'ready'; headCommitSha: string }
 	| { status: 'unavailable' };
+
+/** The create action shown as the main button of the `project-header` slot. */
+export type SlotProjectHeaderMainButton =
+	| 'workflow'
+	| 'credential'
+	| 'folder'
+	| 'dataTable'
+	| 'variable'
+	| 'agent';
+
+export type SlotProjectHeaderProps = {
+	hasActiveCallouts?: boolean;
+	mainButton?: SlotProjectHeaderMainButton;
+};
+
+/** The search and filter values of the `resources-list-layout` slot. */
+export type SlotResourcesListFilters = {
+	search: string;
+	homeProject: string;
+	[key: string]: boolean | string | string[];
+};
+
+/** The list whose page size and sort the `resources-list-layout` slot persists. */
+export type SlotResourcesListTabKey = 'workflows' | 'credentials' | 'dataTable' | 'agents' | 'apps';
+
+export type SlotResourcesListLayoutProps<ResourceType> = {
+	resourceKey: string;
+	displayName?: (resource: ResourceType) => string;
+	resources: ResourceType[];
+	disabled: boolean;
+	initialize?: () => Promise<void>;
+	filters?: SlotResourcesListFilters;
+	additionalFiltersHandler?: (
+		resource: ResourceType,
+		filters: SlotResourcesListFilters,
+		matches: boolean,
+	) => boolean;
+	shareable?: boolean;
+	sortFns?: Record<string, (a: ResourceType, b: ResourceType) => number>;
+	sortOptions?: string[];
+	type?: 'datatable' | 'list-full' | 'list-paginated';
+	typeProps: { itemSize: number } | { columns: DatatableColumn[] };
+	loading: boolean;
+	customPageSize?: number;
+	availablePageSizeOptions?: number[];
+	totalItems?: number;
+	resourcesRefreshing?: boolean;
+	// Set to true if sorting and filtering is done outside of the component
+	dontPerformSortingAndFiltering?: boolean;
+	hasEmptyState?: boolean;
+	uiConfig?: { searchEnabled: boolean; showFiltersDropdown: boolean; sortEnabled: boolean };
+	tabKey?: SlotResourcesListTabKey;
+	persistKeyExclusions?: string[];
+};

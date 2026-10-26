@@ -1,8 +1,7 @@
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
-import { AGENTS_LIST_VIEW, PROJECT_AGENTS } from '@n8n/frontend-constants/agents';
 import { VIEWS } from '@n8n/frontend-constants/views';
 
-import { canListApps } from './apps.access';
+import { getAppPermissions } from './apps.permissions';
 import { APPS_LIST_VIEW, PROJECT_APPS } from './apps.constants';
 
 const AppsListView = async () => await import('./views/AppsListView.vue');
@@ -25,7 +24,8 @@ export const AppsModule = defineFrontendModule({
 			component: AppsListView,
 			meta: { projectRoute: true, middleware: ['authenticated', 'custom'] },
 			beforeEnter: (to) =>
-				(typeof to.params.projectId === 'string' && canListApps(to.params.projectId)) || {
+				(typeof to.params.projectId === 'string' &&
+					getAppPermissions(to.params.projectId).canList) || {
 					name: VIEWS.PROJECTS_WORKFLOWS,
 					params: to.params,
 				},
@@ -37,7 +37,7 @@ export const AppsModule = defineFrontendModule({
 				label: 'Apps',
 				value: APPS_LIST_VIEW,
 				preview: true,
-				insertAfter: AGENTS_LIST_VIEW,
+				insertAfter: VIEWS.WORKFLOWS,
 				to: { name: APPS_LIST_VIEW },
 			},
 		],
@@ -46,9 +46,9 @@ export const AppsModule = defineFrontendModule({
 				label: 'Apps',
 				value: PROJECT_APPS,
 				preview: true,
-				insertAfter: PROJECT_AGENTS,
+				insertAfter: VIEWS.PROJECTS_WORKFLOWS,
 				dynamicRoute: { name: PROJECT_APPS, includeProjectId: true },
-				available: (projectId) => projectId !== undefined && canListApps(projectId),
+				available: (projectId) => projectId !== undefined && getAppPermissions(projectId).canList,
 			},
 		],
 	},

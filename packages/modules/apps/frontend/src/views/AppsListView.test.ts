@@ -15,21 +15,19 @@ vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => route,
 }));
-vi.mock('@n8n/composables/useDebounce', () => ({
-	useDebounce: () => ({
-		callDebounced: async (fn: () => Promise<void>) => await fn(),
-	}),
-}));
-
+// Like the real layout: it emits the saved pagination preferences, then calls `initialize`.
 const ResourcesListLayoutStub = defineComponent({
 	props: ['resources', 'initialize'],
 	emits: ['update:search', 'update:pagination-and-sort'],
 	mounted() {
+		this.$emit('update:pagination-and-sort', { pageSize: 50 });
 		void this.initialize();
 	},
 	template: `<div>
 		<button data-test-id="search" @click="$emit('update:search', 'expense')" />
 		<button data-test-id="sort" @click="$emit('update:pagination-and-sort', { sort: 'nameAsc', page: 2 })" />
+		<button data-test-id="sort-inherited" @click="$emit('update:pagination-and-sort', { sort: 'constructor' })" />
+		<button data-test-id="switch-project" @click="$emit('update:filters', { search: '', homeProject: '' }); initialize()" />
 		<slot name="header" />
 		<slot v-if="resources.length === 0" name="empty" />
 		<slot v-for="item in resources" :key="item.id" name="item" :item="item" />
@@ -63,12 +61,15 @@ const renderComponent = createComponentRenderer(AppsListView, {
 
 describe('AppsListView', () => {
 	beforeEach(() => {
+		// Read by `useDebounce`: makes every debounced fetch run on the next tick.
+		sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '0');
 		componentRegistry.register('resources-list-layout', ResourcesListLayoutStub);
 		componentRegistry.register('project-header', { template: '<div data-test-id="header" />' });
 		vi.mocked(listApps).mockResolvedValue({ data: [app('1'), app('2')], count: 2 });
 	});
 
 	afterEach(() => {
+		sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
 		componentRegistry.clear();
 		route.params = {};
 		vi.clearAllMocks();
@@ -86,6 +87,15 @@ describe('AppsListView', () => {
 			sortBy: 'updatedAt:desc',
 			name: undefined,
 		});
+	});
+
+	it('loads the list once when the layout emits its saved pagination before initializing', async () => {
+		const { findAllByTestId } = renderComponent();
+		await findAllByTestId('app-card');
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+
+		expect(listApps).toHaveBeenCalledTimes(1);
 	});
 
 	it('lists the apps of all projects on the overview page', async () => {
@@ -110,12 +120,45 @@ describe('AppsListView', () => {
 		await userEvent.click(getByTestId('sort'));
 		await userEvent.click(getByTestId('search'));
 
-		expect(listApps).toHaveBeenLastCalledWith(expect.anything(), undefined, {
-			skip: 0,
-			take: 50,
-			sortBy: 'name:asc',
-			name: 'expense',
-		});
+		await waitFor(() =>
+			expect(listApps).toHaveBeenLastCalledWith(expect.anything(), undefined, {
+				skip: 0,
+				take: 50,
+				sortBy: 'name:asc',
+				name: 'expense',
+			}),
+		);
+	});
+
+	it('drops the search term when the layout resets its filters on a project switch', async () => {
+		const { getByTestId } = renderComponent();
+		await waitFor(() => expect(listApps).toHaveBeenCalledTimes(1));
+		await userEvent.click(getByTestId('search'));
+		await waitFor(() => expect(listApps).toHaveBeenCalledTimes(2));
+
+		await userEvent.click(getByTestId('switch-project'));
+
+		await waitFor(() =>
+			expect(listApps).toHaveBeenLastCalledWith(
+				expect.anything(),
+				undefined,
+				expect.objectContaining({ name: undefined }),
+			),
+		);
+	});
+
+	it('ignores a sort key that is not one of the sort options', async () => {
+		const { getByTestId } = renderComponent();
+		await waitFor(() => expect(listApps).toHaveBeenCalledTimes(1));
+
+		await userEvent.click(getByTestId('sort-inherited'));
+
+		await waitFor(() => expect(listApps).toHaveBeenCalledTimes(2));
+		expect(listApps).toHaveBeenLastCalledWith(
+			expect.anything(),
+			undefined,
+			expect.objectContaining({ sortBy: 'updatedAt:desc' }),
+		);
 	});
 
 	it('removes a deleted app and reloads the list', async () => {

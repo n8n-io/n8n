@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
+import type { SlotProjectHeaderMainButton, SlotProjectHeaderProps } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '../projects.types';
 import { useProjectsStore } from '../projects.store';
@@ -58,10 +59,7 @@ async function onToggleProjectFavorite() {
 
 const projectPages = useProjectPages();
 
-const props = defineProps<{
-	hasActiveCallouts?: boolean;
-	mainButton?: ActionTypes;
-}>();
+const props = defineProps<SlotProjectHeaderProps>();
 
 const emit = defineEmits<{
 	createFolder: [];
@@ -164,7 +162,7 @@ const ACTION_TYPES = {
 	DATA_TABLE: 'dataTable',
 	VARIABLE: 'variable',
 	AGENT: 'agent',
-} as const;
+} as const satisfies Record<string, SlotProjectHeaderMainButton>;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
 const createWorkflowButton = computed(() => ({
