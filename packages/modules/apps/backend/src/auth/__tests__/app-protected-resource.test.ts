@@ -1,4 +1,6 @@
+import { Logger } from '@n8n/backend-common';
 import { RoleService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { ProjectRelationRepository } from '@n8n/db';
 import type { ResourcePrincipal } from '@n8n/inbound-auth';
 import { mock } from 'vitest-mock-extended';
@@ -30,16 +32,39 @@ function setup() {
 	roles.rolesWithScope.mockResolvedValue(['project:viewer']);
 	const projects = mock<ProjectRelationRepository>();
 	projects.getAccessibleProjectsByRoles.mockResolvedValue(['project']);
+	const resource = new AppProtectedResource(apps, hosts, roles, projects);
+	const registry = new ProtectedResourceRegistry(mock<Logger>());
+	registry.registerResolver(resource);
 	return {
 		app,
 		apps,
 		roles,
 		projects,
-		resource: new AppProtectedResource(apps, hosts, roles, projects),
+		resource,
+		registry,
 	};
 }
 
 describe('AppProtectedResource', () => {
+	it('does not resolve app resources by path', async () => {
+		const { registry, apps } = setup();
+
+		await expect(registry.getByResourcePath(new URL(url).pathname)).resolves.toBeUndefined();
+
+		expect(apps.findById).not.toHaveBeenCalled();
+	});
+
+	it('resolves published apps only by their canonical URL', async () => {
+		const { registry, apps } = setup();
+		const mainUrl = `https://n8n.example.com${new URL(url).pathname}`;
+
+		await expect(registry.getByResourceUrl(mainUrl)).resolves.toBeUndefined();
+		expect(apps.findById).not.toHaveBeenCalled();
+
+		expect((await registry.getByResourceUrl(url))?.getResourceUrl()).toBe(url);
+		expect(apps.findById).toHaveBeenCalledExactlyOnceWith(id);
+	});
+
 	it('matches only canonical configured callback URLs', async () => {
 		const { resource } = setup();
 		expect(resource.matchesVirtualClientUrl(url)).toBe(true);

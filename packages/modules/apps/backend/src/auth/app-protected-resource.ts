@@ -79,15 +79,16 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 
 	async resolveByUrl(value: string): Promise<ProtectedResource | undefined> {
 		if (!this.matchesVirtualClientUrl(value)) return undefined;
-		const resource = await this.resolveByPath(new URL(value).pathname);
+		const id = this.appId(new URL(value).pathname);
+		if (!id) return undefined;
+		const app = await this.apps.findById(id);
+		const resource = app?.publishedVersionId ? this.forApp(app) : undefined;
 		return resource?.getResourceUrl() === value ? resource : undefined;
 	}
 
-	async resolveByPath(pathname: string): Promise<ProtectedResource | undefined> {
-		const id = this.appId(pathname);
-		if (!id) return undefined;
-		const app = await this.apps.findById(id);
-		return app?.publishedVersionId ? this.forApp(app) : undefined;
+	async resolveByPath(): Promise<ProtectedResource | undefined> {
+		// App resources require the apps host, which a path cannot identify.
+		return undefined;
 	}
 
 	private appId(pathname: string): string | undefined {
