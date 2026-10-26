@@ -193,7 +193,10 @@ export class EnterpriseCredentialsService {
 		return { ...enriched };
 	}
 
-	/** What a move into `destinationProjectId` would restrict. Refuses nothing. */
+	/**
+	 * What a move into `destinationProjectId` would restrict. Refuses what the move refuses for
+	 * other reasons, so it never warns about a move that cannot happen.
+	 */
 	async previewTransfer(
 		user: User,
 		credentialId: string,
@@ -219,6 +222,8 @@ export class EnterpriseCredentialsService {
 			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create credentials in it.`,
 		);
 
+		await this.assertCanTransfer(user, credential, destinationProject);
+
 		const decision = await this.policyEnforcementService.evaluateCredentialTransfer({
 			credential: { id: credential.id, type: credential.type },
 			targetProjectId: destinationProject.id,
@@ -239,17 +244,7 @@ export class EnterpriseCredentialsService {
 			`Could not find the credential with the id "${credentialId}". Make sure you have the permission to move it.`,
 		);
 
-		// 2. get owner-sharing
-		const ownerSharing = credential.shared.find((s) => s.role === 'credential:owner');
-		NotFoundError.isDefinedAndNotNull(
-			ownerSharing,
-			`Could not find owner for credential "${credential.id}"`,
-		);
-
-		// 3. get source project
-		const sourceProject = ownerSharing.project;
-
-		// 4. get destination project
+		// 2. get destination project
 		const destinationProject = await this.projectService.getProjectWithScope(
 			user,
 			destinationProjectId,
@@ -260,19 +255,8 @@ export class EnterpriseCredentialsService {
 			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create credentials in it.`,
 		);
 
-		// 5. checks
-		if (sourceProject.id === destinationProject.id) {
-			throw new TransferCredentialError(
-				"You can't transfer a credential into the project that's already owning it.",
-			);
-		}
-
-		// Transferring an end-user credential into a project is equivalent to
-		// creating one there: same createEndUser gate, no personal projects.
-		if (credential.isResolvable) {
-			this.credentialsService.ensureEndUserCredentialAllowedInProject(destinationProject);
-			await this.credentialsService.ensureCanManageEndUserCredential(user, destinationProject.id);
-		}
+		// 3. checks
+		await this.assertCanTransfer(user, credential, destinationProject);
 
 		await this.policyEnforcementService.enforceCredentialTransfer(
 			{
@@ -282,25 +266,11 @@ export class EnterpriseCredentialsService {
 			{ kind: 'user', user },
 		);
 
-		// 6. validate that the destination project has access to all external secret providers
-		if (
-			this.licenseState.isExternalSecretsLicensed() &&
-			this.externalSecretsConfig.externalSecretsForProjects
-		) {
-			const decryptedData = await this.credentialsService.decrypt(credential, true);
-			await validateAccessToReferencedSecretProviders(
-				destinationProject.id,
-				decryptedData,
-				this.externalSecretsProviderAccessCheckService,
-				'transfer',
-			);
-		}
-
-		// 7. projects losing access — the move drops all their sharings
+		// 4. projects losing access — the move drops all their sharings
 		const affectedProjectIds = [...new Set(credential.shared.map((s) => s.projectId))];
 
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
-			// 8. transfer the credential
+			// 5. transfer the credential
 			// remove all sharings
 			await trx.remove(credential.shared);
 
@@ -313,12 +283,52 @@ export class EnterpriseCredentialsService {
 				}),
 			);
 
-			// 9. drop connections for members who lost access in the new project
+			// 6. drop connections for members who lost access in the new project
 			await this.connectionStatusProxy.cleanupOrphanedEntriesForProjects(
 				credential.id,
 				affectedProjectIds,
 				trx,
 			);
 		});
+	}
+
+	/** The move's refusals that are not policies. The preview runs them too. */
+	private async assertCanTransfer(
+		user: User,
+		credential: CredentialsEntity,
+		destinationProject: Project,
+	): Promise<void> {
+		const ownerSharing = credential.shared.find((s) => s.role === 'credential:owner');
+		NotFoundError.isDefinedAndNotNull(
+			ownerSharing,
+			`Could not find owner for credential "${credential.id}"`,
+		);
+
+		if (ownerSharing.project.id === destinationProject.id) {
+			throw new TransferCredentialError(
+				"You can't transfer a credential into the project that's already owning it.",
+			);
+		}
+
+		// Transferring an end-user credential into a project is equivalent to
+		// creating one there: same createEndUser gate, no personal projects.
+		if (credential.isResolvable) {
+			this.credentialsService.ensureEndUserCredentialAllowedInProject(destinationProject);
+			await this.credentialsService.ensureCanManageEndUserCredential(user, destinationProject.id);
+		}
+
+		// The destination project needs access to every external secret provider it references.
+		if (
+			this.licenseState.isExternalSecretsLicensed() &&
+			this.externalSecretsConfig.externalSecretsForProjects
+		) {
+			const decryptedData = await this.credentialsService.decrypt(credential, true);
+			await validateAccessToReferencedSecretProviders(
+				destinationProject.id,
+				decryptedData,
+				this.externalSecretsProviderAccessCheckService,
+				'transfer',
+			);
+		}
 	}
 }

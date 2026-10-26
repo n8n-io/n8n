@@ -253,6 +253,18 @@ describe('GET /workflows/:workflowId/transfer-preview', () => {
 
 		await authMemberAgent.get(`/workflows/${workflow.id}/transfer-preview`).expect(400);
 	});
+
+	test('returns 400 for the project that already owns the workflow, as the move does', async () => {
+		const workflow = await createWorkflow({ nodes: [node(BLOCKED_TYPE)] }, sourceProject);
+		denyingProjectIds.add(sourceProject.id);
+
+		const response = await authMemberAgent
+			.get(`/workflows/${workflow.id}/transfer-preview`)
+			.query({ destinationProjectId: sourceProject.id })
+			.expect(400);
+
+		expect(response.body.message).toContain('already owning it');
+	});
 });
 
 describe('GET /projects/:projectId/folders/:folderId/transfer-preview', () => {
@@ -294,6 +306,36 @@ describe('GET /projects/:projectId/folders/:folderId/transfer-preview', () => {
 			workflowsToUnpublish: [],
 			checkFailed: false,
 		});
+	});
+
+	test('flags the preview as incomplete when a check fails', async () => {
+		const folder = await createFolder(sourceProject, { name: 'Folder' });
+		await createWorkflow({ nodes: [node(BLOCKED_TYPE)], parentFolder: folder }, sourceProject);
+		failingProjectIds.add(targetProject.id);
+
+		const response = await authMemberAgent
+			.get(`/projects/${sourceProject.id}/folders/${folder.id}/transfer-preview`)
+			.query({ destinationProjectId: targetProject.id })
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			restricted: [],
+			workflowsToUnpublish: [],
+			checkFailed: true,
+		});
+	});
+
+	test('returns 400 for the project that already owns the folder, as the move does', async () => {
+		const folder = await createFolder(sourceProject, { name: 'Folder' });
+		await createWorkflow({ nodes: [node(BLOCKED_TYPE)], parentFolder: folder }, sourceProject);
+		denyingProjectIds.add(sourceProject.id);
+
+		const response = await authMemberAgent
+			.get(`/projects/${sourceProject.id}/folders/${folder.id}/transfer-preview`)
+			.query({ destinationProjectId: sourceProject.id })
+			.expect(400);
+
+		expect(response.body.message).toContain('already owning it');
 	});
 
 	test('returns 404 for a folder of another project', async () => {
@@ -352,5 +394,35 @@ describe('GET /credentials/:credentialId/transfer-preview', () => {
 			.expect(200);
 
 		expect(response.body.data).toEqual({ restricted: [], checkFailed: false });
+	});
+
+	test('flags the preview as incomplete when a check fails', async () => {
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project: sourceProject,
+			role: 'credential:owner',
+		});
+		failingProjectIds.add(targetProject.id);
+
+		const response = await authMemberAgent
+			.get(`/credentials/${credential.id}/transfer-preview`)
+			.query({ destinationProjectId: targetProject.id })
+			.expect(200);
+
+		expect(response.body.data).toEqual({ restricted: [], checkFailed: true });
+	});
+
+	test('returns 400 for the project that already owns the credential, as the move does', async () => {
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project: sourceProject,
+			role: 'credential:owner',
+		});
+		denyingProjectIds.add(sourceProject.id);
+
+		const response = await authMemberAgent
+			.get(`/credentials/${credential.id}/transfer-preview`)
+			.query({ destinationProjectId: sourceProject.id })
+			.expect(400);
+
+		expect(response.body.message).toContain('already owning it');
 	});
 });

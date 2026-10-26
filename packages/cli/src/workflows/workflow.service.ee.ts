@@ -29,6 +29,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { In, type EntityManager } from '@n8n/typeorm';
 import isEqual from 'lodash/isEqual';
 import omit from 'lodash/omit';
+import pLimit from 'p-limit';
 import type { INode, INodeTypeDescription, IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import {
 	isNodeWithWorkflowSelector,
@@ -95,9 +96,28 @@ const EDITABLE_NODE_FIELDS = ['name', 'position', 'disabled'] as const;
 
 const HISTORY_LOOKBACK_LIMIT = 20;
 
+/** Bounded so a large folder does not flood the policy backend when the move dialog opens. */
+const TRANSFER_PREVIEW_CONCURRENCY = 5;
+
 /** One entry per restricted type, however many workflows in a folder use it. */
 function restrictedTypeKey({ kind, subjectType, subject, message }: PolicyViolation): string {
 	return JSON.stringify([kind, subjectType, subject ?? message]);
+}
+
+/** A project move refuses workflows the destination already owns. The preview refuses them too. */
+function assertNoneOwnedBy(workflows: WorkflowEntity[], destinationProject: Project) {
+	for (const workflow of workflows) {
+		const ownerSharing = workflow.shared.find((s) => s.role === 'workflow:owner');
+		NotFoundError.isDefinedAndNotNull(
+			ownerSharing,
+			`Could not find owner for workflow "${workflow.id}"`,
+		);
+		if (ownerSharing.project.id === destinationProject.id) {
+			throw new TransferWorkflowError(
+				"You can't transfer a workflow into the project that's already owning it.",
+			);
+		}
+	}
 }
 
 @Service()
@@ -834,7 +854,10 @@ export class EnterpriseWorkflowService {
 		return;
 	}
 
-	/** What a move into `destinationProjectId` would restrict. Refuses nothing. */
+	/**
+	 * What a move into `destinationProjectId` would restrict. Refuses what the move refuses for
+	 * other reasons, so it never warns about a move that cannot happen.
+	 */
 	async previewWorkflowTransfer(
 		user: User,
 		workflowId: string,
@@ -852,6 +875,8 @@ export class EnterpriseWorkflowService {
 		);
 
 		const destinationProject = await this.getTransferDestination(user, destinationProjectId);
+		assertNoneOwnedBy([workflow], destinationProject);
+
 		const { transfer, publish } = await this.evaluateTransferInto(workflow, destinationProject.id);
 
 		return {
@@ -861,7 +886,10 @@ export class EnterpriseWorkflowService {
 		};
 	}
 
-	/** What moving a folder tree into `destinationProjectId` would restrict. Refuses nothing. */
+	/**
+	 * What moving a folder tree into `destinationProjectId` would restrict. Refuses what the
+	 * move refuses for other reasons, so it never warns about a move that cannot happen.
+	 */
 	async previewFolderTransfer(
 		user: User,
 		sourceProjectId: string,
@@ -896,12 +924,19 @@ export class EnterpriseWorkflowService {
 			{ withNodes: true },
 		);
 
+		assertNoneOwnedBy(workflows, destinationProject);
+
+		const limit = pLimit(TRANSFER_PREVIEW_CONCURRENCY);
+		const decisions = await Promise.all(
+			workflows.map(
+				async (workflow) =>
+					await limit(async () => await this.evaluateTransferInto(workflow, destinationProject.id)),
+			),
+		);
+
 		const restricted = new Map<string, PolicyViolation>();
-		for (const workflow of workflows) {
-			const { transfer, publish } = await this.evaluateTransferInto(
-				workflow,
-				destinationProject.id,
-			);
+		for (const [index, { transfer, publish }] of decisions.entries()) {
+			const workflow = workflows[index];
 
 			for (const violation of transfer.violations) {
 				const key = restrictedTypeKey(violation);
@@ -1024,19 +1059,7 @@ export class EnterpriseWorkflowService {
 
 		await this.folderRepository.findOneOrFailFolderInProject(sourceFolderId, sourceProjectId);
 
-		for (const workflow of workflows) {
-			const ownerSharing = workflow.shared.find((s) => s.role === 'workflow:owner')!;
-			NotFoundError.isDefinedAndNotNull(
-				ownerSharing,
-				`Could not find owner for workflow "${workflow.id}"`,
-			);
-			const sourceProject = ownerSharing.project;
-			if (sourceProject.id === destinationProject.id) {
-				throw new TransferWorkflowError(
-					"You can't transfer a workflow into the project that's already owning it.",
-				);
-			}
-		}
+		assertNoneOwnedBy(workflows, destinationProject);
 
 		if (checksTransfer) {
 			for (const workflow of workflows) {
