@@ -26,6 +26,13 @@ import type { SystemAgentHostEventEmitter } from './system-agent-host-events';
 /** Provider-defined, JSON-safe turn options. The queue stores them with the message. */
 export type SystemAgentTurnOptions = Record<string, unknown>;
 
+/** The "always allow" decisions that the user made in one thread of a system agent. */
+export interface SystemAgentSessionGrants {
+	load(): Promise<Set<string>>;
+	grant(key: string): Promise<void>;
+	revoke(key: string): Promise<void>;
+}
+
 interface SystemAgentTurnBase<TLease> {
 	user: User;
 	thread: AgentExecutionThread;
@@ -45,6 +52,8 @@ interface SystemAgentTurnBase<TLease> {
 	 * builds: the runtime resumes a suspended turn only from this store.
 	 */
 	checkpointStore: CheckpointStore;
+	/** The "always allow" decisions in the thread. They last until the thread is deleted. */
+	sessionGrants: SystemAgentSessionGrants;
 	/**
 	 * Send a custom event to the chat during this turn. The runtime streams it
 	 * as a `host-event` SSE event and records it with the turn, so history
@@ -65,6 +74,11 @@ export interface SystemAgentStartTurn<TLease = unknown> extends SystemAgentTurnB
 	/** The message as the user wrote it. It is the stored transcript text. */
 	message: string;
 	attachments: StoredAttachmentRef[];
+	/**
+	 * The content of one attachment of this turn. Gives `undefined` for a file
+	 * that is not an attachment of this turn or no longer exists.
+	 */
+	readAttachment(ref: StoredAttachmentRef): Promise<Buffer | undefined>;
 	options: SystemAgentTurnOptions;
 }
 
