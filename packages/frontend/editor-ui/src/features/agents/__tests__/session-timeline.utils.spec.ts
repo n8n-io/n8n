@@ -479,6 +479,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(items).toEqual([
 			{
 				kind: 'execution-error',
+				id: 'e-1:execution-error:1777024805000:0',
 				executionId: 'e-1',
 				executionStatus: status,
 				content: error,
@@ -498,6 +499,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(items).toEqual([
 			{
 				kind: 'execution-error',
+				id: 'e-1:execution-error:500:0',
 				executionId: 'e-1',
 				guardrailCode: 'budget.session',
 				timestamp: 500,
@@ -1232,6 +1234,7 @@ describe('background task signals', () => {
 		expect(items).toEqual([
 			{
 				kind: 'background-task-signal',
+				id: 'e-1:background-task-signal:1000:0',
 				executionId: 'e-1',
 				timestamp: 1000,
 				backgroundJobSignal: signal,

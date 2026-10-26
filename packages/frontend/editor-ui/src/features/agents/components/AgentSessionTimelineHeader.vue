@@ -157,7 +157,7 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 					<N8nIcon color="text-light" icon="hash" />
 					<N8nText step="xs" bold>
 						{{ tokenFormatter.format(metadata.totalTokens).toUpperCase() }}
-						<span :class="$style.innerLabel"
+						<span v-if="metadata.totalCost !== null" :class="$style.innerLabel"
 							>(${{ costFormatter.format(metadata.totalCost) }})</span
 						>
 					</N8nText>

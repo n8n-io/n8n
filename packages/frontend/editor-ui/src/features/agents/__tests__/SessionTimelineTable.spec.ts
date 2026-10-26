@@ -502,6 +502,7 @@ describe('SessionTimelineTable', () => {
 						{ length: 97 },
 						(_, index): TimelineItem => ({
 							kind: 'user',
+							id: `event-${index + 4}`,
 							executionId: `extra-${index}`,
 							timestamp: 3000 + index,
 							content: 'Message',

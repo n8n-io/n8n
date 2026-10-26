@@ -19,7 +19,7 @@ export interface SessionTimelineMetadata {
 		label: string;
 	};
 	totalTokens: number;
-	totalCost: number;
+	totalCost: number | null;
 	durationLabel: string;
 }
 
