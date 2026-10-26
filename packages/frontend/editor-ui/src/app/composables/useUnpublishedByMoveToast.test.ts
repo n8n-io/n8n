@@ -40,13 +40,26 @@ describe('useUnpublishedByMoveToast', () => {
 	});
 
 	describe('showForWorkflow', () => {
-		it.each([
-			['no result', undefined],
-			['a result with only an error', { error: { name: 'Error', message: 'boom' } }],
-		])('should not show a toast for %s', (_label, result) => {
-			useUnpublishedByMoveToast().showForWorkflow(result, 'My workflow', 'Team A');
+		it('should not show a toast when the workflow kept its state', () => {
+			useUnpublishedByMoveToast().showForWorkflow(undefined, 'My workflow', 'Team A');
 
 			expect(showMessageSpy).not.toHaveBeenCalled();
+		});
+
+		it('should name the workflow and the reason when its republish failed', () => {
+			useUnpublishedByMoveToast().showForWorkflow(
+				{ error: { name: 'WorkflowActivationError', message: 'Invalid credentials' } },
+				'My workflow',
+				'Team A',
+			);
+
+			expect(showMessageSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'warning', duration: 0, title: 'Workflow unpublished' }),
+			);
+			const { container } = renderComponent({ props: { vnode: shownMessage() } });
+			expect(container).toHaveTextContent(
+				"n8n couldn't republish 'My workflow' after the move, so it's now unpublished. Reason: Invalid credentials",
+			);
 		});
 
 		it('should show a persistent warning toast when the move unpublished the workflow', () => {
@@ -134,6 +147,25 @@ describe('useUnpublishedByMoveToast', () => {
 			expect(container).toHaveTextContent(
 				"Team A doesn't allow publishing these workflows, so the move unpublished them: 'First', 'Second'.",
 			);
+		});
+
+		it('should list the policy refusals and the failed republishes apart', () => {
+			useUnpublishedByMoveToast().showForFolder(
+				{
+					unpublishedWorkflows: [
+						{ id: 'w1', name: 'First', unpublishReasons: [slackViolation] },
+						{ id: 'w2', name: 'Second', error: { name: 'Error', message: 'boom' } },
+					],
+				},
+				'Team A',
+			);
+
+			const { container } = renderComponent({ props: { vnode: shownMessage() } });
+
+			expect(Array.from(container.querySelectorAll('p')).map((p) => p.textContent)).toEqual([
+				"Team A doesn't allow publishing these workflows, so the move unpublished them: 'First'.",
+				"n8n couldn't republish these workflows after the move, so they're now unpublished: 'Second'.",
+			]);
 		});
 
 		it('should pass the message as a VNode, not an HTML string', () => {

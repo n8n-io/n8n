@@ -2891,6 +2891,8 @@
 	"typeAvailabilityPolicies.transfer.unpublished.workflow.message": "{project} doesn't allow publishing '{name}', so the move unpublished it.",
 	"typeAvailabilityPolicies.transfer.unpublished.folder.title": "Workflows unpublished",
 	"typeAvailabilityPolicies.transfer.unpublished.folder.message": "{project} doesn't allow publishing these workflows, so the move unpublished them: {names}.",
+	"projects.move.republishFailed.workflow.message": "n8n couldn't republish '{name}' after the move, so it's now unpublished. Reason: {reason}",
+	"projects.move.republishFailed.folder.message": "n8n couldn't republish these workflows after the move, so they're now unpublished: {names}.",
 	"typeAvailabilityPolicies.restrictedNodes.title": "An administrator blocked these nodes:",
 	"typeAvailabilityPolicies.restrictedNodes.scopeLine": "{scope}: {nodeTypes}.",
 	"typeAvailabilityPolicies.restrictedNodes.scope.generic": "Restricted",
