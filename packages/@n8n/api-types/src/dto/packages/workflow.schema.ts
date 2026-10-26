@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 const credentialReferenceSchema = z.object({
 	id: z.string().nullable(),
-	name: z.string(),
+	// Optional: export omits it (the target backfills by id on import); an older package that carries one stays valid.
+	name: z.string().optional(),
 	__aiGatewayManaged: z.boolean().optional(),
 });
 

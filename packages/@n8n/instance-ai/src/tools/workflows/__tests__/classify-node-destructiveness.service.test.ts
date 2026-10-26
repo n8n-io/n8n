@@ -218,6 +218,7 @@ describe('classifyNodesForSimulation', () => {
 			url: 'https://proxy.example.com/anthropic/v1',
 			apiKey: 'proxy-token',
 		};
+		const modelFetch = vi.fn();
 		await classifyNodesForSimulation({
 			workflow: chainWorkflow([
 				trigger,
@@ -228,10 +229,11 @@ describe('classifyNodesForSimulation', () => {
 				},
 			]),
 			fallbackModelConfig,
+			modelFetch,
 		});
 		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
 			'verification-destructiveness-classifier',
-			expect.objectContaining({ fallbackModelConfig }),
+			expect.objectContaining({ fallbackModelConfig, modelFetch }),
 		);
 	});
 

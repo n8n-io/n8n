@@ -112,7 +112,7 @@ type Props = {
 	standalone?: boolean;
 	/** Project ID to scope new credential creation to the correct project. */
 	projectId?: string;
-	/** Agents do not support personal credentials yet, so the usable-credentials fetch omits them. */
+	/** Limit the picker to credentials that agents support. */
 	forAgent?: boolean;
 	/** Pre-fill the credential name when creating a new credential. */
 	suggestedCredentialName?: string;
@@ -277,6 +277,7 @@ const {
 	() => props.overrideCredType,
 	() => props.showAll,
 	() => props.credentials,
+	() => props.forAgent === true,
 );
 
 const credentialTypeNames = computed(() => {
@@ -533,7 +534,7 @@ watch(
 		const autoSelected = getAutoSelectedCredential(
 			node.value,
 			props.overrideCredType,
-			props.credentials,
+			props.forAgent ? types.flatMap(({ options }) => options) : props.credentials,
 		);
 		if (autoSelected) {
 			onCredentialSelected(
@@ -807,6 +808,8 @@ function onCredentialSelected(
 		createNewCredential(credentialType, false, showAuthOptions);
 		return;
 	}
+
+	if (props.forAgent && findDisplayedCredential(credentialType, credentialId)?.isResolvable) return;
 
 	telemetry.track('User selected credential from node modal', {
 		credential_type: credentialType,
@@ -1516,6 +1519,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		>
 			<N8nInputLabel
 				:label="getCredentialsFieldLabel(type)"
+				:required="type.required"
 				:bold="false"
 				size="small"
 				color="text-dark"
