@@ -1,6 +1,7 @@
 import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
 import {
 	classifyExpressionError,
+	EXPRESSION_METRICS,
 	MemoryLimitError,
 	SecurityViolationError,
 	TimeoutError,
@@ -300,6 +301,8 @@ export class Expression {
 
 	private static nativeVerifier?: NativeVerifier;
 
+	private static observability?: ObservabilityProvider;
+
 	private static shadowRunner?: ExpressionShadowRunner;
 
 	constructor(private readonly timezone: string) {}
@@ -360,6 +363,7 @@ export class Expression {
 		canReportNativeVerifyMismatch?: () => boolean;
 	}): Promise<void> {
 		this.nativeEvaluation = options.nativeEvaluation ?? false;
+		this.observability = options.observability;
 		const verifySample = options.nativeEvaluationVerifySample ?? 0;
 		this.nativeVerifier = options.reportNativeVerifyMismatch
 			? new NativeVerifier(
@@ -586,6 +590,30 @@ export class Expression {
 			this.nativeVerifier?.isSampled() === true &&
 			canVerifyNatively(expression)
 		);
+	}
+
+	private static evaluateNative(expression: string, data: IWorkflowDataProxyData) {
+		let native: ReturnType<typeof evaluateNatively>;
+		try {
+			native = evaluateNatively(expression, data);
+		} catch (error) {
+			// The error is the expression's result: the engine does not run.
+			this.countNativeResult({ handled: true, value: undefined });
+			throw error;
+		}
+		this.countNativeResult(native);
+		return native;
+	}
+
+	private static countNativeResult(native: ReturnType<typeof evaluateNatively>) {
+		if (this.observability) {
+			const result = native.handled ? 'handled' : native.fallbackReason ? 'fallback' : 'declined';
+			const reason = native.handled ? '' : (native.fallbackReason ?? '');
+			this.observability.metrics.counter(EXPRESSION_METRICS.nativeEvaluations.name, 1, {
+				result,
+				reason,
+			});
+		}
 	}
 
 	static initializeGlobalContext(data: IDataObject) {
@@ -827,7 +855,7 @@ export class Expression {
 				nativeResult = { ok: false, error, errorClass: errorClassOf(error) };
 			}
 		} else if (Expression.nativeEvaluation) {
-			const native = evaluateNatively(parameterValue, data);
+			const native = Expression.evaluateNative(parameterValue, data);
 			if (native.handled) return this.finalizeResolvedValue(native.value, returnObjectAsString);
 		}
 
