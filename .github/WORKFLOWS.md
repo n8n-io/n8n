@@ -442,7 +442,7 @@ release-publish.yml
     └──────────────────────────▶  sbom-generation-callable.yml
 
 release-publish-post-release.yml
-    └──────────────────────────▶  util-publish-api-schema.yml
+    └──────────────────────────▶  util-publish-api-schema.yml  (when the stable tag moves)
 
 test-sbom-nightly.yml
     └──────────────────────────▶  sbom-validation-callable.yml
