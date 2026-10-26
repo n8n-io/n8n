@@ -8,8 +8,7 @@ import { usePromotionPreviewLabels } from '../../composables/usePromotionPreview
 import { blockersOf, type BlockerIndex } from '../../promotionOperation';
 import {
 	availableKeys,
-	containerCheckState,
-	selectableDescendants,
+	selectionCheck,
 	type DisabledKeys,
 	type Inclusion,
 	type ResourceKey,
@@ -17,21 +16,26 @@ import {
 } from '../../promotionPreview.selection';
 import { flattenPreviewTree, isContainer, type PreviewTreeItem } from '../../promotionPreview.tree';
 
-const props = defineProps<{
-	tree: PreviewTreeItem[];
-	graph: SelectionGraph;
-	selected: ReadonlySet<ResourceKey>;
-	inclusion: Inclusion;
-	/** Included changes, out of the total in the tab above the tree. */
-	includedChanges: number;
-	totalChanges: number;
-	inspectedKey?: ResourceKey;
-	/** Blocked workflows, which users cannot add. */
-	disabled: DisabledKeys;
-	locked: boolean;
-	direction: PromotionDirection;
-	blockers: BlockerIndex;
-}>();
+const props = withDefaults(
+	defineProps<{
+		tree: PreviewTreeItem[];
+		graph: SelectionGraph;
+		selected: ReadonlySet<ResourceKey>;
+		inclusion: Inclusion;
+		/** Included changes, out of the total in the tab above the tree. */
+		includedChanges: number;
+		totalChanges: number;
+		inspectedKey?: ResourceKey;
+		/** Blocked workflows, which users cannot add. */
+		disabled: DisabledKeys;
+		locked: boolean;
+		direction: PromotionDirection;
+		blockers: BlockerIndex;
+		/** False for a list that users only read, such as a review. Rows then only open their card. */
+		selectable?: boolean;
+	}>(),
+	{ selectable: true },
+);
 
 const emit = defineEmits<{
 	toggle: [key: ResourceKey];
@@ -43,7 +47,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { changeLabel, blockerMessage } = usePromotionPreviewLabels();
+const { changeLabel, blockerMessage, selectLabel } = usePromotionPreviewLabels();
 
 function markers(resource: PromotionResource) {
 	const blockers = blockersOf(props.blockers, resource);
@@ -63,7 +67,14 @@ const rows = computed(() =>
 			item,
 			indent,
 			resource,
-			check: resource ? checkbox(resource) : undefined,
+			check: resource
+				? selectionCheck(props.graph, resource, {
+						selected: props.selected,
+						inclusion: props.inclusion,
+						disabled: props.disabled,
+						locked: props.locked,
+					})
+				: undefined,
 			marker: resource ? markers(resource) : undefined,
 		};
 	}),
@@ -76,38 +87,6 @@ const allState = computed(() => {
 	return available.value.every((key) => props.selected.has(key)) ? 'checked' : 'indeterminate';
 });
 
-/**
- * Workflows toggle themselves, projects and folders toggle the workflows inside them, and
- * dependencies stay read-only: they are checked while a selected workflow needs them.
- */
-function checkbox(resource: PromotionResource) {
-	if (resource.selectable) {
-		const checked = props.selected.has(resource.key);
-		return {
-			checked,
-			indeterminate: false,
-			// A blocked workflow can still be cleared.
-			disabled: props.locked || (!checked && props.disabled.has(resource.key)),
-		};
-	}
-	if (isContainer(resource)) {
-		const state = containerCheckState(props.graph, props.selected, resource.key, props.disabled);
-		const canAdd = selectableDescendants(props.graph, resource.key).some(
-			(key) => !props.disabled.has(key),
-		);
-		return {
-			checked: state === 'checked',
-			indeterminate: state === 'indeterminate',
-			disabled: props.locked || (!canAdd && state === 'unchecked'),
-		};
-	}
-	return {
-		checked: props.inclusion.included.has(resource.key),
-		indeterminate: false,
-		disabled: true,
-	};
-}
-
 function onToggle(resource: PromotionResource) {
 	if (isContainer(resource)) emit('toggleContainer', resource.key);
 	else emit('toggle', resource.key);
@@ -116,7 +95,7 @@ function onToggle(resource: PromotionResource) {
 
 <template>
 	<div :class="$style.tree" data-test-id="promotion-preview-tree">
-		<div :class="$style.row">
+		<div v-if="selectable" :class="$style.row">
 			<N8nCheckbox
 				:model-value="allState === 'checked'"
 				:indeterminate="allState === 'indeterminate'"
@@ -156,12 +135,11 @@ function onToggle(resource: PromotionResource) {
 					:data-resource-key="item.id"
 				>
 					<N8nCheckbox
+						v-if="selectable"
 						:model-value="check.checked"
 						:indeterminate="check.indeterminate"
 						:disabled="check.disabled"
-						:aria-label="
-							i18n.baseText('promotions.preview.tree.select', { interpolate: { name: item.label } })
-						"
+						:aria-label="selectLabel(resource)"
 						data-test-id="promotion-preview-tree-checkbox"
 						@update:model-value="onToggle(resource)"
 					/>
@@ -225,10 +203,15 @@ function onToggle(resource: PromotionResource) {
 	border-radius: var(--radius--3xs);
 }
 
-/* Same color for hover and selection as the items of the main menu. */
-.resource:hover,
-.inspected {
-	background-color: var(--background--subtle);
+/* The same hover and selection as the inbox list. Both colors are transparent, so they show on
+   any page background. */
+.resource:hover {
+	background-color: var(--background--hover);
+}
+
+.inspected,
+.inspected:hover {
+	background-color: var(--background--active);
 }
 
 .resource.blocked {

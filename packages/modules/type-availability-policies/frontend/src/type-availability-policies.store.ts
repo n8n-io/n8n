@@ -1,4 +1,5 @@
 import type { CredentialTypeAvailability, NodeTypeAvailability } from '@n8n/api-types';
+import { getProject, type Project } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
@@ -30,6 +31,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			new Map(),
 		);
 		const loadedProjectId = ref<string | null>(null);
+		const policyProject = shallowRef<Project | null>(null);
 		const requestedProjectId = ref<string | null>(null);
 		const isLoading = ref(false);
 		let latestRequest = 0;
@@ -68,14 +70,16 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			const request = ++latestRequest;
 			isLoading.value = true;
 			try {
-				const [nodeTypes, credentialTypes] = await Promise.all([
+				const [nodeTypes, credentialTypes, project] = await Promise.all([
 					fetchAvailableTypes(rootStore.restApiContext, projectId),
 					fetchAvailableCredentialTypes(rootStore.restApiContext, projectId),
+					getProject(rootStore.restApiContext, projectId).catch(() => null),
 				]);
 				if (request !== latestRequest) return;
 
 				restrictedNodeTypes.value = unavailableByName(nodeTypes);
 				restrictedCredentialTypes.value = unavailableByName(credentialTypes);
+				policyProject.value = project;
 				loadedProjectId.value = projectId;
 			} catch (error) {
 				if (request !== latestRequest) return;
@@ -83,6 +87,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 				console.error('Failed to fetch available types for project', projectId, error);
 				restrictedNodeTypes.value = new Map();
 				restrictedCredentialTypes.value = new Map();
+				policyProject.value = null;
 				loadedProjectId.value = null;
 			} finally {
 				if (request === latestRequest) isLoading.value = false;
@@ -109,6 +114,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			latestRequest++;
 			restrictedNodeTypes.value = new Map();
 			restrictedCredentialTypes.value = new Map();
+			policyProject.value = null;
 			loadedProjectId.value = null;
 			requestedProjectId.value = null;
 			isLoading.value = false;
@@ -118,6 +124,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			isEnabled,
 			isLoading,
 			loadedProjectId,
+			policyProject,
 			fetchForProject,
 			reload,
 			getNodeTypeAvailability,

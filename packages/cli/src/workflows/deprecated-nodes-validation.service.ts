@@ -1,3 +1,4 @@
+import { POLICY_VIOLATION_KIND, POLICY_VIOLATION_SUBJECT_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { NodesConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -126,11 +127,11 @@ export class DeprecatedNodesValidationService {
 		});
 
 		const policyViolations = violations.map((v) => ({
-			kind: 'node-type-deprecated',
+			kind: POLICY_VIOLATION_KIND.nodeTypeDeprecated,
 			checkId: 'deprecated-nodes',
 			message: this.formatMessage(v),
 			subject: v.nodeType,
-			subjectType: 'nodeType',
+			subjectType: POLICY_VIOLATION_SUBJECT_TYPE.nodeType,
 		}));
 
 		throw new DeprecatedNodesError(policyViolations.map(({ message }) => message).join(' '), {
