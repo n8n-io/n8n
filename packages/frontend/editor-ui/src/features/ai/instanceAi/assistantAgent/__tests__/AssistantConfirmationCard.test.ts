@@ -1,5 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
+import { nextTick } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 
@@ -84,15 +85,55 @@ describe('AssistantConfirmationCard', () => {
 		]);
 	});
 
-	it('submits the continue card as an approval, only once', async () => {
-		const { getByTestId, emitted } = renderComponent({
-			props: { input: { requestId: 'req-2', message: 'Paused', inputType: 'continue' } },
+	describe('a sent answer', () => {
+		const continueInput = { requestId: 'req-2', message: 'Paused', inputType: 'continue' as const };
+
+		it('submits the continue card as an approval, once while the chat sends it', async () => {
+			const { getByTestId, emitted, rerender } = renderComponent({
+				props: { input: continueInput },
+			});
+
+			await fireEvent.click(getByTestId('assistant-agent-continue'));
+			// The chat marks the card resolved while it sends the answer.
+			await rerender({ input: continueInput, disabled: true });
+			await fireEvent.click(getByTestId('assistant-agent-continue'));
+
+			expect(emitted().submit).toEqual([[{ kind: 'approval', approved: true }]]);
 		});
 
-		await fireEvent.click(getByTestId('assistant-agent-continue'));
-		await fireEvent.click(getByTestId('assistant-agent-continue'));
+		it('can be answered again when the chat is busy and refuses the answer', async () => {
+			const { getByTestId, emitted } = renderComponent({ props: { input: continueInput } });
 
-		expect(emitted().submit).toEqual([[{ kind: 'approval', approved: true }]]);
+			await fireEvent.click(getByTestId('assistant-agent-continue'));
+			await nextTick();
+
+			expect(getByTestId('assistant-agent-continue')).toBeEnabled();
+			await fireEvent.click(getByTestId('assistant-agent-continue'));
+			expect(emitted().submit).toHaveLength(2);
+		});
+
+		it('can be answered again after a failed resume, with the inner card reset', async () => {
+			const questionsInput = {
+				requestId: 'req-q2',
+				message: 'A few questions',
+				inputType: 'questions' as const,
+				questions: [{ id: 'q1', question: 'Which?', type: 'single' as const, options: ['a', 'b'] }],
+			};
+			const { getByTestId, emitted, rerender } = renderComponent({
+				props: { input: questionsInput },
+			});
+			const firstQuestions = getByTestId('assistant-agent-questions');
+
+			await fireEvent.click(firstQuestions);
+			await rerender({ input: questionsInput, disabled: true });
+			// The send fails, and the chat gives the card back.
+			await rerender({ input: questionsInput, disabled: false });
+
+			const secondQuestions = getByTestId('assistant-agent-questions');
+			expect(secondQuestions).not.toBe(firstQuestions);
+			await fireEvent.click(secondQuestions);
+			expect(emitted().submit).toHaveLength(2);
+		});
 	});
 
 	it('submits the typed answer of a text card', async () => {
@@ -143,6 +184,7 @@ describe('AssistantConfirmationCard', () => {
 
 		const card = getByTestId('assistant-agent-approval');
 		expect(card).toHaveTextContent('Assistant wants to run Daily weather');
+		expect(card).toHaveTextContent('Fetch the forecast');
 		expect(card).not.toHaveTextContent('workflowId');
 	});
 

@@ -46,8 +46,9 @@ export function buildAlwaysAllowKey(
 	const action = typeof args.action === 'string' ? args.action : '';
 	const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
 	// Running a workflow grants "always allow" per workflow, so the grant applies only to the
-	// workflow the user approved.
+	// workflow the user approved. Without a workflow ID, refuse to store a key (fail closed).
 	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && action === 'run') {
+		if (!workflowId) return null;
 		return buildRunWorkflowSessionGrantKey(workflowId);
 	}
 	// Running one node grants "always allow" per node, so a debug loop on one

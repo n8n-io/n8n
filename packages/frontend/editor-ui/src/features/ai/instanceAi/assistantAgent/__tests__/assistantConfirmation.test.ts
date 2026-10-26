@@ -44,7 +44,7 @@ describe('parseAssistantConfirmationInput', () => {
 		).toMatchObject({ requestId: 'req-2', domainAccess: { host: 'example.com' } });
 	});
 
-	it('keeps a minimal fallback when a field fails validation', () => {
+	it('keeps a minimal fallback, marked destructive, when the severity fails validation', () => {
 		expect(
 			parseAssistantConfirmationInput({
 				requestId: 'req-3',
@@ -52,7 +52,26 @@ describe('parseAssistantConfirmationInput', () => {
 				inputType: 'approval',
 				severity: 42,
 			}),
-		).toEqual({ requestId: 'req-3', message: 'Do it?' });
+		).toEqual({ requestId: 'req-3', message: 'Do it?', severity: 'destructive' });
+	});
+
+	it('keeps a valid severity in the fallback when another field fails validation', () => {
+		expect(
+			parseAssistantConfirmationInput({
+				requestId: 'req-5',
+				message: 'Delete it?',
+				severity: 'destructive',
+				questions: 'not-a-list',
+			}),
+		).toEqual({ requestId: 'req-5', message: 'Delete it?', severity: 'destructive' });
+		expect(
+			parseAssistantConfirmationInput({
+				requestId: 'req-6',
+				message: 'Run it?',
+				severity: 'info',
+				questions: 'not-a-list',
+			}),
+		).toEqual({ requestId: 'req-6', message: 'Run it?', severity: 'info' });
 	});
 
 	it('ignores payloads of other tools', () => {

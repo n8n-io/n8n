@@ -14,7 +14,7 @@ import {
 	type ApprovalOption,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -38,9 +38,26 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const approvalLabels = useApprovalCardLabels();
 const submitted = ref(false);
+// Bumped when the chat gives the card back. The inner cards remount, so they drop
+// their own answered state too.
+const attempt = ref(0);
 const textValue = ref('');
 
 const isInactive = computed(() => props.disabled || submitted.value);
+
+function reopen() {
+	submitted.value = false;
+	attempt.value += 1;
+}
+
+// A failed resume gives the card back: the chat marks it resolved while it sends
+// the answer, and unmarks it when the send fails.
+watch(
+	() => props.disabled,
+	(disabled, wasDisabled) => {
+		if (wasDisabled && !disabled) reopen();
+	},
+);
 
 /** The same order as the current Assistant confirmation panel. */
 const variant = computed(() => {
@@ -70,6 +87,11 @@ function submit(body: InstanceAiConfirmRequest) {
 	if (isInactive.value) return;
 	submitted.value = true;
 	emit('submit', body);
+	// The chat marks the card resolved before it sends. A busy chat refuses the
+	// answer without that, so the card takes the answer back.
+	void nextTick(() => {
+		if (!props.disabled) reopen();
+	});
 }
 
 function onQuestionsSubmit(answers: QuestionAnswer[]) {
@@ -213,158 +235,160 @@ function onApprovalSelect(key: string) {
 </script>
 
 <template>
-	<InstanceAiQuestions
-		v-if="variant === 'questions'"
-		:questions="input.questions ?? []"
-		:intro-message="input.introMessage"
-		:disabled="isInactive"
-		data-test-id="assistant-agent-questions"
-		@submit="onQuestionsSubmit"
-	/>
-	<N8nCard
-		v-else-if="variant === 'unsupported'"
-		:class="$style.card"
-		data-test-id="assistant-agent-unsupported-card"
-	>
-		<N8nText v-if="input.message" tag="div">{{ input.message }}</N8nText>
-		<N8nText tag="div" size="small" color="text-light">
-			{{ i18n.baseText('instanceAi.assistantAgent.unsupportedCard') }}
-		</N8nText>
-	</N8nCard>
-	<InstanceAiMcpConnectCard
-		v-else-if="variant === 'mcp-connect' && input.mcpConnectRequest"
-		:servers="input.mcpConnectRequest.servers"
-		:read-only="isInactive"
-		data-test-id="assistant-agent-mcp-connect"
-		@resolve="onMcpConnectResolve"
-	/>
-	<N8nCard
-		v-else-if="variant === 'test-listener' && input.testListener"
-		:class="$style.card"
-		data-test-id="assistant-agent-test-listener"
-	>
-		<N8nText tag="div">{{ input.message }}</N8nText>
-		<div
-			v-for="trigger in input.testListener.triggers"
-			:key="trigger.nodeName"
-			:class="$style.testListenerUrl"
+	<div :key="attempt">
+		<InstanceAiQuestions
+			v-if="variant === 'questions'"
+			:questions="input.questions ?? []"
+			:intro-message="input.introMessage"
+			:disabled="isInactive"
+			data-test-id="assistant-agent-questions"
+			@submit="onQuestionsSubmit"
+		/>
+		<N8nCard
+			v-else-if="variant === 'unsupported'"
+			:class="$style.card"
+			data-test-id="assistant-agent-unsupported-card"
 		>
-			<N8nText tag="span" size="small" bold>{{ trigger.method }}</N8nText>
-			<N8nText tag="code" size="small">{{ trigger.url }}</N8nText>
-		</div>
-		<N8nText tag="div" size="small" color="text-light">
-			{{
-				i18n.baseText('instanceAi.testListener.deadline', {
-					interpolate: { time: formatDeadline(input.testListener.deadlineAt) },
-				})
-			}}
-		</N8nText>
-		<div :class="[$style.row, $style.end]">
-			<N8nButton
-				data-test-id="assistant-agent-test-listener-cancel"
-				size="medium"
-				variant="outline"
-				:disabled="isInactive"
-				@click="settleTestListener(false)"
+			<N8nText v-if="input.message" tag="div">{{ input.message }}</N8nText>
+			<N8nText tag="div" size="small" color="text-light">
+				{{ i18n.baseText('instanceAi.assistantAgent.unsupportedCard') }}
+			</N8nText>
+		</N8nCard>
+		<InstanceAiMcpConnectCard
+			v-else-if="variant === 'mcp-connect' && input.mcpConnectRequest"
+			:servers="input.mcpConnectRequest.servers"
+			:read-only="isInactive"
+			data-test-id="assistant-agent-mcp-connect"
+			@resolve="onMcpConnectResolve"
+		/>
+		<N8nCard
+			v-else-if="variant === 'test-listener' && input.testListener"
+			:class="$style.card"
+			data-test-id="assistant-agent-test-listener"
+		>
+			<N8nText tag="div">{{ input.message }}</N8nText>
+			<div
+				v-for="trigger in input.testListener.triggers"
+				:key="trigger.nodeName"
+				:class="$style.testListenerUrl"
 			>
-				{{ i18n.baseText('instanceAi.testListener.cancel') }}
-			</N8nButton>
-			<N8nButton
-				data-test-id="assistant-agent-test-listener-sent"
-				size="medium"
-				variant="solid"
-				:disabled="isInactive"
-				@click="settleTestListener(true)"
-			>
-				{{ i18n.baseText('instanceAi.testListener.sent') }}
-			</N8nButton>
-		</div>
-	</N8nCard>
-	<DomainAccessApproval
-		v-else-if="variant === 'domain-access' && input.domainAccess"
-		:request-id="input.requestId"
-		:url="input.domainAccess.url"
-		:host="input.domainAccess.host"
-		:severity="input.severity"
-		:submit="submit"
-	/>
-	<DomainAccessApproval
-		v-else-if="variant === 'web-search' && input.webSearch"
-		:request-id="input.requestId"
-		:query="input.webSearch.query"
-		:severity="input.severity"
-		:submit="submit"
-	/>
-	<N8nCard v-else-if="variant === 'text'" :class="$style.card">
-		<N8nText tag="div">{{ input.message }}</N8nText>
-		<div :class="$style.row">
-			<N8nInput
-				v-model="textValue"
-				type="text"
-				size="small"
-				:disabled="isInactive"
-				:placeholder="i18n.baseText('instanceAi.askUser.placeholder')"
-				data-test-id="assistant-agent-text-input"
-				@keydown.enter="onTextSubmit"
-			/>
-			<N8nButton
-				v-if="!textValue.trim()"
-				size="medium"
-				variant="outline"
-				:disabled="isInactive"
-				@click="submit({ kind: 'approval', approved: false })"
-			>
-				{{ i18n.baseText('instanceAi.askUser.skip') }}
-			</N8nButton>
-			<N8nButton
-				size="medium"
-				variant="solid"
-				:disabled="isInactive || !textValue.trim()"
-				data-test-id="assistant-agent-text-submit"
-				@click="onTextSubmit"
-			>
-				{{ i18n.baseText('instanceAi.askUser.submit') }}
-			</N8nButton>
-		</div>
-	</N8nCard>
-	<N8nCard v-else-if="variant === 'continue'" :class="$style.card">
-		<N8nText tag="div">{{ input.message }}</N8nText>
-		<div :class="[$style.row, $style.end]">
-			<N8nButton
-				size="medium"
-				variant="solid"
-				:disabled="isInactive"
-				data-test-id="assistant-agent-continue"
-				@click="submit({ kind: 'approval', approved: true })"
-			>
-				{{ i18n.baseText('instanceAi.confirmation.continue') }}
-			</N8nButton>
-		</div>
-	</N8nCard>
-	<N8nApprovalCard
-		v-else-if="variant === 'credential-destination' && input.credentialDestination"
-		:title="credentialDestinationTitle"
-		:labels="approvalLabels"
-		:description="credentialDestinationDescription"
-		:options="credentialDestinationOptions"
-		:disabled="isInactive"
-		data-test-id="assistant-agent-credential-destination"
-		@select="onCredentialDestinationSelect"
-	/>
-	<!-- A plain approval, and the fallback for a payload that fails validation. -->
-	<N8nApprovalCard
-		v-else
-		:title="approvalTitle"
-		:labels="approvalLabels"
-		:description="approvalDescription"
-		:description-label="i18n.baseText('instanceAi.confirmation.details')"
-		:args="input.targetApproval?.args"
-		:destructive="input.severity === 'destructive'"
-		:supports-session-approval="canAlwaysAllow"
-		:disabled="isInactive"
-		data-test-id="assistant-agent-approval"
-		@select="onApprovalSelect"
-	/>
+				<N8nText tag="span" size="small" bold>{{ trigger.method }}</N8nText>
+				<N8nText tag="code" size="small">{{ trigger.url }}</N8nText>
+			</div>
+			<N8nText tag="div" size="small" color="text-light">
+				{{
+					i18n.baseText('instanceAi.testListener.deadline', {
+						interpolate: { time: formatDeadline(input.testListener.deadlineAt) },
+					})
+				}}
+			</N8nText>
+			<div :class="[$style.row, $style.end]">
+				<N8nButton
+					data-test-id="assistant-agent-test-listener-cancel"
+					size="medium"
+					variant="outline"
+					:disabled="isInactive"
+					@click="settleTestListener(false)"
+				>
+					{{ i18n.baseText('instanceAi.testListener.cancel') }}
+				</N8nButton>
+				<N8nButton
+					data-test-id="assistant-agent-test-listener-sent"
+					size="medium"
+					variant="solid"
+					:disabled="isInactive"
+					@click="settleTestListener(true)"
+				>
+					{{ i18n.baseText('instanceAi.testListener.sent') }}
+				</N8nButton>
+			</div>
+		</N8nCard>
+		<DomainAccessApproval
+			v-else-if="variant === 'domain-access' && input.domainAccess"
+			:request-id="input.requestId"
+			:url="input.domainAccess.url"
+			:host="input.domainAccess.host"
+			:severity="input.severity"
+			:submit="submit"
+		/>
+		<DomainAccessApproval
+			v-else-if="variant === 'web-search' && input.webSearch"
+			:request-id="input.requestId"
+			:query="input.webSearch.query"
+			:severity="input.severity"
+			:submit="submit"
+		/>
+		<N8nCard v-else-if="variant === 'text'" :class="$style.card">
+			<N8nText tag="div">{{ input.message }}</N8nText>
+			<div :class="$style.row">
+				<N8nInput
+					v-model="textValue"
+					type="text"
+					size="small"
+					:disabled="isInactive"
+					:placeholder="i18n.baseText('instanceAi.askUser.placeholder')"
+					data-test-id="assistant-agent-text-input"
+					@keydown.enter="onTextSubmit"
+				/>
+				<N8nButton
+					v-if="!textValue.trim()"
+					size="medium"
+					variant="outline"
+					:disabled="isInactive"
+					@click="submit({ kind: 'approval', approved: false })"
+				>
+					{{ i18n.baseText('instanceAi.askUser.skip') }}
+				</N8nButton>
+				<N8nButton
+					size="medium"
+					variant="solid"
+					:disabled="isInactive || !textValue.trim()"
+					data-test-id="assistant-agent-text-submit"
+					@click="onTextSubmit"
+				>
+					{{ i18n.baseText('instanceAi.askUser.submit') }}
+				</N8nButton>
+			</div>
+		</N8nCard>
+		<N8nCard v-else-if="variant === 'continue'" :class="$style.card">
+			<N8nText tag="div">{{ input.message }}</N8nText>
+			<div :class="[$style.row, $style.end]">
+				<N8nButton
+					size="medium"
+					variant="solid"
+					:disabled="isInactive"
+					data-test-id="assistant-agent-continue"
+					@click="submit({ kind: 'approval', approved: true })"
+				>
+					{{ i18n.baseText('instanceAi.confirmation.continue') }}
+				</N8nButton>
+			</div>
+		</N8nCard>
+		<N8nApprovalCard
+			v-else-if="variant === 'credential-destination' && input.credentialDestination"
+			:title="credentialDestinationTitle"
+			:labels="approvalLabels"
+			:description="credentialDestinationDescription"
+			:options="credentialDestinationOptions"
+			:disabled="isInactive"
+			data-test-id="assistant-agent-credential-destination"
+			@select="onCredentialDestinationSelect"
+		/>
+		<!-- A plain approval, and the fallback for a payload that fails validation. -->
+		<N8nApprovalCard
+			v-else
+			:title="approvalTitle"
+			:labels="approvalLabels"
+			:description="approvalDescription"
+			:description-label="i18n.baseText('instanceAi.confirmation.details')"
+			:args="input.targetApproval?.args"
+			:destructive="input.severity === 'destructive'"
+			:supports-session-approval="canAlwaysAllow"
+			:disabled="isInactive"
+			data-test-id="assistant-agent-approval"
+			@select="onApprovalSelect"
+		/>
+	</div>
 </template>
 
 <style lang="scss" module>

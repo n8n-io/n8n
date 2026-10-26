@@ -1,5 +1,6 @@
 import {
 	confirmationRequestPayloadSchema,
+	instanceAiConfirmationSeveritySchema,
 	type InstanceAiConfirmationRequestPayload,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -62,10 +63,13 @@ export function parseAssistantConfirmationInput(
 	const message = typeof value.message === 'string' ? value.message : '';
 	const parsed = lenientConfirmationSchema.safeParse(value);
 	if (parsed.success) return { ...parsed.data, requestId: value.requestId, message };
-	// A field failed validation: keep only what the fallback card needs.
+	// A field failed validation: keep only what the fallback card needs. Without a valid
+	// severity, treat the action as destructive, so the card offers no "Always allow".
+	const severity = instanceAiConfirmationSeveritySchema.safeParse(value.severity);
 	return {
 		requestId: value.requestId,
 		message,
+		severity: severity.success ? severity.data : 'destructive',
 		...(typeof value.toolName === 'string' ? { toolName: value.toolName } : {}),
 	};
 }
