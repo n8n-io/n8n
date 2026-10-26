@@ -3,7 +3,6 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { DependencyType, ResolvedDependency } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import uniqBy from 'lodash/uniqBy';
 import Modal from '@/app/components/Modal.vue';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { VIEWS } from '@/app/constants';
@@ -40,11 +39,15 @@ const props = defineProps<{
 const i18n = useI18n();
 const router = useRouter();
 const uiStore = useUIStore();
-const { fetchDependencies, getDependencies } = useDependencies();
+const { fetchDependencies, fetchDependencyCounts, getDependencies, getDependencyCounts } =
+	useDependencies();
 const unpublishing = ref(false);
 
 onMounted(async () => {
-	await fetchDependencies([props.data.workflowId], 'workflow');
+	await Promise.all([
+		fetchDependencies([props.data.workflowId], 'workflow'),
+		fetchDependencyCounts([props.data.workflowId], 'workflow'),
+	]);
 });
 
 const hrefFor = (dep: ResolvedDependency): string | undefined => {
@@ -63,16 +66,16 @@ const affectedDependencies = computed(() => {
 	const affected = AFFECTED_TYPES.flatMap((type) =>
 		dependencies.filter((dep) => dep.type === type),
 	);
-	return uniqBy(
-		affected,
-		(dep) => `${dep.type === 'agentUsage' ? 'agent' : 'workflow'}:${dep.id}`,
-	).map((dep) => ({ ...dep, href: hrefFor(dep) }));
+	return affected.map((dep) => ({ ...dep, href: hrefFor(dep) }));
 });
 
-// The details response excludes deleted resources from both visible and hidden counts.
-const hiddenAffectedCount = computed(
-	() => getDependencies(props.data.workflowId, 'workflow')?.inaccessibleDependentCount ?? 0,
-);
+// Keep the existing dependency-count behavior; accuracy changes belong to LIGO-1310.
+const hiddenAffectedCount = computed(() => {
+	const counts = getDependencyCounts(props.data.workflowId, 'workflow');
+	if (!counts) return 0;
+	const total = AFFECTED_TYPES.reduce((sum, type) => sum + counts[type], 0);
+	return Math.max(0, total - affectedDependencies.value.length);
+});
 
 const affectedCount = computed(() => affectedDependencies.value.length + hiddenAffectedCount.value);
 
