@@ -612,7 +612,6 @@ describe('AssistantTurnInputBuilder — opening-turn title', () => {
 			message: params.message ?? 'Send me a daily digest of new GitHub issues',
 			fileAttachments: (params.fileAttachments ?? []) as never,
 			contextAttachments: (params.contextAttachments ?? []) as never,
-			isMachineFollowUp: false,
 			...(params.titledByRuntime !== undefined ? { titledByRuntime: params.titledByRuntime } : {}),
 		});
 		const update = memory.patchThread.mock.results[0]?.value as Promise<unknown> | undefined;
