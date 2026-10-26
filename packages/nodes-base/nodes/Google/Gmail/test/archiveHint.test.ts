@@ -17,5 +17,6 @@ describe('Gmail archive hint', () => {
 
 		expect(hint).toContain("labelIds: ['INBOX']");
 		expect(hint).toContain('no archive operation');
+		expect(hint).toContain('no ARCHIVE label');
 	});
 });

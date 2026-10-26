@@ -706,10 +706,12 @@ Follow these rules strictly when generating workflows:
    explicitly.
 8. A polling trigger (Gmail Trigger, Outlook Trigger, or similar) feeding an
    action that creates or writes records must process each polled item once:
-   poll cursors reset, and still-matching items come back as duplicates. Mark
-   each item handled in a way the trigger's own filter excludes, or record
-   handled ids in a Data Table, and do it after the record-creating node. The
-   trigger's `@builderHint` has the details for that service.
+   poll cursors are best-effort, so the same item can come back. Mark each item
+   handled in a way the trigger's own filter excludes, or record handled ids in
+   a Data Table: look the id up before creating the record, skip ids already
+   seen, and insert the id after the record is created. Wire the mark-as-handled
+   step after the record-creating node. When the trigger has a `@builderHint`,
+   it has the details for that service.
 
 ## Tool Naming Rules
 

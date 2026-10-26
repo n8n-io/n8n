@@ -27,7 +27,7 @@ export class MicrosoftOutlookTrigger implements INodeType {
 		},
 		builderHint: {
 			searchHint:
-				'When downstream nodes create records (tasks, rows, tickets) per email, guarantee each email is processed exactly once. Poll cursors reset when the trigger is recreated or renamed, and every still-matching email is then delivered again. Either filter to unread AND mark each email read or move it out of the watched folder; or track handled message ids in a Data Table: skip ids already seen and insert an id only after its record is created. An unread filter alone is not enough: if no step marks the email read, it excludes nothing. Wire the mark-as-handled step after the record-creating node, so a failed run never consumes an email without its record.',
+				'When downstream nodes create records (tasks, rows, tickets) per email, make sure each email creates its record once. Poll cursors are best-effort, so the same email can arrive again. Either filter to unread AND mark each email read; or move it out of the watched folder, which works only when Folders to Include limits the trigger to that folder; or track handled message ids in a Data Table: look the id up before creating the record, skip ids already seen, and insert the id after the record is created. An unread filter alone is not enough: if no step marks the email read, it excludes nothing. Wire the mark-as-handled step after the record-creating node, so a failed run never consumes an email without its record.',
 			relatedNodes: [
 				{
 					nodeType: 'n8n-nodes-base.microsoftOutlook',

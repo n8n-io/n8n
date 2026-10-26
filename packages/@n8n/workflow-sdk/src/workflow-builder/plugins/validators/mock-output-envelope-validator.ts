@@ -8,10 +8,19 @@
  */
 
 import { isPlainObject } from '../../../utils/safe-access';
-import type { ValidatorPlugin, ValidationIssue } from '../types';
+import type { PluginContext, ValidatorPlugin, ValidationIssue } from '../types';
 
 function isJsonEnvelope(item: unknown): boolean {
 	return isPlainObject(item) && Object.keys(item).length === 1 && isPlainObject(item.json);
+}
+
+/** True when any node parameter reads a nested `json` field, so a `{ json }` item is intended. */
+function readsNestedJson(ctx: PluginContext): boolean {
+	for (const graphNode of ctx.nodes.values()) {
+		if (JSON.stringify(graphNode.instance.config?.parameters ?? {}).includes('$json.json'))
+			return true;
+	}
+	return false;
 }
 
 export const mockOutputEnvelopeValidator: ValidatorPlugin = {
@@ -19,21 +28,25 @@ export const mockOutputEnvelopeValidator: ValidatorPlugin = {
 	name: 'Mock Output Envelope Validator',
 	priority: 40,
 
-	validateNode(node): ValidationIssue[] {
-		const output: unknown = node.config?.output;
-		if (!Array.isArray(output) || output.length === 0 || !output.every(isJsonEnvelope)) return [];
+	// Per-node validation not used - the exception depends on downstream expressions
+	validateNode: (): ValidationIssue[] => [],
 
-		return [
-			{
+	validateWorkflow(ctx: PluginContext): ValidationIssue[] {
+		if (readsNestedJson(ctx)) return [];
+		const issues: ValidationIssue[] = [];
+		for (const [nodeName, graphNode] of ctx.nodes) {
+			const output: unknown = graphNode.instance.config?.output;
+			if (!Array.isArray(output) || output.length === 0 || !output.every(isJsonEnvelope)) continue;
+			issues.push({
 				code: 'MOCK_OUTPUT_JSON_ENVELOPE',
 				message:
-					`Node '${node.name}' wraps every mock \`output\` item in \`{ json: ... }\`. Mock items ` +
+					`Node '${nodeName}' wraps every mock \`output\` item in \`{ json: ... }\`. Mock items ` +
 					'are raw $json objects, so downstream `$json.field` expressions resolve empty. Write ' +
-					"`output: [{ orderId: 'ord_1' }]`, not `output: [{ json: { orderId: 'ord_1' } }]`, " +
-					'unless downstream expressions intentionally read `$json.json.*`.',
+					"`output: [{ orderId: 'ord_1' }]`, not `output: [{ json: { orderId: 'ord_1' } }]`.",
 				severity: 'warning',
-				nodeName: node.name,
-			},
-		];
+				nodeName,
+			});
+		}
+		return issues;
 	},
 };
