@@ -274,6 +274,57 @@ describe('AgentChatAttachmentService', () => {
 		});
 	});
 
+	describe('returnToParent', () => {
+		const made = {
+			id: 'att-2',
+			fileName: 'out.png',
+			mimeType: 'image/png',
+			fileSizeBytes: 3,
+		} as AgentChatAttachment;
+
+		it('lists the files that the child made and grants them to a parent that is not the root', async () => {
+			repository.findCreatedByThread.mockResolvedValue([made]);
+
+			const files = await service.returnToParent({
+				projectId: 'project-1',
+				parentThreadId: 'child',
+				childThreadId: 'grandchild',
+			});
+
+			expect(repository.findCreatedByThread).toHaveBeenCalledWith(
+				'grandchild',
+				{ projectId: 'project-1', threadId: 'root' },
+				{},
+			);
+			expect(grantRepository.grant).toHaveBeenCalledWith(['att-2'], 'child');
+			expect(files).toEqual([
+				{ fileId: 'att-2', fileName: 'out.png', mimeType: 'image/png', sizeBytes: 3 },
+			]);
+		});
+
+		it('does not grant to the root, which reads every file', async () => {
+			repository.findCreatedByThread.mockResolvedValue([made]);
+
+			await service.returnToParent({
+				projectId: 'project-1',
+				parentThreadId: 'root',
+				childThreadId: 'child',
+			});
+
+			expect(grantRepository.grant).not.toHaveBeenCalled();
+		});
+
+		it('rejects a thread that is not the parent', async () => {
+			await expect(
+				service.returnToParent({
+					projectId: 'project-1',
+					parentThreadId: 'root',
+					childThreadId: 'grandchild',
+				}),
+			).rejects.toThrow('parent of a sub-agent');
+		});
+	});
+
 	describe('getFileStore', () => {
 		it('loads bytes for attachments in scope', async () => {
 			repository.findByIdForAgent.mockResolvedValue({

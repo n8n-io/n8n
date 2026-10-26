@@ -1,4 +1,4 @@
-import { isAttachmentMediaTypeSupported } from '@n8n/api-types';
+import { isAttachmentMediaTypeSupported, type AgentToolOutputFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { isEntityNotFoundError, type SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -174,6 +174,40 @@ export class AgentChatAttachmentService {
 			if (!readable) throw new UserError(`File "${attachmentId}" not found in this conversation`);
 		}
 		await this.grantRepository.grant(attachmentIds, scope.childThreadId);
+	}
+
+	/**
+	 * List the files that a sub-agent thread made and let its parent read them.
+	 * The root thread reads them already, but a parent that is not the root
+	 * cannot read them without this grant.
+	 */
+	async returnToParent(scope: {
+		projectId: string;
+		parentThreadId: string;
+		childThreadId: string;
+	}): Promise<AgentToolOutputFile[]> {
+		const chain = await this.threadRepository.findDelegationChain(scope.childThreadId);
+		if (chain[1]?.id !== scope.parentThreadId) {
+			throw new UserError('Files can only be returned to the parent of a sub-agent');
+		}
+		const rootId = chain[chain.length - 1].id;
+		const files = await this.repository.findCreatedByThread(
+			scope.childThreadId,
+			{ projectId: scope.projectId, threadId: rootId },
+			{},
+		);
+		if (scope.parentThreadId !== rootId) {
+			await this.grantRepository.grant(
+				files.map((file) => file.id),
+				scope.parentThreadId,
+			);
+		}
+		return files.map((file) => ({
+			fileId: file.id,
+			fileName: file.fileName,
+			mimeType: file.mimeType,
+			sizeBytes: file.fileSizeBytes,
+		}));
 	}
 
 	private async findRootThread(threadId: string) {
