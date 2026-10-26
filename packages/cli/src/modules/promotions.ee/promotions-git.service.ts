@@ -328,8 +328,14 @@ export class PromotionsGitService {
 		}
 	}
 
-	/** Reset the checkout to the latest base branch before one branched promotion. */
-	async prepareCheckoutForPromotion(operation: GitOperation): Promise<void> {
+	/**
+	 * Reset the checkout to the latest base branch before one promotion. Without
+	 * `requireRemoteBranch`, a missing remote branch is allowed, so a direct push can create it.
+	 */
+	async prepareCheckoutForPromotion(
+		operation: GitOperation,
+		{ requireRemoteBranch = true }: { requireRemoteBranch?: boolean } = {},
+	): Promise<void> {
 		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
 		try {
 			await this.lockCheckout(paths.repositoryFolder, async () => {
@@ -342,6 +348,7 @@ export class PromotionsGitService {
 							`refs/heads/${branchName}`,
 						]);
 						if (!branchRefs.trim()) {
+							if (!requireRemoteBranch) return;
 							throw new BadRequestError(`Remote branch does not exist: ${branchName}`);
 						}
 

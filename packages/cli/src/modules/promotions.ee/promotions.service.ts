@@ -1102,25 +1102,29 @@ export class PromotionsService {
 	 * Resolves the branch one promotion pushes to, honoring the resolved environment.
 	 * When the environment creates a branch per promotion, this validates the new name
 	 * and resets the checkout to the latest base, so the promotion builds on it.
-	 * Otherwise the push targets the base branch and there is nothing to prepare.
+	 * Otherwise the push targets the base branch, and this resets the checkout to the
+	 * latest base too: a merged review can move it.
 	 */
 	private async prepareTargetBranch(
 		input: PromotionOperationInput,
 		branchName: string,
 		credentials: PromotionGitCredentials,
 	): Promise<string | undefined> {
-		if (input.config.direction !== 'promote' || !input.config.settings.createBranchOnPromotion) {
-			return undefined;
-		}
-		const targetBranchName = buildPromotionBranchName(new Date());
-		await this.gitService.validateBranchName(targetBranchName);
-		await this.gitService.prepareCheckoutForPromotion({
+		if (input.config.direction !== 'promote') return undefined;
+		const checkout = {
 			remoteUrl: repositoryUrl(input),
 			credentials,
 			paths: this.workingDirectory.paths(input.environmentId),
 			branchName,
 			environmentId: input.environmentId,
-		});
+		};
+		if (!input.config.settings.createBranchOnPromotion) {
+			await this.gitService.prepareCheckoutForPromotion(checkout, { requireRemoteBranch: false });
+			return undefined;
+		}
+		const targetBranchName = buildPromotionBranchName(new Date());
+		await this.gitService.validateBranchName(targetBranchName);
+		await this.gitService.prepareCheckoutForPromotion(checkout);
 		return targetBranchName;
 	}
 

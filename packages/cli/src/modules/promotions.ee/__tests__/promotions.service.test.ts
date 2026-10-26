@@ -320,6 +320,14 @@ describe('PromotionsService', () => {
 					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
 				}),
 			);
+			// A direct promote resets the checkout to the remote base branch before it exports.
+			expect(gitService.prepareCheckoutForPromotion).toHaveBeenCalledWith(
+				expect.objectContaining({ branchName: 'staging', environmentId: ENVIRONMENT_ID }),
+				{ requireRemoteBranch: false },
+			);
+			expect(gitService.prepareCheckoutForPromotion.mock.invocationCallOrder[0]).toBeLessThan(
+				n8nPackagesService.exportPackageToDirectory.mock.invocationCallOrder[0],
+			);
 			// The stale package is gone; only the freshly written one remains.
 			await expect(stat(path.join(packageFolder, 'stale.json'))).rejects.toThrow();
 			await expect(stat(stagingFolder)).rejects.toThrow();

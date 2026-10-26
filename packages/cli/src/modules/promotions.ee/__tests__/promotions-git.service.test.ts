@@ -695,6 +695,19 @@ describe('PromotionsGitService (git operations)', () => {
 			await expect(call()).rejects.toThrow('Remote branch does not exist: main');
 			expect(mockGit.fetch).not.toHaveBeenCalled();
 		});
+
+		it('skips the reset when the remote branch is missing and not required', async () => {
+			mockGit.listRemote.mockResolvedValue('');
+
+			await expect(
+				gitService.prepareCheckoutForPromotion(
+					{ remoteUrl, credentials, paths, branchName: 'main', environmentId },
+					{ requireRemoteBranch: false },
+				),
+			).resolves.toBeUndefined();
+			expect(mockGit.fetch).not.toHaveBeenCalled();
+			expect(mockGit.raw).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('refreshCheckout', () => {
