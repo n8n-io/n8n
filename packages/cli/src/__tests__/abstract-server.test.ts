@@ -152,7 +152,7 @@ describe('AbstractServer', () => {
 				expect(router.use.mock.invocationCallOrder[0]).toBeLessThan(
 					mockServer.listen.mock.invocationCallOrder[0],
 				);
-				const [gate] = router.use.mock.calls[0] as [express.RequestHandler];
+				const gate = router.use.mock.calls[0][0] as unknown as express.RequestHandler;
 				const req = mock<express.Request>();
 				const res = mock<express.Response>();
 				const next = vi.fn();
