@@ -1,6 +1,7 @@
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
+	N8N_CHAT_INTEGRATION_TYPE,
 	getRandomAgentPersonalisationGradient,
 	sanitizeAgentJsonConfig,
 	type AgentCapabilitySummary,
@@ -49,6 +50,7 @@ import { AgentTestChatService } from './agent-test-chat.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { N8nChatFlagService } from './integrations/platforms/n8n-chat-flag.service';
 import { decomposeJsonConfig } from './json-config/agent-config-composition';
 import { fromAgentDocument } from './json-config/agent-document';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
@@ -107,6 +109,7 @@ export class AgentsService {
 		private readonly agentPolicyService: AgentPolicyService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly transactionRunner: TransactionRunner,
+		private readonly n8nChatFlag: N8nChatFlagService,
 	) {}
 
 	/**
@@ -553,7 +556,15 @@ export class AgentsService {
 				gradient: getRandomAgentPersonalisationGradient(),
 			},
 		};
-		if (!schema) return decomposeJsonConfig(defaultConfig);
+		if (!schema) {
+			// New agents start available in n8n Chat while their creator is in the
+			// experiment. Duplicates and seeded configs keep their own channels;
+			// internal creates without a user get none.
+			if (user && (await this.n8nChatFlag.isEnabledFor(user))) {
+				defaultConfig.integrations = [{ type: N8N_CHAT_INTEGRATION_TYPE, credentialId: '' }];
+			}
+			return decomposeJsonConfig(defaultConfig);
+		}
 		if (!user) return decomposeJsonConfig(schema);
 		return await this.prepareDuplicateConfig(schema, projectId, user);
 	}

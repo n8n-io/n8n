@@ -21,6 +21,7 @@ import { AgentsService } from '../agents.service';
 import type { AgentTask } from '../entities/agent-task.entity';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { N8nChatFlagService } from '../integrations/platforms/n8n-chat-flag.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
@@ -72,6 +73,8 @@ function makeService() {
 	projectScopeService.getMemberProjectIds.mockResolvedValue([]);
 	const agentsSettingsService = mock<AgentsSettingsService>();
 	const agentPolicyService = mock<AgentPolicyService>();
+	const n8nChatFlag = mock<N8nChatFlagService>();
+	n8nChatFlag.isEnabledFor.mockResolvedValue(false);
 
 	agentsSettingsService.getEnabled.mockResolvedValue(true);
 	agentRepository.findByIdsAndProjectId.mockResolvedValue([]);
@@ -107,10 +110,12 @@ function makeService() {
 		agentPolicyService,
 		createAgentSkillRefsService(agentRepository),
 		transactionRunner,
+		n8nChatFlag,
 	);
 
 	return {
 		service,
+		n8nChatFlag,
 		agentPolicyService,
 		agentRepository,
 		projectRelationRepository,
@@ -137,6 +142,41 @@ describe('AgentsService', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 		Container.reset();
+	});
+
+	describe('default n8n Chat channel', () => {
+		const user = mock<User>({ id: 'user-1' });
+
+		it('adds n8n Chat to a new agent when the creator has the flag', async () => {
+			const { service, agentRepository, n8nChatFlag } = makeService();
+			n8nChatFlag.isEnabledFor.mockResolvedValue(true);
+			mockCreateReturning(agentRepository, makeAgent());
+
+			const { agent } = await service.createOrAdopt(projectId, 'Support Agent', { actor, user });
+
+			expect(n8nChatFlag.isEnabledFor).toHaveBeenCalledWith(user);
+			expect(agent.integrations).toEqual([{ type: N8N_CHAT_INTEGRATION_TYPE, credentialId: '' }]);
+		});
+
+		it('adds no channel when the creator does not have the flag', async () => {
+			const { service, agentRepository } = makeService();
+			mockCreateReturning(agentRepository, makeAgent());
+
+			const { agent } = await service.createOrAdopt(projectId, 'Support Agent', { actor, user });
+
+			expect(agent.integrations).toEqual([]);
+		});
+
+		it('adds no channel to a create without a user', async () => {
+			const { service, agentRepository, n8nChatFlag } = makeService();
+			n8nChatFlag.isEnabledFor.mockResolvedValue(true);
+			mockCreateReturning(agentRepository, makeAgent());
+
+			const { agent } = await service.createOrAdopt(projectId, 'Support Agent', { actor });
+
+			expect(n8nChatFlag.isEnabledFor).not.toHaveBeenCalled();
+			expect(agent.integrations).toEqual([]);
+		});
 	});
 
 	it('creates a draft agent without a default model or credential', async () => {

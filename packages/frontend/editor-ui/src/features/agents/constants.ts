@@ -34,6 +34,13 @@ export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
 export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
 export const AGENT_DUPLICATE_MODAL_KEY = 'agentDuplicateModal';
 export const AGENT_DESCRIPTION_MODAL_KEY = 'agentDescriptionModal';
+
+/** One-time n8n Chat hint popovers: set to `'true'` once the user dismisses the hint. */
+export const N8N_CHAT_HINT_DISMISSED_STORAGE_KEYS = {
+	channel_chip: 'N8N_AGENTS_N8N_CHAT_HINT_CHANNEL_CHIP_DISMISSED',
+	new_chat_sidebar: 'N8N_AGENTS_N8N_CHAT_HINT_NEW_CHAT_SIDEBAR_DISMISSED',
+} as const;
+
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */
