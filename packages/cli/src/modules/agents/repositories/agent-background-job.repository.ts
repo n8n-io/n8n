@@ -316,17 +316,27 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		parentThreadId: string,
 		parentResourceId: string,
 		pauseRequestId: string,
+		jobIds?: string[],
 	): Promise<void> {
 		await this.runInTransaction({}, async (manager, ctx) => {
 			await this.threadRepository.lockById(parentThreadId, ctx);
-			await manager
+			const query = manager
 				.createQueryBuilder()
 				.update(AgentBackgroundJob)
 				.set({ pauseRequestId, notifiedAt: null })
-				.where({ parentAgentId, parentThreadId, parentResourceId })
-				.andWhere("status IN ('running', 'suspended')")
-				.andWhere('(pauseRequestId IS NULL OR notifiedAt IS NOT NULL)')
-				.execute();
+				.where({
+					parentAgentId,
+					parentThreadId,
+					parentResourceId,
+					...(jobIds ? { id: In(jobIds) } : {}),
+				})
+				.andWhere(
+					jobIds
+						? "(status IN ('running', 'suspended') OR notifiedAt IS NULL)"
+						: "status IN ('running', 'suspended')",
+				);
+			if (!jobIds) query.andWhere('(pauseRequestId IS NULL OR notifiedAt IS NOT NULL)');
+			await query.execute();
 		});
 	}
 

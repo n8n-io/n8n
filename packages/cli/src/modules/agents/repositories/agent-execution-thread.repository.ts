@@ -8,10 +8,18 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	DataSource,
+	In,
+	IsNull,
+	Not,
+	type EntityManager,
+	type SelectQueryBuilder,
+} from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
 import { jsonParse, UserError } from 'n8n-workflow';
 
+import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
@@ -19,6 +27,7 @@ import {
 	AgentExecutionThread,
 	type AgentThreadAccess,
 } from '../entities/agent-execution-thread.entity';
+import type { AgentTaskStop } from '../types/agent-task-stop';
 import {
 	getDelegatedChildCheckpoints,
 	type DelegatedChildCheckpoint,
@@ -30,6 +39,8 @@ import {
 } from '../utils/agent-thread-access';
 
 const CHECKPOINT_BATCH_SIZE = 400;
+
+type TaskStopScope = AgentTaskStop & { threadId: string };
 
 export interface AgentExecutionThreadMetadata {
 	parentThreadId?: string;
@@ -726,6 +737,123 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			where: { projectId, threadId },
 		});
 		return { executionLogs, attachments };
+	}
+
+	async findTaskStop(threadId: string, ctx: OperationContext = {}): Promise<TaskStopScope | null> {
+		const thread = await this.managerFor(ctx).findOneBy(AgentExecutionThread, { id: threadId });
+		return this.readStop(thread);
+	}
+
+	async saveStop(stop: TaskStopScope, ctx: OperationContext) {
+		const { threadId, ...taskStop } = stop;
+		await this.managerFor(ctx).update(AgentExecutionThread, { id: threadId }, { taskStop });
+		return stop;
+	}
+
+	/** Capture known work once. Later dispatch can escape this stop. */
+	async captureGeneration(threadId: string, ctx: OperationContext) {
+		const manager = this.managerFor(ctx);
+		const threads = new Set([threadId]);
+		let parents = [threadId];
+		while (parents.length) {
+			const children = await manager.find(AgentExecutionThread, {
+				where: { parentThreadId: In(parents) },
+				select: ['id'],
+			});
+			parents = children.filter((child) => !threads.has(child.id)).map((child) => child.id);
+			for (const id of parents) threads.add(id);
+		}
+		const ids = [...threads];
+		const [executions, jobs] = await Promise.all([
+			manager.find(AgentExecution, { where: { threadId: In(ids) }, select: ['id'] }),
+			manager.find(AgentBackgroundJob, { where: { parentThreadId: In(ids) }, select: ['id'] }),
+		]);
+		return {
+			executionIds: executions.map(({ id }) => id),
+			jobIds: jobs.map(({ id }) => id),
+			threadIds: ids.filter((id) => id !== threadId),
+		};
+	}
+
+	async targetedJobs(request: TaskStopScope, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findBy(AgentBackgroundJob, {
+			id: In(request.generation.jobIds),
+		});
+	}
+
+	async unfinishedWork(request: TaskStopScope, ctx: OperationContext = {}) {
+		const executions = await this.managerFor(ctx).find(AgentExecution, {
+			where: [
+				{ id: In(request.generation.executionIds), status: 'running' },
+				{ id: In(request.generation.executionIds), hitlStatus: 'suspended' },
+			],
+			select: ['id'],
+		});
+		const jobs = await this.targetedJobs(request, ctx);
+		return [
+			...jobs
+				.filter((job) => ['running', 'suspended'].includes(job.status))
+				.map((job) => ({ jobId: job.id, title: job.title })),
+			...executions
+				.filter((execution) => !jobs.some((job) => job.childExecutionId === execution.id))
+				.map((execution) => ({ jobId: execution.id, title: 'Current response' })),
+		];
+	}
+
+	/** A queued report owns these job notifications, including on another main. */
+	async ownsStopReport(stopId: string) {
+		const expression =
+			this.manager.connection.options.type === 'postgres'
+				? "thread.\"taskStop\"->'pause'->>'id'"
+				: "json_extract(thread.taskStop, '$.pause.id')";
+		return await this.createQueryBuilder('thread')
+			.where(`${expression} = :stopId`, { stopId })
+			.getExists();
+	}
+
+	async recordAdmission(threadId: string, userInitiated: boolean, ctx: OperationContext) {
+		if (!userInitiated) return;
+		const stop = await this.findTaskStop(threadId, ctx);
+		if (!stop?.pause.reportedAt || stop.pause.resumedAt) return;
+		stop.pause.resumedAt = new Date().toISOString();
+		await this.saveStop(stop, ctx);
+	}
+
+	async finishPauseReport(
+		threadId: string,
+		stopId: string,
+		executionId: string,
+		ctx: OperationContext,
+	) {
+		const stop = await this.findTaskStop(threadId, ctx);
+		if (!stop || stop.pause.id !== stopId || stop.pause.reportedAt) return;
+		const execution = await this.managerFor(ctx).findOneBy(AgentExecution, { id: executionId });
+		stop.pause.reportedAt = new Date().toISOString();
+		stop.pause.reportFailed = !execution || execution.status !== 'success';
+		await this.saveStop(stop, ctx);
+		await this.managerFor(ctx).update(
+			AgentBackgroundJob,
+			{
+				id: In(stop.generation.jobIds),
+				pauseRequestId: stopId,
+				status: In(['paused', 'completed', 'failed', 'cancelled']),
+			},
+			{ notifiedAt: new Date(stop.pause.reportedAt) },
+		);
+	}
+
+	private readStop(thread: AgentExecutionThread | null): TaskStopScope | null {
+		if (!thread?.taskStop) return null;
+		const stop = thread.taskStop;
+		return {
+			...stop,
+			threadId: thread.id,
+			pause: stop.pause ?? {
+				id: `legacy:${thread.id}:${stop.requestedAt}`,
+				reportedAt: stop.requestedAt,
+				resumedAt: stop.requestedAt,
+			},
+		};
 	}
 }
 
