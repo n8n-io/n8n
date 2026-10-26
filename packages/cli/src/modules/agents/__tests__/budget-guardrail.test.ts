@@ -1,6 +1,9 @@
 import type { ExecutionOptions, RunOptions, SpendLedger } from '@n8n/agents';
 import { Container } from '@n8n/di';
+import { APICallError } from 'ai';
 import { mock } from 'vitest-mock-extended';
+
+import { classifyGatewayError } from '../utils/gateway-error-classifier';
 
 import { AgentBudgetAlertService } from '../agent-budget-alert.service';
 import { withBudgetGuardrail } from '../budget-guardrail';
@@ -56,10 +59,14 @@ describe('withBudgetGuardrail', () => {
 		Container.reset();
 	});
 
-	it('attaches nothing when budget is missing or turned off', () => {
-		expect(
-			withBudgetGuardrail(base, { ledger, sessionId: 'thread-1', agentId: 'agent-1' }).guardrails,
-		).toBeUndefined();
+	it('attaches nothing for an own-key run when budget is missing or turned off', () => {
+		const noBudget = withBudgetGuardrail(base, {
+			ledger,
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+		});
+		expect(noBudget.guardrails).toBeUndefined();
+		expect(noBudget.classifyModelError).toBeUndefined();
 
 		const off = withBudgetGuardrail(base, {
 			ledger,
@@ -68,6 +75,7 @@ describe('withBudgetGuardrail', () => {
 			agentId: 'agent-1',
 		});
 		expect(off.guardrails).toBeUndefined();
+		expect(off.classifyModelError).toBeUndefined();
 		expect(off).toBe(base);
 	});
 
@@ -80,7 +88,51 @@ describe('withBudgetGuardrail', () => {
 		});
 
 		expect(attached.guardrails).toBeUndefined();
+		expect(attached.classifyModelError).toBeUndefined();
 		expect(attached).toBe(base);
+	});
+
+	it('attaches the classifier only for a Gateway credits model', () => {
+		const ownKey = withBudgetGuardrail(base, {
+			ledger,
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+		});
+		expect(ownKey.classifyModelError).toBeUndefined();
+
+		const gateway = withBudgetGuardrail(base, {
+			ledger,
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+			modelCredentialGatewayManaged: true,
+		});
+		expect(gateway.classifyModelError).toBe(classifyGatewayError);
+	});
+
+	it('maps a gateway 402 to a budget.credits stop through the attached classifier', () => {
+		const attached = withBudgetGuardrail(base, {
+			ledger,
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+			modelCredentialGatewayManaged: true,
+		});
+
+		const depleted = new APICallError({
+			message: 'Payment Required',
+			url: 'https://gateway.example/v1/responses',
+			requestBodyValues: {},
+			statusCode: 402,
+			responseBody: '{"error":"Your Gateway credits have been depleted"}',
+		});
+		expect(attached.classifyModelError?.(depleted)).toEqual({ code: 'budget.credits' });
+
+		const other = new APICallError({
+			message: 'Internal Server Error',
+			url: 'https://gateway.example/v1/responses',
+			requestBodyValues: {},
+			statusCode: 500,
+		});
+		expect(attached.classifyModelError?.(other)).toBeUndefined();
 	});
 
 	it('attaches one hook when the guardrail is on', () => {

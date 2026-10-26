@@ -102,10 +102,14 @@ const BUDGET_STOP_TEXT = {
 		'⚠️ This session reached its cost cap and stopped. Open the agent in n8n and increase the cap.',
 	'budget.monthly':
 		'⚠️ This agent reached its monthly budget and stopped. Open the agent in n8n and increase the cap.',
+	'budget.credits':
+		'⚠️ The Gateway credits balance is empty, so this agent stopped. Open n8n and top up Gateway credits to continue.',
 } as const;
 
 function budgetStopText(code: string | undefined): string | undefined {
-	if (code === 'budget.session' || code === 'budget.monthly') return BUDGET_STOP_TEXT[code];
+	if (code === 'budget.session' || code === 'budget.monthly' || code === 'budget.credits') {
+		return BUDGET_STOP_TEXT[code];
+	}
 	return undefined;
 }
 

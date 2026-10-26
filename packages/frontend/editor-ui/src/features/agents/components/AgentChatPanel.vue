@@ -7,6 +7,7 @@ import {
 	shallowRef,
 	toRef,
 	watch,
+	watchEffect,
 	onMounted,
 	onBeforeUnmount,
 	useTemplateRef,
@@ -48,6 +49,7 @@ import type {
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import InstanceAiResourceChip from '@/features/ai/instanceAi/components/InstanceAiResourceChip.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
+import { useAiGateway } from '@/app/composables/useAiGateway';
 import {
 	findTailOpenInteractive,
 	getMessageInteractives,
@@ -223,6 +225,7 @@ const { isMacOs } = useDeviceSupport();
 const rootStore = useRootStore();
 const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
+const aiGateway = useAiGateway();
 
 const {
 	capabilities,
@@ -914,6 +917,35 @@ const hasBudgetStop = computed(() =>
 		message.budgetNotices?.some((notice) => isBudgetStopCode(notice.code)),
 	),
 );
+const hasCreditsStop = computed(() =>
+	messages.value.some((message) =>
+		message.budgetNotices?.some((notice) => notice.code === 'budget.credits'),
+	),
+);
+// A credits stop has no cap to raise — topping up happens outside this save
+// flow. While the stop shows, re-check the wallet; a refill clears the notice
+// and unblocks Send. Stays blocked on a fetch error: the next run would stop
+// again against the same empty wallet.
+async function refreshWalletAndMaybeClearCredits() {
+	await aiGateway.fetchWallet({ force: true });
+	if ((aiGateway.balance.value ?? 0) > 0) {
+		clearBudgetNotices(new Set(['budget.credits']));
+	}
+}
+const creditsWalletRecheck = useIntervalFn(refreshWalletAndMaybeClearCredits, 30 * TIME.SECOND, {
+	immediate: false,
+});
+watchEffect((onCleanup) => {
+	if (!hasCreditsStop.value || !aiGateway.isEnabled.value) return;
+	creditsWalletRecheck.resume();
+	void refreshWalletAndMaybeClearCredits();
+	onCleanup(() => creditsWalletRecheck.pause());
+});
+watch(documentVisibility, (visibility) => {
+	if (visibility === 'visible' && hasCreditsStop.value && aiGateway.isEnabled.value) {
+		void refreshWalletAndMaybeClearCredits();
+	}
+});
 const canIncreaseBudget = computed(() => props.increaseBudget !== undefined);
 const budgetIncreasePending = ref(false);
 const isRetrying = ref(false);

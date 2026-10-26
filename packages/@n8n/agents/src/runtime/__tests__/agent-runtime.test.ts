@@ -2,6 +2,7 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import * as aiModule from 'ai';
+import { APICallError } from 'ai';
 import type { JSONSchema7 } from 'json-schema';
 import type { Mock, MockedFunction } from 'vitest';
 import { z } from 'zod';
@@ -11713,5 +11714,98 @@ describe('Tool builder — ending the turn', () => {
 			.toModelOutput((output) => output);
 
 		expect(() => tool.build()).toThrow('cannot combine .endsTurnWhen() with .toModelOutput()');
+	});
+});
+
+describe('AgentRuntime — model error classification', () => {
+	function depletedGatewayError() {
+		return new APICallError({
+			message: 'Payment Required',
+			url: 'https://gateway.example/v1/responses',
+			requestBodyValues: {},
+			statusCode: 402,
+			responseBody: '{"error":"Your Gateway credits have been depleted"}',
+		});
+	}
+
+	const classifyAsCredits = (error: unknown) =>
+		APICallError.isInstance(error) && error.statusCode === 402
+			? { code: 'budget.credits' }
+			: undefined;
+
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it('ends a generate run as a guardrail stop when the classifier maps the error', async () => {
+		generateText.mockRejectedValue(depletedGatewayError());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', { classifyModelError: classifyAsCredits });
+
+		expect(result.finishReason).toBe('guardrail');
+		expect(result.guardrail).toEqual({ code: 'budget.credits' });
+		expect(result.error).toBeUndefined();
+	});
+
+	it('ends a stream run with a guardrail finish chunk carrying the mapped code', async () => {
+		const error = depletedGatewayError();
+		streamText.mockReturnValue({
+			stream: makeChunkStream([]),
+			finishReason: silentReject(error),
+			usage: silentReject(error),
+			response: silentReject(error),
+			toolCalls: silentReject(error),
+		});
+		const { runtime } = createRuntime();
+
+		const { stream } = await runtime.stream('hi', { classifyModelError: classifyAsCredits });
+		const chunks = await collectChunks(stream);
+
+		expect(chunks[chunks.length - 1]).toMatchObject({
+			type: 'finish',
+			finishReason: 'guardrail',
+			guardrail: { code: 'budget.credits' },
+		});
+	});
+
+	it('keeps the error finish when the classifier returns undefined', async () => {
+		generateText.mockRejectedValue(depletedGatewayError());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', {
+			classifyModelError: () => undefined,
+		});
+
+		expect(result.finishReason).toBe('error');
+		expect(result.guardrail).toBeUndefined();
+	});
+
+	it('keeps the error finish when no classifier is attached', async () => {
+		generateText.mockRejectedValue(depletedGatewayError());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi');
+
+		expect(result.finishReason).toBe('error');
+		expect(result.guardrail).toBeUndefined();
+	});
+
+	it('lets cancellation win when the run aborts while the call rejects', async () => {
+		const controller = new AbortController();
+		generateText.mockImplementation(async () => {
+			controller.abort();
+			throw depletedGatewayError();
+		});
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', {
+			abortSignal: controller.signal,
+			classifyModelError: classifyAsCredits,
+		});
+
+		expect(result.finishReason).not.toBe('guardrail');
+		expect(result.guardrail).toBeUndefined();
 	});
 });

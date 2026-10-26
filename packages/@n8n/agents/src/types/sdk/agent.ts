@@ -308,6 +308,13 @@ export interface ExecutionOptions {
 	 */
 	stepCheckpoints?: boolean;
 	guardrails?: GuardrailsOptions;
+	/**
+	 * Map a model-call failure to a guardrail stop (e.g. a gateway `402`
+	 * depleted-credits rejection). The run then ends with `finishReason
+	 * 'guardrail'` and the returned code, instead of `finishReason 'error'`.
+	 * Return `undefined` to keep the default error finish.
+	 */
+	classifyModelError?: (error: unknown) => GuardrailStop | undefined;
 }
 
 export interface PersistedExecutionOptions {

@@ -11,6 +11,7 @@ import {
 } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	N8N_CHAT_CONTEXT_TOOL_NAME,
 	N8N_CHAT_INTEGRATION_TYPE,
@@ -113,6 +114,12 @@ export interface ReconstructedAgentRuntime {
 	mcpServerAttributions: Map<string, string>;
 	/** Saved budget config, including a turned-off guardrail. Absent when unset. */
 	budget?: BudgetGuardrailConfig;
+	/**
+	 * The main model credential is the Gateway credits marker: the run debits
+	 * the shared wallet, so the budget guardrail also attaches the wallet
+	 * preflight.
+	 */
+	modelCredentialGatewayManaged?: boolean;
 }
 
 export interface SubAgentDelegationConfig {
@@ -633,6 +640,9 @@ export class AgentRuntimeReconstructionService {
 			mcpServerAttributions: runtime.mcpServerAttributions,
 			...(options.config.config?.guardrails?.budget !== undefined
 				? { budget: options.config.config.guardrails.budget }
+				: {}),
+			...(options.config.credential === AI_GATEWAY_MANAGED_TAG
+				? { modelCredentialGatewayManaged: true }
 				: {}),
 		};
 	}
