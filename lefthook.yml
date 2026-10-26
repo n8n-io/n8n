@@ -21,7 +21,20 @@ post-checkout:
       run: node .githooks/check-pnpm.mjs {3}
 
 pre-commit:
+  parallel: false
   commands:
+    ds_manifest_guard:
+      priority: -100
+      run: pnpm --filter @n8n/design-system exec node scripts/generate-manifest.mjs --staged --guard
+      skip:
+        - merge
+        - rebase
+    ds_manifest:
+      priority: 100
+      run: pnpm --filter @n8n/design-system exec node scripts/generate-manifest.mjs --staged
+      skip:
+        - merge
+        - rebase
     biome_check:
       glob: 'packages/**/*.{js,ts,json}'
       run: pnpm biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {staged_files}

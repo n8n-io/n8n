@@ -299,6 +299,10 @@ catalog:
   rate-limit-redis: 4.3.1
   ioredis-mock: ^8.8.1
   '@types/ioredis-mock': 8.2.2
+  vue-component-meta: 3.1.8
+  postcss-scss: 4.0.9
+  postcss-value-parser: 4.2.0
+  '@vue/compiler-sfc': 3.5.26
 
 catalogMode: strict
 

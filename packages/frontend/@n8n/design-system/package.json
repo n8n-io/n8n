@@ -21,6 +21,7 @@
     "./style.css": "./dist/style.css",
     "./theme.css": "./dist/theme.css",
     "./css/*": "./dist/css/*",
+    "./component-manifest.json": "./component-manifest.json",
     "./package.json": "./package.json"
   },
   "sideEffects": [
@@ -29,10 +30,12 @@
   ],
   "files": [
     "dist",
+    "component-manifest.json",
     "assets/fonts",
     "README.md"
   ],
   "scripts": {
+    "generate:manifest": "node scripts/generate-manifest.mjs",
     "dev": "pnpm run --dir=../storybook dev",
     "clean": "rimraf dist .turbo",
     "build": "vite build",
@@ -75,6 +78,9 @@
     "eslint-plugin-storybook": "catalog:storybook",
     "pinia": "catalog:frontend",
     "postcss": "^8.4.38",
+    "postcss-scss": "catalog:",
+    "postcss-value-parser": "catalog:",
+    "@vue/compiler-sfc": "catalog:",
     "sass": "^1.71.1",
     "storybook": "catalog:storybook",
     "storybook-addon-vue-mdx": "3.0.0",
@@ -86,6 +92,7 @@
     "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:",
     "vue": "catalog:frontend",
+    "vue-component-meta": "catalog:",
     "vue-router": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
   },
