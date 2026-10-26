@@ -1717,6 +1717,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
  * - `agent_preview` — send a preview chat session to Instance AI
+ * - `self_healing_result` — continue from a saved Assistant report in the Inbox
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `onboarding` — seeded "Welcome to n8n" thread for a new user; the greeting is stored before the first user turn
  * - `preferences_empty_state` — "Suggest preferences" on the empty AI preferences page
@@ -1737,6 +1738,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'credentials_list',
 	'agent_builder_page',
 	'agent_preview',
+	'self_healing_result',
 	'assistant_page',
 	'onboarding',
 	'preferences_empty_state', // Experiment cleanup (127_preferences_empty_state)
@@ -1766,6 +1768,7 @@ export type InstanceAiThreadSourcePersisted =
  * surface that skips this fails typecheck rather than reporting untagged
  * messages. Reported on `User sent builder message` as `prefill_type`.
  *
+ * - `handoff_self_healing_report` — continue from a self-healing report in the Inbox
  * - `handoff_execution_error` — "Ask AI" on a failed execution or node error
  * - `handoff_credential_setup` — credential help from the editor, credentials
  *   list, or the workflow artifact in a live thread
@@ -1790,6 +1793,7 @@ export type InstanceAiThreadSourcePersisted =
  *   AI preferences page, put in the composer for the user to send
  */
 export const INSTANCE_AI_PREFILL_TYPES = [
+	'handoff_self_healing_report',
 	'handoff_execution_error',
 	'handoff_credential_setup',
 	'handoff_fix_with_ai',
