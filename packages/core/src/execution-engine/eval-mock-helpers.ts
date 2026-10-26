@@ -7,6 +7,7 @@
  * type definitions in index.ts (module augmentation).
  */
 
+import { isRecord } from '@n8n/utils/is-record';
 import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
 import { STATUS_CODES } from 'node:http';
@@ -193,6 +194,62 @@ export function normalizeLegacyRequest(
 		qs: uriOrObject.qs,
 		...(uriOrObject.simple === false ? { ignoreHttpStatusErrors: true } : {}),
 	};
+}
+
+const AWS_CREDENTIAL_TYPES = new Set(['aws', 'awsAssumeRole']);
+
+// Not the credential's region: the resolver must not read credentials. The mock only
+// needs a plausible, stable URL.
+const AWS_PLACEHOLDER_REGION = 'us-east-1';
+
+function nonEmptyString(value: unknown): string | undefined {
+	return typeof value === 'string' && value !== '' ? value : undefined;
+}
+
+/**
+ * AWS nodes send no URL: they put `service`, `path` and `query` in `qs`, and the AWS
+ * credential's `authenticate` builds the endpoint URL. The eval mock intercepts before
+ * `authenticate`, so build the same default endpoint here. Credentials are not read, so
+ * custom endpoints are ignored. Any other request, or one whose service or region makes
+ * no valid URL, is returned unchanged.
+ * Takes the legacy shape too: resolve before `normalizeLegacyRequest`, which drops the
+ * top-level `region` and `baseURL`.
+ */
+// oxlint-disable-next-line typescript/no-deprecated
+export function resolveEvalMockRequestUrl<T extends IHttpRequestOptions | IRequestOptions>(
+	requestOptions: T,
+	credentialsType: string,
+): T {
+	const qs = requestOptions.qs;
+	const service = nonEmptyString(qs?.service);
+	const legacyUri = 'uri' in requestOptions ? requestOptions.uri : undefined;
+	const hasUrl = Boolean(requestOptions.url || requestOptions.baseURL || legacyUri);
+	if (!AWS_CREDENTIAL_TYPES.has(credentialsType) || !qs || !service || hasUrl) {
+		return requestOptions;
+	}
+
+	const requestRegion = 'region' in requestOptions ? requestOptions.region : undefined;
+	const region =
+		nonEmptyString(qs._region) ?? nonEmptyString(requestRegion) ?? AWS_PLACEHOLDER_REGION;
+	const domain = region.startsWith('cn-') ? 'amazonaws.com.cn' : 'amazonaws.com';
+	const path = nonEmptyString(qs.path) ?? '';
+
+	let url: URL;
+	try {
+		url = new URL(`https://${service}.${region}.${domain}${path}`);
+	} catch {
+		// A service or region that makes no valid host (e.g. `EU (Ireland)`): the mock
+		// sees the request as the node sent it.
+		return requestOptions;
+	}
+	if (isRecord(qs.query)) {
+		for (const [key, value] of Object.entries(qs.query)) {
+			url.searchParams.append(key, String(value));
+		}
+	}
+
+	// The credential sends the query in the URL only, so `qs` is dropped as well.
+	return { ...requestOptions, url: url.toString(), qs: undefined };
 }
 
 /**

@@ -24,6 +24,7 @@ import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { AgentDefinition } from './utils/agent-definition';
 import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
+import { builderTelemetrySessionProperties } from './builder/builder-telemetry-session';
 import {
 	diffAgentConfigParts,
 	diffAgentConfigSettings,
@@ -329,6 +330,7 @@ export class AgentPublishService {
 			case 'builder':
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_PUBLISHED_AGENT, {
 					...properties,
+					...builderTelemetrySessionProperties(),
 					event_version: '1',
 				});
 				return;
@@ -353,6 +355,7 @@ export class AgentPublishService {
 			case 'builder':
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_UNPUBLISHED_AGENT, {
 					...properties,
+					...builderTelemetrySessionProperties(),
 					event_version: '1',
 				});
 				return;

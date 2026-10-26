@@ -7,7 +7,7 @@ import { SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { mapCredentialForProvider } from './credential-field-mapping';
+import { mapCredentialForProvider } from '@/credentials/credential-field-mapping';
 import { AzureFoundryDeploymentsService } from '../azure-foundry-deployments.service';
 
 export async function resolveCredentialAwareModelConfig(
