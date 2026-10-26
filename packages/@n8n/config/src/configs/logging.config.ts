@@ -54,6 +54,7 @@ export const LOG_SCOPES = [
 	'scheduler',
 	'system-tasks',
 	'enqueued-execution-recovery',
+	'memory-guard',
 	'engine-v2',
 	'policy',
 	'activity-log',

@@ -105,6 +105,8 @@ export type {
 	EpisodicMemoryReflectionResult,
 	EpisodicMemoryReflectorInput,
 	EpisodicMemoryScope,
+	EpisodicScopeDecision,
+	ResolvedEpisodicScope,
 	EpisodicMemorySearchOptions,
 	EpisodicMemoryStatus,
 	EpisodicMemoryTaskLockHandle,

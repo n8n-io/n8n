@@ -1,3 +1,4 @@
+import { AssistantSkillProviderProxy } from '@n8n/backend-services';
 // Manual mocks — must be declared before any imports that touch the mocked modules.
 vi.mock('@n8n/agents', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/agents')>()),
@@ -37,6 +38,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		WorkSummaryAccumulator: profiles.WorkSummaryAccumulator,
 		mergeInstanceContextReach: profiles.mergeInstanceContextReach,
 		suspendedInstanceContextSchema: profiles.suspendedInstanceContextSchema,
+		applyPlannedTaskPermissionOverrides: profiles.applyPlannedTaskPermissionOverrides,
 		patchThread: vi.fn(async () => {}),
 		isSetupPanelEnabled: (context: { setupItemsEmitter?: unknown }) =>
 			context.setupItemsEmitter !== undefined,
@@ -254,7 +256,12 @@ import type {
 	InstanceContextInjection,
 	InstanceContextSurface,
 } from '@n8n/api-types';
-import { UNLIMITED_CREDITS, type InstanceAiHandoffContext } from '@n8n/api-types';
+import {
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	UNLIMITED_CREDITS,
+	type InstanceAiHandoffContext,
+	type InstanceAiPermissions,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -316,6 +323,7 @@ import type {
 } from '../self-healing/self-healing-agent.service';
 import type { InstanceAiTracingService } from '../tracing/instance-ai-tracing.service';
 import { RunStateRegistry } from '@n8n/instance-ai';
+import { AssistantTurnEnvironmentFactory } from '../turn-setup/assistant-turn-environment.factory';
 import type {
 	RebuildSuspendedRunOutcome,
 	ResumableOrphan,
@@ -335,8 +343,8 @@ type StartRunServiceInternals = {
 			}
 		>;
 		setTimeZone: MockedFunction<(threadId: string, timeZone: string) => void>;
-		setComputerUseChannels: Mock;
-		getComputerUseChannels: Mock;
+		setBrowserUseAvailable: Mock;
+		getBrowserUseAvailable: Mock;
 		setBuildMode: MockedFunction<(threadId: string, mode: string | undefined) => void>;
 		setPromptVersion: Mock;
 		setObserverThresholdTokens: Mock;
@@ -363,8 +371,8 @@ function createStartRunService(): StartRunServiceInternals {
 			messageGroupId: 'group-1',
 		})),
 		setTimeZone: vi.fn(),
-		setComputerUseChannels: vi.fn(),
-		getComputerUseChannels: vi.fn(() => undefined),
+		setBrowserUseAvailable: vi.fn(),
+		getBrowserUseAvailable: vi.fn(() => undefined),
 		setBuildMode: vi.fn(),
 		setPromptVersion: vi.fn(),
 		setObserverThresholdTokens: vi.fn(),
@@ -457,6 +465,39 @@ function queuedMemoryTaskEvent(): ScopedMemoryTaskEvent {
 
 const fakeUser = { id: 'user-1' } as User;
 
+const TURN_ENVIRONMENT_FIELDS = [
+	'logger',
+	'instanceAiConfig',
+	'aiConfig',
+	'oauth2CallbackUrl',
+	'defaultTimeZone',
+	'adapterService',
+	'settingsService',
+	'browserSessionService',
+	'aiService',
+	'dbIterationLogStorage',
+	'instanceWriteAccess',
+	'telemetry',
+	'evalCredentialAllowlists',
+	'modelService',
+	'creditService',
+	'instanceAiErrorReporter',
+	'conversationHistoryService',
+	'aiUsageService',
+	'skillsService',
+	'areMcpConnectionsAvailable',
+] as const;
+
+/** Builds the shared turn setup from the mocks that a test sets on the service. */
+function attachTurnEnvironment(service: object): void {
+	const fields = service as Record<string, unknown>;
+	const turnEnvironment = Object.create(AssistantTurnEnvironmentFactory.prototype) as object;
+	for (const field of TURN_ENVIRONMENT_FIELDS) {
+		if (field in fields) Object.assign(turnEnvironment, { [field]: fields[field] });
+	}
+	Object.assign(service, { turnEnvironment });
+}
+
 function emptyWorkSummary(): WorkSummary {
 	return { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0, askedClarifyingQuestion: false };
 }
@@ -510,7 +551,6 @@ type ShutdownServiceInternals = {
 		getTrackedThreadIds: MockedFunction<() => string[]>;
 		clear: MockedFunction<() => void>;
 	};
-	gatewayService: { disconnectAll: MockedFunction<() => void> };
 	sandboxService: { stopSandboxExpiryTimers: MockedFunction<() => void> };
 	browserSessionService: { shutdown: MockedFunction<() => Promise<void>> };
 	domainAccessTrackersByThread: Map<string, unknown>;
@@ -777,33 +817,6 @@ function stubInitialRunSurface(
 	vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
 }
 
-describe('InstanceAiService — MCP connections availability', () => {
-	afterEach(() => {
-		vi.restoreAllMocks();
-	});
-
-	it.each([
-		{ moduleActive: true, accessEnabled: true, expected: true },
-		{ moduleActive: false, accessEnabled: true, expected: false },
-		{ moduleActive: true, accessEnabled: false, expected: false },
-	])(
-		'returns $expected when moduleActive=$moduleActive and accessEnabled=$accessEnabled',
-		({ moduleActive, accessEnabled, expected }) => {
-			const service = Object.create(InstanceAiService.prototype) as unknown as {
-				areMcpConnectionsAvailable: () => boolean;
-				settingsService: { isMcpAccessEnabled: Mock };
-			};
-			service.settingsService = { isMcpAccessEnabled: vi.fn(() => accessEnabled) };
-			vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
-				if (token === ModuleRegistry) return { isActive: () => moduleActive };
-				throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
-			});
-
-			expect(service.areMcpConnectionsAvailable()).toBe(expected);
-		},
-	);
-});
-
 describe('InstanceAiService — runtime workspace setup', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -876,10 +889,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			settingsService: {
 				getAdminSettings: Mock;
 				getSandboxStatus: Mock;
-				isLocalGatewayDisabledForUser: Mock;
 				getPermissions: Mock;
 			};
-			gatewayService: { findGateway: Mock; applyToolPolicy: Mock };
 			aiService: { isProxyEnabled: Mock };
 			adapterService: {
 				createContext: Mock;
@@ -918,7 +929,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setSetupPanelEnabled: Mock;
 				setPromptVersion: Mock;
 				setObserverThresholdTokens: Mock;
-				getComputerUseChannels: Mock;
+				getBrowserUseAvailable: Mock;
 			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
@@ -936,19 +947,17 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			skillsService: InstanceAiSkillsService;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => true);
-		service.skillsService = new InstanceAiSkillsService();
+		service.skillsService = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
 		service.settingsService = {
-			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
+			getAdminSettings: vi.fn(() => ({ sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
 				enabled: true,
 				provider: 'n8n-sandbox',
 				workflowBuilderAvailable: true,
 				unavailableReason: null,
 			})),
-			isLocalGatewayDisabledForUser: vi.fn(async () => false),
 			getPermissions: vi.fn(() => ({})),
 		};
-		service.gatewayService = { findGateway: vi.fn(() => undefined), applyToolPolicy: vi.fn() };
 		service.aiService = { isProxyEnabled: vi.fn(() => false) };
 		service.adapterService = {
 			createContext: vi.fn(() => ({})),
@@ -1008,7 +1017,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setSetupPanelEnabled: vi.fn(),
 			setPromptVersion: vi.fn(),
 			setObserverThresholdTokens: vi.fn(),
-			getComputerUseChannels: vi.fn(() => undefined),
+			getBrowserUseAvailable: vi.fn(() => undefined),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -1049,6 +1058,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			service.adapterService.createContext.mockReturnValue({ builderDelegate: {} });
 		}
 		const loadSkills = vi.spyOn(service.skillsService, 'loadSkills');
+		attachTurnEnvironment(service);
 
 		const environment = await service.createExecutionEnvironment(
 			fakeUser,
@@ -1245,10 +1255,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			settingsService: {
 				getAdminSettings: Mock;
 				getSandboxStatus: Mock;
-				isLocalGatewayDisabledForUser: Mock;
 				getPermissions: Mock;
 			};
-			gatewayService: { findGateway: Mock; applyToolPolicy: Mock };
 			aiService: { isProxyEnabled: Mock };
 			adapterService: {
 				createContext: Mock;
@@ -1287,7 +1295,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setSetupPanelEnabled: Mock;
 				setPromptVersion: Mock;
 				setObserverThresholdTokens: Mock;
-				getComputerUseChannels: Mock;
+				getBrowserUseAvailable: Mock;
 			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
@@ -1305,19 +1313,17 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			skillsService: InstanceAiSkillsService;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => false);
-		service.skillsService = new InstanceAiSkillsService();
+		service.skillsService = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
 		service.settingsService = {
-			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
+			getAdminSettings: vi.fn(() => ({ sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
 				enabled: true,
 				provider: 'n8n-sandbox',
 				workflowBuilderAvailable: true,
 				unavailableReason: null,
 			})),
-			isLocalGatewayDisabledForUser: vi.fn(async () => false),
 			getPermissions: vi.fn(() => ({})),
 		};
-		service.gatewayService = { findGateway: vi.fn(() => undefined), applyToolPolicy: vi.fn() };
 		service.aiService = { isProxyEnabled: vi.fn(() => false) };
 		service.adapterService = {
 			createContext: vi.fn(() => ({})),
@@ -1371,7 +1377,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setSetupPanelEnabled: vi.fn(),
 			setPromptVersion: vi.fn(),
 			setObserverThresholdTokens: vi.fn(),
-			getComputerUseChannels: vi.fn(() => undefined),
+			getBrowserUseAvailable: vi.fn(() => undefined),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -1409,6 +1415,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			destroy: vi.fn(async () => {}),
 		});
 		(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+		attachTurnEnvironment(service);
 
 		const environment = await service.createExecutionEnvironment(
 			fakeUser,
@@ -1477,7 +1484,6 @@ describe('InstanceAiService — shutdown', () => {
 			getTrackedThreadIds: vi.fn(() => []),
 			clear: vi.fn(),
 		};
-		service.gatewayService = { disconnectAll: vi.fn() };
 		service.sandboxService = { stopSandboxExpiryTimers: vi.fn() };
 		service.browserSessionService = { shutdown: vi.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
@@ -1867,6 +1873,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 		Object.assign(service.liveness, { clearThreadState: vi.fn() });
 		stubInitialRunSurface(service);
 		Reflect.deleteProperty(service, 'createExecutionEnvironment');
+		attachTurnEnvironment(service);
 		const createContext = vi.fn();
 		Object.assign(service.adapterService, { createContext });
 
@@ -2018,7 +2025,7 @@ describe('InstanceAiService — run start', () => {
 		expect(service.executeRun).toHaveBeenCalled();
 	});
 
-	it('records the reported Computer Use channels so resumed runs reuse them', () => {
+	it('records whether the client reported Browser Use so resumed runs reuse it', () => {
 		const service = createStartRunService();
 		service.startRun(
 			fakeUser,
@@ -2030,15 +2037,13 @@ describe('InstanceAiService — run start', () => {
 			undefined,
 			undefined,
 			undefined,
-			['browser'],
+			true,
 		);
-		expect(service.runState.setComputerUseChannels).toHaveBeenLastCalledWith('thread-a', [
-			'browser',
-		]);
+		expect(service.runState.setBrowserUseAvailable).toHaveBeenLastCalledWith('thread-a', true);
 
 		// A client that stops reporting clears it, so nothing is advertised.
 		service.startRun(fakeUser, 'thread-a', 'continue');
-		expect(service.runState.setComputerUseChannels).toHaveBeenLastCalledWith('thread-a', undefined);
+		expect(service.runState.setBrowserUseAvailable).toHaveBeenLastCalledWith('thread-a', undefined);
 	});
 
 	it('records each request mode for later internal runs', () => {
@@ -4408,7 +4413,6 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		Object.assign(service.logger, { debug: vi.fn() });
 		Object.assign(service, {
 			inFlightExecutions: new Set<Promise<unknown>>(),
-			gatewayService: { disconnectAll: vi.fn() },
 			browserSessionService: { shutdown: vi.fn(async () => {}) },
 			sandboxService: { stopSandboxExpiryTimers: vi.fn() },
 			domainAccessTrackersByThread: new Map(),
@@ -5638,6 +5642,135 @@ describe('InstanceAiService run input gates', () => {
 	);
 });
 
+describe('InstanceAiService — planned-task follow-up permissions', () => {
+	const adminPermissions: InstanceAiPermissions = {
+		...DEFAULT_INSTANCE_AI_PERMISSIONS,
+		createWorkflow: 'blocked',
+		runWorkflow: 'blocked',
+		publishWorkflow: 'blocked',
+		mutateDataTableRows: 'blocked',
+	};
+
+	function createFollowUpService() {
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
+		vi.mocked(streamAgentRun).mockResolvedValueOnce({
+			status: 'cancelled',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: emptyWorkSummary(),
+		});
+		const context: { permissions?: InstanceAiPermissions } = {
+			permissions: { ...adminPermissions },
+		};
+		const environment = {
+			context,
+			memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
+			taskStorage: { get: vi.fn(async () => undefined) },
+			orchestrationContext: {},
+		};
+		const service = Object.assign(Object.create(InstanceAiService.prototype), {
+			adapterService: {
+				resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
+			},
+			resolveContextAttachments: vi.fn(() => []),
+			instanceAiErrorReporter: { beginRun: vi.fn(), endRun: vi.fn() },
+			createProxyRunConfig: vi.fn(async () => ({})),
+			browserSessionService: { getExtensionTraceContext: vi.fn() },
+			readThreadProvenance: vi.fn(async () => ({})),
+			instanceContext: {
+				buildBlock: vi.fn().mockResolvedValue({ state: 'absent', reason: 'disabled' }),
+			},
+			reclassifyMaskedStreamFailure: vi.fn(async (error: unknown) => {
+				throw error;
+			}),
+			isRunDebugEnabled: vi.fn(() => false),
+			eventBus: { publish: vi.fn() },
+			threadPushRef: new Map(),
+			createExecutionEnvironment: vi.fn(async () => environment),
+			getCheckpointRunPolicy: vi.fn(async () => ({
+				allowedWorkflowIds: new Set(['wf-1']),
+				allowedWorkflowNames: new Set<string>(),
+				requireApproval: false,
+			})),
+			snapshotAttachedAgents: vi.fn(),
+			buildMessageWithRunningTasks: vi.fn(async (_threadId: string, text: string) => text),
+			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
+			resolveProjectContextSection: vi.fn(async () => ''),
+			createAgentFromEnvironment: vi.fn(async () => ({})),
+			buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
+			shouldPreserveHitlOnShutdown: vi.fn(() => true),
+			runState: { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) },
+			telemetry: { track: vi.fn() },
+			domainAccessTrackersByThread: new Map(),
+			updateInternalFollowUpFailureStreak: vi.fn(),
+		}) as {
+			executeRun: (
+				user: User,
+				threadId: string,
+				runId: string,
+				message: string,
+				controller: AbortController,
+				attachments?: undefined,
+				handoffContext?: undefined,
+				messageGroupId?: string,
+				timeZone?: string,
+				isReplanFollowUp?: boolean,
+				checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
+				resumeReason?: undefined,
+				plannedBuild?: { isPlannedBuildFollowUp: true; buildTaskId: string; workItemId: string },
+			) => Promise<void>;
+		};
+		return { service, context };
+	}
+
+	it('keeps blocked permissions in a planned build follow-up', async () => {
+		const { service, context } = createFollowUpService();
+
+		await service.executeRun(
+			fakeUser,
+			'thread-1',
+			'run-1',
+			'(continue)',
+			new AbortController(),
+			undefined,
+			undefined,
+			'group-1',
+			undefined,
+			false,
+			undefined,
+			undefined,
+			{ isPlannedBuildFollowUp: true, buildTaskId: 'build-1', workItemId: 'wi-1' },
+		);
+
+		expect(context.permissions).toEqual({
+			...adminPermissions,
+			updateWorkflow: 'always_allow',
+			createDataTable: 'always_allow',
+			mutateDataTableSchema: 'always_allow',
+		});
+	});
+
+	it('keeps a blocked runWorkflow in a checkpoint follow-up', async () => {
+		const { service, context } = createFollowUpService();
+
+		await service.executeRun(
+			fakeUser,
+			'thread-1',
+			'run-1',
+			'(continue)',
+			new AbortController(),
+			undefined,
+			undefined,
+			'group-1',
+			undefined,
+			false,
+			{ isCheckpointFollowUp: true, checkpointTaskId: 'cp-1' },
+		);
+
+		expect(context.permissions).toEqual(adminPermissions);
+	});
+});
+
 describe('InstanceAiService — user message persistence on cancel', () => {
 	type ExecuteRunInternals = {
 		executeRun: (
@@ -5944,25 +6077,6 @@ describe('InstanceAiService — agent preview handoff scopes', () => {
 		await expect(service.assertAgentPreviewHandoffScopes(fakeUser, 'project-1')).rejects.toThrow(
 			'You do not have permission to load or edit agent previews in this project.',
 		);
-	});
-});
-
-describe('InstanceAiService — OAuth callback URL', () => {
-	// Regression: the OAuth callback URL exposed to browser-assisted credential
-	// setup must come from urlService.getInstanceBaseUrl() (which honors WEBHOOK_URL
-	// on cloud), not from globalConfig.editorBaseUrl with a localhost fallback.
-	it('builds oauth2CallbackUrl from urlService.getInstanceBaseUrl()', () => {
-		const source = InstanceAiService.toString();
-
-		expect(source).toMatch(
-			/this\.oauth2CallbackUrl\s*=[^;]*this\.urlService\.getInstanceBaseUrl\(\)[^;]*oauth2-credential\/callback/,
-		);
-	});
-
-	it('does not fall back to localhost when editorBaseUrl is empty', () => {
-		const source = InstanceAiService.toString();
-
-		expect(source).not.toMatch(/globalConfig\.editorBaseUrl\s*\|\|/);
 	});
 });
 
@@ -6848,6 +6962,7 @@ describe('createAgentMemoryOptions', () => {
 		).toBe('anthropic/claude-haiku-4-5');
 		// The proxy and credential paths return object configs, which must pass through as-is.
 		const credentialModel: ModelConfig = {
+			kind: 'endpoint',
 			id: 'anthropic/claude-haiku-4-5',
 			url: '',
 			apiKey: 'main-key',
@@ -6975,7 +7090,7 @@ type FollowUpStreakServiceInternals = {
 		hasLiveRun: Mock;
 		startRun: Mock;
 		getTimeZone: Mock;
-		getComputerUseChannels: Mock;
+		getBrowserUseAvailable: Mock;
 	};
 	logger: { warn: Mock; debug: Mock; error: Mock };
 };
@@ -6994,7 +7109,7 @@ function createFollowUpStreakService(): FollowUpStreakServiceInternals {
 		hasLiveRun: vi.fn(() => false),
 		startRun: vi.fn(() => ({ runId: 'follow-up-run', abortController: new AbortController() })),
 		getTimeZone: vi.fn(() => undefined),
-		getComputerUseChannels: vi.fn(() => undefined),
+		getBrowserUseAvailable: vi.fn(() => undefined),
 	};
 	service.logger = { warn: vi.fn(), debug: vi.fn(), error: vi.fn() };
 

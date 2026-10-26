@@ -1,23 +1,18 @@
-import { AgentEvent, createScopedWorkspace } from '@n8n/agents';
+import { AgentEvent } from '@n8n/agents';
 import type {
 	AgentDbMessage,
 	Message,
-	Workspace,
 	ScopedMemoryTaskEvent,
 	AgentEventData,
 	MemoryTaskUsageReport,
 } from '@n8n/agents';
-import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
 import {
-	applyBranchReadOnlyOverrides,
-	buildProxyHeaders,
 	mcpConnectRequestSchema,
 	credentialSetupHintSchema,
 	formatAttachmentSizeLimit,
 	instanceAiBuildModeSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
-	type ComputerUseChannel,
 	type InstanceAiBuildMode,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -43,7 +38,6 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
 import {
 	EventService,
-	InstanceWriteAccessService,
 	UrlService,
 	AI_PREFERENCES_CLEARED_BLOCK,
 	AiPreferenceService,
@@ -60,14 +54,10 @@ import { UserRepository, type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
-	CONCISE_PROMPT_VERSION,
 	SELF_HEALING_PROFILE_VERSION,
 	MAX_STEPS,
-	assertInstanceAiPromptVersion,
 	createInstanceAgent,
-	createLazyRuntimeWorkspace,
 	resolvePromptProfile,
-	describePromptProfile,
 	setTracePromptVersion,
 	setTraceModelId,
 	modelConfigId,
@@ -80,7 +70,6 @@ import {
 	createInstanceAiLivenessPolicyConfig,
 	InstanceAiLivenessPolicy,
 	McpClientManager,
-	createDomainAccessTracker,
 	BackgroundTaskManager,
 	MemoryTaskRegistry,
 	classifyAttachments,
@@ -91,7 +80,7 @@ import {
 	isQuotaExhaustedError,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
-	PLANNED_TASK_PERMISSION_OVERRIDES,
+	applyPlannedTaskPermissionOverrides,
 	releaseTraceClient,
 	resumeAgentRun,
 	RunStateRegistry,
@@ -107,7 +96,6 @@ import {
 	patchThread,
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
-	createSetupItemsEmitter,
 	formatWorkflowSetupStateNote,
 	isSetupPanelEnabled,
 	observeWorkflowSetupStates,
@@ -130,7 +118,6 @@ import {
 	type PlannedWorkflowVerification,
 	type OrchestratorRunHandoffState,
 	type OrchestratorRunStopSignal,
-	type ServiceProxyConfig,
 	type StreamRunResult,
 	type SuspendedRunState,
 	type SuspensionInfo,
@@ -138,7 +125,6 @@ import {
 	type ProjectSummary,
 	type WorkflowLoopWorkItemRecord,
 	type WorkflowSetupRoutingClaim,
-	type WorkflowTaskService,
 	type WorkflowVerificationObligation,
 	type WorkSummary,
 	WorkSummaryAccumulator,
@@ -146,17 +132,15 @@ import {
 	mergeInstanceContextReach,
 	type RunTokenUsage,
 	type RunDebugRecord,
-	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
 } from '@n8n/instance-ai';
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
 import type { Scope } from '@n8n/permissions';
-import { redactTelemetryProperties, redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
+import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import { lazyImport } from '@n8n/utils/lazy-import';
-import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -170,13 +154,12 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
-import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
+import { buildPreferencesAppliedTelemetry } from './ai-preferences-telemetry';
 import { isAgentsAccessEnabled } from './agents-access';
 import {
 	INSTANCE_CONTEXT_CURSOR,
@@ -185,31 +168,23 @@ import {
 	toContextInjection,
 	shouldTraceContextInjection,
 } from './instance-context.service';
-import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
-import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
-import { InstanceAiConversationHistoryService } from './instance-ai-conversation-history.service';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
 import {
 	getAgentErrorSeverity,
 	InstanceAiErrorReporterService,
 } from './instance-ai-error-reporter.service';
-import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
 import { InstanceAiRunProbe } from './instance-ai-run-probe';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import {
-	InstanceAiSkillsService,
-	SKILLS,
-	type InstanceAiSkillScope,
-} from './instance-ai-skills.service';
+import { InstanceAiSkillsService, SKILLS } from './instance-ai-skills.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
 import { InstanceAiTerminalOutcomeService } from './instance-ai-terminal-outcome.service';
 import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
@@ -268,9 +243,23 @@ import {
 	type SelfHealingRunLifecycle,
 	type SelfHealingRunResult,
 } from './self-healing/self-healing-agent.service';
-import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import {
+	assistantCreditsExhaustedError,
+	QuotaExhaustedStreamError,
+} from './turn-setup/assistant-credits';
+import {
+	AssistantTurnEnvironmentFactory,
+	type AssistantProxyRunConfig,
+	type InstanceContextGates,
+} from './turn-setup/assistant-turn-environment.factory';
+import type { AssistantTurnRuntime } from './turn-setup/assistant-turn-runtime';
+
+export {
+	isAssistantCreditBalanceExhausted,
+	QuotaExhaustedStreamError,
+} from './turn-setup/assistant-credits';
 import { isStreamTransportError } from './stream-transport-error';
 import {
 	SuspendedRunRestorer,
@@ -555,37 +544,8 @@ function failureStageForErrorCode(
 	return 'unknown';
 }
 
-/**
- * Substituted for a masked stream failure once the credit re-check confirms
- * the user is out of credits. Carries the machine-readable quota code so the
- * run is classified exactly like a quota error surfaced by the proxy (credits
- * message + structured `errorCode`, not reported to Sentry), and keeps the
- * masked original as `cause` for tracing and telemetry.
- */
-export class QuotaExhaustedStreamError extends UserError {
-	readonly errorCode = 'quota_exhausted';
-
-	constructor(maskedError: Error) {
-		super(`AI credits exhausted (${maskedError.name}: ${maskedError.message})`, {
-			cause: maskedError,
-		});
-	}
-}
-
 function createInertAbortSignal(): AbortSignal {
 	return new AbortController().signal;
-}
-
-/** True when the balance can no longer start another assistant run. */
-export function isAssistantCreditBalanceExhausted(credits: {
-	creditsQuota: number;
-	creditsClaimed: number;
-}): boolean {
-	return credits.creditsQuota >= 0 && credits.creditsClaimed >= credits.creditsQuota;
-}
-
-function assistantCreditsExhaustedError(): QuotaExhaustedStreamError {
-	return new QuotaExhaustedStreamError(new Error('Assistant credits exhausted'));
 }
 
 function asQuotaExhaustedError(error: unknown): QuotaExhaustedStreamError | undefined {
@@ -701,32 +661,8 @@ type InstanceContextTurnBinding = {
 	nodeUsageEnabled: boolean;
 };
 
-type InstanceContextGates = Pick<
-	InstanceContextTurnBinding,
-	'instanceContextEnabled' | 'nodeUsageEnabled'
->;
-
 /** The built orchestrator agent type returned by `createInstanceAgent`. */
 type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
-
-/**
- * Normalises `N8N_INSTANCE_AI_PROMPT_VERSION`. Blank and absent both mean "no
- * pin" and must become `undefined`: passing `''` on to `resolvePromptProfile`
- * would report a fallback from an empty version instead of a clean default
- * selection.
- *
- * An unknown version throws, so a typo fails the run loudly rather than
- * silently serving the default profile. Resolved at the point of use, not
- * cached at construction: a module `init()` that throws takes the whole n8n
- * process down with it, and an optional Instance AI pin must not cost the
- * instance its webhooks and executions.
- */
-export function resolveOperatorPromptVersion(configured: string | undefined): string | undefined {
-	const version = configured?.trim();
-	if (!version) return undefined;
-	assertInstanceAiPromptVersion(version);
-	return version;
-}
 
 @Service()
 export class InstanceAiService {
@@ -746,8 +682,6 @@ export class InstanceAiService {
 	private readonly instanceAiConfig: InstanceAiConfig;
 
 	private readonly aiConfig: AiConfig;
-
-	private readonly oauth2CallbackUrl: string;
 
 	private readonly webhookBaseUrl: string;
 
@@ -855,7 +789,6 @@ export class InstanceAiService {
 		private readonly eventLog: DurableEventLog,
 		private readonly interruptedRunSweeper: InterruptedRunSweeper,
 		private readonly settingsService: InstanceAiSettingsService,
-		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly agentMemory: TypeORMAgentMemory,
@@ -867,8 +800,6 @@ export class InstanceAiService {
 		private readonly observationCursorRepo: InstanceAiObservationCursorRepository,
 		private readonly urlService: UrlService,
 		private readonly eventLogRepository: InstanceAiEventLogRepository,
-		private readonly dbIterationLogStorage: DbIterationLogStorage,
-		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly telemetry: Telemetry,
 		private readonly mcpRegistryService: InstanceAiMcpRegistryService,
 		private readonly userRepository: UserRepository,
@@ -884,13 +815,12 @@ export class InstanceAiService {
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly push: Push,
-		private readonly conversationHistoryService: InstanceAiConversationHistoryService,
 		private readonly instanceContext: InstanceContextService,
 		private readonly aiPreferenceService: AiPreferenceService,
-		private readonly aiUsageService: AiUsageService,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
 		private readonly selfHealingAgent: SelfHealingAgentService,
 		private readonly skillsService: InstanceAiSkillsService,
+		private readonly turnEnvironment: AssistantTurnEnvironmentFactory,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -994,8 +924,6 @@ export class InstanceAiService {
 			},
 		});
 		this.defaultTimeZone = globalConfig.generic.timezone;
-		const restEndpoint = globalConfig.endpoints.rest;
-		this.oauth2CallbackUrl = `${this.urlService.getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`;
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 		this.formBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.form}`;
 
@@ -1017,42 +945,8 @@ export class InstanceAiService {
 		this.liveness.start();
 	}
 
-	private async createProxyRunConfig(user: Pick<User, 'id'>): Promise<{
-		searchProxyConfig?: ServiceProxyConfig;
-		tracingProxyConfig?: ServiceProxyConfig;
-		tokenManager?: ProxyTokenManager;
-		proxyBaseUrl?: string;
-	}> {
-		if (!this.aiService.isProxyEnabled()) return {};
-
-		const client = await this.aiService.getClient();
-		const proxyBaseUrl = client.getApiProxyBaseUrl();
-		const tokenManager = new ProxyTokenManager(async () => {
-			return await client.getInstanceAiApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
-		});
-		const featureHeaders = buildProxyHeaders({
-			feature: 'instance-ai',
-			n8nVersion: N8N_VERSION,
-		});
-
-		return {
-			proxyBaseUrl,
-			tokenManager,
-			searchProxyConfig: {
-				apiUrl: proxyBaseUrl + '/brave-search',
-				getAuthHeaders: async () => ({
-					...(await tokenManager.getAuthHeaders()),
-					...featureHeaders,
-				}),
-			},
-			tracingProxyConfig: {
-				apiUrl: proxyBaseUrl + '/langsmith',
-				getAuthHeaders: async () => ({
-					...(await tokenManager.getAuthHeaders()),
-					...featureHeaders,
-				}),
-			},
-		};
+	private async createProxyRunConfig(user: Pick<User, 'id'>): Promise<AssistantProxyRunConfig> {
+		return await this.turnEnvironment.createProxyRunConfig(user);
 	}
 
 	/**
@@ -1204,18 +1098,7 @@ export class InstanceAiService {
 	 * read must not wall the user: the proxy still enforces the quota.
 	 */
 	private async assertAssistantCreditsAvailable(user: User): Promise<void> {
-		let credits: Awaited<ReturnType<InstanceAiModelService['getCredits']>>;
-		try {
-			credits = await this.modelService.getCredits(user);
-		} catch (error) {
-			this.logger.debug('Skipping pre-run credit check; balance read failed', {
-				userId: user.id,
-				error: getErrorMessage(error),
-			});
-			return;
-		}
-		if (!isAssistantCreditBalanceExhausted(credits)) return;
-		throw assistantCreditsExhaustedError();
+		await this.turnEnvironment.assertAssistantCreditsAvailable(user);
 	}
 
 	private async reclassifyMaskedStreamFailure(
@@ -1609,7 +1492,7 @@ export class InstanceAiService {
 		pushRef?: string,
 		mode?: InstanceAiBuildMode,
 		promptVersion?: string,
-		computerUseChannels?: ComputerUseChannel[],
+		browserUseAvailable?: boolean,
 		threadArtifacts?: InstanceAiThreadArtifactsContext,
 		observerThresholdTokens?: number,
 	): string {
@@ -1634,8 +1517,8 @@ export class InstanceAiService {
 		}
 
 		// Same reason: a resumed or background run has no request of its own to ask
-		// which + menu entries the client renders.
-		this.runState.setComputerUseChannels(threadId, computerUseChannels);
+		// whether the client renders the Browser Use + menu entry.
+		this.runState.setBrowserUseAvailable(threadId, browserUseAvailable);
 
 		// A new user message resets selection. Explicit eval modes take precedence;
 		// otherwise environment creation selects and stores the backend assignment.
@@ -2085,8 +1968,6 @@ export class InstanceAiService {
 		await this.liveness.sweepTimedOutWork(now);
 	}
 
-	// ── Gateway lifecycle (delegated to LocalGatewayRegistry) ───────────────
-
 	// ── Test-only trace replay API ───────────────────────────────────────────
 
 	loadTraceEvents(slug: string, events: unknown[]): void {
@@ -2270,7 +2151,6 @@ export class InstanceAiService {
 			});
 		}
 
-		this.gatewayService.disconnectAll();
 		await this.browserSessionService.shutdown();
 		this.sandboxService.stopSandboxExpiryTimers();
 
@@ -2478,55 +2358,6 @@ export class InstanceAiService {
 		};
 	}
 
-	private createWorkflowTaskServiceWithUiSync(
-		threadId: string,
-		runId: string,
-		workflowTasks: WorkflowTaskCoordinator,
-	): WorkflowTaskService {
-		const sync = async () => await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
-
-		return {
-			reportBuildOutcome: async (outcome) => {
-				const action = await workflowTasks.reportBuildOutcome(outcome);
-				await sync();
-				return action;
-			},
-			reportVerificationVerdict: async (verdict) => {
-				const action = await workflowTasks.reportVerificationVerdict(verdict);
-				await sync();
-				return action;
-			},
-			updateBuildOutcome: async (workItemId, update) => {
-				await workflowTasks.updateBuildOutcome(workItemId, update);
-				await sync();
-			},
-			beginVerification: async (outcome, state, verificationRunId) => {
-				const resumed = await workflowTasks.beginVerification(outcome, state, verificationRunId);
-				if (resumed) await sync();
-				return resumed;
-			},
-			getBuildOutcome: async (workItemId) => await workflowTasks.getBuildOutcome(workItemId),
-			startVerification: async (workItemId, triggerNodeName) => {
-				const previousProgress = await workflowTasks.startVerification(workItemId, triggerNodeName);
-				await sync();
-				return previousProgress;
-			},
-			recordVerification: async (workItemId, verification, previousProgress) => {
-				const claim = await workflowTasks.recordVerification(
-					workItemId,
-					verification,
-					previousProgress,
-				);
-				await sync();
-				return claim;
-			},
-			getLatestBuildOutcomeForWorkflow: async (workflowId) =>
-				await workflowTasks.getLatestBuildOutcomeForWorkflow(workflowId),
-			getWorkflowLoopState: async (workItemId) =>
-				await workflowTasks.getWorkflowLoopState(workItemId),
-		};
-	}
-
 	private trackWorkflowVerificationObligation(
 		obligation: WorkflowVerificationObligation,
 		event: string,
@@ -2700,10 +2531,7 @@ export class InstanceAiService {
 	}
 
 	areMcpConnectionsAvailable(): boolean {
-		return (
-			Container.get(ModuleRegistry).isActive('mcp-registry') &&
-			this.settingsService.isMcpAccessEnabled()
-		);
+		return this.turnEnvironment.areMcpConnectionsAvailable();
 	}
 
 	private async createExecutionEnvironment(
@@ -2713,397 +2541,85 @@ export class InstanceAiService {
 		abortSignal: AbortSignal,
 		messageGroupId?: string,
 		pushRef?: string,
-		proxyRunConfig?: Awaited<ReturnType<InstanceAiService['createProxyRunConfig']>>,
+		proxyRunConfig?: AssistantProxyRunConfig,
 		instanceContextGates?: InstanceContextGates,
 		experimentGates?: InstanceAiFeatureFlags,
 	) {
-		const memory = this.agentMemory;
-		const thread = await memory.getThread(threadId);
-		if (thread && thread.resourceId !== user.id) {
-			throw new ForbiddenError('Not authorized for this thread');
-		}
-
-		const boundProjectId = await memory.getThreadProjectId(threadId);
-		if (!boundProjectId) {
-			throw new UnexpectedError(
-				`Instance AI thread "${threadId}" has no bound project; it must be created via POST /instance-ai/threads before a run can start`,
-			);
-		}
-
-		const adminSettings = await this.settingsService.getAdminSettings();
-		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
-		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
-		const mcpConnectionsAvailable = this.areMcpConnectionsAvailable();
-		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
-			user.id,
-		);
-		const userGateway = this.gatewayService.findGateway(user.id);
-
-		// Stop before this run resolves a model. A cached proxy token stays valid
-		// after the balance hits zero, so a later token request would not 403.
-		await this.assertAssistantCreditsAvailable(user);
-
-		const { searchProxyConfig, tokenManager, proxyBaseUrl } =
-			proxyRunConfig ?? (await this.createProxyRunConfig(user));
-
-		const proxyContext = { runId, threadId };
-		const modelId =
-			proxyBaseUrl && tokenManager
-				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
-				: await this.modelService.resolveAgentModelConfig(user, proxyContext);
-		const memoryModelId = await this.modelService.resolveMemoryModelConfig(user, modelId, {
-			proxyBaseUrl,
-			tokenManager,
-			proxyContext,
-		});
-
-		const gates = experimentGates ?? (await this.adapterService.resolveExperimentGates(user));
-		const {
-			configEvalsEnabled,
-			conversationHistoryEnabled,
-			progressiveBuildingEnabled,
-			conciseStyleEnabled,
-			setupPanelEnabled,
-			setupPanelVariant,
-			folderExplorationEnabled,
-			credentialDescriptionsEnabled,
-			aiPreferencesEnabled,
-		} = gates;
-		this.runState.setSetupPanelEnabled(threadId, setupPanelEnabled);
-		// Resumed segments use the gates bound to the original turn.
-		const { instanceContextEnabled, nodeUsageEnabled } = instanceContextGates ?? gates;
-		// One scoped reader backs both the tool and the first-turn hint.
-		const conversationHistory = conversationHistoryEnabled
-			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
-			: undefined;
-		// Follow-ups and resumed runs retain the selected mode if flags change.
-		const mode =
-			this.runState.getBuildMode(threadId) ??
-			(progressiveBuildingEnabled ? 'progressive' : 'default');
-		// The operator pin sits below the request pin and the thread's own selection,
-		// so evals and in-flight conversations keep the profile they started on.
-		// The concise experiment applies only in default mode, so a progressive
-		// thread or assignment keeps its own profile.
-		const selectedPrompt = resolvePromptProfile({
-			version:
-				this.runState.getPromptVersion(threadId) ??
-				resolveOperatorPromptVersion(this.instanceAiConfig.promptVersion) ??
-				(conciseStyleEnabled && mode === 'default' ? CONCISE_PROMPT_VERSION : undefined),
-			mode,
-		});
-		const buildMode = selectedPrompt.profile.mode;
-		this.runState.setBuildMode(threadId, buildMode);
-		// Read per run so a settings change applies to the next message.
-		const allowSendingParameterValues = await this.aiUsageService.isParameterValueSharingAllowed();
-		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
-		// starts a build, so a thread that left gets the tool no more.
-		const onboardingThread =
-			thread?.metadata?.source === 'onboarding' && !thread.metadata.onboardingLeft;
-		const context = this.adapterService.createContext(user, {
-			searchProxyConfig,
-			pushRef,
-			threadId,
-			projectId: boundProjectId,
-			getCredentialIdAllowlist: () => this.evalCredentialAllowlists.get(threadId),
-			shouldBypassCredentialTest: (credentialId: string) =>
-				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
-			getCredentialTestTarget: (credentialType: string) =>
-				this.evalCredentialAllowlists.getTestTarget(threadId, credentialType),
-			configEvalsEnabled,
-			setupPanelVariant,
-			mcpConnectionsAvailable,
-			nodeUsageEnabled,
-			instanceContextEnabled,
-			conversationHistory,
-			folderExplorationEnabled,
-			onboardingThread,
-			credentialDescriptionsEnabled,
-			aiPreferencesEnabled,
-			modelId,
-			allowSendingParameterValues,
-		});
-
-		// Merge both local gateway and direct browser-use into a single
-		// composite server, since context has a single `localMcpServer`.
-		// Perhaps a better solution would be to have multiple local MCP
-		// servers? But that requires more changes where `localMcpServer`
-		// is currently used
-
-		// When Browser Use is disabled instance-wide, hide the gateway's browser tools
-		// too so they are neither advertised to nor callable by the agent.
-		this.gatewayService.applyToolPolicy(user.id);
-		const gatewayMcpServer =
-			!localGatewayDisabledForUser && userGateway?.isConnected ? userGateway : undefined;
-		const browserMcpServer = browserUseEnabledGlobally
-			? this.browserSessionService.findMcpServer(user.id)
-			: undefined;
-		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
-		if (localMcpServer) {
-			context.localMcpServer = localMcpServer;
-		}
-
-		context.permissions = this.settingsService.getPermissions();
-		if (this.instanceWriteAccess.isReadOnly()) {
-			context.permissions = applyBranchReadOnlyOverrides(context.permissions);
-			context.branchReadOnly = true;
-		}
-
-		context.runId = runId;
-
-		// Setup panel v2: wire the durable `setup-items` sink only while the flag
-		// is on — its presence is the package-side gate. Seeded with the thread's
-		// persisted snapshots so a recomputed, unchanged list publishes nothing.
-		if (setupPanelEnabled) {
-			context.setupItemsEmitter = createSetupItemsEmitter({
-				eventBus: this.eventBus,
+		return await this.turnEnvironment.create(
+			{
+				user,
 				threadId,
 				runId,
-				agentId: orchestratorAgentId(runId),
-				initialSnapshots: await this.eventLog.getSetupItemsSnapshots(threadId).catch((error) => {
-					this.logger.warn('Failed to read setup panel snapshots', {
-						threadId,
-						error: getErrorMessage(error),
-					});
-					return [];
-				}),
-				readPersistedSnapshot: async (workflowId) => {
-					const snapshots = await this.eventLog.getSetupItemsSnapshots(threadId);
-					return snapshots.find((snapshot) => snapshot.workflowId === workflowId)?.items;
-				},
-			});
-			context.markWorkflowSetupHandled = async (workflowId) => {
+				abortSignal,
+				messageGroupId,
+				pushRef,
+				proxyRunConfig,
+				instanceContextGates,
+				experimentGates,
+			},
+			this.createTurnRuntime(user, threadId, runId),
+		);
+	}
+
+	/** Binds the state of this runtime to one run, for the shared turn setup. */
+	private createTurnRuntime(user: User, threadId: string, runId: string): AssistantTurnRuntime {
+		return {
+			memory: this.agentMemory,
+			eventBus: this.eventBus,
+			turnState: {
+				getBuildMode: () => this.runState.getBuildMode(threadId),
+				setBuildMode: (mode) => this.runState.setBuildMode(threadId, mode),
+				getPromptVersion: () => this.runState.getPromptVersion(threadId),
+				setPromptConfiguration: (configuration) =>
+					this.runState.setPromptConfiguration(threadId, configuration),
+				setSetupPanelEnabled: (enabled) => this.runState.setSetupPanelEnabled(threadId, enabled),
+				getBrowserUseAvailable: () => this.runState.getBrowserUseAvailable(threadId),
+			},
+			sessionGrants: {
+				load: async () => await this.loadThreadSessionGrants(threadId, user.id),
+				grant: async (key) => await this.persistThreadSessionGrant(threadId, user.id, key),
+				revoke: async (key) => await this.revokeThreadSessionGrant(threadId, user.id, key),
+			},
+			onDomainAccessTracker: (tracker) => {
+				this.domainAccessTrackersByThread.set(threadId, tracker);
+			},
+			readSetupItemsSnapshots: async () => await this.eventLog.getSetupItemsSnapshots(threadId),
+			markWorkflowSetupHandled: async (workflowId) => {
 				await this.markWorkflowSetupHandled(threadId, workflowId, runId, {
 					requirePersisted: true,
 				});
-			};
-		}
-
-		context.browserCredentialSetup = this.createBrowserCredentialSetupTracker(runId, user.id);
-
-		// The frontend shows the tab of a changed artifact only while a browser shows the
-		// run. Storing it here also covers a closed browser tab and background tasks.
-		context.onArtifactChanged = async (artifact) => {
-			try {
-				await this.threadTabsService.showArtifactTab(threadId, user.id, artifact);
-			} catch (error) {
-				this.logger.warn('Failed to show an Instance AI artifact tab', {
-					threadId,
-					error: getErrorMessage(error),
-				});
-			}
-		};
-
-		// Per-user, thread-level "always allow" grants are persisted in the DB so they survive
-		// reload/navigation and are visible across mains. Load once per run; a tool resuming
-		// from a `scope: 'session'` approval persists new grants via `grantSessionToolApproval`.
-		// Keep the mutable set so a grant approved mid-run is honored by later calls in the same
-		// run — the next run reloads it from the DB anyway.
-		const sessionGrants = await this.loadThreadSessionGrants(threadId, user.id);
-		context.sessionApprovedToolKeys = sessionGrants;
-		const grantSessionToolApproval = async (key: string) => {
-			await this.persistThreadSessionGrant(threadId, user.id, key);
-			sessionGrants.add(key);
-		};
-		context.grantSessionToolApproval = grantSessionToolApproval;
-		context.revokeSessionToolApproval = async (key: string) => {
-			await this.revokeThreadSessionGrant(threadId, user.id, key);
-			sessionGrants.delete(key);
-		};
-
-		// Domain-access approvals are stored as grant keys in `instance_ai_thread_grants` (via
-		// the same load/persist path as above), so they survive restart and are visible
-		// cross-main. Recreate the tracker per run seeded from the freshly loaded grants;
-		// transient (allow_once) approvals are run-scoped and don't carry across runs.
-		const domainTracker = createDomainAccessTracker({
-			grantedKeys: sessionGrants,
-			persistGrant: grantSessionToolApproval,
-		});
-		this.domainAccessTrackersByThread.set(threadId, domainTracker);
-		context.domainAccessTracker = domainTracker;
-		if (this.isRunDebugEnabled()) {
-			context.recordWorkflowCodeSnapshot = (snapshot) => {
-				this.runDebugBuffer.ensure(runId, threadId);
-				this.runDebugBuffer.recordWorkflowCode(runId, snapshot);
-			};
-		}
-
-		browserMcpServer?.setDomainGate({
-			tracker: domainTracker,
-			runId,
-			permissionMode: context.permissions?.fetchUrl,
-			createCredentialPermissionMode: context.permissions?.createCredential,
-		});
-
-		// The client reports which + menu entries it renders, because only it can see
-		// its own rollout and the device. The admin switches are still applied here,
-		// so the report can only narrow.
-		context.computerUseState = resolveComputerUseState({
-			localGatewayDisabledGlobally,
-			localGatewayDisabledForUser,
-			browserUseEnabledGlobally,
-			clientChannels: this.runState.getComputerUseChannels(threadId),
-			localComputerToolCategories: gatewayMcpServer
-				? enabledToolCategories(gatewayMcpServer.getStatus().toolCategories)
-				: undefined,
-			browserConnected: browserMcpServer !== undefined,
-		});
-
-		const taskStorage = new ThreadTaskStorage(memory);
-		const iterationLog = this.dbIterationLogStorage;
-		const workflowLoopStorage = new WorkflowLoopStorage(memory);
-		const workflowTasks = this.createWorkflowTaskServiceWithUiSync(
-			threadId,
-			runId,
-			new WorkflowTaskCoordinator(threadId, workflowLoopStorage),
-		);
-		const plannedTaskStorage = new PlannedTaskStorage(memory);
-		const plannedTaskService = new PlannedTaskCoordinator(plannedTaskStorage);
-
-		const nodeDefDirs = this.adapterService.getNodeDefinitionDirs();
-		if (nodeDefDirs.length > 0) {
-			setSchemaBaseDirs(nodeDefDirs);
-		}
-
-		const skillScope: InstanceAiSkillScope = {
-			profile: selectedPrompt.profile,
-			flags: { configEvalsEnabled, instanceContextEnabled },
-			// The agent-building skills need the build-agent tool, which needs a builder delegate.
-			agentBuildingEnabled: context.builderDelegate !== undefined,
-		};
-		const skills = await this.skillsService.loadSkills(skillScope);
-		const promptMetadata = describePromptProfile(selectedPrompt, skills.source);
-		this.runState.setPromptConfiguration(threadId, promptMetadata);
-		let runtimeWorkspace: Workspace | undefined;
-		let workspaceRoot: string | undefined;
-
-		const sandboxStatus = this.settingsService.getSandboxStatus();
-		if (sandboxStatus.workflowBuilderAvailable) {
-			const sandboxConfig = await this.instanceAiErrorReporter.withBoundary(
-				'instance-ai-sandbox-setup',
-				{ threadId, runId, userId: user.id, messageGroupId },
-				async () => await this.sandboxService.resolveSandboxConfig(user),
-			);
-
-			if (sandboxConfig.enabled) {
-				workspaceRoot = getPromptWorkspaceRoot(sandboxConfig.provider);
-
-				const scopeWorkspaceForAgent = async (
-					workspace: Workspace | undefined,
-				): Promise<Workspace | undefined> => {
-					if (!workspace) return undefined;
-					const root = await getWorkspaceRoot(workspace);
-					return createScopedWorkspace(workspace, root);
-				};
-
-				runtimeWorkspace = createLazyRuntimeWorkspace({
-					// Empty + stable across resumes: sandbox/filesystem guidance lives in
-					// the system prompt's `## Sandbox workspace` section. Passing '' here
-					// (instead of omitting) keeps the lazy workspace from falling back to
-					// resolution-dependent live `getInstructions()` text, which would
-					// shift the cached prompt prefix across rebuilds/resumes.
-					sandboxInstructions: '',
-					filesystemInstructions: '',
-					ensureWorkspace: async () =>
-						await scopeWorkspaceForAgent(
-							(await this.sandboxService.getOrCreateWorkspace(threadId, user, context))?.workspace,
-						),
-				});
-			}
-		}
-
-		context.workspace = runtimeWorkspace;
-		context.workspaceRoot = workspaceRoot;
-		context.threadId = threadId;
-		context.threadMemory = memory;
-		// Tool-emitted telemetry is an open-ended property bag (search queries,
-		// remediation reasons, node error strings) — scrub at the boundary so a
-		// new call site can't leak by omission.
-		context.trackTelemetry = (eventName, properties) => {
-			this.telemetry.track(eventName, redactTelemetryProperties(properties));
-		};
-		const orchestrationContext: OrchestrationContext = {
-			threadId,
-			runId,
-			messageGroupId,
-			userId: user.id,
-			projectId: boundProjectId,
-			promptConfiguration: promptMetadata,
-			disabledToolNames: new Set(skills.disabledTools),
-			setupPanelEnabled: isSetupPanelEnabled(context),
-			orchestratorAgentId: orchestratorAgentId(runId),
-			modelId,
-			modelStreamStallOptions: modelStreamStallOptions(this.aiConfig),
-			eventBus: this.eventBus,
-			logger: this.logger,
-			trackTelemetry: (eventName, properties) => {
-				this.telemetry.track(eventName, redactTelemetryProperties(properties));
 			},
-			// Aggregate on the instance-AI thread (not the `ia-builder:` session
-			// thread) so the credit service's per-thread display total and FE push
-			// attribute builder tokens to the conversation the user sees. The tool
-			// awaits this before returning/cascading a terminal segment outcome, so
-			// a billing failure must never propagate — best-effort by contract.
-			claimSubAgentUsage: async (dedupeId, usage, status) => {
+			browserCredentialSetup: this.createBrowserCredentialSetupTracker(runId, user.id),
+			// The frontend shows the tab of a changed artifact only while a browser shows the
+			// run. Storing it here also covers a closed browser tab and background tasks.
+			onArtifactChanged: async (artifact) => {
 				try {
-					await this.creditService.claimRunUsage(user, threadId, dedupeId, usage, status);
+					await this.threadTabsService.showArtifactTab(threadId, user.id, artifact);
 				} catch (error) {
-					// claimRunUsage() handles ordinary claim failures (network, retries)
-					// internally and only throws for exceptional contract violations
-					// (e.g. a negative quota) — those must still reach centralized
-					// Instance AI error reporting even though billing stays best-effort.
-					this.instanceAiErrorReporter.report(error, {
-						component: 'instance-ai-agent-builder-usage',
+					this.logger.warn('Failed to show an Instance AI artifact tab', {
 						threadId,
-						runId,
-						userId: user.id,
-						...(boundProjectId ? { projectId: boundProjectId } : {}),
-						...(messageGroupId ? { messageGroupId } : {}),
-					});
-					this.logger.warn('Failed to claim agent-builder usage', {
-						threadId,
-						runId,
-						dedupeId,
 						error: getErrorMessage(error),
 					});
 				}
 			},
-			abortSignal,
-			taskStorage,
-			timeZone: this.defaultTimeZone,
-			localMcpServer: context.localMcpServer,
-			skills: skills.source,
-			oauth2CallbackUrl: this.oauth2CallbackUrl,
-			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
+			recordWorkflowCodeSnapshot: this.isRunDebugEnabled()
+				? (snapshot) => {
+						this.runDebugBuffer.ensure(runId, threadId);
+						this.runDebugBuffer.recordWorkflowCode(runId, snapshot);
+					}
+				: undefined,
+			syncWorkflowTasks: async () => await this.taskProjector.syncFromWorkflowLoop(threadId, runId),
+			sandbox: {
+				resolveConfig: async () => await this.sandboxService.resolveSandboxConfig(user),
+				getOrCreateWorkspace: async (context) =>
+					(await this.sandboxService.getOrCreateWorkspace(threadId, user, context))?.workspace,
+			},
 			touchRun: () => this.runState.touchActiveRun(threadId),
+			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
 			touchBackgroundTask: (taskId) => this.backgroundTasks.touchTask(threadId, taskId),
-			plannedTaskService,
 			schedulePlannedTasks: async () => await this.schedulePlannedTasks(user, threadId),
-			iterationLog,
 			sendCorrectionToTask: (taskId, correction) =>
 				this.sendCorrectionToTask(threadId, taskId, correction),
-			workflowTaskService: workflowTasks,
-			workspace: runtimeWorkspace,
-			workspaceRoot,
-			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
-			domainContext: context,
-		};
-
-		return {
-			context,
-			memory,
-			taskStorage,
-			iterationLog,
-			workflowTasks,
-			plannedTaskService,
-			modelId,
-			memoryModelId,
-			orchestrationContext,
-			conversationHistory,
-			aiPreferencesEnabled,
-			// Reuse the gate results so a rollout change cannot split this turn.
-			instanceContextEnabled,
-			nodeUsageEnabled,
-			skillScope,
 		};
 	}
 
@@ -4221,10 +3737,12 @@ export class InstanceAiService {
 				orchestrationContext.checkpointTaskId = checkpoint.checkpointTaskId;
 				// Plan approval authorizes verification; grant runWorkflow on the adapter context
 				// because createInstanceAgent builds domain tools from `context`, not `orchestrationContext.domainContext`.
-				context.permissions = {
-					...context.permissions,
-					...(PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint ?? {}),
-				} as typeof context.permissions;
+				if (context.permissions) {
+					context.permissions = applyPlannedTaskPermissionOverrides(
+						context.permissions,
+						'checkpoint',
+					);
+				}
 				// Scope the runWorkflow override to the workflows this checkpoint is verifying:
 				// the orchestrator can call `workflow_builder_executions(action="run")` on a depended-on workflow
 				// without HITL, but any other workflow id still requires user approval.
@@ -4235,10 +3753,12 @@ export class InstanceAiService {
 			}
 
 			if (plannedBuild?.isPlannedBuildFollowUp) {
-				context.permissions = {
-					...context.permissions,
-					...(PLANNED_TASK_PERMISSION_OVERRIDES['build-workflow'] ?? {}),
-				} as typeof context.permissions;
+				if (context.permissions) {
+					context.permissions = applyPlannedTaskPermissionOverrides(
+						context.permissions,
+						'build-workflow',
+					);
+				}
 				context.workflowBuildContext = {
 					threadId,
 					runId,
@@ -4654,17 +4174,20 @@ export class InstanceAiService {
 			// After the stream settles, so the do-not-harm pair (latency, input tokens) rides the
 			// same event. Covers suspended and terminal outcomes alike, once per turn: a resume is
 			// a follow-up segment that skips the preferences path.
-			if (aiPreferencesTurn) {
-				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCES_APPLIED_TO_TURN, {
-					user_id: user.id,
-					count: aiPreferencesTurn.payload.preferences.length,
-					scope_types: [...new Set(aiPreferencesTurn.payload.preferences.map((p) => p.scope))],
-					rendered_length: aiPreferencesTurn.payload.renderedLength,
-					surface: 'aia',
-					injected_this_turn: aiPreferencesTurn.payload.injectedThisTurn,
-					turn_latency_ms: Date.now() - turnStartedAt.getTime(),
-					...(result.usage ? { turn_token_count: result.usage.promptTokens } : {}),
+			const preferencesApplied =
+				aiPreferencesTurn &&
+				buildPreferencesAppliedTelemetry(aiPreferencesTurn.payload, {
+					userId: user.id,
+					threadId,
+					runId,
+					latencyMs: Date.now() - turnStartedAt.getTime(),
+					promptTokens: result.usage?.promptTokens,
 				});
+			if (preferencesApplied) {
+				this.telemetry.track(
+					TELEMETRY_EVENT.CONTEXT.PREFERENCES_APPLIED_TO_TURN,
+					preferencesApplied,
+				);
 			}
 
 			if (result.status === 'suspended') {

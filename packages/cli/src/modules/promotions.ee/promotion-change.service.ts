@@ -23,7 +23,6 @@ import {
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	CredentialsRepository,
-	TagRepository,
 	VariablesRepository,
 	WorkflowRepository,
 	type User,
@@ -40,6 +39,8 @@ import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { diffDataTableSchema } from '@/modules/n8n-packages/entities/data-table/data-table-compat';
 import { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
+import { TagImporter } from '@/modules/n8n-packages/entities/tag/tag-importer';
+import { serializeTag } from '@/modules/n8n-packages/entities/tag/tag.exporter';
 import { formatEntityFile } from '@/modules/n8n-packages/io/entity-file-format';
 import { gitBlobSha, HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
 import {
@@ -60,10 +61,7 @@ import {
 	type PackageManifest,
 } from '@/modules/n8n-packages/spec/manifest.schema';
 import { getWorkflowConsumerIds } from '@/modules/n8n-packages/spec/requirement-consumers';
-import type {
-	PackageRequirementConsumer,
-	PackageRequirements,
-} from '@/modules/n8n-packages/spec/requirements.schema';
+import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';
@@ -71,11 +69,15 @@ import { diffPackageFiles } from './diff-package-files';
 import {
 	buildPreview,
 	indexSide,
+	scopeManifestToProject,
 	variableResourceKey,
 	type ApplyDestination,
 	type PreviewSide,
 } from './promotion-preview';
+import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
+import { PromotionReviewGateService } from './promotion-review-gate.service';
 import { PromotionsService } from './promotions.service';
+import { checkoutBranchName } from './promotions-git.utils';
 import type { BranchPackage } from './promotions.types';
 
 const DEPENDENCY_COLLECTIONS = {
@@ -118,7 +120,9 @@ type ProjectComparison = {
 
 type LocalDataTable = { content: string; blobSha: string };
 
-type DetailSide = { content: string | null; blobSha: string | null };
+type LocalTag = LocalDataTable & { id: string; name: string };
+
+export type DetailSide = { content: string | null; blobSha: string | null };
 
 type PackageDiff = {
 	changedIds: Set<string>;
@@ -138,10 +142,12 @@ export class PromotionChangeService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly variablesRepository: VariablesRepository,
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly tagRepository: TagRepository,
+		private readonly tagImporter: TagImporter,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableSerializer: DataTableSerializer,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly environmentResolver: PromotionEnvironmentResolver,
+		private readonly reviewGate: PromotionReviewGateService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
@@ -172,6 +178,30 @@ export class PromotionChangeService {
 		direction: PromotionDirection,
 		query: PromotionChangesQueryDto,
 	): Promise<PromotionPreview> {
+		if (direction === 'promote') {
+			// The gate runs before the git and export work, so a blocked project skips both.
+			this.assertCanPreview(user, direction);
+			const input = await this.environmentResolver.resolveForProject(projectId, direction);
+			// Only a branched promote opens a review. A direct push has nothing to wait for, even
+			// when an older review of the environment is still open.
+			const blocker =
+				input.config.direction === 'promote' && input.config.settings.createBranchOnPromotion
+					? await this.reviewGate.findPromoteBlocker(projectId, input.environmentId)
+					: null;
+			if (blocker) {
+				return {
+					commitSha: null,
+					source: {
+						environmentId: input.environmentId,
+						branchName: checkoutBranchName(input.config),
+					},
+					changes: [],
+					resources: [],
+					dependencies: [],
+					blocker,
+				};
+			}
+		}
 		const comparison = await this.compareProject(user, projectId, direction);
 		const { branch, instance, archiveState } = comparison;
 		const branchSide: PreviewSide = {
@@ -192,12 +222,11 @@ export class PromotionChangeService {
 					)
 				: null;
 		const { resources, dependencies } = buildPreview({
-			direction,
-			projectId,
+			operation: { direction, destination },
+			projectIds: [projectId],
 			base: direction === 'promote' ? branchSide : instanceSide,
 			desired: direction === 'promote' ? instanceSide : branchSide,
 			isArchived: (path) => archiveState.get(path) ?? false,
-			destination,
 		});
 		return { ...toChanges(comparison, query), resources, dependencies };
 	}
@@ -256,6 +285,16 @@ export class PromotionChangeService {
 						}),
 					)
 				: new Map<string, LocalDataTable>();
+		// Apply also reuses a tag that exists on this instance, by ID or by name.
+		const localTags =
+			direction === 'apply'
+				? await this.loadLocalTags(
+						keys.flatMap((key) => {
+							const resource = branchIndex.get(key);
+							return resource?.type === 'tag' && !instanceIndex.has(key) ? [resource] : [];
+						}),
+					)
+				: new Map<string, LocalTag>();
 		const canSeeVariableValues = hasGlobalScope(user, 'variable:list');
 
 		const details = keys.flatMap((key): PromotionResourceDetail[] => {
@@ -264,7 +303,8 @@ export class PromotionChangeService {
 			const resource = fromInstance ?? fromBranch;
 			if (!resource) return [];
 			const branchContent = fromBranch && branchContents.get(fromBranch.path);
-			const localTable = fromBranch && localTables.get(fromBranch.id);
+			const localCopy =
+				fromBranch && (fromBranch.type === 'tag' ? localTags : localTables).get(fromBranch.id);
 			const branchSide: DetailSide =
 				branchContent === undefined
 					? { content: null, blobSha: null }
@@ -274,8 +314,8 @@ export class PromotionChangeService {
 						content: instance.contents.get(fromInstance.path) ?? null,
 						blobSha: fromInstance.blobSha,
 					}
-				: localTable
-					? { content: localTable.content, blobSha: localTable.blobSha }
+				: localCopy
+					? { content: localCopy.content, blobSha: localCopy.blobSha }
 					: { content: null, blobSha: null };
 			const [before, after] =
 				direction === 'promote' ? [branchSide, instanceSide] : [instanceSide, branchSide];
@@ -513,12 +553,11 @@ export class PromotionChangeService {
 	): Promise<ApplyDestination> {
 		const requirements = branchManifest?.requirements;
 		const exportedTableIds = new Set(instanceManifest.dataTables?.map(({ id }) => id));
-		const tagIds = requirements?.tags?.map(({ id }) => id) ?? [];
 		const [credentials, tags, dataTables] = await Promise.all([
 			this.credentialsRepository.findNamesByIds(
 				requirements?.credentials?.map(({ id }) => id) ?? [],
 			),
-			tagIds.length > 0 ? this.tagRepository.findMany(tagIds) : [],
+			this.loadLocalTags(requirements?.tags ?? []),
 			this.loadLocalDataTables(
 				(requirements?.dataTables ?? [])
 					.map(({ id }) => id)
@@ -527,12 +566,30 @@ export class PromotionChangeService {
 		]);
 		return {
 			credentialNames: new Map(credentials.map(({ id, name }) => [id, name])),
-			tagNames: new Map(tags.map(({ id, name }) => [id, name])),
+			tags,
 			variableKeys: new Set(
 				(variables ?? []).map(({ key, projectId }) => variableResourceKey(key, projectId)),
 			),
 			dataTables,
 		};
+	}
+
+	/**
+	 * Finds the local tag that Apply uses for each branch tag: the tag with the same ID, else the tag
+	 * with the same name. Serializes each tag as the package stores it, so it compares with branch files.
+	 */
+	private async loadLocalTags(
+		branchTags: ReadonlyArray<{ id: string; name: string }>,
+	): Promise<Map<string, LocalTag>> {
+		const local = await this.tagImporter.findLocalTags(branchTags);
+		return new Map(
+			branchTags.flatMap(({ id, name }): Array<[string, LocalTag]> => {
+				const tag = local.byId.get(id) ?? local.byName.get(name.trim());
+				if (!tag) return [];
+				const content = formatEntityFile(serializeTag(tag));
+				return [[id, { id: tag.id, name: tag.name, content, blobSha: gitBlobSha(content) }]];
+			}),
+		);
 	}
 
 	/** Serializes local data tables as the package stores them, so they compare with branch files. */
@@ -556,10 +613,16 @@ function parseBranchJson<T = unknown>(raw: string): T | undefined {
 	}
 }
 
+/** Parses a package manifest read from Git. `null` when the file is missing or invalid. */
+export function parsePackageManifest(raw: string | undefined): PackageManifest | null {
+	const manifest = packageManifestSchema.safeParse(parseBranchJson(raw ?? ''));
+	return manifest.success ? manifest.data : null;
+}
+
 /** Parses the branch manifest and keeps this project's part. `null` when the file is missing or invalid. */
 function parseBranchManifest(raw: string | undefined, projectId: string): PackageManifest | null {
-	const manifest = packageManifestSchema.safeParse(parseBranchJson(raw ?? ''));
-	return manifest.success ? scopeManifestToProject(manifest.data, projectId) : null;
+	const manifest = parsePackageManifest(raw);
+	return manifest && scopeManifestToProject(manifest, projectId);
 }
 
 function blobsByPath(files: readonly PackageFile[]): Map<string, string> {
@@ -597,7 +660,7 @@ function parseContent<Schema extends z.ZodTypeAny>(
 	return parsed.success ? parsed.data : null;
 }
 
-function toDetail({
+export function toDetail({
 	key,
 	type,
 	before,
@@ -655,53 +718,6 @@ async function readBranchArchiveState(
 			parseBranchJson<SerializedWorkflow>(raw)?.isArchived ?? false,
 		]),
 	);
-}
-
-/**
- * Keeps only this project's workflows, the requirement rows they use, and the
- * variables they can see, so a dependency change on the branch cannot list
- * another project's workflows or resolve a name to another project's variable.
- */
-export function scopeManifestToProject(
-	manifest: PackageManifest,
-	projectId: string,
-): PackageManifest {
-	const projectTarget = manifest.projects?.find(({ id }) => id === projectId)?.target;
-	const inProject = ({ target }: ManifestEntry) =>
-		projectTarget !== undefined && target.startsWith(`${projectTarget}/`);
-	const workflows = (manifest.workflows ?? []).filter(inProject);
-	const workflowIds = new Set(workflows.map(({ id }) => id));
-	// Variables resolve by name, and the project's own variable shadows the global one.
-	const variables = new Map<string, ManifestEntry>();
-	for (const entry of manifest.variables ?? []) {
-		const isGlobal = !entry.target.startsWith(`${PACKAGE_ENTITY_LAYOUT.projects.directory}/`);
-		if (inProject(entry) || (isGlobal && !variables.has(entry.name))) {
-			variables.set(entry.name, entry);
-		}
-	}
-	const scopeRows = <T extends { usedBy: PackageRequirementConsumer[] }>(rows: T[] | undefined) => {
-		const kept = rows
-			?.map((row) => ({
-				...row,
-				usedBy: row.usedBy.filter(({ kind, id }) => kind === 'workflow' && workflowIds.has(id)),
-			}))
-			.filter((row) => row.usedBy.length > 0);
-		return kept?.length ? kept : undefined;
-	};
-	const { requirements } = manifest;
-	return {
-		...manifest,
-		workflows,
-		variables: [...variables.values()],
-		requirements: requirements && {
-			credentials: scopeRows(requirements.credentials),
-			dataTables: scopeRows(requirements.dataTables),
-			workflows: scopeRows(requirements.workflows),
-			variables: scopeRows(requirements.variables),
-			tags: scopeRows(requirements.tags),
-			nodeTypes: scopeRows(requirements.nodeTypes),
-		},
-	};
 }
 
 function applyQuery(

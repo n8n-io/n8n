@@ -459,6 +459,13 @@ describe('PromotionsService', () => {
 					webUrl: 'https://gitlab/mr/3',
 				});
 				expect(result.warnings).toBeUndefined();
+				expect(runRepository.insertRun).toHaveBeenCalledWith(
+					expect.objectContaining({
+						details: expect.objectContaining({
+							contents: { projectIds: ['project-a', 'project-b'] },
+						}),
+					}),
+				);
 			});
 
 			it('does not open a review for a direct push to the base branch', async () => {
@@ -1334,7 +1341,7 @@ describe('PromotionsService', () => {
 				],
 				removedFolders: [{}, {}],
 				bindings: { workflows: {}, credentials: {} },
-				credentials: { matched: ['c1'], stubbed: ['c2', 'c3'] },
+				credentials: { matched: ['c1'], stubbed: ['c2', 'c3'], updated: ['c4'] },
 				dataTables: { matched: 1, created: 2, updated: 3 },
 				variables: { matched: ['v1'], created: ['v2'], updated: ['v3'], stubbed: [], missing: [] },
 				tags: { matched: [], created: ['t1'], renamed: ['t2'], reconciled: [], skipped: [] },
@@ -1374,7 +1381,7 @@ describe('PromotionsService', () => {
 					missingNodeTypeMode: 'fail',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
-					credentialConflictPolicy: 'keep-existing',
+					credentialConflictPolicy: 'overwrite',
 					folderConflictPolicy: 'overwrite',
 					overwriteDeletionPolicy: 'hard-delete',
 					dataTableMatchingMode: 'by-id',
@@ -1408,7 +1415,7 @@ describe('PromotionsService', () => {
 						deleted: 2,
 						publishing: { published: 1, unpublished: 0, unchanged: 1, blocked: 1, failed: 0 },
 					},
-					credentials: { matched: 1, stubbed: 2 },
+					credentials: { matched: 1, stubbed: 2, updated: 1 },
 					dataTables: { matched: 1, created: 2, updated: 3 },
 					variables: { matched: 1, created: 1, updated: 1, stubbed: 0, missing: 0 },
 					tags: { matched: 0, created: 1, renamed: 1, reconciled: 0, skipped: 0 },
@@ -1667,6 +1674,8 @@ describe('PromotionsService', () => {
 						user: actor,
 						overwriteDeletionPolicy: 'hard-delete',
 						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
+						tagConflictPolicy: 'rename',
+						credentialConflictPolicy: 'overwrite',
 					},
 					{ sourceDir: packageFolder },
 					{
@@ -1787,6 +1796,8 @@ describe('PromotionsService', () => {
 								user: actor,
 								overwriteDeletionPolicy: 'hard-delete',
 								dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
+								tagConflictPolicy: 'rename',
+								credentialConflictPolicy: 'overwrite',
 							},
 							{ sourceDir: packageFolder },
 							{

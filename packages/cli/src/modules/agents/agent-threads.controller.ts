@@ -91,6 +91,10 @@ export class AgentThreadsController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
 		const { projectId, agentId, threadId } = req.params;
+		// A system-agent thread is deleted through its own route, which also deletes its workspace.
+		if (this.systemAgents.has(agentId)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
 		const deleted = await this.agentExecutionService.deleteThread(
 			projectId,
 			agentId,

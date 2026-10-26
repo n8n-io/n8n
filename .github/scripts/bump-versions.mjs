@@ -153,6 +153,15 @@ export function propagateDirtyTransitively(packageMap, depsByPackage) {
 }
 
 /**
+ * @param {Record<string, { isDirty: boolean }>} packageMap
+ */
+export function markAllPackagesDirty(packageMap) {
+	for (const pkg of Object.values(packageMap)) {
+		pkg.isDirty = true;
+	}
+}
+
+/**
  * @param {string} version
  * @param {import('semver').ReleaseType | 'experimental'} releaseType
  * @param {string} [sha] required when releaseType is 'experimental'
@@ -164,12 +173,7 @@ export function computeNewVersion(version, releaseType, sha) {
 			return generateExperimentalVersion(version, /** @type {string} */ (sha));
 		case 'premajor':
 			return /** @type {string} */ (
-				semver.inc(
-					version,
-					version.includes('-rc.') ? 'prerelease' : 'premajor',
-					undefined,
-					'rc',
-				)
+				semver.inc(version, version.includes('-rc.') ? 'prerelease' : 'premajor', undefined, 'rc')
 			);
 		default:
 			return /** @type {string} */ (semver.inc(version, releaseType));
@@ -196,7 +200,7 @@ async function bumpVersions() {
 	/** @type {Record<string, { path: string, isDirty: boolean, version: string, nextVersion?: string }>} */
 	const packageMap = {};
 	for (let { name, path, version, private: isPrivate } of packages) {
-		if (isPrivate && path !== rootDir) {
+		if (isPrivate && path !== rootDir && name !== 'n8n') {
 			continue;
 		}
 		if (path === rootDir) {
@@ -208,6 +212,10 @@ async function bumpVersions() {
 			.catch(() => true);
 
 		packageMap[name] = { path, isDirty, version };
+	}
+
+	if (releaseType === 'major') {
+		markAllPackagesDirty(packageMap);
 	}
 
 	assert.ok(
@@ -263,7 +271,7 @@ async function bumpVersions() {
 	propagateDirtyTransitively(packageMap, depsByPackage);
 
 	// Always mark the `cli` package as dirty, so it's version always gets incremented
-	packageMap["n8n"].isDirty = true;
+	packageMap['n8n'].isDirty = true;
 	// Keep the monorepo version up to date with the released version
 	packageMap['monorepo-root'].version = packageMap['n8n'].version;
 

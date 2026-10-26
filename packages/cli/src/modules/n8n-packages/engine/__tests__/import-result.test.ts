@@ -5,7 +5,9 @@ import type {
 	PackageRequirementConsumer,
 } from '../../spec/requirements.schema';
 import {
+	credentialsUpdatedAcrossScopes,
 	identifyRequirements,
+	reconcileCredentialSummary,
 	reconcileVariableSummary,
 	scopeCredentialBindingsToRequirements,
 } from '../import-result';
@@ -99,5 +101,87 @@ describe('reconcileVariableSummary', () => {
 				updated: [],
 			}),
 		).toEqual({ matched: ['API_URL'], missing: [], created: [], stubbed: [], updated: [] });
+	});
+});
+
+describe('reconcileCredentialSummary', () => {
+	it('lists an updated source id under updated only', () => {
+		expect(
+			reconcileCredentialSummary({
+				matched: ['cred-1', 'cred-2'],
+				stubbed: [],
+				seeded: [],
+				incomplete: [],
+				updated: ['cred-1'],
+			}),
+		).toEqual({
+			matched: ['cred-2'],
+			stubbed: [],
+			seeded: [],
+			incomplete: [],
+			updated: ['cred-1'],
+		});
+	});
+
+	it('unions the outcomes of every scope', () => {
+		// One credential, two scopes: the first scope wrote it, the second found it written.
+		expect(
+			reconcileCredentialSummary({
+				matched: ['cred-1', 'cred-1', 'cred-2', 'cred-2'],
+				stubbed: ['cred-3', 'cred-3'],
+				seeded: ['cred-4', 'cred-4'],
+				incomplete: ['cred-5', 'cred-5'],
+				updated: ['cred-1'],
+			}),
+		).toEqual({
+			matched: ['cred-2'],
+			stubbed: ['cred-3'],
+			seeded: ['cred-4'],
+			incomplete: ['cred-5'],
+			updated: ['cred-1'],
+		});
+	});
+});
+
+describe('credentialsUpdatedAcrossScopes', () => {
+	const scope = (
+		bindings: Array<[string, string]>,
+		outcome: { matched?: string[]; updated?: string[] },
+	) => ({
+		bindings: new Map(bindings),
+		matched: outcome.matched ?? [],
+		updated: outcome.updated ?? [],
+	});
+
+	it('lists a source id that a later scope matched to a credential an earlier scope wrote', () => {
+		expect(
+			credentialsUpdatedAcrossScopes([
+				scope([['source-a', 'target-1']], { updated: ['source-a'] }),
+				scope([['source-b', 'target-1']], { matched: ['source-b'] }),
+			]),
+		).toEqual(['source-a', 'source-b']);
+	});
+
+	it('lists a source id that an earlier scope matched to a credential a later scope wrote', () => {
+		expect(
+			credentialsUpdatedAcrossScopes([
+				scope([['source-a', 'target-1']], { matched: ['source-a'] }),
+				scope([['source-b', 'target-1']], { updated: ['source-b'] }),
+			]),
+		).toEqual(['source-a', 'source-b']);
+	});
+
+	it('leaves out a matched source id whose credential no scope wrote', () => {
+		expect(
+			credentialsUpdatedAcrossScopes([
+				scope(
+					[
+						['source-a', 'target-1'],
+						['source-c', 'target-2'],
+					],
+					{ matched: ['source-c'], updated: ['source-a'] },
+				),
+			]),
+		).toEqual(['source-a']);
 	});
 });

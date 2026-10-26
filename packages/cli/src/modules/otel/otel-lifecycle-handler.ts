@@ -1,3 +1,4 @@
+import { isGenAiAttributeKey } from '@n8n/ai-utilities/gen-ai';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { WorkflowRepository, type Project } from '@n8n/db';
@@ -16,6 +17,7 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 import { toExecutionIdentity } from './execution-identity';
 import { ExecutionLevelTracer } from './execution-level-tracer';
+import { buildNodeGenAiAttributes } from './gen-ai-attributes';
 import type { CustomAttributes, ProjectContext } from './execution-level-tracer.types';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelService } from './otel.service';
@@ -234,6 +236,12 @@ export class OtelLifecycleHandler {
 			outputItemCount: countOutputItems(ctx.taskData.data),
 			error: ctx.taskData.error ?? undefined,
 			customAttributes: this.buildNodeCustomAttributes(ctx),
+			genAiAttributes: buildNodeGenAiAttributes(
+				node,
+				ctx.taskData.metadata?.tracing,
+				ctx.executionData.resultData.runData,
+				ctx.workflow.connections,
+			),
 		});
 	}
 
@@ -311,7 +319,9 @@ export class OtelLifecycleHandler {
 		if (!this.areCustomSpanAttributesLicensed()) return undefined;
 
 		return Object.fromEntries(
-			Object.entries(ctx.taskData.metadata.tracing).map(([key, value]) => [key, String(value)]),
+			Object.entries(ctx.taskData.metadata.tracing)
+				.filter(([key]) => !isGenAiAttributeKey(key))
+				.map(([key, value]) => [key, String(value)]),
 		);
 	}
 }
