@@ -6,12 +6,6 @@ import {
 	type WorkflowSourceFileBinding,
 } from './workflow-file-bindings';
 import type { InstanceAiContext } from '../../types';
-import type { WorkflowBuildOutcome } from '../../workflow-loop/workflow-loop-state';
-
-export function isApprovedBuildContext(context: InstanceAiContext): boolean {
-	const buildContext = context.workflowBuildContext;
-	return Boolean(buildContext?.plannedTaskService ?? buildContext?.allowPostPlanWorkflowCreate);
-}
 
 /**
  * True when update HITL can be skipped for this workflow in this session:
@@ -98,22 +92,12 @@ export function resolveBuildIdentifiers(input: {
 	isSupportingWorkflow: boolean;
 }): {
 	isAuxiliarySupportingWorkflow: boolean;
-	plannedTaskId?: string;
-	owner: WorkflowBuildOutcome['owner'];
 	resolvedWorkItemId: string;
 	resolvedTaskId: string;
 } {
 	const { context, filePath, inputWorkItemId, isSupportingWorkflow } = input;
 	const buildContext = context.workflowBuildContext;
-	const isAuxiliarySupportingWorkflow =
-		isSupportingWorkflow && buildContext?.isSupportingWorkflowTask !== true;
-	const plannedTaskId =
-		buildContext?.plannedTaskService && !isAuxiliarySupportingWorkflow
-			? buildContext.taskId
-			: undefined;
-	const owner = plannedTaskId
-		? { type: 'planned' as const, taskId: plannedTaskId }
-		: { type: 'direct' as const };
+	const isAuxiliarySupportingWorkflow = isSupportingWorkflow;
 	// A blank id counts as omitted: OpenAI strict tool calls send "" for optional fields.
 	const resolvedWorkItemId =
 		(inputWorkItemId?.trim() ? inputWorkItemId : undefined) ??
@@ -125,8 +109,6 @@ export function resolveBuildIdentifiers(input: {
 
 	return {
 		isAuxiliarySupportingWorkflow,
-		plannedTaskId,
-		owner,
 		resolvedWorkItemId,
 		resolvedTaskId,
 	};

@@ -45,6 +45,15 @@ remaining width in proportion to each panel's requested extra width above
 
 ## Preview history
 
+Show token usage after a model turn reports it. Hide the cost when pricing is
+unavailable. Keep known token counts visible. Show a positive cost below the
+display precision as `<$0.0001`. Replace live totals with saved session totals
+after the execution completes. Show server-measured duration with each model
+turn update and when execution ends. Hide duration until a positive server value
+is available. Keep the last confirmed duration between updates. Exclude time
+spent waiting for human approval. Keep progress visible in the session trace
+when the Preview panel is closed.
+
 Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.
 The shared button shows the history icon and the chat title. Click the title or
 the icon to open history. Show only “Chat history” when no chat title exists. Do
@@ -290,8 +299,9 @@ the Global tab at `Global`, and the other tabs at `This agent only`. Only a
 user who can create global skills sees `Global`. An existing skill that the
 user can edit shows the same field. Disable it, with a tooltip that gives the
 reason, when another Agent uses the skill. `Save skill` stays disabled until
-the user changes the skill or its target. Do not show the field when the
-skills hub is off. Then `Add skill` creates the skill on the Agent, without the picker.
+the user changes the skill or its target. Do not show the field for an inline
+Agent, which keeps its skills in the node. Then `Add skill` creates the skill on
+the Agent, without the picker.
 
 Show a read-only skill as a document, not as a disabled form. Show each label
 in muted text without the required mark, the description as text, and the

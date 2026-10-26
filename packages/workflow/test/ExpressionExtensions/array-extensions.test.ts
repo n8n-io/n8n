@@ -341,6 +341,17 @@ describe('Data Transformation Functions', () => {
 			expect(() => evaluate('={{ ["1", 2, 3, 4, 5, "bad"].max() }}')).toThrow();
 		});
 
+		test('.min() and .max() should give NaN for sparse arrays', () => {
+			expect(evaluate('={{ [1, , 3].min() }}')).toBeNaN();
+			expect(evaluate('={{ [1, , 3].max() }}')).toBeNaN();
+		});
+
+		test('.min() and .max() should work on arrays too large to spread', () => {
+			const list = 'Array.from({ length: 200000 }, (_, i) => i - 100000)';
+			expect(evaluate(`={{ ${list}.min() }}`)).toEqual(-100_000);
+			expect(evaluate(`={{ ${list}.max() }}`)).toEqual(99_999);
+		});
+
 		test('.union() should work on an array of objects', () => {
 			expect(
 				evaluate(

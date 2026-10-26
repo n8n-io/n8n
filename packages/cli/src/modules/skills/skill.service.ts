@@ -4,6 +4,7 @@ import {
 	ProjectScopeService,
 	type AssistantSkillContext,
 	type AssistantSkillContent,
+	type AssistantSkillFileContent,
 	type AssistantSkillSummary,
 } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
@@ -20,7 +21,14 @@ import { getSkillHash } from './skill-hash';
 import { SkillNameTakenError } from './skill-name-taken.error';
 import type { SkillFrontmatter } from './skill-version.entity';
 import type { Skill, SkillSource } from './skill.entity';
-import { SkillRepository, type ResolvedSkillRow, type SkillTarget } from './skill.repository';
+import {
+	SkillRepository,
+	type AssistantSkillAccess,
+	type ResolvedSkillRow,
+	type SkillTarget,
+} from './skill.repository';
+
+export type McpSkillContent = { id: string; projectId: string | null; skill: AgentSkill };
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
 export type SkillRef = { id: string; versionId?: string };
@@ -64,6 +72,10 @@ export function toAgentSkill(row: ResolvedSkillRow): AgentSkill {
 			? { references: row.files.map(({ path, content }) => ({ path, content })) }
 			: {}),
 	};
+}
+
+function toMcpSkillContent(row: ResolvedSkillRow): McpSkillContent {
+	return { id: row.skill.id, projectId: row.skill.projectId, skill: toAgentSkill(row) };
 }
 
 function assertHasInstructions(skill: AgentSkill): void {
@@ -136,19 +148,14 @@ export class SkillService {
 	async readForAssistant(
 		context: AssistantSkillContext,
 		skillId: string,
+		versionId?: string,
 	): Promise<AssistantSkillContent | null> {
 		const projectId = await this.authorizedAssistantProject(context);
-		const row = await this.skillRepository.findAssistantSkill(skillId, projectId);
+		const row = await this.skillRepository.findAssistantSkill(skillId, projectId, versionId);
 		if (!row) return null;
 		const { skill, version, files } = row;
-		if (
-			skill.agentId !== null ||
-			!skill.availableToAssistant ||
-			!(await this.canAccess(context.user, skill, 'read'))
-		)
-			return null;
+		if (!(await this.canReadForAssistant(context, skill, projectId))) return null;
 		const skillProjectId = skill.projectId;
-		if (skillProjectId !== null && skillProjectId !== projectId) return null;
 		return {
 			id: skill.id,
 			projectId: skillProjectId,
@@ -158,8 +165,66 @@ export class SkillService {
 			version: version.version,
 			instructions: version.instructions,
 			frontmatter: version.frontmatter,
-			files: files.map(({ path, content }) => ({ path, content })),
+			files: files.map(({ path }) => ({ path })),
 		};
+	}
+
+	async listForMcp(
+		user: User,
+		skip: number,
+		take: number,
+	): Promise<{ count: number; skills: McpSkillContent[] }> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
+		const page = await this.skillRepository.findVisiblePage(
+			{ projectIds: projectIds ?? 'all', agentIds: [] },
+			{ skip, take },
+		);
+		const rows = await this.skillRepository.findLatestSaved(page.skills.map((skill) => skill.id));
+		return {
+			count: page.count,
+			skills: page.skills.flatMap((skill) => {
+				const row = rows.get(skill.id);
+				return row ? [toMcpSkillContent(row)] : [];
+			}),
+		};
+	}
+
+	async readForMcp(user: User, skillId: string): Promise<McpSkillContent | null> {
+		const row = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
+		if (!row || row.skill.agentId !== null || !(await this.canAccess(user, row.skill, 'read'))) {
+			return null;
+		}
+		return toMcpSkillContent(row);
+	}
+
+	async readFileForAssistant(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId: string,
+		path: string,
+	): Promise<AssistantSkillFileContent | null> {
+		const projectId = await this.authorizedAssistantProject(context);
+		const row = await this.skillRepository.findAssistantSkillFile(
+			skillId,
+			projectId,
+			versionId,
+			path,
+		);
+		if (!row || !(await this.canReadForAssistant(context, row.skill, projectId))) return null;
+		return { skillId, versionId, path: row.file.path, content: row.file.content };
+	}
+
+	private async canReadForAssistant(
+		context: AssistantSkillContext,
+		skill: AssistantSkillAccess,
+		projectId: string | null,
+	): Promise<boolean> {
+		return (
+			skill.agentId === null &&
+			skill.availableToAssistant &&
+			(skill.projectId === null || skill.projectId === projectId) &&
+			(await this.canAccess(context.user, skill, 'read'))
+		);
 	}
 
 	private async authorizedAssistantProject({
@@ -413,18 +478,27 @@ export class SkillService {
 	// ---------------------------------------------------------------- publish
 
 	/**
-	 * Publish, step 1: the version each ref resolves to. Publish
+	 * Publish, step 1: the version id each ref resolves to, keyed by ref id. Publish
 	 * creates no version. Needs the caller's transaction for the publish lock.
 	 */
-	async snapshotForPublish(
-		refs: SkillRef[],
-		ctx: OperationContext,
-	): Promise<{ skills: Record<string, AgentSkill>; versionByRef: Map<string, string> }> {
+	async snapshotForPublish(refs: SkillRef[], ctx: OperationContext): Promise<Map<string, string>> {
 		const refIds = [...new Set(refs.map((ref) => ref.id))];
 		await this.skillRepository.lockForPublish(refIds, ctx);
-		const rows = await this.resolveRows(refs, ctx);
-		const versionByRef = new Map([...rows].map(([refId, row]) => [refId, row.version.id]));
-		return { skills: toRecord(rows), versionByRef };
+		// The same rule as `resolveRows`, without loading the content that publish does not use.
+		const latest = await this.skillRepository.findLatestVersionIds(refIds, ctx);
+		const pinnedSkillIds = await this.skillRepository.findSkillIdsOfVersions(
+			refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : [])),
+			ctx,
+		);
+		const versionByRef = new Map<string, string>();
+		for (const ref of refs) {
+			const versionId =
+				ref.versionId && pinnedSkillIds.get(ref.versionId) === ref.id
+					? ref.versionId
+					: latest.get(ref.id);
+			if (versionId) versionByRef.set(ref.id, versionId);
+		}
+		return versionByRef;
 	}
 
 	// ---------------------------------------------------------------- move

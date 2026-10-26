@@ -165,14 +165,16 @@ describe('generateSimulationFixtures', () => {
 			url: 'https://proxy.example.com/anthropic/v1',
 			apiKey: 'proxy-token',
 		};
+		const modelFetch = vi.fn();
 		await generateSimulationFixtures({
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 			fallbackModelConfig,
+			modelFetch,
 		});
 		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
 			'verification-simulation-fixtures',
-			expect.objectContaining({ fallbackModelConfig }),
+			expect.objectContaining({ fallbackModelConfig, modelFetch }),
 		);
 	});
 

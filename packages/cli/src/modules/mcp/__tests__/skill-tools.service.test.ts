@@ -79,9 +79,11 @@ describe('McpSkillToolsService', () => {
 			registered.push(tool);
 			tools.set(tool.name, tool.handler as unknown as Handler);
 		}, user);
-		expect(
-			registered.find((tool) => tool.name === 'update_skill')?.config.inputSchema,
-		).not.toHaveProperty('availableToAssistant');
+		for (const name of ['create_skill', 'update_skill']) {
+			expect(registered.find((tool) => tool.name === name)?.config.inputSchema).not.toHaveProperty(
+				'availableToAssistant',
+			);
+		}
 		skillsApi.get.mockResolvedValue(detail);
 		expect(
 			(await callTool('get_skill', { skillId: 'skill_a' })).structuredContent,
@@ -180,6 +182,23 @@ describe('McpSkillToolsService', () => {
 				parameters: { scope: 'project' },
 				results: { success: true },
 			});
+		});
+
+		it('creates the skill with the Assistant availability the client sent', async () => {
+			skillsApi.create.mockResolvedValue({ ...detail, availableToAssistant: true });
+
+			const result = await callTool('create_skill', {
+				scope: 'instance',
+				skill,
+				availableToAssistant: true,
+			});
+
+			expect(skillsApi.create).toHaveBeenCalledWith(
+				user,
+				{ scope: 'instance', skill, availableToAssistant: true },
+				'mcp',
+			);
+			expect(result.structuredContent).toMatchObject({ availableToAssistant: true });
 		});
 
 		it('tells the client to choose another name when the name is taken', async () => {

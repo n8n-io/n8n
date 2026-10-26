@@ -18,13 +18,12 @@ import { UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
 import { MAX_STEPS } from '../constants/max-steps';
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
-import { buildResumeData } from '../runtime/confirmation-payload';
+import { buildResumeData, type ConfirmationData } from '../runtime/confirmation-payload';
 import {
 	executeResumableStream,
 	normalizeStreamSource,
 	type TraceStatus,
 } from '../runtime/resumable-stream-executor';
-import type { ConfirmationData } from '../runtime/run-state-registry';
 import type { BuilderUsageItem } from '../stream/usage-accumulator';
 import { createToolRegistry, toolRegistryValues } from '../tool-registry';
 import { createToolsFromLocalMcpServer } from '../tools/create-tools-from-mcp-server';

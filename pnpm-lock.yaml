@@ -914,9 +914,6 @@ catalogs:
       specifier: 10.70.0
       version: 10.70.0
   storybook:
-    '@chromatic-com/storybook':
-      specifier: ^4.1.3
-      version: 4.1.3
     '@storybook/addon-a11y':
       specifier: ^10.5.10
       version: 10.5.10
@@ -6361,9 +6358,6 @@ importers:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
     devDependencies:
-      '@chromatic-com/storybook':
-        specifier: catalog:storybook
-        version: 4.1.3(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))
       '@iconify/json':
         specifier: 'catalog:'
         version: 2.2.488
@@ -6950,6 +6944,9 @@ importers:
 
   packages/modules/apps/backend:
     dependencies:
+      '@n8n/agents':
+        specifier: workspace:*
+        version: link:../../../@n8n/agents
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
@@ -6980,6 +6977,9 @@ importers:
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
       n8n-core:
         specifier: workspace:*
         version: link:../../../core
@@ -10207,12 +10207,6 @@ packages:
     resolution: {integrity: sha512-+PjjwUmz5I/FL7U7zEnf48DiElw6tyvdvLUdMC81YoUBHkbirLBI9prcOYgXoO0H6hodJRuXTACXqMemzJRNng==}
     engines: {node: '>=20'}
 
-  '@chromatic-com/storybook@4.1.3':
-    resolution: {integrity: sha512-hc0HO9GAV9pxqDE6fTVOV5KeLpTiCfV8Jrpk5ogKLiIgeq2C+NPjpt74YnrZTjiK8E19fYcMP+2WY9ZtX7zHmw==}
-    engines: {node: '>=20.0.0', yarn: '>=1.22.18'}
-    peerDependencies:
-      storybook: ^0.0.0-0 || ^9.0.0 || ^9.1.0-0 || ^9.2.0-0 || ^10.0.0-0 || ^10.1.0-0 || ^10.2.0-0 || ^10.3.0-0
-
   '@clack/core@0.5.0':
     resolution: {integrity: sha512-p3y0FIOwaYRUPRcMO7+dlmLh8PSRcrjuTndsiA0WAFbWES0mLZlrjVoBRZ9DzkPFJZG6KGkJmoEAY0ZcVWTkow==}
 
@@ -12094,9 +12088,6 @@ packages:
     peerDependencies:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
-
-  '@neoconfetti/react@1.0.0':
-    resolution: {integrity: sha512-klcSooChXXOzIm+SE5IISIAn3bYzYfPjbX7D7HoqZL84oAfgREeSg5vSIaSFH+DaGzzvImTyWe1OyrJ67vik4A==}
 
   '@neon-rs/load@0.0.4':
     resolution: {integrity: sha512-kTPhdZyTQxB+2wpiRcFWrDcejc4JI6tkPuS7UZCG4l6Zvc5kU/gGQ/ozvHTh1XR5tS+UlfAfGuPajjzQjCiHCw==}
@@ -17019,18 +17010,6 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
-  chromatic@13.3.4:
-    resolution: {integrity: sha512-TR5rvyH0ESXobBB3bV8jc87AEAFQC7/n+Eb4XWhJz6hW3YNxIQPVjcbgLv+a4oKHEl1dUBueWSoIQsOVGTd+RQ==}
-    hasBin: true
-    peerDependencies:
-      '@chromatic-com/cypress': ^0.*.* || ^1.0.0
-      '@chromatic-com/playwright': ^0.*.* || ^1.0.0
-    peerDependenciesMeta:
-      '@chromatic-com/cypress':
-        optional: true
-      '@chromatic-com/playwright':
-        optional: true
-
   chromium-bidi@14.0.0:
     resolution: {integrity: sha512-9gYlLtS6tStdRWzrtXaTMnqcM4dudNegMXJxkR0I/CXObHalYeYcAMPrL19eroNZHtJ8DQmu1E+ZNOYu/IXMXw==}
     peerDependencies:
@@ -18610,10 +18589,6 @@ packages:
 
   filelist@1.0.4:
     resolution: {integrity: sha512-w1cEuf3S+DrLCQL7ET6kz+gmlJdbq9J7yXCSjK/OZCPA+qEN1WyF4ZAf0YYJa4/shHJra2t/d/r8SV4Ji+x+8Q==}
-
-  filesize@10.1.0:
-    resolution: {integrity: sha512-GTLKYyBSDz3nPhlLVPjPWZCnhkd9TrrRArNcy8Z+J2cqScB7h2McAzR6NBX6nYOoWafql0roY8hrocxnZBv9CQ==}
-    engines: {node: '>= 10.4.0'}
 
   filing-cabinet@5.0.3:
     resolution: {integrity: sha512-PlPcMwVWg60NQkhvfoxZs4wEHjhlOO/y7OAm4sKM60o1Z9nttRY4mcdQxp/iZ+kg/Vv6Hw1OAaTbYVM9DA9pYg==}
@@ -27391,18 +27366,6 @@ snapshots:
       - workflow
       - zod
 
-  '@chromatic-com/storybook@4.1.3(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))':
-    dependencies:
-      '@neoconfetti/react': 1.0.0
-      chromatic: 13.3.4
-      filesize: 10.1.0
-      jsonfile: 6.2.1
-      storybook: 10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10)
-      strip-ansi: 7.1.0
-    transitivePeerDependencies:
-      - '@chromatic-com/cypress'
-      - '@chromatic-com/playwright'
-
   '@clack/core@0.5.0':
     dependencies:
       picocolors: 1.1.1
@@ -29463,8 +29426,6 @@ snapshots:
       '@emnapi/runtime': 1.9.2
       '@tybys/wasm-util': 0.10.3
     optional: true
-
-  '@neoconfetti/react@1.0.0': {}
 
   '@neon-rs/load@0.0.4':
     optional: true
@@ -34768,8 +34729,6 @@ snapshots:
       chromadb-js-bindings-linux-x64-gnu: 1.2.0
       chromadb-js-bindings-win32-x64-msvc: 1.2.0
 
-  chromatic@13.3.4: {}
-
   chromium-bidi@14.0.0(devtools-protocol@0.0.1595872):
     dependencies:
       devtools-protocol: 0.0.1595872
@@ -36762,8 +36721,6 @@ snapshots:
     dependencies:
       minimatch: 5.1.8
 
-  filesize@10.1.0: {}
-
   filing-cabinet@5.0.3:
     dependencies:
       app-module-path: 2.2.0
@@ -38151,6 +38108,7 @@ snapshots:
       universalify: 2.0.1
     optionalDependencies:
       graceful-fs: 4.2.11
+    optional: true
 
   jsonpath-plus@10.3.0:
     dependencies:
@@ -43569,7 +43527,8 @@ snapshots:
 
   universalify@0.2.0: {}
 
-  universalify@2.0.1: {}
+  universalify@2.0.1:
+    optional: true
 
   unpipe@1.0.0: {}
 

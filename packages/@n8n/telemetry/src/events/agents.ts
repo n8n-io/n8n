@@ -695,7 +695,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_REQUESTED_CREDENTIAL: {
 		name: 'Builder requested credential',
 		description:
-			'The Instance AI builder used the agent_builder_ask_credential (or agent_builder_ask_embedding_credential) tool and suspended to show a credential picker card. Does not fire when the request auto-resolves without showing a card.',
+			'The Agent builder requested credentials and suspended to show a credential picker card. Does not fire when the request auto-resolves without showing a card.',
 		properties: z.object({
 			...builderSessionIdentity,
 			credential_type: z.string(),
