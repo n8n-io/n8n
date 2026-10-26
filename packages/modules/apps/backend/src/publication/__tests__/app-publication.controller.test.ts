@@ -28,6 +28,7 @@ describe('App controller access', () => {
 			AppAuthController as never,
 		);
 		expect(metadata.surface).toBe('apps');
+		expect(metadata.routes.size).toBeGreaterThan(0);
 		for (const route of metadata.routes.values()) {
 			expect(route.skipAuth).toBe(true);
 			expect(route.ipRateLimit).toBe(true);

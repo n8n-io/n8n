@@ -20,6 +20,8 @@ function createService() {
 	const locks = mock<DbLockService>();
 	const workspaces = mock<AppWorkspaceService>();
 	const logger = mock<Logger>();
+	const hosts = mock<AppHostService>();
+	hosts.origin.mockReturnValue(null);
 	locks.withLockContext.mockImplementation(async (_key, fn) => await fn({}));
 	appVersions.hasRunningBuild.mockResolvedValue(false);
 	const service = new AppsService(
@@ -29,9 +31,18 @@ function createService() {
 		locks,
 		workspaces,
 		logger,
-		mock<AppHostService>({ origin: () => null }),
+		hosts,
 	);
-	return { service, appRepository, appVersions, projectScopeService, locks, workspaces, logger };
+	return {
+		service,
+		appRepository,
+		appVersions,
+		projectScopeService,
+		locks,
+		workspaces,
+		logger,
+		hosts,
+	};
 }
 
 describe('AppsService', () => {
@@ -99,7 +110,7 @@ describe('AppsService', () => {
 	});
 
 	it('updates an app and maps the returned row to the response', async () => {
-		const { service, appRepository } = createService();
+		const { service, appRepository, hosts } = createService();
 		const appId = '11111111-1111-4111-8111-111111111111';
 		const dto = UpdateAppDto.parse({
 			name: 'Updated app',
@@ -116,10 +127,12 @@ describe('AppsService', () => {
 			updatedAt: new Date('2026-10-14T00:00:00.000Z'),
 		});
 		appRepository.updateApp.mockResolvedValue(app);
+		hosts.origin.mockReturnValue('https://updated-app.apps.example.com');
 
 		const response = await service.updateApp('project-1', appId, dto);
 
 		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith('project-1', appId, dto);
+		expect(hosts.origin).toHaveBeenCalledExactlyOnceWith('updated-app');
 		expect(response).toEqual({
 			id: appId,
 			projectId: 'project-1',
@@ -129,7 +142,7 @@ describe('AppsService', () => {
 			draftVersionId: '22222222-2222-4222-8222-222222222222',
 			publishedVersionId: '33333333-3333-4333-8333-333333333333',
 			createdAt: '2026-10-13T00:00:00.000Z',
-			publishedUrl: null,
+			publishedUrl: 'https://updated-app.apps.example.com',
 			updatedAt: '2026-10-14T00:00:00.000Z',
 		});
 	});

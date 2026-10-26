@@ -30,7 +30,13 @@ function setup() {
 	roles.rolesWithScope.mockResolvedValue(['project:viewer']);
 	const projects = mock<ProjectRelationRepository>();
 	projects.getAccessibleProjectsByRoles.mockResolvedValue(['project']);
-	return { app, apps, projects, resource: new AppProtectedResource(apps, hosts, roles, projects) };
+	return {
+		app,
+		apps,
+		roles,
+		projects,
+		resource: new AppProtectedResource(apps, hosts, roles, projects),
+	};
 }
 
 describe('AppProtectedResource', () => {
@@ -46,17 +52,34 @@ describe('AppProtectedResource', () => {
 	});
 
 	it('checks current project grants and visibility', async () => {
-		const { resource, app, projects } = setup();
+		const { resource, app, roles, projects } = setup();
 		const user = mock<ResourcePrincipal>({
 			id: 'user',
 			role: { slug: 'global:member', scopes: [] },
 		});
 		const descriptor = resource.forApp(app);
 		expect(await descriptor.authorize(user)).toBe(true);
+		expect(roles.rolesWithScope).toHaveBeenCalledExactlyOnceWith('project', ['app:read']);
+		expect(projects.getAccessibleProjectsByRoles).toHaveBeenCalledExactlyOnceWith('user', [
+			'project:viewer',
+		]);
 		projects.getAccessibleProjectsByRoles.mockResolvedValue([]);
 		expect(await descriptor.authorize(user)).toBe(false);
 		app.visibility = 'instance';
 		expect(await descriptor.authorize(user)).toBe(true);
+	});
+
+	it('grants global app read access without project membership', async () => {
+		const { resource, app, roles, projects } = setup();
+		const user = mock<ResourcePrincipal>({
+			id: 'user',
+			role: { slug: 'global:member', scopes: [{ slug: 'app:read' }] },
+		});
+		projects.getAccessibleProjectsByRoles.mockResolvedValue([]);
+
+		expect(await resource.forApp(app).authorize(user)).toBe(true);
+		expect(roles.rolesWithScope).not.toHaveBeenCalled();
+		expect(projects.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
 	});
 
 	it('makes old resources unavailable after unpublish or rename', async () => {

@@ -59,4 +59,39 @@ describe('System trusted source configuration', () => {
 		);
 		expect(cache.deleteMany).toHaveBeenCalled();
 	});
+
+	it('does not rewrite an existing system source with app support', async () => {
+		const repository = mock<TrustedSourceRepository>();
+		const cipher = mock<Cipher>();
+		const cache = mock<CacheService>();
+		repository.findById.mockResolvedValue(
+			mock<TrustedSourceEntity>({
+				id: SYSTEM_TRUSTED_SOURCE_ID,
+				managedBy: 'system',
+				issuer: 'https://n8n.example.com',
+				config: 'stored-config',
+			}),
+		);
+		cipher.decryptV2.mockResolvedValue(JSON.stringify(SYSTEM_TRUSTED_SOURCE_CONFIG));
+		const store = new TrustedSourceDbStore(
+			mock<Logger>(),
+			repository,
+			cipher,
+			cache,
+			mock<TrustedSourceIdentityRepository>(),
+			mock<TransactionRunner>(),
+		);
+
+		await expect(
+			store.seedSystemSource({
+				id: SYSTEM_TRUSTED_SOURCE_ID,
+				name: 'n8n',
+				issuer: 'https://n8n.example.com',
+				config: SYSTEM_TRUSTED_SOURCE_CONFIG,
+			}),
+		).resolves.toBe('unchanged');
+		expect(repository.updateById).not.toHaveBeenCalled();
+		expect(cache.deleteMany).not.toHaveBeenCalled();
+		expect(cipher.encryptV2).not.toHaveBeenCalled();
+	});
 });

@@ -1,3 +1,5 @@
+import { ModuleRegistry } from '@n8n/backend-common';
+import { AppsHostingService } from '@n8n/backend-module-apps/hosting';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -6,13 +8,18 @@ import type * as http from 'node:http';
 import { mock } from 'vitest-mock-extended';
 
 import { AbstractServer } from '@/abstract-server';
+import { ControllerRegistry } from '@/controller.registry';
 import { ExternalHooks } from '@/external-hooks';
+import { bodyParser, rawBodyReader } from '@/middlewares';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
 import { TelegramInteractionWebhooks } from '@/webhooks/telegram-interaction-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
+
+vi.mock('@n8n/backend-module-apps/hosting', () => ({ AppsHostingService: vi.fn() }));
+vi.mock('@/controller.registry', () => ({ ControllerRegistry: vi.fn() }));
 
 vi.mock('@/webhooks/webhook-request-handler', () => ({
 	createWebhookHandlerFor: vi.fn(),
@@ -35,14 +42,20 @@ class TestServer extends AbstractServer {
 	async configure() {}
 }
 
-describe('AbstractServer health endpoints', () => {
+describe('AbstractServer', () => {
+	const moduleRegistry = mock<ModuleRegistry>({ eligibleModules: [] });
 	let testServer: TestServer;
 	let healthHandler: (req: express.Request, res: express.Response) => void;
 	let readinessHandler: (req: express.Request, res: express.Response) => void;
 	let dbConnection: DbConnection;
 
-	beforeEach(async () => {
+	beforeEach(() => {
 		vi.restoreAllMocks();
+		vi.clearAllMocks();
+		vi.stubEnv('N8N_APPS_BASE_URL', '');
+		moduleRegistry.eligibleModules.length = 0;
+		moduleRegistry.isActive.mockReturnValue(false);
+		Container.set(ModuleRegistry, moduleRegistry);
 
 		mockServer.listen.mockImplementation((...args: unknown[]) => {
 			const callback = args.find((arg) => typeof arg === 'function');
@@ -79,6 +92,10 @@ describe('AbstractServer health endpoints', () => {
 		});
 		Container.set(GlobalConfig, globalConfig);
 		Container.set(ExternalHooks, mock<ExternalHooks>());
+		Container.set(LiveWebhooks, mock<LiveWebhooks>());
+		Container.set(WaitingWebhooks, mock<WaitingWebhooks>());
+		Container.set(SlackInteractionWebhooks, mock<SlackInteractionWebhooks>());
+		Container.set(TelegramInteractionWebhooks, mock<TelegramInteractionWebhooks>());
 
 		mockApp.get.mockImplementation((...args: unknown[]) => {
 			const [path, handler] = args as [
@@ -94,18 +111,68 @@ describe('AbstractServer health endpoints', () => {
 		});
 
 		testServer = new TestServer();
-		await testServer.init();
+	});
+
+	afterEach(() => vi.unstubAllEnvs());
+
+	describe('apps startup', () => {
+		const router = mock<express.Router>();
+		const hosting = mock<AppsHostingService>({ router, authenticate: vi.fn() });
+		const controllers = mock<ControllerRegistry>();
+
+		beforeEach(() => {
+			Container.set(AppsHostingService, hosting);
+			Container.set(ControllerRegistry, controllers);
+			Container.set(WaitingForms, mock<WaitingForms>());
+		});
+
+		it('activates apps controllers with app authentication before hosting becomes ready', async () => {
+			moduleRegistry.eligibleModules.push('apps');
+			moduleRegistry.isActive.mockReturnValue(true);
+
+			await testServer.init();
+
+			expect(mockApp.use).toHaveBeenNthCalledWith(1, hosting.dispatch);
+			expect(hosting.finishSetup).not.toHaveBeenCalled();
+
+			await testServer.start();
+
+			expect(moduleRegistry.isActive).toHaveBeenCalledWith('apps');
+			expect(router.use).toHaveBeenCalledExactlyOnceWith(
+				expect.any(Function),
+				expect.any(Function),
+				rawBodyReader,
+				bodyParser,
+			);
+			expect(controllers.activate).toHaveBeenCalledExactlyOnceWith(router, {
+				surface: 'apps',
+				customAuthMiddleware: hosting.authenticate,
+			});
+			expect(router.use).toHaveBeenCalledBefore(controllers.activate);
+			expect(hosting.finishSetup).toHaveBeenCalledOnce();
+			expect(controllers.activate).toHaveBeenCalledBefore(hosting.finishSetup);
+		});
+
+		it('reserves configured app hosts without activating an inactive module', async () => {
+			vi.stubEnv('N8N_APPS_BASE_URL', 'https://apps.example.com');
+
+			await testServer.init();
+			await testServer.start();
+
+			expect(mockApp.use).toHaveBeenNthCalledWith(1, hosting.dispatch);
+			expect(moduleRegistry.isActive).toHaveBeenCalledWith('apps');
+			expect(router.use).not.toHaveBeenCalled();
+			expect(controllers.activate).not.toHaveBeenCalled();
+			expect(hosting.finishSetup).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('webhook route registration', () => {
 		it('should register the waiting-forms route with the form sandbox family', async () => {
 			const waitingForms = mock<WaitingForms>();
-			Container.set(LiveWebhooks, mock<LiveWebhooks>());
 			Container.set(WaitingForms, waitingForms);
-			Container.set(WaitingWebhooks, mock<WaitingWebhooks>());
-			Container.set(SlackInteractionWebhooks, mock<SlackInteractionWebhooks>());
-			Container.set(TelegramInteractionWebhooks, mock<TelegramInteractionWebhooks>());
 
+			await testServer.init();
 			await testServer.start();
 
 			expect(createWebhookHandlerFor).toHaveBeenCalledWith(waitingForms, undefined, 'form');
@@ -113,6 +180,8 @@ describe('AbstractServer health endpoints', () => {
 	});
 
 	describe('/healthz (liveness)', () => {
+		beforeEach(async () => await testServer.init());
+
 		it('should return 200 regardless of fullyReady flag', () => {
 			const res = mock<express.Response>();
 			healthHandler(mock<express.Request>(), res);
@@ -121,6 +190,8 @@ describe('AbstractServer health endpoints', () => {
 	});
 
 	describe('/healthz/readiness', () => {
+		beforeEach(async () => await testServer.init());
+
 		it('should return 503 before markAsReady() is called', () => {
 			const res = mock<express.Response>();
 			res.status.mockReturnValue(res);

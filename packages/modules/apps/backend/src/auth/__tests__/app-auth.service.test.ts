@@ -155,6 +155,35 @@ describe('AppAuthService', () => {
 		expect(res.redirect).toHaveBeenLastCalledWith('/orders/123?view=all');
 	});
 
+	it('rejects completion when the exchanged token is not admitted', async () => {
+		const { service, app, req, res, admission } = setup();
+		await service.begin(app, '/orders/123', res);
+		const [name, nonce] = res.cookie.mock.calls[0];
+		req.cookies = { [name]: nonce };
+		admission.admitBearer.mockResolvedValue({
+			ok: false,
+			reason: 'insufficient_scope',
+			advertised: mock(),
+		});
+		res.cookie.mockClear();
+		res.redirect.mockClear();
+
+		await expect(service.complete(req, res, appId)).rejects.toThrow(
+			'App access is no longer available',
+		);
+
+		expect(admission.admitBearer).toHaveBeenCalledExactlyOnceWith(
+			expect.anything(),
+			expect.objectContaining({
+				method: 'GET',
+				url: `https://sales.apps.example.com/_n8n/auth/${appId}/callback`,
+			}),
+			'app-token',
+		);
+		expect(res.cookie).not.toHaveBeenCalled();
+		expect(res.redirect).not.toHaveBeenCalled();
+	});
+
 	it('does not exchange a callback from another browser or issuer', async () => {
 		const { service, req, res, flow } = setup();
 		await expect(service.complete(req, res, appId)).rejects.toThrow('this browser');

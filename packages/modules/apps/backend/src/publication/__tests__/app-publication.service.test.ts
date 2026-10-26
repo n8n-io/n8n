@@ -25,6 +25,7 @@ function setup() {
 	return {
 		apps,
 		versions,
+		hosts,
 		service: new AppPublicationService(apps, versions, hosts, locks),
 	};
 }
@@ -35,6 +36,17 @@ describe('AppPublicationService', () => {
 		await service.publish('project', appId, versionId);
 		expect(apps.setPublishedVersion).toHaveBeenCalledWith('project', appId, versionId, {});
 		expect(apps.advanceDraft).not.toHaveBeenCalled();
+	});
+
+	it('rejects publication without a valid app namespace', async () => {
+		const { service, apps, hosts } = setup();
+		hosts.origin.mockReturnValue(null);
+
+		await expect(service.publish('project', appId, versionId)).rejects.toThrow(
+			'valid app namespace',
+		);
+
+		expect(apps.setPublishedVersion).not.toHaveBeenCalled();
 	});
 
 	it.each(['queued', 'running', 'failed'] as const)('rejects a %s build', async (buildStatus) => {

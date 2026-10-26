@@ -30,6 +30,18 @@ function setup(url = '/', navigation = true) {
 }
 
 describe('AppServingService', () => {
+	it('serves an existing asset with its content type and ETag', async () => {
+		const { service, req, res, bundles } = setup('/assets/main.js', false);
+
+		await service.serve(req, res);
+
+		expect(bundles.get).toHaveBeenCalledWith('version');
+		expect(res.send).toHaveBeenCalledWith(Buffer.from('js'));
+		expect(res.set).toHaveBeenCalledWith(
+			expect.objectContaining({ 'Content-Type': 'application/javascript', ETag: '"js"' }),
+		);
+	});
+
 	it('serves SPA navigation from the selected published bundle', async () => {
 		const { service, req, res, bundles } = setup('/orders/123');
 		await service.serve(req, res);

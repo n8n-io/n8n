@@ -113,8 +113,13 @@ describe('ControllerRegistry', () => {
 			expect(target.use.mock.calls.map(([prefix]) => prefix)).not.toContain('/apps-only');
 		});
 
-		it('registers only apps controllers with the supplied authentication middleware', () => {
-			const target = mock<express.Application>();
+		it('uses custom authentication to reject unauthenticated apps requests', async () => {
+			const target = express();
+			const use = vi.spyOn(target, 'use');
+			const read = vi.spyOn(Container.get(AppsOnlyController), 'read');
+			const rejectUnauthenticated = vi.fn<express.RequestHandler>((_req, res) => {
+				res.sendStatus(401);
+			});
 			authService.createAuthMiddleware.mockClear();
 			new ControllerRegistry(
 				license,
@@ -123,10 +128,14 @@ describe('ControllerRegistry', () => {
 				metadata,
 				lastActiveAtService,
 				new RateLimitService(),
-			).activate(target, { surface: 'apps', customAuthMiddleware: authMiddleware });
-			expect(target.use.mock.calls.map(([prefix]) => prefix)).toEqual(['/apps-only']);
+			).activate(target, { surface: 'apps', customAuthMiddleware: rejectUnauthenticated });
+
+			await request(target).get('/apps-only').expect(401);
+
+			expect(use.mock.calls.map(([prefix]) => prefix)).toEqual(['/apps-only']);
+			expect(rejectUnauthenticated).toHaveBeenCalledOnce();
 			expect(authService.createAuthMiddleware).not.toHaveBeenCalled();
-			expect(Container.get(AppsOnlyController)).toBeDefined();
+			expect(read).not.toHaveBeenCalled();
 		});
 	});
 
