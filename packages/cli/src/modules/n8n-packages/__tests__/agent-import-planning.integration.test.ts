@@ -708,6 +708,51 @@ it.each(['create', 'update', 'publish', 'unpublish'] as const)(
 	},
 );
 
+it.each(['existing', 'pending'] as const)(
+	'checks credential stub permissions for Agents in %s projects',
+	async (destination) => {
+		const member = await createMember();
+		const scopes = ['agent:import', 'agent:read', 'agent:create'];
+		const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+		await linkUserToProject(member, project, role.slug);
+		const request = input(
+			[agent('source', { model: 'openai/gpt-4.1-mini', credential: 'missing-credential' })],
+			destination === 'pending' ? 'pending-project' : project.id,
+		);
+		request.context.user = member;
+		request.projectPendingCreation = destination === 'pending';
+		request.credentialRequest.missingMode = 'create-stub';
+		request.credentialRequest.requirements = [
+			{
+				id: 'missing-credential',
+				type: 'openAiApi',
+				usedBy: [{ kind: 'agent', id: 'source' }],
+			},
+		];
+		const before = await records();
+		const plan = await planner.plan(request);
+		expect(plan.blockingIssues).toEqual([]);
+
+		if (destination === 'existing') {
+			await expect(
+				planner.assertNotBlocked([plan], { apiKeyScopes: undefined }),
+			).rejects.toBeInstanceOf(ForbiddenError);
+			const permittedRole = await createCustomRoleWithScopeSlugs([...scopes, 'credential:create'], {
+				roleType: 'project',
+			});
+			await linkUserToProject(member, project, permittedRole.slug);
+		}
+
+		await expect(planner.assertNotBlocked([plan], { apiKeyScopes: scopes })).rejects.toBeInstanceOf(
+			ForbiddenError,
+		);
+		await expect(
+			planner.assertNotBlocked([plan], { apiKeyScopes: [...scopes, 'credential:create'] }),
+		).resolves.toBeUndefined();
+		expect(await records()).toEqual(before);
+	},
+);
+
 it('plans an authorized pending project without creating its shell and still checks API-key scopes', async () => {
 	const request = input([agent('source')], 'pending-project');
 	request.projectPendingCreation = true;

@@ -18,7 +18,10 @@ import {
 	type PersistedAgentOutcome,
 } from '../entities/agent/agent-import.types';
 import { CredentialImporter } from '../entities/credential/credential-importer';
-import { consumersBlockedByCredentials } from '../entities/credential/credential-missing-mode';
+import {
+	consumersBlockedByCredentials,
+	credentialMissingModeUsesPackageData,
+} from '../entities/credential/credential-missing-mode';
 import type {
 	CredentialApplyResult,
 	CredentialBindResult,
@@ -99,7 +102,6 @@ import { CredentialSavePolicyGate } from './credential-save-policy';
 import { toImportBlockedError } from './import-blocked.error';
 import {
 	assertCredentialUpdatesAllowed,
-	assertCredentialWritesAllowed,
 	assertDataTableWritesAllowed,
 	assertVariableWritesAllowed,
 	assertPackageImportApiKeyScopes,
@@ -207,13 +209,16 @@ export class ImportOrchestrator {
 			options.apiKeyScopes,
 			plans.map((plan) => plan.dataTablePlan),
 		);
-		assertCredentialWritesAllowed(
-			options.apiKeyScopes,
-			plans.map(({ input, credentialPlan }) => ({
-				missingMode: input.credentialRequest.missingMode,
-				resolution: credentialPlan,
-			})),
-		);
+		if (
+			plans.some(
+				({ input, credentialPlan, agentPlan }) =>
+					credentialPlan.stubIds.size > 0 &&
+					(agentPlan !== undefined ||
+						credentialMissingModeUsesPackageData(input.credentialRequest.missingMode)),
+			)
+		) {
+			assertPackageImportApiKeyScopes(options.apiKeyScopes, ['credential:create']);
+		}
 		if (plans.length > 0) {
 			assertCredentialUpdatesAllowed(
 				options.apiKeyScopes,
@@ -243,8 +248,6 @@ export class ImportOrchestrator {
 		for (const plan of plans) {
 			if (!plan.agentPlan) continue;
 			assertPackageImportApiKeyScopes(options.apiKeyScopes, requiredAgentScopes(plan.agentPlan));
-			if (plan.credentialPlan.stubIds.size > 0)
-				assertPackageImportApiKeyScopes(options.apiKeyScopes, ['credential:create']);
 		}
 
 		const issues = await this.collectPackageBlockingIssues(plans);
@@ -340,12 +343,7 @@ export class ImportOrchestrator {
 		const { AgentImportBindings } = await import('../entities/agent/agent-import-bindings.js');
 		const boundAgentPlans = await Container.get(AgentImportBindings).resolve(plans);
 		for (const [scope, agentPlan] of boundAgentPlans) {
-			const { input, credentialPlan } = scope;
-			scope.agentPlan = await agentImporter.validate(
-				agentPlan,
-				{ ...input.context, projectPendingCreation: input.projectPendingCreation },
-				credentialPlan.stubIds.size > 0,
-			);
+			scope.agentPlan = await agentImporter.validate(agentPlan, scope.input.context.projectId);
 			scope.blockingIssues.push(...scope.agentPlan.issues);
 		}
 		return plans;

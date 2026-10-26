@@ -35,11 +35,11 @@ export class AgentPublisher {
 	private async apply(user: User, outcome: PersistedAgentOutcome): Promise<AgentImportOutcome> {
 		const { status, sourceAgentId, agent } = outcome;
 		const imported = { status, sourceAgentId, agent };
-		if (outcome.status === 'skipped' || outcome.item.publishingAction === 'noop') {
+		if (outcome.status === 'skipped' || outcome.publishingAction === 'noop') {
 			return { ...imported, publishing: { state: 'unchanged' } };
 		}
 
-		const action = outcome.item.publishingAction;
+		const action = outcome.publishingAction;
 		if (action === 'publish' && outcome.blockedFromPublish) {
 			return {
 				...imported,

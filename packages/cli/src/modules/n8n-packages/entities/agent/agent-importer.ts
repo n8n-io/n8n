@@ -79,13 +79,7 @@ export class AgentImporter {
 		return plan;
 	}
 
-	async validate(
-		plan: AgentImportPlan,
-		context: AgentImportMatchContext,
-		createsCredentialStubs: boolean,
-	): Promise<AgentImportPlan> {
-		if (createsCredentialStubs) await this.assertScopes(context, ['credential:create']);
-		const { projectId } = context;
+	async validate(plan: AgentImportPlan, projectId: string): Promise<AgentImportPlan> {
 		const items = [...plan.items];
 		const issues = [...plan.issues];
 		for (const [index, item] of items.entries()) {
@@ -174,7 +168,7 @@ export class AgentImporter {
 				status: item.action === 'create' ? 'created' : 'updated',
 				agent,
 				sourceAgentId: item.sourceAgentId,
-				item,
+				publishingAction: item.publishingAction,
 			});
 		}
 		for (const outcome of outcomes) {

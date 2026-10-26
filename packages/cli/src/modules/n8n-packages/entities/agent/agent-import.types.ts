@@ -26,7 +26,7 @@ export type PersistedAgentOutcome =
 			status: 'created' | 'updated';
 			agent: ProjectAgent;
 			sourceAgentId: string;
-			item: AgentPlanItem;
+			publishingAction: PublishingAction;
 			blockedFromPublish?: PublishingBlockedReason;
 	  };
 
