@@ -91,6 +91,9 @@ type PlaygroundArgs = {
 	itemCount: PlaygroundItemCount;
 	size: 'small' | 'medium';
 	variant: 'modern' | 'legacy';
+	options?: Array<TabOptions<string>>;
+	modelValue?: string;
+	justified?: boolean;
 };
 
 export const Playground: StoryFn<PlaygroundArgs> = (args) => ({

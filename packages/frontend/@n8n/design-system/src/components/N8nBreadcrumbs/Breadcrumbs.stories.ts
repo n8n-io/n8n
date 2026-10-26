@@ -98,6 +98,8 @@ type PlaygroundArgs = {
 	itemCount: PlaygroundItemCount;
 	theme: 'small' | 'medium';
 	showBorder: boolean;
+	items?: PathItem[];
+	hiddenItemsSource?: PathItem[];
 };
 
 export const Playground: StoryFn<PlaygroundArgs> = (args) => ({
