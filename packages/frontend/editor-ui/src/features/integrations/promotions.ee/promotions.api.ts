@@ -1,5 +1,4 @@
 import type {
-	ApplyCheckResult,
 	PromotePackageResultDto,
 	PromoteSelectionRequestDto,
 	PromotionDirection,
@@ -18,22 +17,6 @@ export async function getPromotionPreview(
 	direction: PromotionDirection,
 ): Promise<PromotionPreview> {
 	return await makeRestApiRequest(context, 'GET', `/promotions/${projectId}/changes/${direction}`);
-}
-
-/** The Apply blockers of every workflow in the project, at the commit of the Apply preview. */
-export async function getApplyBlockers(
-	context: IRestApiContext,
-	projectId: string,
-	commitSha: string,
-): Promise<ApplyCheckResult> {
-	return await makeRestApiRequest(
-		context,
-		'GET',
-		`/promotions/${projectId}/changes/apply/blockers`,
-		{
-			commitSha,
-		},
-	);
 }
 
 export async function getPromotionResourceDetails(

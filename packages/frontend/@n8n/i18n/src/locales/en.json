@@ -10352,6 +10352,7 @@
 	"promotions.preview.confirmDestructive.message": "The selected workflows use data tables that this apply changes. It removes or retypes columns, and the values in those columns can't be restored. Rows and other columns are kept.",
 	"promotions.preview.notice.sourceChanged": "The branch changed after the page loaded, so Apply didn't change anything. The page now shows the latest changes. Review them and apply again.",
 	"promotions.preview.notice.newBlockers": "Apply found new blockers, so it didn't change anything. Review the blockers and apply again.",
+	"promotions.preview.notice.instanceChanged": "This instance changed after the page loaded, so Apply didn't change anything. The page now shows the latest changes. Review them and apply again.",
 	"promotions.preview.error.promote": "Couldn't promote the changes",
 	"promotions.preview.error.apply": "Couldn't apply the changes",
 	"promotions.preview.error.rejected": "Nothing changed. Try again.",

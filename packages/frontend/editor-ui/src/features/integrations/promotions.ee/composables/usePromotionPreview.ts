@@ -4,7 +4,7 @@ import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
 
-import { getApplyBlockers, getPromotionPreview } from '../promotions.api';
+import { getPromotionPreview } from '../promotions.api';
 import { buildSelectionGraph } from '../promotionPreview.selection';
 import { repositoryDisplayName } from '../promotionsSettings.utils';
 import { useInstancePromotionConnection } from './useInstancePromotionConnection';
@@ -22,8 +22,8 @@ type PromotionPreviewState =
 	| 'ready';
 
 /**
- * Loads the preview of one project and direction for the preview page. On Apply, it also loads
- * the blockers at the commit of the preview, so both describe the same source.
+ * Loads the preview of one project and direction for the preview page. On Apply, the preview
+ * also holds the blockers, so both describe the same source.
  */
 export function usePromotionPreview(projectId: Ref<string>, direction: Ref<PromotionDirection>) {
 	const rootStore = useRootStore();
@@ -74,13 +74,16 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 				requested.projectId,
 				requested.direction,
 			);
-			const blockers =
-				requested.direction === 'apply' && result.commitSha && result.resources.length > 0
-					? await getApplyBlockers(rootStore.restApiContext, requested.projectId, result.commitSha)
-					: null;
 			if (!isLatest()) return;
 			preview.value = result;
-			check.value = blockers;
+			check.value =
+				result.check && result.commitSha
+					? {
+							environmentId: result.source.environmentId,
+							git: { commitSha: result.commitSha, branchName: result.source.branchName },
+							...result.check,
+						}
+					: null;
 			lastRefreshedAt.value = new Date();
 			state.value = result.blocker ? 'blocked' : result.resources.length === 0 ? 'empty' : 'ready';
 		} catch {

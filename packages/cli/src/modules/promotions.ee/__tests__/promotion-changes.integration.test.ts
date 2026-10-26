@@ -21,7 +21,6 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import { mkdtempSync } from 'node:fs';
@@ -57,7 +56,6 @@ import type { PromotionEnvironment } from '../database/entities/promotion-enviro
 import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
-import { PromotionChangesController } from '../promotion-changes.controller';
 import { PromotionsService } from '../promotions.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
@@ -833,77 +831,17 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 	const project = await createTeamProject('Private', owner);
 	const endpoint = `/promotions/${project.id}/changes/promote`;
 	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
-	const blockersEndpoint = `${applyEndpoint}/blockers?commitSha=${'0'.repeat(40)}`;
 	await server.authlessAgent.get(endpoint).expect(401);
-	await server.authlessAgent.get(blockersEndpoint).expect(401);
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
-	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
 	// A project admin manages the project, but lacks the global promotion scopes.
 	await linkUserToProject(member, project, 'project:admin');
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
-	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
 	await server.authAgentFor(owner).get(`/promotions/${project.id}/changes/sideways`).expect(404);
 	server.license.disable('feat:promotions');
 	await server.authAgentFor(owner).get(endpoint).expect(403);
-	await server.authAgentFor(owner).get(blockersEndpoint).expect(403);
 });
-
-// No built-in role has the read scope without the apply scope, so the requests above cannot tell them apart.
-it('requires the global apply scope for the Apply check', () => {
-	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-		PromotionChangesController as Controller,
-	);
-
-	expect(metadata.routes.get('getApplyBlockers')?.accessScope).toEqual({
-		scope: 'promotions:apply',
-		globalOnly: true,
-	});
-});
-
-it('checks Apply blockers at the commit of the Apply preview, also after a newer push', async () => {
-	const owner = await createOwner();
-	const project = await createTeamProject('Orders', owner);
-	const firstVariable = await createVariable('FIRST_URL', 'https://first.example.com');
-	await buildWorkflowReferencingVariables({
-		name: 'Uses FIRST_URL',
-		project,
-		variableNames: [firstVariable.key],
-	});
-	const environments = await createInstanceEnvironments(['promote', 'apply']);
-	const service = Container.get(PromotionsService);
-	await service.promote(environments.promote.id, owner, {
-		commitMessage: 'First',
-		canExportVariableValues: true,
-	});
-	const agent = server.authAgentFor(owner);
-	const preview = await agent.get(`/promotions/${project.id}/changes/apply`).expect(200);
-	const { commitSha } = preview.body.data;
-
-	const secondVariable = await createVariable('SECOND_URL', 'https://second.example.com');
-	await buildWorkflowReferencingVariables({
-		name: 'Uses SECOND_URL',
-		project,
-		variableNames: [secondVariable.key],
-	});
-	await service.promote(environments.promote.id, owner, {
-		commitMessage: 'Second',
-		canExportVariableValues: true,
-	});
-	await Container.get(VariablesRepository).delete([firstVariable.id, secondVariable.id]);
-	await Container.get(VariablesService).updateCache();
-
-	const response = await agent
-		.get(`/promotions/${project.id}/changes/apply/blockers`)
-		.query({ commitSha })
-		.expect(200);
-
-	expect(response.body.data.git.commitSha).toBe(commitSha);
-	expect(response.body.data.preflight.missingBindings).toEqual([
-		expect.objectContaining({ kind: 'variable', name: 'FIRST_URL' }),
-	]);
-}, 30_000);
 
 describe('resources in the preview', () => {
 	const promoteBaseline = async (environmentId: string, owner: User) =>

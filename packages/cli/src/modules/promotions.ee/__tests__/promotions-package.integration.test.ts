@@ -86,7 +86,6 @@ import { PromotionEnvironmentRepository } from '../database/repositories/promoti
 import { PromotionRunRepository } from '../database/repositories/promotion-run.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import type { GitHostClients } from '../git-hosts/git-host-clients';
-import { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
 import { ApplyPreviewService } from '../apply-preview.service';
 import { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
@@ -201,7 +200,6 @@ beforeEach(async () => {
 		projectService,
 		Container.get(FolderService),
 		packagesService,
-		Container.get(PromotionBindingPreflightService),
 		Container.get(ApplyPreviewService),
 		Container.get(PackageDirectoryInventoryReader),
 		Container.get(PackageImportConfig),
@@ -477,8 +475,22 @@ async function setupProjectWithWorkflows(projectName: string, workflowNames: str
 }
 
 /** The Apply preview, read through the test's `service` and its working directory. */
-async function listApplyChanges(projectId: string) {
-	const changeService = new PromotionChangeService(
+async function loadApplyPreview(projectId: string) {
+	const preview = await changeService().getPreview(owner, projectId, 'apply', {
+		sort: 'name',
+		order: 'asc',
+	});
+	assert(preview.check && preview.commitSha && preview.revision);
+	return {
+		...preview,
+		check: preview.check,
+		commitSha: preview.commitSha,
+		revision: preview.revision,
+	};
+}
+
+function changeService() {
+	return new PromotionChangeService(
 		service,
 		packagesService,
 		Container.get(ApplyPreviewService),
@@ -489,7 +501,10 @@ async function listApplyChanges(projectId: string) {
 		Container.get(PromotionReviewGateService),
 		mockLogger(),
 	);
-	const { changes } = await changeService.getChanges(owner, projectId, 'apply', {
+}
+
+async function listApplyChanges(projectId: string) {
+	const { changes } = await changeService().getChanges(owner, projectId, 'apply', {
 		sort: 'name',
 		order: 'asc',
 	});
@@ -2091,7 +2106,7 @@ describe('Apply moves and renames within a project', () => {
 			workflows: [moved],
 		} = await setupProjectWithWorkflows('Archive', ['Old order']);
 		const { project: orders } = await setupProjectWithWorkflows('Orders', []);
-		const promoted = await promote();
+		await promote();
 		// The workflow left Archive, and Archive is gone from this instance.
 		await Container.get(SharedWorkflowRepository).update(
 			{ workflowId: moved.id, role: 'workflow:owner' },
@@ -2114,41 +2129,34 @@ describe('Apply moves and renames within a project', () => {
 				]),
 			},
 		});
-		const check = await service.checkApplyBlockers(orders.id, promoted.git.commitSha);
-		expect(check.movedWorkflows).toEqual([
+		expect((await loadApplyPreview(orders.id)).check.movedWorkflows).toEqual([
 			expect.objectContaining({ id: moved.id, projectExists: false }),
 		]);
 	});
 });
 
-describe('Check Apply blockers', () => {
+describe('Check of the Apply preview', () => {
 	it('reports the same blockers as Apply for all workflows of the project and changes nothing', async () => {
-		const { commitSha, project, workflow, unselectedWorkflow } =
-			await prepareBindingApply('UNSELECTED_URL');
+		const { project, workflow, unselectedWorkflow } = await prepareBindingApply('UNSELECTED_URL');
 		assert(unselectedWorkflow);
 		const before = await snapshotApplyState();
 
-		const check = await service.checkApplyBlockers(project.id, commitSha);
+		const preview = await loadApplyPreview(project.id);
 
 		expect(await snapshotApplyState()).toEqual(before);
-		expect(check.preflight.missingBindings).toHaveLength(3);
-		expect(check.movedWorkflows).toEqual([]);
-		const result = await service.applyProjectSelection(project.id, owner, {
-			workflowIds: [workflow.id, unselectedWorkflow.id],
-			expectedSource: { environmentId: check.environmentId, ...check.git },
-		});
-		// The two checks sort the bindings in different orders.
-		expect(result).toEqual({
+		expect(preview.check.preflight.missingBindings).toHaveLength(3);
+		expect(
+			await service.applyProjectSelection(project.id, owner, {
+				workflowIds: [workflow.id, unselectedWorkflow.id],
+				expectedSource: { ...preview.source, commitSha: preview.commitSha },
+				expectedPreviewRevision: preview.revision,
+			}),
+		).toEqual({
 			status: 'blocked',
-			environmentId: check.environmentId,
-			git: check.git,
-			preflight: {
-				...check.preflight,
-				missingBindings: expect.arrayContaining(check.preflight.missingBindings),
-			},
+			environmentId: preview.source.environmentId,
+			git: { commitSha: preview.commitSha, branchName: preview.source.branchName },
+			preflight: preview.check.preflight,
 		});
-		assert(result.status === 'blocked');
-		expect(result.preflight.missingBindings).toHaveLength(3);
 	});
 
 	it('reports a workflow that moved to another project, next to the blockers of other workflows', async () => {
@@ -2173,7 +2181,7 @@ describe('Check Apply blockers', () => {
 			{ workflowId: moved.id, role: 'workflow:owner' },
 			{ projectId: billing.id },
 		);
-		const promoted = await service.promote(environments.promote.id, owner, {
+		await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: true,
 			commitMessage: 'Move a workflow to Billing',
 		});
@@ -2184,7 +2192,7 @@ describe('Check Apply blockers', () => {
 		await Container.get(VariablesRepository).delete(variable.id);
 		await Container.get(VariablesService).updateCache();
 
-		const check = await service.checkApplyBlockers(orders.id, promoted.git.commitSha);
+		const { check } = await loadApplyPreview(orders.id);
 
 		expect(check.movedWorkflows).toEqual([
 			{
@@ -2210,11 +2218,10 @@ describe('Check Apply blockers', () => {
 	});
 
 	it('reports a data table change that removes column values, with the workflow that uses the table', async () => {
-		const { commitSha, project, workflow, orders, dataTableService } =
-			await promoteDataTableWorkflows();
+		const { project, workflow, orders, dataTableService } = await promoteDataTableWorkflows();
 		await dataTableService.addColumn(orders.id, project.id, { name: 'extra', type: 'string' });
 
-		const check = await service.checkApplyBlockers(project.id, commitSha);
+		const { check } = await loadApplyPreview(project.id);
 
 		expect(check.preflight.conflicts).toEqual([
 			expect.objectContaining({
@@ -2243,13 +2250,13 @@ describe('Check Apply blockers', () => {
 			project,
 			variableNames: [variable.key],
 		});
-		const promoted = await service.promote(environments.promote.id, owner, {
+		await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: true,
 			commitMessage: 'Export orders',
 		});
 		await createProjectVariable(variable.key, 'project value', project);
 
-		const check = await service.checkApplyBlockers(project.id, promoted.git.commitSha);
+		const { check } = await loadApplyPreview(project.id);
 
 		expect(check.preflight).toMatchObject({
 			missingBindings: [],

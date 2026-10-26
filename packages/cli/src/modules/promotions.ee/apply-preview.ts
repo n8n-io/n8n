@@ -27,7 +27,7 @@ import {
 	type CredentialReference,
 	type ProjectLookup,
 	type VariableReference,
-} from './promotion-binding-preflight.service';
+} from './package-references';
 import type { CrossProjectMoves } from './cross-project-moves';
 import { resourceKey, variableResourceKey } from './promotion-preview';
 

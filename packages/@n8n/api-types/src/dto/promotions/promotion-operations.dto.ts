@@ -219,12 +219,6 @@ export const ApplyPackageResultDto = {
 
 export type ApplyPackageResultDto = z.infer<typeof applyPackageResultSchema>;
 
-/** The Apply check reads the package at the commit of the Apply preview. */
-export class ApplyCheckQueryDto extends Z.class(
-	{ commitSha: expectedSourceSchema.shape.commitSha },
-	{ strict: true },
-) {}
-
 const applyCheckResultSchema = applyPackageIdentitySchema.merge(promotionApplyCheckSchema);
 
 export type ApplyCheckResult = z.infer<typeof applyCheckResultSchema>;

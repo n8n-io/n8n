@@ -823,7 +823,6 @@ export {
 	type PromotionEnvironmentSummary,
 } from './promotions/promotion-environment.dto';
 export {
-	ApplyCheckQueryDto,
 	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ApplySelectionDto,

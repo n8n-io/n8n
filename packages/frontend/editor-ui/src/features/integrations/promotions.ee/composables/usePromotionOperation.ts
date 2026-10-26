@@ -23,7 +23,7 @@ export type OperationRequest = {
 };
 
 /** Why the page reloaded the preview after an apply that wrote nothing. */
-type OperationNotice = 'sourceChanged' | 'newBlockers';
+type OperationNotice = 'sourceChanged' | 'instanceChanged' | 'newBlockers';
 
 type OperationError = {
 	message: string;
@@ -115,17 +115,20 @@ export function usePromotionOperation(
 	}
 
 	async function apply(request: OperationRequest, source: ApplyCheckResult) {
-		// Apply the commit that the page shows. A branch that moved since is reported, not applied.
-		const expectedSource = { environmentId: source.environmentId, ...source.git };
+		// Apply what the page shows. A branch or an instance that changed since is reported, not applied.
+		const expected = {
+			expectedSource: { environmentId: source.environmentId, ...source.git },
+			expectedPreviewRevision: preview.value?.revision,
+		};
 		const result = request.confirmDestructiveChanges
 			? await continueApplyProjectSelection(rootStore.publicApiContext, projectId.value, {
 					workflowIds: request.workflowIds,
-					expectedSource,
+					...expected,
 					confirmDestructiveChanges: true,
 				})
 			: await applyProjectSelection(rootStore.publicApiContext, projectId.value, {
 					workflowIds: request.workflowIds,
-					expectedSource,
+					...expected,
 				});
 		if (result.status === 'applied') {
 			outcome.showApplied(result);
@@ -134,7 +137,12 @@ export function usePromotionOperation(
 			return;
 		}
 		// Nothing was written. The reloaded preview and check show what changed.
-		notice.value = result.status === 'source-changed' ? 'sourceChanged' : 'newBlockers';
+		const notices = {
+			'source-changed': 'sourceChanged',
+			'preview-changed': 'instanceChanged',
+			blocked: 'newBlockers',
+		} as const;
+		notice.value = notices[result.status];
 		await refresh();
 	}
 

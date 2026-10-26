@@ -90,11 +90,11 @@ export function scopeCheck(check: ApplyCheckResult, graph: SelectionGraph): Appl
 	};
 }
 
-export function listBlockers({
-	preflight,
-	movedWorkflows,
-	movedFolders,
-}: ApplyCheckResult): Blocker[] {
+/** The blockers of the check. A project-wide conflict blocks every workflow in `listedWorkflowKeys`. */
+export function listBlockers(
+	{ preflight, movedWorkflows, movedFolders }: ApplyCheckResult,
+	listedWorkflowKeys: ResourceKey[],
+): Blocker[] {
 	const blockers: Blocker[] = [];
 	for (const binding of preflight.missingBindings) {
 		blockers.push({
@@ -114,6 +114,8 @@ export function listBlockers({
 		});
 	}
 	for (const conflict of preflight.conflicts) {
+		// Moves come from `movedWorkflows` and `movedFolders` below.
+		if (conflict.code === 'moved') continue;
 		if (conflict.code === 'destructive-change') {
 			blockers.push({
 				kind: 'destructive',
@@ -132,15 +134,27 @@ export function listBlockers({
 				resourceKey: conflict.sourceId === null ? null : `credential:${conflict.sourceId}`,
 				workflowKeys: consumerKeys(conflict.consumers),
 			});
-		} else if (conflict.kind === 'variable') {
-			// The reference names no scope, so no preview row matches it.
+		} else if (conflict.kind === 'variable' || conflict.kind === 'workflow') {
+			// No preview row matches these, so the blocker marks only the workflows.
 			blockers.push({
 				kind: 'conflict',
 				resourceKey: null,
 				workflowKeys: consumerKeys(conflict.consumers),
 			});
+		} else if (conflict.kind === 'data-table' || conflict.kind === 'tag') {
+			const type = conflict.kind === 'tag' ? 'tag' : 'dataTable';
+			blockers.push({
+				kind: 'conflict',
+				resourceKey: conflict.id === undefined ? null : `${type}:${conflict.id}`,
+				workflowKeys: consumerKeys(conflict.consumers),
+			});
+		} else if (conflict.code !== 'project-deletion') {
+			blockers.push({
+				kind: 'conflict',
+				resourceKey: `project:${conflict.project.id}`,
+				workflowKeys: listedWorkflowKeys,
+			});
 		}
-		// A selection never deletes a project, so the check reports no `project-deletion`.
 	}
 	for (const warning of preflight.warnings) {
 		blockers.push({

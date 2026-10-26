@@ -34,10 +34,7 @@ import { crossProjectMoves, foldersInScope, type CrossProjectMoves } from './cro
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { LocalPackageEntities } from './local-package-entities.service';
 import type { InstancePackage } from './instance-package';
-import {
-	collectCredentialReferences,
-	collectVariableReferences,
-} from './promotion-binding-preflight.service';
+import { collectCredentialReferences, collectVariableReferences } from './package-references';
 import { buildPreview } from './promotion-preview';
 
 export type ApplyPreview = {

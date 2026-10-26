@@ -27,7 +27,6 @@ import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.sche
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
-import type { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
 import type { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import type { PromotionProvidersService } from '../promotion-providers.service';
 import type { PromotionRun } from '../database/entities/promotion-run.entity';
@@ -77,7 +76,6 @@ describe('PromotionsService', () => {
 	const projectService = mock<ProjectService>();
 	const folderService = mock<FolderService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
-	const bindingPreflight = mock<PromotionBindingPreflightService>();
 	const inventoryReader = mock<PackageDirectoryInventoryReader>();
 	const packageImportConfig = mock<PackageImportConfig>();
 	const runRepository = mock<PromotionRunRepository>();
@@ -168,7 +166,6 @@ describe('PromotionsService', () => {
 			projectService,
 			folderService,
 			n8nPackagesService,
-			bindingPreflight,
 			applyPreviewService,
 			inventoryReader,
 			packageImportConfig,

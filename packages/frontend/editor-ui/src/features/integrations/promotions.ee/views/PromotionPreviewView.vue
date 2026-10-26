@@ -85,8 +85,15 @@ const promoteEnvironment = computed(() =>
 const scopedCheck = computed(() =>
 	check.value && graph.value ? scopeCheck(check.value, graph.value) : null,
 );
+const listedWorkflowKeys = computed(() =>
+	graph.value
+		? [...graph.value.resources.values()]
+				.filter(({ type, selectable }) => type === 'workflow' && selectable)
+				.map(({ key }) => key)
+		: [],
+);
 const blockerList = computed(() => [
-	...(scopedCheck.value ? listBlockers(scopedCheck.value) : []),
+	...(scopedCheck.value ? listBlockers(scopedCheck.value, listedWorkflowKeys.value) : []),
 	...(props.direction === 'promote' && graph.value ? crossProjectMoveBlockers(graph.value) : []),
 ]);
 const blockers = computed(() => indexBlockers(blockerList.value));

@@ -1,7 +1,6 @@
 import {
 	parsePromotionRunDetails,
 	promotionRunTypeSchema,
-	type ApplyCheckResult,
 	type ApplyPackageDto,
 	type ApplyPackageResultDto,
 	type ApplySelectionDto,
@@ -72,7 +71,7 @@ import {
 import { applySelectionRequest, ApplyPreviewService } from './apply-preview.service';
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { exportInstancePackage } from './instance-package';
-import { compare, PromotionBindingPreflightService } from './promotion-binding-preflight.service';
+import { compare } from './package-references';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionRunRepository } from './database/repositories/promotion-run.repository';
@@ -151,7 +150,6 @@ export class PromotionsService {
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
 		private readonly n8nPackagesService: N8nPackagesService,
-		private readonly bindingPreflight: PromotionBindingPreflightService,
 		private readonly applyPreviewService: ApplyPreviewService,
 		private readonly inventoryReader: PackageDirectoryInventoryReader,
 		private readonly packageImportConfig: PackageImportConfig,
@@ -713,50 +711,6 @@ export class PromotionsService {
 		}
 
 		return { selectedProjectId: projectId, selectedWorkflowIds, deletedWorkflowIds };
-	}
-
-	/**
-	 * Runs the Apply preflight for every workflow that the Apply preview of the project can list.
-	 * It reads the package at the preview's commit and writes nothing. Moved workflows are
-	 * returned instead of rejected.
-	 */
-	async checkApplyBlockers(projectId: string, commitSha: string): Promise<ApplyCheckResult> {
-		const input = await this.resolver.resolveForProject(projectId, 'apply');
-		const branchName = checkoutBranchName(input.config);
-		const files = await this.readApplyPackageAtCommit(projectId, commitSha);
-		if (files.size === 0) {
-			throw new BadRequestError(
-				'The remote branch has no exported package to import. Promote to it first.',
-			);
-		}
-		const inventory = await this.inventoryReader.read({
-			listEntries: async () => [...files.keys()],
-			readFile: async (entryPath) => {
-				const content = files.get(entryPath);
-				if (!content) throw new BadRequestError(`Package does not contain entry: ${entryPath}`);
-				return content;
-			},
-		});
-
-		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory, projectId);
-		// Only workflows on the branch import. Deletions and moves need no bindings.
-		const preflight = await this.bindingPreflight.checkInventory({
-			inventory,
-			selection: {
-				selectedProjectId: projectId,
-				selectedWorkflowIds: inventory.workflows
-					.filter((workflow) => workflow.projectId === projectId)
-					.map(({ id }) => id),
-			},
-		});
-
-		return {
-			environmentId: input.environmentId,
-			git: { commitSha, branchName },
-			preflight,
-			movedWorkflows: moves.workflows,
-			movedFolders: moves.folders,
-		};
 	}
 
 	/**
