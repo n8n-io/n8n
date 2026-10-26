@@ -110,6 +110,34 @@ describe('PromotionPreviewBadges', () => {
 		expect(await findByText(label)).toBeVisible();
 	});
 
+	it('should show an arrow that does not link when an open review holds the promote changes', async () => {
+		vi.mocked(api.getPromotionPreview).mockImplementation(
+			async (_context, _projectId, direction) =>
+				direction === 'promote'
+					? billingPreview({
+							resources: [],
+							changes: [],
+							blocker: { code: 'reviewOpen', reviewId: 'review-1' },
+						})
+					: billingPreview({ resources: [] }),
+		);
+		const { getByTestId, findByText } = renderComponent();
+		await waitAllPromises();
+		const promote = getByTestId('promotion-preview-badge-promote');
+		const label = "A review is open. You can't promote until it's merged or closed.";
+
+		expect(promote).not.toHaveAttribute('data-route');
+		expect(promote).toHaveAttribute('aria-disabled', 'true');
+		expect(promote).toHaveAttribute('tabindex', '0');
+		expect(promote.querySelector('.n8n-badge')).toBeDisabled();
+		expect(promote).toHaveAttribute('aria-label', label);
+		expect(promote).toHaveTextContent(/^$/);
+		expect(promote.querySelector('.n8n-text')).toBeNull();
+		promote.focus();
+		expect(await findByText(label)).toBeVisible();
+		expect(getByTestId('promotion-preview-badge-apply')).toHaveTextContent('0');
+	});
+
 	it.each(['promote', 'apply'] as const)(
 		'should show a non-interactive zero %s badge with an explanatory tooltip',
 		async (direction) => {

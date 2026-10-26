@@ -101,6 +101,9 @@ onBeforeUnmount(() => {
 
 const ICONS: Record<PromotionDirection, IconName> = { apply: 'arrow-down', promote: 'arrow-up' };
 
+// The tooltip trigger is the span or link itself (`as-child`), so keyboard focus opens it.
+// A blocked badge only informs. Its span takes the focus and the hover, because a disabled
+// button does neither, and the tooltip gives the reason.
 const badges = computed(() => {
 	const projectId = currentProjectId.value;
 	if (!projectId) return [];
@@ -114,23 +117,29 @@ const badges = computed(() => {
 			direction,
 			loading: changes.loading.value,
 			failed: changes.failed.value,
+			blocked: !!changes.blocker.value,
 			changeCount: changes.changeCount.value,
-			disabled: changes.loading.value || (!changes.failed.value && changes.changeCount.value === 0),
+			disabled:
+				changes.loading.value ||
+				!!changes.blocker.value ||
+				(!changes.failed.value && changes.changeCount.value === 0),
 			label: changes.loading.value
 				? i18n.baseText(`promotions.preview.badge.loading.${direction}`)
 				: changes.failed.value
 					? i18n.baseText(`promotions.preview.badge.failed.${direction}`)
-					: changes.changeCount.value === 0
-						? i18n.baseText(`promotions.preview.badge.empty.${direction}`)
-						: i18n.baseText(`promotions.preview.badge.${direction}`, {
-								adjustToNumber: changes.changeCount.value,
-								interpolate: {
-									count: String(changes.changeCount.value),
-									environment:
-										environments.value.find((environment) => environment.direction === direction)
-											?.name ?? '',
-								},
-							}),
+					: changes.blocker.value
+						? i18n.baseText('promotions.preview.badge.blocked.promote')
+						: changes.changeCount.value === 0
+							? i18n.baseText(`promotions.preview.badge.empty.${direction}`)
+							: i18n.baseText(`promotions.preview.badge.${direction}`, {
+									adjustToNumber: changes.changeCount.value,
+									interpolate: {
+										count: String(changes.changeCount.value),
+										environment:
+											environments.value.find((environment) => environment.direction === direction)
+												?.name ?? '',
+									},
+								}),
 			to: { name: PROMOTION_PREVIEW_VIEWS[direction], params: { projectId } },
 		}));
 });
@@ -143,9 +152,30 @@ const badges = computed(() => {
 			:key="badge.direction"
 			:content="badge.label"
 			:disabled="badge.loading"
+			as-child
 		>
+			<span
+				v-if="badge.blocked"
+				role="button"
+				tabindex="0"
+				aria-disabled="true"
+				:aria-label="badge.label"
+				:class="[$style.link, $style.blocked]"
+				:data-test-id="`promotion-preview-badge-${badge.direction}`"
+			>
+				<N8nBadge
+					:class="$style.inert"
+					variant="subtle"
+					size="xsmall"
+					:leading-icon="ICONS[badge.direction]"
+					clickable
+					disabled
+					aria-hidden="true"
+				/>
+			</span>
 			<component
 				:is="badge.disabled ? 'span' : RouterLink"
+				v-else
 				v-bind="badge.disabled ? {} : { to: badge.to }"
 				:role="badge.loading ? 'status' : undefined"
 				:aria-label="badge.label"
@@ -202,5 +232,14 @@ const badges = computed(() => {
 	:global(.n8n-badge) {
 		--n8n-badge--text-color: var(--text-color--disabled);
 	}
+}
+
+.blocked {
+	cursor: not-allowed;
+}
+
+/* The wrapper receives hover events from the disabled badge. */
+.inert {
+	pointer-events: none;
 }
 </style>

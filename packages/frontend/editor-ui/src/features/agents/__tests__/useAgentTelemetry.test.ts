@@ -217,6 +217,24 @@ describe('useAgentTelemetry', () => {
 		});
 	});
 
+	it('trackRemovedTrigger fires with the removed trigger_type and the remaining triggers', () => {
+		useAgentTelemetry().trackRemovedTrigger({
+			agentId: 'ag-1',
+			triggerType: 'n8n_chat',
+			triggers: ['slack'],
+			configVersion: 'v5',
+			status: 'production',
+		});
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_REMOVED_TRIGGER_FROM_AGENT, {
+			agent_id: 'ag-1',
+			trigger_type: 'n8n_chat',
+			triggers: ['slack'],
+			config_version: 'v5',
+			status: 'production',
+			push_ref: 'session-xyz',
+		});
+	});
+
 	it('trackOpenedToolFromList fires with agent_id and tool_type', () => {
 		useAgentTelemetry().trackOpenedToolFromList({ agentId: 'ag-1', toolType: 'node' });
 		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_TOOL, {
@@ -233,6 +251,52 @@ describe('useAgentTelemetry', () => {
 			skill_id: 'skill-42',
 			push_ref: 'session-xyz',
 		});
+	});
+
+	it('trackOpenedKnowledgeTab fires with agent_id and push_ref', () => {
+		useAgentTelemetry().trackOpenedKnowledgeTab({ agentId: 'ag-1' });
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_KNOWLEDGE_TAB, {
+			agent_id: 'ag-1',
+			push_ref: 'session-xyz',
+		});
+	});
+
+	it('trackStartedAddingKnowledge sends the file count for files', () => {
+		useAgentTelemetry().trackStartedAddingKnowledge({
+			agentId: 'ag-1',
+			kind: 'file',
+			fileCount: 3,
+		});
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_STARTED_ADDING_AGENT_KNOWLEDGE,
+			{ agent_id: 'ag-1', kind: 'file', file_count: 3, push_ref: 'session-xyz' },
+		);
+	});
+
+	it('trackStartedAddingKnowledge sends no file count for a vector store', () => {
+		useAgentTelemetry().trackStartedAddingKnowledge({ agentId: 'ag-1', kind: 'vector_store' });
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_STARTED_ADDING_AGENT_KNOWLEDGE,
+			{ agent_id: 'ag-1', kind: 'vector_store', push_ref: 'session-xyz' },
+		);
+	});
+
+	it('trackFailedKnowledgeUpload reports a client stage failure with its reason', () => {
+		useAgentTelemetry().trackFailedKnowledgeUpload({
+			agentId: 'ag-1',
+			reason: 'too_many_files',
+			fileCount: 12,
+		});
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_FAILED_AGENT_KNOWLEDGE_UPLOAD,
+			{
+				stage: 'client',
+				agent_id: 'ag-1',
+				file_count: 12,
+				reason: 'too_many_files',
+				push_ref: 'session-xyz',
+			},
+		);
 	});
 
 	it('trackOpenedAddSkillModal fires with agent_id', () => {
