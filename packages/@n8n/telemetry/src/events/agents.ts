@@ -397,9 +397,9 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.optional()
 				.describe(
-					'Median age in full days of the knowledge files that read_file read successfully. Each file counts once. With an even number of files, it is the average of the two middle ages. Absent when the run read no file.',
+					'Median age of the knowledge files that read_file read successfully. Each file counts once, and each age is in full days. With an even number of files, the median is the average of the two middle ages, so it can end in .5. Absent when the run read no file.',
 				),
-			file_ages_days_first_25: z
+			file_age_days_first_25: z
 				.array(z.number())
 				.optional()
 				.describe(

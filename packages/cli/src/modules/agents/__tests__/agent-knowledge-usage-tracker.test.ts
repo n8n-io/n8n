@@ -206,7 +206,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 					file_age_days_max: 30,
 					file_age_days_avg: 11.5,
 					file_age_days_median: 7,
-					file_ages_days_first_25: [30, 2, 10, 4],
+					file_age_days_first_25: [30, 2, 10, 4],
 				}),
 			);
 		});
@@ -227,8 +227,25 @@ describe('AgentKnowledgeUsageTracker', () => {
 				expect.objectContaining({
 					file_age_days_avg: 16,
 					file_age_days_median: 16,
-					file_ages_days_first_25: [30, 2],
+					file_age_days_first_25: [30, 2],
 				}),
+			);
+		});
+
+		it('lists the ages in the order the reads started, also when they end in another order', () => {
+			vi.useFakeTimers({ now });
+			const telemetry = mock<Telemetry>();
+			const tracker = new AgentKnowledgeUsageTracker(telemetry);
+			const finishFirstRead = tracker.startToolCall('run-1', 'file_read');
+			const finishSecondRead = tracker.startToolCall('run-1', 'file_read');
+
+			finishSecondRead(readOf('despedidas', 2));
+			finishFirstRead(readOf('saludos', 30));
+			tracker.sendRunUsage('run-1', { agentId: 'agent-1', runType: 'production' });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_RUN_USED_KNOWLEDGE,
+				expect.objectContaining({ file_age_days_first_25: [30, 2] }),
 			);
 		});
 
@@ -241,7 +258,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 
 			const [, properties] = telemetry.track.mock.calls[0];
 			expect(properties).toMatchObject({
-				file_ages_days_first_25: Array.from({ length: 25 }, (_, index) => index),
+				file_age_days_first_25: Array.from({ length: 25 }, (_, index) => index),
 				file_age_days_max: 29,
 			});
 		});
@@ -254,7 +271,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 			const [, properties] = telemetry.track.mock.calls[0];
 			expect(properties).not.toHaveProperty('file_age_days_min');
 			expect(properties).not.toHaveProperty('file_age_days_max');
-			expect(properties).not.toHaveProperty('file_ages_days_first_25');
+			expect(properties).not.toHaveProperty('file_age_days_first_25');
 		});
 
 		it('sends the counts of a run that used knowledge, then forgets the run', () => {

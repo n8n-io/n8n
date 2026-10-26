@@ -60,7 +60,10 @@ const STALE_RUN_MS = Time.days.toMilliseconds;
 interface TrackedRun {
 	usage: KnowledgeRunUsage;
 	lastCallAt: number;
-	readFileUploadTimes: Map<string, number>;
+	/** Calls started so far. Gives each call its place, because concurrent calls can end in another order. */
+	startedCalls: number;
+	/** Each file that the run read, by file id, with its upload time and the place of its first read call. */
+	readFiles: Map<string, { uploadedAt: number; callOrder: number }>;
 }
 
 /**
@@ -108,8 +111,10 @@ export class AgentKnowledgeUsageTracker {
 		const run: TrackedRun = this.runs.get(runId) ?? {
 			usage: emptyUsage(),
 			lastCallAt: now,
-			readFileUploadTimes: new Map(),
+			startedCalls: 0,
+			readFiles: new Map(),
 		};
+		const callOrder = run.startedCalls++;
 		run.usage[usageKeyByCall[call]]++;
 		run.lastCallAt = now;
 		this.runs.set(runId, run);
@@ -125,7 +130,7 @@ export class AgentKnowledgeUsageTracker {
 			} else {
 				run.usage[contentKeyByCall[call]] += result.contentChars;
 				if (result.readFile) {
-					recordReadFile(run, result.readFile);
+					recordReadFile(run, result.readFile, callOrder);
 				}
 			}
 
@@ -153,13 +158,23 @@ export class AgentKnowledgeUsageTracker {
 	}
 }
 
-function recordReadFile(run: TrackedRun, readFile: { fileId: string; uploadedAt: string }) {
+function recordReadFile(
+	run: TrackedRun,
+	readFile: { fileId: string; uploadedAt: string },
+	callOrder: number,
+) {
 	const uploadedAt = Date.parse(readFile.uploadedAt);
-	if (Number.isNaN(uploadedAt) || run.readFileUploadTimes.has(readFile.fileId)) {
+	if (Number.isNaN(uploadedAt)) {
 		return;
 	}
 
-	run.readFileUploadTimes.set(readFile.fileId, uploadedAt);
+	const knownFile = run.readFiles.get(readFile.fileId);
+	if (knownFile) {
+		knownFile.callOrder = Math.min(knownFile.callOrder, callOrder);
+		return;
+	}
+
+	run.readFiles.set(readFile.fileId, { uploadedAt, callOrder });
 }
 
 function median(sortedValues: number[]) {
@@ -179,12 +194,12 @@ function ageInFullDays(uploadedAt: number, now: number) {
 
 /** Ages in full days when the run ends, each read file once. Empty when the run read no file. */
 function fileAges(run: TrackedRun, now: number) {
-	if (run.readFileUploadTimes.size === 0) {
+	if (run.readFiles.size === 0) {
 		return {};
 	}
 
-	const uploadTimes = [...run.readFileUploadTimes.values()];
-	const ages = uploadTimes.map((uploadedAt) => ageInFullDays(uploadedAt, now));
+	const filesInCallOrder = [...run.readFiles.values()].sort((a, b) => a.callOrder - b.callOrder);
+	const ages = filesInCallOrder.map(({ uploadedAt }) => ageInFullDays(uploadedAt, now));
 	const sortedAges = [...ages].sort((a, b) => a - b);
 	const averageAge = ages.reduce((sum, age) => sum + age, 0) / ages.length;
 	return {
@@ -192,7 +207,7 @@ function fileAges(run: TrackedRun, now: number) {
 		file_age_days_max: sortedAges[sortedAges.length - 1],
 		file_age_days_avg: smartDecimal(averageAge, 1),
 		file_age_days_median: median(sortedAges),
-		file_ages_days_first_25: ages.slice(0, 25), // adds a random limit to avoid huge arrays
+		file_age_days_first_25: ages.slice(0, 25), // adds a random limit to avoid huge arrays
 	};
 }
 
