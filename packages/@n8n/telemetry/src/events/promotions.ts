@@ -69,7 +69,7 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 	USER_UPDATED_PROMOTION_ENVIRONMENT: {
 		name: 'User updated promotion environment',
 		description:
-			'A promotion environment was updated. Fires once per successful update that changes at least one field. A failed or conflicted update does not fire it, and neither does an update that only resends the current provider.',
+			'A promotion environment was updated. Fires once per successful update that sends at least one field listed in `changed_fields`, even with an unchanged value. A failed or conflicted update does not fire it, and neither does an update that only resends the current provider.',
 		properties: z.object({
 			user_id: z.string(),
 			environment_id: z.string(),
