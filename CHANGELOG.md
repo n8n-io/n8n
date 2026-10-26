@@ -1,3 +1,25 @@
+## [2.45.4](https://github.com/n8n-io/n8n/compare/n8n@2.45.3...n8n@2.45.4) (2026-10-26)
+
+
+### Bug Fixes
+
+* **core:** Recreate removed n8n-sandbox sandboxes and rerun workspace setup ([#41919](https://github.com/n8n-io/n8n/issues/41919)) ([11e279a](https://github.com/n8n-io/n8n/commit/11e279a51d497f8d96f5f9f90bb314dda4f6a49e))
+* **core:** Start sub-workflow error workflow when a pre-run check fails ([#41977](https://github.com/n8n-io/n8n/issues/41977)) ([9595142](https://github.com/n8n-io/n8n/commit/95951428c765f3f0b1da9f341a6ab8c75673385a))
+* **editor:** Match navigation plus button hover styling ([#41910](https://github.com/n8n-io/n8n/issues/41910)) ([471c006](https://github.com/n8n-io/n8n/commit/471c006fdd46091659f3e1d28d989702049489f0))
+* **editor:** Point migration report docs link to the v3 breaking changes page ([#42003](https://github.com/n8n-io/n8n/issues/42003)) ([b617384](https://github.com/n8n-io/n8n/commit/b617384eeaf73f98683f19606013d91e6b8335c1))
+* **Email Trigger (IMAP) Node:** Back off reconnects when the server drops each new connection ([#41926](https://github.com/n8n-io/n8n/issues/41926)) ([618064c](https://github.com/n8n-io/n8n/commit/618064cc02e083ebeb7e721822561ce35b963502))
+* **Microsoft SharePoint Node:** Fix the column mapper 403 and empty items in Map Automatically ([#41907](https://github.com/n8n-io/n8n/issues/41907)) ([79bbff4](https://github.com/n8n-io/n8n/commit/79bbff41eed6c3850eb8d78e8b1371e08e5a36a5))
+* Update certifi to 2026.10.19 in task runner ([#41966](https://github.com/n8n-io/n8n/issues/41966)) ([d53bba1](https://github.com/n8n-io/n8n/commit/d53bba1c1f21d4fde840e20b9a0292af4e440c1d))
+* Update certifi to 2026.10.23 in task runner ([#41993](https://github.com/n8n-io/n8n/issues/41993)) ([82788cc](https://github.com/n8n-io/n8n/commit/82788ccb28ad1bda7d3a68c2562580a9e88823b4))
+
+
+### Features
+
+* **editor:** Filter migration report workflows by project ([#41949](https://github.com/n8n-io/n8n/issues/41949)) ([2946963](https://github.com/n8n-io/n8n/commit/29469636e6715c75745a0a2143e21847a96aa4ae))
+* **editor:** Refactor N8nBreadcrumbs and callers ([#41911](https://github.com/n8n-io/n8n/issues/41911)) ([81d4309](https://github.com/n8n-io/n8n/commit/81d430952dd0957be9f878709c1cbefc6581488e))
+* Implements new taxonomy experiment for sales-and-marketing responders ([#41936](https://github.com/n8n-io/n8n/issues/41936)) ([24e1504](https://github.com/n8n-io/n8n/commit/24e1504269c32dd982f44886af4d469b199a03de))
+
+
 ## [2.45.3](https://github.com/n8n-io/n8n/compare/n8n@2.45.2...n8n@2.45.3) (2026-10-23)
 
 
