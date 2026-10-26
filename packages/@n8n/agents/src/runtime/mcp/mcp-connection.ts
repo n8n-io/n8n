@@ -213,7 +213,7 @@ export class McpConnection {
 		return tools.map((t) =>
 			t.suspendSchema || !this.shouldRequireToolApproval(t, requireApproval)
 				? t
-				: wrapToolForApproval(t, { requireApproval: true }),
+				: (this.config.wrapApproval?.(t) ?? wrapToolForApproval(t, { requireApproval: true })),
 		);
 	}
 

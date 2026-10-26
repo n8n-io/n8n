@@ -14,7 +14,7 @@ export const baseDescription: INodeTypeBaseDescription = {
 	icon: 'node:ai-agent',
 	group: ['transform'],
 	description: 'Send a message to a n8n agent',
-	defaultVersion: 3.1,
+	defaultVersion: 4,
 };
 
 export class MessageAnAgent extends VersionedNodeType {
@@ -29,6 +29,7 @@ export class MessageAnAgent extends VersionedNodeType {
 			2: new MessageAnAgentV2(baseDescription),
 			3: new MessageAnAgentV2(baseDescription),
 			3.1: new MessageAnAgentV2(baseDescription),
+			4: new MessageAnAgentV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

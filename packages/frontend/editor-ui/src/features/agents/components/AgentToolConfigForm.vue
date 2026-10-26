@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import type { AgentApprovalRoute, AgentConfigValidationIssue } from '@n8n/api-types';
 import { N8nCallout, N8nText } from '@n8n/design-system';
 import {
 	RestrictedToolCallout,
@@ -36,6 +36,8 @@ import type {
 	CustomToolEntry,
 	WorkflowToolRef,
 } from '../types';
+import AgentApprovalRouteSelect from './AgentApprovalRouteSelect.vue';
+import type { AgentHitlContext } from './agent-hitl.types';
 import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
 import AgentToolConfigCustomContent from './AgentToolConfigCustomContent.vue';
 import AgentToolConfigMcpApprovalSetting from './AgentToolConfigMcpApprovalSetting.vue';
@@ -52,6 +54,7 @@ interface ToolModalData {
 	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
 	/** Inline agents pass false because approval needs suspend and resume. */
 	supportsToolApproval?: boolean;
+	approvalContext?: AgentHitlContext;
 	onConfirm: (updatedRef: AgentJsonToolRef) => void;
 	onRemove?: () => void;
 	kind?: 'tool';
@@ -66,6 +69,7 @@ interface McpServerModalData {
 	agentId?: string;
 	/** Inline agents pass false because approval needs suspend and resume. */
 	supportsToolApproval?: boolean;
+	approvalContext?: AgentHitlContext;
 	onConfirm: (updatedServer: AgentJsonMcpServerConfig) => void;
 	onRemove?: () => void;
 }
@@ -114,6 +118,16 @@ const workflowContentRef = ref<InstanceType<typeof AgentToolConfigWorkflowConten
 const isValid = ref(false);
 const submitCount = ref(0);
 const approvalRequired = ref(false);
+const approvalRoute = ref<AgentApprovalRoute>();
+watch(
+	() => props.data,
+	(data) => {
+		approvalRoute.value = isMcpServerModalData(data)
+			? data.mcpServer.approvalRoute
+			: data.toolRef.approvalRoute;
+	},
+	{ immediate: true },
+);
 const mcpPermissions = ref<AgentJsonMcpServerConfig['toolPermissions']>();
 const mcpApprovalValid = ref(true);
 const draftNode = ref<INode | null>(null);
@@ -258,7 +272,10 @@ function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
 		const { requireApproval: _requireApproval, ...rest } = ref;
 		return rest;
 	}
-	const updatedRef = { ...ref };
+	const updatedRef = {
+		...ref,
+		approvalRoute: approvalRequired.value ? approvalRoute.value : undefined,
+	};
 	if (approvalRequired.value) updatedRef.requireApproval = true;
 	else delete updatedRef.requireApproval;
 	return updatedRef;
@@ -282,6 +299,7 @@ function confirm(): boolean {
 		const updatedServer = nodeToMcpServer(currentMcpNode, mcpData.mcpServer);
 		mcpData.onConfirm({
 			...updatedServer,
+			approvalRoute: approvalRoute.value,
 			toolPermissions: supportsApproval.value
 				? mcpPermissions.value
 				: {
@@ -436,6 +454,23 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				@update:valid="mcpApprovalValid = $event"
 			/>
 		</div>
+		<AgentApprovalRouteSelect
+			v-if="
+				data.approvalContext &&
+				data.projectId &&
+				supportsApproval &&
+				(approvalRequired ||
+					(isMcpTool &&
+						mcpPermissions &&
+						(mcpPermissions.categories.read === 'require_approval' ||
+							mcpPermissions.categories.write === 'require_approval' ||
+							Object.values(mcpPermissions.tools ?? {}).includes('require_approval'))))
+			"
+			v-model="approvalRoute"
+			:context="data.approvalContext"
+			:project-id="data.projectId"
+			:disabled="isRestricted"
+		/>
 	</div>
 </template>
 

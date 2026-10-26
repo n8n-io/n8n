@@ -9,11 +9,12 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | error | text |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
-| kind | varchar(16) |  | false |  |  | What the job tracks: a detached sub-agent run or a workflow execution |
+| kind | varchar(16) |  | false |  |  | subagent: detached Agent; workflow: background workflow; approval: decision workflow for a suspended Agent |
 | notifiedAt | timestamp(3) with time zone |  | true |  |  | Time when the parent received the latest result or approval request |
 | parentAgentId | varchar(36) |  | false |  | [public.agents](public.agents.md) |  |
 | parentPrincipalHash | varchar(64) |  | false |  |  | Sandbox principal hash of the parent agent run |
 | parentResourceId | varchar(255) |  | false |  |  | Memory resource of the parent agent run |
+| parentRunId | varchar(128) |  | true |  |  | Agent SDK run ID retained by this approval request |
 | parentThreadId | varchar(128) |  | false |  |  |  |
 | pauseRequestId | uuid |  | true |  |  | Groups jobs stopped by one user request |
 | planId | uuid |  | true |  | [public.agent_plan](public.agent_plan.md) | Plan that owns this work |
@@ -32,7 +33,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_agent_background_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['subagent'::character varying, 'workflow'::character varying])::text[]))) |
+| CHK_agent_background_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['subagent'::character varying, 'workflow'::character varying, 'approval'::character varying])::text[]))) |
 | CHK_agent_background_job_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'suspended'::character varying, 'paused'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[]))) |
 | FK_4db3b7ebea4ed4f69649982018c | FOREIGN KEY | FOREIGN KEY ("sourceExecutionId") REFERENCES agent_execution(id) ON DELETE SET NULL |
 | FK_ce131bff629d89015893e350e9c | FOREIGN KEY | FOREIGN KEY ("planId") REFERENCES agent_plan(id) ON DELETE SET NULL |
@@ -83,6 +84,7 @@ erDiagram
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
+  varchar_128_ parentRunId
   varchar_128_ parentThreadId
   uuid pauseRequestId
   uuid planId FK

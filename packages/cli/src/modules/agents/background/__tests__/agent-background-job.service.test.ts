@@ -1499,7 +1499,9 @@ describe('reconcile — workflow jobs', () => {
 			makeWorkflowJob({ id: 'wf-job-2', childExecutionId: 'exec-2', pauseRequestId: 'stop-1' }),
 			makeWorkflowJob({ id: 'other-job', childExecutionId: 'other-execution' }),
 		];
-		jobRepository.findRunningJobs.mockResolvedValue(jobs);
+		jobRepository.findRunningJobs.mockImplementation(async (kind) =>
+			jobs.filter((job) => job.kind === kind),
+		);
 		executionPersistence.findStatusesByIds.mockResolvedValue(
 			jobs.map((job) => ({ id: job.childExecutionId!, status: 'waiting' })),
 		);

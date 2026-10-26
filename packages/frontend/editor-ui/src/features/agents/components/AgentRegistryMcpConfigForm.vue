@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { N8nInput, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import type { McpToolPermissions } from '@n8n/api-types';
+import type { AgentApprovalRoute, McpToolPermissions } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
 
+import AgentApprovalRouteSelect from './AgentApprovalRouteSelect.vue';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import McpConnectionStatusCallout from '@/features/shared/toolsConnection/McpConnectionStatusCallout.vue';
@@ -36,6 +37,7 @@ const config = useAgentRegistryMcpConfig(modalData, () => emit('credential-delet
 const item = config.item;
 const title = config.title;
 const submitted = ref(false);
+const approvalRoute = ref<AgentApprovalRoute>(props.data.mcpServer.approvalRoute);
 const initialConnectionTimeoutMs =
 	props.data.mcpServer.connectionTimeoutMs ?? DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS;
 const draftSettings = ref<McpToolSettings>({
@@ -119,7 +121,7 @@ const saveDisabled = computed(() => item.value?.status !== 'connected');
 function confirm(): boolean {
 	submitted.value = true;
 	if (parsedTimeout.value === null) return false;
-	return config.save(draftSettings.value);
+	return config.save(draftSettings.value, approvalRoute.value);
 }
 
 async function remove(): Promise<boolean> {
@@ -172,6 +174,18 @@ defineExpose({
 			@retry="config.discover()"
 		/>
 		<div :class="$style.settings">
+			<AgentApprovalRouteSelect
+				v-if="
+					data.approvalContext &&
+					data.supportsToolApproval !== false &&
+					(draftPermissions.categories.read === 'require_approval' ||
+						draftPermissions.categories.write === 'require_approval' ||
+						Object.values(draftPermissions.tools ?? {}).includes('require_approval'))
+				"
+				v-model="approvalRoute"
+				:context="data.approvalContext"
+				:project-id="data.projectId"
+			/>
 			<McpToolPermissionsEditor
 				v-model="draftPermissions"
 				actor="agent"

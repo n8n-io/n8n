@@ -19,7 +19,7 @@ export class MessageAnAgentV2 implements INodeType {
 			// Session settings with a chat-trigger-aware default. The differences
 			// are gated via `@version` displayOptions and typeVersion checks in
 			// the shared execute, so one class serves all versions.
-			version: [2, 3, 3.1],
+			version: [2, 3, 3.1, 4],
 			properties: [
 				// Set by the node-creator agent picker ('referenced' | 'inline'), not
 				// editable in the NDV. Kept hidden with no displayOptions so saves

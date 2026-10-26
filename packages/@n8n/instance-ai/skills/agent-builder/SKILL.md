@@ -187,6 +187,26 @@ approves or rejects them in this chat. If it returns `approval_required` for an
 unsupported interaction, explain that it cannot be completed here and send the
 user to the Preview link from `sessionContext` to run it again.
 
+The Advanced HITL spike adds workflow approval for saved Agents called from a
+workflow. It requires `N8N_AGENTS_ADVANCED_HITL_ENABLED` and Message an Agent
+version 4. It does not yet support scheduled Agent tasks or direct channel
+delivery. Do not promise these paths.
+
+Use `hitlConfigurations` for named workflow destinations. Each configuration
+has `id`, `name`, `method: "workflow"`, and `workflowId`. Set
+`defaultApprovalRoute: { type: "configuration", configurationId }` to use one
+destination for all gated tools. A tool or MCP server can set `approvalRoute`
+to override that default. Keep `requireApproval` and MCP permission rules.
+The route selects the destination. It does not require approval by itself.
+
+A decision workflow starts with `n8n-nodes-base.agentDecisionTrigger`. Add
+review steps and return one terminal item with `{ approved: boolean }`.
+Existing send-and-wait nodes can return this item directly. The optional
+`n8n-nodes-base.agentDecisionResponse` node builds the same result. Never use
+an unconditional approval as a human review step. A production run uses the
+published decision workflow. Requests have no expiry. A user can cancel the
+request and its caller from Advanced HITL in Agent Settings.
+
 After a successful build or config change that leaves the Agent ready to try,
 include that Preview markdown link in your wrap-up. Keep Preview links as
 relative app paths and do not invent a different path.

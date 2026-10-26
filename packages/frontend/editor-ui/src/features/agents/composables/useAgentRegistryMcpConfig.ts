@@ -1,4 +1,6 @@
+import type { AgentHitlContext } from '../components/agent-hitl.types';
 import type {
+	AgentApprovalRoute,
 	AgentJsonMcpServerConfig,
 	McpRegistryDiscoveryRequest,
 	McpRegistryDiscoveryResponse,
@@ -40,6 +42,7 @@ export type AgentRegistryMcpDraft = Pick<
 	| 'metadata'
 	| 'toolPermissions'
 	| 'connectionTimeoutMs'
+	| 'approvalRoute'
 >;
 
 export interface AgentRegistryMcpModalData {
@@ -49,6 +52,7 @@ export interface AgentRegistryMcpModalData {
 	existingToolNames?: string[];
 	isNew?: boolean;
 	supportsToolApproval?: boolean;
+	approvalContext?: AgentHitlContext;
 	onConfirm: (updatedServer: AgentJsonMcpServerConfig) => void;
 	onRemove?: () => void;
 }
@@ -247,7 +251,7 @@ export function useAgentRegistryMcpConfig(
 		await discover(credentialId);
 	}
 
-	function save(settings: McpToolSettings): boolean {
+	function save(settings: McpToolSettings, approvalRoute?: AgentApprovalRoute): boolean {
 		const result = discovery.value;
 		const { connectionTimeoutMs, ...toolPermissions } = settings;
 		if (
@@ -269,6 +273,7 @@ export function useAgentRegistryMcpConfig(
 				: toolPermissions;
 		data.value?.onConfirm({
 			...connectedServer,
+			approvalRoute,
 			name: normalizedTitle.value,
 			toolPermissions: normalizedToolPermissions,
 			connectionTimeoutMs,

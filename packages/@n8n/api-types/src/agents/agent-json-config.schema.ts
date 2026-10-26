@@ -2,6 +2,7 @@ import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { AgentApprovalRouteSchema, AgentHitlConfigurationSchema } from './agent-hitl.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
@@ -279,6 +280,7 @@ export const McpServerConfigSchema = z
 			.describe(
 				'Optional read/write category permissions with exact-name tool overrides. Omission allows all tools without approval',
 			),
+		approvalRoute: AgentApprovalRouteSchema.optional(),
 		connectionTimeoutMs: z
 			.number()
 			.int()
@@ -358,6 +360,7 @@ export const AgentVectorStoreConfigSchema = z.discriminatedUnion('provider', [
 ]);
 
 const CustomToolJsonConfigSchema = z.object({
+	approvalRoute: AgentApprovalRouteSchema.optional(),
 	type: z.literal('custom'),
 	enabled: z.boolean().optional(),
 	id: z
@@ -395,6 +398,7 @@ export const WorkflowToolInputFieldSchema = z.discriminatedUnion('mode', [
 
 export const WorkflowToolJsonConfigSchema = z
 	.object({
+		approvalRoute: AgentApprovalRouteSchema.optional(),
 		type: z.literal('workflow'),
 		enabled: z.boolean().optional(),
 		workflowId: z.string().min(1).optional().describe("The workflow's stable ID."),
@@ -417,6 +421,7 @@ export const WorkflowToolJsonConfigSchema = z
 
 export const NodeToolJsonConfigSchema = z
 	.object({
+		approvalRoute: AgentApprovalRouteSchema.optional(),
 		type: z.literal('node'),
 		enabled: z.boolean().optional(),
 		name: z.string().min(1),
@@ -461,6 +466,13 @@ export const BudgetGuardrailConfigSchema = z
 export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
 
 export const AgentJsonConfigBaseSchema = z.object({
+	defaultApprovalRoute: AgentApprovalRouteSchema.optional(),
+	hitlConfigurations: z
+		.array(AgentHitlConfigurationSchema)
+		.refine((entries) => new Set(entries.map(({ id }) => id)).size === entries.length, {
+			message: 'HITL configuration IDs must be unique',
+		})
+		.optional(),
 	name: z.string().min(1).max(128),
 	/** An empty string is a deliberate clear of a previously stored value. */
 	description: z.string().trim().max(AGENT_DESCRIPTION_MAX_LENGTH).optional(),

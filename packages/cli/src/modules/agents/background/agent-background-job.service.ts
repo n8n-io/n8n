@@ -201,13 +201,16 @@ export class AgentBackgroundJobService {
 	 * Register a workflow execution parked at a Wait node as a background job.
 	 */
 	async registerWorkflowJob(
-		params: Omit<NewWorkflowJob, 'kind' | 'childExecutionId'> & { executionId: string },
+		params: Omit<NewWorkflowJob, 'kind' | 'childExecutionId'> & {
+			executionId: string;
+			kind?: 'workflow' | 'approval';
+		},
 	): Promise<BackgroundJobReceipt> {
 		const { executionId, ...job } = params;
 
 		const outcome = await this.jobRepository.insertWorkflowJobOrGetExisting({
 			...job,
-			kind: 'workflow',
+			kind: job.kind ?? 'workflow',
 			childExecutionId: executionId,
 		});
 		if (outcome.inserted) {
@@ -225,9 +228,24 @@ export class AgentBackgroundJobService {
 		executionId: string,
 		settlement: AgentBackgroundJobSettlement,
 		runData?: IRunData,
+		connections?: import('n8n-workflow').IConnections,
 	): Promise<boolean> {
 		const job = await this.jobRepository.findRunningWorkflowJobByExecutionId(executionId);
 		if (!job) return false;
+		if (job.kind === 'approval' && settlement.status === 'completed' && runData) {
+			try {
+				const { collectAgentDecision } = await import('../approval/decision-result.js');
+				settlement = {
+					...settlement,
+					result: JSON.stringify(collectAgentDecision(runData, connections)),
+				};
+			} catch (error) {
+				settlement = {
+					status: 'failed',
+					error: error instanceof Error ? error.message : String(error),
+				};
+			}
+		}
 
 		if (job.pauseRequestId && runData) {
 			settlement = {
@@ -254,7 +272,7 @@ export class AgentBackgroundJobService {
 			if (!settled || !job) return settled;
 			if (job.pauseRequestId) await this.retainLatestStopGroup(job);
 			this.notifyJobUpdate(job);
-			await this.requestWakeSafely(job.parentThreadId);
+			if (job.kind !== 'approval') await this.requestWakeSafely(job.parentThreadId);
 			return true;
 		} finally {
 			// Drop the handle even when the write throws — a leaked entry would
@@ -668,7 +686,7 @@ export class AgentBackgroundJobService {
 	async listCurrentGroupForThread(
 		parentAgentId: string,
 		parentThreadId: string,
-	): Promise<Array<BackgroundJobGroupItem & Pick<AgentBackgroundJobDto, 'approval'>>> {
+	): Promise<(BackgroundJobGroupItem & Pick<AgentBackgroundJobDto, 'approval'>)[]> {
 		const candidates = await this.jobRepository.findGroupCandidates(parentAgentId, parentThreadId);
 		const stoppingRequests = new Set(
 			candidates
@@ -743,7 +761,8 @@ export class AgentBackgroundJobService {
 		if (job.status !== 'running' && job.status !== 'suspended' && job.status !== 'paused')
 			return 'already-settled';
 
-		if (job.kind === 'workflow') return await this.cancelWorkflowJob(job);
+		if (job.kind === 'workflow' || job.kind === 'approval')
+			return await this.cancelWorkflowJob(job);
 
 		const claimed = await this.jobRepository.settleIfActive(
 			jobId,
@@ -891,7 +910,10 @@ export class AgentBackgroundJobService {
 	 */
 	async reconcileWorkflowJobs(signal?: AbortSignal): Promise<void> {
 		if (signal?.aborted) return;
-		const jobs = await this.jobRepository.findRunningJobs('workflow');
+		const jobs = [
+			...(await this.jobRepository.findRunningJobs('workflow')),
+			...(await this.jobRepository.findRunningJobs('approval')),
+		];
 		await this.settleFinishedWorkflowJobs(jobs, signal);
 		for (const job of jobs) {
 			if (signal?.aborted) return;
@@ -970,7 +992,9 @@ export class AgentBackgroundJobService {
 	): Promise<boolean> {
 		const candidates = jobs.filter(
 			(job): job is AgentBackgroundJob & { childExecutionId: string } =>
-				job.kind === 'workflow' && job.status === 'running' && job.childExecutionId !== null,
+				(job.kind === 'workflow' || job.kind === 'approval') &&
+				job.status === 'running' &&
+				job.childExecutionId !== null,
 		);
 		if (candidates.length === 0) return false;
 
@@ -1002,6 +1026,7 @@ export class AgentBackgroundJobService {
 	private async loadExecutionResult(
 		executionId: string,
 		allOutputs = false,
+		approval = false,
 	): Promise<string | null> {
 		// A failed data read must not block the settle: workflow jobs have no
 		// timeout, so a row skipped here could stay running forever.
@@ -1013,6 +1038,10 @@ export class AgentBackgroundJobService {
 
 			const runData = execution?.data?.resultData?.runData;
 			if (!runData) return null;
+			if (approval) {
+				const { collectAgentDecision } = await import('../approval/decision-result.js');
+				return JSON.stringify(collectAgentDecision(runData, execution?.workflowData.connections));
+			}
 
 			return serializeWorkflowJobResult(collectResultData(runData, allOutputs));
 		} catch (error) {
@@ -1160,7 +1189,11 @@ export class AgentBackgroundJobService {
 				status,
 				result:
 					status === 'completed' || job.pauseRequestId
-						? await this.loadExecutionResult(executionId, Boolean(job.pauseRequestId))
+						? await this.loadExecutionResult(
+								executionId,
+								Boolean(job.pauseRequestId),
+								job.kind === 'approval',
+							)
 						: null,
 				error: executionStatus === 'success' ? null : `Execution ${executionStatus}`,
 			});

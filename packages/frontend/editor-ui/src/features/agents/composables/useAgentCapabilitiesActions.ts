@@ -6,6 +6,7 @@ import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	skillNameKey,
+	type AgentHitlConfiguration,
 	type AgentConfigValidationIssue,
 	type AgentSkillAvailability,
 	type SkillCreateMethod,
@@ -155,6 +156,26 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		() => !localSkills && settingsStore.moduleSettings.agents?.skillsHubEnabled === true,
 	);
 
+	function hitlContext() {
+		if (supportsToolApproval === false || !settingsStore.moduleSettings.agents?.advancedHitlEnabled)
+			return undefined;
+		const targetAgentId = agentId.value;
+		return {
+			getConfig: () => (agentId.value === targetAgentId ? localConfig.value : null),
+			saveConfiguration: (configuration: AgentHitlConfiguration) => {
+				if (agentId.value !== targetAgentId) return;
+				scheduleConfigUpdate({
+					hitlConfigurations: [
+						...(localConfig.value?.hitlConfigurations ?? []).filter(
+							(entry) => entry.id !== configuration.id,
+						),
+						configuration,
+					],
+				});
+			},
+		};
+	}
+
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
 		// switch must not write the old agent's tool list into the new one.
@@ -169,6 +190,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				projectId: projectId.value,
 				agentId: targetAgentId,
 				supportsToolApproval,
+				approvalContext: hitlContext(),
 				onConfirm: (payload: {
 					tools?: AgentJsonToolConfig[];
 					mcpServers?: AgentJsonMcpServerConfig[];
@@ -215,6 +237,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					projectId: projectId.value,
 					agentId: agentId.value,
 					supportsToolApproval,
+					approvalContext: hitlContext(),
 					validationIssues: () =>
 						validationIssues?.value.filter(
 							(issue) => issue.capability.kind === 'tool' && issue.capability.index === toolIndex,
@@ -258,6 +281,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					mcpServer,
 					projectId: projectId.value,
 					supportsToolApproval,
+					approvalContext: hitlContext(),
 					existingToolNames: mcpServers
 						.filter((_, index) => index !== mcpServerIndex)
 						.map((server) => server.name),
@@ -296,6 +320,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				projectId: projectId.value,
 				agentId: agentId.value,
 				supportsToolApproval,
+				approvalContext: hitlContext(),
 				existingToolNames: mcpServers
 					.filter((_, i) => i !== mcpServerIndex)
 					.map((server) => server.name),

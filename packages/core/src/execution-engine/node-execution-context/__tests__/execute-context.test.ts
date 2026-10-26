@@ -439,6 +439,62 @@ describe('ExecuteContext', () => {
 	});
 
 	describe('executeAgent', () => {
+		it('retains completed items and resumes the pending item after serialization', async () => {
+			const agentNode: INode = { ...node, type: 'n8n-nodes-base.messageAnAgent', typeVersion: 4 };
+			const invocationData: IExecuteData = {
+				node: agentNode,
+				metadata: {},
+				data: inputData,
+				source: null,
+			};
+			const state = mock<IRunExecutionData>();
+			const complete = {
+				response: 'done',
+				structuredOutput: { ok: true },
+				usage: null,
+				toolCalls: [],
+				finishReason: 'stop',
+				session: null,
+			};
+			const waiting = {
+				...complete,
+				waiting: { runId: 'run-2', executionIds: ['decision-2'], snapshot: '{}' },
+			};
+			const runAgent = vi
+				.fn()
+				.mockResolvedValueOnce(complete)
+				.mockResolvedValueOnce(waiting)
+				.mockResolvedValue(complete);
+			const extra = mock<IWorkflowExecuteAdditionalData>({ executeAgent: runAgent });
+			const createContext = (data: IExecuteData) =>
+				new ExecuteContext(
+					workflow,
+					agentNode,
+					extra,
+					mode,
+					state,
+					runIndex,
+					connectionInputData,
+					inputData,
+					data,
+					[closeFn],
+				);
+			const first = createContext(invocationData);
+			await first.executeAgent({ agentId: 'agent' }, 'first', 'parent', 0);
+			await first.executeAgent({ agentId: 'agent' }, 'second', 'parent', 1);
+			expect(state.waitTill).toEqual(WAIT_FOR_SUB_EXECUTION);
+			expect(invocationData.metadata?.waitingChildExecutionIds).toEqual(['decision-2']);
+			const resumed = createContext(structuredClone(invocationData));
+			expect(await resumed.executeAgent({ agentId: 'agent' }, 'first', 'parent', 0)).toEqual(
+				complete,
+			);
+			await resumed.executeAgent({ agentId: 'agent' }, 'second', 'parent', 1);
+			await resumed.executeAgent({ agentId: 'agent' }, 'third', 'parent', 2);
+			expect(runAgent).toHaveBeenCalledTimes(4);
+			expect(runAgent.mock.calls[2][7]).toMatchObject({ continuation: waiting.waiting });
+			expect(runAgent.mock.calls[2][3]).toBe(runAgent.mock.calls[1][3]);
+		});
+
 		const webhookNode: INode = {
 			id: 'webhook-node-id',
 			name: 'Webhook',

@@ -125,6 +125,8 @@ const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
 // binding via mergeProps — pinning the dialog open.
 defineOptions({ inheritAttrs: false });
 
+import type { AgentHitlContext } from './agent-hitl.types';
+
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -134,6 +136,7 @@ const props = defineProps<{
 		projectId: string;
 		agentId?: string;
 		supportsToolApproval?: boolean;
+		approvalContext?: AgentHitlContext;
 		onConfirm: (payload: {
 			tools?: AgentJsonToolRef[];
 			mcpServers?: AgentJsonMcpServerConfig[];
@@ -439,6 +442,7 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 		projectId: props.data.projectId,
 		agentId: props.data.agentId,
 		supportsToolApproval: props.data.supportsToolApproval,
+		approvalContext: props.data.approvalContext,
 		existingToolNames: getExistingToolNames(workingTools.value),
 		onConfirm: (savedRef: AgentJsonToolRef) => {
 			addToolRef(savedRef);
@@ -457,6 +461,7 @@ function openConfigForNewMcpServer(
 		projectId: props.data.projectId,
 		agentId: props.data.agentId,
 		supportsToolApproval: props.data.supportsToolApproval,
+		approvalContext: props.data.approvalContext,
 		existingToolNames: getExistingMcpServerNames(workingMcpServers.value),
 		onConfirm: (savedServer: AgentJsonMcpServerConfig) => {
 			addMcpServer(savedServer);
@@ -667,6 +672,7 @@ function openConfigForToolEntry(entry: WorkingToolEntry) {
 		projectId: props.data.projectId,
 		agentId: props.data.agentId,
 		supportsToolApproval: props.data.supportsToolApproval,
+		approvalContext: props.data.approvalContext,
 		existingToolNames: getExistingToolNames(workingTools.value, toolRef),
 		onConfirm: (updatedRef: AgentJsonToolRef) => {
 			workingToolEntries.value = workingToolEntries.value.map((e) =>
@@ -700,6 +706,7 @@ function openConfigForMcpEntry(entry: WorkingMcpServerEntry) {
 		projectId: props.data.projectId,
 		agentId: props.data.agentId,
 		supportsToolApproval: props.data.supportsToolApproval,
+		approvalContext: props.data.approvalContext,
 		existingToolNames: getExistingMcpServerNames(workingMcpServers.value, entry.server),
 		onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
 			workingMcpServerEntries.value = workingMcpServerEntries.value.map((e) =>
@@ -722,6 +729,7 @@ function openConfigForRegistryEntry(entry: WorkingMcpServerEntry) {
 		mcpServer: entry.server,
 		projectId: props.data.projectId,
 		supportsToolApproval: props.data.supportsToolApproval,
+		approvalContext: props.data.approvalContext,
 		existingToolNames: getExistingMcpServerNames(workingMcpServers.value, entry.server),
 		onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
 			workingMcpServerEntries.value = workingMcpServerEntries.value.map((candidate) =>
@@ -936,6 +944,7 @@ function connectRegistryItem(
 		projectId: props.data.projectId,
 		isNew: true,
 		supportsToolApproval: props.data.supportsToolApproval,
+		approvalContext: props.data.approvalContext,
 		existingToolNames: getExistingMcpServerNames(workingMcpServers.value),
 		onConfirm: addMcpServer,
 	});

@@ -29,7 +29,8 @@ export type NewSubAgentJob = NewAgentBackgroundJobBase & {
 };
 
 export type NewWorkflowJob = NewAgentBackgroundJobBase & {
-	kind: 'workflow';
+	kind: 'workflow' | 'approval';
+	parentRunId?: string;
 	workflowId: string;
 	childExecutionId: string;
 };
@@ -137,10 +138,34 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		return await this.findOneBy({ id });
 	}
 
+	async listPendingApprovals(agentId: string): Promise<AgentBackgroundJob[]> {
+		return await this.find({
+			where: { parentAgentId: agentId, kind: 'approval', notifiedAt: IsNull() },
+			order: { createdAt: 'ASC' },
+			take: 100,
+		});
+	}
+
+	async findWorkflowJobByExecutionId(executionId: string): Promise<AgentBackgroundJob | null> {
+		return await this.findOneBy({ childExecutionId: executionId });
+	}
+
+	async consumeApprovalJob(executionId: string): Promise<void> {
+		await this.update(
+			{
+				childExecutionId: executionId,
+				kind: 'approval',
+				status: In(['completed', 'failed', 'cancelled']),
+			},
+			{ notifiedAt: new Date() },
+		);
+	}
+
 	/** Results and approval requests that still need delivery. */
 	async findWakeableUnconsumed(parentThreadId: string): Promise<AgentBackgroundJob[]> {
 		return await this.createQueryBuilder('job')
 			.where('job.parentThreadId = :parentThreadId', { parentThreadId })
+			.andWhere("job.kind <> 'approval'")
 			.andWhere("job.status <> 'running'")
 			.andWhere('job.notifiedAt IS NULL')
 			.andWhere(`(job.pauseRequestId IS NULL OR NOT EXISTS ${this.activePauseGroup()})`)
@@ -209,6 +234,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		const rows = await this.createQueryBuilder('job')
 			.select('DISTINCT job.parentThreadId', 'parentThreadId')
 			.where("job.status <> 'running'")
+			.andWhere("job.kind <> 'approval'")
 			.andWhere('job.notifiedAt IS NULL')
 			.getRawMany<{ parentThreadId: string }>();
 
@@ -219,7 +245,11 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		executionId: string,
 	): Promise<AgentBackgroundJob | null> {
 		return await this.findOne({
-			where: { kind: 'workflow', status: 'running', childExecutionId: executionId },
+			where: {
+				kind: In(['workflow', 'approval']),
+				status: 'running',
+				childExecutionId: executionId,
+			},
 		});
 	}
 

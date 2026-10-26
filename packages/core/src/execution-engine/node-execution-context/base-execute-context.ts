@@ -233,28 +233,27 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		return result;
 	}
 
-	async executeAgent(
-		agentInfo: ExecuteAgentInfo,
-		message: string,
-		executionId: string,
-		itemIndex: number,
-	): Promise<ExecuteAgentData> {
-		if (!this.additionalData.executeAgent) {
-			throw new OperationalError('Agent execution is not available in this context');
-		}
-
-		let source: ExecuteAgentSource;
-		if (agentInfo.inlineAgent) {
-			source = { inlineAgent: agentInfo.inlineAgent };
-		} else if (agentInfo.agentId) {
-			source = { agentId: agentInfo.agentId };
-		} else {
-			throw new OperationalError('Either an agent id or an inline agent definition is required');
-		}
-
+	private prepareAgentInvocation(agentInfo: ExecuteAgentInfo, itemIndex: number) {
 		const callerSessionId = agentInfo.sessionId?.trim();
-		const threadId = callerSessionId || randomUUID();
+		const supportsSuspension =
+			this.node.type === 'n8n-nodes-base.messageAnAgent' &&
+			this.node.typeVersion >= 4 &&
+			!agentInfo.inlineAgent;
+		const invocations = supportsSuspension
+			? (this.executeData.metadata?.agentInvocations ?? { version: 1, items: [] })
+			: undefined;
+		const previous = invocations?.items[itemIndex];
+		if (previous?.error) throw new OperationalError(previous.error);
+		const threadId = previous?.threadId ?? (callerSessionId || randomUUID());
+		if (invocations) {
+			invocations.items[itemIndex] = { ...previous, threadId };
+			this.setMetadata({ agentInvocations: invocations });
+		}
 
+		return { supportsSuspension, invocations, previous, threadId, callerSessionId };
+	}
+
+	private getAgentWorkflowInput(agentInfo: ExecuteAgentInfo, itemIndex: number) {
 		const inputDataScope = agentInfo.inputDataScope ?? 'item';
 		const mainBranches = this.inputData?.main ?? [];
 		const primaryBranch = mainBranches[0] ?? [];
@@ -268,7 +267,37 @@ export class BaseExecuteContext extends NodeExecutionContext {
 					? [primaryBranch[itemIndex]]
 					: [];
 
+		return { inputDataScope, scopedInput };
+	}
+
+	async executeAgent(
+		agentInfo: ExecuteAgentInfo,
+		message: string,
+		executionId: string,
+		itemIndex: number,
+	): Promise<ExecuteAgentData> {
+		const runAgent = this.additionalData.executeAgent;
+		if (!runAgent) {
+			throw new OperationalError('Agent execution is not available in this context');
+		}
+
+		let source: ExecuteAgentSource;
+		if (agentInfo.inlineAgent) {
+			source = { inlineAgent: agentInfo.inlineAgent };
+		} else if (agentInfo.agentId) {
+			source = { agentId: agentInfo.agentId };
+		} else {
+			throw new OperationalError('Either an agent id or an inline agent definition is required');
+		}
+
+		const { supportsSuspension, invocations, previous, threadId, callerSessionId } =
+			this.prepareAgentInvocation(agentInfo, itemIndex);
+		if (previous?.result && !previous.result.waiting) return previous.result;
+		const { inputDataScope, scopedInput } = this.getAgentWorkflowInput(agentInfo, itemIndex);
+
 		const workflowContext: ExecuteAgentWorkflowContext = {
+			...(supportsSuspension && { supportsSuspension: true }),
+			...(previous?.result?.waiting && { continuation: previous.result.waiting }),
 			workflowId: this.workflow.id,
 			workflowName: this.workflow.name,
 			callingNodeName: this.node.name,
@@ -289,23 +318,58 @@ export class BaseExecuteContext extends NodeExecutionContext {
 						await this.sendChunk(type, itemIndex, content)
 				: undefined;
 
-		return await this.additionalData.executeAgent(
-			source,
-			message,
-			executionId,
+		return await this.runAgentInvocation(
+			async () =>
+				await runAgent(
+					source,
+					message,
+					executionId,
+					threadId,
+					this.additionalData,
+					this.additionalData.rootExecutionMode ?? this.getMode(),
+					agentInfo.outputSchema,
+					workflowContext,
+					{
+						nodeId: this.node.id,
+						nodeName: this.node.name,
+						runIndex: this.runIndex,
+						itemIndex,
+						...(sendResponseChunk ? { sendResponseChunk } : {}),
+					},
+				),
+			invocations,
 			threadId,
-			this.additionalData,
-			this.additionalData.rootExecutionMode ?? this.getMode(),
-			agentInfo.outputSchema,
-			workflowContext,
-			{
-				nodeId: this.node.id,
-				nodeName: this.node.name,
-				runIndex: this.runIndex,
-				itemIndex,
-				...(sendResponseChunk ? { sendResponseChunk } : {}),
-			},
+			itemIndex,
 		);
+	}
+
+	private async runAgentInvocation(
+		run: () => Promise<ExecuteAgentData>,
+		invocations: ITaskMetadata['agentInvocations'],
+		threadId: string,
+		itemIndex: number,
+	): Promise<ExecuteAgentData> {
+		let result: ExecuteAgentData;
+		try {
+			result = await run();
+		} catch (error) {
+			if (invocations) {
+				invocations.items[itemIndex] = {
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				};
+			}
+			throw error;
+		}
+		if (invocations) {
+			invocations.items[itemIndex] = { threadId, result };
+			this.setMetadata({
+				agentInvocations: invocations,
+				waitingChildExecutionIds: result.waiting?.executionIds,
+			});
+			if (result.waiting) await this.putExecutionToWait(WAIT_FOR_SUB_EXECUTION);
+		}
+		return result;
 	}
 
 	isStreaming(): boolean {

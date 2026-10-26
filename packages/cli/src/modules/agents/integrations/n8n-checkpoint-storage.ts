@@ -167,7 +167,8 @@ export class N8NCheckpointStorage {
 		if (
 			checkpoint.expired ||
 			checkpoint.state === null ||
-			checkpoint.updatedAt < this.expiryCutoff()
+			(checkpoint.updatedAt < this.expiryCutoff() &&
+				!(await this.agentCheckpointRepository.isRetainedForApproval(key)))
 		) {
 			throw new UserError('This action has expired and cannot be resumed');
 		}
@@ -191,7 +192,9 @@ export class N8NCheckpointStorage {
 			agentId,
 			JSON.stringify(state),
 			JSON.stringify({ ...state, status: 'running' }),
-			this.expiryCutoff(),
+			(await this.agentCheckpointRepository.isRetainedForApproval(key))
+				? undefined
+				: this.expiryCutoff(),
 		);
 	}
 
@@ -366,7 +369,11 @@ export class N8NCheckpointStorage {
 		if (!checkpoint) return { status: 'not-found' };
 		if (checkpoint.state === null) return { status: 'expired' };
 		const state = jsonParse<SerializableAgentState>(checkpoint.state);
-		if (checkpoint.expired || checkpoint.updatedAt < this.expiryCutoff())
+		if (
+			checkpoint.expired ||
+			(checkpoint.updatedAt < this.expiryCutoff() &&
+				!(await this.agentCheckpointRepository.isRetainedForApproval(key)))
+		)
 			return { status: 'expired', checkpoint: state };
 		return { status: 'active', checkpoint: state };
 	}

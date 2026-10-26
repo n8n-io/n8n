@@ -2309,6 +2309,16 @@ describe('WorkflowExecute', () => {
 
 		const lastRun = (result: IRun) => result.data.resultData.runData[SUB_NODE].at(-1)!;
 
+		it('runs a resumable Agent node instead of passing its inputs through', async () => {
+			// Agent (waiting) → After. The Agent must execute when the wait ends.
+			const { result } = await runResumedSubError(
+				{},
+				{ resumeError: undefined, agentInvocations: { version: 1, items: [] } },
+			);
+			expect(result.status).toBe('success');
+			expect(lastRun(result).data?.main?.[0]?.[0]?.json).toEqual({ ran: true });
+		});
+
 		it('should halt the parent execution when onError = stopWorkflow', async () => {
 			const { result } = await runResumedSubError({ onError: 'stopWorkflow' });
 

@@ -46,8 +46,22 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	@JoinColumn({ name: 'planId' })
 	plan: Relation<AgentPlan> | null;
 
-	@Column({ type: 'varchar', length: 16 })
+	@Column({
+		type: 'varchar',
+		length: 16,
+		comment:
+			'subagent: detached Agent; workflow: background workflow; approval: decision workflow for a suspended Agent',
+	})
 	kind: AgentBackgroundJobKind;
+
+	/** The job can exist before the checkpoint row is saved. */
+	@Column({
+		type: 'varchar',
+		length: 128,
+		nullable: true,
+		comment: 'Agent SDK run ID retained by this approval request',
+	})
+	parentRunId: string | null;
 
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentBackgroundJobStatus;

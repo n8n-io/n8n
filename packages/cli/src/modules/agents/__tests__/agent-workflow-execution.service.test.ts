@@ -3,11 +3,13 @@ import type { AgentMessageSteeringService } from '../agent-message-steering.serv
 import type { Agent as RuntimeAgent, ExecutionOptions, RunOptions, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import type { AiConfig } from '@n8n/config';
+import type { AiConfig, AgentsConfig } from '@n8n/config';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import type { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { JSONSchema7 } from 'json-schema';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError, createRunExecutionData } from 'n8n-workflow';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -148,6 +150,9 @@ function makeService() {
 	const executionLevelTracer = mock<ExecutionLevelTracer>();
 	const nodeToolAiGatewayService = mock<NodeToolAiGatewayService>();
 	const integrationMessageContextService = mock<IntegrationMessageContextService>();
+	const agentsConfig = mock<AgentsConfig>();
+	const checkpointStorage = mock<N8NCheckpointStorage>();
+	const backgroundJobs = mock<AgentBackgroundJobRepository>();
 	integrationMessageContextService.getLatest.mockResolvedValue(null);
 
 	executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
@@ -186,10 +191,16 @@ function makeService() {
 		integrationMessageContextService,
 		settingsService,
 		skillRefs,
+		agentsConfig,
+		checkpointStorage,
+		backgroundJobs,
 	);
 
 	return {
 		service,
+		agentsConfig,
+		checkpointStorage,
+		backgroundJobs,
 		skillRefs,
 		settingsService,
 		agentRepository,
@@ -204,6 +215,120 @@ function makeService() {
 		logger,
 	};
 }
+
+describe('workflow approval continuation', () => {
+	it('restores a suspended run from its snapshot and consumes the result after completion', async () => {
+		const {
+			service,
+			agentsConfig,
+			agentRepository,
+			reconstructionService,
+			checkpointStorage,
+			backgroundJobs,
+		} = makeService();
+		agentsConfig.advancedHitlEnabled = true;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		const first = makeRuntime([
+			{
+				type: 'tool-call-suspended',
+				runId: 'runtime-run-1',
+				toolCallId: 'approval',
+				toolName: 'write',
+			},
+		]);
+		Object.assign(first.agent, { tool: vi.fn(), declaredTools: [] });
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(first);
+		checkpointStorage.load.mockResolvedValue({
+			status: 'suspended',
+			persistence: { threadId: 'thread-1', resourceId: 'thread-1' },
+			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+			pendingToolCalls: {
+				approval: {
+					toolCallId: 'approval',
+					toolName: 'write',
+					input: {},
+					suspended: true,
+					runId: 'runtime-run-1',
+					suspendPayload: {},
+					resumeSchema: { type: 'object' },
+					continuation: { __agentDecisionWorkflow: true, executionId: 'decision-execution' },
+				},
+			},
+		});
+		const context: ExecuteAgentWorkflowContext = {
+			workflowId: 'parent-workflow',
+			workflowName: 'Caller',
+			callingNodeName: 'Message an Agent',
+			callingNodeId: 'node',
+			inputData: [],
+			inputDataScope: 'item',
+			nodes: [],
+			runExecutionData: createRunExecutionData({ resultData: { runData: {} } }),
+			supportsSuspension: true,
+		};
+		const waiting = await service.executeForWorkflow(
+			agentId,
+			'hello',
+			'parent-execution',
+			'thread-1',
+			projectId,
+			userId,
+			true,
+			undefined,
+			context,
+		);
+		expect(waiting.waiting).toMatchObject({
+			runId: 'runtime-run-1',
+			executionIds: ['decision-execution'],
+		});
+		expect(backgroundJobs.consumeApprovalJob).not.toHaveBeenCalled();
+		expect(first.agent.stream).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				persistence: expect.objectContaining({
+					hostMetadata: expect.objectContaining({
+						workflowCaller: JSON.stringify({
+							executionId: 'parent-execution',
+							workflowId: 'parent-workflow',
+						}),
+					}),
+				}),
+			}),
+		);
+		const restored = makeRuntime([
+			{ type: 'finish', finishReason: 'stop', structuredOutput: { approvedWorkDone: true } },
+		]);
+		Object.assign(restored.agent, { tool: vi.fn(), declaredTools: [] });
+		reconstructionService.reconstructFromResolvedSource.mockResolvedValue(restored);
+		const result = await service.executeForWorkflow(
+			agentId,
+			'hello',
+			'parent-execution',
+			'thread-1',
+			projectId,
+			userId,
+			true,
+			undefined,
+			{ ...context, continuation: waiting.waiting },
+		);
+		expect(restored.agent.stream).not.toHaveBeenCalled();
+		expect(restored.agent.resume).toHaveBeenCalledWith(
+			'stream',
+			{ type: 'workflow_finished' },
+			expect.objectContaining({ runId: 'runtime-run-1', toolCallId: 'approval' }),
+		);
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+			expect.objectContaining({
+				config: expect.objectContaining(schema),
+				supportsHitl: true,
+				allowBackgroundTasks: false,
+			}),
+		);
+		expect(result.waiting).toBeUndefined();
+		expect(result.structuredOutput).toEqual({ approvedWorkDone: true });
+		expect(backgroundJobs.consumeApprovalJob).toHaveBeenCalledWith('decision-execution');
+	});
+});
 
 describe('AgentWorkflowExecutionService', () => {
 	beforeEach(() => {
@@ -291,6 +416,7 @@ describe('AgentWorkflowExecutionService', () => {
 		expect(reconstructionService.reconstructFromAgentEntity.mock.calls[0][8]).toEqual({
 			supportsHitl: false,
 			allowPlanTools: false,
+			allowBackgroundTasks: false,
 		});
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
 			[{ id: 'message-1', role: 'user', content: [{ type: 'text', text: 'hello' }] }],
@@ -808,7 +934,7 @@ describe('AgentWorkflowExecutionService', () => {
 			runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
 		};
 
-		const setupRuntimeWithToolSpy = (declaredTools: Array<{ name: string }> = []) => {
+		const setupRuntimeWithToolSpy = (declaredTools: { name: string }[] = []) => {
 			const { service, agentRepository, reconstructionService, agentRunTracingService } =
 				makeService();
 			const runtime = makeRuntime();
@@ -820,7 +946,7 @@ describe('AgentWorkflowExecutionService', () => {
 		};
 
 		const toolNamesFrom = (toolFn: Mock): string[] => {
-			const [tools] = toolFn.mock.calls[0] as [Array<{ name: string }>];
+			const [tools] = toolFn.mock.calls[0] as [{ name: string }[]];
 			return tools.map((t) => t.name);
 		};
 

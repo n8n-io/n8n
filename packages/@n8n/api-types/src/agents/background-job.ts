@@ -7,7 +7,7 @@ export interface AgentBackgroundJobDto {
 	id: string;
 	title: string;
 	/** Source of the background job. */
-	kind: 'subagent' | 'workflow';
+	kind: 'subagent' | 'workflow' | 'approval';
 	status: 'running' | 'suspended' | 'paused' | 'completed' | 'failed' | 'cancelled';
 	/** The task belongs to a user stop request. */
 	pauseRequested?: boolean;

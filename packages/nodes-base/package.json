@@ -693,6 +693,8 @@
       "dist/nodes/Medium/Medium.node.js",
       "dist/nodes/Merge/Merge.node.js",
       "dist/nodes/MessageAnAgent/MessageAnAgent.node.js",
+      "dist/nodes/AgentDecision/AgentDecisionTrigger.node.js",
+      "dist/nodes/AgentDecision/AgentDecisionResponse.node.js",
       "dist/nodes/MessageBird/MessageBird.node.js",
       "dist/nodes/Metabase/Metabase.node.js",
       "dist/nodes/Microsoft/AzureCosmosDb/AzureCosmosDb.node.js",

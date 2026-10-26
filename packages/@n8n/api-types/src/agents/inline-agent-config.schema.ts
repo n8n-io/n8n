@@ -15,8 +15,8 @@ import { agentSkillSchema } from './agent-skill.schema';
  * context.
  */
 const InlineAgentToolConfigSchema = z.discriminatedUnion('type', [
-	WorkflowToolJsonConfigSchema.omit({ requireApproval: true }).strict(),
-	NodeToolJsonConfigSchema.omit({ requireApproval: true }).strict(),
+	WorkflowToolJsonConfigSchema.omit({ requireApproval: true, approvalRoute: true }).strict(),
+	NodeToolJsonConfigSchema.omit({ requireApproval: true, approvalRoute: true }).strict(),
 ]);
 
 /**

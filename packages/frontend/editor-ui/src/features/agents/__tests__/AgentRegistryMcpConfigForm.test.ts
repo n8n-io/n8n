@@ -1,3 +1,4 @@
+import type { AgentApprovalRoute } from '@n8n/api-types';
 import { defineComponent, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -86,12 +87,14 @@ function makeItem(
 }
 
 function mountForm({
+	approvalRoute,
 	connectionTimeoutMs,
 	status = 'connected',
 	isNew = false,
 	onRemove,
 	itemAvailable = true,
 }: {
+	approvalRoute?: AgentApprovalRoute;
 	connectionTimeoutMs?: number;
 	status?: McpServerConnectionItem['status'];
 	isNew?: boolean;
@@ -112,6 +115,7 @@ function mountForm({
 		kind: 'registryMcpServer',
 		projectId: 'project-1',
 		mcpServer: {
+			approvalRoute,
 			name: 'github',
 			authentication: 'githubMcpOAuth2Api',
 			credential: 'credential-1',
@@ -194,10 +198,20 @@ describe('AgentRegistryMcpConfigForm', () => {
 		await timeoutInput(wrapper).setValue('90');
 
 		expect(confirm(wrapper)).toBe(true);
-		expect(saveMock).toHaveBeenCalledWith({
-			...permissions,
-			connectionTimeoutMs: 90_000,
-		});
+		expect(saveMock).toHaveBeenCalledWith(
+			{
+				...permissions,
+				connectionTimeoutMs: 90_000,
+			},
+			undefined,
+		);
+	});
+
+	it('preserves the server approval destination when saving settings', () => {
+		const approvalRoute: AgentApprovalRoute = { type: 'configuration', configurationId: 'review' };
+		const wrapper = mountForm({ approvalRoute });
+		expect(confirm(wrapper)).toBe(true);
+		expect(saveMock).toHaveBeenCalledWith(expect.anything(), approvalRoute);
 	});
 
 	it.each(['', '0', '121', '1.5'])('rejects invalid timeout value %j', async (value) => {

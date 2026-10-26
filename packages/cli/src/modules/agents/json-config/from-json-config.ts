@@ -106,6 +106,8 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
 export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
 
 export interface BuildFromJsonOptions {
+	/** Routes a gated tool through the configured approval destination. */
+	wrapApproval?: (tool: BuiltTool, ref: AgentJsonToolConfig) => BuiltTool;
 	/** Executes custom tool handlers inside isolates. */
 	toolExecutor: ToolExecutor;
 	credentialProvider: CredentialProvider;
@@ -519,7 +521,10 @@ async function resolveToolRef(
 			};
 
 			if (ref.requireApproval) {
-				return wrapToolForApproval(builtTool, { requireApproval: true });
+				return (
+					options.wrapApproval?.(builtTool, ref) ??
+					wrapToolForApproval(builtTool, { requireApproval: true })
+				);
 			}
 			return builtTool;
 		}
@@ -539,7 +544,9 @@ async function resolveToolRef(
 			if (resolved === null) return null;
 			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
-				return wrapToolForApproval(tool, { requireApproval: true });
+				return (
+					options.wrapApproval?.(tool, ref) ?? wrapToolForApproval(tool, { requireApproval: true })
+				);
 			}
 			return tool;
 		}
@@ -555,7 +562,9 @@ async function resolveToolRef(
 			if (resolved === null) return null;
 			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
-				return wrapToolForApproval(tool, { requireApproval: true });
+				return (
+					options.wrapApproval?.(tool, ref) ?? wrapToolForApproval(tool, { requireApproval: true })
+				);
 			}
 			return tool;
 		}

@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import { DataSource, MoreThan } from '@n8n/typeorm';
 
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
+import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 
 @Service()
 export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
@@ -55,10 +56,16 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 		agentId: string,
 		suspendedState: string,
 		runningState: string,
-		updatedAfter: Date,
+		updatedAfter?: Date,
 	): Promise<boolean> {
 		const result = await this.update(
-			{ runId, agentId, expired: false, state: suspendedState, updatedAt: MoreThan(updatedAfter) },
+			{
+				runId,
+				agentId,
+				expired: false,
+				state: suspendedState,
+				...(updatedAfter && { updatedAt: MoreThan(updatedAfter) }),
+			},
 			{ state: runningState },
 		);
 
@@ -107,13 +114,32 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 	}
 
 	async markExpired(olderThan: Date): Promise<number> {
+		const retained = this.retainedApprovalCheckpoints().select('retained.runId');
 		const result = await this.createQueryBuilder()
 			.update()
 			.set({ expired: true, state: null })
 			.where('updatedAt < :olderThan', { olderThan })
 			.andWhere('state IS NOT NULL')
+			.andWhere(`"runId" NOT IN (${retained.getQuery()})`, retained.getParameters())
 			.execute();
 
 		return result.affected ?? 0;
+	}
+
+	private retainedApprovalCheckpoints() {
+		return this.createQueryBuilder('retained')
+			.innerJoin(
+				AgentBackgroundJob,
+				'job',
+				'job.parentAgentId = retained.agentId AND job.parentRunId = retained.runId',
+			)
+			.where('job.kind = :approvalKind', { approvalKind: 'approval' })
+			.andWhere('job.notifiedAt IS NULL');
+	}
+
+	async isRetainedForApproval(runId: string): Promise<boolean> {
+		return await this.retainedApprovalCheckpoints()
+			.andWhere('retained.runId = :runId', { runId })
+			.getExists();
 	}
 }

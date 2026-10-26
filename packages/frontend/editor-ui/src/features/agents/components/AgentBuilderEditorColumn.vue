@@ -18,6 +18,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
+import AgentHitlPanel from './AgentHitlPanel.vue';
 import AgentBudgetPanel from './AgentBudgetPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
@@ -401,6 +402,15 @@ defineExpose({ onSetupTaskAction });
 					data-testid="agent-settings-tab-content"
 				>
 					<div :class="$style.settingsCards">
+						<AgentHitlPanel
+							v-if="settingsStore.moduleSettings.agents?.advancedHitlEnabled && !agentUnsaved"
+							:config="localConfig"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:disabled="childrenDisabled"
+							:can-execute="canExecuteAgent"
+							@update:config="emit('update:config', $event)"
+						/>
 						<AgentBudgetPanel
 							:config="localConfig"
 							:project-id="projectId"

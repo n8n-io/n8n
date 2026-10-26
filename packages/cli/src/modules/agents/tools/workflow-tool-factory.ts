@@ -62,6 +62,7 @@ import {
 	settlementStatusForExecution,
 } from '../background/agent-background-job.service';
 import { sanitizeToolName } from '../json-config/agent-config-composition';
+import { readWorkflowCaller } from '../approval/workflow-caller';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -315,7 +316,7 @@ export function listWorkflowInputFields(triggerNode: INode): WorkflowInputFieldD
 
 	// workflowInputs (default)
 	const workflowInputs = params[WORKFLOW_INPUTS] as
-		| { values?: Array<{ name: string; type?: string }> }
+		| { values?: { name: string; type?: string }[] }
 		| undefined;
 
 	return (workflowInputs?.values ?? []).filter(
@@ -362,7 +363,7 @@ export function getFixedWorkflowToolInputs(
 	inputs: WorkflowToolInputsConfig | undefined,
 ): Record<string, unknown> {
 	if (!inputs) return {};
-	const fixed: Array<[string, unknown]> = [];
+	const fixed: [string, unknown][] = [];
 	for (const [name, binding] of Object.entries(inputs)) {
 		if (binding.mode === 'fixed') {
 			fixed.push([name, binding.value]);
@@ -453,7 +454,17 @@ export async function executeWorkflow(
 	workflow: WorkflowEntity,
 	triggerNode: INode,
 	inputData: Record<string, unknown>,
-	context: WorkflowToolRunContext,
+	context: Pick<
+		WorkflowToolRunContext,
+		| 'workflowRunner'
+		| 'subworkflowPolicyChecker'
+		| 'activeExecutions'
+		| 'projectId'
+		| 'executionMode'
+		| 'agentRun'
+		| 'abortSignal'
+		| 'instrumentToolAdditionalData'
+	>,
 	allOutputs = false,
 	/** Sanitized tool name for eval instrumentation; set only on instrumented runs. */
 	instrumentedToolName?: string,
@@ -715,6 +726,7 @@ function agentRunOf(
 
 	return {
 		agentId: context.agentId,
+		workflowCaller: readWorkflowCaller(ctx.persistence?.hostMetadata?.workflowCaller),
 		projectId: context.projectId,
 		threadId,
 		runId: ctx.runId,

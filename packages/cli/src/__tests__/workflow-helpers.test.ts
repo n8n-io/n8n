@@ -5,6 +5,7 @@ import { CredentialsRepository } from '@n8n/db';
 import { GROUP_DESCRIPTION_MAX_LENGTH, STICKY_NODE_TYPE } from 'n8n-workflow';
 import type {
 	DynamicCredentialsUsage,
+	IExecutionContext,
 	ExecutionError,
 	INodeCredentialsDetails,
 	IRun,
@@ -1038,6 +1039,58 @@ describe('updateParentExecutionWithChildResults', () => {
 				...(executedByUserId ? { executionData: { runtimeData: { executedByUserId } } } : {}),
 			},
 		}) as unknown as IRun;
+
+	it('waits for all Agent decisions and preserves the caller input on resume', async () => {
+		const persistence = mockInstance(ExecutionPersistence);
+		const parent = waitingParent();
+		const stack = parent.data.executionData!.nodeExecutionStack[0];
+		stack.metadata = {
+			agentInvocations: { version: 1, items: [] },
+			waitingChildExecutionIds: ['a', 'b'],
+		};
+		const input = structuredClone(stack.data);
+		const child = childRun('success', 'Decision', {
+			data: { main: [[{ json: { approved: true } }]] },
+		});
+		persistence.findSingleExecution.mockResolvedValue(parent);
+		persistence.findStatusesByIds.mockResolvedValue([
+			{ id: 'a', status: 'success' },
+			{ id: 'b', status: 'waiting' },
+		]);
+		expect(
+			await updateParentExecutionWithChildResults(PARENT_ID, child, {
+				executionId: 'a',
+				workflowId: 'review',
+			}),
+		).toBe(false);
+		expect(persistence.updateExistingExecution).not.toHaveBeenCalled();
+		persistence.findStatusesByIds.mockResolvedValue([
+			{ id: 'a', status: 'success' },
+			{ id: 'b', status: 'error' },
+		]);
+		persistence.findSingleExecution.mockResolvedValueOnce(parent).mockResolvedValueOnce({
+			data: {
+				resultData: { runData: {} },
+				executionData: {
+					runtimeData: { redaction: { version: 2, production: true, manual: true } },
+				},
+			},
+			workflowData: { settings: { redactCallerExecutions: true }, nodes: [] },
+		} as unknown as IExecutionResponse);
+		parent.data.executionData!.runtimeData = {} as IExecutionContext;
+		expect(
+			await updateParentExecutionWithChildResults(PARENT_ID, child, {
+				executionId: 'a',
+				workflowId: 'review',
+			}),
+		).toBe(true);
+		expect(stack.data).toEqual(input);
+		expect(stack.metadata.resumeError).toBeUndefined();
+		expect(parent.data.executionData!.runtimeData.subWorkflowRedaction).toEqual({
+			production: true,
+			manual: true,
+		});
+	});
 
 	type StackEntry = {
 		data?: unknown;

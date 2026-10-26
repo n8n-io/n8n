@@ -627,6 +627,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				i,
 			);
 
+			if (result.waiting) break;
+
 			returnData.push({
 				json: {
 					[responseKey]: result.response,

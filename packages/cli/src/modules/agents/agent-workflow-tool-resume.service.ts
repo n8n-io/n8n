@@ -124,6 +124,7 @@ export class AgentWorkflowToolResumeService {
 					error: data.resultData?.error?.message ?? null,
 				},
 				runData,
+				ctx.workflow.connections,
 			);
 		} catch (error) {
 			this.logger.error('Failed to settle workflow background job', {
@@ -148,6 +149,16 @@ export class AgentWorkflowToolResumeService {
 
 	/** The tool handler re-reads the execution, so this payload only says why it woke. */
 	async resume(agentRun: RelatedAgentRun, status: string): Promise<void> {
+		if (
+			typeof agentRun.workflowCaller?.executionId === 'string' &&
+			typeof agentRun.workflowCaller.workflowId === 'string'
+		) {
+			const { WaitTracker } = await import('@/wait-tracker.js');
+			const { Container } = await import('@n8n/di');
+			// The leader sweep also covers completion before the parent parks and lost relays.
+			await Container.get(WaitTracker).resumeParentsOfFinishedSubExecutions();
+			return;
+		}
 		const resumeData = { type: 'workflow_finished', value: status };
 		if (agentRun.publishedN8nChat === true) {
 			await this.resumeInProductionChat(agentRun, resumeData);

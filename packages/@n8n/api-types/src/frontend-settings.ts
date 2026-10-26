@@ -462,6 +462,7 @@ export type FrontendModuleSettings = {
 		proxyEnabled: boolean;
 		/** Whether agents use the skills hub (`N8N_AGENTS_SKILLS_HUB_ENABLED`, read at startup). */
 		skillsHubEnabled?: boolean;
+		advancedHitlEnabled?: boolean;
 	};
 };
 

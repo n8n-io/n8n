@@ -2522,6 +2522,10 @@ export type ExecuteAgentInfo = ExecuteAgentSource & {
  * must be treated as read-only.
  */
 export interface ExecuteAgentWorkflowContext {
+	/** The caller can persist and resume an Agent invocation. */
+	supportsSuspension?: boolean;
+	/** Private continuation from the previous segment of this item. */
+	continuation?: AgentWorkflowSuspension;
 	workflowId?: string;
 	workflowName?: string;
 	/** Name of the node that invoked the agent */
@@ -2562,7 +2566,16 @@ export interface ExecuteAgentOptions {
 	executionMode?: WorkflowExecuteMode;
 }
 
+export interface AgentWorkflowSuspension {
+	runId: string;
+	executionIds: string[];
+	/** Serialized runtime snapshot. It belongs to execution data, not display data. */
+	snapshot: string;
+}
+
 export interface ExecuteAgentData {
+	/** Private engine state. Never include it in node output. */
+	waiting?: AgentWorkflowSuspension;
 	/** The agent's text response extracted from the last assistant message. */
 	response: string;
 	/** Parsed structured output if the agent has a structuredOutput schema. */
@@ -3564,6 +3577,8 @@ export interface RelatedExecution {
  * Stamped by the agent workflow tool onto the sub-executions it starts.
  */
 export interface RelatedAgentRun {
+	/** Workflow caller to resume through the existing parent-wait path. */
+	workflowCaller?: RelatedExecution;
 	agentId: string;
 	projectId: string;
 	/** Agent memory thread the run belongs to; addresses the chat thread to reply in. */
@@ -3595,6 +3610,15 @@ type SubNodeExecutionDataAction = {
 };
 
 export interface ITaskMetadata {
+	/** Completed items and the pending item of a resumable Message an Agent node. */
+	agentInvocations?: {
+		version: 1;
+		items: Array<{
+			threadId: string;
+			result?: ExecuteAgentData;
+			error?: string;
+		}>;
+	};
 	subRun?: ITaskSubRunMetadata[];
 	parentExecution?: RelatedExecution;
 	subExecution?: RelatedExecution;
