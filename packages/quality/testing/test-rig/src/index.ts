@@ -18,5 +18,6 @@ export {
 } from './process';
 export type { Container, ExitResult, LogMatch, Signal } from './process';
 export { licenceEnv, scaledTimeouts } from './timeouts';
+export { anything, below, includes, is, isNot, Scenario } from './scenario';
 export { chain, nodes, webhookPath } from './workflows';
 export type { WorkflowNode } from './workflows';
