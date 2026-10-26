@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue
+  s_4773ad3a8db83a::t_3680be580739e5 138,141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "269b9368f80ebdeba74191c20f62588a893d84b1",
+  "prompts": {},
+  "sessions": {
+    "s_4773ad3a8db83a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177a1-cf01-7990-9b55-9e6cefed2ccd",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
