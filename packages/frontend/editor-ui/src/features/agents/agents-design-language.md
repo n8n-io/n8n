@@ -43,6 +43,10 @@ Reserve 480 pixels for the editor. When both panels are open, share the
 remaining width in proportion to each panel's requested extra width above
 320 pixels. Do not save automatic layout adjustments as user resize choices.
 
+Disable Test entry points while the Assistant works. Show the same working
+warning in the header, Triggers section, and task modal. Keep the action to close
+an open preview available. Restore Test availability when the Assistant finishes.
+
 ## Chat-first builder
 
 The Build/Test experiment variants use one chat area in the standalone builder

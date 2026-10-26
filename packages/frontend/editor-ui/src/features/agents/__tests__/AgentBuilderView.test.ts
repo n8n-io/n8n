@@ -6,6 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES, type PushMessage } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { N8nToggle } from '@n8n/design-system';
 import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import type {
 	AgentJsonConfig,
@@ -644,6 +645,7 @@ const commonStubs = {
 			'beforeRevertToPublished',
 			'artifactMode',
 			'isPreviewOpen',
+			'previewDisabledReason',
 			'configValidationStatus',
 			'saveStatus',
 			'beforePublish',
@@ -2233,6 +2235,40 @@ describe('AgentBuilderView — preview routing', () => {
 			{ agent_id: 'a1', source },
 		);
 	});
+
+	it.each([false, true])(
+		'disables legacy Test entries while the Assistant works (artifact: %s)',
+		async (artifactMode) => {
+			const wrapper = await renderView({
+				props: { artifactMode, artifactProjectId: 'p1', artifactAgentId: 'a1' },
+			});
+			async function setWorking(working: boolean) {
+				if (artifactMode) await wrapper.setProps({ artifactAssistantWorking: working });
+				else {
+					if (!wrapper.findComponent({ name: 'InstanceAiChatPanel' }).exists()) {
+						await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+					}
+					wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm.$emit('update:working', working);
+				}
+				await nextTick();
+			}
+			await setWorking(true);
+			const header = wrapper.getComponent({ name: 'AgentBuilderHeader' });
+			expect(header.props('previewDisabledReason')).toBe('agents.builder.chatMode.building');
+			const trigger = wrapper.get('[data-testid="agent-triggers-preview-chat-button"]');
+			expect(wrapper.getComponent(N8nToggle).props('disabled')).toBe(true);
+			header.vm.$emit('open-preview');
+			await trigger.trigger('click');
+			await flushPromises();
+			expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
+			await setWorking(false);
+			expect(header.props('previewDisabledReason')).toBeUndefined();
+			expect(wrapper.getComponent(N8nToggle).props('disabled')).toBe(false);
+			await trigger.trigger('click');
+			await flushPromises();
+			expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+		},
+	);
 
 	it('opens Preview with the selected task instructions', async () => {
 		const wrapper = await renderView();

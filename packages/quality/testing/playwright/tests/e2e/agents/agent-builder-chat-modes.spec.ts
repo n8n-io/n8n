@@ -98,6 +98,70 @@ test.describe(
 				await expect(builder.getArtifactBuildComposer()).toBeVisible({ visible: !inline });
 			});
 		}
+		for (const surface of ['builder', 'assistant'] as const) {
+			test(`disables legacy Test buttons while the ${surface} Assistant is working`, async ({
+				n8n,
+				api,
+			}) => {
+				setContextModuleSettings(n8n.page.context(), {
+					'instance-ai': { enabled: true, setupCompleted: true, workflowBuilderAvailable: true },
+				});
+				const { project, agent, name } = await createRunnableAgent(api);
+				const threadId = randomUUID();
+				await api.instanceAi.createAgentArtifactThread({
+					threadId,
+					projectId: project.id,
+					agentId: agent.id,
+					name,
+				});
+				await n8n.page.setViewportSize({ width: 1920, height: 1080 });
+				await n8n.start.fromHome();
+				const builder = n8n.agentBuilder;
+				const { open, composer } = {
+					builder: {
+						open: async () => await builder.goto(project.id, agent.id),
+						composer: builder.getComposer('build'),
+					},
+					assistant: {
+						open: async () => await n8n.instanceAi.gotoThread(threadId),
+						composer: builder.getArtifactBuildComposer(),
+					},
+				}[surface];
+				await open();
+				await expect(composer).toBeVisible();
+				await builder.setExperiment('outside', 'control', 'control');
+				await builder.openAssistantIfClosed();
+				const response = Promise.withResolvers<undefined>();
+				await n8n.page.route(`**/rest/instance-ai/chat/${threadId}`, async (route) => {
+					await response.promise;
+					await route.fulfill({ status: 400, json: { message: 'Test request finished' } });
+				});
+				try {
+					const request = n8n.page.waitForRequest(
+						(request) =>
+							request.method() === 'POST' &&
+							request.url().endsWith(`/instance-ai/chat/${threadId}`),
+					);
+					await composer.fill('Update the instructions');
+					await composer.press('Enter');
+					await request;
+					for (const button of [builder.getHeaderTestButton(), builder.getTriggersTestButton()]) {
+						await expect(button).toBeDisabled();
+						await button.locator('..').hover();
+						await expect(builder.getPreviewWorkingWarning()).toBeVisible();
+						await composer.hover();
+						await expect(builder.getPreviewWorkingWarning()).toHaveCount(0);
+					}
+					await expect(builder.getPreviewDock()).toHaveAttribute('aria-hidden', 'true');
+				} finally {
+					response.resolve(undefined);
+				}
+				await expect(builder.getHeaderTestButton()).toBeEnabled();
+				await expect(builder.getTriggersTestButton()).toBeEnabled();
+				await builder.getHeaderTestButton().click();
+				await expect(builder.getComposer('test')).toBeVisible();
+			});
+		}
 		test('switches to Test from Assistant preview links without page navigation', async ({
 			n8n,
 			api,

@@ -47,6 +47,7 @@ const props = defineProps<{
 	editingLocked?: boolean;
 	configValidationStatus?: 'valid' | 'invalid' | null;
 	configValidationIssues?: AgentConfigValidationIssue[];
+	previewDisabledReason?: string;
 	beforePublish?: () => Promise<boolean>;
 	tasks?: Array<SetupTask<SetupTaskId>>;
 }>();
@@ -246,6 +247,7 @@ function onMenuSelect(id: string) {
 				v-if="!props.hidePreviewButton"
 				:is-runnable="props.agent?.isRunnable === true"
 				:is-preview-open="props.isPreviewOpen"
+				:disabled-reason="props.previewDisabledReason"
 				:validation-issues="props.configValidationIssues ?? []"
 				test-id="agent-header-preview-btn"
 				@open-preview="emit('open-preview', 'primary')"

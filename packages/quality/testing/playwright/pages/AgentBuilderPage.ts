@@ -40,6 +40,16 @@ export class AgentBuilderPage extends BasePage {
 		return this.page.locator('[data-testid="agent-header-preview-btn"]');
 	}
 
+	getTriggersTestButton(): Locator {
+		return this.page.locator('[data-testid="agent-triggers-preview-chat-button"]');
+	}
+
+	getPreviewWorkingWarning(): Locator {
+		return this.page
+			.getByTestId('tooltip-content')
+			.filter({ hasText: 'Wait for the Assistant to finish working' });
+	}
+
 	async getArtifactChatWidths(): Promise<{ chat: number; area: number }> {
 		const area = await this.page.getByTestId('instance-ai-thread-area').boundingBox();
 		const preview = await this.page.getByTestId('instance-ai-preview-panel').boundingBox();

@@ -64,6 +64,7 @@ const props = defineProps<{
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
+	previewDisabledReason?: string;
 	/** n8n Chat's saved description, forwarded to the channel modal. */
 	savedDescription?: string;
 	/** Persists n8n Chat's description, forwarded to the channel modal. */
@@ -231,6 +232,7 @@ defineExpose({ onSetupTaskAction });
 					>
 						<template #header-actions>
 							<AgentPreviewButton
+								:disabled-reason="props.previewDisabledReason"
 								:icon-only="true"
 								:is-runnable="props.agent?.isRunnable === true"
 								:validation-issues="props.configValidationIssues ?? []"
@@ -239,6 +241,7 @@ defineExpose({ onSetupTaskAction });
 							/>
 						</template>
 						<AgentTriggersSection
+							:preview-disabled-reason="props.previewDisabledReason"
 							ref="agentTriggersSection"
 							:key="`${projectId}:${agentId}`"
 							:connected-triggers="connectedTriggers"

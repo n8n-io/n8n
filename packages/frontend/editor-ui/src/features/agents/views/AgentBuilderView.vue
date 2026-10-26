@@ -1135,12 +1135,16 @@ watch(
 	},
 	{ immediate: true },
 );
-const testModeDisabledReason = computed(() => {
+const previewDisabledReason = computed(() => {
 	if (!canExecuteAgent.value) return locale.baseText('agents.builder.chatMode.noPermission');
 	if (chatModeBusy.value) return locale.baseText('agents.builder.chatMode.building');
-	if (!isBuilt.value) return locale.baseText('agents.builder.preview.disabledTooltip');
 	return undefined;
 });
+const testModeDisabledReason = computed(
+	() =>
+		previewDisabledReason.value ??
+		(!isBuilt.value ? locale.baseText('agents.builder.preview.disabledTooltip') : undefined),
+);
 const testValidationIssues = computed(() =>
 	!isBuilt.value && !chatModeBusy.value && canExecuteAgent.value
 		? (configValidation.value?.issues ?? [])
@@ -3452,6 +3456,7 @@ useKeybindings({
 			:before-publish="refreshValidationBeforePublish"
 			:is-preview-open="isPreviewDockOpen"
 			:hide-preview-button="inlineTestChat"
+			:preview-disabled-reason="previewDisabledReason"
 			:tasks="areSetupTasksVisible ? setupTasks : undefined"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
@@ -3686,6 +3691,7 @@ useKeybindings({
 					:artifact-mode="isArtifactMode"
 					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
+					:preview-disabled-reason="previewDisabledReason"
 					@update:config="onConfigFieldUpdate"
 					@update:budget-config="onBudgetSettingsSave"
 					@draft:config="markConfigDraftEdited"

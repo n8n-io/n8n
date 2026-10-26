@@ -152,6 +152,7 @@ function mountHeader(
 		mode: 'edit' | 'preview';
 		artifactMode: boolean;
 		isPreviewOpen: boolean;
+		previewDisabledReason: string;
 		currentSessionTitle: string;
 		sessionOptions: Array<{ id: string; label: string }>;
 		configValidationStatus: 'valid' | 'invalid' | null;
@@ -170,6 +171,7 @@ function mountHeader(
 			mode: overrides.mode,
 			artifactMode: overrides.artifactMode,
 			isPreviewOpen: overrides.isPreviewOpen,
+			previewDisabledReason: overrides.previewDisabledReason,
 			currentSessionTitle: overrides.currentSessionTitle,
 			sessionOptions: overrides.sessionOptions,
 			configValidationStatus: overrides.configValidationStatus,
@@ -378,9 +380,25 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('open-preview')).toBeUndefined();
 	});
 
-	it('keeps the close action enabled when the open preview agent is not runnable', async () => {
+	it('disables Test with the working warning and enables it after the Assistant finishes', async () => {
+		const wrapper = mountHeader({ previewDisabledReason: 'Assistant is working' });
+		const button = wrapper.get('[data-testid="agent-header-preview-btn"]');
+		expect(button.attributes('disabled')).toBeDefined();
+		expect(wrapper.get('[data-testid="stub-tooltip"]').attributes('data-content')).toBe(
+			'Assistant is working',
+		);
+		await button.trigger('click');
+		expect(wrapper.emitted('open-preview')).toBeUndefined();
+		await wrapper.setProps({ previewDisabledReason: undefined });
+		expect(button.attributes('disabled')).toBeUndefined();
+		await button.trigger('click');
+		expect(wrapper.emitted('open-preview')).toEqual([['primary']]);
+	});
+
+	it('keeps the close action enabled while the agent is unavailable', async () => {
 		const wrapper = mountHeader({
 			isPreviewOpen: true,
+			previewDisabledReason: 'Assistant is working',
 			agent: { ...baseAgent, isRunnable: false } as AgentResource,
 		});
 		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');

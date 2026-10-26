@@ -742,7 +742,7 @@
 	"chatHub.message.actions.readAloud": "Read aloud",
 	"chatHub.message.actions.stopReading": "Stop reading",
 	"agents.builder.chatMode.noPermission": "You don’t have permission to test this agent",
-	"agents.builder.chatMode.building": "Wait for the current build to finish",
+	"agents.builder.chatMode.building": "Wait for the Assistant to finish working",
 	"agents.builder.chatMode.label": "Chat mode",
 	"agents.builder.chatMode.build": "Build",
 	"agents.builder.chatMode.test": "Test",
