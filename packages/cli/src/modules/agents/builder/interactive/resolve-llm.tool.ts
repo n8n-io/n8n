@@ -1,6 +1,5 @@
 import type { BuiltTool, CredentialListItem, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
 import { AI_GATEWAY_MANAGED_TAG, getLegacyBuilderToolNames } from '@n8n/api-types';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { z } from 'zod';
@@ -8,6 +7,7 @@ import { z } from 'zod';
 import {
 	LLM_PROVIDER_DEFAULTS,
 	LLM_PROVIDER_PRIORITY,
+	hasLiveModelList,
 	type LlmProviderDefault,
 } from '../../llm-provider-defaults';
 import { findVerifiedModelId, normalizeProviderModelId } from '../../utils/provider-model-id';
@@ -88,6 +88,15 @@ async function tryClaimFreeCredits(freeCredits: FreeCreditsProvisioner, modelLoo
 	}
 }
 
+/** A provider can have several credential types (Microsoft Foundry: API key and Entra ID). */
+function isProviderCredential(credential: CredentialListItem, provider: string): boolean {
+	return LLM_PROVIDER_DEFAULTS[credential.type]?.provider === provider;
+}
+
+function supportedProviders(): string[] {
+	return [...new Set(Object.values(LLM_PROVIDER_DEFAULTS).map((defaults) => defaults.provider))];
+}
+
 function findProviderDefault(provider: string): LlmCredentialEntry | undefined {
 	const requestedProvider = provider.trim();
 	return Object.entries(LLM_PROVIDER_DEFAULTS).find(
@@ -95,15 +104,11 @@ function findProviderDefault(provider: string): LlmCredentialEntry | undefined {
 	);
 }
 
-function toLlmResolution(
-	credential: CredentialListItem,
-	defaults: LlmProviderDefault,
-	model?: string,
-) {
+function toLlmResolution(credential: CredentialListItem, provider: string, model: string) {
 	return {
 		ok: true as const,
-		provider: defaults.provider,
-		model: model?.trim() || defaults.defaultModel,
+		provider,
+		model: model.trim(),
 		credentialId: credential.id,
 		credentialName: credential.name,
 	};
@@ -118,13 +123,18 @@ function toLlmResolution(
  */
 const MAX_AVAILABLE_MODELS = 25;
 
-function unknownModel(provider: string, requestedModel: string, availableModels: ModelChoice[]) {
+/** No `requestedModel` means the provider has no default and the user picks from the list. */
+function unknownModel(
+	provider: string,
+	requestedModel: string | undefined,
+	availableModels: ModelChoice[],
+) {
 	const shown = availableModels.slice(0, MAX_AVAILABLE_MODELS);
 	return {
 		ok: false as const,
 		reason: 'unknown_model' as const,
 		provider,
-		requestedModel,
+		...(requestedModel ? { requestedModel } : {}),
 		availableModels: shown,
 		...(shown.length < availableModels.length
 			? {
@@ -135,12 +145,12 @@ function unknownModel(provider: string, requestedModel: string, availableModels:
 	};
 }
 
-function modelLookupFailed(provider: string, requestedModel: string, error: unknown) {
+function modelLookupFailed(provider: string, requestedModel: string | undefined, error: unknown) {
 	return {
 		ok: false as const,
 		reason: 'model_lookup_failed' as const,
 		provider,
-		requestedModel,
+		...(requestedModel ? { requestedModel } : {}),
 		error: error instanceof Error ? error.message : String(error),
 	};
 }
@@ -159,9 +169,10 @@ async function listCallableModels(
 		const models = await modelLookup.list(credential.id, credential.type, provider);
 		return {
 			ok: true,
-			models: models.map(({ name, value }) => ({
+			models: models.map(({ name, value, servedModel }) => ({
 				name: normalizeProviderModelId(provider, name),
 				value: normalizeProviderModelId(provider, value),
+				...(servedModel ? { servedModel } : {}),
 			})),
 		};
 	} catch (error) {
@@ -176,8 +187,10 @@ async function resolveModelAgainstLookup(
 	modelLookup: ModelLookup,
 ) {
 	const trimmedModel = requestedModel.trim();
-	if (!isModelDiscoveryProvider(defaults.provider) || !trimmedModel) {
-		return toLlmResolution(credential, defaults, requestedModel);
+	if (!trimmedModel)
+		return await resolveDefaultModelForCredential(credential, defaults, modelLookup);
+	if (!hasLiveModelList(defaults.provider)) {
+		return toLlmResolution(credential, defaults.provider, trimmedModel);
 	}
 
 	const lookup = await listCallableModels(credential, defaults.provider, modelLookup);
@@ -189,14 +202,18 @@ async function resolveModelAgainstLookup(
 		trimmedModel,
 		availableModels.map((m) => m.value),
 	);
-	if (verified) return toLlmResolution(credential, defaults, verified);
+	if (verified) return toLlmResolution(credential, defaults.provider, verified);
 
 	const lowerHint = normalizeProviderModelId(defaults.provider, trimmedModel).toLowerCase();
+	// A Foundry deployment matches the model it serves, so "gpt-4.1" skips "gpt-4.1-mini".
+	const served = availableModels.filter((m) => m.servedModel?.toLowerCase() === lowerHint);
+	if (served.length === 1) return toLlmResolution(credential, defaults.provider, served[0].value);
+
 	const candidates = availableModels.filter(
 		(m) => m.value.toLowerCase().includes(lowerHint) || m.name.toLowerCase().includes(lowerHint),
 	);
 	if (candidates.length === 1) {
-		return toLlmResolution(credential, defaults, candidates[0].value);
+		return toLlmResolution(credential, defaults.provider, candidates[0].value);
 	}
 
 	return unknownModel(
@@ -218,32 +235,49 @@ async function resolveDefaultModelForCredential(
 	defaults: LlmProviderDefault,
 	modelLookup: ModelLookup,
 ) {
-	if (!isModelDiscoveryProvider(defaults.provider)) {
-		return toLlmResolution(credential, defaults);
-	}
+	const { provider, defaultModel } = defaults;
+	if (!defaultModel) return await resolveWithoutDefaultModel(credential, provider, modelLookup);
+	if (!hasLiveModelList(provider)) return toLlmResolution(credential, provider, defaultModel);
 
-	const lookup = await listCallableModels(credential, defaults.provider, modelLookup);
-	if (!lookup.ok) return modelLookupFailed(defaults.provider, defaults.defaultModel, lookup.error);
+	const lookup = await listCallableModels(credential, provider, modelLookup);
+	if (!lookup.ok) return modelLookupFailed(provider, defaultModel, lookup.error);
 
 	const availableModels = lookup.models;
 	if (availableModels.length > 0) {
 		const verified = findVerifiedModelId(
-			defaults.provider,
-			defaults.defaultModel,
+			provider,
+			defaultModel,
 			availableModels.map((m) => m.value),
 		);
-		if (verified) return toLlmResolution(credential, defaults, verified);
+		if (verified) return toLlmResolution(credential, provider, verified);
 
 		// The managed allowlist is short and curated, so its first entry is a safe
 		// stand-in for an un-allowlisted default. A provider's own catalog is long
 		// and name-sorted, where the first entry is arbitrary — surface the list and
 		// let the agent choose instead of persisting a coin flip.
 		if (credential.id === AI_GATEWAY_MANAGED_TAG) {
-			return toLlmResolution(credential, defaults, availableModels[0].value);
+			return toLlmResolution(credential, provider, availableModels[0].value);
 		}
 	}
 
-	return unknownModel(defaults.provider, defaults.defaultModel, availableModels);
+	return unknownModel(provider, defaultModel, availableModels);
+}
+
+/**
+ * A provider without a default model has user-named models (Microsoft Foundry
+ * deployments). A single listed model is used; otherwise the user picks one.
+ */
+async function resolveWithoutDefaultModel(
+	credential: CredentialListItem,
+	provider: string,
+	modelLookup: ModelLookup,
+) {
+	const lookup = await listCallableModels(credential, provider, modelLookup);
+	if (!lookup.ok) return modelLookupFailed(provider, undefined, lookup.error);
+	if (lookup.models.length === 1) {
+		return toLlmResolution(credential, provider, lookup.models[0].value);
+	}
+	return unknownModel(provider, undefined, lookup.models);
 }
 
 /**
@@ -267,7 +301,7 @@ async function resolveManagedCredentialForProvider(
 			ok: false as const,
 			reason: 'unsupported_provider' as const,
 			provider,
-			supportedProviders: Object.values(LLM_PROVIDER_DEFAULTS).map((defaults) => defaults.provider),
+			supportedProviders: supportedProviders(),
 		};
 	}
 
@@ -322,7 +356,12 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'value from availableModels, never the id that just failed. availableModels is capped: when ' +
 				'availableModelsTruncated is true, it is a sample of totalAvailableModels — ask the user with ' +
 				'agent_builder_ask_questions instead of treating it as the full list. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
-				'and omit model unless the user named a concrete OpenRouter model id. Returns ok=false ' +
+				'and omit model unless the user named a concrete OpenRouter model id. ' +
+				'For Microsoft Foundry (provider="azure-openai"), the models are the deployments of the ' +
+				'credential\'s project: pass a deployment name or the model it serves (e.g. "gpt-4.1"). Without ' +
+				'a model, a project with one deployment resolves to it; otherwise reason "unknown_model" lists ' +
+				'the deployments for the user to choose. A Foundry "model_lookup_failed" error says how the ' +
+				'user fixes the credential; tell the user. Returns ok=false ' +
 				'when credentials are missing, unsupported, or ambiguous — during an initial build, do not ' +
 				'ask; keep building with model "" and include the model choice in the trailing ' +
 				'agent_builder_finish_setup call, then call agent_builder_resolve_llm again with the answer. For a model ' +
@@ -349,7 +388,9 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				provider: z
 					.string()
 					.optional()
-					.describe('Requested provider, e.g. "anthropic", "openai", or "openrouter".'),
+					.describe(
+						'Requested provider, e.g. "anthropic", "openai", "openrouter", or "azure-openai" (Microsoft Foundry).',
+					),
 				model: z
 					.string()
 					.optional()
@@ -414,6 +455,8 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				// missing (a legitimate setup prompt, e.g. a provider n8n Connect does not serve).
 				const managedCredentials: CredentialListItem[] = [];
 				for (const [credentialType, defaults] of Object.entries(LLM_PROVIDER_DEFAULTS)) {
+					// Gateway credits list models by provider; user-named models have no gateway list.
+					if (defaults.defaultModel === undefined) continue;
 					const hasOwnCredential = ownCredentials.some((c) => c.type === credentialType);
 					if (
 						!hasOwnCredential &&
@@ -455,14 +498,13 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 								ok: false as const,
 								reason: 'unsupported_provider' as const,
 								provider,
-								supportedProviders: Object.values(LLM_PROVIDER_DEFAULTS).map(
-									(defaults) => defaults.provider,
-								),
+								supportedProviders: supportedProviders(),
 							};
 						}
 
-						const [credentialType] = providerEntry;
-						candidates = matchingCredentials.filter((c) => c.type === credentialType);
+						candidates = matchingCredentials.filter((c) =>
+							isProviderCredential(c, providerEntry[1].provider),
+						);
 					}
 
 					const credential = candidates.length === 1 ? candidates[0] : undefined;
@@ -497,15 +539,13 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 							ok: false as const,
 							reason: 'unsupported_provider' as const,
 							provider,
-							supportedProviders: Object.values(LLM_PROVIDER_DEFAULTS).map(
-								(defaults) => defaults.provider,
-							),
+							supportedProviders: supportedProviders(),
 						};
 					}
 
 					const [credentialType, defaults] = providerEntry;
-					const matchingCredentials = llmCredentials.filter(
-						(credential) => credential.type === credentialType,
+					const matchingCredentials = llmCredentials.filter((credential) =>
+						isProviderCredential(credential, defaults.provider),
 					);
 
 					if (matchingCredentials.length === 1) {

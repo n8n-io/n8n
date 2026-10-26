@@ -263,10 +263,11 @@ export class AgentConfigPreparationService {
 			);
 		}
 
-		// Both are trimmed by the schema; an empty string clears the stored value.
-		for (const field of ['description', 'modelDeploymentName'] as const) {
-			if (decomposedSchema[field] === '') delete nextSchema[field];
-		}
+		// Trimmed by the schema; an empty string clears the stored value.
+		if (decomposedSchema.description === '') delete nextSchema.description;
+		// Agents no longer use a separate deployment name. Older configs still
+		// carry it, so drop it here rather than keep it from `previousSchema`.
+		Reflect.deleteProperty(nextSchema, 'modelDeploymentName');
 		return nextSchema;
 	}
 
@@ -348,7 +349,6 @@ function mergePersonalisationWithPreviousGradient(
 const OPTIONAL_SCHEMA_FIELDS = [
 	'credential',
 	'description',
-	'modelDeploymentName',
 	'personalisation',
 	'memory',
 	'subAgents',

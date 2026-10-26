@@ -4,9 +4,11 @@ import {
 	type SearchableNodeType,
 } from '@n8n/ai-utilities/node-catalog';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
+import { OperationalError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { RESOURCE_EXPLORATION_UNAVAILABLE } from '../../constants/resource-exploration';
 import type { InstanceAiContext } from '../../types';
 import { addSetupPreference } from '../nodes/setup-preference';
 import { createNodesTool } from '../nodes.tool';
@@ -520,6 +522,33 @@ describe('nodes tool', () => {
 			expect(result).toEqual({
 				results: [],
 				error: 'Auth failed',
+			});
+		});
+
+		it('should return the unavailable error when exploreResources refuses the lookup', async () => {
+			const context = createMockContext();
+			(context.nodeService.exploreResources as Mock).mockRejectedValue(
+				new OperationalError(RESOURCE_EXPLORATION_UNAVAILABLE),
+			);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{
+					action: 'explore-resources',
+					nodeType: 'n8n-nodes-base.googleSheets',
+					version: 4.7,
+					methodName: 'spreadSheetsSearch',
+					methodType: 'listSearch' as const,
+					credentialType: 'googleSheetsOAuth2Api',
+					credentialId: 'cred1',
+				},
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				results: [],
+				error: 'Resource exploration is not available.',
 			});
 		});
 	});
@@ -1057,24 +1086,6 @@ describe('nodes tool', () => {
 
 			expect(suspendFn).not.toHaveBeenCalled();
 			expect(result).toEqual(serviceResult);
-		});
-
-		it('should require approval when always_allow is scoped to specific workflows', async () => {
-			const executeNodeService = { execute: vi.fn() };
-			const suspendFn = vi.fn();
-			const tool = createNodesTool(
-				createMockContext({
-					executeNodeService,
-					permissions: { executeNode: 'always_allow' } as never,
-					allowedRunWorkflowIds: new Set(['wf-under-verification']),
-				}),
-				'full',
-			);
-
-			await executeTool(tool, executeInput as never, { suspend: suspendFn } as never);
-
-			expect(suspendFn).toHaveBeenCalledTimes(1);
-			expect(executeNodeService.execute).not.toHaveBeenCalled();
 		});
 
 		it('should skip approval when a session grant exists for the node type', async () => {

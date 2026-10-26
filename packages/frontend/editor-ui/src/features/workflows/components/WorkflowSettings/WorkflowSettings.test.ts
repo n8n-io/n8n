@@ -779,6 +779,30 @@ describe('WorkflowSettingsVue', () => {
 			},
 		);
 
+		it.each([
+			[undefined, 'v2'],
+			['v1', 'v2'],
+			['v2', 'v1'],
+		] as const)(
+			'should hold the new engineType in the document after a change from %s to %s',
+			async (engineType, expected) => {
+				workflowDocumentStore.setSettings(engineType ? { engineType } : {});
+
+				const { getByTestId, getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				const dropdownItems = await getDropdownItems(
+					getByTestId('workflow-settings-engine-type-select'),
+				);
+				await userEvent.click(dropdownItems[expected === 'v2' ? 1 : 0]);
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+				await flushPromises();
+
+				// A later save before a run sends the document settings, so they must match the saved value.
+				expect(workflowDocumentStore.getSettingsSnapshot().engineType).toBe(expected);
+			},
+		);
+
 		it('should not add engineType to the saved settings when the select is untouched', async () => {
 			const { getByRole } = createComponent({ pinia });
 			await flushPromises();
