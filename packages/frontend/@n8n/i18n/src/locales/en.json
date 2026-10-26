@@ -1765,8 +1765,6 @@
 	"agentSessions.timeline.scrollBackward": "Scroll timeline backward",
 	"agentSessions.timeline.scrollForward": "Scroll timeline forward",
 	"agentSessions.timeline.searchPlaceholder": "Hit / to search",
-	"agentSessions.timeline.emptyState.heading": "New session",
-	"agentSessions.timeline.emptyState.description": "Send a message to start this session's timeline.",
 	"agentSessions.timeline.triggeredVia": "Triggered via {source}",
 	"agentSessions.workflowLog.loading": "Loading execution...",
 	"agentSessions.workflowLog.outputRedacted": "Output data is hidden because this workflow redacts its execution data. Open the full execution to view it.",

@@ -82,11 +82,6 @@ export interface TimelineItem {
 	guardrailCode?: string;
 }
 
-export interface IdleRange {
-	start: number;
-	end: number;
-}
-
 interface BaseFilterOption {
 	key: string;
 	label: string;

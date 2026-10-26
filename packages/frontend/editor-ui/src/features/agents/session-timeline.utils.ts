@@ -9,10 +9,8 @@ import { isRecord } from '@n8n/utils/is-record';
 import { convertDbMessages } from '@/features/ai/shared/agentsChat/messageMappers';
 import type { ThinkingSegment } from '@/features/ai/shared/agentsChat/types';
 import type {
-	EventKind,
 	HitlRequestType,
 	HitlResponseStatus,
-	IdleRange,
 	TimelineActivityStatus,
 	TimelineItem,
 	TimelineStatusFilterKey,
@@ -27,8 +25,6 @@ import {
 	getToolNameTranslationKey,
 	resolveToolNameForDisplay,
 } from './utils/toolDisplayName';
-
-export const IDLE_THRESHOLD_MS = 10 * 60 * 1000;
 
 const LOAD_SKILL_TOOL_NAME = 'load_skill';
 
@@ -249,21 +245,6 @@ export function timelineItemStatus(item: TimelineItem): TimelineItemStatus | und
 	return undefined;
 }
 
-export function computeIdleRanges(items: TimelineItem[]): IdleRange[] {
-	const ranges: IdleRange[] = [];
-	for (let i = 0; i < items.length - 1; i++) {
-		const a = items[i];
-		const b = items[i + 1];
-		if (a.kind === 'suspension' || b.kind === 'suspension') continue;
-		const aEnd = endTimestampOf(a);
-		const gap = b.timestamp - aEnd;
-		if (gap > IDLE_THRESHOLD_MS) {
-			ranges.push({ start: aEnd, end: b.timestamp });
-		}
-	}
-	return ranges;
-}
-
 export function itemFilterKey(item: TimelineItem): string {
 	// All tool-call kinds collapse to one filter entry per kind so the dropdown
 	// stays compact regardless of how many distinct tools the agent uses; the
@@ -398,24 +379,6 @@ export function sessionBounds(items: TimelineItem[]): { start: number; end: numb
 	}
 	if (end <= start) end = start + 1;
 	return { start, end };
-}
-
-const COLOR_MAP: Record<EventKind, string> = {
-	user: 'var(--color--blue-400)',
-	agent: 'var(--color--secondary)',
-	skill: 'var(--color--orange-400)',
-	tool: 'var(--color--success)',
-	node: 'var(--color--text)',
-	workflow: 'var(--color--primary)',
-	'execution-error': 'var(--color--danger)',
-	suspension: 'var(--color--warning)',
-	'hitl-response': 'var(--color--blue-400)',
-	'background-task-signal': 'var(--color--mint-600)',
-	'background-task': 'var(--color--mint-600)',
-};
-
-export function kindColorToken(kind: EventKind): string {
-	return COLOR_MAP[kind];
 }
 
 export function builtinToolLabelKey(
