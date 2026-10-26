@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { ForbiddenError } from '@n8n/errors';
 import type { DeleteResult } from '@n8n/typeorm';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
@@ -92,9 +93,41 @@ export class LogStreamingDestinationService {
 	}
 
 	/**
+	 * Create a destination without replacing a stored destination.
+	 */
+	async createDestination(
+		destination: MessageEventBusDestination,
+	): Promise<MessageEventBusDestination> {
+		// Insert before activation so a duplicate ID leaves the active destination unchanged.
+		try {
+			const created = await this.eventDestinationsRepository.createIfNew(
+				destination.getId(),
+				destination.serialize(),
+			);
+			if (!created) {
+				throw new ForbiddenError('User is missing a scope required to perform this action');
+			}
+		} catch (error) {
+			await destination.close();
+			throw error;
+		}
+
+		return await this.activateDestination(destination);
+	}
+
+	/**
 	 * Add a destination to the local map and save to database
 	 */
 	async addDestination(
+		destination: MessageEventBusDestination,
+		notifyInstances: boolean = true,
+	): Promise<MessageEventBusDestination> {
+		await this.saveDestinationToDb(destination);
+
+		return await this.activateDestination(destination, notifyInstances);
+	}
+
+	private async activateDestination(
 		destination: MessageEventBusDestination,
 		notifyInstances: boolean = true,
 	): Promise<MessageEventBusDestination> {
@@ -104,9 +137,6 @@ export class LogStreamingDestinationService {
 		// Add to local destinations map
 		this.destinations[destination.getId()] = destination;
 		this.logger.debug(`Added destination ${destination.getId()}`);
-
-		// Save to database
-		await this.saveDestinationToDb(destination);
 
 		// Notify other instances to reload destinations
 		if (notifyInstances) {
