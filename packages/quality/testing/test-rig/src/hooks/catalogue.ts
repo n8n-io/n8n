@@ -9,14 +9,32 @@ type HookedMethod = Pick<HookSpec, 'file' | 'target' | 'method'> & {
 /** Methods the scenarios hook, so a contract test can check they exist in each image. */
 export const HOOKED_METHODS: HookedMethod[] = [
 	{ file: FILES.bullJob, target: 'prototype', method: 'moveToCompleted' },
+	{ file: FILES.bullQueue, target: 'prototype', method: 'moveToActive' },
+	{ file: FILES.bullQueue, target: 'prototype', method: 'processJob' },
 	{ file: FILES.bullScripts, target: '', method: 'extendLock' },
+	{ file: FILES.bullScripts, target: '', method: 'moveToCompleted' },
+	{
+		file: FILES.executionPersistence,
+		target: 'ExecutionPersistence.prototype',
+		method: 'findSingleExecution',
+	},
+	{ file: FILES.jobProcessor, target: 'JobProcessor.prototype', method: 'processJob' },
+	{ file: FILES.scalingService, target: 'ScalingService.prototype', method: 'addJob' },
+	{
+		file: FILES.scalingService,
+		target: 'ScalingService.prototype',
+		method: 'pauseAllQueues',
+		since: '2.39.0',
+	},
 	{ file: FILES.taskBroker, target: 'TaskBroker.prototype', method: 'sendTaskSettings' },
+	{ file: FILES.taskBroker, target: 'TaskBroker.prototype', method: 'taskRequested' },
 	{ file: FILES.taskRequester, target: 'TaskRequester.prototype', method: 'startTask' },
 	{
 		file: FILES.workflowExecute,
 		target: 'WorkflowExecute.prototype',
 		method: 'processRunExecutionData',
 	},
+	{ file: FILES.workflowExecute, target: 'WorkflowExecute.prototype', method: 'runNode' },
 ];
 
 const release = (version: string) => version.split('.').map(Number);

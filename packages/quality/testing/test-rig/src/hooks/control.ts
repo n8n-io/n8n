@@ -69,12 +69,14 @@ export function hook(containers: Container[], point: string) {
 				}),
 			);
 		},
-		async disarm() {
+		async disarm(except?: Container) {
 			await Promise.all(
-				containers.map(async (c) => {
-					if (!(await removeInContainer(c, path('arm'))))
-						throw new Error(`hook ${point}: disarm failed in ${c.getName()}`);
-				}),
+				containers
+					.filter((c) => c !== except)
+					.map(async (c) => {
+						if (!(await removeInContainer(c, path('arm'))))
+							throw new Error(`hook ${point}: disarm failed in ${c.getName()}`);
+					}),
 			);
 		},
 		async waitHit(timeoutMs: number, abort?: AbortSignal): Promise<HookHit> {

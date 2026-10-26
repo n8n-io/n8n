@@ -116,6 +116,10 @@ export class RigStack {
 		return byName(this.stack.findContainers(/-n8n-worker-\d+$/));
 	}
 
+	runner(): Container {
+		return this.container(/-task-runner$/);
+	}
+
 	container(pattern: RegExp): Container {
 		const [found] = this.stack.findContainers(pattern);
 		if (!found) throw new Error(`container ${String(pattern)} not found`);

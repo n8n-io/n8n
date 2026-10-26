@@ -37,6 +37,11 @@ export const includes = (item: unknown): Expectation => ({
 		(typeof actual === 'string' && typeof item === 'string' && actual.includes(item)),
 });
 
+export const excludes = (item: unknown): Expectation => ({
+	describe: `excludes ${JSON.stringify(item)}`,
+	test: (actual) => !includes(item).test(actual),
+});
+
 export const anything: Expectation = { describe: 'is anything', test: () => true };
 
 type Check = [label: string, actual: unknown, expected: Expectation];
