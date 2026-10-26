@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { shapeToStandardSchema } from '../tool-schema.util';
+import { workflowInputsSchema } from '../tools/workflow-inputs';
 
 describe('shapeToStandardSchema', () => {
 	const schema = shapeToStandardSchema({
@@ -124,6 +125,49 @@ describe('shapeToStandardSchema', () => {
 			});
 
 			expect(result).toEqual({ value: { node: { name: 'Set', position: [10, 20] } } });
+		});
+
+		// Zod nests the type issues of each union option under `invalid_union`.
+		it('decodes a JSON string sent for a union of object schemas', async () => {
+			const withUnion = shapeToStandardSchema(
+				{ inputs: workflowInputsSchema.optional() },
+				{ decodeJsonStringArgs: true },
+			);
+
+			const result = await withUnion['~standard'].validate({
+				inputs: '{"chatInput":"hello"}',
+			});
+
+			expect(result).toEqual({ value: { inputs: { chatInput: 'hello' } } });
+		});
+
+		it('decodes a JSON string nested inside a union option', async () => {
+			const withUnion = shapeToStandardSchema(
+				{ inputs: workflowInputsSchema.optional() },
+				{ decodeJsonStringArgs: true },
+			);
+
+			const result = await withUnion['~standard'].validate({
+				inputs: { webhookData: '{"method":"POST","body":{"id":1}}' },
+			});
+
+			expect(result).toEqual({
+				value: { inputs: { webhookData: { method: 'POST', body: { id: 1 } } } },
+			});
+		});
+
+		it('decodes a JSON string for a union of array and number', async () => {
+			const withUnion = shapeToStandardSchema(
+				{ ids: z.union([z.array(z.number()), z.number()]) },
+				{ decodeJsonStringArgs: true },
+			);
+
+			expect(await withUnion['~standard'].validate({ ids: '[1,2]' })).toEqual({
+				value: { ids: [1, 2] },
+			});
+			expect(await withUnion['~standard'].validate({ ids: '3' })).toEqual({
+				value: { ids: 3 },
+			});
 		});
 
 		it('keeps string arguments as strings', async () => {

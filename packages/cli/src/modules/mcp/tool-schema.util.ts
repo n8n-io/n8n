@@ -74,6 +74,30 @@ function decodeStringAtPath(
 }
 
 /**
+ * Collects the issues where zod received a string in place of a type that JSON
+ * can encode. Zod nests the issues of each union option under `invalid_union`,
+ * so this walks into `unionErrors` too. Nested issues already carry the full
+ * path from the root.
+ */
+function collectDecodableIssues(issues: z.ZodIssue[]): z.ZodInvalidTypeIssue[] {
+	const decodable: z.ZodInvalidTypeIssue[] = [];
+	for (const issue of issues) {
+		if (issue.code === z.ZodIssueCode.invalid_union) {
+			for (const unionError of issue.unionErrors) {
+				decodable.push(...collectDecodableIssues(unionError.issues));
+			}
+		} else if (
+			issue.code === z.ZodIssueCode.invalid_type &&
+			issue.received === z.ZodParsedType.string &&
+			JSON_DECODABLE_TYPES.has(issue.expected)
+		) {
+			decodable.push(issue);
+		}
+	}
+	return decodable;
+}
+
+/**
  * Returns a copy of `value` in which every string that zod rejected in place
  * of an array, object, number or boolean is JSON-decoded. Returns `undefined`
  * when nothing could be decoded.
@@ -83,14 +107,10 @@ function decodeJsonStringArgs(value: unknown, issues: z.ZodIssue[]): unknown {
 
 	const copy = structuredClone(value);
 	let changed = false;
-	for (const issue of issues) {
-		if (
-			issue.code === z.ZodIssueCode.invalid_type &&
-			issue.received === z.ZodParsedType.string &&
-			JSON_DECODABLE_TYPES.has(issue.expected)
-		) {
-			changed = decodeStringAtPath(copy, issue.path, issue.expected) || changed;
-		}
+	for (const issue of collectDecodableIssues(issues)) {
+		// The first issue that decodes a path wins. Later issues for the same
+		// path see a non-string value and skip it.
+		changed = decodeStringAtPath(copy, issue.path, issue.expected) || changed;
 	}
 	return changed ? copy : undefined;
 }
