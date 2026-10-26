@@ -13,7 +13,7 @@ import orderBy from 'lodash/orderBy';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
-import { N8nButton, N8nIcon, N8nPopover } from '@n8n/design-system';
+import { N8nButton, N8nIconButton, N8nPopover } from '@n8n/design-system';
 
 const props = defineProps<{
 	workflowId: string;
@@ -189,15 +189,16 @@ watch(runningTestRun, (run) => {
 						:enable-scrolling="false"
 					>
 						<template #trigger>
-							<button
-								type="button"
+							<N8nIconButton
+								variant="solid"
+								size="small"
+								icon="chevron-down"
+								icon-size="xsmall"
 								:class="[$style.caretButton, popoverOpen ? $style.caretButtonOpen : null]"
 								:aria-label="locale.baseText('evaluation.runInParallel.popover.ariaLabel')"
 								:aria-expanded="popoverOpen"
 								data-test-id="parallel-eval-toggle"
-							>
-								<N8nIcon icon="chevron-down" size="xsmall" />
-							</button>
+							/>
 						</template>
 						<template #content>
 							<div :class="$style.popoverBody" data-test-id="parallel-eval-controls">
@@ -316,11 +317,8 @@ watch(runningTestRun, (run) => {
 	margin-left: auto;
 }
 
-// Split-button container: the Run Test button and the caret toggle live
-// inside this wrapper so they visually read as one control. The caret
-// borrows the brand colour from the solid button via a thin inset shadow
-// rather than a real border, which keeps the seam between the two visually
-// soft.
+// Keep both halves on the same solid-button variant so their colors match
+// across themes and interaction states.
 .runTestGroup {
 	margin-left: auto;
 	display: inline-flex;
@@ -339,48 +337,12 @@ watch(runningTestRun, (run) => {
 	border-bottom-right-radius: 0;
 }
 
-// Match the left-side radius to the Figma split-button (6px) so both halves
-// share an identical curve. Only the standalone caret-less variant inherits
-// the design-system's default radius.
-.runTestGroup .runTestButtonWithCaret {
-	border-top-left-radius: 6px;
-	border-bottom-left-radius: 6px;
-}
-
-.caretButton {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 30px;
-	height: auto;
-	padding: 0;
-	border: none;
-	border-top-right-radius: 6px;
-	border-bottom-right-radius: 6px;
-	background-color: var(--background--brand);
-	color: #fff;
-	cursor: pointer;
-	transition:
-		background-color var(--duration--snappy) ease,
-		transform var(--duration--snappy) ease;
-	// Soft separator between the Run Test button and the caret — matches the
-	// 1px × 20px white-translucent divider in the Figma spec. Inset shadow
-	// rather than a 1px border so the two halves stay visually flush at any
-	// zoom level.
-	box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.35);
-
-	&:hover {
-		background-color: var(--background--brand--hover);
-	}
-
-	&:focus-visible {
-		outline: 2px solid var(--background--brand--focus);
-		outline-offset: 2px;
-	}
-
-	svg {
-		transition: transform var(--duration--snappy) ease;
-	}
+.runTestGroup .caretButton {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+	border-top-right-radius: var(--radius--full);
+	border-bottom-right-radius: var(--radius--full);
+	border-left: 1px solid var(--color--white-alpha-100);
 }
 
 // Open state: rotate the caret 180° for an unmistakable open/closed cue.
