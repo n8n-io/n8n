@@ -11,6 +11,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
+import { useSelfHealingChatHandoff } from '@/features/ai/instanceAi/composables/useSelfHealingChatHandoff';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 import { mcpDiscoverySettings } from '@/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscoverySettings';
 // EOF Experiment cleanup
@@ -73,6 +74,7 @@ export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.projectPermissions, projectPermissions);
 	capabilityRegistry.provide(capabilities.workflowMcpAccessSync, syncWorkflowMcpAccess);
 	capabilityRegistry.provide(capabilities.mcpExposeAllOffer, mcpExposeAllOffer);
+	capabilityRegistry.provide(capabilities.createSelfHealingChatHandoff, useSelfHealingChatHandoff);
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	capabilityRegistry.provide(capabilities.mcpDiscoverySettings, mcpDiscoverySettings);
 	// EOF Experiment cleanup

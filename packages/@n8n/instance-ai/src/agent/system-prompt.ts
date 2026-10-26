@@ -26,6 +26,7 @@ interface SystemPromptOptions {
 	conversationHistoryEnabled?: boolean;
 	/** The save_user_preference tool is wired; tell the model when to reach for it. */
 	preferenceSavingEnabled?: boolean;
+	skillManagementEnabled?: boolean;
 	/** Setup panel v2 flag: `workflow_builder_workflows(action="setup")` announces instead of opening a card. */
 	setupPanelEnabled?: boolean;
 }
@@ -187,7 +188,7 @@ ${licenseHints.map((hint) => `- ${hint}`).join('\n')}
 `;
 }
 
-function getReadOnlySection(branchReadOnly?: boolean): string {
+function getReadOnlySection(branchReadOnly?: boolean, skillManagementEnabled?: boolean): string {
 	if (!branchReadOnly) return '';
 	return `
 ## Read-Only Instance
@@ -203,8 +204,7 @@ The following operations remain available:
 - Inserting, updating, and deleting data table rows
 - Publishing/unpublishing (activating/deactivating) workflows
 - Setting up, editing, and deleting credentials
-- Creating, editing, and deleting skills in the skills hub
-- Restoring workflow versions
+${skillManagementEnabled ? '- Creating, editing, and deleting skills in the skills hub\n' : ''}- Restoring workflow versions
 - Browsing the filesystem, fetching URLs, and searching the web
 
 If the user asks for a blocked operation, explain that the instance is in read-only mode. Suggest they make the changes on a development or writable environment, push to version control, and pull the changes to this instance.
@@ -256,6 +256,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			workspaceRoot,
 			conversationHistoryEnabled,
 			preferenceSavingEnabled,
+			skillManagementEnabled,
 			setupPanelEnabled,
 		} = options;
 
@@ -301,7 +302,7 @@ ${UNTRUSTED_CONTENT_DOCTRINE}
 
 ${getBrowserUsePrompt({ state: browserUseState })}
 ${getLicenseLimitationsSection(licenseHints)}
-${getReadOnlySection(branchReadOnly)}
+${getReadOnlySection(branchReadOnly, skillManagementEnabled)}
 ${getLimitedModeSection(parameterValuesHidden)}
 
 ## Reply language

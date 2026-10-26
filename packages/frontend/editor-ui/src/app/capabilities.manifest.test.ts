@@ -17,9 +17,16 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
-const { openDocumentStores, offerToExposeAllWorkflows } = vi.hoisted(() => ({
-	openDocumentStores: new Map<string, { mergeSettings: ReturnType<typeof vi.fn> }>(),
-	offerToExposeAllWorkflows: vi.fn(),
+const { openDocumentStores, offerToExposeAllWorkflows, createSelfHealingChatHandoff } = vi.hoisted(
+	() => ({
+		openDocumentStores: new Map<string, { mergeSettings: ReturnType<typeof vi.fn> }>(),
+		offerToExposeAllWorkflows: vi.fn(),
+		createSelfHealingChatHandoff: vi.fn(),
+	}),
+);
+
+vi.mock('@/features/ai/instanceAi/composables/useSelfHealingChatHandoff', () => ({
+	useSelfHealingChatHandoff: createSelfHealingChatHandoff,
 }));
 
 vi.mock(
@@ -54,6 +61,15 @@ describe('registerShellCapabilities', () => {
 		registerShellCapabilities();
 
 		expect(capabilityRegistry.has(capabilities.modalOpeners)).toBe(true);
+	});
+
+	it('provides the chat setup factory without initializing it at registration', () => {
+		registerShellCapabilities();
+
+		expect(capabilityRegistry.use(capabilities.createSelfHealingChatHandoff)).toBe(
+			createSelfHealingChatHandoff,
+		);
+		expect(createSelfHealingChatHandoff).not.toHaveBeenCalled();
 	});
 
 	it('forwards openModal to the UI store', () => {

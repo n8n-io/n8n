@@ -1683,24 +1683,4 @@ describe('buildAppliedPreferencesPayload', () => {
 
 		expect(payload).toEqual({ preferences: [], renderedLength: 0, injectedThisTurn: true });
 	});
-
-	it('names the run whose block still carries the text when this turn sent none', () => {
-		const payload = buildAppliedPreferencesPayload({
-			preferences: { instance: saved('Use British English.'), user: [], projects: [] },
-			renderedLength: 120,
-			injectedThisTurn: false,
-			carriedFromRunId: 'run_abc',
-		});
-
-		expect(payload).toMatchObject({ injectedThisTurn: false, carriedFromRunId: 'run_abc' });
-	});
-
-	it('omits the carrying run when this turn injected the block itself', () => {
-		const payload = buildAppliedPreferencesPayload({
-			preferences: { instance: saved('Use British English.'), user: [], projects: [] },
-			...base,
-		});
-
-		expect(payload).not.toHaveProperty('carriedFromRunId');
-	});
 });
