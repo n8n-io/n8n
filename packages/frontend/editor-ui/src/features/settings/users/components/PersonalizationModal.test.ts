@@ -18,6 +18,7 @@ import {
 	DEVOPS_AUTOMATION_GOAL_OTHER_KEY,
 	DEVOPS_AUTOMATION_GOAL_KEY,
 	REPORTED_SOURCE_KEY,
+	PERSONALIZATION_MODAL_KEY,
 } from '../users.constants';
 
 vi.mock('vue-router', () => ({
@@ -171,6 +172,9 @@ describe('PersonalizationModal', () => {
 			};
 			vi.spyOn(usersStore, 'submitPersonalizationSurvey').mockResolvedValue(undefined);
 			const openModalWithData = vi.spyOn(uiStore, 'openModalWithData');
+			// The dialog closes through the store. The survey is rendered on its own
+			// here, so mark the modal open before submit.
+			uiStore.openModal(PERSONALIZATION_MODAL_KEY);
 
 			const { getByTestId, getByText } = renderModal({ pinia });
 
