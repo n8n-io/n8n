@@ -90,7 +90,29 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 		// 5 dependents in the counts, 3 visible: the 2 hidden credentials do not count
 		expect(affected).toHaveTextContent('+2 not accessible to you');
 		expect(affected).toHaveTextContent('Used by');
-		expect(getByText('5 resources use this workflow and may be affected by unpublishing it.')).toBeInTheDocument();
+		expect(getByText('Resources using this workflow may be affected by unpublishing it.')).toBeInTheDocument();
+	});
+
+
+	it('lists a workflow once when it both calls and uses the target as its error workflow', async () => {
+		vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({
+			'wf-overlap': {
+				dependencies: [
+					{ type: 'workflowParent', id: 'parent-1', name: 'Order intake' },
+					{ type: 'errorWorkflowParent', id: 'parent-1', name: 'Order intake' },
+				],
+				inaccessibleCount: 0,
+			},
+		});
+		vi.mocked(workflowDependenciesApi.getResourceDependencyCounts).mockResolvedValue({
+			'wf-overlap': { ...noCounts, workflowParent: 1, errorWorkflowParent: 1 },
+		});
+
+		const { findByTestId, getAllByText, queryByText } = renderModal('wf-overlap');
+		const affected = await findByTestId('workflow-unpublish-affected-resources');
+		expect(getAllByText('Order intake')).toHaveLength(1);
+		expect(affected).not.toHaveTextContent('not accessible to you');
+		expect(queryByText(/2 resources use this workflow/)).not.toBeInTheDocument();
 	});
 
 	it('shows only the generic warning when nothing runs the published version', async () => {
