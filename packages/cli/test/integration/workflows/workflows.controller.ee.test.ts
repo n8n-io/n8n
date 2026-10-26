@@ -2916,7 +2916,7 @@ describe('PUT /:workflowId/transfer', () => {
 		]);
 	});
 
-	test('returns a 500 if the workflow cannot be activated due to an unknown error', async () => {
+	test('moves and unpublishes the workflow when its republish fails for an unknown reason', async () => {
 		//
 		// ARRANGE
 		//
@@ -2927,13 +2927,24 @@ describe('PUT /:workflowId/transfer', () => {
 		activeWorkflowManager.add.mockRejectedValue(new UnexpectedError('Oh no!'));
 
 		//
-		// ACT & ASSERT
+		// ACT
 		//
-		await testServer
+		const response = await testServer
 			.authAgentFor(member)
 			.put(`/workflows/${workflow.id}/transfer`)
 			.send({ destinationProjectId: destinationProject.id })
-			.expect(500);
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body.data).toEqual({ error: { name: 'UnexpectedError', message: 'Oh no!' } });
+		const [sharing] = await getWorkflowSharing(workflow);
+		expect(sharing.projectId).toBe(destinationProject.id);
+		const workflowInDb = await Container.get(WorkflowRepository).findOneByOrFail({
+			id: workflow.id,
+		});
+		expect(workflowInDb.activeVersionId).toBeNull();
 	});
 });
 

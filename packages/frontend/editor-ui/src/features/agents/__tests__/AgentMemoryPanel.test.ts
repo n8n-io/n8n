@@ -220,7 +220,7 @@ describe('AgentMemoryPanel', () => {
 		await wrapper.find('[data-testid="agent-episodic-memory-change-credential"]').trigger('click');
 
 		const picker = wrapper.findComponent({ name: 'CredentialPicker' });
-		expect(picker.props('selectedCredentialId')).toBeNull();
+		expect(picker.props('selectedCredentialId')).toBe('existing-credential');
 		picker.vm.$emit('credential-selected', 'replacement-credential');
 		await wrapper.vm.$nextTick();
 

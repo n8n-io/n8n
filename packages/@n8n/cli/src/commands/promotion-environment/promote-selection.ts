@@ -4,7 +4,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentPromoteSelection extends BaseCommand {
 	static override description =
-		"Read a chosen set of a project's workflows now and push their current state to the branch of the project's Promote environment, or of the instance Promote environment. Archived workflows stay on the branch as archived. A selected workflow that was deleted or moved to another project leaves this project's branch. The request fails before any write if the branch does not hold that workflow under this project. Requires that environment to be connected first.";
+		"Read a chosen set of a project's workflows now and push their current state to the branch of the project's Promote environment, or of the instance Promote environment. Archived workflows stay on the branch as archived. A selected workflow that was deleted leaves this project's branch. A selected workflow that moved into or out of the project since the branch was written is refused. Move it back first. The request fails before any write if the branch does not hold a deleted workflow under this project. Requires that environment to be connected first.";
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment promote-selection proj-abc -w wf-1 -w wf-2',
@@ -24,7 +24,7 @@ export default class PromotionEnvironmentPromoteSelection extends BaseCommand {
 		}),
 		message: Flags.string({
 			char: 'm',
-			description: 'Commit message. A default is used when omitted.',
+			description: 'Commit message. If you omit it, the commit uses a generated message.',
 		}),
 	};
 

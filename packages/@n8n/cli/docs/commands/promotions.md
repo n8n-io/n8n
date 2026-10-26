@@ -195,16 +195,20 @@ the deployment can hold a different checkout.
 Export all team projects, commit them, and push to the configured branch.
 
 ```bash
-n8n-cli promotion-environment promote env-1 --message="Promote team projects"
+n8n-cli promotion-environment promote env-1
 n8n-cli promotion-environment promote env-1 -m "Promote team projects" --force
 ```
 
 | Flag | Description |
 |------|-------------|
-| `-m, --message` | Commit message. Required. |
+| `-m, --message` | Commit message. If you omit it, the commit uses a generated message. |
 | `--force` | Overwrite the remote branch when it has diverged. |
 
-Personal projects are not included. Connect the environment first. This command
+Personal projects are not included. A workflow on the branch that moved to a
+personal project is refused, because Apply would delete it on the destination.
+Move it back to its team project first. A workflow or folder on the branch that
+moved to another team project is also refused while its old project still
+exists, because Apply can't move it between projects. Connect the environment first. This command
 works on an `instance` Promote environment only. The API key also needs
 `variable:list` when the workflows reference variables.
 
@@ -245,12 +249,13 @@ n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -m "Promote che
 | Flag | Description |
 |------|-------------|
 | `-w, --workflow` | Workflow ID to promote. Repeat the flag for more than one. Required. |
-| `-m, --message` | Commit message. A default is used when omitted. |
+| `-m, --message` | Commit message. If you omit it, the commit uses a generated message. |
 
 Archived workflows stay on the branch as archived. A selected workflow that was
-deleted or moved to another project leaves this project's branch. The request
-fails before any write if the branch does not hold that workflow under this
-project. Connect that environment first. The API key also needs
+deleted leaves this project's branch. A selected workflow that moved into or out
+of the project since the branch was written is refused: move it back
+first. The request fails before any write if the branch does not hold a
+deleted workflow under this project. Connect that environment first. The API key also needs
 `variable:list` when the workflows reference variables.
 
 ## `promotion-environment apply`
@@ -288,6 +293,13 @@ Apply makes the team projects on this instance match the package. It deletes
 each team project that the package does not hold, with all its workflows,
 credentials, and data tables. Preflight reports each such project as a
 `project-deletion` conflict.
+
+Workflows and folders move within their project to match the branch, and folders
+take the name on the branch. `counts.workflows.moved` is part of
+`counts.workflows.updated`. `counts.folders.moved` and `counts.folders.renamed` are
+parts of `counts.folders.updated`. A workflow or folder that the branch and this
+instance hold in different projects is refused before any write, and nothing is
+imported.
 
 Connect the environment first. This command works on an `instance` Apply
 environment only. The API key needs `gitConnection:pull`.
@@ -360,7 +372,11 @@ n8n-cli promotion-environment apply-selection proj-abc -w wf-1 \
 
 Selected IDs on the branch are imported. Instance workflows this project owns
 whose IDs are absent from the branch are removed. Unselected content stays
-unchanged. Without the `--expected-*` flags, the command applies the branch tip;
+unchanged. A selected workflow moves within the project to match the branch,
+together with the folders that hold it, and those folders take the name on the
+branch. Other folders stay as they are. A selected workflow, or a folder that the
+branch holds in this project, that the branch and this instance hold in different
+projects is refused before any write. Without the `--expected-*` flags, the command applies the branch tip;
 with them, it applies only the source that you reviewed. Pass all three flags or
 none.
 
