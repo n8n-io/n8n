@@ -45,6 +45,7 @@ import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
 import {
+	CredentialConflictPolicy,
 	CredentialExportPolicy,
 	DataTableSchemaConflictPolicy,
 	ExportDependencyPolicy,
@@ -98,8 +99,9 @@ type DirectoryProjectPackage =
  * A cherry-pick import acts only on its selection, so most policies are fixed here. Deletion mode is
  * left to the caller (`overwriteDeletionPolicy`): promotion passes `hard-delete` for diff convergence,
  * while the public selection import defaults to the safe `archive`. The caller also sets
- * `dataTableSchemaConflictPolicy`, which defaults to `fail`, `tagConflictPolicy`, which defaults
- * to `skip`, and `placementPolicy`, which defaults to `strict`.
+ * `dataTableSchemaConflictPolicy`, which defaults to `fail`, `tagConflictPolicy`, which defaults to
+ * `skip`, `credentialConflictPolicy`, which defaults to `keep-existing`, and `placementPolicy`,
+ * which defaults to `strict`.
  */
 const CHERRY_PICK_IMPORT_POLICY = {
 	projectConflictPolicy: 'merge',
@@ -108,7 +110,6 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	missingNodeTypeMode: 'fail',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
-	credentialConflictPolicy: 'keep-existing',
 	dataTableMatchingMode: 'by-id',
 	dataTableMissingMode: 'create',
 	variableMissingMode: 'must-preexist',
@@ -127,6 +128,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'workflowIdPolicy'
 	| 'dataTableSchemaConflictPolicy'
 	| 'tagConflictPolicy'
+	| 'credentialConflictPolicy'
 	| 'placementPolicy'
 >;
 
@@ -634,6 +636,8 @@ export class N8nPackagesService {
 			dataTableSchemaConflictPolicy:
 				request.dataTableSchemaConflictPolicy ?? DataTableSchemaConflictPolicy.Fail,
 			tagConflictPolicy: request.tagConflictPolicy ?? TagConflictPolicy.Skip,
+			credentialConflictPolicy:
+				request.credentialConflictPolicy ?? CredentialConflictPolicy.KeepExisting,
 			placementPolicy: request.placementPolicy ?? PlacementPolicy.Strict,
 			selection,
 		};

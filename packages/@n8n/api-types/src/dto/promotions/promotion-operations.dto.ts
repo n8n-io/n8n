@@ -98,7 +98,7 @@ export const applyPackageCountsSchema = z.object({
 			failed: count(),
 		}),
 	}),
-	credentials: z.object({ matched: count(), stubbed: count() }),
+	credentials: z.object({ matched: count(), stubbed: count(), updated: count() }),
 	dataTables: z.object({ matched: count(), created: count(), updated: count() }),
 	variables: z.object({
 		matched: count(),
