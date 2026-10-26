@@ -7,8 +7,8 @@ vi.mock('../binaryChecks/index', () => ({
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { CheckOutcome } from '../binaryChecks/types';
 import type { WorkflowResponse } from '../clients/n8n-client';
+import { runWorkflowChecks } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
-import { runWorkflowChecks } from '../harness/runner';
 
 const mockedRunBinaryChecks = vi.mocked(runBinaryChecks);
 

@@ -8,24 +8,22 @@ import {
 	N8nLoading,
 	N8nText,
 	N8nTooltip,
-	N8nActionPill,
+	N8nBadge,
 } from '@n8n/design-system';
-import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader } from '@n8n/design-system';
 import type { AiGatewayUsageEntry } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
-import { useUIStore } from '@/app/stores/ui.store';
-import { AI_GATEWAY_TOP_UP_MODAL_KEY, VIEWS } from '@/app/constants';
+import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
+import { VIEWS } from '@/app/constants';
 
 const i18n = useI18n();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
-const telemetry = useTelemetry();
 const aiGatewayStore = useAiGatewayStore();
-const uiStore = useUIStore();
+const { openTopUp } = useAiGatewayTopUp();
 
 const isLoading = ref(false);
 const isAppending = ref(false);
@@ -144,7 +142,7 @@ async function load(): Promise<void> {
 }
 
 async function refresh(): Promise<void> {
-	await Promise.all([aiGatewayStore.fetchWallet(), load()]);
+	await Promise.all([aiGatewayStore.fetchWallet({ force: true }), load()]);
 }
 
 async function loadMore(): Promise<void> {
@@ -172,12 +170,14 @@ onMounted(async () => {
 			<div :class="$style.headings">
 				<div :class="$style.headingRow">
 					<N8nHeading size="2xlarge">{{ i18n.baseText('settings.n8nConnect.title') }}</N8nHeading>
-					<N8nActionPill
+					<N8nBadge
 						v-if="walletBadgeText"
-						size="medium"
-						:text="walletBadgeText"
+						size="xsmall"
+						variant="success"
 						data-test-id="ai-gateway-header-credits-badge"
-					/>
+					>
+						{{ walletBadgeText }}
+					</N8nBadge>
 				</div>
 				<N8nText size="small" color="text-light">
 					{{ i18n.baseText('settings.n8nConnect.description') }}
@@ -188,14 +188,11 @@ onMounted(async () => {
 				icon="hand-coins"
 				variant="solid"
 				data-test-id="ai-gateway-topup-button"
-				@click="
-					telemetry.track('User clicked ai gateway top up', { source: 'settings_page' });
-					uiStore.openModalWithData({ name: AI_GATEWAY_TOP_UP_MODAL_KEY, data: {} });
-				"
+				@click="openTopUp({ source: 'settings_page' })"
 			/>
 		</header>
 
-		<div :class="$style.usageTableContainer">
+		<div>
 			<div v-if="showUsageSectionSkeleton">
 				<N8nLoading :loading="true" variant="h1" :class="$style.usageTableHeader" />
 				<N8nLoading :loading="true" variant="p" :rows="5" :shrink-last="false" />
@@ -208,7 +205,7 @@ onMounted(async () => {
 					<div :class="$style.usageTableActions">
 						<N8nTooltip :content="i18n.baseText('settings.n8nConnect.usage.refresh.tooltip')">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								icon-only
 								size="small"
 								icon="refresh-cw"
@@ -229,6 +226,7 @@ onMounted(async () => {
 					:headers="tableHeaders"
 					:items="entries"
 					:items-length="entries.length"
+					:pagination="false"
 					:loading="isLoading && isAppending"
 					:item-value="rowId"
 					:row-props="(row) => (isRowClickable(row) ? { class: $style.clickableRow } : {})"
@@ -265,7 +263,6 @@ onMounted(async () => {
 				<div v-if="hasMore && entries.length > 0" :class="$style.loadMore">
 					<N8nButton
 						:label="i18n.baseText('settings.n8nConnect.usage.loadMore')"
-						type="secondary"
 						:loading="isLoading && isAppending"
 						@click="loadMore"
 					/>
@@ -310,12 +307,6 @@ onMounted(async () => {
 	margin-bottom: var(--spacing--5xs);
 }
 
-.usageTableContainer {
-	:global(.table-pagination) {
-		display: none;
-	}
-}
-
 .usageTableHeader {
 	display: flex;
 	justify-content: space-between;
@@ -348,7 +339,7 @@ onMounted(async () => {
 	padding: var(--spacing--5xs) var(--spacing--2xs);
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	background-color: var(--color--foreground);
 	color: var(--color--text);
 }

@@ -13,6 +13,10 @@ import { defineConfig } from 'eslint/config';
 
 import { checkPackageProvenance, NPM_PROVENANCE_PREDICATE_TYPE } from './provenance.mjs';
 
+// Cap registry/tarball requests; axios has no default timeout, so a stalled
+// connection would otherwise hang the scan indefinitely.
+axios.defaults.timeout = 300_000;
+
 const { stdout } = process;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMP_DIR = tmp.dirSync({ unsafeCleanup: true }).name;

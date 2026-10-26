@@ -25,7 +25,7 @@ export class BinaryDataStorageRule implements IBreakingChangeInstanceRule {
 			description:
 				'Binary files are now stored on disk (default in regular mode) or in database (default in queue mode) instead of in memory',
 			category: BreakingChangeCategory.infrastructure,
-			severity: 'low',
+			impact: 'behaviorChanges',
 			documentationUrl:
 				'https://docs.n8n.io/2-0-breaking-changes/#remove-in-memory-binary-data-mode',
 		};

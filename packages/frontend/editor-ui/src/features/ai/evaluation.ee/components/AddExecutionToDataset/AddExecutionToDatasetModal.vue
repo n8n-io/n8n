@@ -19,8 +19,8 @@ import {
 
 import Modal from '@/app/components/Modal.vue';
 import { ADD_EXECUTION_TO_DATASET_MODAL_KEY } from '@/app/constants';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useEvaluationStore } from '../../evaluation.store';
 import { stringifyValue } from '../../evaluation.utils';
 
@@ -291,7 +291,7 @@ onMounted(async () => {
 		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					:label="locale.baseText('generic.cancel')"
 					data-test-id="add-execution-to-dataset-cancel"
 					@click="close"

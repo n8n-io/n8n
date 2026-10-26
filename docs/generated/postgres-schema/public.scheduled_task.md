@@ -15,12 +15,14 @@
 | leaseEpoch | integer | 0 | false |  |  | Fencing token bumped on each claim; lets a reaped worker detect it lost ownership and not overwrite the new owner's results. |
 | leaseExpiresAt | timestamp(3) with time zone |  | true |  |  | When the current lease expires; the reaper reclaims running occurrences past this. |
 | maxAttempts | integer | 1 | false |  |  | Attempt ceiling; once attempts reaches it, a failure is final rather than retried. |
+| missedAfter | timestamp(3) with time zone |  | true |  |  | When this occurrence stops being worth running (runAt plus the job's misfire grace). NULL means no deadline. |
 | payload | json | '{}'::json | false |  |  | Handler input copied from the job. A snapshot, so editing the job later doesn't change runs already queued. |
 | runAt | timestamp(3) with time zone |  | false |  |  | Earliest time the executor may pick this up; starts at scheduledFor and is pushed out by retry backoff. |
 | scheduledFor | timestamp(3) with time zone |  | false |  |  | The logical fire time this occurrence represents; unique per job, so the same instant cannot be queued twice. |
 | startedAt | timestamp(3) with time zone |  | true |  |  | When the current attempt started running. |
 | status | varchar(16) | 'pending'::character varying | false |  |  | Lifecycle state; drives which occurrences the claim and reaper scans consider. |
 | taskType | varchar(128) |  | false |  |  | What kind of work to run, copied from the job so a run is self-contained (no join to execute it). Also lets a run exist without a parent job in future. |
+| timeoutSeconds | integer | 300 | false |  |  | How long, in seconds, one attempt of an occurrence may run before the executor stops it. |
 
 ## Constraints
 
@@ -28,6 +30,7 @@
 | ---- | ---- | ---------- |
 | CHK_scheduled_task_running_lease | CHECK | CHECK ((((status)::text <> 'running'::text) OR ("leaseExpiresAt" IS NOT NULL))) |
 | CHK_scheduled_task_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'running'::character varying, 'succeeded'::character varying, 'failed'::character varying, 'missed'::character varying, 'cancelled'::character varying])::text[]))) |
+| CHK_scheduled_task_timeoutSeconds | CHECK | CHECK ((("timeoutSeconds" > 0) AND ("timeoutSeconds" <= 2147483))) NOT VALID |
 | FK_scheduled_task_jobId | FOREIGN KEY | FOREIGN KEY ("jobId") REFERENCES scheduled_job(id) ON DELETE CASCADE |
 | PK_d690af24e57e30594c1948af1e6 | PRIMARY KEY | PRIMARY KEY (id) |
 | scheduled_task_attempts_not_null | n | NOT NULL attempts |
@@ -41,6 +44,7 @@
 | scheduled_task_scheduledFor_not_null | n | NOT NULL "scheduledFor" |
 | scheduled_task_status_not_null | n | NOT NULL status |
 | scheduled_task_taskType_not_null | n | NOT NULL "taskType" |
+| scheduled_task_timeoutSeconds_not_null | n | NOT NULL "timeoutSeconds" |
 
 ## Indexes
 
@@ -49,6 +53,7 @@
 | IDX_scheduled_task_finishedAt | CREATE INDEX "IDX_scheduled_task_finishedAt" ON public.scheduled_task USING btree ("finishedAt") WHERE ("finishedAt" IS NOT NULL) |
 | IDX_scheduled_task_jobId_scheduledFor | CREATE UNIQUE INDEX "IDX_scheduled_task_jobId_scheduledFor" ON public.scheduled_task USING btree ("jobId", "scheduledFor") |
 | IDX_scheduled_task_leaseExpiresAt | CREATE INDEX "IDX_scheduled_task_leaseExpiresAt" ON public.scheduled_task USING btree ("leaseExpiresAt") WHERE ((status)::text = 'running'::text) |
+| IDX_scheduled_task_missedAfter | CREATE INDEX "IDX_scheduled_task_missedAfter" ON public.scheduled_task USING btree ("missedAfter") WHERE (((status)::text = 'pending'::text) AND ("missedAfter" IS NOT NULL)) |
 | IDX_scheduled_task_runAt | CREATE INDEX "IDX_scheduled_task_runAt" ON public.scheduled_task USING btree ("runAt") WHERE ((status)::text = 'pending'::text) |
 | PK_d690af24e57e30594c1948af1e6 | CREATE UNIQUE INDEX "PK_d690af24e57e30594c1948af1e6" ON public.scheduled_task USING btree (id) |
 
@@ -71,14 +76,17 @@ erDiagram
   integer leaseEpoch
   timestamp_3__with_time_zone leaseExpiresAt
   integer maxAttempts
+  timestamp_3__with_time_zone missedAfter
   json payload
   timestamp_3__with_time_zone runAt
   timestamp_3__with_time_zone scheduledFor
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
   varchar_128_ taskType
+  integer timeoutSeconds
 }
 "public.scheduled_job" {
+  integer concurrencyLimit
   timestamp_3__with_time_zone createdAt
   varchar_255_ cronExpression
   boolean enabled
@@ -88,16 +96,21 @@ erDiagram
   varchar_16_ kind
   timestamp_3__with_time_zone lastFiredAt
   integer maxAttempts
+  integer misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_255_ name
   timestamp_3__with_time_zone nextRunAt
-  varchar_36_ nodeId
+  timestamp_3__with_time_zone orphanedAt
+  varchar_255_ ownerId
+  varchar_64_ ownerMemberId
+  varchar_32_ ownerType
   json payload
   integer recurrenceSize
   varchar_16_ recurrenceUnit
   varchar_128_ taskType
+  integer timeoutSeconds
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
-  varchar_36_ workflowId FK
 }
 ```
 

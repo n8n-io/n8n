@@ -1,8 +1,10 @@
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
 import { AVAILABLE_RPC_METHODS } from '@n8n/task-runner';
-import { isSerializedBuffer, toBuffer, ErrorReporter } from 'n8n-core';
+import { isSerializedBuffer, serializeBuffer, toBuffer, ErrorReporter } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createResultOk, createResultError, type Result } from '@n8n/utils/result';
 import type {
 	EnvProviderState,
@@ -20,7 +22,6 @@ import type {
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { EventService } from '@/events/event.service';
 import { NodeTypes } from '@/node-types';
 import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error';
 import { TaskRequestTimeoutError } from '@/task-runners/errors/task-request-timeout.error';
@@ -55,7 +56,10 @@ export type RunnerStatus = { available: true } | { available: false; reason?: st
 
 @Service()
 export abstract class TaskRequester {
-	requestAcceptRejects: Map<string, { accept: RequestAccept; reject: RequestReject }> = new Map();
+	requestAcceptRejects: Map<
+		string,
+		{ accept: RequestAccept; reject: RequestReject; requestedAt: number }
+	> = new Map();
 
 	taskAcceptRejects: Map<string, { accept: TaskAccept; reject: TaskReject }> = new Map();
 
@@ -136,6 +140,7 @@ export abstract class TaskRequester {
 			this.requestAcceptRejects.set(request.requestId, {
 				accept: resolve,
 				reject,
+				requestedAt: Date.now(),
 			});
 		});
 
@@ -301,14 +306,17 @@ export abstract class TaskRequester {
 		const acceptReject = this.requestAcceptRejects.get(requestId);
 		if (!acceptReject) return;
 
+		const elapsedSeconds = Math.round((Date.now() - acceptReject.requestedAt) / 1000);
+
 		const error = new TaskRequestTimeoutError({
-			timeout: this.taskRunnersConfig.taskRequestTimeout,
+			elapsedSeconds,
 			isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
 		});
 
 		this.errorReporter.error('Task request timed out', {
 			extra: {
 				requestId,
+				elapsedSeconds,
 				timeout: this.taskRunnersConfig.taskRequestTimeout,
 				deploymentType: this.globalConfig.deployment.type,
 			},
@@ -444,12 +452,26 @@ export abstract class TaskRequester {
 
 			const data = await func.call(funcs, ...params);
 
+			let encoded: unknown = data;
+			try {
+				if (Buffer.isBuffer(data)) encoded = serializeBuffer(data);
+			} catch (error) {
+				this.sendMessage({
+					type: 'requester:rpcresponse',
+					taskId,
+					callId,
+					status: 'error',
+					data: `Failed to encode RPC response: ${ensureError(error).message}`,
+				});
+				return;
+			}
+
 			this.sendMessage({
 				type: 'requester:rpcresponse',
 				taskId,
 				callId,
 				status: 'success',
-				data,
+				data: encoded,
 			});
 		} catch (e) {
 			this.sendMessage({

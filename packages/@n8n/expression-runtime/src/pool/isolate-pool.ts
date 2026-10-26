@@ -116,7 +116,9 @@ export class IsolatePool implements IPool {
 
 				if (attempt < IsolatePool.MAX_REPLENISH_RETRIES) {
 					const delay = IsolatePool.REPLENISH_RETRY_BASE_MS * 2 ** attempt;
-					setTimeout(() => this.replenish(attempt + 1), delay).unref();
+					const timer = setTimeout(() => this.replenish(attempt + 1), delay);
+					// In a browser `setTimeout` returns a number, which has no `unref`.
+					if (typeof timer === 'object') timer.unref();
 				}
 			});
 		this.replenishPromises.add(promise);

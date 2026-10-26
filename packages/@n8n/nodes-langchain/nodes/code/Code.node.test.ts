@@ -1,8 +1,18 @@
-import { LOG_LEVELS } from 'n8n-workflow';
+import { LOG_LEVELS, CONSOLE_OUTPUT_REDACTED_MESSAGE } from 'n8n-workflow';
 
-import { transformLegacyLangchainImport, createSandboxLogger } from './Code.node';
+import {
+	Code,
+	transformLegacyLangchainImport,
+	createSandboxLogger,
+	createProductionConsoleLog,
+} from './Code.node';
 
 describe('Code.node', () => {
+	it('is marked deprecated so the backend refuses new instances', () => {
+		const node = new Code();
+		expect(node.description.deprecated).toBe(true);
+	});
+
 	describe('createSandboxLogger', () => {
 		const logLevelKeys = LOG_LEVELS.filter((level) => level !== 'silent');
 
@@ -173,6 +183,34 @@ describe('Code.node', () => {
 				const result = transformLegacyLangchainImport('langchain/stores/message/in_memory');
 				expect(result).toBe('@langchain/classic/stores/message/in_memory');
 			});
+		});
+	});
+
+	describe('createProductionConsoleLog', () => {
+		let logSpy: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			logSpy.mockRestore();
+		});
+
+		it('passes output through with the workflow/node prefix when not redacted', () => {
+			createProductionConsoleLog('wf-1', 'My Node', false)('hello', 42);
+
+			expect(logSpy).toHaveBeenCalledWith('[Workflow "wf-1"][Node "My Node"]', 'hello', 42);
+		});
+
+		it('emits only the redaction marker when redacted', () => {
+			createProductionConsoleLog('wf-1', 'My Node', true)('secret-payload');
+
+			expect(logSpy).toHaveBeenCalledWith(
+				'[Workflow "wf-1"][Node "My Node"]',
+				CONSOLE_OUTPUT_REDACTED_MESSAGE,
+			);
+			expect(logSpy).not.toHaveBeenCalledWith(expect.anything(), 'secret-payload');
 		});
 	});
 });

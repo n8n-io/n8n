@@ -35,6 +35,7 @@ export type AgentOptions = {
 	passthroughBinaryPdfs?: boolean;
 	enableStreaming?: boolean;
 	maxTokensFromMemory?: number;
+	forceToolCallOnFirstIteration?: boolean;
 	tracingMetadata?: {
 		values?: TracingMetadataEntry[];
 	};

@@ -3,11 +3,7 @@ import { DataSource, Repository } from '@n8n/typeorm';
 
 import { AgentChatSubscription } from '../entities/agent-chat-subscription.entity';
 
-export interface AgentChatSubscriptionScope {
-	agentId: string;
-	integrationType: string;
-	credentialId: string;
-}
+import type { AgentChannelRef } from '../utils/agent-channel';
 
 @Service()
 export class AgentChatSubscriptionRepository extends Repository<AgentChatSubscription> {
@@ -15,7 +11,7 @@ export class AgentChatSubscriptionRepository extends Repository<AgentChatSubscri
 		super(AgentChatSubscription, dataSource.manager);
 	}
 
-	async subscribe(scope: AgentChatSubscriptionScope, threadId: string): Promise<void> {
+	async subscribe(scope: AgentChannelRef, threadId: string): Promise<void> {
 		await this.createQueryBuilder()
 			.insert()
 			.into(AgentChatSubscription)
@@ -24,19 +20,19 @@ export class AgentChatSubscriptionRepository extends Repository<AgentChatSubscri
 			.execute();
 	}
 
-	async unsubscribe(scope: AgentChatSubscriptionScope, threadId: string): Promise<void> {
+	async unsubscribe(scope: AgentChannelRef, threadId: string): Promise<void> {
 		await this.delete({ ...scope, threadId });
 	}
 
-	async deleteForConnection(scope: AgentChatSubscriptionScope): Promise<void> {
+	async deleteForConnection(scope: AgentChannelRef): Promise<void> {
 		await this.delete(scope);
 	}
 
-	async isSubscribed(scope: AgentChatSubscriptionScope, threadId: string): Promise<boolean> {
+	async isSubscribed(scope: AgentChannelRef, threadId: string): Promise<boolean> {
 		return await this.existsBy({ ...scope, threadId });
 	}
 
-	async listThreadIdsForConnection(scope: AgentChatSubscriptionScope): Promise<string[]> {
+	async listThreadIdsForConnection(scope: AgentChannelRef): Promise<string[]> {
 		const rows = await this.find({
 			select: { threadId: true },
 			where: scope,

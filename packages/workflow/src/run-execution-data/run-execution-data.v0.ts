@@ -51,6 +51,11 @@ export interface IRunExecutionDataV0 {
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<
 		IWorkflowExecutionDataProcess,
-		'dirtyNodeNames' | 'triggerToStartFrom' | 'userId' | 'evaluationRunId' | 'source'
+		| 'dirtyNodeNames'
+		| 'triggerToStartFrom'
+		| 'userId'
+		| 'evaluationRunId'
+		| 'source'
+		| 'suppressErrorWorkflow'
 	>;
 }

@@ -2,11 +2,14 @@ import type { SsrfBridge } from '@n8n/backend-network';
 import type {
 	DataTableProxyProvider,
 	DynamicCredentialCheckProxyProvider,
+	IExecuteFunctions,
 	IExecutionContext,
 	IHttpRequestOptions,
 	INode,
+	INodeExecutionData,
 	IWorkflowSettings,
 	OauthJweProxyProvider,
+	TrustedSourceDirectory,
 } from 'n8n-workflow';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
@@ -29,6 +32,14 @@ export type EvalLlmMockHandler = (
 	node: INode,
 ) => Promise<EvalMockHttpResponse | undefined>;
 
+/**
+ * Handler for nodes that the HTTP mock cannot reach during evaluation (SMTP, databases, queues).
+ * Return the node's output to use it in place of a real run, or `undefined` to run the node.
+ */
+export type EvalNodeMockHandler = (
+	context: IExecuteFunctions,
+) => Promise<INodeExecutionData[][] | undefined>;
+
 declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
 		hooks?: ExecutionLifecycleHooks;
@@ -48,9 +59,12 @@ declare module 'n8n-workflow' {
 		 * Only set by the eval execution service — never present in normal executions.
 		 */
 		evalLlmMockHandler?: EvalLlmMockHandler;
+		/** Eval only: answers for non-HTTP nodes at run time. Never present in normal executions. */
+		evalNodeMockHandler?: EvalNodeMockHandler;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
 		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		'oauth-jwe'?: { oauthJweProxyProvider: OauthJweProxyProvider };
+		'inbound-auth-core'?: { trustedSourceDirectory: TrustedSourceDirectory };
 		// Project ID is currently only added on the additionalData if the user
 		// has data table listing permission for that project. We should consider
 		// that only data tables belonging to their respective projects are shown.
@@ -86,6 +100,8 @@ declare module 'n8n-workflow' {
 export * from './active-workflow-triggers';
 export {
 	synthesizeBinaryFixture,
+	evalCanvasPng,
+	buildPdfWithText,
 	type FixtureSizeHint,
 	type SynthesizeBinaryFixtureOptions,
 } from './eval-mock-fixtures';
@@ -97,11 +113,16 @@ export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-s
 export type * from './interfaces';
 export * from './node-execution-context';
 export * from './node-execution-context/utils/execution-metadata';
+export { NoOpPollJobManager } from './noop-poll-job-manager';
 export * from './partial-execution-utils';
+export { commitStagedCursor, runPollInStagingScope } from './poll-cursor-hooks';
+export { PollJobManager } from './poll-job-manager';
 export { PollTriggerExecutor } from './poll-trigger-executor';
 export { isEngineRequest } from './requests-response';
 export * from './routing-node';
 export * from './scheduled-task-manager';
+export { TriggersAndPollers } from './triggers-and-pollers';
+export type { PollErrorKind, PollTickEventMap } from './triggers-and-pollers';
 export * from './workflow-execute';
 // Exposed so eval-mode credential helpers (e.g. `EvalMockedCredentialsHelper`)
 // can reuse the same schema-driven cred synthesizer the wire-server URL

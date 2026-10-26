@@ -6,13 +6,22 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import groupBy from 'lodash/groupBy';
 import dateformat from 'dateformat';
-import type { useToast } from '@/app/composables/useToast';
+import type { useToast } from '@n8n/composables/useToast';
 import { telemetry } from '@/app/plugins/telemetry';
 import type { SourceControlTreeRow } from './sourceControl.types';
+import { PROTECTED_INSTANCE_DOCS_URL } from './sourceControl.constants';
 
 type SourceControlledFileStatus = SourceControlledFile['status'];
 
 const i18n = useI18n();
+
+/** Tooltip HTML that explains why an action is disabled on a protected instance. */
+export const getProtectedInstanceTooltip = () =>
+	i18n.baseText('readOnlyEnv.tooltip', {
+		interpolate: {
+			link: `<a href="${PROTECTED_INSTANCE_DOCS_URL}" target="_blank">${i18n.baseText('readOnlyEnv.tooltip.link')}</a>`,
+		},
+	});
 
 export const getStatusText = (status: SourceControlledFileStatus) =>
 	i18n.baseText(`settings.sourceControl.status.${status}` as BaseTextKey);
@@ -27,6 +36,14 @@ export const getStatusTheme = (status: SourceControlledFileStatus) => {
 	} as const;
 	return statusToBadgeThemeMap[status];
 };
+
+/** A content-import policy blocks this file, so the pull skips it. */
+export const isBlockedByPolicy = (file: SourceControlledFile) =>
+	(file.contentImportPolicy?.violations.length ?? 0) > 0;
+
+/** A policy check failed on this file, so the pull is likely to fail as a whole. */
+export const isPolicyCheckFailed = (file: SourceControlledFile) =>
+	!isBlockedByPolicy(file) && (file.contentImportPolicy?.checkErrors.length ?? 0) > 0;
 
 type StatusPriority = Partial<Record<SourceControlledFileStatus, number>>;
 const pullStatusPriority: StatusPriority = {
@@ -215,12 +232,14 @@ export const buildFolderFilterOptions = (workflows: SourceControlledFile[]) => {
 	const folderPathSet = new Set<string>();
 
 	for (const workflow of workflows) {
-		const pathSegments = workflow.folderPath ?? [];
-		let path = '';
+		// Include the prior/remote path so a moved workflow's source folder stays selectable.
+		for (const pathSegments of [workflow.folderPath, workflow.remoteFolderPath]) {
+			let path = '';
 
-		for (const segment of pathSegments) {
-			path = path ? `${path}/${segment}` : segment;
-			folderPathSet.add(path);
+			for (const segment of pathSegments ?? []) {
+				path = path ? `${path}/${segment}` : segment;
+				folderPathSet.add(path);
+			}
 		}
 	}
 
@@ -263,19 +282,24 @@ export const notifyUserAboutPullWorkFolderOutcome = async (
 		return;
 	}
 
+	// The pull dialog already showed what a policy blocks, so only what landed is reported.
+	const pulled = files.filter((file) => !isBlockedByPolicy(file));
+
 	const { credential, tags, variables, datatable, workflow, folders, project } = groupBy(
-		files,
+		pulled,
 		'type',
 	);
+
+	const successToast = {
+		title: i18n.baseText('settings.sourceControl.pull.success.title'),
+		message: pullMessage({ credential, tags, variables, datatable, workflow, folders, project }),
+		type: 'success' as const,
+	};
 
 	const toastMessages = [
 		...(variables?.length ? [createVariablesToast(router)] : []),
 		...(credential?.length ? [createCredentialsToast(router)] : []),
-		{
-			title: i18n.baseText('settings.sourceControl.pull.success.title'),
-			message: pullMessage({ credential, tags, variables, datatable, workflow, folders, project }),
-			type: 'success' as const,
-		},
+		...(pulled.length ? [successToast] : []),
 	];
 
 	for (const message of toastMessages) {

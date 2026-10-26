@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "msg": {
+            "type": "string"
+        },
+        "result": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

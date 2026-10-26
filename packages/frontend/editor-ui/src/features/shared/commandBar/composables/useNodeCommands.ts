@@ -1,34 +1,29 @@
-import { type Component, computed, type Ref } from 'vue';
+import { type Component, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { STICKY_NODE_TYPE } from '@/app/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
+import { isNodeItemRestricted } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
-import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
-import type { CommandGroup } from '../types';
+import type { CommandBarItem, CommandBarSearchRequest, CommandGroup } from '../types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
 import type { INodeUi, SimplifiedNodeType } from '@/Interface';
+import { paginate, rankItems } from '../commandBar.utils';
 
 const ITEM_ID = {
-	ADD_NODE: 'add-node',
-	OPEN_NODE: 'open-node',
 	ADD_STICKY: 'add-sticky',
 } as const;
 
-export function useNodeCommands(options: {
-	lastQuery: Ref<string>;
-	activeNodeId: Ref<string | null>;
-}): CommandGroup {
+export function useNodeCommands(): CommandGroup {
 	const i18n = useI18n();
-	const { lastQuery } = options;
 
 	const { addNodes, setNodeActive } = useCanvasOperations();
 	const nodeTypesStore = useNodeTypesStore();
@@ -53,72 +48,45 @@ export function useNodeCommands(options: {
 		(workflowPermissions.value[permission] === true && !isReadOnly.value && !isArchived.value) ||
 		!workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
 
+	// Restricted types stay listed, like in the nodes panel: greyed, locked, last, and inert.
 	const mergedNodes = computed(() => {
 		const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;
 		const nodeTypes = nodeTypesStore.visibleNodeTypes;
-		return generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials).mergedNodes;
+		const nodes = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials).mergedNodes;
+		const restricted = new Set(nodes.filter((node) => isNodeItemRestricted(node.name)));
+		return [...nodes.filter((node) => !restricted.has(node)), ...restricted];
 	});
 
-	const buildAddNodeCommand = (node: SimplifiedNodeType, isRoot: boolean): CommandBarItem => {
-		const { name, displayName } = node;
-
-		const title = isRoot ? `${i18n.baseText('generic.add')} ${displayName}` : displayName;
-		const section = isRoot
-			? i18n.baseText('commandBar.sections.nodes')
-			: i18n.baseText('commandBar.nodes.addNode');
-
-		return {
-			id: name,
-			title,
-			section,
-			keywords: [displayName],
-			icon: {
-				component: NodeIcon as Component,
-				props: {
-					nodeType: node,
-					size: 16,
-				},
+	const buildAddNodeItem = (node: SimplifiedNodeType): CommandBarItem => ({
+		id: node.name,
+		title: node.displayName,
+		section: i18n.baseText('commandBar.nodes.addNode'),
+		disabled: isNodeItemRestricted(node.name),
+		keywords: node.codex?.alias ?? [],
+		icon: {
+			component: NodeIcon as Component,
+			props: {
+				nodeType: node,
+				size: 16,
 			},
-			handler: async () => {
-				const nodes = await addNodes([{ type: name }]);
-				if (nodes && nodes.length > 0) {
-					canvasEventBus.emit('nodes:select', { ids: [nodes[0].id] });
-				}
-			},
-		};
-	};
-
-	const addNodeCommands = computed<CommandBarItem[]>(() => {
-		if (!hasPermission('update')) {
-			return [];
-		}
-
-		return mergedNodes.value.map((node) => buildAddNodeCommand(node, false));
+		},
+		handler: async () => {
+			const nodes = await addNodes([{ type: node.name }]);
+			if (nodes && nodes.length > 0) {
+				canvasEventBus.emit('nodes:select', { ids: [nodes[0].id] });
+			}
+		},
 	});
 
-	const rootAddNodeCommandItems = computed<CommandBarItem[]>(() => {
-		if (lastQuery.value.length <= 2 || !hasPermission('update')) {
-			return [];
-		}
-
-		return mergedNodes.value.map((node) => buildAddNodeCommand(node, true));
-	});
-
-	const buildOpenNodeCommand = (node: INodeUi, isRoot: boolean): CommandBarItem => {
-		const { id, name, type } = node;
+	const buildOpenNodeItem = (node: INodeUi): CommandBarItem => {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		const title = isRoot
-			? i18n.baseText('generic.openResource', { interpolate: { resource: name } })
-			: name;
-		const section = isRoot
-			? i18n.baseText('commandBar.sections.nodes')
-			: i18n.baseText('commandBar.nodes.openNode');
 
 		return {
-			id,
-			title,
-			section,
-			keywords: [name, type],
+			id: node.id,
+			title: node.name,
+			description: nodeType?.displayName,
+			section: i18n.baseText('commandBar.nodes.inWorkflow'),
+			keywords: [node.type, ...(nodeType ? [nodeType.displayName] : [])],
 			icon: {
 				component: NodeIcon,
 				props: {
@@ -127,98 +95,64 @@ export function useNodeCommands(options: {
 				},
 			},
 			handler: () => {
-				setNodeActive(id, 'command_bar');
+				setNodeActive(node.id, 'command_bar');
 			},
-			placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
 		};
 	};
 
-	const openNodeCommands = computed<CommandBarItem[]>(() => {
-		return workflowDocumentStore.value.allNodes.map((node) => buildOpenNodeCommand(node, false));
-	});
+	const openNodeItems = computed(() =>
+		workflowDocumentStore.value.allNodes.map((node) => buildOpenNodeItem(node)),
+	);
 
-	const rootOpenNodeCommandItems = computed<CommandBarItem[]>(() => {
-		if (lastQuery.value.length <= 2) {
+	const addNodeItems = computed(() =>
+		hasPermission('update') ? mergedNodes.value.map((node) => buildAddNodeItem(node)) : [],
+	);
+
+	function search({ query, offset, limit }: CommandBarSearchRequest) {
+		const rankedAddNodeItems = rankItems(addNodeItems.value, query);
+		const ranked = [
+			...rankItems(openNodeItems.value, query),
+			...rankedAddNodeItems.filter((item) => !item.disabled),
+			...rankedAddNodeItems.filter((item) => item.disabled),
+		];
+		return paginate(ranked, { offset, limit });
+	}
+
+	const nodeCommands = computed<CommandBarItem[]>(() => {
+		if (!hasPermission('update') || nodeTypesStore.isNodeTypeUnavailable(STICKY_NODE_TYPE)) {
 			return [];
 		}
 
-		return workflowDocumentStore.value.allNodes.map((node) => buildOpenNodeCommand(node, true));
-	});
-
-	const nodeCommands = computed<CommandBarItem[]>(() => {
 		return [
-			...(hasPermission('update')
-				? [
-						{
-							id: ITEM_ID.ADD_NODE,
-							title: {
-								component: CommandBarItemTitle,
-								props: {
-									title: i18n.baseText('commandBar.nodes.addNode'),
-									shortcut: {
-										keys: ['n'],
-									},
-								},
-							},
-							keywords: [i18n.baseText('commandBar.nodes.addNode')],
-							section: i18n.baseText('commandBar.sections.nodes'),
-							placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
-							children: [...addNodeCommands.value],
-							icon: {
-								component: N8nIcon,
-								props: {
-									icon: 'plus',
-								},
-							},
-						},
-					]
-				: []),
-			...rootAddNodeCommandItems.value,
 			{
-				id: ITEM_ID.OPEN_NODE,
-				title: i18n.baseText('commandBar.nodes.openNode'),
+				id: ITEM_ID.ADD_STICKY,
+				title: i18n.baseText('commandBar.nodes.addStickyNote'),
+				shortcut: {
+					shiftKey: true,
+					keys: ['s'],
+				},
 				section: i18n.baseText('commandBar.sections.nodes'),
-				children: [...openNodeCommands.value],
-				placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
+				handler: () => {
+					canvasEventBus.emit('create:sticky');
+				},
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'columns-3-cog',
+						icon: 'sticky-note',
 					},
 				},
 			},
-			...rootOpenNodeCommandItems.value,
-			...(hasPermission('update')
-				? [
-						{
-							id: ITEM_ID.ADD_STICKY,
-							title: {
-								component: CommandBarItemTitle,
-								props: {
-									title: i18n.baseText('commandBar.nodes.addStickyNote'),
-									shortcut: {
-										shiftKey: true,
-										keys: ['s'],
-									},
-								},
-							},
-							section: i18n.baseText('commandBar.sections.nodes'),
-							handler: () => {
-								canvasEventBus.emit('create:sticky');
-							},
-							icon: {
-								component: N8nIcon,
-								props: {
-									icon: 'sticky-note',
-								},
-							},
-						},
-					]
-				: []),
 		];
 	});
 
 	return {
 		commands: nodeCommands,
+		source: {
+			id: 'nodes',
+			title: i18n.baseText('commandBar.sections.nodes'),
+			isRemote: false,
+			isAvailable: () => true,
+			search,
+		},
 	};
 }

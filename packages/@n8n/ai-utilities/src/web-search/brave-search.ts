@@ -3,6 +3,10 @@ import type { WebSearchOptions, WebSearchResponse } from './types';
 const BRAVE_SEARCH_PATH = '/res/v1/web/search';
 const BRAVE_SEARCH_URL = `https://api.search.brave.com${BRAVE_SEARCH_PATH}`;
 
+/** Brave rate-limits per second — retry so a burst of searches doesn't fail the caller. */
+const MAX_ATTEMPTS = 3;
+const RETRY_BASE_MS = 250;
+
 interface BraveWebResult {
 	title: string;
 	url: string;
@@ -60,10 +64,41 @@ export async function braveSearch(
 		...(proxyHeaders ?? { 'X-Subscription-Token': apiKey }),
 	};
 
-	const response = await fetch(`${baseUrl}?${params}`, {
-		headers,
-		...(options.abortSignal ? { signal: options.abortSignal } : {}),
-	});
+	const runSearch = async () =>
+		await fetch(`${baseUrl}?${params}`, {
+			headers,
+			...(options.abortSignal ? { signal: options.abortSignal } : {}),
+		});
+	const isRetryable = (status: number) => status === 429 || status >= 500;
+	/** Abort-aware so a cancelled run doesn't sit out the delay; the retried fetch
+	 *  then rejects on the aborted signal. */
+	const backoff = async (ms: number) =>
+		await new Promise<void>((resolve) => {
+			const signal = options.abortSignal;
+			if (signal?.aborted) {
+				resolve();
+				return;
+			}
+			const timer = setTimeout(() => {
+				signal?.removeEventListener('abort', onAbort);
+				resolve();
+			}, ms);
+			function onAbort() {
+				clearTimeout(timer);
+				resolve();
+			}
+			signal?.addEventListener('abort', onAbort, { once: true });
+		});
+
+	let response = await runSearch();
+	for (
+		let attempt = 1;
+		attempt < MAX_ATTEMPTS && !response.ok && isRetryable(response.status);
+		attempt++
+	) {
+		await backoff(RETRY_BASE_MS * 2 ** (attempt - 1));
+		response = await runSearch();
+	}
 
 	if (!response.ok) {
 		throw new Error(`Brave search failed: ${response.status} ${response.statusText}`);

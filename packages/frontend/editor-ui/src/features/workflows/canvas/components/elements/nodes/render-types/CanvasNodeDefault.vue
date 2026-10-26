@@ -39,6 +39,7 @@ const {
 	subtitle,
 	connections,
 	isDisabled,
+	isDeprecated,
 	isReadOnly,
 	isSelected,
 	executionStatus,
@@ -48,6 +49,7 @@ const {
 	hasRunData,
 	render,
 	isNotInstalledCommunityNode,
+	isRestricted,
 } = useCanvasNode();
 const { hasPrivateCredential, tooltipText: privateCredentialTooltip } =
 	useNodePrivateCredential(name);
@@ -55,7 +57,7 @@ const renderData = injectCanvasRenderData();
 const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
 const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
 const hasExecutionErrors = computed(
-	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
+	() => (renderData.value.executionIssuesByNodeId.get(id.value)?.value?.length ?? 0) > 0,
 );
 const hasPinnedData = computed(
 	() =>
@@ -65,7 +67,7 @@ const hasPinnedData = computed(
 const hasExecutionPinData = computed(
 	() =>
 		renderData.value.isExecutionDataDisplayed &&
-		!!renderData.value.executionPinDataByNodeName[name.value],
+		!!renderData.value.executionPinDataByNodeId.get(id.value)?.value,
 );
 const hasSubstitutedOutput = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
@@ -86,7 +88,10 @@ const classes = computed(() => {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
 		[$style.disabled]:
-			isDisabled.value || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
+			isDisabled.value ||
+			isRestricted.value ||
+			(isNotInstalledCommunityNode.value && !isDemoRoute.value),
+		[$style.deprecated]: isDeprecated.value,
 		[$style.success]: Boolean(
 			hasRunData.value && executionStatus.value === 'success' && !hasExecutionPinData.value,
 		),
@@ -226,13 +231,14 @@ function onActivate(event: MouseEvent) {
 			:icon-source="iconSource"
 			:size="iconSize"
 			:shrink="false"
-			:disabled="isDisabled"
+			:disabled="isDisabled || isRestricted || isDeprecated"
 			:class="$style.icon"
 		/>
 		<CanvasNodeSettingsIcons
 			v-if="
 				!renderOptions.configuration &&
 				!isDisabled &&
+				!isRestricted &&
 				!(hasSubstitutedOutput && !nodeHelpers.isProductionExecutionPreview.value)
 			"
 		/>
@@ -244,11 +250,17 @@ function onActivate(event: MouseEvent) {
 			<div v-if="isDisabled" :class="$style.disabledLabel">
 				({{ i18n.baseText('node.disabled') }})
 			</div>
-			<div v-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
+			<div v-if="isRestricted" :class="$style.subtitle" data-test-id="canvas-node-restricted">
+				{{ i18n.baseText('node.restricted') }}
+			</div>
+			<div v-else-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
 				{{ subtitle }}
 			</div>
 		</div>
-		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+		<CanvasNodeStatusIcons
+			v-if="!isDisabled || isRestricted || isDeprecated"
+			:class="$style.statusIcons"
+		/>
 	</div>
 </template>
 
@@ -371,6 +383,11 @@ function onActivate(event: MouseEvent) {
 			--color-canvas-node-pinned-border-color,
 			var(--node--border-color--pinned)
 		);
+	}
+
+	&.deprecated {
+		--canvas-node--border-width: 2px;
+		--canvas-node--border-color: var(--color--danger);
 	}
 
 	&.disabled {

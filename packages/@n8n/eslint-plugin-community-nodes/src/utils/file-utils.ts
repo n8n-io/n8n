@@ -77,7 +77,7 @@ function readPackageJsonRaw(packageJsonPath: string): Record<string, unknown> | 
 	try {
 		const content = readFileSync(packageJsonPath, 'utf8');
 		const parsed: unknown = JSON.parse(content);
-		return isValidPackageJson(parsed) ? (parsed as Record<string, unknown>) : null;
+		return isValidPackageJson(parsed) ? parsed : null;
 	} catch {
 		return null;
 	}
@@ -104,7 +104,7 @@ export function readPackageJsonDevDependencies(packageJsonPath: string | null): 
 	if (!parsed) return new Set();
 	const devDeps = parsed.devDependencies;
 	if (typeof devDeps !== 'object' || devDeps === null) return new Set();
-	return new Set(Object.keys(devDeps as Record<string, unknown>));
+	return new Set(Object.keys(devDeps));
 }
 
 function resolveN8nFilePaths(packageJsonPath: string, filePaths: string[]): string[] {
@@ -238,6 +238,29 @@ export function findNodeSourceFilesOnDisk(packageJsonPath: string): string[] {
 	return findFilesRecursively(nodesDir, (fileName) => fileName.endsWith('.node.ts'));
 }
 
+/**
+ * Recursively finds files matching `matches` within the given subdirectories of
+ * the package (relative to its `package.json`). Missing subdirectories are
+ * skipped. Returns absolute paths.
+ */
+export function findFilesInPackageDirs(
+	packageJsonPath: string,
+	dirs: string[],
+	matches: (fileName: string) => boolean,
+): string[] {
+	const packageDir = dirname(packageJsonPath);
+	const results: string[] = [];
+
+	for (const dir of dirs) {
+		const fullPath = safeJoinPath(packageDir, dir);
+		if (existsSync(fullPath)) {
+			results.push(...findFilesRecursively(fullPath, matches));
+		}
+	}
+
+	return results;
+}
+
 export function areAllCredentialUsagesTestedByNodes(
 	credentialName: string,
 	packageDir: string,
@@ -278,10 +301,7 @@ function checkCredentialUsageInFile(
 			enter(node: TSESTree.Node) {
 				if (node.type === AST_NODE_TYPES.ClassDeclaration && isNodeTypeClass(node)) {
 					const descriptionProperty = findClassProperty(node, 'description');
-					if (
-						!descriptionProperty?.value ||
-						descriptionProperty.value.type !== AST_NODE_TYPES.ObjectExpression
-					) {
+					if (descriptionProperty?.value?.type !== AST_NODE_TYPES.ObjectExpression) {
 						return;
 					}
 

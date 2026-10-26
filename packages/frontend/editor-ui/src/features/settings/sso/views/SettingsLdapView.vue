@@ -3,7 +3,7 @@ import type { CSSProperties } from 'vue';
 import { computed, onMounted, ref } from 'vue';
 import { capitalizeFirstLetter } from '@/app/utils/htmlUtils';
 import { convertToDisplayDate } from '@/app/utils/typesUtils';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { IFormInput, IFormInputs } from '@/Interface';
@@ -13,8 +13,8 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import humanizeDuration from 'humanize-duration';
 import type { Events } from 'v3-infinite-loading';
 import InfiniteLoading from 'v3-infinite-loading';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { createFormEventBus } from '@n8n/design-system/utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { createFormEventBus } from '@n8n/design-system';
 import type { TableColumnCtx } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -28,6 +28,7 @@ import {
 	N8nHeading,
 	N8nInfoTip,
 } from '@n8n/design-system';
+import AuthenticationBackLink from '../components/AuthenticationBackLink.vue';
 type TableRow = {
 	status: string;
 	startAt: string;
@@ -628,6 +629,7 @@ onMounted(async () => {
 
 <template>
 	<div v-if="!isLDAPFeatureEnabled">
+		<AuthenticationBackLink />
 		<div :class="[$style.header, 'mb-2xl']">
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.ldap') }}
@@ -648,6 +650,7 @@ onMounted(async () => {
 		</N8nEmptyState>
 	</div>
 	<div v-else>
+		<AuthenticationBackLink />
 		<div :class="$style.container">
 			<div :class="$style.header">
 				<N8nHeading size="2xlarge">
@@ -740,7 +743,7 @@ onMounted(async () => {
 			</div>
 			<div :class="['pb-3xl', $style.buttonContainer]">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					:label="i18n.baseText('settings.ldap.dryRun')"
 					size="large"
 					class="mr-s"
@@ -786,7 +789,7 @@ onMounted(async () => {
 
 	> span {
 		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		padding: 0;
 	}
 

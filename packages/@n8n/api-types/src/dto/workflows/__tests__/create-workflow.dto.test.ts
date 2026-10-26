@@ -21,7 +21,6 @@ describe('CreateWorkflowDto', () => {
 					connections: {},
 					description: 'A test workflow',
 					settings: { saveExecutionProgress: true },
-					staticData: { key: 'value' },
 					meta: { version: '1.0' },
 					pinData: {},
 					hash: 'abc123',
@@ -213,6 +212,11 @@ describe('CreateWorkflowDto', () => {
 				request: { name: 'a'.repeat(129), nodes: [], connections: {} },
 				expectedErrorPath: ['name'],
 			},
+			...['__proto__', 'constructor', 'prototype'].map((id) => ({
+				name: `reserved id ${id}`,
+				request: { id, name: 'My Workflow', nodes: [], connections: {} },
+				expectedErrorPath: ['id'],
+			})),
 			{
 				name: 'missing nodes',
 				request: { name: 'Test', connections: {} },
@@ -312,11 +316,6 @@ describe('CreateWorkflowDto', () => {
 					},
 				},
 				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
-			},
-			{
-				name: 'staticData as array',
-				request: { name: 'Test', nodes: [], connections: {}, staticData: [] },
-				expectedErrorPath: ['staticData'],
 			},
 			{
 				name: 'pinData as array',
@@ -538,6 +537,18 @@ describe('CreateWorkflowDto', () => {
 
 				expect(result.success).toBe(true);
 				expect(result.data).not.toHaveProperty('isArchived');
+			});
+
+			test('should not accept staticData field', () => {
+				const result = CreateWorkflowDto.safeParse({
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					staticData: { 'node:Trello Trigger': { webhookId: 'someone-elses-webhook' } },
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('staticData');
 			});
 		});
 

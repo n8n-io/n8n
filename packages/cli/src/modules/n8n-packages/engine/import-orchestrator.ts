@@ -1,13 +1,20 @@
+import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
-import { toImportBlockedError } from './import-blocked.error';
+import {
+	credentialConflicts,
+	forbiddenCredentialUpdates,
+	plannedCredentialUpdates,
+} from '../entities/credential/credential-conflict-policy';
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
 	CredentialApplyResult,
 	CredentialBindingRequest,
+	CredentialImportPlan,
 	CredentialResolution,
 	CredentialResolutionFailure,
 } from '../entities/credential/credential.types';
@@ -15,15 +22,28 @@ import { DataTableImporter } from '../entities/data-table/data-table-importer';
 import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
+	DataTableResolutionFailure,
 } from '../entities/data-table/data-table.types';
 import type {
 	FolderImportContext,
 	FolderImportPlan,
 	PreparedFolder,
 } from '../entities/folder/folder-import.types';
-import { FolderImporter } from '../entities/folder/folder-importer';
-import { VariableImporter } from '../entities/variable/variable-importer';
+import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
+import { FolderImporter, toFolderSummaries } from '../entities/folder/folder-importer';
+import type { FolderRemovalPlan } from '../entities/folder/folder-removal.types';
+import { FolderRemover } from '../entities/folder/folder-remover';
+import { TagImporter } from '../entities/tag/tag-importer';
+import { contestedReconcileTargetFailures, droppedTagIds } from '../entities/tag/tag.types';
 import type {
+	TagImportPlan,
+	TagImportRequest,
+	TagResolutionFailure,
+} from '../entities/tag/tag.types';
+import { VariableImporter } from '../entities/variable/variable-importer';
+import { divergentOverwrites } from '../entities/variable/variable.types';
+import type {
+	VariableApplyResult,
 	VariableImportPlan,
 	VariableImportRequest,
 } from '../entities/variable/variable.types';
@@ -34,23 +54,43 @@ import {
 	type MissingNodeTypeRequirement,
 } from '../entities/workflow/missing-node-type-mode';
 import type {
+	PersistedWorkflowOutcome,
 	PreparedWorkflow,
-	WorkflowImportOutcome,
 	WorkflowImportPlan,
 } from '../entities/workflow/workflow-import.types';
 import { WorkflowImporter } from '../entities/workflow/workflow-importer';
+import type { WorkflowRemovalPlan } from '../entities/workflow/workflow-removal.types';
+import { WorkflowRemover } from '../entities/workflow/workflow-remover';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { WorkflowPublishingBlockedReason } from '../entities/workflow/workflow-publishing-policy.types';
 import { createBindings } from '../n8n-packages.types';
 import type {
 	BlockingIssue,
+	ImportBindingMap,
 	ImportContext,
 	ImportedFolderSummary,
-	ImportFolderProperties,
 	ImportWorkflowProperties,
 	MissingNodeTypeMode,
 	PackageImportBindings,
+	PackageImportSource,
+	RemovedFolderSummary,
+	RemovedWorkflowSummary,
+	ResolvedImportFolderProperties,
 } from '../n8n-packages.types';
+import { mergeRequirementConsumers } from '../spec/requirement-consumers';
+import type {
+	PackageRequirementConsumer,
+	PackageWorkflowRequirement,
+} from '../spec/requirements.schema';
+import { ContentImportPolicyGate, contentImportTransport } from './content-import-policy';
+import { CredentialSavePolicyGate } from './credential-save-policy';
+import { toImportBlockedError } from './import-blocked.error';
+import {
+	assertCredentialUpdatesAllowed,
+	assertCredentialWritesAllowed,
+	assertDataTableWritesAllowed,
+	assertVariableWritesAllowed,
+} from './import-gates';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -59,28 +99,52 @@ export interface ImportOrchestrationInput {
 	credentialRequest: CredentialBindingRequest;
 	dataTableRequest: DataTableImportRequest;
 	variableRequest: VariableImportRequest;
-	options: ImportWorkflowProperties & ImportFolderProperties;
+	tagRequest: TagImportRequest;
+	options: ImportWorkflowProperties & ResolvedImportFolderProperties;
 	/** The target project does not exist yet and will be created by this import (project packages). */
 	projectPendingCreation?: boolean;
+	/** Sub-workflow dependency graph from the manifest, used to order the import. */
+	subWorkflowRequirements?: PackageWorkflowRequirement[];
+	importSource?: PackageImportSource;
+	/** Destination workflow IDs to remove, even under `merge`. */
+	explicitDeleteWorkflowIds?: string[];
+	/** Treat the project root as a workflow location (project packages, which set the layout). */
+	checkRootPlacement: boolean;
+	/**
+	 * Under `layoutConflictPolicy=follow-package`, the folders a move may touch. A selection moves only the
+	 * folders that hold a selected workflow, so unselected content stays where it is. Omitted means all.
+	 */
+	movableFolderIds?: ReadonlySet<string>;
 }
 
-export interface ImportOrchestrationResult {
-	workflowOutcomes: WorkflowImportOutcome[];
+/**
+ * Everything one scope's {@link ImportOrchestrator.apply} wrote, before the package-wide publish
+ * sweep runs. Telemetry consumes this shape directly — it only reads statuses and ids.
+ */
+export interface ImportContentResult {
+	workflowOutcomes: PersistedWorkflowOutcome[];
+	removedWorkflows: RemovedWorkflowSummary[];
+	removedFolders: RemovedFolderSummary[];
 	folderSummaries: ImportedFolderSummary[];
 	bindings: PackageImportBindings;
 	credentialResult: CredentialApplyResult;
 	dataTablePlan: DataTableImportPlan;
 	variablePlan: VariableImportPlan;
+	variableResult: VariableApplyResult;
+	tagPlan: TagImportPlan;
 }
 
 export interface ImportPlan {
 	input: ImportOrchestrationInput;
 	folderContext: FolderImportContext;
-	credentialPlan: CredentialResolution;
+	credentialPlan: CredentialImportPlan;
 	workflowPlan: WorkflowImportPlan;
 	folderPlan: FolderImportPlan;
 	dataTablePlan: DataTableImportPlan;
 	variablePlan: VariableImportPlan;
+	tagPlan: TagImportPlan;
+	removalPlan: WorkflowRemovalPlan;
+	folderRemovalPlan: FolderRemovalPlan;
 	missingNodeTypes: MissingNodeTypeRequirement[];
 	blockingIssues: BlockingIssue[];
 }
@@ -95,18 +159,151 @@ export class ImportOrchestrator {
 		private readonly credentialImporter: CredentialImporter,
 		private readonly dataTableImporter: DataTableImporter,
 		private readonly variableImporter: VariableImporter,
+		private readonly tagImporter: TagImporter,
 		private readonly folderImporter: FolderImporter,
+		private readonly folderRemover: FolderRemover,
 		private readonly workflowImporter: WorkflowImporter,
+		private readonly workflowRemover: WorkflowRemover,
 		private readonly workflowPublisher: WorkflowPublisher,
+		private readonly contentImportPolicyGate: ContentImportPolicyGate,
+		private readonly credentialSavePolicyGate: CredentialSavePolicyGate,
 		private readonly nodeTypes: NodeTypes,
+		private readonly licenseState: LicenseState,
 	) {}
 
-	async import(input: ImportOrchestrationInput): Promise<ImportOrchestrationResult> {
-		const plan = await this.plan(input);
-		if (plan.blockingIssues.length > 0) {
-			throw toImportBlockedError(plan.blockingIssues);
+	/**
+	 * Licence and scope before quota: an unlicensed instance also reports a zero quota, which would
+	 * otherwise surface as a limit issue instead of the real cause.
+	 */
+	async assertNotBlocked(
+		plans: ImportPlan[],
+		options: { apiKeyScopes: string[] | undefined },
+	): Promise<void> {
+		const creations = plans.flatMap((plan) => plan.variablePlan.creations);
+		const overwrites = plans.flatMap((plan) => plan.variablePlan.overwrites);
+
+		assertVariableWritesAllowed({
+			licenseState: this.licenseState,
+			apiKeyScopes: options.apiKeyScopes,
+			hasCreations: creations.length > 0,
+			hasOverwrites: overwrites.length > 0,
+		});
+		assertDataTableWritesAllowed(
+			options.apiKeyScopes,
+			plans.map((plan) => plan.dataTablePlan),
+		);
+		assertCredentialWritesAllowed(
+			options.apiKeyScopes,
+			plans.map(({ input, credentialPlan }) => ({
+				missingMode: input.credentialRequest.missingMode,
+				resolution: credentialPlan,
+			})),
+		);
+		if (plans.length > 0) {
+			assertCredentialUpdatesAllowed(
+				options.apiKeyScopes,
+				plans[0].input.credentialRequest.conflictPolicy,
+				plans.map((plan) => plan.credentialPlan),
+			);
 		}
-		return await this.apply(plan);
+
+		for (const { input, variablePlan, credentialPlan } of plans) {
+			await this.credentialImporter.assertCanCreate(
+				input.context,
+				input.credentialRequest,
+				credentialPlan,
+				input.projectPendingCreation ?? false,
+			);
+			if (variablePlan.creations.length > 0) {
+				await this.variableImporter.assertCanCreate(
+					input.context,
+					variablePlan.creations,
+					input.projectPendingCreation ?? false,
+				);
+			}
+			if (variablePlan.overwrites.length > 0) {
+				await this.variableImporter.assertCanUpdate(input.context, variablePlan.overwrites);
+			}
+		}
+
+		const issues = await this.collectPackageBlockingIssues(plans);
+		if (issues.length > 0) throw toImportBlockedError(issues);
+
+		// Last: an import with blocking issues reports them instead of a dry-run error, and a
+		// divergent update never reaches the dry run.
+		for (const { input, credentialPlan } of plans) {
+			await this.credentialImporter.assertCanUpdate(
+				input.context,
+				input.credentialRequest,
+				credentialPlan,
+			);
+		}
+	}
+
+	private async collectPackageBlockingIssues(plans: ImportPlan[]): Promise<BlockingIssue[]> {
+		const issues = plans.flatMap((plan) => plan.blockingIssues);
+
+		issues.push(
+			...contestedReconcileTargetFailures(plans.map((plan) => plan.tagPlan)).map((failure) =>
+				toTagBlockingIssue(failure, plans),
+			),
+		);
+
+		const divergent = new Set(
+			divergentOverwrites(plans.flatMap((plan) => plan.variablePlan.overwrites)),
+		);
+		for (const { input, variablePlan } of plans) {
+			issues.push(
+				...variablePlan.overwrites
+					.filter((overwrite) => divergent.has(overwrite))
+					.map(
+						({ variableId, value, ...conflict }): BlockingIssue => ({
+							type: 'variable-conflict',
+							...conflict,
+							usedBy: variableConsumers(input.variableRequest, conflict.name),
+						}),
+					),
+			);
+		}
+
+		// Across scopes: one destination credential can be reached from several projects.
+		if (plans.length > 0) {
+			const { context, credentialRequest, importSource } = plans[0].input;
+			const credentialPlans = plans.map((plan) => plan.credentialPlan);
+			for (const forbidden of forbiddenCredentialUpdates(credentialPlans)) {
+				issues.push({ type: 'credential-update-forbidden', ...forbidden });
+			}
+			const conflicts = credentialConflicts(credentialRequest.conflictPolicy, credentialPlans);
+			for (const conflict of conflicts) {
+				issues.push({ type: 'credential-conflict', ...conflict });
+			}
+			issues.push(
+				...(await this.credentialSavePolicyGate.refusedUpdates(
+					plannedCredentialUpdates(credentialRequest.conflictPolicy, credentialPlans),
+					contentImportTransport(importSource),
+					{ kind: 'user', user: context.user },
+				)),
+			);
+		}
+
+		const quotaFailure = await this.variableImporter.quotaFailure(
+			plans.flatMap((plan) => plan.variablePlan.creations),
+		);
+		if (quotaFailure) {
+			const consumers = plans.flatMap(({ input, variablePlan }) => {
+				const createdNames = new Set(variablePlan.creations.map(({ name }) => name));
+				return (input.variableRequest.requirements ?? [])
+					.filter(({ name }) => createdNames.has(name))
+					.flatMap(({ usedBy }) => usedBy);
+			});
+			issues.push({
+				type: 'variable-limit-exceeded',
+				...quotaFailure,
+				usedBy: mergeRequirementConsumers(consumers),
+			});
+		}
+
+		return issues;
 	}
 
 	async plan(input: ImportOrchestrationInput): Promise<ImportPlan> {
@@ -117,6 +314,7 @@ export class ImportOrchestrator {
 			credentialRequest,
 			dataTableRequest,
 			variableRequest,
+			tagRequest,
 			options,
 		} = input;
 
@@ -130,9 +328,46 @@ export class ImportOrchestrator {
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
 		const variablePlan = await this.variableImporter.plan(context, variableRequest);
-		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
-		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
+		const workflowPlan = await this.workflowImporter.plan(context, workflows, options, {
+			checkRootPlacement: input.checkRootPlacement,
+			layoutConflictPolicy: options.layoutConflictPolicy,
+		});
+		// Tags plan after workflows: only tags referenced by non-skipped workflows gate or create.
+		const tagPlan = await this.tagImporter.plan(
+			context,
+			tagRequest,
+			workflowPlan.items.filter((item) => item.action !== 'skip'),
+		);
+		const folderContext = {
+			...context,
+			folderConflictPolicy: options.folderConflictPolicy,
+			layoutConflictPolicy: options.layoutConflictPolicy,
+			movableFolderIds: input.movableFolderIds,
+		};
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
+
+		const packageFolderIds = folders.map(({ sourceFolderId }) => sourceFolderId);
+		const removalPlan = await this.workflowRemover.plan(context, {
+			folderConflictPolicy: options.folderConflictPolicy,
+			deletionPolicy: options.overwriteDeletionPolicy,
+			workflowItems: workflowPlan.items,
+			packageFolderIds,
+			subWorkflowRequirementIds: input.subWorkflowRequirements?.map(({ id }) => id),
+			projectPendingCreation: input.projectPendingCreation,
+			importSource: input.importSource,
+			explicitDeleteIds: input.explicitDeleteWorkflowIds,
+		});
+
+		// Which folders end up empty depends on which workflows survive and where the planned moves put
+		// workflows and folders, so this follows both plans above.
+		const folderRemovalPlan =
+			removesUnpackagedWorkflows(options.folderConflictPolicy) && !input.projectPendingCreation
+				? await this.folderRemover.plan(context, {
+						packageFolderIds,
+						occupiedFolderIds: removalPlan.occupiedFolderIds,
+						folderItems: folderPlan.items,
+					})
+				: { removals: [], failures: [] };
 
 		// Skipped workflows are never written, so their node types don't gate the import.
 		const missingNodeTypes = collectMissingNodeTypes(
@@ -140,17 +375,37 @@ export class ImportOrchestrator {
 			(nodeType) => this.nodeTypes.getSupportedVersions(nodeType),
 		);
 
+		const actor: PolicyActor = { kind: 'user', user: context.user };
+		const refusedByPolicy = await this.contentImportPolicyGate.refusedWorkflows(
+			workflowPlan.items,
+			context.projectId,
+			contentImportTransport(input.importSource),
+			actor,
+		);
+		const refusedStubs = await this.credentialSavePolicyGate.refusedStubs(
+			credentialRequest,
+			credentialPlan,
+			context.projectId,
+			actor,
+		);
+
 		const blockingIssues = this.collectBlockingIssues({
 			workflowPlan,
 			credentialPlan,
 			credentialRequest,
 			folderPlan,
+			dataTableRequest,
 			dataTablePlan,
 			variableRequest,
 			variablePlan,
+			tagPlan,
+			removalPlan,
+			folderRemovalPlan,
 			missingNodeTypes,
 			missingNodeTypeMode: options.missingNodeTypeMode,
 		});
+
+		blockingIssues.push(...refusedByPolicy, ...refusedStubs);
 
 		return {
 			input,
@@ -160,12 +415,23 @@ export class ImportOrchestrator {
 			folderPlan,
 			dataTablePlan,
 			variablePlan,
+			tagPlan,
+			removalPlan,
+			folderRemovalPlan,
 			missingNodeTypes,
 			blockingIssues,
 		};
 	}
 
-	async apply(plan: ImportPlan): Promise<ImportOrchestrationResult> {
+	/**
+	 * Writes this scope's content. Workflows land unpublished: publishing needs every workflow in
+	 * the package present first, so the caller runs {@link WorkflowPublisher.applyToPackage} once
+	 * all scopes have been applied.
+	 */
+	async apply(
+		plan: ImportPlan,
+		seedWorkflowBindings?: ImportBindingMap,
+	): Promise<ImportContentResult> {
 		const {
 			input,
 			folderContext,
@@ -174,47 +440,91 @@ export class ImportOrchestrator {
 			folderPlan,
 			dataTablePlan,
 			variablePlan,
+			tagPlan,
 		} = plan;
-		const { context, credentialRequest, options } = input;
+		const { context, credentialRequest } = input;
 
-		const folderSummaries = await this.folderImporter.apply(folderContext, folderPlan);
+		// Tags go first because the workflow write attaches them by id.
+		await this.tagImporter.apply(context, tagPlan);
 
-		const credentialResult = await this.credentialImporter.apply(
+		await this.folderImporter.apply(folderContext, folderPlan);
+
+		const credentialBindResult = await this.credentialImporter.apply(
 			context,
 			credentialRequest,
 			credentialPlan,
 		);
 
 		await this.dataTableImporter.apply(context, dataTablePlan);
-		const publishBlocked = new Map<string, WorkflowPublishingBlockedReason>();
+
+		// Which workflows the publish phase must leave inactive. Known only now, because it depends
+		// on which credentials actually ended up stubbed or incomplete.
+		const blockedFromPublish = new Map<string, WorkflowPublishingBlockedReason>();
+		// Weakest reason first, so a later, stronger reason overwrites it.
 		for (const sourceWorkflowId of workflowsBlockedFromPublish(
 			credentialRequest.requirements,
-			new Set(credentialResult.stubbed),
+			new Set(credentialBindResult.incomplete),
 		)) {
-			publishBlocked.set(sourceWorkflowId, 'stub-credential');
+			blockedFromPublish.set(sourceWorkflowId, 'incomplete-credential');
 		}
-		// A workflow blocked for both reasons reports missing-node-type: it physically can't run.
+		for (const sourceWorkflowId of workflowsBlockedFromPublish(
+			credentialRequest.requirements,
+			new Set(credentialBindResult.stubbed),
+		)) {
+			blockedFromPublish.set(sourceWorkflowId, 'stub-credential');
+		}
 		for (const sourceWorkflowId of workflowsWithMissingNodeTypes(plan.missingNodeTypes)) {
-			publishBlocked.set(sourceWorkflowId, 'missing-node-type');
+			blockedFromPublish.set(sourceWorkflowId, 'missing-node-type');
 		}
 
 		const { outcomes, bindings } = await this.workflowImporter.apply(
-			{
-				...context,
-				publishingPolicy: options.workflowPublishingPolicy,
-				publishBlocked,
-			},
+			{ ...context, droppedTagIds: droppedTagIds(tagPlan) },
 			workflowPlan,
-			createBindings({ credentials: credentialResult.bindings }),
+			createBindings({
+				credentials: credentialBindResult.bindings,
+				// Seeds cross-scope workflow ids so a project package can resolve
+				// sub-workflow references that point into another project.
+				...(seedWorkflowBindings ? { workflows: seedWorkflowBindings } : {}),
+			}),
 		);
 
+		// Last of the writes: an overwrite is the only step that rewrites pre-existing data, and no
+		// step above reads a variable, since `$vars` resolves by name at runtime. Still ahead of the
+		// publish sweep, which evaluates trigger parameters against variable values.
+		const variableResult = await this.variableImporter.apply(context, variablePlan);
+
+		// After the variables: a credential update is the only write that reaches outside the
+		// package. Before the publish sweep, so that a published workflow uses the new values.
+		const credentialsUpdated = await this.credentialImporter.applyUpdates(
+			context,
+			credentialRequest,
+			credentialPlan,
+		);
+
+		// After the workflow writes: a failed write then leaves the existing folders as they were.
+		// Before the removals, which plan with the folders in their new places.
+		await this.folderImporter.applyUpdates(folderContext, folderPlan);
+
+		// Removal trails every write: the package's own content is in place first, so a failure
+		// earlier leaves the target with more than the package asked for rather than less. It sits
+		// after the variables above only because nothing here reads them.
+		const removedWorkflows = await this.workflowRemover.apply(context, plan.removalPlan);
+		// After the workflows: a folder is only removed once nothing is left inside it.
+		const removedFolders = await this.folderRemover.apply(context, plan.folderRemovalPlan);
+
 		return {
-			workflowOutcomes: outcomes,
-			folderSummaries,
+			workflowOutcomes: outcomes.map((outcome) =>
+				withBlockedFromPublish(outcome, blockedFromPublish.get(outcome.sourceWorkflowId)),
+			),
+			removedWorkflows,
+			removedFolders,
+			folderSummaries: toFolderSummaries(folderPlan),
 			bindings,
-			credentialResult,
+			credentialResult: { ...credentialBindResult, updated: credentialsUpdated },
 			dataTablePlan,
 			variablePlan,
+			variableResult,
+			tagPlan,
 		};
 	}
 
@@ -223,9 +533,13 @@ export class ImportOrchestrator {
 		credentialPlan,
 		credentialRequest,
 		folderPlan,
+		dataTableRequest,
 		dataTablePlan,
 		variableRequest,
 		variablePlan,
+		tagPlan,
+		removalPlan,
+		folderRemovalPlan,
 		missingNodeTypes,
 		missingNodeTypeMode,
 	}: {
@@ -233,9 +547,13 @@ export class ImportOrchestrator {
 		credentialPlan: CredentialResolution;
 		credentialRequest: CredentialBindingRequest;
 		folderPlan: FolderImportPlan;
+		dataTableRequest: DataTableImportRequest;
 		dataTablePlan: DataTableImportPlan;
 		variableRequest: VariableImportRequest;
 		variablePlan: VariableImportPlan;
+		tagPlan: TagImportPlan;
+		removalPlan: WorkflowRemovalPlan;
+		folderRemovalPlan: FolderRemovalPlan;
 		missingNodeTypes: MissingNodeTypeRequirement[];
 		missingNodeTypeMode: MissingNodeTypeMode;
 	}): BlockingIssue[] {
@@ -243,38 +561,78 @@ export class ImportOrchestrator {
 			...workflowPlan.conflicts.map(
 				(conflict): BlockingIssue => ({ type: 'workflow-conflict', ...conflict }),
 			),
+			...workflowPlan.lineageConflicts.map(
+				(conflict): BlockingIssue => ({ type: 'workflow-lineage-conflict', ...conflict }),
+			),
 			...workflowPlan.idConflicts.map(
 				(conflict): BlockingIssue => ({ type: 'workflow-id-conflict', ...conflict }),
 			),
 			...workflowPlan.folderConflicts.map(
 				(conflict): BlockingIssue => ({ type: 'workflow-folder-conflict', ...conflict }),
 			),
+			...workflowPlan.archiveForbidden.map(
+				(failure): BlockingIssue => ({ type: 'workflow-archive-forbidden', ...failure }),
+			),
 			...folderPlan.conflicts.map(
 				(conflict): BlockingIssue => ({ type: 'folder-conflict', ...conflict }),
 			),
-			...dataTablePlan.failures.map(
-				(failure): BlockingIssue => ({ type: 'data-table-unresolved', ...failure }),
+			...removalPlan.failures.map(
+				(failure): BlockingIssue => ({ type: 'workflow-removal-forbidden', ...failure }),
+			),
+			...removalPlan.conflicts.map(
+				(conflict): BlockingIssue => ({ type: 'workflow-removal-conflict', ...conflict }),
+			),
+			...folderRemovalPlan.failures.map(
+				(failure): BlockingIssue => ({ type: 'folder-removal-forbidden', ...failure }),
+			),
+			...dataTablePlan.failures.map((failure) =>
+				toDataTableBlockingIssue(failure, dataTableRequest, dataTablePlan),
+			),
+			...tagPlan.failures.map((failure) =>
+				toTagBlockingIssue(failure, [{ tagPlan, workflowPlan }]),
 			),
 			...this.credentialImporter
 				.blockingFailures(credentialRequest, credentialPlan)
-				.map(toCredentialBlockingIssue),
-			...this.variableImporter
-				.blockingFailures(variableRequest, variablePlan)
-				.map((failure): BlockingIssue => ({ type: 'variable-unresolved', ...failure })),
+				.map((failure) => toCredentialBlockingIssue(failure, credentialRequest)),
+			...this.variableImporter.blockingFailures(variableRequest, variablePlan).map(
+				(failure): BlockingIssue => ({
+					type: 'variable-unresolved',
+					...failure,
+					usedBy: variableConsumers(variableRequest, failure.name),
+				}),
+			),
+			...this.variableImporter.blockingConflicts(variableRequest, variablePlan).map(
+				(conflict): BlockingIssue => ({
+					type: 'variable-conflict',
+					...conflict,
+					usedBy: variableConsumers(variableRequest, conflict.name),
+				}),
+			),
 			...missingNodeTypeBlockingFailures(missingNodeTypeMode, missingNodeTypes).map(
-				({ type, typeVersion, usedByWorkflows }): BlockingIssue => ({
+				(requirement): BlockingIssue => ({
 					type: 'missing-node-type',
-					nodeType: type,
-					typeVersion,
-					usedByWorkflows,
+					nodeType: requirement.type,
+					typeVersion: requirement.typeVersion,
+					usedBy: requirement.usedBy,
 				}),
 			),
 		];
 	}
 }
 
-function toCredentialBlockingIssue(failure: CredentialResolutionFailure): BlockingIssue {
-	const { kind, sourceId, targetId, expectedType, actualType, usedByWorkflows } = failure;
+function withBlockedFromPublish(
+	outcome: PersistedWorkflowOutcome,
+	blockedFromPublish: WorkflowPublishingBlockedReason | undefined,
+): PersistedWorkflowOutcome {
+	if (outcome.status === 'skipped' || !blockedFromPublish) return outcome;
+	return { ...outcome, blockedFromPublish };
+}
+
+function toCredentialBlockingIssue(
+	failure: CredentialResolutionFailure,
+	request: CredentialBindingRequest,
+): BlockingIssue {
+	const { kind, sourceId, targetId, expectedType, actualType } = failure;
 	return {
 		type: 'credential-unresolved',
 		kind,
@@ -282,6 +640,71 @@ function toCredentialBlockingIssue(failure: CredentialResolutionFailure): Blocki
 		...(targetId ? { targetId } : {}),
 		...(expectedType ? { expectedType } : {}),
 		...(actualType ? { actualType } : {}),
-		usedByWorkflows,
+		usedBy: mergeRequirementConsumers(
+			request.requirements?.find(({ id }) => id === sourceId)?.usedBy ?? [],
+		),
 	};
+}
+
+function toDataTableBlockingIssue(
+	failure: DataTableResolutionFailure,
+	request: DataTableImportRequest,
+	plan: DataTableImportPlan,
+): BlockingIssue {
+	let requirements = request.requirements ?? [];
+	if (failure.sourceId) {
+		requirements = requirements.filter(({ id }) => id === failure.sourceId);
+	} else if (failure.kind === 'permission-denied') {
+		const writtenIds = new Set(
+			failure.missingScope === 'dataTable:create'
+				? plan.creations.map(({ id }) => id)
+				: [
+						...plan.updates.map(({ table }) => table.id),
+						...plan.columnAlignments.map(({ id }) => id),
+					],
+		);
+		requirements = requirements.filter(({ id }) => writtenIds.has(id));
+	}
+
+	return {
+		type: 'data-table-unresolved',
+		...failure,
+		usedBy: mergeRequirementConsumers(requirements.flatMap(({ usedBy }) => usedBy)),
+	};
+}
+
+function toTagBlockingIssue(
+	failure: TagResolutionFailure,
+	plans: Array<Pick<ImportPlan, 'tagPlan' | 'workflowPlan'>>,
+): BlockingIssue {
+	const consumers = plans.flatMap(({ tagPlan, workflowPlan }) => {
+		let tagIds: string[];
+		if (failure.sourceId) {
+			tagIds = [failure.sourceId];
+		} else if (failure.missingScope === 'tag:create') {
+			tagIds = tagPlan.creations.map(({ id }) => id);
+		} else {
+			tagIds = [...tagPlan.renames, ...tagPlan.reconciles].map(({ id }) => id);
+		}
+
+		return workflowPlan.items
+			.filter((item) => item.action !== 'skip' && item.tagIds?.some((id) => tagIds.includes(id)))
+			.map(
+				({ sourceWorkflowId }): PackageRequirementConsumer => ({
+					kind: 'workflow',
+					id: sourceWorkflowId,
+				}),
+			);
+	});
+
+	return { type: 'tag-unresolved', ...failure, usedBy: mergeRequirementConsumers(consumers) };
+}
+
+function variableConsumers(
+	request: VariableImportRequest,
+	name: string,
+): PackageRequirementConsumer[] {
+	return mergeRequirementConsumers(
+		request.requirements?.find((requirement) => requirement.name === name)?.usedBy ?? [],
+	);
 }

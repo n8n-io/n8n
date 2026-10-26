@@ -1,57 +1,36 @@
-import type { GenerateResult } from '@n8n/agents';
+import type { Agent as RuntimeAgent, GenerateResult } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { EvalLlmMockHandler } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
-import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
-import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
-import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { AgentEvaluationService } from '@/modules/agents/evaluation/agent-evaluation.service';
+import type { AgentEvaluationPreparation } from '@/modules/agents/evaluation/agent-evaluation.contracts';
 
-import {
-	EvalAgentExecutionService,
-	mcpUrlsMatch,
-	pruneConfigForEval,
-	summarizeTools,
-} from '../agent-execution.service';
+import { EvalAgentExecutionService, mcpUrlsMatch } from '../agent-execution.service';
 import { generateAgentScenarioSeed } from '../agent-scenario-seed';
 import { createMcpMockFetch } from '../mcp-mock-fetch';
 import { createLlmMockHandler } from '../mock-handler';
 
-// The service resolves the agents-module surface lazily; top-level vi.mock
-// keeps those specifiers from loading the real module graph (and avoids the
-// doMock+dynamic-import concurrency flake). The static imports above resolve
-// to these factories.
-vi.mock('@/modules/agents/repositories/agent.repository', () => ({
-	AgentRepository: class AgentRepository {},
+vi.mock('@/modules/agents/evaluation/agent-evaluation.service', () => ({
+	AgentEvaluationService: class AgentEvaluationService {},
 }));
-vi.mock('@/modules/agents/agent-runtime-reconstruction.service', () => ({
-	AgentRuntimeReconstructionService: class AgentRuntimeReconstructionService {},
-}));
-vi.mock('@/modules/agents/utils/agent-credential-provider', () => ({
-	createAgentCredentialProvider: vi.fn(() => ({ resolve: vi.fn() })),
-}));
-vi.mock('@/modules/agents/json-config/agent-config-composition', () => ({
-	sanitizeToolName: (name: string) => name.replace(/[^a-zA-Z0-9_-]+/g, '_'),
-}));
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiProxyFetch: vi.fn(() => vi.fn()) }));
 vi.mock('../agent-scenario-seed', () => ({ generateAgentScenarioSeed: vi.fn() }));
 vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn(() => vi.fn()) }));
 vi.mock('../mock-handler', () => ({ createLlmMockHandler: vi.fn() }));
 
 const logger = mock<Logger>();
-const user = mock<User>();
+const agentEvaluation = mock<AgentEvaluationService>();
+const user = mock<User>({ id: 'user/123:raw' });
 
-const findByIdAndProjectId = vi.fn();
-const reconstructFromAgentEntity = vi.fn();
+const buildRuntime = vi.fn();
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Support agent',
@@ -67,17 +46,15 @@ const baseConfig: AgentJsonConfig = {
 	],
 } as unknown as AgentJsonConfig;
 
-const makeEntity = (config: AgentJsonConfig, integrations: unknown[] = []): AgentEntity =>
-	({
-		id: 'agent-1',
-		projectId: 'proj-1',
-		schema: config,
-		tools: {
-			't-1': { code: 'export default 1', descriptor: { name: 'my_custom', description: 'Custom' } },
-		},
-		skills: {},
-		integrations,
-	}) as unknown as AgentEntity;
+function setConfig(config: AgentJsonConfig) {
+	const preparation: AgentEvaluationPreparation = {
+		config,
+		tools: [{ name: 'Slack_Tool', kind: 'node', nodeType: 'n8n-nodes-base.slackTool' }],
+		skippedFeatures: [],
+		buildRuntime,
+	};
+	agentEvaluation.prepare.mockResolvedValue({ preparation });
+}
 
 const seed = {
 	openingMessage: 'Hi, I need help with order #123',
@@ -101,35 +78,41 @@ const makeGenerateResult = (overrides: Partial<GenerateResult> = {}): GenerateRe
 		...overrides,
 	}) as unknown as GenerateResult;
 
-function buildService(overrides: { queueMode?: boolean; agentsActive?: boolean } = {}) {
+function buildService(
+	overrides: {
+		queueMode?: boolean;
+		agentsActive?: boolean;
+		mcpRegistryActive?: boolean;
+	} = {},
+) {
 	const executionsConfig = mock<ExecutionsConfig>();
 	Object.defineProperty(executionsConfig, 'mode', {
 		get: () => (overrides.queueMode ? 'queue' : 'regular'),
 	});
 	const moduleRegistry = mock<ModuleRegistry>();
-	moduleRegistry.isActive.mockReturnValue(overrides.agentsActive ?? true);
+	moduleRegistry.isActive.mockImplementation((moduleName) => {
+		if (moduleName === 'agents') return overrides.agentsActive ?? true;
+		if (moduleName === 'mcp-registry') return overrides.mcpRegistryActive ?? true;
+		return true;
+	});
 	return new EvalAgentExecutionService(
 		logger,
 		executionsConfig,
 		moduleRegistry,
 		mock<OutboundHttp>(),
-		mock<CredentialsService>(),
 	);
 }
 
 describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		Container.set(AgentRepository, { findByIdAndProjectId } as unknown as AgentRepository);
-		Container.set(AgentRuntimeReconstructionService, {
-			reconstructFromAgentEntity,
-		} as unknown as AgentRuntimeReconstructionService);
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		Container.set(AgentEvaluationService, agentEvaluation);
+
 		vi.mocked(generateAgentScenarioSeed).mockResolvedValue(seed);
 		vi.mocked(createLlmMockHandler).mockReturnValue(
 			vi.fn().mockResolvedValue({ body: { ok: true }, statusCode: 200, headers: {} }),
 		);
-		findByIdAndProjectId.mockResolvedValue(makeEntity({ ...baseConfig }));
+		setConfig({ ...baseConfig });
 	});
 
 	afterEach(() => {
@@ -146,7 +129,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		);
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/queue mode is not supported/);
-		expect(findByIdAndProjectId).not.toHaveBeenCalled();
+		expect(agentEvaluation.prepare).not.toHaveBeenCalled();
 	});
 
 	it('refuses when the agents module is inactive', async () => {
@@ -160,21 +143,43 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 	});
 
 	it('reports not-accessible when the user lacks agent:execute', async () => {
-		vi.mocked(userHasScopes).mockResolvedValue(false);
+		agentEvaluation.prepare.mockResolvedValue({
+			error: 'Agent agent-1 not found or not accessible',
+		});
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/not found or not accessible/);
 	});
 
+	it('refuses when Agents is disabled before making model calls', async () => {
+		agentEvaluation.prepare.mockResolvedValue({
+			error: 'Agents are disabled. Ask an instance admin to enable them in Settings > Agents.',
+		});
+		const generate = vi.fn().mockResolvedValue(makeGenerateResult());
+		buildRuntime.mockResolvedValue({ generate, close: vi.fn() });
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+
+		expect(result.success).toBe(false);
+		expect(result.errors[0]).toContain('Agents are disabled');
+		expect(generateAgentScenarioSeed).not.toHaveBeenCalled();
+		expect(buildRuntime).not.toHaveBeenCalled();
+		expect(generate).not.toHaveBeenCalled();
+	});
+
 	it('reports not-found when the agent does not exist in the project', async () => {
-		findByIdAndProjectId.mockResolvedValue(null);
+		agentEvaluation.prepare.mockResolvedValue({
+			error: 'Agent agent-1 not found or not accessible',
+		});
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/not found or not accessible/);
 	});
 
 	it('reports a config-less agent', async () => {
-		findByIdAndProjectId.mockResolvedValue(makeEntity(undefined as unknown as AgentJsonConfig));
+		agentEvaluation.prepare.mockResolvedValue({
+			error: 'Agent agent-1 has no JSON config to run.',
+		});
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/no JSON config/);
@@ -187,7 +192,24 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/^FRAMEWORK ISSUE:/);
-		expect(reconstructFromAgentEntity).not.toHaveBeenCalled();
+		expect(buildRuntime).not.toHaveBeenCalled();
+	});
+
+	it('scrubs secret values from the case scenario signal but runs the case input verbatim', async () => {
+		const generate = vi.fn().mockResolvedValue(makeGenerateResult());
+		const close = vi.fn().mockResolvedValue(undefined);
+		buildRuntime.mockResolvedValue({ generate, close });
+
+		const secret = 'sk-ABCDEF1234567890ABCDEF1234567890';
+		const caseInput = `Refund order #123 with key ${secret}`;
+		await buildService().executeWithLlmMock('agent-1', user, request, caseInput);
+
+		// The signal fed to the seed/mock LLM calls has the secret scrubbed...
+		const seedArgs = vi.mocked(generateAgentScenarioSeed).mock.calls[0]?.[0];
+		expect(seedArgs?.scenarioHints).not.toContain(secret);
+		expect(seedArgs?.scenarioHints).toContain('Refund order #123');
+		// ...but the agent still receives the verbatim case input.
+		expect(generate).toHaveBeenCalledWith(caseInput, expect.anything());
 	});
 
 	it('runs the happy path: real-model turn, mocked tool HTTP, mapped result', async () => {
@@ -196,7 +218,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		const generate = vi.fn().mockImplementation(async () => {
 			// Simulate a node-tool invocation mid-run: the instrumentation must
 			// swap the credentials helper and serve HTTP through the mock.
-			const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+			const instrumentation = buildRuntime.mock.calls[0][0] as {
 				modelFetch?: unknown;
 				configureToolAdditionalData: (
 					additionalData: Record<string, unknown>,
@@ -218,7 +240,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			);
 			return makeGenerateResult();
 		});
-		reconstructFromAgentEntity.mockResolvedValue({ agent: { generate, close }, toolRegistry: {} });
+		buildRuntime.mockResolvedValue({ generate, close });
 
 		const result = await buildService().executeWithLlmMock('agent-1', user, {
 			...request,
@@ -245,13 +267,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		});
 		expect(close).toHaveBeenCalledTimes(1);
 
-		// The runtime was built with the eval instrumentation, uncached.
-		const [entityArg, , integrationType, userArg, instrumentation] = reconstructFromAgentEntity.mock
-			.calls[0] as [AgentEntity, unknown, string | undefined, User, { modelFetch?: unknown }];
-		expect(entityArg.id).toBe('agent-1');
-		expect(integrationType).toBeUndefined();
-		expect(userArg).toBe(user);
-		expect(instrumentation.modelFetch).toBeDefined();
+		expect(buildRuntime.mock.calls[0][0].modelFetch).toBeDefined();
 	});
 
 	it('attributes MCP calls when the server name requires normalization', async () => {
@@ -266,7 +282,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 				},
 			],
 		} as unknown as AgentJsonConfig;
-		findByIdAndProjectId.mockResolvedValue(makeEntity(config));
+		setConfig(config);
 		const generate = vi.fn().mockImplementation(async () => {
 			const mcpMockOptions = vi.mocked(createMcpMockFetch).mock.calls[0][0];
 			const call = {
@@ -276,7 +292,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 				result: { text: 'Issue list', isError: false },
 			};
 			mcpMockOptions.onToolCall(call);
-			const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+			const instrumentation = buildRuntime.mock.calls[0][0] as {
 				onMcpToolCallSettled?: (event: {
 					serverName: string;
 					toolName: string;
@@ -300,10 +316,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 				],
 			});
 		});
-		reconstructFromAgentEntity.mockResolvedValue({
-			agent: { generate, close: vi.fn() },
-			toolRegistry: {},
-		});
+		buildRuntime.mockResolvedValue({ generate, close: vi.fn() });
 
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 
@@ -328,14 +341,14 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 				},
 			],
 		} as unknown as AgentJsonConfig;
-		findByIdAndProjectId.mockResolvedValue(makeEntity(config));
+		setConfig(config);
 		const firstModelName = 'Linear_Prod_read_file_12345678';
 		const secondModelName = 'Linear_Prod_read_file_87654321';
 		const firstArgs = { path: 'first.txt' };
 		const secondArgs = { path: 'second.txt' };
 		const generate = vi.fn().mockImplementation(async () => {
 			const mcpMockOptions = vi.mocked(createMcpMockFetch).mock.calls[0][0];
-			const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+			const instrumentation = buildRuntime.mock.calls[0][0] as {
 				onMcpToolCallSettled?: (event: {
 					serverName: string;
 					toolName: string;
@@ -375,10 +388,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 				],
 			});
 		});
-		reconstructFromAgentEntity.mockResolvedValue({
-			agent: { generate, close: vi.fn() },
-			toolRegistry: {},
-		});
+		buildRuntime.mockResolvedValue({ generate, close: vi.fn() });
 
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 
@@ -399,52 +409,62 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		]);
 	});
 
-	it('prunes unmockable features and reports them', async () => {
-		const fullConfig = {
+	it('uses explicit non-blocked tools as the canonical catalog when both categories are blocked', async () => {
+		const config = {
 			...baseConfig,
-			memory: { enabled: true },
-			vectorStores: [{ provider: 'pinecone' }],
-			mcpServers: [{ name: 'mcp-1', url: 'https://legacy.example/sse', transport: 'sse' }],
-			subAgents: { agents: [{ agentId: 'child-1' }] },
+			mcpServers: [
+				{
+					name: 'Restricted MCP',
+					url: 'https://custom.example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'none',
+					toolPermissions: {
+						categories: { read: 'blocked', write: 'blocked' },
+						tools: {
+							search: 'always_allow',
+							update: 'require_approval',
+							delete: 'blocked',
+						},
+					},
+				},
+			],
 		} as unknown as AgentJsonConfig;
-		findByIdAndProjectId.mockResolvedValue(makeEntity(fullConfig, [{ type: 'slack' }]));
-		reconstructFromAgentEntity.mockResolvedValue({
-			agent: { generate: vi.fn().mockResolvedValue(makeGenerateResult()), close: vi.fn() },
-			toolRegistry: {},
+		setConfig(config);
+		buildRuntime.mockResolvedValue({
+			generate: vi.fn().mockResolvedValue(makeGenerateResult()),
+			close: vi.fn(),
 		});
 
-		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+		await buildService({ mcpRegistryActive: false }).executeWithLlmMock('agent-1', user, request);
 
-		expect(result.skippedFeatures.map((entry) => entry.feature).sort()).toEqual([
-			'integrations',
-			'mcpServers (sse transport)',
-			'memory',
-			'vectorStores',
-		]);
-		const rebuiltEntity = reconstructFromAgentEntity.mock.calls[0][0] as AgentEntity;
-		expect(rebuiltEntity.schema?.memory).toBeUndefined();
-		expect(rebuiltEntity.schema?.mcpServers).toBeUndefined();
-		// Configured sub-agents are kept — the delegated child inherits the
-		// instrumentation and its config is pruned via the transform hook.
-		expect(rebuiltEntity.schema?.subAgents).toEqual({ agents: [{ agentId: 'child-1' }] });
+		expect(createMcpMockFetch).toHaveBeenCalledWith(
+			expect.objectContaining({
+				knownToolsByServer: {
+					'Restricted MCP': [
+						{ name: 'search', description: 'search' },
+						{ name: 'update', description: 'update' },
+					],
+				},
+			}),
+		);
 	});
 
-	it('serves fallback web search and configured sub-agents through the instrumentation', async () => {
+	it('serves fallback web search through the instrumentation', async () => {
 		const fullConfig = {
 			...baseConfig,
 			model: 'mistral/mistral-large',
 			config: { webSearch: { enabled: true, provider: 'brave', credential: 'cred-2' } },
 			subAgents: { agents: [{ agentId: 'child-1' }] },
 		} as unknown as AgentJsonConfig;
-		findByIdAndProjectId.mockResolvedValue(makeEntity(fullConfig));
-		reconstructFromAgentEntity.mockResolvedValue({
-			agent: { generate: vi.fn().mockResolvedValue(makeGenerateResult()), close: vi.fn() },
-			toolRegistry: {},
+		setConfig(fullConfig);
+		buildRuntime.mockResolvedValue({
+			generate: vi.fn().mockResolvedValue(makeGenerateResult()),
+			close: vi.fn(),
 		});
 
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 
-		const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+		const instrumentation = buildRuntime.mock.calls[0][0] as {
 			webSearch?: unknown;
 			transformDelegatedAgentConfig?: (
 				config: AgentJsonConfig,
@@ -453,20 +473,6 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		};
 		expect(instrumentation.webSearch).toBeDefined();
 		expect(result.skippedFeatures).toEqual([]);
-
-		// Delegated child configs get the same pruning, reported under the child id
-		// (the returned skippedFeatures array is live for the duration of the run).
-		const childConfig = {
-			...baseConfig,
-			memory: { enabled: true },
-		} as unknown as AgentJsonConfig;
-		const prunedChild = instrumentation.transformDelegatedAgentConfig?.(childConfig, {
-			subAgentId: 'child-1',
-		});
-		expect(prunedChild?.memory).toBeUndefined();
-		expect(result.skippedFeatures.map((entry) => entry.feature)).toContain(
-			'subAgent child-1: memory',
-		);
 	});
 
 	it('surfaces errored tool calls omitted from the run result via the intercepted ledger', async () => {
@@ -474,7 +480,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		// GenerateResult.toolCalls — the intercepted request (e.g. an injected
 		// channel_not_found) must still reach the judge.
 		const generate = vi.fn().mockImplementation(async () => {
-			const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+			const instrumentation = buildRuntime.mock.calls[0][0] as {
 				configureToolAdditionalData: (
 					additionalData: Record<string, unknown>,
 					ctx: { toolName: string; toolKind: string },
@@ -492,10 +498,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			} as INode);
 			return makeGenerateResult({ toolCalls: [] });
 		});
-		reconstructFromAgentEntity.mockResolvedValue({
-			agent: { generate, close: vi.fn() },
-			toolRegistry: {},
-		});
+		buildRuntime.mockResolvedValue({ generate, close: vi.fn() });
 
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 
@@ -507,6 +510,43 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			error: expect.stringContaining('interceptedRequests'),
 		});
 		expect(result.toolCalls[0].interceptedRequests).toHaveLength(1);
+	});
+
+	it('snapshots the tool ledger body so node-side mutation cannot rewrite the evidence', async () => {
+		// Same aliasing hazard as the workflow ledger: `callEvalMockHandler` returns
+		// this body to the node tool, and nodes like OpenAI's json_schema mode parse
+		// fields in place — the judge must still see what was actually served.
+		const served = { output: [{ content: [{ type: 'output_text', text: '{"a":1}' }] }] };
+		vi.mocked(createLlmMockHandler).mockReturnValue(
+			vi.fn().mockResolvedValue({ body: served, statusCode: 200, headers: {} }),
+		);
+		const generate = vi.fn().mockImplementation(async () => {
+			const instrumentation = buildRuntime.mock.calls[0][0] as {
+				configureToolAdditionalData: (
+					additionalData: Record<string, unknown>,
+					ctx: { toolName: string; toolKind: string },
+				) => void;
+			};
+			const additionalData: Record<string, unknown> = { credentialsHelper: {} };
+			instrumentation.configureToolAdditionalData(additionalData, {
+				toolName: 'Slack_Tool',
+				toolKind: 'node',
+			});
+			const handler = additionalData.evalLlmMockHandler as EvalLlmMockHandler;
+			const response = await handler({ url: 'https://slack.com/api/x', method: 'POST' }, {
+				name: 'Slack_Tool',
+				type: 'n8n-nodes-base.slackTool',
+			} as INode);
+			// Node code mutates the body it was handed.
+			(response?.body as typeof served).output[0].content[0].text = { a: 1 } as never;
+			return makeGenerateResult({ toolCalls: [] });
+		});
+		buildRuntime.mockResolvedValue({ generate, close: vi.fn() });
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+
+		const recorded = result.toolCalls[0].interceptedRequests?.[0].mockResponse as typeof served;
+		expect(recorded.output[0].content[0].text).toBe('{"a":1}');
 	});
 
 	it('auto-approves suspended tool calls and flags them', async () => {
@@ -526,10 +566,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		});
 		const generate = vi.fn().mockResolvedValue(suspended);
 		const approve = vi.fn().mockResolvedValue(finished);
-		reconstructFromAgentEntity.mockResolvedValue({
-			agent: { generate, approve, close: vi.fn() },
-			toolRegistry: {},
-		});
+		buildRuntime.mockResolvedValue({ generate, approve, close: vi.fn() });
 
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 
@@ -537,6 +574,8 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			'generate',
 			expect.objectContaining({ runId: 'run-1', toolCallId: 'tc-1' }),
 		);
+		expect(generate.mock.calls[0][1].abortSignal).toBe(buildRuntime.mock.calls[0][1]);
+		expect(approve.mock.calls[0][1].abortSignal).toBe(buildRuntime.mock.calls[0][1]);
 		expect(result.success).toBe(true);
 		// Pre-suspension segment calls are preserved alongside the approved one.
 		expect(result.toolCalls.find((call) => call.tool === 'Danger_Tool')).toMatchObject({
@@ -544,75 +583,84 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		});
 	});
 
-	it('maps a thrown run failure into an error result and still closes the runtime', async () => {
-		const close = vi.fn().mockResolvedValue(undefined);
-		reconstructFromAgentEntity.mockResolvedValue({
-			agent: { generate: vi.fn().mockRejectedValue(new Error('aborted')), close },
-			toolRegistry: {},
-		});
+	it.each(['construction', 'generation'])(
+		'maps a thrown %s failure into an error result and closes an acquired runtime',
+		async (stage) => {
+			const close = vi.fn().mockResolvedValue(undefined);
+			const error = new Error('failed');
+			if (stage === 'construction') buildRuntime.mockRejectedValueOnce(error);
+			else {
+				buildRuntime.mockResolvedValue({
+					generate: vi.fn().mockRejectedValue(error),
+					close,
+				});
+			}
 
-		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+			const result = await buildService().executeWithLlmMock('agent-1', user, request);
 
-		expect(result.success).toBe(false);
-		expect(result.errors[0]).toMatch(/Agent run failed: aborted/);
-		expect(close).toHaveBeenCalledTimes(1);
-	});
+			expect(result.success).toBe(false);
+			const prefix =
+				stage === 'construction' ? 'Failed to build agent runtime' : 'Agent run failed';
+			expect(result.errors).toEqual([`${prefix}: failed`]);
+			expect(close).toHaveBeenCalledTimes(stage === 'construction' ? 0 : 1);
+		},
+	);
+
+	// Killed for TIME, not by the builder. The harness classifies this off the wording
+	// ("exceeded its …s eval budget", `isServerBudgetStop`) and routes it to the timeout
+	// path; reported as a plain `Agent run failed:` it scored as a builder verdict —
+	// exactly the misattribution the budget plumbing exists to prevent.
+	it.each(['construction', 'generation'])(
+		'reports a %s budget abort as a timeout and closes runtimes that finish late',
+		async (stage) => {
+			const construction = createDeferredPromise<RuntimeAgent>();
+			const runtime = mock<RuntimeAgent>();
+			const generate = runtime.generate.mockImplementation(async (_message, opts) => {
+				// What AbortSignal.timeout does once the budget elapses.
+				await new Promise((resolve) => setTimeout(resolve, 5));
+				throw Object.assign(new Error('The operation was aborted due to timeout'), {
+					name: 'TimeoutError',
+					signalAborted: opts?.abortSignal?.aborted,
+				});
+			});
+			const close = runtime.close.mockRejectedValue(new Error('teardown failed'));
+			if (stage === 'construction') buildRuntime.mockReturnValueOnce(construction.promise);
+			else buildRuntime.mockResolvedValue(runtime);
+
+			const result = await buildService().executeWithLlmMock('agent-1', user, {
+				...request,
+				timeoutMs: 1,
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.errors[0]).toMatch(/exceeded its \d+s eval budget/);
+			expect(result.errors[0]).not.toMatch(/Agent run failed/);
+			if (stage === 'construction') {
+				construction.resolve(runtime);
+				await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+				expect(generate).not.toHaveBeenCalled();
+			}
+			expect(logger.warn).toHaveBeenCalledWith('[EvalAgentMock] Agent runtime teardown failed', {
+				error: 'teardown failed',
+			});
+		},
+		1_000,
+	);
 
 	it('flips success off when the run finishes with a model error', async () => {
-		reconstructFromAgentEntity.mockResolvedValue({
-			agent: {
-				generate: vi
-					.fn()
-					.mockResolvedValue(
-						makeGenerateResult({ error: new Error('rate limited'), finishReason: 'error' }),
-					),
-				close: vi.fn(),
-			},
-			toolRegistry: {},
+		buildRuntime.mockResolvedValue({
+			generate: vi
+				.fn()
+				.mockResolvedValue(
+					makeGenerateResult({ error: new Error('rate limited'), finishReason: 'error' }),
+				),
+			close: vi.fn(),
 		});
 
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/Model run error: rate limited/);
-	});
-});
-
-describe('pruneConfigForEval', () => {
-	it('leaves a plain tools-only config untouched', () => {
-		const { config, skippedFeatures } = pruneConfigForEval({ ...baseConfig });
-		expect(skippedFeatures).toEqual([]);
-		expect(config.tools).toEqual(baseConfig.tools);
-	});
-
-	it('keeps streamable-HTTP MCP servers and strips only SSE-transport ones', () => {
-		const withMcp = {
-			...baseConfig,
-			mcpServers: [
-				{ name: 'acme_kb', url: 'https://mcp.acme-kb.example/mcp', transport: 'streamableHttp' },
-				{ name: 'legacy', url: 'https://legacy.example/sse', transport: 'sse' },
-			],
-		} as unknown as AgentJsonConfig;
-
-		const { config, skippedFeatures } = pruneConfigForEval(withMcp);
-
-		expect(config.mcpServers?.map((server) => server.name)).toEqual(['acme_kb']);
-		expect(skippedFeatures).toHaveLength(1);
-		expect(skippedFeatures[0].feature).toContain('sse');
-		expect(skippedFeatures[0].reason).toContain('legacy');
-	});
-
-	it('keeps fallback web search — the web-search mock serves it', () => {
-		const withSearch = {
-			...baseConfig,
-			model: 'mistral/mistral-large',
-			config: { webSearch: { enabled: true, provider: 'brave', credential: 'cred-2' } },
-		} as unknown as AgentJsonConfig;
-
-		const { config, skippedFeatures } = pruneConfigForEval(withSearch);
-
-		expect(skippedFeatures).toHaveLength(0);
-		expect(config.config?.webSearch?.enabled).toBe(true);
 	});
 });
 
@@ -627,61 +675,5 @@ describe('mcpUrlsMatch', () => {
 	])('%s vs %s -> %s', (configUrl, remoteUrl, expected) => {
 		expect(mcpUrlsMatch(configUrl, remoteUrl)).toBe(expected);
 		expect(mcpUrlsMatch(remoteUrl, configUrl)).toBe(expected);
-	});
-});
-
-describe('summarizeTools', () => {
-	it('summarizes the fallback web_search tool so the seed can steer it', () => {
-		const config = {
-			...baseConfig,
-			model: 'mistral/mistral-large',
-			config: { webSearch: { enabled: true, provider: 'brave', credential: 'cred-2' } },
-		} as unknown as AgentJsonConfig;
-
-		const summaries = summarizeTools(config, {}, (name) => name);
-
-		expect(summaries.find((entry) => entry.name === 'web_search')?.kind).toBe('other');
-	});
-
-	it('summarizes MCP servers by server name with kind mcp', () => {
-		const config = {
-			...baseConfig,
-			tools: [],
-			mcpServers: [
-				{ name: 'acme_kb', url: 'https://mcp.acme-kb.example/mcp', description: 'KB server' },
-			],
-		} as unknown as AgentJsonConfig;
-
-		const summaries = summarizeTools(config, {} as never, (name) => name);
-		expect(summaries).toEqual([{ name: 'acme_kb', kind: 'mcp', description: 'KB server' }]);
-	});
-
-	it('maps node, workflow, and custom tools with sanitized names', () => {
-		const config = {
-			...baseConfig,
-			tools: [
-				...(baseConfig.tools ?? []),
-				{ type: 'workflow', workflow: 'Order lookup', description: 'Find an order' },
-				{ type: 'custom', id: 't-1' },
-			],
-		} as unknown as AgentJsonConfig;
-		const customTools = {
-			't-1': { code: '', descriptor: { name: 'my_custom', description: 'Custom' } },
-		} as unknown as NonNullable<AgentEntity['tools']>;
-
-		const summaries = summarizeTools(config, customTools, (name) =>
-			name.replace(/[^a-zA-Z0-9_-]+/g, '_'),
-		);
-
-		expect(summaries).toEqual([
-			{
-				name: 'Slack_Tool',
-				kind: 'node',
-				description: undefined,
-				nodeType: 'n8n-nodes-base.slackTool',
-			},
-			{ name: 'Order_lookup', kind: 'workflow', description: 'Find an order' },
-			{ name: 'my_custom', kind: 'custom', description: 'Custom' },
-		]);
 	});
 });

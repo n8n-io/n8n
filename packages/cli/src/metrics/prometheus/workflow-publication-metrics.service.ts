@@ -1,28 +1,22 @@
 import { PrometheusMetricsConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { WorkflowPublicationOutboxRepository, WorkflowPublicationOutboxStatus } from '@n8n/db';
+import { WorkflowPublicationOutboxStatus } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { EventService } from '@n8n/backend-services';
 
 import type { PrometheusMetricsCollector } from './base';
-import { CachedMetricQuery } from './cached-metric-query';
+import { toGaugeValue } from './cached-metric-query';
 import { DURATION_BUCKETS_SECONDS } from './constant';
+import { DatabaseMetricQueryService } from './database-metric-query.service';
 
 const ALL_STATUSES = Object.values(WorkflowPublicationOutboxStatus);
 const ACTIVE_STATUSES = [
 	WorkflowPublicationOutboxStatus.Pending,
 	WorkflowPublicationOutboxStatus.InProgress,
 ];
-
-const RECORD_STATS_CACHE_KEY = 'metrics:workflow-publication:outbox-record-stats:v2';
-
-/** Per-status count and oldest-record epoch ms (`oldestMs`) for a single status. */
-type StatusStats = { count: number; oldestMs: number };
-type StatusStatsByStatus = Partial<Record<WorkflowPublicationOutboxStatus, StatusStats>>;
 
 /**
  * Collects Prometheus metrics for the workflow publication service. Opt-in via
@@ -39,8 +33,7 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
-		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
-		private readonly cacheService: CacheService,
+		private readonly databaseQueries: DatabaseMetricQueryService,
 	) {}
 
 	get enabled(): boolean {
@@ -57,29 +50,17 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 		this.initTriggerMetrics();
 		this.initCleanupMetrics();
 		this.initReconciliationMetrics();
+		this.initGhostSweepMetrics();
 	}
 
 	private initOutboxGauges() {
-		const repository = this.outboxRepository;
 		const prefix = this.config.prefix;
 		// One grouped query (COUNT + MIN createdAt per status) feeds both gauges;
 		// cache it so a tight scrape interval doesn't hammer the outbox table. Within
 		// a scrape, coalescing collapses both gauges' collects to a single query.
 		const cacheTtl = this.config.workflowPublicationMetricInterval * Time.seconds.toMilliseconds;
 
-		const query = new CachedMetricQuery<StatusStatsByStatus>({
-			cacheService: this.cacheService,
-			cacheKey: RECORD_STATS_CACHE_KEY,
-			ttlMs: cacheTtl,
-			query: async () => {
-				const stats = await repository.getRecordStatsByStatus();
-				const byStatus: StatusStatsByStatus = {};
-				for (const [status, { count, oldestCreatedAt }] of stats) {
-					byStatus[status] = { count, oldestMs: oldestCreatedAt.getTime() };
-				}
-				return byStatus;
-			},
-		});
+		const query = this.databaseQueries.workflowPublication(cacheTtl);
 
 		new promClient.Gauge({
 			name: `${prefix}workflow_publication_outbox_records`,
@@ -88,7 +69,10 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 			async collect() {
 				const byStatus = await query.get();
 				for (const status of ALL_STATUSES) {
-					this.set({ status }, byStatus[status]?.count ?? 0);
+					this.set(
+						{ status },
+						toGaugeValue(byStatus, (stats) => stats[status]?.count ?? 0),
+					);
 				}
 			},
 		});
@@ -101,10 +85,12 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 				const byStatus = await query.get();
 				const now = Date.now();
 				for (const status of ACTIVE_STATUSES) {
-					const oldestMs = byStatus[status]?.oldestMs;
 					this.set(
 						{ status },
-						oldestMs !== undefined ? (now - oldestMs) * Time.milliseconds.toSeconds : 0,
+						toGaugeValue(byStatus, (stats) => {
+							const oldestMs = stats[status]?.oldestMs;
+							return oldestMs !== undefined ? (now - oldestMs) * Time.milliseconds.toSeconds : 0;
+						}),
 					);
 				}
 			},
@@ -209,6 +195,16 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 			help: 'Total number of workflows re-enqueued by reconciliation because their published version diverged from the active version.',
 		});
 
+		const statusDrift = new promClient.Counter({
+			name: `${prefix}workflow_publication_reconciliation_status_drift_workflows_total`,
+			help: 'Total number of workflows re-enqueued by reconciliation because a trigger-status row was recorded for a version other than the active one.',
+		});
+
+		const unreported = new promClient.Counter({
+			name: `${prefix}workflow_publication_reconciliation_unreported_workflows_total`,
+			help: 'Total number of published workflows re-enqueued by reconciliation because no publication had reported trigger statuses for them.',
+		});
+
 		const duration = new promClient.Histogram({
 			name: `${prefix}workflow_publication_reconciliation_duration_seconds`,
 			help: 'Duration in seconds of a trigger reconciliation pass by result.',
@@ -218,12 +214,35 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 
 		this.eventService.on(
 			'workflow-publication-reconciliation',
-			({ result, deficientCount, surplusCount, versionSkewCount, durationMs }) => {
+			({
+				result,
+				deficientCount,
+				surplusCount,
+				versionSkewCount,
+				statusDriftCount,
+				unreportedCount,
+				durationMs,
+			}) => {
 				deficient.inc(deficientCount);
 				surplus.inc(surplusCount);
 				versionSkew.inc(versionSkewCount);
+				statusDrift.inc(statusDriftCount);
+				unreported.inc(unreportedCount);
 				duration.observe({ result }, durationMs * Time.milliseconds.toSeconds);
 			},
 		);
+	}
+
+	private initGhostSweepMetrics() {
+		const prefix = this.config.prefix;
+
+		const removed = new promClient.Counter({
+			name: `${prefix}workflow_publication_reconciliation_ghost_trigger_workflows_total`,
+			help: 'Total number of workflows whose ghost triggers were torn down because they were registered on a non-leader instance.',
+		});
+
+		this.eventService.on('workflow-publication-ghost-trigger-sweep', ({ removedCount }) => {
+			removed.inc(removedCount);
+		});
 	}
 }

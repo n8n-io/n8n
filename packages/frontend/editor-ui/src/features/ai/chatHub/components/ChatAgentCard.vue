@@ -4,7 +4,7 @@ import { getAgentRoute } from '@/features/ai/chatHub/chat.utils';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import type { ChatModelDto } from '@n8n/api-types';
 import { N8nActionDropdown, N8nIconButton, N8nText } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { RouterLink } from 'vue-router';
 
@@ -59,7 +59,7 @@ function handleSelectMenu(action: MenuAction) {
 
 		<div :class="$style.actions">
 			<N8nIconButton
-				variant="subtle"
+				variant="outline"
 				v-if="canEdit"
 				icon="pen"
 				size="medium"
@@ -76,7 +76,7 @@ function handleSelectMenu(action: MenuAction) {
 				<template #activator>
 					<N8nIconButton
 						variant="ghost"
-						icon="ellipsis-vertical"
+						icon="ellipsis"
 						size="medium"
 						:title="i18n.baseText('chatHub.agent.card.button.moreOptions')"
 						:class="$style.actionDropdownTrigger"

@@ -1,21 +1,25 @@
 import type { AgentFileDto } from '@n8n/api-types';
-import type { SourceType } from '@n8n/db';
-import { FileLocation } from 'n8n-core';
+import { getPromptWorkspaceRoot, type SandboxProvider } from '@n8n/agents/sandbox';
 import path from 'node:path';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-
+import { AgentKnowledgeUploadError } from './agent-knowledge-upload.error';
 import type { AgentFile } from './entities/agent-file.entity';
 
-// Local sandbox disk mirroring the DB-backed knowledge files, so repeated
-// reads/searches avoid re-fetching from BinaryDataService each time.
-export const KNOWLEDGE_MIRROR_DIR = '/home/daytona/knowledge-mirror';
-export const KNOWLEDGE_MIRROR_FILES_DIR = `${KNOWLEDGE_MIRROR_DIR}/files`;
-export const KNOWLEDGE_MIRROR_MANIFEST = `${KNOWLEDGE_MIRROR_DIR}/manifest`;
+export interface AgentKnowledgePaths {
+	filesDir: string;
+	manifest: string;
+	stagingDir: string;
+}
 
-// Typed against `SourceType` so a drift from the `binary_data` schema enum
-// (see `packages/@n8n/db/src/entities/binary-data-file.ts`) is a compile error.
-const AGENT_FILE_SOURCE_TYPE: SourceType = 'agent_file';
+export function getAgentKnowledgePaths(provider: SandboxProvider): AgentKnowledgePaths {
+	const home = path.dirname(getPromptWorkspaceRoot(provider));
+	const mirrorDir = `${home}/knowledge-mirror`;
+	return {
+		filesDir: `${mirrorDir}/files`,
+		manifest: `${mirrorDir}/manifest`,
+		stagingDir: `${mirrorDir}/.staging`,
+	};
+}
 
 export function hasControlCharacter(value: string): boolean {
 	for (const character of value) {
@@ -31,15 +35,6 @@ function sanitizePathCharacter(character: string): string {
 		return '_';
 	}
 	return character;
-}
-
-/** One directory per file, so deleting a single file never touches others. */
-export function buildKnowledgeFileLocation(agentId: string, fileId: string) {
-	return FileLocation.ofCustom({
-		pathSegments: ['agents', agentId, 'knowledge-files', fileId],
-		sourceType: AGENT_FILE_SOURCE_TYPE,
-		sourceId: fileId,
-	});
 }
 
 export function assertKnowledgePathSegment(segment: string, label: string): void {
@@ -60,7 +55,10 @@ function sanitizeStorageFileName(originalName: string): string {
 	// `path.basename` passes through `.`, `..`, and empty names, which would
 	// resolve outside the scoped knowledge files directory when joined.
 	if (!sanitized || sanitized === '.' || sanitized === '..') {
-		throw new BadRequestError(`Invalid knowledge file name "${originalName}"`);
+		throw new AgentKnowledgeUploadError(
+			`Invalid knowledge file name "${originalName}"`,
+			'invalid_file_name',
+		);
 	}
 	return sanitized;
 }

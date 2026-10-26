@@ -1,16 +1,22 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import type { WorkflowRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
+import type { DbConnection, WorkflowRepository } from '@n8n/db';
+import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
+import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 import { PrometheusWorkflowInfoMetricsService } from '../workflow-info-metrics.service';
+import { CachedMetricQueryFactory } from '../cached-metric-query';
+import { DatabaseMetricQueryService } from '../database-metric-query.service';
 
 vi.mock('prom-client');
 
 describe('PrometheusWorkflowInfoMetricsService', () => {
+	const dbConnection = mock<DbConnection>({
+		connectionState: { connected: true, migrated: true },
+	});
 	const config = mockInstance(PrometheusMetricsConfig, {
 		prefix: 'n8n_',
 		includeWorkflowInfoMetrics: true,
@@ -18,6 +24,7 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 	});
 	const workflowRepository = mock<WorkflowRepository>();
 	const cacheService = mock<CacheService>();
+	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 	let service: PrometheusWorkflowInfoMetricsService;
 
 	beforeEach(() => {
@@ -26,7 +33,20 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 			includeWorkflowInfoMetrics: true,
 			workflowInfoMetricInterval: 60,
 		});
-		service = new PrometheusWorkflowInfoMetricsService(config, workflowRepository, cacheService);
+		Object.assign(instanceSettings, { isLeader: true });
+		dbConnection.connectionState.connected = true;
+		service = new PrometheusWorkflowInfoMetricsService(
+			config,
+			new DatabaseMetricQueryService(
+				new CachedMetricQueryFactory(cacheService, dbConnection),
+				workflowRepository,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			),
+			instanceSettings,
+		);
 	});
 
 	afterEach(() => {
@@ -52,18 +72,32 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 
 			expect(promClient.Gauge).toHaveBeenCalledWith({
 				name: 'n8n_workflow_info',
-				help: 'Map of workflow ID to name.',
+				help: 'Map of workflow ID to name. Reported by the leader main only.',
 				labelNames: ['workflow_id', 'workflow_name'],
 				collect: expect.any(Function) as unknown,
 			});
 		});
 
-		it('should apply custom prefix to metric name', () => {
+		it('should create `active_workflow_info` gauge with correct config', () => {
+			service.init();
+
+			expect(promClient.Gauge).toHaveBeenCalledWith({
+				name: 'n8n_active_workflow_info',
+				help: 'Map of active workflow ID to name. Reported by the leader main only.',
+				labelNames: ['workflow_id', 'workflow_name'],
+				collect: expect.any(Function) as unknown,
+			});
+		});
+
+		it('should apply custom prefix to metric names', () => {
 			config.prefix = 'custom_';
 			service.init();
 
 			expect(promClient.Gauge).toHaveBeenCalledWith(
 				expect.objectContaining({ name: 'custom_workflow_info' }),
+			);
+			expect(promClient.Gauge).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'custom_active_workflow_info' }),
 			);
 		});
 	});
@@ -88,7 +122,7 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(cacheService.get.mock.calls[0]).toEqual(['metrics:workflow-info:v2']);
-			expect(workflowRepository.find.mock.calls).toHaveLength(0);
+			expect(workflowRepository.getWorkflowInfo.mock.calls).toHaveLength(0);
 			expect(mockGauge.reset).toHaveBeenCalled();
 			expect(mockLabels).toHaveBeenCalledWith({
 				workflow_id: 'wf_1',
@@ -102,14 +136,14 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 
 		it('should query DB, cache result, and set labels on cache miss', async () => {
 			cacheService.get.mockResolvedValue(undefined);
-			workflowRepository.find.mockResolvedValue(workflows as never);
+			workflowRepository.getWorkflowInfo.mockResolvedValue(workflows as never);
 			const collectFn = extractCollectFn();
 			const mockLabels = vi.fn().mockReturnValue({ set: vi.fn() });
 			const mockGauge = { reset: vi.fn(), labels: mockLabels };
 
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
-			expect(workflowRepository.find).toHaveBeenCalledWith({ select: ['id', 'name'] });
+			expect(workflowRepository.getWorkflowInfo).toHaveBeenCalledWith({ activeOnly: false });
 			expect(cacheService.set).toHaveBeenCalledWith(
 				'metrics:workflow-info:v2',
 				workflows,
@@ -123,6 +157,35 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 				workflow_id: 'wf_2',
 				workflow_name: 'Another Workflow',
 			});
+		});
+
+		it('should keep the previous series when the database is disconnected', async () => {
+			dbConnection.connectionState.connected = false;
+			cacheService.get.mockResolvedValue(undefined);
+			const collectFn = extractCollectFn();
+			const mockLabels = vi.fn().mockReturnValue({ set: vi.fn() });
+			const mockGauge = { reset: vi.fn(), labels: mockLabels };
+
+			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
+
+			expect(mockGauge.reset).not.toHaveBeenCalled();
+			expect(mockLabels).not.toHaveBeenCalled();
+			expect(workflowRepository.getWorkflowInfo).not.toHaveBeenCalled();
+		});
+
+		it('should reset and report nothing when not the leader', async () => {
+			Object.assign(instanceSettings, { isLeader: false });
+			cacheService.get.mockResolvedValue(workflows);
+			const collectFn = extractCollectFn();
+			const mockLabels = vi.fn().mockReturnValue({ set: vi.fn() });
+			const mockGauge = { reset: vi.fn(), labels: mockLabels };
+
+			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
+
+			expect(mockGauge.reset).toHaveBeenCalledTimes(1);
+			expect(mockLabels).not.toHaveBeenCalled();
+			expect(cacheService.get).not.toHaveBeenCalled();
+			expect(workflowRepository.getWorkflowInfo).not.toHaveBeenCalled();
 		});
 
 		it('should reset the gauge before setting new values', async () => {
@@ -139,7 +202,7 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 		it('should use the configured interval for the cache TTL', async () => {
 			config.workflowInfoMetricInterval = 120;
 			cacheService.get.mockResolvedValue(undefined);
-			workflowRepository.find.mockResolvedValue(workflows as never);
+			workflowRepository.getWorkflowInfo.mockResolvedValue(workflows as never);
 			const collectFn = extractCollectFn();
 			const mockLabels = vi.fn().mockReturnValue({ set: vi.fn() });
 			const mockGauge = { reset: vi.fn(), labels: mockLabels };
@@ -162,6 +225,51 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(mockSet).toHaveBeenCalledWith(1);
+		});
+	});
+
+	describe('active_workflow_info collect callback', () => {
+		const extractActiveCollectFn = () => {
+			service.init();
+			return vi.mocked(promClient.Gauge).mock.calls[1][0].collect!;
+		};
+
+		const workflows = [{ id: 'wf_1', name: 'My First Workflow' }];
+
+		it('should query only active workflows and cache under its own key', async () => {
+			cacheService.get.mockResolvedValue(undefined);
+			workflowRepository.getWorkflowInfo.mockResolvedValue(workflows as never);
+			const collectFn = extractActiveCollectFn();
+			const mockLabels = vi.fn().mockReturnValue({ set: vi.fn() });
+			const mockGauge = { reset: vi.fn(), labels: mockLabels };
+
+			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
+
+			expect(cacheService.get.mock.calls[0]).toEqual(['metrics:active-workflow-info:v1']);
+			expect(workflowRepository.getWorkflowInfo).toHaveBeenCalledWith({ activeOnly: true });
+			expect(cacheService.set).toHaveBeenCalledWith(
+				'metrics:active-workflow-info:v1',
+				workflows,
+				60 * 1000,
+			);
+			expect(mockLabels).toHaveBeenCalledWith({
+				workflow_id: 'wf_1',
+				workflow_name: 'My First Workflow',
+			});
+		});
+
+		it('should reset and report nothing when not the leader', async () => {
+			Object.assign(instanceSettings, { isLeader: false });
+			cacheService.get.mockResolvedValue(workflows);
+			const collectFn = extractActiveCollectFn();
+			const mockLabels = vi.fn().mockReturnValue({ set: vi.fn() });
+			const mockGauge = { reset: vi.fn(), labels: mockLabels };
+
+			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
+
+			expect(mockGauge.reset).toHaveBeenCalledTimes(1);
+			expect(mockLabels).not.toHaveBeenCalled();
+			expect(workflowRepository.getWorkflowInfo).not.toHaveBeenCalled();
 		});
 	});
 });

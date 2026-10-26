@@ -14,7 +14,7 @@ import type { IUpdateInformation } from '@/Interface';
 import CredentialModeSelector, { type CredentialModeOption } from './CredentialModeSelector.vue';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useI18n, addCredentialTranslation } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	BUILTIN_CREDENTIALS_DOCS_URL,
 	DOCS_DOMAIN,
@@ -27,10 +27,15 @@ import { useCredentialsStore } from '../../credentials.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
+import TemplatedAuthSimpleView from './TemplatedAuthSimpleView.vue';
+import {
+	listPlaceholderTitles,
+	parseHttpUrl,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+} from '@/features/credentials/templatedAuth.utils';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -50,8 +55,11 @@ import CredentialTypeSelector from './CredentialTypeSelector.vue';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '../../gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '../../gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import type { ProjectType } from '@/features/collaboration/projects/projects.types';
 
 type Props = {
 	mode: string;
@@ -59,6 +67,8 @@ type Props = {
 	credentialProperties: INodeProperties[];
 	credentialData: ICredentialDataDecryptedObject;
 	credentialId?: string;
+	n8nProjectId?: string;
+	isInstanceCredential?: boolean;
 	credentialPermissions: PermissionsRecord['credential'];
 	parentTypes?: string[];
 	showValidationWarning?: boolean;
@@ -72,11 +82,17 @@ type Props = {
 	isPrivateCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
 	connectedByMe?: boolean;
+	/** Provider account of the caller's own connection, for end-user credentials. */
+	connectedAccountIdentifier?: string;
 	isNewCredential?: boolean;
+	/** Type of the project a new credential will be created in. */
+	newCredentialProjectType?: ProjectType;
 	managedOauthAvailable?: boolean;
 	useCustomOauth?: boolean;
 	isQuickConnectMode?: boolean;
 	contextNode?: INode | null;
+	showAiGatewayErrorNudge?: boolean;
+	aiGatewayCreditsAreFree?: boolean;
 	hideAskAssistant?: boolean;
 	/** Instance AI credential setup-help behavior, supplied by whoever opened the
 	 *  modal (the editor capability, or the credentials list). Absent → no Instance
@@ -90,6 +106,7 @@ const props = withDefaults(defineProps<Props>(), {
 	authError: '',
 	showValidationWarning: false,
 	credentialPermissions: () => ({}) as PermissionsRecord['credential'],
+	connectedAccountIdentifier: undefined,
 	instanceAiCredentialHelp: undefined,
 });
 const emit = defineEmits<{
@@ -101,6 +118,7 @@ const emit = defineEmits<{
 	disconnect: [];
 	quickConnect: [];
 	claimed: [];
+	useGatewayCredits: [];
 	'update:isResolvable': [value: boolean];
 }>();
 
@@ -108,7 +126,6 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
@@ -116,6 +133,9 @@ const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
+const { promotionText } = useGatewayCreditsPromotion({
+	credentialType: () => props.credentialType.name,
+});
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -227,13 +247,14 @@ const isConnectedOAuth = computed(
 // expired). In this state we promote Switch account over the plain Retry button.
 const isStale = computed(() => isConnectedOAuth.value && !!props.authError);
 
-// The connected account label: for end-user creds it's the current user's own
-// connection; for fixed creds it's the identifier derived from the stored token
-// (may be absent for providers that don't return one — then fall back to a
-// generic "Account connected" message).
+// The connected account label — always the provider account the token belongs to,
+// never the n8n account. For end-user creds it comes from the caller's own per-user
+// connection, for fixed creds from the token stored on the credential. Many
+// providers return no identity at all (Gmail asks for no identity scope), so an
+// absent value is normal and falls back to a generic "Account connected" message.
 const connectedAccountName = computed<string | undefined>(() => {
 	if (props.isResolvable) {
-		return usersStore.currentUser?.email ?? undefined;
+		return props.connectedAccountIdentifier;
 	}
 	const identifier = props.credentialData?.accountIdentifier;
 	return typeof identifier === 'string' && identifier ? identifier : undefined;
@@ -283,6 +304,14 @@ const canSelectEndUserType = computed(
 	() => canWrite.value && !!props.credentialPermissions.createEndUser,
 );
 
+// Only in team projects; an existing end-user credential keeps the selector
+// so it can be switched back to fixed.
+const isEndUserTypeAvailable = computed(() => {
+	if (props.isResolvable) return true;
+	if (props.isNewCredential) return props.newCredentialProjectType === ProjectTypes.Team;
+	return isHomeTeamProject.value;
+});
+
 // Connecting an existing private credential only needs the `connect` capability
 // (no edit rights); shared/static credentials store the token on the shared
 // credential itself, so connecting them follows the write permission.
@@ -325,6 +354,22 @@ function onDataChange(event: IUpdateInformation): void {
 	emit('update', event);
 }
 
+// Templated Custom Auth replaces the raw field set with its own pane: a
+// guided form (one input per template {{marker}}) with an in-place
+// "Edit setup" state for the machinery behind it.
+const isTemplatedAuthType = computed(
+	() => props.credentialType?.name === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+);
+
+// The templated auth probe only proves the service accepted the request —
+// some services answer 2xx regardless of the key — so the green banner
+// states that instead of claiming the connection was verified.
+const testSuccessMessage = computed(() =>
+	isTemplatedAuthType.value
+		? i18n.baseText('credentialEdit.credentialConfig.authProbeAccepted')
+		: i18n.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully'),
+);
+
 function onDocumentationUrlClick(): void {
 	telemetry.track('User clicked credential modal docs link', {
 		docs_link: documentationUrl.value,
@@ -343,12 +388,24 @@ function onAuthTypeChange(value: CredentialModeOption): void {
 // list) keeps them open so the user can finish the form; an in-thread append
 // (artifact) closes them so the conversation comes into view.
 async function onInstanceAiCredentialHelpClick() {
+	// A recipe-created credential arrives pre-filled: the guided-form labels
+	// steer the help thread to where-to-find guidance instead of setup steps,
+	// and the recipe's key page lets it link the exact URL the recipe research
+	// already verified.
+	const placeholderTitles = isTemplatedAuthType.value
+		? listPlaceholderTitles(props.credentialData)
+		: [];
+	const recipeDocsUrl = isTemplatedAuthType.value
+		? parseHttpUrl(props.credentialData.docsUrl)
+		: undefined;
 	const shouldCloseModal = await props.instanceAiCredentialHelp?.({
 		credentialType: props.credentialType.name,
 		displayName: props.credentialType.displayName,
 		nodeName: activeNode.value?.name,
 		nodeType: activeNode.value?.type,
 		id: props.credentialId || undefined,
+		...(placeholderTitles.length ? { placeholderTitles } : {}),
+		...(recipeDocsUrl ? { docsUrl: recipeDocsUrl } : {}),
 		documentationUrl: documentationUrl.value || undefined,
 		oauthRedirectUrl: props.isOAuthType ? oAuthCallbackUrl.value : undefined,
 	});
@@ -411,6 +468,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:text="quickConnectBannerText"
 					:disclaimer="quickConnectOption?.disclaimer"
 				/>
+				<GatewayCreditsPromotion v-if="promotionText" :text="promotionText" />
 				<QuickConnectButton
 					:service-name="serviceName"
 					:credential-type-name="credentialType.name"
@@ -420,6 +478,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			</template>
 
 			<template v-else>
+				<GatewayCreditsPromotion v-if="promotionText" :text="promotionText" />
 				<N8nCallout
 					v-if="
 						!isInstanceAiCredentialHelpAvailable &&
@@ -462,7 +521,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							>
 								{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.orReadThe') }}
 								<N8nLink :to="documentationUrl" size="small" @click="onDocumentationUrlClick">
-									[{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.docs') }}]
+									{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.docs') }}
 								</N8nLink>
 							</template>
 						</span>
@@ -527,7 +586,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 								@click="$emit('oauth')"
 							/>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								:class="$style.disconnectButton"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
@@ -537,6 +596,44 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						</div>
 					</template>
 				</Banner>
+
+				<N8nCallout
+					v-if="showAiGatewayErrorNudge"
+					:class="$style.aiGatewayErrorNudge"
+					theme="custom"
+					icon="sparkles"
+					icon-size="large"
+					data-test-id="gateway-credits-credential-error-nudge"
+				>
+					<span :class="$style.aiGatewayErrorNudgeCopy">
+						<strong>
+							{{ i18n.baseText('credentialEdit.credentialConfig.aiGatewayErrorNudge.title') }}
+						</strong>
+						<span>
+							{{
+								i18n.baseText(
+									aiGatewayCreditsAreFree
+										? 'credentialEdit.credentialConfig.aiGatewayErrorNudge.description.free'
+										: 'credentialEdit.credentialConfig.aiGatewayErrorNudge.description',
+								)
+							}}
+						</span>
+					</span>
+					<template #trailingContent>
+						<N8nButton
+							size="small"
+							:label="
+								i18n.baseText(
+									aiGatewayCreditsAreFree
+										? 'credentialEdit.credentialConfig.aiGatewayErrorNudge.action.free'
+										: 'credentialEdit.credentialConfig.aiGatewayErrorNudge.action',
+								)
+							"
+							data-test-id="gateway-credits-credential-error-nudge-action"
+							@click="$emit('useGatewayCredits')"
+						/>
+					</template>
+				</N8nCallout>
 
 				<!-- Type selection stays above the connection banners: the connect /
 					 connected banner always renders below the selector, so it keeps a
@@ -548,7 +645,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						isOAuthType &&
 						// Only users who can manage end-user credentials see the selector at all;
 						// it's disabled for them when they lack edit access to the credential.
-						!!credentialPermissions.createEndUser
+						!!credentialPermissions.createEndUser &&
+						// End-user credentials are not available in personal projects.
+						isEndUserTypeAvailable
 					"
 					:model-value="Boolean(isResolvable)"
 					:disabled="!canSelectEndUserType"
@@ -575,14 +674,14 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					<template v-if="canConnect" #button>
 						<div :class="$style.bannerActions">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								:label="i18n.baseText('credentialEdit.credentialConfig.switchAccount')"
 								data-test-id="oauth-switch-account-button"
 								@click="$emit('oauth')"
 							/>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								:class="$style.disconnectButton"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
@@ -596,7 +695,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				<Banner
 					v-show="testedSuccessfully && !showValidationWarning"
 					theme="success"
-					:message="i18n.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
+					:message="testSuccessMessage"
 					:button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
 					:button-loading-label="i18n.baseText('credentialEdit.credentialConfig.retrying')"
 					:button-title="i18n.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
@@ -679,8 +778,17 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					</div>
 				</EnterpriseEdition>
 
+				<TemplatedAuthSimpleView
+					v-if="credentialType && canWrite && isTemplatedAuthType"
+					:credential-data="credentialData"
+					@update="onDataChange"
+				/>
 				<CredentialInputs
-					v-if="credentialType && canWrite"
+					v-else-if="credentialType && canWrite"
+					:credential-type="credentialType.name"
+					:credential-id="credentialId"
+					:n8n-project-id="n8nProjectId"
+					:is-instance-credential="isInstanceCredential"
 					:credential-data="credentialData"
 					:credential-properties="credentialProperties"
 					:documentation-url="documentationUrl"
@@ -721,6 +829,31 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.aiGatewayErrorNudge {
+	--callout--border-color--info: light-dark(var(--color--purple-300), var(--color--purple-500));
+	--callout--color--text--info: var(--color--text--shade-1);
+	--callout--icon-color--info: var(--color--secondary);
+	padding: var(--spacing--sm);
+	background: linear-gradient(
+		110deg,
+		light-dark(
+			var(--color--orange-50),
+			color-mix(in srgb, var(--color--orange-500) 15%, var(--background--surface))
+		),
+		light-dark(
+			var(--color--purple-100),
+			color-mix(in srgb, var(--color--purple-500) 18%, var(--background--surface))
+		)
+	);
+	box-shadow: var(--shadow--xs);
+}
+
+.aiGatewayErrorNudgeCopy {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 }
 
 // Outline button tinted for the destructive "Disconnect" action so it reads as

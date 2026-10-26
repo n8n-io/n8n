@@ -35,7 +35,7 @@ import { useEnvironmentsStore } from '@/features/settings/environments.ee/enviro
 import { htmlEditorEventBus } from '@/app/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/app/utils/typesUtils';
 import type { INodeUi, TargetNodeParameterContext } from '@/Interface';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { computedAsync } from '@vueuse/core';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -50,7 +50,7 @@ import { type CanvasNode, CanvasNodeRenderType } from '@/features/workflows/canv
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
-import { N8nIcon, N8nInfoTip, N8nInput, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nInfoTip, N8nInput, N8nSegmentControl, N8nText } from '@n8n/design-system';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 defineOptions({ name: 'FocusPanel' });
 
@@ -139,8 +139,10 @@ const node = computed<INodeUi | undefined>(() => {
 });
 const multipleNodesSelected = computed(() => vueFlow.getSelectedNodes.value.length > 1);
 
+const isDeprecated = computed(() => !!node.value && nodeTypesStore.isNodeDeprecated(node.value));
+
 const isExecutable = computed(() => {
-	if (!node.value) return false;
+	if (!node.value || isDeprecated.value) return false;
 
 	if (!isDisplayed.value) return false;
 
@@ -210,7 +212,7 @@ const shouldCaptureForPosthog = computed(
 	() => resolvedParameter.value?.node.type === AI_TRANSFORM_NODE_TYPE,
 );
 
-const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value);
+const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value || isDeprecated.value);
 
 const resolvedAdditionalExpressionData = computed(() => {
 	return {
@@ -409,7 +411,7 @@ function onRenameNode(value: string) {
 			:node="node"
 			:parameter="resolvedParameter?.parameter"
 			:is-executable="isExecutable"
-			:read-only="isCanvasReadOnly"
+			:read-only="isCanvasReadOnly || isDeprecated"
 			@execute="onExecute"
 			@open-ndv="onOpenNdv"
 			@clear-parameter="closeFocusPanel"
@@ -496,7 +498,6 @@ function onRenameNode(value: string) {
 							:is-read-only="isReadOnly"
 							:target-node-parameter-context="targetNodeParameterContext"
 							fill-parent
-							:disable-ask-ai="true"
 							@update:model-value="onInputChange"
 						/>
 						<HtmlEditor
@@ -585,8 +586,8 @@ function onRenameNode(value: string) {
 						size="large"
 					/>
 				</div>
-				<N8nIcon icon="ellipsis-vertical" size="small" color="text-base" />
-				<N8nRadioButtons
+				<N8nIcon icon="ellipsis" size="small" color="text-base" />
+				<N8nSegmentControl
 					size="small"
 					:model-value="'expression'"
 					:disabled="true"

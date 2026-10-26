@@ -10,7 +10,7 @@ import { ref } from 'vue';
 import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 
 vi.mock('../composables/useInstallNode');
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: vi.fn(),
 		pageEventQueue: [],
@@ -39,7 +39,7 @@ const renderComponent = (modalData = {}) => {
 		pinia: createTestingPinia({
 			initialState: {
 				[STORES.UI]: {
-					modalsById: {
+					modalStateById: {
 						[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]: {
 							open: true,
 							data: modalData,

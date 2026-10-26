@@ -3,14 +3,20 @@
 // ---------------------------------------------------------------------------
 
 import type {
+	AgentSkill,
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalLlmUsage,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiRunDebugResponse,
+	InstanceAiPromptConfiguration,
 } from '@n8n/api-types';
+import type { z } from 'zod';
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
+import type { EvalAttribution } from './harness/attribution';
+import type { CaseSeed, ConversationTurnSchema, EvalTestCaseInput } from './harness/schema';
 
 // ---------------------------------------------------------------------------
 // Checklist items and verification
@@ -34,6 +40,24 @@ export interface ChecklistResult {
 	strategy: VerificationStrategy;
 	failureCategory?: string;
 	rootCause?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Build conversation timeouts
+// ---------------------------------------------------------------------------
+
+/** Which budget ended a build conversation. `turn`: one user turn overran its
+ *  budget. `conversation`: the whole conversation overran its budget.
+ *  `inactivity`: a run in flight emitted no event for the inactivity bound (a
+ *  stalled model stream). */
+export type RunTimeoutKind = 'turn' | 'conversation' | 'inactivity';
+
+export interface BuildTimeout {
+	kind: RunTimeoutKind;
+	/** User turn (1-based) in flight, or about to start, when the budget fired. */
+	turn: number;
+	/** Time measured by the budget that fired. */
+	elapsedMs: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -159,6 +183,7 @@ export interface EventOutcome {
 }
 
 export interface BuildTrace {
+	promptConfiguration?: InstanceAiPromptConfiguration;
 	finalText: string;
 	toolCalls: CapturedToolCall[];
 	agentActivities: AgentActivity[];
@@ -178,6 +203,15 @@ export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 export interface ArtifactRef {
 	type: ArtifactType;
 	id: string;
+	/** The project the build ran in. Absent means the owner's personal project. */
+	projectId?: string;
+}
+
+/** Structured agent preview. Capture redacts it; persistence validates and caps it. */
+export interface AgentArtifact {
+	agentId?: string;
+	config: unknown;
+	skills: Record<string, AgentSkill>;
 }
 
 export interface ExecutionScenario {
@@ -193,17 +227,10 @@ export interface ExecutionScenario {
 	seedDataTables?: InstanceAiEvalSeedDataTable[];
 }
 
-export interface ConversationTurn {
-	role: 'user' | 'assistant';
-	text: string;
-}
+export type ConversationTurn = z.infer<typeof ConversationTurnSchema>;
 
-export interface TestCaseCredential {
-	/** n8n credential type name, e.g. `slackApi`. Must have a template in credentials/seeder.ts. */
-	type: string;
-	/** Display name; defaults to the template's name, auto-suffixed on duplicates. */
-	name?: string;
-}
+/** Seeded credentials use the case schema. The push verifies that the suite retains each field. */
+export type TestCaseCredential = NonNullable<EvalTestCaseInput['credentials']>[number];
 
 export interface WorkflowTestCase {
 	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
@@ -211,7 +238,7 @@ export interface WorkflowTestCase {
 	/**
 	 * Hand-authored conversation that drives the build (≥1 turn, first `user`).
 	 * One user turn → auto-approve single-prompt build; more → multi-turn proxy.
-	 * Required unless `seedThread` is set, in which case it's optional and
+	 * Required unless `seed.mode` is `replay`, in which case it's optional and
 	 * continues after the trace's live turn (`[<live turn>, ...conversation]`).
 	 */
 	conversation?: ConversationTurn[];
@@ -222,6 +249,13 @@ export interface WorkflowTestCase {
 	executionScenarios?: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Optional case override. Unset cases use the suite mode or control. */
+	buildMode?: 'progressive' | 'default';
+	promptVersion?: string;
+	/** Enable the user-run action for credential-free execution cases. */
+	allowUserExecution?: boolean;
+	/** Harness drives compaction, and reports the case not judged if it never ran. */
+	requiresMemoryCompaction?: boolean;
 	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 	 *  ordering). LLM-judged from the transcript; requires a transcript, so skipped in
 	 *  prebuilt/MCP runs. Counted toward the per-case + headline pass rate alongside scenarios. */
@@ -238,18 +272,17 @@ export interface WorkflowTestCase {
 	 * field build with an empty view (everything mocks).
 	 */
 	credentials?: TestCaseCredential[];
-	/** Synthetic seed file (messages + workflows) restored before the live turn.
-	 *  Synthetic fixtures only; mutually exclusive with the other seeds. */
-	seedFile?: string;
-	/** Prose turns seeded as plain-text history (no tool calls/workflows).
-	 *  Mutually exclusive with `seedFile`. */
-	priorConversation?: ConversationTurn[];
-	/** Reproduce a real conversation from its LangSmith trace at run time: restore
-	 *  up to the live turn (the last user message, or one pinned by `liveTurnRunId`)
-	 *  and send that live. Commits only the thread id (workspace auto-discovered;
-	 *  `project`/`endpoint` override the source project/tenant). Supplies the live
-	 *  turn, so `conversation` is optional. Transient (~14d). */
-	seedThread?: { threadId: string; project?: string; endpoint?: string; liveTurnRunId?: string };
+	/** Opts into the credential-setup BROWSER lane and picks what it talks to:
+	 *  a shipped fixture id (hermetic lookalike) or `local` (the REAL provider
+	 *  site in the developer's own Chrome). Omitted → no browser lane; absence
+	 *  never means real internet. */
+	credentialFixture?: string;
+	/** History restored before the live turn, in one slot so the modes can't
+	 *  overlap: `mode: 'inline'` carries the messages (and the workflows/tables
+	 *  they reference) in the case body; `mode: 'replay'` reconstructs them from a
+	 *  LangSmith trace at run time and supplies the live turn itself, which is why
+	 *  `conversation` is optional for it. See `harness/schema.ts`. */
+	seed?: CaseSeed;
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }
@@ -270,14 +303,39 @@ export interface ExecutionScenarioResult {
 	workflowId?: string;
 	score: number;
 	reasoning: string;
-	/** Root cause category when the scenario fails */
+	/** Root cause category when the scenario fails. Free-form on purpose: it
+	 *  carries whatever the LLM verifier picked, and older harness commits used
+	 *  a different spelling. Read `attribution` for the meaning. */
 	failureCategory?: string;
 	/** Detailed root cause explanation */
 	rootCause?: string;
+	/** Who owns this failure — the harness's own verdict, and what LangTracer
+	 *  stores. Undefined on a pass. See `harness/attribution.ts`. */
+	attribution?: EvalAttribution;
 	/** Verifier returned no verdict after all attempts (infra failure, not a
 	 *  workflow failure). Rendered visibly but kept out of the pass-rate count,
 	 *  mirroring `BuildExpectationResult.incomplete`. */
 	incomplete?: boolean;
+}
+
+/**
+ * A seeded workflow to run BEFORE the graded turn.
+ *
+ * Creates a real execution record in the instance, so a case can ask about "the last
+ * run" and the honest answer requires the agent to go and read it. Without this,
+ * execution history is unreachable as a premise: the harness only ever executes a
+ * workflow *after* a build.
+ */
+export interface SeedPriorRun {
+	/** Seeded workflow to run, by the `id` the seed declares — the same key
+	 *  `conversation[0].attach.workflow` uses. */
+	workflow: string;
+	/**
+	 * Steers the mock layer, exactly as `executionScenarios[].dataSetup` does. This is
+	 * how a prior run is made to fail in a specific way, which is the interesting case:
+	 * the user reports "it broke again" and the agent has to find out how.
+	 */
+	hints?: string;
 }
 
 /** Verdict for one author-written build expectation. Scored as a unit in the
@@ -288,6 +346,9 @@ export interface BuildExpectationResult {
 	reason: string;
 	/** Judge returned no verdict (flaky/partial). Rendered neutrally, kept out of the count. */
 	incomplete?: boolean;
+	/** Who owns a failed expectation. Stamped where the verdicts are attached to
+	 *  a row (the only place that also knows whether the build died on infra). */
+	attribution?: EvalAttribution;
 }
 
 export interface WorkflowTestCaseResult {
@@ -297,10 +358,15 @@ export interface WorkflowTestCaseResult {
 	workflowId?: string;
 	/** Agent the case's scenarios executed (agent-artifact cases). */
 	agentId?: string;
-	/** Rendered agent config + skills — the agent analog of `workflowJson`, for the report. */
+	/** Rendered agent config + skills, used by the local HTML report. */
 	agentArtifactContext?: string;
+	/** Structured, redacted agent config and skills. Persistence validates and caps this value. */
+	agentArtifact?: AgentArtifact;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
+	/** Set when a budget ended the conversation. The build fields describe what
+	 *  was saved before it fired; the scenarios ran against that. */
+	buildTimeout?: BuildTimeout;
 	executionScenarioResults: ExecutionScenarioResult[];
 	/** The built workflow JSON — saved for debugging and cross-run comparison */
 	workflowJson?: WorkflowResponse;
@@ -322,6 +388,8 @@ export interface WorkflowTestCaseResult {
 	n8nBaseUrl?: string;
 	/** Per-run LLM step debug captured from the instance-ai debug API after build. */
 	runDebug?: InstanceAiRunDebugResponse[];
+	/** Usage of the eval's own model calls in this iteration: judges, simulated user, mocks. */
+	harnessUsage?: InstanceAiEvalLlmUsage[];
 }
 
 // ---------------------------------------------------------------------------
@@ -335,6 +403,8 @@ export interface TranscriptTurn {
 	/** True for turns restored from a conversation seed — context that predates
 	 *  the evaluated run, as opposed to behaviour captured live. */
 	seeded?: boolean;
+	/** Main run plus any resumes — the join key for this turn's token usage. */
+	runIds?: string[];
 }
 
 /** One ordered step within a turn: a slice of agent narration or a tool interaction. */
@@ -347,7 +417,6 @@ export const USER_TURN_EVENT = 'eval-user-turn';
 export type TranscriptStep = ToolInteraction | { kind: 'agent-text'; text: string };
 
 export type ToolInteraction =
-	| { kind: 'plan'; tasks: PlanTask[] }
 	| { kind: 'ask-user'; questions: AskUserQuestion[]; answers?: AskUserAnswer[] }
 	| {
 			kind: 'setup-card';
@@ -360,7 +429,10 @@ export type ToolInteraction =
 	| {
 			kind: 'setup-wizard';
 			completedNodes: SetupWizardCompletedNode[];
-			skippedNodes: SetupWizardSkippedNode[];
+			/** Left unconfigured — nobody has filled these in yet. */
+			nodesStillNeedingSetup: SetupWizardSkippedNode[];
+			/** Actively dismissed by the user, which the assistant must not ask about again. */
+			skippedByUser?: SetupWizardSkippedNode[];
 			reason?: string;
 	  }
 	| {
@@ -370,7 +442,7 @@ export type ToolInteraction =
 			approved?: boolean;
 			/** Prompt the agent showed when requesting confirmation. */
 			message?: string;
-			/** Free-text the user sent with their decision (e.g. plan-review feedback). */
+			/** Free-text the user sent with their decision. */
 			feedback?: string;
 	  }
 	| {
@@ -383,14 +455,10 @@ export type ToolInteraction =
 			error?: string;
 	  };
 
-export interface PlanTask {
-	title?: string;
-	description?: string;
-}
-
 export interface AskUserQuestion {
 	id: string;
 	question: string;
+	type?: 'single' | 'multi' | 'text';
 	options?: string[];
 }
 

@@ -42,7 +42,12 @@ function getOrCreateAgent(name: string, modelId: string, instructions: string): 
 	const key = `${name}:${modelId}`;
 	let agent = agentCache.get(key);
 	if (!agent) {
-		agent = createEvalAgent(`eval-binary-${name}`, { model: modelId, instructions, cache: true });
+		agent = createEvalAgent(`eval-binary-${name}`, {
+			model: modelId,
+			instructions,
+			cache: true,
+			judge: true,
+		});
 		agentCache.set(key, agent);
 	}
 	return agent;
@@ -116,8 +121,13 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 			const parsed = parseJudgeVerdict(text);
 
 			if (!parsed) {
+				// Same class as a timeout above: the judge never returned a verdict, so
+				// there is nothing to score. Without `errored` this counts as a real
+				// failure and reads as a defect in the workflow — the raw text is often
+				// a markdown analysis that AGREED with the workflow.
 				return {
 					pass: false,
+					errored: true,
 					comment: `Failed to parse LLM response. Raw (first 500 chars): ${text.slice(0, 500)}`,
 				};
 			}

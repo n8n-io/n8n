@@ -3,8 +3,7 @@ import { ElMenu, ElSubMenu, ElMenuItem, type MenuItemRegistered } from 'element-
 import { computed, defineComponent, ref, useSlots } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
-import type { IconSize } from '@n8n/design-system/types';
-
+import type { IconSize } from '../../types';
 import ConditionalRouterLink from '../ConditionalRouterLink';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
@@ -232,6 +231,11 @@ defineExpose({
 			line-height: initial;
 			border-bottom: 0 !important;
 			padding: 0;
+			&,
+			&:hover,
+			&:focus {
+				background-color: transparent;
+			}
 			:global(.el-sub-menu__icon-arrow) {
 				display: none;
 			}

@@ -185,7 +185,7 @@ describe('transcript rendering', () => {
 		expect(html).toContain('<span class="transcript-inline-arg">workflow-builder</span>');
 	});
 
-	it('surfaces a skipped ask-user answer so it is not mistaken for unanswered', () => {
+	it('surfaces a skipped workflow_builder_ask_user answer so it is not mistaken for unanswered', () => {
 		const result: WorkflowTestCaseResult = {
 			testCase: TEST_CASE,
 			workflowBuildSuccess: true,
@@ -196,7 +196,14 @@ describe('transcript rendering', () => {
 					steps: [
 						{
 							kind: 'ask-user',
-							questions: [{ id: 'q1', question: 'Which channel?', options: ['#a', '#b'] }],
+							questions: [
+								{
+									id: 'q1',
+									question: 'Which channel?',
+									type: 'single',
+									options: ['#a', '#b'],
+								},
+							],
 							answers: [{ questionId: 'q1', selectedOptions: [], skipped: true }],
 						},
 					],
@@ -205,6 +212,93 @@ describe('transcript rendering', () => {
 		};
 		const html = generateWorkflowReport([result]);
 		expect(html).toContain('👤 (skipped)');
-		expect(html).toContain('ask-user (with answers)');
+		expect(html).toContain('workflow_builder_ask_user (with answers)');
+		expect(html).toContain('<code>single</code>');
+	});
+});
+
+describe('builder trace summary', () => {
+	function traceSummary(html: string): Record<string, unknown[]> {
+		const match = html.match(
+			/<summary>Builder trace summary<\/summary><pre class="json-block"><code>([\s\S]*?)<\/code>/,
+		);
+		const json = match![1]
+			.replace(/&quot;/g, '"')
+			.replace(/&#39;/g, "'")
+			.replace(/&lt;/g, '<')
+			.replace(/&gt;/g, '>')
+			.replace(/&amp;/g, '&');
+		return JSON.parse(json) as Record<string, unknown[]>;
+	}
+
+	it('counts calls recorded under former tool names', () => {
+		const result: WorkflowTestCaseResult = {
+			...resultWith(undefined),
+			buildTrace: {
+				finalText: '',
+				agentActivities: [],
+				toolCalls: [
+					{ toolCallId: 't1', toolName: 'nodes', args: { action: 'search' }, durationMs: 1 },
+					{ toolCallId: 't2', toolName: 'build-workflow', args: {}, durationMs: 1 },
+				],
+			},
+		};
+
+		const summary = traceSummary(generateWorkflowReport([result]));
+
+		expect(summary.nodeResearchCalls).toEqual([{ action: 'search' }]);
+		expect(summary.workflowWriteCalls).toHaveLength(1);
+	});
+});
+
+// The '1. Prompt' review stage was gated on `failureCategory === 'legitimate_failure'`
+// — a lang-tracer bucket this harness never emits — so it could NEVER fail. TRUST-375
+// rewired it (and the improvement suggestion) to `attribution`, making it reachable
+// for the first time. Pin the toggle so the unreachable-stage bug can't come back.
+describe('prompt review stage keys off attribution', () => {
+	function failedScenario(
+		over: Partial<WorkflowTestCaseResult['executionScenarioResults'][number]>,
+	): WorkflowTestCaseResult {
+		return {
+			testCase: TEST_CASE,
+			workflowBuildSuccess: true,
+			executionScenarioResults: [
+				{
+					scenario: TEST_CASE.executionScenarios![0],
+					success: false,
+					score: 0,
+					reasoning: 'the success criteria are ambiguous about the error branch',
+					...over,
+				},
+			],
+		} as WorkflowTestCaseResult;
+	}
+
+	it('fails the stage when the builder owns an under-specified prompt', () => {
+		const html = generateWorkflowReport([failedScenario({ attribution: 'builder_issue' })]);
+
+		expect(html).toContain('1. Prompt');
+		expect(html).toContain('under-specified request');
+	});
+
+	it('does not blame the prompt when the failure is not the builder’s', () => {
+		// Same evidence text; only the attribution differs. A mock or infra failure
+		// says nothing about the prompt.
+		for (const attribution of ['mock_issue', 'framework_issue', 'verification_gap'] as const) {
+			const html = generateWorkflowReport([failedScenario({ attribution })]);
+			expect(html).not.toContain('under-specified request');
+		}
+	});
+
+	it('offers an improvement suggestion keyed to each attribution bucket', () => {
+		// The old switch mixed our categories with lang-tracer bucket names, so two
+		// arms were unreachable. Each bucket must now produce its own advice.
+		const suggestions = (
+			['builder_issue', 'mock_issue', 'framework_issue', 'verification_gap'] as const
+		).map((attribution) => generateWorkflowReport([failedScenario({ attribution })]));
+		expect(suggestions[0]).toContain('observable acceptance conditions');
+		expect(suggestions[1]).toContain('response envelope');
+		expect(suggestions[2]).toContain('trigger preconditions');
+		expect(suggestions[3]).toContain('inspectable success evidence');
 	});
 });

@@ -8,25 +8,31 @@ import type TestAgent from 'supertest/lib/agent';
 import type { LicenseMocker } from './license';
 
 type EndpointGroup =
+	| 'activeWorkflows'
 	| 'health'
 	| 'me'
 	| 'users'
 	| 'auth'
 	| 'oauth1'
 	| 'oauth2'
+	| 'jwks'
 	| 'owner'
 	| 'passwordReset'
+	| 'changeEmail'
 	| 'credentials'
 	| 'workflows'
 	| 'publicApi'
 	| 'community-packages'
 	| 'ldap'
 	| 'saml'
+	| 'oidc'
 	| 'otel'
 	| 'sourceControl'
 	| 'eventBus'
 	| 'license'
 	| 'variables'
+	| 'ai-preferences'
+	| 'instance-ai'
 	| 'annotationTags'
 	| 'tags'
 	| 'externalSecrets'
@@ -40,6 +46,7 @@ type EndpointGroup =
 	| 'project'
 	| 'role'
 	| 'roleMappingRule'
+	| 'provisioning'
 	| 'dynamic-node-parameters'
 	| 'apiKeys'
 	| 'evaluation'
@@ -47,29 +54,42 @@ type EndpointGroup =
 	| 'folder'
 	| 'insights'
 	| 'module-settings'
+	| 'promotions'
 	| 'security-settings'
+	| 'public-api-rate-limit-settings'
 	| 'data-table'
 	| 'third-party-licenses'
 	| 'mcp'
 	| 'workflowDependencies'
+	| 'trusted-sources'
 	| 'encryption-keys'
 	| 'workflow-reviews'
-	| 'test-webhooks';
+	| 'test-webhooks'
+	| 'type-availability-policies';
 
 type ModuleName =
+	| 'inbox'
 	| 'insights'
 	| 'external-secrets'
 	| 'community-packages'
 	| 'data-table'
+	| 'instance-ai'
 	| 'mcp'
+	| 'oauth-jwe'
 	| 'oauth-server'
 	| 'dynamic-credentials'
 	| 'log-streaming'
 	| 'ldap'
 	| 'redaction'
 	| 'source-control'
+	| 'promotions'
+	| 'n8n-packages'
 	| 'token-exchange'
-	| 'workflow-reviews';
+	| 'policy-infrastructure'
+	| 'workflow-reviews'
+	| 'type-availability-policies'
+	| 'inbound-auth-core'
+	| 'scim';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
@@ -89,6 +109,7 @@ export interface TestServer {
 	publicApiAgentFor: (user: User) => TestAgent;
 	publicApiAgentWithApiKey: (apiKey: string) => TestAgent;
 	publicApiAgentWithoutApiKey: () => TestAgent;
+	publicApiAgentWithCookie: (user: User) => TestAgent;
 	authlessAgent: TestAgent;
 	restlessAgent: TestAgent;
 	license: LicenseMocker;

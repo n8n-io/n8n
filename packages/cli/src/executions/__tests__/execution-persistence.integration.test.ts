@@ -1,4 +1,5 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -140,6 +141,161 @@ describe('ExecutionPersistence', () => {
 
 			const executionEntity = await executionRepo.findOneBy({ id: executionId });
 			expect(executionEntity?.status).toEqual('new');
+		});
+
+		// CAT-3862: `ActiveExecutions.add` claims an existing execution through this
+		// path. It used to require `waiting` unconditionally, so an execution enqueued
+		// before a restart (status `new`) could never be claimed and stayed `new` forever.
+		describe.each([
+			{ requireStatus: 'new' as const, expected: true },
+			{ requireStatus: 'waiting' as const, expected: false },
+		])(
+			'claiming a `new` execution with requireStatus: $requireStatus',
+			({ requireStatus, expected }) => {
+				it(`returns ${expected}`, async () => {
+					const executionPersistence = Container.get(ExecutionPersistence);
+					const executionRepo = Container.get(ExecutionRepository);
+					const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+					const executionId = await executionPersistence.create({
+						workflowId: workflow.id,
+						data: createEmptyRunExecutionData(),
+						workflowData: workflow,
+						mode: 'webhook',
+						status: 'new',
+						finished: false,
+					});
+
+					const claimed = await executionPersistence.updateExistingExecution(
+						executionId,
+						{ data: createEmptyRunExecutionData(), waitTill: null, status: 'running' },
+						{ requireStatus },
+					);
+
+					expect(claimed).toBe(expected);
+					const row = await executionRepo.findOneBy({ id: executionId });
+					expect(row?.status).toEqual(expected ? 'running' : 'new');
+				});
+			},
+		);
+	});
+
+	// CAT-3909: an enqueued execution whose data row is gone used to be dropped silently, so
+	// startup recovery never learned about it and the row stayed `new` forever.
+	describe('findMultipleExecutionsWithUnreadable', () => {
+		it('returns the ids of enqueued executions whose data row is gone', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionDataRepository = Container.get(ExecutionDataRepository);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const create = async () =>
+				await executionPersistence.create({
+					workflowId: workflow.id,
+					data: createEmptyRunExecutionData(),
+					workflowData: workflow,
+					mode: 'webhook',
+					status: 'new',
+					finished: false,
+				});
+
+			const healthyId = await create();
+			const orphanedId = await create();
+			await executionDataRepository.delete({ executionId: orphanedId });
+
+			const { executions, unreadableIds } =
+				await executionPersistence.findMultipleExecutionsWithUnreadable({
+					select: ['id', 'mode'],
+					where: { status: 'new' },
+					order: { id: 'ASC' },
+				});
+
+			expect(executions.map((e) => e.id)).toEqual([healthyId]);
+			expect(unreadableIds).toEqual([orphanedId]);
+		});
+	});
+
+	describe('deleteInFlightExecution', () => {
+		const executionsConfig = Container.get(ExecutionsConfig);
+		const originalPruneData = executionsConfig.pruneData;
+		const stoppedAt = new Date('2026-01-01T00:00:00.000Z');
+
+		afterEach(() => {
+			executionsConfig.pruneData = originalPruneData;
+		});
+
+		const createRunningExecution = async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'trigger',
+				status: 'running',
+				finished: false,
+			});
+			return { workflowId: workflow.id, executionId, storedAt: 'db' as const };
+		};
+
+		it.each([
+			{ status: 'success' as const, finished: true },
+			{ status: 'error' as const, finished: false },
+		])(
+			'should write the final $status state and soft-delete when pruning is enabled',
+			async ({ status, finished }) => {
+				executionsConfig.pruneData = true;
+				const target = await createRunningExecution();
+
+				await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+					status,
+					finished,
+					stoppedAt,
+				});
+
+				const row = await Container.get(ExecutionRepository).findOne({
+					where: { id: target.executionId },
+					withDeleted: true,
+				});
+				expect(row).toMatchObject({ status, finished, stoppedAt });
+				expect(row?.deletedAt).toBeInstanceOf(Date);
+			},
+		);
+
+		it('should keep a canceled status and still soft-delete when pruning is enabled', async () => {
+			executionsConfig.pruneData = true;
+			const target = await createRunningExecution();
+			const executionRepo = Container.get(ExecutionRepository);
+			await executionRepo.update(target.executionId, { status: 'canceled' });
+
+			await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+				status: 'success',
+				finished: true,
+				stoppedAt,
+			});
+
+			const row = await executionRepo.findOne({
+				where: { id: target.executionId },
+				withDeleted: true,
+			});
+			expect(row?.status).toEqual('canceled');
+			expect(row?.deletedAt).toBeInstanceOf(Date);
+		});
+
+		it('should hard-delete the execution when pruning is disabled', async () => {
+			executionsConfig.pruneData = false;
+			const target = await createRunningExecution();
+
+			await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+				status: 'success',
+				finished: true,
+				stoppedAt,
+			});
+
+			const row = await Container.get(ExecutionRepository).findOne({
+				where: { id: target.executionId },
+				withDeleted: true,
+			});
+			expect(row).toBeNull();
 		});
 	});
 
@@ -384,12 +540,13 @@ describe('ExecutionPersistence', () => {
 			expect(execution?.data?.resultData?.runData).toHaveProperty('bigNode');
 		});
 
-		it('getExecutionsForPublicApi omits oversized data and flags it', async () => {
+		it('findManyInWorkflows omits oversized data and flags it', async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
 			const { workflow } = await createSizedExecution(2 * ONE_MB);
 
-			const executions = (await executionPersistence.getExecutionsForPublicApi(
-				{ limit: 10, includeData: true, workflowIds: [workflow.id] },
+			const executions = (await executionPersistence.findManyInWorkflows(
+				[workflow.id],
+				{ limit: 10, includeData: true },
 				ONE_MB,
 			)) as IExecutionResponse[];
 

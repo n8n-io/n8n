@@ -26,11 +26,13 @@
  * test/fixture/exports-subpath package.json) — only relevant for image scans.
  *
  * Usage: node enrich-sbom.mjs <sbom-path> [output-path] [--license-file=<path>]
- *                             [--lenient-config] [--drop-phantom-npm]
+ *                             [--overrides=<path>] [--lenient-config]
+ *                             [--drop-phantom-npm] [--nested-sbom-root=<path>]
  *        output-path defaults to <sbom-path> (in-place).
+ *        --overrides defaults to license-overrides.json next to this script.
  */
 
-import { readFile, writeFile, readdir } from 'node:fs/promises';
+import { glob, readFile, writeFile, readdir, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -47,10 +49,11 @@ const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', '.turbo', 'coverage']
 
 export const FIRST_PARTY_LICENSE_REF = 'LicenseRef-n8n-sustainable-use';
 export const ELECTED_PROPERTY = 'cdx:license:elected';
+export const NESTED_SBOM_SOURCE_PROPERTY = 'n8n:nested-sbom:source';
 
-export async function loadLicenseConfig() {
+export async function loadLicenseConfig(overridesPath = OVERRIDES_PATH) {
 	try {
-		const raw = await readFile(OVERRIDES_PATH, 'utf-8');
+		const raw = await readFile(overridesPath, 'utf-8');
 		const parsed = JSON.parse(raw);
 		return {
 			overrides: parsed.overrides ?? {},
@@ -63,8 +66,26 @@ export async function loadLicenseConfig() {
 	}
 }
 
+// cdxgen and syft record the same fact under different property names.
+const SRC_FILE_PROPERTIES = ['SrcFile', 'syft:location:0:path'];
+
 function srcFileOf(component) {
-	return component.properties?.find((p) => p.name === 'SrcFile')?.value ?? null;
+	const properties = component.properties ?? [];
+	for (const name of SRC_FILE_PROPERTIES) {
+		const found = properties.find((p) => p.name === name);
+		if (found?.value) return found.value;
+	}
+	return null;
+}
+
+/**
+ * An npm name is `name` or `@scope/name` — neither part may contain a slash. A
+ * further slash means the scanner named a directory inside a package, i.e. an
+ * `exports` subpath (@google/genai/node, @linear/sdk/webhooks).
+ */
+function isExportsSubpath(component) {
+	const qualified = qualifiedName(component) ?? '';
+	return qualified.replace(/^@[^/]+\//, '').includes('/');
 }
 
 /**
@@ -73,17 +94,35 @@ function srcFileOf(component) {
  * as standalone components: `exports` subpaths (@google/genai/web), sub-builds
  * (web-streams-polyfill-es6), and test/benchmark fixtures bundled inside real
  * deps (resolve/test/.../false_main, tedious/benchmarks). None are real shippable
- * packages. Two robust signals identify them:
- *   - no version (real npm packages always carry one), or
- *   - the package.json does not sit at its own canonical
- *     node_modules/<name>/package.json (it's nested inside another package).
+ * packages.
+ *
+ * The path is the stronger signal, so it decides whenever it is present. The
+ * version is only a fallback for components carrying no path at all — used
+ * alone it drops real packages whose version the scanner could not resolve.
  */
 export function isPhantomNpm(component) {
 	const purl = component.purl ?? '';
 	if (!purl.startsWith('pkg:npm/')) return false;
-	if (!component.version) return true;
+
+	// Checked before the path rules: a subpath stub lives at
+	// node_modules/@google/genai/node/package.json, which *does* end with its own
+	// qualified name, so the canonical-path check below would call it real.
+	if (isExportsSubpath(component)) return true;
+
 	const src = srcFileOf(component);
-	if (!src) return false; // can't prove it's a phantom — keep it
+	// syft writes "UNKNOWN" where cdxgen omits the field. Neither is a real
+	// version. cdxgen emits `exports`-subpath phantoms with no path either, so
+	// this is the only signal left for them.
+	if (!src) return !component.version || component.version === 'UNKNOWN';
+
+	// An application root sits outside anyone's node_modules — a real shipped
+	// package, whatever its version resolved to. The runners images copy the JS
+	// task runner to /opt/runners/task-runner-javascript, so this is not
+	// hypothetical.
+	if (!src.includes('/node_modules/')) return false;
+
+	// Inside node_modules the canonical path proves the package is real, and
+	// anything else is nested inside another package.
 	return !src.endsWith(`/node_modules/${qualifiedName(component)}/package.json`);
 }
 
@@ -139,6 +178,122 @@ function recordElection(component, elected) {
 	const properties = (component.properties ?? []).filter((p) => p.name !== ELECTED_PROPERTY);
 	properties.push({ name: ELECTED_PROPERTY, value: elected });
 	return { ...component, properties };
+}
+
+function componentKey(component) {
+	return (
+		component.purl ??
+		component['bom-ref'] ??
+		`${component.type ?? 'library'}:${qualifiedName(component)}@${component.version ?? '?'}`
+	);
+}
+
+function isLocalRustComponent(component) {
+	return (component.properties ?? []).some(
+		(property) => property.name === 'cdx:rust:source' && property.value === 'local',
+	);
+}
+
+function withNestedSource(component, source) {
+	const properties = (component.properties ?? []).filter(
+		(property) => property.name !== NESTED_SBOM_SOURCE_PROPERTY,
+	);
+	properties.push({ name: NESTED_SBOM_SOURCE_PROPERTY, value: source });
+	return { ...component, properties };
+}
+
+/**
+ * Merge components declared by SBOMs that npm packages ship inside themselves.
+ * The outer npm component already inventories the native binary, so nested file
+ * entries are omitted. A local Rust workspace crate inherits the npm package's
+ * license; third-party crates must declare their own license and will fail the
+ * normal release gate if they do not.
+ */
+export function mergeNestedSboms(sbom, nestedSboms) {
+	const components = [...(sbom.components ?? [])];
+	const seen = new Set(components.map(componentKey));
+	let mergedComponents = 0;
+
+	for (const { source, sbom: nested } of nestedSboms) {
+		const packageLicenses = nested.metadata?.component?.licenses ?? [];
+		const packageComponent = nested.metadata?.component;
+		if (packageComponent && packageComponent.type !== 'file') {
+			const component = withNestedSource({ ...packageComponent, type: 'library' }, source);
+			const key = componentKey(component);
+			if (!seen.has(key)) {
+				seen.add(key);
+				components.push(component);
+				mergedComponents++;
+			}
+		}
+
+		for (const rawComponent of nested.components ?? []) {
+			if (rawComponent.type === 'file') continue;
+
+			let component = rawComponent;
+			if (
+				(!component.licenses || component.licenses.length === 0) &&
+				isLocalRustComponent(component) &&
+				packageLicenses.length > 0
+			) {
+				component = { ...component, licenses: packageLicenses };
+			}
+			component = withNestedSource(component, source);
+
+			const key = componentKey(component);
+			if (seen.has(key)) continue;
+			seen.add(key);
+			components.push(component);
+			mergedComponents++;
+		}
+	}
+
+	return {
+		sbom: { ...sbom, components },
+		mergedComponents,
+	};
+}
+
+/**
+ * Find CycloneDX files in a deployed node_modules tree.
+ */
+export async function loadNestedSboms(nodeModulesRoot) {
+	const nestedSboms = [];
+	const visited = new Set();
+	const patterns = [
+		'*/sbom.cdx.json',
+		'@*/*/sbom.cdx.json',
+		'*/node_modules/*/sbom.cdx.json',
+		'*/node_modules/@*/*/sbom.cdx.json',
+		'@*/*/node_modules/*/sbom.cdx.json',
+		'@*/*/node_modules/@*/*/sbom.cdx.json',
+		'.pnpm/*/node_modules/*/sbom.cdx.json',
+		'.pnpm/*/node_modules/@*/*/sbom.cdx.json',
+	];
+
+	for (const pattern of patterns) {
+		for await (const relativePath of glob(pattern, { cwd: nodeModulesRoot })) {
+			const sbomPath = path.resolve(nodeModulesRoot, relativePath);
+			let canonical;
+			try {
+				canonical = await realpath(sbomPath);
+			} catch {
+				continue;
+			}
+			if (visited.has(canonical)) continue;
+			visited.add(canonical);
+
+			try {
+				const nested = JSON.parse(await readFile(sbomPath, 'utf-8'));
+				const source = path.relative(nodeModulesRoot, sbomPath).split(path.sep).join('/');
+				nestedSboms.push({ source, sbom: nested });
+			} catch (error) {
+				throw new Error(`Could not read nested SBOM at ${sbomPath}: ${error.message}`);
+			}
+		}
+	}
+
+	return nestedSboms;
 }
 
 /**
@@ -210,6 +365,11 @@ export function enrichSbom(
 	const source = sbom.components ?? [];
 	const kept = dropPhantomNpm ? source.filter((c) => !isPhantomNpm(c)) : source;
 	const droppedPhantoms = source.length - kept.length;
+	// A dropped component leaves the signed SBOM, so record which ones, not just how
+	// many, in case the heuristic catches a real package.
+	const droppedPhantomPurls = dropPhantomNpm
+		? source.filter(isPhantomNpm).map((c) => c.purl ?? c.name)
+		: [];
 
 	const components = kept.map((component) =>
 		enrichComponent(component, {
@@ -231,6 +391,7 @@ export function enrichSbom(
 
 	return {
 		droppedPhantoms,
+		droppedPhantomPurls,
 		sbom: { ...sbom, components },
 		summary: {
 			totalComponents: components.length,
@@ -248,6 +409,10 @@ async function main() {
 	const args = process.argv.slice(2);
 	const positional = args.filter((a) => !a.startsWith('--'));
 	const licenseFileArg = args.find((a) => a.startsWith('--license-file='));
+	// Lets a test drive the chain against a frozen fixture config instead of the
+	// shipped one, so a dependency change can't break a behaviour test.
+	const overridesArg = args.find((a) => a.startsWith('--overrides='));
+	const nestedSbomRootArg = args.find((a) => a.startsWith('--nested-sbom-root='));
 	// A per-image scan contains only the npm subset present in that image, so most
 	// overrides/elections won't match — that's expected, not a stale pin. Lenient
 	// mode warns instead of failing. The full release-closure run stays strict.
@@ -260,7 +425,7 @@ async function main() {
 	const sbomPath = positional[0];
 	if (!sbomPath) {
 		console.error(
-			'Usage: enrich-sbom.mjs <sbom-path> [output-path] [--license-file=<path>] [--lenient-config] [--drop-phantom-npm]',
+			'Usage: enrich-sbom.mjs <sbom-path> [output-path] [--license-file=<path>] [--overrides=<path>] [--lenient-config] [--drop-phantom-npm] [--nested-sbom-root=<path>]',
 		);
 		process.exit(1);
 	}
@@ -268,9 +433,20 @@ async function main() {
 	const licenseFile = licenseFileArg
 		? licenseFileArg.slice('--license-file='.length)
 		: DEFAULT_LICENSE_FILE;
+	const overridesPath = overridesArg ? overridesArg.slice('--overrides='.length) : OVERRIDES_PATH;
 
-	const sbom = JSON.parse(await readFile(sbomPath, 'utf-8'));
-	const { overrides, byName, elections } = await loadLicenseConfig();
+	let sbom = JSON.parse(await readFile(sbomPath, 'utf-8'));
+	let nestedSbomFiles = 0;
+	let nestedComponentsMerged = 0;
+	if (nestedSbomRootArg) {
+		const nestedSbomRoot = path.resolve(nestedSbomRootArg.slice('--nested-sbom-root='.length));
+		const nestedSboms = await loadNestedSboms(nestedSbomRoot);
+		const merged = mergeNestedSboms(sbom, nestedSboms);
+		sbom = merged.sbom;
+		nestedSbomFiles = nestedSboms.length;
+		nestedComponentsMerged = merged.mergedComponents;
+	}
+	const { overrides, byName, elections } = await loadLicenseConfig(overridesPath);
 	const validIds = await loadSpdxIds();
 	const firstPartyOsi = await buildFirstPartyOsiMap(DEFAULT_PACKAGES_DIR, validIds);
 
@@ -288,6 +464,7 @@ async function main() {
 		summary,
 		staleOverrides,
 		staleElections,
+		droppedPhantomPurls,
 	} = enrichSbom(sbom, {
 		overrides,
 		byName,
@@ -297,7 +474,22 @@ async function main() {
 		dropPhantomNpm,
 	});
 
-	console.log(JSON.stringify(summary, null, 2));
+	console.log(
+		JSON.stringify(
+			{
+				...summary,
+				nestedSbomFiles,
+				nestedComponentsMerged,
+			},
+			null,
+			2,
+		),
+	);
+
+	if (droppedPhantomPurls.length > 0) {
+		console.error(`\nDropped ${droppedPhantomPurls.length} phantom component(s):`);
+		for (const purl of droppedPhantomPurls) console.error('  ' + purl);
+	}
 
 	if (staleOverrides.length > 0 || staleElections.length > 0) {
 		// A pinned override/election no longer matches any component. In a full

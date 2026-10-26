@@ -11,6 +11,7 @@
  * LLM call (`createEvalAgent`) and the `__schema__` lookup wiring.
  */
 
+import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import type {
 	WorkflowJSON,
@@ -19,8 +20,10 @@ import type {
 } from '@n8n/workflow-sdk';
 import {
 	buildDateAnchors,
+	buildFieldViolationRetryMessage,
 	buildPinDataUserPrompt,
 	buildSchemaContexts,
+	collectPinFieldViolations,
 	findOutputParserTargets,
 	parsePinDataResponse,
 	PIN_DATA_SYSTEM_PROMPT,
@@ -90,23 +93,55 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 		cache: true,
 	});
 
-	const result = await agent.generate(userPrompt, {
-		providerOptions: { anthropic: { maxTokens: 16_384 } },
-		abortSignal: AbortSignal.timeout(PIN_DATA_LLM_TIMEOUT_MS),
-	});
+	const generateOnce = async (prompt: string): Promise<PinData> => {
+		const result = await agent.generate(prompt, {
+			providerOptions: { anthropic: { maxTokens: 16_384 } },
+			abortSignal: AbortSignal.timeout(PIN_DATA_LLM_TIMEOUT_MS),
+		});
 
-	const responseText = extractText(result);
-	const pinData = parsePinDataResponse(responseText, expectedNodeNames);
+		// The model sometimes explains its answer after the JSON block.
+		const responseText = extractJsonCandidate(extractText(result));
+		const pinData = parsePinDataResponse(responseText, expectedNodeNames);
 
-	const missing = expectedNodeNames.filter((name) => !(name in pinData));
-	if (missing.length > 0) {
+		const missing = expectedNodeNames.filter((name) => !(name in pinData));
+		if (missing.length > 0) {
+			throw new OperationalError(
+				`Pin data generation returned no data for node(s): ${missing.join(', ')}`,
+			);
+		}
+
+		// Envelope repair for parser-target roots; the shared helper derives the
+		// envelope key from each root's with-parser `__schema__` variant
+		// (`output` for agent and chainLlm ≥1.9, always `output` for extractors).
+		return repairStructuredOutput(pinData, workflow, contexts);
+	};
+
+	const pinData = await generateOnce(userPrompt);
+
+	// Field-name drift (e.g. `invoice_amount` where the declared schema says
+	// `total_amount`) silently breaks correctly-built downstream expressions.
+	// Regenerate once with explicit corrections rather than renaming keys in
+	// place — a deterministic rename could fabricate scenario-relevant data.
+	const violations = collectPinFieldViolations(pinData, contexts);
+	if (violations.length === 0) return pinData;
+
+	const retryPrompt = `${userPrompt}\n\n## Correction required\n\n${buildFieldViolationRetryMessage(violations)}`;
+	const retried = await generateOnce(retryPrompt);
+
+	const remaining = collectPinFieldViolations(retried, contexts);
+	if (remaining.length > 0) {
+		const summary = remaining
+			.map(
+				(v) =>
+					`${v.nodeName} (unknown: ${v.unknownKeys.join(', ')}; declared: ${v.declaredKeys.join(', ')})`,
+			)
+			.join('; ');
+		// Fail loud: a drifted fixture served silently would poison failure
+		// attribution — an unpinnable scenario must surface as a harness fault.
 		throw new OperationalError(
-			`Pin data generation returned no data for node(s): ${missing.join(', ')}`,
+			`Pin data generation drifted from declared field names after retry: ${summary}`,
 		);
 	}
 
-	// Envelope repair for parser-target roots; the shared helper derives the
-	// envelope key from each root's with-parser `__schema__` variant
-	// (`output` for both agent and chainLlm).
-	return repairStructuredOutput(pinData, workflow, contexts);
+	return retried;
 }

@@ -1,22 +1,26 @@
 import type { StreamChunk } from '@n8n/agents';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig, AgentSlackIntegrationSettings } from '@n8n/api-types';
+import { createHmac } from 'node:crypto';
 import nock from 'nock';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import type { AgentRepository } from '../../../../repositories/agent.repository';
 import type { ChatInstance } from '../../../chat-integration.service';
 import { ComponentMapper } from '../../../component-mapper';
 import type {
 	getIntegrationToolConnectionDescriptors,
 	IntegrationMessageContext,
 } from '../../../integration-tools';
-import { SlackIntegration } from '../../../platforms/slack-integration';
+import { createSlackSourceAdapter } from '../../../platforms/slack/slack-adapter';
+import { SLACK_STREAMING_OPTIONS } from '../../../platforms/slack/slack-bridge-behavior';
+import { SlackIntegration } from '../../../platforms/slack/slack-integration';
 import {
 	createReplayContextSetup,
 	type MemoryMessageContextStore,
 	type ReplayApiCall,
 	type ReplayContextSetup,
 	type ReplayWebhookHandler,
-	sendJsonWebhook,
 } from '../replay-test-helpers';
 
 export interface SlackUserFixture {
@@ -74,7 +78,7 @@ export interface SlackReplayContext
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
 	integration: AgentIntegrationConfig;
 	messageContextStore: MemoryMessageContextStore;
-	sendWebhook: (payload: unknown) => Promise<Response>;
+	sendWebhook: (payload: unknown, headers?: Headers) => Promise<Response>;
 	latestContext: () => IntegrationMessageContext | undefined;
 	latestThreadId: () => string | undefined;
 	lastPost: () => SlackApiCall | undefined;
@@ -82,6 +86,18 @@ export interface SlackReplayContext
 
 const SLACK_BOT_TOKEN = 'xoxb-test-token';
 const SLACK_API_URL = 'https://slack.com/api/';
+const SLACK_SIGNING_SECRET = 'slack-test-signing-secret';
+
+function signedHeaders(payload: unknown): Headers {
+	const timestamp = String(Math.floor(Date.now() / 1000));
+	const signature = createHmac('sha256', SLACK_SIGNING_SECRET)
+		.update(`v0:${timestamp}:${JSON.stringify(payload)}`)
+		.digest('hex');
+	return new Headers({
+		'x-slack-request-timestamp': timestamp,
+		'x-slack-signature': `v0=${signature}`,
+	});
+}
 
 /** Extract the Web API method (`chat.postMessage`, `auth.test`, …) from a URL. */
 function slackMethodFromUri(uri: string): string {
@@ -117,10 +133,8 @@ function collectStreamChunkText(body: Record<string, unknown>): string {
  * The Slack adapter calls the Web API through `@slack/web-api` (axios), so a
  * `fetch` stub can't see it — intercept at the HTTP layer with nock instead.
  *
- * Agent replies are sent through Slack's assistant streaming API
- * (`chat.startStream` → `appendStream` → `stopStream`), not `chat.postMessage`.
- * We reconstruct the streamed text and record it as a synthetic `chat.postMessage`
- * so assertions can treat the agent reply as a single outbound post.
+ * Record normal posts and edits. Also reconstruct native streams as a single
+ * post for scenarios that enable native streaming.
  */
 function installSlackApiNock(botUserId: string) {
 	const apiCalls: SlackApiCall[] = [];
@@ -190,33 +204,38 @@ function installSlackApiNock(botUserId: string) {
 
 export async function createSlackReplayContext(
 	fixtures: SlackReplayFixtures,
-	options: { stream?: StreamChunk[] } = {},
+	options: { stream?: StreamChunk[]; settings?: AgentSlackIntegrationSettings } = {},
 ): Promise<SlackReplayContext> {
 	const stub = installSlackApiNock(fixtures.botUserId);
 
-	const { createSlackAdapter } = await import('@chat-adapter/slack');
 	const { Chat } = await import('chat');
 	const { createMemoryState } = await import('@chat-adapter/state-memory');
 
-	const adapter = createSlackAdapter({
+	const adapter = await createSlackSourceAdapter({
 		botToken: SLACK_BOT_TOKEN,
+		nativeStreaming: false,
 		// Provided so the adapter skips the `auth.test` identity lookup on connect.
 		botUserId: fixtures.botUserId,
-		// Replay fixtures carry sanitized signatures, so bypass signature checks.
-		webhookVerifier: () => true,
+		signingSecret: SLACK_SIGNING_SECRET,
 		mode: 'webhook',
 		apiUrl: SLACK_API_URL,
 	});
 	const chat = new Chat({
 		userName: 'n8n-agent-agent-1',
+		...SLACK_STREAMING_OPTIONS,
 		adapters: { slack: adapter } as unknown as Record<string, never>,
 		state: createMemoryState(),
+		concurrency: 'concurrent',
 	});
 
-	const integration: AgentIntegrationConfig = { type: 'slack', credentialId: 'cred-slack' };
+	const integration: AgentIntegrationConfig = {
+		type: 'slack',
+		credentialId: 'cred-slack',
+		...(options.settings ? { settings: options.settings } : {}),
+	};
 	const setup = createReplayContextSetup({
 		chat: chat as never,
-		integrationImpl: new SlackIntegration(),
+		integrationImpl: new SlackIntegration(mock<AgentRepository>()),
 		integration,
 		componentMapper: new ComponentMapper(),
 		stream: options.stream,
@@ -225,11 +244,12 @@ export async function createSlackReplayContext(
 	await chat.initialize();
 
 	const webhooks = chat.webhooks as Record<string, ReplayWebhookHandler>;
-	const sendWebhook = async (payload: unknown) =>
-		await sendJsonWebhook(
+	const sendWebhook = async (payload: unknown, headers = signedHeaders(payload)) =>
+		await setup.sendJsonWebhook(
 			async (request, requestOptions) => await webhooks.slack(request, requestOptions),
 			'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
 			payload,
+			headers,
 		);
 
 	return {
@@ -237,8 +257,8 @@ export async function createSlackReplayContext(
 		chat: chat as unknown as ChatInstance,
 		apiCalls: stub.apiCalls,
 		sendWebhook,
-		latestContext: () => setup.messageContextStore.latest(),
-		latestThreadId: () => setup.messageContextStore.latestThreadId(),
+		latestContext: setup.latestContext,
+		latestThreadId: setup.latestThreadId,
 		lastPost: () => stub.apiCalls.filter((call) => call.method === 'chat.postMessage').at(-1),
 		shutdown: async () => {
 			try {

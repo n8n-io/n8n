@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ref, nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { setActivePinia } from 'pinia';
 import { useDynamicCredentialsStatus } from './useDynamicCredentialsStatus';
 import type { WorkflowExecutionStatus } from '@n8n/api-types';
@@ -40,7 +41,7 @@ function createExecutionStatus(
 			{
 				credentialId: 'cred-2',
 				credentialName: 'Gmail',
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				credentialStatus: 'configured',
 				authorizationUrl:
 					'https://n8n.example.com/rest/credentials/cred-2/authorize?resolverId=resolver-2',
@@ -156,7 +157,7 @@ describe('useDynamicCredentialsStatus', () => {
 						{
 							credentialId: 'cred-2',
 							credentialName: 'Gmail',
-							credentialType: 'gmailOAuth2Api',
+							credentialType: 'gmailOAuth2',
 							credentialStatus: 'configured',
 						},
 					],
@@ -264,7 +265,7 @@ describe('useDynamicCredentialsStatus', () => {
 
 			// Authorize returns a valid URL, popup opens
 			mockAuthorizeDynamicCredential.mockResolvedValue('https://accounts.google.com/oauth');
-			const mockPopup = { closed: false, close: vi.fn() };
+			const mockPopup = { closed: false, close: vi.fn(), location: { href: '' } };
 			vi.stubGlobal(
 				'open',
 				vi.fn(() => mockPopup),
@@ -272,14 +273,15 @@ describe('useDynamicCredentialsStatus', () => {
 
 			const authorizePromise = authorize('cred-1');
 
-			// Simulate popup closing
+			// The popup reads as closed (either really closed or COOP severed the
+			// opener relationship) — the flow must keep verifying with the backend.
 			mockPopup.closed = true;
 
-			// First poll: still missing
+			// First verification: still missing
 			mockFetchWorkflowExecutionStatus.mockResolvedValue(createExecutionStatus());
 			await vi.advanceTimersByTimeAsync(500); // popup-closed poll fires
 
-			// Second poll after 1s delay: now configured
+			// Second verification after the verify interval: now configured
 			mockFetchWorkflowExecutionStatus.mockResolvedValue(
 				createExecutionStatus({
 					credentials: [
@@ -296,7 +298,7 @@ describe('useDynamicCredentialsStatus', () => {
 						{
 							credentialId: 'cred-2',
 							credentialName: 'Gmail',
-							credentialType: 'gmailOAuth2Api',
+							credentialType: 'gmailOAuth2',
 							credentialStatus: 'configured',
 							authorizationUrl:
 								'https://n8n.example.com/rest/credentials/cred-2/authorize?resolverId=resolver-2',
@@ -307,7 +309,7 @@ describe('useDynamicCredentialsStatus', () => {
 					readyToExecute: true,
 				}),
 			);
-			await vi.advanceTimersByTimeAsync(1000); // pollUntilConfigured delay
+			await vi.advanceTimersByTimeAsync(2000); // verification interval
 
 			await authorizePromise;
 
@@ -318,7 +320,7 @@ describe('useDynamicCredentialsStatus', () => {
 			vi.unstubAllGlobals();
 		});
 
-		it('should stop after max attempts even if still missing', async () => {
+		it('should keep isConnecting while backend verification refreshes the status', async () => {
 			vi.useFakeTimers();
 
 			const workflowId = ref<string | null>('wf-1');
@@ -329,7 +331,54 @@ describe('useDynamicCredentialsStatus', () => {
 			});
 
 			mockAuthorizeDynamicCredential.mockResolvedValue('https://accounts.google.com/oauth');
-			const mockPopup = { closed: false, close: vi.fn() };
+			const mockPopup = { closed: false, close: vi.fn(), location: { href: '' } };
+			vi.stubGlobal(
+				'open',
+				vi.fn(() => mockPopup),
+			);
+
+			const authorizePromise = authorize('cred-1');
+			mockPopup.closed = true;
+
+			// Several verification rounds while the flow is pending: the refreshed
+			// status must not reset the credential back to a connectable state.
+			mockFetchWorkflowExecutionStatus.mockResolvedValue(createExecutionStatus());
+			await vi.advanceTimersByTimeAsync(500 + 2 * 2000);
+			expect(credentials.value[0].isConnecting).toBe(true);
+
+			mockFetchWorkflowExecutionStatus.mockResolvedValue(
+				createExecutionStatus({
+					credentials: [
+						{
+							credentialId: 'cred-1',
+							credentialName: 'Google Sheets',
+							credentialType: 'googleSheetsOAuth2Api',
+							credentialStatus: 'configured',
+						},
+					],
+				}),
+			);
+			await vi.advanceTimersByTimeAsync(2000);
+			await authorizePromise;
+
+			expect(credentials.value[0].isConnecting).toBe(false);
+
+			vi.useRealTimers();
+			vi.unstubAllGlobals();
+		});
+
+		it('should stop waiting at the flow timeout if never configured', async () => {
+			vi.useFakeTimers();
+
+			const workflowId = ref<string | null>('wf-1');
+			const { credentials, authorize } = useDynamicCredentialsStatus(workflowId);
+
+			await vi.waitFor(() => {
+				expect(credentials.value).toHaveLength(2);
+			});
+
+			mockAuthorizeDynamicCredential.mockResolvedValue('https://accounts.google.com/oauth');
+			const mockPopup = { closed: false, close: vi.fn(), location: { href: '' } };
 			vi.stubGlobal(
 				'open',
 				vi.fn(() => mockPopup),
@@ -340,16 +389,17 @@ describe('useDynamicCredentialsStatus', () => {
 			// Popup closes
 			mockPopup.closed = true;
 
-			// All polls return missing — never becomes configured
+			// All verifications return missing — never becomes configured
 			mockFetchWorkflowExecutionStatus.mockResolvedValue(createExecutionStatus());
 
-			// Trigger popup-closed detection + all 10 poll attempts (500ms + 10 * 1000ms)
-			await vi.advanceTimersByTimeAsync(500 + 10 * 1000);
+			// Advance past the overall flow timeout
+			await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 500);
 			await authorizePromise;
 
 			// Should have stopped and set isConnecting to false
 			expect(credentials.value[0].credentialStatus).toBe('missing');
 			expect(credentials.value[0].isConnecting).toBe(false);
+			expect(mockPopup.close).toHaveBeenCalledOnce();
 
 			vi.useRealTimers();
 			vi.unstubAllGlobals();
@@ -357,6 +407,87 @@ describe('useDynamicCredentialsStatus', () => {
 	});
 
 	describe('authorize', () => {
+		let mockPopup: { closed: boolean; close: ReturnType<typeof vi.fn>; location: { href: string } };
+
+		beforeEach(() => {
+			mockPopup = { closed: false, close: vi.fn(), location: { href: '' } };
+			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
+		});
+
+		afterEach(() => {
+			vi.unstubAllGlobals();
+		});
+
+		it.each([
+			{ browser: 'desktop', requiresUserActivation: false },
+			{ browser: 'mobile', requiresUserActivation: true },
+		])(
+			'should connect Gmail on $browser when the authorization URL arrives after the click',
+			async ({ requiresUserActivation }) => {
+				const gmailCredential = {
+					credentialId: 'cred-gmail',
+					credentialName: 'Gmail',
+					credentialType: 'gmailOAuth2',
+					credentialStatus: 'missing',
+					authorizationUrl:
+						'https://n8n.example.com/rest/credentials/cred-gmail/authorize?resolverId=resolver-gmail',
+				} satisfies NonNullable<WorkflowExecutionStatus['credentials']>[number];
+				mockFetchWorkflowExecutionStatus.mockResolvedValue(
+					createExecutionStatus({ credentials: [gmailCredential] }),
+				);
+				const { credentials, authorize } = useDynamicCredentialsStatus(ref('wf-1'));
+				await nextTick();
+				expect(credentials.value).toHaveLength(1);
+
+				const authorizationUrl = createDeferredPromise<string>();
+				const oauthUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
+				mockAuthorizeDynamicCredential.mockReturnValueOnce(authorizationUrl.promise);
+				const mockPopup = { closed: false, close: vi.fn(), location: { href: '' } };
+				let hasUserActivation = true;
+				const mockOpen = vi.fn((url: string) => {
+					// Mobile browsers block window.open once the click's user activation ends.
+					if (requiresUserActivation && !hasUserActivation) return null;
+					mockPopup.location.href = url;
+					return mockPopup;
+				});
+				vi.stubGlobal('open', mockOpen);
+
+				vi.useFakeTimers();
+				try {
+					const authorizePromise = authorize('cred-gmail');
+					hasUserActivation = false;
+					authorizationUrl.resolve(oauthUrl);
+					await vi.advanceTimersByTimeAsync(0);
+
+					mockFetchWorkflowExecutionStatus.mockResolvedValue(
+						createExecutionStatus({
+							credentials: [{ ...gmailCredential, credentialStatus: 'configured' }],
+							readyToExecute: true,
+						}),
+					);
+					window.dispatchEvent(
+						new MessageEvent('message', { origin: window.location.origin, data: 'success' }),
+					);
+					await authorizePromise;
+
+					expect(mockAuthorizeDynamicCredential).toHaveBeenCalledWith(
+						{ baseUrl: '/rest' },
+						'cred-gmail',
+						'resolver-gmail',
+					);
+					expect(mockOpen).toHaveBeenCalledOnce();
+					expect(credentials.value[0].error).toBeNull();
+					expect(mockPopup.location.href).toBe(oauthUrl);
+					expect(credentials.value[0].credentialStatus).toBe('configured');
+					expect(credentials.value[0].isConnecting).toBe(false);
+					expect(mockPopup.close).toHaveBeenCalledOnce();
+				} finally {
+					vi.useRealTimers();
+					vi.unstubAllGlobals();
+				}
+			},
+		);
+
 		it('should reject invalid URL protocols', async () => {
 			mockAuthorizeDynamicCredential.mockResolvedValue('javascript:alert(1)');
 
@@ -371,12 +502,11 @@ describe('useDynamicCredentialsStatus', () => {
 
 			expect(credentials.value[0].error).toBe('Invalid authorization URL');
 			expect(credentials.value[0].isConnecting).toBe(false);
+			expect(mockPopup.location.href).toBe('');
+			expect(mockPopup.close).toHaveBeenCalledOnce();
 		});
 
 		it('should open popup with valid OAuth URL', async () => {
-			const mockOpen = vi.fn(() => ({ close: vi.fn() }));
-			vi.stubGlobal('open', mockOpen);
-
 			mockAuthorizeDynamicCredential.mockResolvedValue('https://accounts.google.com/oauth');
 
 			const workflowId = ref<string | null>('wf-1');
@@ -386,15 +516,39 @@ describe('useDynamicCredentialsStatus', () => {
 				expect(credentials.value).toHaveLength(2);
 			});
 
-			await authorize('cred-1');
+			vi.useFakeTimers();
+			try {
+				const authorizePromise = authorize('cred-1');
+				await vi.advanceTimersByTimeAsync(0);
 
-			expect(mockOpen).toHaveBeenCalledWith(
-				'https://accounts.google.com/oauth',
-				'OAuth Authorization',
-				expect.any(String),
-			);
+				expect(window.open).toHaveBeenCalledExactlyOnceWith(
+					'about:blank',
+					'OAuth Authorization',
+					expect.any(String),
+				);
+				expect(mockPopup.location.href).toBe('https://accounts.google.com/oauth');
 
-			vi.unstubAllGlobals();
+				// Settle the flow: popup closes and the backend reports configured.
+				mockPopup.closed = true;
+				mockFetchWorkflowExecutionStatus.mockResolvedValue(
+					createExecutionStatus({
+						credentials: [
+							{
+								credentialId: 'cred-1',
+								credentialName: 'Google Sheets',
+								credentialType: 'googleSheetsOAuth2Api',
+								credentialStatus: 'configured',
+							},
+						],
+					}),
+				);
+				await vi.advanceTimersByTimeAsync(1000);
+				await authorizePromise;
+				expect(mockPopup.close).toHaveBeenCalledOnce();
+			} finally {
+				vi.useRealTimers();
+				vi.unstubAllGlobals();
+			}
 		});
 
 		it('should set error when authorize API fails', async () => {
@@ -409,6 +563,19 @@ describe('useDynamicCredentialsStatus', () => {
 
 			await authorize('cred-1');
 
+			expect(credentials.value[0].error).toBe('Failed to start authorization');
+			expect(credentials.value[0].isConnecting).toBe(false);
+			expect(mockPopup.close).toHaveBeenCalledOnce();
+		});
+
+		it('should skip the authorization request when the popup is blocked', async () => {
+			vi.mocked(window.open).mockReturnValue(null);
+			const { credentials, authorize } = useDynamicCredentialsStatus(ref('wf-1'));
+			await nextTick();
+
+			await authorize('cred-1');
+
+			expect(mockAuthorizeDynamicCredential).not.toHaveBeenCalled();
 			expect(credentials.value[0].error).toBe('Failed to start authorization');
 			expect(credentials.value[0].isConnecting).toBe(false);
 		});

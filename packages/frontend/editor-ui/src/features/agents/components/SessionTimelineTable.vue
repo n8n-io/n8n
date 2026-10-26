@@ -5,6 +5,7 @@ import { N8nRecycleScroller } from '@n8n/design-system';
 import SessionTimelineRow from './SessionTimelineRow.vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import { filteredTimelineItemIndexes, formatDuration } from '../session-timeline.utils';
+import { backgroundJobTimelineLabelKey } from '../utils/background-job-labels';
 
 const ROW_HEIGHT = 40;
 const SCROLL_PADDING = 24;
@@ -16,7 +17,11 @@ const props = defineProps<{
 	visibleKinds: Set<string>;
 	searchQuery?: string;
 	idleRanges?: IdleRange[];
+	/** Index of the item that gets the `notice` slot rendered directly below it. */
+	noticeIndex?: number | null;
 }>();
+
+defineSlots<{ notice?: (props: { item: TimelineItem }) => unknown }>();
 
 const emit = defineEmits<{ select: [index: number] }>();
 
@@ -27,23 +32,44 @@ const canScrollDown = ref(false);
 let scrollContainer: HTMLElement | null = null;
 
 function labelForKey(key: string): string {
+	const backgroundJobKey = backgroundJobTimelineLabelKey(key);
+	if (backgroundJobKey) return i18n.baseText(backgroundJobKey);
+
 	switch (key) {
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
 			return i18n.baseText('agentSessions.timeline.agent');
+		case 'skill':
+			return i18n.baseText('agentSessions.timeline.skill');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
+		case 'execution-error':
+			return i18n.baseText('agentSessions.timeline.executionFailed');
+		case 'execution-interrupted':
+			return i18n.baseText('agentSessions.timeline.executionInterrupted');
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.suspended');
-		case 'suspension-waiting':
-			return i18n.baseText('agentSessions.timeline.waitingForUser');
-		case 'user-feedback':
-			return i18n.baseText('agentSessions.timeline.userFeedback');
+			return i18n.baseText('agentSessions.timeline.hitlRequest');
+		case 'hitl-response':
+			return i18n.baseText('agentSessions.timeline.hitlResponse');
+		case 'approval-requested':
+			return i18n.baseText('agentSessions.timeline.approvalRequested');
+		case 'hitl-requested':
+			return i18n.baseText('agentSessions.timeline.hitlRequested');
+		case 'wait-requested':
+			return i18n.baseText('agentSessions.timeline.waitRequested');
+		case 'approved':
+			return i18n.baseText('agentSessions.timeline.approved');
+		case 'responded':
+			return i18n.baseText('agentSessions.timeline.responseReceived');
+		case 'declined':
+			return i18n.baseText('agentSessions.timeline.declined');
+		case 'error':
+			return i18n.baseText('agentSessions.timeline.error');
 		default:
 			return key;
 	}
@@ -51,7 +77,8 @@ function labelForKey(key: string): string {
 
 type Row =
 	| { id: string; kind: 'event'; item: TimelineItem; index: number; sortKey: number }
-	| { id: string; kind: 'idle'; range: IdleRange; sortKey: number };
+	| { id: string; kind: 'idle'; range: IdleRange; sortKey: number }
+	| { id: string; kind: 'notice'; item: TimelineItem; sortKey: number };
 
 const rows = computed<Row[]>(() => {
 	const events: Row[] = filteredTimelineItemIndexes(
@@ -74,10 +101,33 @@ const rows = computed<Row[]>(() => {
 		sortKey: range.start,
 	}));
 
-	return [...events, ...idles].sort((a, b) => a.sortKey - b.sortKey);
+	const sorted = [...events, ...idles].sort((a, b) => a.sortKey - b.sortKey);
+
+	// Spliced in after sorting so the notice stays directly below its event.
+	const noticeIndex = props.noticeIndex;
+	if (noticeIndex === null || noticeIndex === undefined) return sorted;
+	const position = sorted.findIndex((row) => row.kind === 'event' && row.index === noticeIndex);
+	if (position === -1) return sorted;
+	const anchor = sorted[position];
+	sorted.splice(position + 1, 0, {
+		id: `notice-${noticeIndex}`,
+		kind: 'notice',
+		item: props.items[noticeIndex],
+		sortKey: anchor.sortKey,
+	});
+	return sorted;
 });
 
 const shouldVirtualizeRows = computed(() => rows.value.length > VIRTUALIZE_AFTER_ROWS);
+const tabbableEventIndex = computed(() => {
+	const selectedRow = rows.value.find(
+		(row) => row.kind === 'event' && row.index === props.selectedIndex,
+	);
+	if (selectedRow?.kind === 'event') return selectedRow.index;
+
+	const firstEventRow = rows.value.find((row) => row.kind === 'event');
+	return firstEventRow?.kind === 'event' ? firstEventRow.index : null;
+});
 
 function updateScrollMask() {
 	if (!scrollContainer) {
@@ -106,6 +156,14 @@ function visibleRowElement(rowId: string): HTMLElement | undefined {
 	const visibleRows = tableRef.value?.querySelectorAll<HTMLElement>('[data-timeline-row-id]');
 
 	return Array.from(visibleRows ?? []).find((element) => element.dataset.timelineRowId === rowId);
+}
+
+function focusVisibleRow(rowId: string): boolean {
+	const rowElement = visibleRowElement(rowId);
+	if (!rowElement) return false;
+
+	rowElement.focus();
+	return true;
 }
 
 function scrollVisibleRowIntoView(rowId: string): boolean {
@@ -172,9 +230,18 @@ watch(
 	() => props.selectedIndex,
 	(selectedIndex) => {
 		if (selectedIndex === null) return;
+		const activeElement = document.activeElement;
+		const shouldMoveFocus =
+			activeElement instanceof HTMLElement &&
+			tableRef.value?.contains(activeElement) === true &&
+			activeElement.closest('[data-timeline-row-id]') !== null;
+		const rowId = `event-${selectedIndex}`;
 		void nextTick(() => {
-			scrollRowIntoView(`event-${selectedIndex}`);
+			scrollRowIntoView(rowId);
 			updateScrollMask();
+			if (shouldMoveFocus && !focusVisibleRow(rowId)) {
+				void nextTick(() => focusVisibleRow(rowId));
+			}
 		});
 	},
 );
@@ -188,11 +255,14 @@ watch(
 			canScrollUp && $style.canScrollUp,
 			canScrollDown && $style.canScrollDown,
 		]"
+		role="grid"
+		:aria-label="i18n.baseText('agentSessions.timeline.events')"
 	>
 		<div
 			v-if="rows.length > 0 && !shouldVirtualizeRows"
 			:class="$style.directRows"
 			data-timeline-scroll-container
+			role="rowgroup"
 		>
 			<template v-for="row in rows" :key="row.id">
 				<div
@@ -200,17 +270,34 @@ watch(
 					data-test-id="timeline-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"
+					role="row"
+					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
+					:aria-selected="props.selectedIndex === row.index"
 					@click="emit('select', row.index)"
+					@keydown.enter.self.prevent="emit('select', row.index)"
+					@keydown.space.self.prevent="emit('select', row.index)"
 				>
 					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
+				</div>
+				<div
+					v-else-if="row.kind === 'notice'"
+					data-test-id="timeline-notice-row"
+					:data-timeline-row-id="row.id"
+					:class="$style.noticeRow"
+					role="row"
+				>
+					<div :class="$style.noticeCell" role="gridcell">
+						<slot name="notice" :item="row.item" />
+					</div>
 				</div>
 				<div
 					v-else
 					data-test-id="timeline-idle-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.idleRow"
+					role="row"
 				>
-					<span :class="$style.idlePill">
+					<span :class="$style.idlePill" role="gridcell">
 						{{ i18n.baseText('agentSessions.timeline.idle') }} ·
 						{{ formatDuration(row.range.end - row.range.start) }}
 					</span>
@@ -222,6 +309,7 @@ watch(
 			:items="rows"
 			:item-size="ROW_HEIGHT"
 			item-key="id"
+			role="rowgroup"
 		>
 			<template #default="{ item: row }">
 				<div
@@ -229,17 +317,34 @@ watch(
 					data-test-id="timeline-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"
+					role="row"
+					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
+					:aria-selected="props.selectedIndex === row.index"
 					@click="emit('select', row.index)"
+					@keydown.enter.self.prevent="emit('select', row.index)"
+					@keydown.space.self.prevent="emit('select', row.index)"
 				>
 					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
+				</div>
+				<div
+					v-else-if="row.kind === 'notice'"
+					data-test-id="timeline-notice-row"
+					:data-timeline-row-id="row.id"
+					:class="$style.noticeRow"
+					role="row"
+				>
+					<div :class="$style.noticeCell" role="gridcell">
+						<slot name="notice" :item="row.item" />
+					</div>
 				</div>
 				<div
 					v-else
 					data-test-id="timeline-idle-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.idleRow"
+					role="row"
 				>
-					<span :class="$style.idlePill">
+					<span :class="$style.idlePill" role="gridcell">
 						{{ i18n.baseText('agentSessions.timeline.idle') }} ·
 						{{ formatDuration(row.range.end - row.range.start) }}
 					</span>
@@ -316,6 +421,14 @@ watch(
 	mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 95%, transparent 100%);
 }
 
+.noticeRow {
+	padding: var(--spacing--2xs) var(--spacing--sm) var(--spacing--sm);
+}
+.noticeCell {
+	display: flex;
+	justify-content: center;
+	width: 100%;
+}
 .idleRow {
 	position: relative;
 	display: flex;
@@ -344,7 +457,7 @@ watch(
 	   mirroring the .idleFill treatment on the chart. */
 	background-color: var(--color--background);
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 	text-transform: lowercase;
 	letter-spacing: 0.02em;

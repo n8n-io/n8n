@@ -23,13 +23,12 @@ beforeAll(async () => {
 	real_odic_client = await vi.importActual<typeof import('openid-client')>('openid-client');
 });
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { License } from '@/license';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';
 import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 import { createCustomRoleWithScopes, createScope } from '@test-integration/db/roles';
 import { createUser } from '@test-integration/db/users';
 
@@ -70,6 +69,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 		});
 
@@ -83,6 +83,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 		});
 
@@ -95,6 +96,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -119,6 +121,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -142,6 +145,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			await expect(oidcService.updateConfig(newConfig)).rejects.toThrowError(UserError);
@@ -156,6 +160,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -180,6 +185,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			discoveryMock.mockRejectedValueOnce(new Error('Discovery failed'));
@@ -206,6 +212,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			const mockConfiguration = new real_odic_client.Configuration(
@@ -216,6 +223,7 @@ describe('OIDC service', () => {
 					response_types: ['code'],
 					scopes: ['openid', 'profile', 'email'],
 					authorization_endpoint: 'https://example.com/auth',
+					userinfo_endpoint: 'https://example.com/userinfo',
 				},
 				'initial-client-id',
 			);
@@ -238,6 +246,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			const newMockConfiguration = new real_odic_client.Configuration(
@@ -248,6 +257,7 @@ describe('OIDC service', () => {
 					response_types: ['code'],
 					scopes: ['openid', 'profile', 'email'],
 					authorization_endpoint: 'https://newprovider.example.com/auth',
+					userinfo_endpoint: 'https://newprovider.example.com/userinfo',
 				},
 				'new-client-id',
 			);
@@ -278,6 +288,7 @@ describe('OIDC service', () => {
 				response_types: ['code'],
 				scopes: ['openid', 'profile', 'email'],
 				authorization_endpoint: 'https://example.com/auth',
+				userinfo_endpoint: 'https://example.com/userinfo',
 			},
 			'test-client-id',
 		);
@@ -291,6 +302,7 @@ describe('OIDC service', () => {
 			prompt: 'consent',
 			authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			additionalScopes: '',
+			rpInitiatedLogoutEnabled: false,
 		};
 
 		await oidcService.updateConfig(initialConfig);
@@ -323,6 +335,7 @@ describe('OIDC service', () => {
 					response_types: ['code'],
 					scopes: ['openid', 'profile', 'email'],
 					authorization_endpoint: 'https://example.com/auth',
+					userinfo_endpoint: 'https://example.com/userinfo',
 				},
 				'test-client-id',
 			);
@@ -336,6 +349,7 @@ describe('OIDC service', () => {
 				prompt: 'consent',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			await oidcService.updateConfig(initialConfig);
@@ -437,6 +451,7 @@ describe('OIDC service', () => {
 			prompt: 'select_account',
 			authenticationContextClassReference: [],
 			additionalScopes: '',
+			rpInitiatedLogoutEnabled: false,
 		};
 
 		let provisioningConfig: GlobalConfig['sso']['provisioning'];
@@ -450,6 +465,7 @@ describe('OIDC service', () => {
 					response_types: ['code'],
 					scopes: ['openid', 'profile', 'email'],
 					authorization_endpoint: 'https://example.com/auth',
+					userinfo_endpoint: 'https://example.com/userinfo',
 				},
 				'test-client-id',
 			);
@@ -511,6 +527,7 @@ describe('OIDC service', () => {
 			await oidcService.updateConfig({
 				...baseConfig,
 				additionalScopes: 'groups&redirect_uri=https://evil.com',
+				rpInitiatedLogoutEnabled: false,
 			});
 
 			const authUrl = await oidcService.generateLoginUrl();
@@ -535,6 +552,7 @@ describe('OIDC service', () => {
 					response_types: ['code'],
 					scopes: ['openid', 'profile', 'email'],
 					authorization_endpoint: 'https://example.com/auth',
+					userinfo_endpoint: 'https://example.com/userinfo',
 				},
 				'test-client-id',
 			);
@@ -548,6 +566,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
 				additionalScopes: 'groups',
+				rpInitiatedLogoutEnabled: false,
 			});
 
 			const authUrl = await oidcService.generateTestLoginUrl();
@@ -564,6 +583,7 @@ describe('OIDC service', () => {
 					response_types: ['code'],
 					scopes: ['openid', 'profile', 'email'],
 					authorization_endpoint: 'https://example.com/auth',
+					userinfo_endpoint: 'https://example.com/userinfo',
 				},
 				'test-client-id',
 			);
@@ -577,6 +597,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 
 			const authUrl = await oidcService.generateTestLoginUrl();
@@ -618,7 +639,7 @@ describe('OIDC service', () => {
 				email: 'user2@example.com',
 			});
 
-			const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+			const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('user2@example.com');
 
@@ -664,7 +685,7 @@ describe('OIDC service', () => {
 				email: 'user2@example.com',
 			});
 
-			const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+			const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('user2@example.com');
 			expect(user.id).toEqual(createdUser.id);
@@ -703,7 +724,7 @@ describe('OIDC service', () => {
 				email: 'user1@example.com',
 			});
 
-			const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+			const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('user1@example.com');
 		});
@@ -741,9 +762,54 @@ describe('OIDC service', () => {
 				email: 'user3@example.com',
 			});
 
-			const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+			const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('user3@example.com');
+		});
+
+		it('should reject linking to an existing local account when email_verified is false', async () => {
+			await createUser({ email: 'link-target@example.com' });
+
+			const state = oidcService.generateState();
+			const nonce = oidcService.generateNonce();
+			const callbackUrl = new URL(
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+			);
+
+			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
+				mocked_oidc_client.TokenEndpointResponseHelpers = {
+				access_token: 'mock-access-token-unverified-link',
+				id_token: 'mock-id-token-unverified-link',
+				token_type: 'bearer',
+				claims: () => {
+					return {
+						sub: 'attacker-subject-unverified',
+						iss: 'https://example.com/auth/realms/n8n',
+						aud: 'test-client-id',
+						iat: Math.floor(Date.now() / 1000) - 1000,
+						exp: Math.floor(Date.now() / 1000) + 3600,
+					} as mocked_oidc_client.IDToken;
+				},
+				expiresIn: () => 3600,
+			} as mocked_oidc_client.TokenEndpointResponse &
+				mocked_oidc_client.TokenEndpointResponseHelpers;
+
+			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
+			fetchUserInfoMock.mockResolvedValueOnce({
+				email_verified: false,
+				email: 'link-target@example.com',
+			});
+
+			await expect(
+				oidcService.loginUser(callbackUrl, state.signed, nonce.signed),
+			).rejects.toThrowError(BadRequestError);
+
+			// The attacker's OIDC identity must not be linked to the existing account.
+			const victim = await userRepository.findOne({
+				where: { email: 'link-target@example.com' },
+				relations: ['authIdentities'],
+			});
+			expect(victim!.authIdentities).toHaveLength(0);
 		});
 
 		it('should throw `BadRequestError` if OIDC Idp does not provide an email', async () => {
@@ -1021,7 +1087,7 @@ describe('OIDC service', () => {
 					email: 'new-instance-role-user@example.com',
 				});
 
-				const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+				const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 				expect(user).toBeDefined();
 				expect(user.email).toEqual('new-instance-role-user@example.com');
 
@@ -1059,7 +1125,7 @@ describe('OIDC service', () => {
 					email: 'new-project-role-user@example.com',
 				});
 
-				const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+				const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 				expect(user).toBeDefined();
 				expect(user.email).toEqual('new-project-role-user@example.com');
 
@@ -1096,7 +1162,7 @@ describe('OIDC service', () => {
 					email: 'new-both-provisioning-user@example.com',
 				});
 
-				const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+				const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 				expect(user).toBeDefined();
 				expect(user.email).toEqual('new-both-provisioning-user@example.com');
 
@@ -1156,7 +1222,7 @@ describe('OIDC service', () => {
 						email: 'oidc-expr-instance-role@example.com',
 					});
 
-					const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+					const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 					expect(user).toBeDefined();
 
 					const userFromDB = await userRepository.findOne({
@@ -1209,7 +1275,7 @@ describe('OIDC service', () => {
 						email: 'oidc-expr-custom-role@example.com',
 					});
 
-					const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+					const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 					expect(user).toBeDefined();
 
 					const userFromDB = await userRepository.findOne({
@@ -1256,7 +1322,7 @@ describe('OIDC service', () => {
 						email: 'oidc-expr-project-role@example.com',
 					});
 
-					const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+					const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 					expect(user).toBeDefined();
 
 					const projectRole = await getProjectRoleForUser(project.id, user.id);
@@ -1311,6 +1377,86 @@ describe('OIDC service', () => {
 				'mock-subject-userinfo-error',
 			);
 		});
+
+		describe('without a UserInfo endpoint', () => {
+			const baseConfig: OidcConfigDto = {
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
+				loginEnabled: true,
+				prompt: 'select_account',
+				authenticationContextClassReference: [],
+				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
+			};
+
+			const createConfiguration = (userinfoEndpoint?: string) =>
+				new real_odic_client.Configuration(
+					{
+						issuer: 'https://example.com/auth/realms/n8n',
+						client_id: 'test-client-id',
+						redirect_uris: ['http://n8n.io/sso/oidc/callback'],
+						response_types: ['code'],
+						scopes: ['openid', 'profile', 'email'],
+						authorization_endpoint: 'https://example.com/auth',
+						...(userinfoEndpoint && { userinfo_endpoint: userinfoEndpoint }),
+					},
+					'test-client-id',
+				);
+
+			beforeAll(async () => {
+				discoveryMock.mockResolvedValue(createConfiguration());
+				// updateConfig drops the cached configuration so the next login rediscovers.
+				await oidcService.updateConfig(baseConfig);
+			});
+
+			afterAll(async () => {
+				discoveryMock.mockResolvedValue(createConfiguration('https://example.com/userinfo'));
+				await oidcService.updateConfig(baseConfig);
+			});
+
+			it('should create the user from ID token claims', async () => {
+				const state = oidcService.generateState();
+				const nonce = oidcService.generateNonce();
+				const callbackUrl = new URL(
+					`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+				);
+
+				const mockTokens: mocked_oidc_client.TokenEndpointResponse &
+					mocked_oidc_client.TokenEndpointResponseHelpers = {
+					access_token: 'mock-access-token-id-token-profile',
+					id_token: 'mock-id-token-id-token-profile',
+					token_type: 'bearer',
+					claims: () => {
+						return {
+							sub: 'mock-subject-id-token-profile',
+							iss: 'https://example.com/auth/realms/n8n',
+							aud: 'test-client-id',
+							iat: Math.floor(Date.now() / 1000) - 1000,
+							exp: Math.floor(Date.now() / 1000) + 3600,
+							email: 'id-token-user@example.com',
+							email_verified: true,
+							given_name: 'Alex',
+							family_name: 'Smith',
+						} as mocked_oidc_client.IDToken;
+					},
+					expiresIn: () => 3600,
+				} as mocked_oidc_client.TokenEndpointResponse &
+					mocked_oidc_client.TokenEndpointResponseHelpers;
+
+				authorizationCodeGrantMock.mockReset();
+				fetchUserInfoMock.mockReset();
+				authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
+
+				const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+
+				expect(fetchUserInfoMock).not.toHaveBeenCalled();
+				const userFromDB = await userRepository.findOneOrFail({ where: { id: user.id } });
+				expect(userFromDB.email).toEqual('id-token-user@example.com');
+				expect(userFromDB.firstName).toEqual('Alex');
+				expect(userFromDB.lastName).toEqual('Smith');
+			});
+		});
 	});
 
 	describe('State and nonce', () => {
@@ -1331,12 +1477,14 @@ describe('OIDC service', () => {
 		});
 
 		it('should throw an error for an invalid formatted state', () => {
-			const invalid = Container.get(JwtService).sign({ state: 'invalid_state' });
+			const invalid = Container.get(JwtService).sign('oidcState', { state: 'invalid_state' });
 			expect(() => oidcService.verifyState(invalid)).toThrow(BadRequestError);
 		});
 
 		it('should throw an error for an invalid random part of the state', () => {
-			const invalid = Container.get(JwtService).sign({ state: 'n8n_state:invalid-state' });
+			const invalid = Container.get(JwtService).sign('oidcState', {
+				state: 'n8n_state:invalid-state',
+			});
 			expect(() => oidcService.verifyState(invalid)).toThrow(BadRequestError);
 		});
 
@@ -1345,13 +1493,29 @@ describe('OIDC service', () => {
 		});
 
 		it('should throw an error for an invalid formatted nonce', () => {
-			const invalid = Container.get(JwtService).sign({ nonce: 'invalid_nonce' });
+			const invalid = Container.get(JwtService).sign('oidcNonce', { nonce: 'invalid_nonce' });
 			expect(() => oidcService.verifyNonce(invalid)).toThrow(BadRequestError);
 		});
 
 		it('should throw an error for an invalid random part of the nonce', () => {
-			const invalid = Container.get(JwtService).sign({ nonce: 'n8n_nonce:invalid-nonce' });
+			const invalid = Container.get(JwtService).sign('oidcNonce', {
+				nonce: 'n8n_nonce:invalid-nonce',
+			});
 			expect(() => oidcService.verifyNonce(invalid)).toThrow(BadRequestError);
+		});
+	});
+
+	describe('ID token encryption', () => {
+		it('round-trips an ID token through the real cipher', async () => {
+			const idToken = 'header.payload.signature';
+			const encrypted = await oidcService.encryptIdToken(idToken);
+
+			expect(encrypted).not.toEqual(idToken);
+			expect(await oidcService.decryptIdToken(encrypted)).toEqual(idToken);
+		});
+
+		it('returns undefined for a tampered ciphertext', async () => {
+			expect(await oidcService.decryptIdToken('not-a-valid-ciphertext')).toBeUndefined();
 		});
 	});
 });

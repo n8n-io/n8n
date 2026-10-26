@@ -3,15 +3,15 @@ import { CODE_WORKFLOW_BUILDER_EXPERIMENT } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { STORES } from '@n8n/stores';
-import type { ChatUI } from '@n8n/design-system/types/assistant';
-import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
+import type { ChatUI } from '@n8n/design-system';
+import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,

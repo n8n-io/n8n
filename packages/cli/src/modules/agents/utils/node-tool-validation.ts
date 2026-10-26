@@ -1,14 +1,52 @@
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import type { AgentJsonToolConfig } from '@n8n/api-types';
-import type { INodeParameters } from 'n8n-workflow';
+import { extractFromAICalls, HTTP_REQUEST_NODE_TYPE, type INodeParameters } from 'n8n-workflow';
 
-import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import {
 	isUnsupportedEphemeralNodeOperation,
 	unsupportedEphemeralNodeOperationMessage,
 } from '@/node-execution/node-tool-operation-support';
+import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 
 type NodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;
+const HTTP_REQUEST_TOOL_NODE_TYPE = `${HTTP_REQUEST_NODE_TYPE}Tool`;
+
+export interface HttpRequestToolUrlFromAiViolation {
+	toolIndex: number;
+	toolName: string;
+	path: `tools.${number}.node.nodeParameters.url`;
+}
+
+export function findHttpRequestToolUrlFromAiViolations(
+	tools: AgentJsonToolConfig[] | undefined,
+): HttpRequestToolUrlFromAiViolation[] {
+	return (tools ?? []).flatMap((tool, toolIndex) => {
+		if (
+			tool.type !== 'node' ||
+			(tool.node.nodeType !== HTTP_REQUEST_NODE_TYPE &&
+				tool.node.nodeType !== HTTP_REQUEST_TOOL_NODE_TYPE)
+		) {
+			return [];
+		}
+
+		const url = tool.node.nodeParameters?.url;
+		if (typeof url !== 'string') return [];
+
+		try {
+			if (extractFromAICalls(url).length === 0) return [];
+		} catch {
+			// A malformed $fromAI call is still unsafe in this field.
+		}
+
+		return [
+			{
+				toolIndex,
+				toolName: tool.name,
+				path: `tools.${toolIndex}.node.nodeParameters.url` as const,
+			},
+		];
+	});
+}
 
 /**
  * Throws when a node tool's parameters contain a malformed `$fromAI`
@@ -16,7 +54,7 @@ type NodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;
  */
 export function validateNodeToolExpressions(tools: AgentJsonToolConfig[] | undefined): void {
 	for (const tool of tools ?? []) {
-		if (tool.type !== 'node') continue;
+		if (tool.enabled === false || tool.type !== 'node') continue;
 
 		extractFromAIParameters((tool.node.nodeParameters ?? {}) as INodeParameters);
 	}
@@ -29,7 +67,9 @@ export function validateNodeToolExpressions(tools: AgentJsonToolConfig[] | undef
 export async function validateNodeToolConfigs(
 	tools: AgentJsonToolConfig[] | undefined,
 ): Promise<string | null> {
-	const nodeTools = (tools ?? []).filter((t): t is NodeToolConfig => t.type === 'node');
+	const nodeTools = (tools ?? []).filter(
+		(t): t is NodeToolConfig => t.enabled !== false && t.type === 'node',
+	);
 
 	if (nodeTools.length === 0) return null;
 

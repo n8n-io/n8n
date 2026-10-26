@@ -154,7 +154,7 @@ export function normalizePinData(pinData: IPinData): IPinData {
 			if ('json' in item && typeof item.json === 'object' && item.json !== null) {
 				return item;
 			}
-			return { json: item } as INodeExecutionData;
+			return { json: item };
 		});
 	}
 	return normalized;

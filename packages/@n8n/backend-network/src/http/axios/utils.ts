@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
 import crypto from 'crypto';
@@ -11,6 +12,8 @@ import {
 	type IRequestOptions,
 	type IgnoreStatusErrorConfig,
 } from 'n8n-workflow';
+import net from 'node:net';
+import { Readable } from 'node:stream';
 
 import { hasProxyEnvironmentVariables } from '../../proxy/proxy-resolution';
 import type { SsrfBridge } from '../../ssrf';
@@ -21,7 +24,13 @@ export function throwIfDomainNotAllowed(
 	configOrUrl: AxiosRequestConfig | string,
 	allowedDomains?: string,
 ): void {
-	const url = typeof configOrUrl === 'string' ? configOrUrl : axios.getUri(configOrUrl);
+	// Resolve the bare target rather than `axios.getUri()`, which also serializes
+	// `config.params` onto the string. The allowlist check only needs the hostname,
+	// and this URL is what the thrown message embeds.
+	const url =
+		typeof configOrUrl === 'string'
+			? configOrUrl
+			: (buildTargetUrl(configOrUrl.url, configOrUrl.baseURL) ?? configOrUrl.url ?? '');
 	assertUrlAllowed({ url, allowedDomains });
 }
 
@@ -55,6 +64,24 @@ export function searchForHeader(config: AxiosRequestConfig, headerName: string) 
 	const headerNames = Object.keys(config.headers);
 	headerName = headerName.toLowerCase();
 	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
+}
+
+/**
+ * The SNI to announce when connecting to `host`.
+ *
+ * @returns the host, or `undefined` when it carries no name to announce: SNI takes a
+ * hostname and never an IP literal (RFC 6066 §3), and Node ignores IP values.
+ */
+export function sniFor(host: string | null | undefined): string | undefined {
+	if (!host) {
+		return undefined;
+	}
+	// A URL hostname keeps the brackets of an IPv6 literal; `net.isIP` expects it bare.
+	const unbracketed = host.startsWith('[') && host.endsWith(']') ? host.slice(1, -1) : host;
+	if (net.isIP(unbracketed)) {
+		return undefined;
+	}
+	return host;
 }
 
 /** Extracts the hostname from a request object's URL or URI. */
@@ -115,13 +142,11 @@ export const getBeforeRedirectFn =
 
 		const redirectAgentOptions: AgentOptions = {
 			...agentOptions,
-			servername: redirectedRequest.hostname,
+			servername: sniFor(redirectedRequest.hostname as string | undefined),
 		};
 		const customProxyUrl = proxyConfig ? getUrlFromProxyConfig(proxyConfig) : null;
 		const proxy = resolveProxyOption(customProxyUrl);
 
-		// SSRF lookup is applied to direct connections only; behind a proxy the
-		// proxy validates the final target.
 		const targetUrl = redirectedRequest.href;
 		const { httpAgent, httpsAgent } = buildNodeAgents(proxy, ssrf, redirectAgentOptions);
 
@@ -207,6 +232,30 @@ const pushFormDataValue = (form: FormData, key: string, value: any) => {
 };
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
+const streamOfFormDataValue = (value: unknown) => {
+	if (value instanceof Readable) return value;
+	if (isRecord(value) && 'options' in value && value.value instanceof Readable) return value.value;
+	return undefined;
+};
+
+/**
+ * Destroys the streams in a request body: a stream, a `FormData`, or form fields that hold
+ * streams. A request that fails leaves an unread file stream open until garbage collection.
+ */
+export const destroyRequestBody = (body: unknown) => {
+	if (body instanceof Readable) {
+		body.destroy();
+	} else if (isFormDataInstance(body)) {
+		// `isFormDataInstance` matches on `getHeaders` and `append` only.
+		if (typeof body.destroy === 'function') body.destroy();
+	} else if (isRecord(body) && !ArrayBuffer.isView(body)) {
+		for (const field of Object.values(body)) {
+			const values: unknown[] = Array.isArray(field) ? field : [field];
+			values.forEach((value) => streamOfFormDataValue(value)?.destroy());
+		}
+	}
+};
+
 /** Converts a plain object into a `FormData` instance, handling arrays and option objects. */
 export const createFormDataObject = (data: Record<string, unknown>) => {
 	const formData = new FormData();
@@ -237,7 +286,7 @@ export function isFormDataInstance(data: unknown): data is FormData {
 		(typeof data === 'object' &&
 			data !== null &&
 			'getHeaders' in data &&
-			typeof (data as { getHeaders: unknown }).getHeaders === 'function' &&
+			typeof data.getHeaders === 'function' &&
 			'append' in data &&
 			typeof (data as { append: unknown }).append === 'function')
 	);
@@ -248,10 +297,10 @@ export function isFormDataInstance(data: unknown): data is FormData {
  * Shared by the axios config builder and the manual redirect follower so both derive agents the same way.
  */
 export function buildAgentOptions(n8nRequest: IHttpRequestOptions): AgentOptions {
-	const host = getHostFromRequestObject(n8nRequest);
+	const servername = sniFor(getHostFromRequestObject(n8nRequest));
 	const agentOptions: AgentOptions = { ...n8nRequest.agentOptions };
-	if (host) {
-		agentOptions.servername = host;
+	if (servername) {
+		agentOptions.servername = servername;
 	}
 	if (n8nRequest.skipSslCertificateValidation === true) {
 		agentOptions.rejectUnauthorized = false;
@@ -345,11 +394,17 @@ export function getUrlFromProxyConfig(
 	}
 }
 
-/** Resolves `url` against an optional `baseURL`, returning the absolute href. */
+/**
+ * Resolves `url` against an optional `baseURL`, returning the absolute href.
+ *
+ * Mirrors how axios composes the request target, including the case of an absent
+ * or empty `url`, where the request goes to `baseURL` on its own.
+ */
 export function buildTargetUrl(url?: string, baseURL?: string): string | undefined {
-	if (!url) return undefined;
-
 	try {
+		if (!url) {
+			return baseURL ? new URL(baseURL).href : undefined;
+		}
 		return baseURL ? new URL(url, baseURL).href : url;
 	} catch {
 		return undefined;
@@ -372,8 +427,6 @@ export function setAxiosAgents(
 	const customProxyUrl = proxyConfig ? getUrlFromProxyConfig(proxyConfig) : null;
 	const proxy = resolveProxyOption(customProxyUrl);
 
-	// SSRF lookup is applied to direct connections only; behind a proxy the
-	// proxy validates the final target.
 	const { httpAgent, httpsAgent } = buildNodeAgents(proxy, ssrf, agentOptions);
 	config.httpAgent = httpAgent;
 	config.httpsAgent = httpsAgent;
@@ -395,8 +448,34 @@ export async function validateUrlSsrf(
 	}
 }
 
+export async function validateProxySsrf(
+	proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
+	ssrfBridge?: SsrfBridge,
+): Promise<void> {
+	const proxyUrl = getUrlFromProxyConfig(proxyConfig);
+	if (!isSupportedProxyUrl(proxyUrl)) return;
+
+	await validateUrlSsrf(proxyUrl, ssrfBridge);
+}
+
+/**
+ * Resolves the raw target of a legacy request object, i.e. the value the axios
+ * config carries as its `url`.
+ *
+ * `url` wins over its `uri` alias whenever it is set, mirroring the precedence of
+ * the `request` library. Single source of truth for the legacy target so the
+ * pre-flight SSRF check and the dispatched request can never read different
+ * fields.
+ */
+// oxlint-disable-next-line typescript/no-deprecated
+export function resolveLegacyRequestTarget(requestObject: IRequestOptions): string | undefined {
+	return (requestObject.url ?? requestObject.uri)?.toString();
+}
+
+/** Resolves the absolute target of a legacy request object, honouring `baseURL`. */
+// oxlint-disable-next-line typescript/no-deprecated
 export function resolveLegacyRequestUrl(requestObject: IRequestOptions): string | undefined {
-	const rawUrl = requestObject.uri?.toString() ?? requestObject.url?.toString();
+	const rawUrl = resolveLegacyRequestTarget(requestObject);
 	const baseURL = requestObject.baseURL?.toString();
 	return buildTargetUrl(rawUrl, baseURL) ?? rawUrl;
 }

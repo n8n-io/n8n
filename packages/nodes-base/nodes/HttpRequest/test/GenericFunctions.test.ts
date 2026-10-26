@@ -1,7 +1,13 @@
 import { mock } from 'vitest-mock-extended';
 import type { INode } from 'n8n-workflow';
+import { PassThrough } from 'node:stream';
 
-import { getAllowedDomains, updadeQueryParameterConfig } from '../GenericFunctions';
+import {
+	getAllowedDomains,
+	getOAuth2AdditionalParameters,
+	prepareRequestBody,
+	updadeQueryParameterConfig,
+} from '../GenericFunctions';
 
 describe('updadeQueryParameterConfig', () => {
 	describe('version < 4.3 (legacy behavior)', () => {
@@ -117,5 +123,31 @@ describe('getAllowedDomains', () => {
 		});
 
 		expect(result).toBe('example.com, *.api.io');
+	});
+});
+
+describe('getOAuth2AdditionalParameters', () => {
+	it('should return undefined for microsoftDynamicsOAuth2Api so the stored access token is used', () => {
+		const result = getOAuth2AdditionalParameters('microsoftDynamicsOAuth2Api');
+		expect(result).toBeUndefined();
+	});
+});
+
+describe('prepareRequestBody', () => {
+	it('should destroy the binary streams of a multipart body when the form data is destroyed', async () => {
+		const stream = new PassThrough();
+		const reducer = vi.fn().mockResolvedValue({
+			file: { value: stream, options: { filename: 'file.bin' } },
+		});
+
+		const formData = (await prepareRequestBody(
+			[{ parameterType: 'formBinaryData', name: 'File', value: 'data' }],
+			'multipart-form-data',
+			4.2,
+			reducer,
+		)) as { destroy: () => void };
+		formData.destroy();
+
+		expect(stream.destroyed).toBe(true);
 	});
 });

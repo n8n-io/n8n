@@ -2,7 +2,7 @@ import { computed } from 'vue';
 
 import { EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 export function useEvaluationsWizardSidepanelExperiment() {
 	const posthogStore = usePostHog();

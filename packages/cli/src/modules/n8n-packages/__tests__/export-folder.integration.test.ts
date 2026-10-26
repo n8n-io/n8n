@@ -1,8 +1,8 @@
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
@@ -61,7 +61,7 @@ describe('folder package export', () => {
 		const project = await createTeamProject('Project A', owner);
 		const folder = await createFolder(project, { name: 'to_production' });
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [folder.id],
@@ -119,7 +119,7 @@ describe('folder package export', () => {
 		const toProduction = await createFolder(project, { name: 'to_production' });
 		const inProgress = await createFolder(project, { name: 'in_progress' });
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [toProduction.id, inProgress.id],
@@ -178,10 +178,10 @@ describe('folder package export', () => {
 			subWorkflowId: dependency.id,
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			folderIds: [exportedFolder.id],
-			missingWorkflowDependencyPolicy: 'include-in-package',
+			dependencyPolicy: 'include-in-package',
 		});
 		const { manifest, entries } = await readExport(stream);
 
@@ -235,7 +235,7 @@ describe('folder package export', () => {
 			subWorkflowId: externalChild.id,
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			folderIds: [folder.id],
 			workflowIds: [externalChild.id],
@@ -243,10 +243,14 @@ describe('folder package export', () => {
 		const { manifest, entries } = await readExport(stream);
 
 		const childEntry = manifest.workflows!.find(({ id }) => id === externalChild.id);
-		expect(childEntry?.target).toBe('workflows/external-child');
+		expect(childEntry?.target).toBe(`workflows/external-child-${externalChild.id}`);
 		expect(entries.find((e) => e.name === `${childEntry!.target}/workflow.json`)).toBeDefined();
 		expect(manifest.requirements?.workflows).toEqual([
-			{ id: externalChild.id, name: externalChild.name, usedByWorkflows: [parent.id] },
+			{
+				id: externalChild.id,
+				name: externalChild.name,
+				usedBy: [{ kind: 'workflow', id: parent.id }],
+			},
 		]);
 	});
 
@@ -271,11 +275,11 @@ describe('folder package export', () => {
 			subWorkflowId: dependency.id,
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			folderIds: [exportedFolder.id],
 			workflowIds: [topLevelParent.id],
-			missingWorkflowDependencyPolicy: 'include-in-package',
+			dependencyPolicy: 'include-in-package',
 		});
 		const { manifest } = await readExport(stream);
 
@@ -296,7 +300,7 @@ describe('folder package export', () => {
 		const child = await createFolder(project, { name: 'nested', parentFolder: parent });
 		const grandchild = await createFolder(project, { name: 'deep', parentFolder: child });
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [parent.id],
@@ -317,7 +321,7 @@ describe('folder package export', () => {
 		expect(folderShell(entries, grandchildEntry.target).parentFolderId).toBe(child.id);
 	});
 
-	it('disambiguates same-named sibling folders by creation order', async () => {
+	it('gives same-named sibling folders their own targets', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Project A', owner);
 		const older = await createFolder(project, {
@@ -329,7 +333,7 @@ describe('folder package export', () => {
 			createdAt: new Date('2026-02-01T00:00:00.000Z'),
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [older.id, newer.id],
@@ -338,9 +342,9 @@ describe('folder package export', () => {
 
 		const olderTarget = manifest.folders!.find((f) => f.id === older.id)!.target;
 		const newerTarget = manifest.folders!.find((f) => f.id === newer.id)!.target;
-		// Oldest keeps the bare slug; the allocator suffixes the newer one.
-		expect(olderTarget).toBe('folders/inprogress');
-		expect(newerTarget).toBe('folders/inprogress-2');
+		// Each keeps its own id, so neither target depends on which was created first.
+		expect(olderTarget).toBe(`folders/inprogress-${older.id}`);
+		expect(newerTarget).toBe(`folders/inprogress-${newer.id}`);
 	});
 
 	it('re-roots an exported folder whose parent is left out of the export', async () => {
@@ -350,7 +354,7 @@ describe('folder package export', () => {
 		const child = await createFolder(project, { name: 'nested', parentFolder: parent });
 
 		// Request only the child; its real parent stays behind.
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [child.id],
@@ -401,7 +405,7 @@ describe('folder package export — with contained workflows', () => {
 		const folder = await createFolder(project, { name: 'in_progress' });
 		const workflow = await createWorkflow({ name: 'triage', parentFolder: folder }, project);
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [folder.id],
@@ -424,7 +428,7 @@ describe('folder package export — with contained workflows', () => {
 		const child = await createFolder(project, { name: 'nested', parentFolder: parent });
 		const workflow = await createWorkflow({ name: 'playground', parentFolder: child }, project);
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [parent.id],
@@ -453,7 +457,7 @@ describe('folder package export — with contained workflows', () => {
 			parentFolder: folder,
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [folder.id],
@@ -470,12 +474,16 @@ describe('folder package export — with contained workflows', () => {
 					id: credential.id,
 					name: credential.name,
 					type: 'httpHeaderAuth',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			],
 			// Folder packages fold node type usage too (shared WorkflowExporter path).
 			nodeTypes: [
-				{ type: 'n8n-nodes-base.httpRequest', typeVersion: 1, usedByWorkflows: [workflow.id] },
+				{
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
+				},
 			],
 		});
 		expect(
@@ -495,7 +503,7 @@ describe('folder package export — with contained workflows', () => {
 			parentFolder: folder,
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [folder.id],
@@ -507,14 +515,12 @@ describe('folder package export — with contained workflows', () => {
 			{
 				id: variable.id,
 				name: 'API_URL',
-				target: 'variables/apiurl',
+				target: `variables/apiurl-${variable.id}`,
 			},
 		]);
 		expect(manifest.requirements).toEqual({
 			nodeTypes: expect.any(Array),
-			variables: [
-				{ name: 'API_URL', value: 'https://api.example.com', usedByWorkflows: [workflow.id] },
-			],
+			variables: [{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: workflow.id }] }],
 		});
 		expect(
 			entries.find((e) => e.name === `${manifest.variables![0].target}/variable.json`),
@@ -550,7 +556,7 @@ describe('folder package export — with contained workflows', () => {
 		const folder = await createFolder(project, { name: 'in_progress' });
 		const workflow = await createWorkflow({ name: 'triage', parentFolder: folder }, project);
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [workflow.id],
 			folderIds: [folder.id],
@@ -574,7 +580,7 @@ describe('folder package export — with contained workflows', () => {
 		const project = await createTeamProject('Project A', owner);
 		const folder = await createFolder(project, { name: 'empty' });
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [folder.id],
@@ -594,7 +600,7 @@ describe('folder package export — with contained workflows', () => {
 		const workflow = await createWorkflow({ name: 'triage', parentFolder: parent }, project);
 		const subfolder = await createFolder(project, { name: 'workflows', parentFolder: parent });
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [parent.id],
@@ -604,8 +610,7 @@ describe('folder package export — with contained workflows', () => {
 		const subfolderTarget = manifest.folders!.find((f) => f.id === subfolder.id)!.target;
 		const workflowTarget = manifest.workflows!.find((w) => w.id === workflow.id)!.target;
 
-		// The subfolder is suffixed; the workflow stays under the parent's container.
-		expect(subfolderTarget).toMatch(/\/workflows-2$/);
+		expect(subfolderTarget).toMatch(new RegExp(`/workflows-${subfolder.id}$`));
 		expect(workflowTarget.startsWith(`${subfolderTarget}/`)).toBe(false);
 	});
 

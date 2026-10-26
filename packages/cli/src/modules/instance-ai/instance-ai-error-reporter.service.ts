@@ -1,3 +1,4 @@
+import type { AgentEventData } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { isQuotaExhaustedError } from '@n8n/instance-ai';
@@ -7,8 +8,26 @@ import {
 	buildInstanceAiObservabilityContext,
 	type InstanceAiObservabilityContext,
 } from './observability';
+import { isStreamTransportError } from './stream-transport-error';
 
-export type InstanceAiErrorReportContext = { component: string } & InstanceAiObservabilityContext;
+export type InstanceAiErrorReportContext = {
+	component: string;
+	/** Report non-terminal, best-effort failures at warning level. */
+	severity?: 'warning';
+	/**
+	 * Set when the error terminated the model provider stream.
+	 */
+	providerStream?: boolean;
+} & InstanceAiObservabilityContext;
+
+type AgentErrorSource = NonNullable<Extract<AgentEventData, { error: unknown }>['source']>;
+
+export function getAgentErrorSeverity(source: AgentErrorSource): 'warning' | undefined {
+	if (source === 'observer' || source === 'reflector' || source === 'episodic-memory') {
+		return 'warning';
+	}
+	return undefined;
+}
 
 /**
  * The ai-assistant-sdk vendors its own ApplicationError, so its client-level
@@ -24,7 +43,10 @@ function isSelfDeclaredWarning(error: unknown): boolean {
 export class InstanceAiErrorReporterService {
 	private readonly logger: Logger;
 
-	private readonly reportedErrorsByRun = new Map<string, WeakSet<object>>();
+	private readonly reportedErrorsByRun = new Map<
+		string,
+		{ executionToken: symbol; reportedErrors: WeakSet<object> }
+	>();
 
 	constructor(
 		logger: Logger,
@@ -33,11 +55,14 @@ export class InstanceAiErrorReporterService {
 		this.logger = logger.scoped('instance-ai');
 	}
 
-	beginRun(runId: string): void {
-		this.reportedErrorsByRun.set(runId, new WeakSet());
+	beginRun(runId: string): symbol {
+		const executionToken = Symbol('instance-ai-error-reporting-execution');
+		this.reportedErrorsByRun.set(runId, { executionToken, reportedErrors: new WeakSet() });
+		return executionToken;
 	}
 
-	endRun(runId: string): void {
+	endRun(runId: string, executionToken: symbol): void {
+		if (this.reportedErrorsByRun.get(runId)?.executionToken !== executionToken) return;
 		this.reportedErrorsByRun.delete(runId);
 	}
 
@@ -60,6 +85,15 @@ export class InstanceAiErrorReporterService {
 			return;
 		}
 
+		if (context.providerStream && isStreamTransportError(error)) {
+			this.logger.warn(`Instance AI stream transport failure in ${context.component}`, {
+				error,
+				component: context.component,
+				...observability,
+			});
+			return;
+		}
+
 		if (isSelfDeclaredWarning(error)) {
 			this.logger.warn(`Instance AI warning-level error in ${context.component}`, {
 				error,
@@ -69,15 +103,17 @@ export class InstanceAiErrorReporterService {
 			return;
 		}
 
-		this.logger.error(`Instance AI error in ${context.component}`, {
-			error,
-			component: context.component,
-			...observability,
-		});
+		const logDetails = { error, component: context.component, ...observability };
+		if (context.severity === 'warning') {
+			this.logger.warn(`Instance AI error in ${context.component}`, logDetails);
+		} else {
+			this.logger.error(`Instance AI error in ${context.component}`, logDetails);
+		}
 
 		this.errorReporter.error(error, {
 			tags: { component: context.component, ...observability },
 			extra: observability,
+			...(context.severity ? { level: context.severity } : {}),
 			// Reports fire from the background run loop, where the ambient Sentry
 			// scope can hold an unrelated HTTP request (e.g. a health check).
 			shouldIsolate: true,
@@ -103,16 +139,16 @@ export class InstanceAiErrorReporterService {
 			return false;
 		}
 
-		const reportedErrors = this.reportedErrorsByRun.get(runId);
-		if (!reportedErrors) {
+		const runState = this.reportedErrorsByRun.get(runId);
+		if (!runState) {
 			return false;
 		}
 
-		if (reportedErrors.has(error)) {
+		if (runState.reportedErrors.has(error)) {
 			return true;
 		}
 
-		reportedErrors.add(error);
+		runState.reportedErrors.add(error);
 		return false;
 	}
 }

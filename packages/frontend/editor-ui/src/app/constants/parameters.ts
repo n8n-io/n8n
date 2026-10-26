@@ -1,10 +1,10 @@
 import { SWITCH_NODE_TYPE } from './nodeTypes';
-import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 
 export const DATA_TYPE_ICON_MAP = {
-	['string']: 'type',
+	['string']: 'text-aa',
 	['number']: 'hash',
-	['boolean']: 'square-check',
+	['boolean']: 'toggles',
 	date: 'calendar',
 	array: 'list',
 	object: 'box',

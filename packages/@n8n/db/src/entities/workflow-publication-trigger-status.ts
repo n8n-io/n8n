@@ -1,3 +1,4 @@
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, Relation } from '@n8n/typeorm';
 
 import { WithTimestamps } from './abstract-entity';
@@ -11,7 +12,9 @@ export type WorkflowPublicationTriggerStatusType = 'activated' | 'failed';
  * or `trigger` function are registered `in-memory` on the owning instance,
  * nodes with only a `webhook` function are `persisted` rows in
  * `webhook_entity`. Reconciliation diffs the `in-memory` ones against the
- * registry.
+ * registry. `persisted` also covers the no-op pseudo triggers (manual,
+ * executeWorkflow, error): the execution engine fires them directly, so
+ * neither leader handoff nor reconciliation has registry work to redo.
  */
 export type WorkflowPublicationTriggerKind = 'in-memory' | 'persisted';
 
@@ -26,7 +29,7 @@ export class WorkflowPublicationTriggerStatus extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	workflowId: string;
 
-	@PrimaryColumn({ type: 'varchar', length: 36 })
+	@PrimaryColumn({ type: 'varchar', length: NODE_ID_MAX_LENGTH })
 	nodeId: string;
 
 	/** The `workflow_history` version these statuses were recorded for. */

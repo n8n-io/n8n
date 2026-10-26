@@ -1,18 +1,19 @@
 /**
  * Replays expression resolution for a node's parameters against a past
  * execution's saved data — the server-side equivalent of the editor's
- * "resolved parameters" view. Used by `executions(action="get-resolved-node-parameters")`
+ * "resolved parameters" view. Used by `workflow_builder_executions(action="get-resolved-node-parameters")`
  * and folded into the `debug` action's failedNode payload.
  *
  * Lives in its own module to keep `instance-ai.adapter.service.ts` focused.
  */
-import { Container } from '@n8n/di';
+import type { IExecutionResponse } from '@n8n/db';
 import {
 	wrapUntrustedData,
 	type EmptyExpressionResolution,
 	type ResolvedExpressionFailure,
 	type ResolvedNodeParametersResult,
 } from '@n8n/instance-ai';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import {
 	type IExecuteData,
 	type INode,
@@ -25,8 +26,7 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-
+import { getExecutionRedaction } from '@/executions/execution-viewer-reader';
 import type { NodeTypes } from '@/node-types';
 
 /**
@@ -229,17 +229,25 @@ function reconstructExecuteData(
  */
 export async function extractResolvedNodeParameters(
 	nodeTypes: NodeTypes,
-	executionId: string,
+	execution: IExecutionResponse,
 	nodeName: string,
 	options?: { itemIndex?: number; runIndex?: number },
 ): Promise<ResolvedNodeParametersResult> {
-	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
-		includeData: true,
-		unflattenData: true,
-	});
+	const executionId = execution.id;
 
-	if (!execution) {
-		throw new Error(`Execution ${executionId} not found`);
+	// Redacted items resolve every expression to nothing, which would read as a
+	// real bug in the node.
+	if (getExecutionRedaction(execution)) {
+		return {
+			nodeName,
+			runIndex: options?.runIndex ?? 0,
+			itemIndex: options?.itemIndex ?? 0,
+			parameters: null,
+			resolved: null,
+			failedExpressions: [],
+			emptyResolutions: [],
+			suppressed: 'execution-redacted',
+		};
 	}
 
 	// Resolve against the execution's workflow snapshot — what the user actually
@@ -335,7 +343,7 @@ export async function extractResolvedNodeParameters(
 				}
 				return capResolvedLeaf(resolvedValue);
 			} catch (error) {
-				const errorMessage = error instanceof Error ? error.message : String(error);
+				const errorMessage = getErrorMessage(error);
 				failedExpressions.push({
 					path,
 					raw: value,

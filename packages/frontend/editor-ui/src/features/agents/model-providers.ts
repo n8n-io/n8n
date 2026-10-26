@@ -1,4 +1,8 @@
-import type { AgentModelProvider } from '@n8n/api-types';
+import {
+	AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES,
+	type AgentModelProvider,
+	type AgentModelsUnavailableReason,
+} from '@n8n/api-types';
 
 export {
 	AGENT_MODEL_PROVIDERS,
@@ -20,7 +24,10 @@ export interface AgentModelOption {
 
 export interface AgentModelsForProvider {
 	models: AgentModelOption[];
-	error?: string;
+	/** The list could not be retrieved, as opposed to being genuinely empty. */
+	unavailable?: boolean;
+	/** Set with `unavailable` when the user can fix the cause. */
+	unavailableReason?: AgentModelsUnavailableReason;
 }
 
 export type AgentModelsByProvider = Partial<Record<AgentModelProvider, AgentModelsForProvider>>;
@@ -31,67 +38,33 @@ export interface AgentModelSelection {
 	model: string;
 }
 
+/**
+ * Presentation only. The provider's credential types live in
+ * `AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES` (`@n8n/api-types`) so the backend's
+ * n8n Connect gate and this picker cannot drift apart.
+ */
 export const AGENT_MODEL_PROVIDER_DEFINITIONS = {
-	openai: {
-		displayName: 'OpenAI',
-		credentialTypes: ['openAiApi'],
-	},
-	anthropic: {
-		displayName: 'Anthropic',
-		credentialTypes: ['anthropicApi'],
-	},
-	google: {
-		displayName: 'Google',
-		credentialTypes: ['googlePalmApi'],
-	},
-	'azure-openai': {
-		displayName: 'Azure OpenAI',
-		credentialTypes: ['azureOpenAiApi', 'azureEntraCognitiveServicesOAuth2Api'],
-	},
-	'aws-bedrock': {
-		displayName: 'AWS Bedrock',
-		credentialTypes: ['aws'],
-		isAggregator: true,
-	},
-	xai: {
-		displayName: 'xAI',
-		credentialTypes: ['xAiApi'],
-	},
-	groq: {
-		displayName: 'Groq',
-		credentialTypes: ['groqApi'],
-	},
-	openrouter: {
-		displayName: 'OpenRouter',
-		credentialTypes: ['openRouterApi'],
-		isAggregator: true,
-	},
-	deepseek: {
-		displayName: 'DeepSeek',
-		credentialTypes: ['deepSeekApi'],
-	},
-	cohere: {
-		displayName: 'Cohere',
-		credentialTypes: ['cohereApi'],
-	},
-	mistral: {
-		displayName: 'Mistral',
-		credentialTypes: ['mistralCloudApi'],
-	},
-	vercel: {
-		displayName: 'Vercel AI Gateway',
-		credentialTypes: ['vercelAiGatewayApi'],
-		isAggregator: true,
-	},
-	nvidia: {
-		displayName: 'NVIDIA',
-		credentialTypes: ['nvidiaApi'],
-	},
+	openai: { displayName: 'OpenAI' },
+	anthropic: { displayName: 'Anthropic' },
+	google: { displayName: 'Google' },
+	'google-vertex': { displayName: 'Google Vertex AI' },
+	'azure-openai': { displayName: 'Microsoft Foundry' },
+	'aws-bedrock': { displayName: 'AWS Bedrock', isAggregator: true },
+	xai: { displayName: 'xAI' },
+	groq: { displayName: 'Groq' },
+	openrouter: { displayName: 'OpenRouter', isAggregator: true },
+	deepseek: { displayName: 'DeepSeek' },
+	cohere: { displayName: 'Cohere' },
+	mistral: { displayName: 'Mistral' },
+	vercel: { displayName: 'Vercel AI Gateway', isAggregator: true },
+	nvidia: { displayName: 'NVIDIA' },
+	moonshotai: { displayName: 'Moonshot' },
+	alibaba: { displayName: 'Qwen Cloud' },
+	minimax: { displayName: 'MiniMax' },
 } satisfies Record<
 	AgentModelProvider,
 	{
 		displayName: string;
-		credentialTypes: readonly [string, ...string[]];
 		isAggregator?: boolean;
 	}
 >;
@@ -99,5 +72,5 @@ export const AGENT_MODEL_PROVIDER_DEFINITIONS = {
 export function getProviderCredentialTypes(
 	provider: AgentModelProvider,
 ): readonly [string, ...string[]] {
-	return AGENT_MODEL_PROVIDER_DEFINITIONS[provider].credentialTypes;
+	return AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES[provider];
 }

@@ -6,15 +6,14 @@
  * LangSmith LLM-run outputs, not forwarded over SSE.
  */
 
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import { resolveBuilderToolName, type InstanceAiConfirmRequest } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
-import { redactSecrets, redactSecretsInText } from '../harness/redact';
+import { redactSecrets, redactSecretsInText, redactSecretsInTextDeep } from '../harness/redact';
 import type {
 	AskUserAnswer,
 	AskUserQuestion,
 	CapturedEvent,
-	PlanTask,
 	SetupCardRequest,
 	SetupWizardCompletedNode,
 	SetupWizardSkippedNode,
@@ -24,6 +23,7 @@ import type {
 } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { splitEventsIntoTurns } from './event-parser';
+import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 
 type ProxyResponses = Map<string, InstanceAiConfirmRequest>;
@@ -87,13 +87,15 @@ function splitEventsByUserTurn(
 
 function extractUserTurnText(event: CapturedEvent): string | undefined {
 	const payload = getRecord(event.data, 'payload');
+	// Raw here — buildTurn content-scrubs every user message at the shared
+	// boundary, covering this path and the legacy fallback alike.
 	return payload ? getString(payload, 'text') : undefined;
 }
 
 // ---------------------------------------------------------------------------
 // Per-turn assembly
 //
-// Each tool can emit two events for one logical interaction (e.g. ask-user
+// Each tool can emit two events for one logical interaction (e.g. workflow_builder_ask_user
 // fires both a tool-call and a confirmation-request). To render it once,
 // only the variant carrying the richer payload handles it; the other is
 // skipped. This relies on both events arriving in the same turn — which
@@ -111,7 +113,9 @@ function buildTurn(
 
 	const flushText = () => {
 		if (textBuffer.length > 0) {
-			steps.push({ kind: 'agent-text', text: textBuffer });
+			// Agent narration can echo a token verbatim (e.g. from a tool result) —
+			// content-scrub before the text lands in the persisted transcript.
+			steps.push({ kind: 'agent-text', text: redactSecretsInText(textBuffer) });
 			textBuffer = '';
 		}
 	};
@@ -144,7 +148,25 @@ function buildTurn(
 	}
 
 	flushText();
-	return { userMessage, steps };
+	const runIds = collectRunIds(events);
+	// The transcript leaves the machine via eval-results.json — content-scrub
+	// the user message HERE, the boundary both capture paths share (the
+	// marker path's extracted turn text AND the legacy fallback's raw
+	// opening/follow-up messages).
+	return {
+		userMessage: userMessage === undefined ? undefined : redactSecretsInText(userMessage),
+		steps,
+		...(runIds.length > 0 ? { runIds } : {}),
+	};
+}
+
+/** Every distinct `runId` in this turn — the main run plus any resumes. */
+function collectRunIds(events: CapturedEvent[]): string[] {
+	return [
+		...new Set(
+			events.map((e) => getString(e.data, 'runId')).filter((id): id is string => Boolean(id)),
+		),
+	];
 }
 
 interface ToolOutcome {
@@ -164,8 +186,9 @@ function collectToolOutcomes(events: CapturedEvent[]): Map<string, ToolOutcome> 
 			// Flat string, so content-scrub (key-based redaction can't reach an inline token).
 			map.set(callId, { error: redactSecretsInText(getString(payload, 'error') ?? 'tool error') });
 		} else {
-			// Redact secret-shaped keys before the result reaches the report/judge.
-			map.set(callId, { result: redactSecrets(payload.result) });
+			// Redact secret-shaped keys, then content-scrub string leaves — a token
+			// inlined in a value under a benign key survives the key-based pass.
+			map.set(callId, { result: redactSecretsInTextDeep(redactSecrets(payload.result)) });
 		}
 	}
 	return map;
@@ -176,31 +199,27 @@ function interpretToolCall(
 	outcomeByCallId: Map<string, ToolOutcome>,
 ): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
-	const toolName = getString(payload, 'toolName') ?? '';
+	const toolName = resolveBuilderToolName(getString(payload, 'toolName') ?? '');
 	const args = getRecord(payload, 'args') ?? {};
 
-	// ask-user is rendered from the confirmation-request (which has the answers).
-	if (toolName === 'ask-user') return null;
-
-	if (toolName === 'create-tasks') {
-		const tasks = Array.isArray(args.tasks) ? extractPlanTasks(args.tasks) : [];
-		if (tasks.length > 0) return { kind: 'plan', tasks };
-		// Empty plan: fall through and render as a plain tool-call so the call
-		// stays visible (1:1 with what happened) instead of vanishing.
-	}
+	// workflow_builder_ask_user is rendered from the confirmation-request (which has the answers).
+	if (toolName === DOMAIN_TOOL_IDS.ASK_USER) return null;
 
 	// Every named call renders — no de-duping, so repeat calls aren't dropped.
 	if (!toolName) return null;
 	const callId = getString(payload, 'toolCallId');
 	const outcome = callId ? outcomeByCallId.get(callId) : undefined;
-	// `workflows` output is rendered as the setup-wizard block — don't duplicate its result here.
-	const result = toolName === 'workflows' ? undefined : outcome?.result;
+	// `workflow_builder_workflows` output is rendered as the setup-wizard block — don't duplicate its result here.
+	const result = toolName === DOMAIN_TOOL_IDS.WORKFLOWS ? undefined : outcome?.result;
 	return {
 		kind: 'tool-call',
 		toolName,
 		toolCallId: callId,
 		args:
-			Object.keys(args).length > 0 ? (redactSecrets(args) as Record<string, unknown>) : undefined,
+			Object.keys(args).length > 0
+				? // Key-based pass, then a content pass over string leaves (see collectToolOutcomes).
+					(redactSecretsInTextDeep(redactSecrets(args)) as Record<string, unknown>)
+				: undefined,
 		result,
 		error: outcome?.error,
 	};
@@ -208,10 +227,10 @@ function interpretToolCall(
 
 function interpretToolResult(event: CapturedEvent): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
-	const toolName = getString(payload, 'toolName') ?? '';
+	const toolName = resolveBuilderToolName(getString(payload, 'toolName') ?? '');
 	const result = payload.result;
 
-	if (toolName === 'workflows' && isRecord(result)) {
+	if (toolName === DOMAIN_TOOL_IDS.WORKFLOWS && isRecord(result)) {
 		return extractSetupWizardOutcome(result);
 	}
 	return null;
@@ -249,12 +268,7 @@ function interpretConfirmationRequest(
 		toolName,
 		resumeReason: inferResumeReason(payload, response),
 		approved: inferApproval(response),
-		// Plan-review prompts are boilerplate and the plan is rendered separately;
-		// keep the message only for confirm types where it's specific.
-		message:
-			payload.inputType === 'plan-review'
-				? undefined
-				: (getString(payload, 'message') ?? getString(payload, 'introMessage')),
+		message: getString(payload, 'message') ?? getString(payload, 'introMessage'),
 		feedback: inferFeedback(response),
 	};
 }
@@ -267,12 +281,28 @@ export function extractSetupWizardOutcome(result: Record<string, unknown>): Tool
 	const completed = Array.isArray(result.completedNodes)
 		? extractCompletedNodes(result.completedNodes)
 		: [];
-	const skipped = Array.isArray(result.skippedNodes)
-		? extractSkippedNodes(result.skippedNodes)
+	// `skippedNodes` was this list's name before it split into "still unconfigured" and
+	// "declined by the user"; traces and seeded fixtures recorded then still carry it.
+	const stillNeedingSetupRaw = Array.isArray(result.nodesStillNeedingSetup)
+		? result.nodesStillNeedingSetup
+		: Array.isArray(result.skippedNodes)
+			? result.skippedNodes
+			: undefined;
+	const stillNeedingSetup = stillNeedingSetupRaw ? extractSkippedNodes(stillNeedingSetupRaw) : [];
+	const skippedByUser = Array.isArray(result.skippedByUser)
+		? extractSkippedNodes(result.skippedByUser)
 		: [];
-	if (completed.length === 0 && skipped.length === 0) return null;
+	if (completed.length === 0 && stillNeedingSetup.length === 0 && skippedByUser.length === 0) {
+		return null;
+	}
 	const reason = typeof result.reason === 'string' ? result.reason : undefined;
-	return { kind: 'setup-wizard', completedNodes: completed, skippedNodes: skipped, reason };
+	return {
+		kind: 'setup-wizard',
+		completedNodes: completed,
+		nodesStillNeedingSetup: stillNeedingSetup,
+		...(skippedByUser.length > 0 ? { skippedByUser } : {}),
+		reason,
+	};
 }
 
 /**
@@ -388,25 +418,14 @@ function inferResumeReason(
 function inferApproval(response: InstanceAiConfirmRequest | undefined): boolean | undefined {
 	if (!response) return undefined;
 	if (response.kind === 'approval') return response.approved;
-	if (response.kind === 'planDeny' || response.kind === 'domainAccessDeny') return false;
+	if (response.kind === 'domainAccessDeny') return false;
 	return true;
 }
 
-/** Free-text the user attached to their decision (e.g. plan-review feedback via userInput). */
+/** Free-text the user attached to their decision (via userInput). */
 function inferFeedback(response: InstanceAiConfirmRequest | undefined): string | undefined {
 	if (response?.kind === 'approval' && response.userInput) return response.userInput;
 	return undefined;
-}
-
-export function extractPlanTasks(raw: unknown[]): PlanTask[] {
-	const tasks: PlanTask[] = [];
-	for (const item of raw) {
-		if (!isRecord(item)) continue;
-		const title = typeof item.title === 'string' ? item.title : undefined;
-		const description = typeof item.description === 'string' ? item.description : undefined;
-		if (title || description) tasks.push({ title, description });
-	}
-	return tasks;
 }
 
 export function extractAskUserQuestions(raw: unknown[]): AskUserQuestion[] {
@@ -415,10 +434,14 @@ export function extractAskUserQuestions(raw: unknown[]): AskUserQuestion[] {
 		if (!isRecord(item)) continue;
 		const id = typeof item.id === 'string' ? item.id : '';
 		const question = typeof item.question === 'string' ? item.question : '';
+		const type =
+			item.type === 'single' || item.type === 'multi' || item.type === 'text'
+				? item.type
+				: undefined;
 		const options = Array.isArray(item.options)
 			? item.options.filter((o): o is string => typeof o === 'string')
 			: undefined;
-		if (id || question) questions.push({ id, question, options });
+		if (id || question) questions.push({ id, question, type, options });
 	}
 	return questions;
 }

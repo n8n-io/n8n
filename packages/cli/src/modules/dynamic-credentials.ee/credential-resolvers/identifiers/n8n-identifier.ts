@@ -1,32 +1,85 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { ICredentialContext } from 'n8n-workflow';
+import {
+	N8NOAuthMetadataSchema,
+	type ICredentialContext,
+	type IN8NOAuthMetadata,
+} from 'n8n-workflow';
 import { ITokenIdentifier } from './identifier-interface';
 import { AuthService } from '@/auth/auth.service';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import { CredentialResolverError } from '@n8n/decorators';
-import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
+import { OAuthTokenVerifierProxy } from '@n8n/backend-services/auth';
+import { TrustedSourceGate } from '@n8n/inbound-auth';
+import { UserRepository } from '@n8n/db';
+
+/**
+ * The `source` values this identifier accepts, declared once so the schemas below and
+ * {@link N8N_IDENTITY_SOURCES} cannot disagree: adding a value here reaches both.
+ */
+const MANUAL_EXECUTION_SOURCE = 'manual-execution';
+const REQUEST_BOUND_SOURCES = ['chat-hub-injected', 'cookie-source'] as const;
+const N8N_OAUTH_SOURCE = 'n8n-oauth' satisfies IN8NOAuthMetadata['source'];
 
 const ManualExecutionMetadataSchema = z.object({
-	source: z.literal('manual-execution'),
+	source: z.literal(MANUAL_EXECUTION_SOURCE),
 });
 
 const RequestBoundMetadataSchema = z.object({
-	source: z.enum(['chat-hub-injected', 'cookie-source']),
+	source: z.enum(REQUEST_BOUND_SOURCES),
 	method: z.string(),
 	endpoint: z.string(),
 	browserId: z.string().optional(),
 });
 
-const N8nOAuthMetadataSchema = z.object({
-	source: z.literal('n8n-oauth'),
-	resource: z.string(),
-});
-
-const N8NIdentifierMetadataSchema = z.discriminatedUnion('source', [
+/**
+ * Exported for the drift test that keeps {@link N8N_IDENTITY_SOURCES} in step with it.
+ * The `n8n-oauth` shape is owned by `n8n-workflow`, so core binds with the same schema.
+ */
+export const N8NIdentifierMetadataSchema = z.discriminatedUnion('source', [
 	ManualExecutionMetadataSchema,
 	RequestBoundMetadataSchema,
-	N8nOAuthMetadataSchema,
+	N8NOAuthMetadataSchema,
 ]);
+
+type MetadataParseResult =
+	| { success: true; data: z.output<typeof N8NIdentifierMetadataSchema> }
+	| { success: false; error: string };
+
+/** One `path: message` entry for each issue, instead of zod's JSON dump. */
+function describeIssues(error: z.ZodError): string {
+	return error.issues
+		.map(({ path, message }) =>
+			path.length > 0 ? `${path.map(String).join('.')}: ${message}` : message,
+		)
+		.join('; ');
+}
+
+/**
+ * Every `source` the union above accepts, built from the same constants the schemas
+ * use, so a new value cannot reach the schema without reaching this list. A new
+ * metadata *shape* still has to be added here by hand — `n8n-identifier.test.ts`
+ * fails if the union grows a branch.
+ */
+export const N8N_IDENTITY_SOURCES: readonly string[] = [
+	MANUAL_EXECUTION_SOURCE,
+	...REQUEST_BOUND_SOURCES,
+	N8N_OAUTH_SOURCE,
+];
+
+/**
+ * Whether the context's identity is a token n8n itself issued (session cookie or
+ * n8n-issued OAuth access token), as opposed to one minted by an external provider.
+ *
+ * Callers use it to keep an n8n token away from resolvers that would hand it to a
+ * third party as if it were their own. Deliberately keyed on `source` alone rather
+ * than the full schema: a malformed n8n-sourced context must still be recognised as
+ * carrying an n8n token, not waved through as external.
+ */
+export function carriesN8nIdentity(context: ICredentialContext): boolean {
+	const source = (context.metadata as { source?: unknown } | undefined)?.source;
+	return typeof source === 'string' && N8N_IDENTITY_SOURCES.includes(source);
+}
 
 /**
  * N8N JWT token identifier.
@@ -45,20 +98,25 @@ const N8NIdentifierMetadataSchema = z.discriminatedUnion('source', [
 @Service()
 export class N8NIdentifier implements ITokenIdentifier {
 	constructor(
+		private readonly logger: Logger,
 		private readonly authService: AuthService,
 		private readonly oauthTokenVerifierProxy: OAuthTokenVerifierProxy,
+		private readonly trustedSourceGate: TrustedSourceGate,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	async validateOptions(_: Record<string, unknown>): Promise<void> {
 		return;
 	}
 
-	async resolve(context: ICredentialContext, _: Record<string, unknown>): Promise<string> {
-		const metadataResult = N8NIdentifierMetadataSchema.safeParse(context.metadata);
+	async resolve(
+		context: ICredentialContext,
+		_: Record<string, unknown>,
+		executionId?: string,
+	): Promise<string> {
+		const metadataResult = this.parseMetadata(context.metadata);
 		if (!metadataResult.success) {
-			throw new CredentialResolverError(
-				`Invalid context metadata: ${metadataResult.error.message}`,
-			);
+			throw new CredentialResolverError(`Invalid context metadata: ${metadataResult.error}`);
 		}
 
 		if (metadataResult.data.source === 'manual-execution') {
@@ -68,9 +126,42 @@ export class N8NIdentifier implements ITokenIdentifier {
 		}
 
 		if (metadataResult.data.source === 'n8n-oauth') {
+			// Sealed identity: trust the resolved user, bound to its execution, without
+			// re-verifying the token (so it resolves past the token's TTL, e.g. after a Wait).
+			if (metadataResult.data.subject) {
+				const userId = metadataResult.data.subject;
+
+				const executionPath = metadataResult.data.executionPath ?? [];
+				if (executionId) {
+					// Resolving inside an execution: the seal must be bound to it (or a sub-workflow
+					// of it). An unbound seal (empty path) is not valid once an execution exists.
+					if (!executionPath.includes(executionId)) {
+						throw new CredentialResolverError('Sealed identity is not valid for this execution');
+					}
+				} else if (executionPath.length > 0) {
+					// Bound seal but no execution to check it against → fail closed.
+					throw new CredentialResolverError('Sealed identity is not valid for this execution');
+				}
+
+				// Re-take the live decision without the token, so a principal that was disabled,
+				// lost workflow:execute, or was offboarded at its trusted source stops resolving.
+				// Keep every denial indistinguishable to the caller and never surface the user id.
+				const authorized = await this.isSealedSubjectAuthorized(userId, metadataResult.data);
+				if (!authorized) {
+					throw new CredentialResolverError(
+						`Invalid OAuth token for resource ${metadataResult.data.resource}`,
+					);
+				}
+				return userId;
+			}
+
+			// No sealed subject: verify the token. The grant is looked up afresh on every
+			// access, so by now the resource may be gone — the sealed grant carries what the
+			// gate needs in that case.
 			const user = await this.oauthTokenVerifierProxy.verifyOAuthAccessToken(
 				context.identity,
 				metadataResult.data.resource,
+				metadataResult.data.grant,
 			);
 			if (!user?.user) {
 				throw new CredentialResolverError(
@@ -89,5 +180,91 @@ export class N8NIdentifier implements ITokenIdentifier {
 			metadataResult.data.browserId,
 		);
 		return user.id;
+	}
+
+	/**
+	 * Best-effort: the n8n user this identity represents, so the redaction layer can
+	 * grant that user access to their own run — including one that failed before a
+	 * private credential resolved. A sealed identity must still pass the same live check
+	 * as in {@link resolve} (the grant and its trusted-source binding, or the principal
+	 * alone on a legacy seal), but unlike {@link resolve} this does no execution binding
+	 * and never throws. Returns undefined when the identity is not an n8n user or cannot
+	 * be validated, so the run stays redacted for everyone. Derives from the same carrier
+	 * as resolution, so the redaction owner cannot drift from the user the credentials
+	 * resolve as.
+	 */
+	async identify(context: ICredentialContext): Promise<string | undefined> {
+		const metadataResult = this.parseMetadata(context.metadata);
+		if (!metadataResult.success) return undefined;
+
+		try {
+			if (metadataResult.data.source === 'manual-execution') {
+				const user = await this.authService.authenticateUserByCookie(context.identity);
+				return user.id;
+			}
+
+			if (metadataResult.data.source === 'n8n-oauth') {
+				const { subject } = metadataResult.data;
+				if (subject) {
+					const authorized = await this.isSealedSubjectAuthorized(subject, metadataResult.data);
+					return authorized ? subject : undefined;
+				}
+				const verified = await this.oauthTokenVerifierProxy.verifyOAuthAccessToken(
+					context.identity,
+					metadataResult.data.resource,
+					metadataResult.data.grant,
+				);
+				return verified?.user?.id;
+			}
+
+			const user = await this.authService.authenticateUserBasedOnToken(
+				context.identity,
+				metadataResult.data.method,
+				metadataResult.data.endpoint,
+				metadataResult.data.browserId,
+			);
+			return user.id;
+		} catch (error) {
+			this.logger.warn('Could not identify the executing user for redaction attribution', {
+				source: metadataResult.data.source,
+				error,
+			});
+			return undefined;
+		}
+	}
+
+	private parseMetadata(metadata: unknown): MetadataParseResult {
+		const result = N8NIdentifierMetadataSchema.safeParse(metadata);
+		if (result.success) return { success: true, data: result.data };
+
+		// Only n8n writes these shapes, and they are encrypted, so a parse failure is a bug upstream.
+		const error = describeIssues(result.error);
+		this.logger.warn('Identity metadata is invalid', { error });
+		return { success: false, error };
+	}
+
+	private async isSealedSubjectAuthorized(
+		userId: string,
+		metadata: IN8NOAuthMetadata,
+	): Promise<boolean> {
+		if (metadata.version === 2) {
+			return await this.trustedSourceGate.authorizeSealed({
+				userId,
+				grant: metadata.grant,
+				binding: metadata.binding,
+			});
+		}
+		return await this.isLegacySealedSubjectAuthorized(userId, metadata);
+	}
+
+	/** Remove with the legacy branch of {@link N8NOAuthMetadataSchema}. */
+	private async isLegacySealedSubjectAuthorized(
+		userId: string,
+		{ grant, binding }: Exclude<IN8NOAuthMetadata, { version: 2 }>,
+	): Promise<boolean> {
+		if (grant) return await this.trustedSourceGate.authorizeSealed({ userId, grant, binding });
+		// Sealed before grants were required: only the principal can be re-checked.
+		const user = await this.userRepository.findOneBy({ id: userId });
+		return !!user && !user.disabled;
 	}
 }

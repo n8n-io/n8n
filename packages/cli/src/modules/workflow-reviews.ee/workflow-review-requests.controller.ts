@@ -1,21 +1,34 @@
 import {
+	CreateWorkflowReviewCommentDto,
 	CreateWorkflowReviewRequestDto,
+	DecideWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
+	ListWorkflowReviewActivityQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
 	UpdateWorkflowReviewRequestVersionDto,
-	type GetWorkflowReviewInboxSummaryResponse,
-	type ListWorkflowReviewInboxResponse,
-	ListWorkflowReviewInboxQueryDto,
+	type ListWorkflowReviewActivityResponse,
+	type WorkflowReviewActivityEntry,
+	type WorkflowReviewRequestDetail,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Param, Post, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { WorkflowReviewRequestService } from './workflow-review-request.service';
+import { WorkflowReviewActivityService } from './workflow-review-activity.service';
+import { WorkflowReviewInboxService } from './workflow-review-inbox.service';
+import { WorkflowReviewRequestDecisionService } from './workflow-review-request-decision.service';
+import { WorkflowReviewRequestStatusService } from './workflow-review-request-status.service';
+import { WorkflowReviewRequestSubmissionService } from './workflow-review-request-submission.service';
 
 @RestController('/workflow-review-requests')
 export class WorkflowReviewRequestsController {
-	constructor(private readonly workflowReviewRequestService: WorkflowReviewRequestService) {}
+	constructor(
+		private readonly workflowReviewRequestStatusService: WorkflowReviewRequestStatusService,
+		private readonly workflowReviewRequestSubmissionService: WorkflowReviewRequestSubmissionService,
+		private readonly workflowReviewRequestDecisionService: WorkflowReviewRequestDecisionService,
+		private readonly workflowReviewInboxService: WorkflowReviewInboxService,
+		private readonly workflowReviewActivityService: WorkflowReviewActivityService,
+	) {}
 
 	@Get('/')
 	@Licensed('feat:workflowReviews')
@@ -24,11 +37,10 @@ export class WorkflowReviewRequestsController {
 		_res: Response,
 		@Query query: ListWorkflowReviewRequestsQueryDto,
 	) {
-		return await this.workflowReviewRequestService.list(req.user, query);
+		return await this.workflowReviewRequestStatusService.list(req.user, query);
 	}
 
-	// Routes register in declaration order — keep this above any future `GET /:id`
-	// so 'eligible-reviewers' is not captured as an id
+	// Keep literal routes above `GET /:id` because routes register in declaration order.
 	@Get('/eligible-reviewers')
 	@Licensed('feat:workflowReviews')
 	async getEligibleReviewers(
@@ -36,7 +48,7 @@ export class WorkflowReviewRequestsController {
 		_res: Response,
 		@Query query: GetWorkflowReviewEligibleReviewersQueryDto,
 	) {
-		return await this.workflowReviewRequestService.getEligibleReviewers(req.user, query);
+		return await this.workflowReviewRequestSubmissionService.getEligibleReviewers(req.user, query);
 	}
 
 	@Post('/')
@@ -46,7 +58,7 @@ export class WorkflowReviewRequestsController {
 		res: Response,
 		@Body dto: CreateWorkflowReviewRequestDto,
 	) {
-		const request = await this.workflowReviewRequestService.create(req.user, dto);
+		const request = await this.workflowReviewRequestSubmissionService.create(req.user, dto);
 		res.status(201);
 		return request;
 	}
@@ -59,33 +71,71 @@ export class WorkflowReviewRequestsController {
 		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
 		@Body dto: UpdateWorkflowReviewRequestVersionDto,
 	) {
-		return await this.workflowReviewRequestService.updateVersion(
+		return await this.workflowReviewRequestSubmissionService.updateVersion(
 			req.user,
 			workflowReviewRequestId,
 			dto,
 		);
 	}
 
-	/**
-	 * Cross-project inbox. Lives under `/inbox` so `GET /` stays free for the
-	 * workflow-scoped list used by review-required toggle sync (LIGO-838).
-	 */
-	@Get('/inbox')
+	@Post('/:workflowReviewRequestId/decision')
 	@Licensed('feat:workflowReviews')
-	async listInbox(
+	async decide(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Query query: ListWorkflowReviewInboxQueryDto,
-	): Promise<ListWorkflowReviewInboxResponse> {
-		return await this.workflowReviewRequestService.listForInbox(req.user, query);
+		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
+		@Body dto: DecideWorkflowReviewRequestDto,
+	) {
+		return await this.workflowReviewRequestDecisionService.decide(
+			req.user,
+			workflowReviewRequestId,
+			dto,
+		);
 	}
 
-	@Get('/summary')
+	@Get('/:workflowReviewRequestId/activity')
 	@Licensed('feat:workflowReviews')
-	async getSummary(
+	async listActivity(
 		req: AuthenticatedRequest,
 		_res: Response,
-	): Promise<GetWorkflowReviewInboxSummaryResponse> {
-		return await this.workflowReviewRequestService.getInboxSummaryForUser(req.user);
+		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
+		@Query query: ListWorkflowReviewActivityQueryDto,
+	): Promise<ListWorkflowReviewActivityResponse> {
+		return await this.workflowReviewActivityService.listActivity(
+			req.user,
+			workflowReviewRequestId,
+			query,
+		);
+	}
+
+	@Post('/:workflowReviewRequestId/comments')
+	@Licensed('feat:workflowReviews')
+	async createComment(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
+		@Body dto: CreateWorkflowReviewCommentDto,
+	): Promise<WorkflowReviewActivityEntry> {
+		const entry = await this.workflowReviewActivityService.createComment(
+			req.user,
+			workflowReviewRequestId,
+			dto,
+		);
+		res.status(201);
+		return entry;
+	}
+
+	/**
+	 * Keep this route last so `/:id` does not match the literal routes above.
+	 * The service handles authorization because `@ProjectScope` cannot resolve a review ID.
+	 */
+	@Get('/:workflowReviewRequestId')
+	@Licensed('feat:workflowReviews')
+	async getDetail(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
+	): Promise<WorkflowReviewRequestDetail> {
+		return await this.workflowReviewInboxService.getDetail(req.user, workflowReviewRequestId);
 	}
 }

@@ -1,5 +1,10 @@
 import crypto from 'crypto';
-import { NodeOperationError, type INodeProperties, type INodePropertyOptions } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeOperationError,
+	type INodeProperties,
+	type INodePropertyOptions,
+} from 'n8n-workflow';
 
 type VersionCnd = { lte?: number; gte?: number };
 type VersionedAuthParam = Omit<INodeProperties, 'options'> & {
@@ -70,6 +75,91 @@ describe('FormTrigger', () => {
 
 		expect(legacyValues).toEqual(['basicAuth', 'none']);
 		expect(v26Values).toEqual(['basicAuth', 'n8nUserAuth', 'none']);
+	});
+
+	describe('requireExecuteAccess', () => {
+		const formTriggerV2 = new FormTriggerV2({
+			displayName: 'n8n Form Trigger',
+			name: 'formTrigger',
+			group: ['trigger'],
+			description: 'Generate webforms in n8n and pass their responses to the workflow',
+			defaultVersion: 2.6,
+		});
+
+		const requireExecuteAccess = formTriggerV2.description.properties.find(
+			(property) => property.name === 'requireExecuteAccess',
+		);
+
+		it('should not require workflow execute permission by default', () => {
+			expect(requireExecuteAccess).toMatchObject({
+				type: 'boolean',
+				default: false,
+			});
+		});
+
+		it.each<[string, number, boolean]>([
+			['n8nUserAuth', 2.6, true],
+			['none', 2.6, false],
+			['basicAuth', 2.6, false],
+			// The parameter did not exist below 2.6, so it stays hidden there.
+			['n8nUserAuth', 2.5, false],
+		])(
+			'should be shown for authentication %s on typeVersion %s: %s',
+			(authentication, typeVersion, shown) => {
+				expect(requireExecuteAccess).toBeDefined();
+				expect(
+					NodeHelpers.displayParameter(
+						{ [FORM_TRIGGER_AUTHENTICATION_PROPERTY]: authentication },
+						requireExecuteAccess as INodeProperties,
+						{ typeVersion },
+						formTriggerV2.description,
+					),
+				).toBe(shown);
+			},
+		);
+	});
+
+	describe('trustedSource', () => {
+		const formTriggerV2 = new FormTriggerV2({
+			displayName: 'n8n Form Trigger',
+			name: 'formTrigger',
+			group: ['trigger'],
+			description: 'Generate webforms in n8n and pass their responses to the workflow',
+			defaultVersion: 2.6,
+		});
+
+		const trustedSource = formTriggerV2.description.properties.find(
+			(property) => property.name === 'trustedSource',
+		);
+
+		it("should default to the instance's own OAuth2 server, loaded from the directory", () => {
+			expect(trustedSource).toMatchObject({
+				type: 'options',
+				default: 'n8n-internal',
+				typeOptions: { loadOptionsMethod: 'listTrustedSources' },
+			});
+			expect(formTriggerV2.methods.loadOptions.listTrustedSources).toBeDefined();
+		});
+
+		it.each<[string, number, boolean]>([
+			['n8nUserAuth', 2.6, true],
+			['none', 2.6, false],
+			['basicAuth', 2.6, false],
+			['n8nUserAuth', 2.5, false],
+		])(
+			'should be shown for authentication %s on typeVersion %s: %s',
+			(authentication, typeVersion, shown) => {
+				expect(trustedSource).toBeDefined();
+				expect(
+					NodeHelpers.displayParameter(
+						{ [FORM_TRIGGER_AUTHENTICATION_PROPERTY]: authentication },
+						trustedSource as INodeProperties,
+						{ typeVersion },
+						formTriggerV2.description,
+					),
+				).toBe(shown);
+			},
+		);
 	});
 
 	it('should render a form template with correct fields', async () => {
@@ -581,6 +671,21 @@ describe('FormTrigger', () => {
 				defaultVersion: 2.5,
 			});
 			expect(formTriggerV2.description.sensitiveOutputFields).not.toContain('headers.content-type');
+		});
+	});
+
+	describe('trustedSource', () => {
+		// The resolvers read the stored value as the source id, without evaluating it.
+		it('takes no expression, so the stored value is the source id', () => {
+			const formTriggerV2 = new FormTriggerV2({
+				displayName: 'n8n Form Trigger',
+				name: 'formTrigger',
+				group: ['trigger'],
+				description: 'Generate webforms in n8n and pass their responses to the workflow',
+				defaultVersion: 2.5,
+			});
+			const property = formTriggerV2.description.properties.find((p) => p.name === 'trustedSource');
+			expect(property).toMatchObject({ default: 'n8n-internal', noDataExpression: true });
 		});
 	});
 });

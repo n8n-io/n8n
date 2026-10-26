@@ -1,18 +1,23 @@
 import * as AgentsRuntime from '@n8n/agents';
 import type { AgentSnapshot, BuiltProviderTool, BuiltTool, ToolDescriptor } from '@n8n/agents';
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	AgentJsonConfigSchema,
 	RunnableAgentJsonConfigSchema,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
+import { UserError } from 'n8n-workflow';
 
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
-import { buildVectorStore } from '../json-config/vector-store-factory';
+import { buildVectorStore } from '@/modules/knowledge/vector-stores/factory';
 
-vi.mock('../json-config/vector-store-factory', () => ({
+const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
+vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
+
+vi.mock('@/modules/knowledge/vector-stores/factory', () => ({
 	buildVectorStore: vi.fn(),
 }));
 
@@ -68,12 +73,31 @@ describe('buildFromJson()', () => {
 
 	const makeMockToolExecutor = (): ToolExecutor => ({
 		executeTool: vi.fn().mockResolvedValue({ result: 'tool result' }),
+		executeToMessage: vi.fn().mockResolvedValue(undefined),
 	});
 
-	const makeMockCredentialProvider = () => ({
-		resolve: vi.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
-		list: vi.fn().mockResolvedValue([]),
-	});
+	const makeMockCredentialProvider = (model = '') => {
+		const isVertex = model.startsWith('google-vertex/');
+		return {
+			resolve: vi.fn().mockResolvedValue(
+				isVertex
+					? {
+							projectId: 'test-project',
+							region: 'global',
+							email: 'test@example.com',
+							privateKey: 'test-key',
+						}
+					: { apiKey: 'test-api-key' },
+			),
+			list: vi
+				.fn()
+				.mockResolvedValue(
+					isVertex
+						? [{ id: 'my-anthropic-key', name: 'Test Vertex', type: 'googleVertexAiApi' }]
+						: [],
+				),
+		};
+	};
 
 	const makeToolDescriptor = (overrides: Partial<ToolDescriptor> = {}): ToolDescriptor => ({
 		name: 'search',
@@ -113,7 +137,6 @@ describe('buildFromJson()', () => {
 							apiKey?: string;
 							baseURL?: string;
 						};
-						extract?: unknown;
 						reflect?: unknown;
 					};
 					titleGeneration?: {
@@ -156,6 +179,7 @@ describe('buildFromJson()', () => {
 		getMessages: vi.fn().mockResolvedValue([]),
 		saveMessages: vi.fn(),
 		deleteMessages: vi.fn(),
+		commitObservationLogBatch: vi.fn(),
 		appendObservationLogEntries: vi.fn(),
 		getActiveObservationLog: vi.fn(),
 		getObservationLog: vi.fn(),
@@ -199,6 +223,30 @@ describe('buildFromJson()', () => {
 		expect(snap.instructions).toBe('You are a test agent.');
 	});
 
+	it('appends the self-modification policy only for the preview chat', async () => {
+		const build = async (previewChat?: boolean) =>
+			(
+				await buildFromJson(
+					makeConfig(),
+					{},
+					{
+						toolExecutor: makeMockToolExecutor(),
+						credentialProvider: makeMockCredentialProvider(),
+						memoryFactory: makeMockMemoryFactory(),
+						previewChat,
+					},
+				)
+			).snapshot.instructions ?? '';
+
+		const preview = await build(true);
+		expect(preview).toContain('You are a test agent.');
+		expect(preview).toContain('Preview chat policy');
+		expect(preview).toContain('including your own setup, only through your tools');
+		expect(preview).not.toContain('you have no tool that can');
+		expect(await build(false)).toBe('You are a test agent.');
+		expect(await build()).toBe('You are a test agent.');
+	});
+
 	it('handles multi-slash model string for aggregator providers', async () => {
 		const agent = await buildFromJson(
 			makeConfig({ model: 'openrouter/amazon/nova-micro-v1' }),
@@ -233,21 +281,46 @@ describe('buildFromJson()', () => {
 		expect(snap.model.name).toBe('claude-sonnet-4-5');
 	});
 
-	it('wires a custom tool', async () => {
-		const descriptor = makeToolDescriptor({ name: 'my_search' });
+	it('executes a custom tool handler and message transform', async () => {
+		const descriptor = makeToolDescriptor({
+			name: 'my_search',
+			hasToMessage: true,
+			outputTrust: 'untrusted',
+		});
 		const config = makeConfig({ tools: [{ type: 'custom', id: 'search_tool' }] });
+		const rawOutput = { matches: ['first', 'second'] };
+		const toolExecutor: ToolExecutor = {
+			executeTool: async () => rawOutput,
+			executeToMessage: async (_toolName, output) => ({
+				role: 'assistant',
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+			}),
+		};
 
 		const agent = await buildFromJson(
 			config,
 			{ search_tool: descriptor },
 			{
-				toolExecutor: makeMockToolExecutor(),
+				toolExecutor,
 				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
+		const tool = (
+			agent as unknown as {
+				tools: BuiltTool[];
+			}
+		).tools.find(({ name }) => name === 'my_search');
+		if (!tool?.handler || !tool.toMessage) throw new Error('Expected custom tool transforms');
+		expect(tool.outputTrust).toBe('untrusted');
 
-		expect(agent.snapshot.tools.some((t) => t.name === 'my_search')).toBe(true);
+		const output = await tool.handler({ query: 'n8n' }, {} as never);
+
+		expect(output).toEqual(rawOutput);
+		expect(await tool.toMessage(output)).toEqual({
+			role: 'assistant',
+			content: [{ type: 'text', text: '{"matches":["first","second"]}' }],
+		});
 	});
 
 	it('wires attached skills through the shared runtime skill loader without inlining bodies', async () => {
@@ -275,7 +348,37 @@ describe('buildFromJson()', () => {
 		const instructions = agent.snapshot.instructions ?? '';
 		expect(instructions).toBe('You are a test agent.');
 		expect(instructions).not.toContain('Extract decisions and action items.');
-		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(false);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'agent-context')).toBe(false);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
+	});
+
+	// Agents can no longer disable a skill. The schema strips a stale `enabled: false`, so the
+	// runtime loads every ref it gets. Disabled refs are detached before they reach it.
+	it('loads a skill whose ref still says enabled: false', async () => {
+		const config = AgentJsonConfigSchema.parse(
+			makeConfig({
+				skills: [{ type: 'skill', id: 'summarize_notes', enabled: false } as never],
+			}),
+		);
+		expect(config.skills).toEqual([{ type: 'skill', id: 'summarize_notes' }]);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				skills: {
+					summarize_notes: {
+						name: 'Summarize notes',
+						description: 'Use for meeting notes and transcripts',
+						instructions: 'Extract decisions and action items.',
+					},
+				},
+			},
+		);
+
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 	});
 
@@ -429,7 +532,17 @@ describe('buildFromJson()', () => {
 
 	it('resolves workflow tool via resolveTool callback', async () => {
 		const config = makeConfig({
-			tools: [{ type: 'workflow', workflow: 'My Workflow', name: 'run_workflow' }],
+			tools: [
+				{ type: 'custom', id: 'missing_tool', enabled: false },
+				{ type: 'workflow', workflow: 'Missing Workflow', enabled: false },
+				{
+					type: 'node',
+					name: 'missing_node',
+					enabled: false,
+					node: { nodeType: 'missing.node', nodeTypeVersion: 1, nodeParameters: {} },
+				},
+				{ type: 'workflow', workflow: 'My Workflow', name: 'run_workflow' },
+			],
 		});
 
 		const resolvedTool = {
@@ -452,6 +565,7 @@ describe('buildFromJson()', () => {
 
 		expect(agent.snapshot.tools.some((t) => t.name === 'run_workflow')).toBe(true);
 		expect(resolveTool).toHaveBeenCalledTimes(1);
+		expect(resolveTool).toHaveBeenCalledWith(config.tools![3]);
 	});
 
 	it('wraps workflow tool with approval when requireApproval is true', async () => {
@@ -548,6 +662,23 @@ describe('buildFromJson()', () => {
 		expect(tool!.approval).toBeUndefined();
 	});
 
+	it('drops a workflow tool when resolveTool returns null', async () => {
+		const config = makeConfig({ tools: [{ type: 'workflow', workflow: 'Deleted Workflow' }] });
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				resolveTool: vi.fn().mockResolvedValue(null),
+			},
+		);
+
+		expect(agent.snapshot.tools.some((t) => t.name === 'Deleted Workflow')).toBe(false);
+	});
+
 	it('falls back to marker tool when resolveTool is not provided for workflow tools', async () => {
 		const config = makeConfig({ tools: [{ type: 'workflow', workflow: 'Test Workflow' }] });
 
@@ -564,9 +695,9 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.tools.some((t) => t.name === 'Test Workflow')).toBe(true);
 	});
 
-	it('sets thinking config', async () => {
+	it('sets generic reasoning effort', async () => {
 		const config = makeConfig({
-			config: { thinking: { provider: 'anthropic', budgetTokens: 5000 } },
+			config: { reasoning: 'high' },
 		});
 
 		const agent = await buildFromJson(
@@ -580,12 +711,16 @@ describe('buildFromJson()', () => {
 		);
 		const snap: AgentSnapshot = agent.snapshot;
 
-		expect(snap.thinking).not.toBeNull();
-		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
+		expect(snap.reasoning).toBe('high');
 	});
 
-	it('sets prompt caching config with an Anthropic ttl', async () => {
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'openrouter/anthropic/claude-sonnet-4.5',
+		'google-vertex/claude-sonnet-4-5',
+	])('preserves the saved cache TTL for %s', async (model) => {
 		const config = makeConfig({
+			model,
 			config: { promptCaching: { enabled: true, anthropic: { ttl: '1h' } } },
 		});
 
@@ -594,7 +729,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
-				credentialProvider: makeMockCredentialProvider(),
+				credentialProvider: makeMockCredentialProvider(model),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
@@ -622,8 +757,13 @@ describe('buildFromJson()', () => {
 		expect(snap.promptCaching).toEqual({ enabled: true });
 	});
 
-	it('passes through promptCaching verbatim even if enabled=false was somehow saved (mapping is not a policy enforcer)', async () => {
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'openrouter/anthropic/claude-sonnet-4.5',
+		'google-vertex/claude-sonnet-4-5',
+	])('preserves disabled caching for %s', async (model) => {
 		const config = makeConfig({
+			model,
 			config: { promptCaching: { enabled: false } },
 		});
 
@@ -632,7 +772,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
-				credentialProvider: makeMockCredentialProvider(),
+				credentialProvider: makeMockCredentialProvider(model),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
@@ -641,21 +781,44 @@ describe('buildFromJson()', () => {
 		expect(snap.promptCaching).toEqual({ enabled: false });
 	});
 
-	it('does not set prompt caching config when omitted', async () => {
-		const config = makeConfig();
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'openrouter/openai/gpt-5',
+		'google-vertex/gemini-2.5-pro',
+	])('keeps the runtime cache default for %s when config is omitted', async (model) => {
+		const config = makeConfig({ model });
 
 		const agent = await buildFromJson(
 			config,
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
-				credentialProvider: makeMockCredentialProvider(),
+				credentialProvider: makeMockCredentialProvider(model),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
 
 		expect(agent.snapshot.promptCaching).toBeNull();
 	});
+
+	it.each(['openrouter/anthropic/claude-sonnet-4.5', 'google-vertex/claude-sonnet-4-5'])(
+		'enables caching for an existing %s agent without a config update',
+		async (model) => {
+			const config = makeConfig({ model });
+			const agent = await buildFromJson(
+				config,
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(model),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			);
+
+			expect(agent.snapshot.promptCaching).toEqual({ enabled: true });
+			expect(config.config).toBeUndefined();
+		},
+	);
 
 	it('builds native provider tools for an inline child model, not the parent model', () => {
 		const config = makeConfig({
@@ -718,21 +881,24 @@ describe('buildFromJson()', () => {
 	});
 
 	it('rejects native web search config for unsupported providers without fallback settings', async () => {
-		await expect(
-			buildFromJson(
-				makeConfig({
-					model: 'google/gemini-2.5-flash',
-					config: { webSearch: { enabled: true } },
-					providerTools: { 'anthropic.web_search': { maxUses: 5 } },
-				}),
-				{},
-				{
-					toolExecutor: makeMockToolExecutor(),
-					credentialProvider: makeMockCredentialProvider(),
-					memoryFactory: makeMockMemoryFactory(),
-				},
-			),
-		).rejects.toThrow('Web search is enabled but no fallback search provider is configured.');
+		const rejected = buildFromJson(
+			makeConfig({
+				model: 'google/gemini-2.5-flash',
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		await expect(rejected).rejects.toThrow(UserError);
+		await expect(rejected).rejects.toThrow(
+			'Web search is enabled but no fallback search provider is configured.',
+		);
 	});
 
 	it('does not enable native web search when config is sparse', async () => {
@@ -846,6 +1012,42 @@ describe('buildFromJson()', () => {
 		expect(getLocalToolNames(agent)).toContain('web_search');
 	});
 
+	it('routes fallback SearXNG search through the injected webSearchFetch', async () => {
+		const webSearchFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => ({ results: [] }),
+		});
+		const credentialProvider = {
+			resolve: vi.fn().mockResolvedValue({ apiUrl: 'http://searxng.internal:8080' }),
+			list: vi.fn().mockResolvedValue([]),
+		};
+
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: { webSearch: { enabled: true, provider: 'searxng', credential: 'searxng-url' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: makeMockMemoryFactory(),
+				webSearchFetch: webSearchFetch as unknown as typeof fetch,
+			},
+		);
+
+		const webSearchTool = (agent as unknown as { tools?: BuiltTool[] }).tools?.find(
+			(tool) => tool.name === 'web_search',
+		);
+		expect(webSearchTool).toBeDefined();
+
+		await webSearchTool!.handler!({ query: 'test' }, {} as never);
+
+		expect(webSearchFetch).toHaveBeenCalledTimes(1);
+		const [requestUrl] = webSearchFetch.mock.calls[0] as [string];
+		expect(requestUrl).toContain('http://searxng.internal:8080/search');
+	});
+
 	it('uses native web search when native provider is explicitly configured', async () => {
 		const agent = await buildFromJson(
 			makeConfig({
@@ -864,20 +1066,143 @@ describe('buildFromJson()', () => {
 	});
 
 	it('requires fallback web search credentials for providers without native web search', async () => {
-		await expect(
-			buildFromJson(
-				makeConfig({
-					model: 'deepseek/deepseek-chat',
-					config: { webSearch: { enabled: true, provider: 'brave' } },
-				}),
-				{},
-				{
-					toolExecutor: makeMockToolExecutor(),
-					credentialProvider: makeMockCredentialProvider(),
-					memoryFactory: makeMockMemoryFactory(),
+		const rejected = buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: { webSearch: { enabled: true, provider: 'brave' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		await expect(rejected).rejects.toThrow(UserError);
+		await expect(rejected).rejects.toThrow(
+			'Web search is enabled but no search credential is configured.',
+		);
+	});
+
+	it('adds fallback web search tool for the n8n Connect managed credential (brave)', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: {
+					webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
 				},
-			),
-		).rejects.toThrow('Web search is enabled but no search credential is configured.');
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getLocalToolNames(agent)).toContain('web_search');
+	});
+
+	it('routes managed brave web search through the AI gateway proxy', async () => {
+		const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
+			ok: true,
+			status: 200,
+			statusText: 'OK',
+			json: async () => ({ web: { results: [] } }),
+		} as unknown as Response);
+
+		const credentialProvider = {
+			resolve: vi.fn().mockResolvedValue({ apiKey: 'model-key' }),
+			list: vi.fn().mockResolvedValue([]),
+			resolveAiGatewaySearchCredential: vi.fn().mockResolvedValue({
+				apiKey: 'jwt-123',
+				baseUrl: 'https://gw.example/v1/gateway/exec/agent/a%7Cp/brave-search/res/v1',
+			}),
+		};
+
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: {
+					webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		const webSearchTool = (agent as unknown as { tools?: BuiltTool[] }).tools?.find(
+			(tool) => tool.name === 'web_search',
+		);
+		expect(webSearchTool).toBeDefined();
+
+		await webSearchTool!.handler!({ query: 'hello' }, {} as never);
+
+		expect(credentialProvider.resolveAiGatewaySearchCredential).toHaveBeenCalledWith(
+			'braveSearchApi',
+		);
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		const [requestUrl, requestInit] = fetchSpy.mock.calls[0] as [string, RequestInit];
+		// The gateway base ends in `/res/v1`; braveSearch re-appends `/res/v1/web/search`,
+		// so the stripped base must join into a single `/res/v1/web/search`.
+		expect(requestUrl).toContain(
+			'https://gw.example/v1/gateway/exec/agent/a%7Cp/brave-search/res/v1/web/search',
+		);
+		expect(requestUrl).not.toContain('/res/v1/res/v1');
+		expect((requestInit.headers as Record<string, string>)['X-Subscription-Token']).toBe('jwt-123');
+	});
+
+	it('rejects the managed credential for a non-brave web search provider', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: {
+					webSearch: { enabled: true, provider: 'searxng', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		const webSearchTool = (agent as unknown as { tools?: BuiltTool[] }).tools?.find(
+			(tool) => tool.name === 'web_search',
+		);
+		await expect(webSearchTool!.handler!({ query: 'hello' }, {} as never)).rejects.toThrow(
+			'Gateway credits web search is only available for Brave Search.',
+		);
+	});
+
+	it('rejects the managed credential when the provider cannot mint a gateway credential', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: {
+					webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		const webSearchTool = (agent as unknown as { tools?: BuiltTool[] }).tools?.find(
+			(tool) => tool.name === 'web_search',
+		);
+		await expect(webSearchTool!.handler!({ query: 'hello' }, {} as never)).rejects.toThrow(
+			'This credential provider cannot resolve Gateway credits web search credentials.',
+		);
 	});
 
 	it('sets toolCallConcurrency', async () => {
@@ -971,22 +1296,43 @@ describe('buildFromJson()', () => {
 		expect(getMemoryConfig(agent)?.titleGeneration?.sync).toBe(true);
 	});
 
-	it('configures observational memory worker models with their own credentials', async () => {
+	it('configures agent and memory worker models with their own credentials and projects', async () => {
+		getCachedCatalog.mockResolvedValue({
+			'google-vertex': {
+				models: {
+					'gemini-3.1-pro-preview': { sdk: '@ai-sdk/google-vertex' },
+					'gemini-3-flash-preview': { sdk: '@ai-sdk/google-vertex' },
+				},
+			},
+		});
+		const modelSpy = vi.spyOn(AgentsRuntime.Agent.prototype, 'model');
 		const observeSpy = vi.spyOn(AgentsRuntime, 'createObservationLogObserveFn');
 		const reflectSpy = vi.spyOn(AgentsRuntime, 'createObservationLogReflectFn');
 		const credentialProvider = {
 			resolve: vi.fn(async (credentialId: string) => ({
 				apiKey: `${credentialId}-api-key`,
 				url: `https://${credentialId}.example/v1`,
+				email: `${credentialId}@example.iam.gserviceaccount.com`,
+				privateKey: `${credentialId}-private-key`,
+				region: 'europe-west4',
+				projectId: `${credentialId}-project`,
 			})),
-			list: vi.fn().mockResolvedValue([]),
+			list: vi.fn().mockResolvedValue([
+				{ id: 'main-key', name: 'Main', type: 'googleVertexAiApi' },
+				{ id: 'observer-key', name: 'Observer', type: 'googleVertexAiApi' },
+			]),
 		};
 		const config = makeConfig({
+			model: 'google-vertex/gemini-3.1-pro-preview',
+			credential: 'main-key',
 			memory: {
 				enabled: true,
 				storage: 'n8n',
 				observationalMemory: {
-					observerModel: { model: 'openai/gpt-4o-mini', credential: 'observer-key' },
+					observerModel: {
+						model: 'google-vertex/gemini-3-flash-preview',
+						credential: 'observer-key',
+					},
 					reflectorModel: {
 						model: 'anthropic/claude-sonnet-4-5',
 						credential: 'reflector-key',
@@ -1005,10 +1351,21 @@ describe('buildFromJson()', () => {
 			},
 		);
 
+		expect(modelSpy).toHaveBeenCalledWith({
+			id: 'google-vertex/gemini-3.1-pro-preview',
+			sdk: '@ai-sdk/google-vertex',
+			project: 'main-key-project',
+			clientEmail: 'main-key@example.iam.gserviceaccount.com',
+			privateKey: 'main-key-private-key',
+			location: 'europe-west4',
+		});
 		expect(observeSpy).toHaveBeenCalledWith({
-			id: 'openai/gpt-4o-mini',
-			apiKey: 'observer-key-api-key',
-			baseURL: 'https://observer-key.example/v1',
+			id: 'google-vertex/gemini-3-flash-preview',
+			sdk: '@ai-sdk/google-vertex',
+			project: 'observer-key-project',
+			clientEmail: 'observer-key@example.iam.gserviceaccount.com',
+			privateKey: 'observer-key-private-key',
+			location: 'europe-west4',
 		});
 		expect(reflectSpy).toHaveBeenCalledWith({
 			id: 'anthropic/claude-sonnet-4-5',
@@ -1079,7 +1436,6 @@ describe('buildFromJson()', () => {
 			},
 		});
 		expect(getMemoryConfig(agent)?.episodicMemory?.embedder).toBeUndefined();
-		expect(getMemoryConfig(agent)?.episodicMemory?.extract).toBeUndefined();
 		expect(getMemoryConfig(agent)?.episodicMemory?.reflect).toBeUndefined();
 	});
 
@@ -1126,8 +1482,7 @@ describe('buildFromJson()', () => {
 		});
 	});
 
-	it('configures episodic memory worker models with separate credentials from embeddings', async () => {
-		const extractSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryExtractFn');
+	it('configures the episodic memory reflector with a separate credential from embeddings', async () => {
 		const reflectSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryReflectFn');
 		const credentialProvider = {
 			resolve: vi.fn(async (credentialId: string) => ({
@@ -1143,7 +1498,6 @@ describe('buildFromJson()', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'embedding-key',
-					extractorModel: { model: 'openai/gpt-4o-mini', credential: 'extractor-key' },
 					reflectorModel: {
 						model: 'anthropic/claude-sonnet-4-5',
 						credential: 'episodic-reflector-key',
@@ -1162,11 +1516,6 @@ describe('buildFromJson()', () => {
 			},
 		);
 
-		expect(extractSpy).toHaveBeenCalledWith({
-			id: 'openai/gpt-4o-mini',
-			apiKey: 'extractor-key-api-key',
-			baseURL: 'https://extractor-key.example/v1',
-		});
 		expect(reflectSpy).toHaveBeenCalledWith({
 			id: 'anthropic/claude-sonnet-4-5',
 			apiKey: 'episodic-reflector-key-api-key',
@@ -1179,7 +1528,6 @@ describe('buildFromJson()', () => {
 			},
 		});
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('embedding-key');
-		expect(credentialProvider.resolve).toHaveBeenCalledWith('extractor-key');
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('episodic-reflector-key');
 	});
 
@@ -1412,7 +1760,7 @@ describe('buildFromJson()', () => {
 				description: vectorStoreConfig.useWhen,
 				handler: vi.fn(),
 			};
-			const mockVectorStore = { asTool: vi.fn().mockReturnValue(fakeTool) };
+			const mockVectorStore = { asTool: vi.fn().mockReturnValue({ build: () => fakeTool }) };
 			vi.mocked(buildVectorStore).mockResolvedValue(mockVectorStore as never);
 
 			const agent = await buildFromJson(
@@ -1430,6 +1778,64 @@ describe('buildFromJson()', () => {
 				description: vectorStoreConfig.useWhen,
 			});
 			expect(agent.snapshot.tools.some((t) => t.name === 'search_product_docs')).toBe(true);
+		});
+
+		async function buildSearchTool(searchHandler: ReturnType<typeof vi.fn>) {
+			const fakeTool = {
+				name: 'search_product_docs',
+				description: vectorStoreConfig.useWhen,
+				handler: searchHandler,
+			};
+			const mockVectorStore = { asTool: vi.fn().mockReturnValue({ build: () => fakeTool }) };
+			vi.mocked(buildVectorStore).mockResolvedValue(mockVectorStore as never);
+			const finishSearch = vi.fn();
+			const onVectorStoreSearch = vi.fn().mockReturnValue(finishSearch);
+
+			const agent = await buildFromJson(
+				makeConfig({ vectorStores: [vectorStoreConfig] }),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					onVectorStoreSearch,
+				},
+			);
+			const searchTool = agent.declaredTools.find((t) => t.name === 'search_product_docs');
+			return { searchTool, onVectorStoreSearch, finishSearch };
+		}
+
+		it('reports each vector store search with the run id and the size of its result', async () => {
+			const result = { results: [{ id: 'doc-1', content: 'Refunds take 5 days.' }] };
+			const searchHandler = vi.fn().mockResolvedValue(result);
+			const { searchTool, onVectorStoreSearch, finishSearch } =
+				await buildSearchTool(searchHandler);
+			const input = { query: 'refund policy' };
+			const ctx = { runId: 'run-1' };
+
+			await expect(searchTool?.handler?.(input, ctx)).resolves.toEqual(result);
+
+			expect(searchHandler).toHaveBeenCalledWith(input, ctx);
+			expect(onVectorStoreSearch).toHaveBeenCalledTimes(1);
+			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1');
+			expect(finishSearch).toHaveBeenCalledWith({
+				failed: false,
+				contentChars: JSON.stringify(result).length,
+			});
+		});
+
+		it('reports a failed vector store search as failed, then throws its error', async () => {
+			const error = new Error('vector store unavailable');
+			const searchHandler = vi.fn().mockRejectedValue(error);
+			const { searchTool, onVectorStoreSearch, finishSearch } =
+				await buildSearchTool(searchHandler);
+
+			await expect(
+				searchTool?.handler?.({ query: 'refund policy' }, { runId: 'run-1' }),
+			).rejects.toBe(error);
+
+			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1');
+			expect(finishSearch).toHaveBeenCalledWith({ failed: true });
 		});
 
 		it.each([
@@ -1798,6 +2204,22 @@ describe('AgentJsonConfigSchema', () => {
 			});
 		});
 
+		it('accepts a native OAuth2 credential type', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://api.githubcopilot.com/mcp/',
+						authentication: 'githubOAuth2Api',
+						credential: 'github-credential',
+					},
+				],
+			});
+
+			expect(parsed.mcpServers?.[0].authentication).toBe('githubOAuth2Api');
+		});
+
 		it('rejects duplicate MCP server names', () => {
 			expect(() =>
 				AgentJsonConfigSchema.parse({
@@ -1836,38 +2258,27 @@ describe('AgentJsonConfigSchema', () => {
 			expect(() => AgentJsonConfigSchema.parse({ ...base, mcpServers: servers })).toThrow();
 		});
 
-		it('parses an allow-mode toolFilter', () => {
+		it('parses MCP tool permissions', () => {
 			const parsed = AgentJsonConfigSchema.parse({
 				...base,
 				mcpServers: [
 					{
 						name: 'github',
 						url: 'https://a.example.test/mcp',
-						toolFilter: { mode: 'allow', tools: ['search_repositories'] },
+						toolPermissions: {
+							categories: { read: 'always_allow', write: 'require_approval' },
+							tools: { delete_repository: 'blocked' },
+						},
 					},
 				],
 			});
-			expect(parsed.mcpServers?.[0].toolFilter).toEqual({
-				mode: 'allow',
-				tools: ['search_repositories'],
+			expect(parsed.mcpServers?.[0].toolPermissions).toEqual({
+				categories: { read: 'always_allow', write: 'require_approval' },
+				tools: { delete_repository: 'blocked' },
 			});
 		});
 
-		it('parses approval mode "global"', () => {
-			const parsed = AgentJsonConfigSchema.parse({
-				...base,
-				mcpServers: [
-					{
-						name: 'github',
-						url: 'https://a.example.test/mcp',
-						approval: { mode: 'global' },
-					},
-				],
-			});
-			expect(parsed.mcpServers?.[0].approval).toEqual({ mode: 'global' });
-		});
-
-		it('rejects approval mode "selected" with an empty tools array', () => {
+		it('rejects an unknown MCP tool permission', () => {
 			expect(() =>
 				AgentJsonConfigSchema.parse({
 					...base,
@@ -1875,7 +2286,9 @@ describe('AgentJsonConfigSchema', () => {
 						{
 							name: 'github',
 							url: 'https://a.example.test/mcp',
-							approval: { mode: 'selected', tools: [] },
+							toolPermissions: {
+								categories: { read: 'always_allow', write: 'ask' },
+							},
 						},
 					],
 				}),

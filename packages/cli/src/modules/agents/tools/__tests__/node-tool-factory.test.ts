@@ -1,10 +1,24 @@
+import type { AgentJsonToolConfig } from '@n8n/api-types';
+import type { PolicyViolation } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { hasPolicyRefusalMarker } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
+import type { NonEmptyViolations } from '@/policy/policy-violation.error';
 
 import { resolveNodeTool } from '../node-tool-factory';
+
+const violation = (overrides: Partial<PolicyViolation> = {}): PolicyViolation => ({
+	kind: 'node-type-unavailable',
+	checkId: 'node-type-availability',
+	message: 'The node type n8n-nodes-base.googleDrive is not available on this instance',
+	subject: 'n8n-nodes-base.googleDrive',
+	subjectType: 'nodeType',
+	scope: 'instance',
+	...overrides,
+});
 
 // The node-tool-factory imports the DI `Container` to look up NodeTypes inside
 // `resolveInputSchema` (for auto-seeding a `{ input: string }` schema on
@@ -208,6 +222,91 @@ describe('resolveNodeTool → tool name sanitization', () => {
 				inputData: [{ json: { input: 'thinking about this problem' } }],
 			}),
 		);
+	});
+});
+
+describe('resolveNodeTool → policy refusal', () => {
+	it('returns a policy refusal in the serialized refusal shape instead of throwing', async () => {
+		const violations: NonEmptyViolations = [violation()];
+		const executeInline = vi.fn().mockResolvedValue({
+			status: 'error',
+			data: [],
+			error: 'Node type is not permitted for agent tool execution',
+			violations,
+		});
+
+		const tool = await resolveNodeTool(baseToolSchema, {
+			executor: { executeInline } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+		});
+
+		const output = await tool.handler!({}, {} as never);
+		expect(output).toEqual({
+			isPolicyRefusal: true,
+			message: 'Node type is not permitted for agent tool execution',
+			violations,
+			instruction: expect.stringMatching(/do not retry/i),
+		});
+		expect(output).toMatchObject({ instruction: expect.stringMatching(/tell the user/i) });
+		expect(hasPolicyRefusalMarker(output)).toBe(true);
+	});
+
+	it('throws for an ordinary executor error with no violations, as before', async () => {
+		const executeInline = vi.fn().mockResolvedValue({
+			status: 'error',
+			data: [],
+			error: 'boom',
+		});
+
+		const tool = await resolveNodeTool(baseToolSchema, {
+			executor: { executeInline } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+		});
+
+		await expect(tool.handler!({}, {} as never)).rejects.toThrow('boom');
+	});
+});
+
+describe('toExecutorCredentials (credential mapping at execution)', () => {
+	type NodeCredentials = Extract<AgentJsonToolConfig, { type: 'node' }>['node']['credentials'];
+
+	async function credentialDetailsFor(credentials: NodeCredentials) {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const tool = await resolveNodeTool(
+			{ ...baseToolSchema, node: { ...baseToolSchema.node, credentials } },
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+		await tool.handler!({}, {} as never);
+		return (executeInline.mock.calls[0][0] as { credentialDetails?: unknown }).credentialDetails;
+	}
+
+	it('carries an n8n Connect managed credential through with a null id and the flag', async () => {
+		const details = await credentialDetailsFor({
+			slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+		});
+		expect(details).toEqual({
+			slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+		});
+	});
+
+	it('carries a real and a managed credential together in a mixed map', async () => {
+		const details = await credentialDetailsFor({
+			slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			httpBasicAuth: { id: 'cred-1', name: 'Prod' },
+		});
+		expect(details).toEqual({
+			slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			httpBasicAuth: { id: 'cred-1', name: 'Prod' },
+		});
+	});
+
+	it('drops an unpersisted slot that is neither a real credential nor managed', async () => {
+		const details = await credentialDetailsFor({ slackApi: { id: '', name: '' } });
+		expect(details).toBeUndefined();
+	});
+
+	it('passes undefined when the node has no credentials', async () => {
+		expect(await credentialDetailsFor(undefined)).toBeUndefined();
 	});
 });
 

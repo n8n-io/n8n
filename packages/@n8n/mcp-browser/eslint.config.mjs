@@ -1,8 +1,4 @@
 import { defineConfig } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
-export default defineConfig(nodeConfig, {
-	rules: {
-		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-	},
-});
+export default defineConfig(backendConfig);

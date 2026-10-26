@@ -1,11 +1,25 @@
 import { HuggingFaceInferenceEmbeddings } from '@langchain/community/embeddings/hf';
+import { proxyFetch } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { INode, ISupplyDataFunctions, NodeEgressFilter } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { EmbeddingsHuggingFaceInference } from '../EmbeddingsHuggingFaceInference/EmbeddingsHuggingFaceInference.node';
 
-vi.mock('@huggingface/inference', () => ({ PROVIDERS_OR_POLICIES: ['auto'] }));
+vi.mock('@huggingface/inference', () => {
+	class InferenceClient {
+		constructor(
+			readonly accessToken: string,
+			readonly options: Record<string, unknown> = {},
+		) {}
+
+		endpoint(endpointUrl: string) {
+			return new InferenceClient(this.accessToken, { ...this.options, endpointUrl });
+		}
+	}
+	return { PROVIDERS_OR_POLICIES: ['auto'], InferenceClient };
+});
 vi.mock('@langchain/community/embeddings/hf');
 vi.mock('@n8n/ai-utilities');
 
@@ -68,5 +82,33 @@ describe('EmbeddingsHuggingFaceInference', () => {
 
 		await node.supplyData.call(ctx, 0);
 		expect(HuggingFaceInferenceEmbeddings).toHaveBeenCalled();
+	});
+
+	it.each([
+		['the default endpoint', {}],
+		['a custom endpoint', { endpointUrl: 'https://my-endpoint.example.com' }],
+	])('should send requests to %s through the egress filter', async (_, options) => {
+		const ctx = setup({ apiKey: 'k' }, options);
+		const egressFilter = mock<NodeEgressFilter>();
+		ctx.helpers.getSecureEgressFilter = vi.fn().mockReturnValue(egressFilter);
+
+		await node.supplyData.call(ctx, 0);
+
+		const client = vi.mocked(HuggingFaceInferenceEmbeddings).mock.instances[0]
+			.client as unknown as {
+			accessToken: string;
+			options: { fetch: typeof fetch; endpointUrl?: string };
+		};
+		expect(client.accessToken).toBe('k');
+		expect(client.options.endpointUrl).toBe(
+			'endpointUrl' in options ? options.endpointUrl : undefined,
+		);
+
+		await client.options.fetch('https://example.com/embed', { method: 'POST' });
+		expect(proxyFetch).toHaveBeenCalledWith({
+			input: 'https://example.com/embed',
+			init: { method: 'POST' },
+			egressFilter,
+		});
 	});
 });

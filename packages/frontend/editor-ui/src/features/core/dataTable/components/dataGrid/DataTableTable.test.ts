@@ -14,8 +14,16 @@ vi.mock('ag-grid-vue3', () => ({
 	AgGridVue: {
 		name: 'AgGridVue',
 		template:
-			"<div data-test-id=\"ag-grid-vue\" :data-row-selection=\"rowSelection && typeof rowSelection === 'object' && rowSelection.isRowSelectable && rowSelection.isRowSelectable({ data: { id: 1 } }) ? 'enabled' : 'disabled'\" />",
-		props: ['rowData', 'columnDefs', 'domLayout', 'animateRows', 'theme', 'rowSelection'],
+			'<div data-test-id="ag-grid-vue" :data-row-selection="rowSelection && typeof rowSelection === \'object\' && rowSelection.isRowSelectable && rowSelection.isRowSelectable({ data: { id: 1 } }) ? \'enabled\' : \'disabled\'" :data-suppress-movable-columns="!!suppressMovableColumns" />',
+		props: [
+			'rowData',
+			'columnDefs',
+			'domLayout',
+			'animateRows',
+			'theme',
+			'rowSelection',
+			'suppressMovableColumns',
+		],
 		emits: ['gridReady'],
 		mounted(this: MockComponentInstance) {
 			this.$emit('gridReady', {
@@ -61,19 +69,8 @@ vi.mock('@/features/core/dataTable/components/dataGrid/n8nTheme', () => ({
 	n8nTheme: 'n8n-theme',
 }));
 
-// Mock AddColumnPopover
-vi.mock('@/features/core/dataTable/components/dataGrid/AddColumnPopover.vue', () => ({
-	default: {
-		name: 'AddColumnPopover',
-		template:
-			'<div data-test-id="add-column-popover"><button data-test-id="data-table-add-column-button" @click="$emit(\'add-column\', { column: { name: \'newColumn\', type: \'string\' } })">Add Column</button></div>',
-		props: ['dataTable'],
-		emits: ['add-column'],
-	},
-}));
-
 // Mock composables
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: vi.fn(),
 		showSuccess: vi.fn(),
@@ -262,6 +259,34 @@ describe('DataTableTable', () => {
 				const agGridVue = getByTestId('ag-grid-vue');
 				expect(agGridVue).toBeInTheDocument();
 				expect(agGridVue.getAttribute('data-row-selection')).toBe('enabled');
+			});
+		});
+
+		it('should keep row selection and lock column moves when only the schema is read-only', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+					schemaReadOnly: true,
+				},
+			});
+
+			await waitFor(() => {
+				const agGridVue = getByTestId('ag-grid-vue');
+				expect(agGridVue.getAttribute('data-row-selection')).toBe('enabled');
+				expect(agGridVue.getAttribute('data-suppress-movable-columns')).toBe('true');
+			});
+		});
+
+		it('should allow column moves when nothing is read-only', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+				},
+			});
+
+			await waitFor(() => {
+				const agGridVue = getByTestId('ag-grid-vue');
+				expect(agGridVue.getAttribute('data-suppress-movable-columns')).toBe('false');
 			});
 		});
 

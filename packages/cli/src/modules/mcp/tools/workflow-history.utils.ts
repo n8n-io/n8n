@@ -18,7 +18,7 @@ export async function getMcpWorkflowVersion(
 ): Promise<WorkflowHistory> {
 	try {
 		return await workflowHistoryService.getVersion(user, workflowId, versionId, {
-			includePublishHistory: false,
+			publishHistory: 'none',
 		});
 	} catch (error) {
 		if (error instanceof WorkflowHistoryVersionNotFoundError) {

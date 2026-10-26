@@ -9,7 +9,7 @@ import { quoteIdentifier, toTableName } from '@/modules/data-table/utils/sql-uti
 import { compressFolder } from '@/utils/compression.util';
 import { validateDbTypeForExportEntities } from '@/utils/validate-database-type';
 
-const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
+import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
 
 @Service()
 export class ExportService {
@@ -289,6 +289,9 @@ export class ExportService {
 		}
 
 		for (const metadata of entityMetadatas) {
+			// A child entity shares its table with its parent, which exports every row of it.
+			if (metadata.tableType === 'entity-child') continue;
+
 			// Get table name and entity name
 			const tableName = metadata.tableName;
 
@@ -299,7 +302,11 @@ export class ExportService {
 				continue;
 			}
 
-			const entityName = metadata.name.toLowerCase();
+			// A table that several entities share keeps the name of the table, so the
+			// archive still holds `user.jsonl`.
+			const entityName = (
+				metadata.inheritancePattern === 'STI' ? metadata.tableNameWithoutPrefix : metadata.name
+			).toLowerCase();
 
 			this.logger.info(`\n📊 Processing table: ${tableName} (${entityName})`);
 

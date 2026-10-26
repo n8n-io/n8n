@@ -2,12 +2,12 @@
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { useI18n } from '@n8n/i18n';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import { useRouter } from 'vue-router';
 import DataTableActions from '@/features/core/dataTable/components/DataTableActions.vue';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { telemetry } from '@/app/plugins/telemetry';
 
 import { N8nBreadcrumbs, N8nInlineTextEdit } from '@n8n/design-system';
@@ -16,7 +16,8 @@ const BREADCRUMBS_SEPARATOR = '/';
 
 type Props = {
 	dataTable: DataTable;
-	readOnly: boolean;
+	/** Locks rename and delete, for example on a protected instance. */
+	schemaReadOnly: boolean;
 };
 
 const props = defineProps<Props>();
@@ -36,7 +37,7 @@ const toast = useToast();
 const editableName = ref(props.dataTable.name);
 
 const isRenameDisabled = computed(
-	() => !dataTableStore.projectPermissions.dataTable.update || props.readOnly,
+	() => !dataTableStore.projectPermissions.dataTable.update || props.schemaReadOnly,
 );
 
 const project = computed(() => {
@@ -127,7 +128,7 @@ watch(
 					data-test-id="data-table-header-name-input"
 					:placeholder="i18n.baseText('dataTable.add.input.name.label')"
 					:class="$style['breadcrumb-current']"
-					:read-only="readOnly"
+					:read-only="schemaReadOnly"
 					:disabled="isRenameDisabled"
 					@update:model-value="onNameSubmit"
 				/>
@@ -136,7 +137,7 @@ watch(
 		<div :class="$style['data-table-actions']">
 			<DataTableActions
 				:data-table="props.dataTable"
-				:is-read-only="readOnly"
+				:schema-read-only="schemaReadOnly"
 				location="breadcrumbs"
 				@rename="onRename"
 				@on-deleted="onDelete"
@@ -147,6 +148,8 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .data-table-breadcrumbs {
 	display: flex;
 	align-items: center;

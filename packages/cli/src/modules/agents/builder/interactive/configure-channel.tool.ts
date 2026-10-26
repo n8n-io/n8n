@@ -6,36 +6,31 @@ import {
 	channelSuspendPayloadSchema,
 	type ChannelResumeData,
 	type ChannelSuspendPayload,
+	getLegacyBuilderToolNames,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import type { BuilderTrackFn } from '../builder-config-telemetry';
+import type { ChannelSetupDeps } from './setup-tool.types';
 
 const configureChannelInputSchema = z.object({
-	integrationType: z.string().describe('Chat platform type from list_integration_types'),
+	integrationType: z.string().describe('Chat platform type from agent-context integrations'),
 });
 
 type ConfigureChannelInput = z.infer<typeof configureChannelInputSchema>;
 
-export interface ConfigureChannelToolDeps {
-	agentId: string;
-	projectId: string;
-	/** Wraps `AgentIntegrationPersistenceService.listChatIntegrations()`. */
-	listChatIntegrationTypes: () => string[];
-	track: BuilderTrackFn;
-}
-
-export function buildConfigureChannelTool(deps: ConfigureChannelToolDeps): BuiltTool {
+export function buildConfigureChannelTool(deps: ChannelSetupDeps): BuiltTool {
 	return new Tool(CONFIGURE_CHANNEL_TOOL_NAME)
+		.legacyNames(...getLegacyBuilderToolNames(CONFIGURE_CHANNEL_TOOL_NAME))
 		.description(
-			'Connect one available chat channel to the target agent. First call ' +
-				'list_integration_types and pass a returned `type` as `integrationType`; do not infer ' +
+			'Configure one available chat channel for the target agent. First call ' +
+				'agent-context with type "integrations" and pass a returned `type` as `integrationType`; do not infer ' +
 				'channel names. Shows setup UI in chat where the user creates a new channel credential ' +
-				'or skips. The setup UI persists the connection, so use this for channel credentials ' +
-				'instead of the credentials tool or config writes. Returns { connected: boolean } (plus configMutated/agentId refresh metadata when connected); if ' +
-				'false, continue without the channel and do not re-prompt.',
+				'(for n8n_chat: confirms the agent description) or skips. The setup UI persists the channel configuration and does not publish the agent, ' +
+				'so use this for channel credentials instead of the credentials tool or config writes. ' +
+				'Returns { configured: boolean } (plus configMutated/agentId refresh metadata when configured); ' +
+				'false means the user skipped, so continue without the channel and do not re-prompt.',
 		)
 		.input(configureChannelInputSchema)
 		.suspend(channelSuspendPayloadSchema)
@@ -45,21 +40,21 @@ export function buildConfigureChannelTool(deps: ConfigureChannelToolDeps): Built
 				{ integrationType }: ConfigureChannelInput,
 				ctx: InterruptibleToolContext<ChannelSuspendPayload, ChannelResumeData>,
 			) => {
-				// Resumed — the user connected (approved) or skipped (dismissed). Handled
+				// Resumed — the user configured (approved) or skipped (dismissed). Handled
 				// before the integration-catalog validation below: a run rebuilt from a
 				// checkpoint after a process restart may see a different (or empty)
-				// catalog than the original call, but the setup card already persisted
-				// (or skipped) the connection, so the resume leg only reports the outcome.
+				// catalog than the original call, but the setup card already persisted (or
+				// skipped) the configuration, so the resume leg only reports the outcome.
 				if (ctx.resumeData !== undefined && ctx.resumeData !== null) {
 					if (ctx.resumeData.approved) {
 						deps.track(TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TRIGGER, {
 							trigger_type: integrationType,
 						});
 					}
-					return { connected: ctx.resumeData.approved };
+					return { configured: ctx.resumeData.approved };
 				}
 
-				const availableTypes = deps.listChatIntegrationTypes();
+				const availableTypes = await deps.listChatIntegrationTypes();
 				if (!availableTypes.includes(integrationType)) {
 					const availableMessage = availableTypes.length
 						? ` Available: ${availableTypes.join(', ')}.`
@@ -69,7 +64,7 @@ export function buildConfigureChannelTool(deps: ConfigureChannelToolDeps): Built
 						errors: [
 							{
 								message:
-									`Unsupported chat channel "${integrationType}". Call list_integration_types ` +
+									`Unsupported chat channel "${integrationType}". Call agent-context with type "integrations" ` +
 									'and choose a returned type.' +
 									availableMessage,
 							},

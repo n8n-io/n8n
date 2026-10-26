@@ -32,8 +32,6 @@ describe('InstanceAiConfirmRequestDto', () => {
 				{ kind: 'approval', approved: true, scope: 'session' },
 			],
 			['approval approve with once scope', { kind: 'approval', approved: true, scope: 'once' }],
-			// InstanceAiConfirmationPanel: handlePlanDeny (hard-reject the plan)
-			['planDeny', { kind: 'planDeny' }],
 			// InstanceAiConfirmationPanel: handleQuestionsSubmit
 			[
 				'questions with mixed answers',
@@ -58,6 +56,18 @@ describe('InstanceAiConfirmRequestDto', () => {
 			[
 				'credentialAutoSetup with credential type',
 				{ kind: 'credentialAutoSetup', credentialType: 'firecrawlApi' },
+			],
+			[
+				'credentialAutoSetup with attempt id',
+				{ kind: 'credentialAutoSetup', credentialType: 'firecrawlApi', attemptId: 'attempt-1' },
+			],
+			[
+				'credential destination approval',
+				{
+					kind: 'credentialDestination',
+					approved: true,
+					origin: 'https://api.example.com',
+				},
 			],
 			// DomainAccessApproval: handleAction (primary path — with action)
 			[
@@ -108,6 +118,9 @@ describe('InstanceAiConfirmRequestDto', () => {
 				'setupWorkflowTestTrigger (minimal)',
 				{ kind: 'setupWorkflowTestTrigger', testTriggerNode: 'Webhook' },
 			],
+			['mcpConnect (connected)', { kind: 'mcpConnect', approved: true, connectedSlugs: ['brave'] }],
+			['mcpConnect (skipped)', { kind: 'mcpConnect', approved: false, connectedSlugs: [] }],
+			['mcpConnect (minimal)', { kind: 'mcpConnect', approved: false }],
 		];
 
 		test.each(cases)('%s', (_label, payload) => {
@@ -149,6 +162,20 @@ describe('InstanceAiConfirmRequestDto', () => {
 
 		test('credentialAutoSetup without credentialType', () => {
 			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'credentialAutoSetup' });
+			expect(result.success).toBe(false);
+		});
+
+		test('credentialAutoSetup with empty attemptId', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({
+				kind: 'credentialAutoSetup',
+				credentialType: 'slackApi',
+				attemptId: '  ',
+			});
+			expect(result.success).toBe(false);
+		});
+
+		test('mcpConnect without approved', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'mcpConnect' });
 			expect(result.success).toBe(false);
 		});
 

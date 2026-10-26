@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { DynamicStructuredTool, StructuredTool, Tool } from '@langchain/core/tools';
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	AINodeConnectionType,
 	ChatNodeMessageWithButtons,
@@ -28,7 +29,6 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	UserError,
-	sleepWithAbort,
 	isHitlToolType,
 } from 'n8n-workflow';
 import z, { ZodType } from 'zod';
@@ -92,6 +92,8 @@ export function createHitlToolkit(
 			metadata: {
 				sourceNodeName: hitlNode.name,
 				gatedToolNodeName: tool.metadata?.sourceNodeName as string | undefined,
+				// Keep the partner label so the agent still appends it after approval
+				attribution: tool.metadata?.attribution,
 				originalSchema: tool.schema,
 			},
 		});
@@ -275,7 +277,7 @@ export function makeHandleToolInvocation(
 				lastError = undefined;
 				if (waitBetweenTries !== 0) {
 					try {
-						await sleepWithAbort(waitBetweenTries, abortSignal);
+						await sleep(waitBetweenTries, abortSignal);
 					} catch (abortError) {
 						return 'Error during node execution: Execution was cancelled';
 					}
@@ -535,27 +537,35 @@ export async function getInputConnectionData(
 					});
 				}
 
-				let currentNodeRunIndex = 0;
-				if (runExecutionData.resultData.runData.hasOwnProperty(parentNode.name)) {
-					currentNodeRunIndex = runExecutionData.resultData.runData[parentNode.name].length;
-				}
-
-				// Display the error on the node which is causing it
+				// Display the error on the node which is causing it. The run goes after the runs
+				// this sub-node already recorded, not at the parent's run count.
+				const subNodeRunIndex = context.getNextRunIndex();
 				await context.addExecutionDataFunctions(
 					'input',
 					error,
 					connectionType,
-					parentNode.name,
-					currentNodeRunIndex,
+					undefined,
+					subNodeRunIndex,
 				);
 
 				await context.addExecutionDataFunctions(
 					'output',
 					error,
 					connectionType,
-					parentNode.name,
-					currentNodeRunIndex,
+					undefined,
+					subNodeRunIndex,
 				);
+
+				// The `subRun` entry is merged onto `runData[parent][parentRunCount]` at the end
+				// of the execution, so the parent must get a record there. A top-level parent gets
+				// one appended right after this failure; a sub-node parent never does.
+				if (!(this instanceof SupplyDataContext)) {
+					let parentRunCount = 0;
+					if (runExecutionData.resultData.runData.hasOwnProperty(parentNode.name)) {
+						parentRunCount = runExecutionData.resultData.runData[parentNode.name].length;
+					}
+					context.stageSubRun(parentNode.name, parentRunCount, subNodeRunIndex);
+				}
 
 				// Display on the calling node which node has the error
 				throw new NodeOperationError(connectedNode, `Error in sub-node ${connectedNode.name}`, {

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { useStyles } from '@/app/composables/useStyles';
+import { useStyles } from '@n8n/composables/useStyles';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useBuilderStore } from '../../builder.store';
 import { useChatPanelStore } from '../../chatPanel.store';
 import { computed } from 'vue';
 
 import { N8nAskAssistantButton, N8nAssistantAvatar, N8nTooltip } from '@n8n/design-system';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 
@@ -101,7 +101,7 @@ const onClick = async () => {
 .assistant {
 	font-size: var(--font-size--3xs);
 	line-height: var(--spacing--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	margin-top: var(--spacing--xs);
 
 	> span {

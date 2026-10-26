@@ -12,10 +12,37 @@ import type {
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { RRule } from 'rrule';
 
+import { sleep } from '@n8n/utils/sleep';
+
 import type { RecurringEventInstance } from './EventInterface';
+
+export function parseAttendees(
+	this: IExecuteFunctions,
+	attendees: unknown,
+	itemIndex: number,
+): Array<{ email: string }> {
+	if (
+		!Array.isArray(attendees) ||
+		!attendees.every(
+			(attendee: unknown): attendee is string =>
+				typeof attendee === 'string' &&
+				attendee.split(',').every((email) => email.trim().length > 0),
+		)
+	) {
+		throw new NodeOperationError(this.getNode(), 'Invalid attendee value', {
+			description:
+				'Set each attendee to an email address string. To include multiple addresses in one entry, separate them with commas.',
+			itemIndex,
+		});
+	}
+
+	return attendees.flatMap((attendee) =>
+		attendee.split(',').map((email) => ({ email: email.trim() })),
+	);
+}
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,

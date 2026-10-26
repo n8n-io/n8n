@@ -1,4 +1,4 @@
-import type { FrontendSettings, UserUpdateRequestDto } from '@n8n/api-types';
+import type { FrontendSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { GlobalConfig } from '@n8n/config';
@@ -11,7 +11,13 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import type { IRun, IWorkflowBase, Workflow, WorkflowExecuteMode } from 'n8n-workflow';
+import type {
+	IRun,
+	IWorkflowBase,
+	Workflow,
+	WorkflowExecuteMode,
+	WorkflowExecutionSource,
+} from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 import type clientOAuth1 from 'oauth-1.0a';
 
@@ -98,18 +104,43 @@ type ExternalHooksMap = {
 	'user.profile.beforeUpdate': [
 		userId: string,
 		currentEmail: string,
-		payload: UserUpdateRequestDto,
+		payload: { email?: string; firstName?: string; lastName?: string },
 	];
 	'user.profile.update': [currentEmail: string, publicUser: PublicUser];
 	'user.password.update': [updatedEmail: string, updatedPassword: string | null];
 	'user.invited': [emails: string[]];
 
-	'workflow.create': [createdWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
-	'workflow.afterCreate': [createdWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
-	'workflow.activate': [updatedWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
-	'workflow.deactivate': [deactivatedWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
-	'workflow.update': [updatedWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
-	'workflow.afterUpdate': [updatedWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
+	'workflow.create': [
+		createdWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.afterCreate': [
+		createdWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.activate': [
+		updatedWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.deactivate': [
+		/** Pre-deactivation state (`active` is still `true`), carrying the version about to be deactivated. */
+		deactivatedWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.update': [
+		updatedWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.afterUpdate': [
+		updatedWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
 	'workflow.delete': [workflowId: string, actor?: WorkflowLifecycleHookActor];
 	'workflow.afterDelete': [workflowId: string, actor?: WorkflowLifecycleHookActor];
 	'workflow.afterArchive': [workflowId: string, actor?: WorkflowLifecycleHookActor];
@@ -119,11 +150,18 @@ type ExternalHooksMap = {
 		workflow: Workflow,
 		mode: WorkflowExecuteMode,
 		workflowContext: WorkflowHookContextService,
+		/**
+		 * Who initiated the run. Unset means a regular user-initiated run.
+		 * Agent-initiated runs mimic the trigger's mode, so consumers that meter
+		 * or bill executions must check this rather than `mode` alone.
+		 */
+		source?: WorkflowExecutionSource,
 	];
 	'workflow.postExecute': [
 		fullRunData: IRun | undefined,
 		workflowData: IWorkflowBase,
 		executionId: string,
+		workflowContext: WorkflowHookContextService,
 	];
 };
 type HookNames = keyof ExternalHooksMap;

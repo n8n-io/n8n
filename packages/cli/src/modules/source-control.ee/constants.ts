@@ -8,6 +8,23 @@ export const SOURCE_CONTROL_VARIABLES_EXPORT_FILE = 'variable_stubs.json';
 export const SOURCE_CONTROL_TAGS_EXPORT_FILE = 'tags.json';
 export const SOURCE_CONTROL_FOLDERS_EXPORT_FILE = 'folders.json';
 export const SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER = 'datatables';
+// Managed paths that a remote commit must materialize as directories.
+export const SOURCE_CONTROL_MANAGED_DIRECTORIES = [
+	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
+	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
+	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
+	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
+] as const;
+// Managed paths that a remote commit must materialize as regular files.
+export const SOURCE_CONTROL_MANAGED_FILES = [
+	SOURCE_CONTROL_TAGS_EXPORT_FILE,
+	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
+	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
+] as const;
+export const SOURCE_CONTROL_MANAGED_PATHS = [
+	...SOURCE_CONTROL_MANAGED_DIRECTORIES,
+	...SOURCE_CONTROL_MANAGED_FILES,
+] as const;
 export const SOURCE_CONTROL_OWNERS_EXPORT_FILE = 'workflow_owners.json';
 export const SOURCE_CONTROL_SSH_FOLDER = 'ssh';
 export const SOURCE_CONTROL_SSH_KEY_NAME = 'key';

@@ -14,7 +14,7 @@ import {
 } from 'n8n-workflow';
 
 import { downloadFile, getChannelInfo, getUserInfo, verifySignature } from './SlackTriggerHelpers';
-import { slackApiRequestAllItems } from './V2/GenericFunctions';
+import { formatUserLabel, slackApiRequestAllItems } from './V2/GenericFunctions';
 
 export class SlackTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -53,7 +53,7 @@ export class SlackTrigger implements INodeType {
 			},
 			{
 				displayName:
-					'Set up a webhook in your Slack app to enable this node. <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#configure-a-webhook-in-slack" target="_blank">More info</a>. We also recommend setting up a <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#verify-the-webhook" target="_blank">signing secret</a> to ensure the authenticity of requests.',
+					'Set up a webhook in your Slack app to enable this node. <a href="https://docs.n8n.io/integrations/builtin/credentials/slack/#slack-trigger-configuration" target="_blank">More info</a>. We also recommend setting up a <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#verify-the-webhook" target="_blank">signing secret</a> to ensure the authenticity of requests.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -296,19 +296,20 @@ export class SlackTrigger implements INodeType {
 					'members',
 					'GET',
 					'/users.list',
-				)) as Array<{ id: string; name: string }>;
+				)) as Array<{ id: string; name: string; real_name?: string }>;
 				for (const user of users) {
 					returnData.push({
-						name: user.name,
+						name: formatUserLabel(user),
 						value: user.id,
 					});
 				}
 
+				// case-insensitive, so lowercase handle fallbacks aren't sorted below every real name
 				returnData.sort((a, b) => {
-					if (a.name < b.name) {
+					if (a.name.toLowerCase() < b.name.toLowerCase()) {
 						return -1;
 					}
-					if (a.name > b.name) {
+					if (a.name.toLowerCase() > b.name.toLowerCase()) {
 						return 1;
 					}
 					return 0;

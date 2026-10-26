@@ -2,16 +2,18 @@ import {
 	buildFolderFilterOptions,
 	buildWorkflowTreeRows,
 	formatSourceControlUpdatedAt,
+	getProtectedInstanceTooltip,
 	getStatusText,
 	getStatusTheme,
 	getPullPriorityByStatus,
 	getPushPriorityByStatus,
 	notifyUserAboutPullWorkFolderOutcome,
 } from './sourceControl.utils';
-import type { useToast } from '@/app/composables/useToast';
+import type { useToast } from '@n8n/composables/useToast';
 import type { Router } from 'vue-router';
 
-import { SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-types';
+import { SOURCE_CONTROL_FILE_STATUS, type SourceControlledFile } from '@n8n/api-types';
+import { PROTECTED_INSTANCE_DOCS_URL } from './sourceControl.constants';
 
 describe('source control utils', () => {
 	describe('getStatusText()', () => {
@@ -19,6 +21,16 @@ describe('source control utils', () => {
 			expect(getStatusText(SOURCE_CONTROL_FILE_STATUS.new)).toStrictEqual(
 				expect.stringContaining(SOURCE_CONTROL_FILE_STATUS.new),
 			);
+		});
+	});
+
+	describe('getProtectedInstanceTooltip()', () => {
+		it('links to the protected instance docs', () => {
+			const tooltip = getProtectedInstanceTooltip();
+
+			expect(tooltip).toContain('protected instance');
+			expect(tooltip).toContain(`href="${PROTECTED_INSTANCE_DOCS_URL}"`);
+			expect(tooltip).not.toContain('{link}');
 		});
 	});
 
@@ -166,6 +178,28 @@ describe('source control utils', () => {
 				{ label: 'Prod', value: 'Prod' },
 				{ label: 'Prod / Analytics', value: 'Prod/Analytics' },
 				{ label: 'Prod / Billing', value: 'Prod/Billing' },
+			]);
+		});
+
+		it('includes the remote/prior folder of a moved workflow so its source folder stays selectable', () => {
+			const options = buildFolderFilterOptions([
+				{
+					id: 'wf-moved',
+					name: 'Moved workflow',
+					type: 'workflow',
+					status: 'modified',
+					location: 'local',
+					conflict: true,
+					file: '/wf-moved.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Archive'],
+					remoteFolderPath: ['Production'],
+				},
+			]);
+
+			expect(options).toEqual([
+				{ label: 'Archive', value: 'Archive' },
+				{ label: 'Production', value: 'Production' },
 			]);
 		});
 
@@ -406,6 +440,47 @@ describe('source control utils', () => {
 					message: 'Variables were pulled',
 				}),
 			);
+		});
+
+		describe('with items skipped by a policy', () => {
+			const toast = { showToast: vi.fn() } as unknown as ReturnType<typeof useToast>;
+			const router = {
+				push: vi.fn(),
+				resolve: vi.fn().mockReturnValue({ href: '/test' }),
+			} as unknown as Router;
+			const workflow = (id: string, blocked: boolean): SourceControlledFile => ({
+				id,
+				name: id,
+				type: 'workflow',
+				status: 'created',
+				location: 'remote',
+				conflict: false,
+				file: `/${id}.json`,
+				updatedAt: '2025-01-09T13:12:24.580Z',
+				...(blocked && {
+					contentImportPolicy: {
+						violations: [{ kind: 'node-type-unavailable', checkId: 'c', message: 'no' }],
+						checkErrors: [],
+					},
+				}),
+			});
+
+			beforeEach(() => {
+				vi.mocked(toast.showToast).mockClear();
+			});
+
+			it('counts only the pulled items and adds no policy warning', async () => {
+				await notifyUserAboutPullWorkFolderOutcome(
+					[workflow('pulled', false), workflow('skipped', true)],
+					toast,
+					router,
+				);
+
+				expect(toast.showToast).toHaveBeenCalledTimes(1);
+				expect(toast.showToast).toHaveBeenCalledWith(
+					expect.objectContaining({ message: '1 Workflow was pulled' }),
+				);
+			});
 		});
 	});
 });

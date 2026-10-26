@@ -1,8 +1,9 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 import type { IDataObject, JsonObject } from 'n8n-workflow';
 
 import { AgentEvalResult } from '../entities';
+import type { AgentEvalResultStatus } from '../entities/agent-eval-result.ee';
 
 type CreateAgentEvalResultAttrs = {
 	runId: string;
@@ -10,6 +11,24 @@ type CreateAgentEvalResultAttrs = {
 	runIndex?: number | null;
 	input?: JsonObject | null;
 };
+
+export type AgentEvalResultStatusCounts = Record<AgentEvalResultStatus, number>;
+
+// Insert seeded rows in chunks so a large dataset stays under the driver's bound
+// parameter limit (SQLite in particular).
+const SEED_CHUNK_SIZE = 100;
+
+const startedAttempt = () => ({
+	status: 'running' as const,
+	runAt: new Date(),
+	completedAt: null,
+	output: null,
+	toolCalls: null,
+	metrics: null,
+	verdict: null,
+	errorCode: null,
+	errorDetails: null,
+});
 
 @Service()
 export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
@@ -27,7 +46,7 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 				status: 'new',
 				runId: c.runId,
 				sourceRowId: c.sourceRowId ?? null,
-				// Fall back to the seed position so `findByRunId` (orders by
+				// Fall back to the seed position so `findAndCountByRunId` (orders by
 				// runIndex ASC) returns a stable order on every database. A null
 				// runIndex would sort first on SQLite but last on Postgres.
 				runIndex: c.runIndex ?? index,
@@ -35,7 +54,54 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 			}),
 		);
 
-		return await this.save(results);
+		return await this.save(results, { chunk: SEED_CHUNK_SIZE });
+	}
+
+	/**
+	 * Per-status result counts for a run, computed in the database so callers
+	 * (run aggregation, polled run summaries) never load the full result rows —
+	 * including their `input`/`output`/`toolCalls` JSON — just to count them.
+	 */
+	async countByStatus(runId: string): Promise<AgentEvalResultStatusCounts> {
+		const rows = await this.createQueryBuilder('result')
+			.select('result.status', 'status')
+			.addSelect('COUNT(*)', 'count')
+			.where('result.runId = :runId', { runId })
+			.groupBy('result.status')
+			.getRawMany<{ status: AgentEvalResultStatus; count: string | number }>();
+
+		const counts: AgentEvalResultStatusCounts = {
+			new: 0,
+			running: 0,
+			success: 0,
+			error: 0,
+			cancelled: 0,
+		};
+		for (const row of rows) counts[row.status] = Number(row.count);
+		return counts;
+	}
+
+	/** Starts an attempt. Clears whatever a previous attempt left behind, so a
+	 *  rerun can't settle with an old error next to a new answer (or the reverse). */
+	async markAsRunning(id: string) {
+		return await this.update(id, startedAttempt());
+	}
+
+	/**
+	 * Atomically moves a settled result to `running`. Returns false when it was
+	 * not settled — already running, or claimed by a concurrent request — so only
+	 * one caller ever executes a given rerun.
+	 */
+	async claimForRerun(id: string): Promise<boolean> {
+		const claimed = await this.update(
+			{ id, status: In<AgentEvalResultStatus>(['success', 'error', 'cancelled']) },
+			startedAttempt(),
+		);
+		return (claimed.affected ?? 0) > 0;
+	}
+
+	async markAsCancelled(id: string) {
+		return await this.update(id, { status: 'cancelled', completedAt: new Date() });
 	}
 
 	async markAsCompleted(
@@ -44,6 +110,8 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 			output: JsonObject | null;
 			toolCalls?: JsonObject | null;
 			metrics?: IDataObject | null;
+			/** Written with completion so a finished case never exists without it. */
+			verdict?: JsonObject | null;
 		},
 	) {
 		return await this.update(id, {
@@ -52,6 +120,7 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 			output: attrs.output,
 			toolCalls: attrs.toolCalls ?? null,
 			metrics: attrs.metrics ?? null,
+			verdict: attrs.verdict ?? null,
 		});
 	}
 
@@ -64,7 +133,44 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 		});
 	}
 
-	async findByRunId(runId: string): Promise<AgentEvalResult[]> {
-		return await this.find({ where: { runId }, order: { runIndex: 'ASC' } });
+	/** Records the judge's verdict on an already-completed case. Never touches
+	 *  `status` — grading is extra information layered on a case that already
+	 *  succeeded, not a re-grading of whether it ran. */
+	async updateVerdict(id: string, verdict: JsonObject | null) {
+		return await this.update(id, { verdict });
+	}
+
+	/** Overwrites the persisted case snapshot — used to carry an edited rule
+	 *  into a result that already ran, ahead of rerunning it. */
+	async updateInput(id: string, input: JsonObject) {
+		return await this.update(id, { input });
+	}
+
+	/**
+	 * Paged in SQL, not by slicing a full read: every row carries its `input`,
+	 * `output` and `toolCalls` JSON. `runIndex` is distinct per run, so it is
+	 * already a total order and needs no tiebreak.
+	 */
+	async findAndCountByRunId(
+		runId: string,
+		options: { skip?: number; take?: number } = {},
+	): Promise<[AgentEvalResult[], number]> {
+		return await this.findAndCount({
+			where: { runId },
+			order: { runIndex: 'ASC' },
+			skip: options.skip,
+			take: options.take,
+		});
+	}
+
+	async findById(id: string): Promise<AgentEvalResult | null> {
+		return await this.findOneBy({ id });
+	}
+
+	/** Scoped to the result's own run for defense in depth — the service layer's
+	 *  `resolveResult` is what actually proves the caller's agent owns it. */
+	async deleteById(id: string, runId: string): Promise<boolean> {
+		const result = await this.delete({ id, runId });
+		return (result.affected ?? 0) > 0;
 	}
 }

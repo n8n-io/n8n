@@ -8,13 +8,14 @@ import {
 	isPromptSuggestion,
 	type InstanceAiEmptyStateSuggestion,
 } from '../emptyStateSuggestions';
+import type { InstanceAiPrefillDeclaration } from '../prefills';
 
 const props = defineProps<{
 	suggestions: readonly InstanceAiEmptyStateSuggestion[];
 	disabled: boolean;
 }>();
 
-interface InsertSuggestionPayload {
+interface InsertSuggestionPayload extends InstanceAiPrefillDeclaration {
 	promptKey: BaseTextKey;
 	suggestionId: string;
 	suggestionKind: 'prompt' | 'quick_example';
@@ -147,6 +148,7 @@ function handleSuggestionClick(suggestion: InstanceAiEmptyStateSuggestion) {
 			suggestionId: suggestion.id,
 			suggestionKind: 'prompt',
 			position: getTopLevelPosition(suggestion.id),
+			prefillType: 'v1_opener',
 		});
 		return;
 	}
@@ -256,6 +258,7 @@ function handleQuickExampleLeave() {
 								suggestionId: example.id,
 								suggestionKind: 'quick_example',
 								position: getQuickExamplePosition(example.id),
+								prefillType: 'v1_opener',
 							})
 						"
 						@mouseenter="handleQuickExampleEnter(example.promptKey)"

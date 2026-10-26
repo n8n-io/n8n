@@ -119,6 +119,8 @@ export async function execute(
 			whereClauses,
 			combineConditions,
 			columnMetaDataObject,
+			this.getNode(),
+			i,
 		);
 
 		// Add ORDER BY if needed

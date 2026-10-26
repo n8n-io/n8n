@@ -3,7 +3,9 @@ import type { AuthIdentity } from '@n8n/db';
 import { generateNanoId, User, AuthIdentityRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
+
+import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
 import * as helpers from '../saml-helpers';
 import type { SamlUserAttributes } from '../types';
@@ -100,6 +102,63 @@ describe('sso/saml/samlHelpers', () => {
 					userPrincipalName: 'test',
 				},
 			});
+		});
+
+		test('returns the email verification attribute when it is mapped', () => {
+			const flowResult = {
+				extract: {
+					attributes: {
+						email: 'test@test.com',
+						firstName: 'test',
+						lastName: 'test',
+						userPrincipalName: 'test',
+						emailVerified: ['true'],
+					},
+				},
+			} as any;
+			const attributeMapping = {
+				email: 'email',
+				firstName: 'firstName',
+				lastName: 'lastName',
+				userPrincipalName: 'userPrincipalName',
+				emailVerified: 'emailVerified',
+			};
+
+			const result = helpers.getMappedSamlAttributesFromFlowResult(flowResult, attributeMapping, {
+				instanceRole: null,
+				projectRoles: null,
+			});
+
+			expect(result.attributes?.emailVerified).toBe('true');
+			expect(result.missingAttributes).toEqual([]);
+		});
+
+		test('does not report a mapped email verification attribute that the response lacks', () => {
+			const flowResult = {
+				extract: {
+					attributes: {
+						email: 'test@test.com',
+						firstName: 'test',
+						lastName: 'test',
+						userPrincipalName: 'test',
+					},
+				},
+			} as any;
+			const attributeMapping = {
+				email: 'email',
+				firstName: 'firstName',
+				lastName: 'lastName',
+				userPrincipalName: 'userPrincipalName',
+				emailVerified: 'emailVerified',
+			};
+
+			const result = helpers.getMappedSamlAttributesFromFlowResult(flowResult, attributeMapping, {
+				instanceRole: null,
+				projectRoles: null,
+			});
+
+			expect(result.attributes?.emailVerified).toBeUndefined();
+			expect(result.missingAttributes).toEqual([]);
 		});
 
 		test('returns the missing attributes from the flow result', () => {
@@ -360,6 +419,51 @@ describe('sso/saml/samlHelpers', () => {
 		test('returns false when RelayState is missing', () => {
 			expect(helpers.isConnectionTestRequest({})).toBe(false);
 		});
+	});
+
+	describe('setSamlLoginEnabled', () => {
+		const emitSsoLoginDisabled = () => vi.mocked(ssoHelpers.emitSsoLoginDisabled);
+
+		beforeEach(() => {
+			vi.spyOn(ssoHelpers, 'setCurrentAuthenticationMethod').mockResolvedValue();
+			vi.spyOn(ssoHelpers, 'emitSsoLoginDisabled').mockResolvedValue();
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		test('emits sso-login-disabled when SAML login turns off', async () => {
+			vi.spyOn(ssoHelpers, 'getCurrentAuthenticationMethod').mockReturnValue('saml');
+
+			await helpers.setSamlLoginEnabled(false);
+
+			expect(ssoHelpers.setCurrentAuthenticationMethod).toHaveBeenCalledWith('email');
+			expect(emitSsoLoginDisabled()).toHaveBeenCalledExactlyOnceWith('saml');
+		});
+
+		test.each(['email', 'oidc', 'ldap'] as const)(
+			'does not emit when SAML is off and the method is %s',
+			async (method) => {
+				vi.spyOn(ssoHelpers, 'getCurrentAuthenticationMethod').mockReturnValue(method);
+
+				await helpers.setSamlLoginEnabled(false);
+
+				expect(emitSsoLoginDisabled()).not.toHaveBeenCalled();
+			},
+		);
+
+		test.each(['email', 'saml'] as const)(
+			'does not emit when SAML login turns on from %s',
+			async (method) => {
+				vi.spyOn(ssoHelpers, 'getCurrentAuthenticationMethod').mockReturnValue(method);
+
+				await helpers.setSamlLoginEnabled(true);
+
+				expect(ssoHelpers.setCurrentAuthenticationMethod).toHaveBeenCalledWith('saml');
+				expect(emitSsoLoginDisabled()).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('extractTestIdFromRelayState', () => {

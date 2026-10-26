@@ -17,17 +17,21 @@ const { settingsState, setChatEnabledMock } = vi.hoisted(() => ({
 	settingsState: {
 		enabled: true as boolean | undefined,
 		isChatFeatureEnabled: true,
+		isEnterprisePlan: true,
 	},
 	setChatEnabledMock: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		get moduleSettings() {
 			return { 'chat-hub': createChatHubModuleSettings({ enabled: settingsState.enabled }) };
 		},
 		get isChatFeatureEnabled() {
 			return settingsState.isChatFeatureEnabled;
+		},
+		get isEnterprisePlan() {
+			return settingsState.isEnterprisePlan;
 		},
 		getModuleSettings: vi.fn().mockResolvedValue(undefined),
 	}),
@@ -53,11 +57,11 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openModalWithData: vi.fn(), openNewCredential: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
@@ -85,6 +89,7 @@ describe('SettingsChatHubView', () => {
 		hasPermissionMock.mockReturnValue(true);
 		settingsState.enabled = true;
 		settingsState.isChatFeatureEnabled = true;
+		settingsState.isEnterprisePlan = true;
 	});
 
 	it('renders the enable toggle and providers when Chat is enabled', () => {
@@ -124,6 +129,26 @@ describe('SettingsChatHubView', () => {
 		await userEvent.click(getByTestId('chat-hub-enabled-switch'));
 
 		expect(setChatEnabledMock).toHaveBeenCalledWith(true);
+	});
+
+	it('shows the Preview and limited enterprise support badges next to the title on enterprise', () => {
+		const { getByText, getByTestId } = renderComponent();
+		const titleRow = getByText('Chat').parentElement;
+
+		expect(titleRow).toContainElement(getByTestId('chat-hub-preview-badge'));
+		expect(titleRow).toContainElement(getByTestId('chat-hub-enterprise-readiness-badge'));
+		expect(getByTestId('chat-hub-enterprise-readiness-badge')).toHaveTextContent(
+			'Limited enterprise support',
+		);
+	});
+
+	it('shows only the Preview badge on other plans', () => {
+		settingsState.isEnterprisePlan = false;
+
+		const { getByTestId, queryByTestId } = renderComponent();
+
+		expect(getByTestId('chat-hub-preview-badge')).toBeInTheDocument();
+		expect(queryByTestId('chat-hub-enterprise-readiness-badge')).not.toBeInTheDocument();
 	});
 
 	it('disables the toggle for users without chatHub:manage scope', () => {

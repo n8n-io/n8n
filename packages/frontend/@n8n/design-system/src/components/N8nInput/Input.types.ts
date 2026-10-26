@@ -1,5 +1,6 @@
-export type InputType = 'text' | 'textarea' | 'password' | 'number' | 'email';
-export type InputSize = 'xlarge' | 'large' | 'medium' | 'small' | 'mini';
+import type { InputSize, InputType } from '../../types/input';
+
+export type { InputSize, InputType };
 export type InputAutocomplete =
 	| 'off'
 	| 'on'
@@ -17,13 +18,18 @@ export interface InputProps {
 	placeholder?: string;
 	disabled?: boolean;
 	readonly?: boolean;
+	required?: boolean;
 	clearable?: boolean;
 	rows?: number;
+	// Masks a textarea's content (dots) for secrets that span multiple lines,
+	// where <input type="password"> can't be used because it strips newlines.
+	masked?: boolean;
 	maxlength?: number;
 	autosize?: boolean | { minRows?: number; maxRows?: number };
 	autofocus?: boolean;
 	autocomplete?: InputAutocomplete;
 	name?: string;
+	appendClass?: string;
 }
 
 export interface InputEmits {

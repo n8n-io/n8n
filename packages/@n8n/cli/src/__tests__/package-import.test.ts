@@ -13,19 +13,26 @@ const packageRoot = process.cwd();
 
 interface ImportFlags {
 	file: string;
-	project?: string;
-	folder?: string;
+	projectId?: string;
+	folderId?: string;
 	workflowConflictPolicy?: string;
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
 	missingNodeTypeMode?: string;
+	projectConflictPolicy?: string;
 	folderConflictPolicy?: string;
+	overwriteDeletionPolicy?: string;
 	credentialMatchingMode?: string;
 	credentialMissingMode?: string;
+	credentialConflictPolicy?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
 	variableMissingMode?: string;
+	variableConflictPolicy?: string;
+	variableParentPolicy?: string;
+	tagMissingMode?: string;
+	tagConflictPolicy?: string;
 	bindings?: string;
 }
 
@@ -59,19 +66,26 @@ describe('package import command', () => {
 	it('forwards workflowPublishingPolicy and all sibling options to the import API', async () => {
 		const { command, importPackage } = stubCommand({
 			file: '/tmp/export.n8np',
-			project: 'p-1',
-			folder: 'f-1',
+			projectId: 'p-1',
+			folderId: 'f-1',
 			workflowConflictPolicy: 'fail',
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
 			missingNodeTypeMode: 'import-anyway',
+			projectConflictPolicy: 'overwrite',
 			folderConflictPolicy: 'merge',
+			overwriteDeletionPolicy: 'hard-delete',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
+			credentialConflictPolicy: 'overwrite',
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingMode: 'do-nothing',
+			variableMissingMode: 'create-with-value',
+			variableConflictPolicy: 'overwrite',
+			variableParentPolicy: 'global',
+			tagMissingMode: 'do-nothing',
+			tagConflictPolicy: 'rename',
 			bindings: '{}',
 		});
 
@@ -89,13 +103,20 @@ describe('package import command', () => {
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
 			missingNodeTypeMode: 'import-anyway',
+			projectConflictPolicy: 'overwrite',
 			folderConflictPolicy: 'merge',
+			overwriteDeletionPolicy: 'hard-delete',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
+			credentialConflictPolicy: 'overwrite',
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingMode: 'do-nothing',
+			variableMissingMode: 'create-with-value',
+			variableConflictPolicy: 'overwrite',
+			variableParentPolicy: 'global',
+			tagMissingMode: 'do-nothing',
+			tagConflictPolicy: 'rename',
 			bindings: '{}',
 		});
 	});
@@ -109,6 +130,25 @@ describe('package import command', () => {
 			'publish-all',
 			'unpublish-all',
 		]);
+		expect(flag.default).toBeUndefined();
+	});
+
+	it('defines the tag flags with kebab aliases, server option lists, and no client-side default', () => {
+		const missingMode = PackageImport.flags.tagMissingMode;
+		expect(missingMode.aliases).toEqual(['tag-missing-mode']);
+		expect(missingMode.options).toEqual(['create', 'do-nothing']);
+		expect(missingMode.default).toBeUndefined();
+
+		const conflictPolicy = PackageImport.flags.tagConflictPolicy;
+		expect(conflictPolicy.aliases).toEqual(['tag-conflict-policy']);
+		expect(conflictPolicy.options).toEqual(['skip', 'fail', 'rename']);
+		expect(conflictPolicy.default).toBeUndefined();
+	});
+
+	it('defines the credential conflict flag with a kebab alias, server option list, and no client-side default', () => {
+		const flag = PackageImport.flags.credentialConflictPolicy;
+		expect(flag.aliases).toEqual(['credential-conflict-policy']);
+		expect(flag.options).toEqual(['keep-existing', 'overwrite', 'fail']);
 		expect(flag.default).toBeUndefined();
 	});
 
@@ -151,6 +191,75 @@ describe('package import command', () => {
 				expect.anything(),
 				expect.objectContaining({ workflowConflictPolicy: 'fail' }),
 			);
+		});
+
+		it('resolves the --project-id and --folder-id flags', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--project-id=p-1',
+				'--folder-id=f-1',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectId: 'p-1', folderId: 'f-1' }),
+			);
+		});
+
+		it('resolves the backward-compatible --project and --folder aliases', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--project=p-1',
+				'--folder=f-1',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectId: 'p-1', folderId: 'f-1' }),
+			);
+		});
+
+		it('resolves the --project-conflict-policy alias', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--project-conflict-policy=merge',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectConflictPolicy: 'merge' }),
+			);
+		});
+
+		it('resolves the --credential-conflict-policy alias', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--credential-conflict-policy=overwrite',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ credentialConflictPolicy: 'overwrite' }),
+			);
+		});
+
+		it('leaves credentialConflictPolicy unset when the flag is omitted', async () => {
+			const importPackage = await runWithArgv(['--file=/tmp/export.n8np']);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ credentialConflictPolicy: undefined }),
+			);
+		});
+
+		it('rejects an unsupported --credential-conflict-policy value', async () => {
+			const config = await Config.load(packageRoot);
+			const command = new PackageImport(
+				['--file=/tmp/export.n8np', '--credential-conflict-policy=merge'],
+				config,
+			);
+
+			await expect(command.run()).rejects.toThrow(/Expected --credentialConflictPolicy=merge/);
 		});
 
 		it('rejects the removed --conflict-policy flag', async () => {

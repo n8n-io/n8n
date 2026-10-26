@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/vue';
+import { fireEvent, render, screen, waitFor } from '@testing-library/vue';
+import { nextTick } from 'vue';
 
-import N8nSettingsSaveBar from './SettingsSaveBar.vue';
+import N8nSettingsSaveBar, { type SettingsSaveBarProps } from './SettingsSaveBar.vue';
 
 describe('N8nSettingsSaveBar', () => {
 	it('matches snapshot', () => {
@@ -122,6 +123,100 @@ describe('N8nSettingsSaveBar', () => {
 		);
 
 		expect(emitted().save).toBeUndefined();
+	});
+
+	describe('docked chrome while floating', () => {
+		// jsdom has no layout, so geometry is simulated: the bar and its parent report the
+		// bottoms set here, and the paddings/margins measureStuck() subtracts are zeroed out.
+		const bottoms = { bar: 0, parent: 0 };
+
+		beforeEach(() => {
+			vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+				this: Element,
+			) {
+				const isBar = this.getAttribute('data-test-id') === 'settings-save-bar';
+				return { bottom: isBar ? bottoms.bar : bottoms.parent } as DOMRect;
+			});
+			vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+				paddingBottom: '0px',
+				borderBottomWidth: '0px',
+				marginBottom: '0px',
+			} as CSSStyleDeclaration);
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		async function renderBar(
+			barBottom: number,
+			parentBottom: number,
+			props: SettingsSaveBarProps = { floating: true },
+		) {
+			bottoms.bar = barBottom;
+			bottoms.parent = parentBottom;
+			render(N8nSettingsSaveBar, { props });
+			await nextTick();
+			return screen.getByTestId('settings-save-bar');
+		}
+
+		it('sheds the overlay chrome when the bar rests at its natural flow position', async () => {
+			const bar = await renderBar(600, 600);
+
+			expect(bar.className).toContain('docked');
+		});
+
+		it('keeps the overlay chrome while the bar is stuck above its flow position', async () => {
+			const bar = await renderBar(500, 600);
+
+			expect(bar.className).not.toContain('docked');
+		});
+
+		it('docks and undocks as scrolling moves the bar to and from its flow position', async () => {
+			const bar = await renderBar(500, 600);
+			expect(bar.className).not.toContain('docked');
+
+			bottoms.bar = 600;
+			window.dispatchEvent(new Event('scroll'));
+			await nextTick();
+			expect(bar.className).toContain('docked');
+
+			bottoms.bar = 500;
+			window.dispatchEvent(new Event('scroll'));
+			await nextTick();
+			expect(bar.className).not.toContain('docked');
+		});
+
+		it('re-measures on window resize', async () => {
+			const bar = await renderBar(600, 600);
+			expect(bar.className).toContain('docked');
+
+			bottoms.bar = 500;
+			window.dispatchEvent(new Event('resize'));
+			await nextTick();
+			expect(bar.className).not.toContain('docked');
+		});
+
+		it('measures immediately when the bar appears above its flow position', async () => {
+			bottoms.bar = 500;
+			bottoms.parent = 600;
+
+			const { rerender } = render(N8nSettingsSaveBar, {
+				props: { visible: false, floating: true },
+			});
+			await rerender({ visible: true });
+
+			await waitFor(() =>
+				expect(screen.getByTestId('settings-save-bar').className).not.toContain('docked'),
+			);
+		});
+
+		it('never applies the docked treatment while not floating', async () => {
+			const bar = await renderBar(600, 600, {});
+
+			expect(bar.className).not.toContain('docked');
+			expect(bar.className).not.toContain('floating');
+		});
 	});
 
 	it('renders custom status content through the default slot', () => {

@@ -10,7 +10,7 @@ export type Plaintext = { kind: 'plaintext'; plaintext: string } & Range;
 
 export type Html = Plaintext; // for n8n parser, functionally identical to plaintext
 
-export type ResolvableState = 'valid' | 'invalid' | 'pending';
+export type ResolvableState = 'valid' | 'invalid' | 'pending' | 'redacted';
 
 export type Resolvable = {
 	kind: 'resolvable';

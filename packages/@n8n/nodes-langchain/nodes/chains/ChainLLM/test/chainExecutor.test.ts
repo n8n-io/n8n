@@ -284,8 +284,11 @@ describe('chainExecutor', () => {
 			const pipeOutputParserMock = vi.fn().mockReturnValue({
 				withConfig: withConfigMock,
 			});
-			const pipeMock = vi.fn().mockReturnValue({
+			const pipeCoercionMock = vi.fn().mockReturnValue({
 				pipe: pipeOutputParserMock,
+			});
+			const pipeMock = vi.fn().mockReturnValue({
+				pipe: pipeCoercionMock,
 			});
 
 			mockPromptTemplate.pipe = pipeMock;
@@ -333,8 +336,11 @@ describe('chainExecutor', () => {
 			const pipeOutputParserMock = vi.fn().mockReturnValue({
 				withConfig: withConfigMock,
 			});
-			const pipeMock = vi.fn().mockReturnValue({
+			const pipeCoercionMock = vi.fn().mockReturnValue({
 				pipe: pipeOutputParserMock,
+			});
+			const pipeMock = vi.fn().mockReturnValue({
+				pipe: pipeCoercionMock,
 			});
 
 			mockPromptTemplate.pipe = pipeMock;
@@ -568,8 +574,11 @@ describe('chainExecutor', () => {
 			const pipeOutputParserMock = vi.fn().mockReturnValue({
 				withConfig: withConfigMock,
 			});
-			const pipeMock = vi.fn().mockReturnValue({
+			const pipeCoercionMock = vi.fn().mockReturnValue({
 				pipe: pipeOutputParserMock,
+			});
+			const pipeMock = vi.fn().mockReturnValue({
+				pipe: pipeCoercionMock,
 			});
 
 			mockPromptTemplate.pipe = pipeMock;

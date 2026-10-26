@@ -13,6 +13,7 @@ import type {
 import { createSecureContext } from 'tls';
 
 import { routeBinaryProperties } from '@utils/binary';
+import { isScalarValue } from '@utils/query-parameters';
 
 import type {
 	IMongoCredentials,
@@ -20,16 +21,31 @@ import type {
 	IMongoParametricCredentials,
 } from './mongoDb.types';
 
+export function sanitizeMongoUriInMessage(error: unknown, connectionString: string): string {
+	const message = error instanceof Error ? error.message : String(error);
+
+	if (connectionString) {
+		const scheme = /^mongodb(?:\+srv)?:\/\//i.exec(connectionString)?.[0] ?? '';
+		const sanitizedMessage = message.replaceAll(connectionString, `${scheme}[REDACTED]`);
+		if (sanitizedMessage !== message) return sanitizedMessage;
+	}
+
+	return message.replace(/mongodb(\+srv)?:\/\/(?=[^\s]*@)[^\s]+/gi, 'mongodb$1://[REDACTED]');
+}
+
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
  *
  * @param {ICredentialDataDecryptedObject} credentials MongoDB credentials to use, unless conn string is overridden
  */
 export function buildParameterizedConnString(credentials: IMongoParametricCredentials): string {
+	const user = (credentials.user ?? '').trim();
+	const host = (credentials.host ?? '').trim();
+
 	if (credentials.port) {
-		return `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
+		return `mongodb://${user}:${credentials.password}@${host}:${credentials.port}`;
 	} else {
-		return `mongodb+srv://${credentials.user}:${credentials.password}@${credentials.host}`;
+		return `mongodb+srv://${user}:${credentials.password}@${host}`;
 	}
 }
 
@@ -83,17 +99,6 @@ export function validateAndResolveMongoCredentials(
 	}
 }
 
-function isScalarUpdateKeyValue(
-	value: unknown,
-): value is string | number | boolean | bigint | Date | null {
-	if (value === null) return true;
-	const type = typeof value;
-	if (type === 'string' || type === 'number' || type === 'boolean' || type === 'bigint') {
-		return true;
-	}
-	return value instanceof Date;
-}
-
 function describeUpdateKeyValueType(value: unknown): string {
 	if (value === null) return 'null';
 	if (Array.isArray(value)) return 'array';
@@ -143,7 +148,7 @@ export function prepareItems({
 				fieldData = new Date(fieldData as string);
 			}
 
-			if (field === updateKey && !isScalarUpdateKeyValue(fieldData)) {
+			if (field === updateKey && !isScalarValue(fieldData)) {
 				throw new NodeOperationError(
 					node,
 					`The value of "${updateKey}" must be a string, number, boolean, or date`,

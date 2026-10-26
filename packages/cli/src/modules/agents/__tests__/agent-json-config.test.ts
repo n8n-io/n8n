@@ -253,7 +253,6 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'credential-id',
-					extractorModel: { model: 'openai/gpt-4o-mini', credential: 'openai-key' },
 					reflectorModel: {
 						model: 'anthropic/claude-sonnet-4-5',
 						credential: 'anthropic-key',
@@ -263,7 +262,6 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 		});
 
 		expect(parsed.memory?.episodicMemory).toMatchObject({
-			extractorModel: { model: 'openai/gpt-4o-mini', credential: 'openai-key' },
 			reflectorModel: {
 				model: 'anthropic/claude-sonnet-4-5',
 				credential: 'anthropic-key',
@@ -279,7 +277,7 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'credential-id',
-					extractorModel: 'openai/gpt-4o-mini',
+					reflectorModel: 'openai/gpt-4o-mini',
 				},
 			},
 		});
@@ -341,7 +339,7 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'credential-id',
-					extractorModel: { model: 'openai/gpt-4o-mini', credential: '' },
+					reflectorModel: { model: 'openai/gpt-4o-mini', credential: '' },
 				},
 			},
 		});
@@ -357,7 +355,7 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'credential-id',
-					extractorModel: { model: 'openai/gpt-4o-mini', credential: '   ' },
+					reflectorModel: { model: 'openai/gpt-4o-mini', credential: '   ' },
 				},
 			},
 		});
@@ -367,7 +365,7 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 
 		const episodicMemory = parsed.data.memory?.episodicMemory;
 		expect(episodicMemory).toMatchObject({
-			extractorModel: { model: 'openai/gpt-4o-mini', credential: '' },
+			reflectorModel: { model: 'openai/gpt-4o-mini', credential: '' },
 		});
 	});
 });

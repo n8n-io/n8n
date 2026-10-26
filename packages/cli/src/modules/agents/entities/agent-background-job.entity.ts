@@ -1,0 +1,112 @@
+import type { AgentPlan } from './agent-plan.entity';
+import type { AgentExecution } from './agent-execution.entity';
+import type { AgentBackgroundJobDto } from '@n8n/api-types';
+import { DateTimeColumn, WithTimestampsAndStringId } from '@n8n/db';
+import { Column, Entity, Index, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
+
+export type AgentBackgroundJobKind = AgentBackgroundJobDto['kind'];
+export type AgentBackgroundJobStatus = AgentBackgroundJobDto['status'];
+
+/**
+ * Durable registry of background jobs dispatched by top-level agents: detached
+ * sub-agent runs and workflow executions parked at Wait nodes. The row is the
+ * receipt handed to the model at dispatch and the source of truth for status
+ * checks, cancellation and crash reconciliation, so it outlives the chat
+ * connection, the parent's turn, and backend restarts.
+ */
+@Entity({ name: 'agent_background_job' })
+@Index(['parentThreadId', 'status'])
+@Index(['parentAgentId'])
+@Index(['sourceExecutionId'])
+@Index(['planId', 'planTaskId'])
+@Index(['settledAt'])
+@Index(['childExecutionId'], { unique: true, where: '"childExecutionId" IS NOT NULL' })
+@Index(['timeoutAt'], { where: "\"status\" IN ('running', 'suspended')" })
+@Index(['parentThreadId'], { where: '"status" <> \'running\' AND "notifiedAt" IS NULL' })
+export class AgentBackgroundJob extends WithTimestampsAndStringId {
+	@Column({
+		type: 'varchar',
+		length: 36,
+		nullable: true,
+		comment: 'Execution that dispatched this job',
+	})
+	sourceExecutionId: string | null;
+
+	@ManyToOne('AgentExecution', { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'sourceExecutionId' })
+	sourceExecution: Relation<AgentExecution> | null;
+
+	@Column({ type: 'uuid', nullable: true, comment: 'Plan that owns this work' })
+	planId: string | null;
+
+	@Column({ type: 'uuid', nullable: true, comment: 'Task ID in the saved plan document' })
+	planTaskId: string | null;
+
+	@ManyToOne('AgentPlan', { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'planId' })
+	plan: Relation<AgentPlan> | null;
+
+	@Column({ type: 'varchar', length: 16 })
+	kind: AgentBackgroundJobKind;
+
+	@Column({ type: 'varchar', length: 16 })
+	status: AgentBackgroundJobStatus;
+
+	@Column({ type: 'uuid', nullable: true, comment: 'Groups jobs stopped by one user request' })
+	pauseRequestId: string | null;
+
+	@Column({ type: 'varchar', length: 36 })
+	parentAgentId: string;
+
+	// Thread ids are scoped with prefixes/user ids on some surfaces (e.g.
+	// `test-<agentId>:<userId>`), so they exceed a bare uuid — same width as
+	// agent_execution_threads.id.
+	@Column({ type: 'varchar', length: 128 })
+	parentThreadId: string;
+
+	/** Memory resource of the parent run. */
+	@Column({ type: 'varchar', length: 255 })
+	parentResourceId: string;
+
+	/** Sandbox principal of the parent run. */
+	@Column({ type: 'varchar', length: 64 })
+	parentPrincipalHash: string;
+
+	/** Task name or workflow name, echoed in status-check listings. */
+	@Column({ type: 'varchar', length: 255 })
+	title: string;
+
+	/** Sub-agent jobs only. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	subAgentId: string | null;
+
+	/** Sub-agent jobs only; minted at dispatch, links to agent_execution_threads. */
+	@Column({ type: 'varchar', length: 128, nullable: true })
+	childThreadId: string | null;
+
+	/** Workflow jobs only. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	childExecutionId: string | null;
+
+	/** Workflow jobs only; scopes cancellation. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	workflowId: string | null;
+
+	/** When reconciliation fails the job as timed out; NULL means no timeout. */
+	@DateTimeColumn({ precision: 3, nullable: true })
+	timeoutAt: Date | null;
+
+	/** Final answer of a settled sub-agent job. */
+	@Column({ type: 'text', nullable: true })
+	result: string | null;
+
+	@Column({ type: 'text', nullable: true })
+	error: string | null;
+
+	@DateTimeColumn({ precision: 3, nullable: true })
+	settledAt: Date | null;
+
+	/** When the parent received the latest result or approval request. */
+	@DateTimeColumn({ precision: 3, nullable: true })
+	notifiedAt: Date | null;
+}

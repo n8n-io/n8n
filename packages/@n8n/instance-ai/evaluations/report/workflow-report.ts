@@ -7,10 +7,12 @@
  * 3. Compare — what changed between runs? (cross-report)
  */
 
+import { REMOVED_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
 import fs from 'fs';
 import path from 'path';
 
 import { getTestCaseAnchorId } from './report-anchors';
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
 import { groupOutcomesByDimension } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS, type CheckDimension, type CheckOutcome } from '../binaryChecks/types';
 import { getCaseRunStatus, getCaseRunStatusLabel, getRunScoredCounts } from '../summary';
@@ -18,6 +20,7 @@ import type {
 	BuildExpectationResult,
 	ConversationMetrics,
 	ExecutionScenarioResult,
+	SetupWizardSkippedNode,
 	ToolInteraction,
 	TranscriptStep,
 	TranscriptTurn,
@@ -294,8 +297,12 @@ function firstPromptText(result: WorkflowTestCaseResult): string {
 
 function promptReview(result: WorkflowTestCaseResult, sr: ExecutionScenarioResult): StageReview {
 	const evidence = `${sr.reasoning} ${sr.rootCause ?? ''}`.toLowerCase();
+	// Gated on the failure being the builder's: a mock or infra failure says
+	// nothing about the prompt. Used to read `failureCategory ===
+	// 'legitimate_failure'` — a lang-tracer bucket the harness never emits, so
+	// this stage could never fail (TRUST-375).
 	const promptLooksUnderspecified =
-		sr.failureCategory === 'legitimate_failure' &&
+		sr.attribution === 'builder_issue' &&
 		['ambiguous', 'unclear', 'not specified', 'not define', 'does not specify'].some((needle) =>
 			evidence.includes(needle),
 		);
@@ -386,15 +393,28 @@ function plannerReview(result: WorkflowTestCaseResult): StageReview {
 }
 
 function summarizeToolCalls(result: WorkflowTestCaseResult): string[] {
-	const toolCalls = result.buildTrace?.toolCalls ?? [];
-	const count = (toolName: string): number =>
-		toolCalls.filter((call) => call.toolName === toolName).length;
-	const submitCalls = toolCalls.filter((call) => call.toolName === 'submit-workflow');
-	const verifyCalls = toolCalls.filter((call) => call.toolName === 'verify-built-workflow');
+	const toolNames = (result.buildTrace?.toolCalls ?? []).map((call) =>
+		resolveBuilderToolName(call.toolName, call.args.action),
+	);
+	const count = (toolName: string): number => toolNames.filter((name) => name === toolName).length;
+	const submitCalls = toolNames.filter(
+		(name) => name === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
+	);
+	const verifyCalls = toolNames.filter(
+		(name) => name === ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
+	);
+
+	const nodeResearchCount =
+		count(DOMAIN_TOOL_IDS.NODES) +
+		count(DOMAIN_TOOL_IDS.SEARCH_NODES) +
+		count(DOMAIN_TOOL_IDS.GET_NODE_TYPES) +
+		count(DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS);
+	const credentialLookupCount =
+		count(DOMAIN_TOOL_IDS.LIST_CREDENTIALS) + count(DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES);
 
 	const summaries = [
-		count('nodes') > 0 ? `${String(count('nodes'))} node-research call(s)` : '',
-		count('credentials') > 0 ? `${String(count('credentials'))} credential lookup call(s)` : '',
+		nodeResearchCount > 0 ? `${String(nodeResearchCount)} node-research call(s)` : '',
+		credentialLookupCount > 0 ? `${String(credentialLookupCount)} credential lookup call(s)` : '',
 		submitCalls.length > 0 ? `${String(submitCalls.length)} workflow submission call(s)` : '',
 		verifyCalls.length > 0 ? `${String(verifyCalls.length)} builder verification call(s)` : '',
 	];
@@ -461,8 +481,11 @@ function verifierReview(sr: ExecutionScenarioResult): StageReview {
 	};
 }
 
+/** Keyed on the attribution buckets, not the raw verifier category: the old
+ *  switch mixed our categories with lang-tracer's bucket names, so two of its
+ *  arms were unreachable (TRUST-375). */
 function promptImprovementSuggestion(sr: ExecutionScenarioResult): string {
-	switch (sr.failureCategory) {
+	switch (sr.attribution) {
 		case 'builder_issue':
 			return 'For workflows with multiple required effects, branches, or error paths, state each required action explicitly and add observable acceptance conditions for every branch. This reduces silent omission during planning or build.';
 		case 'mock_issue':
@@ -471,8 +494,6 @@ function promptImprovementSuggestion(sr: ExecutionScenarioResult): string {
 			return 'Make trigger preconditions and scenario setup requirements explicit in the test prompt or fixture description so empty-input framework failures are easier to separate from workflow defects.';
 		case 'verification_gap':
 			return 'Add concrete, inspectable success evidence to the prompt, such as the exact side effect, branch behavior, or output field that should be observed, so the verifier has less room to infer.';
-		case 'legitimate_failure':
-			return 'If this behavior is required, move it from an implied expectation into an explicit prompt requirement with a clear fallback path and observable success criterion.';
 		default:
 			return 'Turn the failed behavior into a more explicit, testable requirement in future prompts: name the required step, the expected branch, and the observable evidence that proves it happened.';
 	}
@@ -988,18 +1009,6 @@ function renderStep(step: TranscriptStep): string | null {
 
 function renderInteraction(interaction: ToolInteraction): string | null {
 	switch (interaction.kind) {
-		case 'plan': {
-			if (interaction.tasks.length === 0) return null;
-			const lines = interaction.tasks
-				.map((t, i) => {
-					const title = t.title ?? `Task ${String(i + 1)}`;
-					const desc = t.description ? `: ${escapeHtml(t.description)}` : '';
-					return `<li><strong>${escapeHtml(title)}</strong>${desc}</li>`;
-				})
-				.join('');
-			const word = interaction.tasks.length === 1 ? 'task' : 'tasks';
-			return `<details class="transcript-aside" open><summary>📋 plan (${String(interaction.tasks.length)} ${word})</summary><ul class="transcript-plan">${lines}</ul></details>`;
-		}
 		case 'ask-user': {
 			if (interaction.questions.length === 0) return null;
 			const answerByQId = new Map<string, string>();
@@ -1012,6 +1021,7 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			}
 			const lines = interaction.questions
 				.map((q) => {
+					const type = q.type ? ` <code>${escapeHtml(q.type)}</code>` : '';
 					const opts =
 						q.options && q.options.length > 0
 							? ` <em>(${q.options.map((o) => escapeHtml(o)).join(' / ')})</em>`
@@ -1020,17 +1030,18 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 					const answerHtml = answer
 						? `<div class="transcript-answer">👤 ${escapeHtml(answer)}</div>`
 						: '';
-					return `<li>${escapeHtml(q.question)}${opts}${answerHtml}</li>`;
+					return `<li>${escapeHtml(q.question)}${type}${opts}${answerHtml}</li>`;
 				})
 				.join('');
 			const summary =
 				answerByQId.size > 0
-					? '❓ ask-user (with answers)'
-					: `❓ ask-user (${String(interaction.questions.length)} question${interaction.questions.length === 1 ? '' : 's'})`;
+					? `❓ ${DOMAIN_TOOL_IDS.ASK_USER} (with answers)`
+					: `❓ ${DOMAIN_TOOL_IDS.ASK_USER} (${String(interaction.questions.length)} question${interaction.questions.length === 1 ? '' : 's'})`;
 			return `<details class="transcript-aside" open><summary>${summary}</summary><ul class="transcript-questions">${lines}</ul></details>`;
 		}
 		case 'setup-wizard': {
-			const skipped = interaction.skippedNodes;
+			const skipped = interaction.nodesStillNeedingSetup;
+			const declined = interaction.skippedByUser ?? [];
 			const needCreds = skipped.filter((s) => Boolean(s.credentialType)).length;
 			const needParams = skipped.length - needCreds;
 			const breakdown: string[] = [];
@@ -1042,8 +1053,11 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			}
 			if (skipped.length > 0) {
 				headerParts.push(
-					`${String(skipped.length)} skipped${breakdown.length > 0 ? ` (${breakdown.join(', ')})` : ''}`,
+					`${String(skipped.length)} unconfigured${breakdown.length > 0 ? ` (${breakdown.join(', ')})` : ''}`,
 				);
+			}
+			if (declined.length > 0) {
+				headerParts.push(`${String(declined.length)} skipped by user`);
 			}
 			const header = headerParts.length > 0 ? headerParts.join(', ') : 'nothing to apply';
 
@@ -1059,17 +1073,20 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 					`<div class="transcript-section-label">configured (${String(interaction.completedNodes.length)})</div><ul class="transcript-plan">${items}</ul>`,
 				);
 			}
-			if (skipped.length > 0) {
-				const items = skipped
+			const renderNodeList = (nodes: SetupWizardSkippedNode[], label: string) => {
+				const items = nodes
 					.map(
 						(s) =>
 							`<li>${escapeHtml(s.nodeName)}${s.credentialType ? ` — needs <code>${escapeHtml(s.credentialType)}</code> credential` : ' — needs parameters'}</li>`,
 					)
 					.join('');
 				sections.push(
-					`<div class="transcript-section-label">skipped (${String(skipped.length)})</div><ul class="transcript-plan">${items}</ul>`,
+					`<div class="transcript-section-label">${label} (${String(nodes.length)})</div><ul class="transcript-plan">${items}</ul>`,
 				);
-			}
+			};
+			if (skipped.length > 0) renderNodeList(skipped, 'unconfigured');
+			// Separate section: re-asking for one of these is the failure a judge looks for.
+			if (declined.length > 0) renderNodeList(declined, 'skipped by user');
 			return `<details class="transcript-aside" open><summary>🛠 setup wizard — ${escapeHtml(header)}</summary>${sections.join('')}</details>`;
 		}
 		case 'setup-card': {
@@ -1298,21 +1315,30 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 
 	let traceHtml = '';
 	if (result.buildTrace) {
-		const nodeResearchCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === 'nodes',
+		const callsNamed = (...toolNames: string[]) =>
+			result.buildTrace?.toolCalls.filter((call) =>
+				toolNames.includes(resolveBuilderToolName(call.toolName, call.args.action)),
+			) ?? [];
+		const nodeResearchCalls = callsNamed(
+			DOMAIN_TOOL_IDS.NODES,
+			DOMAIN_TOOL_IDS.SEARCH_NODES,
+			DOMAIN_TOOL_IDS.GET_NODE_TYPES,
+			DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS,
 		);
-		const workflowWriteCalls = result.buildTrace.toolCalls.filter((call) =>
-			['build-workflow', 'submit-workflow', 'build-workflow-with-agent'].includes(call.toolName),
+		const workflowWriteCalls = callsNamed(
+			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+			REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
+			REMOVED_BUILDER_TOOL_NAMES.BUILD_WORKFLOW_WITH_AGENT,
 		);
-		const validationCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === 'submit-workflow',
+		const validationCalls = callsNamed(REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW);
+		const credentialCalls = callsNamed(
+			DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
+			DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES,
+			DOMAIN_TOOL_IDS.SETUP_CREDENTIALS,
+			DOMAIN_TOOL_IDS.TEST_CREDENTIAL,
+			DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
 		);
-		const credentialCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === 'credentials',
-		);
-		const verificationCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === 'verify-built-workflow',
-		);
+		const verificationCalls = callsNamed(ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW);
 		const completionActivity = [...result.buildTrace.agentActivities]
 			.reverse()
 			.find((activity) => activity.status !== 'running');
@@ -1806,8 +1832,14 @@ ${results.map((r, i) => renderTestCase(r, i)).join('')}
 // Write report to disk
 // ---------------------------------------------------------------------------
 
-export function writeWorkflowReport(results: WorkflowTestCaseResult[]): string {
-	const reportDir = path.join(__dirname, '..', '..', '.data');
+/**
+ * Write the HTML report into `outputDir` (--output-dir), falling back to the
+ * package-level `.data` directory. The stable filename makes the fallback
+ * unsafe for concurrent runs against one checkout, so callers that have a
+ * per-run directory must pass it (see run/reporters.ts).
+ */
+export function writeWorkflowReport(results: WorkflowTestCaseResult[], outputDir?: string): string {
+	const reportDir = outputDir ?? path.join(__dirname, '..', '..', '.data');
 	if (!fs.existsSync(reportDir)) {
 		fs.mkdirSync(reportDir, { recursive: true });
 	}

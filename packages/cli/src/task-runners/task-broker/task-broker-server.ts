@@ -8,6 +8,7 @@ import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import { ErrorReporter } from 'n8n-core';
 import * as a from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import { once } from 'node:events';
 import {
 	type IncomingMessage,
 	STATUS_CODES,
@@ -140,12 +141,9 @@ export class TaskBrokerServer {
 			}
 		});
 
-		await new Promise<void>((resolve) => {
-			a.ok(this.server);
-			this.server.listen(port, address, () => resolve());
-		});
+		await once(this.server.listen(port, address), 'listening');
 
-		this.logger.info(`n8n Task Broker ready on ${address}, port ${port}`);
+		this.logger.info(`n8n Task Broker ready on ${address}, port ${this.port}`);
 	}
 
 	/** Creates WebSocket server for handling upgrade requests */
@@ -228,8 +226,9 @@ export class TaskBrokerServer {
 				return;
 			}
 
-			const runnerId = typeof parsedUrl.query.id === 'string' ? parsedUrl.query.id : undefined;
-			if (!runnerId) {
+			const reportedRunnerId =
+				typeof parsedUrl.query.id === 'string' ? parsedUrl.query.id : undefined;
+			if (!reportedRunnerId) {
 				this.logger.warn(
 					'Task runner connection attempt failed: missing runner ID in query parameters',
 				);
@@ -246,7 +245,7 @@ export class TaskBrokerServer {
 			if (!result.isValid) {
 				this.logger.warn(
 					`Task runner connection attempt failed: ${result.reason}. If the runner startup exceeds grant token TTL ${this.globalConfig.taskRunners.grantTokenTtl}s, increase N8N_RUNNERS_GRANT_TOKEN_TTL`,
-					{ runnerId },
+					{ runnerId: reportedRunnerId },
 				);
 				this.failUpgradeRequest(socket, result.statusCode);
 				return;
@@ -257,6 +256,8 @@ export class TaskBrokerServer {
 				this.failUpgradeRequest(socket, 503);
 				return;
 			}
+
+			const runnerId = this.resolveRunnerId(reportedRunnerId, result.boundRunnerId);
 
 			const wsServer = this.wsServer;
 			wsServer.handleUpgrade(request, socket, head, (ws) => {
@@ -270,6 +271,27 @@ export class TaskBrokerServer {
 			this.failUpgradeRequest(socket, 500);
 		}
 	};
+
+	/**
+	 * Resolves the ID to register a connecting runner under.
+	 *
+	 * An ID bound to the grant token wins over the one the runner reports: the bound ID is
+	 * the one n8n minted for the process it spawned, so recovery keyed on it acts on the
+	 * right process even if the runner never received the ID and self-assigned instead.
+	 */
+	private resolveRunnerId(reportedRunnerId: string, boundRunnerId?: string) {
+		if (!boundRunnerId) {
+			return reportedRunnerId;
+		}
+
+		if (boundRunnerId !== reportedRunnerId) {
+			this.logger.warn(
+				`Task runner identified as "${reportedRunnerId}" but was assigned "${boundRunnerId}", registering it under the assigned ID. Check that N8N_RUNNERS_ID reaches the runner.`,
+			);
+		}
+
+		return boundRunnerId;
+	}
 
 	private failUpgradeRequest(socket: Socket, statusCode: number) {
 		const statusMessage = STATUS_CODES[statusCode] ?? 'Error';

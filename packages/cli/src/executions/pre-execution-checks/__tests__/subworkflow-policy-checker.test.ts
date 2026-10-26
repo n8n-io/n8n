@@ -6,12 +6,13 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import {
+	SUBWORKFLOW_AGENT_DENIAL_BASE_DESCRIPTION,
 	SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
 	SubworkflowPolicyDenialError,
 } from '@/errors/subworkflow-policy-denial.error';
 import type { AccessService } from '@/services/access.service';
 import { OwnershipService } from '@/services/ownership.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker';
 
@@ -116,6 +117,51 @@ describe('SubworkflowPolicyChecker', () => {
 
 			await expect(check).resolves.not.toThrow();
 		});
+	});
+
+	describe('project-scoped caller', () => {
+		it('should allow workflows owned by the caller project', async () => {
+			const projectId = uuid();
+			const subworkflow = mock<Workflow>({
+				id: 'subworkflow-id',
+				settings: { callerPolicy: 'workflowsFromSameOwner' },
+			});
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(mock<Project>({ id: projectId }));
+
+			await expect(checker.checkForProject(subworkflow, projectId)).resolves.not.toThrow();
+		});
+
+		it('should deny workflows owned by a different project', async () => {
+			const subworkflow = mock<Workflow>({
+				id: 'subworkflow-id',
+				settings: { callerPolicy: 'workflowsFromSameOwner' },
+			});
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: uuid(), name: 'Engineering', type: 'team' }),
+			);
+
+			await expect(checker.checkForProject(subworkflow, uuid())).rejects.toMatchObject({
+				message: 'The sub-workflow (subworkflow-id) cannot be called by this agent',
+				description: `${SUBWORKFLOW_AGENT_DENIAL_BASE_DESCRIPTION} You will need an admin from the Engineering project to update the sub-workflow (subworkflow-id) settings to allow this agent to call it.`,
+			});
+		});
+
+		it.each(['none', 'workflowsFromAList'] as const)(
+			'should deny the `%s` caller policy',
+			async (callerPolicy) => {
+				const subworkflow = mock<Workflow>({
+					id: 'subworkflow-id',
+					settings: { callerPolicy },
+				});
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(
+					mock<Project>({ id: uuid(), type: 'team' }),
+				);
+
+				await expect(checker.checkForProject(subworkflow, uuid())).rejects.toThrowError(
+					SubworkflowPolicyDenialError,
+				);
+			},
+		);
 	});
 
 	describe('`workflows-from-same-owner` caller policy', () => {
@@ -263,6 +309,33 @@ describe('SubworkflowPolicyChecker', () => {
 				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
 				description: SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
 			});
+		});
+	});
+
+	describe('isCallAllowed', () => {
+		it('should allow a subworkflow without an ID, such as one loaded from a file', async () => {
+			const subworkflow = mock<Workflow>({ id: '', settings: { callerPolicy: 'none' } });
+
+			await expect(checker.isCallAllowed(subworkflow, uuid())).resolves.toBe(true);
+		});
+
+		it('should return false on denial, without throwing or logging', async () => {
+			const subworkflow = mock<Workflow>({ id: uuid(), settings: { callerPolicy: 'none' } });
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(mock<Project>({ id: uuid() }));
+			const logDenial = vi.spyOn(checker as never, 'logDenial');
+
+			await expect(checker.isCallAllowed(subworkflow, uuid())).resolves.toBe(false);
+			expect(logDenial).not.toHaveBeenCalled();
+		});
+
+		it('should return true when the policy allows the parent', async () => {
+			const parentWorkflowId = uuid();
+			const subworkflow = mock<Workflow>({
+				id: uuid(),
+				settings: { callerPolicy: 'workflowsFromAList', callerIds: parentWorkflowId },
+			});
+
+			await expect(checker.isCallAllowed(subworkflow, parentWorkflowId)).resolves.toBe(true);
 		});
 	});
 });

@@ -11,6 +11,14 @@ import type { TestRunRecord } from '../evaluation.api';
 import type { EvaluationConfigDto } from '@n8n/api-types';
 import { waitFor } from '@testing-library/vue';
 
+// Element Plus tables leave a debounced layout callback after unmount. Keep this
+// view test focused on evaluation actions and avoid the callback during teardown.
+vi.mock('../components/shared/TestTableBase.vue', () => ({
+	default: {
+		template: '<div />',
+	},
+}));
+
 vi.mock('vue-router', () => {
 	const push = vi.fn();
 	const replace = vi.fn();

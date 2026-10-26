@@ -12,13 +12,21 @@ export type ProjectSearchFn = (query: string) => Promise<ProjectSearchResult>;
  * Hits `GET /projects/sharing-candidates` so non-admin callers receive peer
  * personal projects in addition to projects they have a relation to — without
  * that, the share dropdown would be empty for `global:member` users.
+ *
+ * Pass `type` when the caller accepts only one kind of project. The endpoint
+ * returns one page and sorts team projects first, so a caller that drops the
+ * other kind on the client gets an empty dropdown once team projects fill that
+ * page.
  */
-export function useRemoteProjectSearch(): ProjectSearchFn {
+export function useRemoteProjectSearch(
+	options: { type?: 'personal' | 'team' } = {},
+): ProjectSearchFn {
 	const store = useProjectsStore();
 	return async (query: string) => {
 		return await store.searchShareableProjects({
 			search: query,
 			take: DEFAULT_PROJECT_SEARCH_PAGE_SIZE,
+			...(options.type ? { type: options.type } : {}),
 		});
 	};
 }
@@ -57,6 +65,20 @@ export const splitName = (
 	const match = projectName.match(regex);
 	const [, name, email] = match ?? [];
 	return { name: name.trim() || undefined, email };
+};
+
+/**
+ * Order for a list of who something is shared with: people (their personal
+ * projects) first, then team projects, each by name.
+ */
+export const compareSharingEntries = (
+	entryA: { type?: string | null; name?: string | null },
+	entryB: { type?: string | null; name?: string | null },
+): number => {
+	const isPerson = (entry: { type?: string | null }) => (entry.type === 'personal' ? 0 : 1);
+	return (
+		isPerson(entryA) - isPerson(entryB) || (entryA.name ?? '').localeCompare(entryB.name ?? '')
+	);
 };
 
 export const MAX_NAME_LENGTH = 25;

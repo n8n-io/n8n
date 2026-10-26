@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { pinPrioritizedModels, type AgentModelsUnavailableReason } from '@n8n/api-types';
 import {
 	getModelCatalog,
 	getProviderModels,
@@ -28,7 +29,13 @@ const loadingProjects = ref(new Set<string>());
 // asked which models actually work. `null` marks a failed or unverified
 // lookup — the static catalog is used for that key.
 const verifiedModelsByKey = ref<Record<string, ModelInfo[] | null>>({});
+const verifiedDefaultModelsByKey = ref<Record<string, string | null>>({});
+// Keys whose list could not be retrieved at all, so the picker can say
+// "couldn't load" rather than "no models available".
+const unavailableByKey = ref<Record<string, boolean>>({});
+const unavailableReasonByKey = ref<Record<string, AgentModelsUnavailableReason | undefined>>({});
 const verifiedFetchesInFlight = new Set<string>();
+const verificationStatusByKey = ref<Record<string, 'loading' | 'resolved' | 'failed'>>({});
 
 function createEmptyModelsResponse(): AgentModelsByProvider {
 	const response: AgentModelsByProvider = {};
@@ -110,19 +117,45 @@ export function useModelCatalog() {
 		if (key in verifiedModelsByKey.value || verifiedFetchesInFlight.has(key)) return;
 
 		verifiedFetchesInFlight.add(key);
+		verificationStatusByKey.value = { ...verificationStatusByKey.value, [key]: 'loading' };
 		getProviderModels(rootStore.restApiContext, projectId, provider, providerCredentialId)
 			.then((result) => {
 				verifiedModelsByKey.value = {
 					...verifiedModelsByKey.value,
 					[key]: result.verified ? result.models : null,
 				};
+				verifiedDefaultModelsByKey.value = {
+					...verifiedDefaultModelsByKey.value,
+					[key]: result.defaultModelId ?? null,
+				};
+				unavailableByKey.value = { ...unavailableByKey.value, [key]: result.unavailable === true };
+				unavailableReasonByKey.value = {
+					...unavailableReasonByKey.value,
+					[key]: result.unavailableReason,
+				};
+				verificationStatusByKey.value = {
+					...verificationStatusByKey.value,
+					[key]: 'resolved',
+				};
 			})
 			.catch(() => {
 				verifiedModelsByKey.value = { ...verifiedModelsByKey.value, [key]: null };
+				verificationStatusByKey.value = {
+					...verificationStatusByKey.value,
+					[key]: 'failed',
+				};
 			})
 			.finally(() => {
 				verifiedFetchesInFlight.delete(key);
 			});
+	}
+
+	function getVerificationStatus(
+		projectId: string,
+		provider: AgentModelProvider,
+		credentialId: string,
+	): 'idle' | 'loading' | 'resolved' | 'failed' {
+		return verificationStatusByKey.value[`${projectId}|${provider}|${credentialId}`] ?? 'idle';
 	}
 
 	function getModelsForPicker(
@@ -135,12 +168,15 @@ export function useModelCatalog() {
 			if (!providerCredentialId) continue;
 
 			let models: ModelInfo[] | undefined;
+			let unavailable = false;
+			let unavailableReason: AgentModelsUnavailableReason | undefined;
 			const projectId = activeProjectId.value;
 			if (projectId) {
 				ensureVerifiedModels(projectId, provider, providerCredentialId);
-				models =
-					verifiedModelsByKey.value[`${projectId}|${provider}|${providerCredentialId}`] ??
-					undefined;
+				const key = `${projectId}|${provider}|${providerCredentialId}`;
+				models = verifiedModelsByKey.value[key] ?? undefined;
+				unavailable = unavailableByKey.value[key] === true;
+				unavailableReason = unavailableReasonByKey.value[key];
 			}
 
 			if (!models) {
@@ -150,14 +186,45 @@ export function useModelCatalog() {
 			}
 
 			response[provider] = {
-				models: models
-					.map((model) => toAgentModel(provider, model))
-					.sort((a, b) => a.name.localeCompare(b.name)),
+				models: pinPrioritizedModels(
+					[...models].sort((a, b) => a.name.localeCompare(b.name)),
+					(model) => model.priority,
+				).map((model) => toAgentModel(provider, model)),
+				...(unavailable ? { unavailable: true } : {}),
+				...(unavailableReason ? { unavailableReason } : {}),
 			};
 		}
 
 		return response;
 	}
 
-	return { catalog, isLoading, ensureLoaded, getModelsForProvider, getModelsForPicker };
+	function getDefaultModelForPicker(
+		credentials: AgentCredentialsByProvider | null,
+		provider: AgentModelProvider,
+	): AgentModelOption | null {
+		const credentialId = credentials?.[provider];
+		const projectId = activeProjectId.value;
+		if (!credentialId || !projectId) return null;
+
+		ensureVerifiedModels(projectId, provider, credentialId);
+		const defaultModelId =
+			verifiedDefaultModelsByKey.value[`${projectId}|${provider}|${credentialId}`];
+		if (!defaultModelId) return null;
+
+		return (
+			getModelsForPicker(credentials)[provider]?.models.find(
+				(model) => model.model === defaultModelId,
+			) ?? null
+		);
+	}
+
+	return {
+		catalog,
+		isLoading,
+		ensureLoaded,
+		getVerificationStatus,
+		getModelsForProvider,
+		getModelsForPicker,
+		getDefaultModelForPicker,
+	};
 }

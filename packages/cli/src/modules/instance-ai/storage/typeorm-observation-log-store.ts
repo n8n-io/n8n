@@ -4,10 +4,13 @@ import {
 	estimateObservationTokens,
 	normalizeObservationLogReflection,
 	supersededLifecycleState,
+	type AgentDbMessage,
 	type BuiltObservationLogStore,
 	type BuiltObservationLogTaskLockStore,
 	type NewObservationLogEntry,
 	type ObservationCursor,
+	type ObservationLogBatch,
+	type ObservationLogBatchCommitResult,
 	type ObservationLogEntry,
 	type ObservationLogReadOptions,
 	type ObservationLogReflection,
@@ -16,7 +19,6 @@ import {
 	type ObservationLogTaskKind,
 	type ObservationLogTaskLockHandle,
 } from '@n8n/agents';
-import type { AgentDbMessage } from '@n8n/instance-ai';
 import { Equal, In, IsNull, MoreThan, type FindOptionsWhere } from '@n8n/typeorm';
 
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
@@ -52,21 +54,29 @@ export class TypeORMObservationLogStore
 		private readonly toAgentMessage: (entity: InstanceAiMessage) => AgentDbMessage | undefined,
 	) {}
 
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		return await this.observationRepo.commitObservationLogBatch(batch);
+	}
+
 	async appendObservationLogEntries(
 		rows: NewObservationLogEntry[],
 	): Promise<ObservationLogEntry[]> {
 		if (rows.length === 0) return [];
 
-		const entities = rows.map((row) =>
-			this.observationRepo.create({
-				observationScopeId: row.observationScopeId,
-				marker: row.marker,
-				text: row.text,
-				parentId: row.parentId ?? null,
-				tokenCount: row.tokenCount ?? estimateObservationTokens(row.text),
-				...activeLifecycleState(),
-				createdAt: row.createdAt,
-			}),
+		const entities = await Promise.all(
+			rows.map(async (row) =>
+				this.observationRepo.create({
+					observationScopeId: row.observationScopeId,
+					marker: row.marker,
+					text: row.text,
+					parentId: row.parentId ?? null,
+					tokenCount: row.tokenCount ?? (await estimateObservationTokens(row.text)),
+					...activeLifecycleState(),
+					createdAt: row.createdAt,
+				}),
+			),
 		);
 
 		const saved = await this.observationRepo.save(entities);
@@ -163,16 +173,18 @@ export class TypeORMObservationLogStore
 
 			const inserted = normalized.merge.length
 				? await repo.save(
-						normalized.merge.map((entry) =>
-							repo.create({
-								observationScopeId: scope.observationScopeId,
-								marker: entry.marker,
-								text: entry.text,
-								parentId: entry.parentId ?? null,
-								tokenCount: entry.tokenCount ?? estimateObservationTokens(entry.text),
-								...activeLifecycleState(),
-								createdAt: entry.createdAt,
-							}),
+						await Promise.all(
+							normalized.merge.map(async (entry) =>
+								repo.create({
+									observationScopeId: scope.observationScopeId,
+									marker: entry.marker,
+									text: entry.text,
+									parentId: entry.parentId ?? null,
+									tokenCount: entry.tokenCount ?? (await estimateObservationTokens(entry.text)),
+									...activeLifecycleState(),
+									createdAt: entry.createdAt,
+								}),
+							),
 						),
 					)
 				: [];

@@ -2,7 +2,7 @@ import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import type { ProjectRole, AllRolesMap } from '@n8n/permissions';
-import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableOptions } from '@n8n/design-system';
 import ProjectMembersTable from './ProjectMembersTable.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { ProjectMemberData } from '../projects.types';
@@ -22,10 +22,17 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				sortBy: { type: Array },
 				page: { type: Number },
 				itemsPerPage: { type: Number },
+				pageSizes: { type: Array },
+				rowProps: { type: [Object, Function] },
 			},
 			emits: ['update:sort-by', 'update:page', 'update:items-per-page', 'update:options'],
 			template: `
-				<div data-test-id="data-table">
+				<div
+					data-test-id="data-table"
+					:data-items-length="itemsLength"
+					:data-items-per-page="itemsPerPage"
+					:data-page-sizes="pageSizes?.join(',')"
+				>
 					<table>
 						<thead>
 							<tr>
@@ -35,7 +42,12 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 							</tr>
 						</thead>
 						<tbody>
-							<tr v-for="(item, index) in items" :key="index" :data-test-id="'row-' + index">
+							<tr
+								v-for="(item, index) in items"
+								:key="index"
+								:data-test-id="'row-' + index"
+								v-bind="typeof rowProps === 'function' ? rowProps(item, index) : rowProps"
+							>
 								<td v-for="header in headers" :key="header.key" :data-test-id="'cell-' + header.key + '-' + index">
 									<slot :name="'item.' + header.key" :item="item" :value="header.value ? header.value(item) : item[header.key]" />
 								</td>
@@ -67,6 +79,14 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				color: { type: String },
 			},
 			template: '<span><slot /></span>',
+		},
+		N8nTooltip: {
+			name: 'N8nTooltip',
+			props: {
+				content: { type: String },
+				placement: { type: String },
+			},
+			template: '<div :data-test-id="`tooltip`" :data-tooltip-content="content"><slot /></div>',
 		},
 	};
 });
@@ -109,7 +129,8 @@ vi.mock('./ProjectMembersActionsCell.vue', () => ({
 			actions: { type: Array, required: true },
 		},
 		emits: ['action'],
-		template: '<div :data-test-id="`actions-cell-` + data.id"></div>',
+		template:
+			'<div :data-test-id="`actions-cell-` + data.id" :data-actions-count="actions.length"></div>',
 	},
 }));
 
@@ -519,47 +540,121 @@ describe('ProjectMembersTable', () => {
 	});
 
 	describe('Pagination Configuration', () => {
-		it('should configure page-sizes to hide pagination controls', () => {
-			renderComponent();
-
-			// Find the N8nDataTableServer component mock
-			const tableElement = screen.getByTestId('data-table');
-			expect(tableElement).toBeInTheDocument();
-
-			// Verify that pagination is effectively hidden by checking the table renders
-			// without pagination controls (this is tested indirectly through the mock)
-			expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
-		});
-
-		it('should handle empty data without pagination', () => {
+		it('should pass page sizes and the page size from table options', () => {
 			renderComponent({
 				props: {
-					data: { items: [], count: 0 },
+					data: { items: mockMembers, count: 12 },
+					tableOptions: { page: 0, itemsPerPage: 25, sortBy: [] },
 				},
 			});
 
-			expect(screen.getByTestId('data-table')).toBeInTheDocument();
-			expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+			const table = screen.getByTestId('data-table');
+			expect(table).toHaveAttribute('data-page-sizes', '10,25,50');
+			expect(table).toHaveAttribute('data-items-per-page', '25');
+			expect(table).toHaveAttribute('data-items-length', '12');
 		});
 
-		it('should handle large datasets without showing pagination', () => {
-			const largeDataset = Array.from({ length: 50 }, (_, i) => ({
-				id: `user-${i}`,
-				firstName: `User${i}`,
-				lastName: `Test${i}`,
-				email: `user${i}@example.com`,
-				role: 'project:viewer' as ProjectRole,
-			}));
-
+		it('should default to 10 items per page', () => {
 			renderComponent({
 				props: {
-					data: { items: largeDataset, count: largeDataset.length },
+					data: { items: mockMembers, count: mockMembers.length },
 				},
 			});
 
-			expect(screen.getByTestId('data-table')).toBeInTheDocument();
-			// Pagination should still be hidden due to our page-sizes configuration
-			expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+			expect(screen.getByTestId('data-table')).toHaveAttribute('data-items-per-page', '10');
+		});
+	});
+	describe('Members with access from a global role', () => {
+		const ownerMember: ProjectMemberData = {
+			id: 'owner-1',
+			firstName: 'Olive',
+			lastName: 'Owner',
+			email: 'owner@example.com',
+			role: 'global:owner',
+			alwaysHasAccess: true,
+			instanceRole: { slug: 'global:owner', displayName: 'Owner' },
+		};
+		const adminMember: ProjectMemberData = {
+			id: 'admin-1',
+			firstName: 'Marcus',
+			lastName: 'Chen',
+			email: 'marcus@example.com',
+			role: 'global:admin',
+			alwaysHasAccess: true,
+			instanceRole: { slug: 'global:admin', displayName: 'Admin' },
+		};
+
+		it('should show "Full access" for the instance owner instead of a role dropdown', () => {
+			renderComponent({
+				props: {
+					data: { items: [ownerMember], count: 1 },
+					currentUserId: 'someone-else',
+					canEditRole: true,
+				},
+			});
+
+			expect(screen.queryByTestId(`role-dropdown-${ownerMember.id}`)).not.toBeInTheDocument();
+			expect(screen.getByTestId('project-member-access-label')).toHaveTextContent('Full access');
+		});
+
+		it('should show "Full access" and explain the instance role for an instance admin', () => {
+			renderComponent({
+				props: {
+					data: { items: [adminMember], count: 1 },
+					currentUserId: 'someone-else',
+					canEditRole: true,
+				},
+			});
+
+			const tooltip =
+				"Marcus has full access to every project on this instance through their instance role (Admin). This can't be changed from within a project.";
+			const label = screen.getByTestId('project-member-access-label');
+			expect(label).toHaveTextContent('Full access');
+			expect(label).toHaveAttribute('aria-label', `Full access. ${tooltip}`);
+			expect(screen.getByTestId('tooltip')).toHaveAttribute('data-tooltip-content', tooltip);
+		});
+
+		it('should mention a stored project role in the tooltip', () => {
+			renderComponent({
+				props: {
+					data: { items: [{ ...ownerMember, role: 'project:admin' }], count: 1 },
+					currentUserId: 'someone-else',
+				},
+			});
+
+			expect(screen.getByTestId('tooltip')).toHaveAttribute(
+				'data-tooltip-content',
+				"Olive has full access to every project on this instance through their instance role (Owner). This can't be changed from within a project. They're also assigned the Admin role in this project, which applies if their instance role changes.",
+			);
+		});
+
+		it('should name a user without a first name by email', () => {
+			renderComponent({
+				props: {
+					data: { items: [{ ...adminMember, firstName: null, lastName: null }], count: 1 },
+					currentUserId: 'someone-else',
+				},
+			});
+
+			expect(screen.getByTestId('tooltip')).toHaveAttribute(
+				'data-tooltip-content',
+				expect.stringMatching(/^marcus@example\.com has full access/),
+			);
+		});
+
+		it('should offer no actions even when the table has actions', () => {
+			renderComponent({
+				props: {
+					data: { items: [ownerMember], count: 1 },
+					currentUserId: 'someone-else',
+					actions: [{ label: 'Remove user', value: 'remove' }],
+				},
+			});
+
+			expect(screen.getByTestId(`actions-cell-${ownerMember.id}`)).toHaveAttribute(
+				'data-actions-count',
+				'0',
+			);
 		});
 	});
 });

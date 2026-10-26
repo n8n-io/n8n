@@ -6,7 +6,7 @@ import { computed, ref, watch } from 'vue';
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
 import ChatAgentSearchSort from '@/features/ai/chatHub/components/ChatAgentSearchSort.vue';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { type ChatHubConversationModel } from '@n8n/api-types';
 import { filterAndSortAgents, stringifyModel } from '@/features/ai/chatHub/chat.utils';
 import type { ChatAgentFilter } from '@/features/ai/chatHub/chat.types';

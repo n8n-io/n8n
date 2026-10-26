@@ -11,7 +11,7 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 
 import { SourceControlContextFactory } from './source-control-context.factory';
@@ -119,7 +119,8 @@ export class SourceControlScopedService {
 		context: SourceControlContext,
 	): FindOptionsWhere<CredentialsEntity> {
 		if (context.hasAccessToAllProjects()) {
-			return {};
+			// Instance credentials (provider connections) are instance-local and never synced
+			return { usageScope: 'project' };
 		}
 
 		return {

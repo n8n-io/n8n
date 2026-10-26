@@ -1,4 +1,9 @@
 <script setup lang="ts">
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
+import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
+// EOF Experiment cleanup
+
 import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/app/constants';
 import {
 	isExtraTemplateLinksExperimentEnabled,
@@ -7,7 +12,7 @@ import {
 } from '@/experiments/utils';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
@@ -18,6 +23,9 @@ import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+const { showMcpDiscovery } = useMcpDiscovery();
+// EOF Experiment cleanup
 const nodeCreatorStore = useNodeCreatorStore();
 const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
@@ -115,7 +123,18 @@ async function onClickTemplatesLink() {
 			</p>
 		</div>
 
-		<template v-if="showInstanceAiBuildWithAi || showLegacyBuildWithAi">
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+		<template v-if="showMcpDiscovery">
+			<div :class="$style.orDivider">
+				<span :class="$style.orText">{{ i18n.baseText('generic.or') }}</span>
+			</div>
+			<div :class="$style.option">
+				<ClaudeEntryPoint placement="canvas" />
+			</div>
+		</template>
+		<!-- EOF Experiment cleanup -->
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore v-if on the existing Build with AI option. -->
+		<template v-else-if="showInstanceAiBuildWithAi || showLegacyBuildWithAi">
 			<!-- Or Divider -->
 			<div :class="$style.orDivider">
 				<span :class="$style.orText">{{ i18n.baseText('generic.or') }}</span>

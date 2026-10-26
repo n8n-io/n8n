@@ -1,9 +1,18 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { n8nHtml } from '@n8n/design-system/directives';
+import { n8nHtml } from '@n8n/design-system';
 import type { AgentFileDto } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import AgentFilesPanel from '../components/AgentFilesPanel.vue';
+
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz' }),
+}));
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -33,8 +42,8 @@ const actionDropdownStub = {
 function mountPanel(props: Partial<InstanceType<typeof AgentFilesPanel>['$props']> = {}) {
 	return mount(AgentFilesPanel, {
 		props: {
+			agentId: 'agent-1',
 			files: [] as AgentFileDto[],
-			isPublished: true,
 			...props,
 		},
 		global: {
@@ -57,46 +66,92 @@ const file: AgentFileDto = {
 };
 
 describe('AgentFilesPanel', () => {
-	it('disables the upload button with the publish-required tooltip when unpublished', () => {
-		const wrapper = mountPanel({ isPublished: false });
+	beforeEach(() => vi.clearAllMocks());
 
-		const uploadButton = wrapper.find('[data-testid="agent-files-upload"]');
-		expect(uploadButton.attributes('disabled')).toBeDefined();
-		expect(uploadButton.attributes('aria-label')).toBe('agents.builder.files.publishRequired');
-	});
-
-	it('enables the upload button with the normal upload tooltip when published', () => {
-		const wrapper = mountPanel({ isPublished: true });
+	it('enables the upload button with the normal upload tooltip when files exist', () => {
+		const wrapper = mountPanel({ files: [file] });
 
 		const uploadButton = wrapper.find('[data-testid="agent-files-upload"]');
 		expect(uploadButton.attributes('disabled')).toBeUndefined();
 		expect(uploadButton.attributes('aria-label')).toBe('agents.builder.files.addFile');
+		expect(wrapper.findComponent({ name: 'N8nEmptyState' }).exists()).toBe(false);
 	});
 
-	it('shows the publish hint in the empty state when unpublished', () => {
-		const wrapper = mountPanel({ isPublished: false, files: [] });
-
-		expect(wrapper.text()).toContain('agents.builder.files.publishRequired');
-	});
-
-	it('shows the normal empty-state message when published', () => {
-		const wrapper = mountPanel({ isPublished: true, files: [] });
+	it('shows the normal empty-state message', () => {
+		const wrapper = mountPanel({ files: [] });
 
 		expect(wrapper.text()).toContain('agents.builder.files.empty');
 	});
 
-	it('shows the knowledge base title with a tooltip and icon-only add action', () => {
-		const wrapper = mountPanel({ files: [file] });
+	it.each([
+		{ state: 'empty', files: [], selection: [] },
+		{ state: 'populated', files: [file], selection: [new File(['Notes'], 'notes.txt')] },
+	])(
+		'tracks the $state picker click, not file selection or cancellation',
+		async ({ files, selection }) => {
+			const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click');
+			try {
+				const wrapper = mountPanel({ files });
+				expect(track).not.toHaveBeenCalled();
+				if (files.length > 0) {
+					await wrapper.get('[data-testid="agent-files-upload"]').trigger('click');
+				} else {
+					wrapper.findComponent({ name: 'N8nEmptyState' }).vm.$emit('click:button');
+				}
+				expect(track).toHaveBeenCalledExactlyOnceWith(
+					TELEMETRY_EVENT.AGENTS.USER_CLICKED_KNOWLEDGE_UPLOAD,
+					{ agent_id: 'agent-1', push_ref: 'session-xyz' },
+				);
+				const input = wrapper.get('input[type="file"]');
+				Object.defineProperty(input.element, 'files', { value: selection });
+				await input.trigger('change');
 
-		expect(wrapper.find('[data-testid="agent-files-title"]').text()).toContain(
-			'agents.builder.files.title',
-		);
+				expect(clickSpy).toHaveBeenCalledOnce();
+				expect(track).toHaveBeenCalledExactlyOnceWith(
+					TELEMETRY_EVENT.AGENTS.USER_CLICKED_KNOWLEDGE_UPLOAD,
+					{ agent_id: 'agent-1', push_ref: 'session-xyz' },
+				);
+				if (selection.length > 0) {
+					expect(wrapper.emitted('upload-files')).toEqual([[selection]]);
+				} else {
+					expect(wrapper.emitted('upload-files')).toBeUndefined();
+				}
+			} finally {
+				clickSpy.mockRestore();
+			}
+		},
+	);
+
+	it.each([
+		{ disabled: true },
+		{ loading: true },
+		{ uploading: true },
+		{ deletingFileId: 'file-1' },
+	])('does not track disabled upload controls with %j', (overrides) => {
+		const empty = mountPanel(overrides);
+		const populated = mountPanel({ files: [file], ...overrides });
+		if ('loading' in overrides) {
+			expect(empty.findComponent({ name: 'N8nEmptyState' }).exists()).toBe(false);
+			expect(populated.find('[data-testid="agent-files-upload"]').exists()).toBe(false);
+			expect(track).not.toHaveBeenCalled();
+			return;
+		}
+		expect(empty.findComponent({ name: 'N8nEmptyState' }).props('buttonDisabled')).toBe(true);
+		empty.findComponent({ name: 'N8nEmptyState' }).vm.$emit('click:button');
+
+		expect(
+			populated.get('[data-testid="agent-files-upload"]').attributes('disabled'),
+		).toBeDefined();
+		populated.findComponent({ name: 'N8nButton' }).vm.$emit('click');
+		expect(track).not.toHaveBeenCalled();
+	});
+
+	it('shows the add action when files exist', () => {
+		const wrapper = mountPanel({ files: [file] });
 
 		const uploadButton = wrapper.findComponent({ name: 'N8nButton' });
 		expect(uploadButton.props('variant')).toBe('ghost');
-		expect(uploadButton.props('iconOnly')).toBe(true);
 		expect(uploadButton.props('icon')).toBe('plus');
-		expect(wrapper.find('[data-testid="agent-files-upload"]').text()).toBe('');
 	});
 
 	it('renders uploaded files as table rows with owner, type, size, and date metadata', () => {

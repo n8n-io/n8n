@@ -17,23 +17,39 @@ describe('model-string utils', () => {
 				name: 'models/gemini-1.5-pro',
 			});
 		});
+		it.each([
+			[
+				'aws-bedrock/anthropic.claude-sonnet-4-5-v1:0',
+				'aws-bedrock',
+				'anthropic.claude-sonnet-4-5-v1:0',
+			],
+			['google-vertex/claude-fable-5@default', 'google-vertex', 'claude-fable-5@default'],
+		])('preserves the version in %s', (model, provider, name) => {
+			expect(parseModelString(model)).toEqual({ provider, name });
+		});
 		it('returns null when no slash', () => {
 			expect(parseModelString('gpt-4o')).toBeNull();
 		});
 		it('returns null when slash is leading', () => {
 			expect(parseModelString('/name')).toBeNull();
 		});
-		it.each(['openai/', 'openai//gpt-4o', 'openai/gpt-4o/', 'openai/gpt 4o'])(
-			'returns null for invalid model string %s',
-			(model) => {
-				expect(parseModelString(model)).toBeNull();
-			},
-		);
+		it.each([
+			'openai/',
+			'openai//gpt-4o',
+			'openai/gpt-4o/',
+			'openai/gpt 4o',
+			'google@vertex/claude-fable-5',
+		])('returns null for invalid model string %s', (model) => {
+			expect(parseModelString(model)).toBeNull();
+		});
 	});
 
 	describe('parseProvider', () => {
 		it('extracts from string form', () => {
 			expect(parseProvider('anthropic/claude-sonnet-4-6')).toBe('anthropic');
+		});
+		it('extracts from a model name containing a colon', () => {
+			expect(parseProvider('aws-bedrock/anthropic.claude-sonnet-4-5-v1:0')).toBe('aws-bedrock');
 		});
 		it('reads object form', () => {
 			expect(parseProvider({ provider: 'openai', name: 'gpt-4o' })).toBe('openai');

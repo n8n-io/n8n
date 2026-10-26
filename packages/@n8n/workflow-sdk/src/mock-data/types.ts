@@ -1,3 +1,5 @@
+import type { DataTableReadParameters } from './data-table-read';
+
 /**
  * Shared types for LLM mock/pin-data generation.
  *
@@ -21,6 +23,8 @@ export type OutputSchemaLookup = (node: {
 	operation?: string;
 	/** Node has an `ai_outputParser` attached — resolves the `with-parser` layout variant. */
 	hasOutputParser?: boolean;
+	/** The node's parameters — pick a shape variant such as `simple: false`. */
+	parameters?: Record<string, unknown>;
 }) => Record<string, unknown> | undefined;
 
 /** Structured-output-parser info for an AI root node (Agent/Chain). */
@@ -29,6 +33,20 @@ export interface OutputParserContext {
 	schemaText?: string;
 	/** True when `schemaText` is an example object rather than a JSON Schema. */
 	schemaIsExample: boolean;
+}
+
+/**
+ * The authoritative field-name contract for a pinned node's items, when one
+ * exists: an information extractor's declared attributes or a structured output
+ * parser's schema keys. Generated pin data is
+ * validated against it — drifted names (`invoice_amount` where the schema says
+ * `total_amount`) are the top residual mock-quality defect in eval runs.
+ */
+export interface DeclaredFieldContract {
+	/** The declared field names. */
+	keys: string[];
+	/** Envelope key the fields live under (e.g. `output` for extractor roots); absent = top-level `json`. */
+	envelopeKey?: string;
 }
 
 /** Per-node context assembled for the generation prompt. */
@@ -40,6 +58,10 @@ export interface NodeSchemaContext {
 	operation?: string;
 	schema?: Record<string, unknown>;
 	outputParser?: OutputParserContext;
+	/** The filter a Data Table `get` node applies; the pinned rows are its output, not the table. */
+	dataTableRead?: DataTableReadParameters;
+	declaredFields?: DeclaredFieldContract;
+	classifierReportsConfidence?: boolean;
 }
 
 export interface PinDataGenerationInstructions {

@@ -3,10 +3,10 @@ import { useI18n } from '@n8n/i18n';
 import { onMounted, ref, computed } from 'vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useRoute, useRouter } from 'vue-router';
 import { DATA_TABLE_DETAILS, PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { dataTableColumnNameSchema } from '@n8n/api-types';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
@@ -374,7 +374,7 @@ const redirectToDataTables = () => {
 						@mouseleave="isUploadHovered = false"
 					>
 						<N8nIcon
-							icon="file"
+							icon="cloud-arrow-up"
 							:size="24"
 							:color="isUploadHovered ? 'text-dark' : 'text-light'"
 							:class="$style.uploadIcon"
@@ -473,7 +473,7 @@ const redirectToDataTables = () => {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					v-if="creationMode === 'select'"
 					size="large"
 					:label="i18n.baseText('generic.cancel')"
@@ -493,7 +493,7 @@ const redirectToDataTables = () => {
 				/>
 
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					v-if="creationMode === 'import'"
 					size="large"
 					:label="i18n.baseText('generic.back')"

@@ -13,7 +13,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
-import { jenkinsApiRequest, tolerateTrailingSlash } from './GenericFunctions';
+import { removeTrailingSlash } from '@utils/utilities';
+
+import { jenkinsApiRequest } from './GenericFunctions';
 
 export type JenkinsApiCredentials = {
 	username: string;
@@ -397,7 +399,7 @@ export class Jenkins implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const { baseUrl, username, apiKey } = credential.data as JenkinsApiCredentials;
 
-				const url = tolerateTrailingSlash(baseUrl);
+				const url = removeTrailingSlash(baseUrl);
 				const endpoint = '/api/json';
 
 				const options = {

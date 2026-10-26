@@ -1,18 +1,30 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { fetchFollowingRedirects, proxyFetch } from '@n8n/ai-utilities';
+import { createRefreshingAuthFetch, proxyFetch } from '@n8n/ai-utilities';
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	Logger,
+	McpRegistryCredentialType,
+	McpRegistryConnection,
 	INode,
 	ISupplyDataFunctions,
 	NodeEgressFilter,
+	PrepareMcpRegistryConnectionInput,
+	PrepareMcpRegistryConnectionResult,
 } from 'n8n-workflow';
-import { assertCredentialAllowsUrl, assertUrlAllowed, NodeOperationError } from 'n8n-workflow';
+import {
+	assertCredentialAllowsUrl,
+	assertUrlAllowed,
+	getMcpAuthHeaders,
+	isMcpAiGatewayAuthentication,
+	NodeOperationError,
+	shouldRefreshMcpOAuth2Token,
+} from 'n8n-workflow';
 
 import {
 	isMcpOAuth2Authentication,
@@ -20,6 +32,20 @@ import {
 	type McpServerTransport,
 	type McpTool,
 } from './types';
+
+import { ContentBlockSchema, type ContentBlock } from '@modelcontextprotocol/sdk/types.js';
+
+export type { ContentBlock as McpContentBlock };
+
+/**
+ * Strict MCP content array detection. Returns false for empty arrays so callers
+ * fall back to default formatting.
+ */
+export function isMcpContentArray(data: unknown): data is ContentBlock[] {
+	if (!Array.isArray(data) || data.length === 0) return false;
+	return Array.from(data).every((item) => ContentBlockSchema.safeParse(item).success);
+}
+const MCP_SESSION_TERMINATION_TIMEOUT_MS = 1_000;
 
 export async function getAllTools(client: Client, cursor?: string): Promise<McpTool[]> {
 	const { tools, nextCursor } = await client.listTools({ cursor });
@@ -72,13 +98,6 @@ function isForbiddenError(error: unknown): boolean {
 type OnUnauthorizedHandler = (
 	headers?: Record<string, string>,
 ) => Promise<Record<string, string> | null>;
-
-const OAUTH2_REFRESH_BUFFER_MS = 2 * 60 * 1000;
-const OAUTH2_REFRESH_BUFFER_RATIO = 0.1;
-
-type McpOAuth2Credentials = ICredentialDataDecryptedObject & {
-	oauthTokenData?: ClientOAuth2TokenData;
-};
 
 type ConnectMcpClientError =
 	| { type: 'invalid_url'; error: Error }
@@ -146,6 +165,8 @@ export async function connectMcpClient({
 	signal,
 	allowedDomains,
 	secureEgressFilter,
+	getTraceHeaders,
+	logger,
 }: {
 	serverTransport: McpServerTransport;
 	endpointUrl: string;
@@ -160,11 +181,18 @@ export async function connectMcpClient({
 	 */
 	allowedDomains?: string;
 	/**
-	 * Instance egress filter. When set, every request (including redirect hops)
-	 * is validated against the configured egress policy, and the connection is
+	 * Instance egress filter. Every request (including redirect hops) is
+	 * validated against the configured egress policy, and the connection is
 	 * pinned to the validated address.
 	 */
-	secureEgressFilter?: NodeEgressFilter;
+	secureEgressFilter: NodeEgressFilter;
+	/**
+	 * Returns the W3C trace context of the node that runs now. It is called for each
+	 * request: one client serves many tool calls, each under a different span. Omit it
+	 * when the caller has no node context to read it from.
+	 */
+	getTraceHeaders?: () => Record<string, string>;
+	logger?: Logger;
 }): Promise<Result<Client, ConnectMcpClientError>> {
 	const endpoint = normalizeAndValidateUrl(endpointUrl);
 
@@ -172,7 +200,14 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
-	const authFetch = createAuthFetch(headers, onUnauthorized, allowedDomains, secureEgressFilter);
+	const authFetch = createAuthFetch({
+		initialHeaders: headers,
+		secureEgressFilter,
+		onUnauthorized,
+		allowedDomains,
+		getTraceHeaders,
+		logger,
+	});
 	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
 
 	let onAbort: (() => void) | undefined;
@@ -211,6 +246,26 @@ export async function connectMcpClient({
 				fetch: authFetch,
 				...(signal ? { requestInit: { signal } } : {}),
 			});
+			const originalClose = client.close.bind(client);
+			let closePromise: Promise<void> | undefined;
+			client.close = async () => {
+				closePromise ??= (async () => {
+					let timeout: ReturnType<typeof setTimeout> | undefined;
+					try {
+						await Promise.race([
+							Promise.resolve(transport.terminateSession()).catch(() => {}),
+							new Promise<void>((resolve) => {
+								timeout = setTimeout(resolve, MCP_SESSION_TERMINATION_TIMEOUT_MS);
+							}),
+						]);
+					} finally {
+						if (timeout !== undefined) clearTimeout(timeout);
+						await originalClose();
+					}
+				})();
+
+				await closePromise;
+			};
 			await client.connect(transport);
 			return createResultOk(client);
 		} catch (error) {
@@ -278,12 +333,37 @@ export async function connectMcpClient({
 	}
 }
 
-/** Safely converts any HeadersInit value to a plain Record<string, string>. */
 function headersToRecord(headers: HeadersInit | undefined): Record<string, string> {
-	if (!headers) return {};
-	if (headers instanceof Headers) return Object.fromEntries(headers.entries());
-	if (Array.isArray(headers)) return Object.fromEntries(headers);
-	return headers;
+	return headers ? Object.fromEntries(new Headers(headers).entries()) : {};
+}
+
+/**
+ * Wraps a fetch so that each request carries the W3C trace context of the node that
+ * runs now. One MCP client serves many tool calls under different spans, so the
+ * headers are read for each request and not once at connect.
+ */
+function withTraceHeaders(
+	baseFetch: typeof fetch,
+	getTraceHeaders: () => Record<string, string>,
+	logger?: Logger,
+): typeof fetch {
+	return async (input, init) => {
+		let tracedInit: RequestInit | undefined;
+		try {
+			const traceHeaders = getTraceHeaders();
+			if (Object.keys(traceHeaders).length) {
+				const headers = new Headers(init?.headers);
+				for (const [name, value] of Object.entries(traceHeaders)) headers.set(name, value);
+				tracedInit = { ...init, headers };
+			}
+		} catch (error) {
+			logger?.warn('Failed to add the trace context to an MCP request', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		return await baseFetch(input, tracedInit ?? init);
+	};
 }
 
 /**
@@ -293,74 +373,44 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
  *   - validates the initial URL and every redirect hop against `allowedDomains`
  *     so credentials are never sent to a host the credential doesn't allow,
  *   - validates the initial URL and every redirect hop against the instance
- *     `secureEgressFilter`, and pins the connection to the validated address.
+ *     `secureEgressFilter`, and pins the connection to the validated address,
+ *   - withholds the auth headers once a redirect crosses origins, so
+ *     credentials never reach a host other than the one the request started on,
+ *   - adds the W3C trace context of the running node to every request.
  */
-function createAuthFetch(
-	initialHeaders: Record<string, string> | undefined,
-	onUnauthorized?: OnUnauthorizedHandler,
-	allowedDomains?: string,
-	secureEgressFilter?: NodeEgressFilter,
-): typeof fetch {
-	let headers = initialHeaders;
+function createAuthFetch({
+	initialHeaders,
+	secureEgressFilter,
+	onUnauthorized,
+	allowedDomains,
+	getTraceHeaders,
+	logger,
+}: {
+	initialHeaders?: Record<string, string>;
+	secureEgressFilter: NodeEgressFilter;
+	onUnauthorized?: OnUnauthorizedHandler;
+	allowedDomains?: string;
+	getTraceHeaders?: () => Record<string, string>;
+	logger?: Logger;
+}): typeof fetch {
+	const proxied: typeof fetch = async (input, init) =>
+		await proxyFetch({ input, init, egressFilter: secureEgressFilter });
 
-	const secureLookup = secureEgressFilter?.createSecureLookup();
-
-	const doFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
-		await proxyFetch(
-			input,
-			{ ...init, headers: { ...headersToRecord(init?.headers), ...headers } },
-			undefined,
-			secureLookup,
-		);
-
-	const authedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-		const response = await doFetch(input, init);
-
-		if (response.status !== 401 || !onUnauthorized) {
-			return response;
-		}
-
-		const refreshedHeaders = await onUnauthorized(headers);
-		if (!refreshedHeaders) {
-			return response;
-		}
-
-		headers = refreshedHeaders;
-		return await doFetch(input, init);
-	};
-
-	return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-		// `fetchFollowingRedirects` accepts `string | URL`. `Request` objects are
-		// unwrapped to their URL so the redirect loop can carry a stable input.
-		const startUrl = input instanceof Request ? input.url : input;
-		return await fetchFollowingRedirects(authedFetch, startUrl, init, {
-			onBeforeHop: async (hopUrl) => {
-				assertUrlAllowed({ url: hopUrl, allowedDomains });
-				if (secureEgressFilter) {
-					const result = await secureEgressFilter.validateUrl(hopUrl);
-					if (!result.ok) throw result.error;
+	return createRefreshingAuthFetch({
+		baseFetch: getTraceHeaders ? withTraceHeaders(proxied, getTraceHeaders, logger) : proxied,
+		initialHeaders,
+		...(onUnauthorized
+			? {
+					refreshHeaders: async (current: Headers) =>
+						await onUnauthorized(Object.fromEntries(current.entries())),
 				}
-			},
-		});
-	};
-}
-
-function shouldRefreshOAuth2Token(credentials: McpOAuth2Credentials): boolean {
-	const tokenData = credentials.oauthTokenData;
-	if (!tokenData?.refresh_token) return false;
-
-	const expiresAt = Number(tokenData.n8n_expires_at);
-	if (!Number.isFinite(expiresAt)) {
-		return false;
-	}
-
-	const expiresInMs = Number(tokenData.expires_in) * 1000;
-	const refreshBufferMs =
-		Number.isFinite(expiresInMs) && expiresInMs > 0
-			? Math.min(OAUTH2_REFRESH_BUFFER_MS, expiresInMs * OAUTH2_REFRESH_BUFFER_RATIO)
-			: OAUTH2_REFRESH_BUFFER_MS;
-
-	return Date.now() + refreshBufferMs >= expiresAt;
+			: {}),
+		assertAllowedUrl: async (hopUrl) => {
+			assertUrlAllowed({ url: hopUrl, allowedDomains });
+			const result = await secureEgressFilter.validateUrl(hopUrl);
+			if (!result.ok) throw result.error;
+		},
+	});
 }
 
 export async function getAuthHeaders(
@@ -370,80 +420,44 @@ export async function getAuthHeaders(
 	headers?: Record<string, string>;
 	credentials?: ICredentialDataDecryptedObject;
 }> {
+	if (authentication === 'none') return {};
+
+	// Reading the credential mints a token. A failed mint is not caught: its error (Gateway
+	// credits off, no credits left) is the real cause. An expired token is minted again on a 401.
+	if (isMcpAiGatewayAuthentication(authentication)) {
+		const credentials = await ctx.getCredentials<ICredentialDataDecryptedObject>(authentication);
+		const headers = getMcpAuthHeaders(authentication, credentials);
+		return Object.keys(headers).length > 0 ? { headers, credentials } : { credentials };
+	}
+
+	let credentialType: string;
 	if (isMcpOAuth2Authentication(authentication)) {
-		const credentials = await ctx
-			.getCredentials<McpOAuth2Credentials>(authentication)
-			.catch(() => null);
-
-		if (!credentials) return {};
-
-		if (shouldRefreshOAuth2Token(credentials)) {
-			const refreshedHeaders = await tryRefreshOAuth2Token(ctx, authentication);
-			if (refreshedHeaders) {
-				return { headers: refreshedHeaders, credentials };
-			}
-		}
-
-		if (!credentials.oauthTokenData?.access_token) {
-			return { credentials };
-		}
-
-		return {
-			headers: { Authorization: `Bearer ${credentials.oauthTokenData.access_token}` },
-			credentials,
+		credentialType = authentication;
+	} else {
+		const credentialTypes: Record<string, string> = {
+			headerAuth: 'httpHeaderAuth',
+			bearerAuth: 'httpBearerAuth',
+			multipleHeadersAuth: 'httpMultipleHeadersAuth',
 		};
+		credentialType = credentialTypes[authentication];
+		if (!credentialType) return {};
 	}
 
-	switch (authentication) {
-		case 'headerAuth': {
-			const credentials = await ctx
-				.getCredentials<{ name: string; value: string }>('httpHeaderAuth')
-				.catch(() => null);
+	const credentials = await ctx
+		.getCredentials<ICredentialDataDecryptedObject>(credentialType)
+		.catch(() => null);
+	if (!credentials) return {};
 
-			if (!credentials) return {};
-
-			return {
-				headers: { [credentials.name]: credentials.value },
-				credentials,
-			};
-		}
-		case 'bearerAuth': {
-			const credentials = await ctx
-				.getCredentials<{ token: string }>('httpBearerAuth')
-				.catch(() => null);
-
-			if (!credentials) return {};
-
-			return {
-				headers: { Authorization: `Bearer ${credentials.token}` },
-				credentials,
-			};
-		}
-		case 'multipleHeadersAuth': {
-			const credentials = await ctx
-				.getCredentials<{
-					headers: { values: Array<{ name: string; value: string }> };
-				}>('httpMultipleHeadersAuth')
-				.catch(() => null);
-
-			if (!credentials) return {};
-
-			return {
-				headers: credentials.headers.values.reduce(
-					(acc, cur) => {
-						acc[cur.name] = cur.value;
-						return acc;
-					},
-					{} as Record<string, string>,
-				),
-				credentials,
-			};
-		}
-		case 'none':
-		default: {
-			return {};
-		}
+	if (
+		isMcpOAuth2Authentication(authentication) &&
+		shouldRefreshMcpOAuth2Token(credentials.oauthTokenData, credentials.grantType)
+	) {
+		const refreshedHeaders = await tryRefreshOAuth2Token(ctx, authentication);
+		if (refreshedHeaders) return { headers: refreshedHeaders, credentials };
 	}
+
+	const headers = getMcpAuthHeaders(authentication, credentials);
+	return Object.keys(headers).length > 0 ? { headers, credentials } : { credentials };
 }
 
 /**
@@ -483,10 +497,32 @@ export async function tryRefreshOAuth2Token(
 		};
 	}
 
+	const headersWithoutAuthorization = Object.fromEntries(
+		Object.entries(headers).filter(([name]) => name.toLowerCase() !== 'authorization'),
+	);
 	return {
-		...headers,
+		...headersWithoutAuthorization,
 		Authorization: `Bearer ${access_token}`,
 	};
+}
+
+/**
+ * Reads the Gateway credits credential again, which mints a current token. The token can expire
+ * while the MCP client is still in use: in a long execution, or after a wait.
+ * @returns The headers with the new token, or null when the credential has no token
+ */
+export async function tryRefreshAiGatewayToken(
+	ctx: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
+	authentication: McpAuthenticationOption,
+	headers: Record<string, string> = {},
+) {
+	const credentials = await ctx.getCredentials<ICredentialDataDecryptedObject>(authentication);
+	const authHeaders = getMcpAuthHeaders(authentication, credentials);
+	if (Object.keys(authHeaders).length === 0) return null;
+	const otherHeaders = Object.fromEntries(
+		Object.entries(headers).filter(([name]) => name.toLowerCase() !== 'authorization'),
+	);
+	return { ...otherHeaders, ...authHeaders };
 }
 
 /**
@@ -499,31 +535,66 @@ export async function connectMcpClientForCredential(
 		authentication: McpAuthenticationOption;
 		serverTransport: McpServerTransport;
 		endpointUrl: string;
+		registryCredential?: {
+			connection: McpRegistryConnection;
+			credentialType: McpRegistryCredentialType;
+			prepareConnection(
+				input: PrepareMcpRegistryConnectionInput,
+			): PrepareMcpRegistryConnectionResult;
+		};
 		surface: string;
 		signal?: AbortSignal;
 	},
 ): Promise<Result<Client, ConnectMcpClientError>> {
 	const node = ctx.getNode();
 	const { headers, credentials } = await getAuthHeaders(ctx, config.authentication);
+	const isOAuth2 = isMcpOAuth2Authentication(config.authentication);
+	let endpointUrl = config.endpointUrl;
+	let serverTransport = config.serverTransport;
+	let authHeaders = headers;
+	let allowedDomains: string | undefined;
 
-	const allowedDomains = credentials
-		? assertCredentialAllowsUrl({
-				node,
-				credentialData: credentials,
-				url: config.endpointUrl,
-				surface: config.surface,
-			})
-		: undefined;
+	if (config.registryCredential) {
+		if (!credentials) {
+			throw new NodeOperationError(node, 'No MCP OAuth2 credential type found');
+		}
+		const prepared = config.registryCredential.prepareConnection({
+			connection: config.registryCredential.connection,
+			credentialType: config.registryCredential.credentialType,
+			credentialData: credentials,
+			headers,
+		});
+		if (!prepared.ok) {
+			throw new NodeOperationError(node, prepared.error.message);
+		}
+		endpointUrl = prepared.value.endpointUrl;
+		serverTransport = prepared.value.transport;
+		authHeaders = prepared.value.headers;
+		allowedDomains = prepared.value.allowedDomains;
+	} else if (credentials) {
+		allowedDomains = assertCredentialAllowsUrl({
+			node,
+			credentialData: credentials,
+			url: endpointUrl,
+			surface: config.surface,
+		});
+	}
 
 	return await connectMcpClient({
-		serverTransport: config.serverTransport,
-		endpointUrl: config.endpointUrl,
-		headers,
+		serverTransport,
+		endpointUrl,
+		headers: authHeaders,
 		allowedDomains,
-		secureEgressFilter: ctx.helpers.getSecureEgressFilter?.(),
+		secureEgressFilter: ctx.helpers.getSecureEgressFilter(),
+		getTraceHeaders: () => ctx.helpers.getTraceHeaders(),
+		logger: ctx.logger,
 		name: node.type,
 		version: node.typeVersion,
-		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
+		onUnauthorized: isOAuth2
+			? async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h)
+			: isMcpAiGatewayAuthentication(config.authentication)
+				? async (h) => await tryRefreshAiGatewayToken(ctx, config.authentication, h)
+				: undefined,
 		signal: config.signal,
 	});
 }

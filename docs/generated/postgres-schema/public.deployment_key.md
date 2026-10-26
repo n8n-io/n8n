@@ -31,10 +31,18 @@
 | IDX_deployment_key_data_encryption_active | CREATE UNIQUE INDEX "IDX_deployment_key_data_encryption_active" ON public.deployment_key USING btree (type) WHERE (((status)::text = 'active'::text) AND ((type)::text = 'data_encryption'::text)) |
 | IDX_deployment_key_instance_id_active | CREATE UNIQUE INDEX "IDX_deployment_key_instance_id_active" ON public.deployment_key USING btree (type) WHERE (((status)::text = 'active'::text) AND ((type)::text = 'instance.id'::text)) |
 | IDX_deployment_key_jwe_private_key_active | CREATE UNIQUE INDEX "IDX_deployment_key_jwe_private_key_active" ON public.deployment_key USING btree (type, algorithm) WHERE (((status)::text = 'active'::text) AND ((type)::text = 'jwe.private-key'::text)) |
+| IDX_deployment_key_oauth_signing_key_active | CREATE UNIQUE INDEX "IDX_deployment_key_oauth_signing_key_active" ON public.deployment_key USING btree (type, algorithm) WHERE (((status)::text = 'active'::text) AND ((type)::text = 'oauth-server.signing-key'::text)) |
 | IDX_deployment_key_signing_binary_data_active | CREATE UNIQUE INDEX "IDX_deployment_key_signing_binary_data_active" ON public.deployment_key USING btree (type) WHERE (((status)::text = 'active'::text) AND ((type)::text = 'signing.binary_data'::text)) |
 | IDX_deployment_key_signing_hmac_active | CREATE UNIQUE INDEX "IDX_deployment_key_signing_hmac_active" ON public.deployment_key USING btree (type) WHERE (((status)::text = 'active'::text) AND ((type)::text = 'signing.hmac'::text)) |
 | IDX_deployment_key_signing_jwt_active | CREATE UNIQUE INDEX "IDX_deployment_key_signing_jwt_active" ON public.deployment_key USING btree (type) WHERE (((status)::text = 'active'::text) AND ((type)::text = 'signing.jwt'::text)) |
 | PK_94bb7aeb5def5a0284a5fe9f9a0 | CREATE UNIQUE INDEX "PK_94bb7aeb5def5a0284a5fe9f9a0" ON public.deployment_key USING btree (id) |
+
+## Triggers
+
+| Name | Definition |
+| ---- | ---------- |
+| prevent_deployment_key_delete | CREATE TRIGGER prevent_deployment_key_delete BEFORE DELETE ON public.deployment_key FOR EACH STATEMENT EXECUTE FUNCTION prevent_deployment_key_delete() |
+| prevent_deployment_key_truncate | CREATE TRIGGER prevent_deployment_key_truncate BEFORE TRUNCATE ON public.deployment_key FOR EACH STATEMENT EXECUTE FUNCTION prevent_deployment_key_delete() |
 
 ## Relations
 

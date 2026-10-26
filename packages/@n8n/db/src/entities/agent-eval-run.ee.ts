@@ -1,3 +1,4 @@
+import type { AgentEvalRunStatus } from '@n8n/api-types';
 import { Column, Entity, Index, ManyToOne, OneToMany } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
@@ -5,7 +6,9 @@ import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from './abstrac
 import { AgentEvalDataset } from './agent-eval-dataset.ee';
 import type { AgentEvalResult } from './agent-eval-result.ee';
 
-export type AgentEvalRunStatus = 'new' | 'running' | 'completed' | 'error' | 'cancelled';
+// The FE/BE contract for this union lives in `@n8n/api-types`; re-exported so
+// existing db-internal consumers keep importing it from the entity.
+export type { AgentEvalRunStatus };
 
 /**
  * One execution of an {@link AgentEvalDataset} against a specific agent version.

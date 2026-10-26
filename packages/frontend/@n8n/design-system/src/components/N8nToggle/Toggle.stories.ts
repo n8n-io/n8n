@@ -9,7 +9,7 @@ const meta = {
 	argTypes: {
 		variant: {
 			control: 'select',
-			options: ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'],
+			options: ['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'],
 		},
 		size: {
 			control: 'select',
@@ -41,9 +41,7 @@ export const Default: Story = {
 			return { args, pressed };
 		},
 		template: `
-			<div style="display: grid; place-items: center;">
-				<N8nToggle v-model="pressed" v-bind="args" />
-			</div>
+			<N8nToggle v-model="pressed" v-bind="args" />
 		`,
 	}),
 	args: {
@@ -60,11 +58,11 @@ export const Variants: Story = {
 	render: () => ({
 		components: { N8nToggle },
 		setup() {
-			const variants = ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'];
+			const variants = ['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'];
 			return { variants };
 		},
 		template: `
-			<div style="display: flex; gap: 12px; align-items: center; justify-content: center;">
+			<div style="display: flex; gap: 12px; align-items: center;">
 				<N8nToggle
 					v-for="variant in variants"
 					:key="variant"
@@ -87,7 +85,7 @@ export const Sizes: Story = {
 			return { sizes };
 		},
 		template: `
-			<div style="display: flex; gap: 12px; align-items: center; justify-content: center;">
+			<div style="display: flex; gap: 12px; align-items: center;">
 				<N8nToggle
 					v-for="size in sizes"
 					:key="size"

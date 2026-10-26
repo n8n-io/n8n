@@ -10,12 +10,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import {
-	NodeApiError,
-	NodeConnectionTypes,
-	NodeOperationError,
-	WAIT_INDEFINITELY,
-} from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	getFileSha,
@@ -25,6 +20,8 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 import { getRefs, getRepositories, getUsers, getWorkflows } from './SearchFunctions';
+import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
+import { limitWaitTimeOption } from '../../utils/sendAndWait/descriptions';
 import { removeTrailingSlash } from '../../utils/utilities';
 import { defaultWebhookDescription } from '../Webhook/description';
 import { pullRequestFields } from './descriptions/PullRequestDescription';
@@ -797,6 +794,26 @@ export class Github implements INodeType {
 					},
 				},
 				description: 'JSON object with input parameters for the workflow',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatchAndWait'],
+					},
+				},
+				options: [
+					{
+						...limitWaitTimeOption,
+						description:
+							'Whether to limit how long to wait for the webhook to be called before the execution resumes',
+					},
+				],
 			},
 
 			// ----------------------------------
@@ -2422,6 +2439,10 @@ export class Github implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'Inputs: Invalid JSON');
 			}
 
+			// Resolved before dispatching so a misconfigured wait limit doesn't leave an
+			// already-triggered GitHub workflow with nothing waiting on it
+			const waitTill = configureWaitTillDate(this);
+
 			endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
 
 			body = {
@@ -2453,7 +2474,7 @@ export class Github implements INodeType {
 			// Add signed resumeUrl to metadata for frontend to use in waiting tooltip
 			this.setMetadata({ resumeUrl });
 
-			await this.putExecutionToWait(WAIT_INDEFINITELY);
+			await this.putExecutionToWait(waitTill);
 			return [this.getInputData()];
 		}
 

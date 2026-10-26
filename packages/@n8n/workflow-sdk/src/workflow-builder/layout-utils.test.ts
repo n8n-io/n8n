@@ -2,9 +2,30 @@
  * Tests for layout utility functions (BFS and Dagre)
  */
 
-import { GRID_SIZE, STICKY_NODE_TYPE, NODE_SPACING_X, START_X, DEFAULT_Y } from './constants';
-import { calculateNodePositions, calculateNodePositionsDagre } from './layout-utils';
-import type { GraphNode, ConnectionTarget } from '../types/base';
+import {
+	GRID_SIZE,
+	STICKY_NODE_TYPE,
+	NODE_SPACING_X,
+	START_X,
+	DEFAULT_Y,
+	DEFAULT_NODE_SIZE,
+} from './constants';
+import {
+	calculateNodePositions,
+	calculateNodePositionsDagre,
+	getWorkflowNodeDimensions,
+	resolveNodePorts,
+} from './layout-utils';
+import { Expression, type INodeTypes } from 'n8n-workflow';
+
+import type {
+	GraphNode,
+	ConnectionTarget,
+	NodeJSON,
+	ToJSONOptions,
+	WorkflowJSON,
+} from '../types/base';
+import { workflow } from '../workflow-builder';
 
 // Helper to create connection targets
 function makeTarget(node: string, type: string = 'main', index: number = 0): ConnectionTarget {
@@ -19,13 +40,20 @@ function createGraphNode(
 		['main', new Map<number, ConnectionTarget[]>()],
 	]),
 	position?: [number, number],
+	parameters?: Record<string, unknown>,
+	version: string | number = 1,
+	id?: string,
 ): GraphNode {
 	return {
 		instance: {
 			type,
 			name,
-			version: 1,
-			config: position ? { position } : {},
+			version,
+			...(id ? { id } : {}),
+			config: {
+				...(position ? { position } : {}),
+				...(parameters ? { parameters } : {}),
+			},
 		} as unknown as GraphNode['instance'],
 		connections,
 	};
@@ -225,6 +253,43 @@ describe('calculateNodePositionsDagre', () => {
 			expect(truePos[0]).toBe(falsePos[0]);
 			expect(truePos[1]).not.toBe(falsePos[1]);
 		});
+
+		it.each([
+			[3.1, 448],
+			[1, 224],
+		])(
+			'sizes message an agent by version when spacing its successors (v%s → successors at agent.x + %s)',
+			(version, successorOffset) => {
+				const nodes = new Map<string, GraphNode>();
+				const triggerConns = makeMainConns([[0, [makeTarget('agent')]]]);
+				const agentConns = makeMainConns([
+					[0, [makeTarget('first')]],
+					[1, [makeTarget('second')]],
+				]);
+				nodes.set('start', createGraphNode('start', 'n8n-nodes-base.manualTrigger', triggerConns));
+				nodes.set(
+					'agent',
+					createGraphNode(
+						'agent',
+						'n8n-nodes-base.messageAnAgent',
+						agentConns,
+						undefined,
+						undefined,
+						version,
+					),
+				);
+				nodes.set('first', createGraphNode('first', 'n8n-nodes-base.set'));
+				nodes.set('second', createGraphNode('second', 'n8n-nodes-base.set'));
+				const positions = calculateNodePositionsDagre(nodes);
+				const triggerPosition = positions.get('start')!;
+				const agentPosition = positions.get('agent')!;
+
+				expect(agentPosition[0]).toBeGreaterThan(triggerPosition[0]);
+				for (const successor of ['first', 'second']) {
+					expect(positions.get(successor)![0]).toBe(agentPosition[0] + successorOffset);
+				}
+			},
+		);
 	});
 
 	describe('disconnected subgraphs', () => {
@@ -416,8 +481,246 @@ describe('calculateNodePositionsDagre', () => {
 
 			const positions = calculateNodePositionsDagre(nodes);
 
-			// Sticky is reanchored relative to trigger's explicit position, not dagre's guess
-			expect(positions.get('note')).toEqual([496, 672]);
+			// Sticky is reanchored relative to trigger's explicit position, not dagre's guess.
+			// Bottom-aligned against the covered node using the sticky's own 240x160 default
+			// size — not the node-sized box the layout used to assume for stickies.
+			expect(positions.get('note')).toEqual([432, 608]);
+		});
+
+		it('measures coverage using the sticky note declared size', () => {
+			const nodes = new Map<string, GraphNode>();
+			const triggerConns = makeMainConns([[0, [makeTarget('set')]]]);
+
+			nodes.set(
+				'trigger',
+				createGraphNode('trigger', 'n8n-nodes-base.manualTrigger', triggerConns, [500, 600]),
+			);
+			nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
+			// A wide sticky whose declared box covers the trigger, but whose top-left
+			// corner alone does not — only its real width/height reveal the coverage.
+			nodes.set(
+				'note',
+				createGraphNode('note', STICKY_NODE_TYPE, undefined, [480, 560], {
+					width: 400,
+					height: 300,
+				}),
+			);
+
+			const positions = calculateNodePositionsDagre(nodes);
+
+			// The sticky covers the trigger, so it follows it instead of being left behind
+			const notePosition = positions.get('note');
+			expect(notePosition).toBeDefined();
+			const [x, y] = notePosition!;
+			expect(x).toBeLessThanOrEqual(500);
+			expect(x + 400).toBeGreaterThanOrEqual(500 + DEFAULT_NODE_SIZE[0]);
+			expect(y).toBeLessThanOrEqual(600);
+			expect(y + 300).toBeGreaterThanOrEqual(600 + DEFAULT_NODE_SIZE[1]);
+		});
+	});
+
+	describe('node groups', () => {
+		it('lays out the surviving members when a persisted member ID is unresolved', () => {
+			const triggerConnections = makeMainConns([[0, [makeTarget('first')]]]);
+			const firstConnections = makeMainConns([[0, [makeTarget('second')]]]);
+			const nodes = new Map<string, GraphNode>([
+				[
+					'trigger',
+					createGraphNode(
+						'trigger',
+						'n8n-nodes-base.manualTrigger',
+						triggerConnections,
+						undefined,
+						undefined,
+						1,
+						'trigger-id',
+					),
+				],
+				[
+					'first',
+					createGraphNode(
+						'first',
+						'n8n-nodes-base.set',
+						firstConnections,
+						undefined,
+						undefined,
+						1,
+						'first-id',
+					),
+				],
+				[
+					'second',
+					createGraphNode(
+						'second',
+						'n8n-nodes-base.set',
+						undefined,
+						undefined,
+						undefined,
+						1,
+						'second-id',
+					),
+				],
+			]);
+
+			const withoutGroup = calculateNodePositionsDagre(nodes);
+			const withUnresolvedMember = calculateNodePositionsDagre(nodes, [
+				{ name: 'Stage', memberIds: ['first-id', 'missing-id'] },
+			]);
+			const withOnlySurvivingMember = calculateNodePositionsDagre(nodes, [
+				{ name: 'Stage', memberIds: ['first-id'] },
+			]);
+
+			expect(withUnresolvedMember).toEqual(withOnlySurvivingMember);
+			expect(withUnresolvedMember).not.toEqual(withoutGroup);
+		});
+	});
+});
+
+describe('getWorkflowNodeDimensions', () => {
+	const jsonNode = (name: string, type: string): NodeJSON => ({
+		id: name,
+		name,
+		type,
+		typeVersion: 1,
+		position: [0, 0],
+	});
+
+	it('makes a node taller for each output above two', () => {
+		const json: WorkflowJSON = {
+			name: 'Switch',
+			nodes: [
+				jsonNode('Switch', 'n8n-nodes-base.switch'),
+				...['A', 'B', 'C', 'D'].map((name) => jsonNode(name, 'n8n-nodes-base.noOp')),
+			],
+			connections: {
+				Switch: {
+					main: ['A', 'B', 'C', 'D'].map((node) => [{ node, type: 'main', index: 0 }]),
+				},
+			},
+		};
+
+		const dimensions = getWorkflowNodeDimensions(json);
+
+		expect(dimensions.get('Switch')).toEqual({ width: 96, height: 160 });
+		expect(dimensions.get('A')).toEqual({ width: 96, height: 96 });
+	});
+
+	it('gives AI sub-nodes and their host node the canvas sizes', () => {
+		const json: WorkflowJSON = {
+			name: 'Agent',
+			nodes: [
+				jsonNode('Agent', '@n8n/n8n-nodes-langchain.agent'),
+				jsonNode('Model', '@n8n/n8n-nodes-langchain.lmChatOpenAi'),
+			],
+			connections: {
+				Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+			},
+		};
+
+		const dimensions = getWorkflowNodeDimensions(json);
+
+		expect(dimensions.get('Agent')).toEqual({ width: 224, height: 96 });
+		expect(dimensions.get('Model')).toEqual({ width: 80, height: 80 });
+	});
+
+	it('makes a sub-node with its own sub-nodes wide and short, as the canvas does', () => {
+		const json: WorkflowJSON = {
+			name: 'Agent tool',
+			nodes: [
+				jsonNode('Agent', '@n8n/n8n-nodes-langchain.agent'),
+				jsonNode('Sub Agent', '@n8n/n8n-nodes-langchain.agentTool'),
+				jsonNode('Model', '@n8n/n8n-nodes-langchain.lmChatOpenAi'),
+			],
+			connections: {
+				'Sub Agent': { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+				Model: { ai_languageModel: [[{ node: 'Sub Agent', type: 'ai_languageModel', index: 0 }]] },
+			},
+		};
+
+		const dimensions = getWorkflowNodeDimensions(json);
+
+		expect(dimensions.get('Sub Agent')).toEqual({ width: 240, height: 80 });
+	});
+
+	describe('with node types', () => {
+		// Outputs set by an expression over a parameter, as the Switch node does.
+		const routerType = {
+			description: {
+				properties: [{ displayName: 'Routes', name: 'routes', type: 'number', default: 4 }],
+				inputs: ['main'],
+				outputs: '={{ Array($parameter.routes).fill("main") }}',
+			},
+		};
+		const nodeTypes = {
+			getByNameAndVersion: (type: string) => {
+				if (type === 'test.router') return routerType;
+				throw new Error(`Unknown node type: ${type}`);
+			},
+		} as unknown as INodeTypes;
+		const json: WorkflowJSON = {
+			name: 'Router',
+			nodes: [jsonNode('Router', 'test.router'), jsonNode('A', 'n8n-nodes-base.noOp')],
+			connections: { Router: { main: [[{ node: 'A', type: 'main', index: 0 }]] } },
+		};
+
+		it('sizes a node by its declared ports, with the parameter defaults filled in', async () => {
+			const dimensions = getWorkflowNodeDimensions(json, await resolveNodePorts(json, nodeTypes));
+
+			expect(dimensions.get('Router')).toEqual({ width: 96, height: 160 });
+		});
+
+		it('falls back to the wired ports for a node of an unknown type', async () => {
+			const dimensions = getWorkflowNodeDimensions(json, await resolveNodePorts(json, nodeTypes));
+
+			expect(dimensions.get('A')).toEqual({ width: 96, height: 96 });
+			expect(getWorkflowNodeDimensions(json).get('Router')).toEqual({ width: 96, height: 96 });
+		});
+
+		it('lays the workflow out with the declared sizes', async () => {
+			const withoutPosition = ({ position: _, ...node }: NodeJSON) => node as NodeJSON;
+			const unplaced: WorkflowJSON = {
+				name: 'Router',
+				nodes: [jsonNode('Trigger', 'n8n-nodes-base.manualTrigger'), ...json.nodes].map(
+					withoutPosition,
+				),
+				connections: {
+					...json.connections,
+					Trigger: { main: [[{ node: 'Router', type: 'main', index: 0 }]] },
+				},
+			};
+			const routerAboveTrigger = (options: ToJSONOptions) => {
+				const y = new Map(
+					workflow
+						.fromJSON(unplaced)
+						.toJSON({ tidyUp: true, ...options })
+						.nodes.map((node) => [node.name, node.position[1]]),
+				);
+				return (y.get('Trigger') ?? NaN) - (y.get('Router') ?? NaN);
+			};
+
+			// The taller node stays centred on the row, so its top is half the extra height higher.
+			expect(routerAboveTrigger({})).toBe(0);
+			expect(routerAboveTrigger({ nodePorts: await resolveNodePorts(unplaced, nodeTypes) })).toBe(
+				32,
+			);
+		});
+
+		// Keep this test last: the VM engine stays selected after it is disposed.
+		it('evaluates the port expressions with the VM expression engine', async () => {
+			await Expression.initExpressionEngine({
+				engine: 'vm',
+				bridgeTimeout: 1000,
+				bridgeMemoryLimit: 128,
+				poolSize: 1,
+				maxCodeCacheSize: 10,
+			});
+			try {
+				const ports = await resolveNodePorts(json, nodeTypes);
+
+				expect(ports.get('Router')?.mainOutputs).toBe(4);
+			} finally {
+				await Expression.disposeExpressionEngine();
+			}
 		});
 	});
 });

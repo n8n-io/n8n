@@ -1,16 +1,39 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
+import { createTestingPinia } from '@pinia/testing';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
+import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AgentModelsByProvider } from '../model-providers';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import type * as typeAvailabilityPolicies from '@n8n/frontend-module-type-availability-policies';
+import type * as permissions from '@n8n/permissions';
 
-type Credential = { id: string; name: string; type: string };
+import type {
+	AgentCredentialsByProvider,
+	AgentModelOption,
+	AgentModelsByProvider,
+} from '../model-providers';
+
+type Credential = { id: string; name: string; type: string; isManaged?: boolean };
 type TestMenuItem = {
 	id: string;
 	label: string;
 	checked?: boolean;
+	keepOpen?: boolean;
+	header?: boolean;
+	disabled?: boolean;
+	divided?: boolean;
 	children?: TestMenuItem[];
-	data?: { badgeLabel?: string; description?: string; descriptionTooltipTeleported?: boolean };
+	data?: {
+		badgeLabel?: string;
+		actionPill?: { text: string; type?: string };
+		description?: string;
+		descriptionTooltipTeleported?: boolean;
+		leadingIcon?: string;
+		credentialType?: string;
+		provider?: string;
+		connectedLabel?: string;
+		restrictedLabel?: string;
+	};
 };
 
 const credentialsByType = vi.hoisted(() => ({
@@ -26,23 +49,50 @@ const freeAiCreditsState = vi.hoisted(() => ({
 	claimCreditsAndGetCredential: vi.fn(),
 }));
 const canCreateCredentials = vi.hoisted(() => ({ value: true }));
+const restrictedCredentialTypes = vi.hoisted(() => ({
+	value: {} as Record<string, 'instance' | 'project'>,
+}));
 const openNewCredential = vi.hoisted(() => vi.fn());
+const fetchUsableCredentials = vi.hoisted(() => vi.fn().mockResolvedValue([]));
+const showError = vi.hoisted(() => vi.fn());
+const closeMenu = vi.hoisted(() => vi.fn());
 const openModalWithData = vi.hoisted(() => vi.fn());
+const aiGatewayState = vi.hoisted(() => ({
+	isEnabled: { value: false },
+	supportedTypes: new Set<string>(),
+	balance: { value: undefined as number | undefined },
+	fetchWallet: vi.fn(),
+	fetchConfig: vi.fn(),
+	creditsLabelKey: { value: 'generic.freeCredits' as 'generic.freeCredits' | 'generic.n8nCredits' },
+}));
 const baseText = vi.hoisted(() =>
 	vi.fn((key: string, options?: { interpolate?: Record<string, string | number> }) => {
 		const template =
 			{
+				'agents.modelSelector.connected': 'Connected',
 				'agents.modelSelector.defaultLabel': 'Choose model',
-				'agents.modelSelector.configureCredentials': 'Configure credentials',
+				'agents.modelSelector.includedInN8n': 'Included in n8n',
+				'agents.modelSelector.configureCredentials': 'Create credential',
+				'agents.modelSelector.connectTo': 'Connect to {provider}',
+				'agents.modelSelector.models': 'Models',
+				'generic.freeCredits': 'Free credits',
+				'generic.n8nCredits': 'Gateway credits',
 				'agents.modelSelector.credentialsMissing': 'Credentials missing',
 				'agents.modelSelector.noMatch': 'No match',
 				'agents.modelSelector.noModels': 'No models',
 				'agents.modelSelector.moreModels': 'More models',
 				'agents.modelSelector.freeCredits.label': 'Use free OpenAI credits',
 				'agents.modelSelector.freeCredits.badge': 'free credits',
+				'aiGateway.credentialMode.n8nConnect.title': 'Gateway credits',
+				'aiGateway.wallet.balanceRemaining': '{balance} left',
+				'aiGateway.wallet.noCredits': 'No credits',
 				'agents.modelSelector.freeCredits.description':
 					'Get {credits} free OpenAI API credits. Try it with gpt-5-mini.',
 				'generic.loadingEllipsis': 'Loading...',
+				'agents.modelSelector.restricted': 'Restricted',
+				'agents.modelSelector.restrictedCredentials': '{provider} credentials',
+				'typeAvailabilityPolicies.restrictedNode.scope.instance': 'Restricted on this instance',
+				'typeAvailabilityPolicies.restrictedNode.scope.project': 'Restricted in this project',
 			}[key] ?? key;
 
 		return Object.entries(options?.interpolate ?? {}).reduce(
@@ -58,7 +108,37 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('@n8n/permissions', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError }),
+}));
+
+vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
+	...(await importOriginal<typeof typeAvailabilityPolicies>()),
+	useTypeAvailabilityPoliciesStore: () => ({
+		getCredentialTypeAvailability: (name: string) => {
+			const scope = restrictedCredentialTypes.value[name];
+			return scope ? { name, available: false, scope } : { name, available: true };
+		},
+	}),
+	ContactAdminModal: {
+		name: 'ContactAdminModal',
+		props: ['open', 'nodeTypeName', 'kind', 'audience'],
+		template: '<div v-if="open" data-testid="contact-admin-modal">{{ nodeTypeName }}</div>',
+	},
+}));
+
+vi.mock('../components/model-selector/ModelSelectorRestrictedMarker.vue', () => ({
+	default: {
+		name: 'ModelSelectorRestrictedMarker',
+		props: ['name', 'restriction'],
+		emits: ['contactAdmin'],
+		template:
+			'<button data-testid="restricted-marker" @click="$emit(\'contactAdmin\', \'project\')">{{ name }}</button>',
+	},
+}));
+
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof permissions>()),
 	getResourcePermissions: () => ({ credential: { create: canCreateCredentials.value } }),
 }));
 
@@ -73,12 +153,18 @@ vi.mock('@n8n/design-system', async () => {
 				'selectedLabel',
 				'selectedCredentialName',
 				'credentialsMissing',
+				'restrictedLabel',
 				'noMatchLabel',
 				'disabled',
 				'dataTestId',
 				'credentialDataTestId',
 			],
-			template: '<div data-testid="ai-model-selector-dropdown" />',
+			methods: { open: vi.fn(), close: closeMenu },
+			template: `<div data-testid="ai-model-selector-dropdown">
+				<template v-for="item in items" :key="item.id">
+					<slot v-if="item.data?.restrictedLabel" name="item-restricted" :item="item" />
+				</template>
+			</div>`,
 		},
 		N8nIcon: { template: '<span />', props: ['icon', 'size'] },
 		useDropdownSearch: () => ({
@@ -99,13 +185,27 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 			Object.values(credentialsByType.value)
 				.flat()
 				.find((credential) => credential.id === id),
-		getCredentialsByType: (type: string) => credentialsByType.value[type] ?? [],
+		getUsableCredentialByType: (type: string) => credentialsByType.value[type] ?? [],
 		getCredentialTypeByName: (type: string) => ({ displayName: type }),
+		fetchUsableCredentials,
+		refreshUsableCredentials: vi.fn().mockResolvedValue(undefined),
 	}),
 }));
 
 vi.mock('@/app/composables/useFreeAiCredits', () => ({
 	useFreeAiCredits: () => freeAiCreditsState,
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: aiGatewayState.isEnabled,
+		isCredentialTypeSupported: (type: string) => aiGatewayState.supportedTypes.has(type),
+		canServeCredentialType: (type: string) => aiGatewayState.supportedTypes.has(type),
+		balance: aiGatewayState.balance,
+		creditsLabelKey: aiGatewayState.creditsLabelKey,
+		fetchWallet: aiGatewayState.fetchWallet,
+		fetchConfig: aiGatewayState.fetchConfig,
+	}),
 }));
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
@@ -120,7 +220,41 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openNewCredential, openModalWithData }),
 }));
 
+vi.mock('../composables/useModelCatalog', () => ({
+	useModelCatalog: () => ({
+		ensureLoaded: vi.fn(),
+		getDefaultModelForPicker: (
+			_credentials: Record<string, string | null> | null,
+			provider: string,
+		) =>
+			provider === 'openai'
+				? {
+						provider: 'openai',
+						model: 'gpt-5-mini',
+						name: 'GPT-5 mini',
+						description: null,
+						createdAt: null,
+						metadata: { functionCalling: true, available: true },
+					}
+				: null,
+		getVerificationStatus: (_projectId: string, _provider: string, credentialId: string) =>
+			credentialId === 'free-openai-credential' ? 'resolved' : 'loading',
+	}),
+}));
+
 const modelsByProvider: AgentModelsByProvider = {
+	'google-vertex': {
+		models: [
+			{
+				provider: 'google-vertex',
+				model: 'gemini-3-flash-preview',
+				name: 'Gemini 3 Flash Preview',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+		],
+	},
 	anthropic: {
 		models: [
 			{
@@ -136,8 +270,13 @@ const modelsByProvider: AgentModelsByProvider = {
 };
 
 async function mountSelector(
-	credentials: Record<string, string | null>,
-	{ credentialModalAppendToBody = false }: { credentialModalAppendToBody?: boolean } = {},
+	credentials: AgentCredentialsByProvider | null,
+	extraProps: {
+		credentialModalAppendToBody?: boolean;
+		boundCredentialId?: string | null;
+		selectedModel?: AgentModelOption | null;
+		modelsByProvider?: AgentModelsByProvider;
+	} = {},
 ) {
 	const { default: AgentModelSelector } = await import('../components/AgentModelSelector.vue');
 	return mount(AgentModelSelector, {
@@ -148,7 +287,7 @@ async function mountSelector(
 			isLoading: false,
 			projectId: 'project-1',
 			warnMissingCredentials: true,
-			credentialModalAppendToBody,
+			...extraProps,
 		},
 	});
 }
@@ -182,6 +321,7 @@ function getFreeOpenAiCreditsItem(wrapper: VueWrapper) {
 
 describe('AgentModelSelector', () => {
 	beforeEach(() => {
+		setActivePinia(createTestingPinia());
 		vi.clearAllMocks();
 		credentialsByType.value = {
 			anthropicApi: [{ id: 'anthropic-cred', name: 'Anthropic credential', type: 'anthropicApi' }],
@@ -190,10 +330,448 @@ describe('AgentModelSelector', () => {
 		freeAiCreditsState.claimingCredits.value = false;
 		freeAiCreditsState.claimCreditsAndGetCredential.mockReset();
 		canCreateCredentials.value = true;
+		restrictedCredentialTypes.value = {};
+		closeMenu.mockReset();
+		aiGatewayState.isEnabled.value = false;
+		aiGatewayState.supportedTypes = new Set<string>();
+		aiGatewayState.balance.value = undefined;
+		aiGatewayState.creditsLabelKey.value = 'generic.freeCredits';
+		aiGatewayState.fetchWallet.mockReset();
+		aiGatewayState.fetchConfig.mockReset();
 	});
 
+	it('fetches the gateway config on mount so the managed option can be gated', async () => {
+		await mountSelector({ anthropic: null });
+
+		expect(aiGatewayState.fetchConfig).toHaveBeenCalled();
+	});
+
+	function getN8nCreditsItem(wrapper: VueWrapper, provider: string) {
+		return getProviderItem(wrapper, provider)?.children?.find((item) =>
+			item.id.includes('::n8nConnect::'),
+		);
+	}
+
+	it('offers the n8n credits option for a supported provider when the gateway is enabled', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getN8nCreditsItem(wrapper, 'anthropic')).toBeDefined();
+	});
+
+	it('shows the Free credits badge on covered providers', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getProviderItem(wrapper, 'anthropic')?.data?.actionPill).toEqual({
+			text: 'Free credits',
+			type: 'default',
+		});
+	});
+
+	it('shows the n8n credits pill on covered providers after a top-up', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+		aiGatewayState.creditsLabelKey.value = 'generic.n8nCredits';
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getProviderItem(wrapper, 'anthropic')?.data?.actionPill).toEqual({
+			text: 'Gateway credits',
+			type: 'info',
+		});
+	});
+
+	it('does not show the Free credits pill on unsupported providers', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set<string>();
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getProviderItem(wrapper, 'anthropic')?.data?.actionPill).toBeUndefined();
+	});
+
+	it('pins the currently selected provider to the top and marks it connected', async () => {
+		const wrapper = await mountSelector({ anthropic: null });
+		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
+
+		expect(items[0].id).toBe('anthropic');
+		expect(items[0].data?.connectedLabel).toBe('Connected');
+		expect(items.filter((item) => item.data?.connectedLabel).length).toBe(1);
+	});
+
+	it('disables a provider whose credential type is restricted on the instance', async () => {
+		restrictedCredentialTypes.value = { openAiApi: 'instance' };
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getProviderItem(wrapper, 'openai')).toMatchObject({
+			disabled: true,
+			data: { restrictedLabel: 'Restricted on this instance' },
+		});
+		expect(getProviderItem(wrapper, 'openai')?.children).toBeUndefined();
+		expect(getProviderItem(wrapper, 'anthropic')?.children?.length).toBeGreaterThan(0);
+	});
+
+	it('shows the project scope line for a project-level restriction', async () => {
+		restrictedCredentialTypes.value = { openAiApi: 'project' };
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getProviderItem(wrapper, 'openai')?.data?.restrictedLabel).toBe(
+			'Restricted in this project',
+		);
+	});
+
+	it('explains a restricted provider on its row and opens the contact-admin dialog from it', async () => {
+		restrictedCredentialTypes.value = { openAiApi: 'project' };
+
+		const wrapper = await mountSelector({ anthropic: null });
+		const marker = wrapper.findComponent({ name: 'ModelSelectorRestrictedMarker' });
+
+		expect(marker.props()).toEqual({
+			name: 'OpenAI credentials',
+			restriction: { name: 'openAiApi', available: false, scope: 'project' },
+		});
+		expect(wrapper.findComponent({ name: 'ContactAdminModal' }).props('open')).toBe(false);
+
+		await marker.find('button').trigger('click');
+
+		expect(closeMenu).toHaveBeenCalledOnce();
+		expect(wrapper.findComponent({ name: 'ContactAdminModal' }).props()).toEqual({
+			open: true,
+			kind: 'credential',
+			nodeTypeName: 'OpenAI credentials',
+			audience: 'project',
+		});
+	});
+
+	it('keeps a multi-credential-type provider usable while one type is still allowed', async () => {
+		restrictedCredentialTypes.value = { azureOpenAiApi: 'instance' };
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getProviderItem(wrapper, 'azure-openai')?.disabled).toBeFalsy();
+	});
+
+	it('disables a multi-credential-type provider once every type is restricted', async () => {
+		restrictedCredentialTypes.value = {
+			azureOpenAiApi: 'instance',
+			azureEntraCognitiveServicesOAuth2Api: 'instance',
+		};
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getProviderItem(wrapper, 'azure-openai')?.disabled).toBe(true);
+	});
+
+	it('shows the restricted badge for a selected restricted provider and pins it without the connected marker', async () => {
+		restrictedCredentialTypes.value = { anthropicApi: 'instance' };
+
+		const wrapper = await mountSelector({ anthropic: 'anthropic-cred' });
+		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
+
+		expect(getDropdown(wrapper).props('restrictedLabel')).toBe('Restricted');
+		expect(items[0]).toMatchObject({ id: 'anthropic', disabled: true });
+		expect(items[0].data?.connectedLabel).toBeUndefined();
+	});
+
+	it('shows no restricted badge for an unrestricted selection', async () => {
+		const wrapper = await mountSelector({ anthropic: 'anthropic-cred' });
+
+		expect(getDropdown(wrapper).props('restrictedLabel')).toBeUndefined();
+	});
+
+	it('does not mark anything as connected when there is no selected model', async () => {
+		const wrapper = await mountSelector({ anthropic: null }, { selectedModel: null });
+		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
+
+		expect(items.some((item) => item.data?.connectedLabel)).toBe(false);
+		// No pinned selection, so providers fall back to declaration order.
+		expect(items[0].id).toBe('openai');
+	});
+
+	it('hoists n8n Connect providers below the selected provider with a header and a single divider', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['openAiApi']);
+
+		const wrapper = await mountSelector({ anthropic: null });
+		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
+
+		expect(items[0].id).toBe('anthropic');
+		expect(items[1]).toMatchObject({
+			id: 'n8nConnect::header',
+			header: true,
+			label: 'Included in n8n',
+		});
+		expect(items[2].id).toBe('openai');
+		expect(items[2].divided).toBeFalsy();
+		// First provider after the n8n Connect group gets the group-boundary divider.
+		expect(items[3].divided).toBe(true);
+		// Only one divider in the whole list.
+		expect(items.filter((item) => item.divided).length).toBe(1);
+	});
+
+	it('does not show a header or divider when no other provider is n8n Connect eligible', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set<string>();
+
+		const wrapper = await mountSelector({ anthropic: null });
+		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
+
+		expect(items.some((item) => item.id === 'n8nConnect::header')).toBe(false);
+		expect(items.some((item) => item.divided)).toBe(false);
+	});
+
+	it('does not duplicate a selected provider that is also n8n Connect eligible', async () => {
+		aiGatewayState.isEnabled.value = true;
+		// anthropic is both the selected provider and n8n Connect eligible here.
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: null });
+		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
+
+		expect(items[0].id).toBe('anthropic');
+		expect(items[0].data?.connectedLabel).toBe('Connected');
+		expect(items.filter((item) => item.id === 'anthropic').length).toBe(1);
+		// No other provider is n8n Connect eligible, so the group is empty.
+		expect(items.some((item) => item.id === 'n8nConnect::header')).toBe(false);
+	});
+
+	it('pins an aggregator provider when it is selected, without duplicating it in the aggregator group', async () => {
+		const wrapper = await mountSelector(
+			{ anthropic: null },
+			{
+				selectedModel: {
+					provider: 'aws-bedrock',
+					model: 'anthropic.claude-3-5-sonnet',
+					name: 'Claude 3.5 Sonnet',
+					description: null,
+					createdAt: null,
+					metadata: { functionCalling: true, available: true },
+				},
+			},
+		);
+		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
+
+		expect(items[0].id).toBe('aws-bedrock');
+		expect(items[0].data?.connectedLabel).toBe('Connected');
+		expect(items.filter((item) => item.id === 'aws-bedrock').length).toBe(1);
+	});
+
+	it('orders regular providers before aggregators in the remaining list', async () => {
+		const wrapper = await mountSelector({ anthropic: null });
+		const ids = (getDropdown(wrapper).props('items') as TestMenuItem[])
+			.map((item) => item.id)
+			.filter((id) => id !== 'n8nConnect::header');
+
+		const aggregatorIds = ['aws-bedrock', 'openrouter', 'vercel'];
+		const firstAggregatorIndex = Math.min(...aggregatorIds.map((id) => ids.indexOf(id)));
+		const regularIds = ids.filter((id) => id !== 'anthropic' && !aggregatorIds.includes(id));
+		const lastRegularIndex = Math.max(...regularIds.map((id) => ids.indexOf(id)));
+
+		expect(lastRegularIndex).toBeLessThan(firstAggregatorIndex);
+	});
+
+	it('does not offer n8n credits when the gateway is disabled', async () => {
+		aiGatewayState.isEnabled.value = false;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getN8nCreditsItem(wrapper, 'anthropic')).toBeUndefined();
+	});
+
+	it('does not offer n8n credits for a provider the gateway does not support', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set<string>(); // anthropicApi not supported
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getN8nCreditsItem(wrapper, 'anthropic')).toBeUndefined();
+	});
+
+	it('offers n8n credits for a multi-credential-type provider when a non-first type is supported', async () => {
+		aiGatewayState.isEnabled.value = true;
+		// azure-openai exposes ['azureOpenAiApi', 'azureEntraCognitiveServicesOAuth2Api'];
+		// support only the second — the gate must check all types, matching the resolver.
+		aiGatewayState.supportedTypes = new Set(['azureEntraCognitiveServicesOAuth2Api']);
+
+		const wrapper = await mountSelector({ 'azure-openai': null });
+
+		expect(getN8nCreditsItem(wrapper, 'azure-openai')).toBeDefined();
+	});
+
+	it('emits selectCredential with the managed tag when n8n credits is chosen', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: null });
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::n8nConnect::anthropicApi');
+
+		expect(wrapper.emitted('selectCredential')).toEqual([['anthropic', AI_GATEWAY_MANAGED_TAG]]);
+	});
+
+	it('marks the n8n credits option as a keep-open toggle with no info tooltip', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: AI_GATEWAY_MANAGED_TAG });
+		const item = getN8nCreditsItem(wrapper, 'anthropic');
+
+		// Selecting keeps the dropdown open and the active state is the right-aligned checkmark.
+		expect(item?.keepOpen).toBe(true);
+		expect(item?.checked).toBe(true);
+		expect(item?.data?.description).toBeUndefined();
+	});
+
+	it('re-selects the managed tag (radio-style, no toggle-off) when already selected', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: AI_GATEWAY_MANAGED_TAG });
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::n8nConnect::anthropicApi');
+
+		expect(wrapper.emitted('selectCredential')).toEqual([['anthropic', AI_GATEWAY_MANAGED_TAG]]);
+	});
+
+	it('says how to fix an Azure credential that lists no deployments', async () => {
+		credentialsByType.value = {
+			azureOpenAiApi: [{ id: 'azure-cred', name: 'Azure credential', type: 'azureOpenAiApi' }],
+		};
+
+		const wrapper = await mountSelector(
+			{ 'azure-openai': 'azure-cred' },
+			{
+				selectedModel: null,
+				modelsByProvider: {
+					'azure-openai': { models: [], unavailable: true, unavailableReason: 'project_missing' },
+				},
+			},
+		);
+		const azureItem = getProviderItem(wrapper, 'azure-openai');
+
+		expect(
+			getMenuItemByLabel(
+				azureItem?.children ?? [],
+				'agents.modelSelector.unavailable.projectMissing',
+			)?.data?.description,
+		).toBe('agents.modelSelector.unavailable.projectMissingHint');
+	});
+
+	it('lists models when the managed tag is the selected credential', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: AI_GATEWAY_MANAGED_TAG });
+		const anthropicItem = getProviderItem(wrapper, 'anthropic');
+
+		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 4.5');
+	});
+
+	it('shows the remaining balance on the n8n credits option', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+		aiGatewayState.balance.value = 4.99;
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		const item = getN8nCreditsItem(wrapper, 'anthropic');
+		/** Green balance badge that matches the workflow node. */
+		expect(item?.data?.actionPill).toEqual({ text: '$4.99 left', type: 'default' });
+	});
+
+	it('fetches the wallet balance on mount when the gateway is enabled', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		await mountSelector({ anthropic: null });
+
+		expect(aiGatewayState.fetchWallet).toHaveBeenCalled();
+	});
+
+	it('does not fetch the wallet when the gateway is disabled', async () => {
+		aiGatewayState.isEnabled.value = false;
+
+		await mountSelector({ anthropic: null });
+
+		expect(aiGatewayState.fetchWallet).not.toHaveBeenCalled();
+	});
+
+	it('shows n8n Connect (not "credentials missing") for a managed credential', async () => {
+		// No own credential for the provider, but the selection is the managed tag —
+		// derived from `credentials`, so every caller gets this without opting in.
+		const wrapper = await mountSelector({ anthropic: AI_GATEWAY_MANAGED_TAG });
+		const dropdown = getDropdown(wrapper);
+
+		expect(dropdown.props('credentialsMissing')).toBe(false);
+		// Shown as plain text (like an own credential name), not a custom badge.
+		expect(dropdown.props('selectedCredentialName')).toBe('Gateway credits');
+	});
+
+	it('keeps the warning hidden while Gateway credits load on mount and remount', async () => {
+		credentialsByType.value = {};
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		for (const mountNumber of [1, 2]) {
+			const wrapper = await mountSelector(null, {
+				boundCredentialId: AI_GATEWAY_MANAGED_TAG,
+			});
+			const dropdown = getDropdown(wrapper);
+
+			expect(dropdown.props('credentialsMissing'), `mount ${mountNumber}`).toBe(false);
+
+			await wrapper.setProps({ credentials: { anthropic: AI_GATEWAY_MANAGED_TAG } });
+
+			expect(dropdown.props('credentialsMissing')).toBe(false);
+			expect(dropdown.props('selectedCredentialName')).toBe('Gateway credits');
+			wrapper.unmount();
+		}
+	});
+
+	it('keeps the warning hidden while a stored credential loads', async () => {
+		credentialsByType.value = {};
+		const wrapper = await mountSelector(null, { boundCredentialId: 'anthropic-cred' });
+		const dropdown = getDropdown(wrapper);
+
+		expect(dropdown.props('credentialsMissing')).toBe(false);
+
+		credentialsByType.value = {
+			anthropicApi: [{ id: 'anthropic-cred', name: 'Anthropic credential', type: 'anthropicApi' }],
+		};
+		await wrapper.setProps({ credentials: { anthropic: 'anthropic-cred' } });
+
+		expect(dropdown.props('credentialsMissing')).toBe(false);
+		expect(dropdown.props('selectedCredentialName')).toBe('Anthropic credential');
+	});
+
+	it.each([
+		{ state: 'missing', boundCredentialId: null },
+		{ state: 'deleted', boundCredentialId: 'deleted-credential' },
+	])(
+		'shows a $state credential warning only after credentials resolve',
+		async ({ boundCredentialId }) => {
+			const wrapper = await mountSelector(null, { boundCredentialId });
+			const dropdown = getDropdown(wrapper);
+
+			expect(dropdown.props('credentialsMissing')).toBe(false);
+
+			await wrapper.setProps({ credentials: { anthropic: null } });
+
+			expect(dropdown.props('credentialsMissing')).toBe(true);
+		},
+	);
+
 	it('surfaces a stale selected credential as missing', async () => {
-		const wrapper = await mountSelector({ anthropic: 'deleted-credential' });
+		const wrapper = await mountSelector(
+			{ anthropic: 'deleted-credential' },
+			{ boundCredentialId: 'deleted-credential' },
+		);
 		const dropdown = getDropdown(wrapper);
 		const anthropicItem = getProviderItem(wrapper, 'anthropic');
 
@@ -202,8 +780,20 @@ describe('AgentModelSelector', () => {
 		expect(JSON.stringify(anthropicItem?.children ?? [])).not.toContain('Claude Sonnet 4.5');
 	});
 
+	it('reports missing credentials when the picker resolves one the config has not bound', async () => {
+		const wrapper = await mountSelector(
+			{ anthropic: 'anthropic-cred' },
+			{ boundCredentialId: null },
+		);
+
+		expect(getDropdown(wrapper).props('credentialsMissing')).toBe(true);
+	});
+
 	it('uses an available selected credential', async () => {
-		const wrapper = await mountSelector({ anthropic: 'anthropic-cred' });
+		const wrapper = await mountSelector(
+			{ anthropic: 'anthropic-cred' },
+			{ boundCredentialId: 'anthropic-cred' },
+		);
 		const dropdown = getDropdown(wrapper);
 		const anthropicItem = getProviderItem(wrapper, 'anthropic');
 
@@ -215,34 +805,106 @@ describe('AgentModelSelector', () => {
 		);
 	});
 
-	it('opens the credential selector from the configure action when credentials exist', async () => {
-		const wrapper = await mountSelector({ anthropic: null });
-		const dropdown = wrapper.findComponent({ name: 'AiModelSelectorDropdown' });
+	it('lists an existing credential as a selectable row and selects it', async () => {
+		const wrapper = await mountSelector({ anthropic: AI_GATEWAY_MANAGED_TAG });
+		const credentialItem = getMenuItemByLabel(
+			getProviderItem(wrapper, 'anthropic')?.children ?? [],
+			'Anthropic credential',
+		);
 
-		dropdown.vm.$emit('select', 'anthropic::configure::anthropicApi');
+		expect(credentialItem?.id).toBe('anthropic::select::anthropic-cred');
+		expect(credentialItem?.keepOpen).toBe(true);
 
-		expect(openModalWithData).toHaveBeenCalledWith({
-			name: 'agentModelCredentialModal',
-			data: expect.objectContaining({
-				credentialType: 'anthropicApi',
-				displayName: 'anthropicApi',
-				initialValue: null,
-			}),
-		});
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::select::anthropic-cred');
+		expect(wrapper.emitted('selectCredential')).toEqual([['anthropic', 'anthropic-cred']]);
+		expect(wrapper.emitted('change')).toBeUndefined();
 	});
 
-	it('opens the credential selector at the body level when requested', async () => {
-		const wrapper = await mountSelector({ anthropic: null }, { credentialModalAppendToBody: true });
+	it('emits change with no auto source for a direct model pick', async () => {
+		const wrapper = await mountSelector({ anthropic: 'anthropic-cred' });
 
-		getDropdown(wrapper).vm.$emit('select', 'anthropic::configure::anthropicApi');
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::model::claude-sonnet-4-5');
 
-		expect(openModalWithData).toHaveBeenCalledWith({
-			name: 'agentModelCredentialModal',
-			data: expect.objectContaining({ appendToBody: true }),
-		});
+		expect(wrapper.emitted('change')).toEqual([
+			[{ provider: 'anthropic', model: 'claude-sonnet-4-5' }],
+		]);
 	});
 
-	it('hides the assistant when creating credentials from configure without existing credentials', async () => {
+	it('selects gpt-5-mini when an existing free OpenAI credits credential is selected', async () => {
+		credentialsByType.value = {
+			openAiApi: [
+				{
+					id: 'free-openai-credential',
+					name: 'n8n free OpenAI API credits',
+					type: 'openAiApi',
+					isManaged: true,
+				},
+			],
+		};
+		const wrapper = await mountSelector({ openai: null });
+
+		getDropdown(wrapper).vm.$emit('select', 'openai::select::free-openai-credential');
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.emitted('selectCredential')).toEqual([['openai', 'free-openai-credential']]);
+		// Resolved after a credential selection, not a direct model pick — 'auto'.
+		expect(wrapper.emitted('change')).toEqual([
+			[{ provider: 'openai', model: 'gpt-5-mini' }, 'auto'],
+		]);
+	});
+
+	it('groups the submenu with "Connect to <provider>" and "Models" section headers', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: AI_GATEWAY_MANAGED_TAG });
+		const children = getProviderItem(wrapper, 'anthropic')?.children ?? [];
+		const connectHeader = children.find((item) => item.id === 'anthropic::header::connect');
+		const modelsHeader = children.find((item) => item.id === 'anthropic::header::models');
+
+		expect(connectHeader?.header).toBe(true);
+		expect(connectHeader?.label).toBe('Connect to Anthropic');
+		expect(modelsHeader?.header).toBe(true);
+		expect(modelsHeader?.label).toBe('Models');
+	});
+
+	it('offers only Vertex AI credentials and selects a model without a separate project', async () => {
+		credentialsByType.value = {
+			googleApi: [{ id: 'service-account', name: 'Service account', type: 'googleApi' }],
+			googlePalmApi: [{ id: 'gemini', name: 'Gemini', type: 'googlePalmApi' }],
+			googleVertexAiApi: [{ id: 'vertex', name: 'Vertex', type: 'googleVertexAiApi' }],
+		};
+		const wrapper = await mountSelector({ 'google-vertex': 'vertex' }, { selectedModel: null });
+		const children = getProviderItem(wrapper, 'google-vertex')?.children ?? [];
+
+		expect(
+			children.filter((item) => item.id.includes('::select::')).map((item) => item.id),
+		).toEqual(['google-vertex::select::vertex']);
+		expect(children.filter((item) => item.header).map((item) => item.label)).toEqual([
+			'Connect to Google Vertex AI',
+			'Models',
+		]);
+		expect(children.some((item) => item.id === 'google-vertex::configure::googleVertexAiApi')).toBe(
+			true,
+		);
+
+		getDropdown(wrapper).vm.$emit('select', 'google-vertex::model::gemini-3-flash-preview');
+		expect(wrapper.emitted('change')).toEqual([
+			[{ provider: 'google-vertex', model: 'gemini-3-flash-preview' }],
+		]);
+	});
+
+	it('checks the active credential row', async () => {
+		const wrapper = await mountSelector({ anthropic: 'anthropic-cred' });
+		const credentialItem = getMenuItemByLabel(
+			getProviderItem(wrapper, 'anthropic')?.children ?? [],
+			'Anthropic credential',
+		);
+
+		expect(credentialItem?.checked).toBe(true);
+	});
+
+	it('creates a new credential directly from the create action', async () => {
 		credentialsByType.value = {};
 		const wrapper = await mountSelector({ anthropic: null });
 		const dropdown = wrapper.findComponent({ name: 'AiModelSelectorDropdown' });
@@ -257,8 +919,79 @@ describe('AgentModelSelector', () => {
 			undefined,
 			undefined,
 			undefined,
-			{ hideAskAssistant: true },
+			{ hideAskAssistant: true, onCredentialCreated: expect.any(Function) },
 		);
+	});
+
+	it('lets the parent resolve the verified default after creating a credential', async () => {
+		credentialsByType.value = {};
+		const wrapper = await mountSelector({ anthropic: null }, { selectedModel: null });
+
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::configure::anthropicApi');
+		const onCredentialCreated = openNewCredential.mock.calls[0]?.[7]?.onCredentialCreated;
+		expect(onCredentialCreated).toBeTypeOf('function');
+
+		await onCredentialCreated?.({ id: 'new-anthropic-credential' });
+
+		expect(wrapper.emitted('selectCredential')).toEqual([
+			['anthropic', 'new-anthropic-credential'],
+		]);
+		expect(wrapper.emitted('change')).toBeUndefined();
+	});
+
+	it('refetches the usable credential list before it selects a created credential', async () => {
+		credentialsByType.value = {};
+		const wrapper = await mountSelector({ anthropic: null }, { selectedModel: null });
+		const order: string[] = [];
+		fetchUsableCredentials.mockImplementationOnce(async () => {
+			order.push('fetch');
+			return [];
+		});
+
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::configure::anthropicApi');
+		const onCredentialCreated = openNewCredential.mock.calls[0]?.[7]?.onCredentialCreated;
+		const pending = onCredentialCreated?.({ id: 'new-anthropic-credential' });
+		order.push(wrapper.emitted('selectCredential') ? 'select' : 'no-select');
+		await pending;
+
+		expect(fetchUsableCredentials).toHaveBeenCalledWith({ projectId: 'project-1', forAgent: true });
+		expect(order).toEqual(['fetch', 'no-select']);
+		expect(wrapper.emitted('selectCredential')).toEqual([
+			['anthropic', 'new-anthropic-credential'],
+		]);
+	});
+
+	it('reports a failed usable credential refetch and still selects the created credential', async () => {
+		credentialsByType.value = {};
+		const wrapper = await mountSelector({ anthropic: null }, { selectedModel: null });
+		const error = new Error('network');
+		fetchUsableCredentials.mockRejectedValueOnce(error);
+
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::configure::anthropicApi');
+		const onCredentialCreated = openNewCredential.mock.calls[0]?.[7]?.onCredentialCreated;
+
+		await expect(
+			onCredentialCreated?.({ id: 'new-anthropic-credential' }),
+		).resolves.toBeUndefined();
+
+		expect(showError).toHaveBeenCalledWith(error, 'agents.builder.credentials.refreshError');
+		expect(wrapper.emitted('selectCredential')).toEqual([
+			['anthropic', 'new-anthropic-credential'],
+		]);
+	});
+
+	it('does not replace the selected model after creating a credential', async () => {
+		credentialsByType.value = {};
+		const wrapper = await mountSelector({ anthropic: null });
+
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::configure::anthropicApi');
+		const onCredentialCreated = openNewCredential.mock.calls[0]?.[7]?.onCredentialCreated;
+		await onCredentialCreated?.({ id: 'new-anthropic-credential' });
+
+		expect(wrapper.emitted('selectCredential')).toEqual([
+			['anthropic', 'new-anthropic-credential'],
+		]);
+		expect(wrapper.emitted('change')).toBeUndefined();
 	});
 
 	it('opens a new model credential at the body level when requested', async () => {
@@ -275,7 +1008,11 @@ describe('AgentModelSelector', () => {
 			undefined,
 			undefined,
 			undefined,
-			{ hideAskAssistant: true, appendToBody: true },
+			{
+				hideAskAssistant: true,
+				appendToBody: true,
+				onCredentialCreated: expect.any(Function),
+			},
 		);
 	});
 
@@ -288,10 +1025,13 @@ describe('AgentModelSelector', () => {
 		const freeCreditsItem = getFreeOpenAiCreditsItem(wrapper);
 		const openAiChildLabels = openAiItem?.children?.map((item) => item.label) ?? [];
 
+		// Two independent offers: the badge marks free OpenAI credits, the pill marks
+		// n8n Connect. The gateway is disabled here, so only the badge shows.
 		expect(openAiItem?.data?.badgeLabel).toBe('free credits');
+		expect(openAiItem?.data?.actionPill).toBeUndefined();
 		expect(JSON.stringify(openAiItem?.children ?? [])).toContain('Use free OpenAI credits');
 		expect(openAiChildLabels.indexOf('Use free OpenAI credits')).toBeLessThan(
-			openAiChildLabels.indexOf('Configure credentials'),
+			openAiChildLabels.indexOf('Create credential'),
 		);
 		expect(freeCreditsItem?.data?.description).toBe(
 			'Get 100 free OpenAI API credits. Try it with gpt-5-mini.',
@@ -309,7 +1049,6 @@ describe('AgentModelSelector', () => {
 		const wrapper = await mountSelector({});
 		const openAiItem = getProviderItem(wrapper, 'openai');
 
-		expect(openAiItem?.data?.badgeLabel).toBe('free credits');
 		expect(JSON.stringify(openAiItem?.children ?? [])).toContain('Use free OpenAI credits');
 	});
 
@@ -374,6 +1113,9 @@ describe('AgentModelSelector', () => {
 			'project-1',
 		);
 		expect(wrapper.emitted('selectCredential')).toEqual([['openai', 'free-openai-credential']]);
-		expect(wrapper.emitted('change')).toEqual([[{ provider: 'openai', model: 'gpt-5-mini' }]]);
+		// Resolved after a credential selection, not a direct model pick — 'auto'.
+		expect(wrapper.emitted('change')).toEqual([
+			[{ provider: 'openai', model: 'gpt-5-mini' }, 'auto'],
+		]);
 	});
 });

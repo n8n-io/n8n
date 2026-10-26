@@ -3,7 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { defineComponent } from 'vue';
+import { defineComponent, type PropType } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { faker } from '@faker-js/faker';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -12,15 +12,17 @@ import WorkflowHistoryPage from './WorkflowHistory.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { STORES } from '@n8n/stores';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { VIEWS } from '@/app/constants';
 import { workflowHistoryDataFactory, workflowVersionDataFactory } from '../__tests__/utils';
 import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 import type { IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/app/plugins/telemetry';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 
-vi.mock('vue-router', () => {
-	const params = {};
+vi.mock('vue-router', async () => {
+	const { reactive } = await import('vue');
+	const params = reactive({});
 	const query = {};
 	const push = vi.fn();
 	const replace = vi.fn();
@@ -84,8 +86,16 @@ const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 						type: String,
 						default: versionId,
 					},
+					actions: {
+						type: Array as PropType<Array<{ value: string; disabled?: boolean }>>,
+						default: () => [],
+					},
 				},
 				template: `<div>
+						<span
+							data-test-id="stub-restore-action"
+							:data-disabled="String(actions.find((action) => action.value === 'restore')?.disabled)"
+						/>
 						<button data-test-id="stub-preview-button" @click="event => $emit('preview', {id, event})" />
 						<button data-test-id="stub-compare-button" @click="() => $emit('compare', { id })" />
 						<button data-test-id="stub-open-button" @click="() => $emit('action', { action: 'open', id })" />
@@ -108,6 +118,11 @@ let windowOpenSpy: MockInstance;
 
 describe('WorkflowHistory', () => {
 	beforeEach(() => {
+		// This suite asserts on rendered toast content, which needs the notifier the
+		// app registers at bootstrap. Explicit here because it no longer arrives as a
+		// side effect of importing `@n8n/composables/useToast` (N8N-104).
+		registerToastNotifier();
+
 		pinia = createTestingPinia({
 			initialState: {
 				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
@@ -128,6 +143,23 @@ describe('WorkflowHistory', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('restore action', () => {
+		it.each([
+			[['workflow:read'], 'true'],
+			[['workflow:read', 'workflow:update'], 'false'],
+		])('with scopes %j, is disabled: %s', async (scopes, disabled) => {
+			route.params.workflowId = workflowId;
+			// Only this workflow carries the scopes, so the view must ask for it by id.
+			vi.spyOn(workflowsListStore, 'getWorkflowById').mockImplementation((id) =>
+				id === workflowId ? ({ scopes } as unknown as IWorkflowDb) : undefined,
+			);
+
+			const { findByTestId } = renderComponent({ pinia });
+
+			expect(await findByTestId('stub-restore-action')).toHaveAttribute('data-disabled', disabled);
+		});
 	});
 
 	it('should replace url path to contain /:versionId', async () => {
@@ -272,6 +304,20 @@ describe('WorkflowHistory', () => {
 
 		beforeEach(cleanRouteState);
 		afterEach(cleanRouteState);
+
+		it('should remount the timeline only when the workflow route changes', async () => {
+			route.params.workflowId = workflowId;
+			route.query.tab = 'publishTimeline';
+			const { findByTestId, getByTestId } = renderComponent({ pinia });
+			const oldTimeline = await findByTestId('stub-publish-timeline-select');
+			route.params.versionId = 'another-version';
+			await flushPromises();
+			expect(getByTestId('stub-publish-timeline-select')).toBe(oldTimeline);
+			route.params.workflowId = 'another-workflow';
+			await flushPromises();
+			expect(oldTimeline.isConnected).toBe(false);
+			expect(getByTestId('stub-publish-timeline-select')).not.toBe(oldTimeline);
+		});
 
 		it('should track telemetry when landing on the publish timeline tab via query param', async () => {
 			route.params.workflowId = workflowId;

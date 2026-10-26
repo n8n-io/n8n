@@ -8,7 +8,7 @@ import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 import BlinkingCursor from '../../BlinkingCursor/BlinkingCursor.vue';
 import N8nButton from '../../N8nButton';
 
-interface Props {
+export interface Props {
 	message: ChatUI.TextMessage & { quickReplies?: ChatUI.QuickReply[] };
 	isFirstOfRole: boolean;
 	user?: {
@@ -256,7 +256,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	h1,
 	h2,
 	h3 {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		font-size: var(--font-size--xs);
 		margin: var(--spacing--xs) 0 var(--spacing--4xs);
 	}
@@ -264,7 +264,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	h4,
 	h5,
 	h6 {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		font-size: var(--font-size--2xs);
 	}
 

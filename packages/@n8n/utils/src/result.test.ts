@@ -35,7 +35,7 @@ describe('toResult', () => {
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
 			expect(result.error).toBeInstanceOf(Error);
-			expect(result.error.cause).toBe('string error');
+			expect(result.error.cause).toEqual(new Error('string error'));
 		}
 	});
 });

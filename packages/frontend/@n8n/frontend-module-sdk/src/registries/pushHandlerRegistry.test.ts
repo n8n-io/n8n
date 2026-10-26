@@ -50,6 +50,21 @@ describe('pushHandlerRegistry', () => {
 		consoleSpy.mockRestore();
 	});
 
+	// A re-login replays the manifest, so the same handlers arrive twice.
+	it('should re-register the same handler silently', () => {
+		const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const handler = vi.fn();
+		const handlers: ModulePushHandlers = { workflowActivated: handler };
+
+		pushHandlerRegistry.registerAll(handlers);
+		pushHandlerRegistry.registerAll(handlers);
+
+		expect(consoleSpy).not.toHaveBeenCalled();
+		expect(pushHandlerRegistry.get('workflowActivated')).toBe(handler);
+
+		consoleSpy.mockRestore();
+	});
+
 	it('should register every entry in a module pushHandlers map', () => {
 		const activated = vi.fn();
 		const deactivated = vi.fn();

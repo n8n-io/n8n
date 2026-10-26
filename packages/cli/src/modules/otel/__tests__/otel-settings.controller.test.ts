@@ -19,6 +19,7 @@ const res = mock<Response>();
 
 const baseSettings: OtelConfig = {
 	enabled: true,
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'https://collector.example.com',
 	exporterTracingPath: '/v1/traces',
 	exporterHeaders: '',
@@ -26,6 +27,8 @@ const baseSettings: OtelConfig = {
 	tracesSampleRate: 1,
 	startupConnectivityTimeoutMs: 2_000,
 	includeNodeSpans: true,
+	emitWorkflowStartSpan: false,
+	emitNodeStartSpan: false,
 	injectOutbound: true,
 	productionExecutionsOnly: false,
 };
@@ -131,6 +134,7 @@ describe('OtelSettingsController', () => {
 
 	describe('testTrace', () => {
 		const dto: OtelConnectionParams = {
+			exporterProtocol: 'http/protobuf',
 			exporterEndpoint: 'https://collector.example.com',
 			exporterTracingPath: '/v1/traces',
 			exporterServiceName: 'n8n-prod',

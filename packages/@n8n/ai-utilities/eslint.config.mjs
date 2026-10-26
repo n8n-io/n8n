@@ -1,16 +1,64 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
-export default defineConfig(nodeConfig, globalIgnores(['scripts/**']), {
-	rules: {
-		'@typescript-eslint/no-explicit-any': 'warn',
-		'@typescript-eslint/no-unsafe-assignment': 'warn',
-		'@typescript-eslint/no-unsafe-call': 'warn',
-		'@typescript-eslint/no-unsafe-member-access': 'warn',
-		'@typescript-eslint/no-unsafe-return': 'warn',
-		'no-case-declarations': 'warn',
-		'@typescript-eslint/require-await': 'warn',
-		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
-		'@typescript-eslint/naming-convention': 'warn',
+export default defineConfig(
+	backendConfig,
+	globalIgnores(['scripts/**']),
+	{
+		files: ['src/utils/n8n-binary-loader.ts'],
+		rules: { 'no-case-declarations': 'warn' },
 	},
-});
+	{
+		files: [
+			'src/__tests__/adapters/langchain-chat-model.test.ts',
+			'src/__tests__/suppliers/supplyModel.test.ts',
+			'src/__tests__/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler.test.ts',
+			'src/__tests__/utils/n8n-llm-tracing.test.ts',
+			'src/adapters/langchain-chat-model.ts',
+			'src/types/message.ts',
+			'src/types/tool.ts',
+			'src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler.ts',
+			'src/utils/log-wrapper.ts',
+			'src/utils/vector-store/createVectorStoreNode/operations/__tests__/*.test.ts',
+		],
+		rules: {
+			'@typescript-eslint/no-explicit-any': 'warn',
+		},
+	},
+	{
+		files: [
+			'src/__tests__/suppliers/supplyModel.test.ts',
+			'src/__tests__/utils/failed-attempt-handler/n8nDefaultFailedAttemptHandler.test.ts',
+			'src/__tests__/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler.test.ts',
+			'src/suppliers/supplyMemory.ts',
+			'src/suppliers/supplyModel.ts',
+			'src/utils/failed-attempt-handler/n8nDefaultFailedAttemptHandler.ts',
+			'src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler.ts',
+			'src/utils/vector-store/MemoryManager/MemoryCalculator.ts',
+			'src/utils/vector-store/MemoryManager/MemoryVectorStoreManager.ts',
+			'src/utils/vector-store/MemoryManager/StoreCleanupService.ts',
+			'src/utils/vector-store/MemoryManager/test/MemoryCalculator.test.ts',
+			'src/utils/vector-store/MemoryManager/test/MemoryVectorStoreManager.test.ts',
+			'src/utils/vector-store/MemoryManager/test/StoreCleanupService.test.ts',
+			'src/utils/vector-store/createVectorStoreNode/createVectorStoreNode.test.ts',
+			'src/utils/vector-store/createVectorStoreNode/createVectorStoreNode.ts',
+			'src/utils/vector-store/createVectorStoreNode/operations/__tests__/insertOperation.test.ts',
+			'src/utils/vector-store/createVectorStoreNode/operations/__tests__/loadOperation.test.ts',
+			'src/utils/vector-store/createVectorStoreNode/operations/__tests__/operationHandlers.test.ts',
+			'src/utils/vector-store/createVectorStoreNode/operations/__tests__/retrieveAsToolExecuteOperation.test.ts',
+			'src/utils/vector-store/createVectorStoreNode/operations/__tests__/retrieveAsToolOperation.test.ts',
+			'src/utils/vector-store/createVectorStoreNode/operations/__tests__/retrieveOperation.test.ts',
+			'src/utils/vector-store/createVectorStoreNode/operations/__tests__/updateOperation.test.ts',
+			'src/utils/vector-store/createVectorStoreNode/operations/insertOperation.ts',
+			'src/utils/vector-store/createVectorStoreNode/operations/loadOperation.ts',
+			'src/utils/vector-store/createVectorStoreNode/operations/retrieveAsToolExecuteOperation.ts',
+			'src/utils/vector-store/createVectorStoreNode/operations/retrieveAsToolOperation.ts',
+			'src/utils/vector-store/createVectorStoreNode/operations/retrieveOperation.ts',
+			'src/utils/vector-store/createVectorStoreNode/operations/updateOperation.ts',
+			'src/utils/vector-store/processDocuments.ts',
+		],
+		rules: {
+			'unicorn/filename-case': 'off',
+		},
+	},
+);

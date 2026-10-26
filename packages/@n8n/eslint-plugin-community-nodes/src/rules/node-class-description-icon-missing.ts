@@ -41,10 +41,7 @@ export const NodeClassDescriptionIconMissingRule = createRule({
 				}
 
 				const descriptionProperty = findClassProperty(node, 'description');
-				if (
-					!descriptionProperty?.value ||
-					descriptionProperty.value.type !== TSESTree.AST_NODE_TYPES.ObjectExpression
-				) {
+				if (descriptionProperty?.value?.type !== TSESTree.AST_NODE_TYPES.ObjectExpression) {
 					return;
 				}
 

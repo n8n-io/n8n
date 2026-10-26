@@ -1,11 +1,16 @@
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { WorkflowSubWorkflowRequirement } from './workflow.types';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import type { WorkflowDependencyRequirement } from './workflow.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
+import { groupRequirementUsage } from '../requirement-source';
 
 export interface WorkflowRequirementExportRequest {
-	requirements: WorkflowSubWorkflowRequirement[];
+	user: User;
+	requirements: WorkflowDependencyRequirement[];
 	workflows: ManifestEntry[];
 }
 
@@ -15,29 +20,53 @@ export interface WorkflowRequirementExportResult {
 
 @Service()
 export class WorkflowRequirementExporter {
-	export(request: WorkflowRequirementExportRequest): WorkflowRequirementExportResult {
+	constructor(private readonly workflowFinder: WorkflowFinderService) {}
+
+	async export(
+		request: WorkflowRequirementExportRequest,
+	): Promise<WorkflowRequirementExportResult> {
 		const workflowsById = new Map(request.workflows.map((workflow) => [workflow.id, workflow]));
-		const usedByWorkflowsByReferencedId = new Map<string, string[]>();
+		const usageByReferencedId = groupRequirementUsage(
+			request.requirements,
+			({ referencedWorkflowId }) => referencedWorkflowId,
+		);
 
-		for (const requirement of request.requirements) {
-			const usedByWorkflows =
-				usedByWorkflowsByReferencedId.get(requirement.referencedWorkflowId) ?? [];
+		const missingWorkflowNamesById = await this.findMissingReferencedWorkflowNames(
+			request.user,
+			[...usageByReferencedId.keys()].filter((id) => !workflowsById.has(id)),
+		);
 
-			if (!usedByWorkflows.includes(requirement.workflowId)) {
-				usedByWorkflows.push(requirement.workflowId);
-			}
+		const requirements = [...usageByReferencedId].map(
+			([referencedWorkflowId, { usedBy }]): PackageWorkflowRequirement => {
+				const name =
+					workflowsById.get(referencedWorkflowId)?.name ??
+					missingWorkflowNamesById.get(referencedWorkflowId);
 
-			usedByWorkflowsByReferencedId.set(requirement.referencedWorkflowId, usedByWorkflows);
-		}
-
-		const requirements = [...usedByWorkflowsByReferencedId].map(
-			([referencedWorkflowId, usedByWorkflows]) => ({
-				id: referencedWorkflowId,
-				name: workflowsById.get(referencedWorkflowId)?.name ?? '',
-				usedByWorkflows,
-			}),
+				return {
+					id: referencedWorkflowId,
+					...(name ? { name } : {}),
+					usedBy,
+				};
+			},
 		);
 
 		return { requirements };
+	}
+
+	/**
+	 * Best-effort names for referenced workflows that are not in the package
+	 * (only possible under the reference-only policy); ids the user cannot
+	 * access stay nameless.
+	 */
+	private async findMissingReferencedWorkflowNames(
+		user: User,
+		workflowIds: string[],
+	): Promise<Map<string, string>> {
+		if (workflowIds.length === 0) return new Map();
+
+		const workflows = await this.workflowFinder.findWorkflowsByIdsForUser(workflowIds, user, [
+			'workflow:export',
+		]);
+		return new Map(workflows.map((workflow) => [workflow.id, workflow.name]));
 	}
 }

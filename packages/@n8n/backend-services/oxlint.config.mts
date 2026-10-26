@@ -1,0 +1,51 @@
+import { backendConfig } from '@n8n/oxlint-config/backend';
+import { defineConfig } from 'oxlint';
+
+// Same rule set as packages/cli/oxlint.config.mts, so a file moved from cli lints the same way.
+export default defineConfig({
+	extends: [backendConfig],
+	options: { typeAware: true },
+	ignorePatterns: ['coverage/**'],
+	overrides: [
+		{
+			files: ['./src/**/*.ts'],
+			excludeFiles: ['./src/services/jwt.service.ts', './src/**/__tests__/**'],
+			rules: {
+				'no-restricted-imports': [
+					'error',
+					{
+						paths: [
+							{
+								name: 'jsonwebtoken',
+								allowImportNames: ['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'],
+								allowTypeImports: true,
+								message: 'Sign and verify through JwtService.',
+							},
+						],
+						patterns: [
+							{ group: ['jsonwebtoken/*'], message: 'Sign and verify through JwtService.' },
+						],
+					},
+				],
+			},
+		},
+	],
+	rules: {
+		'n8n-local-rules/no-guardrail-disable': [
+			'error',
+			{
+				guarded: [
+					{
+						rule: 'no-unsealed-workflow-entity-write',
+						message: 'Route the write through a token-gated `WorkflowRepository` method.',
+					},
+					{
+						rule: 'no-unsealed-credentials-entity-write',
+						message: 'Route the write through a token-gated `CredentialsRepository` method.',
+					},
+				],
+			},
+		],
+		'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
+	},
+});

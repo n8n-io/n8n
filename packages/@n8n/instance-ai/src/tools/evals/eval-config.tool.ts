@@ -2,16 +2,18 @@
  * Config-based evaluation tool — create, read, and mutate an `EvaluationConfig`
  * attached to a workflow via the evaluation-config API. This is the simplified,
  * off-canvas eval form (name + start/end node + judged metrics + a Data Table
- * dataset), distinct from the on-canvas eval nodes the `evals` tool wires.
+ * dataset), distinct from manually authored on-canvas evaluation nodes.
  *
- * The dataset is a Data Table the agent creates/populates via the `data-tables`
+ * The dataset is a Data Table the agent creates/populates via the `data_tables`
  * tool; here it is only linked by id.
  */
 import { Tool } from '@n8n/agents';
 import {
+	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 	LLM_JUDGE_PROVIDER_NODE_TYPES,
 } from '@n8n/api-types';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -84,7 +86,7 @@ const configFields = {
 		.string()
 		.min(1)
 		.describe(
-			'Id of the Data Table holding the test dataset (create/populate it via data-tables first)',
+			'Id of the Data Table holding the test dataset (create/populate it via data_tables first)',
 		),
 	metrics: z.array(metricInputSchema).min(1).describe('One or more judged metrics'),
 };
@@ -151,9 +153,7 @@ const confirmationSuspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const confirmationResumeSchema = z.object({
-	approved: z.boolean(),
-});
+const confirmationResumeSchema = instanceAiApprovalResumeSchema;
 
 type ResumeData = z.infer<typeof confirmationResumeSchema>;
 
@@ -179,10 +179,6 @@ function toUpsertInput(
 		dataTableId: input.dataTableId,
 		metrics: input.metrics,
 	};
-}
-
-function errorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
 }
 
 // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -226,6 +222,7 @@ async function handleCreate(
 
 	const resumeData = ctx.resumeData;
 	if (resumeData === undefined || resumeData === null) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Set up evaluation "${input.name}"`,
@@ -238,7 +235,7 @@ async function handleCreate(
 		const config = await service.create(input.workflowId, toUpsertInput(input));
 		return { config };
 	} catch (error) {
-		return { error: errorMessage(error) };
+		return { error: getErrorMessage(error) };
 	}
 }
 
@@ -252,6 +249,7 @@ async function handleUpdate(
 
 	const resumeData = ctx.resumeData;
 	if (resumeData === undefined || resumeData === null) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Update evaluation "${input.name}"`,
@@ -264,7 +262,7 @@ async function handleUpdate(
 		const config = await service.update(input.workflowId, input.configId, toUpsertInput(input));
 		return { config };
 	} catch (error) {
-		return { error: errorMessage(error) };
+		return { error: getErrorMessage(error) };
 	}
 }
 
@@ -278,6 +276,7 @@ async function handleDelete(
 
 	const resumeData = ctx.resumeData;
 	if (resumeData === undefined || resumeData === null) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete evaluation "${input.configId}"`,
@@ -301,7 +300,7 @@ export function createEvalConfigTool(context: InstanceAiContext) {
 			'Manage configuration-based evaluations on a workflow. ' +
 				'A config-based eval attaches a name, a start/end node, judged metrics, and a Data Table ' +
 				'dataset to the workflow via the evaluation-config API (no eval nodes are added to the canvas). ' +
-				'Create/populate the dataset Data Table with the data-tables tool first, then link it by id. ' +
+				'Create/populate the dataset Data Table with the data_tables tool first, then link it by id. ' +
 				'"get" returns a summary (metric names/types); "describe" returns full metric detail — ' +
 				'read with "describe" before "update", which replaces the entire config.',
 		)

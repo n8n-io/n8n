@@ -37,7 +37,6 @@ export interface TerminalResponseDecision {
 		| 'errored-silent'
 		| 'errored-after-text'
 		| 'completed-after-error'
-		| 'completed-silent-suppressed'
 		| 'confirmation-visible'
 		| 'confirmation-invalid';
 	event?: InstanceAiEvent;
@@ -62,8 +61,8 @@ function formatWorkSummaryCounts(workSummary?: WorkSummary): string {
 }
 
 function hasText(event: InstanceAiEvent): boolean {
-	// The durable log stores coalesced text-block facts, never deltas, so
-	// flag-on guard reads must recognize both shapes of streamed text.
+	// The durable log stores coalesced text-block facts, never deltas, so guard
+	// reads must recognize both shapes of streamed text.
 	return (
 		(event.type === 'text-delta' || event.type === 'text-block') &&
 		event.payload.text.trim().length > 0
@@ -80,7 +79,6 @@ export class InstanceAiTerminalResponseGuard {
 			workSummary?: WorkSummary;
 			errorMessage?: string;
 			errorCode?: InstanceAiErrorCode;
-			suppressCompletedFallback?: boolean;
 		} = {},
 	): TerminalResponseDecision {
 		const visibility = this.getVisibility(events);
@@ -102,7 +100,9 @@ export class InstanceAiTerminalResponseGuard {
 					reason: 'completed-after-error',
 				};
 			}
-			if (visibility.hasRootText) {
+			// Closing text only: a preamble the model never followed with an answer
+			// leaves the user watching a turn that looks like it is still running.
+			if (visibility.hasClosingRootText) {
 				return {
 					status,
 					visibilitySource: 'root-text',
@@ -116,15 +116,6 @@ export class InstanceAiTerminalResponseGuard {
 					visibilitySource: 'root-text',
 					action: 'none',
 					reason: 'already-visible',
-				};
-			}
-			// Only suppress when some agent already produced text; a turn with no text at all must still emit.
-			if (options.suppressCompletedFallback && visibility.hasAgentText) {
-				return {
-					status,
-					visibilitySource: 'none',
-					action: 'none',
-					reason: 'completed-silent-suppressed',
 				};
 			}
 			return this.emitText(
@@ -216,17 +207,29 @@ export class InstanceAiTerminalResponseGuard {
 
 	private getVisibility(events: InstanceAiEvent[]): {
 		hasRootText: boolean;
+		hasClosingRootText: boolean;
 		hasRootError: boolean;
 		hasMessageGroupRootText: boolean;
 		hasCurrentRunFallback: boolean;
 		hasAgentText: boolean;
 	} {
 		const currentRunEvents = events.filter((event) => event.runId === this.options.runId);
+		// The loop runs another turn for every tool call, so the turn that ends the
+		// run never carries one: root text before the last tool call is a preamble
+		// ("Let me read the source…"), text after it is the answer. With no tool
+		// calls the index is -1 and every text event counts.
+		const lastRootToolCall = currentRunEvents.findLastIndex(
+			(event) => event.agentId === this.options.rootAgentId && event.type === 'tool-call',
+		);
 		return {
 			hasRootText: currentRunEvents.some(
 				(event) => event.agentId === this.options.rootAgentId && hasText(event),
 			),
-			// Any agent's text this run. Tool calls don't count — internal calls (e.g. complete-checkpoint) aren't a visible answer.
+			hasClosingRootText: currentRunEvents.some(
+				(event, index) =>
+					index > lastRootToolCall && event.agentId === this.options.rootAgentId && hasText(event),
+			),
+			// Any agent's text this run. Tool calls don't count — internal calls aren't a visible answer.
 			hasAgentText: currentRunEvents.some((event) => hasText(event)),
 			hasRootError: currentRunEvents.some(
 				(event) => event.agentId === this.options.rootAgentId && event.type === 'error',

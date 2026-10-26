@@ -1,10 +1,28 @@
-import { type APPROVAL_TOOL_NAME, type N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import {
+	type AgentMessageAuthor,
+	type APPROVAL_TOOL_NAME,
+	type AgentBackgroundJobSignal,
+	type N8N_CHAT_ACTION_TOOL_NAME,
+	type WAIT_TOOL_NAME,
+} from '@n8n/api-types';
 
 import type { N8nChatInteractionInput, N8nChatResumeValue } from './n8nChatInteraction';
 
-import type { ChatMessageStatus, ToolCallState } from './constants';
+import type {
+	ChatMessageRole,
+	ChatMessageStatus,
+	INTERACTION_EXTENSION_TOOL_NAME,
+	ToolCallState,
+} from './constants';
 
-export type { ChatMessageStatus, ToolCallState };
+export type { ChatMessageRole, ChatMessageStatus, ToolCallState };
+
+export interface ThinkingSegment {
+	id: string;
+	content: string;
+	startTime?: number;
+	endTime?: number;
+}
 
 export interface ToolCall {
 	tool: string;
@@ -13,6 +31,8 @@ export interface ToolCall {
 	output?: unknown;
 	canceled?: boolean;
 	state: ToolCallState;
+	/** Run id for a currently suspended call, used to cancel non-card HITL waits. */
+	runId?: string;
 	/** Epoch ms when the tool started executing (live: client clock; reload: recorded). */
 	startTime?: number;
 	/** Epoch ms when the tool settled. Absent while still running. */
@@ -20,16 +40,23 @@ export interface ToolCall {
 	/**
 	 * One-line answer label rendered next to the tool name in
 	 * `AgentChatToolSteps`. Set when an interactive tool resolves so the user
-	 * sees what they picked (e.g. "Slack") instead of just "ask_questions".
+	 * sees what they picked (e.g. "Slack") instead of just "agent_builder_ask_questions".
 	 */
 	displaySummary?: string;
 	/**
-	 * Raw suspend payload from `tool-call-suspended` for tools other than
-	 * `approval` (e.g. `{ type: 'integration_action', ... }`). The approval
-	 * tool instead overwrites `input` (its suspend payload IS the renderable
-	 * input).
+	 * Raw suspend payload from `tool-call-suspended`. Kept separate from the
+	 * model-authored tool input because delegated tools can surface a nested
+	 * approval for a child tool.
 	 */
 	suspendPayload?: unknown;
+	/** Live progress of a delegated child, streamed while the delegation runs
+	 *  and restored from history when a `childTrace` was persisted on the
+	 *  parent's execution timeline. */
+	childProgress?: {
+		text: string;
+		reasoningSegments: ThinkingSegment[];
+		steps: Array<{ toolCallId: string; toolName: string; running: boolean }>;
+	};
 }
 
 interface InteractivePayloadBase {
@@ -52,11 +79,13 @@ export interface ApprovalInput {
 	type: 'approval';
 	toolName: string;
 	displayName?: string;
+	supportsSessionApproval?: boolean;
 	args: unknown;
 }
 
 export interface ApprovalResume {
 	approved: boolean;
+	scope?: 'once' | 'session';
 }
 
 /**
@@ -73,6 +102,28 @@ export type InteractivePayload =
 			toolName: typeof N8N_CHAT_ACTION_TOOL_NAME;
 			input: N8nChatInteractionInput;
 			resolvedValue?: N8nChatResumeValue;
+	  })
+	/**
+	 * A workflow tool parked on a Wait node. Same card contract as a chat card —
+	 * it reuses that renderer — but it is not a question, so typing must not
+	 * cancel and steer it (see `AgentChatPanel`).
+	 */
+	| (InteractivePayloadBase & {
+			toolName: typeof WAIT_TOOL_NAME;
+			input: N8nChatInteractionInput;
+			resolvedValue?: N8nChatResumeValue;
+	  })
+	/**
+	 * A card of a host-provided extension (`AgentsChatInteractionExtension`).
+	 * The extension parses the input and renders the card. The card has no
+	 * resolved value: the chat hides an answered card, and the chat does not
+	 * keep the resume data, so a reload could not restore it.
+	 */
+	| (InteractivePayloadBase & {
+			toolName: typeof INTERACTION_EXTENSION_TOOL_NAME;
+			extensionKey: string;
+			input: unknown;
+			resolvedValue?: never;
 	  });
 
 export type AgentsChatInteraction = InteractivePayload;
@@ -81,18 +132,61 @@ export type ChatMessageRenderPart =
 	| { type: 'text'; text: string }
 	| { type: 'interactive'; toolCallId: string };
 
-export interface AgentsChatMessage {
+export interface ChatMessageAttachment {
+	fileName: string;
+	mimeType: string;
+	sizeBytes?: number;
+	/** Server attachment id — set on history-loaded attachments; used to build the download URL. */
+	fileId?: string;
+	/** Local file backing the optimistic echo of a just-sent message (no fileId yet). */
+	file?: File;
+}
+
+/**
+ * A custom typed event that the system-agent provider sends for the host of
+ * the chat. A keyed re-emit replaces the earlier event with the same `name`
+ * and `key` in place, in the same message or in the same tool run.
+ */
+export interface AgentsChatHostEvent {
+	/** Set by the chat for each event of a message. The server sends no id. */
 	id: string;
-	role: 'user' | 'assistant';
+	name: string;
+	payload: unknown;
+	/**
+	 * Set when the provider emits the event with a key, which makes the event
+	 * updatable. A later event with the same name and key replaces it.
+	 */
+	key?: string;
+}
+
+export interface AgentsChatMessage {
+	backgroundJobSignal?: AgentBackgroundJobSignal;
+	id: string;
+	role: ChatMessageRole;
 	content: string;
+	/** Chat platform user who wrote a user turn in a shared integration thread. */
+	author?: AgentMessageAuthor;
 	renderParts?: ChatMessageRenderPart[];
+	thinkingSegments?: ThinkingSegment[];
+	/** Legacy aggregate kept for messages created before timed segments were added. */
 	thinking?: string;
 	toolCalls?: ToolCall[];
 	status?: ChatMessageStatus;
 	interactives?: InteractivePayload[];
 	interactive?: InteractivePayload;
+	attachments?: ChatMessageAttachment[];
 	/** Persisted agent execution id for this turn (history parse or live SSE `done`). */
 	executionId?: string;
+	/** Epoch ms when this turn was sent. Drives the chat's timestamp dividers. */
+	createdAt?: number;
+	/** Live preview only. Budget stop or alert cards for this turn. */
+	budgetNotices?: Array<{
+		id: string;
+		code: 'budget.monthly' | 'budget.session' | 'budget.alert';
+		agentId?: string;
+	}>;
+	/** Host events of this turn, in arrival order. Host extensions render them. */
+	hostEvents?: AgentsChatHostEvent[];
 }
 
 export type ChatMessage = AgentsChatMessage;

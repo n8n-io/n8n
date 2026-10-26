@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import {
 	N8nButton,
 	N8nFormInput,
@@ -14,7 +14,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, toRaw } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes';
@@ -22,7 +22,7 @@ import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes
 import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
 import { useRoleEditorForm } from '../composables/useRoleEditorForm';
-import { PROJECT_CUSTOM_ROLE_SCOPES } from '@n8n/permissions';
+import { CUSTOM_ROLE_SCOPE_WHITELIST } from '@n8n/permissions';
 
 const rolesStore = useRolesStore();
 const route = useRoute();
@@ -60,7 +60,7 @@ const {
 					[],
 			),
 		),
-	filterScopes: (scopes) => scopes.filter((s) => PROJECT_CUSTOM_ROLE_SCOPES.has(s)),
+	filterScopes: (scopes) => scopes.filter((s) => CUSTOM_ROLE_SCOPE_WHITELIST.project.has(s)),
 	fetchError: 'Error fetching role',
 });
 
@@ -82,12 +82,18 @@ const onBackClick = () => {
 };
 
 const scopeTypes = computed(() => {
-	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
-		return SCOPE_TYPES.filter(
-			(type) => type !== 'externalSecretsProvider' && type !== 'externalSecret',
-		);
+	let types = SCOPE_TYPES;
+	if (!settingsStore.isAppsEnabled) {
+		types = types.filter((type) => type !== 'app');
 	}
-	return SCOPE_TYPES;
+	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
+		types = types.filter((type) => type !== 'externalSecretsProvider' && type !== 'externalSecret');
+	}
+	// Project skills exist only while the skills hub is on.
+	if (!settingsStore.moduleSettings.agents?.skillsHubEnabled) {
+		types = types.filter((type) => type !== 'projectSkill');
+	}
+	return types;
 });
 const scopes = SCOPES;
 
@@ -121,6 +127,26 @@ function toggleScope(scope: string) {
 		if (form.value.scopes.includes('workflow:execute')) {
 			toggleScope('workflow:execute');
 		}
+	}
+
+	// Executions: viewing follows workflow viewing and cannot be toggled on its own
+	// (its checkbox is disabled); deleting requires viewing.
+	if (scope === 'workflow:read') {
+		if (isBeingAdded && !form.value.scopes.includes('execution:read')) {
+			toggleScope('execution:read');
+		}
+		if (!isBeingAdded) {
+			if (form.value.scopes.includes('execution:read')) toggleScope('execution:read');
+			if (form.value.scopes.includes('execution:delete')) toggleScope('execution:delete');
+		}
+	}
+
+	if (
+		scope === 'execution:delete' &&
+		isBeingAdded &&
+		!form.value.scopes.includes('workflow:read')
+	) {
+		toggleScope('workflow:read');
 	}
 
 	// Dependency: workflow:publish and workflow:unpublish are coupled
@@ -243,7 +269,7 @@ function setPreset(slug: string) {
 	}
 
 	form.value.scopes = structuredClone(toRaw(preset.scopes)).filter((s) =>
-		PROJECT_CUSTOM_ROLE_SCOPES.has(s),
+		CUSTOM_ROLE_SCOPE_WHITELIST.project.has(s),
 	);
 }
 
@@ -342,13 +368,13 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 				</N8nText>
 
 				<div class="mb-s" :class="$style.presetsContainer">
-					<N8nButton variant="subtle" @click="setPreset('project:admin')">
+					<N8nButton variant="outline" @click="setPreset('project:admin')">
 						{{ i18n.baseText('projectRoles.admin') }}
 					</N8nButton>
-					<N8nButton variant="subtle" @click="setPreset('project:editor')">
+					<N8nButton variant="outline" @click="setPreset('project:editor')">
 						{{ i18n.baseText('projectRoles.editor') }}
 					</N8nButton>
-					<N8nButton variant="subtle" @click="setPreset('project:viewer')">
+					<N8nButton variant="outline" @click="setPreset('project:viewer')">
 						{{ i18n.baseText('projectRoles.viewer') }}
 					</N8nButton>
 				</div>
@@ -376,7 +402,7 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 										validate-on-blur
 										type="checkbox"
 										:class="$style.checkbox"
-										:disabled="isReadOnly"
+										:disabled="isReadOnly || scope === 'execution:read'"
 										@update:model-value="() => toggleScope(scope)"
 									/>
 								</N8nTooltip>

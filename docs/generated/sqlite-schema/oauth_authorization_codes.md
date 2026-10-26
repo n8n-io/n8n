@@ -73,6 +73,7 @@ erDiagram
   datetime_3_ createdAt
   TEXT grantTypes
   varchar id PK
+  boolean isFirstParty
   varchar_255_ name
   TEXT redirectUris
   varchar_255_ tokenEndpointAuthMethod
@@ -84,6 +85,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   varchar id PK
+  VARCHAR_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled

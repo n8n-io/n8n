@@ -7,13 +7,20 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { getLegacyBuilderToolNames } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { assignCredentialToNode, resolveCredentialForApply } from './credential-utils';
 import { reconcileSimulationPlan } from './reconcile-simulation-plan';
 import { buildCredentialMap } from './resolve-credentials';
+import {
+	describeSavedPublishState,
+	savedWorkflowStateSchema,
+	type SavedWorkflowState,
+} from './saved-workflow-state';
 import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { OrchestrationContext } from '../../types';
+import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 export const applyWorkflowCredentialsInputSchema = z.object({
 	workItemId: z.string().describe('The work item ID from the build (wi_XXXXXXXX)'),
@@ -22,7 +29,8 @@ export const applyWorkflowCredentialsInputSchema = z.object({
 });
 
 export function createApplyWorkflowCredentialsTool(context: OrchestrationContext) {
-	return new Tool('apply-workflow-credentials')
+	return new Tool(ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS)
+		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS))
 		.description(
 			'Apply real credentials to a workflow that was built with mocked credentials. ' +
 				'Only updates nodes that were mocked — never overwrites existing real credentials.',
@@ -31,6 +39,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 		.output(
 			z.object({
 				success: z.boolean(),
+				...savedWorkflowStateSchema.shape,
 				appliedNodes: z.array(z.string()).optional(),
 				error: z.string().optional(),
 			}),
@@ -66,7 +75,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 				const mockedTypes = mockedCredentialsByNode[nodeName];
 				if (!mockedTypes?.length) continue;
 
-				node.credentials ??= {};
+				let credentialApplied = false;
 
 				for (const credType of mockedTypes) {
 					const credId = input.credentials[credType];
@@ -75,8 +84,9 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 					const resolved = await resolveCredentialForApply(credType, credId, context.domainContext);
 					if (!resolved.resolved) return { success: false, error: resolved.error };
 					assignCredentialToNode(node, credType, resolved.credential);
+					credentialApplied = true;
 				}
-				appliedNodes.push(nodeName);
+				if (credentialApplied) appliedNodes.push(nodeName);
 			}
 
 			if (appliedNodes.length === 0) {
@@ -84,8 +94,10 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 			}
 
 			// Save the workflow with applied credentials
+			let savedState: SavedWorkflowState;
 			try {
 				const saved = await workflowService.updateFromWorkflowJSON(input.workflowId, json);
+				savedState = describeSavedPublishState(saved);
 				await refreshWorkflowSourceFileBindingFromSave(context.domainContext, input.workflowId, {
 					versionId: saved.versionId,
 					checksum: saved.checksum,
@@ -99,7 +111,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 
 			// Refresh the simulation plan so the next verification executes the
 			// now-credentialed nodes instead of replaying the build-time mock.
-			// Best-effort: verify-built-workflow reconciles again on its own.
+			// Best-effort: workflow_builder_verify_built_workflow reconciles again on its own.
 			try {
 				const availableCredentials = await buildCredentialMap(
 					context.domainContext.credentialService,
@@ -109,6 +121,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 					workflow: json,
 					availableCredentials,
 					fallbackModelConfig: context.modelId,
+					modelFetch: context.modelFetch,
 				});
 				if (patch) {
 					await context.workflowTaskService.updateBuildOutcome(input.workItemId, {
@@ -120,7 +133,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 				// intentional: plan refresh is advisory
 			}
 
-			return { success: true, appliedNodes };
+			return { success: true, ...savedState, appliedNodes };
 		})
 		.build();
 }

@@ -8,8 +8,7 @@ import type {
 } from '@n8n/db';
 import type express from 'express';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import type { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsController } from '@/evaluation.ee/test-runs.controller.ee';
 import type { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
@@ -134,7 +133,10 @@ describe('TestRunsController', () => {
 				mockUser,
 				['workflow:read'],
 			);
-			expect(mockTestRunRepository.getMany).toHaveBeenCalledWith(mockWorkflowId, {});
+			expect(mockTestRunRepository.getMany).toHaveBeenCalledWith(mockWorkflowId, {
+				offset: undefined,
+				limit: undefined,
+			});
 			expect(result).toEqual(mockResult);
 		});
 

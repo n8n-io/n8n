@@ -23,9 +23,9 @@ export const READY_TO_RUN_WORKFLOW_V5: WorkflowDataCreate = {
 				model: {
 					__rl: true,
 					mode: 'list',
-					value: 'gpt-4.1-mini',
+					value: 'gpt-5.6-luna',
 				},
-				responsesApiEnabled: false,
+				responsesApiEnabled: true,
 				options: {},
 			},
 			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',

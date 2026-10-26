@@ -1,5 +1,6 @@
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import type { CapturedEvent } from '../types';
+import { USER_TURN_EVENT } from '../types';
 
 function evt(type: string, data: Record<string, unknown> = {}): CapturedEvent {
 	return { timestamp: 0, type, data };
@@ -41,6 +42,30 @@ describe('buildTranscriptFromEvents', () => {
 		]);
 	});
 
+	describe('run-id tracking', () => {
+		it('collects every run-id (main run + any resumes) that fall inside one user turn', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					evt(USER_TURN_EVENT, { payload: { text: 'build it' } }),
+					evt('run-start', { runId: 'run-1' }),
+					evt('text-delta', { runId: 'run-1', text: 'Working on it.' }),
+					evt('run-start', { runId: 'run-2' }),
+					evt('text-delta', { runId: 'run-2', text: 'Done.' }),
+				],
+			});
+			expect(turns).toHaveLength(1);
+			expect(turns[0].runIds).toEqual(['run-1', 'run-2']);
+		});
+
+		it('omits runIds when no event carries one', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [RUN_START, evt('text-delta', { text: 'hi' })],
+				openingMessage: 'hi',
+			});
+			expect(turns[0].runIds).toBeUndefined();
+		});
+	});
+
 	describe('secret redaction', () => {
 		it('redacts secret-shaped keys in tool-call args', () => {
 			const turns = buildTranscriptFromEvents({
@@ -74,7 +99,11 @@ describe('buildTranscriptFromEvents', () => {
 				events: [
 					RUN_START,
 					evt('tool-call', {
-						payload: { toolName: 'credentials', toolCallId: 'tc2', args: { name: 'slack' } },
+						payload: {
+							toolName: 'credentials',
+							toolCallId: 'tc2',
+							args: { name: 'slack' },
+						},
 					}),
 					evt('tool-result', {
 						payload: {
@@ -89,6 +118,95 @@ describe('buildTranscriptFromEvents', () => {
 				kind: 'tool-call',
 				result: { id: 'c1', token: '[REDACTED]' },
 			});
+		});
+
+		it('scrubs an inline token in agent narration', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('text-delta', { text: 'Calling the API with api_key=sk-narrated-123 now.' }),
+				],
+			});
+			const step = turns[0].steps[0];
+			expect(step.kind).toBe('agent-text');
+			const text = step.kind === 'agent-text' ? step.text : '';
+			expect(text).not.toContain('sk-narrated-123');
+			expect(text).toContain('api_key=[REDACTED]');
+			expect(text).toContain('Calling the API');
+		});
+
+		it('scrubs an inline token in the user turn message', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					evt(USER_TURN_EVENT, { payload: { text: 'use token=abc-user-999 for the request' } }),
+					RUN_START,
+					evt('text-delta', { text: 'ok' }),
+				],
+			});
+			expect(turns[0].userMessage).not.toContain('abc-user-999');
+			expect(turns[0].userMessage).toContain('token=[REDACTED]');
+			expect(turns[0].userMessage).toContain('for the request');
+		});
+
+		it('scrubs an inline token in fallback (no-marker) opening and follow-up messages', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('text-delta', { text: 'first' }),
+					RUN_START,
+					evt('text-delta', { text: 'second' }),
+				],
+				openingMessage: 'use token=abc-open-111 to authenticate',
+				followUpMessages: ['and api_key=abc-follow-222 for the sync'],
+			});
+			expect(turns).toHaveLength(2);
+			expect(turns[0].userMessage).not.toContain('abc-open-111');
+			expect(turns[0].userMessage).toContain('token=[REDACTED]');
+			expect(turns[1].userMessage).not.toContain('abc-follow-222');
+			expect(turns[1].userMessage).toContain('api_key=[REDACTED]');
+		});
+
+		it('scrubs an inline token inside a string value of tool-call args', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('tool-call', {
+						payload: {
+							toolName: 'httpRequest',
+							toolCallId: 'tc-args',
+							args: { note: 'send with Authorization: Bearer sk-args-leak' },
+						},
+					}),
+				],
+			});
+			const step = turns[0].steps[0];
+			expect(step.kind).toBe('tool-call');
+			const args = step.kind === 'tool-call' ? (step.args ?? {}) : {};
+			expect(JSON.stringify(args)).not.toContain('sk-args-leak');
+			expect(args.note).toContain('Bearer [REDACTED]');
+		});
+
+		it('scrubs an inline token inside a string value of a paired tool-result', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('tool-call', {
+						payload: { toolName: 'httpRequest', toolCallId: 'tc-res', args: { url: 'x' } },
+					}),
+					evt('tool-result', {
+						payload: {
+							toolName: 'httpRequest',
+							toolCallId: 'tc-res',
+							result: { log: 'upstream said api_key=sk-result-leak was invalid' },
+						},
+					}),
+				],
+			});
+			const step = turns[0].steps[0];
+			expect(step.kind).toBe('tool-call');
+			const result = step.kind === 'tool-call' ? step.result : undefined;
+			expect(JSON.stringify(result)).not.toContain('sk-result-leak');
+			expect(JSON.stringify(result)).toContain('api_key=[REDACTED]');
 		});
 
 		it('scrubs a secret embedded in a paired tool-error string', () => {
@@ -115,14 +233,18 @@ describe('buildTranscriptFromEvents', () => {
 		});
 	});
 
-	describe('ask-user routing', () => {
-		const questions = [{ id: 'q1', question: 'Which channels?' }];
+	describe('workflow_builder_ask_user routing', () => {
+		const questions = [
+			{ id: 'q1', question: 'Which channel?', type: 'single', options: ['Slack', 'Teams'] },
+		];
 
-		it('renders ask-user from confirmation-request and skips the tool-call twin', () => {
+		it('renders workflow_builder_ask_user from confirmation-request and skips the tool-call twin', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
-					evt('tool-call', { payload: { toolName: 'ask-user', args: { questions } } }),
+					evt('tool-call', {
+						payload: { toolName: 'workflow_builder_ask_user', args: { questions } },
+					}),
 					evt('confirmation-request', {
 						payload: { requestId: 'r1', questions, inputType: 'questions' },
 					}),
@@ -132,7 +254,7 @@ describe('buildTranscriptFromEvents', () => {
 						'r1',
 						{
 							kind: 'questions' as const,
-							answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
+							answers: [{ questionId: 'q1', selectedOptions: ['Teams'] }],
 						},
 					],
 				]),
@@ -141,8 +263,10 @@ describe('buildTranscriptFromEvents', () => {
 			expect(interactions).toHaveLength(1);
 			expect(interactions[0]).toMatchObject({
 				kind: 'ask-user',
-				questions: [{ id: 'q1', question: 'Which channels?' }],
-				answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
+				questions: [
+					{ id: 'q1', question: 'Which channel?', type: 'single', options: ['Slack', 'Teams'] },
+				],
+				answers: [{ questionId: 'q1', selectedOptions: ['Teams'] }],
 			});
 		});
 
@@ -150,7 +274,9 @@ describe('buildTranscriptFromEvents', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
-					evt('tool-call', { payload: { toolName: 'ask-user', args: { questions } } }),
+					evt('tool-call', {
+						payload: { toolName: 'workflow_builder_ask_user', args: { questions } },
+					}),
 					evt('confirmation-request', {
 						payload: { requestId: 'r1', questions, inputType: 'questions' },
 					}),
@@ -158,26 +284,6 @@ describe('buildTranscriptFromEvents', () => {
 			});
 			const askUserInteractions = turns[0].steps.filter((i) => i.kind === 'ask-user');
 			expect(askUserInteractions).toHaveLength(1);
-		});
-	});
-
-	describe('plan routing', () => {
-		it('renders plan from tool-call args', () => {
-			const turns = buildTranscriptFromEvents({
-				events: [
-					RUN_START,
-					evt('tool-call', {
-						payload: {
-							toolName: 'create-tasks',
-							args: { tasks: [{ title: 'Fetch posts', description: 'GET /posts' }] },
-						},
-					}),
-				],
-			});
-			expect(turns[0].steps[0]).toMatchObject({
-				kind: 'plan',
-				tasks: [{ title: 'Fetch posts', description: 'GET /posts' }],
-			});
 		});
 	});
 
@@ -203,7 +309,7 @@ describe('buildTranscriptFromEvents', () => {
 					}),
 					evt('tool-result', {
 						payload: {
-							toolName: 'workflows',
+							toolName: 'workflow_builder_workflows',
 							result: {
 								completedNodes: [{ nodeName: 'Schedule', parametersSet: ['cron'] }],
 								skippedNodes: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
@@ -223,7 +329,8 @@ describe('buildTranscriptFromEvents', () => {
 			expect(interactions[1]).toMatchObject({
 				kind: 'setup-wizard',
 				completedNodes: [{ nodeName: 'Schedule', parametersSet: ['cron'] }],
-				skippedNodes: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
+				// Recorded before the split, so the pre-split `skippedNodes` key still parses.
+				nodesStillNeedingSetup: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
 			});
 		});
 
@@ -273,14 +380,14 @@ describe('buildTranscriptFromEvents', () => {
 				events: [
 					RUN_START,
 					evt('confirmation-request', {
-						payload: { requestId: 'r1', toolName: 'create-tasks' },
+						payload: { requestId: 'r1', toolName: 'workflow_builder_build_workflow' },
 					}),
 				],
 				proxyResponses: new Map([['r1', { kind: 'approval' as const, approved: false }]]),
 			});
 			expect(turns[0].steps[0]).toMatchObject({
 				kind: 'confirmation',
-				toolName: 'create-tasks',
+				toolName: 'workflow_builder_build_workflow',
 				resumeReason: 'approval',
 				approved: false,
 			});

@@ -2,7 +2,6 @@ import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import InputPanel, { type Props } from './InputPanel.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
 import {
 	createRunExecutionData,
 	NodeConnectionTypes,
@@ -128,18 +127,27 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 };
 
 describe('InputPanel', () => {
-	it('should render', async () => {
-		const { container, queryByTestId } = render({}, [{ json: { name: 'Test' } }]);
+	afterEach(async () => {
+		// Tab assertions can finish while the schema view still loads.
+		await vi.dynamicImportSettled();
+	});
 
-		await waitFor(() => expect(queryByTestId('ndv-data-size-warning')).not.toBeInTheDocument());
-		expect(container).toMatchSnapshot();
+	it('renders the schema view', async () => {
+		const { getByTestId, queryByTestId } = render({}, [{ json: { name: 'Test' } }]);
+
+		await vi.dynamicImportSettled();
+
+		expect(queryByTestId('ndv-data-size-warning')).not.toBeInTheDocument();
+		expect(getByTestId('ndv-input-panel')).toBeInTheDocument();
+		expect(getByTestId('run-data-schema-header')).toHaveTextContent('Variables and context');
+		expect(getByTestId('ndv-search')).toBeInTheDocument();
 	});
 
 	it("opens mapping tab by default if the node hasn't run yet", async () => {
 		const { findByTestId } = render({ activeNodeName: 'Tool' });
 
-		expect((await findByTestId('radio-button-mapping')).parentNode).toBeChecked();
-		expect((await findByTestId('radio-button-debugging')).parentNode).not.toBeChecked();
+		expect(await findByTestId('radio-button-mapping')).toBeChecked();
+		expect(await findByTestId('radio-button-debugging')).not.toBeChecked();
 	});
 
 	it('opens debugging tab by default if the node has already run', async () => {
@@ -155,7 +163,7 @@ describe('InputPanel', () => {
 			],
 		});
 
-		expect((await findByTestId('radio-button-mapping')).parentNode).not.toBeChecked();
-		expect((await findByTestId('radio-button-debugging')).parentNode).toBeChecked();
+		expect(await findByTestId('radio-button-mapping')).not.toBeChecked();
+		expect(await findByTestId('radio-button-debugging')).toBeChecked();
 	});
 });

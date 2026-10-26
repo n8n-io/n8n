@@ -14,6 +14,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
+import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 // `ExternalHooks` loads hook files via `require(<path>)`. Vitest cannot mock a
 // path that doesn't resolve to a real module, so write a real fixture that
@@ -34,6 +35,10 @@ const { validHookPath } = vi.hoisted(() => {
 	return { validHookPath: p as string };
 });
 
+vi.mock('/path/to/non-existent-hook.js', () => {
+	throw new Error('File not found');
+});
+
 describe('ExternalHooks', () => {
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
@@ -44,6 +49,7 @@ describe('ExternalHooks', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 
 	const workflowData = mock<IWorkflowBase>({ id: '123', name: 'Test Workflow' });
+	const workflowContext = mock<WorkflowHookContextService>();
 	const hookFn = vi.fn();
 
 	let externalHooks: ExternalHooks;
@@ -64,7 +70,6 @@ describe('ExternalHooks', () => {
 
 	describe('init()', () => {
 		it('should not load hooks if no external hook files are configured', async () => {
-			// @ts-expect-error private method
 			const loadHooksSpy = vi.spyOn(externalHooks, 'loadHooks');
 			await externalHooks.init();
 			expect(loadHooksSpy).not.toHaveBeenCalled();
@@ -72,10 +77,6 @@ describe('ExternalHooks', () => {
 
 		it('should throw an error if hook file cannot be loaded', async () => {
 			globalConfig.externalHooks.files = ['/path/to/non-existent-hook.js'];
-
-			vi.mock('/path/to/non-existent-hook.js', () => {
-				throw new Error('File not found');
-			});
 
 			await expect(externalHooks.init()).rejects.toThrow(UnexpectedError);
 		});
@@ -89,10 +90,10 @@ describe('ExternalHooks', () => {
 
 			expect(externalHooks['registered']['workflow.create']).toHaveLength(1);
 
-			await externalHooks.run('workflow.create', [workflowData]);
+			await externalHooks.run('workflow.create', [workflowData, workflowContext]);
 
 			expect(hookFn).toHaveBeenCalledTimes(1);
-			expect(hookFn).toHaveBeenCalledWith(workflowData);
+			expect(hookFn).toHaveBeenCalledWith(workflowData, workflowContext);
 		});
 	});
 
@@ -104,7 +105,7 @@ describe('ExternalHooks', () => {
 		it('should execute registered hooks', async () => {
 			externalHooks['registered']['workflow.create'] = [hookFn];
 
-			await externalHooks.run('workflow.create', [workflowData]);
+			await externalHooks.run('workflow.create', [workflowData, workflowContext]);
 
 			expect(hookFn).toHaveBeenCalledTimes(1);
 
@@ -124,7 +125,9 @@ describe('ExternalHooks', () => {
 
 			externalHooks['registered']['workflow.create'] = [hookFn];
 
-			await expect(externalHooks.run('workflow.create', [workflowData])).rejects.toThrow(error);
+			await expect(
+				externalHooks.run('workflow.create', [workflowData, workflowContext]),
+			).rejects.toThrow(error);
 			expect(errorReporter.error).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: 'External hook "workflow.create" failed',

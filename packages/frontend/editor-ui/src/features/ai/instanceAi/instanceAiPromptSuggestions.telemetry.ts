@@ -1,4 +1,4 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from './emptyStateSuggestions';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
@@ -28,6 +28,7 @@ export type InstanceAiPromptSuggestionSelectedContext = InstanceAiPromptSuggesti
 	suggestionId: string;
 	suggestionKind: 'prompt' | 'quick_example';
 	position: number;
+	suggestionTitle?: string;
 };
 
 export type InstanceAiPromptSuggestionSubmittedContext =
@@ -99,6 +100,7 @@ export function createInstanceAiPromptSuggestionsTelemetry(
 				suggestion_id: context.suggestionId,
 				suggestion_kind: context.suggestionKind,
 				position: context.position,
+				...(context.suggestionTitle ? { suggestion_title: context.suggestionTitle } : {}),
 			});
 		},
 

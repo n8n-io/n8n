@@ -7,7 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useEvaluationStore } from '../../evaluation.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useTestCasePersistence } from '../../composables/useTestCasePersistence';
 import { useWizardHydration } from '../WizardSidepanel/useWizardHydration';
 import SuiteConfig from './SuiteConfig.vue';

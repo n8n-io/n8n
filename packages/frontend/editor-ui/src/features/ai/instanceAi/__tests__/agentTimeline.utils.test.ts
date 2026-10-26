@@ -3,10 +3,13 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
+	InstanceAiWorkflowSetupNode,
 } from '@n8n/api-types';
 import {
 	buildTimelineBlocks,
 	extractArtifacts,
+	extractBuiltAgentArtifacts,
+	extractBuiltWorkflowArtifacts,
 	isStreamingTimelineEntry,
 } from '../agentTimeline.utils';
 
@@ -87,6 +90,15 @@ describe('extractArtifacts', () => {
 		]);
 	});
 
+	test('does not return an unchanged Agent target as an artifact', () => {
+		const node = makeAgentNode({
+			agentChange: 'none',
+			targetResource: { id: 'agent-1', type: 'agent', name: 'SEO Auditor' },
+		});
+
+		expect(extractArtifacts(node)).toEqual([]);
+	});
+
 	test('falls back to subtitle when targetResource has no name', () => {
 		const node = makeAgentNode({
 			subtitle: 'Sub Title',
@@ -102,6 +114,39 @@ describe('extractArtifacts', () => {
 		expect(extractArtifacts(node)[0].name).toBe('Untitled');
 	});
 
+	test('falls back to Untitled when the name and subtitle are blank', () => {
+		const node = makeAgentNode({
+			subtitle: '   ',
+			targetResource: { id: 'wf-1', type: 'workflow', name: '' },
+		});
+		expect(extractArtifacts(node)[0].name).toBe('Untitled');
+	});
+
+	test('falls back to Untitled when a built workflow reports a blank name', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'workflow_builder_build_workflow',
+					args: { name: '' },
+					result: { workflowId: 'wf-1', workflowName: '' },
+				}),
+			],
+		});
+		expect(extractArtifacts(node)[0].name).toBe('Untitled');
+	});
+
+	test('falls back to Untitled when a data table reports a blank name', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'data_tables',
+					result: { tableId: 'dt-1', name: '  ' },
+				}),
+			],
+		});
+		expect(extractArtifacts(node)[0].name).toBe('Untitled');
+	});
+
 	test('ignores targetResource with non-artifact type', () => {
 		const node = makeAgentNode({
 			targetResource: { id: 'cred-1', type: 'credential', name: 'API Key' },
@@ -113,7 +158,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					result: { workflowId: 'wf-2', workflowName: 'Built WF' },
 					completedAt: '2026-01-01T00:00:00Z',
 				}),
@@ -146,7 +191,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					args: { name: 'Name From Args' },
 					result: { workflowId: 'wf-4' },
 				}),
@@ -159,7 +204,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					result: { workflowId: 'wf-5' },
 				}),
 			],
@@ -219,7 +264,7 @@ describe('extractArtifacts', () => {
 			targetResource: { id: 'wf-1', type: 'workflow', name: 'WF From Target' },
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					result: { workflowId: 'wf-1', workflowName: 'WF From ToolCall' },
 				}),
 			],
@@ -234,7 +279,7 @@ describe('extractArtifacts', () => {
 			agentId: 'child-1',
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					result: { workflowId: 'wf-child', workflowName: 'Child WF' },
 				}),
 			],
@@ -243,7 +288,7 @@ describe('extractArtifacts', () => {
 			children: [child],
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					result: { workflowId: 'wf-parent', workflowName: 'Parent WF' },
 				}),
 			],
@@ -258,12 +303,112 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					result: undefined,
 				}),
 			],
 		});
 		expect(extractArtifacts(node)).toEqual([]);
+	});
+});
+
+describe('extractBuiltWorkflowArtifacts', () => {
+	test('returns each successfully built workflow once', () => {
+		const toolCalls = [
+			makeToolCall({
+				toolCallId: 'tc-1',
+				toolName: 'workflow_builder_build_workflow',
+				result: { success: true, workflowId: 'wf-1', workflowName: 'Hello World' },
+				completedAt: '2026-10-01T10:00:00.000Z',
+			}),
+			makeToolCall({
+				toolCallId: 'tc-2',
+				toolName: 'workflow_builder_build_workflow',
+				result: { success: true, workflowId: 'wf-1', workflowName: 'Hello World' },
+			}),
+			makeToolCall({
+				toolCallId: 'tc-3',
+				toolName: 'workflow_builder_build_workflow',
+				result: { success: false, workflowId: 'wf-2', errors: ['invalid'] },
+			}),
+			makeToolCall({
+				toolCallId: 'tc-4',
+				toolName: 'workflow_builder_workflows',
+				result: { workflowId: 'wf-3' },
+			}),
+		];
+
+		expect(extractBuiltWorkflowArtifacts(toolCalls)).toEqual([
+			{
+				type: 'workflow',
+				resourceId: 'wf-1',
+				name: 'Hello World',
+				completedAt: '2026-10-01T10:00:00.000Z',
+			},
+		]);
+	});
+
+	test('ignores build-workflow calls that have no result yet', () => {
+		expect(
+			extractBuiltWorkflowArtifacts([
+				makeToolCall({ toolName: 'workflow_builder_build_workflow', isLoading: true }),
+			]),
+		).toEqual([]);
+	});
+});
+
+describe('extractBuiltAgentArtifacts', () => {
+	test('returns a created or changed Agent once, with its latest name', () => {
+		const toolCalls = [
+			makeToolCall({
+				toolCallId: 'tc-1',
+				toolName: 'agent_builder_select_agent',
+				result: {
+					ok: true,
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					agentName: 'Untitled agent',
+					agentChange: 'created',
+				},
+			}),
+			makeToolCall({
+				toolCallId: 'tc-2',
+				toolName: 'agent_builder_write_config',
+				result: {
+					ok: true,
+					configMutated: true,
+					agentId: 'agent-1',
+					agentName: 'Support triage',
+				},
+				completedAt: '2026-10-01T10:00:00.000Z',
+			}),
+		];
+
+		expect(extractBuiltAgentArtifacts(toolCalls)).toEqual([
+			{
+				type: 'agent',
+				resourceId: 'agent-1',
+				name: 'Support triage',
+				projectId: 'project-1',
+				completedAt: '2026-10-01T10:00:00.000Z',
+			},
+		]);
+	});
+
+	test('ignores selections, reads, and calls that are still running', () => {
+		expect(
+			extractBuiltAgentArtifacts([
+				makeToolCall({
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-1', projectId: 'project-1', agentChange: 'none' },
+				}),
+				makeToolCall({
+					toolName: 'agent_builder_patch_config',
+					result: { ok: false, agentId: 'agent-1' },
+				}),
+				makeToolCall({ toolName: 'agent_builder_write_config', isLoading: true }),
+			]),
+		).toEqual([]);
 	});
 });
 
@@ -306,6 +451,72 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(4);
 	});
 
+	test('an mcp connect confirmation renders as a standalone block', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'mcp-servers',
+					confirmation: {
+						requestId: 'req-1',
+						severity: 'info',
+						message: 'To search the web',
+						mcpConnectRequest: {
+							servers: [
+								{
+									serverSlug: 'brave',
+									title: 'Brave',
+									usesCredentials: [
+										{
+											credentialType: 'braveMcpOAuth2Api',
+											name: 'OAuth2',
+											value: 'oAuth2',
+										},
+									],
+								},
+							],
+						},
+					},
+				}),
+			],
+		);
+
+		expect(blocks.map((block) => block.type)).toEqual(['thinking', 'mcp-connect']);
+	});
+
+	test('an in-flight connect call stays a trace row until its payload arrives', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'mcp-servers',
+					args: { action: 'connect' },
+					isLoading: true,
+				}),
+			],
+		);
+
+		expect(blocks.map((block) => block.type)).toEqual(['thinking']);
+	});
+
+	test('a settled connect call that never suspended stays a trace row', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'mcp-servers',
+					args: { action: 'connect' },
+					isLoading: false,
+				}),
+			],
+		);
+
+		expect(blocks.map((block) => block.type)).toEqual(['thinking']);
+	});
+
 	test('text followed by same-response trace content joins the thinking block', () => {
 		const blocks = blocksOf(
 			[reasoning('r1'), text('Let me check the schema.', 'r1'), toolEntry('tc-1', 'r1')],
@@ -314,6 +525,66 @@ describe('buildTimelineBlocks', () => {
 
 		expect(blocks).toHaveLength(1);
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(3);
+	});
+
+	test('the reply before a leave-onboarding call stays user-facing and the call is hidden', () => {
+		const blocks = blocksOf(
+			[
+				reasoning('r1'),
+				text('Explore the app and come back with a task.', 'r1'),
+				toolEntry('tc-leave', 'r1'),
+			],
+			[makeToolCall({ toolCallId: 'tc-leave', toolName: 'leave-onboarding' })],
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(1);
+	});
+
+	test('text before a tool call that suspended on a setup card stays user-facing', () => {
+		const setupCard = makeToolCall({
+			toolCallId: 'tc-setup',
+			toolName: 'workflow_builder_workflows',
+			args: { action: 'setup', workflowId: 'wf-1' },
+			isLoading: true,
+			confirmation: {
+				requestId: 'req-1',
+				severity: 'info',
+				message: 'Set up credentials',
+				setupRequests: [{ nodeName: 'Slack' } as unknown as InstanceAiWorkflowSetupNode],
+			},
+		});
+		const blocks = blocksOf(
+			[
+				reasoning('r1'),
+				text('This first version posts to Slack; Gmail comes next.', 'r1'),
+				toolEntry('tc-setup', 'r1'),
+			],
+			[setupCard],
+			'active',
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text', 'thinking']);
+	});
+
+	test('text before an approval-gated tool call stays user-facing', () => {
+		const approval = makeToolCall({
+			toolCallId: 'tc-run',
+			toolName: 'workflow_builder_executions',
+			args: { action: 'run', workflowId: 'wf-1' },
+			confirmation: {
+				requestId: 'req-1',
+				severity: 'info',
+				message: 'Run?',
+				inputType: 'approval',
+			},
+		});
+		const blocks = blocksOf(
+			[reasoning('r1'), text('Running it live now.', 'r1'), toolEntry('tc-run', 'r1')],
+			[approval],
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text', 'thinking']);
 	});
 
 	test('trailing text of a response is user-facing and splits blocks', () => {
@@ -340,13 +611,49 @@ describe('buildTimelineBlocks', () => {
 		const longText = 'This is the final answer. '.repeat(10); // > 200 chars
 		const blocks = blocksOf([reasoning('r1'), text(longText, 'r1')], [], 'active');
 
-		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+		// The trailing 'activity' block is the run's live-state indicator, not
+		// part of the promotion under test.
+		expect(blocks.filter((b) => b.type !== 'activity').map((b) => b.type)).toEqual([
+			'thinking',
+			'text',
+		]);
 	});
 
-	test('streaming tail text without same-response trace renders outside', () => {
+	test('short streaming tail text of a later response stays inside the block', () => {
 		const blocks = blocksOf([reasoning('r1'), text('Quick answer.', 'r2')], [], 'active');
 
-		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(2);
+	});
+
+	test('streaming text with no trace anywhere in the run renders outside', () => {
+		const blocks = blocksOf([text('Quick answer.', 'r1')], [], 'active');
+
+		expect(blocks.map((b) => b.type)).toEqual(['text']);
+	});
+
+	test('narration leading a reasoning-less step never renders outside the block', () => {
+		const narration = text('No services are connected yet.', 'r2');
+		const toolCalls = [makeToolCall({ toolCallId: 'tc-1' }), makeToolCall({ toolCallId: 'tc-2' })];
+
+		// The step emits its narration a few hundred ms before its tool call and
+		// carries no reasoning, so its response has no trace content of its own.
+		const streaming = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1'), narration],
+			toolCalls,
+			'active',
+		);
+		expect(streaming).toHaveLength(1);
+		expect(streaming[0].type === 'thinking' && streaming[0].entries).toHaveLength(3);
+
+		// Once the tool call lands the grouping is unchanged — nothing re-flows.
+		const withToolCall = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1'), narration, toolEntry('tc-2', 'r2')],
+			toolCalls,
+			'active',
+		);
+		expect(withToolCall).toHaveLength(1);
+		expect(withToolCall[0].type === 'thinking' && withToolCall[0].entries).toHaveLength(4);
 	});
 
 	test('short trailing text promotes out once the run settles', () => {
@@ -392,11 +699,55 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(2);
 	});
 
+	test.each([
+		'workflow_builder_create_tasks',
+		'workflow_builder_complete_checkpoint',
+		'create-tasks',
+		'complete-checkpoint',
+	])('historical %s calls are hidden without splitting a thinking run', (toolName) => {
+		const blocks = blocksOf(
+			[toolEntry('tc-before', 'r1'), toolEntry('tc-old', 'r1'), toolEntry('tc-after', 'r1')],
+			[
+				makeToolCall({ toolCallId: 'tc-before' }),
+				makeToolCall({ toolCallId: 'tc-old', toolName }),
+				makeToolCall({ toolCallId: 'tc-after' }),
+			],
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(2);
+	});
+
+	test('historical eval setup calls are hidden without splitting a thinking run', () => {
+		const blocks = blocksOf(
+			[toolEntry('tc-before', 'r1'), toolEntry('tc-eval', 'r1'), toolEntry('tc-after', 'r1')],
+			[
+				makeToolCall({ toolCallId: 'tc-before' }),
+				makeToolCall({
+					toolCallId: 'tc-eval',
+					toolName: 'eval-setup-with-agent',
+					renderHint: 'eval-setup',
+				}),
+				makeToolCall({ toolCallId: 'tc-after' }),
+			],
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toEqual([
+			expect.objectContaining({ toolCallId: 'tc-before' }),
+			expect.objectContaining({ toolCallId: 'tc-after' }),
+		]);
+	});
+
 	test('in-thread build-workflow renders as a trace row; agent-delegated builds stay hidden', () => {
 		const blocks = blocksOf(
 			[toolEntry('tc-build', 'r1'), toolEntry('tc-delegated', 'r1')],
 			[
-				makeToolCall({ toolCallId: 'tc-build', toolName: 'build-workflow', renderHint: 'builder' }),
+				makeToolCall({
+					toolCallId: 'tc-build',
+					toolName: 'workflow_builder_build_workflow',
+					renderHint: 'builder',
+				}),
 				makeToolCall({
 					toolCallId: 'tc-delegated',
 					toolName: 'build-workflow-with-agent',
@@ -428,7 +779,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-build-agent',
-					toolName: 'build-agent',
+					toolName: 'agent_builder_build_agent',
 				}),
 			],
 			'completed',
@@ -444,7 +795,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-build-agent',
-					toolName: 'build-agent',
+					toolName: 'agent_builder_build_agent',
 				}),
 			],
 		);
@@ -468,7 +819,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-build-agent',
-					toolName: 'build-agent',
+					toolName: 'agent_builder_build_agent',
 				}),
 			],
 			'completed',
@@ -557,20 +908,41 @@ describe('buildTimelineBlocks', () => {
 	});
 
 	test('the trailing thinking block stays active while tentative tail text streams', () => {
-		// Tail text may still fold back into the block (if same-response trace
-		// content follows), so the block must not settle to "Thought for Xs" yet.
+		// Tail text kept inside the block is still tentative, so the block must
+		// not settle to "Thought for Xs" yet.
 		const tailText = blocksOf([reasoning('r1'), text('Answer...', 'r2')], [], 'active');
-		expect(tailText.map((b) => b.type)).toEqual(['thinking', 'text']);
+		expect(tailText.map((b) => b.type)).toEqual(['thinking']);
 		expect(tailText[0].type === 'thinking' && tailText[0].active).toBe(true);
 	});
 
 	test('trailing text past the narration cap settles the thinking block', () => {
 		// Answer-length text is a committed answer — a block still "thinking"
-		// behind a streaming answer reads as lag.
+		// behind a streaming answer reads as lag. A standalone indicator carries
+		// the run's live state instead (see the next test).
 		const longAnswer = 'A'.repeat(240) + '.';
 		const blocks = blocksOf([reasoning('r1'), text(longAnswer, 'r2')], [], 'active');
-		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text', 'activity']);
 		expect(blocks[0].type === 'thinking' && blocks[0].active).toBe(false);
+	});
+
+	test('a settled block behind a committed answer still surfaces an activity indicator', () => {
+		// INS-1224: the model wrote a long plan and then went quiet for ~53s while
+		// generating a tool call. Nothing in the transcript moved, yet the composer
+		// stayed in stop-mode — the UI claimed done and busy at the same time.
+		const longAnswer = 'A'.repeat(240) + '.';
+		const blocks = blocksOf([reasoning('r1'), text(longAnswer, 'r2')], [], 'active');
+		expect(blocks.at(-1)?.type).toBe('activity');
+	});
+
+	test('no activity indicator once the run settles', () => {
+		const longAnswer = 'A'.repeat(240) + '.';
+		const blocks = blocksOf([reasoning('r1'), text(longAnswer, 'r2')], [], 'completed');
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+	});
+
+	test('no activity indicator while a thinking block is already active', () => {
+		const blocks = blocksOf([reasoning('r1'), text('Answer...', 'r2')], [], 'active');
+		expect(blocks.some((b) => b.type === 'activity')).toBe(false);
 	});
 
 	test('real user-facing interruptions settle the thinking block immediately', () => {
@@ -592,6 +964,40 @@ describe('buildTimelineBlocks', () => {
 	test('no block is active once the agent has settled', () => {
 		const completed = blocksOf([reasoning('r1')], [], 'completed');
 		expect(completed[0].type === 'thinking' && completed[0].active).toBe(false);
+	});
+
+	describe('save_user_preference', () => {
+		const base: Partial<InstanceAiToolCallState> = {
+			toolCallId: 'tc-1',
+			toolName: 'save_user_preference',
+		};
+
+		test('renders a preference block once the result is a saved preference', () => {
+			const tc = makeToolCall({
+				...base,
+				result: { ok: true, preference: { id: 'p', content: 'x', scope: 'user' } },
+			});
+			const blocks = blocksOf([toolEntry('tc-1', 'r1')], [tc]);
+
+			expect(blocks).toEqual([{ type: 'preference', key: 'preference-0', toolCall: tc }]);
+		});
+
+		// A refusal the person cannot see is a silent failure, so it renders as a card too.
+		test('renders a preference block when the write was rejected or the tool threw', () => {
+			for (const tc of [
+				makeToolCall({ ...base, result: { ok: false, reason: 'duplicate', message: 'dup' } }),
+				makeToolCall({ ...base, error: 'boom' }),
+			]) {
+				expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([
+					{ type: 'preference', key: 'preference-0', toolCall: tc },
+				]);
+			}
+		});
+
+		test('hides the call while it is still running', () => {
+			const tc = makeToolCall({ ...base, isLoading: true });
+			expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([]);
+		});
 	});
 });
 
@@ -627,5 +1033,50 @@ describe('isStreamingTimelineEntry', () => {
 		const node = makeAgentNode({ status: 'active', timeline: [tail] });
 
 		expect(isStreamingTimelineEntry(node, { ...tail })).toBe(false);
+	});
+});
+
+describe('buildTimelineBlocks — instance context', () => {
+	const contextEntry: InstanceAiTimelineEntry = {
+		type: 'instance-context',
+		runId: 'run-1',
+		injection: {
+			state: 'injected',
+			isUpdate: false,
+			legs: { inventory: 2, events: 1, runs: 0 },
+			chars: 90,
+		},
+	};
+
+	/** Inside the collapsible trace, not beside it — standalone it reads as its own message. */
+	test('puts the entry inside a thinking block rather than standing it alone', () => {
+		const blocks = buildTimelineBlocks([contextEntry], {}, {}, 'completed');
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type).toBe('thinking');
+		if (blocks[0].type !== 'thinking') throw new Error('unreachable');
+		expect(blocks[0].entries).toEqual([contextEntry]);
+	});
+
+	test('keeps it in the same block as the reasoning that follows it', () => {
+		const reasoning: InstanceAiTimelineEntry = {
+			type: 'reasoning',
+			content: 'checking the failed run',
+			responseId: 'r1',
+		};
+
+		const blocks = buildTimelineBlocks([contextEntry, reasoning], {}, {}, 'completed');
+
+		expect(blocks).toHaveLength(1);
+		if (blocks[0].type !== 'thinking') throw new Error('unreachable');
+		expect(blocks[0].entries).toEqual([contextEntry, reasoning]);
+	});
+
+	test('leads the trace, so the turn reads in the order things happened', () => {
+		const answer: InstanceAiTimelineEntry = { type: 'text', content: 'Here is what failed.' };
+
+		const blocks = buildTimelineBlocks([contextEntry, answer], {}, {}, 'completed');
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
 	});
 });

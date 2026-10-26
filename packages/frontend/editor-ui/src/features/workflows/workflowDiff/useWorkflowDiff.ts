@@ -4,6 +4,7 @@ import {
 	toValue,
 	computed,
 	ref,
+	watch,
 	watchEffect,
 	shallowRef,
 	onScopeDispose,
@@ -147,31 +148,34 @@ function createDiffRenderData(
 		}
 	}
 
-	watchEffect(() => {
-		const wf = workflowRef.value;
-		if (!wf?.id) return;
+	watch(
+		[workflowRef, workflowNodes],
+		([wf]) => {
+			if (!wf?.id) return;
 
-		disposeStores();
+			disposeStores();
 
-		const versionId = wf.versionId ?? `diff-${side}`;
-		const docId = createWorkflowDocumentId(wf.id, versionId);
+			const versionId = wf.versionId ?? `diff-${side}`;
+			const docId = createWorkflowDocumentId(wf.id, versionId);
 
-		workflowDocumentStore = useWorkflowDocumentStore(docId);
-		// Hydrate from the same normalized nodes that feed the canvas so the
-		// render-data maps are keyed by the same node IDs the canvas looks up.
-		// Shallow-copy the nodes so the document store owns/mutates its own node
-		// objects (e.g. position snapping) without leaking into `workflowNodes`.
-		workflowDocumentStore.hydrate({
-			...wf,
-			nodes: workflowNodes.value.map((node) => ({ ...node })),
-			versionId,
-		} as IWorkflowDb);
-		currentDocumentId = docId;
-		renderDataScope = effectScope(true);
-		renderDataScope.run(() => {
-			renderData.value = useWorkflowDocumentRenderData(docId);
-		});
-	});
+			workflowDocumentStore = useWorkflowDocumentStore(docId);
+			// Hydrate from the same normalized nodes that feed the canvas so the
+			// render-data maps are keyed by the same node IDs the canvas looks up.
+			// Shallow-copy the nodes so the document store owns/mutates its own node
+			// objects (e.g. position snapping) without leaking into `workflowNodes`.
+			workflowDocumentStore.hydrate({
+				...wf,
+				nodes: workflowNodes.value.map((node) => ({ ...node })),
+				versionId,
+			} as IWorkflowDb);
+			currentDocumentId = docId;
+			renderDataScope = effectScope(true);
+			renderDataScope.run(() => {
+				renderData.value = useWorkflowDocumentRenderData(docId);
+			});
+		},
+		{ immediate: true },
+	);
 
 	return { renderData, dispose: disposeStores };
 }

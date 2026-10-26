@@ -19,7 +19,6 @@ import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
 import NDVSubConnections from '@/features/ndv/panel/components/NDVSubConnections.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import NodeSettingsHeader from './NodeSettingsHeader.vue';
-import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import NodeWebhooks from './NodeWebhooks.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import AgentNdvInlineControls from '@/features/ndv/agents/components/AgentNdvInlineControls.vue';
@@ -36,18 +35,23 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
 import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import {
+	RestrictedNodePanel,
+	RestrictedSubWorkflowCallout,
+	useNodeTypeRestriction,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import NodeStorageLimitCallout from '@/features/core/dataTable/components/NodeStorageLimitCallout.vue';
-import NodeTitle from '@/app/components/NodeTitle.vue';
+import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
 import { RenameNodeCommand } from '@/app/models/history';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import {
@@ -62,16 +66,16 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useResizeObserver } from '@vueuse/core';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
-import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
-import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { N8nBlockUi, N8nCallout, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
-import { useNodeIconSource } from '@/app/composables/useNodeIconSource';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 
 const props = withDefaults(
@@ -89,7 +93,6 @@ const props = withDefaults(
 		subTitle?: string;
 		extraTabsClassName?: string;
 		extraParameterWrapperClassName?: string;
-		isNdvV2?: boolean;
 		hideExecute?: boolean;
 		hideDocs?: boolean;
 		hideSubConnections?: boolean;
@@ -99,7 +102,6 @@ const props = withDefaults(
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
 		subTitle: undefined,
-		isNdvV2: false,
 		hideExecute: false,
 		hideDocs: true,
 		hideSubConnections: false,
@@ -117,11 +119,12 @@ const emit = defineEmits<{
 	];
 	activate: [];
 	execute: [];
+	replaceNode: [nodeId: string];
 	captureWheelBody: [WheelEvent];
 	dblclickHeader: [MouseEvent];
 }>();
 
-const slots = defineSlots<{ actions?: {} }>();
+defineSlots<{ actions?: {} }>();
 
 const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 
@@ -177,10 +180,35 @@ const hasForeignCredential = computed(() => props.foreignCredentials.length > 0)
 const isHomeProjectTeam = computed(
 	() => currentWorkflow.value?.homeProject?.type === ProjectTypes.Team,
 );
+const isDeprecated = computed(() => Boolean(nodeType.value?.deprecated));
+
+const replacementNodeType = computed(() =>
+	nodeType.value?.replacedByNodeType
+		? nodeTypesStore.getNodeType(nodeType.value.replacedByNodeType)
+		: null,
+);
+
+const deprecatedNotice = computed(() =>
+	replacementNodeType.value
+		? i18n.baseText('node.deprecatedWithReplacement', {
+				interpolate: { nodeTypeName: replacementNodeType.value.displayName },
+			})
+		: i18n.baseText('node.deprecated'),
+);
+
 const isReadOnly = computed(
-	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
+	() =>
+		props.readOnly ||
+		isDeprecated.value ||
+		(hasForeignCredential.value && !isHomeProjectTeam.value),
 );
 const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
+
+const { labelOf } = usePolicyViolationLabels();
+const canCheckSubWorkflowPolicy = computed(
+	() => !props.readOnly && workflowDocumentStore.value.scopes.includes('workflow:update'),
+);
+const { isRestricted, restriction } = useNodeTypeRestriction(() => node.value?.type);
 
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
@@ -189,7 +217,7 @@ const nodeType = computed(() =>
 const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, '');
 
 const nodeTypeName = computed(() => node.value?.type);
-const { installedPackage, isUpdateCheckAvailable } = useInstalledCommunityPackage(nodeTypeName);
+const { canUpdatePackage, hasUpdateAvailable } = useInstalledCommunityPackage(nodeTypeName);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
@@ -227,7 +255,7 @@ const executeButtonTooltip = computed(() => {
 });
 
 const nodeVersionTag = computed(() => {
-	if (!nodeType.value || nodeType.value.hidden) {
+	if (!nodeType.value || nodeType.value.hidden || nodeType.value.deprecated) {
 		return i18n.baseText('nodeSettings.deprecated');
 	}
 
@@ -281,6 +309,12 @@ const showQuickConnectBanner = computed(
 		!props.isEmbeddedInCanvas,
 );
 
+const { promotionText } = useGatewayCreditsPromotion({ nodeType: () => node.value?.type });
+const showGatewayCreditsPromotion = computed(
+	() =>
+		!!promotionText.value && !isReadOnly.value && !isDemoPreview.value && !props.isEmbeddedInCanvas,
+);
+
 const showNoParametersNotice = computed(
 	() =>
 		!isDisplayingCredentials.value &&
@@ -311,7 +345,7 @@ const credentialOwnerName = computed(() => {
 });
 
 const featureRequestUrl = computed(() => {
-	if (!nodeType.value) {
+	if (!nodeType.value || settingsStore.isCanvasOnly) {
 		return '';
 	}
 	return `${BASE_NODE_SURVEY_URL}${nodeType.value.name}`;
@@ -327,6 +361,11 @@ const hasOutputConnection = computed(() => {
 });
 
 const valueChanged = (parameterData: IUpdateInformation) => {
+	// The event bus and the curl import write here too, so hidden inputs alone do not lock the node.
+	if (isRestricted.value || isDeprecated.value) {
+		return;
+	}
+
 	let newValue: NodeParameterValue;
 
 	if (parameterData.hasOwnProperty('value')) {
@@ -434,6 +473,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
+			nodeHelpers.updateNodeInputIssuesByName(_node.name);
 		}
 	} else if (nameIsParameter(parameterData)) {
 		// A node parameter changed
@@ -455,7 +495,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		workflowDocumentStore?.value?.setNodeValue({
 			name: _node.name,
 			key: topLevelKey,
-			value: nodeValues.value[topLevelKey] as NodeParameterValue,
+			// Keep the node separate from values that inputs can mutate before emitting an edit.
+			value: deepCopy(nodeValues.value[topLevelKey]) as NodeParameterValue,
 		});
 	} else {
 		// A property on the node itself changed
@@ -528,8 +569,6 @@ const ndvAgentConfig = inject(NdvAgentConfigKey, null);
 const isAgentNode = computed(() => isAgentNodeV2(node.value));
 const showAgentNdvControls = computed(() => isAgentNode.value && ndvAgentConfig !== null);
 const agentNdvMode = computed(() => ndvAgentConfig?.mode?.value ?? 'referenced');
-
-const iconSource = useNodeIconSource(nodeType, node);
 
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
@@ -674,7 +713,8 @@ function handleSelectAction(params: INodeParameters) {
 			v-if="isEmbeddedInCanvas && node"
 			:node="node"
 			:selected-tab="openPanel"
-			:read-only="readOnly"
+			:read-only="isReadOnly || isRestricted"
+			:hide-tabs="isRestricted"
 			:node-type="nodeType"
 			:push-ref="pushRef"
 			:sub-title="subTitle"
@@ -690,45 +730,15 @@ function handleSelectAction(params: INodeParameters) {
 				<slot name="actions" />
 			</template>
 		</ExperimentalEmbeddedNdvHeader>
-		<div v-else-if="!isNdvV2" :class="$style.header">
-			<div class="header-side-menu">
-				<NodeTitle
-					v-if="node"
-					class="node-name"
-					:model-value="node.name"
-					:icon-source="iconSource"
-					:read-only="isReadOnly"
-					:node-type="nodeType"
-					@update:model-value="nameChanged"
-				/>
-				<NodeExecuteButton
-					v-if="isExecutable && !blockUI && node && nodeValid"
-					data-test-id="node-execute-button"
-					:node-name="node.name"
-					:disabled="outputPanelEditMode.enabled && !isTriggerNode"
-					:tooltip="executeButtonTooltip"
-					size="small"
-					telemetry-source="parameters"
-					@execute="onNodeExecute"
-					@stop-execution="onStopExecution"
-					@value-changed="valueChanged"
-				/>
-			</div>
-			<NodeSettingsTabs
-				v-if="node && nodeValid"
-				:model-value="openPanel"
-				:node-type="nodeType"
-				:push-ref="pushRef"
-				@update:model-value="onTabSelect"
-			/>
-		</div>
 		<NodeSettingsHeader
-			v-else-if="node && nodeValid"
+			v-else-if="node && nodeValid && !isRestricted"
 			:selected-tab="openPanel"
 			:node-name="node.name"
 			:node-type="nodeType"
 			:execute-button-tooltip="executeButtonTooltip"
-			:hide-execute="props.hideExecute || !isExecutable || blockUI || !node || !nodeValid"
+			:hide-execute="
+				props.hideExecute || !isExecutable || blockUI || !node || !nodeValid || isDeprecated
+			"
 			:disable-execute="outputPanelEditMode.enabled && !isTriggerNode"
 			:hide-tabs="!nodeValid"
 			:hide-docs="props.hideDocs"
@@ -745,18 +755,33 @@ function handleSelectAction(params: INodeParameters) {
 			:preview-mode="isDemoPreview"
 		/>
 
+		<RestrictedNodePanel
+			v-if="node && nodeValid && isRestricted"
+			:node-type-name="nodeType?.displayName ?? node.type"
+			:restriction="restriction"
+			:show-replace="!isEmbeddedInCanvas && !readOnly"
+			@replace-node="emit('replaceNode', node.id)"
+		/>
+
 		<div
-			v-if="node && nodeValid"
+			v-else-if="node && nodeValid"
 			ref="nodeParameterWrapper"
 			:class="[
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
-				{ 'ndv-v2': isNdvV2 },
 				extraParameterWrapperClassName ?? '',
 			]"
 			data-test-id="node-parameters"
 			@wheel.capture="emit('captureWheelBody', $event)"
 		>
+			<N8nCallout
+				v-if="isDeprecated"
+				theme="danger"
+				class="mt-xs"
+				data-test-id="node-deprecated-notice"
+			>
+				{{ deprecatedNotice }}
+			</N8nCallout>
 			<N8nNotice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
@@ -767,6 +792,13 @@ function handleSelectAction(params: INodeParameters) {
 			/>
 			<FreeAiCreditsCallout />
 			<NodeStorageLimitCallout />
+			<RestrictedSubWorkflowCallout
+				v-if="node"
+				:parent-workflow-id="workflowDocumentStore.workflowId"
+				:node="node"
+				:enabled="canCheckSubWorkflowPolicy"
+				:label-of="labelOf"
+			/>
 			<NodeActionsList
 				v-if="openPanel === 'action'"
 				class="action-tab"
@@ -776,7 +808,7 @@ function handleSelectAction(params: INodeParameters) {
 			<NodeCredentials
 				v-if="openPanel === 'credential'"
 				:node="node"
-				:readonly="isReadOnly"
+				:readonly="readOnly || isDeprecated"
 				:show-all="true"
 				:hide-issues="hiddenIssuesInputs.includes('credentials')"
 				:hide-ask-assistant="hideCredentialHelp"
@@ -806,10 +838,15 @@ function handleSelectAction(params: INodeParameters) {
 						:disclaimer="quickConnect?.disclaimer"
 						:class="$style.quickConnectBanner"
 					/>
+					<GatewayCreditsPromotion
+						v-if="showGatewayCreditsPromotion"
+						:text="promotionText ?? ''"
+						:class="$style.gatewayCreditsPromotion"
+					/>
 					<NodeCredentials
 						v-if="!isEmbeddedInCanvas && !isDemoPreview"
 						:node="node"
-						:readonly="isReadOnly"
+						:readonly="readOnly || isDeprecated"
 						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
 						:hide-ask-assistant="hideCredentialHelp"
@@ -848,7 +885,7 @@ function handleSelectAction(params: INodeParameters) {
 			</div>
 			<div v-show="openPanel === 'settings'">
 				<CommunityNodeUpdateInfo
-					v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
+					v-if="canUpdatePackage && hasUpdateAvailable"
 					data-test-id="update-available"
 					:package-name="packageName"
 					style="margin-top: var(--spacing--sm)"
@@ -887,7 +924,8 @@ function handleSelectAction(params: INodeParameters) {
 				</div>
 			</div>
 			<div
-				v-if="isNdvV2 && featureRequestUrl && !isEmbeddedInCanvas"
+				v-if="featureRequestUrl && !isEmbeddedInCanvas"
+				data-test-id="node-feature-request"
 				:class="$style.featureRequest"
 			>
 				<a target="_blank" @click="onFeatureRequestClick">
@@ -903,25 +941,17 @@ function handleSelectAction(params: INodeParameters) {
 			@switch-selected-node="onSwitchSelectedNode"
 			@open-connection-node-creator="onOpenConnectionNodeCreator"
 		/>
-		<N8nBlockUi
-			:show="blockUI"
-			:class="{
-				[$style.uiBlockerNdvV2]: isNdvV2,
-			}"
-		/>
+		<N8nBlockUi :show="blockUI" :class="$style.uiBlocker" />
 		<CommunityNodeFooter
 			v-if="openPanel === 'settings' && isCommunityNode"
 			:package-name="packageName"
+			:node-type-name="nodeTypeName"
 			:show-manage="useUsersStore().isAdminOrOwner"
 		/>
 	</div>
 </template>
 
 <style lang="scss" module>
-.header {
-	background-color: var(--ndv--header--color);
-}
-
 .featureRequest {
 	margin-top: auto;
 	align-self: center;
@@ -933,7 +963,7 @@ function handleSelectAction(params: INodeParameters) {
 		margin-top: var(--spacing--xl);
 
 		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		color: var(--color--text--tint-1);
 	}
 }
@@ -942,7 +972,11 @@ function handleSelectAction(params: INodeParameters) {
 	margin-top: var(--spacing--sm);
 }
 
-.uiBlockerNdvV2 {
+.gatewayCreditsPromotion {
+	margin-top: var(--spacing--sm);
+}
+
+.uiBlocker {
 	border-radius: 0;
 }
 </style>
@@ -960,28 +994,12 @@ function handleSelectAction(params: INodeParameters) {
 		margin-top: var(--spacing--xs);
 	}
 
-	.header-side-menu {
-		padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--sm) var(--spacing--sm);
-		font-size: var(--font-size--lg);
-		display: flex;
-		justify-content: space-between;
-
-		.node-name {
-			padding-top: var(--spacing--5xs);
-			margin-right: var(--spacing--sm);
-		}
-	}
-
 	.node-parameters-wrapper {
 		display: flex;
 		flex-direction: column;
 		overflow-y: auto;
-		padding: 0 var(--spacing--md) var(--spacing--lg) var(--spacing--md);
+		padding: 0 var(--spacing--sm) var(--spacing--lg) var(--spacing--sm);
 		flex-grow: 1;
-
-		&.ndv-v2 {
-			padding: 0 var(--spacing--sm) var(--spacing--lg) var(--spacing--sm);
-		}
 	}
 
 	&.embedded .node-parameters-wrapper {

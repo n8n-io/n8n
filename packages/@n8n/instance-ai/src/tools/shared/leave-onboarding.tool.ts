@@ -1,0 +1,45 @@
+import { Tool } from '@n8n/agents';
+import { z } from 'zod';
+
+import { DOMAIN_TOOL_IDS } from '../tool-ids';
+
+/**
+ * The agent's explicit exit from the onboarding flow. The host reacts to the tool call
+ * itself and restores the normal chat chrome. The result tells the agent that the
+ * onboarding rules end here: the skill block stays in context for the rest of the turn,
+ * and its card-only questions would otherwise leak into the help that follows.
+ */
+export function createLeaveOnboardingTool() {
+	return (
+		new Tool(DOMAIN_TOOL_IDS.LEAVE_ONBOARDING)
+			.description(
+				'End the onboarding flow. Call it when the user wants to stop the onboarding, explore n8n ' +
+					'on their own, or asks for something unrelated to picking a first automation. After the call, ' +
+					'reply with one sentence that invites the user to explore the app and to come back with a ' +
+					'task, then help them with what they asked. Not needed before a build: a build ends the ' +
+					'onboarding by itself.',
+			)
+			.input(
+				z.object({
+					// ponytail: optional, so a call without a reason still ends the onboarding.
+					reason: z
+						.enum(['stop', 'explore', 'unrelated_request'])
+						.optional()
+						.describe(
+							'Why the onboarding ends: the user wants to stop, wants to explore n8n on their ' +
+								'own, or asked for something unrelated to picking a first automation.',
+						),
+				}),
+			)
+			.output(z.object({ left: z.boolean(), note: z.string() }))
+			// ponytail: the frontend persists the exit (thread metadata `onboardingLeft`) when it sees
+			// this call. Persist it here once the backend must know without a connected client.
+			.handler(async () => ({
+				left: true,
+				note:
+					'The onboarding rules no longer apply. Continue as on a normal thread. Ask for files ' +
+					'in plain text: a card cannot take attachments.',
+			}))
+			.build()
+	);
+}

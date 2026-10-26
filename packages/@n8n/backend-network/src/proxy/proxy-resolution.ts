@@ -1,8 +1,8 @@
 import http from 'http';
-import { HttpProxyAgent } from 'http-proxy-agent';
 import https from 'https';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
+
+import { createProxiedHttpAgent, createProxiedHttpsAgent } from './proxied-agents';
 
 /**
  * Resolves the proxy URL configured via environment variables
@@ -25,6 +25,15 @@ export function resolveProxyUrl(
 }
 
 /**
+ * Whether an environment proxy applies to the given target URL, i.e. whether
+ * {@link resolveProxyUrl} resolves to a proxy for it. For callers that only
+ * need the yes/no (e.g. to pick a proxy mode) rather than the proxy URL itself.
+ */
+export function isProxyRequired(targetUrl: string | undefined, fallbackUrl?: string): boolean {
+	return resolveProxyUrl(targetUrl, fallbackUrl) !== undefined;
+}
+
+/**
  * DI-free proxy resolution and Node proxy-agent factory.
  *
  * Kept free of DI / config / `n8n-workflow` so they can back the
@@ -40,7 +49,7 @@ export function createHttpProxyAgent(
 	const proxyUrl = customProxyUrl ?? getProxyForUrl(targetUrl);
 
 	if (proxyUrl) {
-		return new HttpProxyAgent(proxyUrl, options);
+		return createProxiedHttpAgent(proxyUrl, options);
 	}
 
 	return new http.Agent(options);
@@ -62,7 +71,7 @@ export function createHttpsProxyAgent(
 	const proxyUrl = customProxyUrl ?? getProxyForUrl(targetUrl);
 
 	if (proxyUrl) {
-		return new HttpsProxyAgent(proxyUrl, options);
+		return createProxiedHttpsAgent(proxyUrl, options);
 	}
 
 	return new https.Agent(options);

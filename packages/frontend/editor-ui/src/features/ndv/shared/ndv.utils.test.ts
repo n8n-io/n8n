@@ -399,6 +399,15 @@ describe('parseFromExpression', () => {
 		expect(parseFromExpression(true, undefined, 'boolean', false, [])).toBe(false);
 	});
 
+	it('returns defaultValue for number/boolean when expression resolves to null', () => {
+		// Unresolvable $fromAI() expressions resolve to null in the editor; falling back to
+		// the default (instead of null) is what lets the Fixed tab clear the expression.
+		expect(
+			parseFromExpression('={{ $fromAI("x", "", "boolean") }}', null, 'boolean', false, []),
+		).toBe(false);
+		expect(parseFromExpression('={{ $fromAI("x", "", "number") }}', null, 'number', 0, [])).toBe(0);
+	});
+
 	it('returns null for other types if value is undefined', () => {
 		expect(parseFromExpression({}, undefined, 'json', null, [])).toBeNull();
 	});

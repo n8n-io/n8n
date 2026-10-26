@@ -15,8 +15,10 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
-import { HIDDEN_TOOLS } from '../agentTimeline.utils';
+import type { AgentPreviewTarget } from '@/features/agents/utils/agentPreviewUrl';
+import { HIDDEN_TOOLS, isStreamingTimelineEntry } from '../agentTimeline.utils';
 import { getToolIcon, useToolLabel } from '../toolLabels';
+import AiReasoningBlock from '../../shared/components/AiReasoningBlock.vue';
 import ButtonLike from './ButtonLike.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import ToolResultJson from './ToolResultJson.vue';
@@ -25,6 +27,7 @@ import ToolResultRenderer from './ToolResultRenderer.vue';
 const props = withDefaults(
 	defineProps<{
 		agentNode: InstanceAiAgentNode;
+		agentPreviewTarget?: AgentPreviewTarget;
 		/** When provided, renders only these entries instead of the full timeline. */
 		visibleEntries?: InstanceAiTimelineEntry[];
 		/** Peek mode: compact, pins streaming text to the bottom. */
@@ -39,7 +42,7 @@ const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
 const CODE_BLOCK_PATTERN = /```/;
 
 interface TimelineStep {
-	type: 'tool-call' | 'text';
+	type: 'tool-call' | 'text' | 'reasoning';
 	icon: IconName;
 	label: string;
 	isLoading: boolean;
@@ -49,6 +52,7 @@ interface TimelineStep {
 	textContent?: string;
 	isLongText?: boolean;
 	shortLabel?: string;
+	entry?: Extract<InstanceAiTimelineEntry, { type: 'reasoning' }>;
 }
 
 function extractShortLabel(content: string): string {
@@ -104,9 +108,16 @@ const steps = computed((): TimelineStep[] => {
 				hideLabel: getHideLabel(tc),
 				toolCall: tc,
 			});
+		} else if (entry.type === 'reasoning') {
+			result.push({
+				type: 'reasoning',
+				icon: 'brain',
+				label: '',
+				isLoading: false,
+				entry,
+			});
 		}
-		// Skip 'child' entries (parent AgentTimeline handles child cards) and
-		// 'reasoning' entries (sub-agent reasoning is not surfaced in this view)
+		// Skip 'child' entries (parent AgentTimeline handles child cards)
 	}
 
 	return result;
@@ -150,7 +161,10 @@ const steps = computed((): TimelineStep[] => {
 					</CollapsibleTrigger>
 					<AnimatedCollapsibleContent :class="$style.toggleContent">
 						<N8nAiActivityStepResultSection>
-							<InstanceAiMarkdown :content="step.textContent!" />
+							<InstanceAiMarkdown
+								:content="step.textContent!"
+								:agent-preview-target="props.agentPreviewTarget"
+							/>
 						</N8nAiActivityStepResultSection>
 					</AnimatedCollapsibleContent>
 				</CollapsibleRoot>
@@ -158,11 +172,24 @@ const steps = computed((): TimelineStep[] => {
 					<!-- Peek mode only: column-reverse + overflow-y pins the scroll
 						 to the bottom so the latest streamed tokens stay visible. -->
 					<div v-if="props.peek" :class="$style.streamingMarkdown">
-						<InstanceAiMarkdown :content="step.label" />
+						<InstanceAiMarkdown
+							:content="step.label"
+							:agent-preview-target="props.agentPreviewTarget"
+						/>
 					</div>
-					<InstanceAiMarkdown v-else :content="step.label" />
+					<InstanceAiMarkdown
+						v-else
+						:content="step.label"
+						:agent-preview-target="props.agentPreviewTarget"
+					/>
 				</ButtonLike>
 			</template>
+
+			<AiReasoningBlock
+				v-else-if="step.type === 'reasoning' && step.entry"
+				:entry="step.entry"
+				:streaming="isStreamingTimelineEntry(props.agentNode, step.entry)"
+			/>
 		</template>
 	</div>
 </template>

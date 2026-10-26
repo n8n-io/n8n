@@ -2,15 +2,32 @@ import type { ByteStore } from '@n8n/blob-storage';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { createReadStream } from 'node:fs';
 import type { Readable } from 'node:stream';
+import pLimit from 'p-limit';
 import { v4 as uuid } from 'uuid';
 
 import type { ErrorReporter } from '@/errors';
 
 import type { BinaryData } from './types';
-import { FileLocation } from './utils';
+import { FileLocation, TEMP_EXECUTION_ID } from './utils';
 import { FileNotFoundError } from '../errors/file-not-found.error';
 
+/** Execution directories deleted at once, so a large batch cannot remove every tree together. */
+const PREFIX_DELETE_CONCURRENCY = 5;
+
+/** Captures `workflowId` (group 1) and `executionId` (group 2) from an execution fileId. */
 const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\/binary_data\//;
+
+/**
+ * Workflow and execution encoded in a path-format fileId, or null for
+ * non-execution paths. The execution is {@link TEMP_EXECUTION_ID} when the file
+ * was written before the execution row existed.
+ */
+export function parseExecutionFileId(
+	fileId: string,
+): { workflowId: string; executionId: string } | null {
+	const match = fileId.match(EXECUTION_PATH_MATCHER);
+	return match ? { workflowId: match[1], executionId: match[2] } : null;
+}
 
 /**
  * Stores binary data as blobs via a {@link ByteStore}.
@@ -18,8 +35,9 @@ const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\/binary
  * Backend differences are capability-driven:
  * - Backends with native object metadata (S3, Azure) store it on the object.
  * FS keeps it in companion `{fileId}.metadata` entries.
- * - Deletion happens only on backends that can delete by prefix (FS). Others
- * delegate deletion, e.g. to bucket lifecycle policies.
+ * - Deletion by file id works on all backends. Location-wide deletion happens
+ * only on backends that can delete by prefix (FS); others delegate it, e.g. to
+ * bucket lifecycle policies.
  */
 export class BinaryDataBlobManager implements BinaryData.Manager {
 	constructor(
@@ -77,18 +95,22 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 	}
 
 	async deleteManyByFileId(ids: string[]) {
-		if (!this.byteStore.deletePrefix) return;
-
-		const locations = ids.flatMap((id) => {
+		const keys = ids.flatMap((fileId) => {
 			try {
-				return [this.parseFileId(id)];
+				this.parseFileId(fileId);
 			} catch {
-				this.errorReporter.warn(`Could not parse file ID ${id}. Skip deletion`);
+				this.errorReporter.warn('Could not parse file ID. Skip deletion', {
+					extra: { fileId },
+				});
 				return [];
 			}
+
+			return this.byteStore.getMetadata ? [fileId] : [fileId, this.metadataKey(fileId)];
 		});
 
-		await this.deleteBinaryDataDirs(locations);
+		if (keys.length > 0) {
+			await this.byteStore.delete(keys);
+		}
 	}
 
 	async copyByFileId(targetLocation: BinaryData.FileLocation, sourceFileId: string) {
@@ -137,7 +159,7 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 	private toRelativePath(location: BinaryData.FileLocation) {
 		switch (location.type) {
 			case 'execution': {
-				const executionId = location.executionId || 'temp'; // missing only in edge case, see PR #7244
+				const executionId = location.executionId || TEMP_EXECUTION_ID; // missing for triggers and webhooks, see PR #7244
 				return `workflows/${location.workflowId}/executions/${executionId}`;
 			}
 			case 'custom': {
@@ -177,7 +199,29 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 		const prefixes = [
 			...new Set(locations.map((location) => `${this.toRelativePath(location)}/binary_data`)),
 		];
-		await Promise.all(prefixes.map(async (prefix) => await deletePrefix(prefix)));
+		const limit = pLimit(PREFIX_DELETE_CONCURRENCY);
+		const results = await Promise.allSettled(
+			prefixes.map(async (prefix) => await limit(async () => await deletePrefix(prefix))),
+		);
+
+		// Report each failure, then throw once every prefix was tried, so the caller keeps
+		// the execution row and a later run retries.
+		const failures: Error[] = [];
+		results.forEach((result, index) => {
+			if (result.status === 'rejected') {
+				const reason: unknown = result.reason;
+				const error = reason instanceof Error ? reason : new Error(String(reason));
+				this.errorReporter.warn(error, { extra: { prefix: prefixes[index] } });
+				failures.push(error);
+			}
+		});
+
+		if (failures.length > 0) {
+			throw new AggregateError(
+				failures,
+				`Failed to delete ${failures.length} of ${prefixes.length} binary data directories`,
+			);
+		}
 	}
 
 	private metadataKey(fileId: string) {

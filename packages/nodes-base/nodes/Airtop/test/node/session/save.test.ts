@@ -82,7 +82,7 @@ describe('Test Airtop, session save operation', () => {
 		};
 
 		await expect(save.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
-			"Please fill the 'Profile Name' parameter",
+			"Please fill the 'Browser Profile ID' parameter",
 		);
 	});
 
@@ -93,7 +93,7 @@ describe('Test Airtop, session save operation', () => {
 		};
 
 		await expect(save.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
-			"Please fill the 'Profile Name' parameter",
+			"Please fill the 'Browser Profile ID' parameter",
 		);
 	});
 });

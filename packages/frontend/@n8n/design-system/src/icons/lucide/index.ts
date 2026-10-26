@@ -4,6 +4,10 @@ import bucketLoaders from 'virtual:lucide-icons';
 import { getBucketIndex } from './bucket';
 import type { IconBodyLoader } from '../../composables/useIconBodyLoader';
 
+// Export the injection key with the loader so consumers can import both from this subpath.
+export { IconBodyLoaderKey } from '../../composables/useIconBodyLoader';
+export type { IconBodyLoader } from '../../composables/useIconBodyLoader';
+
 const buckets = new Map<number, Promise<Record<string, string>>>();
 
 export const loadLucideIconBody: IconBodyLoader = async (name) => {

@@ -5,6 +5,8 @@
 import { evaluate } from './helpers';
 import { ExpressionExtensionError } from '../../src/errors/expression-extension.error';
 import { extendTransform, extend } from '../../src/extensions';
+import { extendedFunctions } from '../../src/extensions/extended-functions';
+import { extendSyntax } from '../../src/extensions/expression-extension';
 import { joinExpression, splitExpression } from '../../src/extensions/expression-parser';
 
 describe('Expression Extension Transforms', () => {
@@ -70,6 +72,13 @@ describe('Expression Parser', () => {
 			]);
 		});
 
+		test('Multiple escaped closing brackets', () => {
+			expect(splitExpression('{{ [{ a: { b: 1 \\}}, { a: { b: 2 \\}}] }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' [{ a: { b: 1 }}, { a: { b: 2 }}] ', hasClosingBrackets: true },
+			]);
+		});
+
 		test('Empty input (CAT-3075)', () => {
 			expect(splitExpression('')).toEqual([{ type: 'text', text: '' }]);
 		});
@@ -104,6 +113,15 @@ describe('Expression Parser', () => {
 			expect(joinExpression(splitExpression('test {{ code.test("\\}}") }}'))).toEqual(
 				'test {{ code.test("\\}}") }}',
 			);
+		});
+
+		test('Multiple escaped closing brackets', () => {
+			expect(
+				joinExpression([
+					{ type: 'text', text: '' },
+					{ type: 'code', text: ' [{ a: { b: 1 }}, { a: { b: 2 }}] ', hasClosingBrackets: true },
+				]),
+			).toEqual('{{ [{ a: { b: 1 \\}}, { a: { b: 2 \\}}] }}');
 		});
 	});
 
@@ -171,6 +189,29 @@ describe('Expression Parser', () => {
 		test('Optional chaining with undefined argument', () => {
 			expect(evaluate('={{ [1, 2, 3, 4]?.sum((undefined)?.test) }}')).toBe(10);
 		});
+
+		describe('Nullish coalescing with an && or || operand next to an optional chain', () => {
+			test.each([
+				['$json.a?.[0] ?? ($json.a.last() && 1)', { a: [5, 6] }, 5],
+				['$json.a?.[0] ?? ($json.a.last() && 1)', { a: [null, 6] }, 1],
+				['$json.a?.[0] ?? ($json.a.last() || 1)', { a: [null, 0] }, 1],
+				['($json.a.last() && 1) ?? $json.a?.[0]', { a: [5, 6] }, 1],
+				['($json.a?.[0] || $json.b) ?? $json.a.last()', { a: [0, 6], b: null }, 6],
+				['$json.a?.[0] ?? ($json.b && ($json.c || $json.a.last()))', { a: [null, 6], b: 1 }, 6],
+			])('should keep the parentheses around the operand of "??" in %s', (code, data, result) => {
+				expect(extendTransform(code)?.code).toBeDefined();
+				expect(evaluate(`={{ ${code} }}`, [data])).toBe(result);
+			});
+
+			test('should print the parentheses once', () => {
+				expect(extendTransform('$json.a?.[0] ?? ($json.a.last() && 1)')?.code).toBe(
+					'(window.chainCancelToken1 = ((window.chainValue1 = $json.a) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1[0]) ?? (extend($json.a, "last", []) && 1)',
+				);
+				expect(extendTransform('1 ?? ($json.a.last() && 2)')?.code).toBe(
+					'1 ?? (extend($json.a, "last", []) && 2)',
+				);
+			});
+		});
 	});
 
 	describe('Non dot extensions', () => {
@@ -227,6 +268,17 @@ describe('Expression Parser', () => {
 					'={{ (function(){ keys = ["a"]; keys.reduce = () => "not a"; return zip(keys, [1]); })() }}',
 				),
 			).toEqual({ a: 1 });
+		});
+
+		test('zip should treat a key named __proto__ as an ordinary field', () => {
+			const result = extendedFunctions.zip(['__proto__'], [{ marker: 'set' }]) as Record<
+				string,
+				unknown
+			>;
+
+			expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+			expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(true);
+			expect(({} as Record<string, unknown>).marker).toBeUndefined();
 		});
 
 		test('$if', () => {
@@ -296,4 +348,14 @@ describe('Expression Parser', () => {
 			expect(result).toEqual('TEST');
 		});
 	});
+});
+
+describe('extendSyntax', () => {
+	test.each(['toString', 'constructor'])(
+		'should return the bracketed text %s unchanged, both uncached and cached',
+		(bracketedExpression) => {
+			expect(extendSyntax(bracketedExpression, true)).toBe(bracketedExpression);
+			expect(extendSyntax(bracketedExpression, true)).toBe(bracketedExpression);
+		},
+	);
 });

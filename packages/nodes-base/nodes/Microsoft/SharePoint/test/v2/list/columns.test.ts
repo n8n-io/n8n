@@ -3,23 +3,26 @@ import type { IDataObject, ILoadOptionsFunctions, INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
+import { NodeApiError } from 'n8n-workflow';
 
 import { versionDescription } from '../../../v2/actions/versionDescription';
 import { getMappingColumns, itemColumns } from '../../../v2/list/columns';
 import type { SharePointListColumn } from '../../../v2/list/columns';
 import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
-import * as transport from '../../../v2/transport';
-import type * as _importType0 from '../../../v2/transport';
+import * as transport from '../../../transport';
+import type * as _importType0 from '../../../transport';
+import { LIST_COLUMNS_REPLY } from '../../fixtures/listColumnsReply';
 
-vi.mock('../../../v2/transport', async () => {
-	const originalModule = await vi.importActual<typeof _importType0>('../../../v2/transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),
 	};
 });
 
-const SITE_ID = 'contoso.sharepoint.com,g1,g2';
+const SITE_ID =
+	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
 const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const LIST_ID = '58a279af-1f06-4392-a5ed-2b37fa1d6c1d';
 
@@ -197,6 +200,14 @@ const V1_CONTENT_TYPES_REPLY: IDataObject = {
 					readOnly: false,
 					type: 'unknownFutureValue',
 				},
+				{
+					displayName: 'Name',
+					enforceUniqueValues: false,
+					hidden: false,
+					name: 'FileLeafRef',
+					readOnly: false,
+					type: 'unknownFutureValue',
+				},
 			],
 		},
 	],
@@ -245,7 +256,10 @@ const EXPECTED_CREATE_FIELDS = [
 	{ ...sharedFieldShape, id: 'currency', displayName: 'Currency', type: 'number' },
 	{ ...sharedFieldShape, id: 'image', displayName: 'Image', type: 'object' },
 	{ ...sharedFieldShape, id: 'lookupLookupId', displayName: 'Lookup (Lookup ID)', type: 'number' },
-	{ ...sharedFieldShape, id: 'AverageRating', displayName: 'Rating (0-5)', type: 'number' },
+	// unknownFutureValue columns must never map to a numeric input: the type also covers
+	// text columns like a Documents library's Name (FileLeafRef)
+	{ ...sharedFieldShape, id: 'AverageRating', displayName: 'Rating (0-5)', type: 'string' },
+	{ ...sharedFieldShape, id: 'FileLeafRef', displayName: 'Name', type: 'string' },
 ];
 
 const SYNTHETIC_ID_FIELD = {
@@ -408,7 +422,7 @@ describe('Microsoft SharePoint v2 — list columns as form fields', () => {
 		// Real transport here (not the stub): the reply is fed to the credential-
 		// specific request helper each auth mode routes through.
 		const { microsoftApiRequest: realMicrosoftApiRequest } =
-			await vi.importActual<typeof _importType0>('../../../v2/transport');
+			await vi.importActual<typeof _importType0>('../../../transport');
 		apiRequest
 			.mockImplementationOnce(realMicrosoftApiRequest)
 			.mockImplementationOnce(realMicrosoftApiRequest);
@@ -486,6 +500,53 @@ describe('Microsoft SharePoint v2 — list columns as form fields', () => {
 		apiRequest.mockResolvedValue({ value: [] });
 
 		await expect(getMappingColumns.call(ctx)).resolves.toEqual({ fields: [] });
+	});
+
+	it('falls back to the columns endpoint when the content types read is refused', async () => {
+		apiRequest
+			.mockRejectedValueOnce(new NodeApiError(mock<INode>(), {}, { httpCode: '403' }))
+			.mockResolvedValueOnce(LIST_COLUMNS_REPLY);
+
+		const result = await getMappingColumns.call(ctx);
+
+		expect(apiRequest).toHaveBeenLastCalledWith(
+			'GET',
+			`/v1.0/sites/${ENCODED_SITE_ID}/lists/${LIST_ID}/columns`,
+		);
+		expect(result.fields.map(({ id, type }) => ({ id, type }))).toEqual([
+			{ id: 'Title', type: 'string' },
+			{ id: 'NumberCol', type: 'number' },
+			{ id: 'Choice', type: 'options' },
+			{ id: 'DateAndTime', type: 'dateTime' },
+			{ id: 'MultipleLines', type: 'string' },
+			{ id: 'currency', type: 'number' },
+			{ id: 'YesNo', type: 'boolean' },
+			{ id: 'PersonLookupId', type: 'number' },
+			{ id: 'lookupLookupId', type: 'number' },
+			{ id: 'MultiChoice', type: 'string' },
+		]);
+		expect(result.fields[2].options).toEqual([
+			{ name: 'Choice 1', value: 'Choice 1' },
+			{ name: 'Choice 2', value: 'Choice 2' },
+			{ name: 'Choice 3', value: 'Choice 3' },
+		]);
+	});
+
+	it('does not fall back when the content types read fails for another reason', async () => {
+		const notFound = new NodeApiError(mock<INode>(), {}, { httpCode: '404' });
+		apiRequest.mockRejectedValueOnce(notFound);
+
+		await expect(getMappingColumns.call(ctx)).rejects.toBe(notFound);
+		expect(apiRequest).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports the columns endpoint error when the fallback fails too', async () => {
+		const refused = new NodeApiError(mock<INode>(), {}, { httpCode: '403' });
+		apiRequest
+			.mockRejectedValueOnce(new NodeApiError(mock<INode>(), {}, { httpCode: '403' }))
+			.mockRejectedValueOnce(refused);
+
+		await expect(getMappingColumns.call(ctx)).rejects.toBe(refused);
 	});
 
 	it('accepts a list title and encodes it in the request path', async () => {

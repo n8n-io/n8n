@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { ref } from 'vue';
+import { useElementOverflow } from '@n8n/composables/useElementOverflow';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 
 const props = defineProps<{
@@ -8,29 +9,7 @@ const props = defineProps<{
 }>();
 
 const labelEl = ref<HTMLElement | null>(null);
-const isOverflowing = ref(false);
-
-let observer: ResizeObserver | null = null;
-
-const update = () => {
-	const el = labelEl.value;
-	if (!el) return;
-	isOverflowing.value = el.scrollWidth > el.clientWidth;
-};
-
-onMounted(() => {
-	update();
-	if (labelEl.value) {
-		observer = new ResizeObserver(update);
-		observer.observe(labelEl.value);
-	}
-});
-
-watch(() => props.label, update, { flush: 'post' });
-
-onBeforeUnmount(() => {
-	observer?.disconnect();
-});
+const { isOverflowing } = useElementOverflow(labelEl, 'x', [() => props.label]);
 </script>
 
 <template>

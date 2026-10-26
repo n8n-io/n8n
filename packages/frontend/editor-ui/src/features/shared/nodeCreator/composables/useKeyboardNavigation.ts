@@ -46,16 +46,26 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 	function getElementId(element?: Element) {
 		return element?.getAttribute(KEYBOARD_ID_ATTR) || undefined;
 	}
+	const pendingRefreshes = new Set<ReturnType<typeof setTimeout>>();
+
 	async function refreshSelectableItems(): Promise<void> {
 		return await new Promise((resolve) => {
 			// Wait for DOM to update
 			cleanupSelectableItems();
-			setTimeout(() => {
-				selectableItems.value = Array.from(
-					document.querySelectorAll('[data-keyboard-nav-type]'),
-				).map((el) => new WeakRef(el));
+			const timer = setTimeout(() => {
+				pendingRefreshes.delete(timer);
+				// detachKeydownEvent only cancels timers already pending at the time
+				// it runs — one scheduled after (e.g. from a transition-end callback
+				// firing post-teardown in unit tests) can still land here with no
+				// document to query.
+				if (typeof document !== 'undefined') {
+					selectableItems.value = Array.from(
+						document.querySelectorAll('[data-keyboard-nav-type]'),
+					).map((el) => new WeakRef(el));
+				}
 				resolve();
 			}, 0);
+			pendingRefreshes.add(timer);
 		});
 	}
 
@@ -149,6 +159,10 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 	}
 
 	function detachKeydownEvent() {
+		// Cancel pending refreshes: a timer firing after the panel is gone would
+		// query a document that may no longer exist (e.g. unit-test teardown).
+		for (const timer of pendingRefreshes) clearTimeout(timer);
+		pendingRefreshes.clear();
 		cleanupSelectableItems();
 		document.removeEventListener('keydown', onKeyDown, { capture: true });
 	}

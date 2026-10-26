@@ -4,7 +4,11 @@ import {
 	WorkflowTechnique,
 	type WorkflowTechniqueType as BestPracticesGuideId,
 } from '@n8n/workflow-sdk/prompts/best-practices';
-import { SDK_LANGUAGE_REFERENCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
+import { NATIVE_NODE_PREFERENCE } from '@n8n/workflow-sdk/prompts/node-selection';
+import {
+	NODE_GROUPS_REFERENCE,
+	SDK_LANGUAGE_REFERENCE,
+} from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { join as posixJoin } from 'node:path/posix';
@@ -16,10 +20,12 @@ import {
 } from './build-templates-index';
 export { KNOWLEDGE_BASE_TEMPLATES_DIR };
 import { extractBuilderTemplatesArchive } from './extract-builder-templates-archive';
+import { traceSandboxOperation } from '../tracing/sandbox-tracing';
 import { computeWorkspaceContentHash } from '../workspace/compute-workspace-content-hash';
 import {
 	loadPrebakedWorkspaceBundle,
 	materializeWorkspaceBundle,
+	type VerifiedWorkspaceBundles,
 } from '../workspace/prebaked-workspace-bundle';
 import type { SandboxWorkspace } from '../workspace/sandbox-fs';
 import { stringifyWorkspaceJson, withTrailingNewline } from '../workspace/workspace-file-content';
@@ -95,6 +101,7 @@ export interface BuildKnowledgeBaseWorkspaceBundleOptions {
 
 interface MaterializeKnowledgeBaseOptions extends BuildKnowledgeBaseWorkspaceBundleOptions {
 	workspace: SandboxWorkspace;
+	verifiedBundles?: VerifiedWorkspaceBundles;
 }
 
 function addTemplatesToKnowledgeBaseFiles(
@@ -137,7 +144,7 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 	{
 		id: 'trigger-input-data-shapes',
 		description:
-			'Per-trigger inputData shapes for verify-built-workflow and executions(action="run")',
+			'Per-trigger inputData shapes for workflow_builder_verify_built_workflow and workflow_builder_executions(action="run")',
 		fileName: 'trigger-input-data-shapes.md',
 	},
 	{
@@ -145,6 +152,12 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 		description:
 			'OpenAI node (@n8n/n8n-nodes-langchain.openAi) output shape for downstream expressions',
 		fileName: 'open-ai-output-shape.md',
+	},
+	{
+		id: 'anthropic-output-shape',
+		description:
+			'Anthropic node (@n8n/n8n-nodes-langchain.anthropic) output shape for downstream expressions and Code-node parsing',
+		fileName: 'anthropic-output-shape.md',
 	},
 	{
 		id: 'workflow-builder-guardrails',
@@ -155,9 +168,18 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 	{
 		id: 'workflow-sdk-language',
 		description:
-			'Allowed/forbidden constructs in workflow SDK builder code: methods, globals, language subset',
+			'Allowed/forbidden constructs in workflow SDK builder code: methods, globals, language subset, node groups, native node mappings that replace Code nodes',
 		fileName: 'workflow-sdk-language.md',
-		content: SDK_LANGUAGE_REFERENCE,
+		// The mapping table ships with the SDK reference so the builder reads
+		// "which native node replaces this Code node" in the same file.
+		content: `${SDK_LANGUAGE_REFERENCE}\n## Native node mappings\n\n${NATIVE_NODE_PREFERENCE}\n`,
+	},
+	{
+		id: 'node-groups',
+		description:
+			'Node group rules for SDK builder code: .group(name, members, { description }), what makes a group valid',
+		fileName: 'node-groups.md',
+		content: NODE_GROUPS_REFERENCE,
 	},
 ];
 
@@ -287,25 +309,13 @@ export async function loadPrebakedKnowledgeBaseBundle(
 
 	return await loadPrebakedWorkspaceBundle({
 		workspace: options.workspace,
+		verifiedBundles: options.verifiedBundles,
 		manifestPath: bundle.manifestPath,
 		expectedHash: bundle.contentHash,
 		hashField: 'contentHash',
 		schemaVersion: KNOWLEDGE_BASE_MANIFEST_SCHEMA_VERSION,
 		resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
 		logger: options.logger,
-		invalidManifestLogMessage: 'Ignoring invalid prebaked knowledge base manifest',
-		staleManifestLogMessage: 'Ignoring stale prebaked knowledge base manifest',
-		staleManifestLogKeys: {
-			expected: 'expectedContentHash',
-			actual: 'actualContentHash',
-		},
-		successLogMessage: 'Using prebaked knowledge base from workspace',
-		successLogContext: (loadedBundle) => ({
-			root: options.root,
-			knowledgeBaseRoot: loadedBundle.rootDir,
-			contentHash: loadedBundle.contentHash,
-			fileCount: loadedBundle.files.size,
-		}),
 		buildBundle: () => bundle,
 	});
 }
@@ -313,20 +323,25 @@ export async function loadPrebakedKnowledgeBaseBundle(
 export async function materializeKnowledgeBaseIntoWorkspace(
 	options: MaterializeKnowledgeBaseOptions,
 ): Promise<KnowledgeBaseWorkspaceBundle> {
-	return await materializeWorkspaceBundle({
-		workspace: options.workspace,
-		resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
-		logger: options.logger,
-		loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
-		buildBundle: async () => await buildKnowledgeBaseWorkspaceBundle(options),
-		materializedLogMessage: 'Materialized knowledge base into workspace',
-		materializedLogContext: (bundle) => ({
-			root: options.root,
-			knowledgeBaseRoot: bundle.rootDir,
-			contentHash: bundle.contentHash,
-			fileCount: bundle.files.size,
-		}),
-	});
+	return await traceSandboxOperation(
+		'sync-knowledge-base',
+		{
+			processResult: (bundle) => ({
+				outputs: { contentHash: bundle.contentHash, fileCount: bundle.files.size },
+			}),
+		},
+		async () => {
+			return await materializeWorkspaceBundle({
+				workspace: options.workspace,
+				verifiedBundles: options.verifiedBundles,
+				resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
+				logger: options.logger,
+				loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
+				buildBundle: async () => await buildKnowledgeBaseWorkspaceBundle(options),
+				bundleHash: (bundle) => bundle.contentHash,
+			});
+		},
+	);
 }
 
 export type {

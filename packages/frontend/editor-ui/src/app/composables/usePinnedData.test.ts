@@ -9,7 +9,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	NodeConnectionTypes,
 	STICKY_NODE_TYPE,
@@ -17,7 +17,7 @@ import {
 } from 'n8n-workflow';
 import type { NodeConnectionType, INodeTypeDescription } from 'n8n-workflow';
 
-vi.mock('@/app/composables/useToast', () => ({ useToast: vi.fn(() => ({ showError: vi.fn() })) }));
+vi.mock('@n8n/composables/useToast', () => ({ useToast: vi.fn(() => ({ showError: vi.fn() })) }));
 vi.mock('@n8n/i18n', async (importActual) => ({
 	...(await importActual()),
 	useI18n: () => ({
@@ -223,6 +223,24 @@ describe('usePinnedData', () => {
 			// validate out of range index
 			expect(canPinNode(false, 1)).toBe(false);
 			expect(canPinNode(false, -1)).toBe(false);
+		});
+
+		it('does not allow pin on deprecated node type', async () => {
+			const node = ref({
+				name: 'single output node',
+				typeVersion: 1,
+				type: HTTP_REQUEST_NODE_TYPE,
+				parameters: {},
+				onError: 'stopWorkflow',
+			} as INodeUi);
+			getNodeType.mockReturnValue({
+				...makeNodeType([NodeConnectionTypes.Main], HTTP_REQUEST_NODE_TYPE),
+				deprecated: true,
+			});
+
+			const { canPinNode } = usePinnedData(node);
+
+			expect(canPinNode()).toBe(false);
 		});
 
 		it('allows pin on one main and one error output', async () => {

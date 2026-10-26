@@ -39,7 +39,19 @@ async function execPromise(command: string, abortSignal?: AbortSignal): Promise<
 			return;
 		}
 
-		const child = spawn(command, { cwd: process.cwd(), shell: true, detached: true });
+		// `detached: true` puts the child in its own process group so we can kill the
+		// whole tree via `process.kill(-child.pid)` on POSIX. On Windows it instead
+		// gives the child its own console, so external programs (e.g. curl) write to
+		// that detached console and their stdout never reaches our pipe. Windows kills
+		// the tree via `taskkill /T`, so detaching is unnecessary there.
+		const detached = process.platform !== 'win32';
+		// `windowsHide` stops Windows from opening a visible console window for the command.
+		const child = spawn(command, {
+			cwd: process.cwd(),
+			shell: true,
+			detached,
+			windowsHide: true,
+		});
 
 		child.stdout.setEncoding('utf8');
 		child.stderr.setEncoding('utf8');
@@ -73,7 +85,7 @@ async function execPromise(command: string, abortSignal?: AbortSignal): Promise<
 				return;
 			}
 			if (process.platform === 'win32') {
-				spawn('taskkill', ['/pid', child.pid.toString(), '/T', '/F']);
+				spawn('taskkill', ['/pid', child.pid.toString(), '/T', '/F'], { windowsHide: true });
 				return;
 			}
 			try {

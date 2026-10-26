@@ -1,0 +1,278 @@
+import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
+import type { PollerFailureState } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { TaskTimeoutError } from '@n8n/scheduler';
+import type {
+	ClaimedTask,
+	DispatchDecision,
+	DispatchReporter,
+	TaskHandler,
+	TaskRun,
+} from '@n8n/scheduler';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import {
+	commitStagedCursor,
+	ErrorReporter,
+	runPollInStagingScope,
+	TriggersAndPollers,
+} from 'n8n-core';
+import type { Failure, IWorkflowBase } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { aborted } from 'node:util';
+
+import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
+import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
+
+import { resolveTaskTriggerNode } from '../resolve-task-trigger-node';
+import {
+	isPollTriggerTaskPayload,
+	POLL_TRIGGER_TASK_TYPE,
+	type PollTriggerTaskPayload,
+} from './poll-trigger-task';
+
+/** Stands in for the error a hanging poll never threw, so backoff classifies the timeout as transient. */
+class PollTimeoutError extends OperationalError {
+	readonly failure: Failure = { cause: 'temporarily-unavailable' };
+
+	constructor() {
+		super('Poll exceeded its timeout and was abandoned');
+	}
+}
+
+/**
+ * Runs a due poll occurrence's `poll()` once and dispatches only when it returns new data.
+ * Carries no `deduplicationKey`: under the at-least-once scheduler contract an occurrence
+ * can run twice, later cursor write wins; tolerable since two polls can legitimately differ anyway.
+ */
+@Service()
+export class PollTriggerTaskHandler implements TaskHandler {
+	readonly taskType = POLL_TRIGGER_TASK_TYPE;
+
+	constructor(
+		private logger: Logger,
+		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
+		private readonly triggersAndPollers: TriggersAndPollers,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly errorReporter: ErrorReporter,
+		private readonly pollBackoffService: PollBackoffService,
+		private readonly eventService: EventService,
+	) {
+		this.logger = this.logger.scoped('scheduler');
+	}
+
+	async execute(
+		task: ClaimedTask,
+		report: DispatchReporter,
+		{ signal: leaseSignal, remainingMs }: TaskRun,
+	): Promise<DispatchDecision> {
+		// A setup failure here retries to N8N_SCHEDULER_MAX_ATTEMPTS then dead-letters,
+		// unlike a `poll()` runtime failure below, which routes to the error workflow instead.
+		const { workflowId, nodeId } = this.parsePayload(task);
+		const logContext = { taskId: task.id, jobId: task.jobId, workflowId, nodeId };
+
+		const now = new Date();
+		const state = await this.pollBackoffService.getState(workflowId, nodeId).catch(() => null);
+		if (this.pollBackoffService.isBackingOff(state, now)) {
+			this.logger.debug('Poll is backing off; skipping this occurrence', {
+				...logContext,
+				backoffUntil: state?.backoffUntil,
+			});
+			return report.notDispatched();
+		}
+
+		const workflowData = await this.triggerExecutionContextFactory.findPublishedWorkflowData(
+			workflowId,
+			{ bypassCache: true }, // the poll cursor in staticData must be read live, not from the publish-time cache.
+		);
+
+		if (workflowData === null) {
+			this.logger.debug('Workflow has no published version. Skipping the occurrence.', logContext);
+			return report.notDispatched();
+		}
+
+		// A due task persisted for a version with duplicate or missing node ids can
+		// fire before the healed version's outbox record replaces the jobs.
+		// Resolving a duplicated id would poll the wrong node and write shared
+		// cursor state. Skipped, not thrown — a throw would retry to the max
+		// attempt count and dead-letter every occurrence.
+		if (!this.hasHealthyNodeIds(workflowData)) {
+			this.logger.debug(
+				'Published version has duplicate or missing node ids; skipping the occurrence until it is healed',
+				logContext,
+			);
+			return report.notDispatched();
+		}
+
+		const node = resolveTaskTriggerNode(
+			workflowData,
+			nodeId,
+			task,
+			'Poll-trigger task points to a node that is missing or disabled in the published workflow',
+		);
+
+		const { workflow, pollFunctions } =
+			await this.triggerExecutionContextFactory.createPollExecutionContext(
+				workflowData,
+				node,
+				{
+					fence: { taskId: task.id, leaseEpoch: task.leaseEpoch },
+					timeoutSeconds: task.timeoutSeconds,
+					remainingMs,
+				},
+				state?.cursor,
+			);
+
+		// Poll and hand-off share one staging scope, so a cursor staged here can only
+		// be committed by this poll and never by a later occurrence.
+		return await runPollInStagingScope(pollFunctions, async () => {
+			// Scheduled polls run outside any activation isolate window, so acquire and
+			// release one per tick; the finally releases even when poll() throws, and
+			// even while an abandoned poll is still running. A late expression
+			// evaluation then fails and is discarded with the rest of that poll,
+			// whereas holding the isolate for a poll that may never settle would pin a
+			// pooled bridge for good.
+			await workflow.expression.acquireIsolate();
+			// Nothing past a returning poll is the source failing, so a hand-off or
+			// database error after it must not back the node off. A setup error before
+			// poll() does count: it repeats every tick just like a failing source.
+			let polled = false;
+			try {
+				leaseSignal.throwIfAborted();
+				// `poll()` takes no abort signal, so the timeout of the occurrence or a lost
+				// claim abandons it rather than cancelling it: the call keeps running until
+				// it settles on its own, and its outcome is discarded. The cursor never moves
+				// on that path (it only moves through the staged commit or __emit below), so
+				// an abandoned tick leaves the poll window untouched for the next occurrence.
+				const poll = this.triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
+				await Promise.race([poll, aborted(leaseSignal, pollFunctions)]);
+				if (leaseSignal.reason instanceof TaskTimeoutError) {
+					await this.recordPollTimeout(logContext, node.type, state);
+					// A retry would poll the hanging source again, and backoff may be off.
+					// The next occurrence covers the same window, so this one completes.
+					return report.notDispatched();
+				}
+				leaseSignal.throwIfAborted();
+				const pollResponse = await poll;
+				polled = true;
+
+				await this.pollBackoffService.recordSuccess({ workflowId, nodeId, state });
+				leaseSignal.throwIfAborted();
+
+				if (pollResponse !== null) {
+					// poll() can run for a while (network I/O against the polled source), so
+					// the workflow may have been deactivated while it was in flight. There is
+					// no in-memory registration to check here, so re-read the stored active state.
+					const isActive = await this.workflowRepository.isActive(workflowId);
+					leaseSignal.throwIfAborted();
+					if (!isActive) {
+						this.logger.debug(
+							'Workflow deactivated during poll; discarding the result',
+							logContext,
+						);
+						return report.notDispatched();
+					}
+
+					// __emit saves the cursor and starts the run without waiting on it.
+					pollFunctions.__emit(pollResponse);
+					this.logger.debug('Poll returned new data; handed off to a new execution', logContext);
+					return report.dispatched();
+				}
+
+				// A poll with no items may still have moved its cursor, committed here on
+				// its own. Active state is re-read first so a workflow deactivated mid-poll
+				// doesn't get its cursor moved.
+				try {
+					const isActive = await this.workflowRepository.isActive(workflowId);
+					leaseSignal.throwIfAborted();
+					if (isActive) {
+						await commitStagedCursor(pollFunctions);
+					}
+				} catch (error) {
+					leaseSignal.throwIfAborted();
+					// The poll itself succeeded, so a failed cursor write is logged rather
+					// than routed to the error workflow.
+					this.errorReporter.error(error, {
+						extra: logContext,
+					});
+					this.logger.error(
+						'Failed to commit the poll cursor; the next poll repeats the same window',
+						{ ...logContext, error },
+					);
+				}
+
+				leaseSignal.throwIfAborted();
+				this.logger.debug('Poll returned no new data; nothing to hand off', logContext);
+				return report.notDispatched();
+			} catch (error) {
+				// A clean return completes the occurrence, so cancellation must reject.
+				leaseSignal.throwIfAborted();
+				// Routed to the error workflow instead of rethrown, which would retry and
+				// dead-letter without ever running it. __emitError commits no cursor, so
+				// the cursor holds and the next tick retries the same window.
+				if (!polled) {
+					await this.recordFailureIfActive(workflowId, nodeId, error, state, leaseSignal);
+				}
+				leaseSignal.throwIfAborted();
+				pollFunctions.__emitError(ensureError(error));
+				this.logger.debug('Poll failed at runtime; routed to the error workflow', logContext);
+				// The error was handed off, so this occurrence is handled and must not retry.
+				return report.dispatched();
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
+		});
+	}
+
+	/**
+	 * Not routed to the error workflow: an abandoned poll produces no run, and an
+	 * error run is one. It does count as a poll failure, so a source that keeps
+	 * hanging is re-polled at a widening interval like any failing source.
+	 */
+	private async recordPollTimeout(
+		logContext: { taskId: string; jobId: number; workflowId: string; nodeId: string },
+		nodeType: string,
+		state: PollerFailureState | null,
+	): Promise<void> {
+		this.eventService.emit('poll-tick-timed-out', { nodeType });
+		this.logger.warn('Poll exceeded its timeout and was abandoned', logContext);
+		const { workflowId, nodeId } = logContext;
+		await this.recordFailureIfActive(workflowId, nodeId, new PollTimeoutError(), state);
+	}
+
+	private async recordFailureIfActive(
+		workflowId: string,
+		nodeId: string,
+		error: unknown,
+		state: PollerFailureState | null,
+		leaseSignal?: AbortSignal,
+	): Promise<void> {
+		const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
+		leaseSignal?.throwIfAborted();
+		if (isActive) {
+			await this.pollBackoffService.recordFailure({
+				workflowId,
+				nodeId,
+				error,
+				state,
+				now: new Date(), // Use the failure time, not the tick start.
+			});
+		}
+	}
+
+	/** The invariant the activation-time healer guarantees: every node id unique and non-empty. */
+	private hasHealthyNodeIds(workflowData: IWorkflowBase): boolean {
+		const ids = workflowData.nodes.map((node) => node.id);
+		return ids.every(Boolean) && new Set(ids).size === ids.length;
+	}
+
+	private parsePayload(task: ClaimedTask): PollTriggerTaskPayload {
+		if (!isPollTriggerTaskPayload(task.payload)) {
+			throw new UnexpectedError('Poll-trigger task payload is missing workflowId or nodeId', {
+				extra: { taskId: task.id, jobId: task.jobId },
+			});
+		}
+		return task.payload;
+	}
+}

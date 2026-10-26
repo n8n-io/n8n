@@ -58,7 +58,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	 */
 	private readonly dynamicCredentialsFlagsAtInput = new Map<
 		number,
-		{ used: boolean; attempted: boolean }
+		{ used: boolean; attempted: boolean; credentialIds: readonly string[] }
 	>();
 
 	constructor(
@@ -157,7 +157,19 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.abortSignal,
 			this.parentNode,
 		);
-		context.addInputData(NodeConnectionTypes.AiTool, replacements.inputData);
+		void context
+			.addExecutionDataFunctions(
+				'input',
+				replacements.inputData,
+				NodeConnectionTypes.AiTool,
+				context.node.name,
+				context.getNextRunIndex(),
+			)
+			.catch((error: Error) => {
+				context.logger.warn(
+					`There was a problem logging input data of node "${context.node.name}": ${error.message}`,
+				);
+			});
 		return context;
 	}
 
@@ -260,7 +272,8 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		type: 'input' | 'output',
 		data: INodeExecutionData[][] | ExecutionBaseError,
 		connectionType: AINodeConnectionType,
-		sourceNodeName: string,
+		/** Node whose run the `subRun` entry attaches to; `undefined` when there is none. */
+		sourceNodeName: string | undefined,
 		currentNodeRunIndex: number,
 		metadata?: ITaskMetadata,
 		sourceNodeRunIndex?: number,
@@ -286,6 +299,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.dynamicCredentialsFlagsAtInput.set(currentNodeRunIndex, {
 				used: additionalData.currentNodeUsedDynamicCredentials === true,
 				attempted: additionalData.currentNodeAttemptedDynamicCredentials === true,
+				credentialIds: this.reportedCredentialIds(),
 			});
 			taskData = {
 				startTime: Date.now(),
@@ -324,7 +338,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			}
 			taskData.data = {
 				[connectionType]: data,
-			} as ITaskDataConnections;
+			};
 		}
 
 		if (type === 'output') {
@@ -337,7 +351,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				// TODO: remove inputOverride
 				taskData.inputOverride = {
 					[connectionType]: data,
-				} as ITaskDataConnections;
+				};
 			}
 
 			if (!runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
@@ -361,27 +375,40 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				this.runExecutionData,
 			]);
 
-			if (get(runExecutionData, 'executionData.metadata', undefined) === undefined) {
-				runExecutionData.executionData!.metadata = {};
-			}
+			if (sourceNodeName === undefined) return;
 
-			let sourceTaskData = runExecutionData.executionData?.metadata?.[sourceNodeName];
-
-			if (!sourceTaskData) {
-				runExecutionData.executionData!.metadata[sourceNodeName] = [];
-				sourceTaskData = runExecutionData.executionData!.metadata[sourceNodeName];
-			}
-			if (!sourceTaskData[currentNodeRunIndex]) {
-				sourceTaskData[currentNodeRunIndex] = {
-					subRun: [],
-				};
-			}
-
-			sourceTaskData[currentNodeRunIndex].subRun!.push({
-				node: nodeName,
-				runIndex: currentNodeRunIndex,
-			});
+			this.stageSubRun(sourceNodeName, currentNodeRunIndex, currentNodeRunIndex);
 		}
+	}
+
+	/**
+	 * Notes this node's run `runIndex` as a sub-run of run `sourceNodeRunIndex` of
+	 * `sourceNodeName`. `WorkflowExecute.moveNodeMetadata` merges the note onto that run at
+	 * the end of the execution.
+	 */
+	stageSubRun(sourceNodeName: string, sourceNodeRunIndex: number, runIndex: number) {
+		const { runExecutionData } = this;
+
+		if (get(runExecutionData, 'executionData.metadata', undefined) === undefined) {
+			runExecutionData.executionData!.metadata = {};
+		}
+
+		let sourceTaskData = runExecutionData.executionData?.metadata?.[sourceNodeName];
+
+		if (!sourceTaskData) {
+			runExecutionData.executionData!.metadata[sourceNodeName] = [];
+			sourceTaskData = runExecutionData.executionData!.metadata[sourceNodeName];
+		}
+		if (!sourceTaskData[sourceNodeRunIndex]) {
+			sourceTaskData[sourceNodeRunIndex] = {
+				subRun: [],
+			};
+		}
+
+		sourceTaskData[sourceNodeRunIndex].subRun!.push({
+			node: this.node.name,
+			runIndex,
+		});
 	}
 
 	/**
@@ -397,8 +424,18 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		const atInput = this.dynamicCredentialsFlagsAtInput.get(currentNodeRunIndex) ?? {
 			used: false,
 			attempted: false,
+			credentialIds: [],
 		};
 		this.dynamicCredentialsFlagsAtInput.delete(currentNodeRunIndex);
+
+		// The credentials a sub-workflow called by this run reported, which credential
+		// usability redaction reads.
+		const usedCredentialIds = this.reportedCredentialIds().filter(
+			(id) => !atInput.credentialIds.includes(id),
+		);
+		if (usedCredentialIds.length > 0) {
+			taskData.usedCredentialIds = usedCredentialIds;
+		}
 
 		const used = additionalData.currentNodeUsedDynamicCredentials === true && !atInput.used;
 		if (used) {
@@ -419,6 +456,12 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		}
 	}
 
+	/** A copy of the credential ids sub-workflows reported for the current node so far. */
+	private reportedCredentialIds(): string[] {
+		const ids = this.additionalData.currentNodeUsedCredentialIds;
+		return Array.isArray(ids) ? [...ids] : [];
+	}
+
 	logNodeOutput(...args: unknown[]): void {
 		if (this.mode === 'manual') {
 			const parsedLogArgs = args.map((arg) =>
@@ -429,7 +472,10 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		}
 
 		if (process.env.CODE_ENABLE_STDOUT === 'true') {
-			console.log(`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`, ...args);
+			console.log(
+				`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`,
+				...this.redactedConsoleArgs(args),
+			);
 		}
 	}
 

@@ -16,9 +16,18 @@ const workflow = {
 	nodes: [
 		{
 			name: 'Get Posted Keys',
-			type: 'n8n-nodes-base.dataTable',
-			typeVersion: 1,
-			parameters: { resource: 'row', operation: 'get' },
+			type: 'n8n-nodes-base.postgres',
+			typeVersion: 2.6,
+			parameters: { operation: 'select' },
+		},
+		{
+			name: 'Extract Invoice',
+			type: '@n8n/n8n-nodes-langchain.informationExtractor',
+			typeVersion: 1.2,
+			parameters: {
+				schemaType: 'fromAttributes',
+				attributes: { attributes: [{ name: 'total_amount', type: 'number' }] },
+			},
 		},
 		{
 			name: 'AI Root',
@@ -55,6 +64,16 @@ describe('generatePinData', () => {
 
 	it('keeps empty-array pins inside code fences', async () => {
 		respondWith('```json\n{ "Get Posted Keys": [] }\n```');
+
+		const result = await generatePinData({ workflow, nodeNames: ['Get Posted Keys'] });
+
+		expect(result).toEqual({ 'Get Posted Keys': [] });
+	});
+
+	it('reads the fenced JSON when the model explains it afterwards', async () => {
+		respondWith(
+			'```json\n{ "Get Posted Keys": [] }\n```\n\n**Get Posted Keys (`[]`):** every key is already stored, so the read returns no rows.',
+		);
 
 		const result = await generatePinData({ workflow, nodeNames: ['Get Posted Keys'] });
 
@@ -105,5 +124,46 @@ describe('generatePinData', () => {
 
 		expect(result).toEqual({});
 		expect(createEvalAgentMock).not.toHaveBeenCalled();
+	});
+
+	describe('field-name drift', () => {
+		const conforming = JSON.stringify({
+			'Extract Invoice': [{ json: { output: { total_amount: 42 } } }],
+		});
+		const drifted = JSON.stringify({
+			'Extract Invoice': [{ json: { output: { invoice_amount: 42 } } }],
+		});
+
+		it('accepts conforming items first try', async () => {
+			respondWith(conforming);
+
+			const result = await generatePinData({ workflow, nodeNames: ['Extract Invoice'] });
+
+			expect(result['Extract Invoice'][0].json).toEqual({ output: { total_amount: 42 } });
+			expect(generateMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('regenerates once with corrections when pinned keys drift', async () => {
+			generateMock.mockResolvedValue({});
+			extractTextMock.mockReturnValueOnce(drifted).mockReturnValueOnce(conforming);
+
+			const result = await generatePinData({ workflow, nodeNames: ['Extract Invoice'] });
+
+			expect(result['Extract Invoice'][0].json).toEqual({ output: { total_amount: 42 } });
+			expect(generateMock).toHaveBeenCalledTimes(2);
+			const retryPrompt = generateMock.mock.calls[1][0] as string;
+			expect(retryPrompt).toContain('## Correction required');
+			expect(retryPrompt).toContain('remove/rename these unknown fields: invoice_amount');
+		});
+
+		it('fails loud instead of serving a still-drifted fixture after the retry', async () => {
+			generateMock.mockResolvedValue({});
+			extractTextMock.mockReturnValue(drifted);
+
+			await expect(generatePinData({ workflow, nodeNames: ['Extract Invoice'] })).rejects.toThrow(
+				'drifted from declared field names after retry',
+			);
+			expect(generateMock).toHaveBeenCalledTimes(2);
+		});
 	});
 });

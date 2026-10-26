@@ -12,9 +12,9 @@ import type {
 import {
 	NodeApiError,
 	NodeOperationError,
-	sleep,
 	removeCircularRefs,
 	NodeConnectionTypes,
+	sleepUnlessExecutionCancelled,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -25,6 +25,7 @@ import {
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
+
 interface OptionData {
 	name: string;
 	displayName: string;
@@ -627,23 +628,21 @@ export class HttpRequestV1 implements INodeType {
 		let oAuth1Api;
 		let oAuth2Api;
 
+		const authentication = this.getNodeParameter('authentication', 0) as string;
 		try {
-			httpBasicAuth = await this.getCredentials('httpBasicAuth');
-		} catch {}
-		try {
-			httpDigestAuth = await this.getCredentials('httpDigestAuth');
-		} catch {}
-		try {
-			httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-		} catch {}
-		try {
-			httpQueryAuth = await this.getCredentials('httpQueryAuth');
-		} catch {}
-		try {
-			oAuth1Api = await this.getCredentials('oAuth1Api');
-		} catch {}
-		try {
-			oAuth2Api = await this.getCredentials('oAuth2Api');
+			if (authentication === 'basicAuth') {
+				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			} else if (authentication === 'digestAuth') {
+				httpDigestAuth = await this.getCredentials('httpDigestAuth');
+			} else if (authentication === 'headerAuth') {
+				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			} else if (authentication === 'queryAuth') {
+				httpQueryAuth = await this.getCredentials('httpQueryAuth');
+			} else if (authentication === 'oAuth1') {
+				oAuth1Api = await this.getCredentials('oAuth1Api');
+			} else if (authentication === 'oAuth2') {
+				oAuth2Api = await this.getCredentials('oAuth2Api');
+			}
 		} catch {}
 
 		const secrets: string[] = [];
@@ -725,7 +724,7 @@ export class HttpRequestV1 implements INodeType {
 				const batchSize: number =
 					(options.batchSize as number) > 0 ? (options.batchSize as number) : 1;
 				if (itemIndex % batchSize === 0) {
-					await sleep(options.batchInterval as number);
+					await sleepUnlessExecutionCancelled(this, options.batchInterval as number);
 				}
 			}
 

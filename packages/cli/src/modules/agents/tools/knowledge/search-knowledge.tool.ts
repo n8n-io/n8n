@@ -1,6 +1,12 @@
 import { Tool } from '@n8n/agents/tool';
+import { isRecord } from '@n8n/utils/is-record';
 
-import type { AgentKnowledgeSandboxService } from '../../agent-knowledge-sandbox.service';
+import type { AgentKnowledgeMirrorService } from '../../agent-knowledge-mirror.service';
+import type {
+	FinishKnowledgeToolCall,
+	KnowledgeToolCall,
+	KnowledgeToolCallResult,
+} from '../../agent-knowledge-usage-tracker';
 import {
 	globKnowledgeFilesInputSchema,
 	MAX_READ_RANGES,
@@ -46,8 +52,16 @@ async function runKnowledgeTool<T>(
 	}
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
+function toKnowledgeToolCallResult(
+	output: unknown,
+	toModelOutput: (output: unknown) => unknown,
+): KnowledgeToolCallResult {
+	if (isKnowledgeToolErrorOutput(output)) {
+		return { failed: true };
+	}
+
+	const json: string | undefined = JSON.stringify(toModelOutput(output));
+	return { failed: false, contentChars: json?.length ?? 0 };
 }
 
 function truncateForModel(text: string, maxChars: number): { text: string; truncated: boolean } {
@@ -239,23 +253,29 @@ function toReadKnowledgeModelOutput(output: unknown): unknown {
 export function createKnowledgeRetrievalTools({
 	projectId,
 	agentId,
-	sandboxService,
+	knowledgeMirrorService,
+	startToolCall,
 }: {
 	projectId: string;
 	agentId: string;
-	sandboxService: AgentKnowledgeSandboxService;
+	knowledgeMirrorService: AgentKnowledgeMirrorService;
+	/** Called when each call starts. The returned function gets the size of the output that the model gets. */
+	startToolCall: (runId: string | undefined, call: KnowledgeToolCall) => FinishKnowledgeToolCall;
 }) {
 	const globTool = new Tool('find_file')
 		.description(
 			'Find uploaded knowledge files by filename pattern, such as `*knowledge*`, `*agent*tool*`, or `*sandbox*`. Use `*` to list every uploaded file, an extension pattern like `*.pdf` to filter by type, or a name fragment when the user gives title or filename clues. Use first for knowledge lookup to discover plausible candidate files; call until enough candidates are found, then copy returned file values into search_text path or read_file. Results are paged: page through the full list with `limit` and `offset` while `hasMore` is true. Returns file, fileId, mimeType, and fileSizeBytes metadata; does not read file contents.',
 		)
 		.input(globKnowledgeFilesInputSchema)
-		.handler(
-			async (input) =>
-				await runKnowledgeTool(
-					async () => await sandboxService.globKnowledgeFiles(projectId, agentId, input),
-				),
-		)
+		.handler(async (input, ctx) => {
+			const finishToolCall = startToolCall(ctx.runId, 'file_find');
+			const output = await runKnowledgeTool(
+				async () => await knowledgeMirrorService.globKnowledgeFiles(projectId, agentId, input),
+			);
+			const result = toKnowledgeToolCallResult(output, toGlobKnowledgeModelOutput);
+			finishToolCall(result);
+			return output;
+		})
 		.toModelOutput(toGlobKnowledgeModelOutput);
 
 	const searchTool = new Tool('search_text')
@@ -263,12 +283,15 @@ export function createKnowledgeRetrievalTools({
 			'Search uploaded knowledge file contents with a ripgrep regex `pattern`. Omit `path` to search across every uploaded knowledge file. Pass `path` — one exact file value or an array of exact file values returned by find_file, search_text, or read_file — to scope the search to specific files. Does not accept empty path, `*`, fileId, absolute paths, guessed paths, arrays of non-strings, offsets, or semantic questions. Searching more than 20 files with an explicit `path` requires batching arrays across multiple calls (max 20 paths per call). `output_mode` defaults to content for snippets; use files_with_matches for matching files only or count for per-file match counts. Use `head_limit` to bound results and small `-C` values for nearby context. Answer from snippets when enough; use read_file only for quotes, citations, exact wording, source text, or larger missing context.',
 		)
 		.input(searchKnowledgeInputSchema)
-		.handler(
-			async (input) =>
-				await runKnowledgeTool(
-					async () => await sandboxService.searchKnowledge(projectId, agentId, input),
-				),
-		)
+		.handler(async (input, ctx) => {
+			const finishToolCall = startToolCall(ctx.runId, 'file_search');
+			const output = await runKnowledgeTool(
+				async () => await knowledgeMirrorService.searchKnowledge(projectId, agentId, input),
+			);
+			const result = toKnowledgeToolCallResult(output, toSearchKnowledgeModelOutput);
+			finishToolCall(result);
+			return output;
+		})
 		.toModelOutput(toSearchKnowledgeModelOutput);
 
 	const readTool = new Tool('read_file')
@@ -276,12 +299,15 @@ export function createKnowledgeRetrievalTools({
 			`Read one uploaded knowledge file using an exact \`file\` or \`fileId\` returned by a knowledge tool. Use only for exact quotes, citations, source text, or extra surrounding context not covered by search_text snippets or small -C context. Prefer bounded line ranges; each call supports up to ${MAX_READ_RANGES} ranges and output is truncated when too large. Read all needed ranges from the same file in one call when practical, and do not use read_file for broad manual scanning. If using fileId without an exact matching file value, omit file.`,
 		)
 		.input(readKnowledgeInputSchema)
-		.handler(
-			async (input) =>
-				await runKnowledgeTool(
-					async () => await sandboxService.readKnowledge(projectId, agentId, input),
-				),
-		)
+		.handler(async (input, ctx) => {
+			const finishToolCall = startToolCall(ctx.runId, 'file_read');
+			const output = await runKnowledgeTool(
+				async () => await knowledgeMirrorService.readKnowledge(projectId, agentId, input),
+			);
+			const result = toKnowledgeToolCallResult(output, toReadKnowledgeModelOutput);
+			finishToolCall(result);
+			return output;
+		})
 		.toModelOutput(toReadKnowledgeModelOutput);
 
 	return [globTool, searchTool, readTool];

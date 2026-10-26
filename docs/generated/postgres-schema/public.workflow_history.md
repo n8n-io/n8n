@@ -49,6 +49,7 @@ erDiagram
 "public.workflow_publish_history" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_published_version" }o--|| "public.workflow_history" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
 "public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;workflowVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
+"public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;baselineVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_history" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.workflow_history" {
@@ -89,7 +90,7 @@ erDiagram
 "public.workflow_publication_trigger_status" {
   timestamp_3__with_time_zone createdAt
   text errorMessage
-  varchar_36_ nodeId
+  varchar_64_ nodeId
   varchar_20_ status
   varchar_20_ triggerKind
   timestamp_3__with_time_zone updatedAt
@@ -111,6 +112,7 @@ erDiagram
   varchar_36_ workflowId FK
 }
 "public.workflow_review_request_workflow" {
+  varchar_36_ baselineVersionId FK
   varchar_36_ id
   varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK

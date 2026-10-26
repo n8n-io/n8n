@@ -1,5 +1,7 @@
 import userEvent from '@testing-library/user-event';
-import { render } from '@testing-library/vue';
+import { render, waitFor } from '@testing-library/vue';
+
+import type { IconName } from '../N8nIcon/icons';
 
 import N8nButton from './Button.vue';
 
@@ -82,7 +84,7 @@ describe('components', () => {
 
 		describe('props', () => {
 			describe('variant', () => {
-				it.each(['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'] as const)(
+				it.each(['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'] as const)(
 					'should render %s variant',
 					(variant) => {
 						const wrapper = render(N8nButton, {
@@ -331,6 +333,15 @@ describe('components', () => {
 		});
 
 		describe('accessibility', () => {
+			it('uses a polite live region unless the caller overrides it', async () => {
+				const { getByRole, rerender } = render(N8nButton, {
+					slots: { default: 'Status' },
+				});
+				expect(getByRole('button')).toHaveAttribute('aria-live', 'polite');
+				await rerender({ 'aria-live': 'off' });
+				expect(getByRole('button')).toHaveAttribute('aria-live', 'off');
+			});
+
 			it('should be keyboard accessible', async () => {
 				const handleClick = vi.fn();
 				const wrapper = render(N8nButton, {
@@ -357,6 +368,17 @@ describe('components', () => {
 				const button = wrapper.getByRole('button');
 				button.focus();
 				expect(button).toHaveFocus();
+			});
+
+			it('should preserve a custom tabindex', () => {
+				const wrapper = render(N8nButton, {
+					props: { variant: 'solid' },
+					attrs: { tabindex: -1 },
+					slots: { default: 'Button' },
+					global: { stubs },
+				});
+
+				expect(wrapper.getByRole('button')).toHaveAttribute('tabindex', '-1');
 			});
 
 			it('should warn about missing accessible label for icon-only buttons in dev mode', () => {
@@ -436,6 +458,19 @@ describe('components', () => {
 				const button = wrapper.getByRole('button');
 				expect(button).toHaveAttribute('data-test-id', 'custom-button');
 				expect(button).toHaveAttribute('aria-describedby', 'help-text');
+			});
+		});
+
+		describe('fallback icon', () => {
+			it('should draw the fallback icon for an icon name no icon set has', async () => {
+				const wrapper = render(N8nButton, {
+					props: { icon: 'not-an-icon' as IconName, fallbackIcon: 'bot', iconOnly: true },
+					attrs: { 'aria-label': 'Change icon' },
+				});
+
+				await waitFor(() =>
+					expect(wrapper.container.querySelector('svg[data-icon="bot"]')).toBeTruthy(),
+				);
 			});
 		});
 

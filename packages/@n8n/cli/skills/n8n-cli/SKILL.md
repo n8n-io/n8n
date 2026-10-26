@@ -188,6 +188,116 @@ n8n-cli user list
 n8n-cli user get <id>
 ```
 
+## Promotions
+
+Move projects between instances through a Git repository. A **provider** holds
+the credentials. An **environment** sets up one direction on a repository:
+`promote` pushes to Git, `apply` imports from Git. The instance can have one
+environment for each direction.
+
+```bash
+# 1. Create a provider. An SSH provider returns a public key to add as a deploy key.
+#    The response carries the provider fields at the top level, so `.id` and
+#    `.publicKey` both work with --jq and --format=id-only.
+echo '{"name":"GitHub","type":"git","auth":{"authType":"ssh-key","keyType":"ed25519"}}' \
+  | n8n-cli promotion-provider create --stdin --json > provider.json
+jq -r '.id' provider.json          # use as providerId in step 2
+jq -r '.publicKey' provider.json   # add to the repository as a deploy key
+
+# 2. Create an environment on that provider for each direction you need.
+n8n-cli promotion-environment create --file=promote.json
+n8n-cli promotion-environment create --file=apply.json
+
+# 3. Connect each environment before you use it.
+n8n-cli promotion-environment connect <promoteId>
+n8n-cli promotion-environment connect <applyId>
+
+# 4. Promote from this instance, or apply to it.
+n8n-cli promotion-environment promote <promoteId>
+n8n-cli promotion-environment apply <applyId>
+```
+
+Apply a reviewed commit only:
+
+```bash
+# Review the changes. Take the commit SHA from the same response as the rows:
+# a second request can read a newer commit.
+n8n-cli promotion-environment list-changes <projectId> apply --sort=updatedAt --order=desc --json > reviewed-changes.json
+jq '{commitSha, changes}' reviewed-changes.json
+# The branch comes from the Apply environment.
+n8n-cli promotion-environment get <applyId> --jq '.settings.branchName'
+
+n8n-cli promotion-environment apply <applyId> \
+  --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
+# Exit 3: the source changed since the review. Review again.
+# Exit 4: preflight found missing bindings, access requirements, or conflicts. Resolve them,
+# then run the apply-continue command that apply printed:
+n8n-cli promotion-environment apply-continue <applyId> \
+  --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
+# To also apply destructive data table changes and delete the team projects that the
+# package does not hold, add --confirm-destructive-changes.
+```
+
+Environment JSON for step 2 (`promote.json`; `apply.json` uses `"direction":"apply"`
+and `"settings":{"schemaVersion":1,"branchName":"main"}`):
+
+```json
+{
+  "name": "Production",
+  "scope": "instance",
+  "providerId": "prov-1",
+  "remote": { "schemaVersion": 1, "remoteUrl": "git@github.com:acme/flows.git" },
+  "direction": "promote",
+  "settings": { "schemaVersion": 1, "baseBranchName": "main", "createBranchOnPromotion": false }
+}
+```
+
+```bash
+# Providers
+n8n-cli promotion-provider list
+n8n-cli promotion-provider get <id>          # re-read the public key; the list omits it
+echo '{"name":"New name"}' | n8n-cli promotion-provider update <id> --stdin
+n8n-cli promotion-provider delete <id>       # fails while an environment uses it
+
+# Environments
+n8n-cli promotion-environment list --scope=instance --direction=promote
+n8n-cli promotion-environment list --provider=<providerId>
+n8n-cli promotion-environment get <id>
+echo '{"name":"New name"}' | n8n-cli promotion-environment update <id> --stdin
+n8n-cli promotion-environment delete <id>
+n8n-cli promotion-environment disconnect <id>
+
+# Change the settings. The write replaces the whole settings object,
+# so send every setting you want to keep. Direction and scope cannot change.
+echo '{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":false}}' \
+  | n8n-cli promotion-environment update <promoteId> --stdin
+
+# Link projects to a "projects"-scoped environment
+n8n-cli promotion-environment list-projects <id>
+n8n-cli promotion-environment add-project <id> <projectId>
+n8n-cli promotion-environment remove-project <id> <projectId>
+```
+
+Key points:
+- Pass every JSON body through `--stdin` or `--file`, never through a flag. This
+  keeps credentials off the command line.
+- `authType` is `ssh-key` or `token`. `token` means an HTTP(S) username and
+  password, not a Git host API token. `publicKey` is `null` for a `token` provider.
+- `createBranchOnPromotion` is always required in promote settings.
+- `promote` and `apply` work on an `instance` environment of their direction
+  only, and need it connected first. Connecting one environment does not make another
+  ready.
+- A project can have one environment for each direction. A direction without a
+  project environment uses the instance environment.
+- `apply` and `apply-continue` import nothing on exit code `3` (`source-changed`)
+  or `4` (`blocked`). Check `$?`, or the `status` field in JSON output, before you
+  read `counts`. With `--json`, a `blocked` result lists what is missing under
+  `preflight`.
+- The `--expected-*` flags go together: pass all three or none. The commit SHA
+  must be the full SHA.
+- API key scopes for this group are named `gitConnection:*`. `promote` also needs
+  `variable:list` when the workflows reference variables.
+
 ## Other
 
 ```bash

@@ -1,5 +1,5 @@
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { isSerializedBuffer, toBuffer } from 'n8n-core';
+import { isSerializedBuffer, serializeBuffer, toBuffer } from 'n8n-core';
 import { OperationalError, randomInt, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { EventEmitter } from 'node:events';
@@ -59,7 +59,7 @@ export interface TaskRunnerOpts extends BaseRunnerConfig {
 }
 
 export abstract class TaskRunner extends EventEmitter {
-	id: string = nanoid();
+	id: string;
 
 	ws: WebSocket;
 
@@ -111,6 +111,7 @@ export abstract class TaskRunner extends EventEmitter {
 	constructor(opts: TaskRunnerOpts) {
 		super();
 
+		this.id = opts.runnerId || nanoid();
 		this.taskType = opts.taskType;
 		this.name = opts.name ?? 'Node.js Task Runner SDK';
 		this.maxConcurrency = opts.maxConcurrency;
@@ -523,7 +524,7 @@ export abstract class TaskRunner extends EventEmitter {
 				callId,
 				taskId,
 				name,
-				params,
+				params: params.map((param) => (Buffer.isBuffer(param) ? serializeBuffer(param) : param)),
 			});
 
 			const returnValue = await dataPromise;
@@ -708,17 +709,12 @@ export abstract class TaskRunner extends EventEmitter {
 	 * Cancels all node type and data requests made by the given task
 	 */
 	private cancelTaskRequests(taskId: string, reason: string) {
-		for (const [requestId, request] of this.dataRequests.entries()) {
-			if (request.taskId === taskId) {
-				request.reject(new TaskCancelledError(reason));
-				this.dataRequests.delete(requestId);
-			}
-		}
-
-		for (const [requestId, request] of this.nodeTypesRequests.entries()) {
-			if (request.taskId === taskId) {
-				request.reject(new TaskCancelledError(reason));
-				this.nodeTypesRequests.delete(requestId);
+		for (const requests of [this.dataRequests, this.nodeTypesRequests]) {
+			for (const [requestId, request] of requests.entries()) {
+				if (request.taskId === taskId) {
+					request.reject(new TaskCancelledError(reason));
+					requests.delete(requestId);
+				}
 			}
 		}
 	}

@@ -237,6 +237,55 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			expect(result).toEqual({ data: [inputData] });
 		});
+
+		it('should forward only the first output branch for a multi-output disabled node without forwardAllOutputs', async () => {
+			// A user-disabled node (e.g. Merge) must keep the existing passthrough
+			// behaviour: only the first main input is forwarded.
+			const disabledNode = { ...mockNode, disabled: true };
+			const branches = [[{ json: { branch: 0 } }], [{ json: { branch: 1 } }]];
+			const executionData = {
+				...mockExecutionData,
+				node: disabledNode,
+				data: { main: branches },
+			};
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				executionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(result).toEqual({ data: [branches[0]] });
+		});
+
+		it('should forward all output branches for a resumed waiting-webhook node (forwardAllOutputs)', async () => {
+			// Regression test for the waiting-webhook resume path: the resuming node
+			// is flagged disabled and its data.main holds the full set of output
+			// branches returned by webhook(). All branches must be forwarded, not
+			// just output 0. See https://github.com/n8n-io/n8n/issues/12823
+			const disabledNode = { ...mockNode, disabled: true };
+			const outputBranches = [[], [{ json: { action: 'Decline' } }], []];
+			const executionData = {
+				...mockExecutionData,
+				node: disabledNode,
+				data: { main: outputBranches },
+				metadata: { forwardAllOutputs: true },
+			};
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				executionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(result).toEqual({ data: outputBranches });
+		});
 	});
 
 	describe('error handling for previously failed nodes', () => {
@@ -426,6 +475,42 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			expect(mockNodeType.execute).toHaveBeenCalled();
 			expect(result).toEqual({ data: mockData, hints: mockHints });
+		});
+
+		it('should return the eval node mock output instead of running the node', async () => {
+			const mockData = [[{ json: { mocked: true }, pairedItem: { item: 0 } }]];
+			mockNodeType.execute = vi.fn();
+			mockAdditionalData.evalNodeMockHandler = vi.fn().mockResolvedValue(mockData);
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				mockExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(mockNodeType.execute).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ data: mockData });
+		});
+
+		it('should run the node when the eval node mock returns no output', async () => {
+			const mockData = [[{ json: { result: 'test' } }]];
+			mockNodeType.execute = vi.fn().mockResolvedValue(mockData);
+			mockAdditionalData.evalNodeMockHandler = vi.fn().mockResolvedValue(undefined);
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				mockExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(mockNodeType.execute).toHaveBeenCalled();
+			expect(result).toMatchObject({ data: mockData });
 		});
 
 		it('should execute Node class instance with execute method', async () => {

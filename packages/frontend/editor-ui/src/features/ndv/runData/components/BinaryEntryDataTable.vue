@@ -6,8 +6,9 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import { computed } from 'vue';
 import type { BinaryMetadata } from '@/Interface';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { getBinaryDataFileName } from '@/app/utils/fileUtils';
 
 const BYTES_THRESHOLD = 1048576; // 1MB
 
@@ -30,12 +31,7 @@ const tablePreview = computed(() => {
 	return isImageType && passThreshold;
 });
 
-const fileName = computed(() => {
-	const { fileName, fileExtension } = props.value;
-	const name = fileName ?? 'file';
-	if (name?.includes('.')) return name;
-	return fileExtension ? `${name}.${fileExtension}` : name;
-});
+const fileName = computed(() => getBinaryDataFileName(props.value));
 
 const fileUrl = computed(() => {
 	const { id, mimeType } = props.value;
@@ -89,7 +85,7 @@ const fileIcon = computed(() => {
 				v-if="tablePreview"
 				:src="fileUrl"
 				:class="$style.imagePreview"
-				:alt="fileName || 'Image preview'"
+				:alt="fileName || i18n.baseText('binaryDataDisplay.imagePreview')"
 			/>
 			<div v-else :class="$style.iconWrapper">
 				<N8nIcon :icon="fileIcon" size="xlarge" />
@@ -100,7 +96,7 @@ const fileIcon = computed(() => {
 			<div v-if="fileMeta" :class="$style.meta">{{ fileMeta }}</div>
 		</div>
 		<button :class="$style.download" @click="downloadBinaryData">
-			<N8nIcon icon="download" size="large" />
+			<N8nIcon icon="arrow-circle-down" size="large" />
 		</button>
 	</div>
 </template>
@@ -169,7 +165,7 @@ const fileIcon = computed(() => {
 .filename {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	overflow: hidden;
 	max-width: 300px;
 	text-overflow: ellipsis;

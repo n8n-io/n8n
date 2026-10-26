@@ -8,6 +8,7 @@ import type { Runnable } from '@langchain/core/runnables';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { isChatInstance } from '@n8n/ai-utilities';
+import { toParserInputText } from '@utils/output_parsers/parserInput';
 import { getTracingConfig } from '@utils/tracing';
 
 import { createPromptTemplate, getAgentStepsParser } from './promptUtils';
@@ -188,6 +189,7 @@ export async function executeChain({
 	} else {
 		chain = promptWithInstructions
 			.pipe(model)
+			.pipe(toParserInputText)
 			.pipe(outputParser)
 			.withConfig(getTracingConfig(context));
 	}

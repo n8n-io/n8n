@@ -13,7 +13,7 @@ A versatile text input component for collecting user text, numbers, passwords, a
 **Props**
 
 - `modelValue?: string | number | null` - The bound value of the input (v-model). Default: `''`
-- `type?: InputType` - Type of input field. Values: `'text' | 'textarea' | 'password' | 'number' | 'email'`. Default: `'text'`
+- `type?: InputType` - Type of input field. Values: `'text' | 'textarea' | 'password' | 'number' | 'email' | 'url'`. Default: `'text'`
 - `size?: InputSize` - Size of the input. Values: `'xlarge' | 'large' | 'medium' | 'small' | 'mini'`. Default: `'large'`
 - `placeholder?: string` - Placeholder text displayed when input is empty. Default: `''`
 - `disabled?: boolean` - When `true`, prevents user interaction and dims the input. Default: `false`
@@ -25,6 +25,7 @@ A versatile text input component for collecting user text, numbers, passwords, a
 - `autofocus?: boolean` - When `true`, automatically focuses the input on mount. Default: `false`
 - `autocomplete?: InputAutocomplete` - HTML autocomplete attribute. Values: `'off' | 'on' | 'new-password' | 'current-password' | 'given-name' | 'family-name' | 'one-time-code' | 'email'`. Default: `'off'`
 - `name?: string` - HTML name attribute for the input element.
+- `appendClass?: string` - Replaces the default append slot class. The slot then uses only this class.
 
 **Events**
 

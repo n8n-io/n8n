@@ -12,7 +12,8 @@ exhaustive flag list.
 - **A running n8n instance with Instance AI enabled**, reachable over HTTP. The
   eval is a client — it logs in and drives the normal build flow. Point it with
   `--base-url` (defaults to `http://localhost:5678`); use whatever instance you
-  already run for Instance AI dev.
+  already run for Instance AI dev. Start it with
+  `N8N_INSTANCE_AI_EVAL_INSTANCE=true`, or the eval routes return 404.
 - **A login** — the eval signs in as an existing user. Set the eval login env
   vars to a user your instance has; the model and most settings have defaults
   that a working Instance AI dev setup already provides.
@@ -49,11 +50,34 @@ Narrow any run with `--filter <slug>` (filename substring, comma = OR),
 `--tier <name>`, and `--exclude`. `--keep-workflows` leaves built workflows for
 inspection; `--iterations N` runs each case N times for pass@k / pass^k.
 
+**Seeded cases and `--keep-workflows`.** A seeded case's live turn addresses its
+workflow the way a user would — by name, often loosely ("the batch image
+workflow"). So a leftover copy is something the agent can rationally pick instead
+of its own, and it prefers the one with failed executions when the message
+mentions a failure; the judge then grades a different workflow than the agent
+edited. That produces false greens as readily as false reds, so it doesn't
+announce itself.
+
+Restore now defends against this on both sides: each restored workflow gets a
+`[seed <8 hex>]` name suffix so copies are distinguishable, and any leftover
+carrying that suffix with the same base name is deleted before the next restore.
+You'll see `Evicted N leftover seed workflow(s) before restore` when it fires.
+Workflows without the suffix — real ones, and anything the agent built — are never
+touched. So `--keep-workflows` is safe to use on a seeded case; the leftover is
+cleaned up by the next run rather than contaminating it.
+
+**Seeded agents are not evicted** — they get a fresh id per run but keep their
+authored name, so `--keep-workflows` on an agent-seeding case leaves one behind
+and they accumulate under the same name. That can't misdirect a later run (the
+live turn is bound to its own agent by id), but it does clutter what the `agents`
+tool lists. Delete them yourself when calibrating:
+`DELETE /rest/projects/<projectId>/agents/v2/<agentId>`.
+
 ## Case source: disk vs langtracer
 
 | Source | When to use it |
 |---|---|
-| **`disk`** (default) | **Preferred for local development** — authoring and calibrating the case in front of you: drop the JSON into `data/workflows/`, `--filter` it, iterate. Also the only home of the `agents` tier and the seeded carve-out cases; since the corpus migration the directory holds only those, not the full suite. |
+| **`disk`** (default) | **Preferred for local development** — authoring and calibrating the case in front of you: drop the JSON into `data/workflows/`, `--filter` it, iterate. Also the only home of the `agents` tier and of a `replay`-seeded case (reconstructed from a trace at run time, so no suite can hold it); since the corpus migration the directory holds only those, not the full suite. |
 | **`langtracer`** (`--source langtracer --suite baseline`) | Bigger runs (the full corpus or a whole tier), re-running specific cases that already live in the suite, and CI — which always runs this way. Needs `LANGTRACER_URL`/`LANGTRACER_API_KEY` in your env. |
 
 ## Configuration & secrets
@@ -96,7 +120,12 @@ flag wins — use it.
   getAuthToken`.
 - `ANTHROPIC_API_KEY` — the non-proxy orchestrator reads this (not just
   `N8N_AI_ANTHROPIC_KEY`); the eval helper (mock-gen / verify / judge) reads
-  either.
+  either. **You usually don't need a separate key: `.env.eval` already carries
+  `N8N_AI_ANTHROPIC_KEY`** — mirror it rather than hunting for another one
+  (`ANTHROPIC_API_KEY="$(grep '^N8N_AI_ANTHROPIC_KEY=' .env.eval | cut -d= -f2-)"`,
+  or just export it inside the `dotenvx` child). Check the file before concluding
+  a key is missing — and grep its names with `^[A-Za-z0-9_]+=`, since a
+  `^[A-Z_]*=` pattern silently drops every `N8N_*` var (the digit).
 - `E2E_TESTS=true` — exposes `POST /rest/e2e/reset` so you can seed a known owner.
 
 **Seed an owner** (a fresh instance has none → login 401s). Full payload shape in
@@ -114,11 +143,22 @@ it): a running instance holds both its main port *and* the task-broker port
 second instance its own everything:
 
 ```bash
+# .env.eval alone is enough — it carries N8N_AI_*, the sandbox/Daytona keys and
+# N8N_AI_ANTHROPIC_KEY. Skip .env.local: its staging base-url / port-5678
+# defaults fight the settings below.
 N8N_PORT=5680 N8N_RUNNERS_BROKER_PORT=5681 N8N_USER_FOLDER=/tmp/n8n-eval-run \
-E2E_TESTS=true N8N_AI_ASSISTANT_BASE_URL= ANTHROPIC_API_KEY=… \
-  npx dotenvx run -f .env.local -f .env.eval -- pnpm start
+E2E_TESTS=true N8N_INSTANCE_AI_EVAL_INSTANCE=true N8N_AI_ASSISTANT_BASE_URL= \
+  npx dotenvx run -f .env.eval -- \
+  sh -c 'ANTHROPIC_API_KEY="$N8N_AI_ANTHROPIC_KEY" exec pnpm start'
 # then seed the owner (above), and run the eval with: --base-url http://localhost:5680
 ```
+
+**Don't reach for `DB_SQLITE_POOL_SIZE=0`** if you find it in an older note. It
+can't disable pooling: the schema is `.int().gte(1)`, so `0` is rejected and
+`@Env` warns (`Invalid value for DB_SQLITE_POOL_SIZE … Falling back to default
+value.`) and keeps the default of 3. There is no non-pooled path to select
+anyway — `getSqliteConnectionOptions()` always returns `type: 'sqlite-pooled'`.
+`POST /rest/e2e/reset` seeds the owner fine under the pooled driver.
 
 `pnpm start` (built dist) is enough — no need for `pnpm dev:ai`. Case JSON is read
 from source at run time, so new/edited cases need no rebuild.
@@ -172,12 +212,50 @@ server-side filter. The two that matter for CI:
   capability diversity.
 
 Other values group cases logically (e.g. `behaviour` for conversation-behaviour
-cases, `seeded` for transient `seedThread` cases kept out of CI). For a new
+cases, `seeded` for transient `replay` cases kept out of CI). For a new
 local case, put the value in its `datasets` array before pushing; for a case
 already in LangTracer, edit `datasets` there — `eval:langtracer-push`
 deliberately does not re-sync tier-only edits to an existing case. **Only
 promote to `pr` after `--iterations 5+` shows it's reliably green** — a flaky
 case in the gate poisons it.
+
+## Calibrating a batch of new cases on the dispatchers
+
+One case costs 10–20 minutes per iteration on a laptop, and docker lanes have
+crashed it. A batch calibrates on the LangTracer dispatchers:
+
+1. Author the JSON locally. Static checks only: a `--dry-run` push (schema) and
+   the similarity check against the verification suites.
+2. Push the batch to its suite with the tag `calibration-pending`.
+3. Dispatch one manual sweep for those case ids:
+   `gh workflow run eval-run.yml --repo n8n-io/lang-tracer -f image=n8nio/n8n:nightly -f case_ids=<ids> -f iterations=3 -f trigger=manual`.
+   `trigger=manual` keeps it out of the nightly baseline.
+4. Read `list_eval_runs` → `get_eval_run`. Classify each red: **builder** (keep
+   it red, tag `capability-gap-finding`, propose a ticket), **harness** (fix it or
+   design around it; never leave it to charge the model), **authoring** (fix the
+   case).
+5. Re-push the fixed cases and re-dispatch only those ids.
+6. Swap `calibration-pending` for `calibrated` and stamp the evidence into the
+   description, e.g. "Calibration (Opus 4.8, N=3): sweep 174 3/4, sweep 176 4/4".
+
+## Validating a harness change before merge
+
+```bash
+gh workflow run test-evals-instance-ai.yml --repo n8n-io/n8n \
+  -f branch=<your-branch> -f cache-sha=$(git rev-parse origin/<your-branch>) \
+  -f suite=<suite> -f filter=<slug-substrings> \
+  -f iterations=3 -f experiment-name=<change-name>
+```
+
+`cache-sha` is what puts a backend change under test: without it the workflow
+restores the n8n image cached for master's head, and only the eval CLI runs from
+your branch. A harness-only change works either way.
+
+CI reads cases from LangTracer only. A case that exists only on disk goes into a
+throwaway suite first (`eval:langtracer-push --suite <scratch-suite> <slug>`).
+Never pass `experiment-name=instance-ai-baseline`; that name refreshes the shared
+baseline. Results: the run log's summary table and the
+`instance-ai-workflow-eval-results` artifact (`eval-results.json` + HTML report).
 
 ## Baselines & regression
 

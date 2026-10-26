@@ -1,14 +1,11 @@
+import type { ErrorReporter, FsByteStoreService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-import type { ErrorReporter } from 'n8n-core';
 
-import {
-	AgentExecutionLogStore,
-	type AgentExecutionLogFsByteStore,
-} from '../agent-execution-log-store';
+import { AgentExecutionLogStore } from '../agent-execution-log-store';
 
 describe('AgentExecutionLogStore', () => {
 	it('keeps a threadId carrying path separators within the agent prefix', async () => {
-		const fsByteStore = mock<AgentExecutionLogFsByteStore>();
+		const fsByteStore = mock<FsByteStoreService>();
 		const store = new AgentExecutionLogStore(fsByteStore, mock<ErrorReporter>());
 
 		await store.write(

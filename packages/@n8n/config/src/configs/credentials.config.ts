@@ -30,6 +30,14 @@ class CredentialsOverwrite {
 	 */
 	@Env('N8N_SKIP_CREDENTIAL_OVERWRITE')
 	skipTypes: CommaSeparatedStringArray<string> = [];
+
+	/**
+	 * Comma-separated list of managed OAuth credential types whose scope fields
+	 * remain user-configurable.
+	 * @example `N8N_MANAGED_OAUTH_SHOW_SCOPES=googleOAuth2Api`
+	 */
+	@Env('N8N_MANAGED_OAUTH_SHOW_SCOPES')
+	showScopes: CommaSeparatedStringArray<string> = [];
 }
 
 @Config

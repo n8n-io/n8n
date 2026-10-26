@@ -39,11 +39,15 @@ export async function handleLoadOperation<T extends VectorStore = VectorStore>(
 			true,
 		) as boolean;
 
-		// Embed the prompt to prepare for vector similarity search
-		const embeddedPrompt = await embeddings.embedQuery(prompt);
-
-		// Get the most similar documents to the embedded prompt
-		let docs = await vectorStore.similaritySearchVectorWithScore(embeddedPrompt, topK, filter);
+		// Get the most similar documents to the prompt
+		let docs =
+			args.searchByText === true
+				? await vectorStore.similaritySearchWithScore(prompt, topK, filter)
+				: await vectorStore.similaritySearchVectorWithScore(
+						await embeddings.embedQuery(prompt),
+						topK,
+						filter,
+					);
 
 		// If reranker is used, rerank the documents
 		if (useReranker && docs.length > 0) {

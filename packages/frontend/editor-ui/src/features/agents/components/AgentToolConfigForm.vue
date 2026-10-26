@@ -1,0 +1,472 @@
+<script setup lang="ts">
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import { N8nCallout, N8nText } from '@n8n/design-system';
+import {
+	RestrictedToolCallout,
+	useNodeTypeRestriction,
+} from '@n8n/frontend-module-type-availability-policies';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { extractFromAICalls, type INode } from 'n8n-workflow';
+import {
+	computed,
+	effectScope,
+	onBeforeUnmount,
+	ref,
+	toValue,
+	watch,
+	type MaybeRefOrGetter,
+} from 'vue';
+
+import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	listenForCredentialChanges,
+	useCredentialsStore,
+} from '@/features/credentials/credentials.store';
+import {
+	toolRefToNode,
+	updateToolRefFromNode,
+	updateWorkflowToolRef,
+} from '../composables/useAgentToolRefAdapter';
+import { nodeToMcpServer } from '../composables/useMcpServerAdapter';
+import { isRestrictedByInlineTool } from '../utils/validationIssues';
+import type {
+	AgentJsonMcpServerConfig,
+	AgentJsonToolRef,
+	CustomToolEntry,
+	WorkflowToolRef,
+} from '../types';
+import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
+import AgentToolConfigCustomContent from './AgentToolConfigCustomContent.vue';
+import AgentToolConfigMcpApprovalSetting from './AgentToolConfigMcpApprovalSetting.vue';
+import AgentToolConfigNodeContent from './AgentToolConfigNodeContent.vue';
+import AgentToolConfigWorkflowContent from './AgentToolConfigWorkflowContent.vue';
+
+interface ToolModalData {
+	toolRef: AgentJsonToolRef;
+	customTool?: CustomToolEntry;
+	existingToolNames?: string[];
+	projectId?: string;
+	agentId?: string;
+	/** A getter keeps the form current when the builder validates again while the modal is open. */
+	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
+	/** Inline agents pass false because approval needs suspend and resume. */
+	supportsToolApproval?: boolean;
+	onConfirm: (updatedRef: AgentJsonToolRef) => void;
+	onRemove?: () => void;
+	kind?: 'tool';
+}
+
+interface McpServerModalData {
+	kind: 'mcpServer';
+	mcpServer: AgentJsonMcpServerConfig;
+	initialNode: INode;
+	existingToolNames?: string[];
+	projectId?: string;
+	agentId?: string;
+	/** Inline agents pass false because approval needs suspend and resume. */
+	supportsToolApproval?: boolean;
+	onConfirm: (updatedServer: AgentJsonMcpServerConfig) => void;
+	onRemove?: () => void;
+}
+
+export type AgentToolConfigModalData = ToolModalData | McpServerModalData;
+
+const props = defineProps<{
+	data: AgentToolConfigModalData;
+}>();
+
+const emit = defineEmits<{
+	'update:title': [title: string];
+	'credential-deleted': [];
+	'update:restricted': [restricted: boolean];
+}>();
+
+const i18n = useI18n();
+const credentialsStore = useCredentialsStore();
+const nodeTypesStore = useNodeTypesStore();
+const httpRequestUrlErrorKey =
+	'agents.builder.validation.issue.httpRequestUrlFromAi' as BaseTextKey;
+
+function isMcpServerModalData(data: AgentToolConfigModalData): data is McpServerModalData {
+	return data.kind === 'mcpServer';
+}
+
+function containsFromAiCall(value: unknown): boolean {
+	if (typeof value !== 'string') return false;
+	try {
+		return extractFromAICalls(value).length > 0;
+	} catch {
+		return false;
+	}
+}
+
+const isMcpTool = computed(() => isMcpServerModalData(props.data));
+const mcpModalData = computed(() => (isMcpServerModalData(props.data) ? props.data : null));
+const toolModalData = computed(() => (isMcpServerModalData(props.data) ? null : props.data));
+const toolValidationIssues = computed(() => toValue(toolModalData.value?.validationIssues) ?? []);
+const isWorkflowTool = computed(() => toolModalData.value?.toolRef.type === 'workflow');
+const isCustomTool = computed(() => toolModalData.value?.toolRef.type === 'custom');
+
+const nodeContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | null>(null);
+const mcpContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | null>(null);
+const workflowContentRef = ref<InstanceType<typeof AgentToolConfigWorkflowContent> | null>(null);
+const isValid = ref(false);
+const submitCount = ref(0);
+const approvalRequired = ref(false);
+const mcpPermissions = ref<AgentJsonMcpServerConfig['toolPermissions']>();
+const mcpApprovalValid = ref(true);
+const draftNode = ref<INode | null>(null);
+
+const initialNode = computed<INode | null>(() =>
+	isMcpTool.value
+		? (mcpModalData.value?.initialNode ?? null)
+		: isWorkflowTool.value || isCustomTool.value
+			? null
+			: toolModalData.value
+				? toolRefToNode(toolModalData.value.toolRef)
+				: null,
+);
+
+const { isRestricted, restriction } = useNodeTypeRestriction(() => initialNode.value?.type);
+const restrictedToolName = computed(() =>
+	initialNode.value
+		? (nodeTypesStore.getNodeType(initialNode.value.type)?.displayName ?? initialNode.value.type)
+		: '',
+);
+
+watch(isRestricted, (restricted) => emit('update:restricted', restricted), { immediate: true });
+
+const workflowInitialRef = computed<WorkflowToolRef | null>(() =>
+	isWorkflowTool.value && toolModalData.value?.toolRef.type === 'workflow'
+		? toolModalData.value.toolRef
+		: null,
+);
+
+const initialName = computed(() => {
+	if (isMcpTool.value) return mcpModalData.value?.mcpServer.name ?? '';
+	const toolName =
+		toolModalData.value?.toolRef.type === 'node' ? toolModalData.value.toolRef.name : undefined;
+	return toolName ?? initialNode.value?.name ?? '';
+});
+const nodeName = ref(initialName.value);
+const customToolCode = computed(() =>
+	!isMcpTool.value ? (toolModalData.value?.customTool?.code ?? '') : '',
+);
+const customToolTitle = computed(() => {
+	const toolRef = toolModalData.value?.toolRef;
+	const fallbackName =
+		toolRef?.type === 'custom'
+			? toolRef.id
+			: toolRef?.type === 'workflow' || toolRef?.type === 'node'
+				? toolRef.name
+				: undefined;
+	return (
+		toolModalData.value?.customTool?.descriptor.name ??
+		fallbackName ??
+		i18n.baseText('agents.builder.tree.customBadge')
+	);
+});
+const title = computed(() => (isCustomTool.value ? customToolTitle.value : nodeName.value));
+
+const supportsApproval = computed(() => props.data.supportsToolApproval !== false);
+const showApprovalSetting = computed(
+	() => supportsApproval.value && !isMcpTool.value && toolModalData.value !== null,
+);
+
+watch(
+	() => toolModalData.value?.toolRef,
+	(toolRef) => {
+		approvalRequired.value = Boolean(toolRef?.requireApproval);
+	},
+	{ immediate: true },
+);
+
+watch(
+	() => mcpModalData.value?.mcpServer.toolPermissions,
+	(toolPermissions) => {
+		mcpPermissions.value = toolPermissions ?? {
+			categories: { read: 'always_allow', write: 'always_allow' },
+		};
+	},
+	{ immediate: true },
+);
+
+watch(
+	initialNode,
+	(node) => {
+		draftNode.value = node;
+	},
+	{ immediate: true },
+);
+
+watch(title, (value) => emit('update:title', value), { immediate: true });
+
+const currentNode = computed(() => draftNode.value ?? initialNode.value);
+
+/**
+ * The tool itself is allowed but the agent it embeds holds a denied node type. The form stays
+ * editable on purpose: removing that embedded tool is the only fix, so locking it would strand
+ * the agent.
+ */
+const embedsRestrictedTool = computed(() =>
+	toolValidationIssues.value.some(isRestrictedByInlineTool),
+);
+const hasHttpRequestUrlIssue = computed(() => {
+	const data = toolModalData.value;
+	if (data?.toolRef.type !== 'node') return false;
+	if (
+		!toolValidationIssues.value.some(
+			(issue) => issue.code === 'invalid_value' && issue.path.endsWith('.node.nodeParameters.url'),
+		)
+	) {
+		return false;
+	}
+	return containsFromAiCall(currentNode.value?.parameters.url);
+});
+
+const canSave = computed(() => {
+	if (isCustomTool.value) return true;
+	if (isMcpTool.value) {
+		return isValid.value && (!supportsApproval.value || mcpApprovalValid.value);
+	}
+	return isValid.value && !hasHttpRequestUrlIssue.value;
+});
+
+const fromAiDisabledParameters = computed(() => {
+	const toolRef = toolModalData.value?.toolRef;
+	if (
+		toolRef?.type === 'node' &&
+		(toolRef.node.nodeType === HTTP_REQUEST_NODE_TYPE ||
+			toolRef.node.nodeType === HTTP_REQUEST_TOOL_NODE_TYPE)
+	) {
+		return ['url'];
+	}
+	return [];
+});
+
+const nodeParameterIssues = computed<Record<string, string[]>>(() => {
+	const issues: Record<string, string[]> = {};
+	if (hasHttpRequestUrlIssue.value) {
+		issues.url = [i18n.baseText(httpRequestUrlErrorKey)];
+	}
+	return issues;
+});
+
+function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
+	if (!supportsApproval.value) {
+		const { requireApproval: _requireApproval, ...rest } = ref;
+		return rest;
+	}
+	const updatedRef = { ...ref };
+	if (approvalRequired.value) updatedRef.requireApproval = true;
+	else delete updatedRef.requireApproval;
+	return updatedRef;
+}
+
+function confirm(): boolean {
+	submitCount.value += 1;
+	if (!canSave.value) return false;
+
+	if (isCustomTool.value) {
+		const toolData = toolModalData.value;
+		if (!toolData) return false;
+		toolData.onConfirm(withApprovalRequirement(toolData.toolRef));
+		return true;
+	}
+
+	if (isMcpTool.value) {
+		const currentMcpNode = mcpContentRef.value?.getNode();
+		const mcpData = mcpModalData.value;
+		if (!currentMcpNode || !mcpData || !mcpPermissions.value) return false;
+		const updatedServer = nodeToMcpServer(currentMcpNode, mcpData.mcpServer);
+		mcpData.onConfirm({
+			...updatedServer,
+			toolPermissions: supportsApproval.value
+				? mcpPermissions.value
+				: {
+						categories: {
+							read: 'always_allow',
+							write: 'always_allow',
+						},
+					},
+		});
+		return true;
+	}
+
+	if (isWorkflowTool.value) {
+		const content = workflowContentRef.value;
+		const toolData = toolModalData.value;
+		if (!toolData || !content) return false;
+		const workflowId = content.getWorkflowId();
+		const updatedRef = updateWorkflowToolRef(toolData.toolRef, {
+			name: content.getName(),
+			description: content.getDescription(),
+			allOutputs: content.getAllOutputs(),
+			workflow: content.getWorkflow(),
+			...(workflowId !== undefined ? { workflowId } : {}),
+			inputs: content.getInputs(),
+		});
+		toolData.onConfirm(withApprovalRequirement(updatedRef));
+		return true;
+	}
+
+	const currentToolNode = nodeContentRef.value?.getNode();
+	const toolData = toolModalData.value;
+	if (!currentToolNode || !toolData) return false;
+	const updatedRef = updateToolRefFromNode(toolData.toolRef, currentToolNode);
+	toolData.onConfirm(withApprovalRequirement(updatedRef));
+	return true;
+}
+
+function remove() {
+	props.data.onRemove?.();
+}
+
+function changeTitle(name: string) {
+	if (isCustomTool.value) return;
+	if (isMcpTool.value) mcpContentRef.value?.handleChangeName(name);
+	else if (isWorkflowTool.value) workflowContentRef.value?.handleChangeName(name);
+	else nodeContentRef.value?.handleChangeName(name);
+}
+
+function handleNodeNameUpdate(name: string) {
+	nodeName.value = name;
+}
+
+const credentialListeners = effectScope(true);
+credentialListeners.run(() => {
+	listenForCredentialChanges({
+		store: credentialsStore,
+		onCredentialDeleted: (credentialId) => {
+			const data = mcpModalData.value;
+			if (!data || data.mcpServer.credential !== credentialId) return;
+			data.onRemove?.();
+			emit('credential-deleted');
+		},
+	});
+});
+onBeforeUnmount(() => credentialListeners.stop());
+
+defineExpose({ canSave, confirm, remove, changeTitle });
+</script>
+
+<template>
+	<div :class="[$style.contentWrapper, isCustomTool && $style.codeContentWrapper]">
+		<RestrictedToolCallout
+			v-if="isRestricted"
+			:node-type-name="restrictedToolName"
+			:restriction="restriction"
+		/>
+		<N8nCallout
+			v-else-if="embedsRestrictedTool"
+			theme="warning"
+			data-test-id="inline-restricted-tool-callout"
+		>
+			{{ i18n.baseText('agents.toolConfig.restrictedInlineTool' as BaseTextKey) }}
+		</N8nCallout>
+		<N8nText
+			v-if="submitCount && !canSave"
+			size="small"
+			color="danger"
+			data-testid="agent-tool-config-validation-error"
+		>
+			{{ i18n.baseText('agents.toolConfig.validation.fixFields' as BaseTextKey) }}
+		</N8nText>
+		<AgentToolConfigCustomContent
+			v-if="isCustomTool"
+			:code="customToolCode"
+			:class="$style.customToolViewer"
+		/>
+		<AgentToolConfigApprovalSetting
+			v-if="isCustomTool && showApprovalSetting"
+			v-model="approvalRequired"
+		/>
+		<div v-else :class="$style.configureTab">
+			<AgentToolConfigWorkflowContent
+				v-if="workflowInitialRef"
+				ref="workflowContentRef"
+				:initial-ref="workflowInitialRef"
+				:submit-count="submitCount"
+				:project-id="data.projectId"
+				:show-approval-setting="showApprovalSetting"
+				:approval-required="approvalRequired"
+				@update:valid="isValid = $event"
+				@update:node-name="handleNodeNameUpdate"
+				@update:approval-required="approvalRequired = $event"
+			/>
+			<AgentToolConfigNodeContent
+				v-else-if="isMcpTool && initialNode"
+				ref="mcpContentRef"
+				:initial-node="initialNode"
+				:existing-tool-names="data.existingToolNames"
+				:project-id="data.projectId"
+				:hidden-parameters="['include', 'includeTools', 'excludeTools']"
+				:read-only="isRestricted"
+				content-test-id="agent-tool-config-mcp-content"
+				@update:valid="isValid = $event"
+				@update:node-name="handleNodeNameUpdate"
+				@update:node="draftNode = $event"
+			/>
+			<AgentToolConfigNodeContent
+				v-else-if="initialNode"
+				ref="nodeContentRef"
+				:initial-node="initialNode"
+				:existing-tool-names="data.existingToolNames"
+				:project-id="data.projectId"
+				:from-ai-disabled-parameters="fromAiDisabledParameters"
+				:parameter-issues="nodeParameterIssues"
+				:read-only="isRestricted"
+				content-test-id="node-tool-settings-content"
+				@update:valid="isValid = $event"
+				@update:node-name="handleNodeNameUpdate"
+				@update:node="draftNode = $event"
+			/>
+			<AgentToolConfigApprovalSetting
+				v-if="!isMcpTool && initialNode && showApprovalSetting"
+				v-model="approvalRequired"
+				:disabled="isRestricted"
+			/>
+			<AgentToolConfigMcpApprovalSetting
+				v-if="isMcpTool && mcpPermissions && supportsApproval && currentNode"
+				v-model="mcpPermissions"
+				:node="currentNode"
+				:disabled="isRestricted"
+				:project-id="data.projectId"
+				@update:valid="mcpApprovalValid = $event"
+			/>
+		</div>
+	</div>
+</template>
+
+<style lang="scss" module>
+.contentWrapper {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+	overflow-x: hidden;
+
+	:global(.ndv-connection-hint-notice) {
+		display: none;
+	}
+}
+
+.codeContentWrapper {
+	height: min(calc(var(--spacing--5xl) * 2), calc(70dvh - var(--spacing--5xl)));
+	overflow: hidden;
+}
+
+.configureTab {
+	display: flex;
+	min-height: 0;
+	flex-direction: column;
+	gap: var(--spacing--md);
+}
+
+.customToolViewer {
+	flex: 1;
+	min-height: 0;
+	min-width: 0;
+	overflow: hidden;
+}
+</style>

@@ -6,7 +6,7 @@ import NodeGroupSetupCard from '@/features/setupPanel/components/cards/NodeGroup
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
 import { isCardComplete, isNodeGroupCard } from '@/features/setupPanel/setupPanel.utils';
 import { sectionHasParameters } from '@/features/setupPanel/composables/useNodeGroupSections';

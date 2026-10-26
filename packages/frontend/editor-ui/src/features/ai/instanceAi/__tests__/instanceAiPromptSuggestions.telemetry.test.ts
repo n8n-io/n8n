@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { createInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
@@ -159,7 +159,12 @@ describe('instance ai prompt suggestions telemetry', () => {
 			threadId: 'thread-abc',
 			suggestionId: 'build-workflow',
 			suggestionKind: 'prompt',
+			suggestionTitle: 'Weekly report on my ads and website, with what changed',
 			position: 1,
+			telemetryPayload: {
+				variant: 'variant',
+				'$feature/129_aia_inspiration_from_taxonomy_v2': 'variant',
+			},
 		});
 
 		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestion selected', {
@@ -167,7 +172,10 @@ describe('instance ai prompt suggestions telemetry', () => {
 			suggestion_catalog_version: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
 			suggestion_id: 'build-workflow',
 			suggestion_kind: 'prompt',
+			suggestion_title: 'Weekly report on my ads and website, with what changed',
 			position: 1,
+			variant: 'variant',
+			'$feature/129_aia_inspiration_from_taxonomy_v2': 'variant',
 		});
 
 		const selectedPayload = track.mock.calls[0][1];

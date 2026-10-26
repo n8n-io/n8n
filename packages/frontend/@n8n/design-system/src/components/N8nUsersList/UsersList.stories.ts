@@ -1,9 +1,8 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 
-import type { IUser } from '@n8n/design-system/types';
-
 import N8nUsersList from './UsersList.vue';
+import type { IUser } from '../../types';
 
 export default {
 	title: 'Core/UsersList',
@@ -33,8 +32,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	methods,
 });
 
-export const UsersList = Template.bind({});
-UsersList.args = {
+export const Default = Template.bind({});
+Default.args = {
 	actions: [
 		{
 			label: 'Resend Invite',

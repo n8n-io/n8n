@@ -3,7 +3,14 @@
  */
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { parseWorkflowCodeToBuilder, validateWorkflow, workflow } from '@n8n/workflow-sdk';
+import {
+	connectRequiredSubnodeInputs,
+	describeAddedSubnodeConnection,
+	parseWorkflowCodeToBuilder,
+	validateWorkflow,
+	workflow,
+} from '@n8n/workflow-sdk';
+import type { INodeTypes } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { ParseValidateHandler } from '../parse-validate-handler';
@@ -11,15 +18,20 @@ import { ParseValidateHandler } from '../parse-validate-handler';
 // Mock the workflow-sdk module
 vi.mock('@n8n/workflow-sdk', () => ({
 	parseWorkflowCodeToBuilder: vi.fn(),
+	resolveNodePorts: vi.fn(),
 	validateWorkflow: vi.fn(),
 	workflow: { fromJSON: vi.fn() },
 	stripImportStatements: vi.fn((code: string) => code),
+	connectRequiredSubnodeInputs: vi.fn(() => []),
+	describeAddedSubnodeConnection: vi.fn(),
 }));
 
 // Typed mock references
 const mockParseWorkflowCodeToBuilder = parseWorkflowCodeToBuilder as Mock;
 const mockValidateWorkflow = validateWorkflow as Mock;
 const mockFromJSON = workflow.fromJSON as Mock;
+const mockConnectRequiredSubnodeInputs = connectRequiredSubnodeInputs as Mock;
+const mockDescribeAddedSubnodeConnection = describeAddedSubnodeConnection as Mock;
 
 describe('ParseValidateHandler', () => {
 	let handler: ParseValidateHandler;
@@ -55,6 +67,81 @@ describe('ParseValidateHandler', () => {
 			expect(result.warnings).toHaveLength(0);
 			expect(mockBuilder.regenerateNodeIds).toHaveBeenCalled();
 			expect(mockBuilder.validate).toHaveBeenCalled();
+		});
+
+		it('completes required subnode inputs on the returned workflow and reports them', async () => {
+			// The helper itself is covered in required-subnode-connections.test.ts.
+			// What is untested here is the handler around it: that it runs against
+			// the serialized workflow with the provider, and surfaces what it added.
+			const nodeTypesProvider = { getByNameAndVersion: vi.fn() } as unknown as INodeTypes;
+			const mockWorkflow = {
+				id: 'test',
+				name: 'Test',
+				nodes: [{ id: 'parser', name: 'Parser', type: 'parser' }],
+				connections: {},
+			};
+			const mockBuilder = {
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue(mockWorkflow),
+			};
+			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+			mockConnectRequiredSubnodeInputs.mockReturnValue([
+				{ nodeName: 'Parser', connectionType: 'ai_languageModel', sourceNode: 'Model' },
+			]);
+			mockDescribeAddedSubnodeConnection.mockReturnValue({
+				code: 'REQUIRED_SUBNODE_CONNECTED',
+				message: 'Connected Model to Parser',
+				severity: 'info',
+			});
+
+			const result = await new ParseValidateHandler({ nodeTypesProvider }).parseAndValidate(
+				'const workflow = {}',
+			);
+
+			expect(mockConnectRequiredSubnodeInputs).toHaveBeenCalledWith(
+				mockWorkflow,
+				nodeTypesProvider,
+			);
+			expect(result.workflow).toBe(mockWorkflow);
+			expect(result.warnings.map((warning) => warning.code)).toContain(
+				'REQUIRED_SUBNODE_CONNECTED',
+			);
+		});
+
+		it('leaves the workflow alone when no node-type provider is configured', async () => {
+			const mockBuilder = {
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue({ id: 'test', name: 'Test', nodes: [], connections: {} }),
+			};
+			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			await handler.parseAndValidate('const workflow = {}');
+
+			expect(mockConnectRequiredSubnodeInputs).not.toHaveBeenCalled();
+		});
+
+		it('skips structural checks in JSON validation that the graph pass already covers', async () => {
+			const mockBuilder = {
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue({ id: 'test', name: 'Test', nodes: [], connections: {} }),
+			};
+			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			await handler.parseAndValidate('const workflow = {}');
+
+			expect(mockValidateWorkflow).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ allowDisconnectedNodes: true, allowNoTrigger: true }),
+			);
 		});
 
 		it('should collect errors from graph validation as warnings for agent self-correction', async () => {
@@ -302,6 +389,7 @@ describe('ParseValidateHandler', () => {
 
 			expect(mockBuilder.toJSON).toHaveBeenCalledWith({
 				tidyUp: true,
+				nodePorts: undefined,
 				existingGroupIdsByName: new Map([
 					['Ingestion', 'group-random-1'],
 					['Processing', 'group-random-2'],
@@ -510,6 +598,34 @@ describe('ParseValidateHandler', () => {
 			expect(result).toHaveLength(0);
 		});
 
+		it('skips structural checks in JSON validation that the graph pass already covers', () => {
+			const mockBuilder = {
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+			};
+			mockFromJSON.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			handler.validateJSON(nonEmptyJson);
+
+			expect(mockValidateWorkflow).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ allowDisconnectedNodes: true, allowNoTrigger: true }),
+			);
+		});
+
+		it('passes the node-type provider to the graph pass, so type-gated validators run', () => {
+			const nodeTypesProvider = { getByNameAndVersion: vi.fn() } as unknown as INodeTypes;
+			const mockBuilder = {
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+			};
+			mockFromJSON.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			new ParseValidateHandler({ nodeTypesProvider }).validateJSON(nonEmptyJson);
+
+			expect(mockBuilder.validate).toHaveBeenCalledWith({ nodeTypesProvider });
+		});
+
 		it('should collect graph errors and warnings', () => {
 			const mockBuilder = {
 				validate: vi.fn().mockReturnValue({
@@ -563,6 +679,8 @@ describe('ParseValidateHandler', () => {
 			expect(mockFromJSON).toHaveBeenCalledWith(nonEmptyJson);
 			expect(mockValidateWorkflow).toHaveBeenCalledWith(nonEmptyJson, {
 				nodeTypesProvider: undefined,
+				allowDisconnectedNodes: true,
+				allowNoTrigger: true,
 			});
 		});
 	});

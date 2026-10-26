@@ -68,6 +68,9 @@ const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(
 vi.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: vi.fn(() => mockAgent),
 	extractText: mockExtractText,
+}));
+
+vi.mock('@n8n/agents/tool', () => ({
 	Tool: vi.fn().mockImplementation(function (name: string) {
 		const built: { _name: string; _handler?: unknown } = { _name: name };
 		const builder = {
@@ -82,8 +85,6 @@ vi.mock('@n8n/instance-ai', () => ({
 		return builder;
 	}),
 }));
-
-vi.mock('../api-docs', () => ({ fetchApiDocs: vi.fn().mockResolvedValue('') }));
 
 vi.mock('../node-config', () => ({
 	extractNodeConfig: vi.fn().mockReturnValue('{}'),
@@ -104,18 +105,20 @@ vi.mock('@n8n/di', () => ({
 }));
 
 import type { Mock } from 'vitest';
+import { Tool } from '@n8n/agents/tool';
 import { Container } from '@n8n/di';
-import { createEvalAgent, Tool } from '@n8n/instance-ai';
+import { createEvalAgent } from '@n8n/instance-ai';
 import { fileTypeFromBuffer } from 'file-type';
 import FormData from 'form-data';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
-import { fetchApiDocs } from '../api-docs';
 import {
 	buildDateAnchors,
 	createLlmMockHandler,
 	extractDateFilterConstraints,
 	findDateFilterViolations,
+	formatWriteLedger,
+	isPlaceholderHost,
 } from '../mock-handler';
 import { extractNodeConfig } from '../node-config';
 
@@ -124,7 +127,6 @@ import { extractNodeConfig } from '../node-config';
 // matter for tests to pass. Keep in sync with the factory bodies above.
 function reapplyMockImplementations() {
 	vi.mocked(Container.get).mockReturnValue(mockLogger);
-	vi.mocked(fetchApiDocs).mockResolvedValue('');
 	vi.mocked(extractNodeConfig).mockReturnValue('{}');
 	vi.mocked(createEvalAgent).mockReturnValue(mockAgent as never);
 	vi.mocked(Tool).mockImplementation(function (name: string) {
@@ -264,6 +266,23 @@ describe('createLlmMockHandler', () => {
 		const sniffed = await fileTypeFromBuffer(result.body as Buffer);
 		expect(sniffed?.mime).toBe('application/pdf');
 		expect(sniffed?.ext).toBe('pdf');
+	});
+
+	it('should write textBody into a binary PDF response', async () => {
+		llmSubmits({
+			type: 'binary',
+			contentType: 'application/pdf',
+			filename: 'invoice.pdf',
+			textBody: 'Invoice Number: INV-2026-0042',
+		});
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		const sniffed = await fileTypeFromBuffer(result.body as Buffer);
+		expect(sniffed?.mime).toBe('application/pdf');
+		expect((result.body as Buffer).toString('latin1')).toContain(
+			'(Invoice Number: INV-2026-0042) Tj',
+		);
 	});
 
 	it('should populate content-disposition and content-length headers for binary responses', async () => {
@@ -517,6 +536,31 @@ describe('createLlmMockHandler', () => {
 		expect(second.body).not.toBe(first.body);
 	});
 
+	it('lets timers run before it serves a cached repeat, like a real request', async () => {
+		llmSubmits({ type: 'json', body: { records: [] } });
+		const handler = createLlmMockHandler();
+		await callHandler(handler);
+
+		const order: string[] = [];
+		setTimeout(() => order.push('timer'), 0);
+		await callHandler(handler).then(() => order.push('cached reply'));
+
+		// A loop of instant repeats would starve the timer that ends the run's budget.
+		expect(order).toEqual(['timer', 'cached reply']);
+	});
+
+	it('fails every request once the run is aborted, like a cancelled request', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		const abort = new AbortController();
+		const handler = createLlmMockHandler({ signal: abort.signal });
+		await callHandler(handler);
+
+		abort.abort();
+
+		await expect(handler(baseRequest, baseNode)).rejects.toThrow(/cancelled/);
+		expect(mockGenerate).toHaveBeenCalledTimes(1);
+	});
+
 	it('evicts a soft-fallback response so the next identical request regenerates', async () => {
 		// json + textBody soft-captures the spec and rejects it; the agent never
 		// resubmits, so the first response is served as a soft fallback.
@@ -547,6 +591,357 @@ describe('createLlmMockHandler', () => {
 		await handler(baseRequest, { name: 'Gmail', type: 'n8n-nodes-base.gmail' } as INode);
 
 		expect(extractNodeConfig).toHaveBeenCalledTimes(2);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Earlier writes ledger — a read sees what this execution already wrote
+// ---------------------------------------------------------------------------
+
+describe('earlier writes ledger', () => {
+	const SECTION = '## Earlier writes in this execution';
+	const sheetsUrl = 'https://sheets.googleapis.com/v4/spreadsheets/eval-spreadsheet-id/values';
+	const logNode = { name: 'Log Candidate Row', type: 'n8n-nodes-base.googleSheets' } as INode;
+	const lookupNode = {
+		name: 'Write Score to Candidate Row',
+		type: 'n8n-nodes-base.googleSheets',
+	} as INode;
+	const appendRow = (sourceFile: string, extra: Record<string, unknown> = {}) =>
+		({
+			url: `${sheetsUrl}/CVs!A:F:append`,
+			method: 'POST',
+			qs: { valueInputOption: 'USER_ENTERED' },
+			body: { range: 'CVs!A:F', values: [[sourceFile, 'Pending']], ...extra },
+		}) as IHttpRequestOptions;
+	const readSheet = { url: `${sheetsUrl}/CVs`, method: 'GET' } as IHttpRequestOptions;
+	const promptOf = (call: number) => mockGenerate.mock.calls[call][0];
+	const sectionOf = (prompt: string) =>
+		prompt.slice(prompt.indexOf(SECTION), prompt.lastIndexOf('## Date anchors'));
+
+	it('shows a later read the row an earlier request appended to the same service', async () => {
+		llmSubmits({ type: 'json', body: { updates: { updatedRows: 1 } } });
+		llmSubmits({ type: 'json', body: { values: [] } });
+		const handler = createLlmMockHandler();
+
+		await handler(appendRow('Doe, Jane A_.pdf [#1368-1]'), logNode);
+		await handler(readSheet, lookupNode);
+
+		expect(promptOf(0)).not.toContain(SECTION);
+		const prompt = promptOf(1);
+		expect(prompt).toContain(SECTION);
+		expect(prompt).toContain(
+			'POST /v4/spreadsheets/eval-spreadsheet-id/values/CVs!A:F:append ("Log Candidate Row")',
+		);
+		expect(prompt).toContain('"valueInputOption":"USER_ENTERED"');
+		expect(prompt).toContain('Doe, Jane A_.pdf [#1368-1]');
+		// Date anchors stay the last section.
+		expect(prompt.indexOf(SECTION)).toBeLessThan(prompt.lastIndexOf('## Date anchors'));
+	});
+
+	it('leaves out reads, failed writes and writes to another service', async () => {
+		llmSubmits({ type: 'json', body: { values: [] } });
+		llmSubmits({ type: 'error', statusCode: 400, body: { error: { message: 'bad range' } } });
+		llmSubmits({ type: 'json', body: { ok: true } });
+		llmSubmits({ type: 'json', body: { values: [] } });
+		const handler = createLlmMockHandler();
+
+		await handler(
+			{ url: `${sheetsUrl}/Archive`, method: 'GET' } as IHttpRequestOptions,
+			lookupNode,
+		);
+		await handler(appendRow('rejected.pdf'), logNode);
+		await handler(
+			{
+				url: 'https://slack.com/api/chat.postMessage',
+				method: 'POST',
+				body: { text: 'posted' },
+			} as IHttpRequestOptions,
+			baseNode,
+		);
+		await handler(readSheet, lookupNode);
+
+		expect(promptOf(3)).not.toContain(SECTION);
+	});
+
+	it('leaves out a write the mock could not answer', async () => {
+		llmRejects(new Error('provider down'));
+		const handler = createLlmMockHandler({ maxRetries: 0 });
+		await handler(appendRow('lost.pdf'), logNode);
+
+		generateOverride.fn = undefined;
+		llmSubmits({ type: 'json', body: { values: [] } });
+		await handler(readSheet, lookupNode);
+
+		expect(promptOf(1)).not.toContain(SECTION);
+	});
+
+	it('shows only the latest writes and cuts long bodies', async () => {
+		const handler = createLlmMockHandler();
+		for (let i = 1; i <= 12; i++) {
+			llmSubmits({ type: 'json', body: { updates: { updatedRows: 1 } } });
+			await handler(appendRow(`row-${i}-${i === 12 ? 'x'.repeat(5000) : 'end'}`), logNode);
+		}
+		llmSubmits({ type: 'json', body: { values: [] } });
+		await handler(readSheet, lookupNode);
+
+		const section = sectionOf(promptOf(12));
+		expect(section).toContain('4 earlier writes to this service not shown');
+		expect(section).not.toContain('row-4-end');
+		expect(section).toContain('row-5-end');
+		expect(section).toContain('row-12-x');
+		expect(section).toContain('…');
+		expect(section.length).toBeLessThan(4600);
+	});
+
+	it('redacts secret keys in a recorded write body', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		llmSubmits({ type: 'json', body: { values: [] } });
+		const handler = createLlmMockHandler();
+
+		await handler(appendRow('cv.pdf', { access_token: 'tok-1234567890' }), logNode);
+		await handler(readSheet, lookupNode);
+
+		const section = sectionOf(promptOf(1));
+		expect(section).toContain('<redacted>');
+		expect(section).not.toContain('tok-1234567890');
+	});
+
+	it.each([
+		['OpenAI Responses', 'https://api.openai.com/v1/responses', { input: 'FIRST-PROMPT' }],
+		[
+			'OpenAI chat completions',
+			'https://api.openai.com/v1/chat/completions',
+			{ messages: [{ role: 'user', content: 'FIRST-PROMPT' }] },
+		],
+		[
+			'Anthropic messages',
+			'https://api.anthropic.com/v1/messages',
+			{ messages: [{ role: 'user', content: 'FIRST-PROMPT' }] },
+		],
+		[
+			'OpenAI embeddings',
+			'https://api.openai.com/v1/embeddings',
+			{ model: 'text-embedding-3-small', input: 'FIRST-PROMPT' },
+		],
+		[
+			'OpenAI moderations',
+			'https://api.openai.com/v1/moderations',
+			{ model: 'omni-moderation-latest', input: 'FIRST-PROMPT' },
+		],
+		[
+			'OpenAI audio transcriptions',
+			'https://api.openai.com/v1/audio/transcriptions',
+			{ model: 'whisper-1', prompt: 'FIRST-PROMPT' },
+		],
+		[
+			'OpenAI audio translations',
+			'https://api.openai.com/v1/audio/translations',
+			{ model: 'whisper-1', prompt: 'FIRST-PROMPT' },
+		],
+		[
+			'OpenAI audio speech',
+			'https://api.openai.com/v1/audio/speech',
+			{ model: 'tts-1', input: 'FIRST-PROMPT', voice: 'alloy' },
+		],
+	])('does not show an earlier %s inference call as a write', async (_name, url, firstBody) => {
+		llmSubmits({ type: 'json', body: { id: 'gen-1' } });
+		llmSubmits({ type: 'json', body: { id: 'gen-2' } });
+		const handler = createLlmMockHandler();
+		const modelNode = { name: 'Model', type: '@n8n/n8n-nodes-langchain.openAi' } as INode;
+
+		await handler({ url, method: 'POST', body: firstBody } as IHttpRequestOptions, modelNode);
+		await handler(
+			{ url, method: 'POST', body: { input: 'SECOND-PROMPT' } } as IHttpRequestOptions,
+			modelNode,
+		);
+
+		expect(promptOf(1)).not.toContain(SECTION);
+		expect(promptOf(1)).not.toContain('FIRST-PROMPT');
+	});
+
+	it('leaves out a GraphQL mutation answered with errors and no data', async () => {
+		llmSubmits({ type: 'json', body: { errors: [{ message: 'Forbidden' }], data: null } });
+		llmSubmits({ type: 'json', body: { data: { issues: { nodes: [] } } } });
+		const handler = createLlmMockHandler();
+		const graphqlUrl = 'https://api.linear.app/graphql';
+
+		await handler(
+			{
+				url: graphqlUrl,
+				method: 'POST',
+				body: {
+					query: 'mutation CreateIssue { issueCreate(input: { title: "Bug" }) { success } }',
+				},
+			} as IHttpRequestOptions,
+			baseNode,
+		);
+		await handler(
+			{
+				url: graphqlUrl,
+				method: 'POST',
+				body: { query: 'query Issues { issues { nodes { id } } }' },
+			} as IHttpRequestOptions,
+			baseNode,
+		);
+
+		expect(promptOf(1)).not.toContain(SECTION);
+	});
+
+	it('leaves out a write answered with ok: false', async () => {
+		llmSubmits({ type: 'json', body: { ok: false, error: 'channel_not_found' } });
+		llmSubmits({ type: 'json', body: { ok: true, messages: [] } });
+		const handler = createLlmMockHandler();
+
+		await handler(
+			{
+				url: 'https://slack.com/api/chat.postMessage',
+				method: 'POST',
+				body: { channel: 'C1', text: 'posted' },
+			} as IHttpRequestOptions,
+			baseNode,
+		);
+		await handler(
+			{
+				url: 'https://slack.com/api/conversations.history?channel=C1',
+				method: 'GET',
+			} as IHttpRequestOptions,
+			baseNode,
+		);
+
+		expect(promptOf(1)).not.toContain(SECTION);
+	});
+
+	it('regenerates an identical read after a write to the same service', async () => {
+		llmSubmits({ type: 'json', body: { values: [] } });
+		llmSubmits({ type: 'json', body: { updates: { updatedRows: 1 } } });
+		llmSubmits({ type: 'json', body: { values: [['new.pdf', 'Pending']] } });
+		const handler = createLlmMockHandler();
+
+		await handler(readSheet, lookupNode);
+		await handler(appendRow('new.pdf'), logNode);
+		await handler(readSheet, lookupNode);
+
+		expect(mockGenerate).toHaveBeenCalledTimes(3);
+		expect(promptOf(2)).toContain('new.pdf');
+	});
+
+	it('still serves an identical read from the cache when only another service was written', async () => {
+		llmSubmits({ type: 'json', body: { values: [] } });
+		llmSubmits({ type: 'json', body: { ok: true } });
+		const handler = createLlmMockHandler();
+
+		await handler(readSheet, lookupNode);
+		await handler(baseRequest, baseNode);
+		await handler(readSheet, lookupNode);
+
+		expect(mockGenerate).toHaveBeenCalledTimes(2);
+	});
+
+	it('redacts secret query parameters in a recorded write URL', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		llmSubmits({ type: 'json', body: { values: [] } });
+		const handler = createLlmMockHandler();
+
+		await handler(
+			{
+				url: `${sheetsUrl}/CVs!A:F:append?access_token=tok-1234567890&valueInputOption=RAW`,
+				method: 'POST',
+				body: { values: [['cv.pdf']] },
+			} as IHttpRequestOptions,
+			logNode,
+		);
+		await handler(readSheet, lookupNode);
+
+		const section = sectionOf(promptOf(1));
+		expect(section).not.toContain('tok-1234567890');
+		expect(section).toContain('access_token=<redacted>');
+		expect(section).toContain('valueInputOption=RAW');
+	});
+
+	describe('GraphQL', () => {
+		const graphqlUrl = 'https://api.linear.app/graphql';
+		const graphql = (query: string) =>
+			({ url: graphqlUrl, method: 'POST', body: { query } }) as IHttpRequestOptions;
+		const listIssues = graphql('query Issues { issues { nodes { id title } } }');
+
+		it('does not record a GraphQL query as a write', async () => {
+			llmSubmits({ type: 'json', body: { data: { issues: { nodes: [] } } } });
+			llmSubmits({ type: 'json', body: { data: { viewer: { id: 'u1' } } } });
+			const handler = createLlmMockHandler();
+
+			await handler(listIssues, baseNode);
+			await handler(graphql('{ viewer { id } }'), baseNode);
+
+			expect(promptOf(1)).not.toContain(SECTION);
+		});
+
+		it('records a GraphQL mutation and regenerates an identical query after it', async () => {
+			llmSubmits({ type: 'json', body: { data: { issues: { nodes: [] } } } });
+			llmSubmits({ type: 'json', body: { data: { issueCreate: { success: true } } } });
+			llmSubmits({ type: 'json', body: { data: { issues: { nodes: [{ id: 'i1' }] } } } });
+			const handler = createLlmMockHandler();
+
+			await handler(listIssues, baseNode);
+			await handler(
+				graphql(
+					'# create one\nmutation CreateIssue { issueCreate(input: { title: "Bug" }) { success } }',
+				),
+				baseNode,
+			);
+			await handler(listIssues, baseNode);
+
+			expect(mockGenerate).toHaveBeenCalledTimes(3);
+			const section = sectionOf(promptOf(2));
+			expect(section).toContain('POST /graphql');
+			expect(section).toContain('mutation CreateIssue');
+		});
+	});
+
+	describe('formatWriteLedger', () => {
+		const entry = {
+			hostname: 'sheets.googleapis.com',
+			method: 'PUT',
+			endpoint: '/v4/x',
+			nodeName: 'A',
+		};
+
+		it('returns undefined when this service has no writes', () => {
+			expect(formatWriteLedger([], 'sheets.googleapis.com')).toBeUndefined();
+			expect(formatWriteLedger([entry], 'api.slack.com')).toBeUndefined();
+			expect(formatWriteLedger([entry], undefined)).toBeUndefined();
+		});
+
+		it('numbers the writes in order', () => {
+			expect(formatWriteLedger([entry, { ...entry, nodeName: 'B' }], 'sheets.googleapis.com')).toBe(
+				'- [1] PUT /v4/x ("A")\n- [2] PUT /v4/x ("B")',
+			);
+		});
+
+		it('drops the oldest shown writes when the newest 8 exceed the total budget', () => {
+			// Each body is at the 600-character cut, so each line is about 630
+			// characters: the newest 8 are about 5,000, and only the newest 6 fit in 4,000.
+			const writes = Array.from({ length: 12 }, (_, i) => ({
+				...entry,
+				nodeName: `W${i + 1}`,
+				body: `row-${i + 1}-`.padEnd(600, 'x'),
+			}));
+
+			const ledger = formatWriteLedger(writes, 'sheets.googleapis.com') ?? '';
+			const lines = ledger.split('\n');
+
+			expect(lines[0]).toBe('(6 earlier writes to this service not shown)');
+			expect(lines.slice(1).map((line) => line.slice(0, line.indexOf(' PUT')))).toEqual([
+				'- [7]',
+				'- [8]',
+				'- [9]',
+				'- [10]',
+				'- [11]',
+				'- [12]',
+			]);
+			expect(ledger).not.toContain('row-6-');
+			expect(ledger).toContain('- [12] PUT /v4/x ("W12") body: row-12-');
+			expect(lines.slice(1).join('\n').length).toBeLessThanOrEqual(4000);
+		});
 	});
 });
 
@@ -769,6 +1164,151 @@ describe('prompt construction', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Placeholder API hosts — reserved example names have no real API to recall
+// ---------------------------------------------------------------------------
+
+describe('placeholder API hosts', () => {
+	it.each([
+		'api.example.com',
+		'API.Example.COM',
+		'api.example.com.',
+		'api.ticketdesk.example.com',
+		'example.org',
+		'example.net',
+		'helpdesk.acme-demo.test',
+		'billing.invalid',
+		'shop.example',
+		'app.localhost',
+	])('treats %s as a placeholder host', (hostname) => {
+		expect(isPlaceholderHost(hostname)).toBe(true);
+	});
+
+	it.each([
+		'api.slack.com',
+		'example.com.evil.io',
+		'notexample.com',
+		'api.internal',
+		'printer.local',
+		'test',
+		undefined,
+	])('treats %s as a real host', (hostname) => {
+		expect(isPlaceholderHost(hostname)).toBe(false);
+	});
+
+	it('asks a placeholder host for the stated layout, else a bare array', async () => {
+		llmSubmits({ type: 'json', body: [] });
+		const handler = createLlmMockHandler();
+
+		await handler({ url: 'https://api.example.com/v1/orders?status=paid', method: 'GET' }, {
+			name: 'Fetch Orders',
+			type: 'n8n-nodes-base.httpRequest',
+		} as INode);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('## Placeholder API');
+		expect(prompt).toContain('bare top-level JSON array');
+		expect(prompt).not.toContain('No API documentation is attached');
+	});
+
+	it('keeps the GraphQL envelope for a placeholder GraphQL endpoint', async () => {
+		llmSubmits({ type: 'json', body: { data: { orders: [] } } });
+		const handler = createLlmMockHandler();
+
+		await handler(
+			{
+				url: 'https://api.example.com/graphql',
+				method: 'POST',
+				body: { query: '{ orders { id } }' },
+			},
+			{ name: 'Fetch Orders', type: 'n8n-nodes-base.graphql' } as INode,
+		);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('## Placeholder API');
+		expect(prompt).toContain('## GraphQL format requirement');
+		expect(prompt).toContain('keep the GraphQL envelope');
+		// The placeholder error rule must not contradict the GraphQL error format.
+		expect(prompt).toContain('a GraphQL request uses the GraphQL error format');
+		expect(prompt).not.toContain('For an error scenario, still use type "error".');
+	});
+
+	it.each([
+		'n8n-nodes-base.httpRequest',
+		'n8n-nodes-base.httpRequestTool',
+		'@n8n/n8n-nodes-langchain.toolHttpRequest',
+		'n8n-nodes-base.graphql',
+	])('applies the Placeholder API section to the generic HTTP client %s', async (type) => {
+		llmSubmits({ type: 'json', body: [] });
+		const handler = createLlmMockHandler();
+
+		await handler({ url: 'https://api.example.com/v1/orders', method: 'GET' }, {
+			name: 'Fetch Orders',
+			type,
+		} as INode);
+
+		expect(mockGenerate.mock.calls[0][0]).toContain('## Placeholder API');
+	});
+
+	it('keeps the API-knowledge note for a service node on a placeholder host', async () => {
+		// The eval credential seeder points WordPress at https://blog.example.com.
+		llmSubmits({ type: 'json', body: [] });
+		const handler = createLlmMockHandler();
+
+		await handler({ url: 'https://blog.example.com/wp-json/wp/v2/posts', method: 'GET' }, {
+			name: 'Get Posts',
+			type: 'n8n-nodes-base.wordpress',
+		} as INode);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('No API documentation is attached');
+		expect(prompt).not.toContain('## Placeholder API');
+	});
+
+	it('keeps the API-knowledge note for a real host', async () => {
+		llmSubmits({ type: 'json', body: {} });
+		const handler = createLlmMockHandler();
+
+		await handler(baseRequest, baseNode);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('No API documentation is attached');
+		expect(prompt).not.toContain('## Placeholder API');
+	});
+
+	it('passes a layout stated in the scenario to a placeholder host', async () => {
+		llmSubmits({ type: 'json', body: [] });
+		const scenarioHints =
+			'The ticket API GET returns three open tickets: [{ "id": "T-1", "priority": "high" }]';
+		const handler = createLlmMockHandler({ scenarioHints });
+
+		await handler(
+			{ url: 'https://api.ticketdesk.example.com/v1/tickets?status=open', method: 'GET' },
+			{ name: 'Fetch Open Tickets', type: 'n8n-nodes-base.httpRequest' } as INode,
+		);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('## Placeholder API');
+		expect(prompt).toContain(scenarioHints);
+	});
+
+	it('lets the Placeholder API section override the layout rule', async () => {
+		llmSubmits({ type: 'json', body: {} });
+		const handler = createLlmMockHandler();
+
+		await handler(baseRequest, baseNode);
+
+		const { instructions } = vi.mocked(createEvalAgent).mock.calls.at(-1)![1] as {
+			instructions: string;
+		};
+		expect(instructions).toContain('Placeholder API section');
+		const envelopeRule = instructions.slice(instructions.indexOf('**Response envelope.**'));
+		expect(envelopeRule.slice(0, envelopeRule.indexOf('\n'))).toContain(
+			'Exception: when the user message has a Placeholder API section, that section decides the layout.',
+		);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // extractServiceName — tested indirectly through prompt content
 // ---------------------------------------------------------------------------
 
@@ -985,5 +1525,173 @@ describe('get_endpoint_quirks tool', () => {
 		expect(quirksCapture.handler).toBeDefined();
 		const result = await quirksCapture.handler!();
 		expect(result).toContain('No specific quirks');
+		expect(result).not.toMatch(/API docs/i);
+	});
+
+	it('points the model at its own API knowledge, never at attached docs', async () => {
+		llmSubmits({ type: 'json', body: {} });
+		const handler = createLlmMockHandler();
+
+		await handler(baseRequest, baseNode);
+
+		const { instructions } = vi.mocked(createEvalAgent).mock.calls.at(-1)![1] as {
+			instructions: string;
+		};
+		expect(instructions).not.toMatch(/\bdocs\b|documentation/i);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Endpoint normalizers — binary fidelity (Drive resumable init, Gmail raw attachments)
+// ---------------------------------------------------------------------------
+
+describe('normalizeDriveResumableInit', () => {
+	const driveNode = { name: 'Drive', type: 'n8n-nodes-base.googleDrive' } as INode;
+
+	it('serves the resumable initiation deterministically with a location header', async () => {
+		llmSubmits({ type: 'json', body: { id: 'file123' } });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(
+			handler,
+			{
+				url: 'https://www.googleapis.com/upload/drive/v3/files',
+				method: 'POST',
+				qs: { uploadType: 'resumable', supportsAllDrives: true },
+			} as IHttpRequestOptions,
+			driveNode,
+		);
+
+		expect(result.body).toEqual({});
+		expect(result.statusCode).toBe(200);
+		expect(result.headers.location).toBe(
+			'https://www.googleapis.com/upload/drive/v3/files?upload_id=eval-resumable-upload',
+		);
+	});
+
+	it('leaves the chunk PUT to the minted session URI to the model', async () => {
+		llmSubmits({ type: 'json', body: { id: 'file123', name: 'x.png' } });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(
+			handler,
+			{
+				url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=eval-resumable-upload',
+				method: 'PUT',
+			} as IHttpRequestOptions,
+			driveNode,
+		);
+
+		expect(result.body).toEqual({ id: 'file123', name: 'x.png' });
+		expect(result.headers.location).toBeUndefined();
+	});
+
+	it('does not touch multipart uploads', async () => {
+		llmSubmits({ type: 'json', body: { id: 'file123' } });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(
+			handler,
+			{
+				url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+				method: 'POST',
+			} as IHttpRequestOptions,
+			driveNode,
+		);
+
+		expect(result.body).toEqual({ id: 'file123' });
+		expect(result.headers.location).toBeUndefined();
+	});
+});
+
+describe('substituteBinaryMimeParts (gmail raw attachments)', () => {
+	const gmailNode = { name: 'Get Invoice Email', type: 'n8n-nodes-base.gmail' } as INode;
+	const gmailRequest = {
+		url: 'https://www.googleapis.com/gmail/v1/users/me/messages/m1',
+		method: 'GET',
+		qs: { format: 'raw' },
+	} as IHttpRequestOptions;
+
+	const rawWithPdfPart = [
+		'From: billing@acme.test',
+		'To: me@example.test',
+		'Subject: Invoice INV-88',
+		'MIME-Version: 1.0',
+		'Content-Type: multipart/mixed; boundary="b1"',
+		'',
+		'--b1',
+		'Content-Type: text/plain; charset="UTF-8"',
+		'',
+		'Invoice attached.',
+		'--b1',
+		'Content-Type: application/pdf; name="invoice.pdf"',
+		'Content-Disposition: attachment; filename="invoice.pdf"',
+		'Content-Transfer-Encoding: base64',
+		'',
+		'Invoice INV-88 total USD 42.50',
+		'--b1--',
+	].join('\n');
+
+	it('replaces a plaintext-authored PDF part with real bytes carrying that text', async () => {
+		llmSubmits({ type: 'json', body: { id: 'm1', raw: rawWithPdfPart } });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler, gmailRequest, gmailNode);
+
+		const raw = (result.body as { raw: string }).raw;
+		const decoded = Buffer.from(raw, 'base64url').toString('utf8');
+		expect(decoded).toContain('Invoice attached.'); // text part untouched
+		const partB64 = decoded
+			.split('Content-Transfer-Encoding: base64')[1]
+			.split('--b1--')[0]
+			.replace(/\s/g, '');
+		const pdf = Buffer.from(partB64, 'base64');
+		expect(pdf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+		expect(pdf.toString('latin1')).toContain('(Invoice INV-88 total USD 42.50) Tj');
+	});
+
+	it('replaces a garbage base64 PDF stub with a valid document', async () => {
+		const rawWithStub = rawWithPdfPart.replace('Invoice INV-88 total USD 42.50', 'JVBERi0xLjQ=');
+		llmSubmits({ type: 'json', body: { id: 'm1', raw: rawWithStub } });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler, gmailRequest, gmailNode);
+
+		const decoded = Buffer.from((result.body as { raw: string }).raw, 'base64url').toString('utf8');
+		const partB64 = decoded
+			.split('Content-Transfer-Encoding: base64')[1]
+			.split('--b1--')[0]
+			.replace(/\s/g, '');
+		const pdf = Buffer.from(partB64, 'base64');
+		expect(pdf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+		expect(pdf.toString('latin1')).toContain('%%EOF');
+	});
+
+	it('substitutes image attachment parts with the standard fixture bytes', async () => {
+		const rawWithImage = rawWithPdfPart
+			.replace(
+				'Content-Type: application/pdf; name="invoice.pdf"',
+				'Content-Type: image/png; name="chart.png"',
+			)
+			.replace(
+				'Content-Disposition: attachment; filename="invoice.pdf"',
+				'Content-Disposition: attachment; filename="chart.png"',
+			);
+		llmSubmits({ type: 'json', body: { id: 'm1', raw: rawWithImage } });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler, gmailRequest, gmailNode);
+
+		const decoded = Buffer.from((result.body as { raw: string }).raw, 'base64url').toString('utf8');
+		const partB64 = decoded
+			.split('Content-Transfer-Encoding: base64')[1]
+			.split('--b1--')[0]
+			.replace(/\s/g, '');
+		const png = Buffer.from(partB64, 'base64');
+		expect(png.subarray(1, 4).toString('latin1')).toBe('PNG');
+	});
+
+	it('adds the base64 transfer-encoding header when the part lacked one', async () => {
+		const rawNoEncoding = rawWithPdfPart.replace('Content-Transfer-Encoding: base64\n', '');
+		llmSubmits({ type: 'json', body: { id: 'm1', raw: rawNoEncoding } });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler, gmailRequest, gmailNode);
+
+		const decoded = Buffer.from((result.body as { raw: string }).raw, 'base64url').toString('utf8');
+		expect(decoded).toContain('Content-Transfer-Encoding: base64');
 	});
 });

@@ -7,6 +7,7 @@ import type {
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
 import type { INodeTranslationHeaders } from '@n8n/i18n';
+import { sleep } from '@n8n/utils/sleep';
 import axios from 'axios';
 import type {
 	INodeListSearchResult,
@@ -16,7 +17,6 @@ import type {
 	NodeParameterValueType,
 	ResourceMapperFields,
 } from 'n8n-workflow';
-import { sleep } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';

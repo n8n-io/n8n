@@ -27,7 +27,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		icon: 'node:sub-workflow-trigger',
 		iconColor: 'black',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description:
 			'Helpers for calling other n8n workflows. Used for designing modular, microservice-like workflows.',
 		eventTriggerDescription: '',

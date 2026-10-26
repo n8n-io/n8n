@@ -30,9 +30,10 @@ const OAuthCredentialResolverOptionsSchema = z.discriminatedUnion('validation', 
 type OAuthCredentialResolverOptions = z.infer<typeof OAuthCredentialResolverOptionsSchema>;
 
 /**
- * OAuth2 token introspection-based credential resolver.
- * Resolves user identity via OAuth2 token introspection and stores credentials
- * encrypted in the database, keyed by the introspected subject.
+ * OAuth2 credential resolver.
+ * Resolves a caller's identity from their access token — via token introspection or
+ * the UserInfo endpoint, per the configured validation method — and stores credentials
+ * encrypted in the database, keyed by the resolved subject.
  */
 @CredentialResolver()
 export class OAuthCredentialResolver implements ICredentialResolver {
@@ -107,6 +108,15 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 						validation: ['oauth2-introspection'],
 					},
 				},
+			},
+			{
+				displayName: 'Expected Audience',
+				name: 'expectedAudience',
+				type: 'string' as const,
+				default: '',
+				placeholder: 'https://api.example.com',
+				description:
+					'Value the access token must carry in its aud claim, identifying this n8n instance as the intended recipient. Leave empty to skip the check. This is not the Client ID: configure your provider to issue an audience for n8n if it does not already.',
 			},
 			{
 				displayName: 'Subject Claim',

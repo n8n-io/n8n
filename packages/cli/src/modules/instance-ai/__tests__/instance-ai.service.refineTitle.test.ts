@@ -16,23 +16,22 @@ vi.mock('@n8n/instance-ai', async () => {
 		createSandbox: vi.fn(),
 		createWorkspace: vi.fn(),
 		createLazyRuntimeWorkspace: vi.fn(),
-		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
 		setupSandboxWorkspace: vi.fn(),
-		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
-			registry: { skillsHash: 'runtime-skills-hash', skills: [] },
-			loadSkill: vi.fn(),
-		})),
-		disabledInstanceAiSkillIds: vi.fn(() => []),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
 		createInstanceAgent: vi.fn(),
-		createAllTools: vi.fn(),
 		// No trace context so refineTitleIfNeeded takes the direct title-generation path.
 		createInternalOperationTraceContext: vi.fn(async () => undefined),
 		releaseTraceClient: vi.fn(),
 		generateTitleForRun,
 		patchThread,
+		setTracePromptVersion: vi.fn(),
+		setTraceModelId: vi.fn(),
+		modelIdTraceMetadata: (modelId: unknown) =>
+			typeof modelId === 'string' && modelId.length > 0 ? { model_id: modelId } : {},
+		modelConfigId: (config: unknown) =>
+			typeof config === 'string' && config.length > 0 ? config : undefined,
 	};
 });
 
@@ -40,6 +39,8 @@ import type { ModelConfig } from '@n8n/instance-ai';
 
 import { withCurrentDateTime, AUTO_FOLLOW_UP_MESSAGE } from '../internal-messages';
 import { InstanceAiService } from '../instance-ai.service';
+
+const modelFetch = vi.fn();
 
 /**
  * Regression: stored user messages carry service-injected blocks (the
@@ -58,6 +59,7 @@ describe('InstanceAiService — refineTitleIfNeeded input cleaning', () => {
 		tracing: { getTraceContextForContinuation: ReturnType<typeof vi.fn> };
 		eventBus: { publish: ReturnType<typeof vi.fn> };
 		logger: { warn: ReturnType<typeof vi.fn> };
+		modelService: { getModelFetch: ReturnType<typeof vi.fn> };
 		refineTitleIfNeeded: (threadId: string, userId: string, modelId: ModelConfig) => Promise<void>;
 	};
 
@@ -72,6 +74,7 @@ describe('InstanceAiService — refineTitleIfNeeded input cleaning', () => {
 		service.tracing = { getTraceContextForContinuation: vi.fn(() => undefined) };
 		service.eventBus = { publish: vi.fn() };
 		service.logger = { warn: vi.fn() };
+		service.modelService = { getModelFetch: vi.fn(() => modelFetch) };
 		return service;
 	}
 
@@ -97,7 +100,7 @@ describe('InstanceAiService — refineTitleIfNeeded input cleaning', () => {
 		await service.refineTitleIfNeeded('thread-1', 'user-1', modelId);
 
 		expect(generateTitleForRun).toHaveBeenCalledTimes(1);
-		expect(generateTitleForRun).toHaveBeenCalledWith(modelId, 'hey');
+		expect(generateTitleForRun).toHaveBeenCalledWith(modelId, 'hey', { modelFetch });
 		// Deferred title generation must not mark the thread as refined.
 		expect(patchThread).not.toHaveBeenCalled();
 	});
@@ -115,6 +118,7 @@ describe('InstanceAiService — refineTitleIfNeeded input cleaning', () => {
 		expect(generateTitleForRun).toHaveBeenCalledWith(
 			modelId,
 			'build me a slack notification workflow',
+			{ modelFetch },
 		);
 		expect(patchThread).toHaveBeenCalledTimes(1);
 	});
@@ -154,6 +158,7 @@ describe('InstanceAiService — refineTitleIfNeeded input cleaning', () => {
 		expect(generateTitleForRun).toHaveBeenCalledWith(
 			modelId,
 			'hey\nlets build a workflow that greets me on telegram every morning',
+			{ modelFetch },
 		);
 		expect(patchThread).toHaveBeenCalledTimes(1);
 	});
@@ -185,13 +190,11 @@ describe('InstanceAiService — finalizeRun title refinement guard', () => {
 	type FinalizeInternals = {
 		publishRunFinish: ReturnType<typeof vi.fn>;
 		emitRunMetrics: ReturnType<typeof vi.fn>;
-		saveAgentTreeSnapshot: ReturnType<typeof vi.fn>;
 		refineTitleIfNeeded: ReturnType<typeof vi.fn>;
 		finalizeRun: (
 			threadId: string,
 			runId: string,
 			status: 'completed' | 'cancelled' | 'errored',
-			snapshotStorage: unknown,
 			options?: { userId?: string; modelId?: ModelConfig },
 		) => Promise<void>;
 	};
@@ -202,7 +205,6 @@ describe('InstanceAiService — finalizeRun title refinement guard', () => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as FinalizeInternals;
 		service.publishRunFinish = vi.fn();
 		service.emitRunMetrics = vi.fn();
-		service.saveAgentTreeSnapshot = vi.fn(async () => {});
 		service.refineTitleIfNeeded = vi.fn(async () => {});
 		return service;
 	}
@@ -210,7 +212,7 @@ describe('InstanceAiService — finalizeRun title refinement guard', () => {
 	it('refines the title when a completed run supplies userId and modelId', async () => {
 		const service = createService();
 
-		await service.finalizeRun('thread-1', 'run-1', 'completed', {}, { userId: 'user-1', modelId });
+		await service.finalizeRun('thread-1', 'run-1', 'completed', { userId: 'user-1', modelId });
 
 		expect(service.refineTitleIfNeeded).toHaveBeenCalledWith('thread-1', 'user-1', modelId);
 	});
@@ -218,7 +220,7 @@ describe('InstanceAiService — finalizeRun title refinement guard', () => {
 	it('skips refinement when modelId is missing', async () => {
 		const service = createService();
 
-		await service.finalizeRun('thread-1', 'run-1', 'completed', {}, { userId: 'user-1' });
+		await service.finalizeRun('thread-1', 'run-1', 'completed', { userId: 'user-1' });
 
 		expect(service.refineTitleIfNeeded).not.toHaveBeenCalled();
 	});

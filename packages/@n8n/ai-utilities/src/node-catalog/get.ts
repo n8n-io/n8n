@@ -38,6 +38,15 @@ export function isValidPathComponent(component: string): boolean {
 }
 
 /**
+ * Validate a normalized version segment (`v1`, `v31`).
+ * Generated definitions only ever use this shape, so anything else is rejected
+ * before it reaches a path join.
+ */
+export function isValidVersionSegment(segment: string): boolean {
+	return /^v\d+$/.test(segment);
+}
+
+/**
  * Validate that a resolved path is within the expected base directory.
  * Prevents path traversal even if components pass basic validation.
  */
@@ -180,6 +189,25 @@ export function parseNodeId(nodeId: string): { packageName: string; nodeName: st
 }
 
 /**
+ * Turn a `v{digits}` directory name into a comparable numeric version.
+ *
+ * Version dirs drop the dot (2.2 -> v22, 3.1 -> v31, 3 -> v3), so a naive
+ * `parseInt` reads v22 as 22 and ranks it above v3. A two-digit suffix is a
+ * major.minor pair; anything else is the number as-is.
+ *
+ * The encoding stays ambiguous for a two-digit major (a future `v10` reads as
+ * 1.0), but no node is anywhere near that, and this matches the `parseRequestedVersion`
+ * convention used elsewhere. Fixing it properly means an unambiguous dir name at generation time.
+ */
+export function versionDirToNumber(versionDir: string): number {
+	const digits = versionDir.slice(1);
+	if (/^\d{2}$/.test(digits)) {
+		return Number(`${digits[0]}.${digits[1]}`);
+	}
+	return Number.parseFloat(digits);
+}
+
+/**
  * Get available versions for a node
  * Returns array of version strings like ['v34', 'v2'] sorted by version descending
  */
@@ -220,11 +248,7 @@ function getNodeVersions(nodeId: string, nodeDefinitionDirs?: string[]): string[
 		}
 
 		// Sort by numeric version descending
-		versions.sort((a, b) => {
-			const aNum = parseInt(a.slice(1), 10);
-			const bNum = parseInt(b.slice(1), 10);
-			return bNum - aNum;
-		});
+		versions.sort((a, b) => versionDirToNumber(b) - versionDirToNumber(a));
 
 		return versions;
 	} catch {
@@ -447,6 +471,10 @@ function getNodeFilePath(
 		targetVersion = `v${targetVersion.slice(1).replace('.', '')}`;
 	}
 
+	if (!isValidVersionSegment(targetVersion)) {
+		return { error: `Version '${version}' not found for node '${nodeId}'` };
+	}
+
 	// Check if this is a split version structure
 	if (isSplitVersionStructure(nodeDir, targetVersion)) {
 		const available = getAvailableDiscriminators(nodeDir, targetVersion);
@@ -475,6 +503,10 @@ function getNodeFilePath(
 
 	// Flat file structure
 	const filePath = join(nodeDir, `${targetVersion}.ts`);
+
+	if (!validatePathWithinBase(filePath, nodeDir)) {
+		return { error: 'Error: Invalid path - path traversal detected' };
+	}
 
 	if (!existsSync(filePath)) {
 		return { error: `Version '${version}' not found for node '${nodeId}'` };

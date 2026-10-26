@@ -3,8 +3,16 @@ export type {
 	BuiltProviderTool,
 	BuiltAgent,
 	BuiltMemory,
+	BuiltEpisodicMemoryCaptureStore,
 	BuiltEpisodicMemoryStore,
 	BuiltGuardrail,
+	GuardrailDecision,
+	GuardrailModelCallContext,
+	GuardrailModelCallSource,
+	GuardrailStop,
+	GuardrailToolCallContext,
+	GuardrailsOptions,
+	ModelGuardrail,
 	PiiDetectionType,
 	BuiltEval,
 	RunOptions,
@@ -16,17 +24,23 @@ export type {
 	EvalRunResult,
 	EvalResults,
 	ToolContext,
+	ToolCancellationContext,
 	ToolExecutionContext,
+	ToolApprovalContext,
 	InterruptibleToolContext,
+	ToolSuspendOptions,
 	CheckpointStore,
 	StreamChunk,
 	Provider,
 	ThinkingConfig,
 	ThinkingConfigFor,
+	AnthropicThinkingEffort,
 	AnthropicThinkingConfig,
+	OpenAIReasoningEffort,
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,
+	ReasoningLevel,
 	SerializableAgentState,
 	AgentRunState,
 	MemoryConfig,
@@ -36,17 +50,17 @@ export type {
 	TitleGenerationConfig,
 	Thread,
 	EpisodicMemoryConfig,
-	EpisodicMemoryCursor,
+	EpisodicMemoryCaptureCandidate,
+	EpisodicMemoryCaptureKind,
+	EpisodicMemoryCaptureMethods,
+	EpisodicMemoryCaptureStatus,
 	EpisodicMemoryEmbeddingProviderOptions,
 	EpisodicMemoryEntry,
 	EpisodicMemoryEntrySource,
-	EpisodicMemoryExtractFn,
-	EpisodicMemoryExtraction,
-	EpisodicMemoryExtractionCandidate,
-	EpisodicMemoryExtractorInput,
 	EpisodicMemoryMethods,
 	EpisodicMemoryPrompts,
 	EpisodicMemoryReflectFn,
+	EpisodicMemoryReflectResult,
 	EpisodicMemoryReflection,
 	EpisodicMemoryReflectionApply,
 	EpisodicMemoryReflectionApplyMerge,
@@ -54,11 +68,13 @@ export type {
 	EpisodicMemoryReflectionResult,
 	EpisodicMemoryReflectorInput,
 	EpisodicMemoryScope,
+	EpisodicScopeDecision,
+	ResolvedEpisodicScope,
 	EpisodicMemorySearchOptions,
 	EpisodicMemoryStatus,
 	EpisodicMemoryTaskLockHandle,
 	EpisodicMemoryTaskLockMethods,
-	NewEpisodicMemoryCursor,
+	NewEpisodicMemoryCaptureCandidate,
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySource,
 	NewEpisodicMemoryEntrySourceForEntry,
@@ -66,16 +82,22 @@ export type {
 	ResumeOptions,
 	McpServerConfig,
 	McpToolCallSettledEvent,
+	McpConnectionFailedEvent,
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
+	AgentInputBoundary,
 	SmoothStreamOptions,
 	TokenUsage,
+	PromptSizeUsage,
 	AgentExecutionCounter,
+	SideCallTask,
+	SideCallUsageReport,
 	PersistedExecutionOptions,
 	AnthropicPromptCachingConfig,
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
+	NativeToolDeferralConfig,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
@@ -84,26 +106,35 @@ export type {
 	BuiltObservationLogTaskLockStore,
 	MemoryTaskUsageReport,
 	NewObservationLogEntry,
+	ObservationLogBatch,
+	ObservationLogBatchEntry,
+	ObservationLogBatchCommitResult,
 	ObservationLogEntry,
 	ObservationLogMarker,
 	ObservationLogMerge,
+	ObservationLogObserveResult,
 	ObservationLogReadOptions,
 	ObservationLogReflection,
+	ObservationLogReflectResult,
 	ObservationLogReflectionResult,
 	ObservationLogScope,
 	ObservationLogStatus,
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
-	TokenCounter,
+	FinishReason,
 } from './types';
+export { FINISH_REASONS, isFinishReason } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
-export type { AgentEventData, AgentEventHandler } from './types';
+export type { AgentEventData, AgentEventHandler, ForwardedChildChunk } from './types';
 export {
-	estimateObservationTokens,
 	OBSERVATION_LOG_MARKERS,
 	OBSERVATION_LOG_STATUSES,
 } from './types';
+export {
+	estimateObservationTokens,
+	type TokenCounter,
+} from './runtime/model/model-token-counter';
 
 export { createCancellation, isCancellation, CANCELLATION_TYPE } from './sdk/cancellation';
 export type { Cancellation } from './sdk/cancellation';
@@ -113,7 +144,24 @@ export {
 	raceWithAbort,
 	throwIfAborted,
 } from './sdk/abort';
-export { Tool, wrapToolForApproval, sanitizeToolName } from './sdk/tool';
+export {
+	DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
+	DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS,
+	ModelStreamStallError,
+} from './runtime/streaming/stream-stall';
+export {
+	APPROVAL_RESUME_SCHEMA,
+	APPROVAL_SUSPEND_SCHEMA,
+	Tool,
+	wrapToolForApproval,
+	sanitizeToolName,
+} from './sdk/tool';
+export type { ApprovalResumePayload, ApprovalSuspendPayload } from './sdk/tool';
+export {
+	stripInvisibleUnicode,
+	UNTRUSTED_OUTPUT_DOCTRINE,
+	wrapUntrustedData,
+} from './sdk/untrusted-content';
 export { Memory } from './sdk/memory';
 export { VectorStore } from './sdk/vector-store';
 export {
@@ -124,6 +172,13 @@ export {
 } from './sdk/vector-store-filter';
 export type { VectorFilterInput } from './sdk/vector-store-filter';
 export { Guardrail } from './sdk/guardrail';
+export { budgetMonthKey, createBudgetGuardrail } from './runtime/guardrails/budget-guardrail';
+export type {
+	BudgetGuardrailOptions,
+	SpendEntry,
+	SpendLedger,
+	SpendTotal,
+} from './runtime/guardrails/budget-guardrail';
 export {
 	redactText,
 	redactDeep,
@@ -150,6 +205,14 @@ export { deriveSubAgentTelemetry } from './runtime/telemetry/sub-agent-telemetry
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
+export {
+	PROMPT_SIZE_BUCKET_THRESHOLDS,
+	withPromptSizeBreakdown,
+} from './runtime/loop/prompt-size-usage';
+export type {
+	VolatileInstructionsContext,
+	VolatileInstructionsProvider,
+} from './runtime/loop/agent-runtime';
 export type { AgentSnapshot } from './sdk/agent';
 export {
 	appendSkillCatalogToInstructions,
@@ -157,7 +220,9 @@ export {
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	extendRuntimeSkillSource,
 	filterRuntimeSkillSource,
+	hashRuntimeSkillRegistry,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,
@@ -166,6 +231,7 @@ export {
 	renderSkillCatalogPrompt,
 	RUNTIME_SKILL_TOOL_NAMES,
 	RUNTIME_SKILL_FILE_NAME,
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_NAME_PATTERN,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
@@ -186,11 +252,16 @@ export type {
 	RuntimeSkillLinkedFileGroup,
 	RuntimeSkillLinkedFiles,
 	RuntimeSkillLoader,
+	RuntimeSkillLoadError,
 	RuntimeSkillMcpServerDependency,
 	RuntimeSkillPolicyContract,
+	RuntimeSkillReferenceContract,
+	RuntimeSkillReferenceLocation,
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
+	RuntimeSkillStateScope,
+	RuntimeSkillStateStore,
 	RuntimeSkillValidationError,
 	RuntimeSkillValidationResult,
 } from './skills';
@@ -201,14 +272,23 @@ export type {
 	CredentialListItem,
 } from './types';
 export { McpClient } from './sdk/mcp-client';
+export {
+	hasMcpMediaContent,
+	mcpContentToMessageParts,
+	mcpContentToModelParts,
+} from './runtime/mcp/mcp-content';
+export type { McpModelContentPart } from './runtime/mcp/mcp-content';
 export { providerTools } from './sdk/provider-tools';
 export { verify } from './sdk/verify';
 export type { VerifyResult } from './sdk/verify';
 export type {
 	ContentCitation,
+	ContentCustom,
 	ContentFile,
+	ContentFileRef,
 	ContentMetadata,
 	ContentReasoning,
+	ContentReasoningFile,
 	ContentText,
 	ContentToolCall,
 	Message,
@@ -218,9 +298,12 @@ export type {
 	CustomAgentMessages,
 	AgentDbMessage,
 } from './types/sdk/message';
+export { stripHydratedFileData } from './types/sdk/message';
+export type { BuiltFileStore } from './types/sdk/file-store';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
 	filterLlmMessages,
+	getCreatedAt,
 	isLlmMessage,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
@@ -230,6 +313,7 @@ export type {
 	ModelInfo,
 	ModelCost,
 	ModelLimits,
+	ModelModalities,
 } from './sdk/catalog';
 export { BaseMemory } from './storage/base-memory';
 export { BaseVectorStore } from './storage/base-vector-store';
@@ -245,8 +329,14 @@ export type {
 	VectorFilter,
 } from './types';
 
-export { createModel } from './runtime/model/model-factory';
+export { createModel, mintAzureFoundryDeploymentsToken } from './runtime/model/model-factory';
 export type { FetchFn, EmbeddingProviderOptions } from './runtime/model/model-factory';
+export {
+	hasAzureApiKey,
+	hasAzureEntraToken,
+	isAzureEntraCredential,
+	type AzureOpenAiAuthFields,
+} from './runtime/model/provider-credentials';
 export {
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,
@@ -266,13 +356,19 @@ export {
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
 	isDelegateSubAgentTool,
+	parseDelegateSubAgentContinuation,
 	renderDelegateSubAgentPrompt,
 } from './runtime/tools/delegate-sub-agent-tool';
 export type {
 	CreateDelegateSubAgentToolOptions,
+	DelegateSubAgentCancelRequest,
+	DelegateSubAgentCancelRunner,
+	DelegateSubAgentContinuation,
 	DelegateSubAgentInput,
 	DelegateSubAgentPolicy,
 	DelegateSubAgentRequest,
+	DelegateSubAgentResumeRequest,
+	DelegateSubAgentResumeRunner,
 	DelegateSubAgentRunner,
 	DelegateSubAgentRunnerHelpers,
 	DelegateSubAgentToolOutput,
@@ -283,6 +379,7 @@ export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/tools/wri
 export { createPlannerTodosTool } from './runtime/tools/planner-todos-tool';
 export type { CreatePlannerTodosToolOptions } from './runtime/tools/planner-todos-tool';
 export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
+export { isAttachmentValidationError } from './runtime/model/attachment-validation-error';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {
@@ -298,39 +395,50 @@ export {
 export {
 	RECALL_MEMORY_TOOL_NAME,
 	createRecallMemoryTool,
+	EPISODIC_SCOPE_METADATA_KEY,
+	encodeEpisodicScopeMetadata,
+	readEpisodicScopeDecision,
 	getEpisodicMemoryScope,
 	hashEpisodicMemoryContent,
 	hashEpisodicMemoryEvidence,
+	hasEpisodicMemoryCaptureStore,
 	hasEpisodicMemoryStore,
 	isEpisodicMemoryEnabled,
 	rankEpisodicMemoryEntries,
-	runEpisodicMemoryIndexer,
 	withEpisodicMemoryDefaults,
 } from './runtime/memory/episodic-memory';
 export {
+	FLAG_MEMORY_TOOL_NAME,
+	createFlagMemoryTool,
+	runEpisodicMemoryCandidateProcessor,
+} from './runtime/memory/episodic-memory-capture';
+export type {
+	RunEpisodicMemoryCandidateProcessorOpts,
+	RunEpisodicMemoryCandidateProcessorResult,
+	EpisodicMemoryUsageReport,
+} from './runtime/memory/episodic-memory-capture';
+export {
+	DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
-	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
 	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
-	buildEpisodicMemoryExtractorPrompt,
 	buildEpisodicMemoryReflectorPrompt,
-	createEpisodicMemoryExtractFn,
 	createEpisodicMemoryReflectFn,
 } from './runtime/memory/episodic-memory-defaults';
-export type {
-	CreateEpisodicMemoryExtractFnOptions,
-	CreateEpisodicMemoryReflectFnOptions,
-} from './runtime/memory/episodic-memory-defaults';
+export type { CreateEpisodicMemoryReflectFnOptions } from './runtime/memory/episodic-memory-defaults';
 export type {
 	MemoryLifecycleState,
 	MemoryLifecycleStatus,
 } from './runtime/memory/memory-lifecycle';
+export { loadReplayedMessages } from './runtime/memory/memory-orchestrator';
+export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
 export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,
 	runObservationLogObserver,
+	wrapUntrustedObserverData,
 } from './runtime/memory/observation-log-observer';
 export {
 	normalizeObservationLogReflection,
@@ -388,7 +496,12 @@ export type {
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
 export { BaseSandbox } from './workspace';
-export { createWorkspaceTools } from './workspace';
+export {
+	CORE_WORKSPACE_TOOL_NAMES,
+	createScopedWorkspace,
+	createWorkspaceTools,
+	reconcileToolResultRuns,
+} from './workspace';
 export { SandboxProcessManager, ProcessHandle } from './workspace';
 
 export type {
@@ -425,4 +538,5 @@ export type {
 
 export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
 
+export { modelConfigToId } from './utils/model';
 export { isZodSchema, zodToJsonSchema } from './utils/zod';

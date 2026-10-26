@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { VIEWS } from '@/app/constants';
-import { useRolesStore } from '@/app/stores/roles.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useI18n } from '@n8n/i18n';
 import RolesTable from '../components/RolesTable.vue';
 import { useRolesListActions } from '../composables/useRolesListActions';

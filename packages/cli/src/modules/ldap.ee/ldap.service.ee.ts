@@ -1,25 +1,23 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
-import { LDAP_FEATURE_NAME } from '@n8n/constants';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@n8n/constants';
 import { isValidEmail, SettingsRepository, User } from '@n8n/db';
-import type { RunningMode, SyncStatus } from '@n8n/db';
+import type { AuthProviderSyncHistory, RunningMode, SyncStatus } from '@n8n/db';
 import type { IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandler } from '@n8n/decorators';
 import { Constructable, Container } from '@n8n/di';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Entry as LdapUser, ClientOptions, Client } from 'ldapts';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError } from '@n8n/errors';
 import {
+	assertAuthenticationMethodCanBeEnabled,
 	getCurrentAuthenticationMethod,
-	isEmailCurrentAuthenticationMethod,
-	isLdapCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 
@@ -36,6 +34,7 @@ import {
 	escapeFilter,
 	formatUrl,
 	getLdapIds,
+	getLdapSynchronizationsWithCount,
 	getLdapUsers,
 	getMappingAttributes,
 	mapLdapUserToDbUser,
@@ -46,11 +45,26 @@ import {
 	validateLdapConfigurationSchema,
 	getUserByLdapId,
 } from './helpers.ee';
+import { LdapConnectionError, LdapRejectionError } from './ldap.errors';
+
+const LDAP_CONNECTION_ERROR_CODES = new Set([
+	'ECONNREFUSED',
+	'ETIMEDOUT',
+	'ENOTFOUND',
+	'EHOSTUNREACH',
+	'ECONNRESET',
+	'DEPTH_ZERO_SELF_SIGNED_CERT',
+	'SELF_SIGNED_CERT_IN_CHAIN',
+	'CERT_HAS_EXPIRED',
+	'CERT_NOT_YET_VALID',
+	'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+	'UNABLE_TO_GET_ISSUER_CERT',
+	'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+]);
 
 @AuthHandler()
 export class LdapService implements IPasswordAuthHandler<User> {
 	readonly metadata = { name: 'ldap', type: 'password' as const };
-	private client: Client | undefined;
 
 	private ldapts: typeof import('ldapts');
 
@@ -101,14 +115,21 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	}
 
 	async updateConfig(ldapConfig: LdapConfig): Promise<void> {
+		// The config GET blanks the bind password; when the editor round-trips it back,
+		// keep the currently-stored password instead of overwriting it with the placeholder.
+		if (ldapConfig.bindingAdminPassword === CREDENTIAL_BLANKING_VALUE) {
+			const stored = await this.loadConfig();
+			ldapConfig.bindingAdminPassword = stored.bindingAdminPassword;
+		}
+
 		const { valid, message } = validateLdapConfigurationSchema(ldapConfig);
 
 		if (!valid) {
-			throw new UnexpectedError(message);
+			throw new BadRequestError(message);
 		}
 
-		if (ldapConfig.loginEnabled && ['saml', 'oidc'].includes(getCurrentAuthenticationMethod())) {
-			throw new BadRequestError('LDAP cannot be enabled if SSO in enabled');
+		if (ldapConfig.loginEnabled) {
+			assertAuthenticationMethodCanBeEnabled('ldap');
 		}
 
 		this.setConfig({ ...ldapConfig });
@@ -130,10 +151,9 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		await this.setGlobalLdapConfigVariables(ldapConfig);
 	}
 
-	/** Set the LDAP configuration and expire the current client */
+	/** Set the LDAP configuration. */
 	setConfig(ldapConfig: LdapConfig) {
 		this.config = ldapConfig;
-		this.client = undefined;
 		// If user disabled synchronization in the UI and there a job schedule,
 		// stop it
 		if (this.syncTimer && !this.config.synchronizationEnabled) {
@@ -159,10 +179,8 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	/** Set the LDAP login enabled to the configuration object */
 	private async setLdapLoginEnabled(enabled: boolean): Promise<void> {
 		const currentAuthenticationMethod = getCurrentAuthenticationMethod();
-		if (enabled && !isEmailCurrentAuthenticationMethod() && !isLdapCurrentAuthenticationMethod()) {
-			throw new InternalServerError(
-				`Cannot switch LDAP login enabled state when an authentication method other than email or ldap is active (current: ${currentAuthenticationMethod})`,
-			);
+		if (enabled) {
+			assertAuthenticationMethodCanBeEnabled('ldap');
 		}
 
 		Container.get(GlobalConfig).sso.ldap.loginEnabled = enabled;
@@ -173,51 +191,51 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		await setCurrentAuthenticationMethod(enabled ? 'ldap' : targetAuthenticationMethod);
 	}
 
-	/**
-	 * Get new/existing LDAP client,
-	 * depending on whether the credentials
-	 * were updated or not
-	 */
-	private async getClient() {
+	/** Use a separate client for each operation to keep bindings isolated. */
+	private async withClient<T>(
+		operation: (client: Client, searchTimeout: number) => Promise<T>,
+	): Promise<T> {
 		if (this.config === undefined) {
 			throw new UnexpectedError('Service cannot be used without setting the property config');
 		}
-		if (this.client === undefined) {
-			if (!this.ldapts) {
-				this.ldapts = await lazyImport(async () => await import('ldapts'));
-			}
+		if (!this.ldapts) {
+			this.ldapts = await lazyImport(async () => await import('ldapts'));
+		}
 
-			const url = formatUrl(
-				this.config.connectionUrl,
-				this.config.connectionPort,
-				this.config.connectionSecurity,
-			);
-			const ldapOptions: ClientOptions = { url };
-			const tlsOptions: ConnectionOptions = {};
+		const url = formatUrl(
+			this.config.connectionUrl,
+			this.config.connectionPort,
+			this.config.connectionSecurity,
+		);
+		const searchTimeout =
+			this.config.searchTimeout > 0
+				? this.config.searchTimeout
+				: LDAP_DEFAULT_CONFIGURATION.searchTimeout;
+		const timeout = searchTimeout * 1000;
+		const ldapOptions: ClientOptions = { url, timeout, connectTimeout: timeout };
+		const tlsOptions: ConnectionOptions = {};
 
-			if (this.config.connectionSecurity !== 'none') {
-				Object.assign(tlsOptions, {
-					rejectUnauthorized: !this.config.allowUnauthorizedCerts,
-				});
-				if (this.config.connectionSecurity === 'tls') {
-					ldapOptions.tlsOptions = tlsOptions;
-				}
-			}
-
-			this.client = new this.ldapts.Client(ldapOptions);
-			if (this.config.connectionSecurity === 'startTls') {
-				await this.client.startTLS(tlsOptions);
+		if (this.config.connectionSecurity !== 'none') {
+			Object.assign(tlsOptions, {
+				rejectUnauthorized: !this.config.allowUnauthorizedCerts,
+			});
+			if (this.config.connectionSecurity === 'tls') {
+				ldapOptions.tlsOptions = tlsOptions;
 			}
 		}
-	}
 
-	/**
-	 * Attempt a binding with the admin credentials
-	 */
-	private async bindAdmin(): Promise<void> {
-		await this.getClient();
-		if (this.client) {
-			await this.client.bind(this.config.bindingAdminDn, this.config.bindingAdminPassword);
+		const client = new this.ldapts.Client(ldapOptions);
+		try {
+			if (this.config.connectionSecurity === 'startTls') {
+				await client.startTLS(tlsOptions);
+			}
+			return await operation(client, searchTimeout);
+		} finally {
+			try {
+				await client.unbind();
+			} catch (error) {
+				this.logger.debug('LDAP - Failed to unbind client', { error });
+			}
 		}
 	}
 
@@ -226,21 +244,19 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	 * (if any, else a anonymous binding will be attempted)
 	 */
 	async searchWithAdminBinding(filter: string): Promise<LdapUser[]> {
-		await this.bindAdmin();
-		if (this.client) {
-			const { searchEntries } = await this.client.search(this.config.baseDn, {
+		return await this.withClient(async (client, searchTimeout) => {
+			await client.bind(this.config.bindingAdminDn, this.config.bindingAdminPassword);
+			const { searchEntries } = await client.search(this.config.baseDn, {
 				attributes: getMappingAttributes(this.config),
 				explicitBufferAttributes: BINARY_AD_ATTRIBUTES,
 				filter,
-				timeLimit: this.config.searchTimeout,
+				timeLimit: searchTimeout,
 				paged: { pageSize: this.config.searchPageSize },
 				...(this.config.searchPageSize === 0 && { paged: true }),
 			});
 
-			await this.client.unbind();
 			return searchEntries;
-		}
-		return [];
+		});
 	}
 
 	/**
@@ -274,11 +290,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	 * Attempt binding with the user's credentials
 	 */
 	async validUser(dn: string, password: string): Promise<void> {
-		await this.getClient();
-		if (this.client) {
-			await this.client.bind(dn, password);
-			await this.client.unbind();
-		}
+		await this.withClient(async (client) => await client.bind(dn, password));
 	}
 
 	/**
@@ -344,7 +356,10 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	 * Attempt binding with the administrator credentials, to test the connection
 	 */
 	async testConnection(): Promise<void> {
-		await this.bindAdmin();
+		await this.withClient(
+			async (client) =>
+				await client.bind(this.config.bindingAdminDn, this.config.bindingAdminPassword),
+		);
 	}
 
 	/** Schedule a synchronization job based on the interval set in the LDAP config */
@@ -357,11 +372,18 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		}, this.config.synchronizationInterval * 60000);
 	}
 
+	async getSynchronizations(
+		offset: number,
+		limit: number,
+	): Promise<[AuthProviderSyncHistory[], number]> {
+		return await getLdapSynchronizationsWithCount(offset, limit);
+	}
+
 	/**
 	 * Run the synchronization job.
 	 * If the job runs in "live" mode, changes to LDAP users are persisted in the database, else the users are not modified
 	 */
-	async runSync(mode: RunningMode): Promise<void> {
+	async runSync(mode: RunningMode): Promise<AuthProviderSyncHistory> {
 		this.logger.debug(`LDAP - Starting a synchronization run in ${mode} mode`);
 
 		let adUsers: LdapUser[] = [];
@@ -379,6 +401,15 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		} catch (e) {
 			if (e instanceof Error) {
 				this.logger.error(`LDAP - ${e.message}`);
+				if (this.ldapts && e instanceof this.ldapts.ResultCodeError) {
+					throw new LdapRejectionError(e.message);
+				}
+				if (
+					'code' in e &&
+					LDAP_CONNECTION_ERROR_CODES.has((e as NodeJS.ErrnoException).code ?? '')
+				) {
+					throw new LdapConnectionError(e.message);
+				}
 				throw e;
 			}
 		}
@@ -431,7 +462,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 			errorMessage = error instanceof Error ? error.message : String(error);
 		}
 
-		await saveLdapSynchronization({
+		const syncHistory = await saveLdapSynchronization({
 			startedAt,
 			endedAt,
 			created: filteredUsersToCreate.length,
@@ -456,6 +487,8 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		} else {
 			this.logger.error('LDAP - Synchronization finished with errors', { error: errorMessage });
 		}
+
+		return syncHistory;
 	}
 
 	/** Stop the current job scheduled, if any */
@@ -499,7 +532,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 			if (email && (emailCounts.get(email) ?? 0) > 1) {
 				this.logger.warn('LDAP sync skipped entry: multiple LDAP accounts share the same email', {
 					email,
-					ldapId: adUser[this.config.ldapIdAttribute] as string,
+					ldapId: adUser[this.config.ldapIdAttribute],
 				});
 				return false;
 			}

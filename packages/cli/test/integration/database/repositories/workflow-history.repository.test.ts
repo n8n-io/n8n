@@ -1,10 +1,15 @@
 import {
+	createTeamProject,
 	createWorkflow,
 	createWorkflowHistory,
-	createWorkflowWithHistory,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { WorkflowHistoryRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
+import {
+	WorkflowHistoryRepository,
+	WorkflowPublishedVersionRepository,
+	WorkflowReviewRequestRepository,
+	WorkflowReviewRequestWorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { RULES, type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -21,16 +26,25 @@ describe('WorkflowHistoryRepository', () => {
 
 	const alwaysMergeRule = () => true;
 
+	// Rows written in the same millisecond have no insertion order, so every version gets its own second.
+	const secondsAgo = (seconds: number) => new Date(Date.now() - seconds * 1_000);
+
+	// A readable version id of the 36 characters a real one has. Postgres pads a shorter workflow versionId.
+	const vid = (prefix: string) => prefix.padEnd(36, '0');
+
 	beforeAll(async () => {
 		await testDb.init();
 	});
 
 	beforeEach(async () => {
 		await testDb.truncate([
+			'WorkflowReviewRequestWorkflow',
+			'WorkflowReviewRequest',
 			'WorkflowPublishedVersion',
 			'WorkflowPublishHistory',
 			'WorkflowHistory',
 			'WorkflowEntity',
+			'Project',
 			'User',
 		]);
 	});
@@ -44,25 +58,31 @@ describe('WorkflowHistoryRepository', () => {
 			const id1 = uuid();
 			const id2 = uuid();
 
-			const workflow = await createWorkflowWithHistory({
-				versionId: id1,
-				nodes: [{ ...testNode1, parameters: { a: 'a' } }],
-			});
-			await createWorkflowHistory({
-				...workflow,
-				versionId: uuid(),
-				nodes: [{ ...testNode1, parameters: { a: 'ab' } }],
-			});
-			await createWorkflowHistory({
-				...workflow,
-				versionId: uuid(),
-				nodes: [{ ...testNode1, parameters: { a: 'abc' } }],
-			});
-			await createWorkflowHistory({
-				...workflow,
-				versionId: id2,
-				nodes: [{ ...testNode1, parameters: { a: 'abcd' } }],
-			});
+			const workflow = await createWorkflow({ versionId: id2 });
+			await createWorkflowHistory(
+				{ ...workflow, versionId: id1, nodes: [{ ...testNode1, parameters: { a: 'a' } }] },
+				undefined,
+				undefined,
+				{ createdAt: secondsAgo(4) },
+			);
+			await createWorkflowHistory(
+				{ ...workflow, versionId: uuid(), nodes: [{ ...testNode1, parameters: { a: 'ab' } }] },
+				undefined,
+				undefined,
+				{ createdAt: secondsAgo(3) },
+			);
+			await createWorkflowHistory(
+				{ ...workflow, versionId: uuid(), nodes: [{ ...testNode1, parameters: { a: 'abc' } }] },
+				undefined,
+				undefined,
+				{ createdAt: secondsAgo(2) },
+			);
+			await createWorkflowHistory(
+				{ ...workflow, versionId: id2, nodes: [{ ...testNode1, parameters: { a: 'abcd' } }] },
+				undefined,
+				undefined,
+				{ createdAt: secondsAgo(1) },
+			);
 
 			// ACT
 			const repository = Container.get(WorkflowHistoryRepository);
@@ -119,25 +139,31 @@ describe('WorkflowHistoryRepository', () => {
 			const id1 = uuid();
 			const id2 = uuid();
 
-			const workflow = await createWorkflowWithHistory({
-				versionId: id1,
-				nodes: [{ ...testNode1, parameters: { a: 'abcde' } }],
-			});
-			await createWorkflowHistory({
-				...workflow,
-				versionId: uuid(),
-				nodes: [{ ...testNode1, parameters: { a: 'ab' } }],
-			});
-			await createWorkflowHistory({
-				...workflow,
-				versionId: uuid(),
-				nodes: [{ ...testNode1, parameters: { a: 'abc' } }],
-			});
-			await createWorkflowHistory({
-				...workflow,
-				versionId: id2,
-				nodes: [{ ...testNode1, parameters: { a: 'abcd' } }],
-			});
+			const workflow = await createWorkflow({ versionId: id2 });
+			await createWorkflowHistory(
+				{ ...workflow, versionId: id1, nodes: [{ ...testNode1, parameters: { a: 'abcde' } }] },
+				undefined,
+				undefined,
+				{ createdAt: secondsAgo(4) },
+			);
+			await createWorkflowHistory(
+				{ ...workflow, versionId: uuid(), nodes: [{ ...testNode1, parameters: { a: 'ab' } }] },
+				undefined,
+				undefined,
+				{ createdAt: secondsAgo(3) },
+			);
+			await createWorkflowHistory(
+				{ ...workflow, versionId: uuid(), nodes: [{ ...testNode1, parameters: { a: 'abc' } }] },
+				undefined,
+				undefined,
+				{ createdAt: secondsAgo(2) },
+			);
+			await createWorkflowHistory(
+				{ ...workflow, versionId: id2, nodes: [{ ...testNode1, parameters: { a: 'abcd' } }] },
+				undefined,
+				undefined,
+				{ createdAt: secondsAgo(1) },
+			);
 
 			// ACT
 			const repository = Container.get(WorkflowHistoryRepository);
@@ -178,39 +204,37 @@ describe('WorkflowHistoryRepository', () => {
 			const id4 = uuid();
 			const id5 = uuid();
 
-			const workflow = await createWorkflowWithHistory({
-				versionId: id1,
-				nodes: [{ ...testNode1, parameters: { a: 'a' } }],
-			});
+			const workflow = await createWorkflow({ versionId: id5 });
 			await createWorkflowHistory(
-				{
-					...workflow,
-					versionId: id2,
-					nodes: [{ ...testNode1, parameters: { a: 'ab' } }],
-				},
+				{ ...workflow, versionId: id1, nodes: [{ ...testNode1, parameters: { a: 'a' } }] },
 				undefined,
 				undefined,
-				{ name: 'aVersionName' },
+				{ createdAt: secondsAgo(5) },
 			);
-			await createWorkflowHistory({
-				...workflow,
-				versionId: id3,
-				nodes: [{ ...testNode1, parameters: { a: 'abc' } }],
-			});
 			await createWorkflowHistory(
-				{
-					...workflow,
-					versionId: id4,
-					nodes: [{ ...testNode1, parameters: { a: 'abcd' } }],
-				},
+				{ ...workflow, versionId: id2, nodes: [{ ...testNode1, parameters: { a: 'ab' } }] },
+				undefined,
+				undefined,
+				{ name: 'aVersionName', createdAt: secondsAgo(4) },
+			);
+			await createWorkflowHistory(
+				{ ...workflow, versionId: id3, nodes: [{ ...testNode1, parameters: { a: 'abc' } }] },
+				undefined,
+				undefined,
+				{ createdAt: secondsAgo(3) },
+			);
+			await createWorkflowHistory(
+				{ ...workflow, versionId: id4, nodes: [{ ...testNode1, parameters: { a: 'abcd' } }] },
 				undefined,
 				{ event: 'activated' },
+				{ createdAt: secondsAgo(2) },
 			);
-			await createWorkflowHistory({
-				...workflow,
-				versionId: id5,
-				nodes: [{ ...testNode1, parameters: { a: 'abcde' } }],
-			});
+			await createWorkflowHistory(
+				{ ...workflow, versionId: id5, nodes: [{ ...testNode1, parameters: { a: 'abcde' } }] },
+				undefined,
+				undefined,
+				{ createdAt: secondsAgo(1) },
+			);
 
 			// ACT
 			const repository = Container.get(WorkflowHistoryRepository);
@@ -241,6 +265,153 @@ describe('WorkflowHistoryRepository', () => {
 			// ASSERT
 			expect(redo.deleted).toBe(0);
 			expect(redo.seen).toBe(3);
+		});
+
+		it('should not delete a version that was named after the versions were read', async () => {
+			const id1 = uuid();
+			const id2 = uuid();
+			const workflow = await createWorkflow({ versionId: id2, nodes: [testNode1] });
+			await createWorkflowHistory({ ...workflow, versionId: id1 }, undefined, undefined, {
+				createdAt: secondsAgo(2),
+			});
+			await createWorkflowHistory({ ...workflow, versionId: id2 }, undefined, undefined, {
+				createdAt: secondsAgo(1),
+			});
+			const repository = Container.get(WorkflowHistoryRepository);
+			const originalDelete = repository.delete.bind(repository);
+			const deleteSpy = vi
+				.spyOn(repository, 'delete')
+				.mockImplementationOnce(async (criteria: Parameters<typeof originalDelete>[0]) => {
+					await repository.update({ versionId: id1 }, { name: 'named late' });
+					return await originalDelete(criteria);
+				});
+
+			const aDayAgo = new Date(Date.now() - 24 * 60 * 60_000);
+			const nextDay = new Date(Date.now() + 24 * 60 * 60_000);
+			const { deleted } = await repository.pruneHistory(workflow.id, aDayAgo, nextDay, [
+				alwaysMergeRule,
+			]);
+			deleteSpy.mockRestore();
+
+			expect(deleted).toBe(0);
+			const history = await repository.find({ order: { createdAt: 'ASC' } });
+			expect(history).toEqual([
+				expect.objectContaining({ versionId: id1, name: 'named late' }),
+				expect.objectContaining({ versionId: id2 }),
+			]);
+		});
+
+		it('should not delete a version that was described after the versions were read', async () => {
+			const id1 = uuid();
+			const id2 = uuid();
+			const workflow = await createWorkflow({ versionId: id2, nodes: [testNode1] });
+			await createWorkflowHistory({ ...workflow, versionId: id1 }, undefined, undefined, {
+				createdAt: secondsAgo(2),
+			});
+			await createWorkflowHistory({ ...workflow, versionId: id2 }, undefined, undefined, {
+				createdAt: secondsAgo(1),
+			});
+			const repository = Container.get(WorkflowHistoryRepository);
+			const originalDelete = repository.delete.bind(repository);
+			const deleteSpy = vi
+				.spyOn(repository, 'delete')
+				.mockImplementationOnce(async (criteria: Parameters<typeof originalDelete>[0]) => {
+					await repository.update({ versionId: id1 }, { description: 'described late' });
+					return await originalDelete(criteria);
+				});
+
+			const { deleted, seen } = await repository.pruneHistory(
+				workflow.id,
+				secondsAgo(60),
+				new Date(),
+				[alwaysMergeRule],
+			);
+			deleteSpy.mockRestore();
+
+			expect({ seen, deleted }).toEqual({ seen: 2, deleted: 0 });
+			await expect(repository.count()).resolves.toBe(2);
+		});
+
+		it('should keep the greatest versionId of versions with the same createdAt, whatever their insertion order', async () => {
+			const createdAt = secondsAgo(30);
+			const workflow = await createWorkflow({ versionId: vid('v-c'), nodes: [testNode1] });
+			for (const versionId of [vid('v-b'), vid('v-c'), vid('v-a')]) {
+				await createWorkflowHistory({ ...workflow, versionId }, undefined, undefined, {
+					createdAt,
+				});
+			}
+			const repository = Container.get(WorkflowHistoryRepository);
+
+			const { deleted } = await repository.pruneHistory(workflow.id, secondsAgo(60), new Date(), [
+				alwaysMergeRule,
+			]);
+
+			expect(deleted).toBe(2);
+			const history = await repository.find();
+			expect(history).toEqual([expect.objectContaining({ versionId: vid('v-c') })]);
+		});
+
+		it('should keep the current version of the workflow when another version shares its createdAt and sorts after it', async () => {
+			const createdAt = secondsAgo(30);
+			const workflow = await createWorkflow({ versionId: vid('v-a'), nodes: [testNode1] });
+			for (const versionId of [vid('v-a'), vid('v-b')]) {
+				await createWorkflowHistory({ ...workflow, versionId }, undefined, undefined, {
+					createdAt,
+				});
+			}
+			const repository = Container.get(WorkflowHistoryRepository);
+
+			const { deleted } = await repository.pruneHistory(workflow.id, secondsAgo(60), new Date(), [
+				alwaysMergeRule,
+			]);
+
+			expect(deleted).toBe(0);
+			const remaining = (await repository.find()).map((v) => v.versionId).sort();
+			expect(remaining).toEqual([vid('v-a'), vid('v-b')]);
+		});
+
+		it('should keep the current version of the workflow when a newer unnamed version follows it', async () => {
+			const workflow = await createWorkflow({ versionId: vid('v-current'), nodes: [testNode1] });
+			await createWorkflowHistory(
+				{ ...workflow, versionId: vid('v-current') },
+				undefined,
+				undefined,
+				{
+					createdAt: secondsAgo(2),
+				},
+			);
+			await createWorkflowHistory(
+				{ ...workflow, versionId: vid('v-later') },
+				undefined,
+				undefined,
+				{
+					createdAt: secondsAgo(1),
+				},
+			);
+			const repository = Container.get(WorkflowHistoryRepository);
+
+			const { deleted } = await repository.pruneHistory(workflow.id, secondsAgo(60), new Date(), [
+				alwaysMergeRule,
+			]);
+
+			expect(deleted).toBe(0);
+			await expect(repository.count()).resolves.toBe(2);
+		});
+
+		it('should order a version with the same createdAt before a newer one, whatever its versionId', async () => {
+			const workflow = await createWorkflow({ versionId: vid('v-a'), nodes: [testNode1] });
+			await createWorkflowHistory({ ...workflow, versionId: vid('v-z') }, undefined, undefined, {
+				createdAt: secondsAgo(2),
+			});
+			await createWorkflowHistory({ ...workflow, versionId: vid('v-a') }, undefined, undefined, {
+				createdAt: secondsAgo(1),
+			});
+			const repository = Container.get(WorkflowHistoryRepository);
+
+			await repository.pruneHistory(workflow.id, secondsAgo(60), new Date(), [alwaysMergeRule]);
+
+			const history = await repository.find();
+			expect(history).toEqual([expect.objectContaining({ versionId: vid('v-a') })]);
 		});
 	});
 	describe('deleteEarlierThanExceptCurrentAndActive', () => {
@@ -338,6 +509,90 @@ describe('WorkflowHistoryRepository', () => {
 			expect(remainingIds).toContain(vCurrent); // preserved: current version
 			expect(remainingIds).not.toContain(vOther); // pruned: old and unreferenced
 		});
+
+		// The open-review exclusion must hold even when named-version preservation
+		// is off (unlicensed), because review pins are named versions and would
+		// otherwise be pruned mid-review. A closed review no longer protects its pin.
+		it('should preserve versions pinned by an open review but not by a closed one', async () => {
+			const vCurrent = uuid();
+			const vOpenPinned = uuid();
+			const vClosedPinned = uuid();
+
+			const tenDaysAgo = new Date();
+			tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+
+			const oneDayAgo = new Date();
+			oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+			const workflow = await createWorkflow({
+				versionId: vCurrent,
+				nodes: [{ ...testNode1, parameters: { a: 'current' } }],
+			});
+			await createWorkflowHistory(
+				{
+					...workflow,
+					versionId: vOpenPinned,
+					nodes: [{ ...testNode1, parameters: { a: 'open-pinned' } }],
+				},
+				undefined,
+				undefined,
+				{ createdAt: tenDaysAgo, name: 'Open review pin' },
+			);
+			await createWorkflowHistory(
+				{
+					...workflow,
+					versionId: vClosedPinned,
+					nodes: [{ ...testNode1, parameters: { a: 'closed-pinned' } }],
+				},
+				undefined,
+				undefined,
+				{ createdAt: tenDaysAgo, name: 'Closed review pin' },
+			);
+			await createWorkflowHistory(workflow);
+
+			const project = await createTeamProject('Reviews Project');
+			const requestRepository = Container.get(WorkflowReviewRequestRepository);
+			const linkRepository = Container.get(WorkflowReviewRequestWorkflowRepository);
+
+			const openRequest = await requestRepository.createRequest(
+				{ projectId: project.id, title: 'Open review', createdById: null },
+				{},
+			);
+			await linkRepository.createWorkflowRow(
+				{
+					workflowReviewRequestId: openRequest.id,
+					workflowId: workflow.id,
+					workflowVersionId: vOpenPinned,
+				},
+				{},
+			);
+
+			const closedRequest = await requestRepository.createRequest(
+				{ projectId: project.id, title: 'Closed review', state: 'closed', createdById: null },
+				{},
+			);
+			await linkRepository.createWorkflowRow(
+				{
+					workflowReviewRequestId: closedRequest.id,
+					workflowId: workflow.id,
+					workflowVersionId: vClosedPinned,
+				},
+				{},
+			);
+
+			const repository = Container.get(WorkflowHistoryRepository);
+
+			// preserveNamedVersions = false: the name on the pins must not save them here
+			await repository.deleteEarlierThanExceptCurrentAndActive(oneDayAgo, false);
+
+			const remainingIds = (await repository.find()).map((r) => r.versionId);
+			expect(remainingIds).toContain(vOpenPinned); // preserved: pinned by an open review
+			expect(remainingIds).not.toContain(vClosedPinned); // pruned: its review is closed
+
+			// The pin was nulled by the FK, not left dangling
+			const closedLinkRows = await linkRepository.findByRequestId(closedRequest.id, {});
+			expect(closedLinkRows[0]?.workflowVersionId).toBeNull();
+		});
 	});
 
 	describe('getWorkflowIdsInRange', () => {
@@ -386,6 +641,88 @@ describe('WorkflowHistoryRepository', () => {
 				const ids = await repository.getWorkflowIdsInRange(twoSecondsAhead, sixSecondsAhead);
 				expect(ids).toEqual(expect.arrayContaining([workflowA.id, workflowB.id]));
 			}
+		});
+	});
+
+	describe('findVersionSummaries', () => {
+		it('scopes by workflowId, filters by versionId, selects versionId/name/createdAt, and orders by createdAt desc', async () => {
+			const workflowA = await createWorkflow({
+				versionId: uuid(),
+				nodes: [testNode1],
+			});
+			const workflowB = await createWorkflow({
+				versionId: uuid(),
+				nodes: [testNode1],
+			});
+
+			const vOldest = uuid();
+			const vMiddle = uuid();
+			const vNewest = uuid();
+			const vNotRequested = uuid();
+			const vOtherWorkflow = uuid();
+
+			const threeDaysAgo = new Date();
+			threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+			const twoDaysAgo = new Date();
+			twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+			const oneDayAgo = new Date();
+			oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+			await createWorkflowHistory(workflowA, undefined, undefined, {
+				versionId: vOldest,
+				name: null,
+				createdAt: threeDaysAgo,
+			});
+			await createWorkflowHistory(workflowA, undefined, undefined, {
+				versionId: vMiddle,
+				name: 'Release 1',
+				createdAt: twoDaysAgo,
+			});
+			await createWorkflowHistory(workflowA, undefined, undefined, {
+				versionId: vNewest,
+				name: null,
+				createdAt: oneDayAgo,
+			});
+			// Belongs to workflowA but not passed in versionIds — must be excluded
+			await createWorkflowHistory(workflowA, undefined, undefined, {
+				versionId: vNotRequested,
+				name: 'Should not appear',
+				createdAt: oneDayAgo,
+			});
+			// Passed in versionIds but belongs to workflowB — must be excluded by workflowId scoping
+			await createWorkflowHistory(workflowB, undefined, undefined, {
+				versionId: vOtherWorkflow,
+				name: 'Wrong workflow',
+				createdAt: oneDayAgo,
+			});
+
+			const repository = Container.get(WorkflowHistoryRepository);
+			const result = await repository.findVersionSummaries(workflowA.id, [
+				vOldest,
+				vMiddle,
+				vNewest,
+				vOtherWorkflow,
+				uuid(), // not present in the DB at all
+			]);
+
+			expect(result).toHaveLength(3);
+			expect(result.map((v) => v.versionId)).toEqual([vNewest, vMiddle, vOldest]);
+			expect(result[0]).toMatchObject({ versionId: vNewest, name: null });
+			expect(result[1]).toMatchObject({ versionId: vMiddle, name: 'Release 1' });
+			expect(result[2]).toMatchObject({ versionId: vOldest, name: null });
+			// `select` should be applied: only versionId/name/createdAt are populated,
+			// not the full entity (e.g. nodes/authors).
+			expect(result[0]).not.toHaveProperty('nodes');
+			expect(result[0]).not.toHaveProperty('authors');
+		});
+
+		it('returns an empty array when no versionIds match', async () => {
+			const workflow = await createWorkflow({ versionId: uuid(), nodes: [testNode1] });
+
+			const repository = Container.get(WorkflowHistoryRepository);
+			const result = await repository.findVersionSummaries(workflow.id, [uuid()]);
+
+			expect(result).toEqual([]);
 		});
 	});
 });

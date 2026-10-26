@@ -1,3 +1,4 @@
+import { truncate } from '@n8n/utils/string/truncate';
 import pc from 'picocolors';
 
 import type {
@@ -12,16 +13,8 @@ import type { EvalLogger } from './logger';
 import { groupByEvaluator, selectScoringItems, calculateFiniteAverage } from './score-calculator';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 
-/**
- * Truncate a string for display.
- */
-function truncate(str: string, maxLen = 50): string {
-	const cleaned = str.replace(/\s+/g, ' ').trim();
-	return cleaned.length > maxLen ? cleaned.slice(0, maxLen) + '...' : cleaned;
-}
-
 function truncateForSingleLine(str: string, maxLen: number): string {
-	return truncate(str.replace(/\n/g, ' '), maxLen);
+	return truncate(str.replace(/\s+/g, ' ').trim(), maxLen);
 }
 
 function exampleLabel(mode: RunConfig['mode'] | undefined): 'call' | 'ex' {

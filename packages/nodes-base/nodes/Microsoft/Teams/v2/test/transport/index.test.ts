@@ -13,19 +13,26 @@ import { MicrosoftTeamsTrigger } from '../../../MicrosoftTeamsTrigger.node';
 import {
 	getBuckets,
 	getChannels,
+	getChatMembers,
 	getChats,
 	getGroups,
 	getMembers,
 	getPlans,
 	getTeams,
+	getUsers,
 } from '../../methods/listSearch';
 import {
-	buildTeamsPath,
-	getTeamsCredentialType,
+	CHANNEL_MESSAGE_SUBSCRIPTION_FORBIDDEN,
+	CHANNEL_SUBSCRIPTION_FORBIDDEN,
+	CHAT_ALL_MESSAGES_SUBSCRIPTION_FORBIDDEN,
+	CHAT_SUBSCRIPTION_FORBIDDEN,
+	TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN,
+	TEAMS_FORBIDDEN_HINTS,
+} from '../../transport/forbiddenHints';
+import {
 	joinedTeamsEndpoint,
 	microsoftApiRequest,
 	SERVICE_PRINCIPAL_AUTH,
-	validateTeamsId,
 } from '../../transport/index';
 
 describe('Microsoft Teams Transport', () => {
@@ -58,445 +65,6 @@ describe('Microsoft Teams Transport', () => {
 		vi.resetAllMocks();
 	});
 
-	describe('microsoftApiRequest', () => {
-		describe('graphApiBaseUrl from credentials', () => {
-			it('should use base URL from credentials', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://graph.microsoft.us',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.us/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should fall back to default when credentials.graphApiBaseUrl is empty', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: '',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.com/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should fall back to default when credentials.graphApiBaseUrl is undefined', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.com/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should strip trailing slashes from base URL using regex', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://graph.microsoft.com/',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.com/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should strip multiple trailing slashes from base URL', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://graph.microsoft.com///',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.com/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should use US Government cloud endpoint', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://graph.microsoft.us',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.us/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should use US Government DOD cloud endpoint', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://dod-graph.microsoft.us',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://dod-graph.microsoft.us/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should use China cloud endpoint', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://microsoftgraph.chinacloudapi.cn',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://microsoftgraph.chinacloudapi.cn/teams',
-						json: true,
-					}),
-				);
-			});
-		});
-
-		describe('authentication credential resolution', () => {
-			beforeEach(() => {
-				mockRequestOAuth2.mockResolvedValue({ data: 'test' });
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					graphApiBaseUrl: 'https://graph.microsoft.us',
-				});
-			});
-
-			it('should use microsoftTeamsOAuth2Api when authentication is not set (backward compatibility)', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftTeamsOAuth2Api');
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.anything(),
-				);
-				// dual-branch lock: the OAuth2 path must never reach requestWithAuthentication
-				expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
-			});
-
-			it('should use microsoftTeamsOAuth2Api when explicitly selected', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftTeamsOAuth2Api');
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.anything(),
-				);
-				expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
-			});
-
-			it('should use microsoftOAuth2Api when the generic credential is selected', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
-				expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
-				expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
-			});
-
-			it('should resolve the credential name from the authentication parameter at index 0', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('authentication', 0);
-			});
-
-			it('should honor graphApiBaseUrl from the generic credential (sovereign cloud)', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftOAuth2Api',
-					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/teams',
-					}),
-				);
-			});
-		});
-
-		describe('service principal authentication', () => {
-			beforeEach(() => {
-				mockRequestWithAuthentication.mockResolvedValue({ data: 'test' });
-				// Drive selection by parameter NAME, not a flat return value, so the
-				// resolver's `getNodeParameter('authentication', 0)` resolves to SP while
-				// other reads (resource, etc.) fall through to undefined.
-				mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) =>
-					name === 'authentication' ? SERVICE_PRINCIPAL_AUTH : undefined,
-				);
-				// SP credential carries a minted accessToken, NOT oauthTokenData.
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					accessToken: 'token',
-					graphApiBaseUrl: 'https://graph.microsoft.com',
-				});
-			});
-
-			it('routes the request through requestWithAuthentication (NOT requestOAuth2)', async () => {
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/v1.0/teams');
-
-				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(SERVICE_PRINCIPAL_AUTH);
-				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
-					SERVICE_PRINCIPAL_AUTH,
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.com/v1.0/teams',
-					}),
-				);
-				// dual-branch lock: the SP path must never reach requestOAuth2
-				expect(mockRequestOAuth2).not.toHaveBeenCalled();
-			});
-
-			it('never composes a /me path under the Service Principal credential', async () => {
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/v1.0/teams');
-
-				const calledUri = mockRequestWithAuthentication.mock.calls[0][1].uri as string;
-				expect(calledUri).not.toContain('/me');
-			});
-
-			it('honors a sovereign graphApiBaseUrl', async () => {
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					accessToken: 'token',
-					graphApiBaseUrl: 'https://graph.microsoft.us',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/v1.0/teams');
-
-				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
-					SERVICE_PRINCIPAL_AUTH,
-					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/v1.0/teams',
-					}),
-				);
-			});
-
-			describe('error suppression (no raw Graph body leaks at any status)', () => {
-				// The REAL error shape: `requestWithAuthentication` wraps the underlying
-				// request error in a `NodeApiError`. The underlying (legacy-request) error
-				// carries `statusCode` + an `error` body + a `message` of the form
-				// `"<status> - <json>"`, and NodeApiError surfaces the status on `httpCode`
-				// (string) and copies that raw message into `messages`. A correlation id +
-				// reflected input ride the raw body — none of it may reach the surfaced
-				// message at ANY status.
-				const rawLeak =
-					'request-id: 11111111-2222-3333-4444-555555555555; client-request-id: aaaa; token=eyJ0eParrotedSecret; resource /teams/19:injected@thread.tacv2';
-				const realError = (statusCode: number, code: string) => {
-					const underlying = Object.assign(
-						new Error(`${statusCode} - {"error":{"code":"${code}","message":"${rawLeak}"}}`),
-						{
-							statusCode,
-							status: statusCode,
-							error: { error: { code, message: rawLeak } },
-							response: { status: statusCode, statusText: code, headers: {} },
-						},
-					);
-					return new NodeApiError(mockNode, underlying as unknown as JsonObject);
-				};
-
-				it.each([
-					[
-						401,
-						'InvalidAuthenticationToken',
-						"The Service Principal token was rejected. Check the app registration's client secret and that admin consent is granted.",
-					],
-					[
-						402,
-						'PaymentRequired',
-						'This operation requires a metered Microsoft Teams API to be enabled on the tenant.',
-					],
-					[
-						403,
-						'Forbidden',
-						'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.',
-					],
-					[
-						400,
-						'BadRequest',
-						"Microsoft Graph rejected the request (HTTP 400). Check the operation's inputs and the app registration's permissions.",
-					],
-					[
-						429,
-						'TooManyRequests',
-						"Microsoft Graph rejected the request (HTTP 429). Check the operation's inputs and the app registration's permissions.",
-					],
-					[
-						503,
-						'ServiceUnavailable',
-						"Microsoft Graph rejected the request (HTTP 503). Check the operation's inputs and the app registration's permissions.",
-					],
-				])(
-					'maps HTTP %i to a static message and never leaks the raw body',
-					async (statusCode, code, expectedMessage) => {
-						mockRequestWithAuthentication.mockRejectedValue(realError(statusCode, code));
-
-						const error = (await microsoftApiRequest
-							.call(mockExecuteFunctions, 'GET', '/v1.0/teams')
-							.catch((e: Error) => e)) as Error & { messages?: string[] };
-
-						expect(error.constructor.name).toBe('NodeApiError');
-						// proves the SPECIFIC 401/402/403 messages fire in production (the status
-						// is read from NodeApiError.httpCode, not the absent statusCode/error.error)
-						expect(error.message).toBe(expectedMessage);
-						// The raw body must not leak through the surfaced message…
-						expect(error.message).not.toContain('request-id');
-						expect(error.message).not.toContain('token=');
-						expect(error.message).not.toContain('injected');
-						// …nor through the error's `messages` array…
-						for (const m of error.messages ?? []) {
-							expect(m).not.toContain('request-id');
-							expect(m).not.toContain('token=');
-							expect(m).not.toContain('injected');
-						}
-						// …nor anywhere in the serialized error object.
-						const serialized = JSON.stringify(error);
-						expect(serialized).not.toContain('request-id');
-						expect(serialized).not.toContain('client-request-id');
-						expect(serialized).not.toContain('token=');
-						expect(serialized).not.toContain('injected');
-					},
-				);
-
-				it('rewrites a 404 to the static "{Resource} not found" message', async () => {
-					mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) => {
-						if (name === 'authentication') return SERVICE_PRINCIPAL_AUTH;
-						if (name === 'resource') return 'channel';
-						return undefined;
-					});
-					mockRequestWithAuthentication.mockRejectedValue(realError(404, 'NotFound'));
-
-					const error = await microsoftApiRequest
-						.call(mockExecuteFunctions, 'GET', '/v1.0/teams/x/channels/y')
-						.catch((e: Error) => e);
-
-					expect(error.message).toBe('Channel not found');
-				});
-			});
-		});
-	});
-
-	describe('getTeamsCredentialType', () => {
-		it('should default to microsoftTeamsOAuth2Api when authentication is undefined', () => {
-			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
-
-			expect(getTeamsCredentialType.call(mockExecuteFunctions)).toBe('microsoftTeamsOAuth2Api');
-		});
-
-		it('should default to microsoftTeamsOAuth2Api when the fallback value 0 is returned (load-options/hook legacy node)', () => {
-			// In load-options/hook contexts getNodeParameter treats the 2nd arg as the
-			// FALLBACK, so a legacy node with no stored authentication returns the literal
-			// `0`. The allow-list must map it to Teams (a `?? default` would keep `0`).
-			mockExecuteFunctions.getNodeParameter.mockReturnValue(0);
-
-			expect(getTeamsCredentialType.call(mockExecuteFunctions)).toBe('microsoftTeamsOAuth2Api');
-		});
-
-		it('should return microsoftTeamsOAuth2Api when selected', () => {
-			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
-
-			expect(getTeamsCredentialType.call(mockExecuteFunctions)).toBe('microsoftTeamsOAuth2Api');
-		});
-
-		it('should return microsoftOAuth2Api when the generic credential is selected', () => {
-			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
-
-			expect(getTeamsCredentialType.call(mockExecuteFunctions)).toBe('microsoftOAuth2Api');
-		});
-
-		it('should return the Service Principal credential when selected', () => {
-			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
-
-			expect(getTeamsCredentialType.call(mockExecuteFunctions)).toBe(SERVICE_PRINCIPAL_AUTH);
-		});
-	});
-
 	describe('joinedTeamsEndpoint', () => {
 		it('returns /v1.0/teams under the Service Principal credential', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
@@ -508,178 +76,6 @@ describe('Microsoft Teams Transport', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
 
 			expect(joinedTeamsEndpoint.call(mockExecuteFunctions)).toBe('/v1.0/me/joinedTeams');
-		});
-	});
-
-	describe('validateTeamsId', () => {
-		it('accepts a GUID and a Planner-style id', () => {
-			expect(() => validateTeamsId('1111-2222-3333-4444-555566667777', mockNode)).not.toThrow();
-			expect(() => validateTeamsId('rl1HYb0cUEiHPc7zgB_KWWUAA7Of', mockNode)).not.toThrow();
-		});
-
-		it('accepts a real colon-bearing channel id (`:` and `@` are allowed)', () => {
-			expect(() => validateTeamsId('19:abc@thread.tacv2', mockNode)).not.toThrow();
-		});
-
-		it.each(['', '   '])('rejects empty / whitespace-only ids', (id) => {
-			expect(() => validateTeamsId(id, mockNode)).toThrow();
-		});
-
-		it.each(['.', '..', '...'])('rejects dots-only ids', (id) => {
-			expect(() => validateTeamsId(id, mockNode)).toThrow();
-		});
-
-		it.each(['a/b', 'a\\b', 'a?b', 'a#b', 'x/../../groups/abc', 'abc?$expand=foo'])(
-			'rejects ids containing separators or query characters (%s)',
-			(id) => {
-				expect(() => validateTeamsId(id, mockNode)).toThrow();
-			},
-		);
-
-		it('throws a static message that never echoes the rejected id', () => {
-			const error = (() => {
-				try {
-					validateTeamsId('x/../../groups/secretInjected', mockNode);
-					return undefined;
-				} catch (e) {
-					return e as Error;
-				}
-			})();
-
-			expect(error).toBeDefined();
-			expect(error?.message).not.toContain('secretInjected');
-			expect(error?.message).not.toContain('groups');
-			expect(error?.message).not.toContain('..');
-		});
-	});
-
-	describe('buildTeamsPath', () => {
-		it('validates and interpolates a valid id RAW under OAuth2 (no encoding)', () => {
-			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
-
-			const path = buildTeamsPath.call(mockExecuteFunctions, [
-				'/v1.0/teams/',
-				{ id: '19:abc@thread.tacv2' },
-				'/channels',
-			]);
-
-			expect(path).toBe('/v1.0/teams/19:abc@thread.tacv2/channels');
-		});
-
-		it('validates and interpolates each id RAW under the Service Principal credential', () => {
-			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
-
-			const path = buildTeamsPath.call(mockExecuteFunctions, [
-				'/v1.0/planner/plans/',
-				{ id: 'plan_id-123' },
-				'/tasks',
-			]);
-
-			expect(path).toBe('/v1.0/planner/plans/plan_id-123/tasks');
-		});
-
-		it('passes a colon/at-bearing id RAW under SP (same shape as OAuth2, not encoded)', () => {
-			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
-
-			const path = buildTeamsPath.call(mockExecuteFunctions, [
-				'/v1.0/teams/',
-				{ id: '1111-2222' },
-				'/channels/',
-				{ id: '19:abc@thread.tacv2' },
-			]);
-
-			expect(path).toBe('/v1.0/teams/1111-2222/channels/19:abc@thread.tacv2');
-			// proven raw Graph shape — never percent-encoded
-			expect(path).not.toContain('%3A');
-			expect(path).not.toContain('%40');
-		});
-
-		// A node expression like `={{ 123 }}` resolves to a non-string at runtime; the
-		// call sites' `as string` is compile-time only — ids must be coerced before
-		// trimming or the build throws a raw `TypeError` (regression guard).
-		it.each(['microsoftTeamsOAuth2Api', SERVICE_PRINCIPAL_AUTH])(
-			'coerces a non-string id under %s without throwing',
-			(credential) => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue(credential);
-
-				const path = buildTeamsPath.call(mockExecuteFunctions, [
-					'/v1.0/planner/tasks/',
-					{ id: 123 as unknown as string },
-				]);
-
-				expect(path).toBe('/v1.0/planner/tasks/123');
-			},
-		);
-
-		it.each(['microsoftTeamsOAuth2Api', SERVICE_PRINCIPAL_AUTH])(
-			'trims surrounding whitespace from a valid id under %s',
-			(credential) => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue(credential);
-
-				const path = buildTeamsPath.call(mockExecuteFunctions, [
-					'/v1.0/teams/',
-					{ id: '  19:abc@thread.tacv2  ' },
-					'/channels',
-				]);
-
-				expect(path).toBe('/v1.0/teams/19:abc@thread.tacv2/channels');
-			},
-		);
-
-		const malformedIds = ['x/../../groups/abc', 'abc?$expand=foo', 'a\\b', 'a#frag'];
-		it.each(
-			['microsoftTeamsOAuth2Api', SERVICE_PRINCIPAL_AUTH].flatMap((credential) =>
-				malformedIds.map((id) => [credential, id]),
-			),
-		)('rejects an id containing separators under %s (%s)', (credential, malformedId) => {
-			mockExecuteFunctions.getNodeParameter.mockReturnValue(credential);
-
-			expect(() =>
-				buildTeamsPath.call(mockExecuteFunctions, [
-					'/v1.0/teams/',
-					{ id: malformedId },
-					'/channels',
-				]),
-			).toThrow('The ID is not valid');
-		});
-
-		it.each(['microsoftTeamsOAuth2Api', SERVICE_PRINCIPAL_AUTH])(
-			'rejects an empty id under %s',
-			(credential) => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue(credential);
-
-				expect(() =>
-					buildTeamsPath.call(mockExecuteFunctions, ['/v1.0/teams/', { id: '' }, '/channels']),
-				).toThrow('A required ID is empty');
-			},
-		);
-	});
-
-	describe('OAuth2 back-compat lock (valid ids byte-for-byte unchanged)', () => {
-		it('composes the legacy raw uri for a colon-bearing channelId', async () => {
-			// Default OAuth2 selected. A realistic colon-bearing channel id flows through
-			// buildTeamsPath unmodified — validated but never encoded — proving OAuth2
-			// URL shapes for valid ids are unchanged. SP composes the SAME raw shape for
-			// this valid id (see the buildTeamsPath SP test).
-			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
-			mockRequestOAuth2.mockResolvedValue({ data: 'test' });
-			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
-
-			const resource = buildTeamsPath.call(mockExecuteFunctions, [
-				'/v1.0/teams/',
-				{ id: '1111-2222' },
-				'/channels/',
-				{ id: '19:abc@thread.tacv2' },
-			]);
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', resource);
-
-			expect(mockRequestOAuth2).toHaveBeenCalledWith(
-				'microsoftTeamsOAuth2Api',
-				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/teams/1111-2222/channels/19:abc@thread.tacv2',
-				}),
-			);
-			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 	});
 
@@ -836,6 +232,22 @@ describe('Microsoft Teams Transport', () => {
 			expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
 		});
 
+		// `getUsers` is the first Teams path handing a client-supplied string to the
+		// transport's `uri` argument: an unparseable token must surface as a node error rather
+		// than a bare TypeError from `new URL`, and a parseable one must still stay on the
+		// credential's Graph host.
+		it.each(['not-a-url', 'http', 'https://evil.example/users'])(
+			'getUsers rejects the pagination token %j before any request',
+			async (paginationToken) => {
+				mockLoadOptions.getNodeParameter.mockReturnValue(undefined);
+
+				await expect(getUsers.call(mockLoadOptions, undefined, paginationToken)).rejects.toThrow(
+					'Refusing to send credentials to an unexpected host',
+				);
+				expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
+			},
+		);
+
 		// MAJOR B hard gate: every SP-reachable listSearch method that interpolates an id
 		// must reject a malformed id via buildTeamsPath, before any request.
 		describe('SP id validation gate (enumerated)', () => {
@@ -876,42 +288,13 @@ describe('Microsoft Teams Transport', () => {
 				await expect(getMembers.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
 				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
 			});
-		});
-	});
 
-	describe('microsoftApiRequest under a webhook hook (IHookFunctions) context', () => {
-		let mockHookFunctions: Mocked<IHookFunctions>;
-		let hookRequestOAuth2: Mock;
-		let hookRequestWithAuthentication: Mock;
+			it('getChatMembers rejects a malformed chatId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(malformedId);
 
-		beforeEach(() => {
-			mockHookFunctions = mockDeep<IHookFunctions>();
-			hookRequestOAuth2 = vi.fn().mockResolvedValue({ value: [] });
-			hookRequestWithAuthentication = vi.fn().mockResolvedValue({ value: [] });
-			mockHookFunctions.helpers.requestOAuth2 = hookRequestOAuth2;
-			mockHookFunctions.helpers.requestWithAuthentication = hookRequestWithAuthentication;
-			mockHookFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
-			mockHookFunctions.getNode.mockReturnValue(mockNode);
-		});
-
-		it('should resolve the generic credential when selected', async () => {
-			mockHookFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
-
-			await microsoftApiRequest.call(mockHookFunctions, 'GET', '/v1.0/subscriptions');
-
-			expect(mockHookFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
-			expect(hookRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
-			expect(hookRequestWithAuthentication).not.toHaveBeenCalled();
-		});
-
-		it('should default to the Teams credential', async () => {
-			mockHookFunctions.getNodeParameter.mockReturnValue(undefined);
-
-			await microsoftApiRequest.call(mockHookFunctions, 'GET', '/v1.0/subscriptions');
-
-			expect(mockHookFunctions.getCredentials).toHaveBeenCalledWith('microsoftTeamsOAuth2Api');
-			expect(hookRequestOAuth2).toHaveBeenCalledWith('microsoftTeamsOAuth2Api', expect.anything());
-			expect(hookRequestWithAuthentication).not.toHaveBeenCalled();
+				await expect(getChatMembers.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
+				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+			});
 		});
 	});
 
@@ -958,6 +341,237 @@ describe('Microsoft Teams Transport', () => {
 				'microsoftTeamsOAuth2Api',
 				expect.objectContaining({ method: 'DELETE' }),
 			);
+		});
+	});
+
+	// Drives the real facade with the literal Graph 403 texts of a refused Trigger subscription.
+	// Each fixture spells out its own resource path and never derives it from `hint.match`, so a
+	// narrowed or permission-name `match` fails here.
+	describe('subscription 403 hints (POST /v1.0/subscriptions)', () => {
+		const TEAM_ID = '3b2d1c0a-1111-2222-3333-444444444444';
+		const CHANNEL_ID = '19:abc123def456@thread.tacv2';
+		const CHAT_ID = '19:0123456789abcdef0123456789abcdef@thread.v2';
+		const USER_ID = '7f1e2d3c-5555-6666-7777-888888888888';
+		const GENERIC_APP_ONLY_403 =
+			'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.';
+		const refused = (resource: string) =>
+			`Operation: Create; Exception: [Status Code: Forbidden; Reason: Caller does not have access to '${resource}' resource]`;
+
+		// Every shape below was seen live on the QA tenant on 2026-10-19 (n8n 2.44.0, delegated and
+		// app-only), with these ids replaced. Graph renders the posted slash-form path back in key form
+		// and upper-cases the user id in the `/users(...)` shape.
+		const MEMBERS_403 = refused(`/teams('${TEAM_ID}')/members`);
+		const CHANNELS_403 = refused(`/teams('${TEAM_ID}')/channels`);
+		const CHANNEL_MESSAGES_403 = refused(`/teams('${TEAM_ID}')/channels('${CHANNEL_ID}')/messages`);
+		const CHAT_MESSAGES_403 = refused(`/chats('${CHAT_ID}')/messages`);
+		const USER_CHATS_403 = refused(`/users('${USER_ID.toUpperCase()}')/chats`);
+		// `/me/chats/getAllMessages` has its own renderer without a path
+		const CHAT_ALL_MESSAGES_403 =
+			"Operation: Create; Exception: [Status Code: Forbidden; Reason: Required permissions to access user-scoped chat message subscription ('Chat.Read, Chat.ReadWrite') are missing.]";
+		// Same renderer, a resource no hint covers: an over-broad match such as `' resource` would fire
+		const MAIL_403 = refused(`/users('${USER_ID}')/mailFolders('inbox')/messages`);
+		// Names the hinted permissions only as granted roles (a listing 403 on GET /v1.0/subscriptions
+		// has this shape too): no hint may fire on it
+		const GRANTED_403 =
+			"Missing role permissions on the request. API requires one of 'Subscription.Read.All'. Roles on the request 'TeamMember.Read.All, Channel.ReadBasic.All, ChannelMessage.Read.All, Chat.Read.All'. Resource specific consent grants on the request ''.";
+
+		// Raw request-library shape: `<status> - <json body>` message, `statusCode`, and the
+		// Graph body under `error`. Same construction as the kernel tests.
+		const graphError = (message: string) =>
+			Object.assign(
+				new Error(`403 - ${JSON.stringify({ error: { code: 'ExtensionError', message } })}`),
+				{ statusCode: 403, error: { error: { code: 'ExtensionError', message } } },
+			);
+		// `requestWithAuthentication` wraps the raw error in a NodeApiError before the kernel sees it
+		const wrapped = (message: string) =>
+			new NodeApiError(mockNode, graphError(message) as unknown as JsonObject);
+		const post = async (resource = '/v1.0/subscriptions') =>
+			(await microsoftApiRequest
+				.call(mockExecuteFunctions, 'POST', resource, {})
+				.catch((e: Error) => e)) as NodeApiError;
+		// The kernel rebuilds the app-only error from static copy; pin that every surface the editor
+		// renders (message, description, messages, serialized form) carries no Graph id, in any case.
+		const expectNoGraphIds = (error: NodeApiError) => {
+			const rendered = [error.message, error.description, ...error.messages, JSON.stringify(error)]
+				.join('\n')
+				.toLowerCase();
+			for (const id of [TEAM_ID, CHANNEL_ID, CHAT_ID, USER_ID]) {
+				expect(rendered).not.toContain(id.toLowerCase());
+			}
+		};
+
+		const teamRows = [
+			{
+				label: 'team member',
+				hint: TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN,
+				graphText: MEMBERS_403,
+				permission: 'TeamMember.Read.All',
+			},
+			{
+				label: 'new channel',
+				hint: CHANNEL_SUBSCRIPTION_FORBIDDEN,
+				graphText: CHANNELS_403,
+				permission: 'Channel.ReadBasic.All',
+			},
+			{
+				label: 'channel message',
+				hint: CHANNEL_MESSAGE_SUBSCRIPTION_FORBIDDEN,
+				graphText: CHANNEL_MESSAGES_403,
+				permission: 'ChannelMessage.Read.All',
+			},
+		];
+		const chatRows = [
+			{
+				label: 'chat message',
+				hint: CHAT_SUBSCRIPTION_FORBIDDEN,
+				graphText: CHAT_MESSAGES_403,
+				permission: 'Chat.Read',
+			},
+			{
+				label: 'user chats',
+				hint: CHAT_SUBSCRIPTION_FORBIDDEN,
+				graphText: USER_CHATS_403,
+				permission: 'Chat.Read',
+			},
+			{
+				label: 'all chat messages',
+				hint: CHAT_ALL_MESSAGES_SUBSCRIPTION_FORBIDDEN,
+				graphText: CHAT_ALL_MESSAGES_403,
+				permission: 'Chat.Read',
+			},
+		];
+		const unhintedRows: Array<{ when: string; graphText: string; resource?: string }> = [
+			{ when: 'the hinted permissions appear only as granted roles', graphText: GRANTED_403 },
+			{ when: 'the refused resource has no hint', graphText: MAIL_403 },
+			// The endpoint gate: the members text on a path other than /subscriptions stays unhinted
+			{
+				when: 'the refused members path is not a subscription',
+				graphText: MEMBERS_403,
+				resource: `/v1.0/teams/${TEAM_ID}/members`,
+			},
+		];
+
+		beforeEach(() => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+		});
+
+		// Pins the hint-table comment: each text contains exactly one fragment, so order does not matter
+		it.each([...teamRows, ...chatRows])(
+			'matches exactly one hint for a $label text',
+			({ hint, graphText }) => {
+				expect(TEAMS_FORBIDDEN_HINTS.filter((h) => graphText.includes(h.match))).toEqual([hint]);
+			},
+		);
+
+		describe('under the Service Principal credential', () => {
+			beforeEach(() => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+			});
+
+			it.each(teamRows)(
+				'names the $permission application permission for a $label subscription',
+				async ({ hint, graphText, permission }) => {
+					mockRequestWithAuthentication.mockRejectedValue(wrapped(graphText));
+
+					const error = await post();
+
+					expect(error).toBeInstanceOf(NodeApiError);
+					expect(error.httpCode).toBe('403');
+					expect(error.message).toBe(hint.message);
+					expect(error.description).toBe(hint.description);
+					expect(error.message).toContain(`${permission} application permission`);
+					expect(error.description).toContain(permission);
+					expectNoGraphIds(error);
+				},
+			);
+
+			// The trigger's guard throws this copy before any request under SP; the hint carries
+			// the same copy for the kernel path.
+			it.each(chatRows)(
+				'keeps the chat-trigger guard copy for a $label subscription',
+				async ({ hint, graphText }) => {
+					mockRequestWithAuthentication.mockRejectedValue(wrapped(graphText));
+
+					const error = await post();
+
+					expect(error.message).toBe(hint.message);
+					expect(error.description).toBe(hint.description);
+					expectNoGraphIds(error);
+				},
+			);
+
+			it.each(unhintedRows)(
+				'keeps the generic copy when $when',
+				async ({ graphText, resource }) => {
+					mockRequestWithAuthentication.mockRejectedValue(wrapped(graphText));
+
+					const error = await post(resource);
+
+					expect(error.message).toBe(GENERIC_APP_ONLY_403);
+					expect(error.description).toBeUndefined();
+					// The static copy is all that reaches the error details
+					expect(error.messages).toEqual([GENERIC_APP_ONLY_403]);
+				},
+			);
+		});
+
+		describe('under a delegated OAuth2 credential', () => {
+			beforeEach(() => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
+			});
+
+			it.each([...teamRows, ...chatRows])(
+				'names the $permission permission for a $label subscription',
+				async ({ hint, graphText, permission }) => {
+					mockRequestOAuth2.mockRejectedValue(graphError(graphText));
+
+					const error = await post();
+
+					expect(error).toBeInstanceOf(NodeApiError);
+					expect(error.httpCode).toBe('403');
+					expect(error.message).toBe(hint.delegated.message);
+					expect(error.description).toBe(hint.delegated.description);
+					expect(error.message).toContain(`the ${permission} permission`);
+					expect(error.description).toContain(permission);
+					// The raw Graph text stays in the error details
+					expect(error.messages).toContain(graphText);
+				},
+			);
+
+			it.each(unhintedRows)(
+				'passes the raw text through when $when',
+				async ({ graphText, resource }) => {
+					mockRequestOAuth2.mockRejectedValue(graphError(graphText));
+
+					const error = await post(resource);
+
+					expect(error.message).toBe(graphText);
+				},
+			);
+
+			// The create hook has no catch of its own. Pin that the hint copy reaches the publish
+			// surface unchanged through the real hook.
+			it('surfaces the hint copy through the Trigger create hook', async () => {
+				const hooks: Mocked<IHookFunctions> = mockDeep<IHookFunctions>();
+				hooks.helpers.requestOAuth2 = vi.fn().mockRejectedValue(graphError(MEMBERS_403));
+				hooks.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+				hooks.getNode.mockReturnValue(mockNode);
+				hooks.getNodeWebhookUrl.mockReturnValue('https://n8n.example.com/webhook/teams');
+				hooks.getWorkflowStaticData.mockReturnValue({});
+				const parameters: Partial<Record<string, string>> = {
+					authentication: 'microsoftTeamsOAuth2Api',
+					event: 'newTeamMember',
+					teamId: TEAM_ID,
+				};
+				hooks.getNodeParameter.mockImplementation((name) => parameters[name] ?? false);
+
+				await expect(
+					new MicrosoftTeamsTrigger().webhookMethods.default.create.call(hooks),
+				).rejects.toMatchObject({
+					message: TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN.delegated.message,
+					description: TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN.delegated.description,
+				});
+			});
 		});
 	});
 });

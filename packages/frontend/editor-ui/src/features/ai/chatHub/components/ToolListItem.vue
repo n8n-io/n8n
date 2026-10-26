@@ -1,16 +1,25 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import { N8nButton, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { getNodeItemRestriction } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps<{
 	nodeType: INodeTypeDescription;
 	configuredNode?: INode;
 	enabled?: boolean;
 	mode: 'configured' | 'available';
+	/** Uninstalled verified community preview — show Install CTA + verified badge. */
+	communityPreview?: boolean;
+	installing?: boolean;
+	/** Non-admin cannot install; button is disabled with contact-admin tooltip. */
+	installDisabled?: boolean;
+	/** The user's role cannot use this tool type, so only removal is possible. */
+	roleBlocked?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,26 +44,85 @@ const displayName = computed(() => {
 	}
 	return props.nodeType.displayName;
 });
+
+const actionLabel = computed(() =>
+	props.communityPreview
+		? i18n.baseText('communityNodeDetails.install')
+		: i18n.baseText('chatHub.toolsManager.add'),
+);
+
+const actionDisabled = computed(
+	() => props.communityPreview && (props.installing || props.installDisabled),
+);
+
+const rowRef = ref<HTMLElement | null>(null);
+const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 </script>
 
 <template>
-	<div :class="[$style.item, { [$style.configured]: mode === 'configured' }]">
+	<div
+		ref="rowRef"
+		:class="[
+			$style.item,
+			{
+				[$style.configured]: mode === 'configured',
+				[$style.restricted]: !!restriction || roleBlocked,
+			},
+		]"
+	>
 		<div :class="$style.iconWrapper">
 			<NodeIcon :node-type="nodeType" :size="32" />
 		</div>
 
 		<div :class="$style.content">
-			<N8nText :class="$style.name" size="small" color="text-dark">
-				{{ displayName }}
-			</N8nText>
+			<div :class="$style.nameRow">
+				<N8nText :class="$style.name" size="small" color="text-dark">
+					{{ displayName }}
+				</N8nText>
+				<N8nTooltip
+					v-if="communityPreview"
+					:content="i18n.baseText('communityNodeInfo.approved')"
+					placement="top"
+				>
+					<N8nIcon
+						icon="shield-half"
+						:size="12"
+						:class="$style.verifiedIcon"
+						:aria-label="i18n.baseText('communityNodeInfo.approved')"
+						data-test-id="chat-tool-verified-badge"
+					/>
+				</N8nTooltip>
+			</div>
 			<N8nText :class="$style.description" size="small" color="text-light">
 				{{ description }}
 			</N8nText>
 		</div>
 
 		<div :class="$style.actions">
+			<RestrictedNodePopover
+				v-if="restriction"
+				:node-type-name="nodeType.displayName"
+				:restriction="restriction"
+				:anchor="rowRef"
+			/>
+
+			<N8nTooltip
+				v-if="roleBlocked"
+				:content="i18n.baseText('chatHub.toolsManager.roleBlocked')"
+				placement="top"
+			>
+				<span
+					:class="$style.marker"
+					tabindex="0"
+					role="img"
+					:aria-label="i18n.baseText('chatHub.toolsManager.roleBlocked')"
+				>
+					<N8nIcon icon="lock" size="small" data-test-id="chat-tool-role-blocked-icon" />
+				</span>
+			</N8nTooltip>
+
 			<template v-if="mode === 'configured'">
-				<N8nTooltip :content="i18n.baseText('chatHub.toolsManager.configure')">
+				<N8nTooltip v-if="!roleBlocked" :content="i18n.baseText('chatHub.toolsManager.configure')">
 					<N8nIconButton
 						icon="settings"
 						variant="ghost"
@@ -75,6 +143,7 @@ const displayName = computed(() => {
 				</N8nTooltip>
 
 				<N8nTooltip
+					v-if="!roleBlocked"
 					:content="
 						enabled
 							? i18n.baseText('chatHub.toolsManager.disableTool')
@@ -89,9 +158,36 @@ const displayName = computed(() => {
 				</N8nTooltip>
 			</template>
 
-			<template v-else>
-				<N8nButton variant="subtle" size="small" icon="plus" @click="emit('add')">
-					{{ i18n.baseText('chatHub.toolsManager.add') }}
+			<template v-else-if="!restriction">
+				<N8nTooltip
+					v-if="communityPreview && installDisabled && !installing"
+					:content="i18n.baseText('communityNodeInfo.contact.admin')"
+					placement="top"
+				>
+					<span>
+						<N8nButton
+							variant="outline"
+							size="small"
+							icon="plus"
+							:loading="installing"
+							:disabled="true"
+							data-test-id="chat-tool-install-button"
+						>
+							{{ actionLabel }}
+						</N8nButton>
+					</span>
+				</N8nTooltip>
+				<N8nButton
+					v-else
+					variant="outline"
+					size="small"
+					icon="plus"
+					:loading="installing"
+					:disabled="actionDisabled"
+					:data-test-id="communityPreview ? 'chat-tool-install-button' : 'chat-tool-add-button'"
+					@click="emit('add')"
+				>
+					{{ actionLabel }}
 				</N8nButton>
 			</template>
 		</div>
@@ -119,6 +215,29 @@ const displayName = computed(() => {
 	}
 }
 
+.restricted {
+	cursor: not-allowed;
+
+	.iconWrapper,
+	.content {
+		opacity: 0.45;
+	}
+}
+
+// Matches the lock marker of the availability policy popover.
+.marker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--3xs);
+	color: var(--color--text--tint-1);
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+		outline-offset: 2px;
+	}
+}
+
 .iconWrapper {
 	flex-shrink: 0;
 	width: 32px;
@@ -133,6 +252,19 @@ const displayName = computed(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
+}
+
+.nameRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
+
+.verifiedIcon {
+	flex-shrink: 0;
+	vertical-align: middle;
+	color: var(--color--success);
 }
 
 .name {

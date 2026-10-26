@@ -4,31 +4,50 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	ExecutionOptions,
+	FetchFn,
 	MemoryTaskUsageReport,
-	RedactionOptions,
+	RuntimeSkill,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
 	ScopedMemoryTaskEvent,
 	Telemetry,
 	Workspace,
 } from '@n8n/agents';
+import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
+	AgentConfigValidationIssueCode,
+	AgentJsonConfig,
+	AgentSessionStatus,
+	AgentSkill,
+	SaveSkillDto,
+	SkillDetail,
+	SkillListResponse,
+	SkillSaveResponse,
+	SkillScope,
 	EvaluationMetric,
 	TaskList,
+	InstanceAiPromptConfiguration,
+	InstanceAiEvent,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
+	InstanceAiSetupItem,
+	InstanceAiThreadArtifact,
 	McpTool,
+	McpToolPermissions,
 	McpToolCallRequest,
 	McpToolCallResult,
 } from '@n8n/api-types';
 import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	GenericValue,
+	IDisplayOptions,
 	INodeInputConfiguration,
 	INodeTypes,
 	ITaskData,
 	NodeConnectionType,
 } from 'n8n-workflow';
+import type { z } from 'zod';
 
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
@@ -37,25 +56,59 @@ import type { WorkflowCodeSnapshotInput } from './debug/run-debug-buffer';
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
+import type { AgentContextInput } from './tools/agent-context.tool';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { TraceStatus } from './runtime/resumable-stream-executor';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
+import type {
+	conversationHistoryExcerptSchema,
+	conversationHistoryMatchSourceSchema,
+	conversationHistoryMessageSchema,
+	conversationHistoryMessagesResultSchema,
+	conversationHistorySearchHitSchema,
+	conversationHistorySearchResultSchema,
+} from './tools/conversation-history.schema';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
+	VerificationClaim,
 	VerificationResult,
 	WorkflowBuildOutcome,
 	WorkflowLoopAction,
 	WorkflowLoopState,
-	WorkflowVerificationObligation,
+	WorkflowVerificationEvidence,
+	WorkflowTriggerVerificationProgress,
 } from './workflow-loop/workflow-loop-state';
 import type { BuilderTemplatesService } from './workspace/builder-templates-service';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
 export type InstanceAiToolRegistry = Map<string, BuiltTool>;
+
+/** A workflow's folder, with its root-relative path. */
+export interface WorkflowFolderRef {
+	id: string;
+	name: string;
+	/** Root-relative folder names joined with "/". Equals `name` for a root folder. */
+	path: string;
+}
+
+/**
+ * Why a requested folder did not resolve to exactly one folder. `candidates`
+ * are root-relative paths in scope, sorted and capped. They are offered so the
+ * caller can ask or retry — never as a substitute result set.
+ */
+export interface FolderResolutionFailure {
+	requested: string;
+	/**
+	 * `scope-too-wide`: the listing spans more projects than the folder scan
+	 * will cover; the caller must pass `projectId`.
+	 */
+	reason: 'not-found' | 'ambiguous' | 'unsupported' | 'scope-too-wide';
+	candidates: string[];
+}
 
 export interface WorkflowSummary {
 	id: string;
@@ -66,6 +119,19 @@ export interface WorkflowSummary {
 	createdAt: string;
 	updatedAt: string;
 	tags?: string[];
+	/**
+	 * Owning project. Present only when the listing can span more than one
+	 * project — a list narrowed to a single project would repeat it on every row.
+	 * Without it, a cross-project listing gives no way to tell which project a
+	 * workflow belongs to.
+	 */
+	project?: { id: string; name: string };
+	/**
+	 * The folder the workflow sits in. Absent for root-level workflows. Also
+	 * absent for every row while folder exploration is off for the run, so the
+	 * flag-off rows keep the pre-feature shape.
+	 */
+	folder?: WorkflowFolderRef;
 }
 
 export interface WorkflowDetail extends WorkflowSummary {
@@ -98,22 +164,134 @@ export interface ExecutionResult {
 	 * Every node that ran, including those whose last run produced zero output
 	 * items (`data` omits those). Lets verification tell "ran and returned
 	 * nothing" apart from "never reached".
+	 *
+	 * On a `runStep` result this counts only what ran in *that* execution:
+	 * mocked and replayed nodes carry run data without having run, and are
+	 * excluded.
 	 */
 	executedNodeNames?: string[];
+	/**
+	 * Nodes with pinned data saved on the workflow when this run started. A
+	 * reached node in this list output its pinned items instead of executing,
+	 * so the run is not a live test of it.
+	 */
+	workflowPinnedNodeNames?: string[];
+	/** Nodes whose output items carry file data, which `data` omits. */
+	binaryOutputNodeNames?: string[];
 	/** Node-level errors from run data, including continue-on-fail errors. */
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
 	lastNodeExecuted?: string;
+	/**
+	 * Workflow version this execution actually ran, read back from the
+	 * execution record. Authoritative: a save landing while the run was in
+	 * flight moves the workflow head, but not this. Null for an execution of an
+	 * unsaved workflow, absent when the record could not be read.
+	 */
+	workflowVersionId?: string | null;
+	/**
+	 * Set when the trigger did not fire from a real event: its output came from
+	 * injected `inputData` or verification pin data. Such a run proves nothing
+	 * about the trigger's ingress (auth, payload shape, response mode).
+	 */
+	injectedTriggerNodeName?: string;
+	/**
+	 * Set when n8n redacted this execution's data for the current user, the same
+	 * way the executions list in the editor does. Output items are then empty and
+	 * errors carry only their type. `reason` is n8n's redaction reason, e.g.
+	 * `credential_inaccessible` or `workflow_redaction_policy`.
+	 */
+	redaction?: ExecutionRedaction;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
 }
 
+export interface ExecutionRedaction {
+	reason: string;
+	/**
+	 * Whether the user can reveal the data in the editor. Always false for
+	 * `credential_inaccessible` and `dynamic_credentials`.
+	 */
+	canReveal: boolean;
+}
+
+/** How a step run produced the target node's input. */
+export type StepRunInputMode = 'chain' | 'reused-execution' | 'mocked';
+
+export interface StepExecutionResult extends ExecutionResult {
+	/** The node the step targeted. */
+	nodeName: string;
+	/**
+	 * Where the target node's input came from. `mocked` is never evidence that
+	 * the workflow works: the items, and the placeholder items on the nodes
+	 * above them, are invented.
+	 */
+	inputMode: StepRunInputMode;
+	/**
+	 * Nodes whose output was invented so the run could reach the target. Empty
+	 * unless `inputMode` is `mocked`.
+	 */
+	mockedNodeNames: string[];
+	/**
+	 * Nodes whose output this run carried over from `reusedFromExecutionId`.
+	 * Absent unless `inputMode` is `reused-execution`. A node of the reused
+	 * execution that sits outside the trigger-to-target subgraph is not listed:
+	 * the run never carried it.
+	 */
+	replayedNodeNames?: string[];
+	/** Execution the replayed run data came from. */
+	reusedFromExecutionId?: string;
+	/**
+	 * Nodes that can run the target, when it is a sub-node (a tool, a model, a
+	 * memory). The engine runs a sub-node from the node that owns it, so the
+	 * input came from that node's input, and `mockInput` fed that node.
+	 *
+	 * A tool wired to several agents lists them all: n8n runs the step through
+	 * one of them, and which one is the engine's choice, not this caller's.
+	 * A step run refuses a tool when one of its agents runs above another.
+	 */
+	ranThroughNodeNames?: string[];
+}
+
+export interface NodeOutputBranch {
+	/** Position of the output on the node; 0 is the first output. */
+	index: number;
+	/** Label the node's output pane shows for the output, e.g. a Filter's "Kept" / "Discarded". */
+	name?: string;
+	/** Item count on this output, before pagination. */
+	totalItems: number;
+	items: unknown[];
+}
+
 export interface NodeOutputResult {
 	nodeName: string;
-	items: unknown[];
+	/**
+	 * One entry per output, in output order. Multi-output nodes (Filter, IF,
+	 * Switch) keep each output separate, so their items are never merged into
+	 * one list.
+	 *
+	 * A node in the main graph reports its last run. A sub-node (a model, a
+	 * memory, a tool) reports every run, because one run is one call its owner
+	 * made, and an item's label names the call it came from.
+	 */
+	outputs: NodeOutputBranch[];
+	/** Item count across all outputs. */
 	totalItems: number;
+	/** Page position over the items of all outputs, first output first. */
 	returned: { from: number; to: number };
+	/**
+	 * Runs the node recorded, when it recorded more than one. A sub-node's runs
+	 * are all read; a node in the main graph reports the last of them.
+	 */
+	totalRuns?: number;
+	/**
+	 * Set when n8n redacted this execution's data for the current user, the same
+	 * way the executions list in the editor does. Output items are then empty and
+	 * errors carry only their type. `reason` is n8n's redaction reason, e.g.
+	 * `credential_inaccessible` or `workflow_redaction_policy`.
+	 */
+	redaction?: ExecutionRedaction;
 }
 
 export interface ResolvedExpressionFailure {
@@ -172,8 +350,11 @@ export interface ResolvedNodeParametersResult {
 	 * fields downstream when the runtime did not throw.
 	 */
 	emptyResolutions: EmptyExpressionResolution[];
-	/** Present only when the resolution was refused (e.g. parameter-values gate is off). */
-	suppressed?: 'parameter-values-disabled';
+	/**
+	 * Present only when the resolution was refused: the parameter-values gate is
+	 * off, or n8n redacted the execution's data for the current user.
+	 */
+	suppressed?: 'parameter-values-disabled' | 'execution-redacted';
 }
 
 /**
@@ -213,6 +394,7 @@ export interface CredentialSummary {
 	id: string;
 	name: string;
 	type: string;
+	description?: string | null;
 }
 
 export interface CredentialDetail extends CredentialSummary {
@@ -231,21 +413,11 @@ export interface NodeSummary {
 }
 
 /**
- * Metadata about how a node is reachable via the AI Gateway (n8n Connect).
- * Attached to node results only when the instance is licensed for the
- * gateway AND the node is listed in the gateway config. Absence means either
- * "not licensed" or "not supported" — consumers treat both the same.
- *
- * `operations` mirrors the gateway config's `supportedActions[nodeName]`:
- * a map from resource name to allowed operations. Nodes without a resource
- * dimension use the marker key `'__operation_only__'`.
+ * Re-exported from `@n8n/ai-utilities/node-catalog`, which owns the definition
+ * because the shared node search engine reads it. Kept exported here so this
+ * package's consumers have one import site for the Instance AI types.
  */
-export interface AiGatewayNodeMeta {
-	supported: true;
-	operations?: Record<string, string[]>;
-	minVersion?: number;
-	hiddenProperties?: string[];
-}
+export type { AiGatewayNodeMeta };
 
 export interface NodeDescription extends NodeSummary {
 	properties: Array<{
@@ -256,6 +428,7 @@ export interface NodeDescription extends NodeSummary {
 		description?: string;
 		default?: unknown;
 		options?: Array<{ name: string; value: string | number | boolean }>;
+		displayOptions?: IDisplayOptions;
 	}>;
 	credentials?: Array<{
 		name: string;
@@ -268,6 +441,7 @@ export interface NodeDescription extends NodeSummary {
 	polling?: boolean;
 	triggerPanel?: unknown;
 	aiGateway?: AiGatewayNodeMeta;
+	unavailable?: string;
 }
 
 // ── Service interfaces ───────────────────────────────────────────────────────
@@ -290,37 +464,132 @@ export interface WorkflowVersionDetail extends WorkflowVersionSummary {
 
 export type WorkflowListStatus = 'active' | 'archived' | 'all';
 
+export interface WorkflowListResult {
+	/** The page of workflows, capped by `limit`. */
+	workflows: WorkflowSummary[];
+	/** Total workflows matching every requested filter, ignoring `limit`. */
+	total: number;
+	/**
+	 * Total workflows in scope with the `query` name filter removed — what an
+	 * unfiltered list of the same status and scope would return. Equals `total`
+	 * when no `query` was given. Lets callers tell a name-filtered subset apart
+	 * from the full inventory.
+	 */
+	totalInScope: number;
+	/**
+	 * Present only when a folder was requested and did not resolve. `workflows`
+	 * is then empty on purpose: a wider set must never stand in for the folder.
+	 */
+	folderResolution?: FolderResolutionFailure;
+}
+
+/**
+ * What the workflows in scope are built out of. The cheap rung of preference discovery:
+ * `nodeTypes` answers "what does this project reach for" without opening a workflow, and
+ * `workflows` names the ones using a given type so one read gets the current house style.
+ */
+export interface NodeUsageResult {
+	/** Indexed, non-archived workflows in scope — the denominator for every count. */
+	workflowsInScope: number;
+	/** Set when no `nodeType` was asked for: every node type in use, most-used first. */
+	nodeTypes?: Array<{ nodeType: string; workflowCount: number }>;
+	/** Set when a `nodeType` was asked for: the workflows using it, most recently updated first. */
+	workflows?: Array<{ workflowId: string; name: string; updatedAt: string }>;
+	/** True when the limit cut the list short, so a partial answer is never read as the whole. */
+	truncated?: boolean;
+}
+
 export interface InstanceAiWorkflowService {
 	list(options?: {
 		query?: string;
 		limit?: number;
 		status?: WorkflowListStatus;
 		scope?: 'project' | 'instance';
-	}): Promise<WorkflowSummary[]>;
+		/**
+		 * Restrict the listing to one project, overriding `scope`. A read-only
+		 * narrowing of what the caller can already reach: the adapter passes it as a
+		 * filter on top of the user's own read permissions, so it can never widen
+		 * access. Writes stay locked to the thread's bound project regardless.
+		 */
+		projectId?: string;
+		/**
+		 * Keep only workflows containing at least one node of these types
+		 * (`n8n-nodes-base.slack`). Resolved from the dependency index, so it matches what a
+		 * workflow actually contains rather than what its name suggests, and costs one join
+		 * instead of a fetch per workflow.
+		 */
+		nodeTypes?: string[];
+		/**
+		 * Restrict to one folder, named the way the user named it ("Clients/Acme",
+		 * "Acme"). Resolved strictly: exact path, exact name, path suffix. Never
+		 * fuzzy. Ignored while folder exploration is off for the run.
+		 */
+		folderPath?: string;
+		/** Restrict to one folder by id, when a prior listing supplied it. */
+		folderId?: string;
+		/** Include nested subfolders. Defaults to true. */
+		recursive?: boolean;
+	}): Promise<WorkflowListResult>;
+	/**
+	 * Node-type usage across the workflows in scope, read from the dependency index rather than by
+	 * fetching workflows. Without `nodeType` it returns the histogram; with one, the workflows using
+	 * it. Node types only — parameter-level house style still needs a `get`.
+	 *
+	 * Optional: present only where the host wires the index behind it.
+	 */
+	nodeUsage?(options?: {
+		nodeType?: string;
+		limit?: number;
+		scope?: 'project' | 'instance';
+		projectId?: string;
+	}): Promise<NodeUsageResult>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
 	 *  Pass a versionId to get a past version's graph instead of the current draft. */
 	getAsWorkflowJSON(workflowId: string, versionId?: string): Promise<WorkflowJSON>;
-	/** Cheap version-only lookup. The adapter projects just `versionId` and
-	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
-	 *  Use to validate per-session caches when the body isn't needed. */
-	getWorkflowHead(workflowId: string): Promise<{ versionId: string; updatedAt: number }>;
+	/**
+	 * Names and item counts of nodes carrying pinned data on the saved workflow.
+	 * Deliberately a summary next to the WorkflowJSON rather than part of it:
+	 * pin payloads can be huge, and a JSON that round-trips through
+	 * `updateFromWorkflowJSON` must stay pin-free so agent saves keep clearing
+	 * stale pins instead of re-persisting them.
+	 */
+	getPinnedDataSummary?(
+		workflowId: string,
+	): Promise<Array<{ nodeName: string; itemCount: number }>>;
+	/** Cheap version-only lookup. The adapter projects just `versionId`,
+	 *  `activeVersionId` and `updatedAt` from the workflow row, skipping
+	 *  `nodes`/`connections`/etc. Use to validate per-session caches when the
+	 *  body isn't needed, or to compare the draft against the published
+	 *  version. `activeVersionId` is null while the workflow is unpublished. */
+	getWorkflowHead(
+		workflowId: string,
+	): Promise<{ versionId: string; activeVersionId: string | null; updatedAt: number }>;
 	/** Single fetch returning the SDK WorkflowJSON together with the version it
 	 *  was derived from. Use on cache miss (or drift) so the fresh body and the
 	 *  versionId you'll pin to it land in one round-trip. */
 	getWorkflowSnapshot(
 		workflowId: string,
 	): Promise<{ json: WorkflowJSON; versionId: string; updatedAt: number }>;
-	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
+	/**
+	 * Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.).
+	 *
+	 * `folderPath` / `folderId` place the new workflow in a folder of the bound
+	 * project, resolved with the same strict rules as `list`. An unresolved folder
+	 * throws `FolderResolutionError` before anything is written: a workflow left at
+	 * the root when the user named a folder is a silent degradation. Ignored while
+	 * folder exploration is off for the run. The returned detail carries `folder`
+	 * when the workflow was placed.
+	 */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
-		options?: { projectId?: string; markAsAiTemporary?: boolean },
+		options?: { markAsAiTemporary?: boolean; folderPath?: string; folderId?: string },
 	): Promise<WorkflowDetail>;
 	/** Update a workflow from SDK-produced WorkflowJSON. */
 	updateFromWorkflowJSON(
 		workflowId: string,
 		json: WorkflowJSON,
-		options?: { projectId?: string; expectedChecksum?: string },
+		options?: { expectedChecksum?: string },
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	unarchive(workflowId: string): Promise<void>;
@@ -348,8 +617,8 @@ export interface InstanceAiWorkflowService {
 	): Promise<WorkflowVersionSummary[]>;
 	/** Get full details of a specific version (including nodes and connections). */
 	getVersion?(workflowId: string, versionId: string): Promise<WorkflowVersionDetail>;
-	/** Restore a workflow to a previous version by overwriting the current draft. */
-	restoreVersion?(workflowId: string, versionId: string): Promise<void>;
+	/** Restore the current draft and return its saved revision and publication state. */
+	restoreVersion?(workflowId: string, versionId: string): Promise<WorkflowDetail>;
 	/** Update name/description of a workflow version (licensed: namedVersions). */
 	updateVersion?(
 		workflowId: string,
@@ -371,6 +640,13 @@ export interface ExecutionSummary {
 	startedAt: string;
 	finishedAt?: string;
 	mode: string;
+	/**
+	 * Workflow version this execution ran. Compare it with the workflow's
+	 * `activeVersionId` to tell a run of the published version from a run of a
+	 * draft. Null for executions of an unsaved workflow, and on rows recorded
+	 * before the column existed.
+	 */
+	workflowVersionId?: string | null;
 }
 
 export interface InstanceAiExecutionService {
@@ -387,9 +663,71 @@ export interface InstanceAiExecutionService {
 			verificationPinData?: Record<string, unknown[]>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
+			/**
+			 * Marks the run as a build verification rather than a run the user asked
+			 * for. Verification uses a production execution mode so triggers behave
+			 * realistically, which would otherwise make a failed attempt dispatch the
+			 * workflow's error workflow as if production had broken.
+			 */
+			isVerificationRun?: boolean;
+			/**
+			 * Connections removed from this run's ephemeral workflow copy (the saved
+			 * workflow is untouched). Used to sever a loop edge so scripted wait-gate
+			 * verification passes are acyclic.
+			 */
+			omitConnections?: Array<{ source: string; target: string }>;
 			abortSignal?: AbortSignal;
 		},
 	): Promise<ExecutionResult>;
+	/**
+	 * Run one node of a saved workflow — the canvas "Execute step".
+	 *
+	 * The run happens on the real workflow, so expressions that reference other
+	 * nodes resolve, sub-nodes come along, and the execution lands in the
+	 * workflow's history where `getNodeOutput` and the user's canvas can see it.
+	 *
+	 * The target's input comes from one of three places:
+	 * - `reuseExecutionId` — replay a past run's data and re-run only the target.
+	 * - neither option — run every ancestor that has no data yet, then the target.
+	 * - `mockInput` — supply the input and skip the ancestors entirely.
+	 *
+	 * A sub-node has no input of its own, so these options apply to the node that
+	 * runs it. A tool's own arguments come from `toolArguments` instead.
+	 *
+	 * The first two say something about the workflow, because the input is data
+	 * the workflow really produced. `mockInput` says something about the node
+	 * alone, which is what you want when isolating it — but a caller must not
+	 * read a mocked result as evidence about the chain.
+	 */
+	runStep?(
+		workflowId: string,
+		nodeName: string,
+		options?: {
+			/**
+			 * Replay this execution's run data instead of running the ancestors
+			 * again. The execution must belong to the same workflow.
+			 */
+			reuseExecutionId?: string;
+			/**
+			 * Items to feed the target node, which skips every node above it.
+			 * Applied to each of the target's direct inputs.
+			 */
+			mockInput?: Array<Record<string, unknown>>;
+			/**
+			 * Arguments for a tool target — the values an agent would fill from its
+			 * `$fromAI` calls. A string for a tool that takes one free-text input.
+			 *
+			 * Required when the tool declares `$fromAI` arguments: the
+			 * implementation rejects the call rather than run the tool on empty ones.
+			 * A tool with no such arguments needs nothing here.
+			 */
+			toolArguments?: Record<string, unknown> | string;
+			/** Run a past version's graph instead of the current draft. */
+			versionId?: string;
+			timeout?: number;
+			abortSignal?: AbortSignal;
+		},
+	): Promise<StepExecutionResult>;
 	getStatus(executionId: string): Promise<ExecutionResult>;
 	getResult(executionId: string): Promise<ExecutionResult>;
 	stop(executionId: string): Promise<{ success: boolean; message: string }>;
@@ -412,9 +750,47 @@ export interface InstanceAiExecutionService {
 	): Promise<ResolvedNodeParametersResult>;
 }
 
+export type ExecuteNodeResult =
+	| {
+			status: 'success';
+			/** Serialized output items, wrapped in the untrusted-data boundary tag. */
+			output: string;
+			truncated?: { totalItems: number; shownItems: number; message: string };
+			outputSuppressed?: string;
+			/** Set when n8n redacted the run's data for the user. `output` is then empty. */
+			redaction?: ExecutionRedaction;
+	  }
+	| {
+			status: 'error';
+			error: { message: string; description?: string; nodeErrorType?: string };
+			/** Set when n8n redacted the run's data for the user. Only the error type remains. */
+			redaction?: ExecutionRedaction;
+	  };
+
+/** Executes a single node standalone through the regular execution engine.
+ *  The request mirrors a workflow-sdk node (`{ type, version, config }`). */
+export interface InstanceAiExecuteNodeService {
+	execute(request: {
+		type: string;
+		version: number;
+		config: {
+			parameters: Record<string, unknown>;
+			credentials?: Record<
+				string,
+				{ id: string | null; name: string; __aiGatewayManaged?: boolean }
+			>;
+		};
+		input?: Array<{ json: Record<string, unknown> }>;
+		timeoutMs?: number;
+	}): Promise<ExecuteNodeResult>;
+}
+
 export interface CredentialTypeSearchResult {
 	type: string;
 	displayName: string;
+	/** The type's own n8n docs page, so a scope/setup answer can be grounded in one
+	 *  `n8n-docs` lookup instead of recalled. Absent when the class won't load. */
+	documentationUrl?: string;
 }
 
 /** An HTTP-usable credential type with the API host(s) it authenticates against,
@@ -448,21 +824,39 @@ export interface InstanceAiCredentialService {
 	test(credentialId: string): Promise<{ success: boolean; message?: string }>;
 	/** Whether a credential type has a test function. When false, skip testing. */
 	isTestable?(credentialType: string): Promise<boolean>;
+	/** Whether a stored credential carries any values at all — `blank` when every
+	 *  text field its type declares is empty. Non-secret: only the verdict crosses
+	 *  the boundary, never the data. Tells an empty binding from a real one for the
+	 *  types that declare no connection test (generic auth). */
+	getCredentialFillState?(credentialId: string): Promise<'blank' | 'filled' | 'unknown'>;
 	getDocumentationUrl?(credentialType: string): Promise<string | null>;
 	getCredentialFields?(
 		credentialType: string,
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
+	/** Whether a credential type with this exact registered name exists on the instance. */
+	credentialTypeExists?(credentialType: string): Promise<boolean>;
 	/** HTTP-usable credential types with the API host(s) they authenticate against,
 	 *  derived from credential metadata. Powers steering generic HTTP-node auth toward
 	 *  a predefined credential when one already exists for the target service. */
 	listHttpCredentialHosts?(): Promise<CredentialHostInfo[]>;
+	/** For Templated Custom Auth credentials only: the service host each credential
+	 *  was created for (its recipe's `serviceHost`), by credential id — `null` for
+	 *  untagged/legacy ones. Non-secret metadata; never exposes credential data.
+	 *  Powers same-service filtering of setup candidates for the shared type. */
+	getTemplatedCredentialHosts?(credentialIds: string[]): Promise<Record<string, string | null>>;
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
+	/** Current AI Gateway wallet, or `null` when Connect is off or the fetch failed. */
+	getAiGatewayWallet?(): Promise<{ balance: number } | null>;
 	/** List all credential types supported by n8n Connect on this instance. */
 	listAiGatewayCredentialTypes?(): Promise<string[]>;
+	/** Whether the credential type is an OAuth type whose client the instance
+	 *  provides via credential overwrites (managed OAuth) — the editor offers
+	 *  one-click connect for these instead of an API-key form. */
+	isManagedOAuthCredentialType?(credType: string): Promise<boolean>;
 }
 
 export interface CredentialFieldInfo {
@@ -471,6 +865,76 @@ export interface CredentialFieldInfo {
 	type: string;
 	required: boolean;
 	description?: string;
+}
+
+export interface McpRegistryServerSummary {
+	slug: string;
+	title: string;
+	description: string;
+	tools: string[];
+}
+
+export interface McpRegistryConnectServerSummary extends McpRegistryServerSummary {
+	usesCredentials: Array<{
+		credentialType: string;
+		name: string;
+		value: string;
+	}>;
+}
+
+/** A service the user connected, with those of its tools that reached the agent.
+ *  Named by slug, which is also what the MCP tools accept as an argument. */
+export interface ConnectedMcpService {
+	slug: string;
+	toolNames: string[];
+}
+
+/** One activity-log entry, flattened for the agent. `at` is ISO so the model can reason on it. */
+export interface InstanceAiActivityEntry {
+	id: number;
+	at: string;
+	category: string;
+	action: string;
+	resourceType?: string;
+	resourceId?: string;
+	resourceName?: string;
+	/** Whether the user in this conversation is the one who did it. */
+	byCurrentUser: boolean;
+	detail?: Record<string, unknown>;
+}
+
+/**
+ * An entry in full, plus the rest of what the log knows about the same resource. Deliberately not
+ * the live record: `workflow_builder_workflows` and `list_credentials` already fetch those, and the entry carries the ids
+ * to call them with.
+ */
+export interface InstanceAiActivityExpansion {
+	entry: InstanceAiActivityEntry;
+	/** Other entries for the same resource, newest first. Empty when the entry names no resource. */
+	resourceHistory: InstanceAiActivityEntry[];
+	/** The call that fetches the live record, when one applies. */
+	liveRecordHint?: string;
+}
+
+/**
+ * Reads the activity log the agent is handed a window of at the start of a turn. Bound to one
+ * conversation's user and project by the adapter, so the tool cannot widen its own scope.
+ */
+export interface InstanceAiActivityService {
+	list(input: {
+		limit: number;
+		category?: string;
+		resourceId?: string;
+		beforeId?: number;
+	}): Promise<InstanceAiActivityEntry[]>;
+	/** Null when the id is pruned or out of scope — the two are indistinguishable on purpose. */
+	expand(id: number): Promise<InstanceAiActivityExpansion | null>;
+}
+
+export interface InstanceAiMcpService {
+	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
+	getServers(slugs: string[]): Promise<McpRegistryConnectServerSummary[]>;
+	listConnections(): Promise<Array<{ slug: string }>>;
 }
 
 export interface ExploreResourcesParams {
@@ -499,9 +963,76 @@ export interface ExploreResourcesResult {
 	builderHint?: string;
 }
 
+export interface ResolveParameterOptionsParams {
+	nodeType: string;
+	version: number;
+	parameterPath: string;
+	nodeParameters?: Record<string, unknown>;
+	credentials?: Record<string, { id: string; name: string }>;
+	credentialType?: string;
+	credentialId?: string;
+	filter?: string;
+	paginationToken?: string;
+}
+
+export type ResolveParameterOptionsResult =
+	| {
+			ok: true;
+			kind: 'resourceLocator' | 'loadOptionsMethod' | 'loadOptionsRouting';
+			parameterPath: string;
+			methodName?: string;
+			mode?: string;
+			results: Array<{
+				name: string;
+				value: string | number | boolean;
+				url?: string;
+				description?: string;
+				parameterValue: unknown;
+			}>;
+			paginationToken?: string;
+			builderHint?: string;
+	  }
+	| {
+			ok: false;
+			code:
+				| 'node_type_not_found'
+				| 'parameter_not_found'
+				| 'not_dynamic_selector'
+				| 'missing_credentials'
+				| 'lookup_failed';
+			message: string;
+			dynamicParameters?: Array<{
+				path: string;
+				type: string;
+				method: string;
+			}>;
+			credentialSlots?: Array<{
+				credentialType: string;
+				credentialSlot: string;
+				displayName?: string;
+			}>;
+	  };
+
+/**
+ * A resource-locator value the connected credential can't reach. Identifies the
+ * parameter and the offending value only — list the values it *can* reach with
+ * `exploreResources`, which runs the same lookup.
+ */
+export interface UnavailableLocatorValue {
+	/** Parameter name, as declared by the node. */
+	name: string;
+	displayName: string;
+	/** The configured value the credential can't reach. Left in place; repair is the caller's. */
+	currentValue: string;
+}
+
 export interface InstanceAiNodeService {
-	listAvailable(options?: { query?: string; n8nConnectOnly?: boolean }): Promise<NodeSummary[]>;
-	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
+	listAvailable(options?: { query?: string; gatewayCreditsOnly?: boolean }): Promise<NodeSummary[]>;
+	getDescription(
+		nodeType: string,
+		version?: number,
+		options?: { includeGatewayMetadata?: boolean },
+	): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
 	/** Return the TypeScript type definition for a node, resolved by the host n8n instance. */
@@ -513,13 +1044,43 @@ export interface InstanceAiNodeService {
 			operation?: string;
 			mode?: string;
 		},
-	): Promise<{ content: string; version?: string; error?: string; builderHint?: string } | null>;
+	): Promise<{
+		content: string;
+		version?: string;
+		error?: string;
+		builderHint?: string;
+		/** The node type is retired. It still works, but it shouldn't be used anymore at anything new. */
+		deprecated?: boolean;
+		/** Set when the node cannot run on this instance, because the feature it needs is off. */
+		unavailable?: string;
+		aiGateway?: AiGatewayNodeMeta;
+		webhooks?: unknown[];
+		polling?: boolean;
+		triggerPanel?: unknown;
+	} | null>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
 		nodeType: string,
 	): Promise<{ resources: Array<{ name: string; operations: string[] }> } | null>;
 	/** Query real resources via a node's listSearch or loadOptions methods (e.g. list spreadsheets, models). */
 	exploreResources?(params: ExploreResourcesParams): Promise<ExploreResourcesResult>;
+	resolveParameterOptions?(
+		params: ResolveParameterOptionsParams,
+	): Promise<ResolveParameterOptionsResult>;
+	/**
+	 * Report resource-locator parameters whose current value the given credential can't
+	 * reach. A credential can narrow a parameter's value space after the value was chosen —
+	 * the managed free-OpenAI-credits credential only proxies an allowlisted subset of
+	 * models — which is otherwise invisible until the workflow runs and fails. Reports the
+	 * unusable value only; list the usable ones with `exploreResources` if needed.
+	 */
+	findUnavailableLocatorValues?(params: {
+		nodeType: string;
+		version: number;
+		credentialType: string;
+		credentialId: string;
+		parameters: Record<string, unknown>;
+	}): Promise<UnavailableLocatorValue[]>;
 	/** Compute parameter issues for a node (mirrors builder's NodeHelpers.getNodeParametersIssues). */
 	getParameterIssues?(
 		nodeType: string,
@@ -555,7 +1116,7 @@ export interface SearchableNodeDescription {
 	outputs: string[] | string;
 	codex?: { alias?: string[] };
 	builderHint?: {
-		message?: string;
+		searchHint?: string;
 		inputs?: Record<string, { required: boolean; displayOptions?: Record<string, unknown> }>;
 		outputs?: Record<string, { required?: boolean; displayOptions?: Record<string, unknown> }>;
 	};
@@ -590,7 +1151,7 @@ export interface DataTableFilterInput {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
-		condition: 'eq' | 'neq' | 'like' | 'gt' | 'gte' | 'lt' | 'lte';
+		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
 		value: string | number | boolean | null;
 	}>;
 }
@@ -610,6 +1171,74 @@ export interface DataTableIdOptions {
 }
 
 export type DataTableReferencePermission = 'read' | 'readRow' | 'writeRow' | 'update' | 'delete';
+
+export type InstanceAiPreferenceWriteRejection =
+	| 'too_long'
+	| 'scope_full'
+	| 'duplicate'
+	| 'not_permitted'
+	| 'blocked_by_admin'
+	| 'failed';
+
+export interface InstanceAiSavedPreference {
+	id: string;
+	content: string;
+	/** The tool writes `user`. A later fact from the card can move the row, so the type is wide. */
+	scope: 'user' | 'project' | 'instance';
+	projectId?: string | null;
+	/** The owner of a user-scoped row. An edit from the card must name it. */
+	userId?: string | null;
+}
+
+/** A cap refusal always carries the cap and the measured value, so the model can fit under it. */
+export type InstanceAiPreferenceWriteRefusal =
+	| {
+			reason: 'too_long' | 'scope_full';
+			message: string;
+			/** Characters for `too_long`, rows for `scope_full`. */
+			limit: number;
+			/** The text length, or the rows already saved. */
+			actual: number;
+	  }
+	| {
+			reason: Exclude<InstanceAiPreferenceWriteRejection, 'too_long' | 'scope_full'>;
+			message: string;
+	  };
+
+export type InstanceAiPreferenceWriteResult =
+	| { ok: true; preference: InstanceAiSavedPreference }
+	| ({ ok: false } & InstanceAiPreferenceWriteRefusal);
+
+export interface InstanceAiPreferenceService {
+	create(input: { content: string; scope: 'user' }): Promise<InstanceAiPreferenceWriteResult>;
+	/** Record a rejection the tool decided before calling `create` (blocked, too long, blank). */
+	recordRejection(
+		reason: InstanceAiPreferenceWriteRejection,
+		textLength: number,
+		scope: 'user',
+	): void;
+}
+
+export interface InstanceAiSkillService {
+	assistantSkillsEnabled: boolean;
+	list(options: {
+		query?: string;
+		scope?: SkillScope;
+		projectId?: string;
+		attachableToAgentId?: string;
+		limit: number;
+		skip: number;
+	}): Promise<SkillListResponse>;
+	get(skillId: string): Promise<SkillDetail>;
+	create(input: {
+		scope: 'project' | 'instance';
+		projectId?: string;
+		skill: Omit<AgentSkill, 'allowedTools'>;
+		availableToAssistant?: boolean;
+	}): Promise<SkillDetail>;
+	update(skillId: string, input: SaveSkillDto): Promise<SkillSaveResponse>;
+	delete(skillId: string): Promise<void>;
+}
 
 export interface InstanceAiDataTableService {
 	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
@@ -687,7 +1316,7 @@ export interface EvaluationConfigMetricInput {
 }
 
 /** Payload for creating/updating a config-based eval. The dataset is a Data
- *  Table the caller already created (via the data-tables tool). */
+ *  Table the caller already created (via the data_tables tool). */
 export interface UpsertEvaluationConfigInput {
 	name: string;
 	startNodeName: string;
@@ -793,11 +1422,11 @@ export interface InstanceAiWebResearchService {
 	): Promise<FetchedPage>;
 }
 
-// ── Filesystem MCP server ────────────────────────────────────────────────────
+// ── Local MCP server ─────────────────────────────────────────────────────────
 
 /**
- * Minimal interface for a connected filesystem MCP server.
- * Implemented by `LocalGateway` (remote daemon) in the CLI module.
+ * Minimal interface for a connected local MCP server.
+ * Implemented by the Browser Use server in the CLI module.
  */
 export interface LocalMcpServer {
 	getAvailableTools(): McpTool[];
@@ -858,111 +1487,197 @@ export interface InstanceAiWorkflowTemplateService {
 	): Promise<{ available: true; template: Record<string, unknown> } | { available: false }>;
 }
 
-// ── Builder delegate (sub-agent) ─────────────────────────────────────────────
+// ── Builder delegate ─────────────────────────────────────────────────────────
 
-/** Reference to a workflow the current instance-AI session built or touched. */
-export interface SessionWorkflowRef {
-	id: string;
-	name: string;
-	description?: string;
-}
-
-/** Instance-AI-scoped builder session. */
-export interface BuilderDelegateSession {
-	/** Builder persistence thread id, e.g. `ia-builder:<instanceThreadId>:<agentId>`. */
+/** Instance AI run that the builder tools belong to. Used for telemetry. */
+export interface BuilderToolsSession {
 	threadId: string;
-	/** The visible Instance AI thread this build turn belongs to — used to bill builder OM usage against the conversation the user sees, not the private `ia-builder:` session. */
-	hostThreadId: string;
-	/** The Instance AI run id this build turn belongs to — used for OM billing dedupe. */
 	runId: string;
-	/**
-	 * Host-resolved model for the builder run — overrides the agents-module
-	 * builder's own model settings so the sub-agent inherits the instance-AI
-	 * model. Always set: Instance AI is the only streaming caller.
-	 */
-	modelConfig: ModelConfig;
-	/**
-	 * Host telemetry for the builder run — produced from the parent instance-AI
-	 * trace context so the builder's LLM/tool spans join the parent trace.
-	 */
-	telemetry?: Telemetry | BuiltTelemetry;
-	/**
-	 * Parent trace's memory-task lease hook (`InstanceAiTraceContext.onMemoryTaskEvent`).
-	 * When set, the builder forwards its own observational-memory task events
-	 * to it via `Agent.memoryTaskObserver()`, so the builder's memory LLM spans
-	 * can outlive the parent trace's root finalization.
-	 */
-	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
-}
-
-/** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
-export interface BuilderTurnStream {
-	fullStream: AsyncIterable<unknown>;
-	text: Promise<string>;
-}
-
-/** Reference to a suspended builder tool call awaiting user input. */
-export interface BuilderOpenSuspension {
-	runId: string;
-	toolCallId: string;
 }
 
 /**
- * Narrow delegate wrapping the agents-module builder for sub-agent use.
- * Provided by the host (cli) only when the agents module is active. Runs the
- * builder's full interactive toolset — `streamBuild`/`resumeBuild` may
- * suspend, which the caller cascades through its own suspend/resume so the
- * builder's questions survive a process restart.
+ * The agents-module builder, as the orchestrator uses it. The host (cli)
+ * supplies it only when the agents module is active.
  */
 export interface InstanceAiBuilderDelegate {
-	createAgent(name: string): Promise<{ agentId: string; projectId: string }>;
-	streamBuild(
-		agentId: string,
-		message: string,
-		session: BuilderDelegateSession,
-	): Promise<BuilderTurnStream>;
-	resumeBuild(
-		agentId: string,
-		resume: { runId: string; toolCallId: string; resumeData: unknown },
-		session: BuilderDelegateSession,
-	): Promise<BuilderTurnStream>;
-	/** All suspended tool calls on the builder's open checkpoint for this session thread ([] when none). */
-	findOpenSuspensions(
-		agentId: string,
-		session: BuilderDelegateSession,
-	): Promise<BuilderOpenSuspension[]>;
-	/** Expire the builder checkpoint for `runId` so a failed cascade leaves no orphaned open suspension. */
-	cancelOpenSuspension(agentId: string, runId: string): Promise<void>;
-	/** Agents in the bound project, most recently updated first. */
-	listAgents(): Promise<
-		Array<{ agentId: string; name: string; published: boolean; updatedAt: string }>
-	>;
+	/**
+	 * `options.id` creates the agent under an id the frontend already minted for
+	 * its unsaved artifact, so the chat and the editor converge on one agent.
+	 * `options.adoptOnCollision` says the caller has proven it may adopt that
+	 * agent — set it only for an id this thread's own lifecycle metadata attests
+	 * to, so the editor winning the insert (and configuring the row) makes this
+	 * call adopt rather than fail. `options.session` names the thread and run
+	 * for the creation telemetry.
+	 */
+	createAgent(
+		name: string,
+		options?: { id?: string; adoptOnCollision?: boolean; session?: BuilderToolsSession },
+	): Promise<{
+		agentId: string;
+		projectId: string;
+		/** The persisted name, which differs from `name` when an existing row was adopted. */
+		name?: string;
+		/** True when the id collided and an existing row was adopted instead of created. */
+		adopted?: boolean;
+	}>;
+	/**
+	 * Builder tools that act on the agent `resolveTargetAgentId` returns. The
+	 * resolver runs on each tool call, so the target can change during a run.
+	 * A call without a resolved target fails.
+	 */
+	getBuilderTools(
+		resolveTargetAgentId: () => Promise<string | undefined>,
+		session: BuilderToolsSession,
+	): BuiltTool[];
+	/** Runtime skills that the builder tools rely on, such as `agent-builder-config`. */
+	getRuntimeSkills(): RuntimeSkill[];
+	/** Preview link and model recommendations for the target agent. */
+	getBuilderSessionContext(agentId: string): Promise<string>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
+	/** Config + skills for the `agent-snapshot` trace event; `null` when the agent
+	 *  has no config yet. Optional: the host supplies this delegate across a
+	 *  package boundary, so an unwired host emits no snapshots instead of
+	 *  breaking agent building. */
+	readAgentArtifact?(agentId: string): Promise<{
+		config: AgentJsonConfig;
+		skills: Record<string, AgentSkill>;
+		configHash: string | null;
+	} | null>;
+	/** Read-only Publish validation of the agent's draft, for the `agent_verification`
+	 *  trace metric. Resolves to `undefined` when the agent does not exist. Optional
+	 *  for the same reason as `readAgentArtifact`. */
+	validateAgent?(agentId: string): Promise<AgentValidationSummary | undefined>;
+	/** Credentials the agent can use without asking the user. Optional for the
+	 *  same reason as `readAgentArtifact`: without it, every request shows the card. */
+	getCredentialDefaults?(agentId: string): Promise<AgentCredentialDefaults>;
+	/** Records a credential card for the agent build telemetry. */
+	trackCredentialRequest?(
+		agentId: string,
+		session: Partial<BuilderToolsSession>,
+		request: AgentCredentialRequestEvent,
+	): void;
 }
 
-// ── Local gateway status ─────────────────────────────────────────────────────
+export interface AgentCredentialDefaults {
+	/** Credentials of the agent's configured chat channels. Tools reuse them. */
+	channelCredentialIds: string[];
+	/** True when n8n can supply a managed credential, for example for Episodic Memory embeddings. */
+	managedCredentialAvailable: boolean;
+}
 
-export type LocalGatewayStatus =
-	| {
-			status: 'connected';
-			capabilities: string[];
-	  }
-	| {
-			status: 'disabledGlobally' | 'disconnected' | 'disabled';
-	  };
+export interface AgentCredentialRequestEvent {
+	credentialType: string;
+	outcome: 'requested' | 'provided' | 'skipped';
+}
+
+export interface AgentValidationSummary {
+	valid: boolean;
+	/** Distinct validation issue codes, sorted. */
+	issueCodes: AgentConfigValidationIssueCode[];
+	issueCount: number;
+	capabilityCount: number;
+}
+
+// ── Browser Use state ───────────────────────────────────────────────────────
+
+export type BrowserUseState =
+	/** Not offered to this user, so the + menu has no entry to name. */
+	| { status: 'unavailable' }
+	/** In the + menu, extension not connected. */
+	| { status: 'disconnected' }
+	/** Live: the `browser_*` tools are available. */
+	| { status: 'connected' };
+
+// ── Conversation history ─────────────────────────────────────────────────────
+
+export const CONVERSATION_HISTORY_MAX_SEARCH_LIMIT = 10;
+export const CONVERSATION_HISTORY_MAX_WINDOW_SIDE = 5;
+
+export type ConversationHistoryMatchSource = z.infer<typeof conversationHistoryMatchSourceSchema>;
+
+export type ConversationHistoryExcerpt = z.infer<typeof conversationHistoryExcerptSchema>;
+
+export type ConversationHistorySearchHit = z.infer<typeof conversationHistorySearchHitSchema>;
+
+export type ConversationHistorySearchResult = z.infer<typeof conversationHistorySearchResultSchema>;
+
+export type ConversationHistoryMessage = z.infer<typeof conversationHistoryMessageSchema>;
+
+export type ConversationHistoryMessagesResult = z.infer<
+	typeof conversationHistoryMessagesResultSchema
+>;
+
+/** Read-only recall over past conversations, pre-bound by the host to one
+ *  user, project and current thread. */
+export interface InstanceAiConversationHistoryReader {
+	search(params: { query?: string; limit?: number }): Promise<ConversationHistorySearchResult>;
+	getMessages(params: {
+		threadId: string;
+		aroundMessageId?: string;
+		before?: number;
+		after?: number;
+	}): Promise<ConversationHistoryMessagesResult>;
+}
+
+// ── Agent sessions ──────────────────────────────────────────────────────────
+
+export const AGENT_SESSION_MAX_LIST_LIMIT = 50;
+
+export interface AgentSessionSummary {
+	threadId: string;
+	agentId: string;
+	agentName: string;
+	title: string;
+	sessionNumber: number;
+	createdAt: string;
+	updatedAt: string;
+	status: AgentSessionStatus | null;
+	origin: string | null;
+	failureCount: number;
+	totalPromptTokens: number;
+	totalCompletionTokens: number;
+	totalDuration: number;
+}
+
+type WithResolvedAgentId<T> = T extends { agentId?: string }
+	? Omit<T, 'agentId'> & { agentId: string }
+	: T;
+
+export type AgentContextLookup = WithResolvedAgentId<AgentContextInput>;
+
+/** Read-only Agent context. The host binds this reader to one user and project. */
+export interface InstanceAiAgentContextReader {
+	lookup(input: AgentContextLookup): Promise<Record<string, unknown>>;
+}
 
 // ── Context bundle ───────────────────────────────────────────────────────────
 
+/** An artifact that a tool created or changed. Tools pass the name when they know it. */
+export type InstanceAiChangedArtifact = Pick<
+	InstanceAiThreadArtifact,
+	'type' | 'id' | 'name' | 'projectId'
+>;
+
 export interface InstanceAiContext {
+	/** Instance-wide gate for credential description output and guidance. */
+	credentialDescriptionsEnabled?: boolean;
 	userId: string;
 	/**
 	 * Trace handle for the current agent run, threaded in from the orchestration
-	 * context. Lets domain tools (e.g. build-workflow) emit explicit child runs
+	 * context. Lets domain tools (e.g. workflow_builder_build_workflow) emit explicit child runs
 	 * that land on the active trace. Absent outside a traced run.
 	 */
 	tracing?: InstanceAiTraceContext;
 	projectId?: string;
+	/**
+	 * Per-run folder-exploration gate, resolved by the host before the context
+	 * is built. When true, the `workflow_builder_workflows` list action advertises folder fields
+	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
+	 */
+	folderExplorationEnabled?: boolean;
+	/** True while the thread runs the host-seeded onboarding flow. Presence gates `leave-onboarding`. */
+	onboardingThread?: boolean;
 	/**
 	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
 	 * tools pass it as the fallback for utility LLM calls (simulation fixtures,
@@ -970,6 +1685,8 @@ export interface InstanceAiContext {
 	 * from environment API keys that proxy-managed deployments don't have.
 	 */
 	modelId?: ModelConfig;
+	/** Transport for those utility LLM calls. It carries no run labels. */
+	modelFetch?: FetchFn;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -977,9 +1694,29 @@ export interface InstanceAiContext {
 	dataTableService: InstanceAiDataTableService;
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
-	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
-	agentBuilderTarget?: { agentId: string; projectId: string };
-	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
+	/** Optional — present when the host allows MCP registry discovery for this
+	 *  user. Presence gates the `mcp-servers` tool. */
+	mcpService?: InstanceAiMcpService;
+	/** Optional — presence gates the `execute_node` tool. */
+	executeNodeService?: InstanceAiExecuteNodeService;
+	/** Optional — wired by the host when the run has a bound project. Presence
+	 *  gates the `conversation-history` tool (orchestrator only). */
+	conversationHistoryService?: InstanceAiConversationHistoryReader;
+	/** Present when the user can read Agents in the bound project. */
+	agentContextService?: InstanceAiAgentContextReader;
+	/** Present only when the instance-context reader is enabled; its absence hides the tool. */
+	activityService?: InstanceAiActivityService;
+	/** Present only when saved preferences are enabled for this user; its
+	 *  absence hides the `save_user_preference` tool. */
+	aiPreferenceService?: InstanceAiPreferenceService;
+	skillService?: InstanceAiSkillService;
+	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
+	 *  agent is built, which is also when its MCP tools are attached, so it always
+	 *  matches what this agent can actually call. */
+	connectedMcpServices?: ConnectedMcpService[];
+	/** The n8n Agent that the builder tools change. `agent_builder_select_agent` sets it. */
+	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
+	/** Agent builder tools and helpers. Present only when the agents module is active. */
 	builderDelegate?: InstanceAiBuilderDelegate;
 	/**
 	 * The agent-preview session referenced by this thread, bound when a user sends
@@ -999,21 +1736,13 @@ export interface InstanceAiContext {
 	workspaceService?: InstanceAiWorkspaceService;
 	workflowTemplateService: InstanceAiWorkflowTemplateService;
 	/**
-	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities.
+	 * Connected local MCP server (the Browser Use session). When set, dynamic tools are created from its advertised capabilities.
 	 */
 	localMcpServer?: LocalMcpServer;
-	/** Connection state of the local gateway — drives system prompt guidance. */
-	localGatewayStatus?: LocalGatewayStatus;
+	/** Browser Use state — drives system prompt guidance. */
+	browserUseState?: BrowserUseState;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
-	/** When set, `runWorkflow: 'always_allow'` only short-circuits HITL approval for these workflow IDs.
-	 *  Used by checkpoint follow-up runs to scope the override to the workflows the checkpoint is
-	 *  verifying — `executions(action="run")` on any other workflow still requires user approval. */
-	allowedRunWorkflowIds?: ReadonlySet<string>;
-	/** Fallback scope for checkpoint follow-up runs when replay/runtime workflow IDs are remapped. */
-	allowedRunWorkflowNames?: ReadonlySet<string>;
-	/** Force `executions(action="run")` through HITL even when a scoped checkpoint override exists. */
-	requireRunWorkflowApproval?: boolean;
 	/** Thread-level "always allow" grants the user has approved (keys like `executions:run`).
 	 *  Loaded per run from persisted thread state so a grant survives reload/navigation and
 	 *  is visible across mains. Tools consult this to skip HITL for already-granted actions. */
@@ -1021,6 +1750,9 @@ export interface InstanceAiContext {
 	/** Persist a thread-level "always allow" grant for the given key. Invoked by a tool when it
 	 *  resumes from a `scope: 'session'` approval. No-op in contexts without persistence. */
 	grantSessionToolApproval?: (key: string) => Promise<void>;
+	/** Drop a thread-level grant. Only for decisions meant to be reversible inside a thread —
+	 *  e.g. a skipped credential setup the user later asks to complete. */
+	revokeSessionToolApproval?: (key: string) => Promise<void>;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
 	/** When `false`, callers must avoid surfacing node parameter values (or anything derived from them
@@ -1034,17 +1766,60 @@ export interface InstanceAiContext {
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
 	runId?: string;
+	/**
+	 * Run-scoped outcome tracking for browser-assisted credential setup. The
+	 * credentials tool marks an attempt pending when it hands off to the LLM
+	 * with `needsBrowserSetup`; the browser tool wrapper reports each
+	 * `browser_create_credential` outcome. The host resolves the terminal
+	 * success/failure telemetry when the run finishes.
+	 */
+	browserCredentialSetup?: {
+		markPending: (credentialType: string, attemptId?: string) => void;
+		markCreated: (credentialType: string) => void;
+		markCreateFailed: (credentialType: string, errorCode: string) => void;
+	};
 	/** Records workflow code snapshots for the run debug buffer (dev tooling). */
 	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**
-	 * IDs of workflows the agent created during the **currently active plan
-	 * cycle**. Populated by build-workflow on every successful create, and
-	 * hydrated at run start from the persisted plan graph when — and only when —
-	 * the plan is still `active` or
-	 * `awaiting_replan`, so replan follow-up runs keep the bypass active but
-	 * the window closes as soon as the plan settles. Consumed by the delete
-	 * handler to skip the confirmation gate when the agent cleans up its own
-	 * in-flight artifacts. Lazily initialized on first create.
+	 * Setup panel v2 sink for durable `setup-items` snapshots. Wired by the host
+	 * only while the setup panel flag is on, so its presence is the package-side
+	 * flag accessor (`isSetupPanelEnabled`). Absent: the suspending setup card
+	 * paths stay in effect.
+	 */
+	setupItemsEmitter?: SetupItemsEmitter;
+	/**
+	 * Setup panel v2: the setup tool announced a workflow's final checklist
+	 * instead of suspending, so the host must treat that build's setup as
+	 * handled and not route a `<workflow-setup-required>` follow-up for it.
+	 * Wired by the host only while the setup panel flag is on.
+	 */
+	markWorkflowSetupHandled?: (workflowId: string) => Promise<void>;
+	/**
+	 * Rejects a write target outside the thread's project with the error the
+	 * adapter throws on write. Lets tools fail before an approval card or sandbox
+	 * work. The adapter still enforces the rule. Absent: no pre-check.
+	 */
+	assertInThreadProject?: (
+		target:
+			| { kind: 'workflow'; id: string }
+			| { kind: 'credential'; id: string }
+			| { kind: 'data-table'; id: string; projectId?: string }
+			| { kind: 'project'; id: string },
+	) => Promise<void>;
+	/**
+	 * Called after a tool creates or changes a workflow, data table, or agent,
+	 * and after it reads a data table, as the frontend previews those too.
+	 * The host shows the artifact's tab also when no browser shows the run.
+	 * Never throws.
+	 */
+	onArtifactChanged?: (artifact: InstanceAiChangedArtifact) => Promise<void>;
+	/**
+	 * IDs of workflows the agent created during the **current run**. Populated by
+	 * workflow_builder_build_workflow on every successful create (via `recordSessionOwnedWorkflow`).
+	 * Same-run update HITL bypasses consult this set. Cross-run bypass for
+	 * the same thread uses the persisted `workflows:update:<id>` session grant
+	 * written at create time — this in-memory set alone does not survive a new run.
+	 * Lazily initialized on first create.
 	 */
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
@@ -1059,6 +1834,10 @@ export interface InstanceAiContext {
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	/** Shared runtime workspace for workflow source files and other sandbox-backed artifacts. */
 	workspace?: Workspace;
+	/** Absolute sandbox workspace root (e.g. /home/user/workspace). Lets tools
+	 *  accept absolute file paths under the root by normalizing them to
+	 *  workspace-relative. */
+	workspaceRoot?: string;
 	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
 	threadId?: string;
 	/** Thread memory adapter used for thread-local metadata. */
@@ -1074,26 +1853,45 @@ export interface InstanceAiContext {
 	 *  the model's API knowledge. */
 	outputSchemaLookup?: OutputSchemaLookup;
 	/**
-	 * Runtime-only workflow build loop context. The direct `build-workflow` tool
-	 * reports build outcomes here so planned build follow-ups and verification
-	 * tools can share the same work item without a detached builder sub-agent.
+	 * Runtime-only workflow build loop context. The direct `workflow_builder_build_workflow` tool
+	 * reports build outcomes here so verification tools can share the same work
+	 * item without a detached builder sub-agent.
 	 */
 	workflowBuildContext?: {
 		threadId: string;
 		runId: string;
 		taskId: string;
 		workItemId: string;
-		/**
-		 * True for replan/checkpoint follow-ups where an approved plan already
-		 * exists and the builder may retry directly without creating a new plan.
-		 */
-		allowPostPlanWorkflowCreate?: boolean;
-		/** True when the active planned build task's final deliverable is a supporting workflow. */
-		isSupportingWorkflowTask?: boolean;
-		plannedTaskService?: PlannedTaskService;
 		workflowTaskService?: WorkflowTaskService;
 		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
 	};
+}
+
+// ── Setup panel v2 ───────────────────────────────────────────────────────────
+
+/**
+ * Publishes `setup-items` snapshots for a workflow. Full-snapshot semantics:
+ * every emission replaces the previous list for its workflowId, so callers
+ * hand over the complete current list, never a delta.
+ */
+export interface SetupItemsEmitter {
+	/** Replace the workflow's snapshot. Returns false when nothing changed (no event published). */
+	emit(workflowId: string, items: InstanceAiSetupItem[]): boolean;
+	/** Publish the final checklist and confirm persistence before setup routing ends. */
+	announce(workflowId: string, items: InstanceAiSetupItem[]): Promise<void>;
+	/**
+	 * Upsert items (by id) into the workflow's last snapshot and publish the
+	 * merged list. For emitters that know only part of the checklist, e.g. a
+	 * credential announcement without node context.
+	 */
+	merge(workflowId: string, items: InstanceAiSetupItem[]): boolean;
+	/**
+	 * The workflow of the most recent emission this run, i.e. the latest saved
+	 * artifact — the workflow the panel follows. Undefined before the first save.
+	 */
+	lastWorkflowId(): string | undefined;
+	/** Workflows with a known snapshot, most recently announced last. */
+	workflowIds(): string[];
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
@@ -1102,168 +1900,6 @@ export interface TaskStorage {
 	get(threadId: string): Promise<TaskList | null>;
 	save(threadId: string, tasks: TaskList): Promise<void>;
 }
-
-// ── Planned task graphs ─────────────────────────────────────────────────────
-
-export const PLANNED_TASK_KINDS = ['build-workflow', 'checkpoint'] as const;
-/** Legacy kinds still accepted when loading persisted graphs; failed at dispatch time. */
-export const LEGACY_PLANNED_TASK_KINDS = ['delegate'] as const;
-export const STORED_PLANNED_TASK_KINDS = [
-	...PLANNED_TASK_KINDS,
-	...LEGACY_PLANNED_TASK_KINDS,
-] as const;
-export type PlannedTaskKind = (typeof PLANNED_TASK_KINDS)[number];
-export type StoredPlannedTaskKind = (typeof STORED_PLANNED_TASK_KINDS)[number];
-
-export interface PlannedTask {
-	id: string;
-	title: string;
-	kind: PlannedTaskKind;
-	spec: string;
-	deps: string[];
-	/** Existing workflow ID for build-workflow tasks that modify an existing workflow. */
-	workflowId?: string;
-	/**
-	 * True when the build-workflow task's final deliverable is intentionally a
-	 * supporting sub-workflow. Auxiliary supporting workflows created inside a
-	 * larger main-workflow task should not set this.
-	 */
-	isSupportingWorkflow?: boolean;
-}
-
-export type PlannedTaskStatus = 'planned' | 'running' | 'succeeded' | 'failed' | 'cancelled';
-
-export interface PlannedTaskRecord extends Omit<PlannedTask, 'kind'> {
-	kind: StoredPlannedTaskKind;
-	status: PlannedTaskStatus;
-	agentId?: string;
-	backgroundTaskId?: string;
-	result?: string;
-	error?: string;
-	outcome?: Record<string, unknown>;
-	startedAt?: number;
-	finishedAt?: number;
-}
-
-export type PlannedTaskGraphStatus =
-	| 'awaiting_approval'
-	| 'active'
-	| 'awaiting_replan'
-	| 'completed'
-	| 'cancelled';
-
-export interface PlannedTaskGraph {
-	planRunId: string;
-	messageGroupId?: string;
-	postBuildRunApprovalRequired?: boolean;
-	status: PlannedTaskGraphStatus;
-	tasks: PlannedTaskRecord[];
-}
-
-export interface PlannedWorkflowVerification {
-	task: PlannedTaskRecord;
-	obligation: WorkflowVerificationObligation;
-	outcome?: WorkflowBuildOutcome;
-}
-
-export type PlannedTaskSchedulerAction =
-	| { type: 'none'; graph: PlannedTaskGraph | null }
-	| { type: 'dispatch'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
-	| { type: 'orchestrate-build-workflow'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
-	| { type: 'orchestrate-checkpoint'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
-	| {
-			type: 'orchestrate-workflow-verification';
-			graph: PlannedTaskGraph;
-			verification: PlannedWorkflowVerification;
-	  }
-	| { type: 'replan'; graph: PlannedTaskGraph; failedTask: PlannedTaskRecord }
-	| { type: 'synthesize'; graph: PlannedTaskGraph };
-
-export interface PlannedTaskService {
-	createPlan(
-		threadId: string,
-		tasks: PlannedTask[],
-		metadata: {
-			planRunId: string;
-			messageGroupId?: string;
-			postBuildRunApprovalRequired?: boolean;
-		},
-	): Promise<PlannedTaskGraph>;
-	getGraph(threadId: string): Promise<PlannedTaskGraph | null>;
-	markRunning(
-		threadId: string,
-		taskId: string,
-		update: { agentId?: string; backgroundTaskId?: string; startedAt?: number },
-	): Promise<PlannedTaskGraph | null>;
-	markSucceeded(
-		threadId: string,
-		taskId: string,
-		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
-	): Promise<PlannedTaskGraph | null>;
-	markFailed(
-		threadId: string,
-		taskId: string,
-		update: { error?: string; finishedAt?: number },
-	): Promise<PlannedTaskGraph | null>;
-	markCancelled(
-		threadId: string,
-		taskId: string,
-		update?: { error?: string; finishedAt?: number },
-	): Promise<PlannedTaskGraph | null>;
-	markCheckpointSucceeded(
-		threadId: string,
-		taskId: string,
-		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
-	): Promise<CheckpointSettleResult>;
-	markCheckpointFailed(
-		threadId: string,
-		taskId: string,
-		update: {
-			error?: string;
-			/** Structured verification outcome (executionId, failureNode, etc.) so
-			 *  replans have execution context, not just a flat error string. */
-			outcome?: Record<string, unknown>;
-			finishedAt?: number;
-		},
-	): Promise<CheckpointSettleResult>;
-	/** Rewind a running checkpoint back to `planned` after a scheduling race
-	 *  prevented its follow-up from starting. Non-destructive — dependents are
-	 *  untouched and the next tick re-emits `orchestrate-checkpoint`. */
-	revertCheckpointToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
-	/** Rewind a running build-workflow task after a scheduling race prevented
-	 *  its orchestrator follow-up from starting. */
-	revertBuildWorkflowToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
-	tick(
-		threadId: string,
-		options?: {
-			availableSlots?: number;
-			pendingWorkflowVerification?: PlannedWorkflowVerification;
-		},
-	): Promise<PlannedTaskSchedulerAction>;
-	clear(threadId: string): Promise<void>;
-	/** Transition an `awaiting_approval` graph → `active` after the user
-	 *  approves the plan. No-op on any other status. */
-	approvePlan(threadId: string): Promise<PlannedTaskGraph | null>;
-	/** Transition an `awaiting_approval` graph → `cancelled` after the user
-	 *  denies the plan outright. No-op on any other status. */
-	denyPlan(threadId: string): Promise<PlannedTaskGraph | null>;
-	/** Revert an `awaiting_replan` or `completed` graph back to `active`. Used by
-	 *  the service when a replan or synthesize follow-up couldn't start. */
-	revertToActive(threadId: string): Promise<PlannedTaskGraph | null>;
-}
-
-/**
- * Result of a guarded checkpoint settlement. The mutators only transition a task
- * when its kind is `checkpoint` AND its status is `running`, so callers can read
- * the `reason` to report a precise error back to the LLM.
- */
-export type CheckpointSettleResult =
-	| { ok: true; graph: PlannedTaskGraph }
-	| {
-			ok: false;
-			reason: 'not-found' | 'wrong-kind' | 'wrong-status';
-			actual?: { kind?: StoredPlannedTaskKind; status?: PlannedTaskStatus };
-	  };
 
 // ── MCP ──────────────────────────────────────────────────────────────────────
 
@@ -1274,7 +1910,7 @@ export interface McpServerConfig {
 	command?: string;
 	args?: string[];
 	env?: Record<string, string>;
-	toolFilter?: { mode: 'allow' | 'exclude'; tools: string[] };
+	toolPermissions?: McpToolPermissions;
 	fetch?: typeof fetch;
 	/**
 	 * Optional cache discriminator used by `McpClientManager` when a server's
@@ -1283,6 +1919,8 @@ export interface McpServerConfig {
 	 */
 	cacheKey?: string;
 	metadata?: {
+		/** ID of an Instance AI MCP registry connection. */
+		connectionId?: string;
 		/** Registry slug for Instance AI MCP registry servers. */
 		serverSlug?: string;
 		/** User who owns the registry MCP connection. */
@@ -1298,6 +1936,10 @@ export interface InstanceAiMemoryConfig {
 	observationalMemory?: {
 		observerThresholdTokens: number;
 		reflectorThresholdTokens: number;
+		/** Run the Observer inside a turn. Default `true`; `false` limits it to the post-turn path. */
+		midRunObservation?: boolean;
+		/** Model for the Observer and Reflector. Defaults to the agent's model. */
+		model?: ModelConfig;
 		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */
 		onTaskUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 	};
@@ -1307,16 +1949,34 @@ export interface InstanceAiMemoryConfig {
 
 type NativeLanguageModelConfig = Extract<NativeModelConfig, { specificationVersion: string }>;
 
+/** OpenAI-compatible or api-key-only endpoint. An empty `url` keeps the provider default. */
+export type EndpointModelConfig = {
+	kind: 'endpoint';
+	id: `${string}/${string}`;
+	url: string;
+	apiKey?: string;
+	headers?: Record<string, string>;
+	supportsStructuredOutputs?: boolean;
+};
+
+/** Direct Google Vertex Claude (Anthropic Messages via `:rawPredict`). */
+export type VertexAnthropicModelConfig = {
+	kind: 'vertex-anthropic';
+	id: `google-vertex-anthropic/${string}`;
+	project: string;
+	location: string;
+	googleCredentials?: string;
+};
+
 /** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
- *  or a pre-built LanguageModel instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
+ *  Vertex Claude, or a pre-built LanguageModel instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
  *
- *  The LanguageModel variant exists for proxy routes that need a provider-native transport.
- *  For example, Vertex AI Anthropic routes use the native Messages API at `/v1/messages`, so
- *  we must use `@ai-sdk/anthropic` directly instead of routing through an OpenAI-compatible
- *  `/chat/completions` adapter. */
+ *  Object configs carry a `kind` tag, so code never infers the variant from its fields.
+ *  The LanguageModel variant exists for proxy routes that need a provider-native transport. */
 export type ModelConfig =
 	| string
-	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
+	| EndpointModelConfig
+	| VertexAnthropicModelConfig
 	| NativeLanguageModelConfig;
 
 /** Configuration for routing requests through an AI service proxy (LangSmith tracing, Brave Search, etc.). */
@@ -1432,6 +2092,11 @@ export interface InstanceAiTraceContext {
 	 * for any agent (main or sub-agent) whose spans should join this trace.
 	 */
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	/**
+	 * Keep the trace open until a background operation settles, so its spans
+	 * finish normally when it outlives the root run.
+	 */
+	keepOpenUntilSettled?: (operation: Promise<unknown>) => void;
 	/** Trace replay mode: 'record' captures tool I/O, 'replay' remaps IDs, 'off' disables. */
 	replayMode: TraceReplayMode;
 	/** Shared ID remapper instance — available in 'replay' mode. */
@@ -1446,70 +2111,11 @@ export interface InstanceAiTraceContext {
 
 /** Structured result from a background task. The `text` field is the human-readable
  *  summary; `outcome` carries an optional typed payload consumed by the workflow
- *  loop controller (additive — existing callers that return a plain string still work). */
+ *  loop controller. */
 export interface BackgroundTaskResult {
 	text: string;
 	outcome?: Record<string, unknown>;
 }
-
-export interface SpawnBackgroundTaskOptions {
-	taskId: string;
-	threadId: string;
-	agentId: string;
-	role: string;
-	/** Existing trace context for legacy callers. Prefer createTraceContext for new background tasks. */
-	traceContext?: InstanceAiTraceContext;
-	/** Lazily creates the background trace only after the task is accepted and starts executing. */
-	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
-	/** When set, links the background task back to a planned task in the scheduler. */
-	plannedTaskId?: string;
-	/** Unique work item ID for workflow loop tracking. When set, the service
-	 *  uses the workflow loop controller to manage verify/repair transitions. */
-	workItemId?: string;
-	/**
-	 * Identity used for single-flight dedupe. When present, a spawn with the same
-	 * `plannedTaskId` (primary) or `role + workflowId` (fallback) as a currently-running
-	 * task returns `{ status: 'duplicate', existing }` instead of starting a new task.
-	 */
-	dedupeKey?: {
-		plannedTaskId?: string;
-		workflowId?: string;
-		role: string;
-	};
-	/**
-	 * Link this background task to a running checkpoint in the planned-task
-	 * graph. Set when the orchestrator spawns a detached sub-agent (builder,
-	 * research, data-table) from inside a
-	 * `<planned-task-follow-up type="checkpoint">` turn. The post-run safety
-	 * net defers failing the checkpoint while a child with this id is still
-	 * running, and settlement re-emits the checkpoint follow-up when the last
-	 * child settles — so the orchestrator re-enters the checkpoint context
-	 * instead of a bare `<background-task-completed>` shell.
-	 */
-	parentCheckpointId?: string;
-	run: (
-		signal: AbortSignal,
-		drainCorrections: () => string[],
-		waitForCorrection: () => Promise<void>,
-		taskContext: { traceContext?: InstanceAiTraceContext },
-	) => Promise<string | BackgroundTaskResult>;
-}
-
-/** Result of a {@link SpawnBackgroundTaskOptions} spawn. */
-export type SpawnBackgroundTaskResult =
-	| { status: 'started'; taskId: string; agentId: string }
-	| { status: 'limit-reached' }
-	| {
-			status: 'duplicate';
-			/** The live background task that matched on `dedupeKey`. */
-			existing: {
-				taskId: string;
-				agentId: string;
-				role: string;
-				plannedTaskId?: string;
-				workItemId?: string;
-			};
-	  };
 
 export interface WorkflowTaskService {
 	reportBuildOutcome(outcome: WorkflowBuildOutcome): Promise<WorkflowLoopAction>;
@@ -1517,7 +2123,21 @@ export interface WorkflowTaskService {
 	getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined>;
 	getLatestBuildOutcomeForWorkflow(workflowId: string): Promise<WorkflowBuildOutcome | undefined>;
 	getWorkflowLoopState(workItemId: string): Promise<WorkflowLoopState | undefined>;
+	beginVerification(
+		outcome: WorkflowBuildOutcome,
+		state: WorkflowLoopState,
+		runId: string,
+	): Promise<boolean>;
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
+	startVerification(
+		workItemId: string,
+		triggerNodeName?: string,
+	): Promise<WorkflowTriggerVerificationProgress | undefined>;
+	recordVerification(
+		workItemId: string,
+		verification: WorkflowVerificationEvidence & { claim: VerificationClaim },
+		previousProgress?: WorkflowTriggerVerificationProgress,
+	): Promise<VerificationClaim | undefined>;
 }
 
 // ── Orchestration context (plan tools) ──────────────────────────────────────
@@ -1528,13 +2148,25 @@ export interface OrchestrationContext {
 	messageGroupId?: string;
 	userId: string;
 	projectId?: string;
+	/** The selected prompt profile owns its skill and tool exclusions. */
+	promptConfiguration?: InstanceAiPromptConfiguration;
+	disabledToolNames?: ReadonlySet<string>;
+	/** Setup panel v2 flag, mirrored from the domain context's `setupItemsEmitter` presence. */
+	setupPanelEnabled?: boolean;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
-	checkpointStore?: CheckpointStore;
+	/** Transport for utility LLM calls (see `InstanceAiContext.modelFetch`). */
+	modelFetch?: FetchFn;
+	/**
+	 * Operator overrides for the model-stream stall deadlines, forwarded to
+	 * sub-agent runs so they honor the same limits as the orchestrator.
+	 */
+	modelStreamStallOptions?: Pick<
+		ExecutionOptions,
+		'modelStreamIdleTimeoutMs' | 'modelStreamFirstOutputTimeoutMs'
+	>;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
-	/** Output-redaction policy for sub-agent streams: omit for the safe default, or `false` to disable. */
-	outputRedaction?: RedactionOptions | false;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	/**
 	 * Claim AI credits for a sub-agent stream segment. Wired by the host (cli);
@@ -1550,53 +2182,22 @@ export interface OrchestrationContext {
 		usage: BuilderUsageItem[],
 		status: TraceStatus,
 	) => Promise<void>;
-	domainTools: InstanceAiToolRegistry;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
 	tracing?: InstanceAiTraceContext;
-	waitForConfirmation?: (requestId: string) => Promise<{
-		approved: boolean;
-		credentialId?: string;
-		credentials?: Record<string, string>;
-		autoSetup?: { credentialType: string };
-		userInput?: string;
-		domainAccessAction?: string;
-		resourceDecision?: string;
-		answers?: Array<{
-			questionId: string;
-			selectedOptions: string[];
-			customText?: string;
-			skipped?: boolean;
-		}>;
-	}>;
-	/** Local MCP server (Computer Use daemon) for filesystem, shell, browser, and related tools. */
+	/** Local MCP server (Browser Use session) for the browser tools. */
 	localMcpServer?: LocalMcpServer;
-	/** Safe MCP tools loaded from external servers and the local Computer Use gateway. */
+	/** Validated, approval-wrapped MCP tools available to Agent Builder. */
 	mcpTools?: InstanceAiToolRegistry;
-	/**
-	 * Runtime-loadable skills available to the agent. Workspace-backed agents may
-	 * replace this with a workspace-materialized source before attaching it.
-	 */
-	runtimeSkills?: RuntimeSkillSource;
-	/**
-	 * Raw bundled runtime skill source. Use this when materializing skills for a
-	 * concrete workspace target so already-materialized paths are not copied.
-	 */
-	runtimeSkillCatalog?: RuntimeSkillSource;
+	/** Skills that the agent can load. */
+	skills?: RuntimeSkillSource;
+	skillAvailabilityNotice?: string;
+	/** Add loaded Hub content to UI events without changing agent memory. */
+	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
-	/** Webhook base URL for the n8n instance (e.g. http://localhost:5678/webhook) — used to construct webhook URLs for created workflows */
-	webhookBaseUrl?: string;
-	/** Form base URL for the n8n instance (e.g. http://localhost:5678/form) — distinct from webhookBaseUrl since Form Triggers serve at /form/, not /webhook/ */
-	formBaseUrl?: string;
-	/** Spawn a detached background task that outlives the current orchestrator run */
-	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => SpawnBackgroundTaskResult;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
-	/** Persist and inspect dependency-aware planned tasks for this thread. */
-	plannedTaskService?: PlannedTaskService;
-	/** Run one scheduler pass after plan/task state changes. */
-	schedulePlannedTasks?: () => Promise<void>;
 	/** Hand off durable work to follow-up tasks once the current tool result reaches the UI. */
 	requestRunHandoff?: (reason: OrchestratorRunHandoffReason) => void;
 	/** Shared runtime workspace for the current orchestration context. */
@@ -1605,21 +2206,9 @@ export interface OrchestrationContext {
 	workspaceRoot?: string;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
-	/** Native memory store — used to retrieve thread message history for sub-agents. */
-	memory?: BuiltMemory;
 	/** The current user message being processed — needed because memory history only
 	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
 	currentUserMessage?: string;
-	/** True when the current run was started by the replan pipeline after a failed
-	 *  background task. Set by the host, not by user text — the create-tasks guard
-	 *  reads this instead of substring-matching `currentUserMessage`. */
-	isReplanFollowUp?: boolean;
-	/** True when the current run was started to execute a planned-task checkpoint.
-	 *  The orchestrator should run the checkpoint's spec and call complete-checkpoint. */
-	isCheckpointFollowUp?: boolean;
-	/** When isCheckpointFollowUp is true, the task ID of the checkpoint being executed.
-	 *  Used by the post-run deadlock fallback in the service. */
-	checkpointTaskId?: string;
 	/** The domain context — gives sub-agent tools access to n8n services */
 	domainContext?: InstanceAiContext;
 	/** Thread-scoped iteration log for accumulating attempt history across retries */
@@ -1635,11 +2224,6 @@ export interface OrchestrationContext {
 	touchBackgroundTask?: (taskId: string) => boolean;
 	/** Shared workflow-task state service for build / verify / credential-finalize flows */
 	workflowTaskService?: WorkflowTaskService;
-	/** When set, LangSmith traces are routed through the AI service proxy. */
-	tracingProxyConfig?: ServiceProxyConfig;
-	/** Summaries of currently running background tasks in this thread.
-	 *  Used to give sub-agents thread-state awareness (what else is happening). */
-	getRunningTaskSummaries?: () => Array<{ taskId: string; role: string; goal?: string }>;
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Propagated to sub-agents
 	 *  so they can resolve "now" consistently with the orchestrator. */
 	timeZone?: string;
@@ -1667,4 +2251,6 @@ export interface CreateInstanceAgentOptions {
 	/** When false, extended thinking / reasoning is not enabled. Defaults to true. */
 	thinkingEnabled?: boolean;
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	/** Transport for the agent's model calls. Sub-agents and memory tasks inherit it. */
+	modelFetch?: FetchFn;
 }

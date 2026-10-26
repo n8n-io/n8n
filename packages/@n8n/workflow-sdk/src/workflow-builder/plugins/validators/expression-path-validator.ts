@@ -18,11 +18,7 @@ function resolveTargetNodeName(target: unknown): string | undefined {
 	if (!target) return undefined;
 
 	// InputTarget shape: { node: NodeInstance, inputIndex: number }
-	if (
-		typeof target === 'object' &&
-		'node' in target &&
-		typeof (target as { node: unknown }).node === 'object'
-	) {
+	if (typeof target === 'object' && 'node' in target && typeof target.node === 'object') {
 		const nodeTarget = (target as { node: { name?: string } }).node;
 		return nodeTarget?.name;
 	}
@@ -190,7 +186,7 @@ export const expressionPathValidator: ValidatorPlugin = {
 		for (const [mapKey, graphNode] of ctx.nodes) {
 			const output = graphNode.instance.config?.output;
 			if (output && output.length > 0) {
-				outputShapes.set(mapKey, unwrapItemJson(output[0] as Record<string, unknown>));
+				outputShapes.set(mapKey, unwrapItemJson(output[0]));
 			}
 		}
 
@@ -199,7 +195,7 @@ export const expressionPathValidator: ValidatorPlugin = {
 			if (!outputShapes.has(mapKey)) {
 				const nodePinData = graphNode.instance.config?.pinData;
 				if (nodePinData && nodePinData.length > 0) {
-					outputShapes.set(mapKey, unwrapItemJson(nodePinData[0] as Record<string, unknown>));
+					outputShapes.set(mapKey, unwrapItemJson(nodePinData[0]));
 				}
 			}
 		}
@@ -209,7 +205,7 @@ export const expressionPathValidator: ValidatorPlugin = {
 			for (const [nodeName, pinData] of Object.entries(ctx.pinData)) {
 				// Only use pinData if we don't already have output from config
 				if (!outputShapes.has(nodeName) && pinData.length > 0) {
-					outputShapes.set(nodeName, unwrapItemJson(pinData[0] as Record<string, unknown>));
+					outputShapes.set(nodeName, unwrapItemJson(pinData[0]));
 				}
 			}
 		}

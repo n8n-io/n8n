@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 
 import { parseWorkflowCodeToBuilder, generateWorkflowCode } from './index';
 import { workflow } from './workflow-builder';
-import { node, trigger } from './workflow-builder/node-builders/node-builder';
+import { node, sticky, trigger } from './workflow-builder/node-builders/node-builder';
 
 /**
  * Generate a deterministic UUID based on workflow ID, node type, and node name.
@@ -84,6 +84,80 @@ describe('Deterministic Node ID Generation', () => {
 			expect(setNode?.id).toBe(
 				generateDeterministicNodeId('test-workflow-id', 'n8n-nodes-base.set', 'Set Data'),
 			);
+		});
+
+		it('should keep a sticky anchored to its nodes after their IDs change', () => {
+			const build = () => {
+				const start = trigger({
+					type: 'n8n-nodes-base.manualTrigger',
+					version: 1,
+					config: { name: 'Start' },
+				});
+
+				const first = node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { name: 'First' },
+				});
+
+				const second = node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { name: 'Second' },
+				});
+
+				const note = sticky('Note', [first, second], { name: 'Note' });
+
+				return workflow('test-workflow-id', 'Test Workflow')
+					.add(start)
+					.to(first)
+					.to(second)
+					.add(note);
+			};
+
+			const stickyNoteOf = (wf: ReturnType<typeof build>) =>
+				wf.toJSON({ tidyUp: true }).nodes.find((node) => node.name === 'Note');
+
+			const regenerated = build();
+			regenerated.regenerateNodeIds();
+
+			const expected = stickyNoteOf(build());
+			expect(stickyNoteOf(regenerated)?.position).toEqual(expected?.position);
+			expect(stickyNoteOf(regenerated)?.parameters).toEqual(expected?.parameters);
+		});
+
+		it('should resolve a sticky anchor from a handle retained across regeneration', () => {
+			const start = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const first = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'First' },
+			});
+			const builder = workflow('test-workflow-id', 'Test Workflow').add(start).to(first);
+
+			builder.regenerateNodeIds();
+			builder.add(sticky('Note', [first], { name: 'Note' }));
+			builder.regenerateNodeIds();
+
+			const expectedBuilder = workflow('test-workflow-id', 'Test Workflow')
+				.add(start)
+				.to(first)
+				.add(sticky('Note', [first], { name: 'Note' }));
+			expectedBuilder.regenerateNodeIds();
+
+			const actualNote = builder
+				.toJSON({ tidyUp: true })
+				.nodes.find((node) => node.name === 'Note');
+			const expectedNote = expectedBuilder
+				.toJSON({ tidyUp: true })
+				.nodes.find((node) => node.name === 'Note');
+
+			expect(actualNote?.position).toEqual(expectedNote?.position);
+			expect(actualNote?.parameters).toEqual(expectedNote?.parameters);
 		});
 
 		it('should update connections to use new IDs', () => {
@@ -406,6 +480,138 @@ export default wf.add(start);
 			expect(json.nodes.find((n) => n.name === 'Set B')?.id).toBe(
 				generateDeterministicNodeId('test-workflow-id', 'n8n-nodes-base.set', 'Set B'),
 			);
+		});
+	});
+
+	describe('Source-declared node IDs', () => {
+		const CODE_WITH_IDS = `
+			const wf = workflow('wf-1', 'Declared IDs');
+			const start = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { id: 'saved-start', name: 'Start' },
+			});
+			const process = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { id: 'saved-process', name: 'Process' },
+			});
+			wf.add(start.to(process));
+			export default wf;
+		`;
+
+		it('should keep an ID declared in the source through toJSON()', () => {
+			const json = parseWorkflowCodeToBuilder(CODE_WITH_IDS).toJSON();
+
+			expect(json.nodes.find((n) => n.name === 'Start')?.id).toBe('saved-start');
+			expect(json.nodes.find((n) => n.name === 'Process')?.id).toBe('saved-process');
+		});
+
+		it('should not leak the declared ID into the serialized parameters', () => {
+			const json = parseWorkflowCodeToBuilder(CODE_WITH_IDS).toJSON();
+
+			expect(json.nodes[0].parameters).not.toHaveProperty('id');
+		});
+
+		it('should generate an ID for a node that declares none', () => {
+			const json = parseWorkflowCodeToBuilder(`
+				const wf = workflow('wf-1', 'Mixed');
+				const start = trigger({
+					type: 'n8n-nodes-base.manualTrigger',
+					version: 1,
+					config: { id: 'saved-start', name: 'Start' },
+				});
+				const added = node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { name: 'Added' },
+				});
+				wf.add(start.to(added));
+				export default wf;
+			`).toJSON();
+
+			const added = json.nodes.find((n) => n.name === 'Added');
+			expect(added?.id).toBeTruthy();
+			expect(added?.id).not.toBe('saved-start');
+		});
+
+		it('should keep a declared ID when the node is renamed in the source', () => {
+			const json = parseWorkflowCodeToBuilder(
+				CODE_WITH_IDS.replace("name: 'Process'", "name: 'Transform'"),
+			).toJSON();
+
+			expect(json.nodes.find((n) => n.name === 'Transform')?.id).toBe('saved-process');
+			expect(json.nodes.some((n) => n.name === 'Process')).toBe(false);
+		});
+	});
+
+	describe('regenerateNodeIds() precedence', () => {
+		const buildMixedWorkflow = () =>
+			workflow('test-workflow-id', 'Test Workflow').add(
+				trigger({
+					type: 'n8n-nodes-base.manualTrigger',
+					version: 1,
+					config: { id: 'declared-start', name: 'Start' },
+				}).to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Plain' } })),
+			);
+
+		it('should keep a source-declared id and only regenerate the rest', () => {
+			const wf = buildMixedWorkflow();
+
+			wf.regenerateNodeIds();
+			const json = wf.toJSON();
+
+			expect(json.nodes.find((n) => n.name === 'Start')?.id).toBe('declared-start');
+			expect(json.nodes.find((n) => n.name === 'Plain')?.id).toBe(
+				generateDeterministicNodeId('test-workflow-id', 'n8n-nodes-base.set', 'Plain'),
+			);
+		});
+
+		it('should prefer a source-declared id over the existingIdsByName map', () => {
+			const wf = buildMixedWorkflow();
+
+			wf.regenerateNodeIds(
+				new Map([
+					['Start', 'from-map-start'],
+					['Plain', 'from-map-plain'],
+				]),
+			);
+			const json = wf.toJSON();
+
+			expect(json.nodes.find((n) => n.name === 'Start')?.id).toBe('declared-start');
+			expect(json.nodes.find((n) => n.name === 'Plain')?.id).toBe('from-map-plain');
+		});
+
+		/**
+		 * The P1 an `update({ id })` patch used to create: the instance kept its old id while
+		 * `config.id` held the patched value, so the next regenerate adopted the new one.
+		 */
+		it('should not adopt an id smuggled in through an update() patch', () => {
+			const declared = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { id: 'declared-set', name: 'Set' },
+			});
+			const wf = workflow('test-workflow-id', 'Test Workflow').add(
+				trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } }).to(
+					declared.update({ id: 'hijacked', parameters: { mode: 'raw' } }),
+				),
+			);
+
+			wf.regenerateNodeIds();
+
+			expect(wf.toJSON().nodes.find((n) => n.name === 'Set')?.id).toBe('declared-set');
+		});
+
+		it('should be idempotent across repeated calls', () => {
+			const once = buildMixedWorkflow();
+			once.regenerateNodeIds();
+
+			const twice = buildMixedWorkflow();
+			twice.regenerateNodeIds();
+			twice.regenerateNodeIds();
+
+			expect(twice.toJSON().nodes.map((n) => n.id)).toEqual(once.toJSON().nodes.map((n) => n.id));
 		});
 	});
 

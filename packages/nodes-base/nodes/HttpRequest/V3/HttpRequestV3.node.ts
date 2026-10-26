@@ -23,11 +23,13 @@ import {
 	NodeOperationError,
 	jsonParse,
 	removeCircularRefs,
-	sleep,
 	setSafeObjectProperty,
+	sleepUnlessExecutionCancelled,
+	throwIfExecutionCancelled,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
+import { applyTemplatedAuth } from '@utils/templated-auth';
 import { keysToLowercase } from '@utils/utilities';
 
 import { mainProperties } from './Description';
@@ -65,6 +67,8 @@ function isEmptyResponseBody(body: unknown): body is string {
 function isPaginationRequestType(value: string): value is 'body' | 'headers' | 'qs' {
 	return value === 'body' || value === 'headers' || value === 'qs';
 }
+
+const methodsWithoutBody = ['HEAD', 'OPTIONS', 'TRACE'];
 
 export class HttpRequestV3 implements INodeType {
 	description: INodeTypeDescription;
@@ -125,6 +129,7 @@ export class HttpRequestV3 implements INodeType {
 		let httpHeaderAuth;
 		let httpQueryAuth;
 		let httpCustomAuth;
+		let httpTemplatedCustomAuth;
 		let oAuth1Api;
 		let oAuth2Api;
 		let sslCertificates;
@@ -199,6 +204,12 @@ export class HttpRequestV3 implements INodeType {
 					} else if (genericCredentialType === 'httpCustomAuth') {
 						httpCustomAuth = await this.getCredentials('httpCustomAuth', itemIndex);
 						allowedDomains = getAllowedDomains(this.getNode(), httpCustomAuth);
+					} else if (genericCredentialType === 'httpTemplatedCustomAuth') {
+						httpTemplatedCustomAuth = await this.getCredentials(
+							'httpTemplatedCustomAuth',
+							itemIndex,
+						);
+						allowedDomains = getAllowedDomains(this.getNode(), httpTemplatedCustomAuth);
 					} else if (genericCredentialType === 'oAuth1Api') {
 						oAuth1Api = await this.getCredentials('oAuth1Api', itemIndex);
 						allowedDomains = getAllowedDomains(this.getNode(), oAuth1Api);
@@ -332,9 +343,12 @@ export class HttpRequestV3 implements INodeType {
 				const batchSize = batching?.batch?.batchSize > 0 ? batching?.batch?.batchSize : 1;
 				const batchInterval = batching?.batch.batchInterval;
 
+				// Stop sending requests when the execution is cancelled
+				throwIfExecutionCancelled(this);
+
 				if (itemIndex > 0 && batchSize >= 0 && batchInterval > 0) {
 					if (itemIndex % batchSize === 0) {
-						await sleep(batchInterval);
+						await sleepUnlessExecutionCancelled(this, batchInterval);
 					}
 				}
 
@@ -447,7 +461,7 @@ export class HttpRequestV3 implements INodeType {
 				}
 
 				// Change the way data get send in case a different content-type than JSON got selected
-				if (sendBody && ['PATCH', 'POST', 'PUT', 'GET'].includes(requestMethod)) {
+				if (sendBody && !methodsWithoutBody.includes(requestMethod)) {
 					if (bodyContentType === 'multipart-form-data') {
 						requestOptions.formData = requestOptions.body as IDataObject;
 						delete requestOptions.body;
@@ -600,6 +614,18 @@ export class HttpRequestV3 implements INodeType {
 					if (customAuth.qs) {
 						requestOptions.qs = { ...requestOptions.qs, ...customAuth.qs };
 						authDataKeys.qs = Object.keys(customAuth.qs);
+					}
+				}
+				if (httpTemplatedCustomAuth !== undefined) {
+					const templatedAuth = applyTemplatedAuth(httpTemplatedCustomAuth, requestOptions);
+					if (templatedAuth.headers) {
+						authDataKeys.headers = Object.keys(templatedAuth.headers);
+					}
+					if (templatedAuth.body) {
+						authDataKeys.body = Object.keys(templatedAuth.body);
+					}
+					if (templatedAuth.qs) {
+						authDataKeys.qs = Object.keys(templatedAuth.qs);
 					}
 				}
 
@@ -784,7 +810,8 @@ export class HttpRequestV3 implements INodeType {
 					requestPromises.push(requestWithAuthentication);
 				}
 			} catch (error) {
-				if (!this.continueOnFail()) throw error;
+				// A cancelled execution must not continue with the next items
+				if (this.getExecutionCancelSignal()?.aborted || !this.continueOnFail()) throw error;
 
 				requestPromises.push(Promise.reject(error).catch(() => {}));
 

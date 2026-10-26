@@ -1,9 +1,16 @@
+import { createHash } from 'node:crypto';
+
 import {
 	McpClient,
 	type BuiltTool,
 	type McpServerConfig as NativeMcpServerConfig,
-	type McpToolCallSettledEvent as NativeMcpToolCallSettledEvent,
 } from '@n8n/agents';
+import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
+import {
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	type InstanceAiPermissions,
+	type McpToolPermissions,
+} from '@n8n/api-types';
 import type { Result } from '@n8n/utils/result';
 import { UserError } from 'n8n-workflow';
 
@@ -13,6 +20,7 @@ import {
 	isSafeMcpIdentifierName,
 } from '../agent/mcp-tool-name-validation';
 import type { McpToolNameValidationError } from '../agent/mcp-tool-name-validation';
+import type { McpDescriptionTruncation } from '../agent/sanitize-mcp-descriptions';
 import { sanitizeMcpToolSchemas } from '../agent/sanitize-mcp-schemas';
 import type { McpSchemaSanitizationError } from '../agent/sanitize-mcp-schemas';
 import type { Logger } from '../logger';
@@ -20,6 +28,27 @@ import { createToolRegistry, createToolRegistryFromTools } from '../tool-registr
 import type { InstanceAiToolRegistry, McpServerConfig } from '../types';
 
 type McpToolRegistry = InstanceAiToolRegistry;
+
+function mcpConfigCacheKey(
+	configs: McpServerConfig[],
+	defaultToolPermissions: McpToolPermissions,
+): string {
+	return createHash('sha256')
+		.update(JSON.stringify({ configs, defaultToolPermissions }))
+		.digest('hex');
+}
+
+/** Per-server connection failures recorded while listing tools for one config. */
+type McpConnectionFailure = { server: McpServerConfig; error: string };
+
+/** Result of `getRegularTools`: the loaded tool registry plus any per-server
+ * connection failures for the requested config. Failures travel with the call
+ * result (not shared mutable state) so concurrent runs can't read each other's
+ * failures. */
+interface McpRegularToolsResult {
+	tools: McpToolRegistry;
+	connectionFailures: McpConnectionFailure[];
+}
 
 export interface McpToolCallSettledEvent {
 	server: McpServerConfig;
@@ -29,6 +58,12 @@ export interface McpToolCallSettledEvent {
 
 export interface McpClientManagerOptions {
 	onToolCallSettled?: (event: McpToolCallSettledEvent) => void;
+	/**
+	 * Invoked once per MCP server that fails to connect during `getRegularTools`.
+	 * The server's tools are skipped; the run continues with the remaining
+	 * servers' tools. Hosts surface these as non-fatal warnings.
+	 */
+	onConnectionFailed?: (event: { server: McpServerConfig; error: string }) => void;
 }
 
 /**
@@ -42,22 +77,21 @@ export interface SsrfUrlValidator {
 
 function buildNativeMcpConfigs(
 	configs: McpServerConfig[],
-	requireApproval: boolean,
+	defaultToolPermissions: McpToolPermissions,
 	onToolCallSettled?: McpClientManagerOptions['onToolCallSettled'],
 ): NativeMcpServerConfig[] {
 	const servers: NativeMcpServerConfig[] = [];
 	for (const server of configs) {
-		const baseConfig = {
+		const toolPermissions = server.toolPermissions ?? defaultToolPermissions;
+		const baseConfig: NativeMcpServerConfig = {
 			name: server.name,
-			toolFilter: server.toolFilter,
-			requireApproval,
-			...(onToolCallSettled
-				? {
-						onToolCallSettled: ({ toolName, success }: NativeMcpToolCallSettledEvent) =>
-							onToolCallSettled({ server, toolName, success }),
-					}
-				: {}),
+			configureTools: (tools) => compileMcpToolPermissions(toolPermissions, tools),
 		};
+		if (onToolCallSettled) {
+			baseConfig.onToolCallSettled = ({ toolName, success }) =>
+				onToolCallSettled({ server, toolName, success });
+		}
+
 		if (server.url) {
 			servers.push({
 				...baseConfig,
@@ -96,6 +130,18 @@ function warnSkippedMcpSchema(logger: Logger, source: string) {
 	};
 }
 
+function warnTruncatedMcpDescription(logger: Logger, source: string) {
+	return (truncation: McpDescriptionTruncation) => {
+		logger.warn('Truncated overlong MCP description', {
+			toolName: truncation.toolName,
+			source,
+			path: truncation.path,
+			originalLength: truncation.originalLength,
+			limit: truncation.limit,
+		});
+	};
+}
+
 function warnSkippedMcpTool(logger: Logger) {
 	return (error: McpToolNameValidationError) => {
 		logger.warn('Skipped MCP tool with unsafe name', {
@@ -130,9 +176,9 @@ function getSafeMcpServers(
  * tracked in one map so `disconnect()` can clean them up.
  */
 export class McpClientManager {
-	private regularToolsByKey = new Map<string, McpToolRegistry>();
+	private regularToolsByKey = new Map<string, McpRegularToolsResult>();
 
-	private inFlightRegularByKey = new Map<string, Promise<McpToolRegistry>>();
+	private inFlightRegularByKey = new Map<string, Promise<McpRegularToolsResult>>();
 
 	private clientsByKey = new Map<string, McpClient>();
 
@@ -144,14 +190,19 @@ export class McpClientManager {
 	async getRegularTools(
 		configs: McpServerConfig[],
 		logger: Logger,
-		requireApproval = true,
-	): Promise<McpToolRegistry> {
+		{
+			mcpRead,
+			mcpWrite,
+		}: Pick<InstanceAiPermissions, 'mcpRead' | 'mcpWrite'> = DEFAULT_INSTANCE_AI_PERMISSIONS,
+	): Promise<McpRegularToolsResult> {
 		const safeConfigs = getSafeMcpServers(configs, logger, 'external MCP');
-		if (safeConfigs.length === 0) return createToolRegistry();
+		if (safeConfigs.length === 0) return { tools: createToolRegistry(), connectionFailures: [] };
 
-		// Approval mode is part of the cache key: the same servers wrapped with vs
-		// without an approval gate are distinct tool sets.
-		const key = JSON.stringify({ configs: safeConfigs, requireApproval });
+		const defaultToolPermissions: McpToolPermissions = {
+			categories: { read: mcpRead, write: mcpWrite },
+		};
+		const key = mcpConfigCacheKey(safeConfigs, defaultToolPermissions);
+		// FIXME: changing mcp settings leaves the old client connected, we need to disconnect it
 		return await this.getOrLoad(
 			this.regularToolsByKey,
 			this.inFlightRegularByKey,
@@ -160,8 +211,8 @@ export class McpClientManager {
 				await this.validateConfigs(safeConfigs);
 				return await this.connectAndListTools(
 					safeConfigs,
+					defaultToolPermissions,
 					key,
-					requireApproval,
 					logger,
 					'external MCP',
 				);
@@ -233,19 +284,44 @@ export class McpClientManager {
 
 	private async connectAndListTools(
 		configs: McpServerConfig[],
+		defaultToolPermissions: McpToolPermissions,
 		clientKey: string,
-		requireApproval: boolean,
 		logger: Logger,
 		source: string,
-	): Promise<McpToolRegistry> {
+	): Promise<McpRegularToolsResult> {
 		const client = new McpClient(
-			buildNativeMcpConfigs(configs, requireApproval, this.options.onToolCallSettled),
+			buildNativeMcpConfigs(configs, defaultToolPermissions, this.options.onToolCallSettled),
 		);
 		this.clientsByKey.set(clientKey, client);
 
 		const registry = toolsToRegistry(await client.listTools());
+		// The SDK client is the single source of truth for per-server connection
+		// failures. Map each back to the originating host config and surface it
+		// via the manager-level observer + logger so a single misconfigured or
+		// unhealthy MCP server surfaces as a non-fatal warning instead of
+		// aborting the run. Failures are returned with the result (not stored on
+		// a shared field) so concurrent runs with different configs can't read
+		// each other's failures.
+		const connectionFailures: McpConnectionFailure[] = [...client.getConnectionFailures()].map(
+			(f) => {
+				const server = configs.find((c) => c.name === f.server) ?? {
+					name: f.server,
+				};
+				return { server, error: f.error };
+			},
+		);
+		for (const failure of connectionFailures) {
+			logger.warn('Skipped MCP server that failed to connect', {
+				serverName: failure.server.name,
+				source,
+				error: failure.error,
+			});
+			this.options.onConnectionFailed?.(failure);
+		}
+
 		const sanitizedTools = sanitizeMcpToolSchemas(registry, {
 			onError: warnSkippedMcpSchema(logger, source),
+			onDescriptionTruncated: warnTruncatedMcpDescription(logger, source),
 		});
 
 		const safeTools: McpToolRegistry = createToolRegistry();
@@ -254,6 +330,6 @@ export class McpClientManager {
 			claimedToolNames: createClaimedToolNames([]),
 			warn: warnSkippedMcpTool(logger),
 		});
-		return safeTools;
+		return { tools: safeTools, connectionFailures };
 	}
 }

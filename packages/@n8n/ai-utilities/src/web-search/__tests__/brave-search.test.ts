@@ -113,16 +113,61 @@ describe('braveSearch', () => {
 		expect(q).toBe('webhooks -site:reddit.com');
 	});
 
-	it('throws on non-OK response', async () => {
+	it('throws on non-OK response without retrying', async () => {
 		mockFetch.mockResolvedValue({
 			ok: false,
-			status: 429,
-			statusText: 'Too Many Requests',
+			status: 401,
+			statusText: 'Unauthorized',
 		});
 
 		await expect(braveSearch('BSA-key', 'test', {})).rejects.toThrow(
-			'Brave search failed: 429 Too Many Requests',
+			'Brave search failed: 401 Unauthorized',
 		);
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+	});
+
+	it('retries a rate-limited request and returns the eventual success', async () => {
+		mockFetch
+			.mockResolvedValueOnce({ ok: false, status: 429, statusText: 'Too Many Requests' })
+			.mockResolvedValueOnce({ ok: true, json: async () => MOCK_BRAVE_RESPONSE });
+
+		const result = await braveSearch('BSA-key', 'test', {});
+
+		expect(mockFetch).toHaveBeenCalledTimes(2);
+		expect(result.results).toHaveLength(2);
+	});
+
+	it('stops waiting out the retry backoff when the search is aborted', async () => {
+		vi.useFakeTimers();
+		try {
+			const controller = new AbortController();
+			mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+				if (init.signal?.aborted) throw new Error('aborted');
+				controller.abort();
+				return { ok: false, status: 429, statusText: 'Too Many Requests' };
+			});
+
+			const search = braveSearch('BSA-key', 'test', { abortSignal: controller.signal });
+
+			// No timer is advanced — only an abort-aware backoff lets this settle.
+			await expect(search).rejects.toThrow('aborted');
+			expect(mockFetch).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('gives up after the retry budget and throws the last status', async () => {
+		mockFetch.mockResolvedValue({
+			ok: false,
+			status: 503,
+			statusText: 'Service Unavailable',
+		});
+
+		await expect(braveSearch('BSA-key', 'test', {})).rejects.toThrow(
+			'Brave search failed: 503 Service Unavailable',
+		);
+		expect(mockFetch).toHaveBeenCalledTimes(3);
 	});
 
 	it('handles empty results gracefully', async () => {

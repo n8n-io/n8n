@@ -16,7 +16,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 
@@ -52,7 +52,7 @@ const mockFetchExecution = vi.fn().mockResolvedValue(null);
 
 vi.mock('@/features/execution/executions/executions.store', () => ({
 	useExecutionsStore: () => ({
-		fetchExecutions: mockFetchExecutions,
+		fetchExecutionsPage: mockFetchExecutions,
 		fetchExecution: mockFetchExecution,
 	}),
 }));

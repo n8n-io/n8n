@@ -5,8 +5,9 @@ import * as del from './delete.operation';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as update from './update.operation';
+import * as upsert from './upsert.operation';
 
-export { create, get, getAll, del as delete, update };
+export { create, get, getAll, del as delete, update, upsert };
 
 export const description: INodeProperties[] = [
 	{
@@ -25,6 +26,12 @@ export const description: INodeProperties[] = [
 				value: 'create',
 				description: 'Create an item in an existing list',
 				action: 'Create item',
+			},
+			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new item, or update the current one if it already exists (upsert)',
+				action: 'Create or update item',
 			},
 			{
 				name: 'Delete',
@@ -59,4 +66,5 @@ export const description: INodeProperties[] = [
 	...getAll.description,
 	...del.description,
 	...update.description,
+	...upsert.description,
 ];

@@ -9,7 +9,7 @@ describe('composeJsonConfig', () => {
 			schema: { name: 'A', model: 'anthropic/claude', instructions: 'x' },
 			integrations: [],
 		} as unknown as Agent;
-		expect(composeJsonConfig(agent)).toEqual({
+		expect(composeJsonConfig(agent, undefined)).toEqual({
 			name: 'A',
 			model: 'anthropic/claude',
 			instructions: 'x',
@@ -22,12 +22,24 @@ describe('composeJsonConfig', () => {
 			schema: { name: 'A', model: 'anthropic/claude', instructions: 'x' },
 			integrations: [{ type: 'slack', credentialId: 'c1' }],
 		} as unknown as Agent;
-		expect(composeJsonConfig(agent)?.integrations).toEqual([{ type: 'slack', credentialId: 'c1' }]);
+		expect(composeJsonConfig(agent, undefined)?.integrations).toEqual([
+			{ type: 'slack', credentialId: 'c1' },
+		]);
 	});
 
 	it('returns null when schema is null', () => {
 		const agent = { schema: null, integrations: [] } as unknown as Agent;
-		expect(composeJsonConfig(agent)).toBeNull();
+		expect(composeJsonConfig(agent, undefined)).toBeNull();
+	});
+
+	it('adds the skill refs to the JSON config', () => {
+		const agent = {
+			schema: { name: 'A', model: 'anthropic/claude', instructions: 'x' },
+			integrations: [],
+		} as unknown as Agent;
+		expect(composeJsonConfig(agent, [{ type: 'skill', id: 'notes' }])?.skills).toEqual([
+			{ type: 'skill', id: 'notes' },
+		]);
 	});
 
 	it('treats a missing integrations column as an empty array', () => {
@@ -35,7 +47,7 @@ describe('composeJsonConfig', () => {
 			schema: { name: 'A', model: 'anthropic/claude', instructions: 'x' },
 			integrations: undefined,
 		} as unknown as Agent;
-		expect(composeJsonConfig(agent)?.integrations).toEqual([]);
+		expect(composeJsonConfig(agent, undefined)?.integrations).toEqual([]);
 	});
 });
 

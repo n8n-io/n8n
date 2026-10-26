@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| baselineVersionId | varchar(36) |  | true |  | [public.workflow_history](public.workflow_history.md) | Published workflow_history version captured when the review was approved |
 | id | varchar(36) |  | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 | workflowReviewRequestId | varchar(36) |  | false |  | [public.workflow_review_request](public.workflow_review_request.md) |  |
@@ -16,6 +17,7 @@
 | FK_0f6f0f2c6d46b806fee02962ac2 | FOREIGN KEY | FOREIGN KEY ("workflowVersionId") REFERENCES workflow_history("versionId") ON DELETE SET NULL |
 | FK_619f5b0544bcec60c3387e82f2f | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
 | FK_e44b652e6dc99ef1364a2d85504 | FOREIGN KEY | FOREIGN KEY ("workflowReviewRequestId") REFERENCES workflow_review_request(id) ON DELETE CASCADE |
+| FK_workflow_review_request_workflow_baselineVersionId | FOREIGN KEY | FOREIGN KEY ("baselineVersionId") REFERENCES workflow_history("versionId") ON DELETE SET NULL |
 | PK_be3bf4facb054cf2b2b116b3b9c | PRIMARY KEY | PRIMARY KEY (id) |
 | workflow_review_request_workfl_workflowReviewRequestId_not_null | n | NOT NULL "workflowReviewRequestId" |
 | workflow_review_request_workflow_id_not_null | n | NOT NULL id |
@@ -34,15 +36,30 @@
 ```mermaid
 erDiagram
 
+"public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;baselineVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_review_request_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_review_request_workflow" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
 "public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;workflowVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 
 "public.workflow_review_request_workflow" {
+  varchar_36_ baselineVersionId FK
   varchar_36_ id
   varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK
   varchar_36_ workflowVersionId FK
+}
+"public.workflow_history" {
+  varchar_255_ authors
+  boolean autosaved
+  json connections
+  timestamp_3__with_time_zone createdAt
+  text description
+  varchar_128_ name
+  json nodeGroups
+  json nodes
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ versionId
+  varchar_36_ workflowId FK
 }
 "public.workflow_entity" {
   boolean active
@@ -79,19 +96,6 @@ erDiagram
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
   uuid updatedById FK
-}
-"public.workflow_history" {
-  varchar_255_ authors
-  boolean autosaved
-  json connections
-  timestamp_3__with_time_zone createdAt
-  text description
-  varchar_128_ name
-  json nodeGroups
-  json nodes
-  timestamp_3__with_time_zone updatedAt
-  varchar_36_ versionId
-  varchar_36_ workflowId FK
 }
 ```
 

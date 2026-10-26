@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { fetchChatModelsApi, fetchAgentApi } from '@/features/ai/chatHub/chat.api';
 import Modal from '@/app/components/Modal.vue';
@@ -28,7 +28,7 @@ import {
 	N8nText,
 	N8nCallout,
 } from '@n8n/design-system';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
@@ -44,10 +44,10 @@ import AgentEditorModalFileRow, {
 } from '@/features/ai/chatHub/components/AgentEditorModalFileRow.vue';
 import { I18nT } from 'vue-i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
-import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
+import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const props = defineProps<{
@@ -473,7 +473,7 @@ watch(documentVisibility, (visibility) => {
 				<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
 				<N8nButton
 					v-if="isEditMode"
-					variant="subtle"
+					variant="outline"
 					icon="trash-2"
 					:class="$style.deleteButton"
 					:disabled="isDeleting"
@@ -667,9 +667,8 @@ watch(documentVisibility, (visibility) => {
 							/>
 						</div>
 						<N8nButton
-							type="tertiary"
 							icon="plus"
-							variant="subtle"
+							variant="outline"
 							:class="$style.addFileButton"
 							:disabled="!canUploadFiles"
 							@click="handleClickUploadArea"
@@ -683,7 +682,7 @@ watch(documentVisibility, (visibility) => {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" @click="closeDialog">
+				<N8nButton variant="outline" @click="closeDialog">
 					{{ i18n.baseText('chatHub.tools.editor.cancel') }}
 				</N8nButton>
 				<N8nButton variant="solid" :disabled="!isValid || isSaving" @click="onSave">

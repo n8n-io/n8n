@@ -1,7 +1,8 @@
-import type { SerializableAgentState } from '@n8n/agents';
+import { redactDeep, type SerializableAgentState } from '@n8n/agents';
 import type { AgentChatMessagesResponse, AgentPersistedMessageDto } from '@n8n/api-types';
 
 import { messagesToDto } from '../agent-message-mapper';
+import { isApprovalSuspendPayload } from '../integrations/agent-chat-suspension-cards';
 
 type MessageContentPart = AgentPersistedMessageDto['content'][number];
 
@@ -74,10 +75,11 @@ function mergeOpenSuspendedToolCalls(
 
 /**
  * Merge an open suspended checkpoint into already-persisted history and
- * surface the open-suspensions sidecar (toolCallId + runId) so the FE can
- * re-arm suspended interactive cards after a refresh. Used by the chat
- * controller's `GET /:agentId/chat/:threadId/messages` and
- * `GET /:agentId/chat/messages` envelopes.
+ * surface the open-suspensions sidecar (parent tool/run ids plus the client-safe
+ * suspend payload) so the FE can re-arm suspended interactive cards after a
+ * refresh. Used by the chat controller's
+ * `GET /:agentId/chat/:threadId/messages` and `GET /:agentId/chat/messages`
+ * envelopes.
  *
  * The input `messages` must already be in DTO form (the caller converts raw
  * memory before passing it here). Checkpoint messages are converted here so
@@ -92,7 +94,13 @@ export function withOpenSuspensions(
 
 	const openSuspensions = Object.values(checkpoint.pendingToolCalls ?? {})
 		.filter((tc) => tc.suspended)
-		.map((tc) => ({ toolCallId: tc.toolCallId, runId: tc.runId }));
+		.map((tc) => ({
+			toolCallId: tc.toolCallId,
+			runId: tc.runId,
+			suspendPayload: isApprovalSuspendPayload(tc.suspendPayload)
+				? redactDeep(tc.suspendPayload, { redactSensitiveKeys: true }).value
+				: tc.suspendPayload,
+		}));
 
 	const openToolCallIds = new Set(openSuspensions.map((s) => s.toolCallId));
 	const merged = [...messages];
@@ -155,4 +163,30 @@ export function withOpenSuspensions(
 	}
 
 	return { messages: merged, openSuspensions };
+}
+
+/** The checkpoint if it belongs to the memory resource of the user, otherwise null. */
+export function ownCheckpoint(
+	checkpoint: SerializableAgentState | null,
+	resourceId: string,
+): SerializableAgentState | null {
+	return checkpoint?.persistence?.resourceId === resourceId ? checkpoint : null;
+}
+
+/**
+ * The messages response of a thread. The history already holds the turns,
+ * so inactive checkpoint messages stay out. A thread without history shows
+ * only its open suspensions.
+ */
+export function threadMessagesResponse(
+	history: Pick<AgentChatMessagesResponse, 'messages' | 'activeExecutionId'> | null,
+	checkpoint: SerializableAgentState | null,
+): AgentChatMessagesResponse {
+	if (!history) return { ...withOpenSuspensions([], checkpoint), activeExecutionId: null };
+	return {
+		...withOpenSuspensions(history.messages, checkpoint, {
+			appendInactiveCheckpointMessages: false,
+		}),
+		activeExecutionId: history.activeExecutionId,
+	};
 }

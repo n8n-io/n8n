@@ -5,6 +5,13 @@ interface WorkflowLockState {
 	waiters: Array<() => void>;
 }
 
+interface RunExclusiveOptions<T> {
+	workflowId: string;
+	fn: () => Promise<T>;
+	/** Bounds the wait for the lock: an abort while waiting rejects with its reason. */
+	signal: AbortSignal;
+}
+
 /**
  * Per-workflow FIFO async locks coordinating the publication outbox consumer
  * (which activates a workflow's triggers while applying a record) with leader
@@ -13,15 +20,16 @@ interface WorkflowLockState {
  * leave a trigger running on a demoted instance.
  *
  * The lock is keyed by workflow id rather than instance-global so unrelated
- * workflows never block each other — teardown can deactivate every workflow with
- * no in-flight record immediately and wait only on the ones being processed.
+ * workflows never block each other. Teardown never queues on a held lock at
+ * all: it checks {@link isLocked} and skips, relying on the periodic sweep to
+ * retry after release.
  *
  * Synchronization is local — only the leader processes the outbox — so in-process
  * locks are sufficient; no distributed lock is needed.
  *
- * Hand-rolled rather than using a mutex library: we need per-workflow keyed locks,
- * and {@link runExclusiveOrTimeout} runs `fn` anyway (without the lock) on timeout
- * instead of rejecting — off-the-shelf mutexes don't offer this.
+ * Hand-rolled rather than using a mutex library: per-workflow keyed FIFO locks
+ * with cheap lock-state visibility are the entire requirement — a dependency
+ * would cost more than these few lines.
  */
 @Service()
 export class WorkflowPublicationLifecycleLock {
@@ -32,45 +40,14 @@ export class WorkflowPublicationLifecycleLock {
 		return this.stateByWorkflowId.has(workflowId);
 	}
 
-	/** Workflow ids currently holding or waiting on a lifecycle lock. */
-	getLockedWorkflowIds(): string[] {
-		return Array.from(this.stateByWorkflowId.keys());
-	}
-
-	/** Runs `fn` under the workflow's lock, waiting indefinitely to acquire it. */
-	async runExclusive<T>(workflowId: string, fn: () => Promise<T>): Promise<T> {
-		await this.acquire(workflowId);
+	/** Runs `fn` under the workflow's lock, waiting until the lock is free or `signal` aborts. */
+	async runExclusive<T>({ workflowId, fn, signal }: RunExclusiveOptions<T>): Promise<T> {
+		await this.acquire(workflowId, signal);
 		try {
 			return await fn();
 		} finally {
 			this.release(workflowId);
 		}
-	}
-
-	/**
-	 * Acquires the workflow's lock within `timeoutMs` and runs `fn` under it. If it
-	 * cannot be acquired in time (e.g. an in-flight record is stuck), `fn` runs
-	 * WITHOUT the lock so the caller still makes progress, and `timedOut` is `true`.
-	 */
-	async runExclusiveOrTimeout(
-		workflowId: string,
-		fn: () => Promise<void>,
-		timeoutMs: number,
-	): Promise<{ timedOut: boolean }> {
-		const acquired = await this.acquireWithTimeout(workflowId, timeoutMs);
-
-		if (!acquired) {
-			await fn();
-			return { timedOut: true };
-		}
-
-		try {
-			await fn();
-		} finally {
-			this.release(workflowId);
-		}
-
-		return { timedOut: false };
 	}
 
 	private getOrCreateState(workflowId: string): WorkflowLockState {
@@ -82,14 +59,30 @@ export class WorkflowPublicationLifecycleLock {
 		return state;
 	}
 
-	private async acquire(workflowId: string): Promise<void> {
+	private async acquire(workflowId: string, signal: AbortSignal): Promise<void> {
+		signal.throwIfAborted();
+
 		const state = this.getOrCreateState(workflowId);
 		if (!state.locked) {
 			state.locked = true;
 			return;
 		}
 
-		await new Promise<void>((resolve) => state.waiters.push(resolve));
+		await new Promise<void>((resolve, reject) => {
+			const waiter = () => {
+				signal.removeEventListener('abort', onAbort);
+				resolve();
+			};
+			// Drop the waiter so a later release hands the lock to the next live
+			// one instead of to a caller that has already given up.
+			const onAbort = () => {
+				const index = state.waiters.indexOf(waiter);
+				if (index !== -1) state.waiters.splice(index, 1);
+				reject(signal.reason);
+			};
+			state.waiters.push(waiter);
+			signal.addEventListener('abort', onAbort, { once: true });
+		});
 	}
 
 	/** Hands ownership to the next waiter, or drops the entry when none are waiting. */
@@ -103,38 +96,5 @@ export class WorkflowPublicationLifecycleLock {
 		} else {
 			this.stateByWorkflowId.delete(workflowId);
 		}
-	}
-
-	private async acquireWithTimeout(workflowId: string, timeoutMs: number): Promise<boolean> {
-		const state = this.getOrCreateState(workflowId);
-		if (!state.locked) {
-			state.locked = true;
-			return true;
-		}
-
-		return await new Promise<boolean>((resolve) => {
-			// `settled` resolves the timeout-vs-handoff race: whichever fires first
-			// wins, so the lock is never granted twice nor wedged on an abandoned
-			// waiter. On timeout we splice the waiter out so `release` never hands
-			// ownership to it.
-			let settled = false;
-
-			const waiter = () => {
-				if (settled) return;
-				settled = true;
-				clearTimeout(timer);
-				resolve(true);
-			};
-
-			const timer = setTimeout(() => {
-				if (settled) return;
-				settled = true;
-				const index = state.waiters.indexOf(waiter);
-				if (index !== -1) state.waiters.splice(index, 1);
-				resolve(false);
-			}, timeoutMs);
-
-			state.waiters.push(waiter);
-		});
 	}
 }

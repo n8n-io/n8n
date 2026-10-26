@@ -61,6 +61,14 @@ describe('isQuotaExhaustedError', () => {
 		expect(isQuotaExhaustedError(sdkError('rate limited', 429, 'rate_limit'))).toBe(false);
 		expect(isQuotaExhaustedError(undefined)).toBe(false);
 	});
+
+	it('stops walking a cyclic cause chain', () => {
+		const outer = new Error('stream failed');
+		const inner = new Error('request failed', { cause: outer });
+		outer.cause = inner;
+
+		expect(isQuotaExhaustedError(outer)).toBe(false);
+	});
 });
 
 describe('mapAgentChunkToEvent', () => {
@@ -288,7 +296,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'ask-user',
+				toolName: 'workflow_builder_ask_user',
 				input: { prompt: 'Confirm?' },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -302,8 +310,9 @@ describe('mapAgentChunkToEvent', () => {
 							suggestedName: 'Slack API',
 						},
 					],
+					requireUserSelection: true,
 					projectId: 'project-1',
-					inputType: 'plan-review',
+					inputType: 'questions',
 					questions: [
 						{
 							id: 'q1',
@@ -312,22 +321,20 @@ describe('mapAgentChunkToEvent', () => {
 						},
 					],
 					introMessage: 'Before continuing',
-					tasks: {
-						tasks: [{ id: 't1', description: 'Build workflow', status: 'todo' }],
-					},
-					planItems: [
-						{
-							id: 'task-1',
-							title: 'Build workflow',
-							kind: 'build-workflow',
-							spec: 'Create a workflow',
-							deps: [],
-						},
-					],
 					domainAccess: { url: 'https://example.com/api', host: 'example.com' },
 					credentialFlow: { stage: 'generic' },
+					credentialDestination: {
+						origin: 'https://api.example.com',
+						nodeNames: ['Fetch account'],
+					},
 					setupRequests: [validSetupNode],
 					workflowId: 'wf-1',
+					resourceName: 'CRM Lead enrichment',
+					approvalDetails: {
+						action: 'insert-rows',
+						count: 1,
+						rows: [{ values: [{ column: 'name', value: '"Alice"' }], remainingColumns: 0 }],
+					},
 					resourceDecision: {
 						toolGroup: 'Local Gateway',
 						resource: '/tmp/file.txt',
@@ -343,7 +350,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'ask-user',
+				toolName: 'workflow_builder_ask_user',
 				args: { prompt: 'Confirm?' },
 				severity: 'destructive',
 				message: 'Need approval',
@@ -355,12 +362,23 @@ describe('mapAgentChunkToEvent', () => {
 						suggestedName: 'Slack API',
 					},
 				],
+				requireUserSelection: true,
 				projectId: 'project-1',
-				inputType: 'plan-review',
+				inputType: 'questions',
 				domainAccess: { url: 'https://example.com/api', host: 'example.com' },
 				credentialFlow: { stage: 'generic' },
+				credentialDestination: {
+					origin: 'https://api.example.com',
+					nodeNames: ['Fetch account'],
+				},
 				setupRequests: [validSetupNode],
 				workflowId: 'wf-1',
+				resourceName: 'CRM Lead enrichment',
+				approvalDetails: {
+					action: 'insert-rows',
+					count: 1,
+					rows: [{ values: [{ column: 'name', value: '"Alice"' }], remainingColumns: 0 }],
+				},
 				questions: [
 					{
 						id: 'q1',
@@ -369,18 +387,6 @@ describe('mapAgentChunkToEvent', () => {
 					},
 				],
 				introMessage: 'Before continuing',
-				tasks: {
-					tasks: [{ id: 't1', description: 'Build workflow', status: 'todo' }],
-				},
-				planItems: [
-					{
-						id: 'task-1',
-						title: 'Build workflow',
-						kind: 'build-workflow',
-						spec: 'Create a workflow',
-						deps: [],
-					},
-				],
 				resourceDecision: {
 					toolGroup: 'Local Gateway',
 					resource: '/tmp/file.txt',
@@ -391,12 +397,31 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it.each([false, 'true', 1])(
+		'drops a non-true credential selection requirement (%s)',
+		(requireUserSelection) => {
+			const event = map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'setup-credentials',
+				suspendPayload: {
+					requestId: 'request-1',
+					requireUserSelection,
+				},
+			});
+
+			expect(event).toMatchObject({ type: 'confirmation-request' });
+			expect(event).not.toHaveProperty('payload.requireUserSelection');
+		},
+	);
+
 	it('defaults optional suspension values and filters invalid structured payloads', () => {
 		const result = map({
 			type: 'tool-call-suspended',
 			toolCallId: 'tc-1',
 			suspendPayload: {
 				severity: 'unknown',
+				approvalDetails: { action: 'insert-rows', count: -1 },
 				credentialRequests: [{ invalid: true }],
 				inputType: 'bad-input-type',
 				questions: [{ invalid: true }],
@@ -404,6 +429,10 @@ describe('mapAgentChunkToEvent', () => {
 				domainAccess: { url: 'https://example.com' },
 				webSearch: { invalid: true },
 				credentialFlow: { stage: 'unknown' },
+				credentialDestination: {
+					origin: 'https://api.example.com/path',
+					nodeNames: ['Fetch account'],
+				},
 				setupRequests: [{ invalid: true }],
 				workflowId: 42,
 			},
@@ -422,6 +451,67 @@ describe('mapAgentChunkToEvent', () => {
 				message: 'Confirmation required',
 			},
 		});
+	});
+
+	it('maps target approval details without replacing the outer routing fields', () => {
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'call-agent-call',
+				toolName: 'agent_builder_call_agent',
+				input: { message: 'Delete record-1' },
+				suspendPayload: {
+					type: 'approval',
+					requestId: 'approval-1',
+					toolName: 'delete_record',
+					displayName: 'Delete record',
+					args: { id: 'record-1' },
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'approval-1',
+				toolCallId: 'call-agent-call',
+				toolName: 'agent_builder_call_agent',
+				args: { message: 'Delete record-1' },
+				severity: 'warning',
+				message: 'Confirmation required',
+				targetApproval: {
+					toolName: 'delete_record',
+					displayName: 'Delete record',
+					args: { id: 'record-1' },
+				},
+			},
+		});
+	});
+
+	it('keeps direct SDK approvals as ordinary Instance AI confirmations', () => {
+		const result = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'direct-tool-call',
+			toolName: 'delete_record',
+			input: { id: 'record-1' },
+			suspendPayload: {
+				type: 'approval',
+				requestId: 'approval-1',
+				toolName: 'delete_record',
+				args: { id: 'record-1' },
+			},
+		});
+
+		expect(result).toMatchObject({
+			type: 'confirmation-request',
+			payload: {
+				toolCallId: 'direct-tool-call',
+				toolName: 'delete_record',
+				args: { id: 'record-1' },
+			},
+		});
+		if (result?.type !== 'confirmation-request') throw new Error('Expected confirmation request');
+		expect(result.payload).not.toHaveProperty('targetApproval');
 	});
 
 	it('maps pause-for-user continue confirmations and web search metadata', () => {
@@ -485,6 +575,166 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps confirmations with an mcpConnectRequest payload', () => {
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'mcp-servers',
+				input: { action: 'connect', serverSlugs: ['brave'] },
+				suspendPayload: {
+					requestId: 'request-1',
+					severity: 'info',
+					message: 'To search the web',
+					mcpConnectRequest: {
+						servers: [
+							{
+								serverSlug: 'brave',
+								title: 'Brave',
+								tagline: 'Search the web with Brave Search',
+								usesCredentials: [
+									{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+								],
+							},
+						],
+					},
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'request-1',
+				toolCallId: 'tc-1',
+				toolName: 'mcp-servers',
+				args: { action: 'connect', serverSlugs: ['brave'] },
+				severity: 'info',
+				message: 'To search the web',
+				mcpConnectRequest: {
+					servers: [
+						{
+							serverSlug: 'brave',
+							title: 'Brave',
+							tagline: 'Search the web with Brave Search',
+							usesCredentials: [
+								{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
+						},
+					],
+				},
+			},
+		});
+	});
+
+	it('drops a malformed mcpConnectRequest payload', () => {
+		const event = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-1',
+			toolName: 'mcp-servers',
+			suspendPayload: {
+				requestId: 'request-1',
+				severity: 'info',
+				message: 'To search the web',
+				mcpConnectRequest: { servers: [] },
+			},
+		});
+
+		expect(event).toMatchObject({ type: 'confirmation-request' });
+		expect(event).not.toHaveProperty('payload.mcpConnectRequest');
+	});
+
+	it('maps confirmations with a testListener payload', () => {
+		const testListener = {
+			workflowId: 'wf-1',
+			triggers: [
+				{
+					nodeName: 'Webhook',
+					url: 'http://localhost:5678/webhook-test/abc/intake',
+					method: 'POST',
+				},
+			],
+			deadlineAt: '2026-01-01T00:10:00.000Z',
+		};
+
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'workflow_builder_executions',
+				input: { action: 'listen', workflowId: 'wf-1' },
+				suspendPayload: {
+					requestId: 'request-1',
+					severity: 'info',
+					message: 'Waiting for a test request to Intake',
+					testListener,
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'request-1',
+				toolCallId: 'tc-1',
+				toolName: 'workflow_builder_executions',
+				args: { action: 'listen', workflowId: 'wf-1' },
+				severity: 'info',
+				message: 'Waiting for a test request to Intake',
+				testListener,
+			},
+		});
+	});
+
+	it.each([
+		['without triggers', { workflowId: 'wf-1' }],
+		[
+			'with an empty workflowId',
+			{
+				workflowId: '',
+				triggers: [
+					{ nodeName: 'Webhook', url: 'http://localhost:5678/webhook-test/abc', method: 'POST' },
+				],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
+		[
+			'with an empty triggers list',
+			{ workflowId: 'wf-1', triggers: [], deadlineAt: '2026-01-01T00:10:00.000Z' },
+		],
+		[
+			'with an empty trigger URL',
+			{
+				workflowId: 'wf-1',
+				triggers: [{ nodeName: 'Webhook', url: '', method: 'POST' }],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
+		[
+			'with a relative trigger URL',
+			{
+				workflowId: 'wf-1',
+				triggers: [{ nodeName: 'Webhook', url: 'webhook-test/abc/intake', method: 'POST' }],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
+	])('drops a malformed testListener payload %s', (_, testListener) => {
+		const event = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-1',
+			toolName: 'workflow_builder_executions',
+			suspendPayload: {
+				requestId: 'request-1',
+				severity: 'info',
+				message: 'Waiting for a test request to Intake',
+				testListener,
+			},
+		});
+
+		expect(event).toMatchObject({ type: 'confirmation-request' });
+		expect(event).not.toHaveProperty('payload.testListener');
+	});
+
 	it('returns null for suspensions without a tool call id', () => {
 		expect(
 			map({ type: 'tool-call-suspended', suspendPayload: { requestId: 'request-1' } }),
@@ -514,6 +764,70 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps overloaded error records to an actionable message', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'overloaded_error', message: 'Overloaded' },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: {
+				content: 'The model is overloaded. Try again in a few minutes.',
+			},
+		});
+	});
+
+	it('maps plain error records with a non-empty message', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'api_error', message: 'Provider failed' },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Provider failed' },
+		});
+	});
+
+	it('falls back to an unknown error for malformed error records', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'api_error', message: 42 },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Unknown error' },
+		});
+
+		expect(map({ type: 'error', error: null })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Unknown error' },
+		});
+	});
+
+	it('maps an error with a cyclic cause chain', () => {
+		const outer = new Error('stream failed');
+		const inner = new Error('request failed', { cause: outer });
+		outer.cause = inner;
+
+		expect(map({ type: 'error', error: outer })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'stream failed' },
+		});
+	});
+
 	it('tags quota-exhausted error chunks with a quota_exhausted code', () => {
 		const responseBody = JSON.stringify({
 			error: { type: 'quota_exhausted', message: 'Have reached end of quota' },
@@ -529,6 +843,33 @@ describe('mapAgentChunkToEvent', () => {
 				statusCode: 403,
 				code: 'quota_exhausted',
 				technicalDetails: responseBody,
+			},
+		});
+	});
+
+	it('surfaces the gateway error message from an ai-sdk error wrapped in error.cause', () => {
+		// The n8n Connect gateway returns an actionable message; the ai-sdk APICallError
+		// reaches the stream wrapped, so the details live on error.cause.
+		const responseBody = JSON.stringify({
+			error: {
+				message:
+					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
+				type: 'ai_gateway_request_error',
+			},
+		});
+		const wrapped = new Error('Bad Request') as Error & { cause?: unknown };
+		wrapped.cause = apiError('Bad Request', 400, responseBody);
+
+		expect(map({ type: 'error', error: wrapped })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: {
+				content:
+					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
+				technicalDetails: responseBody,
+				// Unwrapped from the same cause as the body — a wrapped error must not lose it.
+				statusCode: 400,
 			},
 		});
 	});

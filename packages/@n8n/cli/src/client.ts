@@ -14,16 +14,35 @@ export interface ImportPackageFields {
 	folderId?: string;
 	credentialMatchingMode?: string;
 	credentialMissingMode?: string;
+	credentialConflictPolicy?: string;
 	bindings?: string;
 	workflowConflictPolicy: string;
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
 	missingNodeTypeMode?: string;
+	projectConflictPolicy?: string;
 	folderConflictPolicy?: string;
+	overwriteDeletionPolicy?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
 	variableMissingMode?: string;
+	variableConflictPolicy?: string;
+	variableParentPolicy?: string;
+	tagMissingMode?: string;
+	tagConflictPolicy?: string;
+}
+
+export interface ImportPackageSelectionFields {
+	/** Source project ID from the package. */
+	selectedProjectId: string;
+	/** Source workflow IDs from the selected project. */
+	selectedWorkflowIds: string[];
+	/** Destination workflow IDs to remove. */
+	deletedWorkflowIds?: string[];
+	workflowConflictPolicy?: string;
+	workflowIdPolicy?: string;
+	overwriteDeletionPolicy?: string;
 }
 
 export interface ExportPackageFields {
@@ -31,8 +50,162 @@ export interface ExportPackageFields {
 	folderIds?: string[];
 	projectIds?: string[];
 	includeVariableValues?: boolean;
-	missingWorkflowDependencyPolicy?: string;
+	includeTags?: boolean;
+	dependencyPolicy?: string;
+	versionPolicy?: string;
+	credentialExportPolicy?: string;
+	includeArchivedWorkflows?: boolean;
 }
+
+/** True per-entity counts of what ended up in an exported package. */
+export interface ExportPackageCounts {
+	workflows: number;
+	folders: number;
+	credentials: number;
+	dataTables: number;
+	variables: number;
+	/** Absent when the server predates tag export. */
+	tags?: number;
+}
+
+export interface ExportPackageResult {
+	archive: Buffer;
+	/** Undefined when talking to an older server that doesn't send the counts header. */
+	counts?: ExportPackageCounts;
+}
+
+export interface ImportPackageCounts {
+	projects: { created: number; updated: number; skipped: number; deleted: number };
+	folders: {
+		created: number;
+		updated: number;
+		skipped: number;
+		/** Part of `updated`: folders that Apply moved under another parent of their project. */
+		moved: number;
+		/** Part of `updated`: folders that Apply gave the name on the branch. */
+		renamed: number;
+		removed: number;
+	};
+	workflows: {
+		created: number;
+		updated: number;
+		skipped: number;
+		/** Part of `updated`: workflows that Apply also moved to another folder of their project. */
+		moved: number;
+		archived: number;
+		deleted: number;
+		publishing: {
+			published: number;
+			unpublished: number;
+			unchanged: number;
+			blocked: number;
+			failed: number;
+		};
+	};
+	credentials: { matched: number; stubbed: number };
+	dataTables: { matched: number; created: number; updated: number };
+	variables: {
+		matched: number;
+		created: number;
+		updated: number;
+		stubbed: number;
+		missing: number;
+	};
+	tags: { matched: number; created: number; renamed: number; reconciled: number; skipped: number };
+}
+
+/** The direction a promotion environment, checkout, or operation works in. */
+export type PromotionDirection = 'apply' | 'promote';
+
+/** The Git part of a promotion operation result. */
+export interface PromotionGitResult {
+	commitSha: string;
+	/** For Promote the branch it pushed to, for Apply the branch the package came from. */
+	branchName: string;
+}
+
+/** Outcome of promoting the team projects through an environment. */
+export type PromotePackageResult = {
+	environmentId: string;
+	counts: ExportPackageCounts;
+	git: PromotionGitResult;
+};
+
+/** The reviewed source that Apply must still match. Any mismatch reports `source-changed`. */
+export interface PromotionExpectedSource {
+	environmentId: string;
+	branchName: string;
+	commitSha: string;
+}
+
+/** References in a package that must be set up on this instance before Apply can import it. */
+export interface PromotionBindingPreflight {
+	missingProjects: Array<Record<string, unknown>>;
+	missingBindings: Array<Record<string, unknown>>;
+	accessRequirements: Array<Record<string, unknown>>;
+	conflicts: Array<Record<string, unknown>>;
+	warnings: Array<Record<string, unknown>>;
+}
+
+/** A team project that a full Apply deletes, because the package does not hold it. */
+export type PromotionProjectDeletion = {
+	kind: 'project';
+	code: 'project-deletion';
+	project: { id: string; name: string };
+};
+
+type ApplyPackageIdentity = {
+	environmentId: string;
+	git: PromotionGitResult;
+};
+
+/** Outcome of applying a package to the instance. Only `applied` imported anything. */
+export type ApplyPackageResult =
+	| (ApplyPackageIdentity & {
+			status: 'applied';
+			counts: ImportPackageCounts;
+			warnings: Array<Record<string, unknown>>;
+	  })
+	| (ApplyPackageIdentity & { status: 'blocked'; preflight: PromotionBindingPreflight })
+	| (ApplyPackageIdentity & { status: 'source-changed' });
+
+export interface PromotionChangesQuery {
+	search?: string;
+	sort?: 'name' | 'updatedAt' | 'status';
+	order?: 'asc' | 'desc';
+}
+
+/** One workflow that differs between a project and its configured branch. */
+export interface PromotableResourceSummary {
+	id: string;
+	name: string;
+	type: 'workflow';
+	status: 'new' | 'modified' | 'renamed' | 'renamed-and-modified' | 'archived' | 'deleted';
+	version: number | null;
+	updatedAt: string | null;
+	updatedBy: string | null;
+	dependencyCount: number;
+}
+
+/** The changes of a project in one direction, with the commit they were read from. */
+export interface ProjectPromotionChanges {
+	commitSha: string | null;
+	changes: PromotableResourceSummary[];
+}
+
+/** State of an environment's local checkout, after a connect or a disconnect. */
+export type PromotionCheckoutResult = {
+	environmentId: string;
+	direction: PromotionDirection;
+	branchName: string;
+	hasCheckout: boolean;
+};
+
+/** A new provider, with the generated public key for SSH providers. */
+export type PromotionProviderCreatedResult = {
+	provider: Record<string, unknown>;
+	publicKey: string | null;
+};
 
 export class ApiError extends Error {
 	constructor(
@@ -78,6 +251,7 @@ export class N8nClient {
 			query?: Record<string, string>;
 			formData?: FormData;
 			responseType?: 'json' | 'binary';
+			onResponse?: (response: Response) => void;
 		} = {},
 	): Promise<T> {
 		const url = new URL(`${this.baseUrl}${path}`);
@@ -128,6 +302,8 @@ export class N8nClient {
 						: undefined;
 			throw new ApiError(response.status, message, hint, errorBody);
 		}
+
+		options.onResponse?.(response);
 
 		if (response.status === 204) {
 			return undefined as T;
@@ -185,6 +361,138 @@ export class N8nClient {
 		} while (cursor && (limit === undefined || results.length < limit));
 
 		return limit !== undefined ? results.slice(0, limit) : results;
+	}
+
+	// ─── Promotion providers ───────────────────────────────────────
+
+	async listPromotionProviders(limit?: number) {
+		return await this.paginate<Record<string, unknown>>('/promotions/providers', {}, limit);
+	}
+
+	async getPromotionProvider(id: string) {
+		return await this.get<Record<string, unknown>>(`/promotions/providers/${id}`);
+	}
+
+	async createPromotionProvider(body: unknown) {
+		return await this.post<PromotionProviderCreatedResult>('/promotions/providers', body);
+	}
+
+	async updatePromotionProvider(id: string, body: unknown) {
+		return await this.put<Record<string, unknown>>(`/promotions/providers/${id}`, body);
+	}
+
+	async deletePromotionProvider(id: string) {
+		return await this.del<undefined>(`/promotions/providers/${id}`);
+	}
+
+	// ─── Promotion environments ────────────────────────────────────
+
+	async listPromotionEnvironments(query: Record<string, string> = {}, limit?: number) {
+		return await this.paginate<Record<string, unknown>>('/promotions/environments', query, limit);
+	}
+
+	async getPromotionEnvironment(id: string) {
+		return await this.get<Record<string, unknown>>(`/promotions/environments/${id}`);
+	}
+
+	async createPromotionEnvironment(body: unknown) {
+		return await this.post<Record<string, unknown>>('/promotions/environments', body);
+	}
+
+	async updatePromotionEnvironment(id: string, body: unknown) {
+		return await this.put<Record<string, unknown>>(`/promotions/environments/${id}`, body);
+	}
+
+	async deletePromotionEnvironment(id: string) {
+		return await this.del<undefined>(`/promotions/environments/${id}`);
+	}
+
+	async connectPromotionCheckout(id: string) {
+		return await this.post<PromotionCheckoutResult>(`/promotions/environments/${id}/connect`);
+	}
+
+	async disconnectPromotionCheckout(id: string) {
+		return await this.post<PromotionCheckoutResult>(`/promotions/environments/${id}/disconnect`);
+	}
+
+	async listPromotionEnvironmentProjects(id: string) {
+		return await this.get<{ projectIds: string[] }>(`/promotions/environments/${id}/projects`);
+	}
+
+	async addProjectToPromotionEnvironment(id: string, projectId: string) {
+		return await this.post<{ environmentId: string; projectId: string }>(
+			`/promotions/environments/${id}/projects/${projectId}`,
+		);
+	}
+
+	async removeProjectFromPromotionEnvironment(id: string, projectId: string) {
+		return await this.del<undefined>(`/promotions/environments/${id}/projects/${projectId}`);
+	}
+
+	async promotePackage(id: string, body: { commitMessage?: string; force?: boolean }) {
+		return await this.post<PromotePackageResult>(`/promotions/environments/${id}/promote`, body);
+	}
+
+	async applyPackage(id: string, expectedSource?: PromotionExpectedSource) {
+		return await this.post<ApplyPackageResult>(
+			`/promotions/environments/${id}/apply`,
+			expectedSource ? { expectedSource } : undefined,
+		);
+	}
+
+	async continueApplyPackage(
+		id: string,
+		expectedSource: PromotionExpectedSource,
+		confirmDestructiveChanges?: boolean,
+	) {
+		return await this.post<ApplyPackageResult>(`/promotions/environments/${id}/apply/continue`, {
+			expectedSource,
+			confirmDestructiveChanges,
+		});
+	}
+
+	async listProjectPromotionChanges(
+		projectId: string,
+		direction: PromotionDirection,
+		query: PromotionChangesQuery = {},
+	) {
+		return await this.get<ProjectPromotionChanges>(
+			`/promotions/projects/${projectId}/changes/${direction}`,
+			{ ...query },
+		);
+	}
+
+	async promoteProjectSelection(projectId: string, workflowIds: string[], commitMessage?: string) {
+		return await this.post<PromotePackageResult>(`/promotions/projects/${projectId}/promote`, {
+			workflowIds,
+			// Dropped by JSON serialization when undefined, so the server default applies.
+			commitMessage,
+		});
+	}
+
+	async applyProjectSelection(
+		projectId: string,
+		workflowIds: string[],
+		expectedSource?: PromotionExpectedSource,
+	) {
+		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply`, {
+			workflowIds,
+			// Dropped by JSON serialization when undefined, so the branch tip is applied.
+			expectedSource,
+		});
+	}
+
+	async continueApplyProjectSelection(
+		projectId: string,
+		workflowIds: string[],
+		expectedSource: PromotionExpectedSource,
+		confirmDestructiveChanges?: boolean,
+	) {
+		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply/continue`, {
+			workflowIds,
+			expectedSource,
+			confirmDestructiveChanges,
+		});
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────
@@ -437,27 +745,51 @@ export class N8nClient {
 
 	// ─── Packages (beta) ───────────────────────────────────────────
 
-	async exportPackage(fields: ExportPackageFields): Promise<Buffer> {
+	async exportPackage(fields: ExportPackageFields): Promise<ExportPackageResult> {
 		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
 		const body: {
 			workflowIds?: string[];
 			folderIds?: string[];
 			projectIds?: string[];
 			includeVariableValues?: boolean;
-			missingWorkflowDependencyPolicy?: string;
+			includeTags?: boolean;
+			dependencyPolicy?: string;
+			versionPolicy?: string;
+			credentialExportPolicy?: string;
+			includeArchivedWorkflows?: boolean;
 		} = {};
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
 		if (fields.projectIds?.length) body.projectIds = fields.projectIds;
 		// `undefined` is dropped by JSON serialization, so the API's default applies.
 		body.includeVariableValues = fields.includeVariableValues;
-		if (fields.missingWorkflowDependencyPolicy)
-			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
+		body.includeTags = fields.includeTags;
+		if (fields.dependencyPolicy) body.dependencyPolicy = fields.dependencyPolicy;
+		if (fields.versionPolicy) body.versionPolicy = fields.versionPolicy;
+		// Only sent when set, so an older server without this field in its schema never sees it.
+		if (fields.credentialExportPolicy) body.credentialExportPolicy = fields.credentialExportPolicy;
+		if (fields.includeArchivedWorkflows) body.includeArchivedWorkflows = true;
 
-		return await this.request<Buffer>('POST', '/n8n-packages/export', {
+		let counts: ExportPackageCounts | undefined;
+		const archive = await this.request<Buffer>('POST', '/n8n-packages/export', {
 			body,
 			responseType: 'binary',
+			// Older servers omit this header; counts then stays undefined.
+			onResponse: (response) => {
+				const header = response.headers.get('X-N8n-Export-Counts');
+				if (header) counts = this.parseExportCounts(header);
+			},
 		});
+
+		return { archive, counts };
+	}
+
+	private parseExportCounts(header: string): ExportPackageCounts | undefined {
+		try {
+			return JSON.parse(header) as ExportPackageCounts;
+		} catch {
+			return undefined;
+		}
 	}
 
 	async importPackage(
@@ -470,6 +802,31 @@ export class N8nClient {
 			if (typeof value === 'string' && value !== '') form.append(key, value);
 		}
 		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import', {
+			formData: form,
+		});
+	}
+
+	async importPackageSelection(
+		file: { buffer: Buffer; filename: string },
+		fields: ImportPackageSelectionFields,
+	): Promise<Record<string, unknown>> {
+		const form = new FormData();
+		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
+		const stringFields: Record<string, string | undefined> = {
+			selectedProjectId: fields.selectedProjectId,
+			workflowConflictPolicy: fields.workflowConflictPolicy,
+			workflowIdPolicy: fields.workflowIdPolicy,
+			overwriteDeletionPolicy: fields.overwriteDeletionPolicy,
+		};
+		for (const [key, value] of Object.entries(stringFields)) {
+			if (typeof value === 'string' && value !== '') form.append(key, value);
+		}
+		// The endpoint expects ID arrays encoded as JSON in multipart text fields.
+		form.append('selectedWorkflowIds', JSON.stringify(fields.selectedWorkflowIds));
+		if (fields.deletedWorkflowIds !== undefined) {
+			form.append('deletedWorkflowIds', JSON.stringify(fields.deletedWorkflowIds));
+		}
+		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import-selection', {
 			formData: form,
 		});
 	}

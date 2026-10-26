@@ -1,5 +1,10 @@
-import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
+import type {
+	HttpRequestClient,
+	HttpRequestClientOptions,
+	OutboundHttp,
+} from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { IHttpRequestOptions, MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
@@ -31,9 +36,10 @@ const mockOutboundHttp = (
 	response: { statusCode: number; body: unknown } = { statusCode: 200, body: {} },
 ) => {
 	const request = vi.fn().mockResolvedValue(response);
-	const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
+	const client = mock<HttpRequestClient>({ request });
+	const requests = vi.fn().mockReturnValue(client);
 	const outboundHttp = mock<OutboundHttp>({ requests });
-	return { outboundHttp, requests, request };
+	return { outboundHttp, requests, request, client };
 };
 
 /**
@@ -53,6 +59,7 @@ const sendThroughDestination = async (options: MessageEventBusDestinationWebhook
 		destination,
 		requests,
 		sentOptions: request.mock.calls[0][0] as IHttpRequestOptions,
+		connectionPool: (requests.mock.calls[0][0] as HttpRequestClientOptions).connectionPool,
 	};
 };
 
@@ -109,13 +116,109 @@ describe('MessageEventBusDestinationWebhook', () => {
 				url: 'https://example.com/webhook',
 			});
 
-			expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(requests).toHaveBeenCalledWith(
+				expect.objectContaining({ useDefaultSsrfPolicy: 'unsafe' }),
+			);
 			expect(sentOptions).toMatchObject({
 				url: 'https://example.com/webhook',
 				method: 'POST',
 				returnFullResponse: true,
 				json: true,
 			});
+		});
+
+		it('should apply Simplified Custom Auth credentials', async () => {
+			const { outboundHttp, request } = mockOutboundHttp();
+			const credentialDetails = { id: 'credential-id', name: 'API credential' };
+			const destination = new MessageEventBusDestinationWebhook(
+				mockEventBus,
+				{
+					__type: MessageEventBusDestinationTypeNames.webhook,
+					url: 'https://example.com/webhook',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpTemplatedCustomAuth',
+					credentials: { httpTemplatedCustomAuth: credentialDetails },
+				},
+				outboundHttp,
+			);
+			const credentialsHelper = mock<CredentialsHelper>();
+			const decrypted = {
+				template: JSON.stringify({ headers: { Authorization: 'Bearer {{api_key}}' } }),
+				placeholderValues: JSON.stringify({ api_key: 'secret' }),
+			};
+			credentialsHelper.getDecrypted.mockResolvedValue(decrypted);
+			credentialsHelper.authenticate.mockResolvedValue({
+				url: 'https://example.com/webhook',
+				headers: { Authorization: 'Bearer secret' },
+			});
+			destination.credentialsHelper = credentialsHelper;
+
+			await destination.receiveFromEventBus({
+				msg: createMessage(),
+				confirmCallback: vi.fn(),
+			} as any);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				expect.anything(),
+				credentialDetails,
+				'httpTemplatedCustomAuth',
+				'internal',
+				undefined,
+				false,
+				undefined,
+				{ actor: { kind: 'system', reason: 'log-streaming' } },
+			);
+			expect(credentialsHelper.authenticate).toHaveBeenCalledWith(
+				decrypted,
+				'httpTemplatedCustomAuth',
+				expect.objectContaining({ url: 'https://example.com/webhook' }),
+			);
+			expect(request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: 'Bearer secret' }),
+				}),
+			);
+		});
+
+		it('should not send when Simplified Custom Auth credentials cannot be resolved', async () => {
+			const { outboundHttp, request } = mockOutboundHttp();
+			const destination = new MessageEventBusDestinationWebhook(
+				mockEventBus,
+				{
+					__type: MessageEventBusDestinationTypeNames.webhook,
+					url: 'https://example.com/webhook',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpTemplatedCustomAuth',
+					credentials: {
+						httpTemplatedCustomAuth: { id: 'credential-id', name: 'API credential' },
+					},
+				},
+				outboundHttp,
+			);
+			const credentialsHelper = mock<CredentialsHelper>();
+			credentialsHelper.getDecrypted.mockRejectedValue(new Error('Invalid credential template'));
+			destination.credentialsHelper = credentialsHelper;
+
+			await expect(
+				destination.receiveFromEventBus({
+					msg: createMessage(),
+					confirmCallback: vi.fn(),
+				} as Parameters<MessageEventBusDestinationWebhook['receiveFromEventBus']>[0]),
+			).rejects.toThrow('Invalid credential template');
+			expect(request).not.toHaveBeenCalled();
+		});
+
+		it('should send without authentication when Simplified Custom Auth credentials are absent', async () => {
+			const { sentOptions } = await sendThroughDestination({
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpTemplatedCustomAuth',
+				credentials: {},
+			});
+
+			expect(sentOptions).not.toHaveProperty('auth');
+			expect(sentOptions.headers).not.toHaveProperty('Authorization');
 		});
 
 		it('should map the message payload to the JSON body', async () => {
@@ -156,24 +259,76 @@ describe('MessageEventBusDestinationWebhook', () => {
 		});
 	});
 
+	describe('connection reuse', () => {
+		const options: MessageEventBusDestinationWebhookOptions = {
+			__type: MessageEventBusDestinationTypeNames.webhook,
+			url: 'https://example.com/webhook',
+			options: { allowUnauthorizedCerts: true, socket: { maxSockets: 10 } },
+		};
+
+		it('should send every event through one pooled client', async () => {
+			const { outboundHttp, requests, request } = mockOutboundHttp();
+			const destination = new MessageEventBusDestinationWebhook(
+				mockEventBus,
+				options,
+				outboundHttp,
+			);
+
+			for (let i = 0; i < 3; i++) {
+				await destination.receiveFromEventBus({
+					msg: createMessage(),
+					confirmCallback: vi.fn(),
+				} as any);
+			}
+
+			expect(requests).toHaveBeenCalledTimes(1);
+			expect(request).toHaveBeenCalledTimes(3);
+		});
+
+		it('should leave connection settings off the request', async () => {
+			const { sentOptions } = await sendThroughDestination(options);
+
+			expect(sentOptions).not.toHaveProperty('agentOptions');
+			expect(sentOptions).not.toHaveProperty('proxy');
+			expect(sentOptions).not.toHaveProperty('skipSslCertificateValidation');
+		});
+
+		it('should close the client when the destination closes', async () => {
+			const { outboundHttp, client } = mockOutboundHttp();
+			const destination = new MessageEventBusDestinationWebhook(
+				mockEventBus,
+				options,
+				outboundHttp,
+			);
+			await destination.receiveFromEventBus({
+				msg: createMessage(),
+				confirmCallback: vi.fn(),
+			} as any);
+
+			await destination.close();
+
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('TLS option mapping', () => {
 		it('should map allowUnauthorizedCerts to skipSslCertificateValidation', async () => {
-			const { sentOptions } = await sendThroughDestination({
+			const { connectionPool } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 				options: { allowUnauthorizedCerts: true },
 			});
 
-			expect(sentOptions.skipSslCertificateValidation).toBe(true);
+			expect(connectionPool?.skipSslCertificateValidation).toBe(true);
 		});
 
 		it('should not set skipSslCertificateValidation when certs are validated', async () => {
-			const { sentOptions } = await sendThroughDestination({
+			const { connectionPool } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 			});
 
-			expect(sentOptions.skipSslCertificateValidation).toBeUndefined();
+			expect(connectionPool?.skipSslCertificateValidation).toBe(false);
 		});
 	});
 
@@ -210,13 +365,13 @@ describe('MessageEventBusDestinationWebhook', () => {
 
 	describe('agent option mapping', () => {
 		it('should map socket pool settings to agentOptions', async () => {
-			const { sentOptions } = await sendThroughDestination({
+			const { connectionPool } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 				options: { socket: { keepAlive: false, maxSockets: 10, maxFreeSockets: 2 } },
 			});
 
-			expect(sentOptions.agentOptions).toMatchObject({
+			expect(connectionPool?.agentOptions).toMatchObject({
 				keepAlive: false,
 				maxSockets: 10,
 				maxFreeSockets: 2,
@@ -232,11 +387,30 @@ describe('MessageEventBusDestinationWebhook', () => {
 
 			expect(sentOptions.timeout).toBe(1234);
 		});
+
+		it('should map the socket timeout to the agent idle timeout', async () => {
+			const { connectionPool } = await sendThroughDestination({
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+				options: { timeout: 1234 },
+			});
+
+			expect(connectionPool?.agentOptions?.timeout).toBe(1234);
+		});
+
+		it('should default the agent idle timeout', async () => {
+			const { connectionPool } = await sendThroughDestination({
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+			});
+
+			expect(connectionPool?.agentOptions?.timeout).toBe(LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS);
+		});
 	});
 
 	describe('proxy option mapping', () => {
 		it('should unwrap nested proxy from fixedCollection shape (options.proxy.proxy)', async () => {
-			const { sentOptions } = await sendThroughDestination({
+			const { connectionPool } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 				options: {
@@ -250,7 +424,7 @@ describe('MessageEventBusDestinationWebhook', () => {
 				},
 			});
 
-			expect(sentOptions.proxy).toEqual({
+			expect(connectionPool?.proxy).toEqual({
 				protocol: 'http',
 				host: '127.0.0.1',
 				port: 3128,
@@ -258,7 +432,7 @@ describe('MessageEventBusDestinationWebhook', () => {
 		});
 
 		it('should handle flat proxy from legacy DB data', async () => {
-			const { sentOptions } = await sendThroughDestination({
+			const { connectionPool } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 				options: {
@@ -270,7 +444,7 @@ describe('MessageEventBusDestinationWebhook', () => {
 				} as any,
 			});
 
-			expect(sentOptions.proxy).toEqual({
+			expect(connectionPool?.proxy).toEqual({
 				protocol: 'http',
 				host: '127.0.0.1',
 				port: 3128,
@@ -278,12 +452,12 @@ describe('MessageEventBusDestinationWebhook', () => {
 		});
 
 		it('should leave proxy unset when options.proxy is absent (env is used)', async () => {
-			const { sentOptions } = await sendThroughDestination({
+			const { connectionPool } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 			});
 
-			expect(sentOptions.proxy).toBeUndefined();
+			expect(connectionPool?.proxy).toBeUndefined();
 		});
 	});
 

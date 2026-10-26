@@ -4,25 +4,33 @@
 // reconstruct each seed workflow from its source at the build boundary. Transient:
 // traces retain ~14 days.
 
+import { REMOVED_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
 
-import type { ConversationSeed } from './conversation-seed';
+import type { ConversationSeed, SeedMessage } from './conversation-seed';
 import { parseSeedWorkflowCode } from './parse-seed-workflow';
 import { COMPILED_WORKFLOW_TRACE_RUN_NAME, DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 
 /** Default project that instance-ai conversations are traced to (same name in
- *  every workspace). Override per case with `seedThread.project` if it differs. */
+ *  every workspace). Override per case with `seed.project` if it differs. */
 const DEFAULT_SOURCE_PROJECT = 'instance-ai';
 
 // Reference the live tool-id so a rename there follows here (or breaks the import).
-// patch/submit-workflow were removed in #32545 but stay for older traces.
+// Trace tool names are resolved with `resolveTraceToolName` so older traces still match.
 const WORKFLOW_BUILD_TOOLS = new Set<string>([
 	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
-	'patch-workflow',
-	'submit-workflow',
+	REMOVED_BUILDER_TOOL_NAMES.PATCH_WORKFLOW,
+	REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
 ]);
+
+/** Resolves a former tool name in a trace run name and keeps an `[action]` suffix. */
+function resolveTraceToolName(name: string): string {
+	const bracket = name.indexOf('[');
+	if (bracket === -1) return resolveBuilderToolName(name);
+	return resolveBuilderToolName(name.slice(0, bracket)) + name.slice(bracket);
+}
 
 // Workspace tools (@n8n/agents) whose ops mutate file content we replay. The names
 // live here only; a contract test pins them — and the arg keys below — against the
@@ -32,7 +40,6 @@ const WORKSPACE_TOOL = {
 	WRITE: 'workspace_write_file',
 	APPEND: 'workspace_append_file',
 	STR_REPLACE: 'workspace_str_replace_file',
-	BATCH_STR_REPLACE: 'workspace_batch_str_replace_file',
 	MOVE: 'workspace_move_file',
 	COPY: 'workspace_copy_file',
 	DELETE: 'workspace_delete_file',
@@ -42,8 +49,7 @@ const WORKSPACE_TOOL = {
 export const REPLAYED_WORKSPACE_TOOL_ARGS: Record<string, readonly string[]> = {
 	[WORKSPACE_TOOL.WRITE]: ['path', 'content'],
 	[WORKSPACE_TOOL.APPEND]: ['path', 'content'],
-	[WORKSPACE_TOOL.STR_REPLACE]: ['path', 'old_str', 'new_str'],
-	[WORKSPACE_TOOL.BATCH_STR_REPLACE]: ['path', 'replacements'],
+	[WORKSPACE_TOOL.STR_REPLACE]: ['path', 'replacements'],
 	[WORKSPACE_TOOL.MOVE]: ['src', 'dest'],
 	[WORKSPACE_TOOL.COPY]: ['src', 'dest'],
 	[WORKSPACE_TOOL.DELETE]: ['path'],
@@ -53,6 +59,7 @@ export const REPLAYED_WORKSPACE_TOOL_ARGS: Record<string, readonly string[]> = {
  *  the contract test can prove every live filesystem tool is classified. */
 export const IGNORED_WORKSPACE_TOOLS: readonly string[] = [
 	'workspace_read_file',
+	'workspace_read_tool_result',
 	'workspace_list_files',
 	'workspace_file_stat',
 	'workspace_mkdir',
@@ -64,7 +71,7 @@ export const IGNORED_WORKSPACE_TOOLS: readonly string[] = [
 // enumerate them and find the one holding the thread; reads are read-only.
 //
 // Reads are also dual-tenant: during the US→EU migration a US-sourced case
-// carries `seedThread.endpoint` = the US host, while results always write to the
+// carries `seed.endpoint` = the US host, while results always write to the
 // home (EU) tenant elsewhere. `configFor` maps an endpoint → host + key via env.
 
 /** The langsmith SDK's default endpoint is the US tenant, so an unset
@@ -100,13 +107,13 @@ export function configFor(endpoint?: string): { apiUrl: string; apiKey: string }
 		const usKey = process.env.LANGSMITH_API_KEY_US ?? '';
 		if (!usKey) {
 			throw new Error(
-				`seedThread.endpoint "${endpoint}" is the secondary (US) tenant but LANGSMITH_API_KEY_US is not set — refusing to read it with the home key. Set LANGSMITH_API_KEY_US.`,
+				`seed.endpoint "${endpoint}" is the secondary (US) tenant but LANGSMITH_API_KEY_US is not set — refusing to read it with the home key. Set LANGSMITH_API_KEY_US.`,
 			);
 		}
 		return { apiUrl: usHost, apiKey: usKey };
 	}
 	throw new Error(
-		`seedThread.endpoint "${endpoint}" matches no configured LangSmith tenant (home: ${homeHost}; secondary: ${usHost}). Set LANGSMITH_ENDPOINT_US + LANGSMITH_API_KEY_US, or omit endpoint to use the home tenant.`,
+		`seed.endpoint "${endpoint}" matches no configured LangSmith tenant (home: ${homeHost}; secondary: ${usHost}). Set LANGSMITH_ENDPOINT_US + LANGSMITH_API_KEY_US, or omit endpoint to use the home tenant.`,
 	);
 }
 
@@ -231,7 +238,7 @@ function isSuspendArtifact(output: unknown): boolean {
 }
 
 /** A HITL request envelope: `{ payload: { requestId, … } }` — emitted by both the
- *  suspend and resume halves of ask-user / setup-card. Used (with the absence of
+ *  suspend and resume halves of workflow_builder_ask_user / setup-card. Used (with the absence of
  *  a pending id) to identify the suspend half to drop. */
 function isHitlRequestEnvelope(output: unknown): boolean {
 	return (
@@ -255,18 +262,21 @@ function redactDataTableRowPayload(value: unknown): Record<string, unknown> {
 	return out;
 }
 
-interface TextBlock {
+// Type aliases, not interfaces: seed content blocks are open by design
+// (`.passthrough()`), and an interface has no index signature so it isn't
+// assignable to that. Converting these back to interfaces breaks the build.
+type TextBlock = {
 	type: 'text';
 	text: string;
-}
-interface ToolCallBlock {
+};
+type ToolCallBlock = {
 	type: 'tool-call';
 	toolCallId: string;
 	toolName: string;
 	state: 'resolved';
 	input: unknown;
 	output: unknown;
-}
+};
 
 /**
  * Reconstruct a thread's seed + live turn. The workspace holding the thread is
@@ -318,7 +328,7 @@ async function discoverAndReconstruct(
 		}
 	}
 	throw new Error(
-		`Thread ${ref.threadId} not found in project "${project}" across ${String(workspaces.length)} workspace(s): ${tried.join(', ')}. The trace may have aged out (~14-day base retention), or the project name differs (set seedThread.project).`,
+		`Thread ${ref.threadId} not found in project "${project}" across ${String(workspaces.length)} workspace(s): ${tried.join(', ')}. The trace may have aged out (~14-day base retention), or the project name differs (set seed.project).`,
 	);
 }
 
@@ -409,6 +419,13 @@ async function reconstructWithClient(
 			messages,
 			workflows,
 			dataTables,
+			// A trace carries no agent artifacts yet; only authored seeds can seed one.
+			agents: [],
+			// Likewise no projects: a replayed thread ran in whatever project it ran in,
+			// and a seeded project is a fixture an author declares, not something a trace records.
+			projects: [],
+			// And no folders: a trace records which workflows ran, not where they sat.
+			folders: [],
 		},
 		liveTurn,
 		runCount: runs.length,
@@ -417,11 +434,7 @@ async function reconstructWithClient(
 }
 
 /** Rebuild the native message log for every run before the seed boundary. */
-function buildSeedMessages(
-	rootRuns: Run[],
-	toolRuns: Run[],
-	boundaryMs: number,
-): Array<Record<string, unknown>> {
+function buildSeedMessages(rootRuns: Run[], toolRuns: Run[], boundaryMs: number): SeedMessage[] {
 	const toolsByRoot = new Map<string, Run[]>();
 	for (const tool of toolRuns) {
 		const rootId = asString(metadata(tool).langsmith_root_run_id) ?? tool.trace_id ?? '';
@@ -431,7 +444,9 @@ function buildSeedMessages(
 	}
 
 	const emittedToolCallIds = new Set<string>();
-	const messages: Array<Record<string, unknown>> = [];
+	// Typed, so the compiler enforces the envelope on the machine-producer side
+	// while ConversationSeedSchema enforces it on hand-authored seeds.
+	const messages: SeedMessage[] = [];
 
 	for (const root of rootRuns) {
 		if (new Date(root.start_time ?? NaN).getTime() >= boundaryMs) break;
@@ -463,11 +478,12 @@ function buildSeedMessages(
 			emittedToolCallIds.add(toolCallId);
 			// Redact data-table row payloads: seeded messages are written to the eval
 			// instance + shown to the judge, so real (PII) rows must not ride along.
-			const isDataTable = tool.name.startsWith('data-tables');
+			const toolName = resolveTraceToolName(tool.name);
+			const isDataTable = toolName.split('[')[0] === DOMAIN_TOOL_IDS.DATA_TABLES;
 			content.push({
 				type: 'tool-call',
 				toolCallId,
-				toolName: tool.name,
+				toolName,
 				state: 'resolved',
 				input: isDataTable ? redactDataTableRowPayload(tool.inputs) : (tool.inputs ?? {}),
 				output: isDataTable ? redactDataTableRowPayload(tool.outputs) : (tool.outputs ?? {}),
@@ -508,20 +524,8 @@ function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 		return true;
 	}
 	if (tool.name === WORKSPACE_TOOL.STR_REPLACE) {
-		// The tool requires one exact, unique match; mirror it (first occurrence).
-		const path = asString(input.path);
-		const current = path !== undefined ? files.get(path) : undefined;
-		const oldStr = asString(input.old_str);
-		const newStr = asString(input.new_str);
-		if (path === undefined || current === undefined || !oldStr || newStr === undefined) return true;
-		if (!current.includes(oldStr)) return false;
-		files.set(path, current.replace(oldStr, newStr));
-		return true;
-	}
-	if (tool.name === WORKSPACE_TOOL.BATCH_STR_REPLACE) {
 		// The real tool is atomic — it validates every anchor up front and applies
-		// all or nothing (@n8n/ai-utilities TextEditorDocument.executeBatch). Mirror
-		// that, like single str-replace: any missing anchor → file untouched, diverged.
+		// all or nothing (@n8n/ai-utilities TextEditorDocument.executeBatch).
 		const path = asString(input.path);
 		const current = path !== undefined ? files.get(path) : undefined;
 		if (path === undefined || current === undefined) return true;
@@ -558,7 +562,7 @@ function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 
 /** Reconstruct the seed's workflows: the latest successful build per workflow id
  *  before the boundary, excluding any workflow deleted (and not rebuilt) before it.
- *  Post-#32545 the builder builds from a workspace file (`build-workflow {filePath}`,
+ *  Post-#32545 the builder builds from a workspace file (`workflow_builder_build_workflow {filePath}`,
  *  no inline code), so the source is that file replayed from the workspace ops; inline
  *  `code` and `get-as-code` are fallbacks. Only files an actual build references become
  *  workflows. */
@@ -628,12 +632,12 @@ function buildSeedWorkflows(
 			continue;
 		}
 
-		// A `workflows`-tool delete (traced as `workflows[delete]`) drops that id's prior
-		// reconstruction. Gated to the `workflows` tool so an unrelated delete-shaped input
+		// A `workflow_builder_workflows`-tool delete (traced as `workflow_builder_workflows[delete]`, or `workflows[delete]` in older traces) drops that id's prior
+		// reconstruction. Gated to the `workflow_builder_workflows` tool so an unrelated delete-shaped input
 		// can't evict a seed workflow, and to success === true so a suspended (HITL) or denied
 		// delete keeps it. Chronological loop ⇒ a later rebuild re-adds it.
 		if (
-			tool.name.split('[')[0] === DOMAIN_TOOL_IDS.WORKFLOWS &&
+			resolveTraceToolName(tool.name).split('[')[0] === DOMAIN_TOOL_IDS.WORKFLOWS &&
 			isRecord(tool.inputs) &&
 			tool.inputs.action === 'delete'
 		) {
@@ -663,7 +667,7 @@ function buildSeedWorkflows(
 		if (filePath === undefined && inlineCode === undefined) continue;
 		// A build happened for this id (even if the tool's name isn't recognised).
 		buildSignalIds.add(workflowId);
-		if (!WORKFLOW_BUILD_TOOLS.has(tool.name)) continue;
+		if (!WORKFLOW_BUILD_TOOLS.has(resolveTraceToolName(tool.name))) continue;
 		// Current builder: the workspace file's content at this build. Legacy: inline code.
 		const code = filePath !== undefined ? (files.get(filePath) ?? '') : (inlineCode ?? '');
 		const diverged = filePath !== undefined ? divergedPaths.has(filePath) : false;
@@ -850,7 +854,7 @@ function tryParseSeedWorkflow(code: string): { workflow: ParsedSeedWorkflow } | 
 			workflow: {
 				name: workflow.name,
 				nodes: (workflow.nodes ?? []) as unknown as Array<Record<string, unknown>>,
-				connections: (workflow.connections ?? {}) as Record<string, unknown>,
+				connections: workflow.connections ?? {},
 			},
 		};
 	} catch (error) {

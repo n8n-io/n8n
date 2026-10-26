@@ -2,7 +2,7 @@ import type { AuthenticatedRequest, Project } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import { SourceControlScopedService } from '../source-control-scoped.service';
@@ -52,6 +52,21 @@ describe('SourceControlScopedService', () => {
 			);
 
 			await expect(service.ensureIsAllowedToGetStatus(req)).rejects.toThrow(ForbiddenError);
+		});
+	});
+
+	describe('getCredentialsInAdminProjectsFromContextFilter', () => {
+		const context = mock<SourceControlContext>({
+			user: req.user,
+			hasAccessToAllProjects: () => true,
+		});
+
+		it('excludes instance credentials regardless of the instance credential scope', () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			expect(service.getCredentialsInAdminProjectsFromContextFilter(context)).toEqual({
+				usageScope: 'project',
+			});
 		});
 	});
 });

@@ -1,14 +1,22 @@
 import type {
 	AgentIntegrationConfig,
+	AgentSseEvent,
 	ChatHubMessageStatus,
 	InstanceAiEvent,
 	PushMessage,
+	PushPayload,
 	WorkerStatus,
 	WorkflowPublicationStatusMessage,
 } from '@n8n/api-types';
-import type { IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
+import type { IWorkflowBase, RelatedAgentRun, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
+	'relay-agent-queued-chat': {
+		queueId: string;
+		sequence: number;
+		// An omitted event is a relay heartbeat. Null closes the stream.
+		event?: AgentSseEvent | null;
+	};
 	// #region Lifecycle
 
 	'reload-license': never;
@@ -33,22 +41,34 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	// # region OAuth server
+	'reload-oauth-signing-keys': never;
+	// #endregion
+
 	'reload-source-control-config': never;
 
 	'reload-mcp-registry': never;
 
 	'reload-otel-config': never;
+	'reload-instance-ai-settings': never;
+	'self-healing-failure': {
+		workflowId: string;
+		executionId: string;
+	};
+	'reload-agents-settings': never;
 
 	// #region Community packages
 
 	'community-package-install': {
 		packageName: string;
 		packageVersion: string;
+		checksum?: string;
 	};
 
 	'community-package-update': {
 		packageName: string;
 		packageVersion: string;
+		checksum?: string;
 	};
 
 	'community-package-uninstall': {
@@ -123,6 +143,60 @@ export type PubSubCommandMap = {
 		asBinary: boolean;
 	};
 
+	'relay-agent-execution-update': {
+		data: PushPayload<'agentExecutionUpdated'>;
+		userIds: string[];
+	};
+
+	'cancel-agent-chat-execution': {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		executionId: string;
+		userId: string;
+		/** Older mains read only `productionN8nChat`, so senders set both. */
+		surface?: 'preview' | 'n8n-chat' | 'system';
+		productionN8nChat?: boolean;
+	};
+
+	'cancel-agent-chat-foreground': PubSubCommandMap['cancel-agent-chat-execution'];
+
+	'relay-agent-message-queue-update': {
+		data: PushPayload<'agentMessageQueueUpdated'>;
+		userIds: string[];
+	};
+
+	'relay-agent-background-tasks-update': {
+		data: PushPayload<'agentBackgroundTasksUpdated'>;
+		userIds: string[];
+	};
+
+	'relay-agent-update': {
+		data: PushPayload<'agentUpdated'>;
+		userIds: string[];
+		excludePushRef?: string;
+	};
+
+	/** Ask mains to wake the agent run a finished sub-execution was parked on. */
+	'resume-agent-workflow-tool': {
+		agentRun: RelatedAgentRun;
+		status: string;
+	};
+
+	/**
+	 * Ask mains to abort a background job's live run. The job row is already
+	 * claimed as cancelled by the publisher; only the main holding the
+	 * in-process abort handle acts on this.
+	 */
+	'cancel-agent-background-job': {
+		jobId: string;
+	};
+
+	/** Ask main instances to deliver background job results to the parent thread. */
+	'wake-agent-background-job': {
+		threadId: string;
+	};
+
 	'clear-test-webhooks': {
 		webhookKey: string;
 		workflowEntity: IWorkflowBase;
@@ -184,6 +258,7 @@ export type PubSubCommandMap = {
 	 */
 	'relay-instance-ai-task-control': {
 		threadId: string;
+		userId?: string;
 		taskId?: string;
 		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
 		correction?: string;
@@ -267,6 +342,44 @@ export type PubSubCommandMap = {
 	};
 
 	/**
+	 * Ask the current leader to start or stop a leader-only channel runtime
+	 * (e.g. Telegram in polling mode) on behalf of the main that handled the
+	 * user's request. See `LeaderChannelRelayService` for the mechanism.
+	 *
+	 * Broadcast to every main rather than targeted at the leader's host: the
+	 * leader key can be stale by the time we read it, and leadership can change
+	 * between publish and receive. Followers ignore this command, so whoever
+	 * holds leadership when it lands is the one that acts.
+	 *
+	 * `replyTo` carries the requester's host ID because the subscriber emits
+	 * only the payload — `senderId` is stripped before handlers see the message.
+	 *
+	 * A connect carries the whole config: it runs before the config is persisted,
+	 * so the leader cannot read it back. A teardown only needs the connection key,
+	 * which every caller already holds.
+	 */
+	'agent-chat-leader-channel-request': {
+		requestId: string;
+		replyTo: string;
+		agentId: string;
+	} & (
+		| { action: 'connect'; integration: AgentIntegrationConfig }
+		| { action: 'disconnect'; integration: { type: string; credentialId: string } }
+	);
+
+	/**
+	 * Acknowledge an `agent-chat-leader-channel-request`, targeted at the
+	 * requester's host ID. Published by the leader once the operation has fully
+	 * completed, so the requesting main can only report success after the
+	 * leader's startup or teardown finished.
+	 */
+	'agent-chat-leader-channel-result': {
+		requestId: string;
+		ok: boolean;
+		error?: string;
+	};
+
+	/**
 	 * Keep per-main thread subscription state in sync across the cluster. The
 	 * originating main persists the subscription change before publishing; peers
 	 * update their local in-memory subscription state so load-balanced follow-up
@@ -324,6 +437,16 @@ export type PubSubCommandMap = {
 	'redaction-floor-changed': never;
 
 	// #endregion
+
+	// #region Policies
+
+	/**
+	 * Reload the type availability policy snapshot. Published after a policy write commits.
+	 * The writing process reloads its own snapshot, so this is not a self-send command.
+	 */
+	'reload-type-availability-policies': never;
+
+	// #endregion
 };
 
 export type PubSubWorkerResponseMap = {
@@ -332,4 +455,10 @@ export type PubSubWorkerResponseMap = {
 	};
 };
 
-export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap;
+/** Emitted on this process only, never published. */
+export type PubSubLocalEventMap = {
+	/** The subscriber is back on its channels. Commands sent while it was away are lost. */
+	'pubsub-reconnected': never;
+};
+
+export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap & PubSubLocalEventMap;

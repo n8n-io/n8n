@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, ref, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nInput, N8nPopover, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nInput, N8nPopover, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import {
+	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	type ToolConnectionCredentialAdapter,
 	type ToolConnectionItem,
 	type ToolCredentialRef,
 } from './types';
@@ -13,9 +16,14 @@ const props = withDefaults(
 		item: ToolConnectionItem;
 		credentials: ToolCredentialRef[];
 		connectVariant?: 'solid' | 'outline';
+		teleported?: boolean;
+		adapter?: ToolConnectionCredentialAdapter | null;
+		showConnectedIcon?: boolean;
 	}>(),
 	{
 		connectVariant: 'solid',
+		teleported: true,
+		showConnectedIcon: true,
 	},
 );
 
@@ -28,27 +36,77 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const adapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
+const injectedAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
+const adapter = computed(() => props.adapter ?? injectedAdapter);
 
 const isOpen = ref(false);
 const searchQuery = ref('');
 const searchInputRef = ref<InstanceType<typeof N8nInput> | null>(null);
 
-const selectedCredentialIds = computed(() =>
-	props.credentials.map((c) => c.credentialId).filter((id): id is string => Boolean(id)),
+function open(): void {
+	if (props.item.status !== 'connecting') isOpen.value = true;
+}
+
+defineExpose({ open });
+
+// Gateway credits have no stored credential, so they get their own row; the
+// lists below cover the own credential options only.
+const aiGatewayRef = computed(() => props.credentials.find((ref) => ref.aiGateway));
+const ownRefs = computed(() => props.credentials.filter((ref) => !ref.aiGateway));
+const isAiGatewayOnly = computed(
+	() => aiGatewayRef.value !== undefined && ownRefs.value.length === 0,
+);
+const isAiGatewaySelected = computed(
+	() => aiGatewayRef.value?.credentialId === AI_GATEWAY_MANAGED_TAG,
+);
+const aiGatewayLabel = i18n.baseText('aiGateway.credentialMode.n8nConnect.title');
+const showAiGatewayRow = computed(
+	() =>
+		aiGatewayRef.value !== undefined &&
+		aiGatewayLabel.toLowerCase().includes(searchQuery.value.trim().toLowerCase()),
 );
 
-const isConnected = computed(() => selectedCredentialIds.value.length > 0);
+function pickAiGateway(): void {
+	if (!aiGatewayRef.value) return;
+	emit('select-credential', props.item, aiGatewayRef.value.authType, AI_GATEWAY_MANAGED_TAG);
+	isOpen.value = false;
+}
+
+const selectedCredentialIds = computed(() =>
+	ownRefs.value.map((c) => c.credentialId).filter((id): id is string => Boolean(id)),
+);
 
 const availableCredentials = computed(() => {
-	if (!adapter) return [];
-	return props.credentials.flatMap((cred) =>
-		adapter.getCredentialsByType(cred.authType).map((c) => ({
+	const credentialAdapter = adapter.value;
+	if (!credentialAdapter) return [];
+	return ownRefs.value.flatMap((cred) =>
+		credentialAdapter.getCredentialsByType(cred.authType).map((c) => ({
 			id: c.id,
 			name: c.name,
 			authType: cred.authType,
+			authDisplayName: cred.displayName,
 		})),
 	);
+});
+
+const selectedCredentialName = computed(() => {
+	for (const credentialRef of ownRefs.value) {
+		if (!credentialRef.credentialId) continue;
+		const credential = adapter.value
+			?.getCredentialsByType(credentialRef.authType)
+			.find(({ id }) => id === credentialRef.credentialId);
+		if (credential) return credential.name;
+	}
+	return undefined;
+});
+
+const statusLabel = computed(() => {
+	if (isAiGatewaySelected.value) return aiGatewayLabel;
+	if (selectedCredentialName.value) return selectedCredentialName.value;
+	if (props.item.status === 'connected') return i18n.baseText('tools.connection.action.connected');
+	if (props.item.status === 'disconnected')
+		return i18n.baseText('tools.connection.action.reconnect');
+	return '';
 });
 
 const filteredCredentials = computed(() => {
@@ -74,48 +132,114 @@ function pickCredential(authType: string, credentialId: string) {
 	isOpen.value = false;
 }
 
-const createAuthType = computed(
-	() => props.credentials.find((c) => c.required)?.authType ?? props.credentials[0]?.authType,
+const creatableCredentials = computed(() =>
+	ownRefs.value.filter(
+		(credential, index, credentials) =>
+			credentials.findIndex(({ authType }) => authType === credential.authType) === index,
+	),
 );
 
-function createCredential(source: 'direct' | 'dropdown') {
-	if (!createAuthType.value) return;
+function createCredential(authType: string, source: 'direct' | 'dropdown') {
+	if (!authType) return;
 	if (source === 'direct') {
 		emit('first-credential-connect', props.item);
 	} else {
 		emit('new-credential-connect', props.item);
 	}
-	adapter?.openNewCredential(createAuthType.value);
+	const credentialTypes =
+		creatableCredentials.value.length > 1
+			? creatableCredentials.value.map((credential) => credential.authType)
+			: undefined;
+
+	adapter.value?.openNewCredential(authType, props.item, credentialTypes);
 	isOpen.value = false;
 }
 
 function editCredential(credentialId: string) {
-	adapter?.openExistingCredential(credentialId);
+	adapter.value?.openExistingCredential(credentialId);
 	isOpen.value = false;
 }
 </script>
 
 <template>
+	<span
+		v-if="item.status === 'connecting'"
+		:class="$style.statusMarker"
+		data-test-id="tool-credential-picker-trigger-connecting"
+	>
+		<N8nSpinner size="small" />
+		{{ i18n.baseText('tools.connection.action.connecting') }}
+	</span>
+	<span
+		v-else-if="isAiGatewayOnly && item.status === 'connected'"
+		:class="[$style.statusPill, $style.aiGatewayStatus]"
+		data-test-id="tool-credential-picker-ai-gateway-connected"
+	>
+		<N8nIcon
+			v-if="showConnectedIcon"
+			icon="check"
+			:size="12"
+			:class="$style.statusIconConnected"
+			aria-hidden="true"
+		/>
+		<span :class="$style.statusLabel">{{ aiGatewayLabel }}</span>
+	</span>
+	<N8nButton
+		v-else-if="isAiGatewayOnly && !hasToolConnection(item.status)"
+		:variant="connectVariant"
+		size="small"
+		data-test-id="tool-credential-picker-ai-gateway"
+		@click="pickAiGateway"
+	>
+		<span>{{ i18n.baseText('tools.connection.action.connect') }}</span>
+	</N8nButton>
 	<N8nPopover
-		v-if="isConnected || availableCredentials.length > 0"
+		v-else-if="
+			hasToolConnection(item.status) ||
+			aiGatewayRef !== undefined ||
+			availableCredentials.length > 0 ||
+			creatableCredentials.length > 1
+		"
 		v-model:open="isOpen"
 		side="bottom"
 		align="end"
 		:side-offset="6"
 		:width="'260px'"
-		:teleported="false"
+		:teleported="teleported"
 		:z-index="2000"
 		data-test-id="tool-credential-picker"
 	>
 		<template #trigger>
-			<button
-				v-if="isConnected"
-				type="button"
-				:class="$style.connectedPill"
-				data-test-id="tool-credential-picker-trigger-connected"
+			<N8nButton
+				v-if="item.status === 'disconnected'"
+				variant="outline"
+				size="small"
+				:class="$style.disconnectedTrigger"
+				data-test-id="tool-credential-picker-trigger-disconnected"
 			>
-				<span :class="$style.statusDot" aria-hidden="true" />
-				<span>{{ i18n.baseText('tools.connection.action.connected') }}</span>
+				<N8nIcon
+					icon="circle-x"
+					:size="16"
+					:class="$style.statusIconDisconnected"
+					aria-hidden="true"
+				/>
+				<span :class="$style.statusLabel" :title="statusLabel">{{ statusLabel }}</span>
+				<N8nIcon icon="chevron-down" :size="12" />
+			</N8nButton>
+			<button
+				v-else-if="hasToolConnection(item.status)"
+				type="button"
+				:class="$style.statusPill"
+				:data-test-id="`tool-credential-picker-trigger-${item.status}`"
+			>
+				<N8nIcon
+					v-if="showConnectedIcon"
+					icon="check"
+					:size="12"
+					:class="$style.statusIconConnected"
+					aria-hidden="true"
+				/>
+				<span :class="$style.statusLabel" :title="statusLabel">{{ statusLabel }}</span>
 				<N8nIcon icon="chevron-down" :size="12" />
 			</button>
 			<N8nButton
@@ -145,7 +269,23 @@ function editCredential(credentialId: string) {
 				</N8nInput>
 			</div>
 			<ul :class="$style.list" data-test-id="tool-credential-picker-list">
-				<li v-if="filteredCredentials.length === 0" :class="$style.emptyRow">
+				<li
+					v-if="showAiGatewayRow"
+					:class="$style.row"
+					data-test-id="tool-credential-picker-ai-gateway-row"
+					@click="pickAiGateway"
+				>
+					<span :class="$style.aiGatewayRowLabel">
+						<N8nIcon icon="wallet" :size="14" aria-hidden="true" />
+						{{ aiGatewayLabel }}
+					</span>
+					<span :class="$style.rowActions">
+						<span :class="$style.rowCheck" aria-hidden="true">
+							<N8nIcon v-if="isAiGatewaySelected" icon="check" :size="14" />
+						</span>
+					</span>
+				</li>
+				<li v-if="filteredCredentials.length === 0 && !showAiGatewayRow" :class="$style.emptyRow">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('tools.connection.credentialPicker.noResults') }}
 					</N8nText>
@@ -159,7 +299,15 @@ function editCredential(credentialId: string) {
 					:data-auth-type="cred.authType"
 					@click="pickCredential(cred.authType, cred.id)"
 				>
-					<span :class="$style.rowLabel">{{ cred.name }}</span>
+					<span :class="$style.rowLabel">
+						{{ cred.name }}
+						<small
+							v-if="creatableCredentials.length > 1 && cred.authDisplayName"
+							:class="$style.authLabel"
+						>
+							{{ cred.authDisplayName }}
+						</small>
+					</span>
 					<span :class="$style.rowActions">
 						<span :class="$style.rowCheck" aria-hidden="true">
 							<N8nIcon v-if="selectedCredentialIds.includes(cred.id)" icon="check" :size="14" />
@@ -178,11 +326,11 @@ function editCredential(credentialId: string) {
 				</li>
 			</ul>
 			<button
-				v-if="createAuthType"
+				v-if="creatableCredentials[0]"
 				type="button"
 				:class="$style.createRow"
 				data-test-id="tool-credential-picker-create"
-				@click="createCredential('dropdown')"
+				@click="createCredential(creatableCredentials[0].authType, 'dropdown')"
 			>
 				<N8nIcon icon="plus" :size="14" />
 				<span>{{ i18n.baseText('tools.connection.credentialPicker.create') }}</span>
@@ -194,7 +342,7 @@ function editCredential(credentialId: string) {
 		:variant="connectVariant"
 		size="small"
 		data-test-id="tool-credential-picker-trigger-connect"
-		@click="createCredential('direct')"
+		@click="createCredential(creatableCredentials[0]?.authType ?? '', 'direct')"
 	>
 		<span>{{ i18n.baseText('tools.connection.action.connect') }}</span>
 	</N8nButton>
@@ -205,25 +353,53 @@ function editCredential(credentialId: string) {
 	margin-left: var(--spacing--4xs);
 }
 
-.connectedPill {
+.statusMarker,
+.statusPill {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	color: var(--color--text--tint-1);
+	gap: var(--spacing--4xs);
+	min-height: var(--height--xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);
-	background: none;
-	border: 0;
-	padding: var(--spacing--4xs) var(--spacing--3xs);
-	cursor: pointer;
 	white-space: nowrap;
 }
 
-.statusDot {
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	background: var(--color--success);
+.statusMarker {
+	border: var(--border-width) dashed var(--border-color);
+	border-radius: var(--radius--3xs);
+}
+
+.statusPill {
+	background: none;
+	border: 0;
+	cursor: pointer;
+	max-width: 180px;
+}
+
+.disconnectedTrigger {
+	max-width: 180px;
+	white-space: nowrap;
+}
+
+.statusLabel {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.statusIconConnected,
+.statusIconDisconnected {
 	flex-shrink: 0;
+}
+
+.statusIconConnected {
+	color: var(--color--success);
+}
+
+.statusIconDisconnected {
+	color: var(--color--danger);
 }
 
 .searchWrapper {
@@ -254,7 +430,7 @@ function editCredential(credentialId: string) {
 	transition: background-color 80ms ease;
 
 	&:hover {
-		background: var(--color--background--light-2);
+		background: var(--color--background--light-1);
 
 		.rowEdit {
 			opacity: 1;
@@ -264,10 +440,27 @@ function editCredential(credentialId: string) {
 	}
 }
 
+.aiGatewayStatus {
+	cursor: default;
+}
+
+.aiGatewayRowLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
 .rowLabel {
+	display: flex;
+	flex-direction: column;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.authLabel {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--3xs);
 }
 
 .rowActions {
@@ -321,7 +514,7 @@ function editCredential(credentialId: string) {
 	text-align: left;
 
 	&:hover {
-		background: var(--color--background--light-2);
+		background: var(--color--background--light-1);
 	}
 }
 </style>

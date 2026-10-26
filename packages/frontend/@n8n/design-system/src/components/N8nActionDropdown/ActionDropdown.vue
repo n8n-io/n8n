@@ -2,37 +2,20 @@
 import { computed, getCurrentInstance, ref, useAttrs, useCssModule } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import type { ActionDropdownItem, IconSize, ButtonSize } from '../../types';
+import type { ActionDropdownItem } from '../../types';
 import N8nBadge from '../N8nBadge';
 import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
-import { type IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
+import type { ActionDropdownProps } from './ActionDropdown.types';
 
 const { t } = useI18n();
 
-const TRIGGER = ['click', 'hover'] as const;
-
 defineOptions({ inheritAttrs: false });
 
-interface ActionDropdownProps {
-	items: Array<ActionDropdownItem<T>>;
-	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
-	activatorIcon?: IconName;
-	activatorSize?: ButtonSize;
-	iconSize?: IconSize;
-	trigger?: (typeof TRIGGER)[number];
-	teleported?: boolean;
-	disabled?: boolean;
-	extraPopperClass?: string;
-	maxHeight?: string | number;
-	width?: string;
-	modal?: boolean;
-}
-
-const props = withDefaults(defineProps<ActionDropdownProps>(), {
+const props = withDefaults(defineProps<ActionDropdownProps<T>>(), {
 	placement: 'bottom',
 	activatorIcon: 'ellipsis',
 	activatorSize: 'medium',
@@ -42,6 +25,7 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	disabled: false,
 	maxHeight: '',
 	modal: true,
+	suppressCloseAutoFocus: false,
 });
 
 const $style = useCssModule();
@@ -65,17 +49,22 @@ const getItemTestId = (id: T): string => {
 	return `action-${id}`;
 };
 
+const toMenuItem = (
+	item: ActionDropdownItem<T>,
+): DropdownMenuItemProps<T, ActionDropdownItem<T>> => ({
+	id: item.id,
+	testId: item.testId ?? getItemTestId(item.id),
+	label: item.label,
+	icon: item.icon ? { type: 'icon' as const, value: item.icon } : undefined,
+	disabled: item.disabled,
+	divided: item.divided,
+	class: getItemClasses(item),
+	data: item,
+	children: item.children?.map(toMenuItem),
+});
+
 const items = computed((): Array<DropdownMenuItemProps<T, ActionDropdownItem<T>>> => {
-	return props.items.map((item) => ({
-		id: item.id,
-		testId: item.testId ?? getItemTestId(item.id),
-		label: item.label,
-		icon: item.icon ? { type: 'icon' as const, value: item.icon } : undefined,
-		disabled: item.disabled,
-		divided: item.divided,
-		class: getItemClasses(item),
-		data: item,
-	}));
+	return props.items.map(toMenuItem);
 });
 
 const emit = defineEmits<{
@@ -99,6 +88,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 	return {
 		[$style.itemContainer]: true,
 		[$style.disabled]: !!item.disabled,
+		[$style.destructive]: item.variant === 'destructive',
 		[$style.hasCustomStyling]: item.customClass !== undefined,
 		...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
 	};
@@ -121,6 +111,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 			:disabled="disabled"
 			:teleported="teleported"
 			:modal="modal"
+			:suppress-close-auto-focus="suppressCloseAutoFocus"
 			:extra-popper-class="`${extraPopperClass ?? ''}`"
 			:max-height="maxHeight"
 			:width="width"
@@ -134,6 +125,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 					variant="ghost"
 					:class="$style.activator"
 					:size="activatorSize"
+					:icon-size="activatorIconSize"
 					:icon="activatorIcon"
 					:disabled="disabled"
 					:aria-label="t('actionDropdown.activator')"
@@ -151,7 +143,11 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 			<template #item-label="slotProps">
 				<span :class="[slotProps.ui.class, $style.label]">
 					<slot name="menuItem" v-bind="slotProps.item.data as ActionDropdownItem<T>">
-						{{ slotProps.item.data?.label ?? slotProps.item.label }}
+						<span v-if="slotProps.item.data?.description" :class="$style.withDescription">
+							{{ slotProps.item.data.label }}
+							<span :class="$style.description">{{ slotProps.item.data.description }}</span>
+						</span>
+						<template v-else>{{ slotProps.item.data?.label ?? slotProps.item.label }}</template>
 					</slot>
 				</span>
 			</template>
@@ -168,7 +164,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 						:class="{ [$style.clickableBadge]: !!slotProps.item.data?.disabled }"
 						@click.stop="slotProps.item.data?.disabled && onBadgeClick(slotProps.item.id)"
 					>
-						<N8nBadge theme="primary" size="xsmall" v-bind="slotProps.item.data.badgeProps">
+						<N8nBadge variant="primary" size="xsmall" v-bind="slotProps.item.data.badgeProps">
 							{{ slotProps.item.data.badge }}
 						</N8nBadge>
 					</span>
@@ -200,7 +196,9 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 .itemContainer {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--sm);
+	/* Matches the base N8nDropdownMenu item gap so icon-to-label spacing is
+	 * consistent across every menu in the app. */
+	gap: var(--spacing--2xs);
 	justify-content: space-between;
 	font-size: var(--font-size--2xs);
 	line-height: 18px;
@@ -214,6 +212,19 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 
 	:global([data-disabled]) & {
 		color: inherit;
+	}
+}
+
+/* Destructive items (delete, revoke, ...) turn danger-red when highlighted.
+ * The icon and label both inherit the item color, so one rule covers them.
+ * The token adapts to light and dark themes. Do not use :hover. The pointer
+ * stays over the previous row when arrow keys move the highlight. */
+.destructive {
+	&:not([data-disabled]) {
+		&[data-highlighted],
+		&[aria-selected='true'] {
+			color: var(--color--danger);
+		}
 	}
 }
 
@@ -231,6 +242,18 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 .label {
 	flex-grow: 1;
 	flex-shrink: 1;
+}
+
+.withDescription {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	white-space: normal;
+}
+
+.description {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--3xs);
 }
 
 .checkIcon {

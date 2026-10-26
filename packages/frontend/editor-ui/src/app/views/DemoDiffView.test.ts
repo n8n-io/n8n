@@ -77,6 +77,9 @@ vi.mock('@/features/workflows/canvas/composables/useCanvasMapping', () => ({
 
 // Import after mocks
 import DemoDiffView from './DemoDiffView.vue';
+import { setActivePinia } from 'pinia';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 
 // Capture props from WorkflowDiffView
 let capturedTidyUpProp: boolean | undefined = undefined;
@@ -343,6 +346,60 @@ describe('DemoDiffView', () => {
 					}),
 				);
 			}
+
+			await vi.waitFor(() => {
+				expect(getByTestId('workflow-diff-view')).toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('origin filtering', () => {
+		const workflow = { id: 'wf', name: 'Workflow', nodes: [], connections: {} };
+
+		function setAllowedOrigins(origins: string[]) {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			useSettingsStore().setSettings({
+				...defaultSettings,
+				security: {
+					blockFileAccessToN8nFiles: false,
+					postMessageAllowedOrigins: origins,
+				},
+			});
+		}
+
+		it('should ignore openDiff from an origin outside the allowlist', async () => {
+			setAllowedOrigins(['https://trusted.example']);
+			const { queryByTestId } = renderComponent();
+
+			messageHandler?.(
+				new MessageEvent('message', {
+					data: JSON.stringify({
+						command: 'openDiff',
+						oldWorkflow: workflow,
+						newWorkflow: workflow,
+					}),
+					origin: 'https://untrusted.example',
+				}),
+			);
+
+			await new Promise((r) => setTimeout(r, 50));
+			expect(queryByTestId('workflow-diff-view')).not.toBeInTheDocument();
+		});
+
+		it('should accept openDiff from an allowed origin', async () => {
+			setAllowedOrigins(['https://trusted.example']);
+			const { getByTestId } = renderComponent();
+
+			messageHandler?.(
+				new MessageEvent('message', {
+					data: JSON.stringify({
+						command: 'openDiff',
+						oldWorkflow: workflow,
+						newWorkflow: workflow,
+					}),
+					origin: 'https://trusted.example',
+				}),
+			);
 
 			await vi.waitFor(() => {
 				expect(getByTestId('workflow-diff-view')).toBeInTheDocument();

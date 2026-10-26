@@ -1,0 +1,24 @@
+[
+	{
+		"pkg": "packages/frontend/editor-ui",
+		"key": "(linted)",
+		"before": "ignored",
+		"after": "linted",
+		"reason": "editor-ui test files return to ESLint: the oxlint ignorePatterns no longer leak into the ESLint config"
+	},
+	{
+		"pkg": "packages/frontend/editor-ui",
+		"rule": "n8n-local-rules/no-interpolation-in-regular-string",
+		"reason": "off for test files: a Vue stub template keeps ${...} uninterpolated in a plain string"
+	},
+	{
+		"pkg": "packages/frontend/editor-ui",
+		"rule": "n8n-local-rules/no-unneeded-backticks",
+		"reason": "off for test files: backticks inside a Vue stub template are Vue syntax"
+	},
+	{
+		"pkg": "packages/frontend/editor-ui",
+		"rule": "n8n-local-rules/no-uncaught-json-parse",
+		"reason": "off for test files: a throw on self-declared fixtures is the signal the test wants"
+	}
+]

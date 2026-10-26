@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton, N8nScrollArea, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useClipboard } from '@n8n/composables/useClipboard';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type {
 	AgentIconOrEmoji,
 	ChatHubSendMessageRequest,
@@ -13,13 +13,13 @@ import type {
 	ChatSessionId,
 } from '@n8n/api-types';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { flattenModel } from '@/features/ai/chatHub/chat.utils';
 import { useChatStore } from '../chat.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useChatSession } from '../composables/useChatSession';
-import { useFileDrop } from '../composables/useFileDrop';
+import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
 import ChatMessage from './ChatMessage.vue';
 import ChatPrompt from './ChatPrompt.vue';
 import ChatGreetings from './ChatGreetings.vue';
@@ -389,7 +389,7 @@ defineExpose({
 				<div :class="$style.promptContainer">
 					<N8nIconButton
 						v-if="!arrivedState.bottom && !isNewSession"
-						variant="subtle"
+						variant="outline"
 						icon="arrow-down"
 						:class="$style.scrollToBottomButton"
 						:title="i18n.baseText('chatHub.chat.scrollToBottom')"
@@ -475,7 +475,7 @@ defineExpose({
 	display: inline-block;
 	color: var(--color--secondary);
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	background-color: var(--color--secondary--tint-2);
 	padding: var(--spacing--5xs) var(--spacing--4xs);
 	border-radius: 16px;

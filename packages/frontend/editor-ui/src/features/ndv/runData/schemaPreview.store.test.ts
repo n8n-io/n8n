@@ -4,11 +4,11 @@ import * as schemaPreviewApi from './schemaPreview.api';
 import type { JSONSchema7 } from 'json-schema';
 import { mock } from 'vitest-mock-extended';
 import type { PushPayload } from '@n8n/api-types';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { INode } from 'n8n-workflow';
 
 vi.mock('./schemaPreview.api');
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {

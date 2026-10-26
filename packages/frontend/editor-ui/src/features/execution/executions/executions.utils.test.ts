@@ -21,6 +21,7 @@ import type {
 	Workflow,
 	ExecutionSummary,
 } from 'n8n-workflow';
+import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { type INodeUi, type IWorkflowDb } from '@/Interface';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -61,11 +62,6 @@ vi.mock('@n8n/i18n', () => ({
 	i18n: {
 		baseText: (key: string, options?: { interpolate?: { error?: string; details?: string } }) => {
 			const texts: { [key: string]: string } = {
-				'ndv.output.waitNodeWaiting.description.timer': 'Waiting for execution to resume...',
-				'ndv.output.waitNodeWaiting.description.form': 'Waiting for form submission: ',
-				'ndv.output.waitNodeWaiting.description.webhook': 'Waiting for webhook call: ',
-				'ndv.output.githubNodeWaitingForWebhook': 'Waiting for webhook call: ',
-				'ndv.output.sendAndWaitWaitingApproval': 'Waiting for approval...',
 				'pushConnection.executionError': `Execution error${options?.interpolate?.error}`,
 				'pushConnection.executionError.details': `Details: ${options?.interpolate?.details}`,
 			};
@@ -774,6 +770,47 @@ describe(findTriggerNodeToAutoSelect, () => {
 				getNodeType,
 			),
 		).toEqual(expect.objectContaining({ name: 'B' }));
+	});
+
+	// The shipped codex categorises the evaluation trigger as "Utility" rather than
+	// "Core Nodes", so isCoreNode() is false for it and it would otherwise fall through
+	// to the priority reserved for third-party app triggers.
+	function getNodeTypeWithShippedCategories(type: string): INodeTypeDescription {
+		if (type === EVALUATION_TRIGGER_NODE_TYPE) {
+			return mockNodeTypeDescription({ name: type, codex: { categories: ['Utility'] } });
+		}
+		return getNodeType(type);
+	}
+
+	it('should not auto-select an evaluation trigger over another trigger', () => {
+		expect(
+			findTriggerNodeToAutoSelect(
+				[
+					createTestNode({ name: 'A', type: EVALUATION_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'B', type: MANUAL_TRIGGER_NODE_TYPE }),
+				],
+				getNodeTypeWithShippedCategories,
+			),
+		).toEqual(expect.objectContaining({ name: 'B' }));
+
+		expect(
+			findTriggerNodeToAutoSelect(
+				[
+					createTestNode({ name: 'A', type: EVALUATION_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'B', type: APP_TRIGGER_TYPE }),
+				],
+				getNodeTypeWithShippedCategories,
+			),
+		).toEqual(expect.objectContaining({ name: 'B' }));
+	});
+
+	it('should still auto-select an evaluation trigger when it is the only one', () => {
+		expect(
+			findTriggerNodeToAutoSelect(
+				[createTestNode({ name: 'A', type: EVALUATION_TRIGGER_NODE_TYPE })],
+				getNodeTypeWithShippedCategories,
+			),
+		).toEqual(expect.objectContaining({ name: 'A' }));
 	});
 });
 

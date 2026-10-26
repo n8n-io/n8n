@@ -1,4 +1,4 @@
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMCPStore } from '@n8n/frontend-module-mcp';
 import { computed, ref, watch, type Ref } from 'vue';
 import { useSurfaceMcpToNewCloudUsersStore } from '../stores/surfaceMcpToNewCloudUsers.store';
 import { useSurfaceMcpToNewCloudUsersEligibility } from './useSurfaceMcpToNewCloudUsersEligibility';
@@ -44,13 +44,6 @@ export function useSurfaceMcpEmptyState({
 		() => showOpportunity.value && surfaceMcpStore.isTileVariant && suppressedBy.value === null,
 	);
 
-	const showReminder = computed(
-		() =>
-			isEligible.value &&
-			surfaceMcpStore.isFirstOpenModalVariant &&
-			surfaceMcpStore.hasDismissedFirstOpenModal,
-	);
-
 	watch(
 		showOpportunity,
 		(value) => {
@@ -87,6 +80,5 @@ export function useSurfaceMcpEmptyState({
 		showOpportunity,
 		suppressedBy,
 		showTile,
-		showReminder,
 	};
 }

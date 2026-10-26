@@ -134,7 +134,8 @@ function onFocus() {
 	emit('focus');
 }
 
-function onEnter(event: Event) {
+function onEnter(event: KeyboardEvent) {
+	if (event.isComposing || event.keyCode === 229) return;
 	event.stopPropagation();
 	event.preventDefault();
 	emit('enter');
@@ -216,8 +217,8 @@ defineExpose({ inputRef });
 			<slot v-if="$slots.default" />
 			<N8nSelect
 				v-else-if="type === 'select' || type === 'multi-select'"
-				ref="inputRef"
 				:id="name"
+				ref="inputRef"
 				:class="{ [$style.multiSelectSmallTags]: tagSize === 'small' }"
 				:model-value="modelValue"
 				:placeholder="placeholder"
@@ -241,8 +242,8 @@ defineExpose({ inputRef });
 			</N8nSelect>
 			<N8nInput
 				v-else
-				ref="inputRef"
 				:id="name"
+				ref="inputRef"
 				:name="name"
 				:type="type as InputTypePropType"
 				:placeholder="placeholder"

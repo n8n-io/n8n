@@ -1,5 +1,7 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import { ScheduledJobOwnerType } from '@n8n/constants';
 import type { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import type { Scheduler, SchedulerPasses } from '@n8n/scheduler';
 import { createScheduler } from '@n8n/scheduler';
@@ -9,8 +11,13 @@ import { mock } from 'vitest-mock-extended';
 import type { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { DurableScheduler } from '../durable-scheduler';
+import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-node/poll-trigger-task';
+import type { PollTriggerTaskHandler } from '../poll-trigger-node/poll-trigger-task-handler';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
 import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedule-trigger-task-handler';
+import type { AgentScheduledJobOwner } from '../agent-scheduled-job-owner';
+import { SystemTaskScheduledJobOwner } from '../system-tasks/system-task-scheduled-job-owner';
+import type { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 
 // Keep the real exports (e.g. pollLookaheadSeconds) so the wiring is tested
 // against the actual formula; only the scheduler factory is stubbed.
@@ -20,16 +27,36 @@ vi.mock('@n8n/scheduler', async (importOriginal) => ({
 }));
 
 describe('DurableScheduler', () => {
-	function makeScheduler({ enabled = true, instanceType = 'main', dbType = 'sqlite' } = {}) {
+	function makeScheduler({
+		enabled = true,
+		instanceType = 'main',
+		dbType = 'sqlite',
+		materializationIntervalSeconds = 10,
+		executorIntervalSeconds = 5,
+		materializationWindowSeconds = 60,
+		misfireGraceSeconds = 60,
+		enabledForPollTriggers = false,
+		pollTimeoutSeconds = 45,
+		leaseDurationSeconds = 60,
+		useWorkflowPublicationService = true,
+		ownerReconciliationEnabled = true,
+	} = {}) {
 		const inner = mock<Scheduler & SchedulerPasses>();
 		vi.mocked(createScheduler).mockReturnValue(inner);
 		const logger = mockLogger();
 		const scheduleTriggerTaskHandler = mock<ScheduleTriggerTaskHandler>({
 			taskType: SCHEDULE_TRIGGER_TASK_TYPE,
 		});
+		const pollTriggerTaskHandler = mock<PollTriggerTaskHandler>({
+			taskType: POLL_TRIGGER_TASK_TYPE,
+		});
 		const tracing = mock<Tracing>();
 		const tasks = mock<ScheduledTaskRepository>();
 		tasks.readDbTime.mockResolvedValue(new Date());
+		const workflowOwner = mock<WorkflowScheduledJobOwner>();
+		const agentOwner = mock<AgentScheduledJobOwner>();
+		const systemTaskOwner = new SystemTaskScheduledJobOwner(mock<ScheduledJobRepository>());
+		const eventService = mock<EventService>();
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),
@@ -39,13 +66,45 @@ describe('DurableScheduler', () => {
 			mock<GlobalConfig>({
 				generic: { timezone: 'UTC' },
 				database: { type: dbType as 'sqlite' | 'postgresdb' },
-				scheduler: { enabled, executorIntervalSeconds: 5, jitterRatio: 0.1 },
+				scheduler: {
+					enabled,
+					executorIntervalSeconds,
+					jitterRatio: 0.1,
+					materializationIntervalSeconds,
+					materializationWindowSeconds,
+					misfireGraceSeconds,
+					enabledForPollTriggers,
+					pollTimeoutSeconds,
+					leaseDurationSeconds,
+					ownerReconciliationEnabled,
+					ownerReconciliationIntervalSeconds: 900,
+					ownerReconciliationTimeoutSeconds: 300,
+					ownerReconciliationBatchSize: 500,
+					ownerQuarantineGraceSeconds: 86_400,
+					ownerSettleSeconds: 300,
+				},
+				workflows: { useWorkflowPublicationService },
 			}),
 			tracing,
 			scheduleTriggerTaskHandler,
+			pollTriggerTaskHandler,
 			mock<PrometheusSchedulerMetricsService>(),
+			workflowOwner,
+			agentOwner,
+			systemTaskOwner,
+			eventService,
 		);
-		return { scheduler, inner, logger, tracing, tasks };
+		return {
+			scheduler,
+			inner,
+			logger,
+			tracing,
+			tasks,
+			workflowOwner,
+			agentOwner,
+			systemTaskOwner,
+			eventService,
+		};
 	}
 
 	describe('composition', () => {
@@ -71,6 +130,60 @@ describe('DurableScheduler', () => {
 
 			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
 			expect(deps?.lifecycle?.concurrencyMode).toBe('sequential');
+		});
+	});
+
+	describe('drain rate warning', () => {
+		it('warns when a pass cannot drain the fastest possible schedule before the next one is due', () => {
+			// maxPerJob is 1000: a one-second schedule can outrun a 1001s materialization
+			// interval.
+			const { logger } = makeScheduler({ materializationIntervalSeconds: 1001 });
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('materialization interval'),
+				expect.objectContaining({ materializationIntervalSeconds: 1001 }),
+			);
+		});
+
+		it('does not warn at the default materialization interval', () => {
+			const { logger } = makeScheduler();
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('materialization interval'),
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('misfire grace warning', () => {
+		it('warns when the grace is at or below the executor interval', () => {
+			const { logger } = makeScheduler({ misfireGraceSeconds: 5, executorIntervalSeconds: 5 });
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('executor interval'),
+				expect.objectContaining({ misfireGraceSeconds: 5, executorIntervalSeconds: 5 }),
+			);
+		});
+
+		it('warns when the grace is below the materialization window', () => {
+			const { logger } = makeScheduler({
+				misfireGraceSeconds: 30,
+				materializationWindowSeconds: 60,
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('materialization window'),
+				expect.objectContaining({ misfireGraceSeconds: 30, materializationWindowSeconds: 60 }),
+			);
+		});
+
+		it('does not warn at the default grace', () => {
+			const { logger } = makeScheduler();
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('misfire grace'),
+				expect.anything(),
+			);
 		});
 	});
 
@@ -101,6 +214,23 @@ describe('DurableScheduler', () => {
 		});
 	});
 
+	describe('isActive', () => {
+		it('is true on a main when the scheduler is enabled', () => {
+			const { scheduler } = makeScheduler({ enabled: true, instanceType: 'main' });
+
+			expect(scheduler.isActive()).toBe(true);
+		});
+
+		it.each([
+			{ case: 'the scheduler is disabled', enabled: false, instanceType: 'main' },
+			{ case: 'the instance is not a main', enabled: true, instanceType: 'webhook' },
+		])('is false when $case', ({ enabled, instanceType }) => {
+			const { scheduler } = makeScheduler({ enabled, instanceType });
+
+			expect(scheduler.isActive()).toBe(false);
+		});
+	});
+
 	describe('registerTaskHandler', () => {
 		it('delegates to the inner scheduler when active', () => {
 			const { scheduler, inner } = makeScheduler();
@@ -109,6 +239,54 @@ describe('DurableScheduler', () => {
 			scheduler.registerTaskHandler('some-task', handler);
 
 			expect(inner.registerTaskHandler).toHaveBeenCalledWith('some-task', handler);
+		});
+
+		it('registers the schedule- and poll-trigger handlers at construction', () => {
+			const { inner } = makeScheduler();
+
+			expect(inner.registerTaskHandler).toHaveBeenCalledWith(
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				expect.objectContaining({ taskType: SCHEDULE_TRIGGER_TASK_TYPE }),
+			);
+			expect(inner.registerTaskHandler).toHaveBeenCalledWith(
+				POLL_TRIGGER_TASK_TYPE,
+				expect.objectContaining({ taskType: POLL_TRIGGER_TASK_TYPE }),
+			);
+		});
+	});
+
+	describe('owner registration', () => {
+		it('composes the reconciliation pass over a registry declaring the workflow and agent owners', () => {
+			const { workflowOwner, agentOwner } = makeScheduler();
+
+			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
+			expect(deps?.reconciliation?.owners.resolverFor(ScheduledJobOwnerType.Workflow)).toBe(
+				workflowOwner,
+			);
+			expect(deps?.reconciliation?.owners.resolverFor(ScheduledJobOwnerType.Agent)).toBe(
+				agentOwner,
+			);
+			expect(deps?.reconciliation?.options).toMatchObject({
+				settleSeconds: 300,
+				quarantineGraceSeconds: 86_400,
+				batchSize: 500,
+			});
+		});
+
+		it('composes the reconciliation pass over a registry declaring the system-task owner', () => {
+			const { systemTaskOwner } = makeScheduler();
+
+			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
+			expect(deps?.reconciliation?.owners.resolverFor(ScheduledJobOwnerType.SystemTask)).toBe(
+				systemTaskOwner,
+			);
+		});
+
+		it('composes no reconciliation pass when it is disabled', () => {
+			makeScheduler({ ownerReconciliationEnabled: false });
+
+			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
+			expect(deps?.reconciliation).toBeUndefined();
 		});
 	});
 

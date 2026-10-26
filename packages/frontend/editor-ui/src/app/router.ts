@@ -8,28 +8,34 @@ import type {
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/app/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
+import { getSanitizedCurrentPath } from '@/app/utils/urlUtils';
 import { projectsRoutes } from '@/features/collaboration/projects/projects.routes';
-import { MfaRequiredError } from '@n8n/rest-api-client';
+import { MfaRequiredError, setUnauthorizedHandler } from '@n8n/rest-api-client';
+import { handleSessionExpired } from '@/app/utils/handleSessionExpired';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
-import { canMessageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
+import {
+	canManageInstanceAi,
+	canMessageInstanceAi,
+} from '@/features/ai/instanceAi/instanceAiPermissions';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
+const ConfirmEmailChangeView = async () =>
+	await import('@/features/core/auth/views/ConfirmEmailChangeView.vue');
 const ErrorView = async () => await import('@/app/views/ErrorView.vue');
 const EntityNotFound = async () => await import('@/app/views/EntityNotFound.vue');
 const EntityUnAuthorised = async () => await import('@/app/views/EntityUnAuthorised.vue');
@@ -57,8 +63,6 @@ const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () =>
 	await import('@/features/settings/apiKeys/views/SettingsApiView.vue');
-const SettingsLogStreamingView = async () =>
-	await import('@/features/integrations/logStreaming.ee/views/SettingsLogStreamingView.vue');
 const SetupView = async () => await import('@/features/core/auth/views/SetupView.vue');
 const SigninView = async () => await import('@/features/core/auth/views/SigninView.vue');
 const SignupView = async () => await import('@/features/core/auth/views/SignupView.vue');
@@ -73,6 +77,8 @@ const TemplatesSearchView = async () =>
 const SettingsUsageAndPlan = async () =>
 	await import('@/features/settings/usage/views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
+const SettingsAuthentication = async () =>
+	await import('@/features/settings/sso/views/SettingsAuthenticationView.vue');
 const SettingsEncryptionKeys = async () =>
 	await import('@/features/settings/encryption-keys/views/SettingsEncryptionKeys.vue');
 const SignoutView = async () => await import('@/features/core/auth/views/SignoutView.vue');
@@ -135,21 +141,6 @@ function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: stri
 
 const RESOURCE_CENTER_FLAG_WAIT_TIMEOUT = 2000;
 
-const waitForPendingFeatureFlags = async (posthogStore: ReturnType<typeof usePostHog>) => {
-	let timeoutId: number | undefined;
-
-	await Promise.race([
-		posthogStore.waitForFeatureFlags(),
-		new Promise<void>((resolve) => {
-			timeoutId = window.setTimeout(resolve, RESOURCE_CENTER_FLAG_WAIT_TIMEOUT);
-		}),
-	]);
-
-	if (timeoutId !== undefined) {
-		window.clearTimeout(timeoutId);
-	}
-};
-
 const allowResourceCenterRoute = (
 	posthogStore: ReturnType<typeof usePostHog>,
 	next: NavigationGuardNext,
@@ -175,9 +166,11 @@ export const routes: RouteRecordRaw[] = [
 		component: { render: () => null },
 		beforeEnter: (_to, _from, next) => {
 			const settingsStore = useSettingsStore();
+			const instanceAiSettings = settingsStore.moduleSettings['instance-ai'];
 			if (
 				settingsStore.isModuleActive('instance-ai') &&
-				settingsStore.moduleSettings['instance-ai']?.enabled !== false &&
+				instanceAiSettings?.enabled !== false &&
+				(instanceAiSettings?.setupCompleted === true || canManageInstanceAi()) &&
 				canMessageInstanceAi()
 			) {
 				return next({ name: INSTANCE_AI_VIEW });
@@ -315,14 +308,14 @@ export const routes: RouteRecordRaw[] = [
 				return;
 			}
 
-			if (!posthogStore.hasPendingFeatureFlags()) {
-				next({ name: VIEWS.HOMEPAGE });
-				return;
-			}
-
-			void waitForPendingFeatureFlags(posthogStore).then(() => {
-				allowResourceCenterRoute(posthogStore, next);
-			});
+			// `waitForFeatureFlagsWithTimeout` resolves immediately when nothing is
+			// pending, so re-checking the variant below still redirects right away
+			// for a user whose flags were already resolved as "off".
+			void waitForFeatureFlagsWithTimeout(posthogStore, RESOURCE_CENTER_FLAG_WAIT_TIMEOUT).then(
+				() => {
+					allowResourceCenterRoute(posthogStore, next);
+				},
+			);
 		},
 	},
 
@@ -595,6 +588,19 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
+		path: '/confirm-email-change',
+		name: VIEWS.CONFIRM_EMAIL_CHANGE,
+		component: ConfirmEmailChangeView,
+		// No auth middleware: the token authorizes the change, so the link works
+		// whether the user is signed in or not (the confirm endpoint is skipAuth).
+		meta: {
+			layout: 'auth',
+			telemetry: {
+				pageCategory: 'auth',
+			},
+		},
+	},
+	{
 		path: '/settings',
 		name: VIEWS.SETTINGS,
 		props: true,
@@ -755,7 +761,13 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				// Old path from before the feature was renamed to Gateway credits;
+				// redirect old deep links to the renamed route.
 				path: 'n8n-connect',
+				redirect: () => ({ name: VIEWS.AI_GATEWAY_SETTINGS }),
+			},
+			{
+				path: 'gateway-credits',
 				name: VIEWS.AI_GATEWAY_SETTINGS,
 				component: SettingsAiGatewayView,
 				meta: {
@@ -763,7 +775,7 @@ export const routes: RouteRecordRaw[] = [
 					middlewareOptions: {
 						custom: () => {
 							const settingsStore = useSettingsStore();
-							return settingsStore.isAiGatewayEnabled;
+							return settingsStore.isAiGatewayEnabled && !settingsStore.isAiGatewayCloudUbbEnabled;
 						},
 					},
 					telemetry: {
@@ -944,12 +956,7 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.API_SETTINGS,
 				component: SettingsApiView,
 				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: ['apiKey:list'],
-						},
-					},
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties() {
@@ -1003,25 +1010,76 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				// SSO and LDAP are children of the Authentication overview so its sidebar link
+				// stays active while a method is open. The old flat paths redirect below.
+				path: 'authentication',
+				component: RouterView,
+				children: [
+					{
+						path: '',
+						name: VIEWS.AUTHENTICATION_SETTINGS,
+						component: SettingsAuthentication,
+						meta: {
+							middleware: ['authenticated', 'rbac'],
+							middlewareOptions: {
+								rbac: {
+									// Managing any one sign-in method is enough to see the overview.
+									scope: ['saml:manage', 'ldap:manage'],
+								},
+							},
+							telemetry: {
+								pageCategory: 'settings',
+								getProperties() {
+									return {
+										feature: 'authentication',
+									};
+								},
+							},
+						},
+					},
+					{
+						path: 'sso',
+						name: VIEWS.SSO_SETTINGS,
+						component: SettingsSso,
+						meta: {
+							middleware: ['authenticated', 'rbac'],
+							middlewareOptions: {
+								rbac: {
+									scope: 'saml:manage',
+								},
+							},
+							telemetry: {
+								pageCategory: 'settings',
+								getProperties() {
+									return {
+										feature: 'sso',
+									};
+								},
+							},
+						},
+					},
+					{
+						path: 'ldap',
+						name: VIEWS.LDAP_SETTINGS,
+						component: SettingsLdapView,
+						meta: {
+							middleware: ['authenticated', 'rbac'],
+							middlewareOptions: {
+								rbac: {
+									scope: 'ldap:manage',
+								},
+							},
+						},
+					},
+				],
+			},
+			{
 				path: 'sso',
-				name: VIEWS.SSO_SETTINGS,
-				component: SettingsSso,
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: 'saml:manage',
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'sso',
-							};
-						},
-					},
-				},
+				redirect: { name: VIEWS.SSO_SETTINGS },
+			},
+			{
+				path: 'ldap',
+				redirect: { name: VIEWS.LDAP_SETTINGS },
 			},
 			{
 				path: 'encryption-keys',
@@ -1034,8 +1092,10 @@ export const routes: RouteRecordRaw[] = [
 							scope: 'encryptionKey:manage',
 						},
 						custom: () => {
-							const { check } = useEnvFeatureFlag();
-							return check.value('ENCRYPTION_KEY_ROTATION');
+							const settingsStore = useSettingsStore();
+							return (
+								settingsStore.moduleSettings['encryption-key-manager']?.rotationEnabled === true
+							);
 						},
 					},
 					telemetry: {
@@ -1045,22 +1105,6 @@ export const routes: RouteRecordRaw[] = [
 								feature: 'encryption-keys',
 							};
 						},
-					},
-				},
-			},
-			{
-				path: 'log-streaming',
-				name: VIEWS.LOG_STREAMING_SETTINGS,
-				component: SettingsLogStreamingView,
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: 'logStreaming:manage',
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
 					},
 				},
 			},
@@ -1094,19 +1138,6 @@ export const routes: RouteRecordRaw[] = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-					},
-				},
-			},
-			{
-				path: 'ldap',
-				name: VIEWS.LDAP_SETTINGS,
-				component: SettingsLdapView,
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: 'ldap:manage',
-						},
 					},
 				},
 			},
@@ -1188,16 +1219,28 @@ const router = createRouter({
 	routes: routes.map(withCanvasReadOnlyMeta),
 });
 
+setUnauthorizedHandler((baseURL) => {
+	void handleSessionExpired(router, baseURL);
+});
+
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 	try {
-		/**
-		 * Initialize application core
-		 * This step executes before first route is loaded and is required for permission checks
-		 */
+		try {
+			/**
+			 * Initialize application core
+			 * This step executes before first route is loaded and is required for permission checks
+			 */
 
-		await initializeCore();
-		// Pass undefined for first param to use default
-		await initializeAuthenticatedFeatures(undefined, to.name as string);
+			await initializeCore();
+			// Pass undefined for first param to use default
+			await initializeAuthenticatedFeatures(undefined, to.name as string);
+		} catch (error) {
+			if (error instanceof MfaRequiredError) {
+				throw error; // let the outer catch's MFA redirect handle it
+			}
+			// Swallowed so the permission checks below still run on whatever state did initialize.
+			console.error(error);
+		}
 
 		/**
 		 * Redirect to setup page. User should be redirected to this only once
@@ -1246,9 +1289,16 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		}
 		if (isNavigationFailure(failure)) {
 			console.log(failure);
-		} else {
-			console.error(failure);
+			return;
 		}
+
+		// Resolve the guard instead of leaving it hanging, but don't authorize `to`
+		// without its permission check having completed: redirect to sign-in.
+		console.error(failure);
+		return next({
+			name: VIEWS.SIGNIN,
+			query: { redirect: encodeURIComponent(getSanitizedCurrentPath(to)) },
+		});
 	}
 });
 

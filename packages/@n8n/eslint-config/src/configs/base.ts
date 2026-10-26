@@ -86,13 +86,6 @@ export const baseConfig = tseslint.config(
 			'no-void': ['error', { allowAsStatement: true }],
 
 			/**
-			 * https://eslint.org/docs/latest/rules/indent
-			 *
-			 * Delegated to Prettier.
-			 */
-			indent: 'off',
-
-			/**
 			 * https://eslint.org/docs/latest/rules/no-constant-binary-expression
 			 */
 			'no-constant-binary-expression': 'error',
@@ -107,7 +100,7 @@ export const baseConfig = tseslint.config(
 			// ----------------------------------
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/array-type.md
+			 * https://typescript-eslint.io/rules/array-type/
 			 */
 			'@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
 
@@ -115,7 +108,7 @@ export const baseConfig = tseslint.config(
 			'@typescript-eslint/await-thenable': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-ts-comment.md
+			 * https://typescript-eslint.io/rules/ban-ts-comment/
 			 */
 			'@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': true }],
 
@@ -159,19 +152,19 @@ export const baseConfig = tseslint.config(
 			],
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-assertions.md
+			 * https://typescript-eslint.io/rules/consistent-type-assertions/
 			 */
 			'@typescript-eslint/consistent-type-assertions': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-imports.md
+			 * https://typescript-eslint.io/rules/consistent-type-imports/
 			 */
 			'@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
 
 			'@typescript-eslint/consistent-type-exports': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
+			 * https://eslint.style/rules/member-delimiter-style
 			 */
 			'@stylistic/member-delimiter-style': [
 				'error',
@@ -187,62 +180,23 @@ export const baseConfig = tseslint.config(
 				},
 			],
 
-			// Not needed because we use Biome formatting
-			'@stylistic/ident': 'off',
-
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/naming-convention.md
-			 */
-			'@typescript-eslint/naming-convention': [
-				'error',
-				{
-					selector: 'default',
-					format: ['camelCase'],
-				},
-				{
-					selector: 'import',
-					format: ['camelCase', 'PascalCase'],
-				},
-				{
-					selector: 'variable',
-					format: ['camelCase', 'snake_case', 'UPPER_CASE', 'PascalCase'],
-					leadingUnderscore: 'allowSingleOrDouble',
-					trailingUnderscore: 'allowSingleOrDouble',
-				},
-				{
-					selector: 'property',
-					format: ['camelCase', 'snake_case', 'UPPER_CASE'],
-					leadingUnderscore: 'allowSingleOrDouble',
-					trailingUnderscore: 'allowSingleOrDouble',
-				},
-				{
-					selector: 'typeLike',
-					format: ['PascalCase'],
-				},
-				{
-					selector: ['method', 'function', 'parameter'],
-					format: ['camelCase'],
-					leadingUnderscore: 'allowSingleOrDouble',
-				},
-			],
-
-			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-invalid-void-type.md
+			 * https://typescript-eslint.io/rules/no-invalid-void-type/
 			 */
 			'@typescript-eslint/no-invalid-void-type': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-misused-promises.md
+			 * https://typescript-eslint.io/rules/no-misused-promises/
 			 */
 			'@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/v4.30.0/packages/eslint-plugin/docs/rules/no-floating-promises.md
+			 * https://typescript-eslint.io/rules/no-floating-promises/
 			 */
 			'@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/v4.33.0/packages/eslint-plugin/docs/rules/no-namespace.md
+			 * https://typescript-eslint.io/rules/no-namespace/
 			 */
 			'@typescript-eslint/no-namespace': 'off',
 
@@ -252,42 +206,37 @@ export const baseConfig = tseslint.config(
 			'@typescript-eslint/only-throw-error': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unnecessary-boolean-literal-compare.md
+			 * https://typescript-eslint.io/rules/no-unnecessary-boolean-literal-compare/
 			 */
 			'@typescript-eslint/no-unnecessary-boolean-literal-compare': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unnecessary-qualifier.md
+			 * https://typescript-eslint.io/rules/no-unnecessary-qualifier/
 			 */
 			'@typescript-eslint/no-unnecessary-qualifier': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unused-expressions.md
+			 * https://typescript-eslint.io/rules/no-unused-expressions/
 			 */
 			'@typescript-eslint/no-unused-expressions': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/prefer-nullish-coalescing.md
-			 */
-			'@typescript-eslint/prefer-nullish-coalescing': 'error',
-
-			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/prefer-optional-chain.md
+			 * https://typescript-eslint.io/rules/prefer-optional-chain/
 			 */
 			'@typescript-eslint/prefer-optional-chain': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/promise-function-async.md
+			 * https://typescript-eslint.io/rules/promise-function-async/
 			 */
 			'@typescript-eslint/promise-function-async': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/triple-slash-reference.md
+			 * https://typescript-eslint.io/rules/triple-slash-reference/
 			 */
 			'@typescript-eslint/triple-slash-reference': 'off', // @TECH_DEBT: Enable, disallowing in all cases - N8N-5820
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/return-await.md
+			 * https://typescript-eslint.io/rules/return-await/
 			 */
 			'@typescript-eslint/return-await': ['error', 'always'],
 
@@ -304,26 +253,6 @@ export const baseConfig = tseslint.config(
 			 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-cycle.md
 			 */
 			'import-x/no-cycle': ['error', { ignoreExternal: false, maxDepth: 3 }],
-
-			/**
-			 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/no-default-export.md
-			 */
-			'import-x/no-default-export': 'error',
-
-			/**
-			 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md
-			 */
-			'import-x/order': [
-				'error',
-				{
-					alphabetize: {
-						order: 'asc',
-						caseInsensitive: true,
-					},
-					groups: [['builtin', 'external'], 'internal', ['parent', 'index', 'sibling'], 'object'],
-					'newlines-between': 'always',
-				},
-			],
 
 			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/HEAD/docs/rules/no-duplicates.md
@@ -405,18 +334,6 @@ export const baseConfig = tseslint.config(
 			'no-unused-vars': 'off',
 			'@typescript-eslint/no-unused-vars': 'off',
 
-			/**
-			 * https://www.typescriptlang.org/docs/handbook/enums.html#const-enums
-			 */
-			'no-restricted-syntax': [
-				'error',
-				{
-					selector: 'TSEnumDeclaration:not([const=true])',
-					message:
-						'Do not declare raw enums as it leads to runtime overhead. Use const enum instead. See https://www.typescriptlang.org/docs/handbook/enums.html#const-enums',
-				},
-			],
-
 			// ----------------------------------
 			//         no-unused-imports
 			// ----------------------------------
@@ -424,7 +341,16 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/sweepline/eslint-plugin-unused-imports/blob/master/docs/rules/no-unused-imports.md
 			 */
-			'unused-imports/no-unused-imports': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
+			'unused-imports/no-unused-imports': 'error',
+
+			/**
+			 * https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/filename-case.md
+			 *
+			 * Set here because 35 packages had each set it for themselves. The
+			 * `frontend` and `nodes` layers turn it off: a Vue component, a
+			 * composable and a node file all carry a meaningful capital letter.
+			 */
+			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 
 			/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-unnecessary-await.md */
 			'unicorn/no-unnecessary-await': 'error',
@@ -434,16 +360,49 @@ export const baseConfig = tseslint.config(
 
 			'lodash/path-style': ['error', 'as-needed'],
 			'lodash/import-scope': ['error', 'method'],
+
+			/**
+			 * Rules the repo had already stopped enforcing.
+			 *
+			 * Each of these was switched off or downgraded in ten or more of the
+			 * 72 packages, one config at a time, and every lint script runs with
+			 * `--quiet`, so a downgrade to `warn` enforced nothing either. Turning
+			 * them off here states that once, instead of in fifty places.
+			 *
+			 * To enforce one again, set it to `error` in the package that is ready
+			 * for it; a local upgrade is allowed and is how `naming-convention`
+			 * still runs in twelve packages. Deleting a line from this list is a
+			 * repo-wide change and needs the violations fixed first.
+			 *
+			 * Counted by `scripts/lint-parity/majority.mjs`.
+			 */
+			'@typescript-eslint/naming-convention': 'off',
+			'@typescript-eslint/no-empty-object-type': 'off',
+			'@typescript-eslint/no-unsafe-argument': 'off',
+			'@typescript-eslint/no-unsafe-assignment': 'off',
+			'@typescript-eslint/no-unsafe-call': 'off',
+			'@typescript-eslint/no-unsafe-function-type': 'off',
+			'@typescript-eslint/no-unsafe-member-access': 'off',
+			'@typescript-eslint/no-unsafe-return': 'off',
+			'@typescript-eslint/prefer-nullish-coalescing': 'off',
+			'@typescript-eslint/require-await': 'off',
+			'@typescript-eslint/unbound-method': 'off',
+			'import-x/no-default-export': 'off',
+			'import-x/order': 'off',
+			'n8n-local-rules/no-uncaught-json-parse': 'off',
+			'no-empty': 'off',
 		},
 	},
 	{
 		// Rules for unit tests
 		files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.test.ts', '**/*.cy.ts'],
 		rules: {
-			'n8n-local-rules/no-plain-errors': 'off',
-			'@typescript-eslint/unbound-method': 'off',
-			'n8n-local-rules/no-skipped-tests': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
+			// Test code casts mocks into position; the rule's assignability check reads
+			// those casts as redundant and removing them breaks the build.
+			'@typescript-eslint/no-unnecessary-type-assertion': 'off',
+			'n8n-local-rules/no-skipped-tests': 'error',
 			'n8n-local-rules/no-error-instance-in-to-throw': 'error',
+			'n8n-local-rules/no-dynamic-regexp': 'off',
 		},
 	},
 );

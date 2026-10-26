@@ -1,0 +1,166 @@
+{
+	"properties": {
+		"active": {
+			"type": "boolean"
+		},
+		"activities_count": {
+			"type": "number"
+		},
+		"acv": {
+			"type": "number"
+		},
+		"acv_currency": {
+			"type": "string"
+		},
+		"add_time": {
+			"type": "string"
+		},
+		"archive_time": {},
+		"arr": {
+			"type": "number"
+		},
+		"arr_currency": {
+			"type": "string"
+		},
+		"cc_email": {
+			"type": "string"
+		},
+		"channel": {},
+		"channel_id": {},
+		"close_time": {},
+		"creator_user_id": {
+			"type": "number"
+		},
+		"currency": {
+			"type": "string"
+		},
+		"deleted": {
+			"type": "boolean"
+		},
+		"done_activities_count": {
+			"type": "number"
+		},
+		"email_messages_count": {
+			"type": "number"
+		},
+		"expected_close_date": {},
+		"files_count": {
+			"type": "number"
+		},
+		"first_won_time": {},
+		"followers_count": {
+			"type": "number"
+		},
+		"formatted_value": {
+			"type": "string"
+		},
+		"formatted_weighted_value": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"is_archived": {
+			"type": "boolean"
+		},
+		"label": {},
+		"last_activity_date": {},
+		"last_activity_id": {},
+		"last_incoming_mail_time": {},
+		"last_outgoing_mail_time": {},
+		"local_close_date": {},
+		"local_lost_date": {},
+		"local_won_date": {},
+		"lost_reason": {},
+		"lost_time": {},
+		"mrr": {
+			"type": "number"
+		},
+		"mrr_currency": {
+			"type": "string"
+		},
+		"next_activity_date": {},
+		"next_activity_duration": {},
+		"next_activity_id": {},
+		"next_activity_note": {},
+		"next_activity_subject": {},
+		"next_activity_time": {},
+		"next_activity_type": {},
+		"notes_count": {
+			"type": "number"
+		},
+		"org_hidden": {
+			"type": "boolean"
+		},
+		"org_id": {
+			"type": "number"
+		},
+		"org_name": {
+			"type": "string"
+		},
+		"origin": {
+			"type": "string"
+		},
+		"origin_id": {},
+		"owner_name": {
+			"type": "string"
+		},
+		"participants_count": {
+			"type": "number"
+		},
+		"person_hidden": {
+			"type": "boolean"
+		},
+		"person_id": {
+			"type": "number"
+		},
+		"person_name": {
+			"type": "string"
+		},
+		"pipeline_id": {
+			"type": "number"
+		},
+		"probability": {},
+		"products_count": {
+			"type": "number"
+		},
+		"rotten_time": {},
+		"score": {},
+		"sequence_enrollment": {},
+		"source_lead_id": {},
+		"stage_change_time": {},
+		"stage_id": {
+			"type": "number"
+		},
+		"stage_order_nr": {
+			"type": "number"
+		},
+		"status": {
+			"type": "string"
+		},
+		"title": {
+			"type": "string"
+		},
+		"undone_activities_count": {
+			"type": "number"
+		},
+		"update_time": {},
+		"user_id": {
+			"type": "number"
+		},
+		"value": {
+			"type": "number"
+		},
+		"visible_to": {
+			"type": "string"
+		},
+		"weighted_value": {
+			"type": "number"
+		},
+		"weighted_value_currency": {
+			"type": "string"
+		},
+		"won_time": {}
+	},
+	"type": "object"
+}

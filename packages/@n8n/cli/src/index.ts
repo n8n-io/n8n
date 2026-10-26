@@ -26,6 +26,7 @@ import Login from './commands/login';
 import Logout from './commands/logout';
 import PackageExport from './commands/package/export';
 import PackageImport from './commands/package/import';
+import PackageImportSelection from './commands/package/import-selection';
 import ProjectAddMember from './commands/project/add-member';
 import ProjectCreate from './commands/project/create';
 import ProjectDelete from './commands/project/delete';
@@ -34,6 +35,28 @@ import ProjectList from './commands/project/list';
 import ProjectMembers from './commands/project/members';
 import ProjectRemoveMember from './commands/project/remove-member';
 import ProjectUpdate from './commands/project/update';
+import PromotionEnvironmentAddProject from './commands/promotion-environment/add-project';
+import PromotionEnvironmentApply from './commands/promotion-environment/apply';
+import PromotionEnvironmentApplyContinue from './commands/promotion-environment/apply-continue';
+import PromotionEnvironmentApplySelection from './commands/promotion-environment/apply-selection';
+import PromotionEnvironmentApplySelectionContinue from './commands/promotion-environment/apply-selection-continue';
+import PromotionEnvironmentConnect from './commands/promotion-environment/connect';
+import PromotionEnvironmentCreate from './commands/promotion-environment/create';
+import PromotionEnvironmentDelete from './commands/promotion-environment/delete';
+import PromotionEnvironmentDisconnect from './commands/promotion-environment/disconnect';
+import PromotionEnvironmentGet from './commands/promotion-environment/get';
+import PromotionEnvironmentList from './commands/promotion-environment/list';
+import PromotionEnvironmentListChanges from './commands/promotion-environment/list-changes';
+import PromotionEnvironmentListProjects from './commands/promotion-environment/list-projects';
+import PromotionEnvironmentPromote from './commands/promotion-environment/promote';
+import PromotionEnvironmentPromoteSelection from './commands/promotion-environment/promote-selection';
+import PromotionEnvironmentRemoveProject from './commands/promotion-environment/remove-project';
+import PromotionEnvironmentUpdate from './commands/promotion-environment/update';
+import PromotionProviderCreate from './commands/promotion-provider/create';
+import PromotionProviderDelete from './commands/promotion-provider/delete';
+import PromotionProviderGet from './commands/promotion-provider/get';
+import PromotionProviderList from './commands/promotion-provider/list';
+import PromotionProviderUpdate from './commands/promotion-provider/update';
 import SkillInstall from './commands/skill/install';
 import SourceControlPull from './commands/source-control/pull';
 import TagCreate from './commands/tag/create';
@@ -80,6 +103,30 @@ export const commands = {
 	'execution:stop': ExecutionStop,
 	'execution:delete': ExecutionDelete,
 
+	'promotion-provider:list': PromotionProviderList,
+	'promotion-provider:get': PromotionProviderGet,
+	'promotion-provider:create': PromotionProviderCreate,
+	'promotion-provider:update': PromotionProviderUpdate,
+	'promotion-provider:delete': PromotionProviderDelete,
+
+	'promotion-environment:list': PromotionEnvironmentList,
+	'promotion-environment:get': PromotionEnvironmentGet,
+	'promotion-environment:create': PromotionEnvironmentCreate,
+	'promotion-environment:update': PromotionEnvironmentUpdate,
+	'promotion-environment:delete': PromotionEnvironmentDelete,
+	'promotion-environment:connect': PromotionEnvironmentConnect,
+	'promotion-environment:disconnect': PromotionEnvironmentDisconnect,
+	'promotion-environment:list-projects': PromotionEnvironmentListProjects,
+	'promotion-environment:list-changes': PromotionEnvironmentListChanges,
+	'promotion-environment:add-project': PromotionEnvironmentAddProject,
+	'promotion-environment:remove-project': PromotionEnvironmentRemoveProject,
+	'promotion-environment:promote': PromotionEnvironmentPromote,
+	'promotion-environment:promote-selection': PromotionEnvironmentPromoteSelection,
+	'promotion-environment:apply': PromotionEnvironmentApply,
+	'promotion-environment:apply-continue': PromotionEnvironmentApplyContinue,
+	'promotion-environment:apply-selection': PromotionEnvironmentApplySelection,
+	'promotion-environment:apply-selection-continue': PromotionEnvironmentApplySelectionContinue,
+
 	'credential:list': CredentialList,
 	'credential:get': CredentialGet,
 	'credential:schema': CredentialSchema,
@@ -125,6 +172,7 @@ export const commands = {
 
 	'package:export': PackageExport,
 	'package:import': PackageImport,
+	'package:import-selection': PackageImportSelection,
 
 	audit: Audit,
 };

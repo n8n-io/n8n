@@ -22,9 +22,9 @@ import {
 	AI_CATEGORY_LANGUAGE_MODELS,
 	BASIC_CHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	isNodeCreatorOpenFromConnection,
 	MANUAL_TRIGGER_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
-	NODE_CREATOR_OPEN_SOURCES,
 	NO_OP_NODE_TYPE,
 	OPEN_AI_ASSISTANT_NODE_TYPE,
 	OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
@@ -49,6 +49,7 @@ import {
 	removePreviewToken,
 	sortNodeCreateElements,
 	transformNodeType,
+	isNodeItemRestricted,
 } from '../nodeCreator.utils';
 import { useI18n } from '@n8n/i18n';
 import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
@@ -60,11 +61,6 @@ export const useActions = () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
 	const i18n = useI18n();
-	const singleNodeOpenSources = [
-		NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
-		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-	];
 
 	const actionsCategoryLocales = computed(() => {
 		return {
@@ -259,11 +255,10 @@ export const useActions = () => {
 		const isTriggerPanel = selectedView === TRIGGER_NODE_CREATOR_VIEW;
 		const onlyStickyNodes = addedNodes.every((node) => node.type === STICKY_NODE_TYPE);
 
-		// If the node creator was opened from the plus endpoint, node connection action, or node connection drop
-		// then we do not want to append the manual trigger
-		const isSingleNodeOpenSource = singleNodeOpenSources.includes(openSource);
+		// Connection-based openings already have a source node, so do not prepend a trigger.
+		const isAddingFromConnection = isNodeCreatorOpenFromConnection(openSource);
 		return (
-			!isSingleNodeOpenSource &&
+			!isAddingFromConnection &&
 			!hasTrigger &&
 			!workflowContainsTrigger &&
 			isTriggerPanel &&
@@ -282,6 +277,7 @@ export const useActions = () => {
 
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
 		if (!isCompatibleNode) return false;
+		if (nodeTypesStore.isNodeTypeUnavailable(CHAT_TRIGGER_NODE_TYPE)) return false;
 		const allNodes = workflowDocumentStore.value.allNodes;
 
 		return allNodes.filter((x) => x.type !== MANUAL_TRIGGER_NODE_TYPE).length === 0;
@@ -317,7 +313,9 @@ export const useActions = () => {
 	}
 
 	function getAddedNodesAndConnections(addedNodes: AddedNode[]): AddedNodesAndConnections {
-		if (addedNodes.length === 0) {
+		// Every insert path ends here — click, Enter, drag, the "no results" links, actions mode —
+		// so this is where a restricted type is refused.
+		if (addedNodes.length === 0 || addedNodes.some((node) => isNodeItemRestricted(node.type))) {
 			return { nodes: [], connections: [] };
 		}
 
@@ -399,7 +397,19 @@ export const useActions = () => {
 			}
 		});
 
-		return { nodes, connections };
+		// Skip auto-added nodes the instance does not load, and their connections.
+		const keptIndexes = nodes.flatMap((node, index) =>
+			node.isAutoAdd && nodeTypesStore.isNodeTypeUnavailable(node.type) ? [] : [index],
+		);
+		return {
+			nodes: keptIndexes.map((index) => nodes[index]),
+			connections: connections.flatMap(({ from, to }) => {
+				const fromIndex = keptIndexes.indexOf(from.nodeIndex);
+				const toIndex = keptIndexes.indexOf(to.nodeIndex);
+				if (fromIndex === -1 || toIndex === -1) return [];
+				return [{ from: { ...from, nodeIndex: fromIndex }, to: { ...to, nodeIndex: toIndex } }];
+			}),
+		};
 	}
 
 	function setAddedNodeActionParameters(
