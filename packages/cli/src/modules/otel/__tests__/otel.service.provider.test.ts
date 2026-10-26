@@ -486,17 +486,22 @@ describe('OtelService on the startup OTel setup', () => {
 	});
 
 	it('builds outbound baggage from the otel.configure hook and keeps only string values', async () => {
-		onConfigure((api) =>
+		onConfigure((api) => {
 			api.registerOutboundBaggageMapper((attrs) => ({
 				'project.id': String(attrs[ATTR.PROJECT_ID]),
 				count: 1 as unknown as string,
-			})),
-		);
+			}));
+			api.registerOutboundBaggageMapper((async () => ({ tenant: 'async' })) as never);
+		});
 		await service.init();
 
 		expect(configureHook.buildOutboundBaggage({ [ATTR.PROJECT_ID]: 'p1' })).toEqual({
 			'project.id': 'p1',
 		});
+		expect(logger.warn).toHaveBeenCalledExactlyOnceWith(
+			'OpenTelemetry outbound baggage mapper failed',
+			{ error: 'An OpenTelemetry mapper must be synchronous' },
+		);
 	});
 
 	it('runs the OTLP export with OpenTelemetry tracing suppressed, so Sentry skips it', async () => {
