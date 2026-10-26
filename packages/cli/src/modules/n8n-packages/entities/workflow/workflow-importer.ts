@@ -2,6 +2,7 @@ import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { ForbiddenError } from '@n8n/errors';
+import { PROJECT_ROOT } from 'n8n-workflow';
 import {
 	WorkflowCreationService,
 	type WorkflowCreateBatchContext,
@@ -31,6 +32,7 @@ import type {
 	WorkflowPlanItem,
 	WorkflowPlannedAction,
 } from './workflow-import.types';
+import { LayoutConflictPolicy } from '../../n8n-packages.types';
 import type {
 	ImportBindingMap,
 	ImportContext,
@@ -64,7 +66,10 @@ export class WorkflowImporter {
 		context: ImportContext,
 		prepared: PreparedWorkflow[],
 		options: ImportWorkflowProperties,
-		{ checkRootPlacement }: { checkRootPlacement: boolean },
+		{
+			checkRootPlacement,
+			layoutConflictPolicy,
+		}: { checkRootPlacement: boolean; layoutConflictPolicy?: LayoutConflictPolicy },
 	): Promise<WorkflowImportPlan> {
 		const { matches: existingBySourceWorkflowId, lineageConflicts } =
 			await this.workflowImportMatchService.findBySourceWorkflowIds(
@@ -121,6 +126,10 @@ export class WorkflowImporter {
 			if (item.action === 'update' && (targetFolderId !== null || checkRootPlacement)) {
 				const existingParentFolderId = item.existing.parentFolder?.id ?? null;
 				if (existingParentFolderId !== targetFolderId) {
+					if (layoutConflictPolicy === LayoutConflictPolicy.FollowPackage) {
+						item.moveToFolderId = targetFolderId;
+						continue;
+					}
 					folderConflicts.push({
 						sourceWorkflowId: workflow.sourceWorkflowId,
 						existingWorkflowId: item.existing.id,
@@ -289,6 +298,9 @@ export class WorkflowImporter {
 			publicApi: true,
 			source: 'import',
 			allowArchivedUpdate: item.existing.isArchived,
+			...(item.moveToFolderId !== undefined
+				? { parentFolderId: item.moveToFolderId ?? PROJECT_ROOT }
+				: {}),
 			// `settings.errorWorkflow` is a package reference this importer rebinds. The
 			// handler it now points at can still be unwritten (later in this loop) and is
 			// unpublished until the package-wide sweep, so the write-time check on that
