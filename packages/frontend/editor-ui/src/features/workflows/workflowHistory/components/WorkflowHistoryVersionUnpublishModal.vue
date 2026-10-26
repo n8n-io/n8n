@@ -76,7 +76,9 @@ const hiddenAffectedCount = computed(() => {
 	const counts = getDependencyCounts(props.data.workflowId, 'workflow');
 	if (!counts) return 0;
 	const total = AFFECTED_TYPES.reduce((sum, type) => sum + counts[type], 0);
-	return Math.max(0, total - affectedDependencies.value.length);
+	const visibleEntries = getDependencies(props.data.workflowId, 'workflow')?.dependencies ?? [];
+	const visibleCount = visibleEntries.filter((dep) => AFFECTED_TYPES.includes(dep.type)).length;
+	return Math.max(0, total - visibleCount);
 });
 
 const hasAffected = computed(() => affectedDependencies.value.length > 0 || hiddenAffectedCount.value > 0);
