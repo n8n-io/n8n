@@ -26,6 +26,7 @@ import { Credentials } from 'n8n-core';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
+import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { TeamsIntegration } from '@/modules/agents/integrations/platforms/teams/teams-integration';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
@@ -60,8 +61,9 @@ let otherProject: Project;
 let agents: AgentRepository;
 
 beforeAll(async () => {
-	await testModules.loadModules(['agents', 'n8n-packages']);
+	await testModules.loadModules(['skills', 'agents', 'n8n-packages']);
 	await testDb.init();
+	registerSkillAgentsProvider();
 	license.mockLicenseState(Container.get(LicenseState));
 	Container.get(ChatIntegrationRegistry).register(Container.get(TeamsIntegration));
 	planner = Container.get(ImportOrchestrator);
