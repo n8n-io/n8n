@@ -863,24 +863,20 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.CALL_AGENT)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.CALL_AGENT))
 			.description(
-				'Do not call this tool by default after a build. Call it when the user reports a problem with the agent, to reproduce the problem and confirm the fix. ' +
-					'Tests the draft agent through built-in Preview chat. It does not test configured channel integrations, including their triggers, platform context, message delivery, or replies. ' +
-					'Omit sessionId to start a new conversation. To continue one, pass the exact sessionId from an earlier agent_builder_call_agent result; never make one up. ' +
-					'If the sessionId is not found, the test starts a new conversation and the result has a sessionNote. ' +
-					'The draft uses its real configured tools and credentials, so external side effects are possible. ' +
-					'Standard tool approvals pause this test until the user approves or rejects them in chat. ' +
-					'Unsupported interactive requests return approval_required with a Preview path.',
+				'Call it only when the user reports a problem with the agent, to reproduce it and ' +
+					'confirm the fix; not by default after a build. Tests the draft agent in the built-in ' +
+					'Preview chat, not channel integrations (triggers, platform context, delivery, or ' +
+					'replies). It runs the real configured tools and credentials, so external side ' +
+					'effects are possible. Omit sessionId to start a new conversation. To continue one, ' +
+					'pass the exact sessionId from an earlier result; never make one up. An unknown ' +
+					'sessionId starts a new conversation and the result has a sessionNote. Standard tool ' +
+					'approvals pause the test until the user decides in chat. Unsupported interactive ' +
+					'requests return approval_required with a Preview path.',
 			)
 			.input(
 				z.object({
-					message: z.string().trim().min(1).describe('Message to send to the target agent'),
-					sessionId: z
-						.string()
-						.trim()
-						.optional()
-						.describe(
-							'Exact sessionId from an earlier agent_builder_call_agent result. Omit it to start a new conversation.',
-						),
+					message: z.string().trim().min(1),
+					sessionId: z.string().trim().optional(),
 				}),
 			)
 			.suspend(APPROVAL_SUSPEND_SCHEMA)
@@ -988,9 +984,9 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.UNPUBLISH_AGENT)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.UNPUBLISH_AGENT))
 			.description(
-				'Unpublish this target agent: clears the live version while preserving the draft, disconnects chat ' +
-					'integrations, and stops scheduled tasks. Call when the user asks to unpublish or take the agent offline. ' +
-					'Returns { ok: true, configMutated: true, agentId, activeVersionId: null } or { ok: false, errors }.',
+				'Unpublish the target agent: clear the live version but keep the draft, disconnect ' +
+					'chat integrations, and stop scheduled tasks. Call it when the user asks to unpublish ' +
+					'or take the agent offline.',
 			)
 			.input(z.object({}))
 			.handler(async () => {
@@ -1021,21 +1017,14 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.PUBLISH_AGENT)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.PUBLISH_AGENT))
 			.description(
-				'Publish this target agent so it becomes live: integrations sync and scheduled tasks start running. ' +
-					'Idempotent when the draft is already the active published version. Pass optional `versionId` to ' +
-					'activate an existing history row instead of publishing the current draft. Call only when the user ' +
-					'asks to publish, activate, or make the agent live/usable — never tell them to click Publish in the editor. ' +
-					'Returns { ok: true, configMutated: true, agentId, activeVersionId, versionId } or { ok: false, errors }.',
+				'Publish the target agent so it goes live: integrations sync and scheduled tasks ' +
+					'start. Pass `versionId` to activate a history version instead of the draft. Call it ' +
+					'only when the user asks to publish, activate, or make the agent live or usable. Never ' +
+					'tell them to click Publish in the editor.',
 			)
 			.input(
 				z.object({
-					versionId: z
-						.string()
-						.min(1)
-						.optional()
-						.describe(
-							'Optional history version ID to activate. Omit to publish the current draft.',
-						),
+					versionId: z.string().min(1).optional().describe('Omit to publish the draft'),
 				}),
 			)
 			.handler(async ({ versionId }: { versionId?: string }) => {
@@ -1372,20 +1361,14 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.BUILD_CUSTOM_TOOL)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.BUILD_CUSTOM_TOOL))
 			.description(
-				'Compile and store a custom tool. Pass the complete TypeScript source ' +
-					'using `export default new Tool(...)` builder chain. The code is validated in a ' +
-					'sandbox and saved against the agent. The returned `id` equals the tool name ' +
-					'declared in the code (e.g. `new Tool("my_tool")` → id `"my_tool"`). ' +
-					'This does NOT register the tool in the agent config — follow up with ' +
-					'agent_builder_patch_config (or agent_builder_write_config) to add `{ type: "custom", id: "<tool name>" }` ' +
-					'to `tools`.' +
-					'Returns { ok: true, id, name } or { ok: false, errors }.',
+				'Compile and store a custom tool from complete TypeScript source that uses ' +
+					'`export default new Tool(...)`. A sandbox validates the code. The returned id is the ' +
+					'tool name in the code. This does NOT add the tool to the config: add ' +
+					'`{ type: "custom", id: "<tool name>" }` to `tools` with a config write.',
 			)
 			.input(
 				z.object({
-					code: z
-						.string()
-						.describe('Complete TypeScript source using export default new Tool(...)'),
+					code: z.string(),
 				}),
 			)
 			.handler(async ({ code }: { code: string }, ctx) => {
