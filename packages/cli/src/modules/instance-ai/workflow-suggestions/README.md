@@ -44,7 +44,7 @@ A failed transaction rolls back the workflow, history, suggestion closure, and a
 
 After either Apply action, the caller must check `closedReason` before opening the editor or showing success. Open the editor only when it is `applied`. If it is `outdated`, keep the review open and explain that the workflow has changed. If the save fails, keep the review open and show the error.
 
-Only the request that applies the fix can start publication. Repeated actions return the recorded result without another save or publish request. A caller that must not report another request's closure passes `rejectClosedByReview`. Apply then returns a conflict for an applied or discarded suggestion. An outdated suggestion still returns its closure. After a failed request or lost response, use the editor to check publication status and publish the saved fix if needed. Proposal reads do not retry publication.
+Only the request that applies the fix can start publication. Apply and Approve and publish return a conflict for an applied or discarded suggestion. They do not save or publish again. An outdated suggestion still returns its closure. After a failed request or lost response, use the editor to check publication status and publish the saved fix if needed. Proposal reads do not retry publication.
 
 `discard()` commits the suggestion closure and activity in its own transaction.
 

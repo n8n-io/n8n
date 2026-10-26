@@ -19,10 +19,6 @@ import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from './workflow-suggestion.service';
 
-type ApplyOptions = {
-	rejectClosedByReview?: boolean;
-};
-
 @Service()
 export class WorkflowSuggestionActionsService {
 	constructor(
@@ -41,7 +37,6 @@ export class WorkflowSuggestionActionsService {
 		workflowId: string,
 		suggestionId: string,
 		clientId?: string,
-		options: ApplyOptions = {},
 	): Promise<WorkflowSuggestionActionResult> {
 		const user = await this.service.requireEditor(actor.id, workflowId);
 		const newlyAppliedVersion = await this.applySuggestion(
@@ -50,7 +45,6 @@ export class WorkflowSuggestionActionsService {
 			suggestionId,
 			'apply',
 			clientId,
-			options,
 		);
 		if (newlyAppliedVersion) await this.notifyEditors(workflowId, user.id);
 		return await this.service.getProposal(user, projectId, workflowId, suggestionId);
@@ -62,7 +56,6 @@ export class WorkflowSuggestionActionsService {
 		workflowId: string,
 		suggestionId: string,
 		clientId?: string,
-		options: ApplyOptions = {},
 	): Promise<WorkflowSuggestionActionResult> {
 		const user = await this.service.requireEditor(actor.id, workflowId);
 		if (!(await userHasScopes(user, ['workflow:publish'], false, { workflowId }))) {
@@ -74,7 +67,6 @@ export class WorkflowSuggestionActionsService {
 			suggestionId,
 			'approve-and-publish',
 			clientId,
-			options,
 		);
 		let publishError: string | undefined;
 		if (newlyAppliedVersion) {
@@ -144,14 +136,13 @@ export class WorkflowSuggestionActionsService {
 		suggestionId: string,
 		action: WorkflowSuggestionAppliedVersion['action'],
 		clientId: string | undefined,
-		options: ApplyOptions,
 	): Promise<WorkflowSuggestionAppliedVersion | undefined> {
 		const { workflowId, projectId } = scope;
 		const { suggestion, target } = await this.service.reconcilePending(suggestionId, scope);
 		if (!target.workflow || target.projectId !== projectId)
 			throw new NotFoundError('Suggestion not found.');
 		if (suggestion.state !== 'pending') {
-			if (options.rejectClosedByReview && suggestion.closedReason !== 'outdated') {
+			if (suggestion.closedReason !== 'outdated') {
 				throw new ConflictError('This suggestion is already closed.');
 			}
 			return undefined;

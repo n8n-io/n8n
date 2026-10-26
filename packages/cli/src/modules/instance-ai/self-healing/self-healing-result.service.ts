@@ -328,7 +328,6 @@ export class SelfHealingResultService {
 			throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
 		}
 
-		const options = { rejectClosedByReview: true };
 		let actionResult: WorkflowSuggestionActionResult;
 		if (action === 'approve-and-publish') {
 			actionResult = await this.actions.approveAndPublish(
@@ -337,7 +336,6 @@ export class SelfHealingResultService {
 				workflowId,
 				suggestionId,
 				clientId,
-				options,
 			);
 		} else {
 			actionResult = await this.actions.apply(
@@ -346,7 +344,6 @@ export class SelfHealingResultService {
 				workflowId,
 				suggestionId,
 				clientId,
-				options,
 			);
 		}
 
