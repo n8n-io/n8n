@@ -1,0 +1,47 @@
+packages/@n8n/api-types/src/agents/agent-preview.constants.ts
+  s_482f48320b007f::t_46527eb1f279fc 1-2
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_482f48320b007f::t_f006adca66fb30 1496
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_482f48320b007f::t_f006adca66fb30 427,3641,3785
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_482f48320b007f::t_a6f1318106b9e2 245-246
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_482f48320b007f::t_a6f1318106b9e2 413-415,430-434,439-444
+  s_482f48320b007f::t_a54bebf2aa64bc 416-429,435-438
+  s_482f48320b007f::t_360fcb8d15cbb7 77,79-80
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_482f48320b007f::t_46527eb1f279fc 29-30,85-86
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_482f48320b007f::t_a54bebf2aa64bc 396-400,727-731,876-880
+  s_482f48320b007f::t_f006adca66fb30 73,389-395,401-403
+packages/quality/testing/playwright/tests/e2e/agents/agent-builder-chat-modes.spec.ts
+  s_482f48320b007f::t_f285092cda74bd 105-108,114-119,125-146,167-170
+  s_482f48320b007f::t_6be288fd70cfc7 104,109-113,120-124,147-149,161-166,171-187
+  s_482f48320b007f::t_ce21b786dfae9c 150-160
+packages/@n8n/api-types/src/agents/index.ts
+  s_482f48320b007f::t_46527eb1f279fc 10
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMarkdownChunk.test.ts
+  s_482f48320b007f::t_360fcb8d15cbb7 16-31
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_482f48320b007f::t_f006adca66fb30 113-119
+packages/frontend/editor-ui/src/features/agents/components/AgentMarkdownChunk.vue
+  s_482f48320b007f::t_f006adca66fb30 3-4,9,11,13-21,25-33,48-52,70
+  s_482f48320b007f::t_a54bebf2aa64bc 22-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8a7dfb3d50dced63254abf943ccf7ee8318ff13e",
+  "prompts": {},
+  "sessions": {
+    "s_482f48320b007f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163de-1528-7382-879b-fbc784061690",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
