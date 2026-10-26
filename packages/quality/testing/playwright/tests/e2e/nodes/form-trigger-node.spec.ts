@@ -458,12 +458,12 @@ test.describe(
 				});
 				await n8n.start.fromExistingWorkflow(workflow.id);
 
-				const popupPromise = n8n.page.waitForEvent('popup');
+				const formPagePromise = PublicFormPage.fromPopup(n8n.page.context());
 				await n8n.canvas.clickExecuteWorkflowButton();
-				const popup = await popupPromise;
+				const formPage = await formPagePromise;
 
-				expect(new URL(popup.url()).pathname).toBe(testPath(path));
-				await expect(popup.getByText(formTitle)).toBeVisible();
+				expect(new URL(formPage.url()).pathname).toBe(testPath(path));
+				await formPage.expectText(formTitle);
 			});
 		}
 	},
