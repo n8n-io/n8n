@@ -18,9 +18,11 @@ import type { Response } from 'express';
 import { DirectedGraph, StorageConfig, WorkflowExecute } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
+	type IDataObject,
 	type IExecuteData,
 	type IExecuteResponsePromiseData,
 	type INode,
+	type IObservableObject,
 	type IRun,
 	type IRunExecutionData,
 	type ITaskData,
@@ -33,6 +35,7 @@ import {
 	type WorkflowExecuteMode,
 	Workflow,
 	ExecutionError,
+	ObservableObject,
 	WorkflowOperationError,
 	TimeoutExecutionCancelledError,
 	createRunExecutionData,
@@ -1717,6 +1720,22 @@ describe('pre-persist context establishment', () => {
 			headers: { authorization: '**********' },
 		});
 		expect(capturedAddData!.executionData!.executionData!.runtimeData).toBeDefined();
+	});
+
+	it('does not clear the change flag of the static data the caller has written to', async () => {
+		// A webhook writes node static data through its own Workflow, which marks the
+		// shared object as changed. That flag is what makes the caller save the write
+		// after run() returns, so establishing the context must leave it set.
+		const staticData: IDataObject = {};
+		ObservableObject.create(staticData).count = 1;
+		expect((staticData as unknown as IObservableObject).__dataChanged).toBe(true);
+
+		const data = buildRunData(buildExecutionDataWithHeader());
+		data.workflowData.staticData = staticData;
+
+		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
+
+		expect((staticData as unknown as IObservableObject).__dataChanged).toBe(true);
 	});
 
 	it('does not persist when preExecute blocks the run', async () => {
