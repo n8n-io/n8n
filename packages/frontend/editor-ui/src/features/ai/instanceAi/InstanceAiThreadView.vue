@@ -94,7 +94,9 @@ const agentChatActive = computed(
 );
 const isAgentTestChat = computed(() => agentChatActive.value && isAgentPreviewDockOpen.value);
 async function setAgentChatMode(mode: 'build' | 'test') {
-	if (agentChatModeState.value?.disabled) return;
+	const state = agentChatModeState.value;
+	if (!state || state.disabled || (mode === 'test' && (!state.visible || state.testDisabledReason)))
+		return;
 	await agentPreviewRef.value?.setChatMode(mode);
 }
 
@@ -317,9 +319,35 @@ function consumeAgentReturnNodeId() {
 	agentReturnNodeId.value = undefined;
 }
 
+const pendingAgentTest = ref<{ agentId: string; projectId: string }>();
+watch(
+	[
+		pendingAgentTest,
+		agentPreviewRef,
+		agentChatModeState,
+		preview.activeAgentId,
+		preview.isPreviewVisible,
+	],
+	([target, view, state]) => {
+		if (!target) return;
+		if (
+			!preview.isPreviewVisible.value ||
+			preview.activeAgentId.value !== target.agentId ||
+			preview.activeAgentProjectId.value !== target.projectId ||
+			state?.disabled
+		) {
+			pendingAgentTest.value = undefined;
+			return;
+		}
+		if (!view || !state?.visible) return;
+		pendingAgentTest.value = undefined;
+		void setAgentChatMode('test');
+	},
+	{ flush: 'post' },
+);
 function openAgentChatPreview(agentId: string, projectId: string): boolean {
 	preview.openAgentPreview(agentId, projectId);
-	isAgentPreviewDockOpen.value = true;
+	pendingAgentTest.value = { agentId, projectId };
 	return true;
 }
 

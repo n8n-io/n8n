@@ -121,9 +121,9 @@ function threadFilter(thread: InstanceAiThreadSummary): boolean {
  * vnode prop rather than a template attribute), null while no thread is mounted. */
 const conversationRef = ref<InstanceType<typeof InstanceAiConversation> | null>(null);
 watch(
-	[() => props.visible, conversationRef],
-	async ([visible]) => {
-		if (visible === false) return;
+	() => props.visible,
+	async (visible, wasVisible) => {
+		if (!visible || wasVisible !== false) return;
 		await nextTick();
 		conversationRef.value?.focus();
 	},

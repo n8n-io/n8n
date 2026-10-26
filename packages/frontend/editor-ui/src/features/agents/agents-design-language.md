@@ -58,6 +58,7 @@ Save manual resize choices as a ratio. Keep this preference separate from the
 saved Assistant dock width and the previous fixed configuration width. Keep the
 ratio when the window or sidebar changes size. Double-click the divider to reset
 to 65/35. Reserve at least 360 pixels for configuration and 320 pixels for chat.
+When the ratio would break a minimum, the minimum wins.
 Do not cap configuration at a fixed maximum width. Below 680 pixels of available
 workspace, fill the viewport with one panel at a time, above the sidebar. Measure
 the original workspace to keep this layout stable when the sidebar is open.

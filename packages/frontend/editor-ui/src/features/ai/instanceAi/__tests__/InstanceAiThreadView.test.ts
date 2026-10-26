@@ -2047,6 +2047,20 @@ describe('InstanceAiThreadView', () => {
 		expect(preview).toHaveAttribute('data-preview-open', 'true');
 		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
 	});
+	it.each(['busy', 'not runnable'])(
+		'keeps Build selected when an Agent Preview link is blocked: %s',
+		async (reason) => {
+			const { getByTestId, user } = await renderAgentArtifact();
+			artifactChatModeState.value.disabled = reason === 'busy';
+			artifactChatModeState.value.testDisabledReason =
+				reason === 'not runnable' ? "Can't test agent yet" : undefined;
+			await user.click(getByTestId('instance-ai-agent-preview-link'));
+			expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
+				'data-preview-open',
+				'false',
+			);
+		},
+	);
 
 	it('opens a linked agent that is not a produced artifact', async () => {
 		const { getByTestId, user } = await renderAgentArtifact();

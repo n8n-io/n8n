@@ -6612,6 +6612,26 @@ describe('chat-first builder', () => {
 		expect(preview.props('isOpen')).toBe(false);
 		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).vm).toBe(preview.vm);
 	});
+	it('ignores a pending Test transition after the user selects Build', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const save = Promise.withResolvers<{
+			config: TestAgentConfig;
+			versionId: string;
+			stale: boolean;
+		}>();
+		updateConfigMock.mockImplementationOnce(() => save.promise);
+		wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:config', {
+			instructions: 'Answer support questions.',
+		});
+		await nextTick();
+		const transition = wrapper.vm.setChatMode('test');
+		await flushPromises();
+		expect(updateConfigMock).toHaveBeenCalled();
+		await wrapper.vm.setChatMode('build');
+		save.resolve({ config: mockConfig.value, versionId: 'v2', stale: false });
+		expect(await transition).toBe(false);
+		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
+	});
 
 	it('keeps the standalone selector visible when the agent cannot run', async () => {
 		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
@@ -6741,13 +6761,18 @@ describe('chat-first builder', () => {
 		}
 	});
 
-	it('ends the discovery hint in both composers after the first message', async () => {
-		const wrapper = await renderView({ props: { builderLayout: undefined } });
-		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
-		assistant.vm.$emit('message-sent');
-		await nextTick();
-		for (const mode of wrapper.findAllComponents({ name: 'AgentBuilderChatMode' })) {
-			expect(mode.props('discovery')).toBe(false);
-		}
-	});
+	it.each(['InstanceAiChatPanel', 'AgentPreviewDock'])(
+		'ends the discovery hint after a message from %s',
+		async (source) => {
+			const wrapper = await renderView({ props: { builderLayout: undefined } });
+			if (source === 'AgentPreviewDock') await wrapper.vm.setChatMode('test');
+			const chat = wrapper.getComponent({ name: source });
+			expect(chat.getComponent({ name: 'AgentBuilderChatMode' }).props('discovery')).toBe(true);
+			chat.vm.$emit('message-sent');
+			await nextTick();
+			for (const mode of wrapper.findAllComponents({ name: 'AgentBuilderChatMode' })) {
+				expect(mode.props('discovery')).toBe(false);
+			}
+		},
+	);
 });

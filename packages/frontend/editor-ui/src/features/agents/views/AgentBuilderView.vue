@@ -364,7 +364,9 @@ const previewDockWidth = computed({
 });
 const isPreviewDockResizing = ref(false);
 const builderHost = useTemplateRef<HTMLElement>('builderHost');
-const { width: builderHostWidth } = useElementSize(builderHost);
+const { width: builderHostWidth } = useElementSize(
+	computed(() => builderHost.value?.parentElement),
+);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const { width: builderContainerWidth } = useElementSize(builderContainer, undefined, {
 	box: 'border-box',
@@ -418,15 +420,12 @@ const hasSentBuilderMessage = useLocalStorage(
 	false,
 );
 const chatMode = computed(() => (isPreviewDockOpen.value ? 'test' : 'build'));
+let previewRequest = 0;
 async function setChatMode(mode: 'build' | 'test') {
+	if (mode === 'test') return await onOpenPreview();
 	if (chatModeBusy.value) return false;
-	if (mode === 'test') {
-		if (!canExecuteAgent.value) return false;
-		return await onOpenPreview(undefined, { projectId: projectId.value, agentId: agentId.value });
-	} else {
-		closePreviewDock();
-		return true;
-	}
+	closePreviewDock();
+	return true;
 }
 const openParentAgentChatPreview = inject<
 	((agentId: string, projectId: string) => boolean) | undefined
@@ -499,11 +498,7 @@ const showAiPanel = computed(
 		!isArtifactMode.value &&
 		!isStandalonePreview.value &&
 		instanceAiReady.value &&
-		(inlineTestChat.value ||
-			((wideChat.value || isAiPanelOpen.value) &&
-				(!wideChat.value ||
-					!isPreviewDockOpen.value ||
-					builderContainerWidth.value >= AGENT_CONFIG_MIN_WIDTH + AGENT_MIN_PANEL_WIDTH * 2))),
+		chatPanelLayout.value.showAssistant,
 );
 const aiThreadId = computed(() =>
 	typeof route.query[ASSISTANT_THREAD_PARAM] === 'string'
@@ -625,31 +620,49 @@ function clampPanelWidth(width: number, maxWidth = AGENT_MAX_PANEL_WIDTH) {
 	return Math.min(maxWidth, Math.max(width, AGENT_MIN_PANEL_WIDTH));
 }
 
-const renderedSidePanelWidths = computed(function getRenderedSidePanelWidths() {
+const chatPanelLayout = computed(() => {
 	const containerWidth = builderContainerWidth.value;
-	if (wideChat.value || compactChatLayout.value) {
-		const separatePreviewWidth = clampPanelWidth(
-			previewDockWidth.value,
-			Math.max(
-				AGENT_MIN_PANEL_WIDTH,
-				containerWidth - AGENT_CONFIG_MIN_WIDTH - AGENT_MIN_PANEL_WIDTH,
-			),
-		);
-		return {
-			ai:
-				inlineTestChat.value || !isPreviewDockOpen.value
-					? wideChatWidth.value
-					: Math.max(AGENT_MIN_PANEL_WIDTH, wideChatWidth.value - separatePreviewWidth),
-			preview: inlineTestChat.value ? wideChatWidth.value : separatePreviewWidth,
-		};
-	}
-	if (inlineTestChat.value) {
-		const width = clampPanelWidth(
-			aiPanelWidth.value,
-			Math.max(AGENT_MIN_PANEL_WIDTH, containerWidth - AGENT_BUILDER_EDITOR_MIN_WIDTH),
-		);
-		return { ai: width, preview: width };
-	}
+	const sharedWidth =
+		wideChat.value || compactChatLayout.value
+			? wideChatWidth.value
+			: clampPanelWidth(
+					aiPanelWidth.value,
+					Math.max(AGENT_MIN_PANEL_WIDTH, containerWidth - AGENT_BUILDER_EDITOR_MIN_WIDTH),
+				);
+	const preview = inlineTestChat.value
+		? sharedWidth
+		: clampPanelWidth(
+				previewDockWidth.value,
+				Math.max(
+					AGENT_MIN_PANEL_WIDTH,
+					containerWidth - AGENT_CONFIG_MIN_WIDTH - AGENT_MIN_PANEL_WIDTH,
+				),
+			);
+	const resizeOffset =
+		wideChat.value && !inlineTestChat.value && isPreviewDockOpen.value ? preview : 0;
+	return {
+		ai:
+			inlineTestChat.value || !isPreviewDockOpen.value
+				? sharedWidth
+				: Math.max(AGENT_MIN_PANEL_WIDTH, sharedWidth - preview),
+		preview,
+		resizeOffset,
+		maxWidth: wideChat.value
+			? Math.max(AGENT_MIN_PANEL_WIDTH, containerWidth - resizeOffset - AGENT_CONFIG_MIN_WIDTH)
+			: AGENT_MAX_PANEL_WIDTH,
+		defaultWidth: wideChat.value ? defaultChatWidth.value - resizeOffset : defaultPanelWidth.value,
+		showAssistant:
+			inlineTestChat.value ||
+			(wideChat.value
+				? !isPreviewDockOpen.value ||
+					containerWidth >= AGENT_CONFIG_MIN_WIDTH + AGENT_MIN_PANEL_WIDTH * 2
+				: isAiPanelOpen.value),
+	};
+});
+const renderedSidePanelWidths = computed(function getRenderedSidePanelWidths() {
+	if (wideChat.value || compactChatLayout.value || inlineTestChat.value)
+		return chatPanelLayout.value;
+	const containerWidth = builderContainerWidth.value;
 	const bothPanelsOpen = showAiPanel.value && isPreviewDockOpen.value;
 	const availableSidePanelWidth =
 		containerWidth === 0
@@ -724,15 +737,9 @@ watch(
 	{ flush: 'post' },
 );
 
-const separatePreviewOffset = computed(() =>
-	wideChat.value && !inlineTestChat.value && isPreviewDockOpen.value
-		? renderedSidePanelWidths.value.preview
-		: 0,
-);
-
 function onAiPanelResize({ width }: { width: number }) {
 	if (wideChat.value) {
-		resizeChat(width + separatePreviewOffset.value);
+		resizeChat(width + chatPanelLayout.value.resizeOffset);
 		return;
 	}
 	preferredSidePanel.value = 'assistant';
@@ -1113,12 +1120,13 @@ const builderTelemetry = useAgentBuilderTelemetry({
 const isBuilt = computed(() => agent.value?.isRunnable === true);
 const hasFinishedInitialBuild = ref(false);
 watch(
-	[projectId, agentId, agent, chatModeBusy, initialized],
+	[projectId, agentId, agent, chatModeBusy, initialized, isUnsaved],
 	([project, id, persistedAgent, busy, loaded], previous) => {
 		if (previous && (project !== previous[0] || id !== previous[1])) {
 			hasFinishedInitialBuild.value = false;
 		}
-		if (loaded && persistedAgent?.id === id && !busy) hasFinishedInitialBuild.value = true;
+		if (loaded && !isUnsaved.value && persistedAgent?.id === id && !busy)
+			hasFinishedInitialBuild.value = true;
 	},
 	{ immediate: true },
 );
@@ -1403,16 +1411,22 @@ async function onOpenPreview(
 	source?: InferTelemetryProps<typeof TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW>['source'],
 	expectedTarget?: { projectId: string; agentId: string },
 ): Promise<boolean> {
-	if (!isBuilt.value) return false;
-
+	if (!isBuilt.value || !canExecuteAgent.value || chatModeBusy.value) return false;
+	const request = ++previewRequest;
+	const target = expectedTarget ?? { projectId: projectId.value, agentId: agentId.value };
 	try {
 		await flushAutosave();
 	} catch {
 		return false;
 	}
-	if (expectedTarget && isStaleAgentTarget(expectedTarget.projectId, expectedTarget.agentId)) {
+	if (
+		request !== previewRequest ||
+		isStaleAgentTarget(target.projectId, target.agentId) ||
+		!isBuilt.value ||
+		!canExecuteAgent.value ||
+		chatModeBusy.value
+	)
 		return false;
-	}
 	if (isArtifactMode.value) {
 		openArtifactPreview();
 	} else {
@@ -1458,6 +1472,7 @@ function returnToBuilderFromPreview() {
 }
 
 function closePreviewDock() {
+	previewRequest++;
 	persistedPreviewOpen.value = false;
 	showConfiguration.value = false;
 	if (!isArtifactMode.value) closePreviewRoute();
@@ -3385,193 +3400,392 @@ useKeybindings({
 </script>
 
 <template>
-	<div ref="builderHost" :class="$style.host">
+	<div
+		ref="builderHost"
+		:class="[$style.root, { [$style.fullscreen]: compactChatLayout }]"
+		data-testid="agent-builder-layout"
+	>
+		<AgentPreviewHeader
+			v-if="isStandalonePreview"
+			:agent-id="agentId"
+			:agent-name="agent?.name ?? agentName"
+			:agent-href="agentBuilderHref"
+			:session-title="currentSessionTitle"
+			:session-options="sessionMenu"
+			:has-trace="currentSessionHasMessages && Boolean(effectiveSessionId)"
+			:can-delete-session="canDeletePreviewSession"
+			:is-deleting-session="isDeletingSession"
+			@back="returnToBuilderFromPreview"
+			@delete-session="onDeletePreviewSession"
+			@new-session="startNewPreviewSession"
+			@session-select="onSessionPick"
+			@view-trace="viewPreviewTrace"
+		/>
+		<AgentBuilderHeader
+			v-else
+			v-show="!compactChatLayout || showConfiguration"
+			ref="builderHeader"
+			:agent="agent"
+			:project-id="projectId"
+			:agent-id="agentId"
+			:project-name="projectName"
+			:project-icon="projectIcon"
+			:header-actions="headerActions"
+			:save-status="saveStatus"
+			:before-revert-to-published="beforeRevertToPublished"
+			:artifact-mode="isArtifactMode"
+			:editing-locked="isEditingLocked"
+			:config-validation-status="configValidation?.status ?? null"
+			:config-validation-issues="configValidation?.issues ?? []"
+			:before-publish="refreshValidationBeforePublish"
+			:is-preview-open="isPreviewDockOpen"
+			:hide-preview-button="inlineTestChat"
+			:tasks="areSetupTasksVisible ? setupTasks : undefined"
+			@header-action="onHeaderAction"
+			@open-preview="onOpenPreview"
+			@close-preview="closePreviewDock"
+			@publish-ready="isPublishReady = $event"
+			@published="onPublished"
+			@unpublished="onUnpublished"
+			@reverted="onReverted"
+			@switch-agent="onSwitchAgent"
+			@setup-task-action="onSetupTaskAction"
+		/>
+		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div
-			:class="[$style.root, { [$style.fullscreen]: compactChatLayout }]"
-			data-testid="agent-builder-layout"
+			v-if="
+				!isArtifactMode &&
+				instanceAiAvailable &&
+				!showAiPanel &&
+				!agentCollaborationStore.shouldBeReadOnly
+			"
+			:class="$style.aiToggleBar"
 		>
-			<AgentPreviewHeader
-				v-if="isStandalonePreview"
-				:agent-id="agentId"
-				:agent-name="agent?.name ?? agentName"
-				:agent-href="agentBuilderHref"
-				:session-title="currentSessionTitle"
-				:session-options="sessionMenu"
-				:has-trace="currentSessionHasMessages && Boolean(effectiveSessionId)"
-				:can-delete-session="canDeletePreviewSession"
-				:is-deleting-session="isDeletingSession"
-				@back="returnToBuilderFromPreview"
-				@delete-session="onDeletePreviewSession"
-				@new-session="startNewPreviewSession"
-				@session-select="onSessionPick"
-				@view-trace="viewPreviewTrace"
-			/>
-			<AgentBuilderHeader
-				v-else
-				v-show="!compactChatLayout || showConfiguration"
-				ref="builderHeader"
-				:agent="agent"
-				:project-id="projectId"
-				:agent-id="agentId"
-				:project-name="projectName"
-				:project-icon="projectIcon"
-				:header-actions="headerActions"
-				:save-status="saveStatus"
-				:before-revert-to-published="beforeRevertToPublished"
-				:artifact-mode="isArtifactMode"
-				:editing-locked="isEditingLocked"
-				:config-validation-status="configValidation?.status ?? null"
-				:config-validation-issues="configValidation?.issues ?? []"
-				:before-publish="refreshValidationBeforePublish"
-				:is-preview-open="isPreviewDockOpen"
-				:hide-preview-button="inlineTestChat"
-				:tasks="areSetupTasksVisible ? setupTasks : undefined"
-				@header-action="onHeaderAction"
-				@open-preview="onOpenPreview"
-				@close-preview="closePreviewDock"
-				@publish-ready="isPublishReady = $event"
-				@published="onPublished"
-				@unpublished="onUnpublished"
-				@reverted="onReverted"
-				@switch-agent="onSwitchAgent"
-				@setup-task-action="onSetupTaskAction"
-			/>
-			<AgentCollaborationBanner v-if="!isArtifactMode" />
-			<div
-				v-if="
-					!isArtifactMode &&
-					instanceAiAvailable &&
-					!showAiPanel &&
-					!agentCollaborationStore.shouldBeReadOnly
-				"
-				:class="$style.aiToggleBar"
-			>
-				<KeyboardShortcutTooltip
-					:label="locale.baseText('agents.builder.header.editWithAi')"
-					:shortcut="{ metaKey: true, keys: ['J'] }"
-				>
-					<N8nButton
-						variant="outline"
-						size="medium"
-						icon-only
-						:aria-label="locale.baseText('agents.builder.header.editWithAi')"
-						:disabled="!agent"
-						data-testid="agent-builder-instance-ai-btn"
-						@click="toggleAiPanel"
-					>
-						<template #icon>
-							<N8nAssistantIcon size="large" />
-						</template>
-					</N8nButton>
-				</KeyboardShortcutTooltip>
-			</div>
-			<div
-				v-if="compactChatLayout && showConfiguration"
-				ref="mobileNavigation"
-				:class="$style.mobileNavigation"
+			<KeyboardShortcutTooltip
+				:label="locale.baseText('agents.builder.header.editWithAi')"
+				:shortcut="{ metaKey: true, keys: ['J'] }"
 			>
 				<N8nButton
 					variant="outline"
-					icon="messages-square"
-					data-testid="agent-builder-show-chat"
-					@click="showConfiguration = false"
-					>{{ locale.baseText('agents.builder.chatMode.chat') }}</N8nButton
-				>
-			</div>
-			<div :class="$style.externalUpdateNotice" role="status" aria-live="polite" aria-atomic="true">
-				<N8nCanvasPill
-					v-if="recentExternalUpdate"
-					:class="$style.externalUpdatePill"
-					data-testid="agent-builder-external-update"
+					size="medium"
+					icon-only
+					:aria-label="locale.baseText('agents.builder.header.editWithAi')"
+					:disabled="!agent"
+					data-testid="agent-builder-instance-ai-btn"
+					@click="toggleAiPanel"
 				>
 					<template #icon>
-						<N8nIcon icon="info" aria-hidden="true" />
+						<N8nAssistantIcon size="large" />
 					</template>
-					<span :class="$style.externalUpdateContent">
-						<span :class="$style.externalUpdateText">{{ externalUpdateMessage }}</span>
-						<N8nIconButton
-							:class="$style.externalUpdateDismiss"
-							icon="x"
-							variant="ghost"
-							size="xsmall"
-							:aria-label="locale.baseText('generic.dismiss')"
-							:title="locale.baseText('generic.dismiss')"
-							data-testid="agent-builder-external-update-dismiss"
-							@click="clearExternalUpdate"
-						/>
-					</span>
-				</N8nCanvasPill>
-			</div>
+				</N8nButton>
+			</KeyboardShortcutTooltip>
+		</div>
+		<div
+			v-if="compactChatLayout && showConfiguration"
+			ref="mobileNavigation"
+			:class="$style.mobileNavigation"
+		>
+			<N8nButton
+				variant="outline"
+				icon="messages-square"
+				data-testid="agent-builder-show-chat"
+				@click="showConfiguration = false"
+				>{{ locale.baseText('agents.builder.chatMode.chat') }}</N8nButton
+			>
+		</div>
+		<div :class="$style.externalUpdateNotice" role="status" aria-live="polite" aria-atomic="true">
+			<N8nCanvasPill
+				v-if="recentExternalUpdate"
+				:class="$style.externalUpdatePill"
+				data-testid="agent-builder-external-update"
+			>
+				<template #icon>
+					<N8nIcon icon="info" aria-hidden="true" />
+				</template>
+				<span :class="$style.externalUpdateContent">
+					<span :class="$style.externalUpdateText">{{ externalUpdateMessage }}</span>
+					<N8nIconButton
+						:class="$style.externalUpdateDismiss"
+						icon="x"
+						variant="ghost"
+						size="xsmall"
+						:aria-label="locale.baseText('generic.dismiss')"
+						:title="locale.baseText('generic.dismiss')"
+						data-testid="agent-builder-external-update-dismiss"
+						@click="clearExternalUpdate"
+					/>
+				</span>
+			</N8nCanvasPill>
+		</div>
+		<div
+			ref="builderContainer"
+			data-testid="agent-builder-container"
+			:class="[
+				$style.builder,
+				{
+					[$style.previewOpen]: isPreviewDockOpen && !inlineTestChat,
+					[$style.inlineTestChat]: inlineTestChat,
+					[$style.chatFirst]: wideChat || inlineTestChat,
+					[$style.compactChatLayout]: compactChatLayout,
+					[$style.aiPanelOpen]: showAiPanel,
+					[$style.previewResizing]: isPreviewDockResizing,
+				},
+			]"
+			:style="{
+				'--agent-ai-panel-width': `${renderedSidePanelWidths.ai}px`,
+				'--agent-preview-chat-column-width': `${renderedSidePanelWidths.preview}px`,
+				'--agent-builder-editor-min-width': `${AGENT_BUILDER_EDITOR_MIN_WIDTH}px`,
+			}"
+		>
+			<aside
+				v-if="showAiPanel"
+				v-show="!(compactChatLayout && showConfiguration)"
+				:class="[$style.aiDock, { [$style.testModeActive]: inlineTestChat && isPreviewDockOpen }]"
+				data-testid="agent-ai-dock"
+			>
+				<N8nResizeWrapper
+					:width="renderedSidePanelWidths.ai"
+					:is-resizing-enabled="!compactChatLayout"
+					:grid-size="wideChat ? 1 : 20"
+					:min-width="AGENT_MIN_PANEL_WIDTH"
+					:max-width="chatPanelLayout.maxWidth"
+					:default-width="chatPanelLayout.defaultWidth"
+					:supported-directions="['right']"
+					@resize="onAiPanelResize"
+				>
+					<InstanceAiChatPanel
+						ref="aiPanelRef"
+						v-show="!inlineTestChat || !isPreviewDockOpen"
+						:visible="
+							(!inlineTestChat || !isPreviewDockOpen) && !(compactChatLayout && showConfiguration)
+						"
+						:closable="compactChatLayout || (!inlineTestChat && !wideChat)"
+						:show-open-full-assistant="false"
+						:composer-height="inlineTestChat ? 'var(--agent-builder-composer-height)' : undefined"
+						:placeholder="
+							inlineTestChat
+								? locale.baseText('agents.builder.chatMode.buildPlaceholder')
+								: undefined
+						"
+						@message-sent="hasSentBuilderMessage = true"
+						:key="agentId"
+						:subject="instanceAiEmbedSubject"
+						:launch="instanceAiEmbedLaunch"
+						:thread-id="aiThreadId"
+						:before-new-thread="beforeAiNewThread"
+						:before-send="flushAutosaveIgnoringResult"
+						data-testid="agent-ai-chat-panel"
+						@update:thread-id="onAiThreadIdChange"
+						@update:building="embeddedAiBuilding = $event"
+						@update:working="embeddedAiWorking = $event"
+						@close="closeBuilderChat"
+					>
+						<template v-if="inlineTestChat" #composer-footer>
+							<AgentBuilderChatDisclaimer />
+						</template>
+						<template v-if="inlineTestChat" #composer-start>
+							<AgentBuilderChatMode
+								v-if="chatModeVisible"
+								:model-value="chatMode"
+								:disabled="chatModeBusy"
+								:test-disabled="!!testModeDisabledReason"
+								:test-disabled-reason="testModeDisabledReason"
+								:validation-issues="testValidationIssues"
+								:discovery="!hasSentBuilderMessage && !isPreviewDockOpen && !showConfiguration"
+								@update:model-value="setChatMode"
+							/>
+						</template>
+						<template v-if="showAgentIntro" #empty>
+							<AgentBuilderIntro @select="onApplyTemplate" />
+						</template>
+					</InstanceAiChatPanel>
+				</N8nResizeWrapper>
+			</aside>
 			<div
-				ref="builderContainer"
-				data-testid="agent-builder-container"
-				:class="[
-					$style.builder,
-					{
-						[$style.previewOpen]: isPreviewDockOpen && !inlineTestChat,
-						[$style.inlineTestChat]: inlineTestChat,
-						[$style.chatFirst]: wideChat || inlineTestChat,
-						[$style.compactChatLayout]: compactChatLayout,
-						[$style.aiPanelOpen]: showAiPanel,
-						[$style.previewResizing]: isPreviewDockResizing,
-					},
-				]"
+				v-if="embeddedAiBuilding"
+				:class="$style.activityArea"
 				:style="{
-					'--agent-ai-panel-width': `${renderedSidePanelWidths.ai}px`,
-					'--agent-preview-chat-column-width': `${renderedSidePanelWidths.preview}px`,
-					'--agent-builder-editor-min-width': `${AGENT_BUILDER_EDITOR_MIN_WIDTH}px`,
+					left: showAiPanel ? `${renderedSidePanelWidths.ai}px` : undefined,
+					right:
+						isPreviewDockOpen && !inlineTestChat
+							? `${renderedSidePanelWidths.preview}px`
+							: undefined,
 				}"
 			>
-				<aside
-					v-if="showAiPanel"
-					v-show="!(compactChatLayout && showConfiguration)"
-					:class="[$style.aiDock, { [$style.testModeActive]: inlineTestChat && isPreviewDockOpen }]"
-					data-testid="agent-ai-dock"
+				<AgentBuildingIndicator />
+			</div>
+			<div v-if="showBuilderLoading" :class="$style.loading">
+				<N8nIcon icon="spinner" spin />
+			</div>
+			<template v-else>
+				<AgentPreviewChatPage
+					v-if="isStandalonePreview"
+					ref="previewChatPage"
+					layout="page"
+					:initialized="initialized && previewSessionReady"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:agent="agent"
+					:local-config="localConfig"
+					:connected-triggers="connectedTriggers"
+					:effective-session-id="effectiveSessionId"
+					:new-session="currentSessionIsEphemeral"
+					:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
+					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
+					:before-send="beforePreviewSend"
+					budget-cards
+					:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
+					@continue-loaded="onContinueLoaded"
+					@session-created="markSessionCreated"
+					@open-build="returnToBuilderFromPreview"
+					@send-to-assistant="onSendPreviewToAssistant"
+				/>
+
+				<AgentBuilderEditorColumn
+					ref="editorColumn"
+					v-else
+					v-show="!compactChatLayout || showConfiguration"
+					v-model:active-main-tab="activeMainTab"
+					:class="$style.editorColumn"
+					:chat-first="wideChat"
+					:embedded-ai-building="embeddedAiBuilding"
+					:local-config="localConfig"
+					:agent="agent"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:agent-files="agentFiles"
+					:agent-files-loading="agentFilesLoading"
+					:agent-files-uploading="agentFilesUploading"
+					:knowledge-base-enabled="isKnowledgeBaseEnabled"
+					:deleting-agent-file-id="deletingAgentFileId"
+					:applied-skills="appliedSkills"
+					:connected-triggers="connectedTriggers"
+					:can-edit-agent="effectiveCanEditAgent"
+					:can-execute-agent="canExecuteAgent"
+					:agent-available-in-mcp="agentAvailableInMcp"
+					:tasks-reload-key="tasksReloadKey"
+					:main-tab-options="visibleMainTabOptions"
+					:agent-unsaved="isUnsaved"
+					:ensure-agent-persisted="ensureAgentPersisted"
+					:saved-description="localConfig?.description ?? ''"
+					:save-description="saveN8nChatDescription"
+					:executions-description="executionsDescription"
+					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
+					:artifact-mode="isArtifactMode"
+					:prevent-scroll="isPreviewDockResizing"
+					:config-validation-issues="configValidation?.issues ?? []"
+					@update:config="onConfigFieldUpdate"
+					@update:budget-config="onBudgetSettingsSave"
+					@draft:config="markConfigDraftEdited"
+					@open-tool="caps.onOpenToolFromList"
+					@open-skill="caps.onOpenSkillFromList"
+					@add-tool="caps.onOpenAddToolModal"
+					@add-skill="caps.onOpenAddSkillModal"
+					@upload-files="onUploadAgentFiles"
+					@delete-file="onDeleteAgentFile"
+					@add-vector-store="onOpenAddVectorStoreModal"
+					@edit-vector-store="onOpenEditVectorStoreModal"
+					@remove-vector-store="onRemoveVectorStore"
+					@remove-tool="caps.onRemoveTool"
+					@remove-skill="caps.onRemoveSkill"
+					@update:connected-triggers="caps.onConnectedTriggersUpdate"
+					@trigger-added="caps.onTriggerAdded"
+					@toggle-task="caps.onToggleTask"
+					@toggle-mcp-access="onToggleMcpAccess"
+					@tasks-changed="() => onConfigUpdated()"
+					@preview-task="onPreviewTask"
+					@agent-changed="refreshAgentAfterIntegrationChange"
+					@generate-eval-cases="onGenerateEvalCases"
+					@open-preview="onOpenPreview"
+					@publish-agent="onSetupTaskPublishAgent"
+				/>
+
+				<AgentVersionHistoryPanel
+					v-if="!isStandalonePreview && isVersionHistoryOpen"
+					ref="versionHistoryPanel"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:has-unpublished-changes="
+						Boolean(agent?.activeVersionId) && agent?.versionId !== agent?.activeVersionId
+					"
+					:agent-name="agent?.name ?? agentName"
+					:editing-locked="isEditingLocked"
+					@close="onCloseVersionHistory"
+					@reverted="onReverted"
+					@published="onPublished"
+					@unpublished="onUnpublished"
+				/>
+
+				<Teleport
+					v-if="!isStandalonePreview"
+					:to="props.artifactTestChatTarget ?? 'body'"
+					:disabled="!artifactInlineTestChat || !props.artifactTestChatTarget"
 				>
 					<N8nResizeWrapper
-						:width="renderedSidePanelWidths.ai"
-						:is-resizing-enabled="!compactChatLayout"
-						:grid-size="wideChat ? 1 : 20"
+						:class="[
+							$style.previewResizeWrapper,
+							{
+								[$style.previewResizeOpen]: isPreviewDockOpen,
+								[$style.artifactTestChat]: artifactInlineTestChat,
+							},
+						]"
+						:is-resizing-enabled="isPreviewDockOpen && !inlineTestChat"
+						v-show="!(compactChatLayout && showConfiguration)"
+						:width="renderedSidePanelWidths.preview"
+						:max-width="AGENT_MAX_PANEL_WIDTH"
+						:default-width="defaultPanelWidth"
 						:min-width="AGENT_MIN_PANEL_WIDTH"
-						:max-width="
-							wideChat
-								? Math.max(
-										AGENT_MIN_PANEL_WIDTH,
-										builderContainerWidth - separatePreviewOffset - AGENT_CONFIG_MIN_WIDTH,
-									)
-								: AGENT_MAX_PANEL_WIDTH
-						"
-						:default-width="wideChat ? defaultChatWidth - separatePreviewOffset : defaultPanelWidth"
-						:supported-directions="['right']"
-						@resize="onAiPanelResize"
+						:supported-directions="['left']"
+						:grid-size="8"
+						@resizestart="isPreviewDockResizing = true"
+						@resize="onPreviewDockResize"
+						@resizeend="isPreviewDockResizing = false"
 					>
-						<InstanceAiChatPanel
-							ref="aiPanelRef"
-							v-show="!inlineTestChat || !isPreviewDockOpen"
-							:visible="
-								(!inlineTestChat || !isPreviewDockOpen) && !(compactChatLayout && showConfiguration)
-							"
-							:closable="compactChatLayout || (!inlineTestChat && !wideChat)"
-							:show-open-full-assistant="false"
-							:composer-height="inlineTestChat ? 'var(--agent-builder-composer-height)' : undefined"
+						<AgentPreviewDock
+							ref="previewDock"
+							:inline="inlineTestChat"
+							:closable="compactChatLayout"
 							:placeholder="
 								inlineTestChat
-									? locale.baseText('agents.builder.chatMode.buildPlaceholder')
+									? locale.baseText('agents.builder.chatMode.testPlaceholder', {
+											interpolate: { agentName: localConfig?.name || agentName },
+										})
 									: undefined
 							"
 							@message-sent="hasSentBuilderMessage = true"
-							:key="agentId"
-							:subject="instanceAiEmbedSubject"
-							:launch="instanceAiEmbedLaunch"
-							:thread-id="aiThreadId"
-							:before-new-thread="beforeAiNewThread"
-							:before-send="flushAutosaveIgnoringResult"
-							data-testid="agent-ai-chat-panel"
-							@update:thread-id="onAiThreadIdChange"
-							@update:building="embeddedAiBuilding = $event"
-							@update:working="embeddedAiWorking = $event"
-							@close="closeBuilderChat"
+							:is-open="isPreviewDockOpen && !(compactChatLayout && showConfiguration)"
+							:session-title="currentSessionTitle"
+							:session-options="sessionMenu"
+							:has-session="currentSessionHasMessages"
+							:initialized="initialized && previewSessionReady"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:agent="agent"
+							:local-config="localConfig"
+							:connected-triggers="connectedTriggers"
+							:effective-session-id="effectiveSessionId"
+							:new-session="currentSessionIsEphemeral"
+							:initial-prompt="taskPreviewPrompt"
+							:can-delete-session="canDeletePreviewSession"
+							:is-deleting-session="isDeletingSession"
+							:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
+							:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
+							:before-send="beforePreviewSend"
+							budget-cards
+							:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
+							@view-trace="viewPreviewTrace"
+							@new-session="startNewPreviewSession"
+							@delete-session="onDeletePreviewSession"
+							@session-select="onSessionPick"
+							@close="closeTestChat"
+							@continue-loaded="onContinueLoaded"
+							@session-created="markSessionCreated"
+							@send-to-assistant="onSendPreviewToAssistant"
+							@initial-consumed="taskPreviewPrompt = undefined"
 						>
+							<template v-if="$slots['artifact-test-actions']" #header-actions>
+								<slot name="artifact-test-actions" />
+							</template>
 							<template v-if="inlineTestChat" #composer-footer>
 								<AgentBuilderChatDisclaimer />
 							</template>
@@ -3583,221 +3797,14 @@ useKeybindings({
 									:test-disabled="!!testModeDisabledReason"
 									:test-disabled-reason="testModeDisabledReason"
 									:validation-issues="testValidationIssues"
-									:discovery="!hasSentBuilderMessage && !isPreviewDockOpen && !showConfiguration"
+									:discovery="!hasSentBuilderMessage && isPreviewDockOpen && !showConfiguration"
 									@update:model-value="setChatMode"
 								/>
 							</template>
-							<template v-if="showAgentIntro" #empty>
-								<AgentBuilderIntro @select="onApplyTemplate" />
-							</template>
-						</InstanceAiChatPanel>
+						</AgentPreviewDock>
 					</N8nResizeWrapper>
-				</aside>
-				<div
-					v-if="embeddedAiBuilding"
-					:class="$style.activityArea"
-					:style="{
-						left: showAiPanel ? `${renderedSidePanelWidths.ai}px` : undefined,
-						right:
-							isPreviewDockOpen && !inlineTestChat
-								? `${renderedSidePanelWidths.preview}px`
-								: undefined,
-					}"
-				>
-					<AgentBuildingIndicator />
-				</div>
-				<div v-if="showBuilderLoading" :class="$style.loading">
-					<N8nIcon icon="spinner" spin />
-				</div>
-				<template v-else>
-					<AgentPreviewChatPage
-						v-if="isStandalonePreview"
-						ref="previewChatPage"
-						layout="page"
-						:initialized="initialized && previewSessionReady"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:agent="agent"
-						:local-config="localConfig"
-						:connected-triggers="connectedTriggers"
-						:effective-session-id="effectiveSessionId"
-						:new-session="currentSessionIsEphemeral"
-						:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
-						:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
-						:before-send="beforePreviewSend"
-						budget-cards
-						:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
-						@continue-loaded="onContinueLoaded"
-						@session-created="markSessionCreated"
-						@open-build="returnToBuilderFromPreview"
-						@send-to-assistant="onSendPreviewToAssistant"
-					/>
-
-					<AgentBuilderEditorColumn
-						ref="editorColumn"
-						v-else
-						v-show="!compactChatLayout || showConfiguration"
-						v-model:active-main-tab="activeMainTab"
-						:class="$style.editorColumn"
-						:chat-first="wideChat"
-						:embedded-ai-building="embeddedAiBuilding"
-						:local-config="localConfig"
-						:agent="agent"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:agent-files="agentFiles"
-						:agent-files-loading="agentFilesLoading"
-						:agent-files-uploading="agentFilesUploading"
-						:knowledge-base-enabled="isKnowledgeBaseEnabled"
-						:deleting-agent-file-id="deletingAgentFileId"
-						:applied-skills="appliedSkills"
-						:connected-triggers="connectedTriggers"
-						:can-edit-agent="effectiveCanEditAgent"
-						:can-execute-agent="canExecuteAgent"
-						:agent-available-in-mcp="agentAvailableInMcp"
-						:tasks-reload-key="tasksReloadKey"
-						:main-tab-options="visibleMainTabOptions"
-						:agent-unsaved="isUnsaved"
-						:ensure-agent-persisted="ensureAgentPersisted"
-						:saved-description="localConfig?.description ?? ''"
-						:save-description="saveN8nChatDescription"
-						:executions-description="executionsDescription"
-						:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
-						:artifact-mode="isArtifactMode"
-						:prevent-scroll="isPreviewDockResizing"
-						:config-validation-issues="configValidation?.issues ?? []"
-						@update:config="onConfigFieldUpdate"
-						@update:budget-config="onBudgetSettingsSave"
-						@draft:config="markConfigDraftEdited"
-						@open-tool="caps.onOpenToolFromList"
-						@open-skill="caps.onOpenSkillFromList"
-						@add-tool="caps.onOpenAddToolModal"
-						@add-skill="caps.onOpenAddSkillModal"
-						@upload-files="onUploadAgentFiles"
-						@delete-file="onDeleteAgentFile"
-						@add-vector-store="onOpenAddVectorStoreModal"
-						@edit-vector-store="onOpenEditVectorStoreModal"
-						@remove-vector-store="onRemoveVectorStore"
-						@remove-tool="caps.onRemoveTool"
-						@remove-skill="caps.onRemoveSkill"
-						@update:connected-triggers="caps.onConnectedTriggersUpdate"
-						@trigger-added="caps.onTriggerAdded"
-						@toggle-task="caps.onToggleTask"
-						@toggle-mcp-access="onToggleMcpAccess"
-						@tasks-changed="() => onConfigUpdated()"
-						@preview-task="onPreviewTask"
-						@agent-changed="refreshAgentAfterIntegrationChange"
-						@generate-eval-cases="onGenerateEvalCases"
-						@open-preview="onOpenPreview"
-						@publish-agent="onSetupTaskPublishAgent"
-					/>
-
-					<AgentVersionHistoryPanel
-						v-if="!isStandalonePreview && isVersionHistoryOpen"
-						ref="versionHistoryPanel"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:has-unpublished-changes="
-							Boolean(agent?.activeVersionId) && agent?.versionId !== agent?.activeVersionId
-						"
-						:agent-name="agent?.name ?? agentName"
-						:editing-locked="isEditingLocked"
-						@close="onCloseVersionHistory"
-						@reverted="onReverted"
-						@published="onPublished"
-						@unpublished="onUnpublished"
-					/>
-
-					<Teleport
-						v-if="!isStandalonePreview"
-						:to="props.artifactTestChatTarget ?? 'body'"
-						:disabled="!artifactInlineTestChat || !props.artifactTestChatTarget"
-					>
-						<N8nResizeWrapper
-							:class="[
-								$style.previewResizeWrapper,
-								{
-									[$style.previewResizeOpen]: isPreviewDockOpen,
-									[$style.artifactTestChat]: artifactInlineTestChat,
-								},
-							]"
-							:is-resizing-enabled="isPreviewDockOpen && !inlineTestChat"
-							v-show="!(compactChatLayout && showConfiguration)"
-							:width="renderedSidePanelWidths.preview"
-							:max-width="AGENT_MAX_PANEL_WIDTH"
-							:default-width="defaultPanelWidth"
-							:min-width="AGENT_MIN_PANEL_WIDTH"
-							:supported-directions="['left']"
-							:grid-size="8"
-							@resizestart="isPreviewDockResizing = true"
-							@resize="onPreviewDockResize"
-							@resizeend="isPreviewDockResizing = false"
-						>
-							<AgentPreviewDock
-								ref="previewDock"
-								:inline="inlineTestChat"
-								:closable="compactChatLayout"
-								:placeholder="
-									inlineTestChat
-										? locale.baseText('agents.builder.chatMode.testPlaceholder', {
-												interpolate: { agentName: localConfig?.name || agentName },
-											})
-										: undefined
-								"
-								@message-sent="hasSentBuilderMessage = true"
-								:is-open="isPreviewDockOpen && !(compactChatLayout && showConfiguration)"
-								:session-title="currentSessionTitle"
-								:session-options="sessionMenu"
-								:has-session="currentSessionHasMessages"
-								:initialized="initialized && previewSessionReady"
-								:project-id="projectId"
-								:agent-id="agentId"
-								:agent="agent"
-								:local-config="localConfig"
-								:connected-triggers="connectedTriggers"
-								:effective-session-id="effectiveSessionId"
-								:new-session="currentSessionIsEphemeral"
-								:initial-prompt="taskPreviewPrompt"
-								:can-delete-session="canDeletePreviewSession"
-								:is-deleting-session="isDeletingSession"
-								:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
-								:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
-								:before-send="beforePreviewSend"
-								budget-cards
-								:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
-								@view-trace="viewPreviewTrace"
-								@new-session="startNewPreviewSession"
-								@delete-session="onDeletePreviewSession"
-								@session-select="onSessionPick"
-								@close="closeTestChat"
-								@continue-loaded="onContinueLoaded"
-								@session-created="markSessionCreated"
-								@send-to-assistant="onSendPreviewToAssistant"
-								@initial-consumed="taskPreviewPrompt = undefined"
-							>
-								<template v-if="$slots['artifact-test-actions']" #header-actions>
-									<slot name="artifact-test-actions" />
-								</template>
-								<template v-if="inlineTestChat" #composer-footer>
-									<AgentBuilderChatDisclaimer />
-								</template>
-								<template v-if="inlineTestChat" #composer-start>
-									<AgentBuilderChatMode
-										v-if="chatModeVisible"
-										:model-value="chatMode"
-										:disabled="chatModeBusy"
-										:test-disabled="!!testModeDisabledReason"
-										:test-disabled-reason="testModeDisabledReason"
-										:validation-issues="testValidationIssues"
-										:discovery="!hasSentBuilderMessage && isPreviewDockOpen && !showConfiguration"
-										@update:model-value="setChatMode"
-									/>
-								</template>
-							</AgentPreviewDock>
-						</N8nResizeWrapper>
-					</Teleport>
-				</template>
-			</div>
+				</Teleport>
+			</template>
 		</div>
 	</div>
 </template>
@@ -3805,13 +3812,6 @@ useKeybindings({
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
 @use '@n8n/design-system/css/common/var' as ds;
-
-.host {
-	width: 100%;
-	height: 100%;
-	min-width: 0;
-	min-height: 0;
-}
 
 // Let the fullscreen builder paint above the app sidebar without moving its chats.
 :global(#content):has(.fullscreen) {
@@ -3832,6 +3832,9 @@ useKeybindings({
 
 .root {
 	--n8n--agent-builder-header-height: var(--height--4xl);
+
+	width: 100%;
+	min-width: 0;
 
 	position: relative;
 	display: flex;

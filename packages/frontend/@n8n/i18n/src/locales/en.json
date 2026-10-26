@@ -746,7 +746,6 @@
 	"agents.builder.chatMode.label": "Chat mode",
 	"agents.builder.chatMode.build": "Build",
 	"agents.builder.chatMode.test": "Test",
-	"agents.builder.chatMode.unavailable": "Finish setting up your agent to test it",
 	"agents.builder.chatMode.buildPlaceholder": "Ask anything…",
 	"agents.builder.chatMode.testPlaceholder": "Test {agentName}…",
 	"agents.builder.chatMode.chat": "Chat",

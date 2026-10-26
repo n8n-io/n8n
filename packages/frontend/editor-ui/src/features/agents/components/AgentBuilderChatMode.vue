@@ -76,16 +76,11 @@ const i18n = useI18n();
 	border-radius: var(--radius--full);
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--medium);
-	color: var(--text-color--subtler);
+	--button--color: var(--text-color--subtler);
 
 	&:hover {
-		background: transparent;
-		color: var(--text-color);
-	}
-	> span {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing--3xs);
+		--button--color--background-hover: transparent;
+		--button--color: var(--text-color);
 	}
 }
 
@@ -93,17 +88,15 @@ const i18n = useI18n();
 @container (max-width: 400px) {
 	.mode {
 		padding-inline: var(--spacing--2xs);
-
-		> span {
-			gap: var(--spacing--5xs);
-		}
 	}
 }
 
 .active,
 .active:hover {
-	background: light-dark(var(--color--purple-50), var(--color--purple-950));
-	color: light-dark(var(--color--purple-500), var(--color--purple-300));
+	--button--color--background: light-dark(var(--color--purple-50), var(--color--purple-950));
+	--button--color--background-hover: var(--button--color--background);
+	--button--color--background-active: var(--button--color--background);
+	--button--color: light-dark(var(--color--purple-500), var(--color--purple-300));
 	font-weight: var(--font-weight--bold);
 }
 

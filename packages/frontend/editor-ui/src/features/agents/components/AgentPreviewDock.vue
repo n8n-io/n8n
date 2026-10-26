@@ -179,6 +179,7 @@ function handleEscapeKey(event: KeyboardEvent) {
 
 	if (
 		!props.isOpen ||
+		(props.inline && !props.closable) ||
 		dock.value?.contains(event.target as Node) !== true ||
 		(event.target instanceof Element && event.target.closest('[role="dialog"]') !== null)
 	) {

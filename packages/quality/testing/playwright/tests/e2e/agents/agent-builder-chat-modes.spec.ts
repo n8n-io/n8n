@@ -4,12 +4,30 @@ import type { InstanceAiRichMessagesResponse } from '@n8n/api-types';
 
 import { setContextModuleSettings } from '../../../config/intercepts';
 import { expect, test } from '../../../fixtures/base';
+import type { ApiHelpers } from '../../../services/api-helper';
 
 test.use({
 	capability: {
 		env: { N8N_ENABLED_MODULES: 'agents,instance-ai', TEST_ISOLATION: 'agent-builder-chat-modes' },
 	},
 });
+
+async function createRunnableAgent(api: ApiHelpers) {
+	const project = await api.projects.getMyPersonalProject();
+	const name = `Chat modes ${nanoid(6)}`;
+	const credential = await api.credentials.createCredential({
+		name,
+		type: 'anthropicApi',
+		data: { apiKey: 'chat-modes-test-key' },
+	});
+	const agent = await api.agents.create(project.id, {
+		name,
+		model: 'anthropic/claude-sonnet-4-5',
+		credential: credential.id,
+		instructions: 'Help answer questions about the project.',
+	});
+	return { project, agent, name };
+}
 
 test.describe(
 	'Agent builder chat modes',
@@ -22,19 +40,7 @@ test.describe(
 			setContextModuleSettings(n8n.page.context(), {
 				'instance-ai': { enabled: true, setupCompleted: true, workflowBuilderAvailable: true },
 			});
-			const project = await api.projects.getMyPersonalProject();
-			const credential = await api.credentials.createCredential({
-				name: `Preview links ${nanoid(6)}`,
-				type: 'anthropicApi',
-				data: { apiKey: 'preview-links-test-key' },
-			});
-			const name = `Preview links ${nanoid(6)}`;
-			const agent = await api.agents.create(project.id, {
-				name,
-				model: 'anthropic/claude-sonnet-4-5',
-				credential: credential.id,
-				instructions: 'Help answer questions about the project.',
-			});
+			const { project, agent, name } = await createRunnableAgent(api);
 			const threadId = randomUUID();
 			await api.instanceAi.createAgentArtifactThread({
 				threadId,
@@ -95,26 +101,12 @@ test.describe(
 				}
 			}
 		});
-		test('preserves both drafts and fits desktop and mobile layouts', async ({
-			n8n,
-			api,
-		}, testInfo) => {
+		test('preserves both drafts and fits desktop and mobile layouts', async ({ n8n, api }) => {
 			// This checks layout and draft routing. It does not send model requests.
 			setContextModuleSettings(n8n.page.context(), {
 				'instance-ai': { enabled: true, setupCompleted: true, workflowBuilderAvailable: true },
 			});
-			const project = await api.projects.getMyPersonalProject();
-			const credential = await api.credentials.createCredential({
-				name: `Chat modes ${nanoid(6)}`,
-				type: 'anthropicApi',
-				data: { apiKey: 'chat-modes-test-key' },
-			});
-			const agent = await api.agents.create(project.id, {
-				name: `Chat modes ${nanoid(6)}`,
-				model: 'anthropic/claude-sonnet-4-5',
-				credential: credential.id,
-				instructions: 'Help answer questions about the project.',
-			});
+			const { project, agent } = await createRunnableAgent(api);
 			await n8n.page.setViewportSize({ width: 1440, height: 900 });
 			await n8n.start.fromHome();
 			await n8n.sideBar.expand();
@@ -131,7 +123,6 @@ test.describe(
 				await expect
 					.poll(async () => await builder.getConfigurationWidthRatio())
 					.toBeCloseTo(0.35, 3);
-				await n8n.page.screenshot({ path: testInfo.outputPath(`desktop-${width}-build.png`) });
 			}
 			await n8n.page.setViewportSize({ width: 1440, height: 900 });
 			await expect(builder.getBuildAgentAttachment()).toBeVisible();
@@ -146,14 +137,12 @@ test.describe(
 			await builder.getComposer('build').fill('Add a project knowledge tool');
 			await expect(builder.getDisclaimer('build')).toBeVisible();
 			const buildDisclaimerBounds = await builder.getDisclaimer('build').boundingBox();
-			await n8n.page.screenshot({ path: testInfo.outputPath('desktop-build.png') });
 			await builder.getModeButton('test').click();
 			await expect(builder.getComposer('test')).toBeVisible();
 			await expect(builder.getComposer('test')).toBeEmpty();
 			await expect
 				.poll(async () => await builder.getComposerTextInset('test'))
 				.toEqual({ top: 14, left: 14 });
-			await n8n.page.screenshot({ path: testInfo.outputPath('desktop-test-placeholder.png') });
 			await builder.getComposer('test').fill(longPrompt);
 			await expect.poll(async () => await builder.isComposerScrollable('test')).toBe(true);
 			await expect
@@ -171,7 +160,6 @@ test.describe(
 			await expect(builder.getComposer('build')).toHaveValue('Add a project knowledge tool');
 			await builder.getModeButton('test').click();
 			await expect(builder.getComposer('test')).toHaveValue('What can you help me with?');
-			await n8n.page.screenshot({ path: testInfo.outputPath('desktop-test.png') });
 			await builder.resizeConfiguration(600);
 			// The resize wrapper excludes the one-pixel divider border.
 			await expect
@@ -214,9 +202,6 @@ test.describe(
 							expect(bounds.x).toBeGreaterThanOrEqual(composer.x);
 							expect(bounds.x + bounds.width).toBeLessThanOrEqual(composer.x + composer.width);
 						}
-						await n8n.page.screenshot({
-							path: testInfo.outputPath(`${width}-${mode}-${colorScheme}.png`),
-						});
 						await builder.getCloseChatButton(mode).click();
 						await expect(builder.getConfiguration()).toBeVisible();
 						await expect(builder.getComposer(mode)).toBeHidden();
@@ -224,9 +209,6 @@ test.describe(
 						await expect
 							.poll(async () => (await builder.getConfiguration().boundingBox())?.width)
 							.toBe(width);
-						await n8n.page.screenshot({
-							path: testInfo.outputPath(`${width}-config-${colorScheme}.png`),
-						});
 						await builder.getOpenChatButton().click();
 						await expect(builder.getComposer(mode)).toHaveValue(
 							mode === 'test' ? 'What can you help me with?' : 'Add a project knowledge tool',
@@ -249,7 +231,6 @@ test.describe(
 			await expect
 				.poll(async () => (await builder.getComposerFrame('build').boundingBox())?.height)
 				.toBe(184);
-			await n8n.page.screenshot({ path: testInfo.outputPath('desktop-build-placeholder.png') });
 			await builder.getModeButton('test').click();
 			await builder.removeTestAttachment();
 			await builder.getComposer('test').fill('');
@@ -265,33 +246,15 @@ test.describe(
 					await expect
 						.poll(async () => (await builder.getComposerFrame(mode).boundingBox())?.height)
 						.toBe(184);
-					await n8n.page.screenshot({
-						path: testInfo.outputPath(`375-${mode}-placeholder-${colorScheme}.png`),
-					});
 				}
 			}
 		});
 
-		test('uses the main Assistant chat for testing an agent artifact', async ({
-			n8n,
-			api,
-		}, testInfo) => {
+		test('uses the main Assistant chat for testing an agent artifact', async ({ n8n, api }) => {
 			setContextModuleSettings(n8n.page.context(), {
 				'instance-ai': { enabled: true, setupCompleted: true, workflowBuilderAvailable: true },
 			});
-			const project = await api.projects.getMyPersonalProject();
-			const credential = await api.credentials.createCredential({
-				name: `Artifact modes ${nanoid(6)}`,
-				type: 'anthropicApi',
-				data: { apiKey: 'artifact-modes-test-key' },
-			});
-			const agentName = `Artifact modes ${nanoid(6)}`;
-			const agent = await api.agents.create(project.id, {
-				name: agentName,
-				model: 'anthropic/claude-sonnet-4-5',
-				credential: credential.id,
-				instructions: 'Help answer questions about the project.',
-			});
+			const { project, agent, name: agentName } = await createRunnableAgent(api);
 			const threadId = randomUUID();
 			await api.instanceAi.createAgentArtifactThread({
 				threadId,
@@ -305,7 +268,6 @@ test.describe(
 			const builder = n8n.agentBuilder;
 			await expect(builder.getModeButton('test')).toBeEnabled();
 			await builder.getArtifactBuildComposer().fill('Add a project knowledge tool');
-			await n8n.page.screenshot({ path: testInfo.outputPath('assistant-artifact-build.png') });
 			await builder.getModeButton('test').click();
 			await expect(builder.getArtifactBuildComposer()).toBeHidden();
 			await expect(builder.getComposer('test')).toBeVisible();
@@ -318,7 +280,6 @@ test.describe(
 				configuration?.x ?? 0,
 			);
 			await builder.getComposer('test').fill('What can you help me with?');
-			await n8n.page.screenshot({ path: testInfo.outputPath('assistant-artifact-test.png') });
 			await builder.getModeButton('build').click();
 			await expect(builder.getArtifactBuildComposer()).toHaveValue('Add a project knowledge tool');
 			await builder.getModeButton('test').click();
@@ -333,9 +294,6 @@ test.describe(
 					expect(bounds.x).toBeGreaterThanOrEqual(composer.x);
 					expect(bounds.x + bounds.width).toBeLessThanOrEqual(composer.x + composer.width);
 				}
-				await n8n.page.screenshot({
-					path: testInfo.outputPath(`assistant-artifact-mobile-${colorScheme}.png`),
-				});
 				await builder.getTestShowConfigurationButton().click();
 				await expect(builder.getConfiguration()).toBeVisible();
 				await expect(builder.getComposer('test')).toBeHidden();
@@ -351,7 +309,7 @@ test.describe(
 		test('keeps the mode selector visible with setup warnings before an agent can run', async ({
 			n8n,
 			api,
-		}, testInfo) => {
+		}) => {
 			setContextModuleSettings(n8n.page.context(), {
 				'instance-ai': { enabled: true, setupCompleted: true, workflowBuilderAvailable: true },
 			});
@@ -367,9 +325,6 @@ test.describe(
 			await builder.hoverTestMode();
 			await expect(builder.getTestModeWarning()).toBeVisible();
 			await expect(builder.getTestModeWarning()).toContainText(/instructions/i);
-			await n8n.page.screenshot({
-				path: testInfo.outputPath('standalone-agent-setup-warning.png'),
-			});
 			const threadId = randomUUID();
 			await api.instanceAi.createAgentArtifactThread({
 				threadId,
@@ -383,7 +338,6 @@ test.describe(
 			await builder.hoverTestMode();
 			await expect(builder.getTestModeWarning()).toBeVisible();
 			await expect(builder.getTestModeWarning()).toContainText(/instructions/i);
-			await n8n.page.screenshot({ path: testInfo.outputPath('assistant-agent-setup-warning.png') });
 			await builder.getArtifactPanelToggle().click();
 			await expect(builder.getModeButton('build')).toBeHidden();
 			await expect(builder.getModeButton('test')).toBeHidden();

@@ -162,6 +162,7 @@ describe('InstanceAiChatPanel', () => {
 		});
 		await flushPromises();
 		const conversation = wrapper.getComponent(InstanceAiConversationStub);
+		expect(focusMock).not.toHaveBeenCalled();
 		await conversation.get('textarea').setValue('Keep this draft');
 		await wrapper.setProps({ visible: false });
 		await wrapper.setProps({ visible: true });
