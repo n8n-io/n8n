@@ -14,7 +14,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AppArtifactRepository } from '../app-artifact.repository';
 import { appStorageLockSubKey } from '../app-storage-lock';
-import { AppBlobStore } from '../storage/app-blob-store';
+import { AppBlobStore } from '../app-blob-store';
 
 const appId = '11111111-1111-4111-8111-111111111111';
 
