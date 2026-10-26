@@ -3,6 +3,7 @@ import { sleep } from '@n8n/utils/sleep';
 /** Runs one command in a container and returns its trimmed output. */
 type Exec = (command: string[]) => Promise<string>;
 
+export const FINAL_STATUSES = ['success', 'error', 'crashed', 'canceled'] as const;
 const PENDING_STATUSES = ['', 'new', 'running', 'waiting'];
 
 export interface ExecutionState {

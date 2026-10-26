@@ -1,6 +1,94 @@
+import type { BullState } from './probes';
+import { FINAL_STATUSES } from './probes';
+import type { Effect, WorkloadRequest } from './workload';
+
 export interface Violation {
 	invariant: string;
 	detail: unknown;
+}
+
+export interface RunRecord {
+	requests: WorkloadRequest[];
+	/** Status of every execution of the workload workflow, by id. */
+	executions: Record<string, string>;
+	effects: Effect[];
+	bull: Pick<BullState, 'wait' | 'active'>;
+}
+
+const accepted = (requests: WorkloadRequest[]) => requests.filter((r) => r.status === 200);
+
+const repeated = (values: string[]) => {
+	const counts = new Map<string, number>();
+	for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+	return [...counts].filter(([, count]) => count > 1).map(([value]) => value);
+};
+
+/** Every execution reached a final status. */
+export function everyExecutionFinished({ executions }: RunRecord): Violation[] {
+	const pending = Object.entries(executions).filter(
+		([, status]) => !(FINAL_STATUSES as readonly string[]).includes(status),
+	);
+	return pending.length
+		? [{ invariant: 'every execution finished', detail: Object.fromEntries(pending) }]
+		: [];
+}
+
+/** An accepted request has its effect, or an execution that ended without success accounts for it. */
+export function noAcceptedRequestLost({ requests, executions, effects }: RunRecord): Violation[] {
+	const done = new Set(effects.map((e) => e.requestId));
+	const withEffect = new Set(effects.map((e) => e.executionId));
+	const missing = accepted(requests).filter((r) => !done.has(r.requestId));
+	const unsuccessful = Object.entries(executions).filter(
+		([id, status]) => status !== 'success' && !withEffect.has(id),
+	).length;
+	return missing.length > unsuccessful
+		? [
+				{
+					invariant: 'no accepted request lost',
+					detail: {
+						missing: missing.map((r) => r.requestId),
+						unsuccessfulExecutions: unsuccessful,
+					},
+				},
+			]
+		: [];
+}
+
+/** No request and no execution wrote its effect more than once. */
+export function noRepeatedEffects({ effects }: RunRecord): Violation[] {
+	const requests = repeated(effects.map((e) => e.requestId));
+	const executions = repeated(effects.map((e) => e.executionId));
+	return requests.length || executions.length
+		? [{ invariant: 'no repeated effects', detail: { requests, executions } }]
+		: [];
+}
+
+/** Every successful execution wrote exactly one effect. */
+export function everySuccessHasItsEffect({ executions, effects }: RunRecord): Violation[] {
+	const written = new Set(effects.map((e) => e.executionId));
+	const without = Object.entries(executions)
+		.filter(([id, status]) => status === 'success' && !written.has(id))
+		.map(([id]) => id);
+	return without.length ? [{ invariant: 'every success has its effect', detail: without }] : [];
+}
+
+/** Nothing is left waiting or active in the queue. */
+export function queueDrained({ bull }: RunRecord): Violation[] {
+	return bull.wait.length || bull.active.length
+		? [{ invariant: 'queue drained', detail: { wait: bull.wait, active: bull.active } }]
+		: [];
+}
+
+export const WORKLOAD_INVARIANTS = [
+	everyExecutionFinished,
+	noAcceptedRequestLost,
+	noRepeatedEffects,
+	everySuccessHasItsEffect,
+	queueDrained,
+];
+
+export function checkWorkload(record: RunRecord): Violation[] {
+	return WORKLOAD_INVARIANTS.flatMap((invariant) => invariant(record));
 }
 
 export interface LeadershipEvent {
