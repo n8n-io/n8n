@@ -92,6 +92,7 @@ import { SubAgentRunner } from './sub-agents/sub-agent-runner';
 import { buildToolRegistry, type ReferencedToolKind, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
 import { createMarkSessionFailedTool } from './tools/mark-session-failed.tool';
+import { createReadBinaryDataTool } from './tools/read-binary-data.tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from './tools/workflow-tool-unavailable-error';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
@@ -1047,11 +1048,14 @@ export class AgentRuntimeReconstructionService {
 		if (!agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 		}
-		agent.fileStore(
-			this.agentChatAttachmentService.getFileStore(
-				{ agentId, projectId },
-				getProviderPrefix(config.model),
-			),
+		const provider = getProviderPrefix(config.model);
+		agent.fileStore(this.agentChatAttachmentService.getFileStore({ agentId, projectId }, provider));
+		agent.tool(
+			createReadBinaryDataTool({
+				projectId,
+				provider,
+				attachmentService: this.agentChatAttachmentService,
+			}),
 		);
 	}
 

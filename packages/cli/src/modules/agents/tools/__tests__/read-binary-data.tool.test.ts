@@ -1,0 +1,100 @@
+import { mock } from 'vitest-mock-extended';
+
+import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
+import type { AgentChatAttachment } from '../../entities/agent-chat-attachment.entity';
+import { createReadBinaryDataTool, MAX_TEXT_FILE_BYTES } from '../read-binary-data.tool';
+
+describe('createReadBinaryDataTool', () => {
+	const attachmentService = mock<AgentChatAttachmentService>();
+	const ctx = { persistence: { threadId: 'thread-1', resourceId: 'user-1' } };
+
+	function build(provider = 'anthropic') {
+		return createReadBinaryDataTool({
+			projectId: 'project-1',
+			provider,
+			attachmentService,
+		}).build();
+	}
+
+	function file(overrides: Partial<AgentChatAttachment> = {}) {
+		return mock<AgentChatAttachment>({
+			id: 'file-1',
+			fileName: 'photo.png',
+			mimeType: 'image/png',
+			fileSizeBytes: 3,
+			...overrides,
+		});
+	}
+
+	beforeEach(() => vi.resetAllMocks());
+
+	it('returns an image as a file reference part for the runtime to load', async () => {
+		attachmentService.getReadable.mockResolvedValue(file());
+		const tool = build();
+
+		const output = await tool.handler!({ fileId: 'file-1' }, ctx);
+
+		expect(attachmentService.getReadable).toHaveBeenCalledWith('file-1', {
+			projectId: 'project-1',
+			threadId: 'thread-1',
+		});
+		expect(tool.toModelOutput!(output)).toEqual({
+			type: 'content',
+			value: [
+				{ type: 'text', text: expect.stringContaining('"fileId":"file-1"') },
+				{
+					type: 'file',
+					mediaType: 'image/png',
+					fileRef: { id: 'file-1', fileName: 'photo.png', sizeBytes: 3 },
+				},
+			],
+		});
+	});
+
+	it.each(['application/pdf', 'text/csv', 'application/json'])('reads %s', async (mimeType) => {
+		attachmentService.getReadable.mockResolvedValue(file({ mimeType }));
+
+		await expect(build().handler!({ fileId: 'file-1' }, ctx)).resolves.toMatchObject({
+			mimeType,
+		});
+	});
+
+	it('rejects a file that the thread cannot read', async () => {
+		attachmentService.getReadable.mockResolvedValue(null);
+
+		await expect(build().handler!({ fileId: 'other' }, ctx)).rejects.toThrow(
+			'File "other" not found in this conversation',
+		);
+	});
+
+	it('rejects a run without a thread', async () => {
+		await expect(build().handler!({ fileId: 'file-1' }, {})).rejects.toThrow(
+			'Files can only be read in a conversation',
+		);
+		expect(attachmentService.getReadable).not.toHaveBeenCalled();
+	});
+
+	it('rejects other file types', async () => {
+		attachmentService.getReadable.mockResolvedValue(file({ mimeType: 'application/zip' }));
+
+		await expect(build().handler!({ fileId: 'file-1' }, ctx)).rejects.toThrow(
+			'Cannot read files of type "application/zip". This tool reads images, PDFs and text files',
+		);
+	});
+
+	it('rejects an image when the model cannot read images', async () => {
+		attachmentService.getReadable.mockResolvedValue(file());
+
+		await expect(build('unknown').handler!({ fileId: 'file-1' }, ctx)).rejects.toThrow(
+			'This model cannot read files of type "image/png"',
+		);
+	});
+
+	it('rejects a text file that is too large', async () => {
+		attachmentService.getReadable.mockResolvedValue(
+			file({ mimeType: 'text/plain', fileSizeBytes: MAX_TEXT_FILE_BYTES + 1 }),
+		);
+
+		await expect(build().handler!({ fileId: 'file-1' }, ctx)).rejects.toThrow('too large');
+	});
+});

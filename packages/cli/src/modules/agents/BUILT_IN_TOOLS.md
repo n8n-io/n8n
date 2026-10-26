@@ -54,6 +54,12 @@ each child's selected model. There is no feature flag or Agent Builder setting.
 - Attach condition: Always attached.
 - Source: [`tools/environment-tool.ts`](./tools/environment-tool.ts).
 
+### `read_binary_data`
+
+- Purpose: Reads a file by its fileId. Images and PDFs go to the model as file parts. Text files go to the model as text. Other types return an error. The model gets the content in the next model call only. Later calls get a short text, so the model reads the file again when it needs it. The tool checks that the thread can read the file.
+- Attach condition: The agent is not an inline agent.
+- Source: [`tools/read-binary-data.tool.ts`](./tools/read-binary-data.tool.ts).
+
 ## Workspace and knowledge tools
 
 Attach condition: The sandbox is on and the agent is not an inline agent. The runtime attaches them through `agent.workspace(...)` in `attachWorkspaceAndKnowledge`. A delegated sub-agent gets the same tools scoped to its own folder in the parent workspace.
