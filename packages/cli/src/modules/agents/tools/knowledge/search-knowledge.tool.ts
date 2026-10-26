@@ -64,6 +64,17 @@ function toKnowledgeToolCallResult(
 	return { failed: false, contentChars: json?.length ?? 0 };
 }
 
+function withFileUploadedAt(
+	result: KnowledgeToolCallResult,
+	output: unknown,
+): KnowledgeToolCallResult {
+	if (result.failed || !isReadKnowledgeResult(output)) {
+		return result;
+	}
+
+	return { ...result, fileUploadedAt: output.createdAt };
+}
+
 function truncateForModel(text: string, maxChars: number): { text: string; truncated: boolean } {
 	if (text.length <= maxChars) {
 		return { text, truncated: false };
@@ -305,7 +316,7 @@ export function createKnowledgeRetrievalTools({
 				async () => await knowledgeMirrorService.readKnowledge(projectId, agentId, input),
 			);
 			const result = toKnowledgeToolCallResult(output, toReadKnowledgeModelOutput);
-			finishToolCall(result);
+			finishToolCall(withFileUploadedAt(result, output));
 			return output;
 		})
 		.toModelOutput(toReadKnowledgeModelOutput);

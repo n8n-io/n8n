@@ -375,6 +375,18 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Vector store searches that failed. Each one also counts in vector_store_search_count',
 				),
+			file_age_days_min: z
+				.number()
+				.optional()
+				.describe(
+					'Age in full days, when the run ends, of the newest knowledge file that read_file read successfully. Absent when the run read no file.',
+				),
+			file_age_days_max: z
+				.number()
+				.optional()
+				.describe(
+					'Age in full days, when the run ends, of the oldest knowledge file that read_file read successfully. Absent when the run read no file.',
+				),
 		}),
 	},
 	AGENT_EXECUTION_COUNT: {

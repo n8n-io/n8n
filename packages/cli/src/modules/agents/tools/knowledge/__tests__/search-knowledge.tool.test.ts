@@ -101,6 +101,7 @@ describe('createKnowledgeRetrievalTools', () => {
 			file: 'notes.txt',
 			fileId: 'file-1',
 			displayName: 'notes.txt',
+			createdAt: '2026-10-01T00:00:00.000Z',
 			ranges: [],
 			truncated: false,
 		});
@@ -140,6 +141,7 @@ describe('createKnowledgeRetrievalTools', () => {
 				file: 'notes.txt',
 				fileId: 'file-1',
 				displayName: 'notes.txt',
+				createdAt: '2026-10-01T00:00:00.000Z',
 				ranges: [],
 				truncated: false,
 			});
@@ -149,10 +151,12 @@ describe('createKnowledgeRetrievalTools', () => {
 
 			expect(startToolCall).toHaveBeenCalledTimes(1);
 			expect(startToolCall).toHaveBeenCalledWith('run-1', call);
-			expect(finishToolCall).toHaveBeenCalledWith({
-				failed: false,
-				contentChars: modelOutputLength(tool, output),
-			});
+			expect(finishToolCall).toHaveBeenCalledWith(
+				expect.objectContaining({
+					failed: false,
+					contentChars: modelOutputLength(tool, output),
+				}),
+			);
 		},
 	);
 
@@ -163,6 +167,7 @@ describe('createKnowledgeRetrievalTools', () => {
 		const longText = 'a'.repeat(20_000);
 		knowledgeMirrorService.readKnowledge.mockResolvedValue({
 			...file,
+			createdAt: '2026-10-01T00:00:00.000Z',
 			ranges: [
 				{
 					startLine: 1,
@@ -182,6 +187,7 @@ describe('createKnowledgeRetrievalTools', () => {
 		expect(finishToolCall).toHaveBeenCalledWith({
 			failed: false,
 			contentChars,
+			fileUploadedAt: '2026-10-01T00:00:00.000Z',
 		});
 	});
 
@@ -194,6 +200,38 @@ describe('createKnowledgeRetrievalTools', () => {
 		await getToolHandler(tool)({ pattern: 'refund' }, { runId: 'run-1' });
 
 		expect(startToolCall).toHaveBeenCalledWith('run-1', 'file_search');
+		expect(finishToolCall).toHaveBeenCalledWith({ failed: true });
+	});
+
+	it('passes the upload time of the file that read_file read, but not to the model', async () => {
+		const { startToolCall, finishToolCall } = mockToolCallTracking();
+		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
+		knowledgeMirrorService.readKnowledge.mockResolvedValue({
+			file: 'notes.txt',
+			fileId: 'file-1',
+			displayName: 'notes.txt',
+			createdAt: '2026-10-01T00:00:00.000Z',
+			ranges: [],
+			truncated: false,
+		});
+		const tool = buildTool(knowledgeMirrorService, 'read_file', startToolCall);
+
+		const output = await getToolHandler(tool)({ file: 'notes.txt' }, { runId: 'run-1' });
+
+		expect(finishToolCall).toHaveBeenCalledWith(
+			expect.objectContaining({ failed: false, fileUploadedAt: '2026-10-01T00:00:00.000Z' }),
+		);
+		expect(tool.toModelOutput?.(output)).not.toHaveProperty('createdAt');
+	});
+
+	it('passes no upload time for a read that fails', async () => {
+		const { startToolCall, finishToolCall } = mockToolCallTracking();
+		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
+		knowledgeMirrorService.readKnowledge.mockRejectedValue(new Error('read failed'));
+		const tool = buildTool(knowledgeMirrorService, 'read_file', startToolCall);
+
+		await getToolHandler(tool)({ file: 'notes.txt' }, { runId: 'run-1' });
+
 		expect(finishToolCall).toHaveBeenCalledWith({ failed: true });
 	});
 

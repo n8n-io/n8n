@@ -7,8 +7,13 @@ import { Telemetry } from '@/telemetry';
 
 export type KnowledgeToolCall = 'file_find' | 'file_search' | 'file_read' | 'vector_store_search';
 
-/** A failed call sends no knowledge content, so it has no characters to count. */
-export type KnowledgeToolCallResult = { failed: false; contentChars: number } | { failed: true };
+/**
+ * A failed call sends no knowledge content, so it has no characters to count.
+ * `fileUploadedAt` is the upload time of the file that a successful read used.
+ */
+export type KnowledgeToolCallResult =
+	| { failed: false; contentChars: number; fileUploadedAt?: string }
+	| { failed: true };
 
 export type FinishKnowledgeToolCall = (result: KnowledgeToolCallResult) => void;
 
@@ -51,6 +56,13 @@ const failedKeyByCall: Record<KnowledgeToolCall, keyof KnowledgeRunUsage> = {
  */
 const STALE_RUN_MS = Time.days.toMilliseconds;
 
+interface TrackedRun {
+	usage: KnowledgeRunUsage;
+	lastCallAt: number;
+	newestFileUploadedAt?: number;
+	oldestFileUploadedAt?: number;
+}
+
 /**
  * Counts the knowledge tool calls of each agent run in memory, keyed by the
  * run id of the agent runtime. The runtime is shared between runs, so the run
@@ -58,7 +70,7 @@ const STALE_RUN_MS = Time.days.toMilliseconds;
  */
 @Service()
 export class AgentKnowledgeUsageTracker {
-	private readonly runs = new Map<string, { usage: KnowledgeRunUsage; lastCallAt: number }>();
+	private readonly runs = new Map<string, TrackedRun>();
 
 	constructor(private readonly telemetry: Telemetry) {}
 
@@ -66,8 +78,8 @@ export class AgentKnowledgeUsageTracker {
 		runId: string,
 		run: { agentId: string; runType: AgentRunTelemetryType; userId?: string },
 	): void {
-		const usage = this.takeRunUsage(runId);
-		if (!usage) {
+		const trackedRun = this.takeRun(runId);
+		if (!trackedRun) {
 			return;
 		}
 
@@ -76,7 +88,8 @@ export class AgentKnowledgeUsageTracker {
 			run_id: runId,
 			run_type: run.runType,
 			...(run.userId ? { user_id: run.userId } : {}),
-			...usage,
+			...trackedRun.usage,
+			...fileAges(trackedRun, Date.now()),
 		});
 	}
 
@@ -92,7 +105,7 @@ export class AgentKnowledgeUsageTracker {
 		const now = Date.now();
 		this.removeStaleRuns(now);
 
-		const run = this.runs.get(runId) ?? { usage: emptyUsage(), lastCallAt: now };
+		const run: TrackedRun = this.runs.get(runId) ?? { usage: emptyUsage(), lastCallAt: now };
 		run.usage[usageKeyByCall[call]]++;
 		run.lastCallAt = now;
 		this.runs.set(runId, run);
@@ -107,6 +120,9 @@ export class AgentKnowledgeUsageTracker {
 				run.usage[failedKeyByCall[call]]++;
 			} else {
 				run.usage[contentKeyByCall[call]] += result.contentChars;
+				if (result.fileUploadedAt) {
+					recordFileUploadedAt(run, Date.parse(result.fileUploadedAt));
+				}
 			}
 
 			run.lastCallAt = Date.now();
@@ -115,9 +131,13 @@ export class AgentKnowledgeUsageTracker {
 
 	/** Returns the counts of the run and forgets the run. Undefined when the run used no knowledge. */
 	takeRunUsage(runId: string): KnowledgeRunUsage | undefined {
+		return this.takeRun(runId)?.usage;
+	}
+
+	private takeRun(runId: string): TrackedRun | undefined {
 		const run = this.runs.get(runId);
 		this.runs.delete(runId);
-		return run?.usage;
+		return run;
 	}
 
 	private removeStaleRuns(now: number) {
@@ -127,6 +147,30 @@ export class AgentKnowledgeUsageTracker {
 			}
 		}
 	}
+}
+
+function recordFileUploadedAt(run: TrackedRun, uploadedAt: number) {
+	if (Number.isNaN(uploadedAt)) {
+		return;
+	}
+
+	run.newestFileUploadedAt = Math.max(run.newestFileUploadedAt ?? uploadedAt, uploadedAt);
+	run.oldestFileUploadedAt = Math.min(run.oldestFileUploadedAt ?? uploadedAt, uploadedAt);
+}
+
+/** Ages in full days when the run ends. Empty when the run read no file. */
+function fileAges(run: TrackedRun, now: number) {
+	if (run.newestFileUploadedAt === undefined || run.oldestFileUploadedAt === undefined) {
+		return {};
+	}
+
+	// A small clock difference can put a new upload in the future, so the age is never below 0.
+	const toDays = (uploadedAt: number) =>
+		Math.max(0, Math.floor((now - uploadedAt) / Time.days.toMilliseconds));
+	return {
+		file_age_days_min: toDays(run.newestFileUploadedAt),
+		file_age_days_max: toDays(run.oldestFileUploadedAt),
+	};
 }
 
 function emptyUsage(): KnowledgeRunUsage {

@@ -3,7 +3,10 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
 
-import { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
+import {
+	AgentKnowledgeUsageTracker,
+	type KnowledgeToolCallResult,
+} from '../agent-knowledge-usage-tracker';
 
 describe('AgentKnowledgeUsageTracker', () => {
 	afterEach(() => {
@@ -167,6 +170,51 @@ describe('AgentKnowledgeUsageTracker', () => {
 	});
 
 	describe('sendRunUsage', () => {
+		const day = 24 * 60 * 60 * 1000;
+		const now = new Date('2026-10-26T12:00:00.000Z');
+
+		function sendRun(telemetry: Telemetry, results: KnowledgeToolCallResult[]) {
+			const tracker = new AgentKnowledgeUsageTracker(telemetry);
+			for (const result of results) {
+				tracker.startToolCall('run-1', 'file_read')(result);
+			}
+
+			tracker.sendRunUsage('run-1', { agentId: 'agent-1', runType: 'production' });
+		}
+
+		it('sends the ages in full days of the newest and the oldest file that the run read', () => {
+			vi.useFakeTimers({ now });
+			const telemetry = mock<Telemetry>();
+
+			sendRun(telemetry, [
+				{
+					failed: false,
+					contentChars: 10,
+					fileUploadedAt: new Date(now.getTime() - 30 * day - 1).toISOString(),
+				},
+				{
+					failed: false,
+					contentChars: 10,
+					fileUploadedAt: new Date(now.getTime() - 2.5 * day).toISOString(),
+				},
+			]);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_RUN_USED_KNOWLEDGE,
+				expect.objectContaining({ file_age_days_min: 2, file_age_days_max: 30 }),
+			);
+		});
+
+		it('sends no ages when the run read no file', () => {
+			const telemetry = mock<Telemetry>();
+
+			sendRun(telemetry, [{ failed: false, contentChars: 10 }, { failed: true }]);
+
+			const [, properties] = telemetry.track.mock.calls[0];
+			expect(properties).not.toHaveProperty('file_age_days_min');
+			expect(properties).not.toHaveProperty('file_age_days_max');
+		});
+
 		it('sends the counts of a run that used knowledge, then forgets the run', () => {
 			const telemetry = mock<Telemetry>();
 			const tracker = new AgentKnowledgeUsageTracker(telemetry);
