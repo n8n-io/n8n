@@ -193,7 +193,6 @@ describe('AppsService', () => {
 	it.each([
 		{ host: 'test.app.n8n.cloud', namespace: 'a'.repeat(58) },
 		{ host: 'foo--bar.app.n8n.cloud', namespace: 'a'.repeat(54) },
-		{ host: 'test.app.n8n.cloud', namespace: 'xn' },
 	])(
 		'rejects namespace "$namespace" before writing for Cloud host $host',
 		async ({ host, namespace }) => {

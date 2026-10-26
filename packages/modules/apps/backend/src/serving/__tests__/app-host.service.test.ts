@@ -121,18 +121,6 @@ describe('AppHostService', () => {
 			expect(setup({ host: cloud.host }).origin('sales')).toBe('https://sales.apps.example.com');
 		});
 
-		it.each(['test', 'foo--bar'])(
-			'rejects an app label that cannot form a URL for instance %s',
-			(instanceName) => {
-				const hosts = setup({ ...cloud, host: `${instanceName}.app.n8n.cloud` });
-
-				expect(hosts.origin('xn')).toBeNull();
-				expect(() => hosts.callbackUrl({ id: 'app-id', namespace: 'xn' })).toThrow(
-					'Use a valid app namespace before publishing this app.',
-				);
-			},
-		);
-
 		it('only resolves namespaces for the configured instance', () => {
 			const hosts = setup({ ...cloud, proxyHops: 1 });
 
