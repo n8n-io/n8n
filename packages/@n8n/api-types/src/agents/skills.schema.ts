@@ -198,6 +198,7 @@ export class CreateSkillDto extends Z.class({
 	projectId: z.string().max(36).optional(),
 	/** Required for an agent skill, absent otherwise. */
 	agentId: z.string().max(36).optional(),
+	availableToAssistant: z.boolean().optional(),
 	/** Hub skills ignore `allowedTools`, so a create that sends it is refused. */
 	skill: agentSkillSchema.omit({ allowedTools: true }).extend({ name: skillNameSchema }),
 	availableToMCP: z.boolean().optional(),

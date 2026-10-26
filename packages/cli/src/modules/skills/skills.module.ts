@@ -10,8 +10,8 @@ import { Container } from '@n8n/di';
 @BackendModule({ name: 'skills' })
 export class SkillsModule implements ModuleInterface {
 	async init() {
-		// Read the skills hub setting once, before the agents module starts: agents decide on
-		// init whether they read their skills from the hub.
+		// Turn the skills hub on before the agents module starts: agents decide on init
+		// whether they read their skills from the hub.
 		const { SkillsHubRollout } = await import('./skills-hub-rollout.js');
 		Container.get(SkillsHubRollout).init();
 

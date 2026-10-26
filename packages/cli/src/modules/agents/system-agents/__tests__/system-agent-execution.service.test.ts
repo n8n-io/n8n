@@ -34,7 +34,6 @@ import type {
 	AgentExecutionUsageRow,
 } from '../../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
-import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
 import type { AgentTurnFinalizeOutcome } from '../../types/agent-turn-outcome';
 import { executionToMessagesDto } from '../../utils/execution-to-message-mapper';
@@ -107,7 +106,6 @@ function setup(
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const executionService = mock<AgentExecutionService>();
 	const chatExecutionService = mock<AgentChatExecutionService>();
-	const agentRepository = mock<AgentRepository>();
 	const attachmentService = mock<AgentChatAttachmentService>();
 	const agentMemory = mock<N8nMemoryImpl>();
 	const n8nMemory = mock<N8nMemory>();
@@ -154,7 +152,6 @@ function setup(
 	const service = new SystemAgentExecutionService(
 		logger,
 		registry,
-		agentRepository,
 		threadRepository,
 		executionRepository,
 		executionService,
@@ -186,7 +183,6 @@ function setup(
 		txRunner,
 		executionService,
 		chatExecutionService,
-		agentRepository,
 		registry,
 		attachmentService,
 		n8nMemory,
@@ -1758,41 +1754,6 @@ describe('SystemAgentExecutionService', () => {
 			);
 		});
 	});
-	describe('register', () => {
-		it('seeds the instance agent row before it registers the provider', async () => {
-			const { service, agentRepository, registry } = setup();
-			const provider = {
-				agentId: 'other-agent',
-				name: 'Other Agent',
-				authorize: vi.fn(async () => true),
-				prepareTurn: vi.fn(),
-			} satisfies SystemAgentProvider;
-
-			await service.register(provider);
-
-			expect(agentRepository.ensureInstanceAgent).toHaveBeenCalledWith(
-				'other-agent',
-				'Other Agent',
-			);
-			expect(registry.get('other-agent')).toBe(provider);
-		});
-
-		it('does not register a provider whose agent row cannot be seeded', async () => {
-			const { service, agentRepository, registry } = setup();
-			agentRepository.ensureInstanceAgent.mockRejectedValue(new Error('project agent'));
-
-			await expect(
-				service.register({
-					agentId: 'other-agent',
-					name: 'Other Agent',
-					authorize: vi.fn(async () => true),
-					prepareTurn: vi.fn(),
-				}),
-			).rejects.toThrow('project agent');
-			expect(registry.has('other-agent')).toBe(false);
-		});
-	});
-
 	describe('hidden turns', () => {
 		it('runs a hidden queued message like any other system turn', async () => {
 			const { service, provider, prepared } = setup([textChunk]);

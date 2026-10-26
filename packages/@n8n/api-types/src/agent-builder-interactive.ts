@@ -21,32 +21,6 @@ export const ASK_EMBEDDING_CREDENTIAL_TOOL_NAME = AGENT_BUILDER_TOOL_NAMES.ASK_E
 export const APPROVAL_TOOL_NAME = 'approval' as const;
 
 // ---------------------------------------------------------------------------
-// agent_builder_ask_credential
-// ---------------------------------------------------------------------------
-
-export const askCredentialInputSchema = z.object({
-	purpose: z.string().describe('One short sentence describing what this credential is used for'),
-	nodeType: z
-		.string()
-		.optional()
-		.describe('The n8n node type requiring this credential, e.g. "n8n-nodes-base.slack"'),
-	credentialType: z.string().describe('The credential type name to request, e.g. "slackApi"'),
-	credentialSlot: z
-		.string()
-		.optional()
-		.describe('Credential key on node.credentials, e.g. "slackApi"'),
-});
-
-export type AskCredentialInput = z.infer<typeof askCredentialInputSchema>;
-
-/**
- * Suspend/resume for `agent_builder_ask_credential` and `agent_builder_ask_embedding_credential` now use
- * the shared instance-AI-compatible contract (`agents/agent-interaction.schema.ts`)
- * instead of a builder-only shape — see that module for the full suspend
- * payload (`credentialSuspendPayloadSchema`).
- */
-
-// ---------------------------------------------------------------------------
 // Cancellation
 // ---------------------------------------------------------------------------
 
