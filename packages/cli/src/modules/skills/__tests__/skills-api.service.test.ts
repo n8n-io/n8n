@@ -545,14 +545,20 @@ describe('SkillsApiService', () => {
 			expect(detail).toMatchObject({ id: 'skill_new', name: 'Skill', canEdit: false });
 		});
 
-		it('creates the skill with the MCP availability the client sent', async () => {
+		it('makes the new skill available to MCP clients in the create transaction', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 
 			await service.create(user, payload({ availableToMCP: true }));
 
-			expect(skillService.create).toHaveBeenCalledWith(
-				expect.objectContaining({ availableToMCP: true }),
+			const target = { projectId: null, agentId: null };
+			expect(skillService.create).toHaveBeenCalledWith(expect.objectContaining({ target }), TX_CTX);
+			expect(skillService.setMcpAvailability).toHaveBeenCalledWith(
+				'skill_new',
+				true,
+				target,
+				TX_CTX,
 			);
+			expect(skillService.setAssistantAvailability).not.toHaveBeenCalled();
 		});
 
 		it('reports the create with the method the client sent', async () => {
@@ -795,7 +801,12 @@ describe('SkillsApiService', () => {
 				update({ availableToMCP: true, baseSkillHash: 'base' }),
 			);
 
-			expect(repository.updateAvailableToMCP).toHaveBeenCalledWith('skill_a', true, TX_CTX);
+			expect(skillService.setMcpAvailability).toHaveBeenCalledWith(
+				'skill_a',
+				true,
+				visible[0],
+				TX_CTX,
+			);
 			expect(skillService.save).toHaveBeenCalledWith(
 				'skill_a',
 				{ baseSkillHash: 'base' },

@@ -191,12 +191,13 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 							placement="right"
 							:content="i18n.baseText('settings.context.skills.modal.mcp.label')"
 						>
-							<N8nIcon
-								icon="mcp"
-								size="medium"
-								color="text-light"
+							<span
+								role="img"
+								:aria-label="i18n.baseText('settings.context.skills.modal.mcp.label')"
 								data-test-id="skill-available-to-mcp-icon"
-							/>
+							>
+								<N8nIcon icon="mcp" size="medium" color="text-light" />
+							</span>
 						</N8nTooltip>
 					</div>
 					<N8nText size="small" color="text-light" :class="$style.description">

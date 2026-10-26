@@ -146,15 +146,20 @@ export class SkillsApiService {
 			skill: payload.skill,
 			source,
 			createdById: user.id,
-			availableToMCP: payload.availableToMCP,
 		};
-		const id = payload.availableToAssistant
-			? await this.txRunner.run({}, async (ctx) => {
-					const createdId = await this.skillService.create(input, ctx);
-					await this.skillService.setAssistantAvailability(createdId, true, target, ctx);
-					return createdId;
-				})
-			: await this.skillService.create(input);
+		const id =
+			payload.availableToAssistant || payload.availableToMCP
+				? await this.txRunner.run({}, async (ctx) => {
+						const createdId = await this.skillService.create(input, ctx);
+						if (payload.availableToAssistant) {
+							await this.skillService.setAssistantAvailability(createdId, true, target, ctx);
+						}
+						if (payload.availableToMCP) {
+							await this.skillService.setMcpAvailability(createdId, true, target, ctx);
+						}
+						return createdId;
+					})
+				: await this.skillService.create(input);
 		await this.skillsTelemetry.created(
 			user.id,
 			[{ id, ...target }],
@@ -223,7 +228,7 @@ export class SkillsApiService {
 				);
 			}
 			if (availableToMCP !== undefined) {
-				await this.skillRepository.updateAvailableToMCP(skillId, availableToMCP, ctx);
+				await this.skillService.setMcpAvailability(skillId, availableToMCP, target ?? skill, ctx);
 			}
 			return await this.skillService.save(skillId, update, user.id, ctx);
 		});

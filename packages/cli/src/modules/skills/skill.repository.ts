@@ -392,13 +392,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 
 	/** Inserts the skill with its v1 and returns the id of that version. */
 	async createSkill(
-		skill: {
-			id: string;
-			target: SkillTarget;
-			source: SkillSource;
-			createdById: string | null;
-			availableToMCP?: boolean;
-		},
+		skill: { id: string; target: SkillTarget; source: SkillSource; createdById: string | null },
 		content: SkillContent,
 		ctx: OperationContext = {},
 	): Promise<string> {
@@ -409,7 +403,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 				agentId: skill.target.agentId,
 				source: skill.source,
 				createdById: skill.createdById,
-				availableToMCP: skill.availableToMCP ?? false,
 			});
 			return await insertVersion(manager, skill.id, 1, content, skill.createdById);
 		});
@@ -455,7 +448,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 			{
 				projectId: target.projectId,
 				agentId: target.agentId,
-				...(target.agentId !== null ? { availableToAssistant: false } : {}),
+				...(target.agentId !== null ? { availableToAssistant: false, availableToMCP: false } : {}),
 				updatedAt: new Date(),
 			},
 		);

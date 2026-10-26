@@ -316,7 +316,6 @@ export class SkillService {
 			source: SkillSource;
 			createdById: string;
 			checkNameTaken?: boolean;
-			availableToMCP?: boolean;
 		},
 		ctx: OperationContext = {},
 	): Promise<string> {
@@ -327,13 +326,7 @@ export class SkillService {
 		}
 		const id = `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
-			{
-				id,
-				target: input.target,
-				source: input.source,
-				createdById: input.createdById,
-				availableToMCP: input.availableToMCP,
-			},
+			{ id, target: input.target, source: input.source, createdById: input.createdById },
 			toSkillContent(skill),
 			ctx,
 		);
@@ -348,12 +341,7 @@ export class SkillService {
 		ctx: OperationContext = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
-			await this.skillRepository.lockForEdit([skillId], txCtx);
-			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
-			if (!skill) throw new NotFoundError('Skill not found');
-			if (skill.projectId !== checkedTarget.projectId || skill.agentId !== checkedTarget.agentId) {
-				throw new ConflictError('The skill scope changed. Reload the skill and try again.');
-			}
+			const skill = await this.lockInCheckedTarget(skillId, checkedTarget, txCtx);
 			if (available && skill.agentId !== null) {
 				throw new UserError(
 					"The n8n Assistant can't use skills scoped to an agent. Move the skill to a project or the instance first.",
@@ -361,6 +349,37 @@ export class SkillService {
 			}
 			await this.skillRepository.setAssistantAvailability(skillId, available, txCtx);
 		});
+	}
+
+	async setMcpAvailability(
+		skillId: string,
+		available: boolean,
+		checkedTarget: SkillTarget,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.txRunner.run(ctx, async (txCtx) => {
+			const skill = await this.lockInCheckedTarget(skillId, checkedTarget, txCtx);
+			if (available && skill.agentId !== null) {
+				throw new UserError(
+					"MCP clients can't get skills scoped to an agent. Move the skill to a project or the instance first.",
+				);
+			}
+			await this.skillRepository.updateAvailableToMCP(skillId, available, txCtx);
+		});
+	}
+
+	private async lockInCheckedTarget(
+		skillId: string,
+		checkedTarget: SkillTarget,
+		ctx: OperationContext,
+	): Promise<Skill> {
+		await this.skillRepository.lockForEdit([skillId], ctx);
+		const [skill] = await this.skillRepository.findByIds([skillId], ctx);
+		if (!skill) throw new NotFoundError('Skill not found');
+		if (skill.projectId !== checkedTarget.projectId || skill.agentId !== checkedTarget.agentId) {
+			throw new ConflictError('The skill scope changed. Reload the skill and try again.');
+		}
+		return skill;
 	}
 
 	/**
