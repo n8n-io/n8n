@@ -204,9 +204,9 @@ export async function listOwnSubscriptions(
 /**
  * Applies the ownership rule to one own listing: one stored live subscription per
  * required resource stays, the uncovered resources are created with the stored secret, and
- * every other own subscription goes. Two stored subscriptions on one resource are both
- * untrusted unless a renewal in this request proves one of them; the other stored ones are
- * then forgotten, not deleted. Reads and writes `subscriptionIds` itself, so the trust
+ * every own subscription that is neither kept nor forgotten goes. Two stored subscriptions on
+ * one resource are both untrusted unless a renewal in this request proves one of them; the
+ * other stored ones are then forgotten, not deleted. Reads and writes `subscriptionIds` itself, so the trust
  * decision and the write share one source. Returns the create errors. Never throws.
  */
 export async function reconcileSubscriptions(
@@ -266,9 +266,9 @@ export async function reconcileSubscriptions(
 	const keeperIds = new Set(keepers.values());
 	// A stored subscription beside a renewed keeper is forgotten, not deleted, whatever its
 	// listed expiry: a request that renewed it can run at the same time and keep it, and the
-	// two must not delete each other's keeper. One with the stored secret names an unknown id
-	// at its next renewal, and that reconcile removes it; one with another secret fails
-	// verification, is never renewed and expires.
+	// two must not delete each other's keeper. Unless it expires first, one with the stored
+	// secret names an unknown id at its next renewal, and that reconcile tries to remove it.
+	// One with another secret fails verification, is never renewed and expires.
 	const forgotten = new Set(
 		subscriptions
 			.filter((sub) => isStored(sub) && keepers.has(sub.resource) && !keeperIds.has(sub.id))
@@ -277,7 +277,7 @@ export async function reconcileSubscriptions(
 
 	const listedIds = new Set(subscriptions.map((sub) => sub.id));
 	const storedAbsent = storedIds.filter((id) => !listedIds.has(id) && !gone.has(id));
-	// Every other own subscription goes before the first create: Graph refuses a second
+	// The deletes finish before the first create: Graph refuses a second
 	// `/teams/{id}/channels` subscription.
 	const refused = new Set(
 		await deleteSubscriptions.call(this, [
