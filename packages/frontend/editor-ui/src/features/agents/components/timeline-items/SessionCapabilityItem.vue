@@ -18,6 +18,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { truncate } from '@n8n/utils/string/truncate';
+import { jsonParse } from 'n8n-workflow';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
@@ -27,13 +28,19 @@ import {
 	isErroredToolCallTimelineItem,
 	timelineItemErrorMessage,
 } from '../../session-timeline.utils';
+import { getToolOutputAttachments } from '../../utils/tool-output-files';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../../utils/toolDisplayName';
+import AgentChatMessageAttachments from '../AgentChatMessageAttachments.vue';
 import SessionTimelinePill from '../SessionTimelinePill.vue';
 
 const props = defineProps<{
 	item: TimelineItem;
 	selected: boolean;
 	searchQuery?: string;
+	/** Scope for the download URLs of output files. */
+	projectId?: string;
+	agentId?: string;
+	threadId?: string;
 }>();
 
 const i18n = useI18n();
@@ -103,6 +110,13 @@ function stringifyJson(value: unknown): string {
 	}
 	return JSON.stringify(value, null, 2) ?? String(value);
 }
+
+const outputFiles = computed(() => {
+	const output = props.item.toolOutput;
+	return getToolOutputAttachments(
+		typeof output === 'string' ? jsonParse(output, { fallbackValue: output }) : output,
+	);
+});
 
 const searchableText = computed((): string => {
 	return [
@@ -199,6 +213,14 @@ const { isOpen } = useTimelineItemExpansion({
 							:code="stringifyJson(item.toolOutput)"
 							language="json"
 							:class="$style.toolCode"
+						/>
+						<AgentChatMessageAttachments
+							v-if="outputFiles.length > 0 && projectId && agentId"
+							:attachments="outputFiles"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:thread-id="threadId"
+							data-test-id="timeline-tool-output-files"
 						/>
 					</N8nAiActivityStepResultSection>
 					<N8nAiActivityStepResultSection v-if="fullExecutionHref" :class="$style.toolSection">
