@@ -107,7 +107,7 @@ function actorLabel(author: Activity['author']) {
 	--review-activity--line-height: var(--height--2xs);
 	--review-activity--gap: var(--spacing--md);
 
-	padding-block: var(--spacing--sm);
+	padding-bottom: var(--spacing--md);
 }
 
 .heading {

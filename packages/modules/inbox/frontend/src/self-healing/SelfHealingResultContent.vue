@@ -201,16 +201,6 @@ function onTabChange(tab: string) {
 							<strong :class="$style.noticeTitle">{{ outcomeLabel }}</strong>
 							{{ i18n.baseText('inbox.selfHealing.couldNotFix.body') }}
 						</N8nCallout>
-						<N8nCallout
-							v-if="detail.reviewState === 'outdated'"
-							theme="secondary"
-							data-test-id="self-healing-outdated-notice"
-						>
-							<strong :class="$style.noticeTitle">
-								{{ i18n.baseText('inbox.selfHealing.state.outdated') }}
-							</strong>
-							{{ i18n.baseText('inbox.selfHealing.state.outdated.body') }}
-						</N8nCallout>
 						<N8nMarkdown
 							:content="detail.report"
 							:options="reportOptions"
@@ -219,6 +209,16 @@ function onTabChange(tab: string) {
 						/>
 					</div>
 					<SelfHealingResultActivity :detail="detail" />
+					<N8nCallout
+						v-if="detail.reviewState === 'outdated'"
+						theme="warning"
+						data-test-id="self-healing-outdated-notice"
+					>
+						<strong :class="$style.noticeTitle">
+							{{ i18n.baseText('inbox.selfHealing.state.outdated') }}
+						</strong>
+						{{ i18n.baseText('inbox.selfHealing.state.outdated.body') }}
+					</N8nCallout>
 					<N8nCallout
 						v-if="isOpen && detail.outcome === 'needs_you'"
 						theme="warning"
@@ -370,6 +370,16 @@ function onTabChange(tab: string) {
 	min-width: 0;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
+
+	:is(h1, h2, h3, h4, h5, h6) {
+		margin-top: calc(var(--markdown--spacing) * 2);
+		font-size: var(--font-size--sm);
+		line-height: inherit;
+
+		&:first-child {
+			margin-top: 0;
+		}
+	}
 }
 
 .changesPanel {
