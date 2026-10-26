@@ -1,8 +1,11 @@
+import { WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, ref } from 'vue';
+
+import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 import { createComponentRenderer } from '@/__tests__/render';
 
@@ -10,21 +13,31 @@ import { stashPendingAssistantAgentMessage } from '../assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgentThreads.store';
 import AssistantAgentThreadView from '../AssistantAgentThreadView.vue';
 
-const { panelProps, sendMessageFromOutside, telemetryTrack } = vi.hoisted(() => ({
+const { panelProps, sendMessageFromOutside, telemetryTrack, previewProps } = vi.hoisted(() => ({
 	panelProps: { current: {} as Record<string, unknown> },
 	sendMessageFromOutside: vi.fn(),
 	telemetryTrack: vi.fn(),
+	previewProps: { current: undefined as Record<string, unknown> | undefined },
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
+// The chat state that the stub panel exposes, as the real panel does.
+const chatMessages = ref<ChatMessage[]>([]);
+const isLoadingHistory = ref(true);
+
 vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 	default: defineComponent({
 		inheritAttrs: false,
 		setup(_props, { attrs, expose }) {
-			expose({ sendMessageFromOutside });
+			expose({
+				sendMessageFromOutside,
+				messages: chatMessages,
+				isStreaming: ref(false),
+				isLoadingHistory,
+			});
 			return () => {
 				panelProps.current = { ...attrs };
 				return h('div', { 'data-test-id': 'agent-chat-panel-stub' });
@@ -33,7 +46,40 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 	}),
 }));
 
+vi.mock('../../components/InstanceAiWorkflowPreview.vue', () => ({
+	default: defineComponent({
+		inheritAttrs: false,
+		setup(_props, { attrs }) {
+			return () => {
+				previewProps.current = { ...attrs };
+				return h('div', { 'data-test-id': 'workflow-preview-stub' });
+			};
+		},
+	}),
+}));
+
+vi.mock('../../components/InstanceAiPreviewTabBar.vue', () => ({
+	default: defineComponent({ setup: () => () => h('div') }),
+}));
+
 const renderView = createComponentRenderer(AssistantAgentThreadView);
+
+function buildMessage(toolCallId: string): ChatMessage {
+	return {
+		id: `a-${toolCallId}`,
+		role: 'assistant',
+		content: '',
+		toolCalls: [
+			{
+				tool: WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
+				toolCallId,
+				input: {},
+				output: { success: true, workflowId: 'wf-1' },
+				state: 'done',
+			},
+		],
+	};
+}
 
 describe('AssistantAgentThreadView', () => {
 	beforeEach(() => {
@@ -41,6 +87,9 @@ describe('AssistantAgentThreadView', () => {
 		sendMessageFromOutside.mockReset();
 		telemetryTrack.mockReset();
 		panelProps.current = {};
+		previewProps.current = undefined;
+		chatMessages.value = [];
+		isLoadingHistory.value = true;
 	});
 
 	it('opens the chat of the Assistant agent on the system channel', async () => {
@@ -150,5 +199,30 @@ describe('AssistantAgentThreadView', () => {
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES,
 			{ node_count: 2, runtime: 'agents' },
 		);
+	});
+
+	it('opens the workflow that the Assistant builds in this session', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+		isLoadingHistory.value = false;
+		await flushPromises();
+
+		chatMessages.value = [buildMessage('tc-1')];
+		await flushPromises();
+
+		expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+		expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-1' });
+	});
+
+	it('does not open the preview for a workflow built before the thread loaded', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		chatMessages.value = [buildMessage('tc-1')];
+		isLoadingHistory.value = false;
+		await flushPromises();
+
+		expect(getByTestId('assistant-agent-preview-panel')).not.toBeVisible();
+		expect(previewProps.current).toBeUndefined();
 	});
 });
