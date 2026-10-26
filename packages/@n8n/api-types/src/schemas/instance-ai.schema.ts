@@ -267,7 +267,6 @@ export const INSTANCE_AI_EPHEMERAL_EVENT_TYPES: ReadonlySet<InstanceAiEventType>
 	'text-delta',
 	'reasoning-delta',
 	'status',
-	'cloud-browser-window-changed',
 ]);
 
 // ---------------------------------------------------------------------------

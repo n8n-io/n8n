@@ -1,4 +1,5 @@
 import {
+	CLAIM_LEASE_MS,
 	CloudBrowserTaskStorage,
 	type CloudBrowserTaskRecord,
 } from '../cloud-browser-task-storage';
@@ -131,6 +132,25 @@ describe('CloudBrowserTaskStorage', () => {
 		expect(finished.aliveAt).toBeUndefined();
 	});
 
+	it('records and clears the card of a running task, and leaves a finished one', async () => {
+		const { memory } = makeMemory();
+		const storage = new CloudBrowserTaskStorage(memory);
+		await storage.add(THREAD_ID, makeRecord());
+		await storage.add(THREAD_ID, makeRecord({ taskId: 'task-2' }));
+		await storage.markFinished(THREAD_ID, 'task-2', { outcome: 'succeeded', summary: '$20' });
+
+		expect(await storage.setPendingConfirmation(THREAD_ID, 'task-1', 'request-1')).toBe(true);
+		expect(await storage.setPendingConfirmation(THREAD_ID, 'task-2', 'request-2')).toBe(false);
+
+		const [running, finished] = await storage.list(THREAD_ID);
+		expect(running.pendingConfirmationRequestId).toBe('request-1');
+		expect(finished.pendingConfirmationRequestId).toBeUndefined();
+
+		await storage.setPendingConfirmation(THREAD_ID, 'task-1', null);
+
+		expect((await storage.list(THREAD_ID))[0].pendingConfirmationRequestId).toBeNull();
+	});
+
 	describe('failStale', () => {
 		const stopped = { outcome: 'failed', summary: 'Stopped' };
 
@@ -180,7 +200,18 @@ describe('CloudBrowserTaskStorage', () => {
 	});
 
 	describe('claimUndelivered', () => {
-		it('takes each finished task once, oldest first, and leaves running tasks', async () => {
+		/** A store with one finished task. */
+		async function withFinishedTask() {
+			const { memory } = makeMemory();
+			const storage = new CloudBrowserTaskStorage(memory);
+			await storage.add(THREAD_ID, makeRecord());
+			await storage.markFinished(THREAD_ID, 'task-1', { outcome: 'succeeded', summary: '$20' });
+			return storage;
+		}
+
+		const taskIds = (tasks: CloudBrowserTaskRecord[]) => tasks.map((task) => task.taskId);
+
+		it('claims each finished task once, oldest first, and keeps it until it is delivered', async () => {
 			const { memory } = makeMemory();
 			const storage = new CloudBrowserTaskStorage(memory);
 			await storage.add(
@@ -197,12 +228,23 @@ describe('CloudBrowserTaskStorage', () => {
 
 			const claimed = await storage.claimUndelivered(THREAD_ID);
 
-			expect(claimed.map((task) => task.taskId)).toEqual(['older', 'newer']);
+			expect(taskIds(claimed)).toEqual(['older', 'newer']);
+			expect(claimed.every((task) => task.claimedAt !== undefined)).toBe(true);
 			expect(await storage.claimUndelivered(THREAD_ID)).toEqual([]);
-			expect((await storage.list(THREAD_ID)).map((task) => task.taskId)).toEqual(['running']);
+			expect(taskIds(await storage.list(THREAD_ID)).sort()).toEqual(['newer', 'older', 'running']);
 		});
 
-		it('does not write the thread when nothing is finished, or when it releases no tasks', async () => {
+		it('removes the claimed tasks once their delivery started', async () => {
+			const storage = await withFinishedTask();
+			await storage.add(THREAD_ID, makeRecord({ taskId: 'running' }));
+			const claimed = await storage.claimUndelivered(THREAD_ID);
+
+			await storage.removeDelivered(THREAD_ID, claimed);
+
+			expect(taskIds(await storage.list(THREAD_ID))).toEqual(['running']);
+		});
+
+		it('does not write the thread when nothing is finished, or when it gets no tasks back', async () => {
 			const { memory, saves } = makeMemory();
 			const storage = new CloudBrowserTaskStorage(memory);
 			await storage.add(THREAD_ID, makeRecord());
@@ -210,6 +252,7 @@ describe('CloudBrowserTaskStorage', () => {
 
 			expect(await storage.claimUndelivered(THREAD_ID)).toEqual([]);
 			await storage.releaseClaim(THREAD_ID, []);
+			await storage.removeDelivered(THREAD_ID, []);
 
 			expect(saves()).toBe(savesBefore);
 		});
@@ -229,15 +272,55 @@ describe('CloudBrowserTaskStorage', () => {
 		});
 
 		it('lets the next delivery claim the tasks again after a release', async () => {
-			const { memory } = makeMemory();
-			const storage = new CloudBrowserTaskStorage(memory);
-			await storage.add(THREAD_ID, makeRecord());
-			await storage.markFinished(THREAD_ID, 'task-1', { outcome: 'succeeded', summary: '$20' });
+			const storage = await withFinishedTask();
 			const claimed = await storage.claimUndelivered(THREAD_ID);
 
 			await storage.releaseClaim(THREAD_ID, claimed);
 
-			expect(await storage.claimUndelivered(THREAD_ID)).toEqual(claimed);
+			expect(taskIds(await storage.claimUndelivered(THREAD_ID))).toEqual(['task-1']);
+		});
+
+		describe('lease', () => {
+			const start = new Date('2026-10-26T10:00:00.000Z');
+
+			beforeEach(() => {
+				// Only the clock: the test memory waits on a real timer between its read and its write.
+				vi.useFakeTimers({ toFake: ['Date'] });
+				vi.setSystemTime(start);
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			const at = (ms: number) => vi.setSystemTime(start.getTime() + ms);
+
+			it('lets the next delivery claim a task once its claim is older than the lease', async () => {
+				const storage = await withFinishedTask();
+				await storage.claimUndelivered(THREAD_ID);
+
+				at(CLAIM_LEASE_MS - 1);
+				expect(await storage.claimUndelivered(THREAD_ID)).toEqual([]);
+
+				at(CLAIM_LEASE_MS + 1);
+				expect(taskIds(await storage.claimUndelivered(THREAD_ID))).toEqual(['task-1']);
+			});
+
+			it('leaves a task that a later claim took over', async () => {
+				const storage = await withFinishedTask();
+				const expired = await storage.claimUndelivered(THREAD_ID);
+				at(CLAIM_LEASE_MS + 1);
+				const current = await storage.claimUndelivered(THREAD_ID);
+
+				await storage.releaseClaim(THREAD_ID, expired);
+				await storage.removeDelivered(THREAD_ID, expired);
+
+				expect(await storage.list(THREAD_ID)).toEqual(current);
+
+				await storage.removeDelivered(THREAD_ID, current);
+
+				expect(await storage.list(THREAD_ID)).toEqual([]);
+			});
 		});
 	});
 

@@ -33,6 +33,7 @@ import {
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isArtifactTab, useCanvasPreview } from './useCanvasPreview';
+import { CloudBrowserTasksKey } from './composables/useCloudBrowserTasks';
 import {
 	CloudBrowserLiveViewsKey,
 	useCloudBrowserLiveViews,
@@ -348,6 +349,7 @@ provide('openWorkflowPreview', openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openCloudBrowserTab', preview.openCloudBrowserTab);
+provide(CloudBrowserTasksKey, preview.cloudBrowserTasks);
 // Only a running task has a browser to show.
 const runningCloudBrowserTasks = computed(() =>
 	preview.cloudBrowserTasks.value.filter((task) => task.state === 'running'),
@@ -1121,9 +1123,9 @@ function handleNewThreadClick() {
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
 							/>
-							<!-- Every browser tab stays mounted, so its live view does not reload on each switch. -->
+							<!-- A viewed browser tab stays mounted, so its live view does not reload on each switch. -->
 							<InstanceAiBrowserPreview
-								v-for="browserTab in preview.browserTabs.value"
+								v-for="browserTab in preview.viewedBrowserTabs.value"
 								v-show="
 									preview.isPreviewVisible.value &&
 									preview.activeBrowserTab.value?.id === browserTab.id

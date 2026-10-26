@@ -360,7 +360,7 @@ export class InstanceAiCloudBrowserTaskService {
 					logger,
 					abortSignal: signal,
 					waitForConfirmation: async (requestId) =>
-						await this.waitForAnswer(requestId, run, confirmationCards),
+						await this.waitForAnswer(requestId, taskId, run, confirmationCards),
 					onActivity: () => backgroundTaskManager.touchTask(threadId, taskId),
 					streamOptions: {
 						...run.modelStreamStallOptions,
@@ -469,11 +469,13 @@ export class InstanceAiCloudBrowserTaskService {
 	 */
 	private async waitForAnswer(
 		requestId: string,
+		taskId: string,
 		run: CloudBrowserRunOptions,
 		openCards: Set<string>,
 	): Promise<ConfirmationData> {
 		const { threadId, user } = run;
 		openCards.add(requestId);
+		// Register before any await: the card is already on screen.
 		const answer = new Promise<ConfirmationData>((resolve) => {
 			this.options.runState.registerPendingConfirmation(requestId, {
 				resolve,
@@ -482,19 +484,47 @@ export class InstanceAiCloudBrowserTaskService {
 				createdAt: Date.now(),
 			});
 		});
-		await this.options.suspendedThreads.persistPendingConfirmation({
-			requestId,
-			threadId,
-			userId: user.id,
-			runId: run.runId,
-			messageGroupId: run.messageGroupId,
-			kind: 'inline',
-		});
+
+		const taskStillRunning = await this.setPendingConfirmation(threadId, taskId, requestId);
+		if (taskStillRunning) {
+			await this.options.suspendedThreads.persistPendingConfirmation({
+				requestId,
+				threadId,
+				userId: user.id,
+				runId: run.runId,
+				messageGroupId: run.messageGroupId,
+				kind: 'inline',
+			});
+		} else {
+			// The task is no longer running, so we close the card now since nothing will close it later
+			this.options.runState.rejectPendingConfirmation(requestId);
+		}
 		try {
 			return await answer;
 		} finally {
 			openCards.delete(requestId);
+			if (taskStillRunning) await this.setPendingConfirmation(threadId, taskId, null);
 		}
+	}
+
+	/**
+	 * Returns false only when the task is no longer running. If the write fails, it logs a warning
+	 * and returns true, so the task goes on.
+	 */
+	private async setPendingConfirmation(
+		threadId: string,
+		taskId: string,
+		requestId: string | null,
+	): Promise<boolean> {
+		return await this.taskStore
+			.setPendingConfirmation(threadId, taskId, requestId)
+			.catch((error: unknown) => {
+				this.options.logger.warn('Failed to record the card of a cloud browser task', {
+					taskId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return true;
+			});
 	}
 
 	/** Rejects a card that no agent waits for any more, and drops its row. */
@@ -531,13 +561,18 @@ export class InstanceAiCloudBrowserTaskService {
 					status: 'error',
 				},
 			});
+			// Its own main stopped, so nothing else closes the card it waited on.
+			if (task.pendingConfirmationRequestId) {
+				await this.closeConfirmationCard(task.pendingConfirmationRequestId);
+			}
 		}
 	}
 
 	/**
 	 * Starts one follow-up run with every finished task the orchestrator has not heard about.
 	 * Called when a task ends and when a run ends, so a result that arrives mid-run reaches the
-	 * orchestrator as soon as that run is over. The claim is released when no run started.
+	 * orchestrator as soon as that run is over. The tasks are removed once the run started, and
+	 * released for the next delivery when no run started.
 	 */
 	async deliverPendingResults(user: User, threadId: string): Promise<void> {
 		await this.failStoppedTasks(threadId);
@@ -566,7 +601,13 @@ export class InstanceAiCloudBrowserTaskService {
 				});
 			}
 		} finally {
-			if (!runId) await this.taskStore.releaseClaim(threadId, undelivered);
+			// If the follow-up was started successfully, we consider it delivered and remove the task
+			// otherwise, we release claim so it can be picked up for delivery again
+			if (runId) {
+				await this.taskStore.removeDelivered(threadId, undelivered);
+			} else {
+				await this.taskStore.releaseClaim(threadId, undelivered);
+			}
 		}
 	}
 }

@@ -195,6 +195,8 @@ interface ActiveSession {
 	windows: string[];
 	/** The current window when the agent's last call returned. Its next result notes any change since then. */
 	windowSeenByAgent?: string;
+	/** The browser tools that run right now. Calls can run in parallel. See `executeBrowserToolOnSession`. */
+	runningBrowserTools: number;
 }
 
 /** Browser tools on a Browserbase session, for one background task. */
@@ -317,6 +319,9 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 			? await adapterOf(session)?.getTargetId?.(currentWindow)
 			: undefined;
 		const liveViewUrl = await sessionProvider.getSessionLiveViewUrl(scope, session.id, targetId);
+		// The session can end or change before we get the live url response.
+		// Then this link is old, and we need the client to ask again.
+		if (this.activeSession?.id !== session.id) return { status: 'starting' };
 		return {
 			status: 'live',
 			liveViewUrl,
@@ -435,11 +440,9 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 				return browserErrorResult('Unknown browser tool: browser_navigate');
 			}
 			// No access check: the URL was checked before the session opened.
-			const result = await executeBrowserTool(
-				navigate,
-				{ url: args.data.url },
-				this.options.toolContext,
-			);
+			const result = await this.executeBrowserToolOnSession(session, navigate, {
+				url: args.data.url,
+			});
 			return withBrowserLocationContext(result, session.regionCountry, args.data.proxyCountry);
 		});
 	}
@@ -474,10 +477,10 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 
 		// The check runs here, after the session lock, so it reads the session the tool runs on.
 		// If `getAffectedResources` throws, the helper returns an error and the tool does not run.
-		const result = await executeBrowserTool(
+		const result = await this.executeBrowserToolOnSession(
+			session,
 			tool,
 			args,
-			this.options.toolContext,
 			async (parsedArgs) =>
 				await this.gateAccess(
 					await tool.getAffectedResources(parsedArgs, this.options.toolContext),
@@ -504,13 +507,28 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 
 		const current = windows.at(-1);
 		if (current === before) return;
-		try {
-			session.connection.getConnection().activePageId = current ?? '';
-		} catch {
-			// The connection is gone. The disconnect handler releases the session.
-			return;
+		// While a tool runs, the tools move to the new window after the last running one returns.
+		if (session.runningBrowserTools === 0) {
+			const isConnected = setActivePageToCurrentWindow(session);
+			// The disconnect handler releases a session whose connection is gone.
+			if (!isConnected) return;
 		}
 		if (session === this.activeSession) this.onCurrentWindowChange?.();
+	}
+
+	private async executeBrowserToolOnSession(
+		session: ActiveSession,
+		tool: ToolDefinition,
+		args: Record<string, unknown>,
+		checkAccess?: (args: unknown) => Promise<McpToolCallResult | undefined>,
+	): Promise<McpToolCallResult> {
+		session.runningBrowserTools++;
+		try {
+			return await executeBrowserTool(tool, args, this.options.toolContext, checkAccess);
+		} finally {
+			session.runningBrowserTools--;
+			if (session.runningBrowserTools === 0) setActivePageToCurrentWindow(session);
+		}
 	}
 
 	/**
@@ -579,6 +597,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 			toolsByName: new Map(this.getAvailableToolsFromToolkit(toolkit).map((t) => [t.name, t])),
 			windows: activePageId ? [activePageId] : [],
 			windowSeenByAgent: activePageId || undefined,
+			runningBrowserTools: 0,
 		};
 		adapter.onPageChange = (change) => this.onPageChange(session, change);
 		// The connection uses this hook to clear its own state, so ours runs after it.
@@ -710,6 +729,16 @@ function withBrowserLocationContext(
 		...result,
 		structuredContent: { browserLocation, ...result.structuredContent },
 	};
+}
+
+/** Makes the current window the page the tools act on. Returns false when the connection is gone. */
+function setActivePageToCurrentWindow(session: ActiveSession): boolean {
+	try {
+		session.connection.getConnection().activePageId = session.windows.at(-1) ?? '';
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 /** The tab the session's tools act on by default, or `undefined` when the connection is gone. */

@@ -60,31 +60,60 @@ describe('InstanceAiBrowserPreview', () => {
 		it.each([
 			['before the live view loads', undefined],
 			['while the browser starts', { status: 'starting' as const }],
-		])('says the browser is opening %s', (_, view) => {
+		])('says the browser is opening %s, with a spinner', (_, view) => {
 			const { getByTestId, queryByTestId } = render(view);
 
 			expect(getByTestId('instance-ai-browser-preview-placeholder')).toHaveTextContent(
 				'Opening the browser…',
 			);
+			expect(getByTestId('instance-ai-browser-preview-spinner')).toBeInTheDocument();
 			expect(queryByTestId('instance-ai-browser-preview-frame')).not.toBeInTheDocument();
 		});
 
 		it.each([
 			['disconnected', { status: 'disconnected' as const, reason: 'idleTimeout' }],
 			['not found', { status: 'not-found' as const }],
-		])('says the browser closed when it is %s', (_, view) => {
-			const { getByTestId } = render(view as CloudBrowserLiveView);
+		])('says the browser closed when it is %s, without a spinner', (_, view) => {
+			const { getByTestId, queryByTestId } = render(view as CloudBrowserLiveView);
 
 			expect(getByTestId('instance-ai-browser-preview-placeholder')).toHaveTextContent(
 				'The browser closed',
 			);
+			expect(queryByTestId('instance-ai-browser-preview-spinner')).not.toBeInTheDocument();
+		});
+
+		it('shows again when a new session reuses the window id', async () => {
+			const { getByTestId, queryByTestId, liveViews } = render(live);
+			await fireEvent.load(getByTestId('instance-ai-browser-preview-frame'));
+			expect(queryByTestId('instance-ai-browser-preview-placeholder')).not.toBeInTheDocument();
+
+			liveViews.set('task-1', { ...live, liveViewUrl: 'https://live.example.com/2' });
+			await flushPromises();
+
+			expect(getByTestId('instance-ai-browser-preview-placeholder')).toHaveTextContent(
+				'Opening the browser…',
+			);
+			await fireEvent.load(getByTestId('instance-ai-browser-preview-frame'));
+			expect(queryByTestId('instance-ai-browser-preview-placeholder')).not.toBeInTheDocument();
+		});
+
+		it('stays over the frame until the frame has loaded', async () => {
+			const { getByTestId, queryByTestId } = render(live);
+			const frame = getByTestId('instance-ai-browser-preview-frame');
+			expect(getByTestId('instance-ai-browser-preview-placeholder')).toHaveTextContent(
+				'Opening the browser…',
+			);
+
+			await fireEvent.load(frame);
+
+			expect(queryByTestId('instance-ai-browser-preview-placeholder')).not.toBeInTheDocument();
 		});
 	});
 
 	describe('live view', () => {
 		it("keeps Browserbase's navigation bar and starts view-only", () => {
 			const { getByTestId, queryByTestId } = render({
-				status: 'live',
+				...live,
 				liveViewUrl: 'https://live.example.com/1?navbar=false',
 				windowId: 'window-1',
 			});
@@ -140,6 +169,7 @@ describe('InstanceAiBrowserPreview', () => {
 		it('shows the same frame again when the window behind is current again', async () => {
 			const { getByTestId, queryByTestId, liveViews } = render(popup);
 			const background = getByTestId('instance-ai-browser-preview-background-frame');
+			await fireEvent.load(background);
 
 			liveViews.set('task-1', live);
 			await flushPromises();

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -86,7 +86,7 @@ const Wrapper = defineComponent({
 		previewToggleLabel: { type: String, default: undefined },
 		projectId: { type: String, default: undefined },
 	},
-	emits: ['togglePreview', 'toggleExpanded', 'closeTab', 'openTab'],
+	emits: ['togglePreview', 'toggleExpanded', 'closeTab', 'openTab', 'reorderTab'],
 	setup(props, { emit }) {
 		return () =>
 			h(TabsRoot, { modelValue: props.activeTabId }, () =>
@@ -101,6 +101,7 @@ const Wrapper = defineComponent({
 					onCloseTab: (tabId: string) => emit('closeTab', tabId),
 					onOpenTab: (tab: ArtifactTab) => emit('openTab', tab),
 					onToggleExpanded: () => emit('toggleExpanded'),
+					onReorderTab: (tabId: string, toIndex: number) => emit('reorderTab', tabId, toIndex),
 				}),
 			);
 	},
@@ -397,6 +398,57 @@ describe('InstanceAiPreviewTabBar', () => {
 			expect(window.open).toHaveBeenCalledWith('/home/agents', '_blank', 'noopener');
 		});
 	});
+	describe('dragging with browser tabs', () => {
+		/** jsdom has no layout, so each tab gets a 100px box, one after the other. */
+		function layOutTabs(container: Element) {
+			container.querySelectorAll<HTMLElement>('[data-tab-item-id]').forEach((element, index) => {
+				const left = index * 104;
+				element.getBoundingClientRect = () => ({ left, width: 100, right: left + 100 }) as DOMRect;
+			});
+		}
+
+		function drag(container: Element, tabId: string, fromX: number, toX: number) {
+			const pointer = { pointerId: 1, pointerType: 'mouse', button: 0 };
+			const tab = container.querySelector(`[data-tab-item-id="${tabId}"]`)!;
+			fireEvent.pointerDown(tab, { clientX: fromX, ...pointer });
+			fireEvent.pointerMove(window, { clientX: toX, ...pointer });
+			fireEvent.pointerUp(window, { clientX: toX, ...pointer });
+		}
+
+		// The drag draws once per animation frame. Here each frame runs at once.
+		let animationFrame: MockInstance<typeof window.requestAnimationFrame>;
+		beforeEach(() => {
+			animationFrame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((drawFrame) => {
+				drawFrame(0);
+				return 0;
+			});
+		});
+
+		afterEach(() => animationFrame.mockRestore());
+
+		it('drops an artifact tab after a browser tab when it is dragged past it', () => {
+			const { container, emitted } = renderComponent({
+				props: { tabs: [workflowTab, dataTableTab, browserTab], activeTabId: 'wf-1' },
+			});
+			layOutTabs(container);
+
+			drag(container, 'wf-1', 50, 400);
+
+			expect(emitted().reorderTab).toEqual([['wf-1', 2]]);
+		});
+
+		it('drags a browser tab', () => {
+			const { container, emitted } = renderComponent({
+				props: { tabs: [workflowTab, dataTableTab, browserTab], activeTabId: 'wf-1' },
+			});
+			layOutTabs(container);
+
+			drag(container, 'browser:task-1', 250, 0);
+
+			expect(emitted().reorderTab).toEqual([['browser:task-1', 0]]);
+		});
+	});
+
 	describe('browser tabs', () => {
 		it('shows the name of the browser tab', () => {
 			const { container } = renderComponent({

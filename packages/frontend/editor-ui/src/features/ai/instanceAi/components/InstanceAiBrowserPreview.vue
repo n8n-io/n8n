@@ -6,7 +6,7 @@
  * the view. Otherwise it also tells the server, and the agent's calls wait. "I'm done" gives
  * control back. After a takeover the agent did not ask for, it first asks what the user changed.
  */
-import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -42,13 +42,37 @@ const frames = computed(() => {
 	return view.background ? [{ ...view.background, isCurrent: false }, current] : [current];
 });
 
-const placeholder = computed(() => {
-	const status = liveView.value?.status;
-	if (status === 'disconnected' || status === 'not-found') {
-		return i18n.baseText('instanceAi.cloudBrowser.disconnected');
+const isDisconnected = computed(
+	() => liveView.value?.status === 'disconnected' || liveView.value?.status === 'not-found',
+);
+const placeholder = computed(() =>
+	i18n.baseText(
+		isDisconnected.value
+			? 'instanceAi.cloudBrowser.disconnected'
+			: 'instanceAi.cloudBrowser.opening',
+	),
+);
+
+// The placeholder stays over the frames until the current window's frame has loaded. Loads
+// are tracked by live view link, not by window: a new session can reuse a window id, and its
+// frame loads the new link.
+const loadedLiveViewUrls = ref(new Set<string>());
+function onFrameLoad(liveViewUrl: string) {
+	loadedLiveViewUrls.value.add(liveViewUrl);
+}
+// Only the frames on screen are tracked, so the set never holds a link that is gone.
+watch(frames, (current) => {
+	const shown = new Set(current.map((frame) => frame.liveViewUrl));
+	for (const url of loadedLiveViewUrls.value) {
+		if (!shown.has(url)) loadedLiveViewUrls.value.delete(url);
 	}
-	return i18n.baseText('instanceAi.cloudBrowser.opening');
 });
+const showsPlaceholder = computed(
+	() =>
+		!frames.value.some(
+			(frame) => frame.isCurrent && loadedLiveViewUrls.value.has(frame.liveViewUrl),
+		),
+);
 
 /** True after the user clicks "Take over", until they give control back. */
 const hasControl = ref(false);
@@ -172,13 +196,21 @@ async function returnControl(userNote?: string) {
 		<div :class="$style.stage">
 			<div :class="$style.window">
 				<div
-					v-if="!frames.length"
+					v-if="showsPlaceholder"
 					:class="$style.placeholder"
 					data-test-id="instance-ai-browser-preview-placeholder"
 				>
+					<N8nIcon
+						v-if="!isDisconnected"
+						icon="loader-circle"
+						size="small"
+						spin
+						aria-hidden="true"
+						data-test-id="instance-ai-browser-preview-spinner"
+					/>
 					{{ placeholder }}
 				</div>
-				<template v-else>
+				<template v-if="frames.length">
 					<iframe
 						v-for="frame in frames"
 						:key="frame.windowId"
@@ -204,6 +236,7 @@ async function returnControl(userNote?: string) {
 								? 'instance-ai-browser-preview-frame'
 								: 'instance-ai-browser-preview-background-frame'
 						"
+						@load="onFrameLoad(frame.liveViewUrl)"
 					/>
 					<!-- Shows on hover, or always when the agent asks for the user. -->
 					<div
@@ -329,11 +362,13 @@ async function returnControl(userNote?: string) {
 }
 
 .placeholder {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 100%;
-	height: 100%;
+	gap: var(--spacing--2xs);
 	background: var(--color--background--light-2);
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--sm);
@@ -361,6 +396,8 @@ async function returnControl(userNote?: string) {
 .noteBackdrop {
 	position: absolute;
 	inset: 0;
+	/* Above the loading placeholder, which covers a new window until it loads. */
+	z-index: 2;
 	display: flex;
 	align-items: center;
 	justify-content: center;

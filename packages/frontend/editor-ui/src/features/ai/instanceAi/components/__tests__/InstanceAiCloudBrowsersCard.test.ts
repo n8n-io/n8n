@@ -1,19 +1,18 @@
 import { fireEvent } from '@testing-library/vue';
-import { reactive } from 'vue';
+import { computed, reactive } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 
 import type { CloudBrowserLiveView } from '../../composables/useCloudBrowserLiveViews';
 import { CloudBrowserLiveViewsKey } from '../../composables/useCloudBrowserLiveViews';
-import type { CloudBrowserTask } from '../../composables/useCloudBrowserTasks';
+import {
+	CloudBrowserTasksKey,
+	type CloudBrowserTask,
+} from '../../composables/useCloudBrowserTasks';
 import InstanceAiCloudBrowsersCard from '../InstanceAiCloudBrowsersCard.vue';
 
-const { thread, tasks } = vi.hoisted(() => ({
-	thread: { cancelBackgroundTask: vi.fn() },
-	tasks: { value: [] as CloudBrowserTask[] },
-}));
+const { thread } = vi.hoisted(() => ({ thread: { cancelBackgroundTask: vi.fn() } }));
 vi.mock('../../instanceAi.store', () => ({ useThread: () => thread }));
-vi.mock('../../composables/useCloudBrowserTasks', () => ({ useCloudBrowserTasks: () => tasks }));
 
 const renderComponent = createComponentRenderer(InstanceAiCloudBrowsersCard);
 
@@ -33,12 +32,15 @@ function render(
 	view?: CloudBrowserLiveView,
 	openCloudBrowserTab?: (taskId: string) => void,
 ) {
-	tasks.value = [task];
 	const liveViews = reactive(new Map<string, CloudBrowserLiveView>());
 	if (view) liveViews.set(task.taskId, view);
 	return renderComponent({
 		global: {
-			provide: { [CloudBrowserLiveViewsKey as symbol]: liveViews, openCloudBrowserTab },
+			provide: {
+				[CloudBrowserTasksKey as symbol]: computed(() => [task]),
+				[CloudBrowserLiveViewsKey as symbol]: liveViews,
+				openCloudBrowserTab,
+			},
 		},
 	});
 }
@@ -49,8 +51,6 @@ describe('InstanceAiCloudBrowsersCard', () => {
 	});
 
 	it('shows nothing when no browser task runs', () => {
-		tasks.value = [];
-
 		const { queryByTestId } = renderComponent();
 
 		expect(queryByTestId('instance-ai-cloud-browsers')).not.toBeInTheDocument();
@@ -148,14 +148,16 @@ describe('InstanceAiCloudBrowsersCard', () => {
 
 	it('opens the browser tab when the user clicks the live view', async () => {
 		const openCloudBrowserTab = vi.fn();
-		const { getByTestId } = render(
+		const { getByTestId, container } = render(
 			makeTask(),
 			{ status: 'live', liveViewUrl: 'https://live.example.com/1', windowId: 'window-1' },
 			openCloudBrowserTab,
 		);
 
-		await fireEvent.click(getByTestId('instance-ai-cloud-browser-live-view'));
+		await fireEvent.click(getByTestId('instance-ai-cloud-browser-open'));
 
 		expect(openCloudBrowserTab).toHaveBeenCalledWith('task-1');
+		// The frame sits next to the button: a button cannot hold an iframe.
+		expect(container.querySelector('button iframe')).toBeNull();
 	});
 });

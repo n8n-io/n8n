@@ -155,7 +155,7 @@ export function useOpenArtifactTabs({
 		return (tabs[index + 1] ?? tabs[index - 1])?.id;
 	}
 
-	/** Open a closed artifact again. Returns true when the tabs changed. */
+	/** Open a closed artifact again, at the end. Returns true when the tabs changed. */
 	function reopenTab(tabId: string): boolean {
 		const current = layout.value;
 		if (!current) return false;
@@ -164,11 +164,14 @@ export function useOpenArtifactTabs({
 
 		const key = tabKey(tab);
 		const isClosed = current.closedTabs.some((closed) => tabKey(closed) === key);
-		const isOpen = current.tabs.some((open) => tabKey(open) === key);
-		if (!isClosed && isOpen) return false;
+		const isInLayout = current.tabs.some((open) => tabKey(open) === key);
+		if (!isClosed && isInLayout) return false;
 
+		// A closed tab opens at the end. A tab that joined after the stored tabs is open
+		// already: it keeps its place, and the layout takes the order on screen.
+		const shown = openTabs.value.map(toStoredTab);
 		layout.value = {
-			tabs: isOpen ? current.tabs : [...current.tabs, toStoredTab(tab)],
+			tabs: isClosed ? [...shown, toStoredTab(tab)] : shown,
 			closedTabs: current.closedTabs.filter((closed) => tabKey(closed) !== key),
 		};
 		return true;

@@ -32,7 +32,8 @@ const liveViewSchema = z.object({
 	debuggerFullscreenUrl: z.string().min(1),
 	pages: z
 		.array(z.object({ id: z.string().min(1), debuggerFullscreenUrl: z.string().min(1) }))
-		.default([]),
+		.default([])
+		.catch([]),
 });
 
 /** Errors from the gateway itself carry a message written for the user. */
