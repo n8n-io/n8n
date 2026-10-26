@@ -9121,6 +9121,7 @@ describe('createContext — skill service wiring', () => {
 						settings: new Map([['agents', { enabled: true }]]),
 					};
 				}
+				if (token === SkillsGate) return { isEnabled: true };
 				if (token === InstanceAiSkillsAdapterService) return { createService };
 				if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
 				throw new Error(`Unexpected Container.get call in test: ${String(token)}`);

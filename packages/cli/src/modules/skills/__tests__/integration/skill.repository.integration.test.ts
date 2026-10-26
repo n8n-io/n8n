@@ -8,6 +8,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
 import type { AgentScope } from '@/modules/agents/entities/agent.entity';
@@ -21,8 +22,11 @@ import {
 	SkillRepository,
 	type SkillVisibility,
 } from '../../database/repositories/skill.repository';
+import { Skill } from '../../database/entities/skill.entity';
+import { AssistantSkillsFlagGate } from '../../services/assistant-skills-flag-gate';
 import { SkillRuntimeService } from '../../services/skill-runtime.service';
 import { SkillService } from '../../services/skill.service';
+import type { AssistantSkillContext } from '../../utils/skill-content';
 import * as fixtures from '../../testing';
 import { PostHogClient } from '@/posthog';
 
@@ -68,6 +72,23 @@ describe('SkillRepository', () => {
 		project = await createTeamProject('Team');
 		otherProject = await createTeamProject('Other team');
 	});
+
+	/** The Assistant reads as `InstanceAiSkillsService` gates them. */
+	const assistantSkills = {
+		readSkill: async (context: AssistantSkillContext, skillId: string, versionId?: string) =>
+			(await Container.get(AssistantSkillsFlagGate).isEnabled())
+				? await skillRuntime.readForAssistant(context, skillId, versionId)
+				: null,
+		readFile: async (
+			context: AssistantSkillContext,
+			skillId: string,
+			versionId: string,
+			path: string,
+		) =>
+			(await Container.get(AssistantSkillsFlagGate).isEnabled())
+				? await skillRuntime.readFileForAssistant(context, skillId, versionId, path)
+				: null,
+	};
 
 	beforeEach(() => {
 		postHog.getFeatureFlagForInstance.mockImplementation(
@@ -134,7 +155,7 @@ describe('SkillRepository', () => {
 			{ projectId: project.id },
 			content({ files: [{ path: 'references/guide.md', content: 'Original guide.' }] }),
 		);
-		await skills.update(id, { availableToAssistant: true });
+		await skills.setAssistantAvailability(id, true, {});
 		const v1 = await latestVersionId(id);
 		const v2 = await skills.insertSavedVersion(
 			id,
@@ -185,7 +206,7 @@ describe('SkillRepository', () => {
 		postHog.getFeatureFlagForInstance.mockResolvedValue(false);
 		expect(await assistantSkills.readFile(context, id, v1, 'references/guide.md')).toBeNull();
 		postHog.getFeatureFlagForInstance.mockResolvedValue(true);
-		await skills.update(id, { availableToAssistant: false });
+		await skills.setAssistantAvailability(id, false, {});
 		expect(await assistantSkills.readFile(context, id, v1, 'references/guide.md')).toBeNull();
 		expect(await assistantSkills.readSkill(context, id, v1)).toBeNull();
 	});
@@ -291,6 +312,14 @@ describe('SkillRepository', () => {
 			projectIds,
 			agentIds: projectIds === 'all' ? 'all' : await agentSkills.findAgentIdsInProjects(projectIds),
 		};
+	}
+
+	/** Sets columns that no repository method writes, such as the creator or the change time. */
+	async function updateSkillRow(
+		id: string,
+		fields: Partial<Pick<Skill, 'createdById' | 'updatedAt'>>,
+	) {
+		await Container.get(DataSource).manager.update(Skill, { id }, fields);
 	}
 
 	async function latestVersionId(skillId: string): Promise<string> {
@@ -579,9 +608,9 @@ describe('SkillRepository', () => {
 		it('filters by creator', async () => {
 			const other = await createUser();
 			const mine = await createSkill();
-			await skills.update({ id: mine }, { createdById: user.id });
+			await updateSkillRow(mine, { createdById: user.id });
 			const theirs = await createSkill();
-			await skills.update({ id: theirs }, { createdById: other.id });
+			await updateSkillRow(theirs, { createdById: other.id });
 			await createSkill();
 
 			const page = await skills.findVisiblePage(await visibleTo('all'), {
@@ -624,8 +653,8 @@ describe('SkillRepository', () => {
 		it('sorts by last change, oldest first on request', async () => {
 			const first = await createSkill();
 			const second = await createSkill();
-			await skills.update({ id: first }, { updatedAt: new Date('2026-01-01T00:00:00.000Z') });
-			await skills.update({ id: second }, { updatedAt: new Date('2026-02-01T00:00:00.000Z') });
+			await updateSkillRow(first, { updatedAt: new Date('2026-01-01T00:00:00.000Z') });
+			await updateSkillRow(second, { updatedAt: new Date('2026-02-01T00:00:00.000Z') });
 			const visibility = { projectIds: [], agentIds: [] };
 
 			const asc = await skills.findVisiblePage(visibility, {
@@ -662,10 +691,10 @@ describe('SkillRepository', () => {
 			const again = await createSkill();
 			const otherTeam = await createSkill({ projectId: otherProject.id });
 			await createSkill();
-			await skills.update({ id: instance }, { createdById: user.id });
-			await skills.update({ id: again }, { createdById: user.id });
-			await skills.update({ id: team }, { createdById: other.id });
-			await skills.update({ id: otherTeam }, { createdById: hidden.id });
+			await updateSkillRow(instance, { createdById: user.id });
+			await updateSkillRow(again, { createdById: user.id });
+			await updateSkillRow(team, { createdById: other.id });
+			await updateSkillRow(otherTeam, { createdById: hidden.id });
 
 			const creators = await skills.findVisibleCreatorIds(await visibleTo([project.id]));
 
