@@ -363,9 +363,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			return undefined;
 		}
 
-		// `startedByUserId` is internal: only the lookup of unsaved manual executions uses it.
-		const { startedByUserId: _startedByUserId, ...publicExecution } = execution;
-		const { executionData, metadata, annotation, ...rest } = publicExecution;
+		const { executionData, metadata, annotation, ...rest } = execution;
 		const serializedAnnotation = this.serializeAnnotation(annotation);
 
 		if (execution.status === 'success' && executionData?.data === '[]') {
@@ -379,7 +377,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 		if (!options?.includeData) {
 			// Not including run data, so return early.
-			const { executionData, ...rest } = publicExecution;
+			const { executionData, ...rest } = execution;
 			return {
 				...rest,
 				...(options?.includeAnnotation &&
@@ -767,57 +765,19 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
-	 * Soft-deletes a finished manual execution that the save settings say not to keep.
-	 * A repeat call keeps the first deletion time.
-	 *
-	 * @returns whether the execution records the user who started it, who can read it
-	 * until pruning hard-deletes it. See {@link findUnsavedManualExecution}.
+	 * A finished manual execution that n8n did not save, until pruning hard-deletes it.
+	 * It is soft-deleted, so other reads do not return it. The caller must check that
+	 * the reader started it.
 	 */
-	async softDeleteUnsavedManualExecution(executionId: string): Promise<boolean> {
+	async findUnsavedManualExecution(executionId: string): Promise<ExecutionEntity | null> {
 		const isPostgres = this.globalConfig.database.type === 'postgresdb';
-
-		await this.createQueryBuilder()
-			.update(ExecutionEntity)
-			.set({ deletedAt: () => dbNowLiteral(isPostgres) })
-			.where({ id: executionId, mode: 'manual', deletedAt: IsNull() })
-			.execute();
-
-		const execution = await this.findOne({
-			select: ['id', 'startedByUserId'],
-			where: { id: executionId, mode: 'manual', deletedAt: Not(IsNull()) },
-			withDeleted: true,
-		});
-		return Boolean(execution?.startedByUserId);
-	}
-
-	/** Stops a kept manual execution from being read as an unsaved one. */
-	async clearUnsavedManualExecutionStarter(executionId: string) {
-		await this.update(
-			{ id: executionId, startedByUserId: Not(IsNull()) },
-			{ startedByUserId: null },
-		);
-	}
-
-	/**
-	 * A manual execution that n8n did not save, if `startedByUserId` started it and the
-	 * hard-delete buffer still keeps it. Other users never get it, and nobody gets it
-	 * after the buffer or while pruning is off, also when the row still exists.
-	 */
-	async findUnsavedManualExecution(
-		executionId: string,
-		startedByUserId: string,
-	): Promise<ExecutionEntity | null> {
-		const { pruneData, pruneDataHardDeleteBuffer } = this.globalConfig.executions;
-		if (!pruneData || pruneDataHardDeleteBuffer <= 0) return null;
-
-		const isPostgres = this.globalConfig.database.type === 'postgresdb';
-		const bufferMs = pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
+		const bufferMs =
+			this.globalConfig.executions.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
 
 		return await this.findOne({
 			where: {
 				id: executionId,
 				mode: 'manual',
-				startedByUserId,
 				// A run whose final data was never written still has its start status.
 				status: In(['success', 'error', 'crashed', 'canceled']),
 				deletedAt: Raw((column) => `${column} > ${dbNowPlusMsLiteral(isPostgres, -bufferMs)}`),

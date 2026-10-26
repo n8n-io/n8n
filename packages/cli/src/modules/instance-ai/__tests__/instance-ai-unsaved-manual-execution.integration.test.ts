@@ -1,5 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { CacheService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflowWithHistory,
@@ -18,6 +18,7 @@ import { createRunExecutionData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import { License } from '@/license';
 import { ExecutionRedactionService } from '@/modules/redaction/executions/execution-redaction.service';
 import { Push } from '@/push';
@@ -110,15 +111,23 @@ describe('Instance AI unsaved manual executions (integration)', () => {
 			{ data: stringify(data), status: 'error', mode: 'manual' },
 			workflowData,
 		);
-		const executionRepository = Container.get(ExecutionRepository);
-		// What n8n records when a manual run that it will not save starts.
-		await executionRepository.update({ id: execution.id }, { startedByUserId: startedBy.id });
-		await executionRepository.softDeleteUnsavedManualExecution(execution.id);
+		// What n8n records when a manual run that it will not save starts in the editor.
+		await Container.get(UnsavedManualExecutionService).recordStarter(execution.id, {
+			executionMode: 'manual',
+			workflowData: {
+				...workflowData,
+				settings: { ...workflowData.settings, saveManualExecutions: false },
+			},
+			userId: startedBy.id,
+			pushRef: 'push-ref',
+		});
+		await Container.get(ExecutionRepository).softDelete(execution.id);
 		return execution.id;
 	};
 
 	beforeAll(async () => {
 		await testDb.init();
+		await Container.get(CacheService).init();
 		await initNodeTypes({
 			...mockNodeTypesData(['scheduleTrigger'], { addTrigger: true }),
 			...mockNodeTypesData(['set']),
@@ -143,6 +152,7 @@ describe('Instance AI unsaved manual executions (integration)', () => {
 
 	afterEach(async () => {
 		licenseMocker.reset();
+		await Container.get(CacheService).reset();
 		await testDb.truncate([
 			'ExecutionEntity',
 			'WorkflowEntity',

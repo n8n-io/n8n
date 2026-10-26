@@ -172,6 +172,7 @@ import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.servi
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
+	findUnsavedManualExecutionForViewer,
 	getExecutionRedaction,
 	loadExecutionForViewer,
 } from '@/executions/execution-viewer-reader';
@@ -2171,7 +2172,7 @@ export class InstanceAiAdapterService {
 			// started it, until pruning hard-deletes it.
 			const execution =
 				(await executionRepository.findSingleExecution(executionId, { includeData: false })) ??
-				(await executionRepository.findUnsavedManualExecution(executionId, user.id));
+				(await findUnsavedManualExecutionForViewer(executionId, user));
 			if (!execution) {
 				throw new Error(`Execution ${executionId} not found`);
 			}

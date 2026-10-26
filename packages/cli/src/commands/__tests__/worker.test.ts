@@ -22,6 +22,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import type { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
@@ -242,6 +243,7 @@ describe('Worker', () => {
 				mock<EventService>(),
 				mock<ExecutionsConfig>({ mode: 'queue' }),
 				mock<InstanceSettings>({ instanceType: 'worker' }),
+				mock<UnsavedManualExecutionService>(),
 			);
 
 			const drainLoopInterval = 500;

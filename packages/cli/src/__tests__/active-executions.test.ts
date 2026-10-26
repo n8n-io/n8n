@@ -28,6 +28,7 @@ import { captor, mock } from 'vitest-mock-extended';
 import { ActiveExecutions } from '@/active-executions';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import type { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
 import { ProductionHold } from '@/memory-guard/production-hold';
@@ -43,6 +44,7 @@ const FAKE_SECOND_EXECUTION_ID = '20';
 const logger = mock<Logger>();
 const executionRepository = mock<ExecutionRepository>();
 const executionPersistence = mock<ExecutionPersistence>();
+const unsavedManualExecutionService = mock<UnsavedManualExecutionService>();
 
 const concurrencyControl = mockInstance(ConcurrencyControlService, {
 	// @ts-expect-error Private property
@@ -92,6 +94,7 @@ describe('ActiveExecutions', () => {
 			mock(),
 			executionsConfig,
 			mock(),
+			unsavedManualExecutionService,
 		);
 
 		executionRepository.cancelManyRunning.mockResolvedValue();
@@ -201,82 +204,22 @@ describe('ActiveExecutions', () => {
 		);
 	});
 
-	describe('starter of an unsaved manual execution', () => {
-		const unsavedExecutionData: IWorkflowExecutionDataProcess = {
-			...executionData,
-			workflowData: { ...executionData.workflowData, settings: { saveManualExecutions: false } },
-			pushRef: 'push-ref',
-		};
+	test('Should record the starter of a new execution', async () => {
+		await activeExecutions.add(executionData);
 
-		const { pruneData, pruneDataHardDeleteBuffer } = executionsConfig;
+		expect(unsavedManualExecutionService.recordStarter).toHaveBeenCalledWith(
+			FAKE_EXECUTION_ID,
+			executionData,
+		);
+	});
 
-		beforeEach(() => {
-			executionsConfig.pruneData = true;
-			executionsConfig.pruneDataHardDeleteBuffer = 1;
+	test('Should not record a starter when an execution resumes', async () => {
+		await activeExecutions.add(executionData, {
+			executionId: FAKE_SECOND_EXECUTION_ID,
+			expectedStatus: 'waiting',
 		});
 
-		afterEach(() => {
-			executionsConfig.pruneData = pruneData;
-			executionsConfig.pruneDataHardDeleteBuffer = pruneDataHardDeleteBuffer;
-		});
-
-		test('Should record the user who starts a manual execution that n8n will not save', async () => {
-			await activeExecutions.add(unsavedExecutionData);
-
-			expect(executionPersistence.create).toHaveBeenCalledWith(
-				expect.objectContaining({ startedByUserId: executionData.userId }),
-			);
-		});
-
-		test('Should not record a starter for a manual execution that n8n saves', async () => {
-			await activeExecutions.add({
-				...unsavedExecutionData,
-				workflowData: { ...executionData.workflowData, settings: { saveManualExecutions: true } },
-			});
-
-			expect(executionPersistence.create).toHaveBeenCalledWith(
-				expect.objectContaining({ startedByUserId: null }),
-			);
-		});
-
-		test('Should not record a starter while pruning is off', async () => {
-			executionsConfig.pruneData = false;
-
-			await activeExecutions.add(unsavedExecutionData);
-
-			expect(executionPersistence.create).toHaveBeenCalledWith(
-				expect.objectContaining({ startedByUserId: null }),
-			);
-		});
-
-		test('Should not record a starter for a non-manual execution', async () => {
-			await activeExecutions.add({ ...unsavedExecutionData, executionMode: 'webhook' });
-
-			expect(executionPersistence.create).toHaveBeenCalledWith(
-				expect.objectContaining({ startedByUserId: null }),
-			);
-		});
-
-		test('Should not record a starter for a manual execution that no browser shows', async () => {
-			await activeExecutions.add({ ...unsavedExecutionData, pushRef: undefined });
-
-			expect(executionPersistence.create).toHaveBeenCalledWith(
-				expect.objectContaining({ startedByUserId: null }),
-			);
-		});
-
-		test('Should not change the starter when an execution resumes', async () => {
-			executionPersistence.updateExistingExecution.mockResolvedValue(true);
-
-			await activeExecutions.add(unsavedExecutionData, {
-				executionId: FAKE_SECOND_EXECUTION_ID,
-				expectedStatus: 'waiting',
-			});
-
-			expect(executionPersistence.create).not.toHaveBeenCalled();
-			const update = executionPersistence.updateExistingExecution.mock.calls[0][1];
-			expect(update).not.toHaveProperty('startedByUserId');
-		});
+		expect(unsavedManualExecutionService.recordStarter).not.toHaveBeenCalled();
 	});
 
 	test('Should throw ExecutionAlreadyResumingError when another process is resuming execution', async () => {
@@ -385,6 +328,7 @@ describe('ActiveExecutions', () => {
 				mock(),
 				executionsConfig,
 				mock(),
+				unsavedManualExecutionService,
 			);
 
 			let resolvedId: string | undefined;
@@ -414,6 +358,7 @@ describe('ActiveExecutions', () => {
 				mock(),
 				executionsConfig,
 				mock(),
+				unsavedManualExecutionService,
 			);
 
 			await evalActiveExecutions.add(evalExecutionData);
@@ -570,6 +515,7 @@ describe('ActiveExecutions', () => {
 				mock(),
 				executionsConfig,
 				mock(),
+				unsavedManualExecutionService,
 			);
 
 			executionData.httpResponse = mock<Response>();
@@ -961,6 +907,7 @@ describe('ActiveExecutions', () => {
 				mock(),
 				queueExecutionsConfig,
 				instanceSettings,
+				unsavedManualExecutionService,
 			);
 		};
 

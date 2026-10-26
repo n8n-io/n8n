@@ -3,7 +3,6 @@ import type { CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
-import { randomUUID } from 'node:crypto';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -92,7 +91,8 @@ describe('ExecutionPersistence', () => {
 	});
 
 	describe('unsaved manual executions', () => {
-		const createUnsavedManualExecution = async (startedByUserId: string) => {
+		/** A finished manual run that n8n did not save, soft-deleted when it finished. */
+		const createUnsavedManualExecution = async () => {
 			const workflow = await createWorkflow();
 			const executionId = await executionPersistence.create({
 				data: createRunExecutionData({ resultData: { lastNodeExecuted: 'Get Message' } }),
@@ -101,14 +101,13 @@ describe('ExecutionPersistence', () => {
 				finished: false,
 				status: 'error',
 				workflowId: workflow.id,
-				startedByUserId,
 			});
-			await executionRepository.softDeleteUnsavedManualExecution(executionId);
+			await executionRepository.softDelete(executionId);
 			return { workflow, executionId };
 		};
 
 		it('writes run data to a soft-deleted execution only when asked to', async () => {
-			const { executionId } = await createUnsavedManualExecution(randomUUID());
+			const { executionId } = await createUnsavedManualExecution();
 			const finished = {
 				status: 'error' as const,
 				data: createRunExecutionData({ resultData: { lastNodeExecuted: 'Get Message' } }),
@@ -140,7 +139,7 @@ describe('ExecutionPersistence', () => {
 			const findOne = executionRepository.findOne.bind(executionRepository);
 			vi.spyOn(executionRepository, 'findOne').mockImplementationOnce(async (options) => {
 				const entity = await findOne(options);
-				await executionRepository.softDeleteUnsavedManualExecution(executionId);
+				await executionRepository.softDelete(executionId);
 				return entity;
 			});
 
@@ -158,52 +157,13 @@ describe('ExecutionPersistence', () => {
 			expect(row?.deletedAt).toBeInstanceOf(Date);
 		});
 
-		it('leaves the starter out of execution reads', async () => {
-			const workflow = await createWorkflow();
-			const executionId = await executionPersistence.create({
-				data: createEmptyRunExecutionData(),
-				workflowData: workflow,
-				mode: 'manual',
-				finished: false,
-				status: 'running',
-				workflowId: workflow.id,
-				startedByUserId: randomUUID(),
-			});
+		it('returns the run data of an unsaved manual execution', async () => {
+			const { workflow, executionId } = await createUnsavedManualExecution();
 
-			const reads = await Promise.all([
-				executionPersistence.findSingleExecution(executionId),
-				executionPersistence.findSingleExecution(executionId, {
-					includeData: true,
-					unflattenData: true,
-				}),
-				executionPersistence.findSingleExecution(executionId, {
-					includeData: true,
-					unflattenData: true,
-					maxDataSizeBytes: 1,
-				}),
-			]);
-
-			expect(reads[2]).toMatchObject({ dataTooLargeToDisplay: true });
-			for (const [index, execution] of reads.entries()) {
-				expect(execution, `read ${index}`).toMatchObject({ id: executionId });
-				expect(execution, `read ${index}`).not.toHaveProperty('startedByUserId');
-			}
-		});
-
-		it('returns the run data of an unsaved manual execution to the user who started it', async () => {
-			const startedByUserId = randomUUID();
-			const { workflow, executionId } = await createUnsavedManualExecution(startedByUserId);
-
-			const execution = await executionPersistence.findUnsavedManualExecution(
-				executionId,
-				startedByUserId,
-			);
+			const execution = await executionPersistence.findUnsavedManualExecution(executionId);
 
 			expect(execution).toMatchObject({ id: executionId, workflowId: workflow.id, mode: 'manual' });
 			expect(execution?.data.resultData.lastNodeExecuted).toBe('Get Message');
-			expect(
-				await executionPersistence.findUnsavedManualExecution(executionId, randomUUID()),
-			).toBeUndefined();
 			expect(
 				await executionPersistence.findSingleExecution(executionId, {
 					includeData: true,

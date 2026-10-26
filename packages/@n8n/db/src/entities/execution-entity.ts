@@ -139,14 +139,6 @@ export class ExecutionEntity {
 	@Column({ default: false })
 	usedPrivateCredentials: boolean;
 
-	/**
-	 * User who started this manual execution. Set when the execution starts, only
-	 * when n8n will not save it, so only that user can read it after it finishes,
-	 * until pruning hard-deletes it. Cleared when n8n keeps the execution.
-	 */
-	@Column({ type: 'uuid', nullable: true })
-	startedByUserId: string | null;
-
 	@OneToMany('ExecutionMetadata', 'execution')
 	metadata: ExecutionMetadata[];
 

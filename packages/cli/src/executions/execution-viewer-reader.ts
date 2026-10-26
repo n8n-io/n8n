@@ -1,7 +1,9 @@
 import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
-import type { IExecutionResponse, User } from '@n8n/db';
+import type { ExecutionEntity, IExecutionResponse, User } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -37,6 +39,24 @@ export async function loadExecutionForViewer(
 }
 
 /**
+ * A manual execution that n8n did not save, without its run data, if `viewer` started
+ * it. Use it to check who may read the execution, and load its data with
+ * {@link loadExecutionForViewer}.
+ */
+export async function findUnsavedManualExecutionForViewer(
+	executionId: string,
+	viewer: User,
+): Promise<ExecutionEntity | null> {
+	const isStarter = await Container.get(UnsavedManualExecutionService).isStarter(
+		executionId,
+		viewer.id,
+	);
+	if (!isStarter) return null;
+
+	return await Container.get(ExecutionRepository).findUnsavedManualExecution(executionId);
+}
+
+/**
  * An unsaved manual execution that `viewer` started, with its run data. It also
  * checks that the viewer may still read executions of its workflow, because a
  * caller's earlier check may have passed while the execution was still saved.
@@ -45,10 +65,14 @@ async function loadUnsavedManualExecution(
 	executionId: string,
 	viewer: User,
 ): Promise<IExecutionResponse | undefined> {
-	const execution = await Container.get(ExecutionPersistence).findUnsavedManualExecution(
+	const isStarter = await Container.get(UnsavedManualExecutionService).isStarter(
 		executionId,
 		viewer.id,
 	);
+	if (!isStarter) return undefined;
+
+	const execution =
+		await Container.get(ExecutionPersistence).findUnsavedManualExecution(executionId);
 	if (!execution) return undefined;
 
 	const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(

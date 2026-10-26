@@ -1,5 +1,4 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -9,7 +8,7 @@ import type { ExecutionStatus } from 'n8n-workflow';
 import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
 
 import { createExecution } from '@test-integration/db/executions';
-import { createMember, createOwner } from '@test-integration/db/users';
+import { createOwner } from '@test-integration/db/users';
 
 describe('UserRepository', () => {
 	let executionRepository: ExecutionRepository;
@@ -358,112 +357,45 @@ describe('UserRepository', () => {
 	});
 
 	describe('unsaved manual executions', () => {
-		const createUnsavedManualExecution = async (startedByUserId: string | null = owner.id) => {
+		/** A finished manual run that n8n did not save, soft-deleted when it finished. */
+		const createUnsavedManualExecution = async () => {
 			const workflow = await createWorkflow({}, owner);
-			const execution = await createExecution({ mode: 'manual' }, workflow);
-			await executionRepository.update({ id: execution.id }, { startedByUserId });
+			const execution = await createExecution({ mode: 'manual', status: 'error' }, workflow);
+			await executionRepository.softDelete(execution.id);
 			return { workflow, execution };
 		};
 
-		test('soft-deletes the execution once and reports that it records a starter', async () => {
-			const { execution } = await createUnsavedManualExecution();
-
-			expect(await executionRepository.softDeleteUnsavedManualExecution(execution.id)).toBe(true);
-			const first = await executionRepository.findOne({
-				where: { id: execution.id },
-				withDeleted: true,
-			});
-			expect(await executionRepository.softDeleteUnsavedManualExecution(execution.id)).toBe(true);
-			const second = await executionRepository.findOne({
-				where: { id: execution.id },
-				withDeleted: true,
-			});
-
-			expect(first?.deletedAt).toBeInstanceOf(Date);
-			expect(second?.deletedAt).toEqual(first?.deletedAt);
-			expect(await executionRepository.findSingleExecution(execution.id)).toBeUndefined();
-		});
-
-		test('reports when the execution records no starter', async () => {
-			const { execution } = await createUnsavedManualExecution(null);
-
-			expect(await executionRepository.softDeleteUnsavedManualExecution(execution.id)).toBe(false);
-		});
-
-		test('does not soft-delete a non-manual execution', async () => {
-			const { execution } = await createUnsavedManualExecution();
-			await executionRepository.update({ id: execution.id }, { mode: 'webhook' });
-
-			expect(await executionRepository.softDeleteUnsavedManualExecution(execution.id)).toBe(false);
-			const row = await executionRepository.findOneBy({ id: execution.id });
-			expect(row?.deletedAt).toBeNull();
-		});
-
-		test('finds the execution only for the user who started it', async () => {
-			const member = await createMember();
+		test('finds the execution inside the hard-delete buffer', async () => {
 			const { workflow, execution } = await createUnsavedManualExecution();
-			await executionRepository.softDeleteUnsavedManualExecution(execution.id);
 
-			expect(
-				await executionRepository.findUnsavedManualExecution(execution.id, owner.id),
-			).toMatchObject({ id: execution.id, workflowId: workflow.id });
-			expect(
-				await executionRepository.findUnsavedManualExecution(execution.id, member.id),
-			).toBeNull();
+			expect(await executionRepository.findUnsavedManualExecution(execution.id)).toMatchObject({
+				id: execution.id,
+				workflowId: workflow.id,
+			});
+			expect(await executionRepository.findSingleExecution(execution.id)).toBeUndefined();
 		});
 
 		test('does not find the execution after the hard-delete buffer', async () => {
 			const { execution } = await createUnsavedManualExecution();
-			await executionRepository.softDeleteUnsavedManualExecution(execution.id);
-
 			await executionRepository.update(
 				{ id: execution.id },
 				{ deletedAt: DateTime.utc().minus({ hours: 2 }).toJSDate() },
 			);
 
-			expect(
-				await executionRepository.findUnsavedManualExecution(execution.id, owner.id),
-			).toBeNull();
+			expect(await executionRepository.findUnsavedManualExecution(execution.id)).toBeNull();
 		});
 
-		test('does not find the execution while pruning is off', async () => {
-			const { execution } = await createUnsavedManualExecution();
-			await executionRepository.softDeleteUnsavedManualExecution(execution.id);
-			const executionsConfig = Container.get(GlobalConfig).executions;
-			executionsConfig.pruneData = false;
-
-			try {
-				expect(
-					await executionRepository.findUnsavedManualExecution(execution.id, owner.id),
-				).toBeNull();
-			} finally {
-				executionsConfig.pruneData = true;
-			}
-		});
-
-		test('does not find a running, an unfinished or a non-manual execution', async () => {
-			const { execution: running } = await createUnsavedManualExecution();
+		test('does not find a kept, an unfinished or a non-manual execution', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const kept = await createExecution({ mode: 'manual', status: 'error' }, workflow);
 			const { execution: unfinished } = await createUnsavedManualExecution();
 			await executionRepository.update({ id: unfinished.id }, { status: 'running' });
-			await executionRepository.softDeleteUnsavedManualExecution(unfinished.id);
 			const { execution: webhook } = await createUnsavedManualExecution();
 			await executionRepository.update({ id: webhook.id }, { mode: 'webhook' });
-			await executionRepository.softDelete(webhook.id);
 
-			expect(await executionRepository.findUnsavedManualExecution(running.id, owner.id)).toBeNull();
-			expect(
-				await executionRepository.findUnsavedManualExecution(unfinished.id, owner.id),
-			).toBeNull();
-			expect(await executionRepository.findUnsavedManualExecution(webhook.id, owner.id)).toBeNull();
-		});
-
-		test('clears the starter of a kept execution', async () => {
-			const { execution } = await createUnsavedManualExecution();
-
-			await executionRepository.clearUnsavedManualExecutionStarter(execution.id);
-
-			const row = await executionRepository.findOneBy({ id: execution.id });
-			expect(row?.startedByUserId).toBeNull();
+			expect(await executionRepository.findUnsavedManualExecution(kept.id)).toBeNull();
+			expect(await executionRepository.findUnsavedManualExecution(unfinished.id)).toBeNull();
+			expect(await executionRepository.findUnsavedManualExecution(webhook.id)).toBeNull();
 		});
 	});
 });

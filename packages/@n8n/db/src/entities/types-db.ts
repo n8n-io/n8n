@@ -78,7 +78,6 @@ export interface IExecutionBase {
 	binaryDataSizeBytes?: number; // see `ExecutionEntity.binaryDataSizeBytes`
 	workflowVersionId?: string | null; // see `ExecutionEntity.workflowVersionId`
 	usedPrivateCredentials?: boolean; // see `ExecutionEntity.usedPrivateCredentials`
-	startedByUserId?: string | null; // see `ExecutionEntity.startedByUserId`
 }
 
 // Required by PublicUser

@@ -15,7 +15,6 @@
 | retryOf | varchar |  | true |  |  |  |
 | retrySuccessId | varchar |  | true |  |  |  |
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
-| startedByUserId | uuid |  | true |  |  | User who started this manual execution. Set at start only when n8n will not save it, so only that user can read it until pruning hard-deletes it. |
 | status | varchar |  | false |  |  |  |
 | stoppedAt | timestamp(3) with time zone |  | true |  |  |  |
 | storedAt | varchar(2) | 'db'::character varying | false |  |  |  |
@@ -79,7 +78,6 @@ erDiagram
   varchar retryOf
   varchar retrySuccessId
   timestamp_3__with_time_zone startedAt
-  uuid startedByUserId
   varchar status
   timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt

@@ -328,17 +328,11 @@ export class ExecutionPersistence {
 	}
 
 	/**
-	 * A manual execution that n8n did not save, with its run data, for the user who
-	 * started it. See `ExecutionRepository.findUnsavedManualExecution`.
+	 * A finished manual execution that n8n did not save, with its run data, until pruning
+	 * hard-deletes it. The caller must check that the reader started it.
 	 */
-	async findUnsavedManualExecution(
-		executionId: string,
-		startedByUserId: string,
-	): Promise<IExecutionResponse | undefined> {
-		const entity = await this.executionRepository.findUnsavedManualExecution(
-			executionId,
-			startedByUserId,
-		);
+	async findUnsavedManualExecution(executionId: string): Promise<IExecutionResponse | undefined> {
+		const entity = await this.executionRepository.findUnsavedManualExecution(executionId);
 		if (!entity) return undefined;
 
 		return await this.readSingleExecution(entity, { includeData: true, unflattenData: true });
@@ -1051,8 +1045,7 @@ export class ExecutionPersistence {
 		bundle: ExecutionDataPayload,
 		options: { unflattenData?: boolean; includeAnnotation?: boolean },
 	) {
-		// `startedByUserId` is internal: only the lookup of unsaved manual executions uses it.
-		const { metadata, annotation, startedByUserId: _startedByUserId, ...rest } = entity;
+		const { metadata, annotation, ...rest } = entity;
 		const ref = { workflowId: entity.workflowId, executionId: entity.id };
 		const data = await this.parseExecutionData(ref, bundle.data, options);
 		const serializedAnnotation = this.serializeAnnotation(annotation);
@@ -1116,7 +1109,7 @@ export class ExecutionPersistence {
 		options: { includeAnnotation?: boolean },
 		snapshot?: BundleWorkflowSnapshot,
 	) {
-		const { metadata, annotation, startedByUserId: _startedByUserId, ...rest } = entity;
+		const { metadata, annotation, ...rest } = entity;
 		const serializedAnnotation = this.serializeAnnotation(annotation);
 		const workflowData = snapshot?.workflowData ?? {
 			id: entity.workflowId,

@@ -40,7 +40,7 @@ import {
 	updateExistingExecutionMetadata,
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
-import { keepsUnsavedManualExecutions } from './unsaved-manual-execution';
+import { UnsavedManualExecutionService } from './unsaved-manual-execution.service';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -619,6 +619,7 @@ function hookFunctionsSave(
 	const errorReporter = Container.get(ErrorReporter);
 	const executionRepository = Container.get(ExecutionRepository);
 	const executionPersistence = Container.get(ExecutionPersistence);
+	const unsavedManualExecutionService = Container.get(UnsavedManualExecutionService);
 	const binaryDataService = Container.get(BinaryDataService);
 	const workflowStaticDataService = Container.get(WorkflowStaticDataService);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
@@ -696,10 +697,8 @@ function hookFunctionsSave(
 				 * Known limit: in blob storage, a write that stalls for longer than the
 				 * buffer can leave its data behind after pruning removes the execution.
 				 */
-				const keptForStarter = await executionRepository.softDeleteUnsavedManualExecution(
-					this.executionId,
-				);
-				if (keptForStarter && keepsUnsavedManualExecutions(Container.get(ExecutionsConfig))) {
+				await executionRepository.softDelete(this.executionId);
+				if (await unsavedManualExecutionService.keep(this.executionId)) {
 					try {
 						await updateExistingExecution({
 							executionId: this.executionId,
@@ -764,20 +763,12 @@ function hookFunctionsSave(
 				fullExecutionData.data.pushRef = pushRef;
 			}
 
-			// A run that started unsaved can finish saved when the save settings change
-			// while it waits. A kept execution must not stay readable as an unsaved one.
-			const keepsManualExecution = isManualMode && !fullRunData.waitTill;
-			if (keepsManualExecution) fullExecutionData.startedByUserId = null;
-
-			const updated = await updateExistingExecution({
+			await updateExistingExecution({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
 				executionData: fullExecutionData,
 				conditions: saveConditions,
 			});
-			if (keepsManualExecution && !updated) {
-				await executionRepository.clearUnsavedManualExecutionStarter(this.executionId);
-			}
 
 			await updateExistingExecutionMetadata(
 				this.executionId,
@@ -884,11 +875,6 @@ function hookFunctionsSaveWorker(
 				? { ...fullExecutionData, data: undefined, workflowData: undefined }
 				: fullExecutionData;
 
-			// A kept manual execution must not stay readable as an unsaved one. Cleared
-			// here as well as on main, because main may never handle the finished job.
-			const keepsManualExecution = isManualMode && saveSettings.manual && !fullRunData.waitTill;
-			if (keepsManualExecution) executionData.startedByUserId = null;
-
 			// In scaling mode, worker saves execution without metadata
 			// Main process will save metadata after deletion decisions to avoid FK violations
 			// The guard only applies for a non-canceled outcome. This run's own canceled
@@ -899,11 +885,6 @@ function hookFunctionsSaveWorker(
 				executionData,
 				conditions: fullRunData.status === 'canceled' ? undefined : { requireNotCanceled: true },
 			});
-			if (keepsManualExecution && !wasUpdated) {
-				await Container.get(ExecutionRepository).clearUnsavedManualExecutionStarter(
-					this.executionId,
-				);
-			}
 		} finally {
 			// Counted only when the write above lands, so completions stay in sync with the database.
 			if (wasUpdated) {
@@ -1026,6 +1007,7 @@ export function getLifecycleHooksForScalingMain(
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
 	const executionRepository = Container.get(ExecutionRepository);
 	const executionPersistence = Container.get(ExecutionPersistence);
+	const unsavedManualExecutionService = Container.get(UnsavedManualExecutionService);
 
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
@@ -1055,7 +1037,8 @@ export function getLifecycleHooksForScalingMain(
 			 * The worker already wrote the run data, so until then the user
 			 * recorded as its starter can also read it.
 			 */
-			await executionRepository.softDeleteUnsavedManualExecution(this.executionId);
+			await executionRepository.softDelete(this.executionId);
+			await unsavedManualExecutionService.keep(this.executionId);
 
 			return;
 		}
@@ -1084,11 +1067,6 @@ export function getLifecycleHooksForScalingMain(
 				this.executionId,
 				fullRunData.data?.resultData?.metadata,
 			);
-			// Main and the worker can resolve the save settings differently, for
-			// example during a configuration rollout.
-			if (isManualMode && !fullRunData.waitTill) {
-				await executionRepository.clearUnsavedManualExecutionStarter(this.executionId);
-			}
 		}
 	});
 

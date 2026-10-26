@@ -27,7 +27,7 @@ import type PCancelable from 'p-cancelable';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
-import { resolveUnsavedManualExecutionStarter } from '@/execution-lifecycle/unsaved-manual-execution';
+import { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type {
 	IExecutingWorkflowData,
@@ -62,6 +62,7 @@ export class ActiveExecutions {
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly unsavedManualExecutionService: UnsavedManualExecutionService,
 	) {}
 
 	has(executionId: string) {
@@ -105,8 +106,6 @@ export class ActiveExecutions {
 					retryOf: executionData.retryOf ?? undefined,
 					tracingContext: executionData.tracingContext ?? null,
 					deduplicationKey: executionData.deduplicationKey,
-					startedByUserId:
-						resolveUnsavedManualExecutionStarter(executionData, this.executionsConfig) ?? null,
 				};
 
 				const workflowId = executionData.workflowData.id;
@@ -116,6 +115,7 @@ export class ActiveExecutions {
 
 				executionId = await this.executionPersistence.create(fullExecutionData);
 				assert(executionId);
+				await this.unsavedManualExecutionService.recordStarter(executionId, executionData);
 
 				if (shouldReserveCapacity) {
 					await capacityReservation.reserve({ mode, executionId });
