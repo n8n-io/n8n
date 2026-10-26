@@ -5516,11 +5516,11 @@ describe('TelemetryEventRelay', () => {
 				workflows_failed_to_publish: 1,
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_CHANGES,
+				TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES,
 				payload,
 			);
 			expect(
-				TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_CHANGES.getValidationError(payload),
+				TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES.getValidationError(payload),
 			).toBeNull();
 		});
 

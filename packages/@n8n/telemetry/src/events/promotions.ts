@@ -136,8 +136,8 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 				.describe('Set when the outcome is not failed. True when the push opened a merge request'),
 		}),
 	},
-	USER_APPLIED_CHANGES: {
-		name: 'User applied changes',
+	USER_APPLIED_PROMOTION_CHANGES: {
+		name: 'User applied promotion changes',
 		description:
 			'A user applied changes from the promotion repository, for the whole instance or for one project. Fires once per attempt that passed validation, on every outcome, including continued applies.',
 		properties: z.object({

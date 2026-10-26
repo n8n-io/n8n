@@ -2805,7 +2805,7 @@ export class TelemetryEventRelay extends EventRelay {
 		workflowsChanged,
 		workflowsFailedToPublish,
 	}: RelayEventMap['promotion-applied']) {
-		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_CHANGES, {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES, {
 			user_id: user.id,
 			environment_id: environmentId,
 			scope,
