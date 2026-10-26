@@ -465,7 +465,8 @@ export class InstanceAiCloudBrowserTaskService {
 	/**
 	 * Starts one follow-up run with every finished task the orchestrator has not heard about.
 	 * Called when a task ends and when a run ends, so a result that arrives mid-run reaches the
-	 * orchestrator as soon as that run is over. The claim is released when no run started.
+	 * orchestrator as soon as that run is over. The tasks are removed once the run started, and
+	 * released for the next delivery when no run started.
 	 */
 	async deliverPendingResults(user: User, threadId: string): Promise<void> {
 		const undelivered = await this.taskStore.claimUndelivered(threadId);
@@ -483,7 +484,13 @@ export class InstanceAiCloudBrowserTaskService {
 				messageGroupId,
 			);
 		} finally {
-			if (!runId) await this.taskStore.releaseClaim(threadId, undelivered);
+			// If the follow-up was started successfully, we consider it delivered and remove the task
+			// otherwise, we release claim so it can be picked up for delivery again
+			if (runId) {
+				await this.taskStore.removeDelivered(threadId, undelivered);
+			} else {
+				await this.taskStore.releaseClaim(threadId, undelivered);
+			}
 		}
 	}
 }
