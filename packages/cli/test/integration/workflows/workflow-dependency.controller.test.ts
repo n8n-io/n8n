@@ -681,16 +681,21 @@ describe('Workflow and credential ID collisions', () => {
 	});
 
 	it.each([
-		{ scenario: 'a single workflow', batch: false },
-		{ scenario: 'a batch', batch: true },
-	])('should list only workflow callers when querying $scenario', async ({ batch }) => {
+		{ scenario: 'a single workflow with distinct IDs', matchingIds: false, batch: false },
+		{ scenario: 'a single workflow with matching IDs', matchingIds: true, batch: false },
+		{ scenario: 'a batch with distinct IDs', matchingIds: false, batch: true },
+		{ scenario: 'a batch with matching IDs', matchingIds: true, batch: true },
+	])('should list only workflow callers for $scenario', async ({ matchingIds, batch }) => {
 		const owner = await createOwner();
 		const member = await createMember();
 		const credential = await saveCredential(randomCredentialPayload(), {
 			user: member,
 			role: 'credential:owner',
 		});
-		const workflow = await createWorkflow({ id: credential.id, name: 'Target workflow' }, member);
+		const workflow = await createWorkflow(
+			{ id: matchingIds ? credential.id : randomUUID(), name: 'Target workflow' },
+			member,
+		);
 		const caller = await createWorkflow({ name: 'Workflow caller' }, member);
 		const privateCaller = await createWorkflow({ name: 'Private workflow caller' }, owner);
 		const credentialUser = await createWorkflow({ name: 'Credential user' }, member);
