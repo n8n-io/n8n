@@ -37,6 +37,7 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 			surface: 'apps',
 			displayName: app.name,
 			isFirstParty: true,
+			uiHints: { icon: 'grid-2x2', consentType: 'app' },
 			scopes: [],
 			getResourceUrl: () => url,
 			getAudiences: () => [url],
