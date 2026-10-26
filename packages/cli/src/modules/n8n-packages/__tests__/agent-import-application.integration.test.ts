@@ -1003,7 +1003,7 @@ it('keeps strict creation when a planned ID becomes occupied', async () => {
 	const input = fixture();
 	input.manifest.agents.splice(1);
 	const plan = await planFor(input);
-	const id = plan.agentPlan!.items[0].targetAgentId;
+	const id = plan.agentPlan!.items[0].sourceAgentId;
 	await agents.save({ id, name: 'Concurrent Agent', projectId: project.id });
 	const before = await agents.findById(id);
 	await expect(orchestrator.apply(plan)).rejects.toBeInstanceOf(ConflictError);

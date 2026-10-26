@@ -74,7 +74,7 @@ export class AgentImportBindings {
 			for (const item of scope.agentPlan?.items ?? []) {
 				agents.set(item.sourceAgentId, {
 					...target,
-					id: item.targetAgentId,
+					id: item.sourceAgentId,
 					creating: item.action === 'create',
 				});
 			}
@@ -183,7 +183,7 @@ export class AgentImportBindings {
 		);
 		const resolved = new Map<string, DependencyTarget>();
 		for (const id of ids) {
-			const target = planned.get(id) ?? external.matches.get(id);
+			const target = planned.get(id) ?? external.get(id);
 			resolved.set(
 				id,
 				target

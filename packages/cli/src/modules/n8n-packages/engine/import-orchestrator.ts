@@ -101,8 +101,10 @@ import { ContentImportPolicyGate, contentImportTransport } from './content-impor
 import { CredentialSavePolicyGate } from './credential-save-policy';
 import { toImportBlockedError } from './import-blocked.error';
 import {
+	assertArchiveTransitionsAllowed,
 	assertCredentialUpdatesAllowed,
 	assertDataTableWritesAllowed,
+	assertTagWritesAllowed,
 	assertVariableWritesAllowed,
 	assertPackageImportApiKeyScopes,
 } from './import-gates';
@@ -196,6 +198,14 @@ export class ImportOrchestrator {
 		plans: ImportPlan[],
 		options: { apiKeyScopes: string[] | undefined },
 	): Promise<void> {
+		assertTagWritesAllowed(
+			options.apiKeyScopes,
+			plans.map((plan) => plan.tagPlan),
+		);
+		assertArchiveTransitionsAllowed(
+			options.apiKeyScopes,
+			plans.map((plan) => plan.workflowPlan),
+		);
 		const creations = plans.flatMap((plan) => plan.variablePlan.creations);
 		const overwrites = plans.flatMap((plan) => plan.variablePlan.overwrites);
 

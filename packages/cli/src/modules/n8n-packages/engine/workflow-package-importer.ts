@@ -13,19 +13,13 @@ import {
 	resolveCredentialConflictPolicy,
 } from '../entities/credential/credential-conflict-policy';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
-import { canStubNotFoundFailure } from '../entities/credential/credential-missing-mode';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ResolvedImportRequest } from '../n8n-packages.types';
-import {
-	assertArchiveTransitionsAllowed,
-	assertPackageImportApiKeyScopes,
-	assertTagWritesAllowed,
-	packageImportScopes,
-} from './import-gates';
+import { assertPackageImportApiKeyScopes, packageImportScopes } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
 	buildImportResult,
@@ -38,12 +32,11 @@ import {
 } from './import-result';
 import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
+import { PackageImportPreflight } from './package-import-preflight';
 import {
-	needsBundledCredentialData,
 	needsBundledCredentialFiles,
 	needsBundledVariableValues,
 	placeByPolicy,
-	placeCredentialData,
 } from './package-layout';
 import type { PackageManifest } from '../spec/manifest.schema';
 
@@ -56,6 +49,7 @@ export class WorkflowPackageImporter {
 	constructor(
 		private readonly packageParser: N8nPackageParser,
 		private readonly importOrchestrator: ImportOrchestrator,
+		private readonly importPreflight: PackageImportPreflight,
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
 		private readonly licenseState: LicenseState,
@@ -150,7 +144,7 @@ export class WorkflowPackageImporter {
 			conflictPolicy: request.tagConflictPolicy,
 		};
 
-		const plan = await this.importOrchestrator.plan({
+		const draftPlan = await this.importOrchestrator.plan({
 			context,
 			folders,
 			workflows,
@@ -169,22 +163,7 @@ export class WorkflowPackageImporter {
 			checkRootPlacement: false,
 		});
 
-		const plannedCredentialRequest = plan.input.credentialRequest;
-		const missingCredentialIds = new Set(
-			plan.credentialPlan.failures.filter(canStubNotFoundFailure).map(({ sourceId }) => sourceId),
-		);
-		if (needsBundledCredentialData(request, missingCredentialIds.size > 0)) {
-			plannedCredentialRequest.requirements = placeCredentialData({
-				requirements: plannedCredentialRequest.requirements,
-				bundledCredentials:
-					plannedCredentialRequest.packageCredentials ??
-					(await this.packageParser.getCredentials(reader, missingCredentialIds)),
-			});
-		}
-
-		assertTagWritesAllowed(request.apiKeyScopes, [plan.tagPlan]);
-		assertArchiveTransitionsAllowed(request.apiKeyScopes, [plan.workflowPlan]);
-		await this.importOrchestrator.assertNotBlocked([plan], { apiKeyScopes: request.apiKeyScopes });
+		const [plan] = await this.importPreflight.prepare([draftPlan], reader, request.apiKeyScopes);
 
 		const content = await this.importOrchestrator.apply(plan);
 
@@ -199,7 +178,7 @@ export class WorkflowPackageImporter {
 			{
 				context,
 				imported: content,
-				credentialRequest: plannedCredentialRequest,
+				credentialRequest: plan.input.credentialRequest,
 				dataTableRequest: plan.input.dataTableRequest,
 				variableRequest: plan.input.variableRequest,
 				tagRequest,

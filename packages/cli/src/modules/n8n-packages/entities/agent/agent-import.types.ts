@@ -10,7 +10,6 @@ import type { SerializedAgent, SerializedAgentMetadata } from '../../spec/serial
 import type { PublishingAction, PublishingBlockedReason, PublishingOutcome } from '../publishing';
 
 export type AgentPlanItem = PreparedAgent & {
-	targetAgentId: string;
 	publishingAction: PublishingAction;
 } & ({ action: 'create'; existing: null } | { action: 'update' | 'skip'; existing: ProjectAgent });
 
@@ -51,25 +50,11 @@ export interface AgentImportMatchContext extends Pick<ImportContext, 'user' | 'p
 
 export interface AgentIdConflict {
 	sourceAgentId: string;
-	existingAgentId: string;
 	existingProjectId: string | null;
 }
 
 export interface AgentImportMatches {
-	projectId: string;
-	sourceAgentIds: string[];
 	matches: Map<string, AgentImportIdentity>;
-}
-
-export interface ResolvedAgentImportIdentity {
-	sourceAgentId: string;
-	targetAgentId: string;
-	existing: AgentImportIdentity | null;
-}
-
-export interface AgentImportIdentities {
-	projectId: string;
-	identities: Map<string, ResolvedAgentImportIdentity>;
 	idConflicts: AgentIdConflict[];
 }
 

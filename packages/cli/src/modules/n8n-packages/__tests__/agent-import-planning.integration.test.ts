@@ -173,6 +173,7 @@ it('seeds bundled credential expressions after planning and excludes skipped Age
 	};
 	fixture.manifest.credentials = [
 		{ id: credential.id, name: credential.name, target: 'credentials/model' },
+		{ id: 'skipped-credential', name: 'Skipped', target: 'credentials/skipped' },
 	];
 	fixture.manifest.requirements = {
 		credentials: [
@@ -198,6 +199,7 @@ it('seeds bundled credential expressions after planning and excludes skipped Age
 		variables: [{ name: 'SKIPPED_VARIABLE', usedBy: [{ kind: 'agent', id: 'research_source' }] }],
 	};
 	fixture.files['credentials/model/credential.json'] = credential;
+	fixture.files['credentials/skipped/credential.json'] = { invalid: true };
 	await agents.save({ id: 'research_source', name: 'Existing', projectId: project.id });
 	const writer = new TarPackageWriter();
 	await writeAgentPackageFixture(writer, fixture);
@@ -320,9 +322,9 @@ it('plans cycles, typed bindings and task IDs without changing definitions or de
 	const [a, b] = plan.agentPlan!.items;
 	const workflowId =
 		plan.workflowPlan.items[0].action === 'create' ? plan.workflowPlan.items[0].decidedId : '';
-	expect(a.targetAgentId).toBe(workflowId);
-	expect(a.config?.subAgents?.agents?.[0].agentId).toBe(b.targetAgentId);
-	expect(b.config?.subAgents?.agents?.[0].agentId).toBe(a.targetAgentId);
+	expect(a.sourceAgentId).toBe(workflowId);
+	expect(a.config?.subAgents?.agents?.[0].agentId).toBe(b.sourceAgentId);
+	expect(b.config?.subAgents?.agents?.[0].agentId).toBe(a.sourceAgentId);
 	expect(a.config?.tools?.[0]).toMatchObject({
 		workflowId,
 		inputs: first.config?.tools?.[0].type === 'workflow' ? first.config.tools[0].inputs : undefined,
@@ -386,7 +388,7 @@ it.each<ImportConflictPolicy>(['new-version', 'skip', 'fail'])(
 			expect(plan.blockingIssues).toEqual([]);
 			expect(plan.agentPlan!.items[0]).toMatchObject({
 				action: policy === 'skip' ? 'skip' : 'update',
-				targetAgentId: existing.id,
+				sourceAgentId: existing.id,
 			});
 			expect(plan.credentialPlan.failures).toEqual([]);
 			expect(plan.credentialPlan.stubIds.size).toBe(0);
@@ -492,7 +494,7 @@ it('keeps credential matches scoped to each project and reports an inaccessible 
 	expect(await records()).toEqual(before);
 });
 
-it('checks project boundaries after allocating the whole package', async () => {
+it('checks project boundaries after matching the whole package', async () => {
 	vi.spyOn(Container.get(NodeTypes), 'getSupportedVersions').mockReturnValue([1]);
 	const node = (workflowId: unknown) => ({
 		type: 'node' as const,

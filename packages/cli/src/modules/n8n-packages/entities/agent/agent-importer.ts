@@ -11,13 +11,13 @@ import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { CompleteAgentDefinition } from '@/modules/agents/utils/agent-definition';
 import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
+import type { AgentImportIdentity } from '@/modules/agents/repositories/agent.repository';
 
 import { agentBodyIssues } from './agent-body-issues';
 import { AgentImportMatchService } from './agent-import-match.service';
 import {
 	requiredAgentScopes,
 	type AgentImportMatchContext,
-	type ResolvedAgentImportIdentity,
 	type AgentImportPlan,
 	type AgentImportIssue,
 	type AgentPlanItem,
@@ -51,24 +51,28 @@ export class AgentImporter {
 			issues: [],
 		};
 		if (agents.length === 0) return plan;
-		const matches = await this.matcher.findBySourceAgentIds(
+		const { matches, idConflicts } = await this.matcher.findImportMatches(
 			context,
 			agents.map((a) => a.sourceAgentId),
 		);
-		const identities = await this.matcher.allocateAgentIds(matches);
-		for (const conflict of identities.idConflicts) {
+		for (const conflict of idConflicts) {
 			plan.issues.push({
 				type: 'agent-conflict',
 				kind: 'id',
 				sourceAgentId: conflict.sourceAgentId,
 				projectId: context.projectId,
-				targetIds: [conflict.existingAgentId],
+				targetIds: [conflict.sourceAgentId],
 			});
 		}
+		const conflictedIds = new Set(idConflicts.map(({ sourceAgentId }) => sourceAgentId));
 		for (const agent of agents) {
-			const identity = identities.identities.get(agent.sourceAgentId);
-			if (!identity) continue;
-			const result = await this.planDefinition(agent, identity, context, options);
+			if (conflictedIds.has(agent.sourceAgentId)) continue;
+			const result = await this.planDefinition(
+				agent,
+				matches.get(agent.sourceAgentId),
+				context,
+				options,
+			);
 			if ('action' in result) plan.items.push(result);
 			else plan.issues.push(result);
 		}
@@ -147,14 +151,14 @@ export class AgentImporter {
 			if (item.action === 'create') {
 				agent = await this.agentsService.create(context.projectId, item.name, {
 					...options,
-					id: item.targetAgentId,
+					id: item.sourceAgentId,
 					definition,
 					user: context.user,
 					actor: { kind: 'user', user: context.user },
 				});
 			} else {
 				agent = await this.configService.replaceDefinition(
-					item.targetAgentId,
+					item.sourceAgentId,
 					context.projectId,
 					definition,
 					context.user,
@@ -180,13 +184,13 @@ export class AgentImporter {
 
 	private async planDefinition(
 		agent: PreparedAgent,
-		identity: ResolvedAgentImportIdentity,
+		match: AgentImportIdentity | undefined,
 		context: AgentImportMatchContext,
 		options: ImportEntityProperties,
 	): Promise<AgentPlanItem | AgentImportIssue> {
 		const { action, blocked } = decideImportConflictAction(
 			options.conflictPolicy,
-			identity.existing !== null,
+			match !== undefined,
 		);
 		if (blocked) {
 			return {
@@ -194,11 +198,11 @@ export class AgentImporter {
 				kind: 'existing',
 				sourceAgentId: agent.sourceAgentId,
 				projectId: context.projectId,
-				targetIds: [identity.targetAgentId],
+				targetIds: [agent.sourceAgentId],
 			};
 		}
-		const existing = identity.existing
-			? await this.agentsService.findById(identity.targetAgentId, context.projectId)
+		const existing = match
+			? await this.agentsService.findById(agent.sourceAgentId, context.projectId)
 			: null;
 		const statuses = { create: 'created', update: 'updated', skip: 'skipped' } as const;
 		const publishingAction = decidePublishingAction(options.publishingPolicy, {
@@ -208,7 +212,6 @@ export class AgentImporter {
 		});
 		const item = {
 			...structuredClone(agent),
-			targetAgentId: identity.targetAgentId,
 			publishingAction,
 		};
 		if (action === 'create') return { ...item, action, existing: null };
@@ -229,7 +232,7 @@ export class AgentImporter {
 				throw new UserError(`Custom tool "${id}" must use its descriptor name as its ID.`);
 		}
 		const definition = await this.configPreparation.validateDefinition(
-			item.targetAgentId,
+			item.sourceAgentId,
 			completeDefinition(item),
 		);
 		return { ...item, config: definition.config };
