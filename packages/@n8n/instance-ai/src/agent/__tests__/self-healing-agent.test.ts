@@ -1,4 +1,5 @@
 import {
+	Agent,
 	Workspace,
 	type BuiltTool,
 	type WorkspaceFilesystem,
@@ -179,6 +180,21 @@ describe('createSelfHealingAgent', () => {
 		await fresh.stream.pipeTo(new WritableStream());
 		expect(model.doStreamCalls).toHaveLength(5);
 		expect(JSON.stringify(model.doStreamCalls.at(-1)?.prompt)).not.toContain(output.summary);
+	});
+
+	it('sends model calls through the given transport', async () => {
+		const setModelFetch = vi.spyOn(Agent.prototype, 'modelFetch');
+		const modelFetch = vi.fn();
+
+		await createSelfHealingAgent({
+			modelId: new MockLanguageModelV3(),
+			context: createContext(),
+			verifyCandidate: vi.fn(),
+			modelFetch,
+		});
+
+		expect(setModelFetch).toHaveBeenCalledWith(modelFetch);
+		setModelFetch.mockRestore();
 	});
 
 	it('restricts the final SDK tools and includes the investigation prompt', async () => {

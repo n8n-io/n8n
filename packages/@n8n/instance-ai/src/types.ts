@@ -5,6 +5,7 @@ import type {
 	BuiltTool,
 	CheckpointStore,
 	ExecutionOptions,
+	FetchFn,
 	MemoryTaskUsageReport,
 	RuntimeSkill,
 	RuntimeSkillSource,
@@ -1603,6 +1604,8 @@ export interface InstanceAiContext {
 	 * from environment API keys that proxy-managed deployments don't have.
 	 */
 	modelId?: ModelConfig;
+	/** Transport for those utility LLM calls. It carries no run labels. */
+	modelFetch?: FetchFn;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -2071,6 +2074,8 @@ export interface OrchestrationContext {
 	setupPanelEnabled?: boolean;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
+	/** Transport for utility LLM calls (see `InstanceAiContext.modelFetch`). */
+	modelFetch?: FetchFn;
 	/**
 	 * Operator overrides for the model-stream stall deadlines, forwarded to
 	 * sub-agent runs so they honor the same limits as the orchestrator.
@@ -2162,4 +2167,6 @@ export interface CreateInstanceAgentOptions {
 	/** When false, extended thinking / reasoning is not enabled. Defaults to true. */
 	thinkingEnabled?: boolean;
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	/** Transport for the agent's model calls. Sub-agents and memory tasks inherit it. */
+	modelFetch?: FetchFn;
 }

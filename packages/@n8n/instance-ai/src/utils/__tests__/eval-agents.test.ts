@@ -6,6 +6,7 @@ type MockAgentInstance = {
 	thinking: Mock;
 	configuration: Mock;
 	telemetry: Mock;
+	modelFetch: Mock;
 };
 
 const mockAgentInstances: MockAgentInstance[] = [];
@@ -17,6 +18,7 @@ vi.mock('@n8n/agents', () => ({
 		this.thinking = vi.fn().mockReturnThis();
 		this.configuration = vi.fn().mockReturnThis();
 		this.telemetry = vi.fn().mockReturnThis();
+		this.modelFetch = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Tool: vi.fn(),
@@ -128,13 +130,16 @@ describe('eval agent model config', () => {
 			url: 'https://proxy.example.com/anthropic/v1',
 			apiKey: 'proxy-token',
 		};
+		const modelFetch = vi.fn();
 
 		createEvalAgent('test-agent', {
 			instructions: 'Do the task.',
 			fallbackModelConfig,
+			modelFetch,
 		});
 
 		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(fallbackModelConfig);
+		expect(mockAgentInstances[0]?.modelFetch).toHaveBeenCalledWith(modelFetch);
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
 			mode: 'adaptive',
 			effort: 'medium',
