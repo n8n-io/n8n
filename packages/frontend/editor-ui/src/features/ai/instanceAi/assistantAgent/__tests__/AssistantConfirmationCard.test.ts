@@ -5,6 +5,7 @@ import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import AssistantConfirmationCard from '../AssistantConfirmationCard.vue';
+import type { AssistantConfirmationInput } from '../assistantConfirmation';
 
 const push = vi.hoisted(() => ({
 	listeners: [] as Array<(event: { type: string; data: Record<string, unknown> }) => void>,
@@ -240,14 +241,16 @@ describe('AssistantConfirmationCard', () => {
 		]);
 	});
 
-	it.each([
+	// Minimal payloads: the card only needs each field to choose the unsupported variant.
+	it.each<[string, Record<string, unknown>]>([
 		['workflow setup', { setupRequests: [{ id: 'x' }] }],
 		['credential setup', { credentialRequests: [{ credentialType: 'slackApi' }] }],
 		['plan review', { inputType: 'plan-review' }],
 		['channel setup', { channelConfig: { integrationType: 'slack', agentId: 'agent-1' } }],
 	])('shows a %s card as not available yet, without actions', (_name, fields) => {
+		const input = { requestId: 'req-u', message: 'Set up Slack', ...fields };
 		const { getByTestId, queryByRole } = renderComponent({
-			props: { input: { requestId: 'req-u', message: 'Set up Slack', ...fields } },
+			props: { input: input as AssistantConfirmationInput },
 		});
 
 		expect(getByTestId('assistant-agent-unsupported-card')).toHaveTextContent('Set up Slack');
