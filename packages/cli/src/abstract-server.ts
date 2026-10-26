@@ -145,7 +145,7 @@ export abstract class AbstractServer {
 
 	protected setupPushServer() {}
 
-	/** Call once after all initialization is complete. Unblocks the /healthz/readiness endpoint. */
+	/** Call after initialization to unblock app requests and the /healthz/readiness endpoint. */
 	markAsReady() {
 		this.fullyReady = true;
 	}
@@ -201,6 +201,10 @@ export abstract class AbstractServer {
 		) {
 			const { AppsHostingService: Hosting } = await import('@n8n/backend-module-apps/hosting');
 			this.appsHosting = Container.get(Hosting);
+			this.appsHosting.router.use((_req, res, next) => {
+				if (this.fullyReady) next();
+				else res.sendStatus(503);
+			});
 			// Dispatch before health checks, webhooks, controllers, and editor middleware.
 			app.use(this.appsHosting.dispatch);
 		}

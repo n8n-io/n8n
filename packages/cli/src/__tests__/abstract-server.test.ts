@@ -136,11 +136,45 @@ describe('AbstractServer', () => {
 			await testServer.start();
 
 			expect(moduleRegistry.isActive).toHaveBeenCalledWith('apps');
-			expect(router.use).not.toHaveBeenCalled();
+			expect(router.use).toHaveBeenCalledOnce();
 			expect(controllers.activate).toHaveBeenCalledExactlyOnceWith(router, {
 				surface: 'apps',
 			});
 		});
+
+		it.each([false, true])(
+			'returns 503 until the server is ready when the apps module is active: %s',
+			async (active) => {
+				vi.stubEnv('N8N_APPS_BASE_URL', 'https://apps.example.com');
+				moduleRegistry.isActive.mockReturnValue(active);
+				await testServer.init();
+
+				expect(router.use.mock.invocationCallOrder[0]).toBeLessThan(
+					mockServer.listen.mock.invocationCallOrder[0],
+				);
+				const [gate] = router.use.mock.calls[0] as [express.RequestHandler];
+				const req = mock<express.Request>();
+				const res = mock<express.Response>();
+				const next = vi.fn();
+				await gate(req, res, next);
+				expect(res.sendStatus).toHaveBeenCalledExactlyOnceWith(503);
+				expect(next).not.toHaveBeenCalled();
+
+				const healthResponse = mock<express.Response>();
+				healthHandler(req, healthResponse);
+				expect(healthResponse.send).toHaveBeenCalledWith({ status: 'ok' });
+
+				await testServer.start();
+				await gate(req, res, next);
+				expect(res.sendStatus).toHaveBeenCalledTimes(2);
+				expect(next).not.toHaveBeenCalled();
+
+				testServer.markAsReady();
+				await gate(req, res, next);
+				expect(res.sendStatus).toHaveBeenCalledTimes(2);
+				expect(next).toHaveBeenCalledExactlyOnceWith();
+			},
+		);
 
 		it('reserves configured app hosts without activating an inactive module', async () => {
 			vi.stubEnv('N8N_APPS_BASE_URL', 'https://apps.example.com');
@@ -150,7 +184,7 @@ describe('AbstractServer', () => {
 
 			expect(mockApp.use).toHaveBeenNthCalledWith(1, hosting.dispatch);
 			expect(moduleRegistry.isActive).toHaveBeenCalledWith('apps');
-			expect(router.use).not.toHaveBeenCalled();
+			expect(router.use).toHaveBeenCalledOnce();
 			expect(controllers.activate).not.toHaveBeenCalled();
 		});
 	});
