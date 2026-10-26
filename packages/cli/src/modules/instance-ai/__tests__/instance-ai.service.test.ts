@@ -1343,6 +1343,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				nodeContextEnabled: false,
 				folderExplorationEnabled: true,
 				aiPreferencesEnabled: false,
+				assistantSkillsEnabled: enabled,
 			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
@@ -1441,6 +1442,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ folderExplorationEnabled: true }),
+		);
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ assistantSkillsEnabled: enabled }),
 		);
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),

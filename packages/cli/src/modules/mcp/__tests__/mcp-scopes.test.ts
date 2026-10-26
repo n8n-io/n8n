@@ -41,6 +41,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
+import { SkillService } from '@/modules/skills/skill.service';
 import { SkillsApiService } from '@/modules/skills/skills-api.service';
 import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -297,6 +298,32 @@ describe('McpService scope enforcement', () => {
 			expect(registered.has('mutate_agent')).toBe(false);
 			expect([...SKILL_TOOLS].filter((name) => registered.has(name))).toEqual(
 				hasProvider ? [...SKILL_TOOLS] : [],
+			);
+		},
+	);
+
+	it.each([
+		['an agents provider and an API key', true, true, undefined, true],
+		['an agents provider and skill:read', true, true, ['skill:read'], true],
+		['an agents provider and skill:write', true, true, ['skill:write'], true],
+		['an agents provider and no skill scope', true, true, ['workflow:read'], false],
+		['no agents provider', false, true, undefined, false],
+		['the feature flag off', true, false, undefined, false],
+	])(
+		'declares the skills extension with %s',
+		async (_, hasProvider, skillsExtensionEnabled, grantedScopes, declared) => {
+			mockInstance(SkillsApiService);
+			mockInstance(SkillService);
+			mockInstance(SkillAgentsProxy, { hasProvider });
+			const server = await buildService({ builderEnabled: false }).getServer(
+				user,
+				mcpFeatureFlags({ skillsExtensionEnabled }),
+				undefined,
+				{ grantedScopes },
+			);
+
+			expect(server.server.getCapabilities().extensions).toEqual(
+				declared ? { 'io.modelcontextprotocol/skills': {} } : undefined,
 			);
 		},
 	);

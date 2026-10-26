@@ -28,6 +28,8 @@ import {
 	type SkillTarget,
 } from './skill.repository';
 
+export type McpSkillContent = { id: string; projectId: string | null; skill: AgentSkill };
+
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
 export type SkillRef = { id: string; versionId?: string };
 
@@ -70,6 +72,10 @@ export function toAgentSkill(row: ResolvedSkillRow): AgentSkill {
 			? { references: row.files.map(({ path, content }) => ({ path, content })) }
 			: {}),
 	};
+}
+
+function toMcpSkillContent(row: ResolvedSkillRow): McpSkillContent {
+	return { id: row.skill.id, projectId: row.skill.projectId, skill: toAgentSkill(row) };
 }
 
 function assertHasInstructions(skill: AgentSkill): void {
@@ -161,6 +167,34 @@ export class SkillService {
 			frontmatter: version.frontmatter,
 			files: files.map(({ path }) => ({ path })),
 		};
+	}
+
+	async listForMcp(
+		user: User,
+		skip: number,
+		take: number,
+	): Promise<{ count: number; skills: McpSkillContent[] }> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
+		const page = await this.skillRepository.findVisiblePage(
+			{ projectIds: projectIds ?? 'all', agentIds: [] },
+			{ skip, take },
+		);
+		const rows = await this.skillRepository.findLatestSaved(page.skills.map((skill) => skill.id));
+		return {
+			count: page.count,
+			skills: page.skills.flatMap((skill) => {
+				const row = rows.get(skill.id);
+				return row ? [toMcpSkillContent(row)] : [];
+			}),
+		};
+	}
+
+	async readForMcp(user: User, skillId: string): Promise<McpSkillContent | null> {
+		const row = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
+		if (!row || row.skill.agentId !== null || !(await this.canAccess(user, row.skill, 'read'))) {
+			return null;
+		}
+		return toMcpSkillContent(row);
 	}
 
 	async readFileForAssistant(
