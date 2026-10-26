@@ -108,6 +108,14 @@ To add the scenario to `pnpm scenarios`, give it an entry in `scenarios.json`. T
 
 When a spec hooks a method for the first time, add it to `src/hooks/catalogue.ts`, with `since` if older releases do not have it. A unit test fails when a spec hooks a method the catalogue does not list.
 
+## Multi-main scenarios
+
+A stack with more than one main needs a licence that allows several mains. Set `N8N_LICENSE_ACTIVATION_KEY` or `N8N_LICENSE_CERT` in your shell before you run one; the stack fails to start without one. The stack uses the sandbox licence tenant by default, so use a sandbox key, and never commit a key or a cert.
+
+Every new stack activates the key again. When you run many multi-main scenarios, a cert is faster: start one stack with the key, read the cert from the `settings` table where `key = 'license.cert'`, and export it as `N8N_LICENSE_CERT`.
+
+The multi-main helpers cover the common leader checks. `LEADER_HOOKS` log every leader takeover and step-down in the mains, `fastLeaderElection` shortens the leader key TTL and check interval, `currentLeader` waits until exactly one main leads, and `oneLeaderAtATime` finds periods in which two mains both led.
+
 ## How it works
 
 The rig builds on the `n8n-containers` stacks. It loads a preload script into every n8n process through `NODE_OPTIONS`. The preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container. It reads hits from `[test-rig]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`. Network faults run `tc netem` in a short-lived sidecar that shares the network of the sender container. The rig builds the `n8n-test-rig/netem` image on first use.
