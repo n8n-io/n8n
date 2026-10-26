@@ -601,7 +601,7 @@ describe('POST /n8n-packages/import', () => {
 			const tarBuffer = await differingPackage();
 			const response = await authOwnerAgent
 				.post('/n8n-packages/import')
-				.field('workflowConflictPolicy', 'fail')
+				.field('conflictPolicy', 'fail')
 				.attach('package', tarBuffer, 'import.n8np');
 
 			expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
@@ -613,7 +613,7 @@ describe('POST /n8n-packages/import', () => {
 			const tarBuffer = await differingPackage();
 			const response = await authOwnerAgent
 				.post('/n8n-packages/import')
-				.field('workflowConflictPolicy', 'fail')
+				.field('conflictPolicy', 'fail')
 				.field('credentialConflictPolicy', 'overwrite')
 				.attach('package', tarBuffer, 'import.n8np');
 
@@ -629,7 +629,7 @@ describe('POST /n8n-packages/import', () => {
 			const tarBuffer = await differingPackage();
 			const response = await authOwnerAgent
 				.post('/n8n-packages/import')
-				.field('workflowConflictPolicy', 'fail')
+				.field('conflictPolicy', 'fail')
 				.field('credentialConflictPolicy', 'fail')
 				.attach('package', tarBuffer, 'import.n8np');
 
@@ -655,7 +655,7 @@ describe('POST /n8n-packages/import', () => {
 			const response = await testServer
 				.publicApiAgentFor(limitedOwner)
 				.post('/n8n-packages/import')
-				.field('workflowConflictPolicy', 'fail')
+				.field('conflictPolicy', 'fail')
 				.field('credentialConflictPolicy', 'overwrite')
 				.attach('package', tarBuffer, 'import.n8np');
 
@@ -667,7 +667,7 @@ describe('POST /n8n-packages/import', () => {
 			const tarBuffer = await differingPackage();
 			const response = await authOwnerAgent
 				.post('/n8n-packages/import')
-				.field('workflowConflictPolicy', 'fail')
+				.field('conflictPolicy', 'fail')
 				.field('credentialConflictPolicy', 'merge')
 				.attach('package', tarBuffer, 'import.n8np');
 
