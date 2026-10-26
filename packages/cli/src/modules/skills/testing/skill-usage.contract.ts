@@ -131,6 +131,78 @@ export function describeSkillUsageContract(subject: () => SkillUsageSubject) {
 			});
 		});
 
+		describe('findSkillIdsUsedByAgent', () => {
+			it('answers each skill of a draft ref or a pin in any publish of the agent once', async () => {
+				const { usage, seed } = subject();
+				const ids = await seed({
+					agents: [
+						{ key: 'support', name: 'Support', project: 'p' },
+						{ key: 'sales', name: 'Sales', project: 'p' },
+					],
+					skills: [
+						{ key: 'voice', versions: ['Voice'] },
+						{ key: 'tone', versions: ['Tone'] },
+						{ key: 'pricing', versions: ['Pricing'] },
+						{ key: 'other', versions: ['Other'] },
+					],
+					drafts: [
+						{ agent: 'support', skill: 'voice' },
+						{ agent: 'support', skill: 'tone', version: 1 },
+						{ agent: 'sales', skill: 'other' },
+					],
+					publishes: [
+						// Only an older publish pins the skill: the agent still uses it.
+						{ agent: 'support', pins: [{ skill: 'pricing', version: 1 }] },
+						{ agent: 'support', pins: [{ skill: 'voice', version: 1 }] },
+					],
+				});
+
+				const skillIds = await usage.findSkillIdsUsedByAgent(ids.agentId('support'), ctx);
+
+				expect(skillIds.sort()).toEqual(
+					[ids.skillId('voice'), ids.skillId('tone'), ids.skillId('pricing')].sort(),
+				);
+			});
+		});
+
+		describe('findAgentSummaries', () => {
+			const world: SkillUsageWorld = {
+				agents: [
+					{ key: 'support', name: 'Support bot', project: 'p' },
+					{ key: 'sales', name: 'Sales BOT', project: 'p' },
+					{ key: 'writer', name: 'Writer', project: 'p' },
+					{ key: 'other', name: 'Other bot', project: 'q' },
+				],
+				skills: [],
+			};
+			const names = (agents: Array<{ name: string }>) => agents.map(({ name }) => name).sort();
+
+			it('answers id and name of the agents in these projects whose name matches without case', async () => {
+				const { usage, seed } = subject();
+				const ids = await seed(world);
+
+				const agents = await usage.findAgentSummaries([ids.projectId('p')], {
+					search: 'bot',
+					limit: 50,
+				});
+
+				expect([...agents].sort((a, b) => a.name.localeCompare(b.name))).toEqual([
+					{ id: ids.agentId('sales'), name: 'Sales BOT' },
+					{ id: ids.agentId('support'), name: 'Support bot' },
+				]);
+			});
+
+			it('searches every project for null and cuts the answer to the limit', async () => {
+				const { usage, seed } = subject();
+				await seed(world);
+
+				expect(names(await usage.findAgentSummaries(null, { limit: 50 }))).toEqual(
+					names(world.agents),
+				);
+				expect(await usage.findAgentSummaries(null, { limit: 2 })).toHaveLength(2);
+			});
+		});
+
 		describe('findUsage', () => {
 			const world: SkillUsageWorld = {
 				agents: [

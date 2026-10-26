@@ -3,6 +3,8 @@ import {
 	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalCredentialTestTargetRequest,
+	InstanceAiEvalExportExecutionRequest,
+	InstanceAiEvalRestoreExecutionRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
 	findSeedFolderIssues,
@@ -21,6 +23,7 @@ import type { NextFunction, Request, Response } from 'express';
 
 import { EvalAgentExecutionService } from './agent-execution.service';
 import { EvalExecutionService } from './execution.service';
+import { FailedExecutionPortabilityService } from './failed-execution-portability.service';
 import { EvalThreadCredentialAllowlistService } from './thread-credential-allowlist.service';
 import { EvalThreadRestoreService } from './thread-restore.service';
 import { InstanceAiMemoryService } from '../instance-ai-memory.service';
@@ -42,6 +45,7 @@ export class InstanceAiEvalController {
 		private readonly evalAgentExecutionService: EvalAgentExecutionService,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		private readonly evalThreadRestore: EvalThreadRestoreService,
+		private readonly failedExecutionPortability: FailedExecutionPortabilityService,
 	) {}
 
 	// Controller middleware does not cross controllers, so this repeats the
@@ -149,6 +153,48 @@ export class InstanceAiEvalController {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		return await this.instanceAiService.getThreadMemory(req.user.id, threadId);
+	}
+
+	/** Export one failed execution of a thread's project as a portable envelope. */
+	@Post('/eval/export-execution')
+	@GlobalScope('instanceAi:manage')
+	async exportExecution(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalExportExecutionRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		const projectId = await this.threadProjectId(req.user.id, payload.threadId);
+		return await this.failedExecutionPortability.exportExecution(
+			req.user,
+			projectId,
+			payload.executionId,
+		);
+	}
+
+	/** Restore an exported failed execution onto a seeded workflow of the thread's project. */
+	@Post('/eval/restore-execution')
+	@GlobalScope('instanceAi:manage')
+	async restoreExecution(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalRestoreExecutionRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		const projectId = await this.threadProjectId(req.user.id, payload.threadId);
+		return await this.failedExecutionPortability.restoreExecution(
+			req.user,
+			projectId,
+			payload.workflowId,
+			payload.envelope,
+		);
+	}
+
+	private async threadProjectId(userId: string, threadId: string): Promise<string> {
+		await this.assertThreadAccess(userId, threadId);
+		const projectId = await this.memoryService.getThreadProjectId(threadId);
+		if (!projectId) throw new BadRequestError('Thread is not bound to a project');
+		return projectId;
 	}
 
 	/**

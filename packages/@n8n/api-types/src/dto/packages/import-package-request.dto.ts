@@ -17,6 +17,7 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'folderId',
 	'credentialMatchingMode',
 	'credentialMissingMode',
+	'credentialConflictPolicy',
 	'bindings',
 	'workflowConflictPolicy',
 	'workflowPublishingPolicy',
@@ -112,6 +113,10 @@ export class ImportPackageRequestDto extends Z.class(
 			['must-preexist', 'create-stub', 'create-with-values'],
 			'create-stub',
 		).openapi(importPackageRequestFieldDocs.credentialMissingMode),
+		credentialConflictPolicy: optionalEnum(
+			['keep-existing', 'overwrite', 'fail'],
+			'keep-existing',
+		).openapi(importPackageRequestFieldDocs.credentialConflictPolicy),
 		bindings: bindingsSchema.openapi(importPackageRequestFieldDocs.bindings),
 		// Required (unlike every other mode/policy field here), matching the legacy handler, which
 		// required it even though this schema alone would otherwise default it to `new-version`.

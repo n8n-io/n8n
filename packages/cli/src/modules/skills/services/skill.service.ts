@@ -2,8 +2,10 @@ import {
 	skillNameKey,
 	type AgentSkill,
 	type CreateSkillDto,
+	type ListSkillAgentsQueryDto,
 	type ListSkillsQueryDto,
 	type SaveSkillDto,
+	type SkillAgentOption,
 	type SkillDetail,
 	type SkillListItem,
 	type SkillListResponse,
@@ -11,6 +13,7 @@ import {
 	type SkillNewNameResponse,
 	type SkillSaveResponse,
 	type SkillScope,
+	type SkillSortOption,
 	type SkillUserDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -21,13 +24,19 @@ import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
-import { SkillRepository } from '../database/repositories/skill.repository';
+import {
+	SkillRepository,
+	type SkillListSort,
+	type SkillVisibility,
+} from '../database/repositories/skill.repository';
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
 import {
 	toAgentSkill,
 	toSkillContent,
 	trimmedName,
 	withTrimmedName,
+	type McpSkillContent,
+	type ResolvedSkillRow,
 	type SkillMoveOptions,
 	type SkillSaveResult,
 	type SkillTarget,
@@ -54,6 +63,17 @@ import {
 	type SkillTelemetryRef,
 	type SkillTelemetrySource,
 } from './skills-telemetry.service';
+
+const LIST_SORTS: Record<SkillSortOption, SkillListSort> = {
+	'name:asc': { by: 'name', order: 'ASC' },
+	'name:desc': { by: 'name', order: 'DESC' },
+	'updatedAt:asc': { by: 'updatedAt', order: 'ASC' },
+	'updatedAt:desc': { by: 'updatedAt', order: 'DESC' },
+};
+
+function toMcpSkillContent(row: ResolvedSkillRow): McpSkillContent {
+	return { id: row.skill.id, projectId: row.skill.projectId, skill: toAgentSkill(row) };
+}
 
 function assertHasInstructions(skill: AgentSkill): void {
 	if (!skill.instructions.trim()) throw new UserError('Skill instructions are required.');
@@ -90,32 +110,89 @@ export class SkillService {
 	// ---------------------------------------------------------------- user actions
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
-		if (query.attachableTo !== undefined && (query.scope || query.projectId)) {
-			throw new UserError('Filter by attachableTo alone, without scope or projectId.');
+		if (query.attachableTo !== undefined && (query.scope || query.projectId || query.agentId)) {
+			throw new UserError('Filter by attachableTo alone, without scope, projectId or agentId.');
 		}
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
-		const attachableTo = await this.attachTarget(query.attachableTo);
-		// An agent skill has no projectId: it belongs to the project of its agent.
-		const agentIds =
-			projectIds === null ? 'all' : await this.skillUsage.findAgentIdsInProjects(projectIds);
-		const project = query.projectId
-			? {
-					id: query.projectId,
-					agentIds: await this.skillUsage.findAgentIdsInProjects([query.projectId]),
-				}
-			: undefined;
-		const { skills, count } = await this.skillRepository.findVisiblePage(
-			{ projectIds: projectIds ?? 'all', agentIds },
-			{
-				scope: query.scope,
-				project,
-				attachableTo,
-				search: query.search,
-				skip: query.skip,
-				take: query.take,
-			},
-		);
+		// A project the user may not list answers like a project without skills.
+		if (query.projectId && projectIds !== null && !projectIds.includes(query.projectId)) {
+			return { count: 0, data: [] };
+		}
+		const [usedBy, attachableTo, visibility, projectAgentIds] = await Promise.all([
+			this.usedByFilter(user, query.agentId),
+			this.attachTarget(query.attachableTo),
+			this.visibilityOf(projectIds),
+			query.projectId ? this.skillUsage.findAgentIdsInProjects([query.projectId]) : undefined,
+		]);
+		if (usedBy === null) return { count: 0, data: [] };
+		const project =
+			query.projectId && projectAgentIds
+				? { id: query.projectId, agentIds: projectAgentIds }
+				: undefined;
+		const { skills, count } = await this.skillRepository.findVisiblePage(visibility, {
+			scope: query.scope,
+			project,
+			attachableTo,
+			usedBy,
+			createdById: query.createdById,
+			search: query.search,
+			sort: query.sortBy && LIST_SORTS[query.sortBy],
+			skip: query.skip,
+			take: query.take,
+		});
 		return { count, data: await this.toListItems(user, skills) };
+	}
+
+	/** The users who created a skill that the user may see, for the creator filter. */
+	async listCreators(user: User): Promise<SkillUserDto[]> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
+		const creatorIds = await this.skillRepository.findVisibleCreatorIds(
+			await this.visibilityOf(projectIds),
+		);
+		return [...(await this.findCreators(creatorIds)).values()];
+	}
+
+	/** The agents the user may read, for the agent filter. Global readers see every agent. */
+	async listAgents(user: User, query: ListSkillAgentsQueryDto): Promise<SkillAgentOption[]> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
+		return await this.skillUsage.findAgentSummaries(projectIds, {
+			search: query.search,
+			limit: query.take,
+		});
+	}
+
+	/** One page of the latest saved versions the user may list, for the MCP skills extension. */
+	async listForMcp(
+		user: User,
+		skip: number,
+		take: number,
+	): Promise<{ count: number; skills: McpSkillContent[] }> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
+		const page = await this.skillRepository.findVisiblePage(
+			{ projectIds: projectIds ?? 'all', agentIds: [] },
+			{ skip, take },
+		);
+		const rows = await this.skillRepository.findLatestSaved(page.skills.map((skill) => skill.id));
+		return {
+			count: page.count,
+			skills: page.skills.flatMap((skill) => {
+				const row = rows.get(skill.id);
+				return row ? [toMcpSkillContent(row)] : [];
+			}),
+		};
+	}
+
+	/** The latest saved version of a project or instance skill, for the MCP skills extension. */
+	async readForMcp(user: User, skillId: string): Promise<McpSkillContent | null> {
+		const row = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
+		if (
+			!row ||
+			row.skill.agentId !== null ||
+			!(await this.skillAccess.canAccess(user, row.skill, 'read'))
+		) {
+			return null;
+		}
+		return toMcpSkillContent(row);
 	}
 
 	async get(user: User, skillId: string): Promise<SkillDetail> {
@@ -133,14 +210,27 @@ export class SkillService {
 		payload: CreateSkillDto,
 		source: SkillTelemetrySource = 'ui',
 	): Promise<SkillDetail> {
+		if (
+			payload.availableToAssistant !== undefined &&
+			!(await this.assistantSkillsFlagGate.isEnabled())
+		) {
+			throw new UserError("The n8n Assistant can't use skills on this instance.");
+		}
 		const target = await this.skillAccess.resolveCreateTarget(user, payload);
-		const id = await this.createTrusted({
+		const input = {
 			checkNameTaken: true,
 			target,
 			skill: payload.skill,
 			source,
 			createdById: user.id,
-		});
+		};
+		const id = payload.availableToAssistant
+			? await this.txRunner.run({}, async (ctx) => {
+					const createdId = await this.createTrusted(input, ctx);
+					await this.setAssistantAvailability(createdId, true, target, ctx);
+					return createdId;
+				})
+			: await this.createTrusted(input);
 		await this.skillsTelemetry.created(
 			user.id,
 			[{ id, ...target }],
@@ -513,6 +603,35 @@ export class SkillService {
 		};
 	}
 
+	/**
+	 * The agent filter: the skills the agent uses and its own agent skills. Null when the
+	 * agent does not exist or the user may not read it, so the list is empty and shows
+	 * nothing about that agent.
+	 */
+	private async usedByFilter(
+		user: User,
+		agentId: string | undefined,
+	): Promise<{ agentId: string; skillIds: string[] } | undefined | null> {
+		if (agentId === undefined) return undefined;
+		const [agents, readable] = await Promise.all([
+			this.skillUsage.findAgents([agentId]),
+			this.projectScopeService.getProjectIds(user, ['agent:read']),
+		]);
+		const agent = agents.get(agentId);
+		if (!agent) return null;
+		if (readable !== null && !readable.includes(agent.projectId)) return null;
+		return { agentId, skillIds: await this.skillUsage.findSkillIdsUsedByAgent(agentId) };
+	}
+
+	/**
+	 * The skills a user may list, from the projects where they hold `projectSkill:list`
+	 * (null for all). An agent skill has no projectId: it belongs to the project of its agent.
+	 */
+	private async visibilityOf(projectIds: string[] | null): Promise<SkillVisibility> {
+		if (projectIds === null) return { projectIds: 'all', agentIds: 'all' };
+		return { projectIds, agentIds: await this.skillUsage.findAgentIdsInProjects(projectIds) };
+	}
+
 	/** The agent of an `attachableTo` filter with its project. An unknown agent can attach nothing. */
 	private async attachTarget(
 		agentId: string | undefined,
@@ -535,7 +654,7 @@ export class SkillService {
 			this.skillRepository.findLatestSummaries(ids),
 			this.skillUsage.countUsingAgents(ids),
 			this.skillRepository.findProjects(skills.flatMap((skill) => projectOf(skill) ?? [])),
-			this.findCreators(skills),
+			this.findCreators(skills.flatMap((skill) => skill.createdById ?? [])),
 			this.skillAccess.accessCheck(user, 'update'),
 			this.skillAccess.accessCheck(user, 'delete'),
 		]);
@@ -568,9 +687,9 @@ export class SkillService {
 		return items;
 	}
 
-	/** The creators of a page of skills, in one query. */
-	private async findCreators(skills: Skill[]): Promise<Map<string, SkillUserDto>> {
-		const ids = [...new Set(skills.flatMap((skill) => skill.createdById ?? []))];
+	/** The users with these ids, in one query. */
+	private async findCreators(userIds: string[]): Promise<Map<string, SkillUserDto>> {
+		const ids = [...new Set(userIds)];
 		if (ids.length === 0) return new Map();
 		const users = await this.userRepository.findManyByIds(ids);
 		return new Map(

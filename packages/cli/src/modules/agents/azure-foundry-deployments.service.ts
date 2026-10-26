@@ -24,7 +24,7 @@ import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 /** A redeployed model shows up within this time. */
 const UNDERLYING_MODEL_CACHE_TTL_MS = 10 * Time.minutes.toMilliseconds;
 
-import { mapCredentialForProvider } from './json-config/credential-field-mapping';
+import { mapCredentialForProvider } from '@/credentials/credential-field-mapping';
 
 /** A deployment as the model picker offers it, plus the model it serves. */
 export interface FoundryDeployment extends ProviderModel {

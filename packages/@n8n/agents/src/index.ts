@@ -222,6 +222,7 @@ export {
 	createSkillLoadTool,
 	extendRuntimeSkillSource,
 	filterRuntimeSkillSource,
+	hashRuntimeSkillRegistry,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,
@@ -251,6 +252,7 @@ export type {
 	RuntimeSkillLinkedFileGroup,
 	RuntimeSkillLinkedFiles,
 	RuntimeSkillLoader,
+	RuntimeSkillLoadError,
 	RuntimeSkillMcpServerDependency,
 	RuntimeSkillPolicyContract,
 	RuntimeSkillReferenceContract,
@@ -430,6 +432,7 @@ export type {
 	MemoryLifecycleState,
 	MemoryLifecycleStatus,
 } from './runtime/memory/memory-lifecycle';
+export { loadReplayedMessages } from './runtime/memory/memory-orchestrator';
 export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
 export {
 	parseObservationLogMarkdown,
