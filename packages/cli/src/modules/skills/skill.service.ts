@@ -1,6 +1,12 @@
 import { AGENT_SKILL_NAME_MAX_LENGTH, skillNameKey, type AgentSkill } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectScopeService } from '@n8n/backend-services';
+import {
+	ProjectScopeService,
+	type AssistantSkillContext,
+	type AssistantSkillContent,
+	type AssistantSkillFileContent,
+	type AssistantSkillSummary,
+} from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
@@ -15,7 +21,14 @@ import { getSkillHash } from './skill-hash';
 import { SkillNameTakenError } from './skill-name-taken.error';
 import type { SkillFrontmatter } from './skill-version.entity';
 import type { Skill, SkillSource } from './skill.entity';
-import { SkillRepository, type ResolvedSkillRow, type SkillTarget } from './skill.repository';
+import {
+	SkillRepository,
+	type AssistantSkillAccess,
+	type ResolvedSkillRow,
+	type SkillTarget,
+} from './skill.repository';
+
+export type McpSkillContent = { id: string; projectId: string | null; skill: AgentSkill };
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
 export type SkillRef = { id: string; versionId?: string };
@@ -61,6 +74,10 @@ export function toAgentSkill(row: ResolvedSkillRow): AgentSkill {
 	};
 }
 
+function toMcpSkillContent(row: ResolvedSkillRow): McpSkillContent {
+	return { id: row.skill.id, projectId: row.skill.projectId, skill: toAgentSkill(row) };
+}
+
 function assertHasInstructions(skill: AgentSkill): void {
 	if (!skill.instructions.trim()) throw new UserError('Skill instructions are required.');
 }
@@ -87,16 +104,26 @@ function toRecord(rows: Map<string, ResolvedSkillRow>): Record<string, AgentSkil
 	return Object.fromEntries([...rows].map(([refId, row]) => [refId, toAgentSkill(row)]));
 }
 
+/** How a refusal counts the agents in projects the user may not read. */
+function agentsInOtherProjects(count: number): string {
+	return `${count} ${count === 1 ? 'agent' : 'agents'} in other projects`;
+}
+
 export type SkillMoveOptions = {
 	/** The name the skill has after this request, when the same request renames it. */
 	nameAfterMove?: string;
 	/** The scope `assertCanMove` checked. The move is refused if the skill left it since. */
 	checkedSource?: SkillTarget;
+	/**
+	 * The projects whose agents a refusal names, as for `deleteSkill`. It only counts the
+	 * agents in other projects.
+	 */
+	agentProjectIds?: string[] | 'all';
 };
 
 /**
  * The rules of skills: which version a skill ref runs, save, edit permission, moves and
- * the delete guard. The runtime loads skills by id with no permission check. What
+ * the delete guard. The agent runtime loads skills by id with no permission check. What
  * depends on agents (who uses a skill, the project of an agent skill) comes from
  * `SkillAgentsProxy`.
  */
@@ -111,6 +138,106 @@ export class SkillService {
 	) {}
 
 	// ---------------------------------------------------------------- reads
+
+	async listForAssistant(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
+		return await this.skillRepository.findAssistantSkillSummaries(
+			await this.authorizedAssistantProject(context),
+		);
+	}
+
+	async readForAssistant(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId?: string,
+	): Promise<AssistantSkillContent | null> {
+		const projectId = await this.authorizedAssistantProject(context);
+		const row = await this.skillRepository.findAssistantSkill(skillId, projectId, versionId);
+		if (!row) return null;
+		const { skill, version, files } = row;
+		if (!(await this.canReadForAssistant(context, skill, projectId))) return null;
+		const skillProjectId = skill.projectId;
+		return {
+			id: skill.id,
+			projectId: skillProjectId,
+			name: version.name,
+			description: version.description,
+			versionId: version.id,
+			version: version.version,
+			instructions: version.instructions,
+			frontmatter: version.frontmatter,
+			files: files.map(({ path }) => ({ path })),
+		};
+	}
+
+	async listForMcp(
+		user: User,
+		skip: number,
+		take: number,
+	): Promise<{ count: number; skills: McpSkillContent[] }> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
+		const page = await this.skillRepository.findVisiblePage(
+			{ projectIds: projectIds ?? 'all', agentIds: [] },
+			{ skip, take },
+		);
+		const rows = await this.skillRepository.findLatestSaved(page.skills.map((skill) => skill.id));
+		return {
+			count: page.count,
+			skills: page.skills.flatMap((skill) => {
+				const row = rows.get(skill.id);
+				return row ? [toMcpSkillContent(row)] : [];
+			}),
+		};
+	}
+
+	async readForMcp(user: User, skillId: string): Promise<McpSkillContent | null> {
+		const row = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
+		if (!row || row.skill.agentId !== null || !(await this.canAccess(user, row.skill, 'read'))) {
+			return null;
+		}
+		return toMcpSkillContent(row);
+	}
+
+	async readFileForAssistant(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId: string,
+		path: string,
+	): Promise<AssistantSkillFileContent | null> {
+		const projectId = await this.authorizedAssistantProject(context);
+		const row = await this.skillRepository.findAssistantSkillFile(
+			skillId,
+			projectId,
+			versionId,
+			path,
+		);
+		if (!row || !(await this.canReadForAssistant(context, row.skill, projectId))) return null;
+		return { skillId, versionId, path: row.file.path, content: row.file.content };
+	}
+
+	private async canReadForAssistant(
+		context: AssistantSkillContext,
+		skill: AssistantSkillAccess,
+		projectId: string | null,
+	): Promise<boolean> {
+		return (
+			skill.agentId === null &&
+			skill.availableToAssistant &&
+			(skill.projectId === null || skill.projectId === projectId) &&
+			(await this.canAccess(context.user, skill, 'read'))
+		);
+	}
+
+	private async authorizedAssistantProject({
+		user,
+		projectId,
+	}: AssistantSkillContext): Promise<string | null> {
+		if (!projectId) return null;
+		const projects = await this.projectScopeService.getProjectIds(user, [
+			'projectSkill:list',
+			'projectSkill:read',
+		]);
+		return projects === null || projects.includes(projectId) ? projectId : null;
+	}
 
 	/**
 	 * What an agent draft runs, keyed by ref id: the latest version, or the pinned version
@@ -200,6 +327,28 @@ export class SkillService {
 		);
 		this.logger.debug('Created skill', { skillId: id });
 		return id;
+	}
+
+	async setAssistantAvailability(
+		skillId: string,
+		available: boolean,
+		checkedTarget: SkillTarget,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.txRunner.run(ctx, async (txCtx) => {
+			await this.skillRepository.lockForEdit([skillId], txCtx);
+			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
+			if (!skill) throw new NotFoundError('Skill not found');
+			if (skill.projectId !== checkedTarget.projectId || skill.agentId !== checkedTarget.agentId) {
+				throw new ConflictError('The skill scope changed. Reload the skill and try again.');
+			}
+			if (available && skill.agentId !== null) {
+				throw new UserError(
+					"The n8n Assistant can't use skills scoped to an agent. Move the skill to a project or the instance first.",
+				);
+			}
+			await this.skillRepository.setAssistantAvailability(skillId, available, txCtx);
+		});
 	}
 
 	/**
@@ -329,34 +478,43 @@ export class SkillService {
 	// ---------------------------------------------------------------- publish
 
 	/**
-	 * Publish, step 1: the version each ref resolves to. Publish
+	 * Publish, step 1: the version id each ref resolves to, keyed by ref id. Publish
 	 * creates no version. Needs the caller's transaction for the publish lock.
 	 */
-	async snapshotForPublish(
-		refs: SkillRef[],
-		ctx: OperationContext,
-	): Promise<{ skills: Record<string, AgentSkill>; versionByRef: Map<string, string> }> {
+	async snapshotForPublish(refs: SkillRef[], ctx: OperationContext): Promise<Map<string, string>> {
 		const refIds = [...new Set(refs.map((ref) => ref.id))];
 		await this.skillRepository.lockForPublish(refIds, ctx);
-		const rows = await this.resolveRows(refs, ctx);
-		const versionByRef = new Map([...rows].map(([refId, row]) => [refId, row.version.id]));
-		return { skills: toRecord(rows), versionByRef };
+		// The same rule as `resolveRows`, without loading the content that publish does not use.
+		const latest = await this.skillRepository.findLatestVersionIds(refIds, ctx);
+		const pinnedSkillIds = await this.skillRepository.findSkillIdsOfVersions(
+			refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : [])),
+			ctx,
+		);
+		const versionByRef = new Map<string, string>();
+		for (const ref of refs) {
+			const versionId =
+				ref.versionId && pinnedSkillIds.get(ref.versionId) === ref.id
+					? ref.versionId
+					: latest.get(ref.id);
+			if (versionId) versionByRef.set(ref.id, versionId);
+		}
+		return versionByRef;
 	}
 
 	// ---------------------------------------------------------------- move
 
 	/**
-	 * Moves a skill to a project, one agent or the instance. Refused while an agent other
-	 * than `keepAgentId` uses it, or while any agent uses it when there is no `keepAgentId`.
-	 * The edit lock makes a concurrent attach wait, so the check and the move see the same
-	 * agents.
+	 * Moves a skill to a project, one agent or the instance. Refused when an agent that uses
+	 * the skill cannot add it in the new scope, so a move never takes a skill away from an
+	 * agent. `keepAgentId` is the agent that asks for the move: it does not block it. The edit
+	 * lock makes a concurrent attach wait, so the check and the move see the same agents.
 	 */
 	async changeTarget(
 		skillId: string,
 		target: SkillTarget,
 		keepAgentId: string | undefined,
 		ctx: OperationContext = {},
-		{ nameAfterMove, checkedSource }: SkillMoveOptions = {},
+		{ nameAfterMove, checkedSource, agentProjectIds = 'all' }: SkillMoveOptions = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
@@ -377,13 +535,7 @@ export class SkillService {
 			const others = (await this.skillAgents.findUsingAgentIds(skillId, txCtx)).filter(
 				(id) => id !== keepAgentId,
 			);
-			if (others.length > 0) {
-				throw new ConflictError(
-					keepAgentId
-						? 'Other agents use this skill. Detach it from those agents first, then change where it can be added.'
-						: 'Agents use this skill. Detach it from every agent first, then change where it can be added.',
-				);
-			}
+			await this.assertAgentsKeepAccess(others, target, agentProjectIds, txCtx);
 			// The new scope must not already hold a name like the one the skill has after the move.
 			const name =
 				nameAfterMove ??
@@ -391,6 +543,41 @@ export class SkillService {
 			if (name) await this.assertNameFree(name, target, skillId, txCtx);
 			await this.skillRepository.updateTarget(skillId, target, txCtx);
 		});
+	}
+
+	/**
+	 * Refuses a move that takes the skill away from one of `agentIds`. An agent can add an
+	 * instance skill, a skill of its own project and its own agent skills.
+	 */
+	private async assertAgentsKeepAccess(
+		agentIds: string[],
+		target: SkillTarget,
+		agentProjectIds: string[] | 'all',
+		ctx: OperationContext,
+	): Promise<void> {
+		if (agentIds.length === 0 || (target.projectId === null && target.agentId === null)) return;
+		const agents = await this.skillAgents.findAgents(agentIds, ctx);
+		const losing = agentIds.filter((id) =>
+			target.agentId ? id !== target.agentId : agents.get(id)?.projectId !== target.projectId,
+		);
+		if (losing.length === 0) return;
+		const named: string[] = [];
+		let hidden = 0;
+		for (const id of losing) {
+			const agent = agents.get(id);
+			if (agent && (agentProjectIds === 'all' || agentProjectIds.includes(agent.projectId))) {
+				named.push(`"${agent.name}"`);
+			} else {
+				hidden++;
+			}
+		}
+		if (hidden > 0) named.push(agentsInOtherProjects(hidden));
+		const one = losing.length === 1;
+		throw new ConflictError(
+			`${named.join(', ')} would lose access to this skill. Choose a scope that includes ${
+				one ? 'that agent' : 'those agents'
+			}, or detach the skill from ${one ? 'it' : 'them'} first.`,
+		);
 	}
 
 	// ---------------------------------------------------------------- permission
@@ -519,11 +706,7 @@ export class SkillService {
 							`${pin.agentName} (${pin.version === null ? 'older published version' : `published v${pin.version}`})`,
 					),
 				];
-				if (usage.hiddenAgents > 0) {
-					users.push(
-						`${usage.hiddenAgents} ${usage.hiddenAgents === 1 ? 'agent' : 'agents'} in other projects`,
-					);
-				}
+				if (usage.hiddenAgents > 0) users.push(agentsInOtherProjects(usage.hiddenAgents));
 				throw new ConflictError(
 					`Skill "${name}" is used by ${[...new Set(users)].join(', ')} and cannot be deleted.`,
 				);

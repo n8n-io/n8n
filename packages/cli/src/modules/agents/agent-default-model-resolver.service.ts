@@ -47,11 +47,16 @@ export class AgentDefaultModelResolverService {
 			projectId,
 			user,
 		).list();
-		const supportedCredentials = credentials.filter((credential) =>
-			Object.hasOwn(LLM_PROVIDER_DEFAULTS, credential.type),
+		// A provider without a default model (Microsoft Foundry) is never a new agent's default.
+		const supportedCredentials = credentials.filter(
+			(credential) =>
+				Object.hasOwn(LLM_PROVIDER_DEFAULTS, credential.type) &&
+				LLM_PROVIDER_DEFAULTS[credential.type].defaultModel !== undefined,
 		);
 
 		if (supportedCredentials.length === 0) {
+			// Keep local-only setups from selecting a cloud model automatically.
+			if (credentials.some((credential) => credential.type === 'ollamaApi')) return null;
 			return await this.resolveManagedOpenAi(user, projectId);
 		}
 
@@ -84,10 +89,10 @@ export class AgentDefaultModelResolverService {
 		credentialId: string,
 		verifiedModelIds: readonly string[],
 	): AgentModelCredentialConfig | null {
-		const defaults = this.findProviderDefault(provider);
-		if (!defaults?.defaultModel) return null;
+		const defaultModel = this.findProviderDefault(provider)?.defaultModel;
+		if (!defaultModel) return null;
 
-		const match = findVerifiedModelId(provider, defaults.defaultModel, verifiedModelIds);
+		const match = findVerifiedModelId(provider, defaultModel, verifiedModelIds);
 		return match ? { model: `${provider}/${match}`, credential: credentialId } : null;
 	}
 

@@ -107,6 +107,10 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly disableStreaming = true;
 
+	// Telegram rich messages hold up to 32,768 characters. A bot without rich
+	// messages falls back to the 4,096-character format, which the adapter cuts.
+	readonly maxMessageLength = 30_000;
+
 	formatActionDecisionMessage({
 		approved,
 		selectedLabel,
@@ -157,6 +161,11 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	buildOriginDraft(_input: OriginInput, decoded: DecodedThread) {
 		return buildTelegramOriginDraft(decoded);
+	}
+
+	/** Episodic memory stays off until this channel defines its ownership policy. */
+	resolveEpisodicScope() {
+		return null;
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

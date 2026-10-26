@@ -38,6 +38,8 @@ import { z } from 'zod';
 
 import { isTriggerNodeType } from './workflow-json-utils';
 import type { Logger } from '../../logger';
+import type { FetchFn } from '@n8n/agents';
+
 import type { ModelConfig } from '../../types';
 import { SONNET_MODEL } from '../../utils/eval-agents';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
@@ -63,6 +65,8 @@ export interface GenerateSimulationFixturesInput {
 	outputSchemaLookup?: OutputSchemaLookup;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** Transport for the helper's model call. */
+	modelFetch?: FetchFn;
 	logger?: Logger;
 }
 
@@ -451,6 +455,7 @@ export async function generateSimulationFixtures(
 		userText,
 		schema: FixturesResponseSchema,
 		fallbackModelConfig: input.fallbackModelConfig,
+		modelFetch: input.modelFetch,
 	});
 	if (!result.ok) {
 		input.logger?.warn(

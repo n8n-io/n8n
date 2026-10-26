@@ -1,5 +1,5 @@
 import { ref, watch, type Ref } from 'vue';
-import type { PromotionDirection } from '@n8n/api-types';
+import type { PromotionBlocker, PromotionDirection } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { getPromotionPreview } from '../promotions.api';
@@ -13,21 +13,21 @@ export function usePromotionChangeCount(
 ) {
 	const rootStore = useRootStore();
 	const { next } = useLatestFetch();
-	/** Changed workflows, as the banners count them. */
-	const workflowCount = ref(0);
 	/** All changed resources that the preview page can include. */
 	const changeCount = ref(0);
-	/** True when the last check failed, so the banner can say so instead of hiding. */
+	/** True when the last check failed, so the badge can show the failure. */
 	const failed = ref(false);
+	/** Set when an open review already holds the changes. The preview then lists none. */
+	const blocker = ref<PromotionBlocker | null>(null);
 
 	async function fetchCount() {
 		// Only the newest request may write, so a slow answer for a project the user left
 		// and came back to cannot overwrite the current state.
 		const isLatest = next();
 		const requestedProjectId = projectId.value;
-		workflowCount.value = 0;
 		changeCount.value = 0;
 		failed.value = false;
+		blocker.value = null;
 		if (!enabled.value || !requestedProjectId) {
 			return;
 		}
@@ -38,8 +38,8 @@ export function usePromotionChangeCount(
 				direction,
 			);
 			if (!isLatest()) return;
-			workflowCount.value = preview.changes.length;
 			changeCount.value = totalChangeCount(buildSelectionGraph(preview, direction));
+			blocker.value = preview.blocker ?? null;
 		} catch {
 			if (isLatest()) failed.value = true;
 		}
@@ -47,5 +47,5 @@ export function usePromotionChangeCount(
 
 	watch([projectId, enabled], fetchCount, { immediate: true });
 
-	return { workflowCount, changeCount, failed, refetch: fetchCount };
+	return { changeCount, failed, blocker, refetch: fetchCount };
 }

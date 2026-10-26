@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs and unbound-method references are acceptable test idioms */
 import type { AgentJsonSkillConfig, AgentSkill } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, type TransactionRunner, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -82,6 +82,7 @@ describe('AgentSkillsService', () => {
 	let modificationTelemetry: Mocked<AgentModificationTelemetryService>;
 	let agentUpdateBroadcaster: Mocked<AgentUpdateBroadcaster>;
 	let skillsTelemetry: Mocked<SkillsTelemetry>;
+	let projectScopeService: Mocked<ProjectScopeService>;
 
 	function givenAgent(overrides: AgentFixtureOverrides = {}) {
 		const agent = makeAgent(overrides);
@@ -105,6 +106,8 @@ describe('AgentSkillsService', () => {
 		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 		skillsTelemetry = mock<SkillsTelemetry>();
+		projectScopeService = mock<ProjectScopeService>();
+		projectScopeService.getProjectIds.mockResolvedValue([projectId]);
 		service = new AgentSkillsService(
 			mockLogger(),
 			agentRepository,
@@ -117,6 +120,7 @@ describe('AgentSkillsService', () => {
 			skillService,
 			transactionRunner,
 			skillsTelemetry,
+			projectScopeService,
 		);
 	});
 
@@ -151,6 +155,7 @@ describe('AgentSkillsService', () => {
 				[skill, second],
 				'user-1',
 				'project',
+				'agent',
 				{},
 			);
 			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:create'], false, {
@@ -192,31 +197,20 @@ describe('AgentSkillsService', () => {
 			expect(skillsTelemetry.created).toHaveBeenCalledWith('user-1', ['skill_new1'], source, 'ai');
 		});
 
-		it('reports nothing with the skills hub off', async () => {
-			Object.assign(skillRefs, { usesSkillsHub: false });
+		it.each([
+			['builder', 'agent'],
+			['mcp', 'mcp'],
+		] as const)('stores a skill that %s wrote with the %s source', async (modifiedBy, source) => {
 			givenAgent({ schema: baseConfig });
 
-			await service.createAndAttachSkill(agentId, projectId, skill, context);
-
-			expect(skillsTelemetry.created).not.toHaveBeenCalled();
-		});
-
-		it('keeps allowed tools on the agent row when the skills hub is off', async () => {
-			Object.assign(skillRefs, { usesSkillsHub: false });
-			givenAgent({ schema: baseConfig });
-
-			await service.createAndAttachSkill(
-				agentId,
-				projectId,
-				{ ...skill, allowedTools: ['search'] },
-				context,
-			);
+			await service.createAndAttachSkills(agentId, projectId, [skill], { user, modifiedBy });
 
 			expect(skillRefs.createSkills).toHaveBeenCalledWith(
 				expect.anything(),
-				[{ ...skill, allowedTools: ['search'] }],
+				[skill],
 				'user-1',
 				'project',
+				source,
 				{},
 			);
 		});
@@ -237,6 +231,7 @@ describe('AgentSkillsService', () => {
 				[skill],
 				'user-1',
 				'project',
+				'agent',
 				{},
 			);
 		});
@@ -297,6 +292,7 @@ describe('AgentSkillsService', () => {
 				[skill],
 				'user-1',
 				'agent',
+				'agent',
 				{},
 			);
 		});
@@ -348,38 +344,6 @@ describe('AgentSkillsService', () => {
 		});
 	});
 
-	it('lists and updates every body on the agent row while the skills hub is off', async () => {
-		Object.assign(skillRefs, { usesSkillsHub: false });
-		// `old` has no ref, as after a ref was switched off or removed on master.
-		const agent = givenAgent({
-			schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
-			skills: { skill_a: skill, old: { ...skill, name: 'Old' } },
-		});
-
-		await expect(service.listSkills(agentId, projectId)).resolves.toEqual(agent.skills);
-		await expect(service.getSkill(agentId, projectId, 'old')).resolves.toMatchObject({
-			name: 'Old',
-		});
-		await service.updateSkill(agentId, projectId, 'old', { instructions: 'Updated.' }, context);
-		expect(agent.skills.old).toMatchObject({ name: 'Old', instructions: 'Updated.' });
-	});
-
-	it('refuses a rename onto the name of an unreferenced body while the skills hub is off', async () => {
-		Object.assign(skillRefs, { usesSkillsHub: false });
-		givenAgent({
-			schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
-			skills: {
-				skill_a: skill,
-				old: { ...skill, name: 'Old' },
-				older: { ...skill, name: 'Older' },
-			},
-		});
-
-		await expect(
-			service.updateSkill(agentId, projectId, 'old', { name: 'older' }, context),
-		).rejects.toThrow('Agent already has a skill with a name like "older".');
-	});
-
 	it('lists the skills the draft runs', async () => {
 		skillRefs.bodies.skill_a = skill;
 		givenAgent({ schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] } });
@@ -421,7 +385,8 @@ describe('AgentSkillsService', () => {
 				'skill_a',
 				'agent',
 				{},
-				{ checkedSource: { projectId, agentId: null } },
+				// A refused move names only the agents in projects the user may read.
+				{ checkedSource: { projectId, agentId: null }, agentProjectIds: [projectId] },
 			);
 			expect(skillService.save).not.toHaveBeenCalled();
 		});
@@ -468,50 +433,6 @@ describe('AgentSkillsService', () => {
 			);
 
 			expect(skillRefs.setAvailability).not.toHaveBeenCalled();
-			expect(skillService.save).not.toHaveBeenCalled();
-		});
-
-		it('sets and clears allowed tools on the agent row when the skills hub is off', async () => {
-			Object.assign(skillRefs, { usesSkillsHub: false });
-			const agent = givenAgent({
-				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
-				skills: { skill_a: skill },
-			});
-
-			await service.updateSkill(
-				agentId,
-				projectId,
-				'skill_a',
-				{ allowedTools: ['search'] },
-				context,
-				getAgentSkillHash(skill),
-			);
-			expect(agent.skills.skill_a).toEqual({ ...skill, allowedTools: ['search'] });
-
-			await service.updateSkill(agentId, projectId, 'skill_a', { allowedTools: [] }, context);
-			expect(agent.skills.skill_a).toEqual(skill);
-		});
-
-		it('updates the body on the agent row when the skills hub is off', async () => {
-			Object.assign(skillRefs, { usesSkillsHub: false });
-			const agent = givenAgent({
-				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
-				skills: { skill_a: skill },
-			});
-
-			const result = await service.updateSkill(
-				agentId,
-				projectId,
-				'skill_a',
-				{ instructions: 'New instructions.' },
-				context,
-				getAgentSkillHash(skill),
-			);
-
-			expect(agent.skills.skill_a).toEqual({ ...skill, instructions: 'New instructions.' });
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
-			expect(result.skill.instructions).toBe('New instructions.');
-			expect(skillService.assertCanEdit).not.toHaveBeenCalled();
 			expect(skillService.save).not.toHaveBeenCalled();
 		});
 

@@ -100,7 +100,7 @@ export function formatWorkflowLoopGuidance(
 						'it lists the remaining credentials and values in the setup panel and returns them to you. ' +
 						'When the result has `announced: true`, summarize it, report any validation warnings, and end your turn. ' +
 						'Otherwise follow the returned guidance for validation errors, approvals, skipped items, or an existing setup card. ' +
-						'Do not call `workflow_builder_credentials(action="setup")` or `workflow_builder_apply_workflow_credentials`, and do not tell the user to open the editor or canvas.'
+						'Do not call `setup_credentials` or `workflow_builder_apply_workflow_credentials`, and do not tell the user to open the editor or canvas.'
 					);
 				}
 				return (
@@ -108,7 +108,7 @@ export function formatWorkflowLoopGuidance(
 					`Call \`workflow_builder_workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" ` +
 					'to open the inline setup card in the n8n Assistant panel for credentials, parameters, and triggers. ' +
 					'Do not tell the user to open the editor, use the canvas, or click a Setup button. ' +
-					'Do not call `workflow_builder_credentials(action="setup")` or `workflow_builder_apply_workflow_credentials` — `workflow_builder_workflows(action="setup")` handles everything.'
+					'Do not call `setup_credentials` or `workflow_builder_apply_workflow_credentials` — `workflow_builder_workflows(action="setup")` handles everything.'
 				);
 			}
 			// Only a verified draft earns the publish question. Below `verified` the

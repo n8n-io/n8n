@@ -1,3 +1,5 @@
+import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
+
 /**
  * Canonical "if you have one of THIS credential type, this is the LLM provider
  * + model the builder may select when auto-resolving." Used by the agent_builder_resolve_llm
@@ -16,6 +18,11 @@
  * list, so a default the provider stops serving degrades to a prompt to pick
  * rather than shipping into an agent config.
  */
+/** Whether the provider has a live model list: a discovery provider, or Foundry's deployments. */
+export function hasLiveModelList(provider: string): boolean {
+	return provider === 'azure-openai' || isModelDiscoveryProvider(provider);
+}
+
 export interface LlmProviderDefault {
 	provider: string;
 	/** Omit when the model must come from the connected server. */
@@ -86,6 +93,8 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 		provider: 'minimax',
 		defaultModel: 'MiniMax-M3',
 	},
+	azureOpenAiApi: { provider: 'azure-openai' },
+	azureEntraCognitiveServicesOAuth2Api: { provider: 'azure-openai' },
 };
 
 /** Order in which agent_builder_resolve_llm auto-picks a provider when credentials span multiple providers. */
@@ -104,5 +113,4 @@ export const LLM_PROVIDER_PRIORITY: string[] = [
 	'moonshotai',
 	'alibaba',
 	'minimax',
-	'ollama',
 ];

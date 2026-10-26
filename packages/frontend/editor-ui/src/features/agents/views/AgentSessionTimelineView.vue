@@ -11,6 +11,7 @@ import {
 } from '@/features/agents/constants';
 import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
+import { useAgentSessionUsage } from '@/features/agents/composables/useAgentSessionUsage';
 import {
 	defaultAgentSessionFilters,
 	type AgentExecution,
@@ -26,7 +27,12 @@ import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
-import type { AgentResource } from '@/features/agents/types';
+import type { AgentResource, AgentUsageUpdate } from '@/features/agents/types';
+import {
+	increasedBudgetConfig,
+	type BudgetAmountField,
+} from '@/features/agents/utils/budget-config';
+import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
 import { N8nEmptyState } from '@n8n/design-system';
@@ -45,7 +51,8 @@ const {
 	sendSession,
 } = useAgentSessionLangSmithExport();
 const rootStore = useRootStore();
-const { config: localConfig, fetchConfig } = useAgentConfig();
+const toast = useToast();
+const { config: localConfig, fetchConfig, updateConfig } = useAgentConfig();
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
@@ -55,6 +62,7 @@ const threadId = computed(() => route.params.threadId as string);
 // title/metrics/trigger without a second fetch of the same thread.
 const thread = ref<AgentExecutionThread | null>(null);
 const executions = ref<AgentExecution[]>([]);
+const usageUpdates = ref<Record<string, AgentUsageUpdate>>({});
 const agent = ref<AgentResource | null>(null);
 const isPreviewOpen = ref(false);
 const previewInitialized = ref(false);
@@ -187,10 +195,23 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string, SessionDropd
 	}));
 });
 
-const totalTokens = computed(() => {
-	if (!thread.value) return 0;
-	return thread.value.totalPromptTokens + thread.value.totalCompletionTokens;
-});
+function onUsageUpdated(update: AgentUsageUpdate) {
+	const previous = usageUpdates.value[update.executionId];
+	usageUpdates.value[update.executionId] = {
+		...update,
+		usage: update.usage ?? previous?.usage,
+	};
+}
+
+const {
+	usage: sessionUsage,
+	duration,
+	onExecutionUpdated,
+} = useAgentSessionUsage(
+	() => (thread.value ? { thread: thread.value, executions: executions.value } : null),
+	() => usageUpdates.value,
+);
+const totalTokens = computed(() => sessionUsage.value.totalTokens);
 
 const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
 const canPreviewSession = computed(
@@ -199,8 +220,8 @@ const canPreviewSession = computed(
 		(hasLoadedThread.value && thread.value?.canContinueInPreview === true),
 );
 const previewVisible = computed(() => canPreviewSession.value && isPreviewOpen.value);
-const totalCost = computed(() => thread.value?.totalCost ?? 0);
-const durationLabel = computed(() => formatDuration(thread.value?.totalDuration ?? 0));
+const totalCost = computed(() => sessionUsage.value.cost);
+const durationLabel = computed(() => formatDuration(duration.value));
 
 /**
  * The dock resolves the live session's title and its trace/export/delete
@@ -286,20 +307,24 @@ watch(isPreviewSessionStale, (stale) => {
  * The new session has no thread to fetch until the backend records its first
  * turn, and that push is the signal it now has one — so re-bind the page to it.
  */
-useAgentExecutionUpdates({ projectId, agentId, threadId: effectiveSessionId }, () => {
-	if (!isPreviewSessionStale.value || !effectiveSessionId.value) return;
-	void router.replace({
-		name: AGENT_SESSION_DETAIL_VIEW,
-		params: {
-			projectId: projectId.value,
-			agentId: agentId.value,
-			threadId: effectiveSessionId.value,
-		},
-	});
-});
+useAgentExecutionUpdates(
+	{ projectId, agentId, threadId: effectiveSessionId },
+	() => {
+		if (!isPreviewSessionStale.value || !effectiveSessionId.value) return;
+		void router.replace({
+			name: AGENT_SESSION_DETAIL_VIEW,
+			params: {
+				projectId: projectId.value,
+				agentId: agentId.value,
+				threadId: effectiveSessionId.value,
+			},
+		});
+	},
+	onExecutionUpdated,
+);
 
 function formatDuration(ms: number): string {
-	if (!ms || ms <= 0) return '0ms';
+	if (!Number.isFinite(ms) || ms <= 0) return '';
 	if (ms < 1000) return `${ms}ms`;
 	return `${(ms / 1000).toFixed(1)}s`;
 }
@@ -335,6 +360,29 @@ async function onDeletePreviewSession(sessionId: string) {
 	const deleted = await deleteSession(sessionId);
 	if (!deleted || sessionId !== threadId.value) return;
 	void router.replace(agentExecutionsRoute.value);
+}
+
+/**
+ * Raises a budget cap from the timeline's budget notice. Only a persisted cap
+ * counts: a stale or failed save would stop the next run against the old cap.
+ */
+async function onIncreaseBudget(payload: {
+	field: BudgetAmountField;
+	amount: number;
+}): Promise<boolean> {
+	const current = localConfig.value;
+	if (!canUpdate.value || !current) return false;
+	const update = increasedBudgetConfig(current, payload.field, payload.amount);
+	if (!update) return false;
+	try {
+		const result = await updateConfig(projectId.value, agentId.value, { ...current, ...update });
+		if (result.stale) return false;
+		localConfig.value = result.config;
+		return true;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.showError.budget'));
+		return false;
+	}
 }
 
 function togglePreview() {
@@ -379,6 +427,7 @@ function viewPreviewTrace() {
 				:project-id="projectId"
 				:agent-id="agentId"
 				:thread-id="threadId"
+				:increase-budget="canUpdate ? onIncreaseBudget : undefined"
 				@loaded="onPanelLoaded"
 			/>
 			<div v-else :class="$style.newSessionEmpty">
@@ -410,6 +459,7 @@ function viewPreviewTrace() {
 				@delete-session="onDeletePreviewSession"
 				@session-select="onSessionPick"
 				@session-created="markSessionCreated"
+				@usage-updated="onUsageUpdated"
 				@close="togglePreview"
 			/>
 		</div>

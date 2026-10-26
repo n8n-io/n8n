@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { pinPrioritizedModels } from '@n8n/api-types';
+import { pinPrioritizedModels, type AgentModelsUnavailableReason } from '@n8n/api-types';
 import {
 	getModelCatalog,
 	getProviderModels,
@@ -34,6 +34,7 @@ const verifiedDefaultModelsByKey = ref<Record<string, string | null>>({});
 // Keys whose list could not be retrieved at all, so the picker can say
 // "couldn't load" rather than "no models available".
 const unavailableByKey = ref<Record<string, boolean>>({});
+const unavailableReasonByKey = ref<Record<string, AgentModelsUnavailableReason | undefined>>({});
 const verifiedFetchesInFlight = new Set<string>();
 const verificationStatusByKey = ref<Record<string, 'loading' | 'resolved' | 'failed'>>({});
 
@@ -144,6 +145,10 @@ export function useModelCatalog() {
 					[key]: result.defaultModelId ?? null,
 				};
 				unavailableByKey.value = { ...unavailableByKey.value, [key]: result.unavailable === true };
+				unavailableReasonByKey.value = {
+					...unavailableReasonByKey.value,
+					[key]: result.unavailableReason,
+				};
 				verificationStatusByKey.value = {
 					...verificationStatusByKey.value,
 					[key]: 'resolved',
@@ -180,12 +185,14 @@ export function useModelCatalog() {
 
 			let models: ModelInfo[] | undefined;
 			let unavailable = false;
+			let unavailableReason: AgentModelsUnavailableReason | undefined;
 			const projectId = activeProjectId.value;
 			if (projectId) {
 				ensureVerifiedModels(projectId, provider, providerCredentialId);
 				const key = `${projectId}|${provider}|${providerCredentialId}`;
 				models = verifiedModelsByKey.value[key] ?? undefined;
 				unavailable = unavailableByKey.value[key] === true;
+				unavailableReason = unavailableReasonByKey.value[key];
 			}
 
 			if (!models) {
@@ -200,6 +207,7 @@ export function useModelCatalog() {
 					(model) => model.priority,
 				).map((model) => toAgentModel(provider, model)),
 				...(unavailable ? { unavailable: true } : {}),
+				...(unavailableReason ? { unavailableReason } : {}),
 			};
 		}
 
