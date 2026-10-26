@@ -213,7 +213,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				summary: 'Built successfully',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).not.toContain('workflow_builder_credentials(action="setup")');
+			expect(result).not.toContain('setup_credentials');
 			expect(result).not.toContain('mock');
 		});
 
@@ -224,7 +224,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				mockedCredentialTypes: [],
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).not.toContain('workflow_builder_credentials(action="setup")');
+			expect(result).not.toContain('setup_credentials');
 			expect(result).toContain('Report the outcome');
 		});
 
