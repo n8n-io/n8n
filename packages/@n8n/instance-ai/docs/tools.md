@@ -1021,7 +1021,8 @@ credits coverage. Name results are ranked by relevance and include
 
 **Returns**: `{ results, totalResults }`. A category-only lookup returns
 `{ results, unknownCategories }`. A mixed lookup adds `categoryResults` and
-`unknownCategories`. A Gateway credits lookup also returns `nodes`.
+`unknownCategories`. A Gateway credits lookup without `connectionType` also
+returns `nodes`.
 
 ### `get_node_types`
 
