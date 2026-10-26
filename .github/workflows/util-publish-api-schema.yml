@@ -45,7 +45,7 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           if [[ "$VERSION" == "stable" ]]; then
-            echo "ref=stable" >> "$GITHUB_OUTPUT"
+            echo "ref=refs/tags/stable" >> "$GITHUB_OUTPUT"
           elif [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "ref=n8n@$VERSION" >> "$GITHUB_OUTPUT"
           else
