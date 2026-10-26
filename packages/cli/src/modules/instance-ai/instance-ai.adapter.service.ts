@@ -530,7 +530,8 @@ export class InstanceAiAdapterService {
 			 *  mid-run, after this context is built. */
 			getCredentialIdAllowlist?: () => string[] | undefined;
 			/** Eval-only: resolve a credential's connection test as successful without
-			 *  contacting the provider. A predicate rather than a list because the
+			 *  contacting the provider, when its type has a connection test (a type with
+			 *  none gets production's result). A predicate rather than a list because the
 			 *  harness registers bypasses mid-run, after this context is built. */
 			shouldBypassCredentialTest?: (credentialId: string) => boolean;
 			/** Eval-only: the provider stand-in for a credential type's connection test.
@@ -3034,7 +3035,12 @@ export class InstanceAiAdapterService {
 				// indistinguishable from a genuine pass on purpose — a hint that it was
 				// bypassed would make the agent hedge, which is the very behaviour such a
 				// case exists to rule out. The harness records the bypass on its own side.
-				if (shouldBypassCredentialTest?.(credentialId) === true) {
+				// A type n8n cannot test (Header Auth, say) is not bypassed: the real test
+				// below returns production's "No testing function found" without a request.
+				if (
+					shouldBypassCredentialTest?.(credentialId) === true &&
+					credentialsService.hasConnectionTest(credential.type)
+				) {
 					return { success: true, message: 'Connection tested successfully' };
 				}
 
