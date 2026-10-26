@@ -66,6 +66,10 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'slack';
 
+	// Slack rejects `markdown_text` over 12,000 characters. The margin covers
+	// mentions that the adapter expands to user IDs.
+	readonly maxMessageLength = 11_000;
+
 	readonly builderGuidance = {
 		capabilities: [
 			'Receive Slack mentions and messages as agent triggers.',

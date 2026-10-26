@@ -1,6 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
 import { AssistantSkillProviderProxy } from '@n8n/backend-services';
-import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -21,16 +19,13 @@ describe('SkillsModule', () => {
 	afterEach(() => Container.reset());
 
 	it.each([
-		[false, true, false],
-		[true, false, false],
-		[true, true, true],
+		[false, false],
+		[true, true],
 	])(
-		'gates Assistant reads across module startup (Hub: %s, Assistant: %s)',
-		async (hubEnabled, assistantEnabled, expected) => {
-			const config = new AgentsConfig();
-			config.skillsHubEnabled = hubEnabled;
+		'gates Assistant reads across module startup (Assistant: %s)',
+		async (assistantEnabled, expected) => {
 			const agents = new SkillAgentsProxy();
-			const rollout = new SkillsHubRollout(config, mock<Logger>(), agents);
+			const rollout = new SkillsHubRollout(agents);
 			const postHog = mock<PostHogClient>();
 			postHog.getFeatureFlagForInstance.mockResolvedValue(assistantEnabled);
 			const assistantRollout = new AssistantSkillsRollout(rollout, postHog);

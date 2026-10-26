@@ -1,5 +1,8 @@
 import type { PromotePackageResultDto } from '@n8n/api-types';
+import type { I18nClass } from '@n8n/i18n';
 import { h, type VNode } from 'vue';
+
+import type { AppliedResult } from './promotions.types';
 
 type PromoteOutcome = Pick<PromotePackageResultDto, 'git' | 'review' | 'warnings'>;
 type PromoteWarning = NonNullable<PromoteOutcome['warnings']>[number];
@@ -60,3 +63,42 @@ const warningNodes = (warning: PromoteWarning, reviewNotRecorded: string) =>
 	warningSegments(warning, reviewNotRecorded).map((segment) =>
 		segment.kind === 'link' ? externalLink(segment.url, segment.url) : segment.text,
 	);
+
+/**
+ * Appends how many workflows and folders an Apply moved within their projects, and how many
+ * folders it renamed, so prod does not change without notice. Moved workflows are part of the
+ * updated count.
+ */
+export function withMoveAndRenameNote(
+	i18n: I18nClass,
+	message: string,
+	{ workflows, folders }: AppliedResult['counts'],
+): string {
+	const folderCount = (count: number) =>
+		i18n.baseText('promotions.applied.moved.folders', {
+			adjustToNumber: count,
+			interpolate: { count: String(count) },
+		});
+	const notes = [message];
+	if (workflows.moved + folders.moved > 0) {
+		notes.push(
+			i18n.baseText('promotions.applied.moved', {
+				interpolate: {
+					workflows: i18n.baseText('promotions.applied.moved.workflows', {
+						adjustToNumber: workflows.moved,
+						interpolate: { count: String(workflows.moved) },
+					}),
+					folders: folderCount(folders.moved),
+				},
+			}),
+		);
+	}
+	if (folders.renamed > 0) {
+		notes.push(
+			i18n.baseText('promotions.applied.renamed', {
+				interpolate: { folders: folderCount(folders.renamed) },
+			}),
+		);
+	}
+	return notes.join(' ');
+}

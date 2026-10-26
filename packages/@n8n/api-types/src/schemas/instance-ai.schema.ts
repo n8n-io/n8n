@@ -1214,25 +1214,15 @@ const appliedPreferencesBase = {
 };
 
 /**
- * Two arms, because a turn either sent the block or it did not, and only the second case has a
- * run to name. `injectedThisTurn: false` means the text was unchanged, so an earlier block in
- * the same conversation still carries it and `carriedFromRunId` says which run sent it. A
- * payload that claims both is refused here as well as in the type.
+ * `injectedThisTurn: false` means the turn sent no new block. This happens when the block
+ * text was unchanged (an earlier block in the conversation still carries it), when no
+ * preferences apply, or when the preference read failed. Older stored events can also hold
+ * a `carriedFromRunId` key. The schema strips it, so they still parse.
  */
-export const aiPreferencesAppliedPayloadSchema = z.discriminatedUnion('injectedThisTurn', [
-	// `z.undefined().optional()` rather than a strict object: a present `carriedFromRunId`
-	// fails, an absent one passes, and a field a newer server adds is still ignored.
-	z.object({
-		...appliedPreferencesBase,
-		injectedThisTurn: z.literal(true),
-		carriedFromRunId: z.undefined().optional(),
-	}),
-	z.object({
-		...appliedPreferencesBase,
-		injectedThisTurn: z.literal(false),
-		carriedFromRunId: z.string().optional(),
-	}),
-]);
+export const aiPreferencesAppliedPayloadSchema = z.object({
+	...appliedPreferencesBase,
+	injectedThisTurn: z.boolean(),
+});
 
 export type AiPreferencesAppliedPayload = z.infer<typeof aiPreferencesAppliedPayloadSchema>;
 

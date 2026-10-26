@@ -905,7 +905,7 @@ export interface InstanceAiActivityEntry {
 
 /**
  * An entry in full, plus the rest of what the log knows about the same resource. Deliberately not
- * the live record: `workflow_builder_workflows` and `workflow_builder_credentials` already fetch those, and the entry carries the ids
+ * the live record: `workflow_builder_workflows` and `list_credentials` already fetch those, and the entry carries the ids
  * to call them with.
  */
 export interface InstanceAiActivityExpansion {
@@ -963,6 +963,56 @@ export interface ExploreResourcesResult {
 	builderHint?: string;
 }
 
+export interface ResolveParameterOptionsParams {
+	nodeType: string;
+	version: number;
+	parameterPath: string;
+	nodeParameters?: Record<string, unknown>;
+	credentials?: Record<string, { id: string; name: string }>;
+	credentialType?: string;
+	credentialId?: string;
+	filter?: string;
+	paginationToken?: string;
+}
+
+export type ResolveParameterOptionsResult =
+	| {
+			ok: true;
+			kind: 'resourceLocator' | 'loadOptionsMethod' | 'loadOptionsRouting';
+			parameterPath: string;
+			methodName?: string;
+			mode?: string;
+			results: Array<{
+				name: string;
+				value: string | number | boolean;
+				url?: string;
+				description?: string;
+				parameterValue: unknown;
+			}>;
+			paginationToken?: string;
+			builderHint?: string;
+	  }
+	| {
+			ok: false;
+			code:
+				| 'node_type_not_found'
+				| 'parameter_not_found'
+				| 'not_dynamic_selector'
+				| 'missing_credentials'
+				| 'lookup_failed';
+			message: string;
+			dynamicParameters?: Array<{
+				path: string;
+				type: string;
+				method: string;
+			}>;
+			credentialSlots?: Array<{
+				credentialType: string;
+				credentialSlot: string;
+				displayName?: string;
+			}>;
+	  };
+
 /**
  * A resource-locator value the connected credential can't reach. Identifies the
  * parameter and the offending value only — list the values it *can* reach with
@@ -1003,6 +1053,10 @@ export interface InstanceAiNodeService {
 		deprecated?: boolean;
 		/** Set when the node cannot run on this instance, because the feature it needs is off. */
 		unavailable?: string;
+		aiGateway?: AiGatewayNodeMeta;
+		webhooks?: unknown[];
+		polling?: boolean;
+		triggerPanel?: unknown;
 	} | null>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
@@ -1010,6 +1064,9 @@ export interface InstanceAiNodeService {
 	): Promise<{ resources: Array<{ name: string; operations: string[] }> } | null>;
 	/** Query real resources via a node's listSearch or loadOptions methods (e.g. list spreadsheets, models). */
 	exploreResources?(params: ExploreResourcesParams): Promise<ExploreResourcesResult>;
+	resolveParameterOptions?(
+		params: ResolveParameterOptionsParams,
+	): Promise<ResolveParameterOptionsResult>;
 	/**
 	 * Report resource-locator parameters whose current value the given credential can't
 	 * reach. A credential can narrow a parameter's value space after the value was chosen —
@@ -1163,6 +1220,7 @@ export interface InstanceAiPreferenceService {
 }
 
 export interface InstanceAiSkillService {
+	assistantSkillsEnabled: boolean;
 	list(options: {
 		query?: string;
 		scope?: SkillScope;
@@ -1176,6 +1234,7 @@ export interface InstanceAiSkillService {
 		scope: 'project' | 'instance';
 		projectId?: string;
 		skill: Omit<AgentSkill, 'allowedTools'>;
+		availableToAssistant?: boolean;
 	}): Promise<SkillDetail>;
 	update(skillId: string, input: SaveSkillDto): Promise<SkillSaveResponse>;
 	delete(skillId: string): Promise<void>;
@@ -1489,6 +1548,27 @@ export interface InstanceAiBuilderDelegate {
 	 *  trace metric. Resolves to `undefined` when the agent does not exist. Optional
 	 *  for the same reason as `readAgentArtifact`. */
 	validateAgent?(agentId: string): Promise<AgentValidationSummary | undefined>;
+	/** Credentials the agent can use without asking the user. Optional for the
+	 *  same reason as `readAgentArtifact`: without it, every request shows the card. */
+	getCredentialDefaults?(agentId: string): Promise<AgentCredentialDefaults>;
+	/** Records a credential card for the agent build telemetry. */
+	trackCredentialRequest?(
+		agentId: string,
+		session: Partial<BuilderToolsSession>,
+		request: AgentCredentialRequestEvent,
+	): void;
+}
+
+export interface AgentCredentialDefaults {
+	/** Credentials of the agent's configured chat channels. Tools reuse them. */
+	channelCredentialIds: string[];
+	/** True when n8n can supply a managed credential, for example for Episodic Memory embeddings. */
+	managedCredentialAvailable: boolean;
+}
+
+export interface AgentCredentialRequestEvent {
+	credentialType: string;
+	outcome: 'requested' | 'provided' | 'skipped';
 }
 
 export interface AgentValidationSummary {
@@ -1617,7 +1697,7 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
-	/** Optional — presence gates the `execute` action on the `workflow_builder_nodes` tool. */
+	/** Optional — presence gates the `execute_node` tool. */
 	executeNodeService?: InstanceAiExecuteNodeService;
 	/** Optional — wired by the host when the run has a bound project. Presence
 	 *  gates the `conversation-history` tool (orchestrator only). */
@@ -1688,7 +1768,7 @@ export interface InstanceAiContext {
 	runId?: string;
 	/**
 	 * Run-scoped outcome tracking for browser-assisted credential setup. The
-	 * workflow_builder_credentials tool marks an attempt pending when it hands off to the LLM
+	 * credentials tool marks an attempt pending when it hands off to the LLM
 	 * with `needsBrowserSetup`; the browser tool wrapper reports each
 	 * `browser_create_credential` outcome. The host resolves the terminal
 	 * success/failure telemetry when the run finishes.
