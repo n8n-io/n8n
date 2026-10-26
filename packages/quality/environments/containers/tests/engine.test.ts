@@ -97,6 +97,7 @@ describe('applyEngineEnv', () => {
 			const env: Record<string, string> = {
 				...postgresEnv,
 				N8N_ENGINE_DATABASE_URL: 'postgres://engine-postgres/db',
+				N8N_ENGINE_RESUME_SECRET: 'caller-resume-secret'.repeat(2),
 			};
 			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: false, ...engineOptions });
 			return env;
@@ -131,7 +132,7 @@ describe('applyEngineEnv', () => {
 			expect(containerEnv().N8N_ENGINE_AUTH_SECRET).toBe(authSecret);
 		});
 
-		test('gives the main no resume secret', () => {
+		test('gives the main no resume secret, even when the caller set one', () => {
 			expect(containerEnv().N8N_ENGINE_RESUME_SECRET).toBeUndefined();
 		});
 

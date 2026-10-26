@@ -159,8 +159,10 @@ export function applyEngineEnv(
 		env.N8N_ENGINE_CONTROL_PLANE_PORT = String(ENGINE_CONTROL_PLANE_PORT);
 		env.N8N_ENGINE_AUTH_SECRET = authSecret;
 		applySharedStoragePath(env);
-		// The main never touches the data plane database in this mode.
+		// The main never touches the data plane database in this mode, and it
+		// refuses to start with the resume secret.
 		delete env.N8N_ENGINE_DATABASE_URL;
+		delete env.N8N_ENGINE_RESUME_SECRET;
 		return;
 	}
 
