@@ -23,8 +23,11 @@ import type { Readable } from 'node:stream';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
+import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import {
@@ -35,6 +38,8 @@ import {
 import { streamToBuffer } from '@/modules/n8n-packages/__tests__/utils/tar-support';
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { serializedAgentSchema } from '@/modules/n8n-packages/spec/serialized/agent.schema';
+import { SkillRepository } from '@/modules/skills/skill.repository';
+import { toSkillContent } from '@/modules/skills/skill.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
 import { createCredentials } from '@test-integration/db/credentials';
@@ -45,7 +50,7 @@ import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 mockInstance(ActiveWorkflowManager);
 mockInstance(Telemetry);
 mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
-beforeAll(async () => await testModules.loadModules(['n8n-packages', 'agents']));
+beforeAll(async () => await testModules.loadModules(['skills', 'n8n-packages', 'agents']));
 const server = setupTestServer({
 	endpointGroups: ['publicApi'],
 	enabledFeatures: ['feat:projectRole:admin', 'feat:projectRole:editor', 'feat:projectRole:viewer'],
@@ -59,6 +64,7 @@ let agents: AgentRepository;
 let tasks: AgentTaskRepository;
 
 beforeAll(async () => {
+	registerSkillAgentsProvider();
 	agents = Container.get(AgentRepository);
 	tasks = Container.get(AgentTaskRepository);
 	Container.get(InstanceSettings).markAsLeader();
@@ -81,6 +87,7 @@ beforeEach(async () => {
 	for (const [index, entry] of fixture.manifest.agents.entries()) {
 		const {
 			config,
+			skills,
 			tasks: taskDefinitions,
 			...definition
 		} = serializedAgentSchema.parse(fixture.files[`${entry.target}/agent.json`]);
@@ -98,6 +105,21 @@ beforeEach(async () => {
 				subAgents: { agents: [{ agentId: fixture.manifest.agents[1 - index].id }] },
 			}),
 		});
+		for (const [id, skill] of Object.entries(skills)) {
+			await Container.get(SkillRepository).createSkill(
+				{
+					id,
+					target: { projectId: null, agentId: agent.id },
+					source: 'agent',
+					createdById: owner.id,
+				},
+				toSkillContent(skill),
+			);
+		}
+		await Container.get(AgentSkillRepository).replaceDependencies(
+			agent.id,
+			Object.keys(skills).map((skillId) => ({ skillId })),
+		);
 		await tasks.save(
 			Object.entries(taskDefinitions).map(([id, task]) => ({ id, agentId: agent.id, ...task })),
 		);
@@ -211,6 +233,10 @@ it.each(['loose', 'project'] as const)(
 		const archive = await download(
 			shape === 'project' ? { projectIds: [sourceProject.id] } : undefined,
 		);
+		const skillRefs = Container.get(AgentSkillRefsService);
+		const sourceSkills = await Promise.all(
+			sourceAgents.map(async (agent) => await skillRefs.readDraft(agent, {})),
+		);
 		await agents.delete({ projectId: sourceProject.id });
 		if (shape === 'project') {
 			await Container.get(WorkflowRepository).delete(workflow.id);
@@ -240,7 +266,6 @@ it.each(['loose', 'project'] as const)(
 			const saved = await agents.findById(localId);
 			expect(saved).toMatchObject({
 				id: source.id,
-				skills: source.skills,
 				tools: source.tools,
 				availableInMCP: source.availableInMCP,
 				schema: {
@@ -248,6 +273,7 @@ it.each(['loose', 'project'] as const)(
 					subAgents: { agents: [{ agentId: result.bindings.agents[sourceAgents[1 - index].id] }] },
 				},
 			});
+			expect(await skillRefs.readDraft({ id: localId }, {})).toEqual(sourceSkills[index]);
 			const [task] = await tasks.findByAgentId(localId);
 			expect(task).toMatchObject({
 				id: `${source.id}_task`,
