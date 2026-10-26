@@ -1049,6 +1049,34 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(updateConfigMock).not.toHaveBeenCalled();
 	});
 
+	it('starts a new agent available in n8n Chat when the flag is on', async () => {
+		n8nChatFlag.value = true;
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		expect(editor.props('connectedTriggers')).toEqual(['n8n_chat']);
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
+
+		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
+			id: 'a1',
+			config: expect.objectContaining({
+				integrations: [{ type: 'n8n_chat', credentialId: '' }],
+			}),
+		});
+	});
+
+	it('starts a new agent without channels when the flag is off', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('connectedTriggers'),
+		).toEqual([]);
+	});
+
 	it('chains a second save carrying a later auto-applied default model behind an in-flight save', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		const pendingCreate = Promise.withResolvers<ReturnType<typeof makeAgentResponse>>();
@@ -5949,13 +5977,13 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(openModalWithDataMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				name: 'agentToolConfigModal',
-				data: expect.objectContaining({
-					toolRef,
-					customTool,
-					validationIssues: [validationIssue],
-				}),
+				data: expect.objectContaining({ toolRef, customTool }),
 			}),
 		);
+		const [{ data }] = openModalWithDataMock.mock.calls[0] as [
+			{ data: { validationIssues: () => unknown[] } },
+		];
+		expect(data.validationIssues()).toEqual([validationIssue]);
 	});
 
 	it('applies the tools modal confirm payload as arrays to the local config', async () => {

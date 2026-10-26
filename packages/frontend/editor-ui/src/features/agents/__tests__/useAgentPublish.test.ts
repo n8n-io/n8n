@@ -19,6 +19,7 @@ const {
 	openModalWithDataMock,
 	closeModalMock,
 	openAgentConfirmationModalMock,
+	n8nChatFlag,
 } = vi.hoisted(() => ({
 	publishAgentMock: vi.fn(),
 	getAgentMock: vi.fn(),
@@ -29,6 +30,7 @@ const {
 	openModalWithDataMock: vi.fn(),
 	closeModalMock: vi.fn(),
 	openAgentConfirmationModalMock: vi.fn(),
+	n8nChatFlag: { value: false },
 }));
 
 vi.mock('@n8n/i18n', () => ({
@@ -67,12 +69,17 @@ vi.mock('../composables/useAgentVersionMetadataModal', () => ({
 	useAgentVersionMetadataModal: () => ({ openVersionMetadata: openVersionMetadataMock }),
 }));
 
+vi.mock('../composables/useAgentsN8nChatFlag', () => ({
+	useAgentsN8nChatFlag: () => n8nChatFlag,
+}));
+
 vi.mock('../composables/useProjectAgentsList', () => ({
 	upsertProjectAgentsListCache: vi.fn(),
 }));
 
 const agentResource = {
 	id: 'a1',
+	projectId: 'p1',
 	versionId: 'v2',
 	activeVersionId: 'v2',
 } as unknown as AgentResource;
@@ -94,6 +101,7 @@ describe('useAgentPublish', () => {
 		showMessageMock.mockClear();
 		showErrorMock.mockClear();
 		openModalWithDataMock.mockClear();
+		n8nChatFlag.value = false;
 	});
 
 	it('shows the published confirmation modal after a successful publish', async () => {
@@ -106,9 +114,32 @@ describe('useAgentPublish', () => {
 		expect(showMessageMock).toHaveBeenCalled();
 		expect(openModalWithDataMock).toHaveBeenCalledWith({
 			name: AGENT_PUBLISHED_MODAL_KEY,
-			data: { agentId: 'a1' },
+			data: { agentId: 'a1', projectId: 'p1', n8nChatLive: false },
 		});
 	});
+
+	it.each([
+		{ flag: true, integrations: [{ type: 'n8n_chat' }], live: true },
+		{ flag: false, integrations: [{ type: 'n8n_chat' }], live: false },
+		{ flag: true, integrations: [{ type: 'slack', credentialId: 'c1' }], live: false },
+	])(
+		'reports n8nChatLive $live when the flag is $flag and the published channels are $integrations',
+		async ({ flag, integrations, live }) => {
+			n8nChatFlag.value = flag;
+			publishAgentMock.mockResolvedValueOnce({
+				...agentResource,
+				activeVersion: { versionId: 'v2', schema: { integrations }, skills: null, author: '' },
+			});
+			const { publish } = useAgentPublish();
+
+			await publish('p1', 'a1');
+
+			expect(openModalWithDataMock).toHaveBeenCalledWith({
+				name: AGENT_PUBLISHED_MODAL_KEY,
+				data: { agentId: 'a1', projectId: 'p1', n8nChatLive: live },
+			});
+		},
+	);
 
 	it('keeps the toast but skips the modal when the user chose not to show it again', async () => {
 		localStorage.setItem(LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION, 'true');

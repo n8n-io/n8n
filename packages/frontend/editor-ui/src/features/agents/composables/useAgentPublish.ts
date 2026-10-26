@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
@@ -18,6 +19,7 @@ import {
 } from './useAgentApi';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';
 import { useAgentVersionMetadataModal } from './useAgentVersionMetadataModal';
+import { useAgentsN8nChatFlag } from './useAgentsN8nChatFlag';
 import { useAgentTelemetry } from './useAgentTelemetry';
 import { upsertProjectAgentsListCache } from './useProjectAgentsList';
 import type { AgentResource } from '../types';
@@ -27,11 +29,18 @@ import type { AgentResource } from '../types';
  * unless the user opted out with "Don't show again". Shared by the
  * header/list publish flow and the version-history republish flow (AGENT-1102).
  */
-export function showAgentPublishedConfirmation(agentId: string): void {
+export function showAgentPublishedConfirmation(agent: AgentResource): void {
 	if (useStorage(LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION).value === 'true') return;
+	// The published snapshot decides n8n Chat reachability, not the draft (see
+	// `AgentRepository.publishedN8nChatSql`), and a republish can differ from the draft.
+	const n8nChatLive =
+		useAgentsN8nChatFlag().value &&
+		(agent.activeVersion?.schema?.integrations ?? []).some(
+			({ type }) => type === N8N_CHAT_INTEGRATION_TYPE,
+		);
 	useUIStore().openModalWithData({
 		name: AGENT_PUBLISHED_MODAL_KEY,
-		data: { agentId },
+		data: { agentId: agent.id, projectId: agent.projectId, n8nChatLive },
 	});
 }
 
@@ -100,7 +109,7 @@ export function useAgentPublish() {
 				},
 			});
 
-			if (published && isCurrent()) showAgentPublishedConfirmation(agentId);
+			if (published && updated && isCurrent()) showAgentPublishedConfirmation(updated);
 
 			return updated;
 		} catch (error) {
