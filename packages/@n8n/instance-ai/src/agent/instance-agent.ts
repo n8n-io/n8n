@@ -209,6 +209,7 @@ export async function createInstanceAgent(
 			// for flagged-in users on project-bound runs.
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
 			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
+			skillManagementEnabled: Boolean(context.skillService),
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
@@ -218,7 +219,7 @@ export async function createInstanceAgent(
 	);
 
 	const systemPrompt = orchestrationContext?.skillAvailabilityNotice
-		? `${baseSystemPrompt}\n\n## Hub skill availability\n${orchestrationContext.skillAvailabilityNotice}`
+		? `${baseSystemPrompt}\n\n${orchestrationContext.skillAvailabilityNotice}`
 		: baseSystemPrompt;
 
 	setTracePromptVersion(

@@ -37,6 +37,12 @@ export type AssistantSkillAccess = Pick<
 	'id' | 'projectId' | 'agentId' | 'availableToAssistant'
 >;
 
+type AssistantSkillAccessRow = {
+	assistantProjectId: string | null;
+	assistantAgentId: string | null;
+	assistantAvailableToAssistant: boolean | number;
+};
+
 /**
  * Which skills one user may list: instance skills always, plus the skills of these
  * projects and of `agentIds`, the agents in these projects.
@@ -178,13 +184,15 @@ export class SkillRepository extends BaseRepository<Skill> {
 		} = await assistantVersionsQuery(this.manager, projectId, versionId)
 			.andWhere('skill.id = :skillId', { skillId })
 			.addSelect('skill.projectId', 'assistantProjectId')
-			.getRawAndEntities<{ assistantProjectId: string | null }>();
+			.addSelect('skill.agentId', 'assistantAgentId')
+			.addSelect('skill.availableToAssistant', 'assistantAvailableToAssistant')
+			.getRawAndEntities<AssistantSkillAccessRow>();
 		if (!version || !scope) return null;
 		const skill: AssistantSkillAccess = {
 			id: skillId,
 			projectId: scope.assistantProjectId,
-			agentId: null,
-			availableToAssistant: true,
+			agentId: scope.assistantAgentId,
+			availableToAssistant: Boolean(scope.assistantAvailableToAssistant),
 		};
 		const files = await this.manager.find(SkillFile, {
 			where: { skillVersionId: version.id },
@@ -213,14 +221,16 @@ export class SkillRepository extends BaseRepository<Skill> {
 			.andWhere('skill.agentId IS NULL')
 			.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId })
 			.addSelect('skill.projectId', 'assistantProjectId')
-			.getRawAndEntities<{ assistantProjectId: string | null }>();
+			.addSelect('skill.agentId', 'assistantAgentId')
+			.addSelect('skill.availableToAssistant', 'assistantAvailableToAssistant')
+			.getRawAndEntities<AssistantSkillAccessRow>();
 		if (!file || !scope) return null;
 		return {
 			skill: {
 				id: skillId,
 				projectId: scope.assistantProjectId,
-				agentId: null,
-				availableToAssistant: true,
+				agentId: scope.assistantAgentId,
+				availableToAssistant: Boolean(scope.assistantAvailableToAssistant),
 			},
 			file,
 		};

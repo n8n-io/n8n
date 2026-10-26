@@ -1010,7 +1010,7 @@ describe('reference skills', () => {
 		expect(agents).toContain('- "models": "Load before choosing a model."');
 	});
 
-	it('records instructions, version, and reference paths in the activation result', async () => {
+	it('returns the activation acknowledgement, version, and reference paths', async () => {
 		writeBuilderWithReferences();
 		const source = loadRuntimeSkillSourceFromDirectory(root);
 		const loadTool = createSkillLoadTool(source);
@@ -1024,7 +1024,7 @@ describe('reference skills', () => {
 			success: true,
 			skillId: 'builder',
 			hash: source.registry.skills.find((skill) => skill.id === 'builder')?.hash,
-			content: 'Build steps.',
+			content: 'The skill instructions are active. Follow them for this task.',
 			references: [{ skillId: 'models', description: 'Load before choosing a model.' }],
 			linkedFiles: { references: [expect.objectContaining({ path: 'references/notes.md' })] },
 		});

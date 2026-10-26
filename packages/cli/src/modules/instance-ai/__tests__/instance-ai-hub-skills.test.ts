@@ -4,6 +4,7 @@ import {
 	renderSkillCatalogPrompt,
 	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 } from '@n8n/agents';
+import type { InstanceAiEvent } from '@n8n/api-types';
 import type { AssistantSkillContent, AssistantSkillProvider } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -70,10 +71,11 @@ async function load(
 }
 
 describe('Assistant Hub runtime skills', () => {
-	it('does not read the Hub when the flag is off', async () => {
+	it.each(['off', 'unavailable'])('does not expose the Hub when the flag is %s', async (flag) => {
 		const builtIns = createRuntimeSkillSource([builtIn]);
 		const provider = providerFor([content()]);
-		provider.isEnabled.mockResolvedValue(false);
+		if (flag === 'unavailable') provider.isEnabled.mockRejectedValue(new Error('Unavailable'));
+		else provider.isEnabled.mockResolvedValue(false);
 		expect(await load(provider, builtIns)).toEqual({ source: builtIns });
 		expect(provider.listSkills).not.toHaveBeenCalled();
 		expect(provider.readSkill).not.toHaveBeenCalled();
@@ -87,7 +89,7 @@ describe('Assistant Hub runtime skills', () => {
 			],
 		});
 		const provider = providerFor([saved, content({ id: 'unselected' })]);
-		const { source } = await load(provider);
+		const { source, mapSkillEventForDisplay } = await load(provider);
 		const [entry] = hubEntries(source);
 		const catalog = renderSkillCatalogPrompt(source.registry);
 		expect(catalog).toContain(saved.description);
@@ -95,12 +97,29 @@ describe('Assistant Hub runtime skills', () => {
 		expect(provider.readSkill).not.toHaveBeenCalled();
 
 		const tool = createSkillLoadTool(source);
+		const call: InstanceAiEvent = {
+			type: 'tool-call',
+			runId: 'run-1',
+			agentId: 'assistant',
+			payload: { toolCallId: 'load-1', toolName: 'load_skill', args: { skillId: entry.id } },
+		};
+		expect(mapSkillEventForDisplay?.(call)).toBe(call);
 		const activation = await tool.handler?.({ skillId: entry.id }, { loadSkill: source.loadSkill });
+		const event: InstanceAiEvent = {
+			type: 'tool-result',
+			runId: call.runId,
+			agentId: call.agentId,
+			payload: { toolCallId: 'load-1', result: activation },
+		};
+		expect(mapSkillEventForDisplay?.(event)).toMatchObject({
+			payload: { result: { content: expect.stringContaining(saved.instructions) } },
+		});
 		expect(activation).toMatchObject({
 			success: true,
-			content: expect.stringContaining(saved.instructions),
+			content: 'The skill instructions are active. Follow them for this task.',
 			linkedFiles: { references: saved.files.map(({ path }) => ({ path })) },
 		});
+		expect(JSON.stringify(event)).not.toContain(saved.instructions);
 		expect(JSON.stringify(activation)).not.toContain('Detailed guide.');
 		expect(provider.readFile).not.toHaveBeenCalled();
 		expect(
@@ -114,6 +133,48 @@ describe('Assistant Hub runtime skills', () => {
 			'references/guide.md',
 		);
 		expect(await source.loadSkill(builtIn.id)).toMatchObject(builtIn);
+	});
+
+	it.each([
+		'built-in',
+		'unloaded',
+		'version mismatch',
+		'reference',
+		'failed',
+		'other tool',
+		'other agent',
+	])('preserves %s results in the display stream', async (scenario) => {
+		const provider = providerFor([content()]);
+		const { source, mapSkillEventForDisplay } = await load(provider);
+		const [entry] = hubEntries(source);
+		if (scenario !== 'unloaded') await source.loadSkill(entry.id);
+		mapSkillEventForDisplay?.({
+			type: 'tool-call',
+			runId: 'run-1',
+			agentId: 'assistant',
+			payload: {
+				toolCallId: 'load-1',
+				toolName: scenario === 'other tool' ? 'skills' : 'load_skill',
+				args: { skillId: entry.id },
+			},
+		});
+		const event: InstanceAiEvent = {
+			type: 'tool-result',
+			runId: 'run-1',
+			agentId: scenario === 'other agent' ? 'custom-agent' : 'assistant',
+			payload: {
+				toolCallId: 'load-1',
+				result: {
+					success: scenario !== 'failed',
+					skillId: scenario === 'built-in' ? builtIn.id : entry.id,
+					hash: scenario === 'version mismatch' ? 'other-version' : entry.hash,
+					content: 'Original output.',
+					...(scenario === 'reference' ? { filePath: 'references/guide.md' } : {}),
+				},
+			},
+		};
+		expect(mapSkillEventForDisplay?.(event)).toBe(event);
+		expect(provider.readSkill).toHaveBeenCalledTimes(scenario === 'unloaded' ? 0 : 1);
 	});
 
 	it('retains the selected version for instructions and references throughout the turn', async () => {
@@ -303,7 +364,7 @@ describe('Assistant Hub runtime skills', () => {
 		});
 	});
 
-	it.each(['available', 'flag-unavailable', 'catalog-unavailable'])(
+	it.each(['available', 'catalog-unavailable'])(
 		'preserves built-in preparation when the Hub is %s',
 		async (availability) => {
 			const builtIns = createRuntimeSkillSource([builtIn]);
@@ -315,8 +376,6 @@ describe('Assistant Hub runtime skills', () => {
 				};
 			};
 			const provider = providerFor([content()]);
-			if (availability === 'flag-unavailable')
-				provider.isEnabled.mockRejectedValue(new Error('Unavailable'));
 			if (availability === 'catalog-unavailable')
 				provider.listSkills.mockRejectedValue(new Error('Unavailable'));
 			const { source, availabilityNotice } = await load(provider, builtIns);

@@ -239,7 +239,7 @@ async function loadSkill(
 			skillId: skillEntry.id,
 			name: skillEntry.name,
 			hash: skillEntry.hash,
-			content: cap(skill.instructions),
+			content: 'The skill instructions are active. Follow them for this task.',
 			...(references.length > 0
 				? {
 						references: references.map((entry) => ({

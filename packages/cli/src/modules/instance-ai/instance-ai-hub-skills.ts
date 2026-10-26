@@ -11,15 +11,19 @@ import {
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	agentSkillReferencePathSchema,
 	skillNameKey,
+	type InstanceAiEvent,
 } from '@n8n/api-types';
 import type {
 	AssistantSkillContent,
 	AssistantSkillContext,
+	AssistantSkillFileContent,
 	AssistantSkillProvider,
 	AssistantSkillSummary,
 } from '@n8n/backend-services';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { createHash } from 'node:crypto';
+
+import { createHubSkillDisplayMapper } from './instance-ai-skill-display';
 
 const HUB_SKILL_DIRECTORY = '.n8n/skills/hub';
 const HUB_SKILL_ID_PREFIX = 'hub-';
@@ -28,6 +32,7 @@ const HUB_UNAVAILABLE_NOTICE = 'Hub skills are temporarily unavailable. Do not u
 export interface HubRunSkills {
 	source: RuntimeSkillSource;
 	availabilityNotice?: string;
+	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
 }
 
 type LoadedHubSkill = RuntimeSkillContent & Pick<RuntimeSkillRegistryEntry, 'linkedFiles'>;
@@ -37,13 +42,10 @@ export async function loadHubRunSkills(
 	provider: AssistantSkillProvider,
 	context: AssistantSkillContext,
 ): Promise<HubRunSkills> {
-	try {
-		if (!(await provider.isEnabled())) return { source: builtIns };
-		const summaries = await provider.listSkills(context);
-		return createDeferredHubSource(builtIns, provider, context, summaries);
-	} catch {
-		return createDeferredHubSource(builtIns, provider, context, null);
-	}
+	const enabled = await provider.isEnabled().catch(() => false);
+	if (!enabled) return { source: builtIns };
+	const summaries = await provider.listSkills(context).catch(() => null);
+	return createDeferredHubSource(builtIns, provider, context, summaries);
 }
 
 function createDeferredHubSource(
@@ -55,6 +57,7 @@ function createDeferredHubSource(
 	const hubSkills = createHubCatalog(builtIns, summaries ?? []);
 	const entries = [...hubSkills.values()].map(({ entry }) => entry);
 	const pending = new Map<string, Promise<LoadedHubSkill | null>>();
+	const loaded = new Map<string, LoadedHubSkill>();
 	const errors = new Map<string, RuntimeSkillLoadError>();
 	const load = async (id: string) => {
 		const selected = hubSkills.get(id);
@@ -70,6 +73,7 @@ function createDeferredHubSource(
 				}
 				errors.delete(id);
 				entry.linkedFiles = skill.linkedFiles;
+				loaded.set(id, skill);
 				return skill;
 			});
 			pending.set(id, result);
@@ -119,11 +123,12 @@ function createDeferredHubSource(
 
 	return {
 		source,
+		mapSkillEventForDisplay: createHubSkillDisplayMapper(loaded),
 		availabilityNotice:
 			summaries === null
 				? HUB_UNAVAILABLE_NOTICE
 				: entries.length > 0
-					? 'Hub skill labels include their scope. Paths under .n8n/skills/hub are virtual skill identifiers, not workspace files. Load by exact skillId. Read references with load_skill and a relative filePath from linkedFiles. If matching skills are ambiguous, ask which one to use. Do not choose a scope by default.'
+					? 'Hub skill labels include their scope. Paths under .n8n/skills/hub are virtual skill identifiers, not workspace files. Load by exact skillId. Read references with load_skill and a relative filePath from linkedFiles. If multiple available skills match the request and the intended skill is unclear, ask which skill to use.'
 					: undefined,
 	};
 }
@@ -159,26 +164,27 @@ async function readHubSkill(
 	summary: AssistantSkillSummary,
 	entry: RuntimeSkillRegistryEntry,
 ): Promise<LoadedHubSkill | RuntimeSkillLoadError> {
+	let content: AssistantSkillContent | null;
 	try {
-		const content = await provider.readSkill(context, summary.id, summary.versionId);
-		if (!content)
-			return {
-				message: 'This Hub skill is no longer available. Do not use an earlier copy.',
-				retryable: false,
-			};
-		if (content.id !== summary.id || content.versionId !== summary.versionId) {
-			return {
-				message: 'The Hub did not return the version listed for this turn.',
-				retryable: false,
-			};
-		}
-		return prepareSkill(entry, content);
+		content = await provider.readSkill(context, summary.id, summary.versionId);
 	} catch {
 		return {
 			message: 'Hub content could not be loaded. Do not use an earlier copy.',
 			retryable: true,
 		};
 	}
+	if (!content)
+		return {
+			message: 'This Hub skill is no longer available. Do not use an earlier copy.',
+			retryable: false,
+		};
+	if (content.id !== summary.id || content.versionId !== summary.versionId) {
+		return {
+			message: 'The Hub did not return the version listed for this turn.',
+			retryable: false,
+		};
+	}
+	return prepareSkill(entry, content);
 }
 
 async function readHubReference(
@@ -188,36 +194,37 @@ async function readHubReference(
 	skillId: string,
 	path: string,
 ): Promise<RuntimeSkillFileContent | RuntimeSkillLoadError> {
+	let file: AssistantSkillFileContent | null;
 	try {
-		const file = await provider.readFile(context, summary.id, summary.versionId, path);
-		if (
-			!file ||
-			file.skillId !== summary.id ||
-			file.versionId !== summary.versionId ||
-			file.path !== path
-		) {
-			return {
-				message:
-					'This Hub reference is unavailable for the selected version. Do not use an earlier copy.',
-				retryable: false,
-			};
-		}
-		const content = scrubSecretsInText(file.content);
-		const bytes = Buffer.byteLength(content, 'utf8');
-		if (bytes === 0) return { message: 'This Hub reference is empty.', retryable: false };
-		if (bytes > RUNTIME_SKILL_MAX_OUTPUT_BYTES) {
-			return {
-				message: `This reference exceeds ${RUNTIME_SKILL_MAX_OUTPUT_BYTES} UTF-8 bytes.`,
-				retryable: false,
-			};
-		}
-		return { skillId, filePath: path, content, bytes, sha256: hash(content) };
+		file = await provider.readFile(context, summary.id, summary.versionId, path);
 	} catch {
 		return {
 			message: 'Hub reference content could not be loaded. Do not use an earlier copy.',
 			retryable: true,
 		};
 	}
+	if (
+		!file ||
+		file.skillId !== summary.id ||
+		file.versionId !== summary.versionId ||
+		file.path !== path
+	) {
+		return {
+			message:
+				'This Hub reference is unavailable for the selected version. Do not use an earlier copy.',
+			retryable: false,
+		};
+	}
+	const content = scrubSecretsInText(file.content);
+	const bytes = Buffer.byteLength(content, 'utf8');
+	if (bytes === 0) return { message: 'This Hub reference is empty.', retryable: false };
+	if (bytes > RUNTIME_SKILL_MAX_OUTPUT_BYTES) {
+		return {
+			message: `This reference exceeds ${RUNTIME_SKILL_MAX_OUTPUT_BYTES} UTF-8 bytes.`,
+			retryable: false,
+		};
+	}
+	return { skillId, filePath: path, content, bytes, sha256: hash(content) };
 }
 
 function toRegistryEntry(summary: AssistantSkillSummary): RuntimeSkillRegistryEntry {
