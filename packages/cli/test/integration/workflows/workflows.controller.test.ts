@@ -2596,6 +2596,31 @@ describe('GET /workflows?includeFolders=true', () => {
 		}
 	});
 
+	test('should only return folders from accessible projects when no project filter is set', async () => {
+		const ownerProject = await getPersonalProject(owner);
+		const memberProject = await getPersonalProject(member);
+
+		const [ownerWorkflow, ownerFolder, memberFolder] = await Promise.all([
+			createWorkflow({ name: 'Owner Workflow' }, owner),
+			createFolder(ownerProject, { name: 'Owner Folder' }),
+			createFolder(memberProject, { name: 'Member Folder' }),
+		]);
+
+		const response = await authMemberAgent
+			.get('/workflows')
+			.query({ includeFolders: true })
+			.expect(200);
+
+		const rows = response.body.data as WorkflowFolderUnionFull[];
+		const ids = rows.map((row) => row.id);
+
+		expect(ids).not.toContain(ownerWorkflow.id);
+		expect(ids).toContain(memberFolder.id);
+		expect(ids).not.toContain(ownerFolder.id);
+		expect(rows.some((row) => row.homeProject?.id === ownerProject.id)).toBe(false);
+		expect(response.body.count).toBe(1);
+	});
+
 	test('should return workflows with scopes and folders when ?includeScopes=true', async () => {
 		const [member1, member2] = await createManyUsers(2, {
 			role: { slug: 'global:member' },
