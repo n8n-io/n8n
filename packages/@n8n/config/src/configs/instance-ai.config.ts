@@ -19,6 +19,13 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MODEL_URL')
 	modelUrl: string = '';
 
+	/**
+	 * Send `x-n8n-*` request labels (feature, version, run, thread, function id) to a directly
+	 * configured model provider. Off by default: only n8n's AI service gets them.
+	 */
+	@Env('N8N_INSTANCE_AI_MODEL_REQUEST_LABELS')
+	modelRequestLabels: boolean = false;
+
 	/** API key for the custom model endpoint (optional — some local servers don't require one). */
 	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
 	modelApiKey: string = '';

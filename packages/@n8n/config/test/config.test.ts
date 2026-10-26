@@ -360,6 +360,7 @@ describe('GlobalConfig', () => {
 			workflowSuggestionsEnabled: false,
 			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
+			modelRequestLabels: false,
 			modelApiKey: '',
 			vertexProjectId: '',
 			vertexLocation: '',

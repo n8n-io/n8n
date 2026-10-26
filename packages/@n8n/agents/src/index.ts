@@ -202,6 +202,7 @@ export type { DatasetRow, EvaluateConfig } from './sdk/evaluate';
 export * as evals from './evals/index';
 export { Telemetry } from './sdk/telemetry';
 export { deriveSubAgentTelemetry } from './runtime/telemetry/sub-agent-telemetry';
+export { X_N8N_FUNCTION_ID_HEADER } from './runtime/telemetry/function-id';
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';

@@ -1,3 +1,4 @@
+import { X_N8N_FUNCTION_ID_HEADER } from '@n8n/agents';
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	UNLIMITED_CREDITS,
@@ -8,6 +9,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, type CustomFetch } from '@n8n/backend-network';
+import { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isEndpointModelConfig, type ModelConfig } from '@n8n/instance-ai';
@@ -46,22 +48,37 @@ export class InstanceAiModelService {
 		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly logger: Logger,
+		private readonly instanceAiConfig: InstanceAiConfig,
 	) {}
 
 	private modelFetch?: CustomFetch;
 
-	/** Transport for Instance AI model calls on the direct path (long AI timeouts, env proxy). */
+	/**
+	 * Transport for Instance AI model calls on the direct path (long AI timeouts, env proxy).
+	 * Unless `N8N_INSTANCE_AI_MODEL_REQUEST_LABELS` is on, it drops the `x-n8n-function-id`
+	 * header the agents SDK adds, so a direct provider gets no n8n labels.
+	 */
 	getModelFetch(): CustomFetch {
-		return (this.modelFetch ??= createAiProxyFetch(this.outboundHttp));
+		if (this.modelFetch) return this.modelFetch;
+		const baseFetch = createAiProxyFetch(this.outboundHttp);
+		this.modelFetch = this.instanceAiConfig.modelRequestLabels
+			? baseFetch
+			: async (input, init) => {
+					const headers = new Headers(init?.headers);
+					headers.delete(X_N8N_FUNCTION_ID_HEADER);
+					return await baseFetch(input, { ...init, headers });
+				};
+		return this.modelFetch;
 	}
 
 	/**
-	 * The same transport for the Assistant's agent calls. Each request carries the feature,
-	 * version, run and thread headers that the AI service proxy path sends. Utility helper
-	 * calls use `getModelFetch()` and are named by `x-n8n-function-id` only.
+	 * The same transport for the Assistant's agent calls. With
+	 * `N8N_INSTANCE_AI_MODEL_REQUEST_LABELS` on, each request carries the feature, version,
+	 * run and thread headers that the AI service proxy path sends.
 	 */
 	getLabeledModelFetch(proxyContext: ProxyContext): CustomFetch {
 		const baseFetch = this.getModelFetch();
+		if (!this.instanceAiConfig.modelRequestLabels) return baseFetch;
 		const labels = buildProxyHeaders({
 			feature: 'instance-ai',
 			n8nVersion: N8N_VERSION,

@@ -295,9 +295,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	/**
 	 * Name the caller of this agent's model calls, sent as the `x-n8n-function-id`
 	 * header (for example `instance-ai.orchestrator`). Sub-agents send
-	 * `<id>.subagent`. When unset, no header is sent.
+	 * `<id>.subagent`. When unset, no header is sent. Only `[A-Za-z0-9._-]`: fetch
+	 * rejects a header value outside Latin-1 on every call.
 	 */
 	functionId(id: string): this {
+		if (!/^[A-Za-z0-9._-]+$/.test(id)) {
+			throw new Error(`functionId must match [A-Za-z0-9._-]+, got ${JSON.stringify(id)}`);
+		}
 		this.functionIdValue = id;
 		return this;
 	}

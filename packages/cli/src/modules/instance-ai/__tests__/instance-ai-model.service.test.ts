@@ -1,6 +1,7 @@
 import { MOONSHOTAI_KIMI_K3_MODEL_ID, UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
+import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -26,6 +27,8 @@ import type { InstanceAiSettingsService } from '../instance-ai-settings.service'
 
 const fakeUser = { id: 'user-1' } as User;
 
+type CustomFetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
 function createClient() {
 	return {
 		getApiProxyBaseUrl: vi.fn(() => 'https://proxy.base'),
@@ -41,13 +44,21 @@ describe('InstanceAiModelService', () => {
 	const aiService = mock<AiService>();
 	const outboundHttp = mock<OutboundHttp>();
 	const logger = mock<Logger>();
+	const instanceAiConfig = { modelRequestLabels: true } as InstanceAiConfig;
 
 	let service: InstanceAiModelService;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedTokenGetters.length = 0;
-		service = new InstanceAiModelService(settingsService, aiService, outboundHttp, logger);
+		instanceAiConfig.modelRequestLabels = true;
+		service = new InstanceAiModelService(
+			settingsService,
+			aiService,
+			outboundHttp,
+			logger,
+			instanceAiConfig,
+		);
 	});
 
 	afterEach(() => {
@@ -102,6 +113,56 @@ describe('InstanceAiModelService', () => {
 			const headers = new Headers(baseFetch.mock.calls[0]?.[1]?.headers);
 			expect(headers.get('x-n8n-feature')).toBeNull();
 		});
+	});
+
+	describe('model request labels off (the default)', () => {
+		beforeEach(() => {
+			instanceAiConfig.modelRequestLabels = false;
+		});
+
+		async function headersSentBy(fetchFor: (s: InstanceAiModelService) => CustomFetchLike) {
+			const baseFetch = vi.fn(
+				async (_input: RequestInfo | URL, _init?: RequestInit) =>
+					await Promise.resolve(new Response('{}')),
+			);
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
+			await fetchFor(service)('https://api.example.test/v1/chat/completions', {
+				method: 'POST',
+				headers: { authorization: 'Bearer key', 'x-n8n-function-id': 'instance-ai.orchestrator' },
+			});
+			return new Headers(baseFetch.mock.calls[0]?.[1]?.headers);
+		}
+
+		it('sends no labels and no function id on the labeled transport', async () => {
+			const headers = await headersSentBy((s) =>
+				s.getLabeledModelFetch({ runId: 'run-1', threadId: 'thread-1' }),
+			);
+			expect(headers.get('authorization')).toBe('Bearer key');
+			expect(headers.get('x-n8n-feature')).toBeNull();
+			expect(headers.get('x-n8n-run-id')).toBeNull();
+			expect(headers.get('x-n8n-thread-id')).toBeNull();
+			expect(headers.get('x-n8n-function-id')).toBeNull();
+		});
+
+		it('sends no function id on the plain transport', async () => {
+			const headers = await headersSentBy((s) => s.getModelFetch());
+			expect(headers.get('authorization')).toBe('Bearer key');
+			expect(headers.get('x-n8n-function-id')).toBeNull();
+		});
+	});
+
+	it('keeps the function id when model request labels are on', async () => {
+		const baseFetch = vi.fn(
+			async (_input: RequestInfo | URL, _init?: RequestInit) =>
+				await Promise.resolve(new Response('{}')),
+		);
+		outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
+		await service.getModelFetch()('https://api.example.test/v1/chat/completions', {
+			method: 'POST',
+			headers: { 'x-n8n-function-id': 'verification-destructiveness-classifier' },
+		});
+		const headers = new Headers(baseFetch.mock.calls[0]?.[1]?.headers);
+		expect(headers.get('x-n8n-function-id')).toBe('verification-destructiveness-classifier');
 	});
 
 	describe('isProxyEnabled', () => {
