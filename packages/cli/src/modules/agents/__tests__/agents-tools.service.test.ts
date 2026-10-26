@@ -43,14 +43,10 @@ describe('AgentsToolsService', () => {
 	});
 
 	describe('getSharedTools()', () => {
-		it('returns agent_builder_search_nodes, agent_builder_get_node_types, and agent_builder_list_credentials', () => {
+		it('returns agent_builder_list_credentials', () => {
 			const { service } = makeService();
 			const names = service.getSharedTools(makeCredentialProvider(), 'hint').map((t) => t.name);
-			expect(names).toEqual([
-				'agent_builder_search_nodes',
-				'agent_builder_get_node_types',
-				'agent_builder_list_credentials',
-			]);
+			expect(names).toEqual(['agent_builder_list_credentials']);
 		});
 
 		it('keeps the former tool names as legacy names', () => {
@@ -58,7 +54,7 @@ describe('AgentsToolsService', () => {
 			const legacyNames = service
 				.getSharedTools(makeCredentialProvider(), 'hint')
 				.map((t) => t.legacyNames);
-			expect(legacyNames).toEqual([['search_nodes'], ['get_node_types'], ['list_credentials']]);
+			expect(legacyNames).toEqual([['list_credentials']]);
 		});
 	});
 
@@ -119,25 +115,6 @@ describe('AgentsToolsService', () => {
 		});
 	});
 
-	describe('agent_builder_search_nodes handler', () => {
-		function getSearchTool(service: AgentsToolsService) {
-			return service
-				.getSharedTools(makeCredentialProvider(), 'hint')
-				.find((t) => t.name === 'agent_builder_search_nodes')!;
-		}
-
-		it('delegates to the node catalog with the agent tool-node filter', async () => {
-			const { service, nodeCatalogService } = makeService();
-
-			const result = await getSearchTool(service).handler!({ queries: ['gmail'] }, ctx);
-
-			expect(nodeCatalogService.searchNodes).toHaveBeenCalledWith(['gmail'], {
-				nodeFilter: isAgentToolNodeType,
-			});
-			expect(result).toEqual({ results: 'search-result' });
-		});
-	});
-
 	describe('searchAgentToolNodes()', () => {
 		it('initializes and searches the catalog with the agent tool-node filter', async () => {
 			const { service, nodeCatalogService } = makeService();
@@ -187,63 +164,5 @@ describe('AgentsToolsService', () => {
 			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.mcpClientTool')).toBe(false);
 			expect(isAgentToolNodeType('@n8n/mcp-registry.notion')).toBe(false);
 		});
-	});
-
-	describe('agent_builder_get_node_types handler', () => {
-		function getTypesTool(service: AgentsToolsService) {
-			return service
-				.getSharedTools(makeCredentialProvider(), 'hint')
-				.find((t) => t.name === 'agent_builder_get_node_types')!;
-		}
-
-		it('forwards string node IDs unchanged', async () => {
-			const { service, nodeCatalogService } = makeService();
-
-			await getTypesTool(service).handler!({ nodeIds: ['n8n-nodes-base.gmail'] }, ctx);
-
-			expect(nodeCatalogService.getNodeTypes).toHaveBeenCalledWith(['n8n-nodes-base.gmail']);
-		});
-
-		it('stringifies object-style version before passing to the catalog', async () => {
-			const { service, nodeCatalogService } = makeService();
-
-			await getTypesTool(service).handler!(
-				{ nodeIds: [{ nodeId: 'n8n-nodes-base.gmail', version: 2.1, resource: 'message' }] },
-				ctx,
-			);
-
-			expect(nodeCatalogService.getNodeTypes).toHaveBeenCalledWith([
-				{ nodeId: 'n8n-nodes-base.gmail', version: '2.1', resource: 'message' },
-			]);
-		});
-
-		it.each(['sendAndWait', 'dispatchAndWait'])(
-			'rejects unsupported operation %s before reading its node schema',
-			async (operation) => {
-				const { service, nodeCatalogService } = makeService();
-
-				const result = await getTypesTool(service).handler!(
-					{
-						nodeIds: [
-							{
-								nodeId: 'n8n-nodes-base.slackTool',
-								version: 2.2,
-								resource: 'message',
-								operation,
-							},
-						],
-					},
-					ctx,
-				);
-
-				expect(nodeCatalogService.getNodeTypes).not.toHaveBeenCalled();
-				expect(result).toEqual({
-					results: expect.stringContaining(`Operation "${operation}"`),
-				});
-				expect(result).toEqual({
-					results: expect.stringContaining('requireApproval: true'),
-				});
-			},
-		);
 	});
 });

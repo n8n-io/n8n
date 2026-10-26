@@ -963,6 +963,56 @@ export interface ExploreResourcesResult {
 	builderHint?: string;
 }
 
+export interface ResolveParameterOptionsParams {
+	nodeType: string;
+	version: number;
+	parameterPath: string;
+	nodeParameters?: Record<string, unknown>;
+	credentials?: Record<string, { id: string; name: string }>;
+	credentialType?: string;
+	credentialId?: string;
+	filter?: string;
+	paginationToken?: string;
+}
+
+export type ResolveParameterOptionsResult =
+	| {
+			ok: true;
+			kind: 'resourceLocator' | 'loadOptionsMethod' | 'loadOptionsRouting';
+			parameterPath: string;
+			methodName?: string;
+			mode?: string;
+			results: Array<{
+				name: string;
+				value: string | number | boolean;
+				url?: string;
+				description?: string;
+				parameterValue: unknown;
+			}>;
+			paginationToken?: string;
+			builderHint?: string;
+	  }
+	| {
+			ok: false;
+			code:
+				| 'node_type_not_found'
+				| 'parameter_not_found'
+				| 'not_dynamic_selector'
+				| 'missing_credentials'
+				| 'lookup_failed';
+			message: string;
+			dynamicParameters?: Array<{
+				path: string;
+				type: string;
+				method: string;
+			}>;
+			credentialSlots?: Array<{
+				credentialType: string;
+				credentialSlot: string;
+				displayName?: string;
+			}>;
+	  };
+
 /**
  * A resource-locator value the connected credential can't reach. Identifies the
  * parameter and the offending value only — list the values it *can* reach with
@@ -1003,6 +1053,10 @@ export interface InstanceAiNodeService {
 		deprecated?: boolean;
 		/** Set when the node cannot run on this instance, because the feature it needs is off. */
 		unavailable?: string;
+		aiGateway?: AiGatewayNodeMeta;
+		webhooks?: unknown[];
+		polling?: boolean;
+		triggerPanel?: unknown;
 	} | null>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
@@ -1010,6 +1064,9 @@ export interface InstanceAiNodeService {
 	): Promise<{ resources: Array<{ name: string; operations: string[] }> } | null>;
 	/** Query real resources via a node's listSearch or loadOptions methods (e.g. list spreadsheets, models). */
 	exploreResources?(params: ExploreResourcesParams): Promise<ExploreResourcesResult>;
+	resolveParameterOptions?(
+		params: ResolveParameterOptionsParams,
+	): Promise<ResolveParameterOptionsResult>;
 	/**
 	 * Report resource-locator parameters whose current value the given credential can't
 	 * reach. A credential can narrow a parameter's value space after the value was chosen —
@@ -1617,7 +1674,7 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
-	/** Optional — presence gates the `execute` action on the `workflow_builder_nodes` tool. */
+	/** Optional — presence gates the `execute_node` tool. */
 	executeNodeService?: InstanceAiExecuteNodeService;
 	/** Optional — wired by the host when the run has a bound project. Presence
 	 *  gates the `conversation-history` tool (orchestrator only). */

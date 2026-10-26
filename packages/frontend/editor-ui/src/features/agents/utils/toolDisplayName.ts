@@ -1,5 +1,6 @@
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
@@ -20,6 +21,7 @@ const BUILDER_TOOL_PREFIX_PATTERN = /^(?:agent|workflow)_builder_/;
 const BUILDER_TOOL_NAMES = new Set<string>([
 	...Object.values(AGENT_BUILDER_TOOL_NAMES),
 	...Object.values(WORKFLOW_BUILDER_TOOL_NAMES),
+	...Object.values(SHARED_BUILDER_TOOL_NAMES),
 ]);
 
 function isMemoryNotedOutput(output: unknown): boolean {
@@ -58,6 +60,11 @@ const BUILDER_TOOL_TRANSLATION_KEYS: Record<string, BaseTextKey> = {
 	[AGENT_BUILDER_TOOL_NAMES.CONFIGURE_CHANNEL]: 'instanceAi.tools.agent_builder_configure_channel',
 	[AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES]: 'instanceAi.tools.agent_builder_search_nodes',
 	[AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES]: 'instanceAi.tools.agent_builder_get_node_types',
+	[SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES]: 'instanceAi.tools.search_nodes',
+	[SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES]: 'instanceAi.tools.get_node_types',
+	[SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS]:
+		'instanceAi.tools.get_node_parameter_options',
+	[SHARED_BUILDER_TOOL_NAMES.EXECUTE_NODE]: 'instanceAi.tools.execute_node',
 	[AGENT_BUILDER_TOOL_NAMES.LIST_CREDENTIALS]: 'instanceAi.tools.agent_builder_list_credentials',
 };
 
