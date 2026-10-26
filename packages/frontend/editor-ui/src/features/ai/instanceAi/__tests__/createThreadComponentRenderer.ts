@@ -95,6 +95,7 @@ export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance
 	workflowBuilderAvailable: true,
 	sandboxUnavailableReason: null,
 	runDebugEnabled: false,
+	workflowSuggestionsEnabled: false,
 };
 
 // Shared mutable fixtures the stub below reads from — tests reset them in `beforeEach`

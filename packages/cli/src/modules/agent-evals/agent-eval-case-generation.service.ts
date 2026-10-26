@@ -35,7 +35,7 @@ import {
 	type CaseRevisionContext,
 } from './case-generation/case-generation-prompt';
 import { sampleDimensionTuples } from './case-generation/dimensions';
-import { isSupportedAgentProvider } from '../agents/json-config/credential-field-mapping';
+import { isSupportedAgentProvider } from '@/credentials/credential-field-mapping';
 import { resolveCredentialAwareModelConfig } from '../agents/json-config/model-config';
 import { createAgentCredentialProvider } from '../agents/utils/agent-credential-provider';
 import { DataTableService } from '../data-table/data-table.service';
@@ -327,12 +327,7 @@ export class AgentEvalCaseGenerationService {
 			projectId,
 			user,
 		);
-		return await resolveCredentialAwareModelConfig(
-			model,
-			credential,
-			credentialProvider,
-			config.modelDeploymentName,
-		);
+		return await resolveCredentialAwareModelConfig(model, credential, credentialProvider);
 	}
 
 	/**

@@ -6,11 +6,9 @@ import type {
 } from '@n8n/agents/sandbox';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
-import type { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import type { AiService } from '../../../services/ai.service';
 import type { SandboxSettingsService } from '../../../services/sandbox-settings.service';
 
 import type { ProjectAgent } from '../entities/agent.entity';
@@ -49,25 +47,6 @@ const knowledgeSandboxId = 'a54b9053-9f50-51e5-b971-e02942ff7b6b';
 type TestWorkspaceSandbox = WorkspaceSandbox &
 	Required<Pick<WorkspaceSandbox, '_start' | 'destroy' | 'deleteRemote' | 'executeCommand'>>;
 
-function makeAiService(overrides: Partial<AiService> = {}): AiService {
-	const aiService = mock<AiService>();
-	aiService.isProxyEnabled.mockReturnValue(false);
-	return Object.assign(aiService, overrides);
-}
-
-function makeProxyAiService(): AiService {
-	const client = mock<AiAssistantClient>();
-	client.getBuilderApiProxyToken.mockResolvedValue({
-		accessToken: 'proxy-token',
-		tokenType: 'Bearer',
-	});
-	client.getSandboxProxyBaseUrl.mockReturnValue('https://sandbox-proxy.example');
-	return makeAiService({
-		isProxyEnabled: vi.fn().mockReturnValue(true),
-		getClient: vi.fn().mockResolvedValue(client),
-	});
-}
-
 function makeAgentRepository(): ReturnType<typeof mock<AgentRepository>> {
 	const repository = mock<AgentRepository>();
 	repository.findByIdAndProjectId.mockResolvedValue({
@@ -84,10 +63,11 @@ function makeSandboxSettingsService(
 	const service = mock<SandboxSettingsService>();
 	service.isAgentSandboxEnabled.mockReturnValue(true);
 	service.getProvider.mockReturnValue(provider);
-	service.resolveDaytonaConfig.mockResolvedValue({
-		apiUrl: 'https://daytona.example',
-		apiKey: 'test-key',
-	});
+	service.resolveDaytonaSandboxConfig.mockImplementation(async (_projectId, options) => ({
+		...options,
+		daytonaApiUrl: 'https://daytona.example',
+		daytonaApiKey: 'test-key',
+	}));
 	service.resolveN8nSandboxConfig.mockResolvedValue({
 		serviceUrl: 'https://sandbox.example',
 		apiKey: 'sandbox-key',
@@ -98,14 +78,12 @@ function makeSandboxSettingsService(
 function makeService({
 	configOverrides = {},
 	logger = mock<Logger>(),
-	aiService = makeAiService(),
 	instanceSettings = mock<InstanceSettings>({ instanceId }),
 	agentRepository = makeAgentRepository(),
 	sandboxSettingsService = makeSandboxSettingsService(),
 }: {
 	configOverrides?: Partial<AgentsConfig>;
 	logger?: Logger;
-	aiService?: AiService;
 	instanceSettings?: InstanceSettings;
 	agentRepository?: AgentRepository;
 	sandboxSettingsService?: SandboxSettingsService;
@@ -120,7 +98,6 @@ function makeService({
 			...configOverrides,
 		} as AgentsConfig,
 		logger,
-		aiService,
 		instanceSettings,
 		agentRepository,
 		sandboxSettingsService,
@@ -153,22 +130,22 @@ describe('AgentSandboxRuntimeService', () => {
 	});
 
 	it('creates and starts the deterministic direct-mode Daytona knowledge sandbox', async () => {
-		const aiService = makeAiService();
 		const sandboxSettingsService = makeSandboxSettingsService();
 		const service = makeService({
 			configOverrides: {
 				sandboxSnapshot: 'n8n/agent-knowledge:1.2.3',
 				sandboxEphemeral: true,
 			},
-			aiService,
 			sandboxSettingsService,
 		});
 		const expectedName = `agent-kb-${knowledgeSandboxId}`;
 
 		await service.warmKnowledgeSandbox(projectId, agentId);
 
-		expect(aiService.getClient).not.toHaveBeenCalled();
-		expect(sandboxSettingsService.resolveDaytonaConfig).toHaveBeenCalled();
+		expect(sandboxSettingsService.resolveDaytonaSandboxConfig).toHaveBeenCalledWith(projectId, {
+			image: 'daytonaio/sandbox:0.5.0',
+			snapshot: 'n8n/agent-knowledge:1.2.3',
+		});
 		expect(createSandboxMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				enabled: true,
@@ -336,53 +313,15 @@ describe('AgentSandboxRuntimeService', () => {
 		expect(createSandboxMock).not.toHaveBeenCalled();
 	});
 
-	it('mints refreshable proxy tokens on demand with project scope', async () => {
-		const client = mock<AiAssistantClient>();
-		client.getBuilderApiProxyToken
-			.mockResolvedValueOnce({ accessToken: 'proxy-token-1', tokenType: 'Bearer' })
-			.mockResolvedValueOnce({ accessToken: 'proxy-token-2', tokenType: 'Bearer' });
-		client.getSandboxProxyBaseUrl.mockReturnValue('https://sandbox-proxy.example');
-		const aiService = makeAiService({
-			isProxyEnabled: vi.fn().mockReturnValue(true),
-			getClient: vi.fn().mockResolvedValue(client),
-		});
-		const service = makeService({
-			configOverrides: { sandboxSnapshot: 'n8n/agent-knowledge:1.2.3' },
-			aiService,
-		});
-
-		await service.warmKnowledgeSandbox(projectId, agentId);
-
-		const config = createSandboxMock.mock.calls[0][0] as DaytonaSandboxConfig;
-		expect(config.daytonaApiUrl).toBe('https://sandbox-proxy.example');
-		expect(config.snapshot).toBe('n8n/agent-knowledge:1.2.3');
-		expect(config.image).toBeUndefined();
-		expect(client.getBuilderApiProxyToken).not.toHaveBeenCalled();
-
-		await expect(config.getAuthToken?.()).resolves.toBe('proxy-token-1');
-		await expect(config.getAuthToken?.()).resolves.toBe('proxy-token-2');
-		expect(client.getBuilderApiProxyToken).toHaveBeenCalledTimes(2);
-		expect(client.getBuilderApiProxyToken.mock.calls[0][0]).toEqual({ id: projectId });
-		expect(client.getBuilderApiProxyToken.mock.calls[1][0]).toEqual({ id: projectId });
-	});
-
-	it('requires a proxy snapshot instead of creating from an image', async () => {
-		const service = makeService({
-			configOverrides: { sandboxSnapshot: '' },
-			aiService: makeProxyAiService(),
-		});
-
-		await expect(service.warmKnowledgeSandbox(projectId, agentId)).rejects.toThrow(
-			/requires a snapshot.*N8N_AGENTS_AI_SANDBOX_SNAPSHOT/s,
-		);
-		expect(createSandboxMock).not.toHaveBeenCalled();
-	});
-
 	it('surfaces a snapshot failure without falling back to an image', async () => {
 		createSandboxMock.mockRejectedValueOnce(new Error('snapshot missing'));
+		const sandboxSettingsService = makeSandboxSettingsService();
+		sandboxSettingsService.resolveDaytonaSandboxConfig.mockResolvedValue({
+			daytonaApiUrl: 'https://sandbox-proxy.example',
+			snapshot: 'n8n/agent-knowledge:missing',
+		});
 		const service = makeService({
-			configOverrides: { sandboxSnapshot: 'n8n/agent-knowledge:missing' },
-			aiService: makeProxyAiService(),
+			sandboxSettingsService,
 		});
 
 		await expect(service.warmKnowledgeSandbox(projectId, agentId)).rejects.toThrow(
