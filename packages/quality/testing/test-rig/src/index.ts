@@ -5,7 +5,7 @@ export type { HookHit } from './hooks/control';
 export { RigStack, stopAllStacks } from './stack';
 export type { StackOptions } from './stack';
 export { N8nClient } from './n8n-client';
-export { PostgresProbe, RedisProbe } from './probes';
+export { FINAL_STATUSES, PostgresProbe, RedisProbe } from './probes';
 export type { BullState, ExecutionState } from './probes';
 export {
 	finishedAt,
@@ -24,6 +24,18 @@ export { anything, atMost, below, excludes, includes, is, isNot, Scenario } from
 export { chain, nodes, webhookPath } from './workflows';
 export type { WorkflowNode } from './workflows';
 export { network } from './network';
-export { leaderOverlaps, oneLeaderAtATime } from './invariants';
-export type { LeadershipEvent, Overlap, Violation } from './invariants';
+export { Workload } from './workload';
+export type { Effect, WorkloadRequest } from './workload';
+export {
+	checkWorkload,
+	leaderOverlaps,
+	oneLeaderAtATime,
+	WORKLOAD_INVARIANTS,
+} from './invariants';
+export type { LeadershipEvent, Overlap, RunRecord, Violation } from './invariants';
 export { currentLeader, fastLeaderElection, LEADER_HOOKS, leadershipEvents } from './multi-main';
+export { CHAOS_HOOKS, chaosRun, chaosSchedule, rigExecutor } from './chaos/run';
+export type { ChaosOptions, ChaosResult } from './chaos/run';
+export { generateSchedule, random } from './chaos/schedule';
+export type { Fault, FaultKind, ScheduledFault } from './chaos/schedule';
+export { shrink } from './chaos/shrink';
