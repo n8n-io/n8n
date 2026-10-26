@@ -63,8 +63,9 @@ const affectedDependencies = computed(() => {
 	const affected = AFFECTED_TYPES.flatMap((type) =>
 		dependencies.filter((dep) => dep.type === type),
 	);
-	return uniqBy(affected, (dep) => `${dep.type === 'agentUsage' ? 'agent' : 'workflow'}:${dep.id}`)
-		.map((dep) => ({ ...dep, href: hrefFor(dep) }));
+	return uniqBy(affected, (dep) => `${dep.type === 'agentUsage' ? 'agent' : 'workflow'}:${dep.id}`).map(
+		(dep) => ({ ...dep, href: hrefFor(dep) }),
+	);
 });
 
 const hiddenAffectedCount = computed(
