@@ -263,8 +263,15 @@ export function isUnscaledCustomMetric(
 	return (options.category ?? getMetricCategory(options.key)) === 'custom';
 }
 
+// A summary card is only as wide as its track, so a long decimal has to be
+// capped or it paints over the card next to it. Values below 1 keep four
+// significant digits, so a small metric does not collapse into `0`; anything
+// larger keeps its whole part intact and caps the fraction instead.
 function formatMetricNumber(value: number): string {
-	return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
+	return value.toLocaleString(
+		undefined,
+		Math.abs(value) < 1 ? { maximumSignificantDigits: 4 } : { maximumFractionDigits: 3 },
+	);
 }
 
 // A check as rendered on the wizard results page. `isAiJudged` checks show an
@@ -320,6 +327,21 @@ export function formatMetricValue(
 	if (num === undefined) return '–';
 	if (isUnscaledCustomMetric(options)) return formatMetricNumber(num);
 	return formatMetricPercent(num, options);
+}
+
+/**
+ * The digits `formatMetricValue` had to drop, for a tooltip behind the capped
+ * value. Empty when the card already shows the value in full, so a caller can
+ * use it as the whole tooltip condition.
+ */
+export function formatMetricValueExact(
+	value: number | undefined,
+	options: { key?: string; category?: MetricCategory; scale?: MetricScale } = {},
+): string {
+	const num = normalizeMetricValue(value);
+	if (num === undefined || !isUnscaledCustomMetric(options)) return '';
+	const exact = num.toLocaleString(undefined, { maximumFractionDigits: 20 });
+	return exact === formatMetricNumber(num) ? '' : exact;
 }
 
 // snake_case / camelCase → Title Case (e.g. count_accuracy → "Count Accuracy").
