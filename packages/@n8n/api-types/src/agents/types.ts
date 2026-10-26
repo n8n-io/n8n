@@ -246,6 +246,92 @@ export interface AgentVersionDto {
 	author: string;
 }
 
+export const AGENT_MEMORY_ENTRY_SOURCE_KINDS = [
+	'slack',
+	'linear',
+	'discord',
+	'telegram',
+	'whatsapp',
+	'teams',
+	'n8n-chat',
+	'preview',
+	'build',
+] as const;
+
+export type AgentMemoryEntrySourceKind = (typeof AGENT_MEMORY_ENTRY_SOURCE_KINDS)[number];
+
+/**
+ * Sources the memory list can filter by. `users` covers the n8n users who chatted
+ * with the agent, in Preview or in n8n Chat.
+ */
+export const AGENT_MEMORY_FILTER_SOURCES = [
+	'slack',
+	'linear',
+	'discord',
+	'telegram',
+	'whatsapp',
+	'teams',
+	'users',
+	'build',
+] as const;
+
+export type AgentMemoryFilterSource = (typeof AGENT_MEMORY_FILTER_SOURCES)[number];
+
+/** The kind of source inside an integration that the memory list can filter by. */
+export const AGENT_MEMORY_SOURCE_FACETS = ['user', 'channel', 'team'] as const;
+
+export type AgentMemorySourceFacet = (typeof AGENT_MEMORY_SOURCE_FACETS)[number];
+
+/** Where a stored memory came from. Every part except `kind` is dropped when unknown. */
+export interface AgentMemoryEntrySourceDto {
+	kind: AgentMemoryEntrySourceKind;
+	userName?: string;
+	/** The requesting user wrote the source message. Only set for n8n chat, preview and build. */
+	isViewer?: boolean;
+	/** Slack channel name with the leading `#` (e.g. `#general`), or Linear issue identifier (e.g. `ENG-123`). */
+	place?: string;
+	isDirectMessage?: boolean;
+}
+
+export interface AgentMemoryEntryDto {
+	id: string;
+	content: string;
+	createdAt: string;
+	source?: AgentMemoryEntrySourceDto;
+	/** Distinct source threads besides the one shown in `source`. */
+	otherSourceCount: number;
+}
+
+export interface AgentMemoryEntriesPageDto {
+	items: AgentMemoryEntryDto[];
+	/** Count of all active entries that match the filter, not just this page. */
+	total: number;
+	nextCursor: string | null;
+}
+
+export interface AgentMemorySourceFacetItemDto {
+	/** Platform id for integrations, n8n user id for chat surfaces. */
+	id: string;
+	/** Snapshot of the name. Absent when no name is known. */
+	name?: string;
+	/** The requesting user. Only set for n8n users. */
+	isViewer?: boolean;
+}
+
+/** The sources of one integration or chat surface that have active memories. */
+export interface AgentMemorySourceFacetGroupDto {
+	kind: AgentMemoryFilterSource;
+	users: AgentMemorySourceFacetItemDto[];
+	/** Slack and Discord only. */
+	channels?: AgentMemorySourceFacetItemDto[];
+	/** Linear only. */
+	teams?: AgentMemorySourceFacetItemDto[];
+}
+
+export interface AgentMemorySourceFacetsDto {
+	groups: AgentMemorySourceFacetGroupDto[];
+}
+
 export interface AgentFileDto {
 	id: string;
 	agentId: string;
@@ -416,6 +502,51 @@ export interface AgentChatQueueItem {
 export interface AgentChatQueueResponse {
 	items: AgentChatQueueItem[];
 	steerableExecutionId: string | null;
+}
+
+/**
+ * Token usage and cost of one agent execution, or a sum of executions.
+ * `cacheReadTokens` and `cacheWriteTokens` are subsets of `promptTokens`.
+ */
+export interface AgentExecutionUsage {
+	promptTokens: number | null;
+	completionTokens: number | null;
+	totalTokens: number | null;
+	/** Input tokens read from the provider prompt cache. Part of `promptTokens`. */
+	cacheReadTokens: number | null;
+	/** Input tokens written to the provider prompt cache. Part of `promptTokens`. */
+	cacheWriteTokens: number | null;
+	/** Estimated cost in USD. */
+	cost: number | null;
+}
+
+/** Usage of one execution, with the fields that identify it. */
+export interface AgentExecutionUsageEntry extends AgentExecutionUsage {
+	executionId: string;
+	/** Session thread of the execution. A delegated run has its own child thread. */
+	threadId: string;
+	/** Execution that delegated this run. Null for a top-level turn. */
+	parentExecutionId: string | null;
+	status: AgentExecutionStatus;
+	model: string | null;
+	startedAt: string | null;
+	stoppedAt: string | null;
+	duration: number;
+}
+
+/** Usage of one turn: its own execution, its delegated runs and their sum. */
+export interface AgentTurnUsage extends AgentExecutionUsageEntry {
+	/** Delegated runs that this turn started, oldest first. */
+	descendants: AgentExecutionUsageEntry[];
+	/** Sum of the turn's own usage and the usage of all its descendants. */
+	total: AgentExecutionUsage;
+}
+
+/** Usage of every turn in a system-agent thread, oldest first. */
+export interface AgentThreadUsageResponse {
+	executions: AgentTurnUsage[];
+	/** Sum of all turns and their descendants. */
+	total: AgentExecutionUsage;
 }
 
 /** Chat history envelope returned by the agent chat messages endpoints. */

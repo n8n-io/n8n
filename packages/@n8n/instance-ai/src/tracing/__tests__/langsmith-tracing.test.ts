@@ -1899,8 +1899,8 @@ describe('createInstanceAiTraceContext', () => {
 
 		const suspendPayload = {
 			requestId: 'request-1',
-			inputType: 'plan-review',
-			message: 'Review the plan',
+			inputType: 'questions',
+			message: 'Answer the questions',
 		};
 		const interruptibleTool: BuiltTool = {
 			name: 'plan-tool',

@@ -22,7 +22,7 @@ const props = withDefaults(
 	}>(),
 	{
 		connectVariant: 'solid',
-		teleported: false,
+		teleported: true,
 		showConnectedIcon: true,
 	},
 );
