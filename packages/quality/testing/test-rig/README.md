@@ -1,6 +1,6 @@
 # Test rig
 
-`@n8n/test-rig` runs a real n8n stack in Docker under test control. Use it when a bug depends on timing between processes, for example a worker that gets SIGTERM while it holds a job. A test can pause any method inside a running n8n process. It can then signal, freeze or restart containers, and read Postgres, Redis and the logs.
+`@n8n/test-rig` runs a real n8n stack in Docker under test control. Use it when a bug depends on timing between processes, for example a worker that gets SIGTERM while it holds a job. A test can pause any method inside a running n8n process. It can then signal, freeze or restart containers, slow or cut the network, and read Postgres, Redis and the logs.
 
 The rig needs no change to n8n. It works on released images and on local builds.
 
@@ -110,7 +110,7 @@ When a spec hooks a method for the first time, add it to `src/hooks/catalogue.ts
 
 ## How it works
 
-The rig builds on the `n8n-containers` stacks. It loads a preload script into every n8n process through `NODE_OPTIONS`. The preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container. It reads hits from `[test-rig]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`.
+The rig builds on the `n8n-containers` stacks. It loads a preload script into every n8n process through `NODE_OPTIONS`. The preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container. It reads hits from `[test-rig]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`. Network faults run `tc netem` from a short-lived sidecar container that shares the network of the target container; the rig builds the small `n8n-test-rig/netem` image the first time it needs it.
 
 `RigStack.start` starts a stack with its hooks. The stack has a REST client (`rig.api`), a Postgres probe (`rig.db`) and a Redis probe (`rig.redis`). The `scale` option divides the Bull lock, lock renewal and stall timeouts and the graceful shutdown window. A test that waits for a stalled job then takes seconds, not minutes. `scale` must be 1 or more. `env` can override any single value. `chain(name, nodes)` builds a workflow that runs the nodes in order, from `nodes.webhook` and `nodes.code`.
 
@@ -138,6 +138,10 @@ A hook wraps one method in a compiled n8n file. By default it pauses the call un
 
 Paths in `where` and `detail` start at `args`, `this`, `scope.args` or `result`. A paused call continues by itself after two minutes if the test never releases it.
 
+### Network faults
+
+`network.delay(from, to, ms)` delays the traffic that one container sends to another, and `network.cut(from, to)` drops it. `network.restore(from)` removes the fault. A container has one fault at a time, so a new fault replaces the one before it. Traffic to other containers is not changed.
+
 ## Limits
 
 Hooks depend on compiled file paths and on class and method names, so a refactor in n8n can break them. The install check names every hook that does not install. Log text can change between versions.
@@ -162,4 +166,4 @@ pnpm test                                  # unit tests, no Docker
 pnpm --filter @n8n/test-rig test:docker    # contract tests against real stacks
 ```
 
-The Docker tests start real stacks one at a time. The smoke test runs on `n8nio/n8n:2.42.2`, or on the image in `TEST_IMAGE_N8N`. The install test checks that every method in the catalogue installs in each scenario image you have locally.
+The Docker tests start real stacks one at a time. The smoke test runs on `n8nio/n8n:2.42.2`, or on the image in `TEST_IMAGE_N8N`. The install test checks that every method in the catalogue installs in each scenario image you have locally. The network test checks that a delay, a cut and a restore change the link from a main to Postgres.
