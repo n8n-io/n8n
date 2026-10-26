@@ -2,7 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'yaml';
 
-import { GITBOOK_PARENT_TAG_FIELD, stripGitBookParentTags } from '../swagger-spec';
+import {
+	GITBOOK_DISPLAY_NAME_FIELD,
+	GITBOOK_PARENT_TAG_FIELD,
+	stripGitBookParentTags,
+} from '../swagger-spec';
 
 vi.unmock('node:fs');
 
@@ -10,7 +14,11 @@ describe('stripGitBookParentTags', () => {
 	test('removes parent tags and keeps child tags, keeping the input unchanged', () => {
 		const inputSpecTags = [
 			{ name: 'Audit', [GITBOOK_PARENT_TAG_FIELD]: 'InstanceOperations', description: 'Audit' },
-			{ name: 'InstanceOperations', 'x-displayName': 'Instance operations', description: 'Ops' },
+			{
+				name: 'InstanceOperations',
+				[GITBOOK_DISPLAY_NAME_FIELD]: 'Instance operations',
+				description: 'Ops',
+			},
 			{ name: 'Tags', [GITBOOK_PARENT_TAG_FIELD]: 'BuildAndRun', description: 'Tags' },
 		];
 		const inputSpec = {
@@ -43,7 +51,7 @@ describe('stripGitBookParentTags', () => {
 		expect(spec.paths).toEqual({ '/workflows': {} });
 	});
 
-	test('the built-in openapi.yml has no parent tags and no x-parent keys', () => {
+	test('the built-in openapi.yml has no parent tags and no GitBook parent fields', () => {
 		const specPath = path.resolve(__dirname, '..', 'v1', 'openapi.yml');
 		const openapiSpec = yaml.parse(fs.readFileSync(specPath, 'utf8')) as {
 			tags: Record<string, unknown>[];

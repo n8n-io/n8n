@@ -1,7 +1,8 @@
 import { isRecord } from '@n8n/utils/is-record';
 import type { JsonObject } from 'swagger-ui-express';
 
-// See docs https://gitbook.com/docs/create-content/openapi/guides/structuring-your-api-reference#nest-pages-into-groups
+// GitBook extension reference - https://gitbook.com/docs/create-content/openapi/extensions-reference
+export const GITBOOK_DISPLAY_NAME_FIELD = 'x-displayName';
 export const GITBOOK_PARENT_TAG_FIELD = 'x-parent';
 
 /**

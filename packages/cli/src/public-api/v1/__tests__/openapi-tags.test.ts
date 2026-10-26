@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'yaml';
 
+import { GITBOOK_DISPLAY_NAME_FIELD, GITBOOK_PARENT_TAG_FIELD } from '@/public-api/swagger-spec';
+
 import { resolvePublicApiRoutes } from '../../public-api-route-resolver';
 
 import '../controllers';
@@ -13,17 +15,17 @@ const OPENAPI_SPEC_PATH = path.resolve(__dirname, '..', 'openapi.yml');
 interface TagDeclaration {
 	name: string;
 	description?: string;
-	'x-displayName'?: string;
-	'x-parent'?: string;
+	[GITBOOK_DISPLAY_NAME_FIELD]?: string;
+	[GITBOOK_PARENT_TAG_FIELD]?: string;
 }
 
 const spec = yaml.parse(fs.readFileSync(OPENAPI_SPEC_PATH, 'utf8')) as {
 	tags?: TagDeclaration[];
 };
 const tags = spec.tags ?? [];
-// A parent tag has no `x-parent`. It groups child tags and has no operations.
-const parentTags = tags.filter((tag) => tag['x-parent'] === undefined);
-const childTags = tags.filter((tag) => tag['x-parent'] !== undefined);
+// A parent tag has no GitBook parent field. It groups child tags and has no operations.
+const parentTags = tags.filter((tag) => tag[GITBOOK_PARENT_TAG_FIELD] === undefined);
+const childTags = tags.filter((tag) => tag[GITBOOK_PARENT_TAG_FIELD] !== undefined);
 const parentNames = new Set(parentTags.map((tag) => tag.name));
 const childNames = new Set(childTags.map((tag) => tag.name));
 
@@ -68,22 +70,22 @@ describe('openapi.yml tags', () => {
 		expect(new Set(tags.map((tag) => tag.name)).size).toBe(tags.length);
 	});
 
-	test('declares parent tags and child tags', () => {
-		expect(parentTags.length).toBeGreaterThan(0);
+	test('declares at least one child tag and each contains parent tag and display name values', () => {
 		expect(childTags.length).toBeGreaterThan(0);
+
+		childTags.forEach((tag) => {
+			expect(parentNames.has(tag[GITBOOK_PARENT_TAG_FIELD] ?? '')).toBe(true);
+			expect(tag[GITBOOK_DISPLAY_NAME_FIELD]).toEqual(expect.any(String));
+		});
 	});
 
-	test.each(childTags)('$name has an x-parent that names a parent tag', (tag) => {
-		expect(parentNames.has(tag['x-parent'] ?? '')).toBe(true);
-	});
+	test('declares at least one parent tag and each contains display name and description values', () => {
+		expect(parentTags.length).toBeGreaterThan(0);
 
-	test.each(parentTags)('parent tag $name has an x-displayName and a description', (tag) => {
-		expect(tag['x-displayName']).toEqual(expect.any(String));
-		expect(tag.description).toEqual(expect.any(String));
-	});
-
-	test.each(childTags)('child tag $name has an x-displayName', (tag) => {
-		expect(tag['x-displayName']).toEqual(expect.any(String));
+		parentTags.forEach((tag) => {
+			expect(tag[GITBOOK_DISPLAY_NAME_FIELD]).toEqual(expect.any(String));
+			expect(tag.description).toEqual(expect.any(String));
+		});
 	});
 
 	test('groups each child tag under its expected parent', () => {
@@ -91,7 +93,7 @@ describe('openapi.yml tags', () => {
 			parentTags.map((parent) => [
 				parent.name,
 				childTags
-					.filter((child) => child['x-parent'] === parent.name)
+					.filter((child) => child[GITBOOK_PARENT_TAG_FIELD] === parent.name)
 					.map((child) => child.name)
 					.sort(compareNames),
 			]),
