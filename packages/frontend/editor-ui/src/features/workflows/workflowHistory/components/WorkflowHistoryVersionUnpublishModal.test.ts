@@ -1,6 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
+import type { ResolvedDependency } from '@n8n/api-types';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { VIEWS, WORKFLOW_HISTORY_VERSION_UNPUBLISH } from '@/app/constants';
 import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
@@ -23,15 +25,17 @@ const ModalStub = {
 	template: '<div><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
 };
 
-const renderModal = (workflowId: string) =>
-	createComponentRenderer(WorkflowHistoryVersionUnpublishModal)({
+const renderModal = (workflowId: string, workflowName?: string) => {
+	const data = { workflowId, workflowName, versionName: 'v3', eventBus: createEventBus() };
+	return createComponentRenderer(WorkflowHistoryVersionUnpublishModal)({
 		props: {
 			modalName: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
-			data: { workflowId, versionName: 'v3', eventBus: createEventBus() },
+			data,
 		},
 		pinia: createTestingPinia(),
 		global: { stubs: { Modal: ModalStub } },
 	});
+};
 
 const noCounts = {
 	agentUsage: 0,
@@ -46,6 +50,65 @@ const noCounts = {
 describe('WorkflowHistoryVersionUnpublishModal', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	// LIGO-1206: Use the approved workflow-name copy for zero, one, and multiple dependents.
+	it.each([
+		{ count: 0, dependencyMessage: null },
+		{
+			count: 1,
+			dependencyMessage: '1 resource uses this workflow and may be affected by unpublishing it.',
+		},
+		{
+			count: 2,
+			dependencyMessage: '2 resources use this workflow and may be affected by unpublishing it.',
+		},
+	])('uses approved copy for $count resources', async ({ count, dependencyMessage }) => {
+		const workflowId = `wf-copy-${count}`;
+		const dependents: ResolvedDependency[] = [
+			{ type: 'workflowParent', id: 'parent-1', name: 'Order intake' },
+			{ type: 'agentUsage', id: 'agent-1', name: 'Support agent', projectId: 'proj-1' },
+		];
+		const dependencies = dependents.slice(0, count);
+		vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({
+			[workflowId]: { dependencies, inaccessibleCount: 0 },
+		});
+		vi.mocked(workflowDependenciesApi.getResourceDependencyCounts).mockResolvedValue({
+			[workflowId]: {
+				...noCounts,
+				workflowParent: count > 0 ? 1 : 0,
+				agentUsage: count > 1 ? 1 : 0,
+			},
+		});
+
+		const { container, queryByRole, queryByText, queryAllByText, getByRole } = renderModal(
+			workflowId,
+			'Example workflow',
+		);
+		await flushPromises();
+
+		expect.soft(getByRole('heading', { level: 2 })).toHaveTextContent(/^Unpublish\?$/);
+		expect
+			.soft(container)
+			.toHaveTextContent(
+				'Unpublishing “Example workflow” will prevent it from running in this instance until you publish it again.',
+			);
+		expect(getByRole('button', { name: 'Cancel', exact: true })).toBeInTheDocument();
+		expect(getByRole('button', { name: 'Unpublish', exact: true })).toBeInTheDocument();
+
+		if (dependencyMessage) {
+			expect.soft(container).toHaveTextContent(dependencyMessage);
+			expect.soft(queryAllByText('Used by', { exact: true })).toHaveLength(1);
+			expect.soft(queryByText('Used by workflows')).not.toBeInTheDocument();
+			expect.soft(queryByText('Used by agents')).not.toBeInTheDocument();
+			for (const dependency of dependencies) {
+				expect(getByRole('link', { name: dependency.name })).toBeInTheDocument();
+			}
+		} else {
+			expect(queryByText(/resources? uses? this workflow/)).not.toBeInTheDocument();
+			expect(queryByText('Used by', { exact: true })).not.toBeInTheDocument();
+			expect(queryByRole('list')).not.toBeInTheDocument();
+		}
 	});
 
 	it('lists the dependents that run the published version and counts the ones the user cannot see', async () => {
