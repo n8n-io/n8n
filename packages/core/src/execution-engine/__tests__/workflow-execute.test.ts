@@ -34,6 +34,7 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	IDestinationNode,
+	IWorkflowDataProxyData,
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
@@ -54,6 +55,7 @@ import * as Helpers from '@test/helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
 
 import type { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
+import { ExecuteContext } from '../node-execution-context';
 import { DirectedGraph } from '../partial-execution-utils';
 import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
@@ -1759,7 +1761,7 @@ describe('WorkflowExecute', () => {
 			]);
 		});
 
-		test.each([5, -1, NaN])(
+		test.each([5, -1, NaN, null, undefined] as number[])(
 			'should route an error item to the error output when its input item %s cannot be resolved',
 			async (item) => {
 				const [successOutput, errorOutput] = await runWithErrorOutput([
@@ -2076,6 +2078,37 @@ describe('WorkflowExecute', () => {
 				{ json: { error: 'Test error' }, pairedItem: { item: 0, input: 0 } },
 			]);
 		});
+
+		test.each([
+			{
+				name: 'throws',
+				getPairedItem: () => {
+					throw new Error('paired item not found');
+				},
+			},
+			{ name: 'returns null', getPairedItem: () => null },
+			{
+				name: 'returns undefined',
+				getPairedItem: () => undefined as unknown as INodeExecutionData,
+			},
+		])(
+			'should route an error item undecorated when the paired item lookup $name',
+			({ getPairedItem }) => {
+				vi.spyOn(ExecuteContext.prototype, 'getWorkflowDataProxy').mockReturnValue(
+					mock<IWorkflowDataProxyData>({ $getPairedItem: vi.fn(getPairedItem) }),
+				);
+				const nodeSuccessData: INodeExecutionData[][] = [
+					[{ json: { error: 'Test error' }, pairedItem: { item: 0, input: 0 } }],
+				];
+
+				workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+				expect(nodeSuccessData[0]).toEqual([]);
+				expect(nodeSuccessData[1]).toEqual([
+					{ json: { error: 'Test error' }, pairedItem: { item: 0, input: 0 } },
+				]);
+			},
+		);
 
 		test('should handle top-level error property correctly', () => {
 			const nodeSuccessData: INodeExecutionData[][] = [
