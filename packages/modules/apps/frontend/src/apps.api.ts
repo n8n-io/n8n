@@ -1,4 +1,4 @@
-import type { AppListResponse } from '@n8n/api-types';
+import type { AppListResponse, AppResponse } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
 import type { AppsSortBy } from './apps.constants';
@@ -17,6 +17,14 @@ export async function listApps(
 ): Promise<AppListResponse> {
 	const endpoint = projectId ? `/projects/${projectId}/apps` : '/apps';
 	return await getFullApiResponse<AppListResponse['data']>(context, 'GET', endpoint, options);
+}
+
+export async function getApp(
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+): Promise<AppResponse> {
+	return await makeRestApiRequest(context, 'GET', `/projects/${projectId}/apps/${appId}`);
 }
 
 export async function deleteApp(

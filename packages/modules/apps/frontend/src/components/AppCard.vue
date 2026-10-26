@@ -1,60 +1,22 @@
 <script setup lang="ts">
 import type { AppResponse } from '@n8n/api-types';
-import { useToast } from '@n8n/composables/useToast';
-import {
-	N8nActionToggle,
-	N8nBadge,
-	N8nCard,
-	N8nIcon,
-	N8nText,
-	N8nTimeAgo,
-	useMessage,
-} from '@n8n/design-system';
+import { N8nCard, N8nIcon, N8nText, N8nTimeAgo } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed } from 'vue';
 
-import { deleteApp } from '../apps.api';
-import { getAppPermissions } from '../apps.permissions';
+import AppActions from './AppActions.vue';
+import AppPublicationBadge from './AppPublicationBadge.vue';
 
-const props = defineProps<{ app: AppResponse }>();
+defineProps<{ app: AppResponse }>();
 
-const emit = defineEmits<{ deleted: [appId: string] }>();
+const emit = defineEmits<{ select: [app: AppResponse]; deleted: [appId: string] }>();
 
 const i18n = useI18n();
-const toast = useToast();
-const message = useMessage();
 const rootStore = useRootStore();
-const canDelete = computed(() => getAppPermissions(props.app.projectId).canDelete);
-
-const isPublished = computed(() => props.app.publishedVersionId !== null);
-const actions = computed(() => [{ label: i18n.baseText('generic.delete'), value: 'delete' }]);
-
-async function onAction(action: string) {
-	if (action !== 'delete') return;
-
-	const answer = await message.confirm(
-		i18n.baseText('apps.delete.message', { interpolate: { name: props.app.name } }),
-		i18n.baseText('apps.delete.title'),
-		{
-			confirmButtonText: i18n.baseText('generic.delete'),
-			cancelButtonText: i18n.baseText('generic.cancel'),
-			type: 'warning',
-		},
-	);
-	if (answer !== 'confirm') return;
-
-	try {
-		await deleteApp(rootStore.restApiContext, props.app.projectId, props.app.id);
-		emit('deleted', props.app.id);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('apps.delete.error'));
-	}
-}
 </script>
 
 <template>
-	<N8nCard :class="$style.card" data-test-id="app-card">
+	<N8nCard :class="$style.card" data-test-id="app-card" @click="emit('select', app)">
 		<template #prepend>
 			<N8nIcon icon="layout-template" size="large" />
 		</template>
@@ -74,20 +36,9 @@ async function onAction(action: string) {
 			</span>
 		</div>
 		<template #append>
-			<div :class="$style.actions">
-				<N8nBadge
-					:variant="isPublished ? 'success' : 'outline'"
-					data-test-id="app-card-publication"
-				>
-					{{ i18n.baseText(isPublished ? 'apps.card.published' : 'apps.card.draft') }}
-				</N8nBadge>
-				<N8nActionToggle
-					v-if="canDelete"
-					:actions="actions"
-					theme="dark"
-					data-test-id="app-card-actions"
-					@action="onAction"
-				/>
+			<div :class="$style.actions" @click.stop>
+				<AppPublicationBadge :app="app" />
+				<AppActions :app="app" @deleted="emit('deleted', $event)" />
 			</div>
 		</template>
 	</N8nCard>
@@ -97,6 +48,7 @@ async function onAction(action: string) {
 .card {
 	padding: 0 0 0 var(--spacing--sm);
 	align-items: stretch;
+	cursor: pointer;
 }
 
 .heading {
@@ -117,6 +69,7 @@ async function onAction(action: string) {
 
 .actions {
 	display: flex;
+	cursor: default;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding-right: var(--spacing--sm);

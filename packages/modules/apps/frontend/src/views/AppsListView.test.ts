@@ -12,9 +12,11 @@ vi.mock('../apps.api');
 
 const route = vi.hoisted(() => ({ params: {} as Record<string, string> }));
 const setCurrentPage = vi.hoisted(() => vi.fn());
+const push = vi.hoisted(() => vi.fn());
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => route,
+	useRouter: () => ({ push }),
 }));
 // Like the real layout: it emits the saved pagination preferences, then calls `initialize`.
 const ResourcesListLayoutStub = defineComponent({
@@ -65,9 +67,9 @@ const renderComponent = createComponentRenderer(AppsListView, {
 		stubs: {
 			AppCard: {
 				props: ['app'],
-				emits: ['deleted'],
+				emits: ['select', 'deleted'],
 				template:
-					'<div data-test-id="app-card"><button :data-test-id="\'delete-\' + app.id" @click="$emit(\'deleted\', app.id)" /><button :data-test-id="\'delete-other-\' + app.id" @click="$emit(\'deleted\', \'other-app\')" /></div>',
+					'<div data-test-id="app-card"><button :data-test-id="\'select-\' + app.id" @click="$emit(\'select\', app)" /><button :data-test-id="\'delete-\' + app.id" @click="$emit(\'deleted\', app.id)" /><button :data-test-id="\'delete-other-\' + app.id" @click="$emit(\'deleted\', \'other-app\')" /></div>',
 			},
 		},
 	},
@@ -316,6 +318,18 @@ describe('AppsListView', () => {
 
 		expect(setCurrentPage).not.toHaveBeenCalled();
 		expect(getByTestId('delete-52')).toBeInTheDocument();
+	});
+
+	it('opens the detail page of a selected app in its own project', async () => {
+		const { findAllByTestId, getByTestId } = renderComponent();
+		await findAllByTestId('app-card');
+
+		await userEvent.click(getByTestId('select-2'));
+
+		expect(push).toHaveBeenCalledWith({
+			name: 'AppDetailView',
+			params: { projectId: 'project-1', appId: '2' },
+		});
 	});
 
 	it('removes a deleted app and reloads the list', async () => {

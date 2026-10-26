@@ -2,6 +2,7 @@ import type { ListAppsQueryDto } from '@n8n/api-types';
 
 export const APPS_LIST_VIEW = 'AppsListView';
 export const PROJECT_APPS = 'ProjectApps';
+export const APP_DETAIL_VIEW = 'AppDetailView';
 
 export const APPS_PAGE_SIZE = 50;
 

@@ -1,10 +1,21 @@
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import { VIEWS } from '@n8n/frontend-constants/views';
+import type { NavigationGuard } from 'vue-router';
 
 import { getAppPermissions } from './apps.permissions';
-import { APPS_LIST_VIEW, PROJECT_APPS } from './apps.constants';
+import { APP_DETAIL_VIEW, APPS_LIST_VIEW, PROJECT_APPS } from './apps.constants';
 
 const AppsListView = async () => await import('./views/AppsListView.vue');
+const AppDetailView = async () => await import('./views/AppDetailView.vue');
+
+function guardProjectRoute(permission: 'canList' | 'canRead'): NavigationGuard {
+	return (to) =>
+		(typeof to.params.projectId === 'string' &&
+			getAppPermissions(to.params.projectId)[permission]) || {
+			name: VIEWS.PROJECTS_WORKFLOWS,
+			params: { projectId: to.params.projectId },
+		};
+}
 
 export const AppsModule = defineFrontendModule({
 	id: 'apps',
@@ -23,12 +34,14 @@ export const AppsModule = defineFrontendModule({
 			path: 'apps',
 			component: AppsListView,
 			meta: { projectRoute: true, middleware: ['authenticated', 'custom'] },
-			beforeEnter: (to) =>
-				(typeof to.params.projectId === 'string' &&
-					getAppPermissions(to.params.projectId).canList) || {
-					name: VIEWS.PROJECTS_WORKFLOWS,
-					params: to.params,
-				},
+			beforeEnter: guardProjectRoute('canList'),
+		},
+		{
+			name: APP_DETAIL_VIEW,
+			path: 'apps/:appId',
+			component: AppDetailView,
+			meta: { projectRoute: true, middleware: ['authenticated', 'custom'] },
+			beforeEnter: guardProjectRoute('canRead'),
 		},
 	],
 	projectTabs: {

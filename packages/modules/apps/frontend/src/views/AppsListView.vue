@@ -9,14 +9,15 @@ import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, useTemplateRef } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { listApps } from '../apps.api';
-import { APPS_PAGE_SIZE, APPS_SORT_MAP, type AppsSortBy } from '../apps.constants';
+import { APP_DETAIL_VIEW, APPS_PAGE_SIZE, APPS_SORT_MAP, type AppsSortBy } from '../apps.constants';
 import AppCard from '../components/AppCard.vue';
 
 const i18n = useI18n();
 const route = useRoute();
+const router = useRouter();
 const rootStore = useRootStore();
 const toast = useToast();
 const { debounce } = useDebounce();
@@ -121,6 +122,13 @@ function removeApp(appId: string) {
 	totalApps.value = Math.max(0, totalApps.value - 1);
 }
 
+function onAppSelected(app: AppResponse) {
+	void router.push({
+		name: APP_DETAIL_VIEW,
+		params: { projectId: app.projectId, appId: app.id },
+	});
+}
+
 async function onAppDeleted(appId: string) {
 	const isOnlyAppOnPage = apps.value.length === 1 && apps.value[0].id === appId;
 	if (isOnlyAppOnPage && currentPage.value > 1 && layout.value) {
@@ -175,7 +183,7 @@ async function onAppDeleted(appId: string) {
 			/>
 		</template>
 		<template #item="{ item }">
-			<AppCard class="mb-2xs" :app="item" @deleted="onAppDeleted" />
+			<AppCard class="mb-2xs" :app="item" @select="onAppSelected" @deleted="onAppDeleted" />
 		</template>
 	</component>
 </template>
