@@ -41,6 +41,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
+import { SkillService } from '@/modules/skills/skill.service';
 import { SkillsApiService } from '@/modules/skills/skills-api.service';
 import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -145,12 +146,14 @@ describe('getAllowedToolNames', () => {
 	});
 
 	it('grants only the read skill tools with skill:read', () => {
-		expect(getAllowedToolNames(['skill:read'])).toEqual(new Set(['search_skills', 'get_skill']));
+		expect(getAllowedToolNames(['skill:read'])).toEqual(
+			new Set(['search_n8n_skills', 'get_skill']),
+		);
 	});
 
 	it('grants the read skill tools with skill:write too', () => {
 		expect(getAllowedToolNames(['skill:write'])).toEqual(
-			new Set(['create_skill', 'update_skill', 'delete_skill', 'search_skills', 'get_skill']),
+			new Set(['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill']),
 		);
 	});
 
@@ -295,6 +298,32 @@ describe('McpService scope enforcement', () => {
 			expect(registered.has('mutate_agent')).toBe(false);
 			expect([...SKILL_TOOLS].filter((name) => registered.has(name))).toEqual(
 				skillsHubEnabled ? [...SKILL_TOOLS] : [],
+			);
+		},
+	);
+
+	it.each([
+		['the skills hub on and an API key', true, true, undefined, true],
+		['the skills hub on and skill:read', true, true, ['skill:read'], true],
+		['the skills hub on and skill:write', true, true, ['skill:write'], true],
+		['the skills hub on and no skill scope', true, true, ['workflow:read'], false],
+		['the skills hub off', false, true, undefined, false],
+		['the feature flag off', true, false, undefined, false],
+	])(
+		'declares the skills extension with %s',
+		async (_, skillsHubEnabled, skillsExtensionEnabled, grantedScopes, declared) => {
+			mockInstance(SkillsApiService);
+			mockInstance(SkillService);
+			mockInstance(SkillsHubRollout, { isEnabled: skillsHubEnabled });
+			const server = await buildService({ builderEnabled: false }).getServer(
+				user,
+				mcpFeatureFlags({ skillsExtensionEnabled }),
+				undefined,
+				{ grantedScopes },
+			);
+
+			expect(server.server.getCapabilities().extensions).toEqual(
+				declared ? { 'io.modelcontextprotocol/skills': {} } : undefined,
 			);
 		},
 	);

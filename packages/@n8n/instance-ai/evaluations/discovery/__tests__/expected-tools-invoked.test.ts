@@ -66,7 +66,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 					expectedToolInvocations: { anyOf: ['spawn_sub_agent:researcher'] },
 				},
 				makeOutcome({
-					agents: [{ role: 'researcher', tools: ['workflow_builder_credentials'] }],
+					agents: [{ role: 'researcher', tools: ['credentials'] }],
 				}),
 			);
 
@@ -79,15 +79,15 @@ describe('runExpectedToolsInvokedCheck', () => {
 				{
 					id: 'test',
 					userMessage: '',
-					expectedToolInvocations: { anyOf: ['workflow_builder_credentials'] },
+					expectedToolInvocations: { anyOf: ['credentials'] },
 				},
 				makeOutcome({
-					agents: [{ role: 'researcher', tools: ['workflow_builder_credentials'] }],
+					agents: [{ role: 'researcher', tools: ['credentials'] }],
 				}),
 			);
 
 			expect(result.pass).toBe(true);
-			expect(result.invokedTools).toContain('workflow_builder_credentials');
+			expect(result.invokedTools).toContain('credentials');
 		});
 	});
 
@@ -207,11 +207,11 @@ describe('runExpectedToolsInvokedCheck', () => {
 	});
 
 	describe('noneOfToolCalls — actual tool-call guard', () => {
-		const planningScenario: DiscoveryTestCase = {
+		const buildScenario: DiscoveryTestCase = {
 			id: 'test',
 			userMessage: 'Build a Gmail and Calendar workflow',
 			expectedToolInvocations: {
-				anyOf: ['workflow_builder_create_tasks'],
+				anyOf: ['workflow_builder_build_workflow'],
 				noneOfToolCalls: [
 					{ toolName: 'workflow_builder_ask_user', argsContainAny: ['credential'] },
 				],
@@ -220,13 +220,13 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 		it('passes when workflow_builder_ask_user is available to a spawned agent but is not called', () => {
 			const result = runExpectedToolsInvokedCheck(
-				planningScenario,
+				buildScenario,
 				makeOutcome({
-					toolCalls: [{ toolName: 'workflow_builder_create_tasks' }],
+					toolCalls: [{ toolName: 'workflow_builder_build_workflow' }],
 					agents: [
 						{
 							role: 'delegate',
-							tools: ['workflow_builder_credentials', 'workflow_builder_ask_user'],
+							tools: ['credentials', 'workflow_builder_ask_user'],
 						},
 					],
 				}),
@@ -238,10 +238,10 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 		it('fails when the forbidden tool call happens with matching args', () => {
 			const result = runExpectedToolsInvokedCheck(
-				planningScenario,
+				buildScenario,
 				makeOutcome({
 					toolCalls: [
-						{ toolName: 'workflow_builder_create_tasks' },
+						{ toolName: 'workflow_builder_build_workflow' },
 						{
 							toolName: 'workflow_builder_ask_user',
 							args: { question: 'Which Google Calendar credential should I use?' },
@@ -250,7 +250,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 					agents: [
 						{
 							role: 'delegate',
-							tools: ['workflow_builder_credentials', 'workflow_builder_ask_user'],
+							tools: ['credentials', 'workflow_builder_ask_user'],
 						},
 					],
 				}),
@@ -263,10 +263,10 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 		it('passes when the same tool is called for unrelated args', () => {
 			const result = runExpectedToolsInvokedCheck(
-				planningScenario,
+				buildScenario,
 				makeOutcome({
 					toolCalls: [
-						{ toolName: 'workflow_builder_create_tasks' },
+						{ toolName: 'workflow_builder_build_workflow' },
 						{
 							toolName: 'workflow_builder_ask_user',
 							args: { question: 'Which failure branch should run?' },
@@ -275,7 +275,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 					agents: [
 						{
 							role: 'delegate',
-							tools: ['workflow_builder_credentials', 'workflow_builder_ask_user'],
+							tools: ['credentials', 'workflow_builder_ask_user'],
 						},
 					],
 				}),

@@ -126,6 +126,41 @@ describe('DataTableCard', () => {
 		expect(columnCountElement).toHaveTextContent(`${DEFAULT_DATA_TABLE.columns.length + 1}`);
 	});
 
+	describe('card link styling', () => {
+		// Use the real N8nLink so the test sees the classes that it applies to the card content.
+		const renderWithRealLink = createComponentRenderer(DataTableCard, {
+			props: {
+				dataTable: DEFAULT_DATA_TABLE,
+				schemaReadOnly: false,
+				showOwnershipBadge: false,
+			},
+			global: {
+				stubs: {
+					N8nRoute: {
+						template: '<a><slot /></a>',
+						props: ['to'],
+					},
+					TimeAgo: {
+						template: '<span>just now</span>',
+					},
+					ProjectCardBadge: {
+						template: '<div data-test-id="project-card-badge" />',
+					},
+				},
+			},
+		});
+
+		it('should not underline the card content', () => {
+			const { getByTestId } = renderWithRealLink();
+			const name = getByTestId('data-table-card-name');
+			const link = getByTestId('data-table-card-link');
+
+			expect(link).toContainElement(name);
+			const underlined = link.querySelectorAll('[class*="-underline"]');
+			expect(underlined).toHaveLength(0);
+		});
+	});
+
 	describe('ownership badge', () => {
 		beforeEach(() => {
 			vi.mocked(useProjectsStore).mockReturnValue({

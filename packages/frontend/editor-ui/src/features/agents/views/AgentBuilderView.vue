@@ -35,6 +35,7 @@ import {
 	MAX_AGENT_FILES_PER_UPLOAD,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
+	N8N_CHAT_INTEGRATION_TYPE,
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
 	type AgentSkillAvailability,
@@ -87,6 +88,7 @@ import type {
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
+import { useAgentsN8nChatFlag } from '../composables/useAgentsN8nChatFlag';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
@@ -256,6 +258,7 @@ const rootStore = useRootStore();
 const pushConnectionStore = usePushConnectionStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
+const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
 const { trackClickedTraceDetailsFromTestPanel } = useAgentTelemetry();
 const instanceAiAvailable = useInstanceAiAvailable();
 const instanceAiReady = useInstanceAiReady();
@@ -1027,6 +1030,7 @@ const setupChecklistContext = computed(() => {
 	return {
 		config: {
 			loaded: initialized.value && localConfig.value !== null,
+			isRunnable: agent.value?.isRunnable === true,
 			model: localConfig.value?.model ?? '',
 			instructions: localConfig.value?.instructions ?? '',
 			toolCount:
@@ -1117,6 +1121,21 @@ const builderTelemetry = useAgentBuilderTelemetry({
 	agent,
 	localConfig,
 });
+
+// Make sure each agent reports its own opening, also when the user switches agents on the knowledge tab.
+// `immediate` also reports a page that opens on the knowledge tab from its URL.
+watch(
+	[activeMainTab, agentId],
+	([tab, currentAgentId], previous) => {
+		const [previousTab, previousAgentId] = previous ?? [];
+		const isNewOpening = previousTab !== 'knowledge' || previousAgentId !== currentAgentId;
+
+		if (tab === 'knowledge' && isNewOpening) {
+			builderTelemetry.trackOpenedKnowledgeTab();
+		}
+	},
+	{ immediate: true },
+);
 
 /**
  * The backend owns runnable validation so the chat entry point either opens
@@ -1258,6 +1277,8 @@ async function fetchAgentFiles(
 
 async function onUploadAgentFiles(files: File[]) {
 	if (files.length === 0) return;
+	builderTelemetry.trackStartedFileUpload(files.length);
+
 	const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
 	if (oversizedFiles.length > 0) {
 		showError(
@@ -1269,10 +1290,16 @@ async function onUploadAgentFiles(files: File[]) {
 			locale.baseText('agents.builder.files.uploadFileTooLarge.title'),
 		);
 	}
+	// Make sure each upload reports one client rejection at most: report the oversized files
+	// only when no later check rejects the upload.
 	const filesWithinLimit = files.filter((file) => file.size <= MAX_AGENT_FILE_SIZE_BYTES);
-	if (filesWithinLimit.length === 0) return;
+	if (filesWithinLimit.length === 0) {
+		builderTelemetry.trackRejectedFileUpload('file_size', oversizedFiles.length);
+		return;
+	}
 
 	if (filesWithinLimit.length > MAX_AGENT_FILES_PER_UPLOAD) {
+		builderTelemetry.trackRejectedFileUpload('too_many_files', filesWithinLimit.length);
 		showError(
 			new Error(
 				locale.baseText('agents.builder.files.uploadTooManyFiles.message' as BaseTextKey, {
@@ -1290,6 +1317,7 @@ async function onUploadAgentFiles(files: File[]) {
 	);
 	const uploadTotalSizeBytes = filesWithinLimit.reduce((total, file) => total + file.size, 0);
 	if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
+		builderTelemetry.trackRejectedFileUpload('total_limit', filesWithinLimit.length);
 		showError(
 			new Error(
 				locale.baseText('agents.builder.files.uploadTotalTooLarge.message' as BaseTextKey, {
@@ -1299,6 +1327,10 @@ async function onUploadAgentFiles(files: File[]) {
 			locale.baseText('agents.builder.files.uploadTotalTooLarge.title' as BaseTextKey),
 		);
 		return;
+	}
+
+	if (oversizedFiles.length > 0) {
+		builderTelemetry.trackRejectedFileUpload('file_size', oversizedFiles.length);
 	}
 
 	const targetProjectId = projectId.value;
@@ -2319,6 +2351,7 @@ const caps = useAgentCapabilitiesActions({
 		trackOpenedSkillFromList: builderTelemetry.trackOpenedSkillFromList,
 		trackOpenedAddSkillModal: builderTelemetry.trackOpenedAddSkillModal,
 		trackTriggerAdded: builderTelemetry.trackTriggerAdded,
+		trackTriggerRemoved: builderTelemetry.trackTriggerRemoved,
 	},
 });
 // Top-level alias so the template auto-unwraps the ref (nested `caps.appliedSkills`
@@ -2376,10 +2409,9 @@ async function applyTemplateConfig(template: AgentTemplate): Promise<boolean> {
 		return false;
 	}
 	replaceConfigAndScheduleSave(next);
-	// Derive trigger chips from the template's draft integrations so the two
-	// stay in sync — a template can't declare chips without the matching
-	// integration entry.
-	connectedTriggers.value = (template.config.integrations ?? []).map((i) => i.type);
+	// Derive trigger chips from the applied integrations so the two stay in
+	// sync — the template's draft entries plus a default n8n Chat it kept.
+	connectedTriggers.value = (next.integrations ?? []).map((i) => i.type);
 	templateApplied.value = true;
 	// Persist the agent and flush the config autosave before sending the chat
 	// message. The chat's `beforeSend` hook calls `flushAutosave` too — if we
@@ -2862,6 +2894,7 @@ async function onHeaderAction(action: string) {
 			description: locale.baseText('agents.delete.modal.description', {
 				interpolate: { name: agentName.value },
 			}),
+			isDestructive: true,
 			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
 			cancelButtonText: locale.baseText('generic.cancel'),
 		});
@@ -3056,12 +3089,17 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 				instructions: '',
 				tools: [],
 				skills: [],
+				// New agents start available in n8n Chat, as the backend's own create does.
+				...(isAgentsN8nChatFlag.value
+					? { integrations: [{ type: N8N_CHAT_INTEGRATION_TYPE, credentialId: '' }] }
+					: {}),
 			};
 			// Seed the icon and gradient the backfill would normally add, so the
 			// draft looks like any other new agent and the first save carries them.
 			// Seeded rather than backfilled because the backfill schedules a save,
 			// which would persist the agent on mount.
 			localConfig.value = addMissingAgentPersonalisation(draftConfig) ?? draftConfig;
+			connectedTriggers.value = (localConfig.value.integrations ?? []).map(({ type }) => type);
 			agent.value = draftAgentResource(localConfig.value.personalisation);
 			agentName.value = agent.value.name;
 			if (currentStarter() && isCurrentInitialization()) {
@@ -3339,6 +3377,7 @@ function onConfirmVectorStore(vectorStore: AgentJsonVectorStoreConfig, originalN
 }
 
 function onOpenAddVectorStoreModal() {
+	builderTelemetry.trackStartedVectorStoreSetup();
 	const vectorStores = localConfig.value?.vectorStores ?? [];
 	uiStore.openModalWithData({
 		name: AGENT_VECTOR_STORES_MODAL_KEY,
@@ -3454,13 +3493,8 @@ useKeybindings({
 			:config-validation-status="configValidation?.status ?? null"
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
-			:is-preview-open="isPreviewDockOpen"
-			:hide-preview-button="inlineTestChat"
-			:preview-disabled-reason="previewDisabledReason"
 			:tasks="areSetupTasksVisible ? setupTasks : undefined"
 			@header-action="onHeaderAction"
-			@open-preview="onOpenPreview"
-			@close-preview="closePreviewDock"
 			@publish-ready="isPublishReady = $event"
 			@published="onPublished"
 			@unpublished="onUnpublished"
@@ -3689,6 +3723,8 @@ useKeybindings({
 					:executions-description="executionsDescription"
 					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
 					:artifact-mode="isArtifactMode"
+					:is-preview-open="isPreviewDockOpen"
+					:hide-preview-button="inlineTestChat"
 					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
 					:preview-disabled-reason="previewDisabledReason"
@@ -3708,6 +3744,7 @@ useKeybindings({
 					@remove-skill="caps.onRemoveSkill"
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
+					@trigger-removed="caps.onTriggerRemoved"
 					@toggle-task="caps.onToggleTask"
 					@toggle-mcp-access="onToggleMcpAccess"
 					@tasks-changed="() => onConfigUpdated()"
@@ -3715,6 +3752,7 @@ useKeybindings({
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
 					@open-preview="onOpenPreview"
+					@close-preview="closePreviewDock"
 					@publish-agent="onSetupTaskPublishAgent"
 				/>
 

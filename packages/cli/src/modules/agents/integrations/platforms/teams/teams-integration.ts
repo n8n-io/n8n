@@ -154,8 +154,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'teams';
 
-	/** Hidden from the catalog and the add-trigger UI until the setup stepper ships. */
-	readonly internal = true;
+	readonly internal = false;
 
 	readonly singleConnectionPerAgent = true;
 
@@ -305,6 +304,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 			chat: params.chat,
 			query: params.query,
 			input: params.input,
+			abortSignal: params.abortSignal,
 		});
 	}
 

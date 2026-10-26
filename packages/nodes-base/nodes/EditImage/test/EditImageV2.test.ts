@@ -246,6 +246,24 @@ describe('Edit Image v2', () => {
 		expect(editImage.description.defaultVersion).toBe(2);
 	});
 
+	it('shows a deprecation notice only on versions below 2', () => {
+		const editImage = new EditImage();
+		const notice = editImage.description.properties.find(
+			(property) => property.name === 'legacyVersionNotice',
+		);
+
+		expect(notice).toMatchObject({
+			type: 'notice',
+			displayOptions: {
+				show: {
+					'@version': [{ _cnd: { lt: 2 } }],
+				},
+			},
+		});
+		expect(notice?.displayName).toContain('deprecated');
+		expect(notice?.displayName).toContain('version 2');
+	});
+
 	it('shows quality only for supported formats', () => {
 		const editImage = new EditImage();
 		const options = editImage.description.properties.find(

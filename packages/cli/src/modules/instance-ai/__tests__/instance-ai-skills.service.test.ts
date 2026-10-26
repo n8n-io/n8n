@@ -1,6 +1,6 @@
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-import { AssistantSkillProviderProxy } from '@n8n/backend-services';
+import { AssistantSkillProviderProxy, type AssistantSkillProvider } from '@n8n/backend-services';
 import { loadInstanceAiSkills, resolvePromptProfile } from '@n8n/instance-ai';
 
 import {
@@ -44,14 +44,13 @@ describe('InstanceAiSkillsService', () => {
 	});
 
 	describe('loadSkills', () => {
-		it('returns the profile skills and disabled tools when every gate is open', async () => {
+		it('returns no disabled tools for the progressive profile', async () => {
 			const skills = await service.loadSkills({
 				...openScope,
 				profile: resolvePromptProfile({ mode: 'progressive' }).profile,
 			});
 
-			expect(skills.disabledTools).toEqual(['workflow_builder_create_tasks']);
-			expect(skills.source.registry.skills.map(({ id }) => id)).not.toContain('planning');
+			expect(skills.disabledTools).toEqual([]);
 		});
 
 		it.each(gatedSkills)('removes the skills that %s turns off', async (_, scope, skillIds) => {
@@ -105,10 +104,35 @@ describe('InstanceAiSkillsService', () => {
 describe('Assistant Hub provider boundary', () => {
 	const context = { user: mock<User>(), projectId: 'project-1' };
 
+	it('combines the enabled Hub provider with the active built-ins', async () => {
+		const proxy = new AssistantSkillProviderProxy();
+		const provider = mock<AssistantSkillProvider>();
+		provider.isEnabled.mockResolvedValue(true);
+		const summary = {
+			id: 'skill-1',
+			projectId: null,
+			name: 'Review workflows',
+			description: 'Review error handling.',
+			versionId: 'v1',
+			version: 1,
+		};
+		provider.listSkills.mockResolvedValue([summary]);
+		proxy.registerProvider(provider);
+		const service = new InstanceAiSkillsService(proxy);
+		const result = await service.loadSkills(openScope, context);
+		expect(
+			result.source.registry.skills.some(({ metadata }) => metadata?.hubSkillId === 'skill-1'),
+		).toBe(true);
+		expect(provider.listSkills).toHaveBeenCalledWith(context);
+		expect(provider.readSkill).not.toHaveBeenCalled();
+	});
+
 	it('supplies no Hub skills without a registered provider', async () => {
 		const service = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
 		expect(await service.listHubSkills(context)).toEqual([]);
 		expect(await service.readHubSkill(context, 'unknown')).toBeNull();
-		expect((await service.loadSkills(openScope)).source.registry.skills.length).toBeGreaterThan(0);
+		const run = await service.loadSkills(openScope, context);
+		expect(run.source.registry.skills.length).toBeGreaterThan(0);
+		expect(run.availabilityNotice).toBeUndefined();
 	});
 });

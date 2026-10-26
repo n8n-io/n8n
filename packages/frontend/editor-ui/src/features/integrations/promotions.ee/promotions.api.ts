@@ -6,6 +6,8 @@ import type {
 	PromotionPreview,
 	PromotionResourceDetails,
 	PromotionResourceDetailsRequestDto,
+	PromotionReviewChanges,
+	PromotionReviewDetailsRequestDto,
 } from '@n8n/api-types';
 import type { IRestApiContext, PublicApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest, request } from '@n8n/rest-api-client';
@@ -44,6 +46,26 @@ export async function getPromotionResourceDetails(
 		context,
 		'POST',
 		`/promotions/${projectId}/changes/${direction}/details`,
+		payload,
+	);
+}
+
+export async function getPromotionReviewChanges(
+	context: IRestApiContext,
+	reviewId: string,
+): Promise<PromotionReviewChanges> {
+	return await makeRestApiRequest(context, 'GET', `/promotions/reviews/${reviewId}/changes`);
+}
+
+export async function getPromotionReviewDetails(
+	context: IRestApiContext,
+	reviewId: string,
+	payload: PromotionReviewDetailsRequestDto,
+): Promise<PromotionResourceDetails> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/promotions/reviews/${reviewId}/changes/details`,
 		payload,
 	);
 }

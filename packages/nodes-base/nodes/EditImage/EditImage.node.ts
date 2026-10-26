@@ -905,6 +905,18 @@ export class EditImage implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
+				displayName:
+					'This node version is deprecated. Upgrade to version 2. Image output can look different because version 2 uses a different processing library.',
+				name: 'legacyVersionNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 2 } }],
+					},
+				},
+			},
+			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',

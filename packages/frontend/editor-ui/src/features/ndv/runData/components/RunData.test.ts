@@ -20,6 +20,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import {
 	createRunExecutionData,
 	jsonParse,
@@ -94,6 +95,13 @@ describe('RunData', () => {
 
 	beforeAll(() => {
 		resolveRelatedExecutionUrl.mockReturnValue('execution.url/123');
+	});
+
+	afterEach(async () => {
+		// The table view loads through defineAsyncComponent. Wait for that import
+		// so its image is not fetched after the test environment is torn down.
+		await flushPromises();
+		await vi.dynamicImportSettled();
 	});
 
 	it("should render pin button in output panel disabled when there's binary data", () => {
