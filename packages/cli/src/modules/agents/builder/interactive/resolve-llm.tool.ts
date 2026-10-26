@@ -185,6 +185,8 @@ function nextStepFor(result: Record<string, unknown>): string | undefined {
 			return result.provider === 'azure-openai'
 				? 'Tell the user how to fix the credential, as the error says.'
 				: 'Retry agent_builder_resolve_llm once. Do not guess a model.';
+		case 'unsupported_provider':
+			return `The provider must come from supportedProviders. If the user named it, tell them it is not supported. ${DEFER_OR_ASK}`;
 		case 'missing_credential':
 		case 'ambiguous_provider_or_credential':
 			return DEFER_OR_ASK;

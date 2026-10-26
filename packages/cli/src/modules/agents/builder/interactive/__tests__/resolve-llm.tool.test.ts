@@ -1382,7 +1382,7 @@ describe('agent_builder_resolve_llm tool', () => {
 				],
 				{},
 				makeModelLookup(async (_id, type) => {
-					const { defaultModel } = LLM_PROVIDER_DEFAULTS[type];
+					const defaultModel = LLM_PROVIDER_DEFAULTS[type].defaultModel as string;
 					return [{ name: defaultModel, value: defaultModel }];
 				}),
 			);
@@ -1390,6 +1390,14 @@ describe('agent_builder_resolve_llm tool', () => {
 			expect(view.autoPicked).toBe(true);
 			expect(view.nextStep).toContain('provider and model');
 			expect(view.nextStep).toContain('changeable');
+		});
+
+		it('tells the model to pick a supported provider after an unsupported one', async () => {
+			const view = await modelView([], { provider: 'not-a-provider' });
+
+			expect(view.reason).toBe('unsupported_provider');
+			expect(view.nextStep).toContain('supportedProviders');
+			expect(view.nextStep).toContain('agent_builder_finish_setup');
 		});
 	});
 });
