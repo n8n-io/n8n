@@ -409,49 +409,49 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.optional()
 				.describe(
-					'Average duration of the search_text calls of the run, failed calls included. It includes the time to start the sandbox and to copy the knowledge files into it, which can make the first search of a run slower. Absent when the run made no such call.',
+					'Average duration of the finished search_text calls, failed ones included. Includes sandbox start and file copy. Absent when no call finished.',
 				),
 			file_search_duration_ms_max: z
 				.number()
 				.optional()
 				.describe(
-					'Duration of the slowest search_text call of the run. Absent when the run made no such call.',
+					'Duration of the slowest finished search_text call. Absent when no call finished.',
 				),
 			file_empty_search_count: z
 				.number()
 				.optional()
 				.describe(
-					'search_text calls that worked and found nothing. Absent when the run made no such call.',
+					'Finished search_text calls that worked and found nothing. Absent when no call finished.',
 				),
 			file_error_types: z
 				.array(z.string())
 				.optional()
 				.describe(
-					'Error names of the failed search_text calls of the run, each name once. Absent when the run made no such call.',
+					'Error names of the failed search_text calls, each name once. Absent when no call finished.',
 				),
 			vector_store_search_duration_ms_avg: z
 				.number()
 				.optional()
 				.describe(
-					'Average duration of the vector store search calls of the run, failed calls included. Absent when the run made no such call.',
+					'Average duration of the finished vector store searches, failed ones included. Absent when no search finished.',
 				),
 			vector_store_search_duration_ms_max: z
 				.number()
 				.optional()
 				.describe(
-					'Duration of the slowest vector store search call of the run. Absent when the run made no such call.',
+					'Duration of the slowest finished vector store search. Absent when no search finished.',
 				),
 			vector_store_empty_search_count: z
 				.number()
 				.optional()
 				.describe(
-					'Vector store search calls that worked and found nothing. Absent when the run made no such call.',
+					'Finished vector store searches that worked and found nothing. Absent when no search finished.',
 				),
 			vector_store_error_types: z
 				.array(z.string())
 				.optional()
 				.describe(
-					'Error names of the failed vector store search calls of the run, each name once. Absent when the run made no such call.',
+					'Error names of the failed vector store searches, each name once. Absent when no search finished.',
 				),
 		}),
 	},
