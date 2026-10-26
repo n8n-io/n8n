@@ -684,7 +684,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
 				testUser,
-				{ projectId, excludePersonalRoute: true },
+				{ projectId, excludePersonalRoute: true, excludeResolvable: true },
 			);
 			expect(integrationsPassedToDescriptors()).toEqual([slackIntegration('cred-1')]);
 		});
