@@ -56,11 +56,39 @@ describe('Backfill agent draft versions', () => {
 		});
 		return id;
 	}
-	async function migrate() {
+	async function prepareBackfill() {
 		await context.queryRunner.release();
 		await initDbUpToMigration(migrationName);
-		await runSingleMigration(migrationName);
 		context = createTestMigrationContext(Container.get(DataSource));
+	}
+	async function migrate() {
+		await prepareBackfill();
+		await context.queryRunner.release();
+		try {
+			await runSingleMigration(migrationName);
+		} finally {
+			context = createTestMigrationContext(Container.get(DataSource));
+		}
+	}
+	async function readAgentData() {
+		const data: Record<string, Record<string, unknown>[]> = {};
+		for (const name of [
+			'agents',
+			'agent_history',
+			'agent_publish_history',
+			'agent_task_definition',
+			'agent_task_snapshot',
+			'skill',
+			'skill_version',
+			'skill_file',
+			'agent_skill_dependency',
+			'agent_version_skill_dependency',
+		]) {
+			data[name] = (await read(name)).sort((a, b) =>
+				JSON.stringify(a).localeCompare(JSON.stringify(b)),
+			);
+		}
+		return data;
 	}
 	function json(value: unknown): unknown {
 		return typeof value === 'string' ? JSON.parse(value) : value;
@@ -250,9 +278,21 @@ describe('Backfill agent draft versions', () => {
 			schema: '{"name":"Existing"}',
 			author: 'Original',
 		});
-		const [original] = await read('agent_history');
+		await prepareBackfill();
+		await context.runQuery(
+			`UPDATE ${table('agent_history')} SET ${column('name')} = 'Saved name', ${column('description')} = 'Saved description'`,
+		);
+		await insert('agent_task_snapshot', {
+			versionId,
+			taskId: 'task_existing',
+			enabled: true,
+			name: 'Original task',
+			objective: 'Keep the saved body',
+			cronExpression: '0 9 * * *',
+		});
+		const before = await readAgentData();
 		await migrate();
-		expect(await read('agent_history')).toEqual([{ ...original, name: null, description: null }]);
+		expect(await readAgentData()).toEqual(before);
 	});
 
 	it('captures all drafts across batch boundaries', async () => {
@@ -263,9 +303,16 @@ describe('Backfill agent draft versions', () => {
 	});
 
 	it('skips invalid configuration and integrations without changing those drafts', async () => {
-		await insertAgent({ schema: '[]', versionId: null });
-		await insertAgent({ integrations: '{}', versionId: null });
-		if (context.isSqlite) await insertAgent({ schema: '{', versionId: null });
+		for (const schema of ['[]', 'false', '42', '"text"']) {
+			await insertAgent({ schema, versionId: null });
+		}
+		for (const integrations of ['{}', 'null', 'false', '42', '"text"']) {
+			await insertAgent({ integrations, versionId: null });
+		}
+		if (context.isSqlite) {
+			await insertAgent({ schema: '{', versionId: null });
+			await insertAgent({ integrations: '{', versionId: null });
+		}
 		const skipped = await read('agents');
 		const agentId = await insertAgent();
 		await migrate();
@@ -285,5 +332,294 @@ describe('Backfill agent draft versions', () => {
 		expect(await read('agent_history')).toEqual([]);
 		expect(await read('agent_version_skill_dependency')).toEqual([]);
 		expect(await read('agents')).toEqual([{ ...original, publicationRevision: 0 }]);
+	});
+
+	it('preserves all configuration fields when assigning a version to a configured draft', async () => {
+		const chat = {
+			type: 'n8n_chat',
+			enabled: false,
+			allowedUsers: ['user_1'],
+			nested: { greeting: 'Hello 👋' },
+		};
+		const schema = {
+			name: 'Draft',
+			instructions: 'Keep "quotes", \\slashes, and\nnew lines. 日本語',
+			model: { id: 'example/model', options: { temperature: 0.4, nested: [null, false, 0, ''] } },
+			custom: { value: 'Keep unknown fields', empty: {}, list: [] },
+			skills: [{ type: 'skill', id: 'skill_deleted' }],
+			integrations: [{ type: 'n8n_chat', enabled: true, stale: true }],
+		};
+		await insert('settings', { key: 'agents.skillsHubCopy', value: '{}' });
+		const agentId = await insertAgent({
+			versionId: null,
+			schema: JSON.stringify(schema),
+			revision: 7,
+			tools: JSON.stringify({ tool_1: { nested: [false, null, '雪'], workflowId: 'workflow_1' } }),
+			integrations: JSON.stringify([
+				null,
+				false,
+				42,
+				'invalid',
+				[],
+				{},
+				{ type: 'slack', credentialId: 'credential_1' },
+				chat,
+			]),
+			updatedAt: '2026-10-01 09:00:00.123',
+		});
+		const publishedId = randomUUID();
+		await insert('agent_history', {
+			versionId: publishedId,
+			agentId,
+			author: 'Original',
+			schema: '{}',
+		});
+		await context.runQuery(
+			`UPDATE ${table('agents')} SET ${column('activeVersionId')} = :publishedId WHERE ${column('id')} = :agentId`,
+			{ agentId, publishedId },
+		);
+		await prepareBackfill();
+		const before = await readAgentData();
+
+		await migrate();
+
+		const [agent] = await read('agents');
+		expect(agent.versionId).toEqual(expect.any(String));
+		expect(agent).toEqual({ ...before.agents[0], versionId: agent.versionId });
+		const history = await read('agent_history');
+		expect(history).toHaveLength(2);
+		expect(history).toContainEqual(before.agent_history[0]);
+		const draft = history.find((row) => row.versionId === agent.versionId)!;
+		const { skills: _skills, integrations: _integrations, ...content } = schema;
+		expect(json(draft.schema)).toEqual({ ...content, integrations: [chat] });
+		expect(json(draft.tools)).toEqual(json(agent.tools));
+		expect(draft.createdAt).toEqual(agent.updatedAt);
+		expect(draft.updatedAt).toEqual(agent.updatedAt);
+		const after = await readAgentData();
+		for (const name of Object.keys(before).filter(
+			(name) => name !== 'agents' && name !== 'agent_history',
+		)) {
+			expect(after[name], name).toEqual(before[name]);
+		}
+	});
+
+	it('preserves empty configs and leaves instance agents unchanged', async () => {
+		const emptyId = await insertAgent({ versionId: null, schema: '{}' });
+		const nullId = await insertAgent({ versionId: null, schema: 'null' });
+		const instanceId = await insertAgent({ scope: 'instance', projectId: null, versionId: null });
+		await prepareBackfill();
+		const before = await read('agents');
+
+		await migrate();
+
+		const history = await read('agent_history');
+		expect(history).toHaveLength(2);
+		expect(json(history.find((row) => row.agentId === emptyId)?.schema)).toEqual({
+			integrations: [],
+		});
+		expect(history.find((row) => row.agentId === nullId)?.schema).toBeNull();
+		for (const agent of await read('agents')) {
+			const original = before.find((row) => row.id === agent.id)!;
+			expect(agent).toEqual({ ...original, versionId: agent.versionId });
+			if (agent.id === instanceId) expect(agent.versionId).toBeNull();
+			else expect(agent.versionId).toEqual(expect.any(String));
+		}
+	});
+
+	it('copies task bodies once and keeps other agents tasks separate', async () => {
+		const versionId = randomUUID();
+		const agentId = await insertAgent({
+			versionId,
+			schema: JSON.stringify({
+				tasks: [
+					null,
+					false,
+					{},
+					{ id: 'task_enabled', enabled: true },
+					{ id: 'task_enabled', enabled: true },
+					{ id: 'task_disabled', enabled: 'true' },
+					{ id: 'task_other', enabled: true },
+					{ id: 'task_missing', enabled: true },
+				],
+			}),
+		});
+		const otherVersionId = randomUUID();
+		const otherId = await insertAgent({ versionId: otherVersionId, schema: '{"tasks":{}}' });
+		const nullVersionId = randomUUID();
+		const nullId = await insertAgent({ versionId: nullVersionId, schema: null });
+		for (const [id, owner] of [
+			['task_enabled', agentId],
+			['task_disabled', agentId],
+			['task_other', otherId],
+			['task_null', nullId],
+		]) {
+			await insert('agent_task_definition', {
+				id,
+				agentId: owner,
+				name: id,
+				objective: 'Keep the task body',
+				cronExpression: '0 9 * * *',
+				timezone: null,
+			});
+		}
+		const before = await read('agent_task_definition');
+
+		await migrate();
+
+		expect(await read('agent_task_definition')).toEqual(before);
+		const snapshots = await read('agent_task_snapshot');
+		expect(snapshots).toHaveLength(4);
+		const versions = new Map<unknown, string>([
+			[agentId, versionId],
+			[otherId, otherVersionId],
+			[nullId, nullVersionId],
+		]);
+		for (const task of before) {
+			const snapshot = snapshots.find((row) => row.taskId === task.id)!;
+			expect(snapshot).toMatchObject({
+				name: task.name,
+				objective: task.objective,
+				cronExpression: task.cronExpression,
+				timezone: null,
+			});
+			expect(Boolean(snapshot.enabled)).toBe(task.id === 'task_enabled');
+			expect(snapshot.versionId).toBe(versions.get(task.agentId));
+		}
+	});
+
+	it('uses migrated skill IDs when legacy IDs collide between agents', async () => {
+		const draftIds = [randomUUID(), randomUUID()];
+		const agentIds: string[] = [];
+		for (const [index, versionId] of draftIds.entries()) {
+			agentIds.push(
+				await insertAgent({
+					versionId,
+					schema: JSON.stringify({ skills: [{ type: 'skill', id: 'skill_shared_legacy_id' }] }),
+					skills: JSON.stringify({
+						skill_shared_legacy_id: {
+							name: 'Example',
+							description: 'Example',
+							instructions: `Agent ${index}`,
+							references: [{ path: 'notes.md', content: `Notes ${index}` }],
+						},
+					}),
+				}),
+			);
+		}
+		await prepareBackfill();
+		const before = await readAgentData();
+
+		await migrate();
+
+		const skillIds: string[] = [];
+		for (const [index, versionId] of draftIds.entries()) {
+			const saved = await pins(versionId);
+			expect(saved).toHaveLength(1);
+			expect(saved[0].instructions).toBe(`Agent ${index}`);
+			const dependency = before.agent_skill_dependency.find(
+				(row) => row.agentId === agentIds[index],
+			)!;
+			expect(saved[0].skillId).toBe(dependency.skillId);
+			skillIds.push(saved[0].skillId);
+		}
+		expect(new Set(skillIds).size).toBe(2);
+		const after = await readAgentData();
+		for (const name of [
+			'agents',
+			'skill',
+			'skill_version',
+			'skill_file',
+			'agent_skill_dependency',
+			'agent_publish_history',
+		]) {
+			expect(after[name], name).toEqual(before[name]);
+		}
+		expect(after.skill_file).toHaveLength(2);
+	});
+
+	it('leaves every row unchanged when the migration body runs again', async () => {
+		const agentId = await insertAgent({
+			versionId: null,
+			schema:
+				'{"skills":[{"type":"skill","id":"skill_example"}],"tasks":[{"id":"task_example","enabled":true}]}',
+			skills:
+				'{"skill_example":{"name":"Example","description":"Example","instructions":"Keep this"}}',
+		});
+		await insert('agent_task_definition', {
+			id: 'task_example',
+			agentId,
+			name: 'Example',
+			objective: 'Keep this task',
+			cronExpression: '0 9 * * *',
+		});
+		await migrate();
+		const before = await readAgentData();
+		const migration = Container.get(DataSource).migrations.find(
+			(entry) => entry.constructor.name === migrationName,
+		)!;
+
+		// Call the body: the migration runner would skip an already recorded migration.
+		await migration.up(context.queryRunner);
+
+		expect(await readAgentData()).toEqual(before);
+	});
+
+	it('rolls back all writes if a task snapshot insert fails', async () => {
+		for (const [id, taskId] of [
+			['agent_a', 'task_success'],
+			['agent_z', 'task_failure'],
+		]) {
+			await insertAgent({
+				id,
+				versionId: null,
+				schema: JSON.stringify({
+					tasks: [{ id: taskId, enabled: true }],
+					skills: [{ type: 'skill', id: `skill_${id}` }],
+				}),
+				skills: JSON.stringify({
+					[`skill_${id}`]: { name: id, description: 'Example', instructions: 'Keep this skill' },
+				}),
+			});
+			await insert('agent_task_definition', {
+				id: taskId,
+				agentId: id,
+				name: taskId,
+				objective: 'Keep this task',
+				cronExpression: '0 9 * * *',
+			});
+		}
+		await prepareBackfill();
+		const before = await readAgentData();
+		const trigger = column('test_fail_task_snapshot');
+		if (context.isSqlite) {
+			await context.runQuery(`CREATE TRIGGER ${trigger} BEFORE INSERT ON ${table('agent_task_snapshot')}
+				WHEN NEW.${column('taskId')} = 'task_failure' BEGIN SELECT RAISE(ABORT, 'Test snapshot failure'); END`);
+		} else {
+			await context.runQuery(`CREATE FUNCTION ${trigger}() RETURNS trigger LANGUAGE plpgsql AS $$
+				BEGIN RAISE EXCEPTION 'Test snapshot failure'; END $$`);
+			await context.runQuery(`CREATE TRIGGER ${trigger} BEFORE INSERT ON ${table('agent_task_snapshot')}
+				FOR EACH ROW WHEN (NEW.${column('taskId')} = 'task_failure') EXECUTE FUNCTION ${trigger}()`);
+		}
+
+		await expect(migrate()).rejects.toThrow('Test snapshot failure');
+
+		expect(await readAgentData()).toEqual(before);
+		expect(await read('migrations')).not.toContainEqual(
+			expect.objectContaining({ name: migrationName }),
+		);
+		const onTable = context.isPostgres ? ` ON ${table('agent_task_snapshot')}` : '';
+		await context.runQuery(`DROP TRIGGER ${trigger}${onTable}`);
+		if (context.isPostgres) await context.runQuery(`DROP FUNCTION ${trigger}()`);
+		await migrate();
+		expect(await read('agent_history')).toHaveLength(2);
+		expect(await read('agent_task_snapshot')).toHaveLength(2);
+		expect(await read('agent_version_skill_dependency')).toHaveLength(2);
+	});
+
+	it('leaves an instance with no agents unchanged', async () => {
+		await prepareBackfill();
+		const before = await readAgentData();
+		await migrate();
+		expect(await readAgentData()).toEqual(before);
 	});
 });
