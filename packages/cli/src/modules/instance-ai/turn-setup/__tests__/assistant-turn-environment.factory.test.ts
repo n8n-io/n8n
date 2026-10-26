@@ -92,6 +92,7 @@ function createRuntime(overrides: Partial<AssistantTurnRuntime> = {}): Assistant
 			getThread: vi.fn(async () => null),
 			getThreadProjectId: vi.fn(async () => 'project-1'),
 		}),
+		resourceId: 'user-1',
 		eventBus: mock<AssistantTurnRuntime['eventBus']>(),
 		turnState: {
 			getBuildMode: vi.fn(() => 'progressive' as const),
