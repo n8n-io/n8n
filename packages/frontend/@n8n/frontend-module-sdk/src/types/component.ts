@@ -72,7 +72,6 @@ export type PromotionChangesState =
 export type SlotProjectHeaderMainButton =
 	| 'workflow'
 	| 'credential'
-	| 'folder'
 	| 'dataTable'
 	| 'variable'
 	| 'agent';
