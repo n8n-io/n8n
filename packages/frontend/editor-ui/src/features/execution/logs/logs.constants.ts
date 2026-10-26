@@ -4,6 +4,8 @@ export const LOCAL_STORAGE_PANEL_WIDTH = 'N8N_CANVAS_CHAT_WIDTH';
 
 export const LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH = 'N8N_LOGS_OVERVIEW_PANEL_WIDTH';
 
+export const MIN_IO_PANEL_WIDTH = 200;
+
 export const LOGS_PANEL_STATE = {
 	CLOSED: 'closed',
 	ATTACHED: 'attached',

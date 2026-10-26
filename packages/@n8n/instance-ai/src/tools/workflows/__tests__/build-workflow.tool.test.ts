@@ -1,5 +1,6 @@
 import { isZodSchema } from '@n8n/agents';
 import {
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	instanceAiSetupCredentialAppliedKey,
 	instanceAiSetupCredentialSelectionKey,
 	type InstanceAiSetupCredentialSelection,
@@ -10,6 +11,7 @@ import { FolderResolutionError } from '../../../errors/folder-resolution.error';
 import { OutsideThreadProjectError } from '../../../errors/outside-thread-project.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
+import { applyPlannedTaskPermissionOverrides } from '../../../planned-tasks/planned-task-permissions';
 import { loadInstanceAiSkills } from '../../../skills/skills';
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
@@ -2183,6 +2185,65 @@ describe('createBuildWorkflowTool', () => {
 		expect(compileWorkflowSource).not.toHaveBeenCalled();
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 	});
+
+	// The create-tasks check before plan approval cannot see every save a build
+	// makes, so the save itself must deny the blocked action in a planned build.
+	it.each([
+		{
+			label: 'an update through a bound source file',
+			blocked: 'updateWorkflow' as const,
+			bindingWorkflowId: 'wf-bound',
+			isSupportingWorkflow: undefined,
+		},
+		{
+			label: 'a supporting workflow create',
+			blocked: 'createWorkflow' as const,
+			bindingWorkflowId: undefined,
+			isSupportingWorkflow: true,
+		},
+	])(
+		'denies $label in an approved planned build when admin blocks it',
+		async ({ blocked, bindingWorkflowId, isSupportingWorkflow }) => {
+			const { context, filePath } = makeContext({
+				source: 'workflow source',
+				overrides: {
+					permissions: applyPlannedTaskPermissionOverrides(
+						{ ...DEFAULT_INSTANCE_AI_PERMISSIONS, [blocked]: 'blocked' },
+						'build-workflow',
+					),
+					workflowBuildContext: {
+						threadId: 'thread-1',
+						runId: 'run-1',
+						taskId: 'task-1',
+						workItemId: 'wi-planned',
+						plannedTaskService: {} as NonNullable<
+							InstanceAiContext['workflowBuildContext']
+						>['plannedTaskService'],
+					},
+				},
+			});
+			if (bindingWorkflowId) {
+				await saveWorkflowSourceFileBinding(context, {
+					filePath,
+					workflowId: bindingWorkflowId,
+					workflowChecksum: 'checksum-current',
+				});
+			}
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				isSupportingWorkflow,
+			});
+
+			expect(result).toMatchObject({
+				success: false,
+				remediation: { category: 'blocked', reason: 'permission_blocked' },
+				errors: ['Action blocked by admin'],
+			});
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		},
+	);
 
 	it('returns conflict remediation when the workflow changed outside the conversation', async () => {
 		const { context, filePath, trackTelemetry } = makeContext({ source: 'workflow source' });
