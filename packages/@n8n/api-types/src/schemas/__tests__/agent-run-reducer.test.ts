@@ -242,7 +242,7 @@ describe('agent-run-reducer', () => {
 			},
 		};
 		reduceEvent(state, event);
-		const restored = stateFromAgentTree(deepCopy(toAgentTree(state)));
+		const restored = stateFromAgentTree(deepCopy(toAgentTree(state)))!;
 		reduceEvent(restored, event);
 		expect(restored.agentsById.root.timeline).toEqual([
 			{ type: 'skill-update', runId: 'run-1', ...event.payload },
