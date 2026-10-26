@@ -139,8 +139,8 @@ interface ActiveSession {
 	windows: string[];
 	/** The current window when the agent's last call returned. Its next result notes any change since then. */
 	windowSeenByAgent?: string;
-	/** True while a browser tool runs. See `executeBrowserToolOnSession`. */
-	isBrowserToolRunning: boolean;
+	/** The browser tools that run right now. Calls can run in parallel. See `executeBrowserToolOnSession`. */
+	runningBrowserTools: number;
 }
 
 /** Browser tools on a Browserbase session, for one background task. */
@@ -395,8 +395,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 
 		const current = windows.at(-1);
 		if (current === before) return;
-		// While a tool runs, the tools move to the new window after it returns.
-		if (!session.isBrowserToolRunning) {
+		// While a tool runs, the tools move to the new window after the last running one returns.
+		if (session.runningBrowserTools === 0) {
 			const isConnected = setActivePageToCurrentWindow(session);
 			// The next tool call releases a session whose connection is gone.
 			if (!isConnected) return;
@@ -410,12 +410,12 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 		args: Record<string, unknown>,
 		checkAccess?: (args: unknown) => Promise<McpToolCallResult | undefined>,
 	): Promise<McpToolCallResult> {
-		session.isBrowserToolRunning = true;
+		session.runningBrowserTools++;
 		try {
 			return await executeBrowserTool(tool, args, this.options.toolContext, checkAccess);
 		} finally {
-			session.isBrowserToolRunning = false;
-			setActivePageToCurrentWindow(session);
+			session.runningBrowserTools--;
+			if (session.runningBrowserTools === 0) setActivePageToCurrentWindow(session);
 		}
 	}
 
@@ -481,7 +481,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			toolsByName: new Map(this.getAvailableToolsFromToolkit(toolkit).map((t) => [t.name, t])),
 			windows: activePageId ? [activePageId] : [],
 			windowSeenByAgent: activePageId || undefined,
-			isBrowserToolRunning: false,
+			runningBrowserTools: 0,
 		};
 		adapter.onPageChange = (change) => this.onPageChange(session, change);
 		return session;

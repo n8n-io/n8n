@@ -5,7 +5,7 @@
  */
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, inject, ref } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 
 import {
 	CloudBrowserLiveViewsKey,
@@ -43,13 +43,23 @@ const placeholder = computed(() =>
 	),
 );
 
-// The placeholder stays over the frames until the current window's frame has loaded.
-const loadedWindowIds = ref(new Set<string>());
-function onFrameLoad(windowId: string) {
-	loadedWindowIds.value = new Set([...loadedWindowIds.value, windowId]);
+// The placeholder stays over the frames until the current window's frame has loaded. Loads
+// are tracked by live view link, not by window: a new session can reuse a window id, and its
+// frame loads the new link.
+const loadedLiveViewUrls = ref(new Set<string>());
+function onFrameLoad(liveViewUrl: string) {
+	loadedLiveViewUrls.value = new Set([...loadedLiveViewUrls.value, liveViewUrl]);
 }
+// Only the frames on screen are tracked, so the set never holds a link that is gone.
+watch(frames, (current) => {
+	const shown = new Set(current.map((frame) => frame.liveViewUrl));
+	loadedLiveViewUrls.value = new Set([...loadedLiveViewUrls.value].filter((url) => shown.has(url)));
+});
 const showsPlaceholder = computed(
-	() => !frames.value.some((frame) => frame.isCurrent && loadedWindowIds.value.has(frame.windowId)),
+	() =>
+		!frames.value.some(
+			(frame) => frame.isCurrent && loadedLiveViewUrls.value.has(frame.liveViewUrl),
+		),
 );
 </script>
 
@@ -91,7 +101,7 @@ const showsPlaceholder = computed(
 								? 'instance-ai-browser-preview-frame'
 								: 'instance-ai-browser-preview-background-frame'
 						"
-						@load="onFrameLoad(frame.windowId)"
+						@load="onFrameLoad(frame.liveViewUrl)"
 					/>
 				</template>
 			</div>

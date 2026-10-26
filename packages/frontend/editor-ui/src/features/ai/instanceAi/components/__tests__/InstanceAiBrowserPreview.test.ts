@@ -61,6 +61,21 @@ describe('InstanceAiBrowserPreview', () => {
 			expect(queryByTestId('instance-ai-browser-preview-spinner')).not.toBeInTheDocument();
 		});
 
+		it('shows again when a new session reuses the window id', async () => {
+			const { getByTestId, queryByTestId, liveViews } = render(live);
+			await fireEvent.load(getByTestId('instance-ai-browser-preview-frame'));
+			expect(queryByTestId('instance-ai-browser-preview-placeholder')).not.toBeInTheDocument();
+
+			liveViews.set('task-1', { ...live, liveViewUrl: 'https://live.example.com/2' });
+			await flushPromises();
+
+			expect(getByTestId('instance-ai-browser-preview-placeholder')).toHaveTextContent(
+				'Opening the browser…',
+			);
+			await fireEvent.load(getByTestId('instance-ai-browser-preview-frame'));
+			expect(queryByTestId('instance-ai-browser-preview-placeholder')).not.toBeInTheDocument();
+		});
+
 		it('stays over the frame until the frame has loaded', async () => {
 			const { getByTestId, queryByTestId } = render(live);
 			const frame = getByTestId('instance-ai-browser-preview-frame');

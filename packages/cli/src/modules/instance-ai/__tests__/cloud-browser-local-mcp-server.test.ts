@@ -1148,6 +1148,40 @@ describe('CloudBrowserLocalMcpServer', () => {
 				expect(listener).toHaveBeenCalledTimes(1);
 			});
 
+			it('moves the tools to a new window only after every parallel tool call returns', async () => {
+				const { toolOn, openWindow, currentWindow, click } = await setupWithSession();
+				let finishFirst: () => void = () => {};
+				let finishSecond: () => void = () => {};
+				vi.mocked(toolOn('browser_click').execute)
+					.mockImplementationOnce(async () => {
+						await new Promise<void>((resolve) => {
+							finishFirst = resolve;
+						});
+						return { content: [{ type: 'text', text: 'clicked e1' }] };
+					})
+					.mockImplementationOnce(async () => {
+						await new Promise<void>((resolve) => {
+							finishSecond = resolve;
+						});
+						return { content: [{ type: 'text', text: 'clicked e2' }] };
+					});
+
+				const first = click();
+				const second = click();
+				await vi.waitFor(() => expect(toolOn('browser_click').execute).toHaveBeenCalledTimes(2));
+				openWindow('page-2');
+				finishFirst();
+				await first;
+
+				// The second call still runs in the first window.
+				expect(currentWindow()).toBe('page-1');
+
+				finishSecond();
+				await second;
+
+				expect(currentWindow()).toBe('page-2');
+			});
+
 			it('moves the tools to the current window when a tool call fails', async () => {
 				const { toolOn, openWindow, currentWindow, click } = await setupWithSession();
 				vi.mocked(toolOn('browser_click').execute).mockImplementationOnce(async () => {
