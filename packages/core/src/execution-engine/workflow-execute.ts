@@ -3113,16 +3113,23 @@ export class WorkflowExecute {
 								pairedItemData,
 							);
 						} catch (error) {
-							// The input item only adds context, so the error item goes to the error output without it.
 							Logger.debug('Could not resolve the input item of an error item', {
 								node: executionData.node.name,
 								error: error instanceof Error ? error.message : String(error),
 							});
 						}
 
-						errorItems.push(
-							pairedInputItem ? { ...item, json: { ...pairedInputItem.json, ...item.json } } : item,
-						);
+						if (pairedInputItem === null) {
+							errorItems.push(item);
+						} else {
+							errorItems.push({
+								...item,
+								json: {
+									...pairedInputItem.json,
+									...item.json,
+								},
+							});
+						}
 					}
 				} else {
 					successItems.push(item);
