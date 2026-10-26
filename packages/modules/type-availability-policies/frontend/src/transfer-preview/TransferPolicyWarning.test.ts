@@ -7,9 +7,9 @@ import TransferPolicyWarning from './TransferPolicyWarning.vue';
 import type { TransferPreview } from './useTransferPreview';
 
 const restrictedTypesDialogStub = {
-	props: ['open', 'violations', 'projectName'],
+	props: ['open', 'violations', 'projectId', 'projectName'],
 	template:
-		'<div v-if="open" data-test-id="restricted-types-dialog" :data-project="projectName">{{ violations.length }} violations<slot name="icon" :violation="violations[0]" /></div>',
+		'<div v-if="open" data-test-id="restricted-types-dialog" :data-project="projectName" :data-project-id="projectId">{{ violations.length }} violations<slot name="icon" :violation="violations[0]" /></div>',
 };
 
 function violation(subjectType: string, subject: string): PolicyViolation {
@@ -41,6 +41,7 @@ const renderComponent = createComponentRenderer(TransferPolicyWarning, {
 	props: {
 		preview: EMPTY,
 		resourceType: 'workflow',
+		projectId: 'project-dest',
 		projectName: 'Marketing',
 		labelOf: () => undefined,
 	},
@@ -87,6 +88,7 @@ describe('TransferPolicyWarning', () => {
 			const dialog = getByTestId('restricted-types-dialog');
 			expect(dialog).toHaveTextContent('2 violations');
 			expect(dialog).toHaveAttribute('data-project', 'Marketing');
+			expect(dialog).toHaveAttribute('data-project-id', 'project-dest');
 		});
 	});
 

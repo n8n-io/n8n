@@ -1,10 +1,25 @@
 import type { PolicyViolation } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { h } from 'vue';
 
 import RestrictedTypesDialog from './RestrictedTypesDialog.vue';
+
+const mocks = vi.hoisted(() => ({ getProject: vi.fn() }));
+
+vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	getProject: mocks.getProject,
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost', pushRef: 'test' } }),
+}));
+
+const flushPromises = async () => await new Promise((resolve) => setTimeout(resolve));
+
+const DESTINATION = { id: 'project-dest', name: 'Marketing', type: 'team', relations: [] };
 
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@n8n/design-system')>();
@@ -23,19 +38,30 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 });
 
 const contactAdminModalStub = {
-	props: ['open', 'nodeTypeName', 'kind', 'audience'],
+	props: ['open', 'nodeTypeName', 'kind', 'audience', 'project'],
 	template:
-		'<div v-if="open" data-test-id="contact-admin-modal" :data-kind="kind" :data-audience="audience" :data-names="[].concat(nodeTypeName).join(\'|\')" />',
+		'<div v-if="open" data-test-id="contact-admin-modal" :data-kind="kind" :data-audience="audience" :data-project="project?.id" :data-names="[].concat(nodeTypeName).join(\'|\')" />',
 };
 
-function violation(subjectType: string, subject: string): PolicyViolation {
+const restrictedNodePopoverStub = {
+	props: ['nodeTypeName', 'restriction', 'kind', 'projectType'],
+	emits: ['contactAdmin'],
+	template:
+		'<button data-test-id="row-popover" :data-scope="restriction?.scope" :data-project-type="projectType" @click="$emit(\'contactAdmin\', \'project\')" />',
+};
+
+function violation(
+	subjectType: string,
+	subject: string,
+	scope: 'instance' | 'project' = 'project',
+): PolicyViolation {
 	return {
 		kind: `${subjectType}-unavailable`,
 		checkId: `${subjectType}-availability`,
 		message: `"${subject}" is blocked`,
 		subject,
 		subjectType,
-		scope: 'project',
+		scope,
 	};
 }
 
@@ -46,16 +72,26 @@ const renderComponent = createComponentRenderer(RestrictedTypesDialog, {
 	props: {
 		open: true,
 		violations: [slack],
+		projectId: DESTINATION.id,
 		projectName: 'Marketing',
 		labelOf: () => undefined,
 	},
-	global: { stubs: { ContactAdminModal: contactAdminModalStub } },
+	global: {
+		stubs: {
+			ContactAdminModal: contactAdminModalStub,
+			RestrictedNodePopover: restrictedNodePopoverStub,
+		},
+	},
 });
 
 const rowTexts = (list: HTMLElement) =>
 	Array.from(list.querySelectorAll('li')).map((row) => row.textContent?.trim());
 
 describe('RestrictedTypesDialog', () => {
+	beforeEach(() => {
+		mocks.getProject.mockReset().mockResolvedValue(DESTINATION);
+	});
+
 	it('names the project in the title and description', () => {
 		const { getByText } = renderComponent();
 
@@ -129,7 +165,7 @@ describe('RestrictedTypesDialog', () => {
 			expect(queryByTestId('contact-admin-modal')).not.toBeInTheDocument();
 		});
 
-		it('opens for the instance admins with the name of every violation', async () => {
+		it('opens for the destination project admins when the project blocks every type', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					violations: [slack, github],
@@ -137,12 +173,67 @@ describe('RestrictedTypesDialog', () => {
 						subject === 'n8n-nodes-base.slack' ? 'Slack' : undefined,
 				},
 			});
+			await flushPromises();
 
+			expect(getByTestId('restricted-types-contact-admin')).toHaveTextContent(
+				'Contact project admin',
+			);
 			await userEvent.click(getByTestId('restricted-types-contact-admin'));
 
 			const modal = getByTestId('contact-admin-modal');
 			expect(modal).toHaveAttribute('data-names', 'Slack|githubApi');
-			expect(modal).toHaveAttribute('data-audience', 'instance');
+			expect(modal).toHaveAttribute('data-audience', 'project');
+			expect(modal).toHaveAttribute('data-project', DESTINATION.id);
+			expect(mocks.getProject).toHaveBeenCalledWith(expect.anything(), DESTINATION.id);
+		});
+
+		it('opens for the instance admins when the instance blocks one of the types', async () => {
+			const { getByTestId } = renderComponent({
+				props: { violations: [slack, violation('credentialType', 'githubApi', 'instance')] },
+			});
+			await flushPromises();
+
+			expect(getByTestId('restricted-types-contact-admin')).toHaveTextContent(
+				'Contact instance admin',
+			);
+			await userEvent.click(getByTestId('restricted-types-contact-admin'));
+
+			expect(getByTestId('contact-admin-modal')).toHaveAttribute('data-audience', 'instance');
+		});
+
+		it('falls back to the instance admins when the destination does not load', async () => {
+			mocks.getProject.mockRejectedValue(new Error('Forbidden'));
+			const { getByTestId } = renderComponent();
+			await flushPromises();
+
+			expect(getByTestId('restricted-types-contact-admin')).toHaveTextContent(
+				'Contact instance admin',
+			);
+		});
+
+		it('explains each row by its own scope, judged against the destination', async () => {
+			const { getAllByTestId } = renderComponent({
+				props: { violations: [slack, violation('credentialType', 'githubApi', 'instance')] },
+			});
+			await flushPromises();
+
+			const popovers = getAllByTestId('row-popover');
+			expect(popovers.map((popover) => popover.dataset.scope)).toEqual(['project', 'instance']);
+			expect(popovers[0]).toHaveAttribute('data-project-type', 'team');
+		});
+
+		it('writes only about the row whose popover asks for contact', async () => {
+			const { getAllByTestId, getByTestId } = renderComponent({
+				props: { violations: [slack, github] },
+			});
+			await flushPromises();
+
+			await userEvent.click(getAllByTestId('row-popover')[1]);
+
+			const modal = getByTestId('contact-admin-modal');
+			expect(modal).toHaveAttribute('data-names', 'githubApi');
+			expect(modal).toHaveAttribute('data-kind', 'credential');
+			expect(modal).toHaveAttribute('data-audience', 'project');
 		});
 
 		it.each([

@@ -506,10 +506,11 @@ onMounted(async () => {
 						:placeholder="i18n.baseText('folders.move.modal.project.placeholder')"
 					/>
 					<TransferPolicyWarning
-						v-if="transferPreview"
+						v-if="transferPreview && selectedProject"
 						:class="$style.calloutSpacing"
 						:preview="transferPreview"
 						:resource-type="props.data.resourceType"
+						:project-id="selectedProject.id"
 						:project-name="targetProjectName"
 						:label-of="labelOf"
 					>

@@ -9,12 +9,27 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { getProject, type Project } from '@n8n/rest-api-client';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, ref, shallowReactive, shallowRef, watch } from 'vue';
 
 import ContactAdminModal from '../components/ContactAdminModal.vue';
+import RestrictedNodePopover from '../components/RestrictedNodePopover.vue';
+import {
+	getViolationVerdict,
+	resolveRestrictionContact,
+	sharedRestrictionContact,
+} from '../composables/useNodeTypeRestriction';
+import {
+	RESTRICTION_CONTACT_COPY,
+	type ContactAudience,
+	type RestrictedTypeKind,
+} from '../type-availability-policies.constants';
 
-const { violations, projectName, labelOf } = defineProps<{
+const { violations, projectId, projectName, labelOf } = defineProps<{
 	violations: PolicyViolation[];
+	/** The move destination. Its type and admins decide whom to contact. */
+	projectId: string;
 	projectName: string;
 	labelOf: (violation: PolicyViolation) => string | undefined;
 }>();
@@ -26,6 +41,20 @@ const open = defineModel<boolean>('open', { default: false });
 const i18n = useI18n();
 
 const isContactAdminOpen = ref(false);
+
+// Loaded on mount, so the contact copy is right when the dialog opens. Until it loads, or if
+// it fails, the copy names the instance admin.
+const destination = shallowRef<Project | null>(null);
+watch(
+	() => projectId,
+	async (id) => {
+		destination.value = null;
+		const project = await getProject(useRootStore().restApiContext, id).catch(() => null);
+		if (id === projectId) destination.value = project;
+	},
+	{ immediate: true },
+);
+const destinationType = computed(() => destination.value?.type ?? null);
 
 const NAME_KEY_BY_SUBJECT_TYPE: Record<string, BaseTextKey | undefined> = {
 	nodeType: 'typeAvailabilityPolicies.violations.nodeType',
@@ -41,21 +70,59 @@ function rowText(violation: PolicyViolation): string {
 	return key ? i18n.baseText(key, { interpolate: { name: nameOf(violation) } }) : nameOf(violation);
 }
 
+function kindOf(violation: PolicyViolation): RestrictedTypeKind {
+	return violation.subjectType === 'credentialType' ? 'credential' : 'node';
+}
+
 const rows = computed(() =>
 	violations.map((violation) => ({
 		key: `${violation.subjectType ?? ''}:${violation.subject ?? violation.message}`,
 		text: rowText(violation),
+		name: nameOf(violation),
+		kind: kindOf(violation),
+		verdict: getViolationVerdict(violation),
 		violation,
 	})),
 );
 
-const contactKind = computed(() =>
-	violations.some((violation) => violation.subjectType === 'credentialType') &&
-	!violations.some((violation) => violation.subjectType === 'nodeType')
-		? 'credential'
-		: 'node',
+const rowElements = shallowReactive(new Map<string, HTMLElement>());
+function setRowElement(key: string, element: unknown) {
+	if (element instanceof HTMLElement) rowElements.set(key, element);
+	else rowElements.delete(key);
+}
+
+const sharedContactCopy = computed(
+	() =>
+		RESTRICTION_CONTACT_COPY[
+			sharedRestrictionContact(
+				rows.value.map((row) => resolveRestrictionContact(row.verdict, destinationType.value)),
+			)
+		],
 );
-const contactTypeNames = computed(() => violations.map(nameOf));
+
+const allKind = computed<RestrictedTypeKind>(() =>
+	rows.value.every((row) => row.kind === 'credential') ? 'credential' : 'node',
+);
+
+/** Whom the contact dialog writes to, and about what: every row from the footer, one from a row. */
+const contact = ref<{ audience: ContactAudience; names: string[]; kind: RestrictedTypeKind }>({
+	audience: 'instance',
+	names: [],
+	kind: 'node',
+});
+
+function openContact(target: typeof contact.value) {
+	contact.value = target;
+	isContactAdminOpen.value = true;
+}
+
+function contactForAll() {
+	openContact({
+		audience: sharedContactCopy.value.audience,
+		names: rows.value.map((row) => row.name),
+		kind: allKind.value,
+	});
+}
 </script>
 
 <template>
@@ -79,9 +146,25 @@ const contactTypeNames = computed(() => violations.map(nameOf));
 				}}
 			</N8nDialogDescription>
 			<ul :class="$style.list" data-test-id="restricted-types-list">
-				<li v-for="row in rows" :key="row.key" :class="$style.row">
+				<li
+					v-for="row in rows"
+					:key="row.key"
+					:ref="(element) => setRowElement(row.key, element)"
+					:class="$style.row"
+				>
 					<span :class="$style.icon"><slot name="icon" :violation="row.violation" /></span>
-					<N8nText size="medium" color="text-dark">{{ row.text }}</N8nText>
+					<N8nText size="medium" color="text-dark" :class="$style.name">{{ row.text }}</N8nText>
+					<RestrictedNodePopover
+						:node-type-name="row.name"
+						:restriction="row.verdict"
+						:kind="row.kind"
+						:project-type="destinationType"
+						:anchor="rowElements.get(row.key)"
+						side="right"
+						@contact-admin="
+							(audience) => openContact({ audience, names: [row.name], kind: row.kind })
+						"
+					/>
 				</li>
 			</ul>
 		</N8nDialogBody>
@@ -90,9 +173,9 @@ const contactTypeNames = computed(() => violations.map(nameOf));
 				variant="outline"
 				icon="mail"
 				data-test-id="restricted-types-contact-admin"
-				@click="isContactAdminOpen = true"
+				@click="contactForAll"
 			>
-				{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin') }}
+				{{ i18n.baseText(sharedContactCopy.action) }}
 			</N8nButton>
 			<N8nButton variant="solid" data-test-id="restricted-types-close" @click="open = false">
 				{{ i18n.baseText('generic.close') }}
@@ -100,9 +183,10 @@ const contactTypeNames = computed(() => violations.map(nameOf));
 		</N8nDialogFooter>
 		<ContactAdminModal
 			v-model:open="isContactAdminOpen"
-			:node-type-name="contactTypeNames"
-			:kind="contactKind"
-			audience="instance"
+			:node-type-name="contact.names"
+			:kind="contact.kind"
+			:audience="contact.audience"
+			:project="destination"
 		/>
 	</N8nDialog>
 </template>
@@ -135,5 +219,9 @@ const contactTypeNames = computed(() => violations.map(nameOf));
 .icon {
 	display: flex;
 	flex-shrink: 0;
+}
+
+.name {
+	flex: 1;
 }
 </style>

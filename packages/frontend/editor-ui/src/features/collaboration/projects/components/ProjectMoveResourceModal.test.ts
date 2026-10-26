@@ -491,8 +491,10 @@ describe('ProjectMoveResourceModal', () => {
 
 		it('should render the warning for a credential preview', async () => {
 			setPreview(restrictedPreview);
-
 			const { getByTestId } = renderComponent({ props: propsFor(ResourceType.Credential) });
+
+			const items = await getDropdownItems(getByTestId('project-sharing-select'));
+			await userEvent.click(items[0]);
 
 			await vi.waitFor(() => expect(getByTestId('transfer-policy-warning')).toBeVisible());
 		});

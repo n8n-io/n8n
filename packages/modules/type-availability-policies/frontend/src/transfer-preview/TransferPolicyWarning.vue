@@ -7,9 +7,10 @@ import { computed, ref } from 'vue';
 import RestrictedTypesDialog from './RestrictedTypesDialog.vue';
 import type { TransferPreview, TransferPreviewTarget } from './useTransferPreview';
 
-const { preview, resourceType, projectName, labelOf } = defineProps<{
+const { preview, resourceType, projectId, projectName, labelOf } = defineProps<{
 	preview: TransferPreview;
 	resourceType: TransferPreviewTarget['resourceType'];
+	projectId: string;
 	projectName: string;
 	labelOf: (violation: PolicyViolation) => string | undefined;
 }>();
@@ -103,6 +104,7 @@ const followUps = computed(() => {
 			v-if="canListRestricted"
 			v-model:open="isDialogOpen"
 			:violations="preview.restricted"
+			:project-id="projectId"
 			:project-name="projectName"
 			:label-of="labelOf"
 		>

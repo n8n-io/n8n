@@ -92,8 +92,15 @@ export function getRestrictionContact(
 export function useRestrictionContact(
 	verdict: MaybeRefOrGetter<OptionalVerdict>,
 	projectId?: MaybeRefOrGetter<string | undefined>,
+	/** Judges a project other than the open one, such as a move destination. */
+	projectType?: MaybeRefOrGetter<ProjectType | null | undefined>,
 ) {
-	const contact = computed(() => getRestrictionContact(toValue(verdict), toValue(projectId)));
+	const contact = computed(() => {
+		const type = toValue(projectType);
+		return type === undefined
+			? getRestrictionContact(toValue(verdict), toValue(projectId))
+			: resolveRestrictionContact(toValue(verdict), type);
+	});
 	const copy = computed(() => RESTRICTION_CONTACT_COPY[contact.value]);
 	return { contact, copy };
 }
@@ -127,11 +134,12 @@ const RESTRICTED_SCOPES: Array<[NodeTypeAvailabilityScope | undefined, BaseTextK
 	[undefined, 'typeAvailabilityPolicies.restrictedNodes.scope.generic'],
 ];
 
-function sharedRestrictionContact(verdicts: RestrictionVerdict[]): RestrictionContact {
-	const contacts = new Set(verdicts.map((verdict) => getRestrictionContact(verdict)));
-	const [first] = contacts;
-	if (contacts.size === 1) return first;
-	return [...contacts].every((contact) => RESTRICTION_CONTACT_COPY[contact].audience === 'project')
+/** One contact for several restrictions: a project admin only when one can lift all of them. */
+export function sharedRestrictionContact(contacts: RestrictionContact[]): RestrictionContact {
+	const unique = new Set(contacts);
+	const [first = 'instance'] = unique;
+	if (unique.size <= 1) return first;
+	return [...unique].every((contact) => RESTRICTION_CONTACT_COPY[contact].audience === 'project')
 		? 'project'
 		: 'instance';
 }
@@ -161,7 +169,11 @@ export function describeRestrictedNodeTypes(restricted: RestrictedNodeTypeName[]
 	return [
 		i18n.baseText('typeAvailabilityPolicies.restrictedNodes.title'),
 		...scopeLines,
-		i18n.baseText(RESTRICTION_CONTACT_COPY[sharedRestrictionContact(restricted)].severalNextStep),
+		i18n.baseText(
+			RESTRICTION_CONTACT_COPY[
+				sharedRestrictionContact(restricted.map((verdict) => getRestrictionContact(verdict)))
+			].severalNextStep,
+		),
 	].join('\n');
 }
 

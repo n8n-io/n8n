@@ -272,10 +272,11 @@ onMounted(async () => {
 					data-test-id="project-move-resource-modal-select"
 				/>
 				<TransferPolicyWarning
-					v-if="transferPreview"
+					v-if="transferPreview && selectedProject"
 					class="mb-xs"
 					:preview="transferPreview"
 					:resource-type="transferPreviewTarget.resourceType"
+					:project-id="selectedProject.id"
 					:project-name="targetProjectName"
 					:label-of="labelOf"
 				>

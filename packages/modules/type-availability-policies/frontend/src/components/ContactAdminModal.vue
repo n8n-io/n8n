@@ -10,7 +10,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { staticRolesWithScope } from '@n8n/permissions';
-import type { IUserResponse } from '@n8n/rest-api-client';
+import type { IUserResponse, Project } from '@n8n/rest-api-client';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useEventListener } from '@vueuse/core';
@@ -29,11 +29,14 @@ const {
 	nodeTypeName,
 	kind = 'node',
 	audience,
+	project,
 } = defineProps<{
 	/** Several names switch to copy that does not assume one node or one credential type. */
 	nodeTypeName: string | string[];
 	kind?: RestrictedTypeKind;
 	audience: ContactAudience;
+	/** Whose project admins to list. Defaults to the open project. */
+	project?: Project | null;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -81,14 +84,18 @@ const projectManagerRoles = computed(() => {
 	]);
 });
 
+const listedProject = computed(() =>
+	project === undefined ? policiesStore.policyProject : project,
+);
+
 const projectManagers = computed<Admin[]>(() =>
-	(policiesStore.policyProject?.relations ?? [])
+	(listedProject.value?.relations ?? [])
 		.filter((relation) => projectManagerRoles.value.has(relation.role))
 		.filter(hasEmail),
 );
 
 const implicitInstanceAdmins = computed<Admin[]>(() =>
-	(policiesStore.policyProject?.implicitMembers ?? []).filter(hasEmail),
+	(listedProject.value?.implicitMembers ?? []).filter(hasEmail),
 );
 
 const listedAudience = computed<ContactAudience>(() =>
