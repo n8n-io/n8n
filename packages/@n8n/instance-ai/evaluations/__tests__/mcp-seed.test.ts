@@ -263,10 +263,9 @@ describe('prepareMcpBuildSeed', () => {
 		expect((scenarioCall[3] as Array<{ name: string }>).map((table) => table.name)).toEqual([
 			expect.stringMatching(/^customers/),
 		]);
-		expect(Object.keys(prepared?.scenarioTableIdsByName ?? {}).sort()).toEqual([
-			'customers',
-			'orders',
-		]);
+		// The seed restore made `orders` as dt-0; the scenario call made `customers` as dt-0 too.
+		expect(prepared?.scenarioTableIdsByName).toEqual({ orders: 'dt-0', customers: 'dt-0' });
+		expect(clients.owner.restoreThread).toHaveBeenCalledTimes(2);
 		expect(prepared?.openingSuffix).toContain('customers');
 	});
 
@@ -279,6 +278,26 @@ describe('prepareMcpBuildSeed', () => {
 
 		expect(clients.owner.addProjectViewer).toHaveBeenCalledWith('project-Finance', 'member-user');
 		expect(prepared?.projectIds).toEqual(['project-Finance']);
+	});
+
+	it('deletes the projects it made when a later project step fails', async () => {
+		const clients = makeClients();
+		clients.owner.addProjectViewer
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error('viewer role not licensed'));
+		Object.assign(clients.owner, { deleteProject: vi.fn(async () => {}) });
+
+		await expect(
+			prepare(clients, { seed: inlineSeed({ projects: [{ name: 'Finance' }, { name: 'Ops' }] }) }),
+		).rejects.toThrow(/viewer role not licensed/);
+
+		const { deleteProject } = clients.owner as unknown as {
+			deleteProject: ReturnType<typeof vi.fn>;
+		};
+		expect(deleteProject.mock.calls.map(([id]) => id).sort()).toEqual([
+			'project-Finance',
+			'project-Ops',
+		]);
 	});
 
 	it('sends the live turn of a replay seed first', async () => {

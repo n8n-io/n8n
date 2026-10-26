@@ -290,6 +290,7 @@ async function buildWorkflowViaMcpOnLane(config: {
 			openingNote: prepared?.openingNote,
 			openingMessageSuffix: prepared?.openingSuffix,
 			seededWorkflowIds: prepared?.workflowIds,
+			seededAgentIds: prepared?.agentRefs.map((ref) => ref.id),
 		});
 	} finally {
 		unlinkStagedMcpConfig(mcpConfigPath);
@@ -309,8 +310,7 @@ async function buildWorkflowViaMcpOnLane(config: {
 	}
 
 	// Agents live in the build user's project, so build-user cleanup deletes them.
-	// A seeded Agent is graded when the conversation made no new one; its ref
-	// carries the project an edit result lacks.
+	// A seeded Agent's ref carries the project an edit result lacks.
 	const builtAgent = result.agent;
 	const artifactRefs: ArtifactRef[] = builtAgent
 		? [
@@ -319,7 +319,7 @@ async function buildWorkflowViaMcpOnLane(config: {
 					...builtAgent,
 				},
 			]
-		: (prepared?.agentRefs ?? []);
+		: [];
 	const transcript = prepared?.transcriptPrefix.length
 		? [...prepared.transcriptPrefix, ...result.transcript]
 		: result.transcript;

@@ -615,6 +615,62 @@ describe('buildWorkflowViaMcp', () => {
 			expect(vi.mocked(spawn)).toHaveBeenCalledTimes(1);
 		});
 
+		it('does not count an update_workflow call that applied nothing as an edit', async () => {
+			spawnReturning(() =>
+				emitting([
+					initEvent('sess-1'),
+					assistantEvent({
+						type: 'tool_use',
+						id: 'tu-1',
+						name: 'mcp__n8n-local__update_workflow',
+						input: { workflowId: 'wfOther', operations: [] },
+					}),
+					toolResultEvent('tu-1', JSON.stringify({ workflowId: 'wfOther', appliedOperations: 0 })),
+					resultEvent({ result: 'Nothing to change.' }),
+				]),
+			);
+
+			const result = await buildWorkflowViaMcp({
+				...buildOpts(),
+				createDriver: () => makeDriver([]),
+				seededWorkflowIds: ['wfSeed'],
+			});
+
+			expect(result.workflowId).toBe('wfSeed');
+		});
+
+		it('builds the seeded Agent when a finished conversation made or edited none', async () => {
+			spawnReturning(() =>
+				emitting([initEvent('sess-1'), resultEvent({ result: 'The Agent already does that.' })]),
+			);
+
+			const result = await buildWorkflowViaMcp({
+				...buildOpts(),
+				createDriver: () => makeDriver([]),
+				seededAgentIds: ['agSeed'],
+			});
+
+			expect(result.agent).toEqual({ id: 'agSeed' });
+			expect(result.failureReason).toBeUndefined();
+		});
+
+		it('does not fall back to seeded artifacts when the conversation did not finish', async () => {
+			spawnReturning(() =>
+				emitting([initEvent('sess-1'), resultEvent({ subtype: 'error_during_execution' })]),
+			);
+
+			const result = await buildWorkflowViaMcp({
+				...buildOpts(),
+				settings: { ...settings, maxAttempts: 1 },
+				createDriver: () => makeDriver([]),
+				seededWorkflowIds: ['wfSeed'],
+				seededAgentIds: ['agSeed'],
+			});
+
+			expect(result.workflowId).toBeNull();
+			expect(result.agent).toBeUndefined();
+		});
+
 		it('sends the seeded context before the opening message, and records only the note', async () => {
 			spawnReturning(() => emitting([initEvent('sess-1'), resultEvent({ result: 'Done.' })]));
 

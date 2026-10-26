@@ -587,6 +587,7 @@ async function runConversationAttempt(opts: {
 	label: string;
 	log: (message: string) => void;
 	seededWorkflowIds?: string[];
+	seededAgentIds?: string[];
 }): Promise<ConversationAttempt> {
 	const { context, driver, logFile, label, log } = opts;
 	const timeoutMs = context.settings.buildTimeoutMs ?? 0;
@@ -654,9 +655,9 @@ async function runConversationAttempt(opts: {
 	// The tool result is authoritative; the trailer covers a missed or unparsable result.
 	// A seeded case may edit an existing workflow, or only inspect one: a finished
 	// conversation then builds that workflow, as on the Instance AI arm.
-	const editedAgentId = updatedAgentIds.at(-1);
-	attempt.agent ??= editedAgentId === undefined ? undefined : { id: editedAgentId };
 	const finished = attempt.lastSession?.subtype === 'success';
+	const agentId = updatedAgentIds.at(-1) ?? (finished ? opts.seededAgentIds?.[0] : undefined);
+	attempt.agent ??= agentId === undefined ? undefined : { id: agentId };
 	attempt.workflowId =
 		createdWorkflowIds.at(-1) ??
 		trailerWorkflowId ??
@@ -704,6 +705,8 @@ export async function buildWorkflowViaMcp(opts: {
 	openingMessageSuffix?: string;
 	/** Workflows the case seeded, the attached one first. */
 	seededWorkflowIds?: string[];
+	/** Agents the case seeded, the attached one first. */
+	seededAgentIds?: string[];
 }): Promise<McpBuildResult> {
 	const { conversation, slug, iteration, mcpConfigPath, settings, logDir, createDriver } = opts;
 	const log = opts.log ?? ((message: string) => console.log(message));
@@ -757,6 +760,7 @@ export async function buildWorkflowViaMcp(opts: {
 				label,
 				log,
 				seededWorkflowIds: opts.seededWorkflowIds,
+				seededAgentIds: opts.seededAgentIds,
 			});
 		} finally {
 			if (isolation) removeIsolatedClaudeHome(isolation);

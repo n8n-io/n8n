@@ -185,7 +185,14 @@ export function parseClaudeStream(stdout: string, serverName: string): ClaudeTur
 				) {
 					capture.createdWorkflowIds.push(step.result.workflowId);
 				}
-				if (step.toolName === UPDATE_WORKFLOW_TOOL && typeof step.args?.workflowId === 'string') {
+				// An update whose operations were all skipped changed nothing. A result
+				// without the count (a post-save recovery) still saved the workflow.
+				const appliedNothing = isRecord(step.result) && step.result.appliedOperations === 0;
+				if (
+					step.toolName === UPDATE_WORKFLOW_TOOL &&
+					typeof step.args?.workflowId === 'string' &&
+					!appliedNothing
+				) {
 					capture.updatedWorkflowIds.push(step.args.workflowId);
 				}
 				if (step.toolName === MUTATE_AGENT_TOOL && typeof step.args?.agentId === 'string') {

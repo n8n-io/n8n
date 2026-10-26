@@ -885,7 +885,7 @@ describe('seeded MCP builds', () => {
 		expect(build.priorRunFailed).toBe('wf: boom');
 	});
 
-	it('grades the seeded Agent when the conversation made no new one', async () => {
+	it('does not grade a seeded Agent when the claude run failed', async () => {
 		const agentRef = { type: 'agent' as const, id: 'agent-seed', projectId: 'member-project' };
 		vi.mocked(prepareMcpBuildSeed).mockResolvedValue(
 			seeded({ workflowIds: [], agentRefs: [agentRef] }),
@@ -896,15 +896,17 @@ describe('seeded MCP builds', () => {
 			turns: 3,
 			durationMs: 1000,
 			logFile: null,
-			failureReason: 'no-workflow: Added the tool.',
+			failureReason: 'error_during_execution',
 			transcript: [],
 		});
 		const orchestrator = createBuildOrchestrator(mcpDeps(mcpLane()));
 
 		const { build } = await orchestrator.getOrBuild(0, 'case-a');
 
-		expect(build.success).toBe(true);
-		expect(build.artifactRefs).toEqual([agentRef]);
+		expect(build.success).toBe(false);
+		expect(vi.mocked(buildWorkflowViaMcp)).toHaveBeenCalledWith(
+			expect.objectContaining({ seededAgentIds: ['agent-seed'] }),
+		);
 	});
 
 	it('keeps the seeded Agent ref when the conversation edited that Agent', async () => {

@@ -107,12 +107,11 @@ export async function prepareMcpBuildSeed(opts: {
 	const attachment = resolveAttachment(conversation[0], restored);
 
 	// Created last, so an earlier failure leaves no instance-level project behind.
-	const projectIds: string[] = [];
-	for (const project of remapped?.projects ?? []) {
-		const created = await ownerClient.createTeamProject(project.name);
-		projectIds.push(created.id);
-		await ownerClient.addProjectViewer(created.id, opts.memberUserId);
-	}
+	const projectIds = await createSeedProjects(
+		ownerClient,
+		remapped?.projects ?? [],
+		opts.memberUserId,
+	);
 
 	const transcriptPrefix = remapped ? transcriptPrefixFromSeed(remapped.messages) : [];
 	const workflowIds = restored?.workflowIds ?? [];
@@ -134,6 +133,26 @@ export async function prepareMcpBuildSeed(opts: {
 		projectIds,
 		...(priorRunFailed ? { priorRunFailed } : {}),
 	};
+}
+
+/** Team projects outlive the build user, so a failure part way deletes the ones made. */
+async function createSeedProjects(
+	ownerClient: N8nClient,
+	projects: ConversationSeed['projects'],
+	memberUserId: string,
+): Promise<string[]> {
+	const projectIds: string[] = [];
+	try {
+		for (const project of projects) {
+			const created = await ownerClient.createTeamProject(project.name);
+			projectIds.push(created.id);
+			await ownerClient.addProjectViewer(created.id, memberUserId);
+		}
+	} catch (error) {
+		await Promise.allSettled(projectIds.map(async (id) => await ownerClient.deleteProject(id)));
+		throw error;
+	}
+	return projectIds;
 }
 
 async function resolveSeed(
