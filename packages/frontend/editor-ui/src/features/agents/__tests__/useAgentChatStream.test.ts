@@ -3076,6 +3076,54 @@ describe('useAgentChatStream — loadHistory', () => {
 });
 
 describe('useAgentChatStream — done executionId', () => {
+	it.each(['I stopped. You can continue.', ''])(
+		'keeps the Stop reply through streaming and history reload: %s',
+		async (content) => {
+			getChatMessagesMock.mockRejectedValue({ httpStatusCode: 404 });
+			globalThis.fetch = vi.fn(async () =>
+				makeSseResponse([
+					{
+						type: 'execution-started',
+						executionId: 'report',
+						sessionId: 'thread-1',
+						stopReport: true,
+					},
+					{ type: 'start-step' },
+					...(content ? [{ type: 'text-delta' as const, id: 'text', delta: content }] : []),
+					{ type: 'finish-step' },
+					{ type: 'done', sessionId: 'thread-1', executionId: 'report' },
+				]),
+			) as typeof fetch;
+			const hook = buildHook('thread-1');
+			await hook.sendMessage('Stop');
+			await flushPromises();
+			expect(hook.messages.value.filter((message) => message.stopReport)).toMatchObject([
+				{ role: 'assistant', content, executionId: 'report' },
+			]);
+			getChatMessagesMock.mockResolvedValue({
+				messages: [
+					{
+						id: 'report:assistant',
+						role: 'assistant',
+						stopReport: true,
+						executionId: 'report',
+						executionStatus: 'success',
+						content: content ? [{ type: 'text', text: content }] : [],
+					},
+					{ id: 'later', role: 'user', content: [{ type: 'text', text: 'Continue' }] },
+				],
+				openSuspensions: [],
+				activeExecutionId: null,
+			});
+			const reopened = buildHook('thread-1');
+			await reopened.loadHistory();
+			expect(reopened.messages.value).toMatchObject([
+				{ role: 'assistant', stopReport: true, content, executionId: 'report' },
+				{ role: 'user', content: 'Continue' },
+			]);
+		},
+	);
+
 	it('stamps executionId from done onto minted messages', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'text-start', id: 't1' },
@@ -3449,37 +3497,6 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 });
 
 describe('useAgentChatStream — transcript push', () => {
-	it('loads a signal before output without starting a local stream', async () => {
-		const { hook, dispose } = scopedHook('thread-1');
-		const backgroundJobSignal = {
-			tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
-		};
-		getChatMessagesMock.mockResolvedValue({
-			messages: [
-				{
-					id: 'exec-1:assistant',
-					executionId: 'exec-1',
-					role: 'assistant',
-					content: [],
-					executionStatus: 'running',
-					backgroundTaskSignal: backgroundJobSignal,
-				},
-			],
-			openSuspensions: [],
-		});
-		try {
-			emitPush(update());
-			emitPush(update());
-			await flushPromises();
-			expect(hook.messages.value).toHaveLength(1);
-			expect(hook.messages.value[0]).toMatchObject({ backgroundJobSignal, content: '' });
-			expect(hook.isStreaming.value).toBe(false);
-			expect(hook.messagingState.value).toBe('idle');
-		} finally {
-			dispose();
-		}
-	});
-
 	/** The subscription is eager, so an effect scope is enough — no mount needed. */
 	function scopedHook(continueSessionId?: string) {
 		const scope = effectScope();
@@ -4161,6 +4178,33 @@ describe('useAgentChatStream — execution recovery', () => {
 			expect(fetch).toHaveBeenCalledOnce();
 		},
 	);
+
+	it('accepts a queued stop without adding a user bubble or claiming the foreground stream', async () => {
+		vi.mocked(fetch).mockImplementation(async (_url, init) =>
+			makeAbortableSseResponse(
+				[{ type: 'message-queued', queueId: 'report', sessionId: 'thread-1' }],
+				init?.signal ?? null,
+			),
+		);
+		const hook = buildHook('thread-1');
+		await hook.requestTaskStop(null);
+		expect(fetch).toHaveBeenCalledWith(
+			expect.stringContaining('/thread-1/task-cancellation/stream'),
+			expect.objectContaining({ body: JSON.stringify({ planId: null }) }),
+		);
+		expect(hook.messages.value).toEqual([]);
+		expect(hook.isStreaming.value).toBe(false);
+		hook.detachStream();
+	});
+
+	it('leaves a rejected stop to the inline status', async () => {
+		vi.mocked(fetch).mockResolvedValue(
+			makeSseResponse([{ type: 'error', message: 'Stop failed' }], false),
+		);
+		const hook = buildHook('thread-1');
+		await expect(hook.requestTaskStop(null)).rejects.toThrow('Could not confirm');
+		expect(hook.messages.value).toEqual([]);
+	});
 
 	it('detaches the old reader on reload and leaves Stop to an explicit request', async () => {
 		let signal: AbortSignal | null = null;

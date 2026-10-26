@@ -608,6 +608,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	// -------------------------------------------------------------------------
 
 	interface StreamSession {
+		stopReport?: boolean;
 		target: string;
 		controller: AbortController;
 		queueId?: string;
@@ -616,6 +617,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		sessionId?: string;
 		usageComplete?: boolean;
 		needsStartValidation?: boolean;
+		silentBeforeStart?: boolean;
 		busy?: boolean;
 		/** Gets the queue item id when the message was queued rather than started. */
 		onAccepted?: (queueId?: string) => void;
@@ -654,6 +656,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			toolCalls: [],
 			status: CHAT_MESSAGE_STATUS.STREAMING,
 			executionId: session.executionId,
+			...(session.stopReport ? { stopReport: true } : {}),
 		});
 		messages.value.push(msg);
 		session.current = msg;
@@ -927,6 +930,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	function dropOrphanMintedBubbles(session: StreamSession): void {
 		for (const msg of session.minted) {
 			if (
+				!msg.stopReport &&
 				!msg.content &&
 				(msg.toolCalls?.length ?? 0) === 0 &&
 				getMessageThinkingSegments(msg).length === 0 &&
@@ -1072,6 +1076,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				session.executionId = event.executionId;
 				session.sessionId = event.sessionId;
 				notifyUsage(session);
+				session.stopReport = event.stopReport;
 				activeExecutionId.value = event.executionId;
 				acceptedSessionId.value = event.sessionId;
 				session.onAccepted?.();
@@ -1083,7 +1088,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// LLM iteration boundary — the next text/tool event mints a
 				// fresh ChatMessage. We don't flip status here; `done` is what
 				// finalizes the message at the end of the stream.
-				session.current = undefined;
+				if (!session.stopReport) session.current = undefined;
 				break;
 			case 'text-start':
 			case 'text-end':
@@ -1326,6 +1331,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'error': {
 				session.errorEmitted = true;
+				if (session.silentBeforeStart && !session.executionId) {
+					session.terminalEventReceived = true;
+					break;
+				}
 				if (event.errorCode === AGENT_CHAT_ERROR_CODES.turnAlreadyRunning) {
 					session.busy = true;
 					isCancelling.value = false;
@@ -1333,6 +1342,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					isRecovering.value = true;
 					return { done: true };
 				}
+				if (session.stopReport && session.minted.size === 0) ensureCurrent(session);
 				settleOpenReasoning(session);
 				dropOrphanMintedBubbles(session);
 				markInFlightStateFailed(session);
@@ -1359,6 +1369,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'done':
 				notifyUsage(session, undefined, true);
+				if (session.stopReport && session.minted.size === 0) ensureCurrent(session);
 				if (event.executionId === activeExecutionId.value) activeExecutionId.value = null;
 				settleOpenReasoning(session);
 				if (event.executionId) {
@@ -1499,11 +1510,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		body: Record<string, unknown>,
 		onAccepted?: (queueId?: string) => void,
 		userMessage?: ChatMessage,
+		waitForStart = false,
 	): Promise<{ outcome: StreamOutcome }> {
 		const controller = new AbortController();
 		const session: StreamSession = {
 			controller,
 			userMessage,
+			silentBeforeStart: waitForStart,
 			target: targetKey(),
 			onAccepted,
 			errorEmitted: false,
@@ -1513,7 +1526,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			openReasoning: new Map(),
 		};
 		streams.set(controller, session);
-		if (!userMessage) {
+		if (!userMessage && !waitForStart) {
 			isStreamOpen.value = true;
 			streamVersion++;
 			abortController.value = controller;
@@ -1593,6 +1606,18 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				}
 			}
 		}
+	}
+
+	async function requestTaskStop(planId: string | null): Promise<void> {
+		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
+		if (!threadId) throw new Error('Session not found');
+		const url = `${agentChatBaseUrl(rootStore.restApiContext, params.projectId.value, params.agentId.value, channel.value)}/${encodeURIComponent(threadId)}/task-cancellation/stream`;
+		await new Promise<void>((resolve, reject) => {
+			void postAndConsume(url, { planId }, () => resolve(), undefined, true).then(({ outcome }) => {
+				if (outcome === 'completed') resolve();
+				else reject(new Error('Could not confirm the stop request'));
+			}, reject);
+		});
 	}
 
 	async function streamChat(
@@ -1985,6 +2010,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		clearHistory,
 		clearBudgetNotices,
 		sendMessage,
+		requestTaskStop,
 		stopGenerating,
 		detachStream,
 		resume,

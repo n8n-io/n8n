@@ -438,6 +438,56 @@ and output in the collapsed details and the trace. Keep earlier failed calls
 visible after a successful retry. Unexpected failures keep the existing error
 treatment.
 
+## Plan progress
+
+Read the current plan from the server. Historical tool results do not define the card.
+Refresh on conversation load, job updates, plan-tool completion, and reconnection.
+Accept status changes with an unchanged plan revision. Discard superseded requests.
+
+Use calculated task statuses for progress, the spinner, timing, and visibility.
+Count each standalone task and empty group as one task. An empty group stays Pending.
+When a group has subtasks, count those subtasks instead of the group.
+Show `paused` as **Stopped**. A capacity reservation does not start the spinner.
+Hide the card when all leaves have final statuses or the plan is closed.
+Parent-run tasks need explicit updates. Delegated tasks follow their owning job.
+
+## Stop tasks in Agent Preview
+
+Place **Stop all tasks** beside **View trace** in the expanded plan card.
+Use the same action in the background task card when there is no plan.
+Hide the stack during the request and show the inline stop status.
+Keep the user's expansion choice. Restore focus when the action disappears.
+Keep the action available while the plan has unfinished work. This includes
+planning and result review between tasks. Hide it after the plan stops or ends.
+
+Hide the stack immediately when the user selects **Stop all tasks**. Show an
+inline **Stopping all tasks…** status and **This may take a while** at the end
+of the scrollable transcript. Keep stop, summary, and retry statuses in the
+chat flow. Do not attach them to the composer. After the captured work settles,
+show **Preparing a summary…** until the reply appears.
+Keep the stopped stack hidden. Explain the outcome in a brief chat reply.
+Keep this reply and its **View trace** link in message history. Later messages,
+continuation, and reloads must not remove it. Each Stop keeps its own reply.
+Use plain reply text, as the paused wireframe shows. Do not add a collapsed card.
+If the summary has no text, keep a factual fallback in that same history entry.
+Keep results and **View trace** available. Do not claim that external actions
+were undone or that late work cannot run.
+
+Keep the stack visible after a recovered tool error if work is
+still active. A failure to stop shows an inline explanation and **Retry stopping**.
+Keep the stack hidden during that failure. A report failure shows a factual
+fallback with trace access.
+
+Stop remains resumable in the same chat. The user names tasks in a message for
+selective continuation. Show the stack again after continuation succeeds or
+new work starts. A new message alone does not resume stopped tasks. Keep the
+paused task states and completed results. Do not add row controls.
+
+The acknowledgement uses the normal message queue. Disable tools and steering
+for this reply. Composer Stop controls only the current response, including
+the acknowledgement. Discard older queued input when Stop starts. Process later
+messages after the acknowledgement. Restart completion is best effort.
+
 ## Extend this document
 
 Add a section when an Agent-specific pattern applies to two or more Agent

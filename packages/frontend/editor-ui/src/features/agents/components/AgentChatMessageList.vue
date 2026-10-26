@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { N8nButton, N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nIcon,
+	N8nIconButton,
+	N8nLink,
+	N8nText,
+} from '@n8n/design-system';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
-import { useSessionStorage } from '@vueuse/core';
+import { useResizeObserver, useSessionStorage } from '@vueuse/core';
 import { TIME } from '@/app/constants/durations';
+import type { RouteLocationRaw } from 'vue-router';
 import {
 	DISPLAY_GROUP_KIND,
 	isAssistantGroup,
@@ -71,6 +79,7 @@ const props = defineProps<{
 	budgetIncreasePending?: boolean;
 	retryMessageId?: string;
 	retryDisabled?: boolean;
+	taskTraceRoute?: RouteLocationRaw;
 }>();
 
 const emit = defineEmits<{
@@ -82,6 +91,8 @@ const emit = defineEmits<{
 }>();
 
 defineSlots<{
+	/** Temporary status at the end of the transcript. */
+	status?: () => unknown;
 	/** Host actions for a finished agent reply, next to the default copy action. */
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
 }>();
@@ -185,10 +196,12 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 const interactionExtensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
+const statusRef = useTemplateRef<HTMLDivElement>('statusRef');
 
 /** True when the bubble of `message` shows something besides host events. */
 function hasBubbleContent(message: ChatMessage): boolean {
 	return !!(
+		message.stopReport ||
 		message.content.trim() ||
 		message.renderParts?.length ||
 		message.toolCalls?.length ||
@@ -228,6 +241,7 @@ const visibleMessages = computed(() => {
 			hostEvents.length > 0 ||
 			hasBubbleContent(message) ||
 			!!message.backgroundJobSignal ||
+			!!message.stopReport ||
 			message.status === CHAT_MESSAGE_STATUS.STREAMING;
 		return keep ? [{ ...message, hostEvents: hostEvents.length ? hostEvents : undefined }] : [];
 	});
@@ -627,6 +641,7 @@ watch(
 );
 
 watch(() => props.messagingState, autoScrollIfSticky, { flush: 'post' });
+useResizeObserver(statusRef, autoScrollIfSticky);
 
 // Content within the last message grew (streaming text, tool calls, thinking,
 // host events). Only follow the stream down if the user is still near the
@@ -858,6 +873,35 @@ watch(
 					>
 						{{ group.message.content }}
 					</div>
+					<div
+						v-else-if="group.message.stopReport"
+						:class="$style.stopReply"
+						data-testid="agent-chat-stop-reply"
+					>
+						<template
+							v-if="
+								group.message.content.trim() ||
+								group.message.status !== CHAT_MESSAGE_STATUS.STREAMING
+							"
+						>
+							<div :class="[$style.chatMessage, $style.markdownContent, $style.stopReplyText]">
+								<AgentMarkdownChunk
+									v-if="group.message.content.trim()"
+									:source="group.message.content"
+								/>
+								<p v-else>{{ i18n.baseText('agents.chat.tasks.inline.reportFailed') }}</p>
+							</div>
+							<N8nLink
+								v-if="taskTraceRoute"
+								:to="taskTraceRoute"
+								theme="text"
+								size="small"
+								underline
+							>
+								{{ i18n.baseText('agents.chat.plan.viewTrace') }}
+							</N8nLink>
+						</template>
+					</div>
 					<template v-else>
 						<AgentChatRetryError
 							v-if="isRetryableChatError(group.message)"
@@ -891,15 +935,15 @@ watch(
 								/>
 							</div>
 						</template>
-						<AgentBudgetNoticeCard
-							v-for="notice in group.message.budgetNotices ?? []"
-							:key="notice.id"
-							:code="notice.code"
-							:can-increase="canIncreaseForNotice(notice)"
-							:pending="budgetIncreasePending"
-							@increase="emit('increase-budget', $event)"
-						/>
 					</template>
+					<AgentBudgetNoticeCard
+						v-for="notice in group.message.budgetNotices ?? []"
+						:key="notice.id"
+						:code="notice.code"
+						:can-increase="canIncreaseForNotice(notice)"
+						:pending="budgetIncreasePending"
+						@increase="emit('increase-budget', $event)"
+					/>
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
 					<N8nCallout
 						v-if="group.id === changeRequestGroupId"
@@ -997,6 +1041,9 @@ watch(
 			<div :class="$style.content">
 				<AgentTypingIndicator :class="$style.typingIndicator" />
 			</div>
+		</div>
+		<div v-if="$slots.status" ref="statusRef" :class="$style.message">
+			<slot name="status" />
 		</div>
 	</div>
 </template>
@@ -1099,6 +1146,21 @@ watch(
 /* Hugs its label instead of stretching with the row above it. */
 .changeRequestAction {
 	align-self: flex-start;
+}
+
+.stopReply {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: baseline;
+	gap: var(--spacing--sm);
+}
+
+.stopReplyText {
+	min-width: 0;
+
+	> p {
+		margin: 0;
+	}
 }
 
 .chatMessage {

@@ -143,7 +143,7 @@ function moveThinkingToRunTail(groups: DisplayGroup[]): void {
  * handoff uses the turn that owns the errored tool.
  */
 function canAppendToToolRun(last: ToolRunGroup, message: AgentsChatMessage): boolean {
-	if (last.finalMessage) return false;
+	if (last.finalMessage || message.stopReport) return false;
 	if (
 		last.executionId !== undefined &&
 		message.executionId !== undefined &&
@@ -238,11 +238,13 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 	for (const message of messages) {
 		if (message.role === CHAT_MESSAGE_ROLE.ASSISTANT && message.backgroundJobSignal) {
 			// Keep the signal key stable when the same turn gains text or tool calls.
-			groups.push({
-				kind: DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL,
-				id: `${message.executionId ?? message.id}:background-job-signal`,
-				signal: message.backgroundJobSignal,
-			});
+			if (message.backgroundJobSignal.tasks.length > 0) {
+				groups.push({
+					kind: DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL,
+					id: `${message.executionId ?? message.id}:background-job-signal`,
+					signal: message.backgroundJobSignal,
+				});
+			}
 			if (
 				!message.content &&
 				!message.toolCalls?.length &&

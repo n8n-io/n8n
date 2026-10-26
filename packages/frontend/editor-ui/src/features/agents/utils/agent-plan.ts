@@ -14,9 +14,13 @@ const itemFields = {
 	title: z.string().min(1),
 	description: z.string().optional(),
 	resultSummary: z.string().optional(),
-	status: z.enum(['pending', 'in_progress', 'done', 'failed', 'cancelled']),
+	status: z.enum(['pending', 'in_progress', 'paused', 'done', 'failed', 'cancelled']),
 };
-const taskSchema = z.object({ ...itemFields, kind: z.literal('task') });
+const taskSchema = z.object({
+	...itemFields,
+	kind: z.literal('task'),
+	jobId: z.string().uuid().optional(),
+});
 const groupSchema = z.object({
 	...itemFields,
 	kind: z.literal('group'),
@@ -27,6 +31,8 @@ const planSchema = z.object({
 	revision: z.number().int().positive(),
 	closed: z.boolean(),
 	startedAt: z.string().datetime().nullable().optional(),
+	lastActivityAt: z.string().datetime().nullable().optional(),
+	finishedAt: z.string().datetime().nullable().optional(),
 	closedAt: z.string().datetime().nullable().optional(),
 	document: z.object({
 		title: z.string().min(1),
@@ -63,6 +69,17 @@ export function isRecoverablePlanError(call: ToolCall): boolean {
 
 export type AgentPlanView = z.infer<typeof planSchema>;
 export type AgentPlanItemStatus = AgentPlanView['document']['items'][number]['status'];
+
+export function isAgentPlanFinished(plan: AgentPlanView): boolean {
+	const tasks = plan.document.items.flatMap((item) =>
+		item.kind === 'group' && item.tasks.length ? item.tasks : [item],
+	);
+	return (
+		plan.closed ||
+		(tasks.length > 0 &&
+			tasks.every((item) => ['done', 'failed', 'cancelled'].includes(item.status)))
+	);
+}
 
 const comparisonDocumentSchema = planSchema.shape.document.passthrough().extend({
 	items: z.array(
@@ -199,7 +216,8 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 		}
 	}
 
-	return buildDisplayGroups(messages).flatMap((group): DisplayGroup[] => {
+	const groups = buildDisplayGroups(messages);
+	return groups.flatMap((group): DisplayGroup[] => {
 		if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return [group];
 		if (group.kind === DISPLAY_GROUP_KIND.MESSAGE) {
 			return [
@@ -230,30 +248,4 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 
 		return [{ ...group, toolCalls }];
 	});
-}
-
-export function selectLatestAgentPlan(messages: ChatMessage[]): AgentPlanView | null {
-	const plans = new Map<string, AgentPlanView>();
-	let current: AgentPlanView | null = null;
-	for (const message of messages) {
-		for (const call of message.toolCalls ?? []) {
-			if (!planToolNames.has(call.tool) || call.state !== TOOL_CALL_STATE.DONE || call.canceled) {
-				continue;
-			}
-
-			if (call.tool === 'read_plan' && call.output === null) {
-				current = null;
-				plans.clear();
-				continue;
-			}
-
-			const result = planSchema.safeParse(call.output);
-			if (!result.success) continue;
-			const previous = plans.get(result.data.planId);
-			current = previous && previous.revision >= result.data.revision ? previous : result.data;
-			plans.set(current.planId, current);
-		}
-	}
-
-	return current;
 }

@@ -5,6 +5,8 @@ import type { RouteLocationRaw } from 'vue-router';
 import {
 	type IconColor,
 	N8nIcon,
+	N8nButton,
+	N8nLink,
 	N8nScrollArea,
 	N8nText,
 	N8nVisuallyHidden,
@@ -15,18 +17,45 @@ import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
 import ChatCollapsibleContainer from '@/features/ai/shared/components/ChatCollapsibleContainer.vue';
 import { TIME } from '@/app/constants/durations';
 
-const props = defineProps<{ plan: AgentPlanView; traceRoute?: RouteLocationRaw }>();
-const i18n = useI18n();
-const expanded = ref(false);
+const props = defineProps<{
+	plan: AgentPlanView;
+	traceRoute?: RouteLocationRaw;
+	showStop?: boolean;
+	canStop?: boolean;
+	stopping?: boolean;
+	stopped?: boolean;
+	stoppedAt?: string;
+	reportFailed?: boolean;
+	stopFailed?: boolean;
+}>();
+const isStopped = computed(
+	() =>
+		props.stopped ||
+		(tasks.value.some((task) => task.status === 'paused') &&
+			tasks.value.every((task) => ['paused', 'done', 'failed', 'cancelled'].includes(task.status))),
+);
+const expanded = defineModel<boolean>('expanded', { default: false });
 watch(
 	() => props.plan.planId,
 	() => {
 		expanded.value = false;
 	},
 );
+const emit = defineEmits<{ stop: [event: MouseEvent] }>();
+const i18n = useI18n();
 const now = ref(Date.now());
 const documentVisibility = useDocumentVisibility();
 const startTime = computed(() => Date.parse(props.plan.startedAt ?? ''));
+const tasks = computed(() =>
+	props.plan.document.items.flatMap((item) =>
+		item.kind === 'group' && item.tasks.length > 0 ? item.tasks : [item],
+	),
+);
+const isFinished = computed(
+	() =>
+		tasks.value.length > 0 &&
+		tasks.value.every((task) => ['done', 'failed', 'cancelled'].includes(task.status)),
+);
 const { pause, resume } = useIntervalFn(
 	() => {
 		now.value = Date.now();
@@ -38,6 +67,8 @@ watch(
 	() =>
 		Number.isFinite(startTime.value) &&
 		!props.plan.closed &&
+		tasks.value.some((task) => task.status === 'in_progress') &&
+		!isStopped.value &&
 		documentVisibility.value === 'visible',
 	(active) => {
 		if (active) {
@@ -48,30 +79,47 @@ watch(
 	{ immediate: true },
 );
 const elapsed = computed(() => {
-	const endTime = props.plan.closed ? Date.parse(props.plan.closedAt ?? '') : now.value;
+	const endTime = isFinished.value
+		? Date.parse(props.plan.finishedAt ?? props.plan.closedAt ?? '') || now.value
+		: props.plan.closed
+			? Date.parse(props.plan.closedAt ?? '')
+			: isStopped.value
+				? Date.parse(props.plan.lastActivityAt ?? props.stoppedAt ?? '') || now.value
+				: tasks.value.some((task) => task.status === 'in_progress')
+					? now.value
+					: Date.parse(props.plan.lastActivityAt ?? '') || now.value;
 	if (!Number.isFinite(startTime.value) || !Number.isFinite(endTime)) return null;
 	return formatAgentElapsedTime(endTime - startTime.value);
 });
-const label = computed(() =>
-	props.plan.closed
+const label = computed(() => {
+	if (props.stopping) return i18n.baseText('agents.chat.tasks.stopping');
+	if (props.stopFailed) return i18n.baseText('agents.chat.tasks.stopFailedTitle');
+	if (isStopped.value) return i18n.baseText('agents.chat.tasks.stopped');
+	return props.plan.closed
 		? (props.plan.document.presentation?.detail ?? props.plan.document.title)
 		: (props.plan.document.presentation?.label ??
-			i18n.baseText('agents.chat.plan.title', {
-				interpolate: { title: props.plan.document.title },
-			})),
-);
+				i18n.baseText('agents.chat.plan.title', {
+					interpolate: { title: props.plan.document.title },
+				}));
+});
+type PlanItem = AgentPlanView['document']['items'][number];
+type DisplayStatus = AgentPlanItemStatus;
+function displayStatus(item: PlanItem): DisplayStatus {
+	return item.status;
+}
 const isRunning = computed(
 	() =>
 		!props.plan.closed &&
-		props.plan.document.items.some(
-			(item) =>
-				item.status === 'in_progress' ||
-				(item.kind === 'group' && item.tasks.some((task) => task.status === 'in_progress')),
-		),
+		!isFinished.value &&
+		!isStopped.value &&
+		props.plan.document.items
+			.flatMap((item) => (item.kind === 'group' ? [item, ...item.tasks] : [item]))
+			.some((item) => displayStatus(item) === 'in_progress'),
 );
-const statusLabels: Record<AgentPlanItemStatus, BaseTextKey> = {
+const statusLabels: Record<DisplayStatus, BaseTextKey> = {
 	pending: 'agents.chat.plan.status.pending',
 	in_progress: 'agents.chat.plan.status.inProgress',
+	paused: 'agents.chat.tasks.stopped',
 	done: 'agents.chat.plan.status.done',
 	failed: 'agents.chat.plan.status.failed',
 	cancelled: 'agents.chat.plan.status.canceled',
@@ -79,17 +127,28 @@ const statusLabels: Record<AgentPlanItemStatus, BaseTextKey> = {
 const statusIcons = {
 	pending: 'circle',
 	in_progress: 'loader',
+	paused: 'circle-pause',
 	done: 'check',
 	failed: 'x',
 	cancelled: 'x',
 } as const;
-const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
+const statusIconColors: Record<DisplayStatus, IconColor> = {
 	pending: 'text-light',
 	in_progress: 'text-light',
+	paused: 'text-light',
 	done: 'success',
 	failed: 'danger',
 	cancelled: 'text-xlight',
 } as const;
+const summary = computed(() => {
+	return i18n.baseText('agents.chat.plan.progress', {
+		adjustToNumber: tasks.value.length,
+		interpolate: {
+			done: tasks.value.filter((task) => task.status === 'done').length,
+			total: tasks.value.length,
+		},
+	});
+});
 </script>
 
 <template>
@@ -163,14 +222,14 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 								<span
 									:class="$style.parentIcon"
 									role="img"
-									:aria-label="i18n.baseText(statusLabels[item.status])"
-									:title="i18n.baseText(statusLabels[item.status])"
-									:data-status="item.status"
+									:aria-label="i18n.baseText(statusLabels[displayStatus(item)])"
+									:title="i18n.baseText(statusLabels[displayStatus(item)])"
+									:data-status="displayStatus(item)"
 								>
 									<N8nIcon
-										:icon="statusIcons[item.status]"
-										:spin="item.status === 'in_progress'"
-										:color="statusIconColors[item.status]"
+										:icon="statusIcons[displayStatus(item)]"
+										:spin="displayStatus(item) === 'in_progress'"
+										:color="statusIconColors[displayStatus(item)]"
 										size="medium"
 										aria-hidden="true"
 									/>
@@ -179,10 +238,10 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 								<N8nText
 									bold
 									step="xs"
-									:color="item.status === 'done' ? undefined : 'text-light'"
+									:color="displayStatus(item) === 'done' ? undefined : 'text-light'"
 									:class="[
 										$style.itemTitle,
-										{ [$style.inProgress]: item.status === 'in_progress' },
+										{ [$style.inProgress]: displayStatus(item) === 'in_progress' },
 									]"
 									:title="item.title"
 									>{{ item.title }}</N8nText
@@ -202,14 +261,14 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 									</svg>
 									<span
 										role="img"
-										:aria-label="i18n.baseText(statusLabels[task.status])"
-										:title="i18n.baseText(statusLabels[task.status])"
-										:data-status="task.status"
+										:aria-label="i18n.baseText(statusLabels[displayStatus(task)])"
+										:title="i18n.baseText(statusLabels[displayStatus(task)])"
+										:data-status="displayStatus(task)"
 									>
 										<N8nIcon
-											:icon="statusIcons[task.status]"
-											:color="statusIconColors[task.status]"
-											:spin="task.status === 'in_progress'"
+											:icon="statusIcons[displayStatus(task)]"
+											:color="statusIconColors[displayStatus(task)]"
+											:spin="displayStatus(task) === 'in_progress'"
 											size="medium"
 											aria-hidden="true"
 										/>
@@ -217,10 +276,10 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 									<N8nText
 										bold
 										step="xs"
-										:color="task.status === 'done' ? undefined : 'text-light'"
+										:color="displayStatus(task) === 'done' ? undefined : 'text-light'"
 										:class="[
 											$style.itemTitle,
-											{ [$style.inProgress]: task.status === 'in_progress' },
+											{ [$style.inProgress]: displayStatus(task) === 'in_progress' },
 										]"
 										:title="task.title"
 										>{{ task.title }}</N8nText
@@ -231,6 +290,46 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 					</ul>
 				</div>
 			</N8nScrollArea>
+			<div :class="$style.footer">
+				<N8nLink
+					v-if="traceRoute"
+					:to="traceRoute"
+					theme="text"
+					size="small"
+					underline
+					data-testid="agent-chat-plan-trace"
+				>
+					<span :class="$style.traceLabel">
+						<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
+						{{ i18n.baseText('agents.chat.plan.viewTrace') }}
+					</span>
+				</N8nLink>
+				<N8nButton
+					v-if="showStop || canStop || stopping"
+					variant="ghost"
+					size="small"
+					:disabled="stopping || !canStop"
+					data-testid="agent-chat-plan-stop"
+					@click="emit('stop', $event)"
+				>
+					{{
+						i18n.baseText(
+							stopping
+								? 'agents.chat.tasks.stopping'
+								: stopFailed
+									? 'agents.chat.tasks.retry'
+									: 'agents.chat.tasks.stopAll',
+						)
+					}}
+				</N8nButton>
+				<span :class="$style.summary" data-testid="agent-chat-plan-summary">{{ summary }}</span>
+			</div>
+			<p v-if="stopFailed" :class="$style.detail" role="status">
+				{{ i18n.baseText('agents.chat.backgroundTasks.stopError') }}
+			</p>
+			<p v-if="reportFailed" :class="$style.detail" role="status">
+				{{ i18n.baseText('agents.chat.tasks.reportFailed') }}
+			</p>
 		</ChatCollapsibleContainer>
 	</div>
 </template>
@@ -245,7 +344,25 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 }
 
 .footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
+}
+
+.traceLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.summary {
+	flex: 0 0 auto;
+	margin-inline-start: auto;
+	font-size: var(--font-size--2xs);
+	font-variant-numeric: tabular-nums;
+	color: var(--text-color--subtle);
 }
 
 .timer {
