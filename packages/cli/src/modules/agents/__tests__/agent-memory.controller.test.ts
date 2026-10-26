@@ -16,6 +16,7 @@ describe('AgentMemoryController route access scopes', () => {
 
 	it.each([
 		['listMemoryEntries', 'agent:read'],
+		['listMemorySourceFacets', 'agent:read'],
 		['deleteMemoryEntry', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
@@ -35,6 +36,16 @@ describe('AgentMemoryController', () => {
 			controller.listMemoryEntries(req, mock<Response>(), 'project-1', 'agent-1', { limit: '10' }),
 		).resolves.toBe(page);
 		expect(service.list).toHaveBeenCalledWith('agent-1', 'project-1', 'viewer-1', { limit: '10' });
+	});
+
+	it('lists the source facets for the requesting user', async () => {
+		const facets = { groups: [] };
+		service.listSourceFacets.mockResolvedValue(facets);
+
+		await expect(
+			controller.listMemorySourceFacets(req, mock<Response>(), 'project-1', 'agent-1'),
+		).resolves.toBe(facets);
+		expect(service.listSourceFacets).toHaveBeenCalledWith('agent-1', 'project-1', 'viewer-1');
 	});
 
 	it('deletes one entry', async () => {

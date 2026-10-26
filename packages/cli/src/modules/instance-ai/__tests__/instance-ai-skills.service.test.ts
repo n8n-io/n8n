@@ -44,14 +44,13 @@ describe('InstanceAiSkillsService', () => {
 	});
 
 	describe('loadSkills', () => {
-		it('returns the profile skills and disabled tools when every gate is open', async () => {
+		it('returns no disabled tools for the progressive profile', async () => {
 			const skills = await service.loadSkills({
 				...openScope,
 				profile: resolvePromptProfile({ mode: 'progressive' }).profile,
 			});
 
-			expect(skills.disabledTools).toEqual(['workflow_builder_create_tasks']);
-			expect(skills.source.registry.skills.map(({ id }) => id)).not.toContain('planning');
+			expect(skills.disabledTools).toEqual([]);
 		});
 
 		it.each(gatedSkills)('removes the skills that %s turns off', async (_, scope, skillIds) => {

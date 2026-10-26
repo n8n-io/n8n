@@ -246,16 +246,41 @@ export interface AgentVersionDto {
 	author: string;
 }
 
-export type AgentMemoryEntrySourceKind =
-	| 'slack'
-	| 'linear'
-	| 'discord'
-	| 'telegram'
-	| 'whatsapp'
-	| 'teams'
-	| 'n8n-chat'
-	| 'preview'
-	| 'build';
+export const AGENT_MEMORY_ENTRY_SOURCE_KINDS = [
+	'slack',
+	'linear',
+	'discord',
+	'telegram',
+	'whatsapp',
+	'teams',
+	'n8n-chat',
+	'preview',
+	'build',
+] as const;
+
+export type AgentMemoryEntrySourceKind = (typeof AGENT_MEMORY_ENTRY_SOURCE_KINDS)[number];
+
+/**
+ * Sources the memory list can filter by. `users` covers the n8n users who chatted
+ * with the agent, in Preview or in n8n Chat.
+ */
+export const AGENT_MEMORY_FILTER_SOURCES = [
+	'slack',
+	'linear',
+	'discord',
+	'telegram',
+	'whatsapp',
+	'teams',
+	'users',
+	'build',
+] as const;
+
+export type AgentMemoryFilterSource = (typeof AGENT_MEMORY_FILTER_SOURCES)[number];
+
+/** The kind of source inside an integration that the memory list can filter by. */
+export const AGENT_MEMORY_SOURCE_FACETS = ['user', 'channel', 'team'] as const;
+
+export type AgentMemorySourceFacet = (typeof AGENT_MEMORY_SOURCE_FACETS)[number];
 
 /** Where a stored memory came from. Every part except `kind` is dropped when unknown. */
 export interface AgentMemoryEntrySourceDto {
@@ -279,9 +304,32 @@ export interface AgentMemoryEntryDto {
 
 export interface AgentMemoryEntriesPageDto {
 	items: AgentMemoryEntryDto[];
-	/** Count of all active entries, not just this page. */
+	/** Count of all active entries that match the filter, not just this page. */
 	total: number;
 	nextCursor: string | null;
+}
+
+export interface AgentMemorySourceFacetItemDto {
+	/** Platform id for integrations, n8n user id for chat surfaces. */
+	id: string;
+	/** Snapshot of the name. Absent when no name is known. */
+	name?: string;
+	/** The requesting user. Only set for n8n users. */
+	isViewer?: boolean;
+}
+
+/** The sources of one integration or chat surface that have active memories. */
+export interface AgentMemorySourceFacetGroupDto {
+	kind: AgentMemoryFilterSource;
+	users: AgentMemorySourceFacetItemDto[];
+	/** Slack and Discord only. */
+	channels?: AgentMemorySourceFacetItemDto[];
+	/** Linear only. */
+	teams?: AgentMemorySourceFacetItemDto[];
+}
+
+export interface AgentMemorySourceFacetsDto {
+	groups: AgentMemorySourceFacetGroupDto[];
 }
 
 export interface AgentFileDto {
