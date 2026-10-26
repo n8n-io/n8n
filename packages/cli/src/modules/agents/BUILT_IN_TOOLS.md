@@ -211,7 +211,7 @@ Source: [`background/background-job-tools.ts`](./background/background-job-tools
 
 | Tool | Purpose |
 | --- | --- |
-| `check_background_jobs` | Lists the background jobs of the conversation with their status and results. |
+| `check_background_jobs` | Lists the background jobs of the conversation with their status, results and output files. |
 | `cancel_background_job` | Cancels a running background job by its job id. |
 | `resume_background_jobs` | Resumes selected stopped plan tasks, or the latest stop group outside a plan. |
 
