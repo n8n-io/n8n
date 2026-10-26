@@ -61,7 +61,6 @@ export const CLOUD_BROWSER_TOOLS: ReadonlySet<string> = new Set([
 	'browser_tab_close',
 	// Page inspection
 	'browser_snapshot',
-	'browser_screenshot',
 	'browser_content',
 	'browser_console',
 	'browser_network',
