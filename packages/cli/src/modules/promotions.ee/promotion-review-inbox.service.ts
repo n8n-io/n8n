@@ -40,6 +40,11 @@ import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-mer
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
 import { approvalNote } from './promotion-review.utils';
 
+/** One live look at a review on the host. A failed read says why, and never a state. */
+export type LiveReviewState =
+	| { ok: true; state: PromotionReviewState }
+	| { ok: false; remoteError: PromotionReviewRemoteError };
+
 type RemoteView = Readonly<{
 	mergeRequest: GitLabMergeRequest | null;
 	remoteError: PromotionReviewRemoteError | null;
@@ -65,6 +70,8 @@ const UNCONFIRMED_MERGE =
 @Service()
 export class PromotionReviewInboxService {
 	private readonly syncOnce = singleFlight(async () => await this.syncOpenReviews());
+
+	private readonly liveReads = new Map<string, Promise<LiveReviewState>>();
 
 	constructor(
 		private readonly licenseState: LicenseState,
@@ -110,6 +117,42 @@ export class PromotionReviewInboxService {
 		if (!canRead(user)) return { open: 0, closed: 0 };
 		await this.syncOnce();
 		return await this.reviewRepository.countForInbox();
+	}
+
+	/**
+	 * One live look at a review on the host. A merged or closed review is recorded the same way
+	 * as in the Inbox sync, so the next caller finds the new state without a host call. Callers
+	 * that ask for the same review at the same time share one host call. `runs` are the runs of
+	 * this review that the caller already loaded.
+	 */
+	async refreshState(
+		review: PromotionReview,
+		runs: PromotionRun[],
+		{ timeoutMs }: { timeoutMs: number },
+	): Promise<LiveReviewState> {
+		const inFlight = this.liveReads.get(review.id);
+		if (inFlight) return await inFlight;
+		const read = this.readLive(review, runs, timeoutMs).finally(() =>
+			this.liveReads.delete(review.id),
+		);
+		this.liveReads.set(review.id, read);
+		return await read;
+	}
+
+	private async readLive(
+		review: PromotionReview,
+		runs: PromotionRun[],
+		timeoutMs: number,
+	): Promise<LiveReviewState> {
+		const run = newestFirst(runs)[0];
+		const { mergeRequest, remoteError } = await this.readOne(review, run, new Map(), timeoutMs);
+		if (!mergeRequest) return { ok: false, remoteError: remoteError ?? 'unreachable' };
+		try {
+			await this.applyHostState(review, mergeRequest);
+		} catch {
+			// The host answer is right for this call. The Inbox sync records the state later.
+		}
+		return { ok: true, state: toReviewState(mergeRequest) };
 	}
 
 	/**
@@ -231,9 +274,7 @@ export class PromotionReviewInboxService {
 	private async newestRuns(reviews: PromotionReview[]): Promise<Map<string, PromotionRun>> {
 		const runs = await this.runRepository.findByReviewIds(reviews.map(({ id }) => id));
 		const newest = new Map<string, PromotionRun>();
-		for (const run of runs.toSorted(
-			(a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id),
-		)) {
+		for (const run of newestFirst(runs)) {
 			if (run.reviewId && !newest.has(run.reviewId)) newest.set(run.reviewId, run);
 		}
 		return newest;
@@ -255,9 +296,10 @@ export class PromotionReviewInboxService {
 		review: PromotionReview,
 		run: PromotionRun | undefined,
 		accessCache: AccessCache,
+		timeoutMs?: number,
 	): Promise<RemoteView> {
 		try {
-			const host = await this.readMergeRequest(review, run, accessCache);
+			const host = await this.readMergeRequest(review, run, accessCache, timeoutMs);
 			return host
 				? { mergeRequest: host.mergeRequest, remoteError: null }
 				: failed('no_connection');
@@ -271,6 +313,7 @@ export class PromotionReviewInboxService {
 		{ type, environment, remoteReviewId }: PromotionReview,
 		run: PromotionRun | undefined,
 		accessCache: AccessCache = new Map(),
+		timeoutMs?: number,
 	) {
 		if (!environment || !remoteReviewId) return null;
 		const key = `${environment.id}:${type}`;
@@ -282,7 +325,7 @@ export class PromotionReviewInboxService {
 		const access = await resolving;
 		if (!access) return null;
 		const ref = parseGitLabReviewId(remoteReviewId);
-		const mergeRequest = await this.mergeRequests.getMergeRequest(access, ref);
+		const mergeRequest = await this.mergeRequests.getMergeRequest(access, ref, { timeoutMs });
 		// The stored ids are not unique across hosts. Only the branch n8n pushed proves it is ours.
 		if (mergeRequest.source_branch !== detailsOf(run)?.branchName) {
 			throw new NotFoundError("GitLab couldn't find the merge request of this promotion.");
@@ -335,6 +378,11 @@ const toReviewUser = (user: User | null) =>
 	user
 		? { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email }
 		: null;
+
+const newestFirst = (runs: PromotionRun[]) =>
+	runs.toSorted(
+		(a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id),
+	);
 
 const detailsOf = (run: PromotionRun | undefined) => {
 	if (!run) return null;

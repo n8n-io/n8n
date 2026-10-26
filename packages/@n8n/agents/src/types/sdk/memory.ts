@@ -282,6 +282,8 @@ export interface EpisodicMemoryReflectorInput {
 	entries: RetrievedEpisodicMemoryEntry[];
 	sources: EpisodicMemoryEntrySource[];
 	executionCounter?: AgentExecutionCounter;
+	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
+	modelFetch?: typeof globalThis.fetch;
 }
 
 export interface EpisodicMemoryReflectResult {

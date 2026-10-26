@@ -5,9 +5,11 @@ import {
 } from '@n8n/api-types';
 import { N8nPdfLoader } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { InstanceSettings } from 'n8n-core';
 import { createReadStream } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
@@ -16,12 +18,17 @@ import { BadRequestError } from '@n8n/errors';
 
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 
+import {
+	AgentKnowledgeUploadError,
+	type AgentKnowledgeUploadFailureReason,
+} from './agent-knowledge-upload.error';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import {
 	AgentKnowledgeFileStore,
 	type StoredAgentKnowledgeFile,
 } from './agent-knowledge-file-store';
 import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
+import { createKnowledgeTelemetryHmac } from './agent-knowledge-telemetry';
 import { storageFileNameForOriginalFileName, toAgentFileDto } from './agent-knowledge-storage';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import type { AgentFile } from './entities/agent-file.entity';
@@ -29,6 +36,11 @@ import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
 const MAX_AGENT_FILE_METADATA_LENGTH = 255;
+
+export interface UploadedKnowledgeFile {
+	file: AgentFileDto;
+	contentHash?: string;
+}
 
 @Service()
 export class AgentKnowledgeService {
@@ -38,15 +50,17 @@ export class AgentKnowledgeService {
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly agentKnowledgeMirrorService: AgentKnowledgeMirrorService,
 		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async uploadFiles(
 		agentId: string,
 		projectId: string,
 		files: Express.Multer.File[],
-	): Promise<AgentFileDto[]> {
+	): Promise<UploadedKnowledgeFile[]> {
 		try {
 			this.knowledgeAvailabilityService.assertModuleActive();
 			await getAgentOrThrow(this.agentRepository, agentId, projectId);
@@ -54,9 +68,13 @@ export class AgentKnowledgeService {
 			await this.validateUploadBatch(agentId, files);
 
 			const uploadedFiles: AgentFile[] = [];
+			const results: UploadedKnowledgeFile[] = [];
 			try {
 				for (const file of files) {
-					uploadedFiles.push(await this.storeAgentFile(agentId, file));
+					const contentHash = await this.hashUploadedFile(file.path);
+					const storedFile = await this.storeAgentFile(agentId, file);
+					uploadedFiles.push(storedFile);
+					results.push({ file: toAgentFileDto(storedFile), contentHash });
 				}
 			} catch (error) {
 				await this.cleanupUploadedFiles(uploadedFiles);
@@ -65,9 +83,29 @@ export class AgentKnowledgeService {
 
 			this.agentKnowledgeMirrorService.prewarmMirrorInBackground(projectId, agentId);
 
-			return uploadedFiles.map((file) => toAgentFileDto(file));
+			return results;
 		} finally {
 			await this.cleanupUploadTempFiles(files);
+		}
+	}
+
+	private async hashUploadedFile(filePath: string): Promise<string | undefined> {
+		// The hash exists only for telemetry, so skip the extra read when telemetry is off.
+		if (!this.globalConfig.diagnostics.enabled) {
+			return undefined;
+		}
+
+		try {
+			const hash = createKnowledgeTelemetryHmac(this.instanceSettings.hmacSignatureSecret);
+			for await (const chunk of createReadStream(filePath)) {
+				hash.update(chunk as Buffer);
+			}
+
+			return hash.digest('hex');
+		} catch {
+			// A telemetry read must not reject an otherwise valid upload.
+			this.logger.warn('Could not hash an agent knowledge upload for telemetry');
+			return undefined;
 		}
 	}
 
@@ -86,13 +124,14 @@ export class AgentKnowledgeService {
 		await this.agentSandboxRuntimeService.warmKnowledgeSandbox(projectId, agentId);
 	}
 
-	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<void> {
+	/** Returns false when the agent has no file with this id, so nothing was deleted. */
+	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<boolean> {
 		this.knowledgeAvailabilityService.assertModuleActive();
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const file = await this.agentFileRepository.findByIdAndAgentId(fileId, agentId);
 		if (!file) {
-			return;
+			return false;
 		}
 
 		await this.agentFileRepository.delete({ id: fileId, agentId });
@@ -110,6 +149,8 @@ export class AgentKnowledgeService {
 		} else {
 			await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
 		}
+
+		return true;
 	}
 
 	/**
@@ -216,8 +257,9 @@ export class AgentKnowledgeService {
 			.replaceAll('\u0000', '')
 			.trim();
 		if (!extractedText) {
-			throw new BadRequestError(
+			throw new AgentKnowledgeUploadError(
 				'PDF contains no extractable text and cannot be added to knowledge',
+				'pdf_no_text',
 			);
 		}
 		return extractedText;
@@ -225,7 +267,8 @@ export class AgentKnowledgeService {
 
 	private validateUploadMetadata(files: Express.Multer.File[]) {
 		for (const file of files) {
-			this.validateMetadataLength('File name', file.originalname);
+			this.validateMetadataLength('File name', file.originalname, 'invalid_file_name');
+			// No reason fits a MIME type that is too long, so the failure event reports `unknown`.
 			this.validateMetadataLength('MIME type', file.mimetype);
 		}
 	}
@@ -238,8 +281,9 @@ export class AgentKnowledgeService {
 		);
 		const uploadTotalSizeBytes = files.reduce((total, file) => total + file.size, 0);
 		if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
-			throw new BadRequestError(
+			throw new AgentKnowledgeUploadError(
 				`Knowledge base limit reached. The total size can't be larger than ${MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB} GB.`,
+				'total_limit',
 			);
 		}
 
@@ -273,17 +317,21 @@ export class AgentKnowledgeService {
 		}
 	}
 
-	private duplicateFileNameError(fileName: string): BadRequestError {
-		return new BadRequestError(
+	private duplicateFileNameError(fileName: string): AgentKnowledgeUploadError {
+		return new AgentKnowledgeUploadError(
 			`A knowledge file named "${fileName}" already exists for this agent`,
+			'duplicate_name',
 		);
 	}
 
-	private validateMetadataLength(label: string, value: string) {
+	private validateMetadataLength(
+		label: string,
+		value: string,
+		reason?: AgentKnowledgeUploadFailureReason,
+	) {
 		if (value.length > MAX_AGENT_FILE_METADATA_LENGTH) {
-			throw new BadRequestError(
-				`${label} must be ${MAX_AGENT_FILE_METADATA_LENGTH} characters or less`,
-			);
+			const message = `${label} must be ${MAX_AGENT_FILE_METADATA_LENGTH} characters or less`;
+			throw reason ? new AgentKnowledgeUploadError(message, reason) : new BadRequestError(message);
 		}
 	}
 

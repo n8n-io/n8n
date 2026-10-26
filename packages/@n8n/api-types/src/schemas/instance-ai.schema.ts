@@ -1,5 +1,6 @@
 import type { InstanceAiEventLifecycle } from './instance-ai-event-lifecycle';
 import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
+import { WorkflowExecuteModeList } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { AiPreferenceDto, AiPreferenceScope } from './ai-preference.schema';
@@ -311,7 +312,6 @@ export type InstanceAiAgentStatus = z.infer<typeof instanceAiAgentStatusSchema>;
 export const instanceAiAgentKindSchema = z.enum([
 	'builder',
 	'data-table',
-	'planner',
 	'eval-setup',
 	'agent-builder',
 ]);
@@ -381,12 +381,7 @@ export const instanceContextLegsSchema = z.object({
 export type InstanceContextLegs = z.infer<typeof instanceContextLegsSchema>;
 
 /** Keep a failed read distinct from a disabled feature or an empty result. */
-export const instanceContextAbsenceReasonSchema = z.enum([
-	'disabled',
-	'machine-follow-up',
-	'empty',
-	'failed',
-]);
+export const instanceContextAbsenceReasonSchema = z.enum(['disabled', 'empty', 'failed']);
 
 export type InstanceContextAbsenceReason = z.infer<typeof instanceContextAbsenceReasonSchema>;
 
@@ -741,19 +736,6 @@ export const taskListSchema = z.object({
 
 export type TaskList = z.infer<typeof taskListSchema>;
 
-export const plannedTaskArgSchema = z.object({
-	id: z.string(),
-	title: z.string(),
-	kind: z.string(),
-	spec: z.string(),
-	deps: z.array(z.string()),
-	tools: z.array(z.string()).optional(),
-	workflowId: z.string().optional(),
-	isSupportingWorkflow: z.boolean().optional(),
-});
-
-export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;
-
 // ── Gateway resource confirmation (instance permission mode) ─────────────────
 
 /** Protocol prefix used by the daemon to signal a resource-access confirmation is required. */
@@ -826,7 +808,6 @@ export const confirmationInputTypeSchema = z.enum([
 	'approval',
 	'text',
 	'questions',
-	'plan-review',
 	'resource-decision',
 	'continue',
 ]);
@@ -913,7 +894,7 @@ export const confirmationRequestPayloadSchema = z.object({
 		.optional()
 		.describe(
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
-				'questions shows structured Q&A wizard, plan-review shows plan approval with feedback, ' +
+				'questions shows structured Q&A wizard, ' +
 				'resource-decision shows 5-option gateway permission dialog, ' +
 				'continue shows a single primary button (used by pause-for-user)',
 		),
@@ -921,14 +902,7 @@ export const confirmationRequestPayloadSchema = z.object({
 		.array(instanceAiQuestionSchema)
 		.optional()
 		.describe('Structured questions for the Q&A wizard (inputType=questions)'),
-	introMessage: z.string().optional().describe('Intro text shown above questions or plan review'),
-	tasks: taskListSchema
-		.optional()
-		.describe('Task checklist for plan review (inputType=plan-review)'),
-	planItems: z
-		.array(plannedTaskArgSchema)
-		.optional()
-		.describe('Full planned task details for plan review (title, kind, spec, deps)'),
+	introMessage: z.string().optional().describe('Intro text shown above questions'),
 	domainAccess: domainAccessMetaSchema
 		.optional()
 		.describe('When present, renders domain-access approval UI instead of generic confirm'),
@@ -982,13 +956,6 @@ function hasItems<T>(items: T[] | undefined): items is [T, ...T[]] {
 	return Array.isArray(items) && items.length > 0;
 }
 
-function argsContainPlannedTasks(args: Record<string, unknown>): boolean {
-	const tasks = args.tasks;
-	if (!Array.isArray(tasks)) return false;
-
-	return tasks.some((task) => plannedTaskArgSchema.safeParse(task).success);
-}
-
 function assertNever(value: never): never {
 	throw new Error(`Unhandled confirmation input type: ${String(value)}`);
 }
@@ -1015,8 +982,6 @@ export function isDisplayableConfirmationRequest(
 			return isNonEmptyString(payload.message);
 		case 'questions':
 			return hasItems(payload.questions);
-		case 'plan-review':
-			return hasItems(payload.planItems) || argsContainPlannedTasks(payload.args);
 		case 'resource-decision':
 			return payload.resourceDecision !== undefined;
 		default:
@@ -1145,7 +1110,6 @@ export interface InstanceAiBrowserStatusResponse {
 
 export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
-	planItems: z.array(plannedTaskArgSchema).optional(),
 });
 
 /**
@@ -1976,7 +1940,6 @@ export interface InstanceAiToolCallState {
 		| 'builder'
 		| 'researcher'
 		| 'data-table'
-		| 'planner'
 		| 'eval-setup'
 		| 'skill'
 		| 'default';
@@ -2019,7 +1982,7 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents. */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, planner, eval-setup). */
+	/** Agent kind for card dispatch (builder, data-table, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Current activity for the Agent card. */
 	activity?: InstanceAiAgentActivity;
@@ -2048,8 +2011,6 @@ export interface InstanceAiAgentNode {
 	timeline: InstanceAiTimelineEntry[];
 	/** Latest task list — updated by tasks-update events. */
 	tasks?: TaskList;
-	/** Full planned task details — updated by create-tasks via tasks-update. */
-	planItems?: PlannedTaskArg[];
 	/**
 	 * Latest setup-panel snapshot per workflow — updated by setup-items events
 	 * (last event wins per workflowId). Thread-level state: always folded onto
@@ -2695,7 +2656,6 @@ export function getRenderHint(rawToolName: string): InstanceAiToolCallState['ren
 	)
 		return 'builder';
 	if (toolName === REMOVED_BUILDER_TOOL_NAMES.RESEARCH_WITH_AGENT) return 'researcher';
-	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.CREATE_TASKS) return 'planner';
 	if (toolName === REMOVED_BUILDER_TOOL_NAMES.EVAL_SETUP_WITH_AGENT) return 'eval-setup';
 	if (
 		[
@@ -3281,6 +3241,52 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	 *  for id-remapped seed workflows). False keeps the EXACT declared name so a
 	 *  freshly-built workflow's by-name references resolve. */
 	uniquifyNames: z.boolean().optional(),
+}) {}
+
+// ---------------------------------------------------------------------------
+// Eval failed-execution portability
+// ---------------------------------------------------------------------------
+
+export const instanceAiEvalFailedExecutionEnvelopeSchema = z.object({
+	format: z.literal('n8n-instance-ai-failed-execution'),
+	version: z.literal(1),
+	source: z.object({
+		executionId: z.string().min(1),
+		workflowId: z.string().min(1),
+		workflowVersionId: z.string().nullable(),
+		createdAt: z.string().datetime(),
+		startedAt: z.string().datetime(),
+		stoppedAt: z.string().datetime(),
+	}),
+	execution: z.object({
+		mode: z.enum(WorkflowExecuteModeList),
+		status: z.enum(['error', 'crashed']),
+		finished: z.literal(false),
+		workflowData: z.unknown(),
+		data: z.string().min(1),
+	}),
+});
+
+export type InstanceAiEvalFailedExecutionEnvelope = z.infer<
+	typeof instanceAiEvalFailedExecutionEnvelopeSchema
+>;
+
+export interface InstanceAiEvalFailedExecutionSummary {
+	status: 'error' | 'crashed';
+	lastNodeExecuted: string | null;
+	error: string;
+	nodeRunCounts: Record<string, number>;
+}
+
+export class InstanceAiEvalExportExecutionRequest extends Z.class({
+	threadId: z.string().uuid(),
+	executionId: z.string().min(1),
+}) {}
+
+export class InstanceAiEvalRestoreExecutionRequest extends Z.class({
+	threadId: z.string().uuid(),
+	workflowId: z.string().min(1),
+	envelope: instanceAiEvalFailedExecutionEnvelopeSchema,
 }) {}
 
 /**

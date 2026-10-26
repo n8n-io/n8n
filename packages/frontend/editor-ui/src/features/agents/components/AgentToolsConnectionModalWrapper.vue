@@ -322,12 +322,35 @@ function handleInteractOutside(event: Event) {
 	if (isCredentialModalOpen.value) event.preventDefault();
 }
 
+const isLoadingCredentials = ref(false);
+
+/**
+ * Block until the project's credentials are in the store, so rows do not show as
+ * unconnected. A slice already fetched for this project refreshes in the background.
+ */
+async function loadCredentials() {
+	isLoadingCredentials.value = !credentialsStore.hasUsableCredentialsForScope({
+		projectId: props.data.projectId,
+	});
+	try {
+		await preloadCredentials();
+	} catch (error) {
+		console.error('Failed to fetch credentials', error);
+	} finally {
+		isLoadingCredentials.value = false;
+	}
+}
+
 onMounted(() => {
 	if (isWorkflow.value) void loadWorkflows(props.data.projectId);
 	if (!isWorkflow.value) {
 		void loadRegistryCatalog();
-		void preloadCredentials();
+		void loadCredentials();
 	}
+	// The builder loads the policy once and keeps it, so a policy that changed since then would
+	// still offer a blocked type here and the save would be refused. Refetch on open: this is the
+	// one place where the verdicts decide what the user may pick.
+	void typeAvailabilityPoliciesStore.reload();
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
 	// Config gates which tools are eligible for the n8n Connect section; the
@@ -1243,6 +1266,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 					: undefined
 			"
 			:create-action-loading="isCreatingWorkflow"
+			:loading="isLoadingCredentials"
 			:empty-message="isWorkflow ? i18n.baseText('agents.tools.workflow.empty.title') : undefined"
 			:no-results-message="
 				isWorkflow ? i18n.baseText('agents.tools.workflow.empty.noResults') : undefined

@@ -10,10 +10,10 @@ describe('LogStreamingModule', () => {
 		expect(LogStreamingModule.id).toBe('log-streaming');
 	});
 
-	it('should register the settings sidebar item with the previous order', () => {
-		expect(LogStreamingModule.settingsPages?.map(({ id, order }) => ({ id, order }))).toEqual([
-			{ id: 'settings-log-streaming', order: 170 },
-		]);
+	it('should register the settings sidebar item under Operations', () => {
+		expect(
+			LogStreamingModule.settingsPages?.map(({ id, order, section }) => ({ id, order, section })),
+		).toEqual([{ id: 'settings-log-streaming', order: 40, section: 'operations' }]);
 	});
 
 	describe('settings sidebar item', () => {
