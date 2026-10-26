@@ -113,22 +113,19 @@ describe('AssistantConfirmationCard', () => {
 			expect(emitted().submit).toHaveLength(2);
 		});
 
-		it('can be answered again after a failed resume, with the inner card reset', async () => {
+		it('resets the inner card when the chat refuses the answer', async () => {
 			const questionsInput = {
 				requestId: 'req-q2',
 				message: 'A few questions',
 				inputType: 'questions' as const,
 				questions: [{ id: 'q1', question: 'Which?', type: 'single' as const, options: ['a', 'b'] }],
 			};
-			const { getByTestId, emitted, rerender } = renderComponent({
-				props: { input: questionsInput },
-			});
+			const { getByTestId, emitted } = renderComponent({ props: { input: questionsInput } });
 			const firstQuestions = getByTestId('assistant-agent-questions');
 
+			// The chat is busy: it keeps the card, so the inner card remounts with no answer.
 			await fireEvent.click(firstQuestions);
-			await rerender({ input: questionsInput, disabled: true });
-			// The send fails, and the chat gives the card back.
-			await rerender({ input: questionsInput, disabled: false });
+			await nextTick();
 
 			const secondQuestions = getByTestId('assistant-agent-questions');
 			expect(secondQuestions).not.toBe(firstQuestions);

@@ -14,7 +14,7 @@ import {
 	type ApprovalOption,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
 
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -38,7 +38,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const approvalLabels = useApprovalCardLabels();
 const submitted = ref(false);
-// Bumped when the chat gives the card back. The inner cards remount, so they drop
+// Bumped when the chat refuses an answer. The inner cards remount, so they drop
 // their own answered state too.
 const attempt = ref(0);
 const textValue = ref('');
@@ -49,15 +49,6 @@ function reopen() {
 	submitted.value = false;
 	attempt.value += 1;
 }
-
-// A failed resume gives the card back: the chat marks it resolved while it sends
-// the answer, and unmarks it when the send fails.
-watch(
-	() => props.disabled,
-	(disabled, wasDisabled) => {
-		if (wasDisabled && !disabled) reopen();
-	},
-);
 
 /** The same order as the current Assistant confirmation panel. */
 const variant = computed(() => {
@@ -87,11 +78,10 @@ function submit(body: InstanceAiConfirmRequest) {
 	if (isInactive.value) return;
 	submitted.value = true;
 	emit('submit', body);
-	// The chat marks the card resolved before it sends. A busy chat refuses the
-	// answer without that, so the card takes the answer back.
-	void nextTick(() => {
-		if (!props.disabled) reopen();
-	});
+	// The chat removes a card as soon as it takes the answer. A busy chat refuses the
+	// answer and keeps the card, so the card takes the answer back. After a failed
+	// send, the chat renders the card again as a new instance.
+	void nextTick(reopen);
 }
 
 function onQuestionsSubmit(answers: QuestionAnswer[]) {
