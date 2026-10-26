@@ -39,7 +39,8 @@ interface SystemAgentTurnBase<TLease> {
 	 * with the same name. The provider can keep the callback for its tools
 	 * and hooks. `onSettled` can emit only when the turn has an execution
 	 * record. Events after `onSettled` returns are dropped. It throws when
-	 * the payload is larger than 64 KiB as JSON.
+	 * the payload is larger than 64 KiB as JSON. The stream and history return
+	 * the payload as it is, so do not put secrets in it.
 	 */
 	emitHostEvent: SystemAgentHostEventEmitter;
 }
