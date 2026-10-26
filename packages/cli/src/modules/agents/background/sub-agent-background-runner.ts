@@ -449,6 +449,11 @@ export class SubAgentBackgroundRunner {
 }
 
 function settlementFor(result: SubAgentRunResult): AgentBackgroundJobSettlement {
+	// The parent can read these files even when the child failed, so list them for every status.
+	return { ...outcomeFor(result), ...(result.files?.length ? { files: result.files } : {}) };
+}
+
+function outcomeFor(result: SubAgentRunResult): AgentBackgroundJobSettlement {
 	const output = formatSubAgentToolOutput(result);
 	if (output.status === 'completed') {
 		return { status: 'completed', result: output.answer };

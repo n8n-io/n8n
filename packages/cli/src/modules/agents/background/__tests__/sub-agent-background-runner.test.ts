@@ -427,6 +427,21 @@ describe('spawn', () => {
 		);
 	});
 
+	it('lists the files that the child made when the job settles', async () => {
+		const { backgroundRunner, runner, jobService, context } = setup();
+		const files = [{ fileId: 'out-1', fileName: 'out.png', mimeType: 'image/png', sizeBytes: 3 }];
+		runner.run.mockResolvedValue(completedRunResult({ files }));
+
+		await backgroundRunner.spawn(request, context);
+		await flushDetachedRun();
+
+		expect(jobService.settle).toHaveBeenCalledWith(
+			expect.any(String),
+			{ status: 'completed', result: 'the answer', files },
+			expect.anything(),
+		);
+	});
+
 	it('ends a child that requests an unsupported interaction', async () => {
 		const { backgroundRunner, runner, jobService, context } = setup();
 		runner.run.mockResolvedValue(
