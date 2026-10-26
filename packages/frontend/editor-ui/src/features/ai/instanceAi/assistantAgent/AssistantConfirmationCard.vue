@@ -81,8 +81,6 @@ const projectId = computed(() => props.input.projectId ?? threadProjectId);
 const variant = computed(() => {
 	const { input } = props;
 	if (input.inputType === 'questions' && input.questions?.length) return 'questions';
-	// The Assistant agent has no plan tools, so a plan review never reaches this chat.
-	if (input.inputType === 'plan-review') return 'unsupported';
 	if (input.mcpConnectRequest) return 'mcp-connect';
 	if (input.setupRequests?.length) return 'workflow-setup';
 	if (input.credentialRequests?.length) return 'credential-setup';
@@ -310,16 +308,6 @@ function onApprovalSelect(key: string) {
 			data-test-id="assistant-agent-questions"
 			@submit="onQuestionsSubmit"
 		/>
-		<N8nCard
-			v-else-if="variant === 'unsupported'"
-			:class="$style.card"
-			data-test-id="assistant-agent-unsupported-card"
-		>
-			<N8nText v-if="input.message" tag="div">{{ input.message }}</N8nText>
-			<N8nText tag="div" size="small" color="text-light">
-				{{ i18n.baseText('instanceAi.assistantAgent.unsupportedCard') }}
-			</N8nText>
-		</N8nCard>
 		<InstanceAiMcpConnectCard
 			v-else-if="variant === 'mcp-connect' && input.mcpConnectRequest"
 			:servers="input.mcpConnectRequest.servers"
