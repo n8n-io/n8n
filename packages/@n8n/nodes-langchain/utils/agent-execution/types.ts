@@ -140,8 +140,6 @@ export type HitlMetadata = {
 	toolName: string;
 	/** Original input for the gated tool */
 	originalInput: IDataObject;
-	/** Whether the gated tool comes from an MCP server. */
-	isMcpTool?: boolean;
 };
 
 /**

@@ -51,6 +51,16 @@ describe('executeEngineAction', () => {
 		expect(invoke.mock.calls[0][0]).not.toHaveProperty(INTERNAL_TOOL_ARG_STASH_KEY);
 	});
 
+	it('ignores a non-object stash value', async () => {
+		const invoke = await execute({
+			tool: 'mcp_tool',
+			[INTERNAL_TOOL_ARG_STASH_KEY]: 'unexpected',
+			query: 'hello',
+		});
+
+		expect(invoke.mock.calls[0][0]).toEqual({ query: 'hello' });
+	});
+
 	it('preserves arguments when no stash key is present', async () => {
 		const invoke = await execute({ tool: 'mcp_tool', query: 'hello' });
 

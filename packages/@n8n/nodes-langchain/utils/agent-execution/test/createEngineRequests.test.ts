@@ -1022,6 +1022,30 @@ describe('createEngineRequests', () => {
 			});
 		});
 
+		it('does not stash arguments for toolkit tools without the MCP marker', () => {
+			const tools = [
+				createMockTool('Toolkit_search', {
+					sourceNodeName: 'Toolkit',
+					isFromToolkit: true,
+				}),
+			];
+
+			const result = createEngineRequests(
+				[
+					{
+						tool: 'Toolkit_search',
+						toolInput: { tool: 'user-value', query: 'test' },
+						toolCallId: 'call_123',
+					},
+				],
+				0,
+				tools,
+			);
+
+			expect(result[0].input).toEqual({ tool: 'Toolkit_search', query: 'test' });
+			expect(result[0].input).not.toHaveProperty('_n8nOriginalToolArg');
+		});
+
 		it('stashes user `toolCallId` arguments before the engine overwrites them', () => {
 			const tools = [
 				createMockTool('MCP_Client_search', {

@@ -110,13 +110,12 @@ describe('processHitlResponses', () => {
 			expect(action.metadata?.parentNodeName).toBe('HITL Node');
 		});
 
-		it('keeps MCP routing fields when approved input contains colliding arguments', () => {
+		it('keeps the routing key when approved input contains a `tool` argument', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					createHitlActionResponse(true, {
 						...hitlMetadata,
-						isMcpTool: true,
-						originalInput: { tool: 'user-tool', toolCallId: 'user-id', query: 'test' },
+						originalInput: { tool: 'user-tool', query: 'test' },
 					}),
 				],
 				metadata: {},
@@ -124,12 +123,11 @@ describe('processHitlResponses', () => {
 
 			const result = processHitlResponses(response, 0);
 
-			expect(result.pendingGatedToolRequest?.actions[0].input).toEqual({
-				tool: 'my_tool',
-				_n8nOriginalToolArg: { tool: 'user-tool', toolCallId: 'user-id' },
-				toolCallId: 'user-id',
-				query: 'test',
-			});
+			const action = result.pendingGatedToolRequest?.actions[0];
+			expect(action?.input).toEqual({ tool: 'my_tool', query: 'test' });
+			expect(action?.nodeName).toBe('Gated Tool Node');
+			expect(action?.metadata?.parentNodeName).toBe('HITL Node');
+			expect(action?.input).not.toHaveProperty('_n8nOriginalToolArg');
 		});
 
 		it('removes approved HITL response from processed responses', () => {

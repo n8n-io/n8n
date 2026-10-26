@@ -38,7 +38,6 @@ export function extractHitlMetadata(
 		gatedToolNodeName: metadata.gatedToolNodeName,
 		toolName,
 		originalInput: toolInput.toolParameters as IDataObject,
-		isMcpTool: metadata.isMcpTool,
 	};
 }
 
