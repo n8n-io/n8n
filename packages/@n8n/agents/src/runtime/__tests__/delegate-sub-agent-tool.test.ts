@@ -1,6 +1,10 @@
 import type { JSONSchema7 } from 'json-schema';
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+	delegateSubAgentInputSchema,
+	delegateSubAgentModeInputSchema,
+} from '../../types/runtime/delegation';
 import { AgentEvent, type AgentEventData } from '../../types/runtime/event';
 import type { GenerateResult } from '../../types/sdk/agent';
 import { isZodSchema } from '../../utils/zod';
@@ -186,6 +190,24 @@ describe('createDelegateSubAgentTool', () => {
 			expect(tool.systemInstruction).toContain('WHEN TO USE delegate_subagent:');
 		},
 	);
+
+	it('lists every input argument in the default system instruction', () => {
+		const foreground = createDelegateSubAgentTool().systemInstruction ?? '';
+		for (const name of Object.keys(delegateSubAgentInputSchema.shape)) {
+			expect(foreground).toContain(`- ${name} (`);
+		}
+		expect(foreground).toContain('- subAgentId (required)');
+		expect(foreground).toContain('- fileIds (optional)');
+		expect(foreground).toContain('Pass files in fileIds, not in the goal or context text.');
+		expect(foreground).not.toContain('- mode (');
+
+		const background =
+			createDelegateSubAgentTool({ runBackgroundSubAgent: vi.fn() }).systemInstruction ?? '';
+		for (const name of Object.keys(delegateSubAgentModeInputSchema.shape)) {
+			expect(background).toContain(`- ${name} (`);
+		}
+		expect(background).toContain('- mode (optional)');
+	});
 
 	it('uses a host-provided system instruction instead of the built-in guidance', () => {
 		const tool = createDelegateSubAgentTool({
