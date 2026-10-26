@@ -613,7 +613,7 @@ describe('N8nClient packages', () => {
 			await client.importPackage(
 				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
 				{
-					workflowConflictPolicy: 'fail',
+					conflictPolicy: 'fail',
 					credentialConflictPolicy: 'overwrite',
 				},
 			);

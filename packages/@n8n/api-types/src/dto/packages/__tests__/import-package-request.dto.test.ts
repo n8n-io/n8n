@@ -672,7 +672,7 @@ describe('ImportPackageRequestDto', () => {
 		it('defaults credentialConflictPolicy to keep-existing when omitted', () => {
 			const result = ImportPackageRequestDto.safeParse(
 				withPackageFile({
-					workflowConflictPolicy: 'fail',
+					conflictPolicy: 'fail',
 				}),
 			);
 			expect(result.success).toBe(true);
@@ -687,7 +687,7 @@ describe('ImportPackageRequestDto', () => {
 				const result = ImportPackageRequestDto.safeParse(
 					withPackageFile({
 						credentialConflictPolicy,
-						workflowConflictPolicy: 'fail',
+						conflictPolicy: 'fail',
 					}),
 				);
 				expect(result.success).toBe(true);
@@ -702,7 +702,7 @@ describe('ImportPackageRequestDto', () => {
 				ImportPackageRequestDto.safeParse(
 					withPackageFile({
 						credentialConflictPolicy: 'merge',
-						workflowConflictPolicy: 'fail',
+						conflictPolicy: 'fail',
 					}),
 				).success,
 			).toBe(false);
