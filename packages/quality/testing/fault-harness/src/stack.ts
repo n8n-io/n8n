@@ -150,6 +150,10 @@ export class HarnessStack {
 		return this.stack.findContainers(/-n8n-engine$/);
 	}
 
+	runner(): Container {
+		return this.container(/-task-runner$/);
+	}
+
 	container(pattern: RegExp): Container {
 		const [found] = this.stack.findContainers(pattern);
 		if (!found) throw new Error(`container ${String(pattern)} not found`);
