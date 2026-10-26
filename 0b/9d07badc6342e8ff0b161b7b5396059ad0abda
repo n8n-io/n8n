@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_e792314be1af0e::t_679c48d1538d0f 419-433
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_e792314be1af0e::t_3d2d76f2975128 431-435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0b9d07badc6342e8ff0b161b7b5396059ad0abda",
+  "prompts": {},
+  "sessions": {
+    "s_e792314be1af0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2af0b93b-231f-499e-84d6-692ea4511dad",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
