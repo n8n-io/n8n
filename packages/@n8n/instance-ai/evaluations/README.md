@@ -754,7 +754,6 @@ The agent is stubbed for non-interactive use. The summary tracks divergence
 from this assumption — investigate any non-zero count:
 
 - `askUserCount` — `workflow_builder_ask_user` tool was invoked (eval responds with `{ approved: false }`)
-- `planToolCount` — `workflow_builder_create_tasks` was invoked (single-prompt dataset shouldn't trigger planning)
 - `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `data_tables` create); auto-approved
 - `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
 
@@ -895,6 +894,8 @@ If the agent still reads a workflow that its build did not create or seed, the r
 By default a build sees **no credentials**: the harness pins every build thread's credential view to the case's declared set (empty unless declared), so concurrent cases — and whatever happens to live on the instance — can never leak into a build. Every node mocks during verification.
 
 Agent Builder model catalog requests also stay local. Eval threads return one deterministic fake model for each model provider. They do not decrypt the placeholder credential or contact the provider. Production threads continue to use live model catalogs.
+
+Live resource lookups (`workflow_builder_nodes(action="explore-resources")`) on a declared credential stay local too: they return "Resource exploration is not available.", the answer production gives when lookups are not available, and they do not contact the provider. A credential declared `valid: false` or `blank: true` still runs the live lookup, so it fails the way a broken credential does. Setting a live `EVAL_*_ACCESS_TOKEN` does not turn lookups back on.
 
 A case that tests credential behaviour declares what should exist:
 

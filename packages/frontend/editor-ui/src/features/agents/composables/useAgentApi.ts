@@ -16,6 +16,7 @@ import type {
 	AgentConfigValidationResponse,
 	AgentDisconnectIntegrationResponse,
 	AgentFileDto,
+	AgentMemoryEntriesPageDto,
 	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
 	AgentWhatsAppVerifyTokenResponse,
@@ -390,6 +391,34 @@ export const deleteAgentFile = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/files/${fileId}`,
+	);
+};
+
+export const listAgentMemoryEntries = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	options: { limit: number; cursor?: string },
+): Promise<AgentMemoryEntriesPageDto> => {
+	const { limit, cursor } = options;
+	return await makeRestApiRequest<AgentMemoryEntriesPageDto>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/memory-entries`,
+		cursor ? { limit, cursor } : { limit },
+	);
+};
+
+export const deleteAgentMemoryEntry = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	entryId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/memory-entries/${entryId}`,
 	);
 };
 
