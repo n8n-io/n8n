@@ -35,6 +35,10 @@ const settingsStore = useSettingsStore();
 const projectId = useAgentProjectId();
 const episodicMemory = computed(() => props.config?.memory?.episodicMemory ?? null);
 const episodicMemoryEnabled = computed(() => episodicMemory.value?.enabled === true);
+const episodicMemoryCredentialId = computed(() => {
+	const memory = episodicMemory.value;
+	return memory?.enabled === true ? memory.credential : null;
+});
 const isAiAssistantProxyEnabled = computed(
 	() => settingsStore.moduleSettings.agents?.proxyEnabled === true,
 );
@@ -174,7 +178,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 								size="medium"
 								button-size="large"
 								:credential-type="AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE"
-								:selected-credential-id="null"
+								:selected-credential-id="episodicMemoryCredentialId"
 								:project-id="projectId"
 								:show-delete="false"
 								:hide-create-new="false"

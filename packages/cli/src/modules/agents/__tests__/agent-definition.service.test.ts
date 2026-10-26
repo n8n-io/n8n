@@ -51,7 +51,8 @@ describe('Agent definition snapshots', () => {
 		const version = { versionId: 'version' } as AgentHistory;
 		history.findByVersionAndAgentId.mockResolvedValue(null);
 		history.saveVersion.mockResolvedValue(version);
-		skills.versionSnapshot.mockResolvedValue({ schema, skills: {}, pins: new Map() });
+		const pins = new Map([['skill', 'skill-version']]);
+		skills.versionSnapshot.mockResolvedValue(pins);
 		tasks.findByAgentId.mockResolvedValue(
 			['enabled', 'disabled'].map((id) =>
 				mock<AgentTask>({
@@ -70,6 +71,8 @@ describe('Agent definition snapshots', () => {
 			ctx,
 		);
 		expect(history.saveVersion.mock.calls[0][0]).not.toHaveProperty('publishedBy');
+		expect(history.saveVersion.mock.calls[0][0]).not.toHaveProperty('skills');
+		expect(skills.pinVersion).toHaveBeenCalledWith('version', pins, ctx);
 		expect(snapshots.saveForVersion).toHaveBeenCalledWith(
 			[
 				expect.objectContaining({ taskId: 'enabled', enabled: true, objective: 'Read' }),

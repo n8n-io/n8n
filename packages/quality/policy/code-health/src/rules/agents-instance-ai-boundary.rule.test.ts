@@ -75,6 +75,8 @@ describe('AgentsInstanceAiBoundaryRule', () => {
 		"export * from '../agents/agent-context.service/private';",
 		"import { Agent } from '@n8n/agents/src/private';",
 		"export { Agent } from '../../../../@n8n/agents/src/index';",
+		"import { SystemAgentRegistry } from '@/modules/agents/system-agents/system-agent-registry';",
+		"import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';",
 	])('rejects private Agent imports: %s', (source) => {
 		write(`${modules}/instance-ai/example.ts`, source);
 		expect(new AgentsInstanceAiBoundaryRule().analyze({ rootDir })).toHaveLength(1);
@@ -94,6 +96,8 @@ import type { AgentCredentialProvider } from '@agents/agent-credential-provider.
 type Request = import('../agents/builder/builder-session').BuilderRequest;
 export type { AgentEvaluationPreparation } from '../agents/evaluation/agent-evaluation.contracts';
 export { pruneConfigForEval } from '../agents/evaluation/evaluation-config';
+import type { SystemAgentProvider } from '@/modules/agents/system-agents/system-agent.types';
+import { SystemAgentRegistrationService } from '../agents/system-agents/system-agent-registration.service';
 import { Agent } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import '@n8n/agents/catalog';

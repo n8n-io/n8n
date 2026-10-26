@@ -32,6 +32,7 @@ import {
 	getAgentErrorSeverity,
 	InstanceAiErrorReporterService,
 } from '../instance-ai-error-reporter.service';
+import { InstanceAiModelService } from '../instance-ai-model.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiMcpRegistryService } from '../mcp';
 import type { AssistantTurnEnvironment } from './assistant-turn-environment.factory';
@@ -78,6 +79,7 @@ export class AssistantAgentFactory {
 		private readonly errorReporter: ErrorReporter,
 		private readonly telemetry: Telemetry,
 		private readonly push: Push,
+		private readonly modelService: InstanceAiModelService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -133,6 +135,7 @@ export class AssistantAgentFactory {
 			checkpointStore: runtime.checkpointStore,
 			onMemoryTaskEvent: runtime.onMemoryTaskEvent,
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
+			modelFetch: this.modelService.getModelFetch(),
 		});
 		// Surface MCP connection failures as a non-fatal status event. Publishing
 		// here (rather than at each call site) covers the foreground run and both

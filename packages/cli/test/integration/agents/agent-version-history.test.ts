@@ -12,7 +12,6 @@ import {
 	markAgentDraftDirty,
 	saveAgentDraftFenced,
 } from '@/modules/agents/utils/agent-draft.utils';
-import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
@@ -66,7 +65,6 @@ describe('Agent version history', () => {
 				name: schema.name,
 				schema,
 				tools: {},
-				skills: {},
 				integrations: [],
 				versionId,
 			}),
@@ -76,7 +74,6 @@ describe('Agent version history', () => {
 
 	afterEach(async () => {
 		vi.restoreAllMocks();
-		setSkillsHubFlag(false);
 		await agents.delete({});
 	});
 	afterAll(async () => await testDb.terminate());
@@ -145,96 +142,91 @@ describe('Agent version history', () => {
 		});
 	});
 
-	it.each([false, true])(
-		'publishes V1 content and keeps the V2 draft with skills hub enabled=%s',
-		async (skillsHubEnabled) => {
-			setSkillsHubFlag(skillsHubEnabled);
-			const definitions = Container.get(AgentDefinitionService);
-			const skillRefs = Container.get(AgentSkillRefsService);
-			const tasks = Container.get(AgentTaskRepository);
-			const contents = ['V1', 'V2'].map((name, index) => ({
-				name,
-				tools: {
-					lookup: {
-						code: `return '${name}';`,
-						descriptor: {
-							name: 'lookup',
-							description: name,
-							systemInstruction: null,
-							inputSchema: null,
-							outputSchema: null,
-							hasSuspend: false,
-							hasResume: false,
-							hasToMessage: false,
-							requireApproval: false,
-							providerOptions: null,
-						},
+	it('publishes V1 content and keeps the V2 draft with skill-version pins', async () => {
+		const definitions = Container.get(AgentDefinitionService);
+		const skillRefs = Container.get(AgentSkillRefsService);
+		const tasks = Container.get(AgentTaskRepository);
+		const contents = ['V1', 'V2'].map((name, index) => ({
+			name,
+			tools: {
+				lookup: {
+					code: `return '${name}';`,
+					descriptor: {
+						name: 'lookup',
+						description: name,
+						systemInstruction: null,
+						inputSchema: null,
+						outputSchema: null,
+						hasSuspend: false,
+						hasResume: false,
+						hasToMessage: false,
+						requireApproval: false,
+						providerOptions: null,
 					},
 				},
-				skill: { name, description: name, instructions: `Use ${name}.` },
-				task: {
-					name,
-					objective: `Run ${name}.`,
-					cronExpression: `0 ${index + 9} * * *`,
-					timezone: 'Europe/Berlin',
-				},
-			}));
-			const versionIds: string[] = [];
-			for (const content of contents) {
-				await Container.get(TransactionRunner).run({}, async (ctx) => {
-					const draft = (await agents.lockForVersionCapture(agentId, ctx))!;
-					draft.name = content.name;
-					draft.schema = {
-						...schema,
-						name: content.name,
-						instructions: content.name,
-						tools: [{ type: 'custom', id: 'lookup' }],
-						tasks: [{ type: 'task', id: 'daily', enabled: true }],
-					};
-					draft.tools = content.tools;
-					markAgentDraftDirty(draft);
-					await saveAgentDraftFenced(agents, draft, ctx);
-					await skillRefs.createDraftRefs(
-						draft,
-						[{ type: 'skill', id: content.name }],
-						{ [content.name]: content.skill },
-						owner,
-						ctx,
-					);
-					await tasks.replaceForAgent(agentId, new Map([['daily', content.task]]), ctx);
-					versionIds.push((await definitions.captureVersion(draft, owner, ctx)).versionId);
-				});
-			}
-			const draftBefore = await agents.findById(agentId);
-
-			await service.publishAgent(agentId, projectId, owner, emitter, versionIds[0]);
-
-			const agent = (await agents.findById(agentId))!;
-			expect(agent).toMatchObject({
-				activeVersionId: versionIds[0],
-				versionId: versionIds[1],
-				schema: draftBefore!.schema,
-				tools: draftBefore!.tools,
-				skills: draftBefore!.skills,
-				revision: draftBefore!.revision,
-			});
-			const published = await definitions.readVersion(agent.activeVersion!);
-			const draft = await definitions.readDraft(agent);
-			for (const [index, definition] of [published, draft].entries()) {
-				const expected = contents[index];
-				expect(definition.schema).toMatchObject({
-					name: expected.name,
-					instructions: expected.name,
-				});
-				expect(definition.tools).toEqual(expected.tools);
-				expect(Object.values(definition.skills)).toEqual([expected.skill]);
-				expect(definition.schema?.skills).toEqual(
-					Object.keys(definition.skills).map((id) => ({ type: 'skill', id })),
+			},
+			skill: { name, description: name, instructions: `Use ${name}.` },
+			task: {
+				name,
+				objective: `Run ${name}.`,
+				cronExpression: `0 ${index + 9} * * *`,
+				timezone: 'Europe/Berlin',
+			},
+		}));
+		const versionIds: string[] = [];
+		for (const content of contents) {
+			await Container.get(TransactionRunner).run({}, async (ctx) => {
+				const draft = (await agents.lockForVersionCapture(agentId, ctx))!;
+				draft.name = content.name;
+				draft.schema = {
+					...schema,
+					name: content.name,
+					instructions: content.name,
+					tools: [{ type: 'custom', id: 'lookup' }],
+					tasks: [{ type: 'task', id: 'daily', enabled: true }],
+				};
+				draft.tools = content.tools;
+				markAgentDraftDirty(draft);
+				await saveAgentDraftFenced(agents, draft, ctx);
+				await skillRefs.createDraftRefs(
+					draft,
+					[{ type: 'skill', id: content.name }],
+					{ [content.name]: content.skill },
+					owner,
+					ctx,
 				);
-				expect(definition.tasks).toEqual(new Map([['daily', expected.task]]));
-			}
-		},
-	);
+				await tasks.replaceForAgent(agentId, new Map([['daily', content.task]]), ctx);
+				versionIds.push((await definitions.captureVersion(draft, owner, ctx)).versionId);
+			});
+		}
+		const draftBefore = await agents.findById(agentId);
+
+		await service.publishAgent(agentId, projectId, owner, emitter, versionIds[0]);
+
+		const agent = (await agents.findById(agentId))!;
+		expect(agent).toMatchObject({
+			activeVersionId: versionIds[0],
+			versionId: versionIds[1],
+			schema: draftBefore!.schema,
+			tools: draftBefore!.tools,
+			revision: draftBefore!.revision,
+		});
+		const published = await definitions.readVersion(agent.activeVersion!);
+		const draft = await definitions.readDraft(agent);
+		for (const [index, definition] of [published, draft].entries()) {
+			const expected = contents[index];
+			expect(definition.schema).toMatchObject({
+				name: expected.name,
+				instructions: expected.name,
+			});
+			expect(definition.tools).toEqual(expected.tools);
+			expect(Object.values(definition.skills)).toEqual([expected.skill]);
+			expect(definition.schema?.skills).toEqual(
+				Object.keys(definition.skills).map((id) => ({ type: 'skill', id })),
+			);
+			expect(definition.tasks).toEqual(new Map([['daily', expected.task]]));
+		}
+	});
 
 	it('rolls back labels and activation when the publication event cannot be saved', async () => {
 		vi.spyOn(publications, 'record').mockRejectedValueOnce(new Error('Event write failed'));

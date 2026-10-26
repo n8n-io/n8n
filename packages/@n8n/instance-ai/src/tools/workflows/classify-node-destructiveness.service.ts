@@ -23,6 +23,8 @@ import { z } from 'zod';
 import { isTriggerNodeType } from './workflow-json-utils';
 import { AGENT_TOOL_NODE_TYPE, createVerificationGraph } from './verification-graph';
 import type { Logger } from '../../logger';
+import type { FetchFn } from '@n8n/agents';
+
 import type { ModelConfig } from '../../types';
 import { HAIKU_MODEL } from '../../utils/eval-agents';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
@@ -38,6 +40,8 @@ export interface ClassifyNodesForSimulationInput {
 	nodeNames?: ReadonlySet<string>;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** Transport for the helper's model call. */
+	modelFetch?: FetchFn;
 	logger?: Logger;
 }
 
@@ -358,6 +362,7 @@ async function classifyAmbiguousNodes(
 	nodes: Array<WorkflowNode & { name: string }>,
 	fallbackModelConfig?: ModelConfig,
 	logger?: Logger,
+	modelFetch?: FetchFn,
 ): Promise<NodeSimulationVerdict[]> {
 	const userText = [
 		'Classify the following n8n workflow nodes.',
@@ -373,6 +378,7 @@ async function classifyAmbiguousNodes(
 		userText,
 		schema: LlmVerdictSchema,
 		fallbackModelConfig,
+		modelFetch,
 	});
 	if (!result.ok) {
 		logger?.warn(
@@ -441,6 +447,7 @@ export async function classifyNodesForSimulation(
 				ambiguous,
 				input.fallbackModelConfig,
 				input.logger,
+				input.modelFetch,
 			)) {
 				verdictByName.set(verdict.nodeName, verdict);
 			}

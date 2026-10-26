@@ -10,9 +10,15 @@ import type {
 	AgentChatQueueItem,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
+	AgentTokenUsage,
 	CancellationResumeData,
 } from '@n8n/api-types';
-import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
+import {
+	AGENT_CHAT_ERROR_CODES,
+	applyForwardedChildChunk,
+	APPROVAL_TOOL_NAME,
+	emptyChildTrace,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { convertFileToBinaryData, resolveFileMimeType } from '@/app/utils/fileUtils';
 import {
@@ -52,6 +58,7 @@ import { isPolicyRefusedToolOutput } from '@/features/ai/shared/agentsChat/toolP
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
+import type { AgentUsageUpdate } from '../types';
 
 export interface FatalAgentError {
 	message: string;
@@ -82,6 +89,7 @@ export interface UseAgentChatStreamParams {
 	channel?: Ref<AgentChatChannel>;
 	onHistoryLoaded?: (count: number) => void;
 	onSessionCreated?: (sessionId: string) => void;
+	onUsageUpdated?: (update: AgentUsageUpdate) => void;
 	/** The agent is no longer available in n8n Chat (unpublished before send, or mid-run/resume). */
 	onAgentUnavailable?: () => void;
 	/** Builder preview shows the budget stop and alert cards. Other chats ignore them. */
@@ -603,6 +611,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		queueId?: string;
 		userMessage?: ChatMessage;
 		executionId?: string;
+		sessionId?: string;
+		usageComplete?: boolean;
 		needsStartValidation?: boolean;
 		busy?: boolean;
 		/** Gets the queue item id when the message was queued rather than started. */
@@ -1055,6 +1065,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				void refreshQueue();
 				clearTimeout(stopAcceptanceTimer);
 				session.executionId = event.executionId;
+				session.sessionId = event.sessionId;
+				notifyUsage(session);
 				activeExecutionId.value = event.executionId;
 				acceptedSessionId.value = event.sessionId;
 				session.onAccepted?.();
@@ -1267,7 +1279,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
 				break;
+			case 'usage':
+				notifyUsage(session, event.usage);
+				break;
 			case 'finish': {
+				if (event.usage) notifyUsage(session, event.usage);
 				if (!params.budgetCards || event.finishReason !== 'guardrail') break;
 				const code = event.guardrail?.code;
 				if (code !== undefined && isBudgetStopCode(code)) attachBudgetNotice(session, code);
@@ -1294,7 +1310,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'error': {
 				session.errorEmitted = true;
-				if (event.errorCode === 'turn_already_running') {
+				if (event.errorCode === AGENT_CHAT_ERROR_CODES.turnAlreadyRunning) {
 					session.busy = true;
 					isCancelling.value = false;
 					stopTargetId = undefined;
@@ -1304,9 +1320,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				settleOpenReasoning(session);
 				dropOrphanMintedBubbles(session);
 				markInFlightStateFailed(session);
-				if (event.errorCode === 'agent_misconfigured') {
+				if (event.errorCode === AGENT_CHAT_ERROR_CODES.agentMisconfigured) {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
-				} else if (event.errorCode === 'agent_unavailable') {
+				} else if (event.errorCode === AGENT_CHAT_ERROR_CODES.agentUnavailable) {
 					params.onAgentUnavailable?.();
 				} else if (session.userMessage && !session.executionId) {
 					showError(new Error(event.message), locale.baseText('agents.chat.queue.sendError'));
@@ -1322,9 +1338,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					);
 				}
 				session.terminalEventReceived = true;
+				notifyUsage(session, undefined, true);
 				break;
 			}
 			case 'done':
+				notifyUsage(session, undefined, true);
 				if (event.executionId === activeExecutionId.value) activeExecutionId.value = null;
 				settleOpenReasoning(session);
 				if (event.executionId) {
@@ -1349,6 +1367,18 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 		}
 		return undefined;
+	}
+
+	function notifyUsage(session: StreamSession, usage?: AgentTokenUsage, complete = false): void {
+		const sessionId = session.sessionId;
+		if (!sessionId || !session.executionId) return;
+		if (complete) session.usageComplete = true;
+		params.onUsageUpdated?.({
+			sessionId,
+			executionId: session.executionId,
+			usage,
+			complete: session.usageComplete === true,
+		});
 	}
 
 	function detachExcessWaitingStreams(): void {
