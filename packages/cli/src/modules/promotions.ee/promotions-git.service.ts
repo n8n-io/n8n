@@ -345,12 +345,15 @@ export class PromotionsGitService {
 		}
 	}
 
-	/** Reset the checkout to the latest base branch before one branched promotion. */
-	async prepareCheckoutForPromotion(operation: GitOperation): Promise<void> {
+	/**
+	 * Reset the checkout to the latest base branch before one branched promotion. Returns the commit
+	 * it reset to, so later reads of the base need no second fetch.
+	 */
+	async prepareCheckoutForPromotion(operation: GitOperation): Promise<{ commitSha: string }> {
 		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
 		try {
-			await this.lockCheckout(paths.repositoryFolder, async () => {
-				await this.withGit(
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				return await this.withGit(
 					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
 					async (git) => {
 						const branchRefs = await git.listRemote([
@@ -368,6 +371,7 @@ export class PromotionsGitService {
 							['--progress'],
 						);
 						await git.raw(['reset', '--hard', `origin/${branchName}`]);
+						return { commitSha: (await git.revparse(['HEAD'])).trim() };
 					},
 				);
 			});

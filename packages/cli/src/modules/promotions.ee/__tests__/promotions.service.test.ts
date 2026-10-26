@@ -134,6 +134,9 @@ describe('PromotionsService', () => {
 		);
 		// An empty remote by default, so the promote check for moved workflows has nothing to read.
 		gitService.listBranchTree.mockResolvedValue({ commitSha: null, lsTreeOutput: '' });
+		// Branch mode resets to this base commit, which holds no package by default.
+		gitService.prepareCheckoutForPromotion.mockResolvedValue({ commitSha: 'b'.repeat(40) });
+		gitService.findPathsAtCommit.mockResolvedValue(new Set());
 		n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-'));
 		workingDirectory = new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder }));
 		service = new PromotionsService(
@@ -286,6 +289,7 @@ describe('PromotionsService', () => {
 					commitSha: 'a'.repeat(40),
 					lsTreeOutput: 'n8n/manifest.json',
 				});
+				gitService.findPathsAtCommit.mockResolvedValue(new Set(['n8n/manifest.json']));
 				gitService.readFilesAtCommit.mockResolvedValue(
 					new Map([['n8n/manifest.json', JSON.stringify(manifest)]]),
 				);
@@ -411,6 +415,7 @@ describe('PromotionsService', () => {
 					commitSha: 'a'.repeat(40),
 					lsTreeOutput: '',
 				});
+				gitService.findPathsAtCommit.mockResolvedValue(new Set());
 
 				await service.promote(ENVIRONMENT_ID, actor, {
 					canExportVariableValues: true,
@@ -600,6 +605,42 @@ describe('PromotionsService', () => {
 				}),
 			).rejects.toThrow('not connected');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+		});
+
+		it('checks the base commit it reset to in branch mode, without a second fetch', async () => {
+			resolver.resolveForEnvironment.mockResolvedValue(
+				operationInput({
+					direction: 'promote',
+					settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
+				}),
+			);
+			gitService.findPathsAtCommit.mockResolvedValue(new Set(['n8n/manifest.json']));
+			gitService.readFilesAtCommit.mockResolvedValue(
+				new Map([
+					[
+						'n8n/manifest.json',
+						JSON.stringify({
+							projects: [{ id: 'p-billing', name: 'Billing', target: 'projects/billing' }],
+							workflows: [{ id: 'w1', name: 'Invoices', target: 'projects/billing/workflows/w1' }],
+						}),
+					],
+				]),
+			);
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([['w1', mock<Project>({ id: 'p9', type: 'personal' })]]),
+			);
+
+			await expect(
+				service.promote(ENVIRONMENT_ID, actor, {
+					canExportVariableValues: true,
+					commitMessage: 'm',
+				}),
+			).rejects.toThrow('"Invoices" (w1) is in a personal project here');
+			expect(gitService.listBranchTree).not.toHaveBeenCalled();
+			expect(gitService.readFilesAtCommit).toHaveBeenCalledWith(
+				expect.objectContaining({ commitSha: 'b'.repeat(40), filePaths: ['n8n/manifest.json'] }),
+			);
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 		});
 
 		it('pushes to a new timestamped branch when branching is enabled', async () => {

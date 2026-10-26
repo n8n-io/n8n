@@ -707,10 +707,12 @@ describe('PromotionsGitService (git operations)', () => {
 				environmentId,
 			});
 
-		it('fetches and resets to the configured remote base branch', async () => {
+		it('fetches and resets to the configured remote base branch, and returns that commit', async () => {
 			mockGit.listRemote.mockResolvedValue('def456\trefs/heads/main\n');
+			mockGit.revparse.mockResolvedValue('d'.repeat(40) + '\n');
 
-			await call();
+			await expect(call()).resolves.toEqual({ commitSha: 'd'.repeat(40) });
+			expect(mockGit.revparse).toHaveBeenCalledWith(['HEAD']);
 
 			expect(mockGit.fetch).toHaveBeenCalledWith(
 				'origin',

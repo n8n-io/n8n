@@ -197,10 +197,16 @@ export class PromotionsService {
 
 		const branchName = checkoutBranchName(input.config);
 		const credentials = await this.credentialsFor(input);
-		const targetBranchName = await this.prepareTargetBranch(input, branchName, credentials);
+		const target = await this.prepareTargetBranch(input, branchName, credentials);
+		const targetBranchName = target?.targetBranchName;
 		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
-		await this.assertNoWorkflowsMovedOutOfTeamProjects(input, branchName, credentials);
+		await this.assertNoWorkflowsMovedOutOfTeamProjects(
+			input,
+			branchName,
+			credentials,
+			target?.baseCommitSha,
+		);
 
 		// The instance environment covers every team project, including projects with
 		// their own environment. Personal projects stay out of scope.
@@ -389,7 +395,8 @@ export class PromotionsService {
 		const credentials = await this.credentialsFor(input);
 		// A branched environment resets the checkout to the latest base here, so the
 		// selection applies on top of it and pushes to a fresh promotion branch.
-		const targetBranchName = await this.prepareTargetBranch(input, branchName, credentials);
+		const targetBranchName = (await this.prepareTargetBranch(input, branchName, credentials))
+			?.targetBranchName;
 
 		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
@@ -1134,25 +1141,26 @@ export class PromotionsService {
 	 * When the environment creates a branch per promotion, this validates the new name
 	 * and resets the checkout to the latest base, so the promotion builds on it.
 	 * Otherwise the push targets the base branch and there is nothing to prepare.
+	 * `baseCommitSha` is the base commit the checkout was reset to.
 	 */
 	private async prepareTargetBranch(
 		input: PromotionOperationInput,
 		branchName: string,
 		credentials: PromotionGitCredentials,
-	): Promise<string | undefined> {
+	): Promise<{ targetBranchName: string; baseCommitSha: string } | undefined> {
 		if (input.config.direction !== 'promote' || !input.config.settings.createBranchOnPromotion) {
 			return undefined;
 		}
 		const targetBranchName = buildPromotionBranchName(new Date());
 		await this.gitService.validateBranchName(targetBranchName);
-		await this.gitService.prepareCheckoutForPromotion({
+		const { commitSha } = await this.gitService.prepareCheckoutForPromotion({
 			remoteUrl: repositoryUrl(input),
 			credentials,
 			paths: this.workingDirectory.paths(input.environmentId),
 			branchName,
 			environmentId: input.environmentId,
 		});
-		return targetBranchName;
+		return { targetBranchName, baseCommitSha: commitSha };
 	}
 
 	/**
@@ -1164,8 +1172,9 @@ export class PromotionsService {
 		input: PromotionOperationInput,
 		branchName: string,
 		credentials: PromotionGitCredentials,
+		baseCommitSha?: string,
 	): Promise<void> {
-		const manifest = await this.readRemoteManifest(input, branchName, credentials);
+		const manifest = await this.readRemoteManifest(input, branchName, credentials, baseCommitSha);
 		if (manifest === null) return;
 		const workflows = readBranchWorkflowPlacements(manifest, BRANCH_MANIFEST_PATH);
 		if (workflows.length === 0) return;
@@ -1187,41 +1196,51 @@ export class PromotionsService {
 	 * remote. It does not apply the import limits, which a promote never needed. `null` when the
 	 * branch holds nothing to check: the remote doesn't hold the branch (the push creates it), the
 	 * remote is empty, or the branch has no package. Any other read failure throws, so a transient
-	 * error never skips the check.
+	 * error never skips the check. With `knownHead`, a commit just fetched from the remote (branch
+	 * mode), it reads that commit and skips a second fetch.
 	 */
 	private async readRemoteManifest(
 		input: PromotionOperationInput,
 		branchName: string,
 		credentials: PromotionGitCredentials,
+		knownHead?: string,
 	): Promise<string | null> {
 		const paths = this.workingDirectory.paths(input.environmentId);
-		const operation = {
-			remoteUrl: repositoryUrl(input),
-			credentials,
-			paths,
-			branchName,
-			environmentId: input.environmentId,
-		};
-		let head: { commitSha: string | null; lsTreeOutput: string };
+		const local = { paths, branchName, environmentId: input.environmentId };
+		const commitSha =
+			knownHead ??
+			(await this.fetchManifestHead({ ...local, remoteUrl: repositoryUrl(input), credentials }));
+		if (commitSha === null) return null;
+
+		const present = await this.gitService.findPathsAtCommit({
+			...local,
+			commitSha,
+			filePaths: [BRANCH_MANIFEST_PATH],
+		});
+		if (!present.has(BRANCH_MANIFEST_PATH)) return null;
+
+		const files = await this.gitService.readFilesAtCommit({
+			...local,
+			commitSha,
+			filePaths: [BRANCH_MANIFEST_PATH],
+		});
+		return files.get(BRANCH_MANIFEST_PATH) ?? '';
+	}
+
+	/** Fetches the branch and returns its head, or `null` when there is no branch or commit yet. */
+	private async fetchManifestHead(
+		operation: Parameters<PromotionsGitService['hasRemoteBranch']>[0],
+	): Promise<string | null> {
 		try {
-			head = await this.gitService.listBranchTree({
+			const head = await this.gitService.listBranchTree({
 				...operation,
 				pathspecs: [BRANCH_MANIFEST_PATH],
 			});
+			return head.commitSha;
 		} catch (error) {
 			if (await this.gitService.hasRemoteBranch(operation)) throw error;
 			return null;
 		}
-		if (head.commitSha === null || head.lsTreeOutput === '') return null;
-
-		const files = await this.gitService.readFilesAtCommit({
-			paths,
-			branchName,
-			environmentId: input.environmentId,
-			commitSha: head.commitSha,
-			filePaths: [BRANCH_MANIFEST_PATH],
-		});
-		return files.get(BRANCH_MANIFEST_PATH) ?? '';
 	}
 
 	/**
