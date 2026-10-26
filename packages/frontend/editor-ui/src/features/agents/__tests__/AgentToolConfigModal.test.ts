@@ -6,7 +6,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { fireEvent, waitFor } from '@testing-library/vue';
-import { defineComponent, onMounted, nextTick } from 'vue';
+import { defineComponent, onMounted, nextTick, shallowRef, type MaybeRefOrGetter } from 'vue';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { AgentModalTestStub } from './utils/AgentModalTestStub';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
@@ -192,7 +192,7 @@ function renderModal({
 	customTool?: CustomToolEntry;
 	projectId?: string;
 	agentId?: string;
-	validationIssues?: AgentConfigValidationIssue[];
+	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentToolConfigModal, {
 		global: {
@@ -214,9 +214,9 @@ function renderModal({
 					props: ['code'],
 					template: '<pre data-test-id="agent-custom-tool-viewer">{{ code }}</pre>',
 				},
-				ContactInstanceAdminModal: {
+				ContactAdminModal: {
 					props: ['open', 'nodeTypeName'],
-					template: '<div v-if="open" data-test-id="contact-instance-admin-modal" />',
+					template: '<div v-if="open" data-test-id="contact-admin-modal" />',
 				},
 			},
 		},
@@ -688,10 +688,10 @@ describe('AgentToolConfigModal', () => {
 			const { getByTestId, queryByTestId } = renderModal();
 			await nextTick();
 
-			expect(queryByTestId('contact-instance-admin-modal')).toBeNull();
+			expect(queryByTestId('contact-admin-modal')).toBeNull();
 			await fireEvent.click(getByTestId('restricted-tool-contact-admin'));
 
-			expect(getByTestId('contact-instance-admin-modal')).toBeInTheDocument();
+			expect(getByTestId('contact-admin-modal')).toBeInTheDocument();
 		});
 
 		it('keeps Remove so the agent can be repaired', async () => {
@@ -703,6 +703,80 @@ describe('AgentToolConfigModal', () => {
 
 			expect(onRemove).toHaveBeenCalledOnce();
 			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('explains an inline restriction but keeps the tool editable, so it can be repaired', async () => {
+			// The tool's own type is allowed; the backend reports that the agent it embeds is not.
+			mockRestrictedNodeTypes();
+			const { container, getByTestId, queryByTestId } = renderModal({
+				valid: true,
+				validationIssues: [
+					{
+						code: 'restricted_node_type',
+						reason: 'restricted_by_inline_tool',
+						path: 'tools.0.node.nodeType',
+						capability: { kind: 'tool', id: 'ask_billing_agent', index: 0, toolType: 'node' },
+						restriction: { nodeType: 'n8n-nodes-base.mySql', scope: 'instance' },
+					},
+				],
+				ref: toolRef({
+					nodeType: 'n8n-nodes-base.messageAnAgentTool',
+					credentials: {},
+					nodeParameters: {
+						agentSource: 'inline',
+						inlineAgent: {
+							config: {
+								tools: [
+									{
+										type: 'node',
+										name: 'inline_query',
+										node: { nodeType: 'n8n-nodes-base.mySql', nodeParameters: {} },
+									},
+								],
+							},
+						},
+					},
+				}),
+			});
+			await nextTick();
+
+			expect(getByTestId('inline-restricted-tool-callout').textContent).toContain(
+				'agents.toolConfig.restrictedInlineTool',
+			);
+			expect(queryByTestId('restricted-tool-callout')).toBeNull();
+			expect(getByTestId('node-tool-settings-content')).toHaveAttribute('data-read-only', 'false');
+			const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
+			expect(saveBtn.disabled).toBe(false);
+		});
+
+		it('shows the inline callout once the builder validates again while the modal is open', async () => {
+			mockRestrictedNodeTypes();
+			// Opened while an autosave was pending, so the builder had no result yet.
+			const issues = shallowRef<AgentConfigValidationIssue[]>([]);
+			const { queryByTestId } = renderModal({ valid: true, validationIssues: issues });
+			await nextTick();
+			expect(queryByTestId('inline-restricted-tool-callout')).toBeNull();
+
+			issues.value = [
+				{
+					code: 'restricted_node_type',
+					reason: 'restricted_by_inline_tool',
+					path: 'tools.0.node.nodeType',
+					capability: { kind: 'tool', id: 'ask_billing_agent', index: 0, toolType: 'node' },
+					restriction: { nodeType: 'n8n-nodes-base.mySql', scope: 'instance' },
+				},
+			];
+			await nextTick();
+
+			expect(queryByTestId('inline-restricted-tool-callout')).not.toBeNull();
+		});
+
+		it('shows no inline callout when nothing is restricted', async () => {
+			mockRestrictedNodeTypes();
+			const { queryByTestId } = renderModal({ valid: true });
+			await nextTick();
+
+			expect(queryByTestId('inline-restricted-tool-callout')).toBeNull();
 		});
 
 		it('leaves an unrestricted tool editable', async () => {

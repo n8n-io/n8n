@@ -79,7 +79,7 @@ export interface WorkflowFolderConflict {
 	sourceWorkflowId: string;
 	existingWorkflowId: string;
 	existingParentFolderId: string | null;
-	targetFolderId: string;
+	targetFolderId: string | null;
 	name: string;
 }
 

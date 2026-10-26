@@ -11,7 +11,7 @@ import {
 	type QuestionAnswer,
 	getLegacyBuilderToolNames,
 } from '@n8n/api-types';
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService } from '../builder-session';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -29,7 +29,7 @@ function credentialsOfType(
 
 /** Resolve a credential's display name by id via `get`, falling back to the id if it was deleted between suspend and resume. */
 async function credentialNameById(
-	credentialService: InstanceAiCredentialService,
+	credentialService: BuilderCredentialService,
 	credentialId: string,
 ): Promise<string> {
 	try {
@@ -282,8 +282,11 @@ function validateCredentialTypes(input: FinishSetupInput, deps: FinishSetupToolD
 }
 
 /** Throws for any requested channel whose type isn't a known chat integration. */
-function validateChannelTypes(input: FinishSetupInput, deps: FinishSetupToolDeps): void {
-	const availableChannelTypes = deps.listChatIntegrationTypes();
+async function validateChannelTypes(
+	input: FinishSetupInput,
+	deps: FinishSetupToolDeps,
+): Promise<void> {
+	const availableChannelTypes = await deps.listChatIntegrationTypes();
 	for (const channel of input.channels ?? []) {
 		if (!availableChannelTypes.includes(channel.integrationType)) {
 			const availableMessage = availableChannelTypes.length
@@ -311,7 +314,7 @@ async function computeInitialPlan(
 	deps: FinishSetupToolDeps,
 ): Promise<{ phases: PhaseDescriptor[]; collected: Collected }> {
 	validateCredentialTypes(input, deps);
-	validateChannelTypes(input, deps);
+	await validateChannelTypes(input, deps);
 
 	const collected: Collected = {};
 	const pendingSlots: CredentialSlotInput[] = [];

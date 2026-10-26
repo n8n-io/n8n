@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import { CredentialAccessRepository, CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { Tool as LangChainTool, type Tool as LangChainToolType } from '@langchain/core/tools';
@@ -172,9 +172,9 @@ export class EphemeralNodeExecutor {
 	constructor(
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly logger: Logger,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly credentialAccessRepository: CredentialAccessRepository,
 	) {}
 
 	/**
@@ -189,7 +189,7 @@ export class EphemeralNodeExecutor {
 			return null;
 		}
 
-		const accessible = await this.credentialsRepository.findAllCredentialsForProject(projectId);
+		const accessible = await this.credentialsRepository.findCredentialsUsableInProject(projectId);
 
 		const resolved: Record<string, INodeCredentialsDetails> = {};
 
@@ -240,24 +240,29 @@ export class EphemeralNodeExecutor {
 				);
 			}
 
-			const sharedCredential = await this.sharedCredentialsRepository.findOne({
-				where: { credentialsId: d.id, projectId },
-				relations: { credentials: true },
-			});
+			const [credential] = await this.credentialsRepository.findCredentialsUsableInProject(
+				projectId,
+				[d.id],
+			);
 
-			if (!sharedCredential) {
-				throw new UserError(`Credential "${d.name}" is not accessible or does not exist.`, {
-					extra: { credType, credentialId: d.id },
-				});
+			if (!credential) {
+				const [currentCredential] = await this.credentialAccessRepository.findCredentialNames([
+					d.id,
+				]);
+				const name = currentCredential ? ` "${currentCredential.name}"` : '';
+				throw new UserError(
+					`Credential${name} with ID "${d.id}" is not accessible or does not exist.`,
+					{ extra: { credType, credentialId: d.id } },
+				);
 			}
 
-			if (sharedCredential.credentials.type !== credType) {
+			if (credential.type !== credType) {
 				throw new UserError(
-					`Credential "${sharedCredential.credentials.name}" has type "${sharedCredential.credentials.type}" but the node expects credential slot "${credType}".`,
+					`Credential "${credential.name}" has type "${credential.type}" but the node expects credential slot "${credType}".`,
 					{
 						extra: {
 							credType,
-							actualType: sharedCredential.credentials.type,
+							actualType: credential.type,
 							credentialId: d.id,
 						},
 					},
@@ -265,8 +270,8 @@ export class EphemeralNodeExecutor {
 			}
 
 			verified[credType] = {
-				id: sharedCredential.credentials.id,
-				name: sharedCredential.credentials.name,
+				id: credential.id,
+				name: credential.name,
 			};
 		}
 

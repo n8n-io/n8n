@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
 import type {
 	AgentJsonConfig,
@@ -107,21 +108,33 @@ const emit = defineEmits<{
 	'remove-vector-store': [vectorStore: AgentJsonVectorStoreConfig];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
+	'trigger-removed': [payload: { triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'toggle-mcp-access': [enabled: boolean];
 	'tasks-changed': [];
 	'preview-task': [instructions: string];
 	'agent-changed': [];
 	'generate-eval-cases': [];
-	'open-preview': [];
+	'open-preview': [source: 'icon'];
 	'publish-agent': [];
 	'setup-task-action': [task: SetupTask];
 }>();
 
 const i18n = useI18n();
+const agentTelemetry = useAgentTelemetry();
 
 const agentInfoPanel = ref<InstanceType<typeof AgentInfoPanel>>();
 const agentTriggersSection = ref<InstanceType<typeof AgentTriggersSection>>();
+
+function onMainTabSelect(tab: AgentBuilderMainTab) {
+	if (tab !== 'evals') {
+		agentTelemetry.trackClickedAgentsTab({
+			agentId: props.agentId,
+			name: tab === 'agent' ? 'build' : tab,
+		});
+	}
+	emit('update:activeMainTab', tab);
+}
 
 function onSetupTaskAction(task: SetupTask) {
 	if (task.id === 'publish-agent') {
@@ -174,7 +187,7 @@ defineExpose({ onSetupTaskAction });
 						:options="mainTabOptions"
 						:class="$style.mainTabs"
 						data-testid="agent-header-tabs"
-						@update:model-value="emit('update:activeMainTab', $event)"
+						@update:model-value="onMainTabSelect"
 					/>
 				</div>
 			</div>
@@ -216,7 +229,7 @@ defineExpose({ onSetupTaskAction });
 								:is-runnable="props.agent?.isRunnable === true"
 								:validation-issues="props.configValidationIssues ?? []"
 								test-id="agent-triggers-preview-chat-button"
-								@open-preview="emit('open-preview')"
+								@open-preview="emit('open-preview', 'icon')"
 							/>
 						</template>
 						<AgentTriggersSection
@@ -238,6 +251,7 @@ defineExpose({ onSetupTaskAction });
 							:reload-key="tasksReloadKey"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
+							@trigger-removed="emit('trigger-removed', $event)"
 							@agent-changed="emit('agent-changed')"
 							@toggle-task="emit('toggle-task', $event)"
 							@tasks-changed="emit('tasks-changed')"
@@ -288,6 +302,7 @@ defineExpose({ onSetupTaskAction });
 						:description="i18n.baseText('agents.builder.files.titleTooltip')"
 					>
 						<AgentFilesPanel
+							:agent-id="agentId"
 							:files="agentFiles"
 							:disabled="childrenDisabled"
 							:loading="agentFilesLoading"

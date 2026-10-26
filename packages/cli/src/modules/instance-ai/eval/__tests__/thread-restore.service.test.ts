@@ -16,7 +16,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@n8n/errors';
-import { AgentsService } from '@/modules/agents/agents.service';
+import { AgentDraftService } from '@/modules/agents/agent-draft.service';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
@@ -606,7 +606,7 @@ describe('EvalThreadRestoreService', () => {
 	});
 
 	describe('restoreAgents', () => {
-		const agentsService = mockInstance(AgentsService);
+		const agentsService = mockInstance(AgentDraftService);
 		const moduleRegistry = mockInstance(ModuleRegistry);
 
 		const seedAgent = (over: { id?: string; name?: string } = {}) => ({
@@ -633,13 +633,16 @@ describe('EvalThreadRestoreService', () => {
 			const created = await service.restoreAgents([agent], 'project-1', evalUser);
 
 			expect(created).toEqual(['agent-original']);
-			expect(agentsService.create).toHaveBeenCalledExactlyOnceWith('project-1', 'Support Triage', {
-				actor: { kind: 'user', user: evalUser },
-				id: 'agent-original',
-				schema: agent.config,
-				skills: agent.skills,
-				skillCreator: evalUser,
-			});
+			expect(agentsService.createDraft).toHaveBeenCalledExactlyOnceWith(
+				evalUser,
+				'project-1',
+				'Support Triage',
+				{
+					id: 'agent-original',
+					schema: agent.config,
+					skills: agent.skills,
+				},
+			);
 		});
 
 		it('rewrites data-table ids in an agent node tool to the recreated tables', async () => {
@@ -669,7 +672,7 @@ describe('EvalThreadRestoreService', () => {
 				new Map([['dt-authored-01', 'dt-new-99']]),
 			);
 
-			const [, , options] = agentsService.create.mock.calls[0];
+			const [, , , options] = agentsService.createDraft.mock.calls[0];
 			expect(JSON.stringify(options?.schema)).toContain('dt-new-99');
 			expect(JSON.stringify(options?.schema)).not.toContain('dt-authored-01');
 		});
@@ -703,7 +706,7 @@ describe('EvalThreadRestoreService', () => {
 				]),
 			);
 
-			const [, , options] = agentsService.create.mock.calls[0];
+			const [, , , options] = agentsService.createDraft.mock.calls[0];
 			const serialized = JSON.stringify(options?.schema);
 			expect(serialized).toContain('SHORT-NEW');
 			expect(serialized).toContain('LONG-NEW');
@@ -715,7 +718,7 @@ describe('EvalThreadRestoreService', () => {
 
 			await service.restoreAgents([agent], 'project-1', evalUser);
 
-			const [, , options] = agentsService.create.mock.calls[0];
+			const [, , , options] = agentsService.createDraft.mock.calls[0];
 			expect(options?.schema).toEqual(agent.config);
 		});
 
@@ -744,7 +747,7 @@ describe('EvalThreadRestoreService', () => {
 
 			await service.restoreAgents([{ ...agent, config }], 'project-1', evalUser);
 
-			const [, , options] = agentsService.create.mock.calls[0];
+			const [, , , options] = agentsService.createDraft.mock.calls[0];
 			expect(options?.schema).toMatchObject({
 				credential: '',
 				vectorStores: [{ credential: '', embedding: { credential: '' } }],
@@ -795,7 +798,7 @@ describe('EvalThreadRestoreService', () => {
 					new Set(['cred-openai', 'cred-gemini']),
 				);
 
-				const [, , options] = agentsService.create.mock.calls[0];
+				const [, , , options] = agentsService.createDraft.mock.calls[0];
 				expect(options?.schema).toMatchObject({
 					credential: 'cred-openai',
 					subAgents: {
@@ -818,7 +821,7 @@ describe('EvalThreadRestoreService', () => {
 					new Set(['other']),
 				);
 
-				const [, , options] = agentsService.create.mock.calls[0];
+				const [, , , options] = agentsService.createDraft.mock.calls[0];
 				expect(options?.schema).toMatchObject({ credential: '' });
 			});
 
@@ -827,7 +830,7 @@ describe('EvalThreadRestoreService', () => {
 
 				await service.restoreAgents([openAiAgent()], 'project-1', evalUser, new Map(), new Set());
 
-				const [, , options] = agentsService.create.mock.calls[0];
+				const [, , , options] = agentsService.createDraft.mock.calls[0];
 				expect(options?.schema).toMatchObject({ credential: '' });
 			});
 
@@ -839,7 +842,7 @@ describe('EvalThreadRestoreService', () => {
 
 				await service.restoreAgents([openAiAgent()], 'project-1', evalUser);
 
-				const [, , options] = agentsService.create.mock.calls[0];
+				const [, , , options] = agentsService.createDraft.mock.calls[0];
 				expect(options?.schema).toMatchObject({ credential: '' });
 			});
 
@@ -853,7 +856,7 @@ describe('EvalThreadRestoreService', () => {
 					evalUser,
 				);
 
-				const [, , options] = agentsService.create.mock.calls[0];
+				const [, , , options] = agentsService.createDraft.mock.calls[0];
 				expect(options?.schema).not.toHaveProperty('credential');
 				expect(credentialsRepo.findByTypesInProject).not.toHaveBeenCalled();
 			});
@@ -862,7 +865,7 @@ describe('EvalThreadRestoreService', () => {
 		it('rolls back agents already created when a later one fails', async () => {
 			// A partial restore would leak an agent into the shared eval project, and the
 			// build fails anyway — the thread never gets the history that references it.
-			agentsService.create
+			agentsService.createDraft
 				.mockResolvedValueOnce(mock())
 				.mockRejectedValueOnce(new Error('An agent with this id already exists'));
 
@@ -874,7 +877,11 @@ describe('EvalThreadRestoreService', () => {
 				),
 			).rejects.toThrow('already exists');
 
-			expect(agentsService.delete).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
+			expect(agentsService.deleteDraft).toHaveBeenCalledExactlyOnceWith(
+				evalUser,
+				'project-1',
+				'agent-1',
+			);
 		});
 
 		it('fails loudly when the agents module is disabled, rather than seeding nothing', async () => {
@@ -883,7 +890,7 @@ describe('EvalThreadRestoreService', () => {
 			await expect(service.restoreAgents([seedAgent()], 'project-1', evalUser)).rejects.toThrow(
 				BadRequestError,
 			);
-			expect(agentsService.create).not.toHaveBeenCalled();
+			expect(agentsService.createDraft).not.toHaveBeenCalled();
 		});
 
 		it('does not touch the agents module for a seed that declares no agents', async () => {

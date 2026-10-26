@@ -270,13 +270,13 @@ describe('agent-sse-stream — stream completion', () => {
 		]);
 	});
 
-	it('forwards the finish reason and leaves completion delivery to the caller', async () => {
+	it.each(['stop', 'cancelled'] as const)('forwards the %s finish reason', async (finishReason) => {
 		const events = await collectEvents([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
 			{
 				type: 'finish',
-				finishReason: 'stop',
+				finishReason,
 				usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
 			},
 		]);
@@ -284,7 +284,7 @@ describe('agent-sse-stream — stream completion', () => {
 		expect(events).toEqual([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
-			{ type: 'finish', finishReason: 'stop' },
+			{ type: 'finish', finishReason },
 		]);
 	});
 

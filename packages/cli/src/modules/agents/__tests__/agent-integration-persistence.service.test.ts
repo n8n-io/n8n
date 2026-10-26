@@ -1,12 +1,18 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
+import { EventService } from '@n8n/backend-services';
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
+import { BadRequestError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { PostHogClient } from '@/posthog';
+
+import { N8nChatFlagService } from '../integrations/platforms/n8n-chat/n8n-chat-flag.service';
 import type { Telemetry } from '@/telemetry';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
@@ -14,7 +20,10 @@ import { AgentModificationTelemetryService } from '../agent-modification-telemet
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { ProjectAgent } from '../entities/agent.entity';
-import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import type {
+	AgentChatIntegration,
+	ChatIntegrationRegistry,
+} from '../integrations/agent-chat-integration';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 
@@ -58,6 +67,7 @@ function setup(options: SetupOptions = {}) {
 	const telemetry = mock<Telemetry>();
 	const credentialsService = mock<CredentialsService>();
 	const setupCompletionService = mock<AgentSetupCompletionService>();
+	const postHogClient = mock<PostHogClient>();
 
 	const row = {
 		id: agentId,
@@ -99,10 +109,16 @@ function setup(options: SetupOptions = {}) {
 			runtimeCacheService,
 			chatIntegrationRegistry,
 			eventService,
-			new AgentModificationTelemetryService(telemetry),
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
+			new AgentModificationTelemetryService(
+				telemetry,
+				mock<InstanceSettings>(),
+				mock<EventService>(),
+			),
 			credentialsService,
 			setupCompletionService,
 			createAgentSkillRefsService(),
+			new N8nChatFlagService(postHogClient),
 		),
 		agent,
 		row,
@@ -113,6 +129,7 @@ function setup(options: SetupOptions = {}) {
 		telemetry,
 		credentialsService,
 		setupCompletionService,
+		postHogClient,
 	};
 }
 
@@ -165,6 +182,86 @@ describe('AgentIntegrationPersistenceService', () => {
 		]);
 		expect(chatIntegrationRegistry.listPublic).toHaveBeenCalled();
 		expect(chatIntegrationRegistry.list).not.toHaveBeenCalled();
+	});
+
+	describe('listBuilderChatIntegrations', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const slack = {
+			type: 'slack',
+			displayLabel: 'Slack',
+			displayIcon: 'slack',
+			credentialTypes: ['slackApi'],
+			actionToolDefinitions: [],
+		};
+		const n8nChat = {
+			type: 'n8n_chat',
+			displayLabel: 'n8n Chat',
+			displayIcon: 'message-square',
+			credentialTypes: [],
+			internal: true,
+			builderGuidance: {
+				capabilities: ['Chat in n8n'],
+				useIntegrationWhen: ['Make it available in n8n Chat'],
+				useNodeToolWhen: ['Never'],
+			},
+			actionToolDefinitions: [{ name: 'respond' }],
+		};
+
+		function setupGate() {
+			const context = setup();
+			context.chatIntegrationRegistry.listPublic.mockReturnValue([slack] as never);
+			context.chatIntegrationRegistry.get.mockImplementation(
+				(type) => (type === 'n8n_chat' ? n8nChat : undefined) as never,
+			);
+			return context;
+		}
+
+		it.each(['variant-a', 'variant-b'])('adds n8n Chat for the %s arm', async (variant) => {
+			const { service, postHogClient } = setupGate();
+			postHogClient.getFeatureFlags.mockResolvedValue({ '125_agents_n8n_chat': variant });
+
+			const integrations = await service.listBuilderChatIntegrations(user);
+
+			expect(postHogClient.getFeatureFlags).toHaveBeenCalledWith(user);
+			expect(integrations.map((i) => i.type)).toEqual(['slack', 'n8n_chat']);
+			expect(integrations[1]).toEqual({
+				type: 'n8n_chat',
+				label: 'n8n Chat',
+				icon: 'message-square',
+				credentialTypes: [],
+				approvableActions: [{ name: 'respond', sensitive: false }],
+				capabilities: ['Chat in n8n'],
+				useIntegrationWhen: ['Make it available in n8n Chat'],
+				useNodeToolWhen: ['Never'],
+			});
+		});
+
+		it.each([{ '125_agents_n8n_chat': 'control' }, { '125_agents_n8n_chat': false }, {}])(
+			'omits n8n Chat when the flag is off (%j)',
+			async (flags) => {
+				const { service, postHogClient } = setupGate();
+				postHogClient.getFeatureFlags.mockResolvedValue(flags);
+
+				const integrations = await service.listBuilderChatIntegrations(user);
+
+				expect(integrations.map((i) => i.type)).toEqual(['slack']);
+			},
+		);
+
+		it('omits n8n Chat when PostHog fails', async () => {
+			const { service, postHogClient } = setupGate();
+			postHogClient.getFeatureFlags.mockRejectedValue(new Error('PostHog down'));
+
+			const integrations = await service.listBuilderChatIntegrations(user);
+
+			expect(integrations.map((i) => i.type)).toEqual(['slack']);
+		});
+
+		it('leaves the public catalog without n8n Chat', () => {
+			const { service } = setupGate();
+
+			expect(service.listChatIntegrations().map((i) => i.type)).toEqual(['slack']);
+		});
 	});
 
 	describe('adding a channel', () => {
@@ -269,6 +366,75 @@ describe('AgentIntegrationPersistenceService', () => {
 					settings: { accessMode: 'private', allowedUsers: ['@alice'] },
 				},
 				{ type: 'linear', credentialId: 'linear-1' },
+			]);
+		});
+
+		describe('platform with one connection per agent', () => {
+			const teams = (credentialId: string): AgentIntegrationConfig => ({
+				type: 'teams',
+				credentialId,
+			});
+
+			function setupTeams(integrations: AgentIntegrationConfig[]) {
+				const context = setup({ integrations });
+				context.chatIntegrationRegistry.get.mockReturnValue(
+					mock<AgentChatIntegration>({ singleConnectionPerAgent: true }),
+				);
+				return context;
+			}
+
+			it('rejects a second credential that does not replace the first', async () => {
+				const { service, agent, row } = setupTeams([teams('teams-1')]);
+
+				await expect(
+					service.applyIntegrationDelta(agent, { add: teams('teams-2') }, byUser),
+				).rejects.toThrow(BadRequestError);
+				expect(row.integrations).toEqual([teams('teams-1')]);
+			});
+
+			it('accepts a second credential that replaces the first', async () => {
+				const { service, agent, row } = setupTeams([teams('teams-1')]);
+
+				await service.applyIntegrationDelta(
+					agent,
+					{ add: teams('teams-2'), remove: teams('teams-1') },
+					byUser,
+				);
+
+				expect(row.integrations).toEqual([teams('teams-2')]);
+			});
+
+			it('accepts the same credential again', async () => {
+				const { service, agent, row } = setupTeams([teams('teams-1')]);
+
+				await service.applyIntegrationDelta(agent, { add: teams('teams-1') }, byUser);
+
+				expect(row.integrations).toEqual([teams('teams-1')]);
+			});
+
+			it('lets an agent that holds two remove one', async () => {
+				const { service, agent, row } = setupTeams([teams('teams-1'), teams('teams-2')]);
+
+				await service.applyIntegrationDelta(agent, { remove: teams('teams-2') }, byUser);
+
+				expect(row.integrations).toEqual([teams('teams-1')]);
+			});
+		});
+
+		it('keeps a second credential beside the first on a platform that allows it', async () => {
+			const { service, agent, row } = setup({
+				integrations: [{ type: 'discord', credentialId: 'discord-1' }],
+			});
+
+			await service.applyIntegrationDelta(
+				agent,
+				{ add: { type: 'discord', credentialId: 'discord-2' } },
+				byUser,
+			);
+
+			expect(row.integrations).toEqual([
+				{ type: 'discord', credentialId: 'discord-1' },
+				{ type: 'discord', credentialId: 'discord-2' },
 			]);
 		});
 
@@ -700,7 +866,7 @@ describe('AgentIntegrationPersistenceService', () => {
 	});
 
 	describe('modification telemetry', () => {
-		it('reports the first channel on a blank agent as a creation', async () => {
+		it('reports the first channel on a saved draft as a modification', async () => {
 			const { service, agent, telemetry } = setup({ schema: blankConfig });
 
 			await service.applyIntegrationDelta(
@@ -710,18 +876,19 @@ describe('AgentIntegrationPersistenceService', () => {
 			);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
 				expect.objectContaining({
 					agent_id: agentId,
 					project_id: projectId,
 					user_id: user.id,
 					changed_parts: ['triggers'],
+					changed_settings: [],
 					trigger_count: 1,
 					event_version: '2',
 				}),
 			);
 			expect(telemetry.track).not.toHaveBeenCalledWith(
-				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
 				expect.anything(),
 			);
 		});
@@ -743,7 +910,7 @@ describe('AgentIntegrationPersistenceService', () => {
 					agent_id: agentId,
 					changed_parts: ['triggers'],
 					trigger_count: 2,
-					event_version: '1',
+					event_version: '2',
 				}),
 			);
 			expect(telemetry.track).not.toHaveBeenCalledWith(

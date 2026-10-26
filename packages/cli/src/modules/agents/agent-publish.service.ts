@@ -32,8 +32,10 @@ import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { AgentDefinition } from './utils/agent-definition';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
+import { builderTelemetrySessionProperties } from './builder/builder-telemetry-session';
 import {
 	diffAgentConfigParts,
+	diffAgentConfigSettings,
 	type AgentActor,
 	type AgentMutationTelemetryContext,
 } from './agent-modification-telemetry.service';
@@ -47,6 +49,10 @@ import { AgentTask } from './entities/agent-task.entity';
 import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { toAgentDocument } from './json-config/agent-document';
+import {
+	AgentFileRepository,
+	type AgentKnowledgeTotals,
+} from './repositories/agent-file.repository';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
@@ -128,6 +134,7 @@ export class AgentPublishService {
 		private readonly definitionService: AgentDefinitionService,
 		private readonly agentPolicyService: AgentPolicyService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly agentFileRepository: AgentFileRepository,
 	) {}
 
 	/** `pushRef`: push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
@@ -173,13 +180,15 @@ export class AgentPublishService {
 			published,
 		);
 
+		const knowledgeTotals = await this.readKnowledgeTotalsForTelemetry(agent.id);
+
 		await this.commitPublication(agent, expectedRevision, user, tasks, targetHistory);
 		this.eventService.emit('agent-saved', { agentId });
 		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: emitter.by }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
-		this.trackPublished(agent, projectId, user, emitter, targetHistory, published);
+		this.trackPublished(agent, projectId, user, emitter, targetHistory, published, knowledgeTotals);
 		await emitSetupCompleted?.();
 
 		await this.startPublishedServices(agent);
@@ -304,6 +313,21 @@ export class AgentPublishService {
 		return agent;
 	}
 
+	/** Make sure a failed read for the publish event never stops the publication. */
+	private async readKnowledgeTotalsForTelemetry(
+		agentId: string,
+	): Promise<AgentKnowledgeTotals | undefined> {
+		try {
+			return await this.agentFileRepository.getKnowledgeTotals(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to read knowledge totals for the publish event', {
+				agentId,
+				error,
+			});
+			return undefined;
+		}
+	}
+
 	/**
 	 * One event per surface rather than one event with a `by` property, matching
 	 * the creation and modification events. Written as a switch because
@@ -317,6 +341,7 @@ export class AgentPublishService {
 		emitter: AgentPublishEmitter,
 		targetHistory: AgentHistory | undefined,
 		published: AgentJsonConfig | null,
+		knowledgeTotals: AgentKnowledgeTotals | undefined,
 	): void {
 		const properties = {
 			agent_id: agent.id,
@@ -329,6 +354,10 @@ export class AgentPublishService {
 			// agent.versionId, so it is never null on this path.
 			version_id: agent.activeVersionId!,
 			...buildAgentCapabilityTelemetryProperties(published, agent.integrations),
+			...(knowledgeTotals && {
+				knowledge_file_count: knowledgeTotals.fileCount,
+				knowledge_total_bytes: knowledgeTotals.totalBytes,
+			}),
 		} as const;
 
 		switch (emitter.by) {
@@ -341,6 +370,7 @@ export class AgentPublishService {
 			case 'builder':
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_PUBLISHED_AGENT, {
 					...properties,
+					...builderTelemetrySessionProperties(),
 					event_version: '1',
 				});
 				return;
@@ -365,6 +395,7 @@ export class AgentPublishService {
 			case 'builder':
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_UNPUBLISHED_AGENT, {
 					...properties,
+					...builderTelemetrySessionProperties(),
 					event_version: '1',
 				});
 				return;
@@ -477,7 +508,7 @@ export class AgentPublishService {
 						(!this.agentSkillRefs.usesSkillsHub && !isEqual(previousSkills, agent.skills ?? {})),
 					tasks: tasksChanged,
 				}),
-				wasUnconfigured: false,
+				changedSettings: diffAgentConfigSettings(previousSchema, nextSchema),
 			},
 			context.pushRef,
 			null,

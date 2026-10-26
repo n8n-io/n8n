@@ -51,7 +51,7 @@ import type {
 } from '../../types/sdk/agent';
 import type { GuardrailStop } from '../../types/sdk/guardrail';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
-import { getModelIdString } from '../../utils/model';
+import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
 import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { createFilteredLogger } from '../logger';
@@ -211,7 +211,7 @@ export class AgentRuntime {
 		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
-		if (config.deferredTools && config.deferredTools.length > 0) {
+		if (!config.nativeToolDeferral && config.deferredTools && config.deferredTools.length > 0) {
 			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
 				...config.toolSearch,
 				// Let the discovery tools recognize the always-available toolset, so a
@@ -971,7 +971,7 @@ export class AgentRuntime {
 		state: LoopState,
 		pendingResume: PendingResume,
 	): Promise<ToolBatchSettlement<T>> {
-		const { toolMap } = this.context.buildToolLoopContext(
+		const { toolMap } = await this.context.buildToolLoopContext(
 			ctx.staticContext.aiProviderTools,
 			ctx.options?.persistence,
 			ctx.options?.executionCounter,
@@ -1055,7 +1055,7 @@ export class AgentRuntime {
 
 	private async prepareModelCall(ctx: PreparedLoopContext) {
 		const { list, options, abortScope, staticContext } = ctx;
-		const tools = this.context.buildToolLoopContext(
+		const tools = await this.context.buildToolLoopContext(
 			staticContext.aiProviderTools,
 			options?.persistence,
 			options?.executionCounter,
@@ -1066,6 +1066,7 @@ export class AgentRuntime {
 			list,
 			tools,
 			instructionProviderOptions: ctx.instructionProviderOptions,
+			providerOptions: staticContext.providerOptions,
 			hostVolatileInstructions,
 			activeSkills: this.activeSkills,
 		});
@@ -1077,7 +1078,7 @@ export class AgentRuntime {
 			hasTools: options?.toolsEnabled !== false && tools.hasTools,
 			aiTools: prompt.aiTools,
 			reasoning: staticContext.reasoning,
-			providerOptions: staticContext.providerOptions,
+			providerOptions: prompt.providerOptions,
 			outputSpec: staticContext.outputSpec,
 			maxOutputTokens: staticContext.maxOutputTokens,
 			aiSdkOptions: this.buildAiSdkOptions(tools.toolMap, options),
@@ -1425,7 +1426,7 @@ export class AgentRuntime {
 	private async ensureModelCost(): Promise<ModelCost | undefined> {
 		if (this.modelCost) return this.modelCost;
 		try {
-			this.modelCost = await getModelCost(this.modelIdString);
+			this.modelCost = await getModelCost(getCatalogModelId(this.config.model));
 		} catch {
 			// Catalog unavailable — proceed without cost data, will retry next call
 		}

@@ -3,6 +3,7 @@ import { PassThrough, Readable } from 'node:stream';
 import type { SerializableAgentState } from '@n8n/agents';
 import type { AgentsConfig } from '@n8n/config';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import express from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -42,6 +43,13 @@ import {
 } from './test-utils/controller-route-metadata';
 import { productionChatMemoryResourceId } from '../utils/agent-memory-scope';
 import { N8N_CHAT_PRODUCTION_SOURCE } from '../utils/agent-thread-access';
+import {
+	createLargeTempFile,
+	disconnectBeforeResponse,
+	readWholeBody,
+	startServer,
+	waitForClose,
+} from '@test/file-stream-server';
 
 function makeController() {
 	const agentsService =
@@ -593,6 +601,18 @@ describe('AgentChatController chat message history', () => {
 describe('AgentChatController SSE done payload', () => {
 	const operations = [
 		{
+			name: 'resumed production chat',
+			method: 'resumeForChat' as const,
+			start: async (controller: AgentChatController, res: FlushableResponse) =>
+				await controller.productionChatResume(
+					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+					res,
+					'agent-1',
+					{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
+				),
+			done: { type: 'done', executionId: 'exec-99' },
+		},
+		{
 			name: 'resumed chat',
 			method: 'resumeForChat' as const,
 			start: async (controller: AgentChatController, res: FlushableResponse) =>
@@ -672,7 +692,7 @@ describe('AgentChatController SSE done payload', () => {
 
 		expect(res.end).toHaveBeenCalledOnce();
 		res.emit('close');
-		expect(receivedSignal?.aborted).toBe(false);
+		expect(receivedSignal).toBeUndefined();
 	});
 
 	it.each(operations)('does not send done for a suspended $name', async ({ method, start }) => {
@@ -698,9 +718,9 @@ describe('AgentChatController SSE done payload', () => {
 
 	it.each(
 		operations.flatMap((operation) =>
-			[false, true].map((accepted) => ({ ...operation, accepted })),
+			[false, true].map((announced) => ({ ...operation, announced })),
 		),
-	)('detaches $name on close with accepted=$accepted', async ({ start, method, accepted }) => {
+	)('continues $name on close (announced=$announced)', async ({ start, method, announced }) => {
 		const { controller, agentExecutionOrchestratorService } = makeController();
 
 		let receivedSignal: AbortSignal | undefined;
@@ -713,22 +733,25 @@ describe('AgentChatController SSE done payload', () => {
 			releaseRun = resolve;
 		});
 		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
-			receivedSignal = (config as { abortSignal?: AbortSignal }).abortSignal;
-			if (accepted) config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
+			receivedSignal = config.abortSignal;
+			if (announced) config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
 			markStarted();
 			await runBlocked;
 			yield { type: 'finish', finishReason: 'stop' };
 			config.onExecutionRecorded?.('exec-99');
 		});
 
-		const res = makeSseResponse([]);
+		const writes: string[] = [];
+		const res = makeSseResponse(writes);
 		const request = start(controller, res);
 		await runStarted;
+		const delivered = writes.length;
 		(res as unknown as EventEmitter).emit('close');
 		releaseRun();
 		await request;
 
-		expect(receivedSignal?.aborted).toBe(!accepted);
+		expect(receivedSignal).toBeUndefined();
+		expect(writes).toHaveLength(delivered);
 	});
 
 	it.each(
@@ -758,7 +781,7 @@ describe('AgentChatController SSE done payload', () => {
 
 		await start(controller, res);
 
-		expect(receivedSignal?.aborted).toBe(false);
+		expect(receivedSignal).toBeUndefined();
 		expect(lifecycle).toEqual(['continued', 'settled']);
 		expect(res.end).toHaveBeenCalledTimes(1);
 	});
@@ -825,30 +848,64 @@ describe('AgentChatController budget notice', () => {
 	});
 });
 
+describe('AgentChatController execution cancellation', () => {
+	it.each([undefined, 'all', 'foreground'] as const)(
+		'forwards scope %s for the current preview execution',
+		async (scope) => {
+			const { controller, chatExecutionService } = makeController();
+			chatExecutionService.requestCancel.mockResolvedValue(true);
+			await expect(
+				controller.cancelChatExecution(
+					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+					{} as never,
+					'agent-1',
+					'thread-1',
+					'execution-1',
+					scope ? { scope } : undefined,
+				),
+			).resolves.toEqual({ cancelRequested: true });
+			expect(chatExecutionService.requestCancel).toHaveBeenCalledWith({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				executionId: 'execution-1',
+				userId: 'user-1',
+				surface: 'preview',
+				...(scope ? { scope } : {}),
+			});
+		},
+	);
+});
+
 describe('AgentChatController HITL cancellation', () => {
-	it('cancels a suspended run for the current preview user', async () => {
-		const { controller, agentExecutionOrchestratorService, agentsService } = makeController();
-		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
-		agentExecutionOrchestratorService.cancelChatRun.mockResolvedValue(true);
+	it.each([undefined, 'all', 'foreground'] as const)(
+		'cancels a suspended run for the current preview user with scope %s',
+		async (scope) => {
+			const { controller, agentExecutionOrchestratorService, agentsService } = makeController();
+			agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+			agentExecutionOrchestratorService.cancelChatRun.mockResolvedValue(true);
 
-		await expect(
-			controller.cancelChatRun(
-				{
-					params: { projectId: 'project-1' },
-					user: { id: 'user-1' },
-				} as never,
-				{} as never,
-				'agent-1',
-				'run-1',
-			),
-		).resolves.toEqual({ cancelled: true });
+			await expect(
+				controller.cancelChatRun(
+					{
+						params: { projectId: 'project-1' },
+						user: { id: 'user-1' },
+					} as never,
+					{} as never,
+					'agent-1',
+					'run-1',
+					scope ? { scope } : undefined,
+				),
+			).resolves.toEqual({ cancelled: true });
 
-		expect(agentExecutionOrchestratorService.cancelChatRun).toHaveBeenCalledWith({
-			agentId: 'agent-1',
-			runId: 'run-1',
-			resourceId: 'draft-chat:user-1',
-		});
-	});
+			expect(agentExecutionOrchestratorService.cancelChatRun).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				runId: 'run-1',
+				resourceId: 'draft-chat:user-1',
+				...(scope === 'foreground' ? { cancelBackgroundJobs: false } : {}),
+			});
+		},
+	);
 });
 
 describe('AgentChatController attachment cleanup on failed turns', () => {
@@ -1136,6 +1193,76 @@ describe('AgentChatController attachment download', () => {
 		await expect(controller.getChatAttachment(req, res)).rejects.toThrow(NotFoundError);
 		// Headers must not be written for a failed stream open.
 		expect((res as { setHeader: ReturnType<typeof vi.fn> }).setHeader).not.toHaveBeenCalled();
+	});
+
+	describe('over a real connection', () => {
+		let file: Awaited<ReturnType<typeof createLargeTempFile>>;
+		let server: Awaited<ReturnType<typeof startServer>> | undefined;
+
+		beforeAll(async () => {
+			file = await createLargeTempFile();
+		});
+
+		afterEach(async () => {
+			await server?.close();
+			server = undefined;
+		});
+
+		afterAll(async () => {
+			await file.remove();
+		});
+
+		const serveAttachment = async (getStream: () => Promise<Readable>) => {
+			const { controller, agentsService, agentChatAttachmentService } = makeController();
+			agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+			agentChatAttachmentService.getForAgent.mockResolvedValue({
+				id: 'att-1',
+				mimeType: 'application/octet-stream',
+				fileName: 'file.bin',
+				fileSizeBytes: file.sizeInBytes,
+			} as never);
+			agentChatAttachmentService.getStream.mockImplementation(getStream as never);
+			const handled: Array<Promise<void>> = [];
+			const responseClosed = createDeferredPromise();
+			const app = express();
+			app.get('/', (_req, res) => {
+				res.once('close', () => responseClosed.resolve());
+				const req = {
+					params: { projectId: 'p1', agentId: 'agent-1', attachmentId: 'att-1' },
+					user: { id: 'user-1' },
+				} as never;
+				handled.push(controller.getChatAttachment(req, res));
+			});
+			server = await startServer(app);
+			return { url: server.url, handled, responseClosed: responseClosed.promise };
+		};
+
+		it('should send the whole file and close it', async () => {
+			const stream = await file.openStream();
+			const { url, handled } = await serveAttachment(async () => stream);
+
+			expect(await readWholeBody(url)).toBe(file.sizeInBytes);
+			await expect(handled[0]).resolves.toBeUndefined();
+			expect(await waitForClose(stream)).toBe(true);
+		});
+
+		it('should close the file when the client disconnects before the download starts', async () => {
+			const stream = await file.openStream();
+			const streamRequested = createDeferredPromise();
+			const releaseStream = createDeferredPromise();
+			const { url, handled, responseClosed } = await serveAttachment(async () => {
+				streamRequested.resolve();
+				await releaseStream.promise;
+				return stream;
+			});
+
+			await disconnectBeforeResponse(url, streamRequested.promise);
+			await responseClosed;
+			releaseStream.resolve();
+
+			await expect(handled[0]).resolves.toBeUndefined();
+			expect(await waitForClose(stream)).toBe(true);
+		});
 	});
 });
 

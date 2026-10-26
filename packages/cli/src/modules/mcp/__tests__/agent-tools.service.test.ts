@@ -9,6 +9,7 @@ import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -31,7 +32,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
 
-import { SkillNameTakenError } from '@/modules/agents/skills/skill-name-taken.error';
+import { SkillNameTakenError } from '@/modules/skills/skill-name-taken.error';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
@@ -61,6 +62,7 @@ import type { AgentTaskRepository } from '@/modules/agents/repositories/agent-ta
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
+import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
 import { NodeTypes } from '@/node-types';
@@ -230,7 +232,13 @@ describe('McpAgentToolsService', () => {
 		const agentRepository = mock<AgentRepository>();
 		const runtimeCacheService = mock<AgentRuntimeCacheService>();
 		const lifecycleTelemetry = mock<Telemetry>();
-		const modificationTelemetry = new AgentModificationTelemetryService(lifecycleTelemetry);
+		const modificationTelemetry = new AgentModificationTelemetryService(
+			lifecycleTelemetry,
+			mock<InstanceSettings>(),
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			mock<EventService>(),
+			// EOF Experiment cleanup
+		);
 		const localCredentialsService = mock<CredentialsService>();
 		const workflowRepository = mock<WorkflowRepository>();
 		const agentTaskRepository = mock<AgentTaskRepository>();
@@ -267,12 +275,16 @@ describe('McpAgentToolsService', () => {
 				localCredentialsService,
 				workflowRepository,
 				mock<NodeToolAiGatewayService>(),
+				agentRepository,
+				agentTaskRepository,
+				agentSkillRefs,
+				new AgentPolicyService(new PolicyEnforcementService()),
 			),
 			mock<AgentSetupCompletionService>(),
 			transactionRunner,
 			saveCompletion,
-			new AgentPolicyService(new PolicyEnforcementService()),
 			agentSkillRefs,
+			mock<ChatIntegrationRegistry>(),
 		);
 		agentCustomToolsService.buildCustomTool.mockImplementation(
 			async (agentId, projectId, code, descriptor, context, options) =>
@@ -908,91 +920,55 @@ describe('McpAgentToolsService', () => {
 	});
 
 	describe('create_agent', () => {
-		beforeEach(() => {
-			agentsService.create.mockResolvedValue(agentEntity());
-		});
-
-		it('validates, creates, and stores the initial config with the name injected', async () => {
-			const initialConfig = { model: 'anthropic/claude', instructions: 'Help.' };
-			agentConfigService.validateConfig.mockResolvedValue({
-				valid: true,
-				config: baseConfig,
-			});
-			agentConfigService.updateConfig.mockResolvedValue({
-				config: baseConfig,
-				configHash: getAgentConfigHash(baseConfig),
-				updatedAt: 'now',
-				versionId: 'v2',
-			});
-
-			const result = await callTool('create_agent', {
-				projectId: 'project-1',
-				name: 'My Agent',
-				config: initialConfig,
-			});
-
-			expect(agentConfigService.validateConfig).toHaveBeenCalledWith({
-				...initialConfig,
-				name: 'My Agent',
-			});
-			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'My Agent', {
-				actor: { kind: 'user', user },
-				availableInMCP: true,
-			});
-			expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
-				'agent-1',
-				'project-1',
-				{ ...initialConfig, name: 'My Agent' },
-				user,
-				{ baseConfigHash: expect.stringMatching(/^[a-f0-9]{64}$/), modifiedBy: 'mcp' },
-			);
-			expect(result.structuredContent).toEqual({
-				ok: true,
-				agent: {
-					id: 'agent-1',
-					name: 'My Agent',
+		it.each([undefined, { model: 'anthropic/claude', instructions: 'Help.' }])(
+			'creates once with initial config %j and returns the committed state',
+			async (initialConfig) => {
+				agentsService.createOrAdopt.mockResolvedValue({
+					agent: agentEntity({ versionId: 'created-version' }),
+					config: baseConfig,
+					configHash: 'created-config-hash',
+					adopted: false,
+				});
+				const result = await callTool('create_agent', {
 					projectId: 'project-1',
-					published: false,
-					versionId: 'v2',
-					activeVersionId: null,
-				},
-				configHash: getAgentConfigHash(baseConfig),
-				url: 'https://n8n.test/projects/project-1/agents/agent-1',
-			});
-		});
+					name: 'My Agent',
+					config: initialConfig,
+				});
+				expect(agentsService.createOrAdopt).toHaveBeenCalledWith('project-1', 'My Agent', {
+					actor: { kind: 'user', user },
+					user,
+					createdBy: 'mcp',
+					availableInMCP: true,
+					config: initialConfig ? { ...initialConfig, name: 'My Agent' } : undefined,
+				});
+				expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+				expect(result.structuredContent).toEqual({
+					ok: true,
+					agent: {
+						id: 'agent-1',
+						name: 'My Agent',
+						projectId: 'project-1',
+						published: false,
+						versionId: 'created-version',
+						activeVersionId: null,
+					},
+					configHash: 'created-config-hash',
+					url: 'https://n8n.test/projects/project-1/agents/agent-1',
+				});
+			},
+		);
 
-		it('rejects an invalid initial config before creating the agent', async () => {
-			agentConfigService.validateConfig.mockResolvedValue({ valid: false, error: 'bad model' });
-
-			const result = await callTool('create_agent', {
-				projectId: 'project-1',
-				name: 'My Agent',
-				config: { model: 'nope' },
-			});
-
-			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				error: 'Invalid initial Agent config: bad model',
-			});
-			expect(agentsService.create).not.toHaveBeenCalled();
-		});
-
-		it('deletes the created agent when storing the initial config fails', async () => {
-			agentConfigService.validateConfig.mockResolvedValue({
-				valid: true,
-				config: baseConfig,
-			});
-			agentConfigService.updateConfig.mockRejectedValue(new Error('write failed'));
-
+		it('returns a creation failure without a compensating delete', async () => {
+			agentsService.createOrAdopt.mockRejectedValue(new Error('write failed'));
 			const result = await callTool('create_agent', {
 				projectId: 'project-1',
 				name: 'My Agent',
 				config: { model: 'anthropic/claude' },
 			});
-
-			expect(agentsService.delete).toHaveBeenCalledWith('agent-1', 'project-1');
 			expect(result.isError).toBe(true);
 			expect(result.structuredContent).toMatchObject({ error: 'write failed' });
+			expect(agentsService.delete).not.toHaveBeenCalled();
+			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
 		});
 	});
 

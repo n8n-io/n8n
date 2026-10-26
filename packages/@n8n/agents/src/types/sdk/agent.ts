@@ -33,6 +33,7 @@ export const FINISH_REASONS = [
 	'error',
 	'other',
 	'paused',
+	'cancelled',
 ] as const;
 
 export type FinishReason = (typeof FINISH_REASONS)[number];
@@ -214,16 +215,19 @@ export type SideCallTask = 'title' | 'observer' | 'reflector' | 'episodic';
 
 /**
  * Reported after a side-call model turn completes, so the host can add the
- * estimated USD cost to the execution and thread totals. The `reportId` is
- * minted once per call so hosts can dedupe idempotently.
+ * estimated USD cost to the execution and thread totals, or bill the tokens.
+ * The `reportId` is minted once per call so hosts can dedupe idempotently.
  */
 export interface SideCallUsageReport {
 	task: SideCallTask;
 	/** Stable model id string (e.g. 'anthropic/claude-sonnet-4-5'). */
 	model: string;
 	usage: TokenUsage;
-	/** Estimated cost in USD, computed from models.dev pricing. */
-	cost: number;
+	/**
+	 * Estimated cost in USD, computed from models.dev pricing. Absent when the
+	 * catalog is unavailable or the model has no pricing.
+	 */
+	cost?: number;
 	/** Stable per-LLM-call id, generated once at the call site for idempotent billing. */
 	reportId: string;
 }
@@ -288,6 +292,7 @@ export interface ExecutionOptions {
 	 * observer/reflector, episodic-memory model calls) completes, so the host
 	 * can add the estimated USD cost to the execution and thread totals. The
 	 * runtime computes the cost via the model catalog; the host only adds it.
+	 * A call without pricing is still reported, without `cost`.
 	 * Best-effort: a host failure here must not break the run.
 	 */
 	onSideCallUsage?: (report: SideCallUsageReport) => void | Promise<void>;
@@ -307,6 +312,11 @@ export interface ExecutionOptions {
 
 export interface PersistedExecutionOptions {
 	maxIterations?: number;
+}
+
+export interface NativeToolDeferralConfig {
+	/** Local tools that stay available without provider tool search. */
+	eagerToolNames: readonly string[];
 }
 
 export interface AnthropicPromptCachingConfig {
@@ -340,7 +350,7 @@ export interface OpenAIPromptCachingConfig {
 export interface PromptCachingConfig {
 	/** Master switch. Defaults to `true` when this config is set. */
 	enabled?: boolean;
-	/** Anthropic-specific config, or `false` to disable for Anthropic models. */
+	/** Claude cache settings, including OpenRouter and Vertex. Set `false` to disable. */
 	anthropic?: false | AnthropicPromptCachingConfig;
 	/** OpenAI-specific config, or `false` to disable for OpenAI models. */
 	openai?: false | OpenAIPromptCachingConfig;

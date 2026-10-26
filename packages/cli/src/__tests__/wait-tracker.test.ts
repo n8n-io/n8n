@@ -25,6 +25,7 @@ import { mock, captor } from 'vitest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -72,6 +73,7 @@ describe('WaitTracker', () => {
 		logger = mock<Logger>();
 		(logger.scoped as Mock).mockReturnValue(logger);
 		Container.set(ExecutionPersistence, executionPersistence);
+		mockInstance(CredentialsPermissionChecker).getCredentialIdsForNodes.mockReturnValue([]);
 		executionRepository.findParkedOnSubExecution.mockResolvedValue([]);
 		waitTracker = new WaitTracker(
 			logger,
@@ -1248,6 +1250,24 @@ describe('WaitTracker', () => {
 	});
 
 	describe('multi-main setup', () => {
+		it('should re-arm waiting executions after leader takeover', async () => {
+			const startExecutionSpy = vi.spyOn(waitTracker, 'startExecution').mockResolvedValue();
+			executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
+
+			waitTracker.init();
+			await waitTracker.getWaitingExecutions();
+			expect(waitTracker.has(execution.id)).toBe(true);
+
+			waitTracker.stopTracking();
+
+			waitTracker.init();
+			await waitTracker.getWaitingExecutions();
+			await vi.advanceTimersByTimeAsync(2_000);
+
+			expect(startExecutionSpy).toHaveBeenCalledWith(execution.id);
+			waitTracker.stopTracking();
+		});
+
 		it('should start tracking if leader', () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 

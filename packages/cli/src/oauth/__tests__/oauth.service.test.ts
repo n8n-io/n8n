@@ -4707,6 +4707,67 @@ describe('OauthService', () => {
 				vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
 			});
 
+			// NODE-6168: A successful HTTP status does not guarantee a metadata document.
+			it.each([
+				{ statusCode: 404, body: 'Not Found' },
+				{ statusCode: 200, body: '<!DOCTYPE html><html><body>Sign in</body></html>' },
+			])(
+				'should fall back to OpenID discovery and register when OAuth metadata returns HTTP $statusCode with a text body',
+				async ({ statusCode, body }) => {
+					vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(makeDcrCredentials());
+					vi.mocked(httpClientMock.get)
+						.mockResolvedValueOnce({
+							data: {
+								authorization_servers: ['https://auth.example.com'],
+								resource: 'https://mcp.example.com/mcp',
+							},
+						})
+						.mockResolvedValueOnce({ statusCode, data: body });
+					mockSuccessfulAuthorizationServerDiscovery();
+
+					const authUri = await service.generateAOauth2AuthUri(credential, {
+						cid: credential.id,
+						origin: 'static-credential',
+						userId: 'user-id',
+					});
+
+					expect(httpClientMock.get).toHaveBeenCalledTimes(3);
+					expect(httpClientMock.get).toHaveBeenNthCalledWith(
+						1,
+						'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
+						expect.any(Object),
+					);
+					expect(httpClientMock.get).toHaveBeenNthCalledWith(
+						2,
+						'https://auth.example.com/.well-known/oauth-authorization-server',
+						expect.any(Object),
+					);
+					expect(httpClientMock.get).toHaveBeenNthCalledWith(
+						3,
+						'https://auth.example.com/.well-known/openid-configuration',
+						expect.any(Object),
+					);
+					expect(httpClientMock.post).toHaveBeenCalledExactlyOnceWith(
+						'https://auth.example.com/oauth2/register',
+						expect.objectContaining({
+							client_name: 'n8n',
+							redirect_uris: ['http://localhost:5678/rest/oauth2-credential/callback'],
+						}),
+					);
+					expect(service.encryptAndSaveData).toHaveBeenCalledWith(
+						credential,
+						expect.objectContaining({
+							authUrl: 'https://auth.example.com/oauth2/auth',
+							accessTokenUrl: 'https://auth.example.com/oauth2/token',
+							clientId: 'registered-client-id',
+						}),
+						expect.any(Array),
+					);
+					const url = new URL(authUri);
+					expect(url.origin + url.pathname).toBe('https://auth.example.com/oauth2/auth');
+				},
+			);
+
 			it('should include discovered resource in the authorize URL and CSRF state', async () => {
 				vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(makeDcrCredentials());
 				vi.mocked(httpClientMock.get).mockResolvedValueOnce({

@@ -1,6 +1,6 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -10,8 +10,11 @@ import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-da
 import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
+import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
+import { AgentKnowledgeSnapshotTask } from '../agent-knowledge-snapshot.task';
 import { AgentCheckpointPruningTask } from '../agent-checkpoint-pruning.task';
 import { AgentInterruptedExecutionSweepTask } from '../agent-interrupted-execution-sweep.task';
 import { AgentsSettingsService } from '../agents-settings.service';
@@ -24,21 +27,23 @@ import { AgentsService } from '../agents.service';
 import { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import { AgentChannelReconciler } from '../integrations/agent-channel-reconciler.service';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import { DiscordIntegration } from '../integrations/platforms/discord-integration';
-import { LinearIntegration } from '../integrations/platforms/linear-integration';
-import { N8nChatIntegration } from '../integrations/platforms/n8n-chat-integration';
+import { DiscordIntegration } from '../integrations/platforms/discord/discord-integration';
+import { LinearIntegration } from '../integrations/platforms/linear/linear-integration';
+import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-integration';
 import { SlackIntegration } from '../integrations/platforms/slack/slack-integration';
-import { TelegramIntegration } from '../integrations/platforms/telegram-integration';
+import { TelegramIntegration } from '../integrations/platforms/telegram/telegram-integration';
 import { WhatsAppIntegration } from '../integrations/platforms/whatsapp/whatsapp-integration';
 import { AgentExecutionLogStore } from '../execution-log/agent-execution-log-store';
 import { AgentBudgetSpendRepository } from '../repositories/agent-budget-spend.repository';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
 import { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
-import { SkillsHubRollout } from '../skills/skills-hub-rollout';
 import { SkillsHubStartupCopy } from '../skills/skills-hub-startup-copy';
+import { AgentSkillUsageService } from '../agent-skill-usage.service';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 /**
  * Stubs every dependency `AgentsModule.init()` resolves via `Container.get`,
@@ -63,6 +68,8 @@ function setUpContainerForInit() {
 
 	Container.set(AgentRepository, mock<AgentRepository>());
 	Container.set(SkillsHubRollout, mock<SkillsHubRollout>());
+	Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>());
+	Container.set(AgentSkillUsageService, mock<AgentSkillUsageService>());
 	Container.set(SkillsHubStartupCopy, mock<SkillsHubStartupCopy>());
 	Container.set(FavoriteResourceResolverRegistry, mock<FavoriteResourceResolverRegistry>());
 	Container.set(AgentCredentialDependencyRepository, mock<AgentCredentialDependencyRepository>());
@@ -118,7 +125,20 @@ describe('AgentsModule', () => {
 	});
 
 	describe('systemTasks()', () => {
-		it('registers the pruning, sweep and media retention tasks', async () => {
+		it('registers the pruning, sweep, media retention and knowledge snapshot tasks', async () => {
+			Container.set(GlobalConfig, mock<GlobalConfig>({ diagnostics: { enabled: true } }));
+
+			await expect(module.systemTasks()).resolves.toEqual([
+				AgentCheckpointPruningTask,
+				AgentInterruptedExecutionSweepTask,
+				AgentChannelMediaRetentionTask,
+				AgentKnowledgeSnapshotTask,
+			]);
+		});
+
+		it('leaves out the knowledge snapshot task when telemetry is off', async () => {
+			Container.set(GlobalConfig, mock<GlobalConfig>({ diagnostics: { enabled: false } }));
+
 			await expect(module.systemTasks()).resolves.toEqual([
 				AgentCheckpointPruningTask,
 				AgentInterruptedExecutionSweepTask,
@@ -129,21 +149,37 @@ describe('AgentsModule', () => {
 
 	describe('settings()', () => {
 		it.each([
-			{ sandboxEnabled: true, proxyEnabled: false },
-			{ sandboxEnabled: false, proxyEnabled: true },
+			{
+				isSandboxEnabled: true,
+				isKnowledgeActive: true,
+				proxyEnabled: false,
+				knowledgeBaseEnabled: true,
+			},
+			{
+				isSandboxEnabled: false,
+				isKnowledgeActive: true,
+				proxyEnabled: true,
+				knowledgeBaseEnabled: false,
+			},
+			{
+				isSandboxEnabled: true,
+				isKnowledgeActive: false,
+				proxyEnabled: true,
+				knowledgeBaseEnabled: false,
+			},
 		])(
-			'keeps knowledge base ($sandboxEnabled) and proxy ($proxyEnabled) availability independent',
-			async ({ sandboxEnabled, proxyEnabled }) => {
+			'reports knowledgeBaseEnabled=$knowledgeBaseEnabled for sandbox=$isSandboxEnabled and knowledge module=$isKnowledgeActive, independent of proxy=$proxyEnabled',
+			async ({ isSandboxEnabled, isKnowledgeActive, proxyEnabled, knowledgeBaseEnabled }) => {
 				Container.set(AgentsConfig, mock<AgentsConfig>({ modules: [] }));
 				Container.set(
-					SandboxSettingsService,
-					mock<SandboxSettingsService>({ isAgentSandboxEnabled: () => sandboxEnabled }),
+					KnowledgeAvailabilityService,
+					makeKnowledgeAvailabilityService({ isSandboxEnabled, isKnowledgeActive }),
 				);
 				Container.set(AiService, mock<AiService>({ isProxyEnabled: () => proxyEnabled }));
 
 				const settings = await module.settings();
 
-				expect(settings.knowledgeBaseEnabled).toBe(sandboxEnabled);
+				expect(settings.knowledgeBaseEnabled).toBe(knowledgeBaseEnabled);
 				expect(settings.proxyEnabled).toBe(proxyEnabled);
 			},
 		);

@@ -146,6 +146,31 @@ describe('useNodeTypesStore', () => {
 		});
 	});
 
+	describe('deprecated node types', () => {
+		beforeEach(() => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			store = useNodeTypesStore();
+			store.setNodeTypes([
+				makeNodeType({ name: 'n8n-nodes-test.plain', outputs: ['main'] }),
+				makeNodeType({ name: 'n8n-nodes-test.deprecated', outputs: ['main'], deprecated: true }),
+			]);
+		});
+
+		it('should report whether a node type version is deprecated', () => {
+			expect(store.isNodeDeprecated({ type: 'n8n-nodes-test.deprecated', typeVersion: 1 })).toBe(
+				true,
+			);
+			expect(store.isNodeDeprecated({ type: 'n8n-nodes-test.plain', typeVersion: 1 })).toBe(false);
+		});
+
+		it('should omit deprecated node types from visibleNodeTypes', () => {
+			const visibleNames = store.visibleNodeTypes.map((nodeType) => nodeType.name);
+
+			expect(visibleNames).toContain('n8n-nodes-test.plain');
+			expect(visibleNames).not.toContain('n8n-nodes-test.deprecated');
+		});
+	});
+
 	describe('isModelNode', () => {
 		it('should return true for a node that outputs AiLanguageModel', () => {
 			const nodeType = makeNodeType({

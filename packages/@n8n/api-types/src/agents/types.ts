@@ -225,6 +225,13 @@ export interface AgentConfigMutationResponse extends AgentConfigResponse {
 	versionId: string | null;
 }
 
+/** Saved state returned with an Agent creation response. */
+export interface AgentCreationState {
+	config: AgentJsonConfig | null;
+	configHash: string | null;
+	adopted: boolean;
+}
+
 export interface AgentSkillMutationResponse {
 	id: string;
 	skill: AgentSkill;
@@ -356,6 +363,12 @@ export interface AgentPersistedMessageContentPart {
 	sizeBytes?: number;
 	/** Live trace of a delegated child, present only on `delegate_subagent` parts. */
 	childTrace?: PersistedChildTrace;
+	/** Event name of a `host-event` part. See the `host-event` SSE event. */
+	name?: string;
+	/** Update key of a `host-event` part. A turn keeps one event for each name and key. */
+	key?: string;
+	/** Event payload of a `host-event` part. */
+	payload?: unknown;
 }
 
 /** Platform user who wrote a turn in a shared integration thread. */
@@ -405,6 +418,51 @@ export interface AgentChatQueueResponse {
 	steerableExecutionId: string | null;
 }
 
+/**
+ * Token usage and cost of one agent execution, or a sum of executions.
+ * `cacheReadTokens` and `cacheWriteTokens` are subsets of `promptTokens`.
+ */
+export interface AgentExecutionUsage {
+	promptTokens: number | null;
+	completionTokens: number | null;
+	totalTokens: number | null;
+	/** Input tokens read from the provider prompt cache. Part of `promptTokens`. */
+	cacheReadTokens: number | null;
+	/** Input tokens written to the provider prompt cache. Part of `promptTokens`. */
+	cacheWriteTokens: number | null;
+	/** Estimated cost in USD. */
+	cost: number | null;
+}
+
+/** Usage of one execution, with the fields that identify it. */
+export interface AgentExecutionUsageEntry extends AgentExecutionUsage {
+	executionId: string;
+	/** Session thread of the execution. A delegated run has its own child thread. */
+	threadId: string;
+	/** Execution that delegated this run. Null for a top-level turn. */
+	parentExecutionId: string | null;
+	status: AgentExecutionStatus;
+	model: string | null;
+	startedAt: string | null;
+	stoppedAt: string | null;
+	duration: number;
+}
+
+/** Usage of one turn: its own execution, its delegated runs and their sum. */
+export interface AgentTurnUsage extends AgentExecutionUsageEntry {
+	/** Delegated runs that this turn started, oldest first. */
+	descendants: AgentExecutionUsageEntry[];
+	/** Sum of the turn's own usage and the usage of all its descendants. */
+	total: AgentExecutionUsage;
+}
+
+/** Usage of every turn in a system-agent thread, oldest first. */
+export interface AgentThreadUsageResponse {
+	executions: AgentTurnUsage[];
+	/** Sum of all turns and their descendants. */
+	total: AgentExecutionUsage;
+}
+
 /** Chat history envelope returned by the agent chat messages endpoints. */
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
@@ -420,7 +478,7 @@ export interface AgentChatMessagesResponse {
 /**
  * One agent as the n8n chat page lists it.
  *
- * Deliberately narrow. Its audience holds `agent:execute` alone — a
+ * Deliberately narrow. Its audience can hold `agent:execute` alone — a
  * `project:chatUser` can start a production chat but has no `agent:read` — so
  * the published instructions, tools and skills must not travel with the list.
  * The page needs a label, an avatar, the owning project, and a user-facing
@@ -436,6 +494,11 @@ export interface AgentChatListItem {
 	project: { id: string; name: string };
 	/** Media types this agent's model accepts as attachments, derived from its published config. */
 	attachments: ProviderAttachmentCapabilities;
+	/**
+	 * `false` for an agent the user owns that is not published to n8n Chat yet.
+	 * Its icon, blurb and attachments then come from the draft config.
+	 */
+	availableInChat: boolean;
 }
 
 export interface AgentChatListResponse {
@@ -467,6 +530,19 @@ export interface AgentN8nChatThreadSummary {
 export interface AgentN8nChatThreadsResponse {
 	data: AgentN8nChatThreadSummary[];
 	nextCursor: string | null;
+}
+
+/** One of the user's own threads with a system agent. `projectId` is its working project. */
+export interface SystemAgentThreadSummary {
+	id: string;
+	title: string | null;
+	updatedAt: string;
+	projectId: string;
+}
+
+/** The user's own threads with one system agent, newest first. */
+export interface SystemAgentThreadsResponse {
+	data: SystemAgentThreadSummary[];
 }
 
 export interface AgentSessionLangSmithExportResponse {

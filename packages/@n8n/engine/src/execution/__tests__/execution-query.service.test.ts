@@ -16,6 +16,7 @@ function makeViewStore(overrides: Partial<ExecutionViewStore> = {}): ExecutionVi
 		countExecutionViews: vi.fn().mockResolvedValue(0),
 		loadExecutionView: vi.fn(),
 		loadExecutionWithStepsView: vi.fn(),
+		loadLatestExecutionWithStepsView: vi.fn(),
 		...overrides,
 	};
 }
@@ -82,6 +83,33 @@ describe('ExecutionQueryService', () => {
 		await expect(service.getExecutionWithSteps('exec-1')).resolves.toBe(execution);
 		expect(viewStore.loadExecutionWithStepsView).toHaveBeenCalledWith('exec-1');
 		expect(viewStore.loadExecutionView).not.toHaveBeenCalled();
+	});
+
+	it('findLatestExecutionWithSteps reads the newest match and its steps in one call', async () => {
+		const execution = {
+			id: 'exec-1',
+			steps: [{ id: 'step-1' }] as StepView[],
+		} as ExecutionWithStepsView;
+		const viewStore = makeViewStore({
+			loadLatestExecutionWithStepsView: vi.fn().mockResolvedValue(execution),
+		});
+		const service = new ExecutionQueryService(viewStore);
+		const filter = { workflowIds: ['wf'], status: ['completed' as const] };
+
+		await expect(service.findLatestExecutionWithSteps(filter)).resolves.toBe(execution);
+		expect(viewStore.loadLatestExecutionWithStepsView).toHaveBeenCalledWith(filter);
+		expect(viewStore.listExecutionViews).not.toHaveBeenCalled();
+	});
+
+	it('findLatestExecutionWithSteps reports undefined when nothing matches', async () => {
+		const viewStore = makeViewStore({
+			loadLatestExecutionWithStepsView: vi.fn().mockResolvedValue(undefined),
+		});
+		const service = new ExecutionQueryService(viewStore);
+
+		await expect(
+			service.findLatestExecutionWithSteps({ workflowIds: ['wf'] }),
+		).resolves.toBeUndefined();
 	});
 
 	it('getExecutionWithSteps propagates ExecutionNotFoundError', async () => {

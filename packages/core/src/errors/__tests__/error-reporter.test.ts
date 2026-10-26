@@ -410,6 +410,47 @@ describe('ErrorReporter', () => {
 		});
 	});
 
+	describe('isSentryActive', () => {
+		it('is inactive without a DSN', async () => {
+			const reporter = new ErrorReporter(mock(), mock());
+			await reporter.init({ serverType: 'main', release: '1.0.0' } as never);
+
+			expect(reporter.isSentryActive()).toBe(false);
+		});
+
+		it('is inactive when the release is older than six weeks', async () => {
+			const reporter = new ErrorReporter(mock(), mock());
+			await reporter.init({
+				serverType: 'main',
+				dsn: 'https://fake@sentry.example.com/1',
+				release: '1.0.0',
+				releaseDate: new Date('2020-01-01'),
+			} as never);
+
+			expect(reporter.isSentryActive()).toBe(false);
+		});
+
+		it('turns inactive when the release expires while running', async () => {
+			vi.useFakeTimers();
+			try {
+				const reporter = new ErrorReporter(mock(), mock());
+				await reporter.init({
+					serverType: 'main',
+					dsn: 'https://fake@sentry.example.com/1',
+					release: '1.0.0',
+					releaseDate: new Date(Date.now() - 6 * 7 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000),
+				} as never);
+				expect(reporter.isSentryActive()).toBe(true);
+
+				vi.advanceTimersByTime(24 * 60 * 60 * 1000);
+
+				expect(reporter.isSentryActive()).toBe(false);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
 	describe('error with Sentry initialized', () => {
 		const sentryErrorReporter = new ErrorReporter(mock(), mock());
 
@@ -433,6 +474,10 @@ describe('ErrorReporter', () => {
 			isolationScopeMock.setSDKProcessingMetadata.mockClear();
 		});
 
+		it('is active once Sentry is set up', () => {
+			expect(sentryErrorReporter.isSentryActive()).toBe(true);
+		});
+
 		it('captures on the ambient scope by default', () => {
 			const error = new Error('boom');
 
@@ -454,6 +499,26 @@ describe('ErrorReporter', () => {
 				ipAddress: undefined,
 			});
 			expect(captureException).toHaveBeenCalledWith(error, { shouldIsolate: true });
+		});
+
+		it('captures an info message in a forked isolation scope when shouldIsolate is set', () => {
+			sentryErrorReporter.info('message', { shouldIsolate: true });
+
+			expect(withIsolationScope).toHaveBeenCalledTimes(1);
+			expect(isolationScopeMock.clearBreadcrumbs).toHaveBeenCalledTimes(1);
+			expect(captureException).toHaveBeenCalledWith('message', {
+				shouldIsolate: true,
+				level: 'info',
+			});
+		});
+
+		it('passes the fingerprint to Sentry', () => {
+			sentryErrorReporter.info('message', { fingerprint: ['group', 'key'] });
+
+			expect(captureException).toHaveBeenCalledWith('message', {
+				fingerprint: ['group', 'key'],
+				level: 'info',
+			});
 		});
 	});
 });

@@ -90,6 +90,7 @@ function timelineToolCallToPart(event: ToolCallTimelineEvent): AgentPersistedMes
 		toolName: event.name,
 		toolCallId: event.toolCallId,
 		input: event.input,
+		...(event.canceled ? { canceled: true } : {}),
 		...(event.startTime > 0 ? { startTime: event.startTime } : {}),
 		...(event.endTime > 0 ? { endTime: event.endTime } : {}),
 		...(event.childTrace ? { childTrace: event.childTrace } : {}),
@@ -132,6 +133,13 @@ function assistantContentFromExecution(
 			});
 		} else if (event.type === 'tool-call') {
 			content.push(timelineToolCallToPart(event));
+		} else if (event.type === 'host-event') {
+			content.push({
+				type: 'host-event',
+				name: event.name,
+				...(event.key !== undefined ? { key: event.key } : {}),
+				payload: event.payload,
+			});
 		} else if (event.type === 'suspension') {
 			const suspendedToolCall = [...content]
 				.reverse()

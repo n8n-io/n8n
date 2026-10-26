@@ -1,4 +1,7 @@
 <script lang="ts" setup>
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
+// EOF Experiment cleanup
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
@@ -21,8 +24,13 @@ import { countAttachedNodes } from './utils/buildNodesAttachment';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
+// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+import { usePostHog } from '@/app/stores/posthog.store';
+// EOF Experiment cleanup
 import {
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
+	// EOF Experiment cleanup
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
 	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT,
 } from '@/app/constants/experiments';
@@ -66,15 +74,20 @@ import {
 	type PersonalizedPromptMetadataLoadState,
 	type PersonalizedPromptSuggestionResolution,
 } from '@/experiments/instanceAiPersonalizedPromptSuggestions';
+// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 import {
+	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS,
+	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS_VERSION,
 	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
 	isPersonalizedPromptSuggestionResolution,
 	isTaxonomyPromptSuggestionResolution,
 	resolveTaxonomyPromptSuggestions,
 	resolveTaxonomySegment,
+	TaxonomyPromptSuggestions,
 	useInstanceAiInspirationFromTaxonomyExperiment,
 	type TaxonomyPromptSuggestionResolution,
 } from '@/experiments/instanceAiInspirationFromTaxonomy';
+// EOF Experiment cleanup
 import {
 	WorkflowPreviewSuggestions,
 	WorkflowPreviewCanvas,
@@ -132,9 +145,6 @@ const INSTANCE_AI_SPLIT_FIXED_ROWS = 5;
 const PERSONALIZED_PROMPT_METADATA_TIMEOUT_MS = 2000;
 const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPOSURE_EVENT =
 	'Instance AI personalized prompt suggestions exposed';
-const INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPOSURE_EVENT =
-	'Instance AI inspiration from taxonomy exposed';
-
 const store = useInstanceAiStore();
 const appSettingsStore = useSettingsStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -220,10 +230,20 @@ const {
 	isTreatmentVariant: isPersonalizedPromptSuggestionsTreatmentVariant,
 	suggestionFormat: personalizedPromptSuggestionsFormat,
 } = useInstanceAiPersonalizedPromptSuggestionsExperiment();
-const {
-	currentVariant: inspirationFromTaxonomyVariant,
-	isTreatmentVariant: isInspirationFromTaxonomyTreatmentVariant,
-} = useInstanceAiInspirationFromTaxonomyExperiment();
+// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+const { currentVariant: inspirationFromTaxonomyVariant, isRowsVariant: isTaxonomyRowsVariant } =
+	useInstanceAiInspirationFromTaxonomyExperiment();
+const posthogStore = usePostHog();
+const isTaxonomyExperimentAssigned = computed(
+	() =>
+		inspirationFromTaxonomyVariant.value ===
+			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.control ||
+		inspirationFromTaxonomyVariant.value ===
+			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.variant ||
+		inspirationFromTaxonomyVariant.value ===
+			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.variantBis,
+);
+// EOF Experiment cleanup
 const showProactiveStarter = computed(
 	() => isProactiveAgentExperimentEnabled.value && !forcesDefaultEmptyLayout.value,
 );
@@ -244,12 +264,35 @@ const shouldTrackPersonalizedPromptSuggestionsExposure = computed(
 		settingsStore.isWorkflowBuilderAvailable,
 );
 const personalizedPromptSuggestionResolution = ref<
-	PersonalizedPromptSuggestionResolution | TaxonomyPromptSuggestionResolution | null
+	| PersonalizedPromptSuggestionResolution
+	| TaxonomyPromptSuggestionResolution // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	| null
 >(null);
+// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 const shouldShowTaxonomySuggestions = computed(() =>
 	isTaxonomyPromptSuggestionResolution(personalizedPromptSuggestionResolution.value),
 );
-const isTaxonomySegmentResolved = computed(
+watch(
+	[
+		isTaxonomyExperimentAssigned,
+		() => appSettingsStore.isCloudDeployment,
+		() => cloudPlanStore.state.initialized,
+		() => cloudPlanStore.currentUserCloudInfo,
+	],
+	() => {
+		if (!isTaxonomyExperimentAssigned.value) return;
+		if (!appSettingsStore.isCloudDeployment || !cloudPlanStore.state.initialized) return;
+
+		const segment = resolveTaxonomySegment(
+			cloudPlanStore.currentUserCloudInfo?.information ?? null,
+		);
+		if (segment.source !== 'taxonomy') return;
+
+		posthogStore.setTaxonomyInspirationEligible(true);
+	},
+	{ immediate: true },
+);
+const isSalesAndMarketingSegment = computed(
 	() =>
 		appSettingsStore.isCloudDeployment &&
 		cloudPlanStore.state.initialized &&
@@ -257,29 +300,27 @@ const isTaxonomySegmentResolved = computed(
 			'taxonomy',
 );
 const shouldTrackInspirationFromTaxonomyExposure = computed(() => {
-	if (showProactiveStarter.value || isSplitLayoutActive.value || forcesDefaultEmptyLayout.value) {
+	if (!isTaxonomyExperimentAssigned.value) {
 		return false;
 	}
 
-	// Experiment cleanup (124_workflow_previews_above_assistant)
-	if (showWorkflowPreviewsAboveAssistant.value) {
-		return false;
-	}
-	// EOF Experiment cleanup
-
-	if (!settingsStore.isWorkflowBuilderAvailable) {
+	if (!isSalesAndMarketingSegment.value) {
 		return false;
 	}
 
+	// These layouts replace the suggestion list on the Assistant empty state.
 	if (
-		inspirationFromTaxonomyVariant.value ===
-		INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.control
+		showProactiveStarter.value ||
+		isSplitLayoutActive.value ||
+		forcesDefaultEmptyLayout.value ||
+		showWorkflowPreviewsAboveAssistant.value
 	) {
-		return isTaxonomySegmentResolved.value;
+		return false;
 	}
 
-	return shouldShowTaxonomySuggestions.value;
+	return true;
 });
+// EOF Experiment cleanup
 const activeWorkflowPreviewFile = ref<string | null>(null);
 const activeWorkflowPreview = computed(() => {
 	if (!activeWorkflowPreviewFile.value) return null;
@@ -288,7 +329,7 @@ const activeWorkflowPreview = computed(() => {
 const personalizedPromptProfileOverride = usePersonalizedPromptProfileOverride();
 let personalizedPromptMetadataTimeout: ReturnType<typeof setTimeout> | null = null;
 let hasTrackedPersonalizedPromptSuggestionsExposure = false;
-let hasTrackedInspirationFromTaxonomyExposure = false;
+let hasTrackedInspirationFromTaxonomyExposure = false; // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 // Experiment cleanup (124_workflow_previews_above_assistant)
 let hasTrackedWorkflowPreviewsEmptyStateView = false;
 const shouldTrackWorkflowPreviewsEmptyStateView = computed(
@@ -301,7 +342,7 @@ const shouldTrackWorkflowPreviewsEmptyStateView = computed(
 // EOF Experiment cleanup
 const isAnyPersonalizedSuggestionsTreatmentActive = computed(
 	() =>
-		isInspirationFromTaxonomyTreatmentVariant.value ||
+		isTaxonomyRowsVariant.value || // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 		isPersonalizedPromptSuggestionsTreatmentVariant.value,
 );
 
@@ -319,10 +360,20 @@ function clearPersonalizedPromptMetadataTimeout() {
 }
 
 function setPersonalizedPromptResolution(metadataLoadState: PersonalizedPromptMetadataLoadState) {
-	if (isInspirationFromTaxonomyTreatmentVariant.value) {
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Control keeps the default empty state. Only the variant renders the rows.
+	if (isTaxonomyRowsVariant.value) {
+		const isVariantBis =
+			inspirationFromTaxonomyVariant.value ===
+			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.variantBis;
 		const taxonomyResolution = resolveTaxonomyPromptSuggestions({
 			metadata: cloudPlanStore.currentUserCloudInfo?.information ?? null,
 			metadataLoadState,
+			suggestionFormat: 'rows',
+			catalog: isVariantBis ? INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS : undefined,
+			catalogVersion: isVariantBis
+				? INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS_VERSION
+				: INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
 		});
 
 		if (taxonomyResolution.source === 'taxonomy') {
@@ -335,6 +386,7 @@ function setPersonalizedPromptResolution(metadataLoadState: PersonalizedPromptMe
 			return;
 		}
 	}
+	// EOF Experiment cleanup
 
 	const format = personalizedPromptSuggestionsFormat.value;
 	if (!format) {
@@ -361,10 +413,12 @@ function resolvePersonalizedPromptMetadata() {
 		return;
 	}
 
-	if (!isInspirationFromTaxonomyTreatmentVariant.value && personalizedPromptProfileOverride.value) {
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	if (!isTaxonomyRowsVariant.value && personalizedPromptProfileOverride.value) {
 		setPersonalizedPromptResolution('loaded');
 		return;
 	}
+	// EOF Experiment cleanup
 
 	if (!appSettingsStore.isCloudDeployment) {
 		setPersonalizedPromptResolution('not_cloud');
@@ -384,7 +438,8 @@ function resolvePersonalizedPromptMetadata() {
 
 watch(
 	[
-		isInspirationFromTaxonomyTreatmentVariant,
+		isTaxonomyRowsVariant, // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		inspirationFromTaxonomyVariant, // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 		isPersonalizedPromptSuggestionsTreatmentVariant,
 		personalizedPromptSuggestionsFormat,
 		personalizedPromptProfileOverride,
@@ -418,6 +473,7 @@ watch(
 	{ immediate: true },
 );
 
+// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 watch(
 	shouldTrackInspirationFromTaxonomyExposure,
 	(shouldTrackExposure) => {
@@ -431,13 +487,14 @@ watch(
 		}
 
 		telemetry.track(
-			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPOSURE_EVENT,
+			TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
 			getExperimentTelemetryPayload(INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT, variant),
 		);
 		hasTrackedInspirationFromTaxonomyExposure = true;
 	},
 	{ immediate: true },
 );
+// EOF Experiment cleanup
 
 // Experiment cleanup (124_workflow_previews_above_assistant)
 watch(
@@ -474,11 +531,11 @@ watch(
 	},
 );
 
+// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 const isTaxonomySuggestionsPending = computed(
-	() =>
-		isInspirationFromTaxonomyTreatmentVariant.value &&
-		personalizedPromptSuggestionResolution.value === null,
+	() => isTaxonomyRowsVariant.value && personalizedPromptSuggestionResolution.value === null,
 );
+// EOF Experiment cleanup
 const shouldShowPersonalizedPromptSuggestions = computed(() =>
 	isPersonalizedPromptSuggestionResolution(personalizedPromptSuggestionResolution.value),
 );
@@ -508,6 +565,7 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		return {};
 	}
 
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 	if (isTaxonomySuggestionsPending.value) {
 		return {
 			suggestions: [],
@@ -519,13 +577,9 @@ const emptyStatePromptSuggestionProps = computed(() => {
 	if (isTaxonomyPromptSuggestionResolution(resolution)) {
 		return {
 			suggestions: resolution.suggestions,
-			suggestionsComponent: InstanceAiPersonalizedPromptSuggestions,
-			suggestionsComponentProps: {
-				fallbackSuggestions: [],
-				format: 'list',
-				showSeeMore: resolution.showSeeMore,
-			},
-			suggestionCatalogVersion: INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
+			suggestionsComponent: TaxonomyPromptSuggestions,
+			suggestionsComponentProps: {},
+			suggestionCatalogVersion: resolution.telemetryPayload.suggestion_catalog_version,
 			suggestionTelemetryPayload: getExperimentTelemetryPayload(
 				INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 				inspirationFromTaxonomyVariant.value,
@@ -534,6 +588,7 @@ const emptyStatePromptSuggestionProps = computed(() => {
 			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
 		};
 	}
+	// EOF Experiment cleanup
 
 	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
 		if (!resolution) {
@@ -585,8 +640,8 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 		return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
 	}
 	if (
-		shouldShowTaxonomySuggestions.value ||
-		isTaxonomySuggestionsPending.value ||
+		shouldShowTaxonomySuggestions.value || // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		isTaxonomySuggestionsPending.value || // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 		shouldShowPersonalizedPromptSuggestions.value ||
 		(isPersonalizedPromptSuggestionsTreatmentVariant.value &&
 			personalizedPromptSuggestionResolution.value === null)
@@ -640,6 +695,12 @@ watch(
 		selectedProject.value = resolveInitialProjectId();
 	},
 );
+
+// Variant B: the project dropdown follows the picked agent's project, and goes
+// back to the entry project when the user switches back to the Assistant.
+watch(selectedChatAgent, (agent) => {
+	selectedProject.value = agent ? agent.project.id : resolveInitialProjectId();
+});
 
 type ShelfSuggestionPayload = InstanceAiPrefillDeclaration & {
 	promptKey: BaseTextKey;
@@ -900,6 +961,9 @@ async function handleWorkflowPreviewExampleUse(
 						</template>
 					</InstanceAiInput>
 				</div>
+				<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+				<ClaudeEntryPoint placement="footer" />
+				<!-- EOF Experiment cleanup -->
 			</div>
 			<InstanceAiSplitEmptyState
 				v-else-if="isSplitLayoutActive"
@@ -948,6 +1012,9 @@ async function handleWorkflowPreviewExampleUse(
 								</div>
 							</template>
 						</InstanceAiInput>
+						<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+						<ClaudeEntryPoint placement="footer" />
+						<!-- EOF Experiment cleanup -->
 					</div>
 				</template>
 			</InstanceAiSplitEmptyState>
@@ -1037,6 +1104,9 @@ async function handleWorkflowPreviewExampleUse(
 							</div>
 						</template>
 					</InstanceAiInput>
+					<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+					<ClaudeEntryPoint placement="footer" />
+					<!-- EOF Experiment cleanup -->
 				</div>
 				<!-- Variant A shows the agent picker here instead of the workflow preview;
 				variant B drops the preview canvas entirely (hover preview stays off). -->
