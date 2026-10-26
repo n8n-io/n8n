@@ -7,6 +7,7 @@ export const frontendConfig = defineConfig({
 	env: { browser: true, node: true },
 	rules: {
 		'unicorn/filename-case': 'off',
+		'n8n-local-rules/no-reka-ui-context-menu': 'error',
 		'n8n-local-rules/no-reka-ui-pagination': 'error',
 		'vue/define-emits-declaration': ['error', 'type-literal'],
 		'vue/no-reserved-component-names': [
