@@ -1150,6 +1150,14 @@ describe('renderDelegateSubAgentPrompt', () => {
 		expect(prompt).toContain('EXPECTED OUTPUT:\na summary');
 	});
 
+	it('lists the file IDs the child can use', () => {
+		expect(renderDelegateSubAgentPrompt({ goal: 'Find it.' })).not.toContain('FILES');
+
+		const prompt = renderDelegateSubAgentPrompt({ goal: 'Find it.', fileIds: ['f1', 'f2'] });
+
+		expect(prompt).toContain('FILES (pass these fileIds to tools):\nf1\nf2');
+	});
+
 	it('uses generic summary guidance for delegated work', () => {
 		const prompt = renderDelegateSubAgentPrompt({ goal: 'Find it.' });
 
