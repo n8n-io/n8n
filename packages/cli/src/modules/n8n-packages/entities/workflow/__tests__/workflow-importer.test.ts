@@ -480,7 +480,7 @@ describe('WorkflowImporter.plan', () => {
 
 		/** The existing workflow sits in `old-folder`. The package puts it in `new-folder`, or at the root. */
 		const planMovedWorkflow = async (
-			placementPolicy?: 'strict' | 'follow-package',
+			layoutConflictPolicy?: 'fail' | 'follow-package',
 			{ toRoot = false } = {},
 		) => {
 			const matchService = mock<WorkflowImportMatchService>();
@@ -511,7 +511,7 @@ describe('WorkflowImporter.plan', () => {
 					},
 				],
 				options,
-				{ checkRootPlacement: toRoot, placementPolicy },
+				{ checkRootPlacement: toRoot, layoutConflictPolicy },
 			);
 		};
 

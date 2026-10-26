@@ -65,7 +65,7 @@ describe('crossProjectMoves', () => {
 		expect(moves.folders.map(({ id }) => id)).toEqual(['f2']);
 	});
 
-	it('flags a branch project that does not exist here, and collects personal projects', () => {
+	it('flags a branch project that does not exist here, and leaves out a personal project name', () => {
 		const moves = crossProjectMoves({
 			inventory: { ...inventory, folders: [] },
 			owners: new Map([['w1', { id: 'p9', name: 'Ada <ada@example.com>', type: 'personal' }]]),
@@ -73,8 +73,10 @@ describe('crossProjectMoves', () => {
 			existingProjectIds: new Set(['p1']),
 		});
 
-		expect(moves.workflows).toEqual([expect.objectContaining({ id: 'w1', projectExists: false })]);
-		expect([...moves.personalProjectIds]).toEqual(['p9']);
+		// A personal project's name holds its owner's email.
+		expect(moves.workflows).toEqual([
+			expect.objectContaining({ id: 'w1', projectExists: false, instanceProject: { id: 'p9' } }),
+		]);
 	});
 });
 
@@ -88,18 +90,15 @@ describe('describeCrossProjectMoves', () => {
 	};
 
 	it('names both projects and offers both fixes', () => {
-		expect(
-			describeCrossProjectMoves({ workflows: [move], folders: [], personalProjectIds: new Set() }),
-		).toBe(
+		expect(describeCrossProjectMoves({ workflows: [move], folders: [] })).toBe(
 			'Apply can\'t move workflows or folders between projects: workflow "Invoices" (w1) is in project "Alpha" here and in project "Beta" on the branch. Move them on this instance to match the branch, or move them back on the source instance and promote again.',
 		);
 	});
 
 	it('names no personal project, and offers only the source fix for a missing branch project', () => {
 		const message = describeCrossProjectMoves({
-			workflows: [{ ...move, projectExists: false }],
+			workflows: [{ ...move, projectExists: false, instanceProject: { id: 'p1' } }],
 			folders: [],
-			personalProjectIds: new Set(['p1']),
 		});
 
 		expect(message).toContain('is in a personal project here');
@@ -109,9 +108,7 @@ describe('describeCrossProjectMoves', () => {
 	});
 
 	it('tells promote to move them back on this instance', () => {
-		expect(
-			describePromotedMoves({ workflows: [move], folders: [], personalProjectIds: new Set() }),
-		).toBe(
+		expect(describePromotedMoves({ workflows: [move], folders: [] })).toBe(
 			'Promote can\'t move workflows or folders between projects, because Apply would refuse them on the destination: workflow "Invoices" (w1) is in project "Alpha" here and in project "Beta" on the branch. Move them back on this instance, then promote again.',
 		);
 	});

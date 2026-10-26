@@ -10,7 +10,7 @@ import type {
 	FolderPlanItem,
 	PreparedFolder,
 } from './folder-import.types';
-import { PlacementPolicy } from '../../n8n-packages.types';
+import { LayoutConflictPolicy } from '../../n8n-packages.types';
 import type { FolderConflict, ImportedFolderSummary } from '../../n8n-packages.types';
 
 interface ExistingFolder {
@@ -56,7 +56,7 @@ export class FolderImporter {
 				continue;
 			}
 
-			const followsPackage = context.placementPolicy === PlacementPolicy.FollowPackage;
+			const followsPackage = context.layoutConflictPolicy === LayoutConflictPolicy.FollowPackage;
 			const moved = match.parentFolderId !== targetParentFolderId;
 			if (moved && !followsPackage) {
 				conflicts.push({

@@ -2,7 +2,7 @@ import type {
 	FolderConflict,
 	FolderConflictPolicy,
 	ImportContext,
-	PlacementPolicy,
+	LayoutConflictPolicy,
 } from '../../n8n-packages.types';
 
 export interface PreparedFolder {
@@ -13,7 +13,7 @@ export interface PreparedFolder {
 
 export interface FolderImportContext extends ImportContext {
 	folderConflictPolicy: FolderConflictPolicy;
-	placementPolicy?: PlacementPolicy;
+	layoutConflictPolicy?: LayoutConflictPolicy;
 	/** The folders a `follow-package` move may touch. Omitted means all. */
 	movableFolderIds?: ReadonlySet<string>;
 }

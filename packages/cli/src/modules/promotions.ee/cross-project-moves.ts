@@ -6,8 +6,6 @@ export type CrossProjectMove = ApplyCheckResult['movedWorkflows'][number];
 export type CrossProjectMoves = {
 	workflows: CrossProjectMove[];
 	folders: CrossProjectMove[];
-	/** Instance projects that are personal. The refusal message names none of them. */
-	personalProjectIds: ReadonlySet<string>;
 };
 
 /** A project on this instance that holds a workflow or folder of the package. */
@@ -67,7 +65,7 @@ export function crossProjectMoves({
 						name,
 						project: branchProjectOf(branchProjectId),
 						projectExists: existingProjectIds.has(branchProjectId),
-						instanceProject: { id: here.id, name: here.name },
+						instanceProject: toInstanceProject(here),
 					},
 				]
 			: [];
@@ -82,20 +80,22 @@ export function crossProjectMoves({
 				toMove(folder, branchProjectId, folderHomes.get(folder.id)),
 			)
 			.sort(byId),
-		// A personal project's name holds its owner's email, and the refusal reaches the UI and
-		// telemetry.
-		personalProjectIds: new Set(
-			[...owners.values(), ...folderHomes.values()]
-				.filter(({ type }) => type !== 'team')
-				.map(({ id }) => id),
-		),
 	};
 }
 
+/** A personal project's name holds its owner's email, and moves reach the UI and telemetry. */
+export function toInstanceProject({
+	id,
+	name,
+	type,
+}: InstanceProject): CrossProjectMove['instanceProject'] {
+	return type === 'team' ? { id, name } : { id };
+}
+
 /** One line per item, with both of its projects. A personal project is never named. */
-function describeItems({ workflows, folders, personalProjectIds }: CrossProjectMoves): string {
-	const here = ({ id, name }: CrossProjectMove['instanceProject']) =>
-		personalProjectIds.has(id) ? 'a personal project' : `project "${name}"`;
+function describeItems({ workflows, folders }: CrossProjectMoves): string {
+	const here = ({ name }: CrossProjectMove['instanceProject']) =>
+		name === undefined ? 'a personal project' : `project "${name}"`;
 	const describe =
 		(type: 'workflow' | 'folder') =>
 		({ id, name, project, projectExists, instanceProject }: CrossProjectMove) =>

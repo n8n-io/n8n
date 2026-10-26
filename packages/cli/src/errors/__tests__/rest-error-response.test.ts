@@ -37,7 +37,7 @@ describe('rest-error-response', () => {
 			status: 400,
 			body: {
 				message:
-					"These workflows moved between projects: wf-moved. A project promote can't move a workflow between projects. Move them back on this instance, or promote all projects from the instance environment settings.",
+					"These workflows moved between projects: wf-moved. Promote can't move a workflow between projects. Move them back on this instance, then promote again.",
 				meta: {
 					code: 'promotions-workflows-moved-cross-project',
 					workflowIds: ['wf-moved'],

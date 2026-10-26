@@ -141,7 +141,11 @@ function movedRow(
 		usedBy: [],
 		status: status('moved'),
 		detail: i18n.baseText(MOVED_DETAIL[type][move.projectExists ? 'existing' : 'newProject'], {
-			interpolate: { project: move.project.name, instanceProject: move.instanceProject.name },
+			interpolate: {
+				project: move.project.name,
+				instanceProject:
+					move.instanceProject.name ?? i18n.baseText('promotions.preview.personalProject'),
+			},
 		}),
 	};
 }

@@ -4,19 +4,19 @@ import { mock } from 'vitest-mock-extended';
 
 import type { FolderService } from '@/services/folder.service';
 
-import type { PlacementPolicy } from '../../../n8n-packages.types';
+import type { LayoutConflictPolicy } from '../../../n8n-packages.types';
 import type { FolderImportContext, PreparedFolder } from '../folder-import.types';
 import { FolderImporter, toFolderSummaries } from '../folder-importer';
 
 const context = (
-	placementPolicy?: PlacementPolicy,
+	layoutConflictPolicy?: LayoutConflictPolicy,
 	over: Partial<FolderImportContext> = {},
 ): FolderImportContext => ({
 	user: mock<User>(),
 	projectId: 'project-1',
 	folderId: null,
 	folderConflictPolicy: 'merge',
-	placementPolicy,
+	layoutConflictPolicy,
 	...over,
 });
 

@@ -111,7 +111,7 @@ export interface ImportOrchestrationInput {
 	/** Treat the project root as a workflow location (project packages, which set the layout). */
 	checkRootPlacement: boolean;
 	/**
-	 * Under `placementPolicy=follow-package`, the folders a move may touch. A selection moves only the
+	 * Under `layoutConflictPolicy=follow-package`, the folders a move may touch. A selection moves only the
 	 * folders that hold a selected workflow, so unselected content stays where it is. Omitted means all.
 	 */
 	movableFolderIds?: ReadonlySet<string>;
@@ -330,7 +330,7 @@ export class ImportOrchestrator {
 		const variablePlan = await this.variableImporter.plan(context, variableRequest);
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options, {
 			checkRootPlacement: input.checkRootPlacement,
-			placementPolicy: options.placementPolicy,
+			layoutConflictPolicy: options.layoutConflictPolicy,
 		});
 		// Tags plan after workflows: only tags referenced by non-skipped workflows gate or create.
 		const tagPlan = await this.tagImporter.plan(
@@ -341,7 +341,7 @@ export class ImportOrchestrator {
 		const folderContext = {
 			...context,
 			folderConflictPolicy: options.folderConflictPolicy,
-			placementPolicy: options.placementPolicy,
+			layoutConflictPolicy: options.layoutConflictPolicy,
 			movableFolderIds: input.movableFolderIds,
 		};
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);

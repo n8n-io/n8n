@@ -312,8 +312,8 @@ export interface ImportSelection {
  * The service fixes all policies except `workflowConflictPolicy`, `workflowIdPolicy`,
  * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`),
  * `dataTableSchemaConflictPolicy` (defaults to `fail`), `tagConflictPolicy` (defaults to `skip`),
- * `credentialConflictPolicy` (defaults to `keep-existing`), and `placementPolicy` (defaults to
- * `strict`; only promotions set it).
+ * `credentialConflictPolicy` (defaults to `keep-existing`), and `layoutConflictPolicy` (defaults to
+ * `fail`; only promotions set it).
  */
 export type ImportSelectionRequest = {
 	user: User;
@@ -326,7 +326,7 @@ export type ImportSelectionRequest = {
 	tagConflictPolicy?: TagConflictPolicy;
 	/** Omitted means `keep-existing`. */
 	credentialConflictPolicy?: CredentialConflictPolicy;
-} & PromotionPlacementProperties;
+} & PromotionLayoutProperties;
 
 export type ImportPackageSelectionRequest = ImportSelectionRequest & {
 	packageBuffer: Buffer;
@@ -353,16 +353,16 @@ export type ImportProjectProperties = {
 
 /** Folder options once the dispatcher has settled what the caller left to the project policy. */
 export type ResolvedImportFolderProperties = ImportFolderProperties &
-	PromotionPlacementProperties & {
+	PromotionLayoutProperties & {
 		folderConflictPolicy: FolderConflictPolicy;
 	};
 
 /**
- * Promotion-only. The public import request does not carry it, so a public import keeps `strict`.
- * Omitted means `strict`.
+ * Promotion-only. The public import request does not carry it, so a public import keeps `fail`.
+ * Omitted means `fail`.
  */
-export type PromotionPlacementProperties = {
-	placementPolicy?: PlacementPolicy;
+export type PromotionLayoutProperties = {
+	layoutConflictPolicy?: LayoutConflictPolicy;
 };
 
 export type ResolvedImportRequest = ImportRequest & ResolvedImportFolderProperties;
@@ -371,14 +371,14 @@ export type ResolvedImportPackageRequest = ImportPackageRequest & ResolvedImport
 
 /**
  * Whether a matched folder or workflow that sits somewhere else in the package moves to that place.
- * `strict` reports the difference as a conflict. `follow-package` moves it within its own project.
+ * `fail` reports the difference as a conflict. `follow-package` moves it within its own project.
  */
-export const PlacementPolicy = {
-	Strict: 'strict',
+export const LayoutConflictPolicy = {
+	Fail: 'fail',
 	FollowPackage: 'follow-package',
 } as const;
 
-export type PlacementPolicy = (typeof PlacementPolicy)[keyof typeof PlacementPolicy];
+export type LayoutConflictPolicy = (typeof LayoutConflictPolicy)[keyof typeof LayoutConflictPolicy];
 
 export type ImportFolderProperties = {
 	/**
@@ -543,7 +543,7 @@ export interface ImportedWorkflowSummary {
 	isArchived: boolean;
 	publishing: WorkflowPublishingOutcome;
 	status: 'created' | 'updated' | 'skipped';
-	/** Set when the update also moved the workflow to another folder (`placementPolicy=follow-package`). */
+	/** Set when the update also moved the workflow to another folder (`layoutConflictPolicy=follow-package`). */
 	moved?: true;
 }
 
@@ -552,7 +552,7 @@ export interface ImportedFolderSummary {
 	localId: string;
 	name: string;
 	parentFolderId: string | null;
-	/** `updated` only under `placementPolicy=follow-package`, which the public import never sets. */
+	/** `updated` only under `layoutConflictPolicy=follow-package`, which the public import never sets. */
 	status: 'created' | 'skipped' | 'updated';
 	/** Set when the update moved the folder to another parent. */
 	moved?: true;

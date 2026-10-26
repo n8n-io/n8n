@@ -2106,7 +2106,7 @@ describe('PromotionsService', () => {
 					variableConflictPolicy: 'keep-existing',
 					tagMissingMode: 'create',
 					tagConflictPolicy: 'rename',
-					placementPolicy: 'follow-package',
+					layoutConflictPolicy: 'follow-package',
 				},
 				{ sourceDir: packageFolder },
 			);
@@ -2397,7 +2397,7 @@ describe('PromotionsService', () => {
 						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 						tagConflictPolicy: 'rename',
 						credentialConflictPolicy: 'overwrite',
-						placementPolicy: 'follow-package',
+						layoutConflictPolicy: 'follow-package',
 					},
 					{ sourceDir: packageFolder },
 					{
@@ -2591,7 +2591,7 @@ describe('PromotionsService', () => {
 								dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 								tagConflictPolicy: 'rename',
 								credentialConflictPolicy: 'overwrite',
-								placementPolicy: 'follow-package',
+								layoutConflictPolicy: 'follow-package',
 							},
 							{ sourceDir: packageFolder },
 							{

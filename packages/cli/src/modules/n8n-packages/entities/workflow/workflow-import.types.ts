@@ -64,7 +64,7 @@ export type WorkflowPlanItem =
 			existing: WorkflowEntity;
 			archiveTransition: WorkflowArchiveTransition | null;
 			/**
-			 * Set under `placementPolicy=follow-package`: the folder the update moves the workflow to.
+			 * Set under `layoutConflictPolicy=follow-package`: the folder the update moves the workflow to.
 			 * `null` is the project root.
 			 */
 			moveToFolderId?: string | null;

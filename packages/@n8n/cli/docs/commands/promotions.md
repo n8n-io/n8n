@@ -253,8 +253,8 @@ n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -m "Promote che
 
 Archived workflows stay on the branch as archived. A selected workflow that was
 deleted leaves this project's branch. A selected workflow that moved into or out
-of the project since the branch was written is refused: move it back, or promote
-all projects. The request fails before any write if the branch does not hold a
+of the project since the branch was written is refused: move it back
+first. The request fails before any write if the branch does not hold a
 deleted workflow under this project. Connect that environment first. The API key also needs
 `variable:list` when the workflows reference variables.
 

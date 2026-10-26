@@ -32,7 +32,7 @@ import type {
 	WorkflowPlanItem,
 	WorkflowPlannedAction,
 } from './workflow-import.types';
-import { PlacementPolicy } from '../../n8n-packages.types';
+import { LayoutConflictPolicy } from '../../n8n-packages.types';
 import type {
 	ImportBindingMap,
 	ImportContext,
@@ -68,8 +68,8 @@ export class WorkflowImporter {
 		options: ImportWorkflowProperties,
 		{
 			checkRootPlacement,
-			placementPolicy,
-		}: { checkRootPlacement: boolean; placementPolicy?: PlacementPolicy },
+			layoutConflictPolicy,
+		}: { checkRootPlacement: boolean; layoutConflictPolicy?: LayoutConflictPolicy },
 	): Promise<WorkflowImportPlan> {
 		const { matches: existingBySourceWorkflowId, lineageConflicts } =
 			await this.workflowImportMatchService.findBySourceWorkflowIds(
@@ -126,7 +126,7 @@ export class WorkflowImporter {
 			if (item.action === 'update' && (targetFolderId !== null || checkRootPlacement)) {
 				const existingParentFolderId = item.existing.parentFolder?.id ?? null;
 				if (existingParentFolderId !== targetFolderId) {
-					if (placementPolicy === PlacementPolicy.FollowPackage) {
+					if (layoutConflictPolicy === LayoutConflictPolicy.FollowPackage) {
 						item.moveToFolderId = targetFolderId;
 						continue;
 					}

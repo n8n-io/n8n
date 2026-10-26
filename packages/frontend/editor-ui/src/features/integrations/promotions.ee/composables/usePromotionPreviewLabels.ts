@@ -51,7 +51,10 @@ export function usePromotionPreviewLabels() {
 		if (resource.type === 'workflow') {
 			if (resource.movedToProject) {
 				return i18n.baseText('promotions.preview.marker.movedOut', {
-					interpolate: { project: resource.movedToProject.name },
+					interpolate: {
+						project:
+							resource.movedToProject.name ?? i18n.baseText('promotions.preview.personalProject'),
+					},
 				});
 			}
 			if (resource.movedFromProject) {

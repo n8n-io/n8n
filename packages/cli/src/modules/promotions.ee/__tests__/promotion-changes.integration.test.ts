@@ -13,6 +13,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
 	FolderRepository,
+	ProjectRepository,
 	SharedWorkflowRepository,
 	TagRepository,
 	type User,
@@ -288,6 +289,22 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 			change: 'added',
 			movedFromProject: { id: project.id, name: project.name },
 		}),
+	);
+	// A personal project's name holds its owner's email, so the preview leaves it out.
+	const personal = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id);
+	await Container.get(SharedWorkflowRepository).update(
+		{ workflowId: modified.id, role: 'workflow:owner' },
+		{ projectId: personal.id },
+	);
+	expect((await agent.get(endpoint).expect(200)).body.data.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${modified.id}`,
+			movedToProject: { id: personal.id },
+		}),
+	);
+	await Container.get(SharedWorkflowRepository).update(
+		{ workflowId: modified.id, role: 'workflow:owner' },
+		{ projectId: otherProject.id },
 	);
 	const movedOut = movedOutPreview.changes;
 	expect(movedOut).toHaveLength(2);

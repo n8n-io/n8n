@@ -52,7 +52,7 @@ describe('PromotionResourceTree', () => {
 		expect(row(getAllByTestId, 'workflow:w4').getByRole('checkbox')).not.toBeChecked();
 	});
 
-	it('should show a personal project name in a blocker tooltip as text, email included', async () => {
+	it('should say "a personal project" in a blocker tooltip, because the server leaves out its name', async () => {
 		const base = billingPreview();
 		const preview = {
 			...base,
@@ -61,7 +61,7 @@ describe('PromotionResourceTree', () => {
 					? {
 							...resource,
 							change: 'deleted' as const,
-							movedToProject: { id: 'p9', name: 'Ada Lovelace <ada@example.com>' },
+							movedToProject: { id: 'p9' },
 						}
 					: resource,
 			),
@@ -86,7 +86,7 @@ describe('PromotionResourceTree', () => {
 		await userEvent.hover(getByTestId('promotion-preview-tree-blocker'));
 
 		expect(await findByTestId('tooltip-content')).toHaveTextContent(
-			'moved to Ada Lovelace <ada@example.com> on this instance',
+			'moved to a personal project on this instance',
 		);
 	});
 

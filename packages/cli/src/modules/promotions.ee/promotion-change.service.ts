@@ -67,6 +67,7 @@ import type { PackageRequirements } from '@/modules/n8n-packages/spec/requiremen
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { projectHolding } from './branch-placement';
+import { toInstanceProject, type InstanceProject } from './cross-project-moves';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { diffPackageFiles } from './diff-package-files';
 import {
@@ -268,12 +269,12 @@ export class PromotionChangeService {
 		const owners =
 			deletedIds.length > 0
 				? await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(deletedIds)
-				: new Map<string, { id: string; name: string }>();
+				: new Map<string, InstanceProject>();
 		const branchTargets = new Map(
 			(branchManifest.workflows ?? []).map(({ id, target }) => [id, target]),
 		);
-		const elsewhere = (project: { id: string; name: string } | undefined) =>
-			project && project.id !== projectId ? { id: project.id, name: project.name } : undefined;
+		const elsewhere = <P extends { id: string }>(project: P | undefined) =>
+			project && project.id !== projectId ? project : undefined;
 		const branchProjectOf = (id: string) => {
 			const target = branchTargets.get(id);
 			return target === undefined ? undefined : projectHolding(branchManifest.projects, target);
@@ -281,12 +282,14 @@ export class PromotionChangeService {
 
 		return resources.map((resource) => {
 			if (resource.type !== 'workflow') return resource;
-			const movedToProject =
-				resource.change === 'deleted' ? elsewhere(owners.get(resource.id)) : undefined;
-			if (movedToProject) return { ...resource, movedToProject };
-			const movedFromProject =
+			const owner = resource.change === 'deleted' ? elsewhere(owners.get(resource.id)) : undefined;
+			if (owner) return { ...resource, movedToProject: toInstanceProject(owner) };
+			// The branch holds team projects only, so its project name is safe to show.
+			const branchProject =
 				resource.change === 'added' ? elsewhere(branchProjectOf(resource.id)) : undefined;
-			return movedFromProject ? { ...resource, movedFromProject } : resource;
+			return branchProject
+				? { ...resource, movedFromProject: { id: branchProject.id, name: branchProject.name } }
+				: resource;
 		});
 	}
 

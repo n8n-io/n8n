@@ -4,6 +4,7 @@ import { promotionChangesSchema } from './promotable-resource.dto';
 import {
 	promotionBindingProjectSchema,
 	promotionDataTableChangeSchema,
+	promotionInstanceProjectSchema,
 } from './promotion-binding-preflight.dto';
 import { Z } from '../../zod-class';
 import { serializedCredentialSchema } from '../packages/credential.schema';
@@ -62,7 +63,7 @@ export const promotionResourceSchema = z.object({
 	 * Only for deleted workflows on Promote: the project that owns the workflow on this instance now.
 	 * Promote refuses the workflow, because the destination would delete it.
 	 */
-	movedToProject: promotionBindingProjectSchema.optional(),
+	movedToProject: promotionInstanceProjectSchema.optional(),
 	/**
 	 * Only for added workflows on Promote: the project that holds the workflow on the branch. It moved
 	 * into this project on this instance, and a project promote refuses it.

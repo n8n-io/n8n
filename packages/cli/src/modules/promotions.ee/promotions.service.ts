@@ -45,7 +45,7 @@ import {
 	FolderConflictPolicy,
 	MissingNodeTypeMode,
 	OverwriteDeletionPolicy,
-	PlacementPolicy,
+	LayoutConflictPolicy,
 	ProjectConflictPolicy,
 	TagConflictPolicy,
 	TagMissingMode,
@@ -911,7 +911,7 @@ export class PromotionsService {
 					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
 				tagConflictPolicy: IMPORT_POLICY.tagConflictPolicy,
 				credentialConflictPolicy: IMPORT_POLICY.credentialConflictPolicy,
-				placementPolicy: PlacementPolicy.FollowPackage,
+				layoutConflictPolicy: LayoutConflictPolicy.FollowPackage,
 			},
 			{ sourceDir: packageFolder },
 			selection,
@@ -1012,7 +1012,7 @@ export class PromotionsService {
 			{
 				user: actor,
 				...IMPORT_POLICY,
-				placementPolicy: PlacementPolicy.FollowPackage,
+				layoutConflictPolicy: LayoutConflictPolicy.FollowPackage,
 				dataTableSchemaConflictPolicy: confirmDestructiveChanges
 					? DataTableSchemaConflictPolicy.Overwrite
 					: IMPORT_POLICY.dataTableSchemaConflictPolicy,

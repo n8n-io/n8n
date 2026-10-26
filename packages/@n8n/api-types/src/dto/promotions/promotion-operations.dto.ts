@@ -8,6 +8,7 @@ import {
 	promotionBindingPreflightResultSchema,
 	promotionBindingProjectSchema,
 	promotionBindingWarningSchema,
+	promotionInstanceProjectSchema,
 } from './promotion-binding-preflight.dto';
 import { promotionCommitMessageSchema } from './promotion-common.dto';
 import { promotionReviewResultSchema } from './promotion-review.dto';
@@ -222,7 +223,7 @@ const crossProjectMoveSchema = z.object({
 	 */
 	projectExists: z.boolean(),
 	/** The project that holds the item on this instance. */
-	instanceProject: promotionBindingProjectSchema,
+	instanceProject: promotionInstanceProjectSchema,
 });
 
 const applyCheckResultSchema = applyPackageIdentitySchema.extend({

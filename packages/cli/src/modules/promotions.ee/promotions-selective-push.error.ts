@@ -11,7 +11,7 @@ export class PromotionsWorkflowsMovedCrossProjectError extends BadRequestError {
 	constructor(moved: ReadonlyArray<{ id: string; detail?: string }>) {
 		const described = moved.map(({ id, detail }) => (detail ? `${id} (${detail})` : id));
 		super(
-			`These workflows moved between projects: ${described.join(', ')}. A project promote can't move a workflow between projects. Move them back on this instance, or promote all projects from the instance environment settings.`,
+			`These workflows moved between projects: ${described.join(', ')}. Promote can't move a workflow between projects. Move them back on this instance, then promote again.`,
 		);
 		this.meta = {
 			code: PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
