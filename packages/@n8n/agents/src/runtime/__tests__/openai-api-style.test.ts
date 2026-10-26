@@ -1518,6 +1518,86 @@ describe('openai api-style selection (real SDK)', () => {
 		expect(paths(calls)).toEqual(['/v1/responses']);
 	});
 
+	describe('history replay on /responses', () => {
+		// Earlier output carries the item ids the server answered with. A server
+		// that stored nothing cannot resolve a reference to one of them.
+		const HISTORY = [
+			{ role: 'user', content: [{ type: 'text', text: 'Read my workflow' }] },
+			{
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: 'Reading it.', providerOptions: { openai: { itemId: 'msg_1' } } },
+					{ type: 'tool-call', toolCallId: 'call_1', toolName: 'read_workflow', input: {} },
+				],
+			},
+			{
+				role: 'tool',
+				content: [
+					{
+						type: 'tool-result',
+						toolCallId: 'call_1',
+						toolName: 'read_workflow',
+						output: { type: 'json', value: { nodes: [] } },
+					},
+				],
+			},
+		];
+
+		const inputTypes = (call: Call) =>
+			(call.body.input as Array<{ type?: string }>).map((item) => item.type);
+
+		/** Answers like Ollama: /responses works, but it rejects any reference. */
+		const statelessServer =
+			(ok: Route) =>
+			(call: Call): Route =>
+				inputTypes(call).includes('item_reference')
+					? {
+							status: 400,
+							body: JSON.stringify({
+								error: { message: 'unknown input item type: "item_reference"' },
+							}),
+							contentType: 'application/json',
+						}
+					: ok;
+
+		it.each([
+			['doGenerate', RESPONSES_OK],
+			['doStream', RESPONSES_STREAM_OK],
+		] as const)(
+			'sends history inline to a custom endpoint that stores nothing (%s)',
+			async (method, ok) => {
+				const { fetchFn, calls } = fakeEndpoint(statelessServer(ok));
+				const model = createModel(
+					{ id: 'openai/gemma4:31b-cloud', apiKey: 'sk-fake', url: CHAT_ONLY },
+					fetchFn,
+				) as unknown as EndpointModel;
+
+				await model[method]({ prompt: HISTORY });
+
+				expect(paths(calls)).toEqual(['/v1/responses']);
+				expect(calls[0].body.store).toBe(false);
+				expect(inputTypes(calls[0])).not.toContain('item_reference');
+			},
+		);
+
+		// Real OpenAI stores responses, so references to them still resolve there.
+		it.each([
+			['the official API', {}, undefined],
+			['a route pinned to /responses', { url: PROXY, apiStyle: 'responses' }, undefined],
+			['a custom endpoint when the call asks for storage', { url: PROXY }, { store: true }],
+		])('replays history by reference on %s', async (_, creds, openai) => {
+			const { fetchFn, calls } = fakeEndpoint({ '/v1/responses': RESPONSES_OK });
+			const model = createModel(
+				{ id: 'openai/gpt-4o', apiKey: 'sk-fake', ...creds },
+				fetchFn,
+			) as unknown as EndpointModel;
+
+			await model.doGenerate({ prompt: HISTORY, providerOptions: openai && { openai } });
+
+			expect(inputTypes(calls[0])).toContain('item_reference');
+		});
+	});
+
 	describe('endpoint decision sharing', () => {
 		it('resolves environment API keys for each call on the same model', async () => {
 			try {

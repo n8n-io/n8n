@@ -9,15 +9,17 @@ import {
 } from '@n8n/ai-utilities/model-discovery';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { isRecord } from '@n8n/utils/is-record';
+import type * as AiSdk from 'ai';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
 import { createGoogleVertexModel, parseGoogleVertexAuthOptions } from './google-vertex';
+import { loadAi } from './lazy-ai';
 import type { NativeToolDeferral } from './native-tool-deferral';
 import { anthropicToolDeferral } from './native-tool-deferral/anthropic';
 import { openAiToolDeferral } from './native-tool-deferral/openai';
 import { wrapOpenRouterModel } from './openrouter';
-import { isAnthropicMessagesProvider } from './prompt-cache';
+import { isAnthropicMessagesProvider, mergeProviderOptions } from './prompt-cache';
 import {
 	endpointRouteKey,
 	guardOpenAiRoutes,
@@ -220,6 +222,30 @@ function buildOpenAiCompatible(
 	})(model);
 }
 
+/**
+ * The AI SDK turns `store` on by default. It then swaps each earlier output
+ * part that has an item ID for a reference to that ID, and only a server that
+ * kept the output can look it up. An auto-detected endpoint can be Ollama,
+ * vLLM or LiteLLM, which keep nothing, and the runtime holds the full history
+ * anyway. So storage is off here unless the call asks for it.
+ */
+function sendHistoryInline(model: Parameters<typeof AiSdk.wrapLanguageModel>[0]['model']) {
+	return loadAi().wrapLanguageModel({
+		model,
+		middleware: {
+			transformParams: async ({ params }) =>
+				params.providerOptions?.openai?.store !== undefined
+					? params
+					: {
+							...params,
+							providerOptions: mergeProviderOptions(params.providerOptions, {
+								openai: { store: false },
+							}),
+						},
+		},
+	});
+}
+
 type OpenAiCompatibleProviderId = 'nvidia';
 
 export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
@@ -367,7 +393,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// transport and the first answer decides.
 			return withChatCompletionsFallback(
 				(headers) => endpointRouteKey(baseURL, providerCreds, headers),
-				guarded(model),
+				sendHistoryInline(guarded(model)),
 				guarded.chat(model),
 			);
 		},
