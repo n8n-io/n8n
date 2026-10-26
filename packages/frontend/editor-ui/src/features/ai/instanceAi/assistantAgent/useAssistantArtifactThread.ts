@@ -1,8 +1,10 @@
+import type { InstanceAiHandoffContext } from '@n8n/api-types';
 import { computed, reactive, type DeepReadonly } from 'vue';
 
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
+import { createArtifactPreviewMemory } from '../artifactPreviewMemory';
 import type { ArtifactThread } from '../artifactThread';
 import { useResourceRegistry } from '../useResourceRegistry';
 import { findLatestAssistantTasks, toAssistantArtifactMessages } from './assistantArtifactMessages';
@@ -13,8 +15,11 @@ interface UseAssistantArtifactThreadOptions {
 	messages: () => ReadonlyArray<DeepReadonly<ChatMessage>>;
 	isStreaming: () => boolean;
 	isLoadingHistory: () => boolean;
-	/** Sends a message to the chat, for the previews that ask the Assistant something. */
-	sendMessage: (text: string) => void;
+	/**
+	 * Sends a message to the chat, for the previews that ask the Assistant
+	 * something. The hand-off context goes with the message.
+	 */
+	sendMessage: (text: string, handoffContext?: InstanceAiHandoffContext) => void;
 }
 
 /**
@@ -51,10 +56,11 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 		currentTasks,
 		// Hand-offs from the editor open Assistant runtime threads, never these.
 		consumePendingHandoff: () => undefined,
-		sendMessage: async (text: string) => {
-			options.sendMessage(text);
+		sendMessage: async (text: string, opts: Parameters<ArtifactThread['sendMessage']>[1]) => {
+			options.sendMessage(text, opts.handoffContext);
 			return true;
 		},
+		...createArtifactPreviewMemory(),
 	});
 
 	return thread;

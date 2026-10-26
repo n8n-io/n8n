@@ -22,6 +22,10 @@ export type ArtifactThread = Pick<
 	| 'currentTasks'
 	| 'consumePendingHandoff'
 	| 'sendMessage'
+	| 'rememberManualExecution'
+	| 'getRememberedManualExecution'
+	| 'forgetManualExecution'
+	| 'logsPanelMemory'
 >;
 
 const ArtifactThreadKey: InjectionKey<ArtifactThread> = Symbol('ArtifactThread');
