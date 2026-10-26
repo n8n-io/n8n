@@ -1,6 +1,6 @@
 # Fault harness
 
-`@n8n/fault-harness` controls an n8n stack in Docker from a test. Use it when a bug depends on timing between processes, for example a worker that gets SIGTERM while it holds a job. A test can pause any method inside a running n8n process. It can then signal, freeze or restart containers, and read their logs.
+`@n8n/fault-harness` runs a real n8n stack in Docker under test control. Use it when a bug depends on timing between processes, for example a worker that gets SIGTERM while it holds a job. A test can pause any method inside a running n8n process. It can then signal, freeze or restart containers, and read Postgres, Redis and the logs.
 
 The harness needs no change to n8n. It works on released images and on local builds.
 

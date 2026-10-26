@@ -2,11 +2,12 @@
   "name": "@n8n/fault-harness",
   "private": true,
   "version": "0.1.0",
-  "description": "Controls n8n containers from a test: in-process hooks, signals and log waits",
+  "description": "Runs n8n stacks under test control: in-process hooks, signals and probes",
   "main": "src/index.ts",
   "scripts": {
     "test": "vitest run --passWithNoTests",
     "test:unit": "vitest run --passWithNoTests",
+    "test:docker": "vitest run --config vitest.docker.config.ts",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "format": "biome format --write .",
@@ -17,7 +18,8 @@
   "license": "MIT",
   "dependencies": {
     "@n8n/utils": "workspace:*",
-    "n8n-containers": "workspace:*"
+    "n8n-containers": "workspace:*",
+    "nanoid": "catalog:"
   },
   "peerDependencies": {
     "zod": "catalog:"
