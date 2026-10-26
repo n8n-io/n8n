@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { LRUCache } from 'lru-cache';
 import { createHash } from 'node:crypto';
-import { contentType } from 'mime-types';
+import { contentType, lookup } from 'mime-types';
 
 import { AppsConfig } from '../apps.config';
 import { AppBuildResultStore } from '../storage/app-version-stores';
@@ -46,9 +46,10 @@ export class AppBundleCache {
 		const files = await this.store.readBundle(versionId);
 		const bundle: Bundle = new Map();
 		for (const [name, body] of files) {
+			const mimeType = lookup(name) || 'application/octet-stream';
 			bundle.set(name, {
 				body,
-				contentType: contentType(name) || 'application/octet-stream',
+				contentType: contentType(mimeType) || mimeType,
 				etag: `W/"${createHash('sha256').update(body).digest('hex')}"`,
 			});
 		}
