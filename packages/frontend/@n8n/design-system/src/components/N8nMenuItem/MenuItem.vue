@@ -24,8 +24,9 @@ const props = defineProps<{
 	scrollLabelOnOverflow?: boolean;
 }>();
 
+// The click carries its event, so a trigger that wraps the item (as-child) can read it.
 const emit = defineEmits<{
-	click: [];
+	click: [event: MouseEvent];
 }>();
 
 const menuItemTextViewport = ref<HTMLElement | null>(null);
@@ -60,11 +61,11 @@ const to = computed(() => {
 	return undefined;
 });
 
-const handleClick = () => {
+const handleClick = (event: MouseEvent) => {
 	if (props.item.disabled) {
 		return;
 	}
-	emit('click');
+	emit('click', event);
 };
 
 const icon = computed<IconName | (string & {}) | undefined>(() => {
