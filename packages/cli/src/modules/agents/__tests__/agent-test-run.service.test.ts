@@ -488,7 +488,7 @@ describe('AgentTestRunService', () => {
 		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalled();
 	});
 
-	it('rejects a draft run and resume from a user without agent:update', async () => {
+	it('rejects a draft run and resume from a user without agent:read', async () => {
 		const { service, agentValidationService, agentExecutionOrchestratorService } = makeService();
 		vi.mocked(userHasScopes).mockResolvedValue(false);
 
@@ -506,7 +506,7 @@ describe('AgentTestRunService', () => {
 				chatSurface: 'preview',
 			}),
 		).rejects.toThrow(ForbiddenError);
-		expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:update'], false, { projectId });
+		expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, { projectId });
 		expect(agentValidationService.validateAgentIsRunnable).not.toHaveBeenCalled();
 		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalled();
 	});

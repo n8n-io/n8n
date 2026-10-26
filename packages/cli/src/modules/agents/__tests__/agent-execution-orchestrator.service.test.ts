@@ -84,7 +84,7 @@ import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.erro
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 
-// Draft runs check `agent:update`; these tests run as a user who holds it.
+// Draft runs check `agent:read`; these tests run as a user who holds it.
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(async () => true),
 }));

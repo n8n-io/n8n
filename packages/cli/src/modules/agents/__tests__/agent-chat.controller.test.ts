@@ -51,7 +51,7 @@ import {
 	waitForClose,
 } from '@test/file-stream-server';
 
-// Draft runs check `agent:update`; these tests run as a user who holds it.
+// Draft runs check `agent:read`; these tests run as a user who holds it.
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(async () => true),
 }));
