@@ -14,8 +14,6 @@ import {
 	resolvePromptProfile,
 	describePromptProfile,
 	createDomainAccessTracker,
-	PlannedTaskCoordinator,
-	PlannedTaskStorage,
 	createSetupItemsEmitter,
 	isSetupPanelEnabled,
 	orchestratorAgentId,
@@ -89,7 +87,6 @@ export interface AssistantTurnEnvironment {
 	taskStorage: ThreadTaskStorage;
 	iterationLog: DbIterationLogStorage;
 	workflowTasks: WorkflowTaskService;
-	plannedTaskService: PlannedTaskCoordinator;
 	modelId: ModelConfig;
 	memoryModelId: ModelConfig | undefined;
 	orchestrationContext: OrchestrationContext;
@@ -288,6 +285,7 @@ export class AssistantTurnEnvironmentFactory {
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
+			assistantSkillsEnabled,
 		} = gates;
 		runtime.turnState.setSetupPanelEnabled(setupPanelEnabled);
 		// Resumed segments use the gates bound to the original turn.
@@ -338,7 +336,9 @@ export class AssistantTurnEnvironmentFactory {
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
+			assistantSkillsEnabled,
 			modelId,
+			modelFetch: this.modelService.getModelFetch(),
 			allowSendingParameterValues,
 		});
 
@@ -438,8 +438,6 @@ export class AssistantTurnEnvironmentFactory {
 		const workflowTasks = runtime.syncWorkflowTasks
 			? this.createWorkflowTaskServiceWithUiSync(workflowTaskCoordinator, runtime.syncWorkflowTasks)
 			: workflowTaskCoordinator;
-		const plannedTaskStorage = new PlannedTaskStorage(memory);
-		const plannedTaskService = new PlannedTaskCoordinator(plannedTaskStorage);
 
 		const nodeDefDirs = this.adapterService.getNodeDefinitionDirs();
 		if (nodeDefDirs.length > 0) {
@@ -452,7 +450,10 @@ export class AssistantTurnEnvironmentFactory {
 			// The agent-building skills need the build-agent tool, which needs a builder delegate.
 			agentBuildingEnabled: context.builderDelegate !== undefined,
 		};
-		const skills = await this.skillsService.loadSkills(skillScope);
+		const skills = await this.skillsService.loadSkills(skillScope, {
+			user,
+			projectId: boundProjectId,
+		});
 		const promptMetadata = describePromptProfile(selectedPrompt, skills.source);
 		runtime.turnState.setPromptConfiguration(promptMetadata);
 		let runtimeWorkspace: Workspace | undefined;
@@ -512,6 +513,7 @@ export class AssistantTurnEnvironmentFactory {
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
+			modelFetch: this.modelService.getModelFetch(),
 			modelStreamStallOptions: modelStreamStallOptions(this.aiConfig),
 			eventBus: runtime.eventBus,
 			logger: this.logger,
@@ -552,12 +554,12 @@ export class AssistantTurnEnvironmentFactory {
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
 			skills: skills.source,
+			skillAvailabilityNotice: skills.availabilityNotice,
+			mapSkillEventForDisplay: skills.mapSkillEventForDisplay,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			cancelBackgroundTask: runtime.cancelBackgroundTask,
 			touchRun: runtime.touchRun,
 			touchBackgroundTask: runtime.touchBackgroundTask,
-			plannedTaskService,
-			schedulePlannedTasks: runtime.schedulePlannedTasks,
 			iterationLog,
 			sendCorrectionToTask: runtime.sendCorrectionToTask,
 			workflowTaskService: workflowTasks,
@@ -573,7 +575,6 @@ export class AssistantTurnEnvironmentFactory {
 			taskStorage,
 			iterationLog,
 			workflowTasks,
-			plannedTaskService,
 			modelId,
 			memoryModelId,
 			orchestrationContext,

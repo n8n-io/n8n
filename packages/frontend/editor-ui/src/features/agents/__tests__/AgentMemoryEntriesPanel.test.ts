@@ -5,12 +5,15 @@ import type { AgentMemoryEntriesPageDto, AgentMemoryEntryDto } from '@n8n/api-ty
 
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import AgentMemoryEntriesPanel from '../components/AgentMemoryEntriesPanel.vue';
+import AgentMemorySourceFilter from '../components/AgentMemorySourceFilter.vue';
 
 const listAgentMemoryEntries = vi.fn();
 const deleteAgentMemoryEntry = vi.fn();
+const getAgentMemorySourceFacets = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	listAgentMemoryEntries: (...args: unknown[]) => listAgentMemoryEntries(...args),
 	deleteAgentMemoryEntry: (...args: unknown[]) => deleteAgentMemoryEntry(...args),
+	getAgentMemorySourceFacets: (...args: unknown[]) => getAgentMemorySourceFacets(...args),
 }));
 
 const showError = vi.fn();
@@ -64,6 +67,7 @@ describe('AgentMemoryEntriesPanel', () => {
 		vi.clearAllMocks();
 		listAgentMemoryEntries.mockResolvedValue(page([makeEntry('e1'), makeEntry('e2')]));
 		deleteAgentMemoryEntry.mockResolvedValue(undefined);
+		getAgentMemorySourceFacets.mockResolvedValue({ groups: [] });
 	});
 
 	it('loads the 10 newest entries with their source line', async () => {
@@ -264,5 +268,72 @@ describe('AgentMemoryEntriesPanel', () => {
 		const wrapper = await mountPanel({ disabled: true });
 
 		expect(wrapper.find('[data-testid="agent-memory-entry-delete"]').exists()).toBe(false);
+	});
+
+	describe('source filter', () => {
+		async function openFullList() {
+			listAgentMemoryEntries.mockResolvedValue(page([makeEntry('e1')], { total: 14 }));
+			const wrapper = await mountPanel();
+			await wrapper.find('[data-testid="agent-memory-entries-view-all"]').trigger('click');
+			await flushPromises();
+			return wrapper;
+		}
+
+		function selectSource(wrapper: Awaited<ReturnType<typeof openFullList>>, selection: object) {
+			wrapper.findComponent(AgentMemorySourceFilter).vm.$emit('update:modelValue', selection);
+		}
+
+		it('shows the filter only in the full list and loads its options', async () => {
+			listAgentMemoryEntries.mockResolvedValue(page([makeEntry('e1')], { total: 14 }));
+			const wrapper = await mountPanel();
+			expect(wrapper.findComponent(AgentMemorySourceFilter).exists()).toBe(false);
+
+			await wrapper.find('[data-testid="agent-memory-entries-view-all"]').trigger('click');
+			await flushPromises();
+
+			expect(wrapper.findComponent(AgentMemorySourceFilter).exists()).toBe(true);
+			expect(getAgentMemorySourceFacets).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+		});
+
+		it('reloads the full list with the selected source', async () => {
+			const wrapper = await openFullList();
+
+			selectSource(wrapper, { source: 'slack', sourceFacet: 'channel', sourceFacetId: 'C1' });
+			await flushPromises();
+
+			expect(listAgentMemoryEntries).toHaveBeenLastCalledWith({}, 'project-1', 'agent-1', {
+				limit: 25,
+				cursor: undefined,
+				source: 'slack',
+				sourceFacet: 'channel',
+				sourceFacetId: 'C1',
+			});
+		});
+
+		it('shows a no-match message when the filter finds nothing', async () => {
+			const wrapper = await openFullList();
+			listAgentMemoryEntries.mockResolvedValue(page([]));
+
+			selectSource(wrapper, { source: 'slack' });
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="agent-memory-entries-empty"]').text()).toBe(
+				'agents.builder.memory.entries.noMatches',
+			);
+		});
+
+		it('clears the filter when the user goes back', async () => {
+			const wrapper = await openFullList();
+			selectSource(wrapper, { source: 'slack' });
+			await flushPromises();
+
+			await wrapper.find('[data-testid="agent-memory-entries-back"]').trigger('click');
+			await flushPromises();
+
+			expect(listAgentMemoryEntries).toHaveBeenLastCalledWith({}, 'project-1', 'agent-1', {
+				limit: 10,
+				cursor: undefined,
+			});
+		});
 	});
 });

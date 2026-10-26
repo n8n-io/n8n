@@ -4,7 +4,7 @@ import type { Logger } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { INTEGRATION_ERROR_CODES } from '../integration-error-codes';
-import { AgentChatStreamConsumer } from '../agent-chat-stream-consumer';
+import { AgentChatStreamConsumer, ReplyDeliveryError } from '../agent-chat-stream-consumer';
 
 function makeStream(chunks: StreamChunk[]): AsyncGenerator<StreamChunk> {
 	return (async function* () {
@@ -201,7 +201,9 @@ describe('AgentChatStreamConsumer — stream delivery failure', () => {
 		});
 
 		expect(postErrorToThread).toHaveBeenCalledOnce();
-		expect(postErrorToThread).toHaveBeenCalledWith(localThread, error, undefined);
+		const [, reported] = postErrorToThread.mock.calls[0];
+		expect(reported).toBeInstanceOf(ReplyDeliveryError);
+		expect((reported as ReplyDeliveryError).cause).toBe(error);
 		expect(toolStarted).toHaveBeenCalledOnce();
 		expect(toolStarted.mock.invocationCallOrder[0]).toBeGreaterThan(
 			localThread.post.mock.invocationCallOrder[0],
@@ -214,6 +216,62 @@ describe('AgentChatStreamConsumer — stream delivery failure', () => {
 		expect(clearBeforeResponse.mock.invocationCallOrder[0]).toBeGreaterThan(
 			postErrorToThread.mock.invocationCallOrder[0],
 		);
+	});
+
+	it('posts the retained text when the streamed post fails', async () => {
+		const { thread, discrete } = makeStreamingThread({ rejectAfterMs: 0 });
+		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
+		const consumer = makeStreamingConsumer({ postErrorToThread });
+
+		await consumer.consume(
+			makeStream([
+				{ type: 'text-delta', id: 't-1', delta: 'The full ' },
+				{ type: 'text-delta', id: 't-1', delta: 'reply.' },
+			]),
+			thread,
+		);
+
+		expect(discrete).toEqual([{ markdown: 'The full reply.' }]);
+		expect(postErrorToThread).not.toHaveBeenCalled();
+	});
+});
+
+describe.each([
+	['streaming', false],
+	['buffered', true],
+])('AgentChatStreamConsumer — maxMessageLength (%s)', (_name, disableStreaming) => {
+	it('continues a long reply in new messages that end on whole lines', async () => {
+		const { thread, streamedText, discrete } = makeStreamingThread();
+		const consumer = makeStreamingConsumer({ disableStreaming, maxMessageLength: 20 });
+		const lines = Array.from({ length: 10 }, (_, i) => `line ${i}\n`);
+
+		await consumer.consume(
+			makeStream(lines.map((delta) => ({ type: 'text-delta', id: 't-1', delta }))),
+			thread,
+		);
+
+		const messages = disableStreaming
+			? discrete.map((message) => (message as { markdown: string }).markdown)
+			: streamedText;
+		expect(messages.length).toBeGreaterThan(1);
+		expect(messages.join('')).toBe(lines.join(''));
+		for (const message of messages) {
+			expect(message.length).toBeLessThanOrEqual(20);
+			expect(message.endsWith('\n')).toBe(true);
+		}
+	});
+
+	it('breaks a line that does not fit in one message', async () => {
+		const { thread, streamedText, discrete } = makeStreamingThread();
+		const consumer = makeStreamingConsumer({ disableStreaming, maxMessageLength: 20 });
+		const text = 'x'.repeat(50);
+
+		await consumer.consume(makeStream([{ type: 'text-delta', id: 't-1', delta: text }]), thread);
+
+		const messages = disableStreaming
+			? discrete.map((message) => (message as { markdown: string }).markdown)
+			: streamedText;
+		expect(messages).toEqual(['x'.repeat(20), 'x'.repeat(20), 'x'.repeat(10)]);
 	});
 });
 
@@ -526,6 +584,10 @@ describe('AgentChatStreamConsumer — budget stop', () => {
 		expect(localThread.post).toHaveBeenCalledTimes(1);
 		expect(localThread.post).toHaveBeenCalledWith({ markdown: SESSION_BUDGET_MESSAGE });
 		expect(postErrorToThread).toHaveBeenCalledTimes(1);
-		expect(postErrorToThread).toHaveBeenCalledWith(localThread, deliveryError, undefined);
+		expect(postErrorToThread).toHaveBeenCalledWith(
+			localThread,
+			expect.any(ReplyDeliveryError),
+			undefined,
+		);
 	});
 });

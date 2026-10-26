@@ -85,8 +85,8 @@ export class ModuleRegistry {
 		'mcp-registry',
 		'workflow-reviews',
 		'inbox',
-		// skills precedes instance-ai and agents: agents reads the skills hub setting
-		// and copies inline skills into the hub on init.
+		// skills precedes instance-ai and agents: agents decides on init whether it
+		// reads its skills from the skills hub.
 		'skills',
 		'instance-ai',
 		// knowledge precedes agents: a module counts as active only after its own
