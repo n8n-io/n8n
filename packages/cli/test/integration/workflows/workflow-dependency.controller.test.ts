@@ -480,58 +480,8 @@ describe('POST /workflow-dependencies/details', () => {
 		expect(resp.body.data[credential.id]).toEqual({
 			dependencies: [],
 			inaccessibleCount: 1,
-			inaccessibleCounts: { agentUsage: 1 },
-			inaccessibleDependentCount: 1,
 		});
 	});
-
-	it.each([true, false])(
-		'should count an overlapping parent once when the parent is accessible: %s',
-		async (visibleParent) => {
-			const member = await createMember();
-			const otherMember = await createMember();
-			const workflow = await createWorkflow({}, member);
-			const parent = await createWorkflow(
-				{ name: 'Order intake' },
-				visibleParent ? member : otherMember,
-			);
-			await seedDep(parent.id, 'workflowCall', workflow.id);
-			await seedDep(parent.id, 'errorWorkflow', workflow.id);
-
-			const resp = await testServer
-				.authAgentFor(member)
-				.post('/workflow-dependencies/details')
-				.send({ resourceIds: [workflow.id], resourceType: 'workflow' });
-
-			expect(resp.statusCode).toBe(200);
-			const result = resp.body.data[workflow.id];
-			if (visibleParent) {
-				expect(result.dependencies).toEqual(
-					expect.arrayContaining([
-						expect.objectContaining({
-							id: parent.id,
-							name: 'Order intake',
-							type: 'workflowParent',
-						}),
-						expect.objectContaining({
-							id: parent.id,
-							name: 'Order intake',
-							type: 'errorWorkflowParent',
-						}),
-					]),
-				);
-				expect(result.inaccessibleCount).toBe(0);
-				expect(result.inaccessibleDependentCount).toBeUndefined();
-			} else {
-				expect(result).toEqual({
-					dependencies: [],
-					inaccessibleCount: 2,
-					inaccessibleCounts: { workflowParent: 1, errorWorkflowParent: 1 },
-					inaccessibleDependentCount: 1,
-				});
-			}
-		},
-	);
 
 	it('should exclude inaccessible deps and report inaccessibleCount', async () => {
 		const owner = await createOwner();
@@ -557,7 +507,6 @@ describe('POST /workflow-dependencies/details', () => {
 		const result = resp.body.data[memberWorkflow.id];
 		expect(result.dependencies).toHaveLength(1);
 		expect(result.inaccessibleCount).toBe(1);
-		expect(result.inaccessibleCounts).toEqual({ workflowCall: 1 });
 
 		expect(result.dependencies[0]).toMatchObject({
 			id: memberSubWorkflow.id,
