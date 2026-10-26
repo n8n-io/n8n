@@ -24,6 +24,7 @@ import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
+import { SESSION_STOPPED_REASON } from './agent-session-stop-reason';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import {
 	checkpointExecutionId,
@@ -384,9 +385,7 @@ export class AgentExecutionService {
 	}
 
 	stopExecution(executionId: string): void {
-		this.executionControllers
-			.get(executionId)
-			?.abort(new DOMException('Execution stopped', 'AbortError'));
+		this.executionControllers.get(executionId)?.abort(SESSION_STOPPED_REASON);
 	}
 
 	reportUsage(

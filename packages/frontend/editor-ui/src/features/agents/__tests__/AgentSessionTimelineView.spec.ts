@@ -5,7 +5,7 @@ import { shallowMount, flushPromises } from '@vue/test-utils';
 import { nextTick, reactive } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import type { PushMessage } from '@n8n/api-types';
-import { N8nEmptyState } from '@n8n/design-system';
+import { N8nEmptyState, N8nIconButton } from '@n8n/design-system';
 import type * as AgentBuilderSessionModule from '@/features/agents/composables/useAgentBuilderSession';
 import AgentSessionTimelineView from '../views/AgentSessionTimelineView.vue';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
@@ -515,7 +515,7 @@ describe('AgentSessionTimelineView', () => {
 		await stopButton.trigger('click');
 		expect(wrapper.emitted('stop')).toEqual([[]]);
 		await wrapper.setProps({ stopLoading: true });
-		expect(wrapper.getComponent('[data-testid="agent-session-stop"]').props()).toMatchObject({
+		expect(wrapper.getComponent(N8nIconButton).props()).toMatchObject({
 			variant: 'ghost',
 			size: 'medium',
 			icon: 'square',

@@ -9,6 +9,7 @@ import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
+import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { ExecutionRecorder } from '../execution-recorder';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentTurnFinalizeOutcome } from '../types/agent-turn-outcome';
@@ -218,15 +219,26 @@ describe('onBeforeFinalize', () => {
 		});
 	});
 
-	it('reports a cancelled turn', async () => {
+	it('reports a session stop', async () => {
 		const abortController = new AbortController();
 		const { onBeforeFinalize, chunks } = await runTurn([], {
 			abortController,
-			beforeStream: () => abortController.abort(),
+			beforeStream: () => abortController.abort(SESSION_STOPPED_REASON),
 		});
 
 		expect(onBeforeFinalize).toHaveBeenCalledWith({ executionId: 'exec-1', status: 'cancelled' });
 		expect(chunks).toEqual([{ type: 'finish', finishReason: 'cancelled' }]);
+	});
+
+	it('records a caller cancellation without emitting a chat stop event', async () => {
+		const controller = new AbortController();
+		const { onBeforeFinalize, chunks } = await runTurn([], {
+			abortController: controller,
+			beforeStream: () => controller.abort(),
+		});
+
+		expect(onBeforeFinalize).toHaveBeenCalledWith({ executionId: 'exec-1', status: 'cancelled' });
+		expect(chunks).toEqual([]);
 	});
 
 	it.each(['throw', 'error-chunks'] as const)(
@@ -243,7 +255,7 @@ describe('onBeforeFinalize', () => {
 						],
 				{
 					abortController: controller,
-					beforeStream: () => controller.abort(error),
+					beforeStream: () => controller.abort(SESSION_STOPPED_REASON),
 					streamError: mode === 'throw' ? error : undefined,
 				},
 			);

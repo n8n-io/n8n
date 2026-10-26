@@ -51,6 +51,7 @@ import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import { AgentTestRunService } from '../agent-test-run.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import type { AgentValidationService } from '../agent-validation.service';
@@ -1195,7 +1196,9 @@ describe('AgentExecutionOrchestratorService', () => {
 					userId,
 				});
 			});
-			await expect(collect(stream)).resolves.toEqual([]);
+			await expect(collect(stream)).resolves.toEqual([
+				{ type: 'finish', finishReason: 'cancelled' },
+			]);
 			expect(sdkStart).not.toHaveBeenCalled();
 			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 				'execution-1',
@@ -1233,7 +1236,25 @@ describe('AgentExecutionOrchestratorService', () => {
 				created.resolve();
 			}
 			await stopping;
-			await expect(result).resolves.toEqual([]);
+			await expect(result).resolves.toEqual([{ type: 'finish', finishReason: 'cancelled' }]);
+			expect(sdkStart).not.toHaveBeenCalled();
+			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					record: expect.objectContaining({ finishReason: 'cancelled', error: null }),
+				}),
+			);
+		});
+
+		it('reports a session stop before the SDK starts on a non-chat surface', async () => {
+			const controller = new AbortController();
+			const { stream, sdkStart, executionService, onExecutionStarted } = makeTurn();
+			executionService.getAbortSignal.mockReturnValue(controller.signal);
+			onExecutionStarted.mockImplementation(() => controller.abort(SESSION_STOPPED_REASON));
+
+			await expect(collect(stream)).resolves.toEqual([
+				{ type: 'finish', finishReason: 'cancelled' },
+			]);
 			expect(sdkStart).not.toHaveBeenCalled();
 			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 				'execution-1',
@@ -1429,6 +1450,13 @@ describe('AgentExecutionOrchestratorService', () => {
 			{ name: 'caller abort', previewChat: true, abort: true, expectedReason: 'cancelled' },
 			{ name: 'model failure', previewChat: true, abort: false, expectedReason: 'error' },
 			{
+				name: 'session stop',
+				previewChat: false,
+				abort: true,
+				abortReason: SESSION_STOPPED_REASON,
+				expectedReason: 'cancelled',
+			},
+			{
 				name: 'ownership loss',
 				previewChat: true,
 				abort: true,
@@ -1450,7 +1478,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					{ type: 'finish', finishReason: 'error', model: 'mock-model', usage },
 				],
 			});
-			if (scenario.name === 'ownership loss')
+			if (scenario.name === 'ownership loss' || scenario.name === 'session stop')
 				executionService.getAbortSignal.mockReturnValue(controller.signal);
 			const chunks: AgentExecutionStreamChunk[] = [];
 			for await (const chunk of stream) {

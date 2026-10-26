@@ -15,6 +15,7 @@ import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-ac
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
+import { SESSION_STOPPED_REASON } from './agent-session-stop-reason';
 import { AgentKnowledgeUsageTracker } from './agent-knowledge-usage-tracker';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
@@ -164,13 +165,16 @@ export class AgentTurnExecutionService {
 
 			const stream = await this.admitTurn(preparedTurn, config, recorder, state, chatControl);
 			yield* this.streamTurn(stream, preparedTurn, config, recorder, state);
-			if (!state.receivedFinish && state.executionId && (await this.isStoppedTurn(turn))) {
+			if (!state.receivedFinish && state.executionId && (await this.isStoppedTurn(turn, config))) {
 				const finish: StreamChunk = { type: 'finish', finishReason: 'cancelled' };
 				recorder.record(finish);
 				yield finish;
 			}
 		} catch (error) {
-			if ((await this.isStoppedTurn(turn)) && !(error instanceof AgentExecutionRecordingError)) {
+			if (
+				(await this.isStoppedTurn(turn, config)) &&
+				!(error instanceof AgentExecutionRecordingError)
+			) {
 				if (state.executionId && !state.receivedFinish) {
 					const finish: StreamChunk = { type: 'finish', finishReason: 'cancelled' };
 					recorder.record(finish);
@@ -197,9 +201,14 @@ export class AgentTurnExecutionService {
 		}
 	}
 
-	private async isStoppedTurn(turn: AgentTurnRequest | undefined): Promise<boolean> {
+	private async isStoppedTurn(
+		turn: AgentTurnRequest | undefined,
+		config: ExecuteTurnConfig,
+	): Promise<boolean> {
 		const signal = turn?.options.abortSignal;
 		if (!signal?.aborted) return false;
+		if (signal.reason === SESSION_STOPPED_REASON) return true;
+		if (config.chatSurface === undefined) return false;
 		const { isAbortError } = await import('@n8n/agents');
 		return isAbortError(signal.reason);
 	}
@@ -281,7 +290,10 @@ export class AgentTurnExecutionService {
 			}
 
 			// Report requested stops consistently across chat and integration streams.
-			if ((chunk.type === 'error' || chunk.type === 'finish') && (await this.isStoppedTurn(turn))) {
+			if (
+				(chunk.type === 'error' || chunk.type === 'finish') &&
+				(await this.isStoppedTurn(turn, config))
+			) {
 				if (chunk.type === 'error') continue;
 				chunk = { ...chunk, finishReason: 'cancelled' };
 			}
