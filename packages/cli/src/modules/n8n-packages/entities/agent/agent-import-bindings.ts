@@ -11,17 +11,34 @@ import { AgentImportMatchService } from './agent-import-match.service';
 import type {
 	AgentImportIssue,
 	AgentImportMatchContext,
+	AgentImportPlan,
 	AgentPlanItem,
 } from './agent-import.types';
-import type { ImportPlan } from '../../engine/import-orchestrator';
-import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
+import type {
+	PackageAgentRequirement,
+	PackageWorkflowRequirement,
+} from '../../spec/requirements.schema';
+import type { CredentialImportPlan } from '../credential/credential.types';
 import { WorkflowImportMatchService } from '../workflow/workflow-import-match.service';
+import type { WorkflowImportPlan } from '../workflow/workflow-import.types';
 
 interface PlannedTarget {
 	id: string;
 	projectId: string;
 	creating: boolean;
 	projectPendingCreation: boolean;
+}
+
+export interface AgentImportBindingScope {
+	input: {
+		context: Pick<AgentImportMatchContext, 'user' | 'projectId'>;
+		projectPendingCreation?: boolean;
+		agentRequirements?: PackageAgentRequirement[];
+		subWorkflowRequirements?: PackageWorkflowRequirement[];
+	};
+	agentPlan?: AgentImportPlan;
+	workflowPlan: Pick<WorkflowImportPlan, 'items'>;
+	credentialPlan: Pick<CredentialImportPlan, 'successes' | 'stubIds'>;
 }
 
 interface EntityReference {
@@ -44,22 +61,24 @@ export class AgentImportBindings {
 		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
-	async resolve(plans: ImportPlan[]): Promise<void> {
+	async resolve<TScope extends AgentImportBindingScope>(
+		scopes: TScope[],
+	): Promise<Map<TScope, AgentImportPlan>> {
 		const agents = new Map<string, PlannedTarget>();
 		const workflows = new Map<string, PlannedTarget>();
-		for (const plan of plans) {
+		for (const scope of scopes) {
 			const target = {
-				projectId: plan.input.context.projectId,
-				projectPendingCreation: plan.input.projectPendingCreation ?? false,
+				projectId: scope.input.context.projectId,
+				projectPendingCreation: scope.input.projectPendingCreation ?? false,
 			};
-			for (const item of plan.agentPlan?.items ?? []) {
+			for (const item of scope.agentPlan?.items ?? []) {
 				agents.set(item.sourceAgentId, {
 					...target,
 					id: item.targetAgentId,
 					creating: item.action === 'create',
 				});
 			}
-			for (const item of plan.workflowPlan.items) {
+			for (const item of scope.workflowPlan.items) {
 				workflows.set(item.sourceWorkflowId, {
 					...target,
 					id: item.action === 'create' ? item.decidedId : item.existing.id,
@@ -79,46 +98,78 @@ export class AgentImportBindings {
 					.map((target) => [target.id, target.projectId]),
 			),
 		};
-		for (const plan of plans) await this.resolveScope(plan, agents, workflows, plannedDestinations);
-		await this.checkTaskOwners(plans);
+		const plans = new Map<TScope, AgentImportPlan>();
+		for (const scope of scopes) {
+			const plan = await this.resolveScope(scope, agents, workflows, plannedDestinations);
+			if (plan) plans.set(scope, plan);
+		}
+		await this.addTaskConflicts(plans);
+		return plans;
+	}
+
+	private async addTaskConflicts(
+		plans: ReadonlyMap<AgentImportBindingScope, AgentImportPlan>,
+	): Promise<void> {
+		const conflicts = await this.agentMatcher.findTaskIdConflicts(
+			[...plans.values()].flatMap((plan) => plan.items.filter(({ action }) => action !== 'skip')),
+		);
+		for (const [scope, plan] of plans) {
+			const sourceAgentIds = new Set(plan.items.map(({ sourceAgentId }) => sourceAgentId));
+			plan.issues.push(
+				...conflicts
+					.filter(({ sourceAgentId }) => sourceAgentIds.has(sourceAgentId))
+					.map(
+						(conflict): AgentImportIssue => ({
+							type: 'agent-conflict',
+							kind: 'task-id',
+							sourceAgentId: conflict.sourceAgentId,
+							projectId: scope.input.context.projectId,
+							sourceTaskId: conflict.sourceTaskId,
+							targetIds: [conflict.conflictingAgentId],
+						}),
+					),
+			);
+		}
 	}
 
 	private async resolveScope(
-		plan: ImportPlan,
+		scope: AgentImportBindingScope,
 		agents: Map<string, PlannedTarget>,
 		workflows: Map<string, PlannedTarget>,
 		plannedDestinations: PlannedAgentDestinations,
-	): Promise<void> {
-		const { agentPlan } = plan;
-		if (!agentPlan) return;
-		agentPlan.plannedDestinations = plannedDestinations;
-		const items = agentPlan.items.filter(({ action }) => action !== 'skip');
-		if (items.length === 0) return;
-		const context = {
-			...plan.input.context,
-			projectPendingCreation: plan.input.projectPendingCreation,
+	): Promise<AgentImportPlan | undefined> {
+		const { agentPlan, input, credentialPlan } = scope;
+		if (!agentPlan) return undefined;
+		const plan: AgentImportPlan = {
+			...agentPlan,
+			items: agentPlan.items.map((item) =>
+				item.action === 'skip' ? item : { ...item, config: structuredClone(item.config) },
+			),
+			issues: [...agentPlan.issues],
+			plannedDestinations,
 		};
-		const references = new Map(items.map((item) => [item, collectReferences(item, plan)]));
+		const items = plan.items.filter(({ action }) => action !== 'skip');
+		if (items.length === 0) return plan;
+		const context = { ...input.context, projectPendingCreation: input.projectPendingCreation };
+		const credentialBindings = new Map([...credentialPlan.successes, ...credentialPlan.stubIds]);
+		const references = new Map(items.map((item) => [item, collectReferences(item, scope)]));
 		const all = [...references.values()].flat();
 		const idsFor = (kind: EntityReference['kind']) => [
 			...new Set(all.filter((ref) => ref.kind === kind && ref.id).map(({ id }) => id)),
 		];
 		const agentTargets = await this.resolveAgents(context, idsFor('agent'), agents);
 		const workflowTargets = await this.resolveWorkflows(context, idsFor('workflow'), workflows);
-		const credentialBindings = new Map([
-			...plan.credentialPlan.successes,
-			...plan.credentialPlan.stubIds,
-		]);
 		for (const [item, refs] of references) {
 			bindReferences(
 				item,
 				refs,
 				{ agent: agentTargets, workflow: workflowTargets },
-				agentPlan.issues,
+				plan.issues,
 				context.projectId,
 			);
-			bindCredentials(item, credentialBindings, agentPlan.issues, context.projectId);
+			bindCredentials(item, credentialBindings, plan.issues, context.projectId);
 		}
+		return plan;
 	}
 
 	private async resolveAgents(
@@ -212,32 +263,6 @@ export class AgentImportBindings {
 		}
 		return resolved;
 	}
-
-	private async checkTaskOwners(plans: ImportPlan[]): Promise<void> {
-		const items = plans.flatMap(
-			({ agentPlan }) => agentPlan?.items.filter(({ action }) => action !== 'skip') ?? [],
-		);
-		const conflicts = await this.agentMatcher.findTaskIdConflicts(items);
-		for (const plan of plans) {
-			const { agentPlan } = plan;
-			if (!agentPlan) continue;
-			const sourceAgentIds = new Set(agentPlan.items.map(({ sourceAgentId }) => sourceAgentId));
-			agentPlan.issues.push(
-				...conflicts
-					.filter(({ sourceAgentId }) => sourceAgentIds.has(sourceAgentId))
-					.map(
-						(conflict): AgentImportIssue => ({
-							type: 'agent-conflict',
-							kind: 'task-id',
-							sourceAgentId: conflict.sourceAgentId,
-							projectId: plan.input.context.projectId,
-							sourceTaskId: conflict.sourceTaskId,
-							targetIds: [conflict.conflictingAgentId],
-						}),
-					),
-			);
-		}
-	}
 }
 
 function bindReferences(
@@ -271,7 +296,7 @@ function bindReferences(
 
 function bindCredentials(
 	item: AgentPlanItem,
-	bindings: Map<string, string>,
+	bindings: ReadonlyMap<string, string>,
 	issues: AgentImportIssue[],
 	projectId: string,
 ): void {
@@ -292,7 +317,7 @@ function bindCredentials(
 	});
 }
 
-function collectReferences(item: AgentPlanItem, plan: ImportPlan): EntityReference[] {
+function collectReferences(item: AgentPlanItem, scope: AgentImportBindingScope): EntityReference[] {
 	const refs: EntityReference[] = [];
 	for (const [index, ref] of (item.config?.subAgents?.agents ?? []).entries()) {
 		refs.push({
@@ -329,8 +354,8 @@ function collectReferences(item: AgentPlanItem, plan: ImportPlan): EntityReferen
 				setId: (targetId) => setStaticSubworkflowId(node, targetId),
 			});
 	}
-	addRequirements(refs, item, 'agent', plan.input.agentRequirements);
-	addRequirements(refs, item, 'workflow', plan.input.subWorkflowRequirements);
+	addRequirements(refs, item, 'agent', scope.input.agentRequirements);
+	addRequirements(refs, item, 'workflow', scope.input.subWorkflowRequirements);
 	return refs;
 }
 

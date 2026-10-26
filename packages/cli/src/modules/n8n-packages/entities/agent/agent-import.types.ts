@@ -7,15 +7,12 @@ import type { PlannedAgentDestinations } from '@/modules/agents/utils/agent-defi
 
 import type { ImportContext } from '../../n8n-packages.types';
 import type { SerializedAgent, SerializedAgentMetadata } from '../../spec/serialized/agent.schema';
-import type { ImportDecision } from '../import-conflict-policy';
 import type { PublishingAction, PublishingBlockedReason, PublishingOutcome } from '../publishing';
 
-export interface AgentPlanItem extends PreparedAgent {
-	action: ImportDecision['action'];
+export type AgentPlanItem = PreparedAgent & {
 	targetAgentId: string;
-	existing: ProjectAgent | null;
 	publishingAction: PublishingAction;
-}
+} & ({ action: 'create'; existing: null } | { action: 'update' | 'skip'; existing: ProjectAgent });
 
 export interface AgentImportPlan {
 	items: AgentPlanItem[];

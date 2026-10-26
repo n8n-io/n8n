@@ -26,6 +26,7 @@ import { Credentials } from 'n8n-core';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
+import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { TeamsIntegration } from '@/modules/agents/integrations/platforms/teams/teams-integration';
@@ -727,8 +728,9 @@ it('plans an authorized pending project without creating its shell and still che
 	expect(await records()).toEqual(before);
 });
 
-it('reports save-policy refusal without enforcing a save or changing records', async () => {
+it('evaluates normalized configuration and reports policy refusal without saving', async () => {
 	const enforcement = Container.get(PolicyEnforcementService);
+	const evaluateAgent = vi.spyOn(Container.get(AgentPolicyService), 'evaluateSave');
 	const violation = {
 		kind: 'node-type-unavailable' as const,
 		checkId: 'node-type-availability',
@@ -739,7 +741,15 @@ it('reports save-policy refusal without enforcing a save or changing records', a
 		.mockResolvedValue({ violations: [violation] });
 	const enforce = vi.spyOn(enforcement, 'enforceWorkflowSave');
 	const before = await records();
-	const plan = await planner.plan(input([agent('source')]));
+	const source = agent('source', {
+		model: 'anthropic/claude-sonnet-4-5',
+		config: { webSearch: { enabled: false } },
+		providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+	});
+	const normalizedConfig = { ...source.config, providerTools: {} };
+	const plan = await planner.plan(input([source]));
+	expect(plan.agentPlan?.items[0].config).toEqual(normalizedConfig);
+	expect(evaluateAgent).toHaveBeenCalledWith(project.id, null, normalizedConfig, null);
 	expect(plan.blockingIssues).toContainEqual({
 		type: 'agent-policy-violation',
 		sourceAgentId: 'source',
