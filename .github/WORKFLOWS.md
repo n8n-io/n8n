@@ -235,6 +235,43 @@ parallelism). See the `--build-via-mcp` section in
 | PR merged to `release/*`           | `release-publish.yml`          |
 | PR closed with `codespace-preview` | `util-codespace-preview.yml`   |
 
+### Merge Queue Rejections
+
+`util-notify-merge-queue-removal.yml` runs on `pull_request_target: dequeued`.
+It comments on the PR and calls an n8n webhook in separate jobs. It excludes
+`MERGE`, `ALREADY_MERGED`, and `MANUAL` removals. A removal can result from a
+failure in an earlier queue entry. The reason does not prove that this PR failed.
+
+To enable tracking in `n8n-io/n8n`:
+
+1. Create an n8n workflow with a POST Webhook trigger.
+2. Set Header Auth to use `x-api-token`.
+3. Publish the workflow.
+4. Set the repository secret `N8N_NOTIFY_MERGE_QUEUE_REJECTION_URL` to the production webhook URL.
+5. Set `N8N_NOTIFY_MERGE_QUEUE_REJECTION_TOKEN` to the Header Auth value.
+
+The receiving workflow is `QA: Merge Queue Rejections` in the Developer Platform
+project. It upserts each event into `merge_queue_rejections`, then posts to
+`#alerts-developer-platforms` with QBot. The table stores the PR, reason, actor,
+branch, commit, notification run URL, and full event JSON. It also stores the
+Slack channel and message timestamp. Invite QBot to the channel before publishing.
+
+The workflow matches rows by `event_id`. It preserves the Slack message timestamp
+on an upsert and skips messages already recorded. If Slack accepts a message but
+the table update fails, a retry can post a second message. Concurrent deliveries
+can also post duplicate messages.
+
+The action sends JSON with `event_id`, `event_name`, `pr_url`, `reason`,
+`run_url`, and `event`. The `event` field contains the full GitHub event.
+Use `event_id` to remove duplicates from retries and run attempts. A new
+queue removal has a new event ID, even for the same PR. The `run_url` field
+links to the notification run. It does not link to the failed queue checks.
+
+The webhook job skips delivery when the URL secret is absent. A missing token
+or a failed delivery fails that job. Delivery has a 30-second timeout for each
+attempt and retries transient failures up to three times. The job does not
+need GitHub token permissions. It does not check out or run PR code.
+
 ### Label Triggers
 
 | Label                 | Workflow                     | Effect                                             |
