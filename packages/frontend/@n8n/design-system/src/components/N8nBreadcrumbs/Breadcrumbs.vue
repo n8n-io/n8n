@@ -209,7 +209,6 @@ const handleTooltipClose = () => {
 						theme="dark"
 						placement="bottom"
 						size="small"
-						icon-orientation="horizontal"
 						data-test-id="hidden-items-menu"
 						@visible-change="onHiddenMenuVisibleChange"
 						@action="emitItemSelected"

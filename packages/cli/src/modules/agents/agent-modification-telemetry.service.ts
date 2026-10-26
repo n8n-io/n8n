@@ -10,8 +10,9 @@ import { InstanceSettings } from 'n8n-core';
 
 import { Telemetry } from '@/telemetry';
 
-import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
 import { buildVectorStoreFingerprints } from './agent-knowledge-telemetry';
+import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
+import { builderTelemetrySessionProperties } from './builder/builder-telemetry-session';
 import type { Agent } from './entities/agent.entity';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 
@@ -31,6 +32,7 @@ export type AgentConfigPart =
 	| 'credential'
 	| 'memory'
 	| 'name'
+	| 'description'
 	| 'config'
 	| 'tools'
 	| 'providerTools'
@@ -52,6 +54,7 @@ const CONFIG_PARTS = [
 	'credential',
 	'memory',
 	'name',
+	'description',
 	'config',
 	'tools',
 	'providerTools',
@@ -227,11 +230,19 @@ export class AgentModificationTelemetryService {
 				return;
 			}
 
-			const entry = {
-				builder: TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT,
-				mcp: TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT,
-			}[by];
-			this.telemetry.track(entry, { ...properties, event_version: '2' });
+			if (by === 'builder') {
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT, {
+					...properties,
+					...builderTelemetrySessionProperties(),
+					event_version: '2',
+				});
+				return;
+			}
+
+			this.telemetry.track(TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT, {
+				...properties,
+				event_version: '2',
+			});
 		} catch {
 			// Telemetry must never fail a write that already succeeded.
 		}
@@ -287,7 +298,7 @@ export class AgentModificationTelemetryService {
 			!event.config?.model?.trim() &&
 			!event.config?.instructions?.trim() &&
 			capabilityCount === 0 &&
-			!changedParts?.some((part) => part !== 'name')
+			!changedParts?.some((part) => part !== 'name' && part !== 'description')
 		) {
 			return;
 		}
@@ -313,6 +324,7 @@ export class AgentModificationTelemetryService {
 			case 'builder':
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
 					...properties,
+					...builderTelemetrySessionProperties(),
 					event_version: '3',
 				});
 				return;

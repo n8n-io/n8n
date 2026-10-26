@@ -1,5 +1,6 @@
 import {
 	CreateSkillDto,
+	ListSkillAgentsQueryDto,
 	ListSkillsQueryDto,
 	SaveSkillDto,
 	SkillNewNameQueryDto,
@@ -45,6 +46,18 @@ export class SkillsController {
 	@Get('/')
 	async list(req: AuthenticatedRequest, _res: Response, @Query query: ListSkillsQueryDto) {
 		return await this.skillsApi.list(req.user, query);
+	}
+
+	/** The creators of the skills the user may see. Registered before `/:skillId`. */
+	@Get('/creators')
+	async creators(req: AuthenticatedRequest) {
+		return await this.skillsApi.listCreators(req.user);
+	}
+
+	/** The agents the user may read, for the agent filter. Registered before `/:skillId`. */
+	@Get('/agents')
+	async agents(req: AuthenticatedRequest, _res: Response, @Query query: ListSkillAgentsQueryDto) {
+		return await this.skillsApi.listAgents(req.user, query);
 	}
 
 	/** Registered before `/:skillId`, which would take `new-name` as an id. */

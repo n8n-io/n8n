@@ -69,64 +69,6 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 These tools are exclusive to the orchestrator agent. Sub-agents do not receive
 them. Some are conditional on context availability.
 
-### `workflow_builder_create_tasks`
-
-Persist a dependency-aware task plan for detached multi-step execution. For
-initial plan-worthy work, the orchestrator loads the `planning` skill, performs
-discovery with normal domain tools, loads `workflow_builder_create_tasks` via `load_tool`, then
-calls `workflow_builder_create_tasks` with
-`planningContext.source: "planning-skill"`. For
-`<planned-task-follow-up type="replan">` turns, use
-`planningContext.source: "replan"` when multiple dependent tasks still need
-scheduling. Clear single-workflow builds, including new and one-off workflows,
-use `workflow-builder`, workspace file tools, and `workflow_builder_build_workflow` directly.
-The plan is shown to the user for approval before execution starts.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `tasks` | array | yes | Dependency-aware execution plan (see schema below) |
-| `planningContext` | object | yes | `{ source: "planning-skill" \| "replan", summary: string, assumptions?: string[] }` |
-
-**Task schema**:
-
-```typescript
-{
-  id: string;          // Stable identifier used by dependency edges
-  title: string;       // Short user-facing task title
-  kind: 'build-workflow' | 'checkpoint';
-  spec: string;        // Detailed executor briefing for this task
-  deps: string[];      // Task IDs that must succeed before this task can start
-  workflowId?: string; // Existing workflow ID for the builder to hydrate before saving
-  isSupportingWorkflow?: boolean; // Build task completes after saving a supporting sub-workflow
-}
-```
-
-**Returns**: `{ result: string, taskCount: number }`
-
-**Behavior**:
-- First call rejects the plan without asking for approval when a
-  `build-workflow` task cannot save: an admin set `createWorkflow` (new
-  workflow) or `updateWorkflow` (task with `workflowId`) to `blocked`. The
-  result tells the LLM to inform the user
-- First call persists the plan, publishes `tasks-update` event, and **suspends**
-  for user approval
-- On approval: calls `schedulePlannedTasks()` to start detached execution.
-  Build and checkpoint follow-up runs lift `require_approval` to
-  `always_allow` for their task family; admin `blocked` settings stay in
-  force
-- On rejection: returns feedback for the LLM to revise the plan
-- On denial: cancels the graph and blocks same-turn resubmission
-
-**Task kinds** map to executors:
-- `workflow_builder_build_workflow` → orchestrator follow-up run using the workflow-builder skill
-- `checkpoint` → exceptional orchestrator-executed semantic or cross-workflow check
-
-Standalone data-table work is handled directly by the orchestrator with the
-`data-table-manager` skill and the `data_tables` / `parse-file` tools. Single
-workflow-local table requirements belong in the builder task spec; plan only
-when the table schema is shared, independently durable, or creates real
-dependency coordination.
-
 ### `workflow_builder_task_control`
 
 Progress tracking and background-task control. One tool, three actions.
@@ -175,22 +117,6 @@ Send a course correction to a running background task.
 **Returns**: `{ result: string }`. The string says whether the correction was
 sent, the task already completed, the task was not found, or delivery is not
 available.
-
-### `workflow_builder_complete_checkpoint`
-
-Close out a `checkpoint` planned task with its verdict. The tool is registered
-for the orchestrator and is intended only for checkpoint follow-up turns. The
-task must exist, have kind `checkpoint`, and be in the `running` state.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `taskId` | string | yes | Checkpoint task ID from the planned-task follow-up |
-| `status` | `"succeeded" \| "failed"` | yes | Checkpoint verdict |
-| `result` | string | no | Short user-visible outcome note |
-| `error` | string | no | Failure message when `status` is `failed` |
-| `outcome` | object | no | Structured evidence such as an execution ID, failed node, or data excerpt |
-
-**Returns**: `{ result: string, ok: boolean }`
 
 ### `get-session` *(conditional)*
 
@@ -249,8 +175,7 @@ retry requires explicit acknowledgement through `acknowledgeUnverified: true`.
 
 **Writes on success/failure**: the tool persists a structured `verification`
 record (`{ attempted, success, executionId, status, claim, evidence, verifiedAt }`) onto
-the build outcome so workflow-verification follow-ups and exceptional checkpoint
-turns can reuse it without re-running verify.
+the build outcome so workflow-verification follow-ups can reuse it without re-running verify.
 
 **Returns**: `{ executionId?, success, status?, data?, error?, simulationNote?, resolvedParameterWarnings?, skippedParameterChecks?, skippedParameterCheckCount? }`
 
@@ -1096,9 +1021,7 @@ at runtime, so the node can still run and cause side effects.
 equivalent to running a one-node workflow, so the same `runWorkflow` admin
 policy applies (`blocked` denies; `always_allow` skips the prompt — a
 standalone node request is always agent-authored, the analog of an AI-created
-workflow). A *scoped* `always_allow` — the checkpoint follow-up override, which
-names the workflow IDs it covers — does not skip the prompt: a standalone node
-run has no workflow ID to match. Under the default `require_approval`, the tool suspends with
+workflow). Under the default `require_approval`, the tool suspends with
 severity `warning`; "Always allow" persists a session grant scoped by node
 type + resource + operation (`nodes:execute:<type>:<resource>:<operation>`) —
 the same split the generated node TS types use, so a future per-operation
@@ -1651,9 +1574,7 @@ existing domain.
 4. Register it in `src/tools/index.ts` with `createOrchestratorDomainTools` or
    `createOrchestrationTools`
 5. Decide whether it belongs in `ALWAYS_LOADED_TOOL_NAMES`. Everything not in
-   that set is normally reached through `search_tools` + `load_tool`. Tools in
-   `CHECKPOINT_FOLLOW_UP_TOOL_NAMES` are also loaded directly during checkpoint
-   follow-ups. Deferral is the right default, but a tool whose job is to reveal
+   that set is normally reached through `search_tools` + `load_tool`. Deferral is the right default, but a tool whose job is to reveal
    an absence, or to redirect the model's attention, cannot be found by
    searching for it
 6. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles

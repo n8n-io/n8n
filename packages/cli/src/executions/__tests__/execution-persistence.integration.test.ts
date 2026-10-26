@@ -1,4 +1,5 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -210,6 +211,91 @@ describe('ExecutionPersistence', () => {
 
 			expect(executions.map((e) => e.id)).toEqual([healthyId]);
 			expect(unreadableIds).toEqual([orphanedId]);
+		});
+	});
+
+	describe('deleteInFlightExecution', () => {
+		const executionsConfig = Container.get(ExecutionsConfig);
+		const originalPruneData = executionsConfig.pruneData;
+		const stoppedAt = new Date('2026-01-01T00:00:00.000Z');
+
+		afterEach(() => {
+			executionsConfig.pruneData = originalPruneData;
+		});
+
+		const createRunningExecution = async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'trigger',
+				status: 'running',
+				finished: false,
+			});
+			return { workflowId: workflow.id, executionId, storedAt: 'db' as const };
+		};
+
+		it.each([
+			{ status: 'success' as const, finished: true },
+			{ status: 'error' as const, finished: false },
+		])(
+			'should write the final $status state and soft-delete when pruning is enabled',
+			async ({ status, finished }) => {
+				executionsConfig.pruneData = true;
+				const target = await createRunningExecution();
+
+				await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+					status,
+					finished,
+					stoppedAt,
+				});
+
+				const row = await Container.get(ExecutionRepository).findOne({
+					where: { id: target.executionId },
+					withDeleted: true,
+				});
+				expect(row).toMatchObject({ status, finished, stoppedAt });
+				expect(row?.deletedAt).toBeInstanceOf(Date);
+			},
+		);
+
+		it('should keep a canceled status and still soft-delete when pruning is enabled', async () => {
+			executionsConfig.pruneData = true;
+			const target = await createRunningExecution();
+			const executionRepo = Container.get(ExecutionRepository);
+			await executionRepo.update(target.executionId, { status: 'canceled' });
+
+			await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+				status: 'success',
+				finished: true,
+				stoppedAt,
+			});
+
+			const row = await executionRepo.findOne({
+				where: { id: target.executionId },
+				withDeleted: true,
+			});
+			expect(row?.status).toEqual('canceled');
+			expect(row?.deletedAt).toBeInstanceOf(Date);
+		});
+
+		it('should hard-delete the execution when pruning is disabled', async () => {
+			executionsConfig.pruneData = false;
+			const target = await createRunningExecution();
+
+			await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+				status: 'success',
+				finished: true,
+				stoppedAt,
+			});
+
+			const row = await Container.get(ExecutionRepository).findOne({
+				where: { id: target.executionId },
+				withDeleted: true,
+			});
+			expect(row).toBeNull();
 		});
 	});
 

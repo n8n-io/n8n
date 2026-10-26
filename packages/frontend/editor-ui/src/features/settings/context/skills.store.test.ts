@@ -2,12 +2,18 @@ import type { SkillListItem, SkillListResponse } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
+import { useRootStore } from '@n8n/stores/useRootStore';
+
 import { useSkillsStore } from './skills.store';
 
 const list = vi.fn();
+const creators = vi.fn();
+const agents = vi.fn();
 
 vi.mock('./skills.api', () => ({
 	getSkills: async (...args: unknown[]) => await list(...args),
+	getSkillCreators: async (...args: unknown[]) => await creators(...args),
+	getSkillAgents: async (...args: unknown[]) => await agents(...args),
 }));
 
 function deferred<T>() {
@@ -71,5 +77,25 @@ describe('useSkillsStore', () => {
 
 		expect(list).toHaveBeenCalledWith(expect.anything(), { take: 1 });
 		expect(store.count).toBe(7);
+	});
+
+	it('reads the creators for the creator filter without touching the list', async () => {
+		const ada = { id: 'u1', email: 'ada@example.com', firstName: 'Ada', lastName: null };
+		creators.mockResolvedValue([ada]);
+		const store = useSkillsStore();
+
+		expect(await store.fetchCreators()).toEqual([ada]);
+		expect(list).not.toHaveBeenCalled();
+		expect(store.loading).toBe(false);
+	});
+
+	it('searches the agents for the agent filter with the REST context', async () => {
+		const bot = { id: 'agent-1', name: 'Support bot' };
+		agents.mockResolvedValue([bot]);
+		const store = useSkillsStore();
+
+		expect(await store.fetchAgents({ search: 'sup', take: 5 })).toEqual([bot]);
+		expect(agents).toHaveBeenCalledWith(useRootStore().restApiContext, { search: 'sup', take: 5 });
+		expect(list).not.toHaveBeenCalled();
 	});
 });

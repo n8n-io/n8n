@@ -734,6 +734,8 @@ export {
 
 export {
 	PROMOTION_BRANCH_PREFIX,
+	PROMOTION_COMMIT_MESSAGE_MAX_LENGTH,
+	promotionCommitMessageSchema,
 	promotionDisplayNameSchema,
 } from './promotions/promotion-common.dto';
 export {
@@ -835,9 +837,11 @@ export {
 export {
 	parsePromotionRunDetails,
 	promotionGitRunDetailsSchema,
+	promotionRunContentsSchema,
 	promotionRunDetailsSchemas,
 	promotionRunTypeSchema,
 	type PromotionGitRunDetails,
+	type PromotionRunContents,
 	type PromotionRunDetails,
 	type PromotionRunType,
 } from './promotions/promotion-run.dto';

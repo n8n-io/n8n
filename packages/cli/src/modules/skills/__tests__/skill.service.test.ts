@@ -220,7 +220,11 @@ describe('SkillService', () => {
 				row.skill.projectId = projectId;
 				projectScope.getProjectIds.mockResolvedValue(allowed === null ? null : [...allowed]);
 				const result = await service.readForAssistant(context, 'skill-1');
-				expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', authorizedProjectId);
+				expect(skills.findAssistantSkill).toHaveBeenCalledWith(
+					'skill-1',
+					authorizedProjectId,
+					undefined,
+				);
 				expect(skills.findLatestSaved).not.toHaveBeenCalled();
 				if (eligible) expect(result).toMatchObject({ id: 'skill-1', projectId });
 				else expect(result).toBeNull();
@@ -231,7 +235,7 @@ describe('SkillService', () => {
 			row.skill.projectId = 'project-1';
 			projectScope.getProjectIds.mockResolvedValue(null);
 			expect(await service.readForAssistant({ user: context.user }, 'skill-1')).toBeNull();
-			expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', null);
+			expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', null, undefined);
 		});
 
 		it('reads enabled content with its saved version', async () => {
@@ -247,6 +251,33 @@ describe('SkillService', () => {
 				files: [],
 			});
 		});
+
+		it.each(['disabled', 'agent', 'other-project', 'permission', 'missing'])(
+			'refuses a reference that is %s',
+			async (reason) => {
+				row.skill.projectId = 'project-1';
+				if (reason === 'disabled') row.skill.availableToAssistant = false;
+				if (reason === 'agent') row.skill.agentId = 'agent-1';
+				if (reason === 'other-project') row.skill.projectId = 'project-2';
+				if (reason === 'permission') vi.mocked(userHasScopes).mockResolvedValue(false);
+				skills.findAssistantSkillFile.mockResolvedValue(
+					reason === 'missing'
+						? null
+						: {
+								skill: row.skill,
+								file: mock<SkillFile>({ path: 'references/guide.md', content: 'Guide.' }),
+							},
+				);
+				expect(
+					await service.readFileForAssistant(
+						context,
+						'skill-1',
+						'version-1',
+						'references/guide.md',
+					),
+				).toBeNull();
+			},
+		);
 
 		it('allows instance skills without project access', async () => {
 			projectScope.getProjectIds.mockResolvedValue([]);

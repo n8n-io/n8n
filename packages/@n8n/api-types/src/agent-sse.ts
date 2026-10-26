@@ -72,6 +72,14 @@ export type ForwardedChildChunkWire =
 			endTime: number;
 	  };
 
+/** Cumulative usage from completed model calls in one execution. Cost is estimated USD. */
+export interface AgentTokenUsage {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	cost?: number;
+}
+
 export type AgentSseEvent =
 	| {
 			type: 'message-steered';
@@ -89,6 +97,7 @@ export type AgentSseEvent =
 	  }
 	| { type: 'start-step' }
 	| { type: 'finish-step' }
+	| { type: 'usage'; usage: AgentTokenUsage }
 	| { type: 'text-start'; id: string }
 	| { type: 'text-delta'; id: string; delta: string }
 	| { type: 'text-end'; id: string }
@@ -178,6 +187,7 @@ export type AgentSseEvent =
 			 */
 			type: 'finish';
 			finishReason: string;
+			usage?: AgentTokenUsage;
 			guardrail?: { code: string };
 	  }
 	| {
