@@ -913,7 +913,6 @@ export class EnterpriseWorkflowService {
 		const checksAnything =
 			this.policyEnforcementService.hasChecksFor('workflowTransfer') ||
 			this.policyEnforcementService.hasChecksFor('workflowPublish');
-		if (!checksAnything) return preview;
 
 		const childrenFolderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
 			sourceFolderId,
@@ -921,10 +920,11 @@ export class EnterpriseWorkflowService {
 		);
 		const workflows = await this.workflowRepository.findInFoldersForTransfer(
 			[sourceFolderId, ...childrenFolderIds],
-			{ withNodes: true },
+			{ withNodes: checksAnything },
 		);
 
 		assertNoneOwnedBy(workflows, destinationProject);
+		if (!checksAnything) return preview;
 
 		const limit = pLimit(TRANSFER_PREVIEW_CONCURRENCY);
 		const decisions = await Promise.all(

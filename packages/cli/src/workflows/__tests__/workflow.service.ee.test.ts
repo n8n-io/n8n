@@ -1241,15 +1241,32 @@ describe('EnterpriseWorkflowService', () => {
 			policyEnforcementService.evaluateWorkflowTransfer.mockResolvedValue({ violations: [] });
 		});
 
-		it('returns an empty preview without loading workflows when no check is registered', async () => {
-			policyEnforcementService.hasChecksFor.mockReturnValue(false);
-
-			await expect(preview()).resolves.toEqual({
-				restricted: [],
-				workflowsToUnpublish: [],
-				checkFailed: false,
+		describe('when no check is registered', () => {
+			beforeEach(() => {
+				policyEnforcementService.hasChecksFor.mockReturnValue(false);
 			});
-			expect(workflowRepository.findInFoldersForTransfer).not.toHaveBeenCalled();
+
+			it('returns an empty preview without the nodes and without evaluating', async () => {
+				workflowRepository.findInFoldersForTransfer.mockResolvedValue([makeWorkflow('wf-1')]);
+
+				await expect(preview()).resolves.toEqual({
+					restricted: [],
+					workflowsToUnpublish: [],
+					checkFailed: false,
+				});
+				expect(workflowRepository.findInFoldersForTransfer).toHaveBeenCalledWith(['folder-1'], {
+					withNodes: false,
+				});
+				expect(policyEnforcementService.evaluateWorkflowTransfer).not.toHaveBeenCalled();
+			});
+
+			it('still refuses a folder whose workflows the destination already owns', async () => {
+				workflowRepository.findInFoldersForTransfer.mockResolvedValue([
+					makeWorkflow('wf-1', destinationProject),
+				]);
+
+				await expect(preview()).rejects.toThrow(TransferWorkflowError);
+			});
 		});
 
 		it('evaluates at most five workflows at once', async () => {
