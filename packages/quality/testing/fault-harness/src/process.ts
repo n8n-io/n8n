@@ -74,6 +74,13 @@ export async function waitForExit(
 	return undefined;
 }
 
+/** When the container's process last exited, on the Docker host's clock, which the container logs also use. */
+export async function finishedAt(container: Container): Promise<number> {
+	return Date.parse(
+		await docker('inspect', '--format', '{{.State.FinishedAt}}', container.getId()),
+	);
+}
+
 export async function logs(container: Container): Promise<string> {
 	const { stdout, stderr } = await run('docker', ['logs', container.getId()], {
 		maxBuffer: 256 * 1024 * 1024,
@@ -142,4 +149,18 @@ export async function waitForLog(
 		if (onAbort) abort?.removeEventListener('abort', onAbort);
 		for (const follower of followers) follower.kill();
 	}
+}
+
+/** Milliseconds from `from` until a line with the snippet appears, or undefined at the timeout. */
+export async function msUntilLog(
+	containers: Container[],
+	snippet: string,
+	timeoutMs: number,
+	from: () => number,
+): Promise<number | undefined> {
+	const match = waitForLog(containers, snippet, timeoutMs);
+	return await match.then(
+		({ at }) => at - from(),
+		() => undefined,
+	);
 }
