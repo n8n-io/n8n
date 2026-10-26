@@ -15,7 +15,7 @@ import { Container, Service } from '@n8n/di';
 import { NotFoundError, UnauthenticatedError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Router } from 'express';
-import type { Application, Request, Response, RequestHandler } from 'express';
+import type { Request, Response, RequestHandler } from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 import assert from 'node:assert';
 
@@ -42,15 +42,26 @@ export class ControllerRegistry {
 		private readonly rateLimitService: RateLimitService,
 	) {}
 
-	activate(app: Application) {
+	activate(
+		app: Pick<Router, 'use'>,
+		options: { surface?: 'main' | 'apps'; customAuthMiddleware?: RequestHandler } = {},
+	) {
+		if (options.surface === 'apps' && !options.customAuthMiddleware) {
+			throw new UnexpectedError('Apps controllers require app authentication middleware');
+		}
 		for (const controllerClass of this.metadata.controllerClasses) {
 			const metadata = this.metadata.getControllerMetadata(controllerClass);
 			if (metadata.isPublicApi) continue;
-			this.activateController(app, controllerClass);
+			if ((metadata.surface ?? 'main') !== (options.surface ?? 'main')) continue;
+			this.activateController(app, controllerClass, options.customAuthMiddleware);
 		}
 	}
 
-	private activateController(app: Application, controllerClass: Controller) {
+	private activateController(
+		app: Pick<Router, 'use'>,
+		controllerClass: Controller,
+		customAuthMiddleware?: RequestHandler,
+	) {
 		const metadata = this.metadata.getControllerMetadata(controllerClass);
 
 		const router = Router({ mergeParams: true });
@@ -74,7 +85,12 @@ export class ControllerRegistry {
 						`Router is undefined for path "${routerConfig.path}" in controller "${controllerClass.name}"`,
 					);
 				}
-				const middlewares = this.buildMiddlewares(routerConfig, controllerMiddlewares);
+				const middlewares = this.buildMiddlewares(
+					routerConfig,
+					controllerMiddlewares,
+					undefined,
+					customAuthMiddleware,
+				);
 				router.use(routerConfig.path, ...middlewares, routerConfig.router);
 			}
 		}
@@ -133,7 +149,12 @@ export class ControllerRegistry {
 			const bodyArgIdx = route.args.findIndex((arg) => arg?.type === 'body');
 			const bodyArgType = bodyArgIdx !== -1 ? (argTypes[bodyArgIdx] as ZodClass) : undefined;
 
-			const middlewares = this.buildMiddlewares(route, controllerMiddlewares, bodyArgType);
+			const middlewares = this.buildMiddlewares(
+				route,
+				controllerMiddlewares,
+				bodyArgType,
+				customAuthMiddleware,
+			);
 			const finalHandler = route.usesTemplates
 				? async (req: Request, res: Response) => {
 						try {
@@ -183,6 +204,7 @@ export class ControllerRegistry {
 		},
 		controllerMiddlewares: RequestHandler[],
 		bodyDtoClass?: ZodClass,
+		customAuthMiddleware?: RequestHandler,
 	): RequestHandler[] {
 		const middlewares: RequestHandler[] = [];
 
@@ -206,7 +228,9 @@ export class ControllerRegistry {
 			);
 		}
 
-		if (!route.skipAuth) {
+		if (!route.skipAuth && customAuthMiddleware) {
+			middlewares.push(customAuthMiddleware);
+		} else if (!route.skipAuth) {
 			middlewares.push(
 				this.authService.createAuthMiddleware({
 					allowSkipMFA: route.allowSkipMFA ?? false,

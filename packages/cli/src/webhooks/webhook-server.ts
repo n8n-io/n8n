@@ -22,6 +22,6 @@ export class WebhookServer extends AbstractServer {
 
 	/** The chat widget opens its WebSocket against the same origin that served the chat webhook */
 	protected setupPushServer() {
-		Container.get(ChatServer).setup(this.server, this.app);
+		Container.get(ChatServer).setup(this.server, this.app, this.allowsUpgrade);
 	}
 }

@@ -9,13 +9,14 @@ import type { Controller } from './types';
  * @returns ClassDecorator
  */
 export const RootLevelController =
-	(basePath: `/${string}` = '/'): ClassDecorator =>
+	(basePath: `/${string}` = '/', options: { surface?: 'main' | 'apps' } = {}): ClassDecorator =>
 	(target) => {
 		const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 			target as unknown as Controller,
 		);
 		metadata.basePath = basePath;
 		metadata.registerOnRootPath = true;
+		metadata.surface = options.surface;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return Service()(target);
 	};

@@ -17,8 +17,9 @@ import { AppVersionRepository } from './versions/app-version.repository';
 import { AppWorkspaceService } from './build/app-workspace.service';
 import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
+import { AppHostService } from './serving/app-host.service';
 
-function toResponse(app: App): AppResponse {
+function toResponse(app: App, hosts: AppHostService): AppResponse {
 	return {
 		id: app.id,
 		projectId: app.projectId,
@@ -27,6 +28,7 @@ function toResponse(app: App): AppResponse {
 		visibility: app.visibility,
 		draftVersionId: app.draftVersionId,
 		publishedVersionId: app.publishedVersionId,
+		publishedUrl: app.publishedVersionId ? hosts.origin(app.namespace) : null,
 		createdAt: app.createdAt.toISOString(),
 		updatedAt: app.updatedAt.toISOString(),
 	};
@@ -41,32 +43,33 @@ export class AppsService {
 		private readonly locks: DbLockService,
 		private readonly workspaces: AppWorkspaceService,
 		private readonly logger: Logger,
+		private readonly hosts: AppHostService,
 	) {}
 
 	async createApp(projectId: string, dto: CreateAppDto): Promise<AppResponse> {
 		await this.assertProjectExists(projectId);
 		const app = await this.appRepository.createApp(projectId, dto);
 		this.logger.debug('Created app.', { projectId, appId: app.id });
-		return toResponse(app);
+		return toResponse(app, this.hosts);
 	}
 
 	async getApp(projectId: string, appId: string): Promise<AppResponse> {
 		this.assertValidAppId(appId);
 		const app = await this.appRepository.findInProject(projectId, appId);
 		if (!app) throw new NotFoundError('App not found');
-		return toResponse(app);
+		return toResponse(app, this.hosts);
 	}
 
 	async listApps(projectId: string, query: ListAppsQueryDto): Promise<AppListResponse> {
 		await this.assertProjectExists(projectId);
 		const { data, count } = await this.appRepository.list([projectId], query);
-		return { data: data.map(toResponse), count };
+		return { data: data.map((app) => toResponse(app, this.hosts)), count };
 	}
 
 	async listAppsForUser(user: User, query: ListAppsQueryDto): Promise<AppListResponse> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['app:list']);
 		const { data, count } = await this.appRepository.list(projectIds, query);
-		return { data: data.map(toResponse), count };
+		return { data: data.map((app) => toResponse(app, this.hosts)), count };
 	}
 
 	async updateApp(projectId: string, appId: string, dto: UpdateAppDto): Promise<AppResponse> {
@@ -77,7 +80,7 @@ export class AppsService {
 		const app = await this.appRepository.updateApp(projectId, appId, dto);
 		if (!app) throw new NotFoundError('App not found');
 		this.logger.debug('Updated app.', { projectId, appId });
-		return toResponse(app);
+		return toResponse(app, this.hosts);
 	}
 
 	async deleteApp(projectId: string, appId: string) {

@@ -5,6 +5,14 @@ const positiveInteger = z.coerce.number().int().positive().max(Number.MAX_SAFE_I
 
 @Config
 export class AppsConfig {
+	/** Parent URL for app subdomains, for example https://apps.example.com. Include the public scheme and optional port. Set this value when you enable the apps module. */
+	@Env('N8N_APPS_BASE_URL')
+	baseUrl: string = '';
+
+	/** Maximum decoded app bundle bytes to cache in each main process. Bundles larger than this limit are served without retaining them in the cache. */
+	@Env('N8N_APPS_BUNDLE_CACHE_MAX_BYTES', positiveInteger)
+	bundleCacheMaxBytes: number = 64 * 1024 * 1024;
+
 	/** Maximum duration of one app build attempt, in milliseconds. Increase this limit for apps that need more time to install dependencies or compile. */
 	@Env('N8N_APPS_BUILD_TIMEOUT_MS', positiveInteger.max(2 ** 31 - 1))
 	buildTimeoutMs: number = 10 * 60 * 1000;

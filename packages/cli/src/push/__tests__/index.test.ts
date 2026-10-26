@@ -55,7 +55,7 @@ describe('Push', () => {
 				config.backend = 'sse';
 				push = new Push(config, mock(), logger, mock(), mock());
 
-				push.setupPushServer(restEndpoint, server, app);
+				push.setupPushServer(restEndpoint, server, app, () => true);
 
 				expect(wssSpy).not.toHaveBeenCalled();
 				expect(server.on).not.toHaveBeenCalled();
@@ -76,7 +76,7 @@ describe('Push', () => {
 					return wsServer;
 				} as never);
 
-				push.setupPushServer(restEndpoint, server, app);
+				push.setupPushServer(restEndpoint, server, app, () => true);
 
 				expect(wssSpy).toHaveBeenCalledWith({ noServer: true });
 				const onUpgradeCaptor = captor<typeof onUpgrade>();
@@ -89,6 +89,14 @@ describe('Push', () => {
 
 				onUpgrade(request, socket, upgradeHead);
 
+				expect(wsServer.handleUpgrade).not.toHaveBeenCalled();
+			});
+
+			test('rejects upgrades outside the selected HTTP surface', () => {
+				push.setupPushServer(restEndpoint, server, app, () => false);
+				const handler = server.on.mock.calls.at(-1)![1];
+				handler(mock<WebSocketPushRequest>({ url: '/rest/push' }), socket, Buffer.alloc(0));
+				expect(socket.destroy).toHaveBeenCalledOnce();
 				expect(wsServer.handleUpgrade).not.toHaveBeenCalled();
 			});
 

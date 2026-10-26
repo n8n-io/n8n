@@ -11,6 +11,7 @@ import { AppWorkspaceService } from '../build/app-workspace.service';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
 import { AppsService } from '../apps.service';
+import { AppHostService } from '../serving/app-host.service';
 
 function createService() {
 	const appRepository = mock<AppRepository>();
@@ -28,6 +29,7 @@ function createService() {
 		locks,
 		workspaces,
 		logger,
+		mock<AppHostService>({ origin: () => null }),
 	);
 	return { service, appRepository, appVersions, projectScopeService, locks, workspaces, logger };
 }
@@ -127,6 +129,7 @@ describe('AppsService', () => {
 			draftVersionId: '22222222-2222-4222-8222-222222222222',
 			publishedVersionId: '33333333-3333-4333-8333-333333333333',
 			createdAt: '2026-10-13T00:00:00.000Z',
+			publishedUrl: null,
 			updatedAt: '2026-10-14T00:00:00.000Z',
 		});
 	});

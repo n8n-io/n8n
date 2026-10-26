@@ -1,6 +1,7 @@
 import { CreateAppDto } from '../create-app.dto';
 import { ListAppsQueryDto } from '../list-apps-query.dto';
 import { UpdateAppDto } from '../update-app.dto';
+import { PublishAppDto } from '../publish-app.dto';
 import { appSchema, appVersionSchema } from '../../../schemas/app.schema';
 
 describe('app DTOs', () => {
@@ -12,7 +13,7 @@ describe('app DTOs', () => {
 		});
 	});
 
-	it.each(['', ' ', 'My-App', '-app', 'app-', 'app--name', '../app', 'a'.repeat(129)])(
+	it.each(['', ' ', 'My-App', '-app', 'app-', 'app--name', '../app', 'a'.repeat(64)])(
 		'rejects namespace %j',
 		(namespace) => {
 			expect(CreateAppDto.safeParse({ name: 'App', namespace }).success).toBe(false);
@@ -63,6 +64,7 @@ describe('app DTOs', () => {
 			visibility: 'project',
 			draftVersionId: uuid,
 			publishedVersionId: null,
+			publishedUrl: null,
 			createdAt: '2026-10-13T00:00:00.000Z',
 			updatedAt: '2026-10-13T00:00:00.000Z',
 		};
@@ -74,5 +76,13 @@ describe('app DTOs', () => {
 		expect(appVersionSchema.shape.appId.safeParse(uuid).success).toBe(true);
 		expect(appVersionSchema.shape.id.safeParse(app.projectId).success).toBe(false);
 		expect(appVersionSchema.shape.appId.safeParse(app.projectId).success).toBe(false);
+	});
+
+	it('requires an explicit version UUID for publication', () => {
+		expect(PublishAppDto.safeParse({}).success).toBe(false);
+		expect(PublishAppDto.safeParse({ versionId: 'latest' }).success).toBe(false);
+		expect(
+			PublishAppDto.safeParse({ versionId: '11111111-1111-4111-8111-111111111111' }).success,
+		).toBe(true);
 	});
 });

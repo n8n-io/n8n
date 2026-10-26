@@ -6,7 +6,7 @@ export const appNamespaceSchema = z
 	.string()
 	.trim()
 	.min(1)
-	.max(128)
+	.max(63)
 	.regex(
 		/^[a-z0-9]+(-[a-z0-9]+)*$/,
 		'Use lowercase letters, numbers, and single hyphens between them.',
@@ -26,6 +26,7 @@ export const appSchema = z.object({
 	visibility: appVisibilitySchema,
 	draftVersionId: z.string().uuid().nullable(),
 	publishedVersionId: z.string().uuid().nullable(),
+	publishedUrl: z.string().url().nullable(),
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
 });

@@ -263,7 +263,11 @@ export class OAuthServerService implements OAuthServerProvider {
 		// base URL, so a client_id that isn't can never resolve to one. Skip the resolver
 		// sweep + lazy upsert for anything else, so the unauthenticated /authorize path
 		// can't be used to fan out DB lookups on arbitrary client_ids.
-		if (clientId.length > MAX_REDIRECT_URI_LENGTH || !this.isTriggerResourceClientId(clientId)) {
+		if (
+			clientId.length > MAX_REDIRECT_URI_LENGTH ||
+			(!this.isTriggerResourceClientId(clientId) &&
+				!this.resourceRegistry.matchesVirtualClientUrl(clientId))
+		) {
 			return undefined;
 		}
 
