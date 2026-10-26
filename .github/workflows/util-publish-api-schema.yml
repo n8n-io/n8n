@@ -1,9 +1,7 @@
 name: 'Util: Publish API Schema'
 
 # Publishes the Public API OpenAPI spec of a release to Cloudflare Pages.
-# The docs read the API reference from it, so it must match the stable release.
 on:
-  # Called by the post-release workflow when the `stable` tag moves
   workflow_call:
     inputs:
       version:
@@ -102,9 +100,6 @@ jobs:
           echo "ignore-workspace-root-check=true" >> .npmrc
           pnpm add --global wrangler
 
-      # `stable` is the label for the stable release spec. The production URL of the
-      # n8n-openapi Pages project only serves this label once the project's
-      # production branch is renamed to `stable`. Until then, this creates a preview.
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
         with:
