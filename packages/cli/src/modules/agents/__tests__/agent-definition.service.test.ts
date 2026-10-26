@@ -53,17 +53,22 @@ describe('Agent definition snapshots', () => {
 		history.saveVersion.mockResolvedValue(version);
 		const pins = new Map([['skill', 'skill-version']]);
 		skills.versionSnapshot.mockResolvedValue(pins);
-		tasks.findByAgentId.mockResolvedValue(
-			['enabled', 'disabled'].map((id) =>
-				mock<AgentTask>({
-					id,
-					name: id,
-					objective: 'Read',
-					cronExpression: '* * * * *',
-					timezone: null,
-				}),
-			),
-		);
+		tasks.findByAgentId.mockResolvedValue([
+			mock<AgentTask>({
+				id: 'enabled',
+				name: 'Daily summary',
+				objective: 'Summarize new requests',
+				cronExpression: '0 9 * * *',
+				timezone: 'Europe/Berlin',
+			}),
+			mock<AgentTask>({
+				id: 'disabled',
+				name: 'Weekly report',
+				objective: 'Review unresolved requests',
+				cronExpression: '0 12 * * 1',
+				timezone: null,
+			}),
+		]);
 
 		expect(await service.captureVersion(agent, user, ctx)).toBe(version);
 		expect(history.saveVersion).toHaveBeenCalledWith(
@@ -75,8 +80,24 @@ describe('Agent definition snapshots', () => {
 		expect(skills.pinVersion).toHaveBeenCalledWith('version', pins, ctx);
 		expect(snapshots.saveForVersion).toHaveBeenCalledWith(
 			[
-				expect.objectContaining({ taskId: 'enabled', enabled: true, objective: 'Read' }),
-				expect.objectContaining({ taskId: 'disabled', enabled: false, objective: 'Read' }),
+				{
+					versionId: 'version',
+					taskId: 'enabled',
+					enabled: true,
+					name: 'Daily summary',
+					objective: 'Summarize new requests',
+					cronExpression: '0 9 * * *',
+					timezone: 'Europe/Berlin',
+				},
+				{
+					versionId: 'version',
+					taskId: 'disabled',
+					enabled: false,
+					name: 'Weekly report',
+					objective: 'Review unresolved requests',
+					cronExpression: '0 12 * * 1',
+					timezone: null,
+				},
 			],
 			ctx,
 		);
