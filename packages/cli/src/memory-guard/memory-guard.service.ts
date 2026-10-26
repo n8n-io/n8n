@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
+import { MemoryGuardConfig } from '@n8n/config';
 import { type WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { OnLifecycleEvent, OnShutdown, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -16,22 +17,17 @@ import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service
 
 import {
 	ADMIT_INTERVAL_MS,
-	CRITICAL_LEVEL,
 	FAST_INTERVAL_MS,
 	FAST_SAMPLING_AFTER_HOLD_MS,
 	FAST_SAMPLING_LEVEL,
 	FREED_SHARE,
-	HOLD_LEVEL,
 	HOLD_LIMIT_MS,
 	RELEASE_TIMEOUT_MS,
 	REMEASURE_INTERVAL_MS,
 	REMEASURE_TIMEOUT_MS,
-	RESUME_LEVEL,
 	SAMPLES_TO_ACT,
 	SLOW_INTERVAL_MS,
 	STARVATION_ADMIT_INTERVAL_MS,
-	STOP_LEVEL,
-	STOPS_TO_DEACTIVATE,
 } from './memory-guard.constants';
 import type { StopTarget, StopTrigger } from './memory-guard.types';
 import {
@@ -115,6 +111,7 @@ export class MemoryGuardService {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly config: MemoryGuardConfig,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly productionHold: ProductionHold,
 		private readonly tracker: RunDataTracker,
@@ -178,26 +175,26 @@ export class MemoryGuardService {
 		const { utilization } = usage;
 		this.lastUtilization = utilization;
 		if (utilization < FAST_SAMPLING_LEVEL) this.journal.reset();
-		this.holdStreak = utilization >= HOLD_LEVEL ? this.holdStreak + 1 : 0;
-		this.stopStreak = utilization >= STOP_LEVEL ? this.stopStreak + 1 : 0;
-		const isCritical = utilization >= CRITICAL_LEVEL;
+		this.holdStreak = utilization >= this.config.holdLevel ? this.holdStreak + 1 : 0;
+		this.stopStreak = utilization >= this.config.stopLevel ? this.stopStreak + 1 : 0;
+		const isCritical = utilization >= this.config.criticalLevel;
 
-		if (this.isStandingDown && utilization < RESUME_LEVEL) {
+		if (this.isStandingDown && utilization < this.config.resumeLevel) {
 			this.isStandingDown = false;
 			this.logger.info(
-				`Memory fell below ${percent(RESUME_LEVEL)}, so the memory guard again stops executions at ${percent(STOP_LEVEL)}`,
+				`Memory fell below ${percent(this.config.resumeLevel)}, so the memory guard again stops executions at ${percent(this.config.stopLevel)}`,
 			);
 		}
 
-		if (this.isHoldSuspended && utilization < RESUME_LEVEL) this.isHoldSuspended = false;
+		if (this.isHoldSuspended && utilization < this.config.resumeLevel) this.isHoldSuspended = false;
 
 		const shouldHold = this.holdStreak >= SAMPLES_TO_ACT || isCritical;
 		if (!this.isHolding && !this.isHoldSuspended && shouldHold) {
 			this.startHold(usage);
-		} else if (this.isHolding && utilization < RESUME_LEVEL) {
+		} else if (this.isHolding && utilization < this.config.resumeLevel) {
 			const heldMs = this.endHold();
 			this.logger.info(
-				`Memory fell below ${percent(RESUME_LEVEL)} after a hold of ${heldMs}ms, so held executions now start in batches`,
+				`Memory fell below ${percent(this.config.resumeLevel)} after a hold of ${heldMs}ms, so held executions now start in batches`,
 			);
 		}
 
@@ -232,7 +229,7 @@ export class MemoryGuardService {
 		this.isHoldSuspended = true;
 		this.endHold();
 		this.logger.warn(
-			`${reason}, so the memory guard ends the hold and starts no new hold until memory falls below ${percent(RESUME_LEVEL)}`,
+			`${reason}, so the memory guard ends the hold and starts no new hold until memory falls below ${percent(this.config.resumeLevel)}`,
 		);
 	}
 
@@ -257,7 +254,8 @@ export class MemoryGuardService {
 		// Without a stop target, a collection on every sample only pauses the event loop.
 		if (this.stopStreak >= SAMPLES_TO_ACT && this.findStopTarget()) {
 			const usageAfterGc = this.readUsageAfterGc();
-			if (usageAfterGc.utilization >= STOP_LEVEL) return { trigger: 'threshold', usageAfterGc };
+			if (usageAfterGc.utilization >= this.config.stopLevel)
+				return { trigger: 'threshold', usageAfterGc };
 			this.stopStreak = 0;
 		}
 		if (this.hasHoldLimitPassed()) return { trigger: 'hold-limit' };
@@ -288,7 +286,7 @@ export class MemoryGuardService {
 		const now = Date.now();
 		if (now - this.lastAdmitAt < ADMIT_INTERVAL_MS) return;
 
-		if (utilization >= RESUME_LEVEL || utilization > this.utilizationAtLastAdmit) {
+		if (utilization >= this.config.resumeLevel || utilization > this.utilizationAtLastAdmit) {
 			this.admitBatch = 1;
 		}
 		this.productionHold.admit(this.admitBatch);
@@ -389,7 +387,7 @@ export class MemoryGuardService {
 		// A stop below the stop level, for example at the hold limit, says nothing about this workflow.
 		const isCounted =
 			freedMemory &&
-			before.utilization >= STOP_LEVEL &&
+			before.utilization >= this.config.stopLevel &&
 			this.pendingStopWorkflowId === target.workflow.id;
 		const workflowDeactivationStarted = isCounted && this.countStop(target);
 
@@ -398,10 +396,10 @@ export class MemoryGuardService {
 			{ executionId: target.rootId, workflowId: target.workflow.id },
 		);
 
-		if (!freedMemory && after.utilization >= STOP_LEVEL) {
+		if (!freedMemory && after.utilization >= this.config.stopLevel) {
 			this.isStandingDown = true;
 			this.logger.warn(
-				`The stop freed less memory than expected, so the memory guard now stops executions only at ${percent(CRITICAL_LEVEL)} or more, until memory falls below ${percent(RESUME_LEVEL)}`,
+				`The stop freed less memory than expected, so the memory guard now stops executions only at ${percent(this.config.criticalLevel)} or more, until memory falls below ${percent(this.config.resumeLevel)}`,
 			);
 		}
 
@@ -526,11 +524,12 @@ export class MemoryGuardService {
 	 * so that slow trigger teardown delays neither the next stop nor the report of this one.
 	 */
 	private countStop({ workflow, mode }: StopTarget) {
+		if (this.config.stopsToUnpublish === 0) return false;
 		if (!isProductionMode(mode) || !isWorkflowIdValid(workflow.id)) return false;
 
 		const stops = (this.stopsByWorkflow.get(workflow.id) ?? 0) + 1;
 		this.stopsByWorkflow.set(workflow.id, stops);
-		if (stops < STOPS_TO_DEACTIVATE || this.deactivating.has(workflow.id)) return false;
+		if (stops < this.config.stopsToUnpublish || this.deactivating.has(workflow.id)) return false;
 
 		this.deactivating.add(workflow.id);
 		void this.deactivate(workflow.id).finally(() => this.deactivating.delete(workflow.id));
@@ -551,7 +550,7 @@ export class MemoryGuardService {
 			await Container.get(WorkflowService).deactivateWorkflowAsSystem(workflowId);
 			this.stopsByWorkflow.delete(workflowId);
 			this.logger.warn(
-				`Deactivated workflow ${workflowId}, because n8n stopped ${STOPS_TO_DEACTIVATE} of its executions to keep the instance from running out of memory`,
+				`Deactivated workflow ${workflowId}, because n8n stopped ${this.config.stopsToUnpublish} of its executions to keep the instance from running out of memory`,
 				{ workflowId },
 			);
 			this.eventService.emit('memory-guard-workflow-deactivated', { workflowId });

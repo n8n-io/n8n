@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, MemoryGuardConfig } from '@n8n/config';
 import type { ExecutionRepository, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -63,6 +63,14 @@ describe('MemoryGuardService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		executions: { mode: 'regular', concurrency: { productionLimit: -1, evaluationLimit: -1 } },
 	});
+	const defaultLevels = {
+		resumeLevel: 0.75,
+		holdLevel: 0.8,
+		stopLevel: 0.85,
+		criticalLevel: 0.95,
+		stopsToUnpublish: 3,
+	};
+	const memoryGuardConfig = mockInstance(MemoryGuardConfig, { enabled: true, ...defaultLevels });
 	const activeExecutions = mock<ActiveExecutions>();
 	const tracker = mock<RunDataTracker>();
 	const logger = mock<Logger>();
@@ -187,8 +195,10 @@ describe('MemoryGuardService', () => {
 		);
 		memoryStoppedExecutions = new MemoryStoppedExecutions();
 		Object.assign(journal, { crashes: { none: 3, hold: 1, stop: 2 } });
+		Object.assign(memoryGuardConfig, defaultLevels);
 		guard = new MemoryGuardService(
 			logger,
+			memoryGuardConfig,
 			activeExecutions,
 			productionHold,
 			tracker,
@@ -224,6 +234,16 @@ describe('MemoryGuardService', () => {
 			expect(guardLogger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('holding new production executions'),
 			);
+		});
+
+		it('should hold at the configured hold level', async () => {
+			Object.assign(memoryGuardConfig, { resumeLevel: 0.55, holdLevel: 0.6 });
+			utilization = 0.62;
+
+			await sample(2);
+
+			const arrival = concurrencyControl.throttle({ mode: 'webhook', executionId: '1' });
+			expect(await isAdmitted(arrival)).toBe(false);
 		});
 
 		it('should sample fast for a while after the hold ends', async () => {
@@ -942,6 +962,26 @@ describe('MemoryGuardService', () => {
 			await stopOnce('4');
 
 			expect(stoppedIds()).toEqual(['1', '2', '3', '4']);
+		});
+
+		it('should never deactivate when the stops to unpublish are 0', async () => {
+			memoryGuardConfig.stopsToUnpublish = 0;
+
+			await stopOnce('1');
+			await stopOnce('2');
+			await stopOnce('3');
+			await stopOnce('4');
+
+			expect(stoppedIds()).toEqual(['1', '2', '3', '4']);
+			expect(deactivateWorkflowAsSystem).not.toHaveBeenCalled();
+		});
+
+		it('should deactivate after the configured number of stops', async () => {
+			memoryGuardConfig.stopsToUnpublish = 1;
+
+			await stopOnce('1');
+
+			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat');
 		});
 
 		it('should not count stops of manual executions', async () => {
