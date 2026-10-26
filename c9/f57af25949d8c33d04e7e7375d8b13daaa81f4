@@ -1,0 +1,87 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlDestinationPicker.vue
+  s_dfe3f914c8bb46::t_341b8bc55cf114 1-197
+packages/@n8n/api-types/src/agents/__tests__/agent-hitl.schema.test.ts
+  s_dfe3f914c8bb46::t_ab01f8a14c53f5 1-31
+packages/@n8n/api-types/src/agents/agent-hitl.schema.ts
+  s_dfe3f914c8bb46::t_7b3f5ed9a7952c 10-14,16-94
+packages/@n8n/api-types/src/agents/dto.ts
+  s_dfe3f914c8bb46::t_237a69b7635fe6 1,515-516
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_dfe3f914c8bb46::t_aaf972f62d8099 190-204
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_dfe3f914c8bb46::t_1827d17f710e81 653,851
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_dfe3f914c8bb46::t_ebe234f417ffe4 814,913-916
+packages/cli/src/modules/agents/agents.module.ts
+  s_dfe3f914c8bb46::t_ec4ee5aa1839ca 38
+packages/cli/src/modules/agents/approval/SPIKE.md
+  s_dfe3f914c8bb46::t_ae1f30cbaa8099 5,9-11,43-50,64-67
+packages/cli/src/modules/agents/approval/__tests__/agent-channel-hitl.service.test.ts
+  s_dfe3f914c8bb46::t_cf54d4e1664c7e 1-143
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_445eebea849840 1,157-238
+packages/cli/src/modules/agents/approval/__tests__/channel-hitl-options.test.ts
+  s_dfe3f914c8bb46::t_c1cf6f1d51a6f6 1-83
+packages/cli/src/modules/agents/approval/agent-channel-hitl.service.ts
+  s_dfe3f914c8bb46::t_b02b60707adbc9 1-135
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_01481eac4c25d6 1-2,11,53-58,85-95,101-106,116,119-136,149-157,171
+packages/cli/src/modules/agents/approval/agent-hitl-channels.controller.ts
+  s_dfe3f914c8bb46::t_e8abd9193a2f4c 1-28
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_dfe3f914c8bb46::t_d7465ba0b2060f 1,268-269
+packages/cli/src/modules/agents/integrations/channel-hitl.ts
+  s_dfe3f914c8bb46::t_964ae32897fb8b 1-51
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-hitl.ts
+  s_dfe3f914c8bb46::t_00160c49b17d64 1-82
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-integration.ts
+  s_dfe3f914c8bb46::t_28c43c8a03ccfa 1,79
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-integration.ts
+  s_dfe3f914c8bb46::t_4a9a936d15f5fc 43
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_dfe3f914c8bb46::t_d2852332ca4ba6 1,58
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-hitl.ts
+  s_dfe3f914c8bb46::t_f7baddaffe2dd1 1-19
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-integration.ts
+  s_dfe3f914c8bb46::t_2bbe2b3e8234b7 1,54
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_dfe3f914c8bb46::t_080a9a2e9d5108 21,455,468,488
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_423f16b7779d0e 2-28,30,35
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfigurationModal.test.ts
+  s_dfe3f914c8bb46::t_fa1e63e821bae1 1-210
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlDestinationPicker.test.ts
+  s_dfe3f914c8bb46::t_f34d9967131c71 1-91
+packages/frontend/editor-ui/src/features/agents/components/AgentApprovalRouteSelect.vue
+  s_dfe3f914c8bb46::t_7ba0802c451759 75
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_dfe3f914c8bb46::t_7d8a99334343f0 407
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlPanel.vue
+  s_dfe3f914c8bb46::t_49469d08162b16 2,13,30-44,112
+packages/frontend/editor-ui/src/features/agents/components/agent-hitl.types.ts
+  s_dfe3f914c8bb46::t_11a8f5131f47a8 4
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_dfe3f914c8bb46::t_e64c0a1d8a41d6 2-4,1082-1106
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_dfe3f914c8bb46::t_7b5322bddbd7cb 163
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-hitl.ts
+  s_dfe3f914c8bb46::t_26a6347b8f3216 1-84
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlConfigurationModal.vue
+  s_dfe3f914c8bb46::t_202ae7df682e1a 2,5-12,14-20,25-31,33,37,49,56-59,61-90,92-131,134-136,141-150,153,155-156,159-170,172,208,211-229,231-253,262-264,269-301,303-387,390-391,393-394,396-399,407-412,415-418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9f57af25949d8c33d04e7e7375d8b13daaa81f4",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
