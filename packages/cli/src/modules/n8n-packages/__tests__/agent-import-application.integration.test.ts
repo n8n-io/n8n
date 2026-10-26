@@ -642,11 +642,14 @@ it('publishes workflows before an Agent cycle and snapshots the committed defini
 				applied.id,
 			),
 		).toMatchObject({
-			skills: applied.skills,
 			tools: applied.tools,
 			publishedById: owner.id,
 			schema: { credential: AI_GATEWAY_MANAGED_TAG, subAgents: applied.schema!.subAgents },
 		});
+		const skillRefs = Container.get(AgentSkillRefsService);
+		expect(await skillRefs.readVersion({ versionId: applied.versionId! }, {})).toEqual(
+			await skillRefs.readDraft(applied, {}),
+		);
 		const [task] = await tasks.findByAgentId(applied.id);
 		expect(reconciledTasks.get(applied.id)).toEqual([task.id]);
 		expect(await snapshots.findByVersionId(applied.versionId!)).toMatchObject([
