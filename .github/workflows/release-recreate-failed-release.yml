@@ -150,7 +150,7 @@ jobs:
       needs.recreate-release-pr.outputs.pull-request-number != ''
     # inherit, not named secrets: the callee's app credentials live on the
     # `release` environment, which a caller cannot read to forward.
-    uses: ./.github/workflows/util-approve-and-set-automerge.yml # zizmor: ignore[secrets-inherit]
+    uses: ./.github/workflows/util-approve-and-set-automerge.yml
     permissions:
       contents: write
       pull-requests: write
