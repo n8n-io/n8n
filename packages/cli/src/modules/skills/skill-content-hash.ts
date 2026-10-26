@@ -35,8 +35,8 @@ function sortKeys(value: unknown): unknown {
  * Identity of a version's content, name included. Save creates no version when the
  * draft has the hash of the latest version.
  *
- * The data migration `MigrateAgentSkillsToHub` (CONTEXT-225) must compute the same value.
- * Keep both in sync: the migration test must pin the literals of `skill-content-hash.test.ts`.
+ * The data migration `MigrateAgentSkillsToHub` computes the same value. Keep both in sync:
+ * its test checks that the hashes it writes match this function.
  */
 export function skillContentHash(content: SkillContent): string {
 	return createHash('sha256')

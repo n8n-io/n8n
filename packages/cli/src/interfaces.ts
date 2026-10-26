@@ -151,6 +151,8 @@ export interface IExecutingWorkflowData {
 	startedAt: Date;
 	/** This promise rejects when the execution is stopped. When the execution finishes (successfully or not), the promise resolves. */
 	postExecutePromise: IDeferredPromise<IRun | undefined>;
+	/** True once `postExecutePromise` has settled, so the run has stopped writing execution data. */
+	postExecuteSettled?: boolean;
 	/** HTTPResponse needed for streaming responses */
 	httpResponse?: Response;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;

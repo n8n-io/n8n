@@ -33,6 +33,8 @@ import {
 	nodeCanReachItself,
 } from './workflow-json-utils';
 import type { Logger } from '../../logger';
+import type { FetchFn } from '@n8n/agents';
+
 import type { ModelConfig } from '../../types';
 import { itemsForNode } from '../../utils/node-keyed-items';
 import type {
@@ -55,6 +57,8 @@ export interface PlanVerificationSimulationInput {
 	outputSchemaLookup?: OutputSchemaLookup;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** Transport for the helper's model call. */
+	modelFetch?: FetchFn;
 	logger?: Logger;
 }
 
@@ -345,6 +349,7 @@ export async function planVerificationSimulation({
 	workflowId,
 	outputSchemaLookup,
 	fallbackModelConfig,
+	modelFetch,
 	logger,
 }: PlanVerificationSimulationInput): Promise<VerificationSimulationPlan> {
 	let nodeSimulationPlan: NodeSimulationVerdict[] | undefined;
@@ -356,6 +361,7 @@ export async function planVerificationSimulation({
 			workflow,
 			mockedNodeNames,
 			fallbackModelConfig,
+			modelFetch,
 			logger,
 		});
 		nodeSimulationPlan = withDeclaredOutputVerdicts(nodeSimulationPlan, declaredFixtures);
@@ -382,6 +388,7 @@ export async function planVerificationSimulation({
 							plan: planNeedingGeneratedFixtures,
 							outputSchemaLookup,
 							fallbackModelConfig,
+							modelFetch,
 							logger,
 						})
 					: {};

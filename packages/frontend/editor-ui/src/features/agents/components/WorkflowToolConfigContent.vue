@@ -452,7 +452,7 @@ defineExpose({
 				<N8nText size="small" bold>{{
 					i18n.baseText('agents.toolConfig.workflow.advanced')
 				}}</N8nText>
-				<N8nIcon :icon="advancedExpanded ? 'chevron-up' : 'chevron-down'" size="small" />
+				<N8nIcon :icon="advancedExpanded ? 'chevron-up' : 'chevron-down'" size="medium" />
 			</button>
 			<div id="workflow-tool-advanced" v-show="advancedExpanded" :class="$style.advancedContent">
 				<AgentFormSettingRow
@@ -578,11 +578,16 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing--3xs) 0;
-	border: 0;
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius);
 	background: transparent;
 	color: inherit;
 	cursor: pointer;
+
+	&:hover {
+		background: var(--color--background--light-2);
+	}
 
 	&:focus-visible {
 		@include focus.focus-ring;
