@@ -158,13 +158,14 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	});
 
 	// --- Cloud browser tabs ---
-	// A running browser task gets a tab once the user opens it. Closing the tab only hides it.
-	// The tab goes away when the task ends, and is never stored: the live view link is short-lived.
+	// Every running browser task has a tab. Closing the tab hides it until the user opens the
+	// browser again. The tab goes away when the task ends, and is never stored: the live view
+	// link is short-lived.
 	const cloudBrowserTasks = useCloudBrowserTasks(thread);
-	const openedBrowserTaskIds = ref(new Set<string>());
+	const closedBrowserTaskIds = ref(new Set<string>());
 	const browserTabs = computed((): BrowserTab[] =>
 		cloudBrowserTasks.value
-			.filter((task) => task.state === 'running' && openedBrowserTaskIds.value.has(task.taskId))
+			.filter((task) => task.state === 'running' && !closedBrowserTaskIds.value.has(task.taskId))
 			.map((task) => ({
 				id: `${BROWSER_TAB_PREFIX}${task.taskId}`,
 				type: 'browser',
@@ -174,12 +175,32 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 			})),
 	);
 
-	const openTabs = computed((): PreviewTab[] => [...tabs.openTabs.value, ...browserTabs.value]);
+	// A browser tab the user moved keeps its place on screen. The others go at the end.
+	const tabPositions = ref(new Map<string, number>());
+
+	const openTabs = computed((): PreviewTab[] => {
+		const result: PreviewTab[] = [...tabs.openTabs.value];
+		const positionOf = (tab: BrowserTab) => tabPositions.value.get(tab.id) ?? result.length;
+		for (const tab of [...browserTabs.value].sort((a, b) => positionOf(a) - positionOf(b))) {
+			result.splice(positionOf(tab), 0, tab);
+		}
+		return result;
+	});
 
 	const activeBrowserTab = computed(() => {
 		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
 		return tab?.type === 'browser' ? tab : null;
 	});
+
+	// The browser tabs the user has looked at. Each keeps its live view mounted, so a switch
+	// back does not reload it. A tab the user has not opened loads nothing.
+	const viewedBrowserTabIds = ref(new Set<string>());
+	watch(activeBrowserTab, (tab) => {
+		if (tab) viewedBrowserTabIds.value.add(tab.id);
+	});
+	const viewedBrowserTabs = computed(() =>
+		browserTabs.value.filter((tab) => viewedBrowserTabIds.value.has(tab.id)),
+	);
 
 	// When the task of the active browser tab ends, show another tab.
 	watch(browserTabs, (current) => {
@@ -358,15 +379,22 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	}
 
 	function reorderTab(tabId: string, toIndex: number) {
+		const order = openTabs.value.map((tab) => tab.id);
+		order.splice(order.indexOf(tabId), 1);
+		order.splice(toIndex, 0, tabId);
+		tabPositions.value = new Map(order.map((id, index): [string, number] => [id, index]));
+
+		// The stored order has only the artifact tabs.
 		if (isBrowserTabId(tabId)) return;
-		tabs.moveTab(tabId, toIndex);
+		tabs.moveTab(tabId, order.filter((id) => !isBrowserTabId(id)).indexOf(tabId));
 		tabs.saveTabs(activeTabId.value);
 	}
 
 	function closeTab(tabId: string) {
 		if (isBrowserTabId(tabId)) {
 			const taskId = tabId.slice(BROWSER_TAB_PREFIX.length);
-			openedBrowserTaskIds.value.delete(taskId);
+			closedBrowserTaskIds.value.add(taskId);
+			viewedBrowserTabIds.value.delete(tabId);
 			if (activeTabId.value === tabId) {
 				activeTabId.value = openTabs.value.find((tab) => tab.id !== tabId)?.id;
 				if (userTabId.value === tabId) userTabId.value = undefined;
@@ -406,7 +434,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 			(task) => task.taskId === taskId && task.state === 'running',
 		);
 		if (!isRunning) return;
-		openedBrowserTaskIds.value.add(taskId);
+		closedBrowserTaskIds.value.delete(taskId);
 		selectTab(`${BROWSER_TAB_PREFIX}${taskId}`);
 	}
 
@@ -714,6 +742,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		activeAgentPending,
 		activeBrowserTab,
 		browserTabs,
+		viewedBrowserTabs,
 		cloudBrowserTasks,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,

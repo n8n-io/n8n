@@ -1934,9 +1934,48 @@ describe('useCanvasPreview', () => {
 
 			ctx.openCloudBrowserTab(taskId);
 
-			expect(ctx.browserTabs.value).toEqual([]);
+			expect(ctx.browserTabs.value.map((tab) => tab.taskId)).not.toContain(taskId);
 			expect(ctx.activeTabId.value).toBeUndefined();
 			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('shows a tab for each running task before the user opens it', () => {
+			const ctx = setup();
+			setBrowserTasks(
+				ctx.thread,
+				browserTask({ taskId: 'task-1' }),
+				browserTask({ taskId: 'task-2' }),
+				browserTask({ taskId: 'task-3', status: 'completed' }),
+			);
+
+			expect(ctx.browserTabs.value.map((tab) => tab.id)).toEqual([
+				'browser:task-1',
+				'browser:task-2',
+			]);
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('mounts the live view only of a browser tab the user has looked at', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			setBrowserTasks(
+				ctx.thread,
+				browserTask({ taskId: 'task-1' }),
+				browserTask({ taskId: 'task-2' }),
+			);
+			expect(ctx.viewedBrowserTabs.value).toEqual([]);
+
+			ctx.openCloudBrowserTab('task-2');
+			await nextTick();
+			ctx.selectTab('wf-1');
+			await nextTick();
+
+			expect(ctx.viewedBrowserTabs.value.map((tab) => tab.id)).toEqual(['browser:task-2']);
+
+			ctx.closeTab('browser:task-2');
+
+			expect(ctx.viewedBrowserTabs.value).toEqual([]);
 		});
 
 		test('names the tab "Browser" when the task has no title', () => {
@@ -2034,16 +2073,55 @@ describe('useCanvasPreview', () => {
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 
-		test('does not reorder a browser tab', () => {
+		test('moves a browser tab between artifact tabs', () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
 			registerWorkflow(ctx.thread, 'wf-2');
 			setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1' }));
-			ctx.openCloudBrowserTab('task-1');
 
+			ctx.reorderTab('browser:task-1', 1);
+
+			expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual(['wf-1', 'browser:task-1', 'wf-2']);
+		});
+
+		test('keeps a moved browser tab in place when another browser tab joins', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1' }));
 			ctx.reorderTab('browser:task-1', 0);
 
-			expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual(['wf-1', 'wf-2', 'browser:task-1']);
+			setBrowserTasks(
+				ctx.thread,
+				browserTask({ taskId: 'task-1' }),
+				browserTask({ taskId: 'task-2' }),
+			);
+
+			expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual([
+				'browser:task-1',
+				'wf-1',
+				'browser:task-2',
+			]);
+		});
+
+		test('moves an artifact tab past a browser tab, and stores the order of the artifact tabs', async () => {
+			vi.useFakeTimers();
+			try {
+				const save = vi.fn().mockResolvedValue(undefined);
+				const ctx = setup({ tabsStorage: { load: vi.fn().mockResolvedValue(null), save } });
+				await flushPromises();
+				registerWorkflow(ctx.thread, 'wf-1');
+				registerWorkflow(ctx.thread, 'wf-2');
+				setBrowserTasks(ctx.thread, browserTask({ taskId: 'task-1' }));
+
+				ctx.reorderTab('wf-1', 2);
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+
+				expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual(['wf-2', 'browser:task-1', 'wf-1']);
+				const [state] = save.mock.lastCall ?? [];
+				expect(state.tabs.map((tab: { id: string }) => tab.id)).toEqual(['wf-2', 'wf-1']);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 });
