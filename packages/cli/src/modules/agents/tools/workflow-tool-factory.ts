@@ -770,6 +770,8 @@ async function finishResult(
 	result: WorkflowToolExecutionResult,
 	context: Pick<WorkflowToolContext, 'agentId' | 'projectId'>,
 	ctx: WaitToolContext,
+	/** Input files of the tool call, so an unchanged input file keeps its file ID. */
+	inputFiles = new Map<string, AgentToolOutputFile>(),
 ): Promise<WorkflowToolResult> {
 	const { wait: _wait, items, ...rest } = result;
 	const threadId = ctx.persistence?.threadId;
@@ -780,7 +782,7 @@ async function finishResult(
 	const data = { ...rest.data };
 	const files: AgentToolOutputFile[] = [];
 	const skippedFiles: AgentToolSkippedFile[] = [];
-	const stored = new Map<string, AgentToolOutputFile>();
+	const stored = new Map(inputFiles);
 	const skipped = new Set<string>();
 	for (const [nodeName, nodeItems] of Object.entries(items)) {
 		const adopted = await bridge.adoptFromItems(nodeItems, scope, stored, skipped);
@@ -1184,6 +1186,7 @@ function assembleWorkflowTool(
 			const pending = WAIT_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
 			let current: Awaited<ReturnType<typeof loadCurrentWorkflow>> | undefined;
 			let result: WorkflowToolExecutionResult;
+			let inputFiles: Map<string, AgentToolOutputFile> | undefined;
 
 			if (pending.success) {
 				result = await extractResult(pending.data.executionId, allOutputs);
@@ -1191,12 +1194,13 @@ function assembleWorkflowTool(
 				current = await loadCurrentWorkflow(context, reference);
 				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
 				const { files, ...modelInput } = input;
-				const binary = files
+				const resolved = files
 					? await Container.get(AgentFileBridge).toBinary(files, {
 							projectId: context.projectId,
 							threadId: ctx.persistence?.threadId,
 						})
 					: undefined;
+				inputFiles = resolved?.stored;
 				const parsedInput = await resolveWorkflowToolInput(
 					modelInput,
 					toolInputs,
@@ -1215,7 +1219,7 @@ function assembleWorkflowTool(
 					},
 					allOutputs,
 					toolName,
-					binary,
+					resolved?.binary,
 				);
 			}
 
@@ -1224,14 +1228,16 @@ function assembleWorkflowTool(
 			// second execution, so say so.
 			if (result.status === 'waiting' && isWaitCancelled(ctx.resumeData)) {
 				return {
-					...(await finishResult(result, context, ctx)),
+					...(await finishResult(result, context, ctx, inputFiles)),
 					note: 'The user stopped waiting for this workflow. It is still paused — do not start it again.',
 				};
 			}
 
 			// A wait due within the poll window resolves inline. Only a wait the poll
 			// did not settle is handed to the background.
-			if (result.status !== 'waiting') return await finishResult(result, context, ctx);
+			if (result.status !== 'waiting') {
+				return await finishResult(result, context, ctx, inputFiles);
+			}
 
 			const waiting = result;
 			return await withWorkflowCancellation(
@@ -1254,7 +1260,7 @@ function assembleWorkflowTool(
 					}
 
 					if (result.status !== 'waiting' || !supportsHitl) {
-						return await finishResult(result, context, ctx);
+						return await finishResult(result, context, ctx, inputFiles);
 					}
 
 					current ??= await loadCurrentWorkflow(context, reference);

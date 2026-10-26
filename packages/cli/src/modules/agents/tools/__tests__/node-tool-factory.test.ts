@@ -384,11 +384,11 @@ describe('resolveNodeTool → binary output', () => {
 	it('adopts binary output as agent files and lists them as metadata', async () => {
 		const { output, adoptFromItems, tool } = await runTool({ persistence: { threadId: 't1' } });
 
-		expect(adoptFromItems).toHaveBeenCalledWith([binaryItem], {
-			agentId: 'agent-1',
-			projectId: 'p1',
-			threadId: 't1',
-		});
+		expect(adoptFromItems).toHaveBeenCalledWith(
+			[binaryItem],
+			{ agentId: 'agent-1', projectId: 'p1', threadId: 't1' },
+			undefined,
+		);
 		expect(output).toEqual({
 			status: 'success',
 			data: [{ json: { id: 'drive-1' }, binary: { data: 'aid-2' } }],
@@ -420,7 +420,7 @@ describe('resolveNodeTool → file input', () => {
 	it('passes file IDs to the input item as binary and keeps them out of the JSON', async () => {
 		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
 		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
-		const toBinary = vi.fn().mockResolvedValue(binary);
+		const toBinary = vi.fn().mockResolvedValue({ binary, stored: new Map() });
 		Container.set(AgentFileBridge, { toBinary } as unknown as AgentFileBridge);
 		const tool = await resolveNodeTool(
 			{
@@ -442,6 +442,31 @@ describe('resolveNodeTool → file input', () => {
 		expect(toBinary).toHaveBeenCalledWith({ data: 'aid-1' }, { projectId: 'p1', threadId: 't1' });
 		expect(executeInline).toHaveBeenCalledWith(
 			expect.objectContaining({ inputData: [{ json: { name: 'cat.png' }, binary }] }),
+		);
+	});
+
+	it('passes the input files to adoptFromItems, so an unchanged file keeps its ID', async () => {
+		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
+		const stored = new Map([['fs:x', { fileId: 'aid-1' }]]);
+		const executeInline = vi
+			.fn()
+			.mockResolvedValue({ status: 'success', data: [{ json: {}, binary }] });
+		const adoptFromItems = vi.fn().mockResolvedValue({ items: [], files: [] });
+		const toBinary = vi.fn().mockResolvedValue({ binary, stored });
+		Container.set(AgentFileBridge, { toBinary, adoptFromItems } as unknown as AgentFileBridge);
+		const tool = await resolveNodeTool(baseToolSchema, {
+			executor: { executeInline } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+		});
+
+		await tool.handler!({ files: { data: 'aid-1' } }, {
+			persistence: { threadId: 't1' },
+		} as never);
+
+		expect(adoptFromItems).toHaveBeenCalledWith(
+			[{ json: {}, binary }],
+			{ agentId: null, projectId: 'p1', threadId: 't1' },
+			stored,
 		);
 	});
 });

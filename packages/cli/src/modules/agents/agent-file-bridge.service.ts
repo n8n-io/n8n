@@ -55,18 +55,20 @@ export class AgentFileBridge {
 	/**
 	 * Resolve the `files` tool input to binary entries for an input item. Each
 	 * entry points to the stored bytes, so nothing is copied. Only files that
-	 * the thread can read resolve.
+	 * the thread can read resolve. Pass `stored` to {@link adoptFromItems}, so
+	 * an input file that the tool returns unchanged keeps its file ID.
 	 */
 	async toBinary(
 		input: unknown,
 		scope: { projectId: string; threadId?: string },
-	): Promise<IBinaryKeyData | undefined> {
+	): Promise<{ binary: IBinaryKeyData; stored: Map<string, AgentToolOutputFile> } | undefined> {
 		const files = FILES_INPUT_SCHEMA.parse(input);
 		if (!files || Object.keys(files).length === 0) return undefined;
 		const { threadId } = scope;
 		if (!threadId) throw new UserError('Files can only be passed to tools in a conversation');
 
 		const binary: IBinaryKeyData = {};
+		const stored = new Map<string, AgentToolOutputFile>();
 		for (const [key, fileId] of Object.entries(files)) {
 			const attachment = await this.attachmentService.getReadable(fileId, {
 				projectId: scope.projectId,
@@ -85,8 +87,14 @@ export class AgentFileBridge {
 				...(extension && { fileExtension: extension }),
 				bytes: attachment.fileSizeBytes,
 			};
+			stored.set(attachment.binaryDataId, {
+				fileId,
+				fileName: attachment.fileName,
+				mimeType: attachment.mimeType,
+				sizeBytes: attachment.fileSizeBytes,
+			});
 		}
-		return binary;
+		return { binary, stored };
 	}
 
 	/**

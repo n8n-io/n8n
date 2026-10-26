@@ -1374,7 +1374,7 @@ describe('workflow tool → file input', () => {
 		} as unknown as ExecutionPersistence);
 		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
 		const bridge = mock<AgentFileBridge>();
-		bridge.toBinary.mockResolvedValue(binary);
+		bridge.toBinary.mockResolvedValue({ binary, stored: new Map() });
 		Container.set(AgentFileBridge, bridge);
 		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
 		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
@@ -1396,5 +1396,37 @@ describe('workflow tool → file input', () => {
 		const [triggerItems] = Object.values(pinData ?? {});
 		expect(triggerItems[0].binary).toEqual(binary);
 		expect(triggerItems[0].json).not.toHaveProperty('files');
+	});
+
+	it('passes the input files to adoptFromItems, so an unchanged file keeps its ID', async () => {
+		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
+		const inputFile = { fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 };
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: { Edit: [{ data: { main: [[{ json: {}, binary }]] } }] } } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const bridge = mock<AgentFileBridge>();
+		bridge.toBinary.mockResolvedValue({ binary, stored: new Map([['fs:x', inputFile]]) });
+		bridge.adoptFromItems.mockResolvedValue({
+			items: [{ json: {}, binary: { data: 'aid-1' } }],
+			files: [],
+		});
+		Container.set(AgentFileBridge, bridge);
+		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(vi.fn().mockResolvedValue('exec-1'), { workflowLoader }),
+		);
+
+		const output = await tool.handler?.({ files: { data: 'aid-1' } }, {
+			persistence: { threadId: 't-1' },
+		} as never);
+
+		const stored = bridge.adoptFromItems.mock.calls[0][2];
+		expect(stored?.get('fs:x')).toEqual(inputFile);
+		expect(output).toMatchObject({ data: { Edit: [{ binary: { data: 'aid-1' } }] }, files: [] });
 	});
 });

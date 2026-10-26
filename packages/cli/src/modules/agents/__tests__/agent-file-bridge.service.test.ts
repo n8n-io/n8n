@@ -238,8 +238,13 @@ describe('AgentFileBridge', () => {
 
 	describe('toBinary', () => {
 		const readScope = { projectId: 'project-1', threadId: 'thread-1' };
-
-		it('resolves readable file IDs to binary entries that point to the stored bytes', async () => {
+		const inputFile = {
+			fileId: 'aid-1',
+			fileName: 'cat.png',
+			mimeType: 'image/png',
+			sizeBytes: 68,
+		};
+		const readable = () =>
 			attachmentService.getReadable.mockResolvedValue(
 				mock<AgentChatAttachment>({
 					binaryDataId: 'filesystem-v2:agents/a/attachments/aid-1',
@@ -249,18 +254,55 @@ describe('AgentFileBridge', () => {
 				}),
 			);
 
+		it('resolves readable file IDs to binary entries that point to the stored bytes', async () => {
+			readable();
+
 			await expect(bridge.toBinary({ data: 'aid-1' }, readScope)).resolves.toEqual({
-				data: {
-					id: 'filesystem-v2:agents/a/attachments/aid-1',
-					data: 'filesystem-v2',
-					mimeType: 'image/png',
-					fileName: 'cat.png',
-					fileExtension: 'png',
-					bytes: 68,
+				binary: {
+					data: {
+						id: 'filesystem-v2:agents/a/attachments/aid-1',
+						data: 'filesystem-v2',
+						mimeType: 'image/png',
+						fileName: 'cat.png',
+						fileExtension: 'png',
+						bytes: 68,
+					},
 				},
+				stored: new Map([['filesystem-v2:agents/a/attachments/aid-1', inputFile]]),
 			});
 			expect(attachmentService.getReadable).toHaveBeenCalledWith('aid-1', readScope);
 			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
+		});
+
+		it('keeps the file ID of an input file that the tool returns unchanged', async () => {
+			readable();
+			const input = await bridge.toBinary({ data: 'aid-1' }, readScope);
+
+			const result = await bridge.adoptFromItems(
+				[{ json: {}, binary: input!.binary }],
+				scope,
+				input!.stored,
+			);
+
+			expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+			expect(result).toEqual({ items: [{ json: {}, binary: { data: 'aid-1' } }], files: [] });
+		});
+
+		it('stores a changed binary as a new file', async () => {
+			readable();
+			attachmentService.storeInbound.mockResolvedValue(
+				mock<AgentChatAttachment>({ id: 'aid-2', fileSizeBytes: PNG.byteLength }),
+			);
+			const input = await bridge.toBinary({ data: 'aid-1' }, readScope);
+
+			const result = await bridge.adoptFromItems(
+				[{ json: {}, binary: { data: pngBinary } }],
+				scope,
+				input!.stored,
+			);
+
+			expect(attachmentService.storeInbound).toHaveBeenCalledTimes(1);
+			expect(result.items).toEqual([{ json: {}, binary: { data: 'aid-2' } }]);
 		});
 
 		it('fails for a file that the thread cannot read', async () => {

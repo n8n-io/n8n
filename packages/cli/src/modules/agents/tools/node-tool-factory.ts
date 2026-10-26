@@ -162,7 +162,7 @@ export async function resolveNodeTool(
 		.description(toolSchema.description ?? `Execute the ${nodeType} node`)
 		.input(await resolveInputSchema(toolSchema, ctx))
 		.handler(async ({ files, ...input }: Record<string, unknown>, toolCtx) => {
-			const binary = files
+			const inputFiles = files
 				? await Container.get(AgentFileBridge).toBinary(files, {
 						projectId: ctx.projectId,
 						threadId: toolCtx.persistence?.threadId,
@@ -173,7 +173,9 @@ export async function resolveNodeTool(
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
 				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
-				inputData: [{ json: input as IDataObject, ...(binary && { binary }) }],
+				inputData: [
+					{ json: input as IDataObject, ...(inputFiles && { binary: inputFiles.binary }) },
+				],
 				projectId: ctx.projectId,
 				...instrumentedExecution,
 			});
@@ -195,11 +197,11 @@ export async function resolveNodeTool(
 			// Without a thread there is no scope for the files, so the binary is dropped.
 			const threadId = toolCtx.persistence?.threadId;
 			if (!threadId) return { ...result, data: result.data.map(({ json }) => ({ json })) };
-			const adopted = await Container.get(AgentFileBridge).adoptFromItems(result.data, {
-				agentId: ctx.agentId ?? null,
-				projectId: ctx.projectId,
-				threadId,
-			});
+			const adopted = await Container.get(AgentFileBridge).adoptFromItems(
+				result.data,
+				{ agentId: ctx.agentId ?? null, projectId: ctx.projectId, threadId },
+				inputFiles?.stored,
+			);
 			return {
 				...result,
 				data: adopted.items,
