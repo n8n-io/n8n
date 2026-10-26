@@ -139,7 +139,7 @@ describe('when the host dropped the commits of a finished review', () => {
 		expect(queryByTestId('promotion-review-warning')).not.toBeInTheDocument();
 		expect(queryByTestId('promotion-review-empty')).not.toBeInTheDocument();
 
-		await userEvent.click(getByRole('button', { name: 'Open in GitLab' }));
+		await userEvent.click(getByRole('button', { name: 'View merge request' }));
 		expect(open).toHaveBeenCalledWith(webUrl, '_blank', 'noopener,noreferrer');
 	});
 
@@ -163,7 +163,7 @@ describe('when the host dropped the commits of a finished review', () => {
 		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
 
 		const { getByRole } = await render();
-		await userEvent.click(getByRole('button', { name: 'Open in GitLab' }));
+		await userEvent.click(getByRole('button', { name: 'View merge request' }));
 
 		expect(open).not.toHaveBeenCalled();
 	});
@@ -175,7 +175,7 @@ describe('when the host dropped the commits of a finished review', () => {
 
 		const { getByTestId } = await render();
 
-		expect(getByTestId('promotion-review-outcome')).toHaveTextContent('This review was closed');
+		expect(getByTestId('promotion-review-outcome')).toHaveTextContent('This review is now closed');
 		expect(getByTestId('promotion-review-outcome')).toHaveTextContent(
 			'This review was closed on Oct 2',
 		);
