@@ -107,6 +107,10 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly disableStreaming = true;
 
+	// The adapter cuts messages at 4,096 characters after it escapes the
+	// Markdown. The margin covers that escaping.
+	readonly maxMessageLength = 3_500;
+
 	formatActionDecisionMessage({
 		approved,
 		selectedLabel,

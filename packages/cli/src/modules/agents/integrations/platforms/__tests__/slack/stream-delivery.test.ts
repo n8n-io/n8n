@@ -13,6 +13,7 @@ import {
 	createSlackResumeExecutionContext,
 	SLACK_STREAMING_OPTIONS,
 } from '../../slack/slack-bridge-behavior';
+import { SlackIntegration } from '../../slack/slack-integration';
 
 async function makeSlackContext(topLevel: boolean, resume = false) {
 	const threadTs = topLevel ? '1719000001.000100' : '1719000000.000100';
@@ -258,4 +259,45 @@ describe('Slack stream delivery', () => {
 			});
 		},
 	);
+
+	it('posts a reply over the Slack limit as messages that Slack accepts', async () => {
+		const messages = new Map<string, string>();
+		nock('https://slack.com')
+			.persist()
+			.post(/\/api\/.+/)
+			.reply(200, (uri, requestBody) => {
+				const method = uri.replace('/api/', '');
+				const body =
+					typeof requestBody === 'string'
+						? Object.fromEntries(new URLSearchParams(requestBody))
+						: (requestBody as Record<string, string>);
+				const ts = method === 'chat.update' ? body.ts : `1719001000.${messages.size}`;
+				if (method === 'chat.postMessage' || method === 'chat.update') {
+					if (body.markdown_text.length > 12_000) return { ok: false, error: 'msg_too_long' };
+					messages.set(ts, body.markdown_text);
+				}
+				return { ok: true, ts, message: { ts } };
+			});
+		const { thread, logger, context } = await makeSlackContext(false);
+		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
+		const consumer = new AgentChatStreamConsumer({
+			disableStreaming: false,
+			maxMessageLength: new SlackIntegration(mock()).maxMessageLength,
+			logger,
+			postErrorToThread,
+			handleSuspension: vi.fn().mockResolvedValue('skipped'),
+			handleMessage: vi.fn().mockResolvedValue(false),
+		});
+		const lines = Array.from({ length: 600 }, (_, i) => `Line ${i} of a long research report.\n`);
+		async function* stream(): AsyncGenerator<StreamChunk> {
+			for (const delta of lines) yield { type: 'text-delta', id: 'report', delta };
+			yield { type: 'finish', finishReason: 'stop' };
+		}
+
+		await consumer.consume(stream(), thread, context);
+
+		expect(postErrorToThread).not.toHaveBeenCalled();
+		expect(messages.size).toBeGreaterThan(1);
+		expect([...messages.values()].join('').trimEnd()).toBe(lines.join('').trimEnd());
+	});
 });

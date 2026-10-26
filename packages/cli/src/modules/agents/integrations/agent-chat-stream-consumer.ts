@@ -8,6 +8,7 @@ import { isIntegrationActionSuspendPayload } from './agent-chat-suspension-cards
 import { type TextEndFn, type TextYieldFn } from './types';
 import { isRateLimitedToolOutput } from './channel-rate-limit';
 import { isSilentActionOutput } from './integration-tool-execution';
+import { messageBreak, splitMessage } from './message-split';
 
 type SuspendedChunk = Extract<StreamChunk, { type: 'tool-call-suspended' }>;
 type MessageChunk = Extract<StreamChunk, { type: 'message' }>;
@@ -41,6 +42,8 @@ interface AgentChatStreamConsumerOptions {
 	isIntegrationActionTool?: (toolName: string) => boolean;
 	/** Text after the first streamed run is buffered and posted on its own. */
 	singleStreamedRunPerTurn?: boolean;
+	/** Text past this many characters continues in a new message. */
+	maxMessageLength?: number;
 }
 
 /** The platform did not accept a reply, so the user did not get all of it. */
@@ -262,26 +265,43 @@ export class AgentChatStreamConsumer {
 		const responseState = createResponseState(options);
 		let budgetStop: string | undefined;
 
+		const streamDelta = async (delta: string) => {
+			// Opening on whitespace alone posts a placeholder that the
+			// platform then has nothing to replace it with.
+			if (!delta.trim() && !responseState.hasVisibleResponse) return;
+			await responseLifecycle.startStreamingResponse();
+			pendingText += delta;
+			textStream.yield?.(delta);
+			if (delta.trim()) responseState.hasVisibleResponse = true;
+			if (!statusRestoredForPost && options.statusHandle?.resumeAfterResponse) {
+				await flushStreamingPost();
+				await responseLifecycle.resumeThinking();
+				statusRestoredForPost = true;
+			}
+		};
+		/** Continues in a new message before the current one passes the platform limit. */
+		const streamText = async (text: string) => {
+			const max = this.options.maxMessageLength;
+			if (max === undefined) return await streamDelta(text);
+			let rest = text;
+			let breakAt = messageBreak(pendingText.length, rest, max);
+			while (breakAt !== undefined) {
+				await streamDelta(rest.slice(0, breakAt));
+				await endStreamingPost();
+				rest = rest.slice(breakAt);
+				// Whitespace alone would open an empty message.
+				if (!rest.trim()) return;
+				breakAt = messageBreak(pendingText.length, rest, max);
+			}
+			await streamDelta(rest);
+		};
+
 		try {
 			for await (const chunk of stream) {
 				switch (chunk.type) {
-					case 'text-delta': {
-						if (responseState.suppressText) break;
-						const { delta } = chunk;
-						// Opening on whitespace alone posts a placeholder that the
-						// platform then has nothing to replace it with.
-						if (!delta.trim() && !responseState.hasVisibleResponse) break;
-						await responseLifecycle.startStreamingResponse();
-						pendingText += delta;
-						textStream.yield?.(delta);
-						if (delta.trim()) responseState.hasVisibleResponse = true;
-						if (!statusRestoredForPost && options.statusHandle?.resumeAfterResponse) {
-							await flushStreamingPost();
-							await responseLifecycle.resumeThinking();
-							statusRestoredForPost = true;
-						}
+					case 'text-delta':
+						if (!responseState.suppressText) await streamText(chunk.delta);
 						break;
-					}
 					case 'text-end':
 						await flushStreamingPost();
 						break;
@@ -377,7 +397,11 @@ export class AgentChatStreamConsumer {
 		throwOnDeliveryError = false,
 	): Promise<void> {
 		try {
-			await thread.post({ markdown: text });
+			const max = this.options.maxMessageLength;
+			const parts = max === undefined ? [text] : splitMessage(text, max);
+			for (const part of parts) {
+				await thread.post({ markdown: part });
+			}
 		} catch (postError: unknown) {
 			this.options.logger.error('[AgentChatBridge] Buffered post failed', {
 				error: postError instanceof Error ? postError.message : String(postError),
