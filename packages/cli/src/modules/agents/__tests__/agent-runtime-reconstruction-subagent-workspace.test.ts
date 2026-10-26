@@ -18,6 +18,7 @@ import type { WorkflowRepository } from '@n8n/db';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type {
 	AgentSandboxRuntime,
 	AgentSandboxRuntimeService,
@@ -83,6 +84,7 @@ function makeService() {
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
+		mock<AgentKnowledgeUsageTracker>(),
 		makeKnowledgeAvailabilityService(),
 	);
 

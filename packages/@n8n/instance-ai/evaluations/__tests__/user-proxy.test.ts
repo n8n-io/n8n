@@ -134,7 +134,7 @@ function questionEvent(
 	};
 }
 
-function planReviewEvent(requestId: string): CapturedEvent {
+function approvalEvent(requestId: string): CapturedEvent {
 	return {
 		timestamp: 100,
 		type: 'confirmation-request',
@@ -143,11 +143,10 @@ function planReviewEvent(requestId: string): CapturedEvent {
 			payload: {
 				requestId,
 				toolCallId: 'tc-x',
-				toolName: 'workflow_builder_create_tasks',
+				toolName: 'workflow_builder_executions',
 				args: {},
-				severity: 'info',
-				message: 'Approve plan?',
-				inputType: 'plan-review',
+				severity: 'warning',
+				message: 'Run this workflow?',
 			},
 		},
 	};
@@ -390,38 +389,12 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			agent,
 		});
 
-		const response = await proxy.respondToConfirmation(planReviewEvent('req-pr'));
+		const response = await proxy.respondToConfirmation(approvalEvent('req-pr'));
 		expect(response.kind).toBe('approval');
 		if (response.kind === 'approval') {
 			expect(response.approved).toBe(true);
 			expect(response.userInput).toBe('looks good');
 		}
-	});
-
-	it('rejects plan review with remaining scripted details before consulting the agent', async () => {
-		const agent = new FakeAgent();
-		const proxy = new UserProxyLlm({
-			conversation: [
-				{ role: 'user', text: 'Build an Airtable to Slack workflow.' },
-				{ role: 'assistant', text: 'Which table and channel?' },
-				{
-					role: 'user',
-					text: 'Use GET https://api.airtable.com/v0/app123abc/Tasks and Slack #daily-tasks.',
-				},
-			],
-			agent,
-		});
-
-		const response = await proxy.respondToConfirmation(planReviewEvent('req-scripted-plan'));
-
-		expect(response.kind).toBe('approval');
-		if (response.kind === 'approval') {
-			expect(response.approved).toBe(false);
-			expect(response.userInput).toContain('Before I approve');
-			expect(response.userInput).toContain('https://api.airtable.com/v0/app123abc/Tasks');
-			expect(response.userInput).toContain('#daily-tasks');
-		}
-		expect(agent.callCount).toBe(0);
 	});
 
 	it('returns approval with no userInput when the agent omits it', async () => {
@@ -432,7 +405,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			agent,
 		});
 
-		const response = await proxy.respondToConfirmation(planReviewEvent('req-pr'));
+		const response = await proxy.respondToConfirmation(approvalEvent('req-pr'));
 		expect(response.kind).toBe('approval');
 		if (response.kind === 'approval') {
 			expect(response.approved).toBe(true);
@@ -440,7 +413,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it('rejects a plan when the agent returns approve_or_reject with approved=false', async () => {
+	it('rejects when the agent returns approve_or_reject with approved=false', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'approve_or_reject',
@@ -452,7 +425,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			agent,
 		});
 
-		const response = await proxy.respondToConfirmation(planReviewEvent('req-pr'));
+		const response = await proxy.respondToConfirmation(approvalEvent('req-pr'));
 		expect(response.kind).toBe('approval');
 		if (response.kind === 'approval') {
 			expect(response.approved).toBe(false);
@@ -1883,8 +1856,8 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			agent,
 		});
 
-		const response = await proxy.respondToConfirmation(planReviewEvent('req-fail'));
-		// buildAutoApprovePayload returns kind: 'approval' approved: true for plan-review
+		const response = await proxy.respondToConfirmation(approvalEvent('req-fail'));
+		// buildAutoApprovePayload returns kind: 'approval' approved: true for a generic approval
 		expect(response.kind).toBe('approval');
 	});
 
@@ -1897,7 +1870,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			agent,
 		});
 
-		const response = await proxy.respondToConfirmation(planReviewEvent('req-mis'));
+		const response = await proxy.respondToConfirmation(approvalEvent('req-mis'));
 		expect(response.kind).toBe('approval');
 	});
 

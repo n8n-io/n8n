@@ -4,11 +4,13 @@ Guidance for the knowledge module (`packages/cli/src/modules/knowledge`). See th
 
 ## Purpose
 
-The module owns knowledge for Agents: uploaded files and their retrieval, and external vector-store connections. The implementation is moving here from `packages/cli/src/modules/agents/` in steps, with no user-facing change. This directory currently holds the module boundary and the availability check; the agents module still holds the implementation. Background and decisions: [Knowledge module plan](https://app.notion.com/p/3f85b6e0c94f8147b598e8bb4508ac86) (internal).
+The module owns knowledge for Agents: uploaded files and their retrieval, and external vector-store connections. The implementation is moving here from `packages/cli/src/modules/agents/` in steps, with no user-facing change.
+
+Vector-store construction, embedding credential resolution and connection testing now live in this module. Agents calls them and supplies the credential provider. File upload, storage and retrieval implementation still live in Agents. Background and decisions: [Knowledge module plan](https://app.notion.com/p/3f85b6e0c94f8147b598e8bb4508ac86) (internal).
 
 ## Boundary
 
-Three contracts at the module root define the boundary. Code that moves into this module implements against them. Change them by agreement of everyone working on the module, not in a review comment.
+Three contracts at the module root define the file knowledge boundary. File knowledge code that moves into this module implements against them. Change them by agreement of everyone working on the module, not in a review comment.
 
 - `knowledge-consumer-scope.ts`: identifies the consumer a call is made for and bounds the knowledge it can reach. `KnowledgeConsumerScope` is `{ kind: 'agent', projectId, agentId }`. Keep `projectId`: the sandbox id is derived from the instance id, the project id and the agent id, and it must stay byte-identical.
 - `knowledge-retriever.ts`: what the module offers to consumers. `hasFiles`, `findFiles`, `searchText` and `readFile` take a scope and the request types the agents module uses, and return its result types unchanged, because tool outputs must stay identical.
@@ -17,6 +19,8 @@ Three contracts at the module root define the boundary. Code that moves into thi
 The agents module keeps the controllers, `getAgentOrThrow` and every user and project permission check, the three `Tool` definitions, the workspace half of the sandbox runtime, and the `AgentKnowledgeService` facade. The knowledge module never checks project membership. Ownership is the caller's job.
 
 The contracts are compile-time only; nothing binds them at runtime yet. The change that first implements each one adds its binding: a concrete `@Service` for `KnowledgeRetriever` that consumers inject by class, and a registry `@Service` in this module for `KnowledgeSandboxProvider` that the agents module registers its adapter with during `init()` (the pattern of `workflow-index/agent-usage-provider-proxy.service.ts`). Until the retrieval schemas move here, `knowledge-retriever.ts` takes its request and result types from the agents module through `import type`, which is erased at runtime.
+
+Vector-store operations use a caller-supplied `CredentialProvider` from `@n8n/agents`. Agents supplies its `AgentsCredentialProvider` adapter.
 
 ## Where code goes
 

@@ -7,6 +7,8 @@ describe('getModelPromptCachingCapability', () => {
 		['google-vertex/claude-opus-5@default', 'ttl'],
 		['openrouter/anthropic/claude-sonnet-4.5', 'ttl'],
 		['openrouter/anthropic/claude-sonnet-4.5:beta', 'ttl'],
+		['azure-openai/anthropic/my-claude', 'ttl'],
+		['azure-openai/my-chat', false],
 		['openai/gpt-5', true],
 		['google-vertex/gemini-2.5-pro', false],
 		['google-vertex/meta/llama-4-maas', false],
