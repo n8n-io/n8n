@@ -14,10 +14,6 @@ export class AgentsModule implements ModuleInterface {
 		// The skills module starts before this module. Tell it which agents use skills.
 		const { registerSkillAgentsProvider } = await import('./register-skill-agents-provider.js');
 		registerSkillAgentsProvider();
-		if (Container.get(InstanceSettings).instanceType === 'main') {
-			const { AgentVersionInitializer } = await import('./agent-version-initializer.js');
-			await Container.get(AgentVersionInitializer).run();
-		}
 
 		// Imported for its `@OnLifecycleEvent` registration, which happens at
 		// class-decoration time — nothing else references this service.
