@@ -7,6 +7,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -81,11 +82,15 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	const lockService = mock<LockService>();
 	const publisher = mock<Publisher>();
 	const instanceSettings = mock<InstanceSettings>({ isWorker: options.worker ?? false });
-	const agentsConfig = mock<AgentsConfig>({ backgroundTasksEnabled: options.enabled ?? true });
+	const agentsConfig = mock<AgentsConfig>({
+		backgroundTasksEnabled: options.enabled ?? true,
+		planToolsEnabled: false,
+	});
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
 	jobRepository.findWakeableUnconsumed.mockResolvedValue([makeJob()]);
+	jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
 	jobRepository.hasRequestedStop.mockResolvedValue(false);
 	executionRepository.existsRunningByThread.mockResolvedValue(false);
 	checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
@@ -96,7 +101,9 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		return await callback(new AbortController().signal);
 	});
 
+	const cancellations = mock<AgentExecutionThreadRepository>();
 	const service = new AgentWakeService(
+		cancellations,
 		jobRepository,
 		new AgentConversationStateService(executionRepository, checkpointStorage),
 		agentRepository,
@@ -112,6 +119,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	);
 
 	return {
+		cancellations,
 		service,
 		backgroundJobService,
 		jobRepository,
@@ -128,6 +136,16 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 }
 
 describe('AgentWakeService', () => {
+	it('leaves a queued stop report to the message queue', async () => {
+		const { service, cancellations, jobRepository, orchestrator } = setup();
+		jobRepository.findWakeableUnconsumed.mockResolvedValue([
+			makeJob({ pauseRequestId: 'stop-1', status: 'paused' }),
+		]);
+		cancellations.ownsStopReport.mockResolvedValue(true);
+		await service.attemptWake('thread-1');
+		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+	});
+
 	it('delivers a stopped group once and marks it only after the report finishes', async () => {
 		const { service, backgroundJobService, jobRepository, orchestrator } = setup();
 		const report = createDeferredPromise();
@@ -553,6 +571,7 @@ describe('AgentWakeService', () => {
 		const waiting = makeJob({ id: 'waiting', status: 'suspended', settledAt: null });
 		const completed = makeJob({ id: 'completed' });
 		jobRepository.findWakeableUnconsumed.mockResolvedValue([failed, waiting, completed]);
+		jobRepository.findByParentThread.mockResolvedValue([failed, waiting, completed]);
 		backgroundJobService.getApproval.mockResolvedValue(
 			mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>({
 				runId: 'child-run',

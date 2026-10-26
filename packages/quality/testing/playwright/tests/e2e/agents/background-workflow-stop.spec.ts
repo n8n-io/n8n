@@ -203,7 +203,11 @@ test.describe(
 				expect(beforeStop.progress).toMatchObject({ input: 'original', revision: 'initial' });
 
 				const stop = await stoppingApi.agents.stopBackgroundTasks(project.id, agent.id, threadId);
-				expect(stop.tasks).toEqual([]);
+				// Preview keeps the stop outcome visible until the next group starts.
+				const stopped = [
+					{ id: firstJob.id, kind: 'workflow', status: 'cancelled', pauseRequested: true },
+				];
+				expect(stop.tasks).toMatchObject(stopped);
 				const reportRequest = {
 					method: 'POST',
 					path: '/v1/messages',
@@ -220,7 +224,7 @@ test.describe(
 						return items.some((item) => item.id === queued?.queueId);
 					})
 					.toBe(true);
-				expect((await jobs()).tasks).toEqual([]);
+				expect((await jobs()).tasks).toMatchObject(stopped);
 				expect((await api.workflows.getExecution(original.id)).status).toBe('canceled');
 				const oldCallback = await api.webhooks.trigger(beforeStop.callbackPath, {
 					maxNotFoundRetries: 0,

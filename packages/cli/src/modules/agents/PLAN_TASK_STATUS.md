@@ -44,3 +44,18 @@ processes together. Do not run mixed versions against the same database.
 Existing conversations can create new plans after the upgrade. The chat card
 must use the current-plan endpoint, because historical tool results can still
 contain deleted plans.
+
+## Stop and Continue
+
+Stop captures the current executions and jobs. It pauses unfinished parent-run
+tasks. Delegated task status follows the owning job. Continue selects tasks
+whose prerequisites are ready. A paused sub-agent resumes the same job. A
+cancelled workflow needs a new task and job.
+
+The Stop acknowledgement uses the existing message queue. It starts after the
+captured work stops and the parent turn ends. The execution record keeps the
+acknowledgement ID, so chat history can show the reply and its trace.
+
+Stop is best effort. It does not fence work that starts after capture. It does
+not guarantee recovery across an instance restart. A running tool can delay a
+pause until the runtime reaches its next pause check.

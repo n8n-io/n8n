@@ -44,6 +44,55 @@ describe('AgentChatRelayService', () => {
 		mock<AgentChatAttachmentService>(),
 	);
 
+	describe('relayQueuedStop', () => {
+		it('subscribes before acceptance and keeps the stream open for the report', async () => {
+			const streams = mock<AgentQueuedPreviewStreamService>();
+			let finish!: () => void;
+			const subscription = {
+				accepted: vi.fn(),
+				close: vi.fn(),
+				done: new Promise<void>((resolve) => {
+					finish = resolve;
+				}),
+			};
+			streams.subscribe.mockReturnValue(subscription);
+			const service = new AgentChatRelayService(
+				mock<AgentMessageQueueService>(),
+				streams,
+				mock<AgentChatAttachmentService>(),
+			);
+			const writes: string[] = [];
+			const res = makeSseResponse(writes);
+			const pending = service.relayQueuedStop(
+				res as unknown as FlushableResponse,
+				'thread',
+				async (onQueued) => {
+					onQueued('report');
+					expect(streams.subscribe).toHaveBeenCalledOnce();
+					expect(subscription.accepted).not.toHaveBeenCalled();
+				},
+			);
+			await vi.waitFor(() => expect(subscription.accepted).toHaveBeenCalledOnce());
+			expect(sentEvents(writes)).toContainEqual({
+				type: 'message-queued',
+				queueId: 'report',
+				sessionId: 'thread',
+			});
+			expect(res.end).not.toHaveBeenCalled();
+			finish();
+			await pending;
+			expect(subscription.close).toHaveBeenCalledOnce();
+			expect(res.end).toHaveBeenCalledOnce();
+		});
+
+		it('closes a repeated Stop without starting another report', async () => {
+			const writes: string[] = [];
+			const res = makeSseResponse(writes);
+			await relay.relayQueuedStop(res as unknown as FlushableResponse, 'thread', async () => {});
+			expect(sentEvents(writes)).toEqual([{ type: 'done', sessionId: 'thread' }]);
+		});
+	});
+
 	describe('relayResume', () => {
 		it('streams the events of the resume and closes the stream', async () => {
 			const writes: string[] = [];

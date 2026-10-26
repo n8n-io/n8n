@@ -160,6 +160,33 @@ export class AgentChatRelayService {
 		}
 	}
 
+	/** Subscribe before the transaction commits so the report cannot outrun the browser. */
+	async relayQueuedStop(
+		res: FlushableResponse,
+		threadId: string,
+		request: (onQueued: (id: string) => void) => Promise<unknown>,
+	) {
+		const delivery = initSseStream(res);
+		let queueId: string | undefined;
+		let subscription: ReturnType<AgentQueuedPreviewStreamService['subscribe']> | undefined;
+		try {
+			await request((id) => {
+				queueId = id;
+				subscription = this.queuedPreviewStreams.subscribe(id, delivery);
+			});
+			if (subscription && queueId) {
+				subscription.accepted();
+				delivery.send({ type: 'message-queued', queueId, sessionId: threadId });
+				await subscription.done;
+			} else delivery.send({ type: 'done', sessionId: threadId });
+		} catch (error) {
+			delivery.send(toChatErrorEvent(error, 'Stop failed'));
+		} finally {
+			subscription?.close();
+			delivery.close();
+		}
+	}
+
 	async streamAttachment(attachment: AgentChatAttachment, res: Response) {
 		const attachmentId = attachment.id;
 		// Open the stream before writing headers: bytes can be gone while the row

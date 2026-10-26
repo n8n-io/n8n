@@ -7,6 +7,7 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
+import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -52,6 +53,7 @@ export class AgentWakeService {
 	private readonly activeWakes = new Set<string>();
 
 	constructor(
+		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly jobRepository: AgentBackgroundJobRepository,
 		private readonly conversationState: AgentConversationStateService,
 		private readonly agentRepository: AgentRepository,
@@ -69,7 +71,7 @@ export class AgentWakeService {
 	}
 
 	async requestWake(threadId: string): Promise<void> {
-		if (!this.agentsConfig.backgroundTasksEnabled) return;
+		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
 		if (this.instanceSettings.isWorker) {
 			await this.publisher.publishCommand({
 				command: 'wake-agent-background-job',
@@ -82,13 +84,13 @@ export class AgentWakeService {
 
 	@OnPubSubEvent('wake-agent-background-job', { instanceType: 'main' })
 	handleWakeRelay({ threadId }: { threadId: string }): void {
-		if (!this.agentsConfig.backgroundTasksEnabled) return;
+		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
 		this.scheduleLocal(threadId);
 	}
 
 	async drainUnconsumed(): Promise<void> {
-		if (!this.agentsConfig.backgroundTasksEnabled) return;
-		const threadIds = await this.jobRepository.findThreadsWithUnconsumedMail();
+		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
+		const threadIds = new Set([...(await this.jobRepository.findThreadsWithUnconsumedMail())]);
 		for (const threadId of threadIds) this.scheduleLocal(threadId);
 	}
 
@@ -151,7 +153,7 @@ export class AgentWakeService {
 	}
 
 	async attemptWake(threadId: string): Promise<void> {
-		if (!this.agentsConfig.backgroundTasksEnabled) return;
+		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
 
 		try {
 			await this.lockService.withLease(
@@ -166,12 +168,22 @@ export class AgentWakeService {
 	}
 
 	private async deliverInsideLease(threadId: string, signal: AbortSignal): Promise<void> {
+		if (!this.agentsConfig.backgroundTasksEnabled) return;
 		let pending = await this.jobRepository.findWakeableUnconsumed(threadId);
+		const owned = new Set<string>();
+		for (const id of new Set(
+			pending.flatMap((job) => (job.pauseRequestId ? [job.pauseRequestId] : [])),
+		)) {
+			if (await this.threadRepository.ownsStopReport(id)) owned.add(id);
+		}
+		pending = pending.filter((job) => !job.pauseRequestId || !owned.has(job.pauseRequestId));
 		const stopped = pending.filter((job) => job.pauseRequestId);
 		if (stopped.length > 0) {
 			// A worker can stop after settlement and before it replaces older checkpoints.
 			for (const job of stopped) await this.backgroundJobService.retainLatestStopGroup(job);
-			pending = await this.jobRepository.findWakeableUnconsumed(threadId);
+			pending = (await this.jobRepository.findWakeableUnconsumed(threadId)).filter(
+				(job) => !job.pauseRequestId || !owned.has(job.pauseRequestId),
+			);
 		}
 		for (const job of pending.filter(
 			(item) => item.status === 'suspended' && !item.pauseRequestId,
@@ -340,6 +352,7 @@ export class AgentWakeService {
 				agentId: agent.id,
 				projectId: agent.projectId,
 				message: formatWakeMessage(jobs),
+				wakeJobIds: jobs.map((job) => job.id),
 				pauseReport: Boolean(jobs[0]?.pauseRequestId),
 				backgroundJobSignal: {
 					tasks: jobs.flatMap(({ id, title, kind, status }) =>

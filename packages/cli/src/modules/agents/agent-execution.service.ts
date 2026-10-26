@@ -105,6 +105,7 @@ export interface RecordMessageParams {
 }
 
 export interface StartExecutionParams extends Omit<RecordMessageParams, 'record' | 'hitlStatus'> {
+	wake?: { jobIds: string[] };
 	resourceId: string;
 	messageOrigin?: Omit<AgentMessageOrigin, 'source' | 'hidden'>;
 	hideUserMessageFromTranscript?: boolean;
@@ -260,6 +261,14 @@ export class AgentExecutionService {
 			attachments: null,
 		});
 		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
+		await this.agentExecutionThreadRepository.recordAdmission(
+			params.threadId,
+			!params.wake &&
+				!params.hideUserMessageFromTranscript &&
+				params.userMessage !== null &&
+				!params.resumeRunId,
+			ctx,
+		);
 		const inputMessageIds = await this.reserveInput(
 			params,
 			inserted.id,
@@ -899,6 +908,7 @@ export class AgentExecutionService {
 		for (const execution of executions) {
 			const messages = inputs.get(execution.id);
 			if (!messages) continue;
+			if (messages.some((message) => message.origin?.stopReport)) execution.stopReport = true;
 			execution.inputMessageIds = messages.map(({ id }) => id);
 			execution.inputMessages = [];
 			for (const message of messages) {

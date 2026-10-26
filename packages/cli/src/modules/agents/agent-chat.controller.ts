@@ -3,6 +3,8 @@ import {
 	type AgentBackgroundJobsResponse,
 	AgentChatMessageDto,
 	AgentChatCancelDto,
+	AgentTaskCancellationDto,
+	type AgentTaskCancellationState,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
 	AgentChatQueueReorderDto,
@@ -31,6 +33,7 @@ import { randomUUID } from 'node:crypto';
 
 import { AgentPlanService } from './agent-plan.service';
 import { presentPlan } from './plans/agent-plan-tools';
+import { AgentTaskCancellationService } from './agent-task-cancellation.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -68,6 +71,7 @@ import {
 @RestController('/projects/:projectId/agents/v2')
 export class AgentChatController {
 	constructor(
+		private readonly taskCancellation: AgentTaskCancellationService,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly agentTestRunService: AgentTestRunService,
 		private readonly agentTestChatService: AgentTestChatService,
@@ -756,7 +760,9 @@ export class AgentChatController {
 			await this.requirePreviewThread(threadId, projectId, agentId, req.user.id);
 		}
 
-		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
+		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId, {
+			includePaused: true,
+		});
 		return this.mapBackgroundJobsToDto(jobs);
 	}
 
@@ -778,6 +784,9 @@ export class AgentChatController {
 				title: scrubSecretsInText(job.title),
 				kind: job.kind,
 				status: job.status,
+				...(job.planId && job.planTaskId
+					? { planTask: { planId: job.planId, planTaskId: job.planTaskId } }
+					: {}),
 				...(job.pauseRequestId ? { pauseRequested: true } : {}),
 				...(job.approval
 					? {
@@ -821,6 +830,33 @@ export class AgentChatController {
 			throw new BadRequestError('Background tasks are not enabled');
 	}
 
+	@Post('/:agentId/chat/:threadId/task-cancellation')
+	@ProjectScope('agent:execute')
+	async cancelTasks(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Body payload: AgentTaskCancellationDto,
+	): Promise<AgentTaskCancellationState> {
+		await this.requireTaskThread(req);
+		return await this.taskCancellation.request(req.params.threadId, payload.planId);
+	}
+
+	@Post('/:agentId/chat/:threadId/task-cancellation/stream')
+	@ProjectScope('agent:execute')
+	async streamTaskCancellation(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		res: FlushableResponse,
+		@Body payload: AgentTaskCancellationDto,
+	): Promise<void> {
+		await this.requireTaskThread(req);
+		await this.chatRelay.relayQueuedStop(
+			res,
+			req.params.threadId,
+			async (onQueued) =>
+				await this.taskCancellation.request(req.params.threadId, payload.planId, onQueued),
+		);
+	}
+
 	@Get('/:agentId/n8n-chat/:threadId/plan')
 	@ProjectScope('agent:execute')
 	async getProductionPlan(
@@ -843,6 +879,15 @@ export class AgentChatController {
 		await this.requireTaskThread(req, false);
 
 		return presentPlan(await this.plans.findLatestPlan(req.params.threadId, {}));
+	}
+
+	@Get('/:agentId/chat/:threadId/task-cancellation')
+	@ProjectScope('agent:execute')
+	async getTaskCancellation(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentTaskCancellationState | null> {
+		await this.requireTaskThread(req);
+		return await this.taskCancellation.state(req.params.threadId);
 	}
 
 	@Post('/:agentId/chat/:threadId/background-tasks/stop')

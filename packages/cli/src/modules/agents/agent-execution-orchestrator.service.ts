@@ -117,6 +117,8 @@ interface ChatExecutionCallbacks {
 }
 
 export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionCallbacks {
+	pauseReport?: boolean;
+	hideUserMessageFromTranscript?: boolean;
 	/**
 	 * The calling n8n user — used to gate node/workflow tools by their access,
 	 * and for RBAC / credential resolution and telemetry attribution. Always
@@ -222,6 +224,7 @@ export interface ExecuteForTaskNowConfig extends AgentExecutionInput {
 }
 
 export interface ExecuteForWakeConfig extends AgentExecutionInput {
+	wakeJobIds?: string[];
 	backgroundJobSignal: AgentBackgroundJobSignal;
 	pauseReport?: boolean;
 	abortSignal: AbortSignal;
@@ -235,6 +238,7 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 }
 
 export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecutionCallbacks {
+	wake?: { jobIds: string[] };
 	onAdmitted?: () => Promise<void>;
 	access: AgentThreadAccess;
 	messageContext?: IntegrationMessageContext | null;
@@ -1129,8 +1133,10 @@ export class AgentExecutionOrchestratorService {
 				threadId: config.memory.threadId,
 			},
 			backgroundJobSignal: config.backgroundJobSignal,
+			wake: config.wake,
 			onExecutionRecorded: config.onExecutionRecorded,
 			chatSurface: config.chatSurface,
+			acceptsSteering: !config.pauseReport,
 			onExecutionStarted: config.onExecutionStarted,
 			onSettled: config.isWakeRun
 				? undefined
@@ -1611,6 +1617,8 @@ export class AgentExecutionOrchestratorService {
 		} = config;
 		const messageContext = this.createN8nChatMessageContext(memory, user.id);
 		return this.streamChatResponse({
+			pauseReport: config.pauseReport,
+			hideUserMessageFromTranscript: config.hideUserMessageFromTranscript,
 			admittedExecution: config.admittedExecution,
 			onAdmitted: async () =>
 				await this.integrationMessageContextService.setLatest(
@@ -1853,9 +1861,12 @@ export class AgentExecutionOrchestratorService {
 			sandboxPrincipalHash: identity.principalHash,
 			hideUserMessageFromTranscript: true,
 			isWakeRun: true,
+			wake: {
+				jobIds: config.wakeJobIds ?? config.backgroundJobSignal.tasks.map((job) => job.id),
+			},
 			pauseReport: config.pauseReport,
 			sessionMode: 'existing',
-			backgroundJobSignal: config.backgroundJobSignal,
+			backgroundJobSignal: config.pauseReport ? undefined : config.backgroundJobSignal,
 		});
 	}
 }

@@ -51,6 +51,7 @@ export type AgentTurnRequest = { recording: StartExecutionParams } & (
 );
 
 interface ExecuteTurnConfig {
+	wake?: StartExecutionParams['wake'];
 	admittedExecution?: AgentExecutionAdmission;
 	onAdmitted?: () => Promise<void>;
 	agentInstance: RuntimeAgent;
@@ -61,6 +62,8 @@ interface ExecuteTurnConfig {
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	/** The chat surface this turn runs under. Undefined for integrations and tasks. */
 	chatSurface?: AgentChatSurface;
+	/** Set false to keep additional input queued without cancelling the turn. */
+	acceptsSteering?: boolean;
 	/**
 	 * The controller of the chat turn. Defaults to a new controller. A cancel
 	 * aborts it, and the caller can abort it to stop the turn at any time. The
@@ -97,7 +100,7 @@ interface TurnExecutionState {
 	runId?: string;
 }
 
-/** Preview and n8n Chat both run under one of these — a steerable, cancellable chat turn. */
+/** Controls cancellation for Preview and n8n Chat turns. */
 interface ChatExecutionControl {
 	controller: AbortController;
 	dispose: () => void;
@@ -626,8 +629,9 @@ export class AgentTurnExecutionService {
 		const admission = await this.startExecution(
 			{
 				...turn.recording,
+				wake: config.wake,
 				previewChat: config.chatSurface === 'preview' ? true : undefined,
-				acceptsSteering: chatControl !== undefined,
+				acceptsSteering: chatControl !== undefined && config.acceptsSteering !== false,
 				resumeRunId: turn.type === 'resume' ? turn.options.runId : undefined,
 				allowSuspendedPredecessor: config.automaticPreviewContinuation,
 				...(config.backgroundJobSignal
@@ -667,7 +671,7 @@ export class AgentTurnExecutionService {
 			};
 		}
 
-		if (chatControl) {
+		if (chatControl && config.acceptsSteering !== false) {
 			turn.options.onInputBoundary = async (boundary) => {
 				const result = await this.steering.consume(
 					{ ...config.context, executionId, resourceId: turn.recording.resourceId },

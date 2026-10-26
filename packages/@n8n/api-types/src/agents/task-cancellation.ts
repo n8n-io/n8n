@@ -44,6 +44,7 @@ export interface AgentTaskCancellationState {
 	planId: string | null;
 	status: 'stopping' | 'failed' | 'stopped' | 'resumed';
 	reportFailed?: boolean;
+	report?: { status: 'queued' | 'running' | 'completed' | 'failed'; executionId?: string };
 	requestedAt: string;
 	failures: AgentTaskStopFailure[];
 	plan: AgentPlanSnapshotDto | null;
