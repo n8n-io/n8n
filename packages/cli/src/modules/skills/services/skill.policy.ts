@@ -82,15 +82,20 @@ export function blocksDelete(usage: SkillUsedBy): boolean {
 	return usage.drafts.length > 0 || usage.pins.length > 0 || usage.hiddenAgents > 0;
 }
 
-/** The refusal of a delete: each agent once per draft and per published version. */
+/**
+ * The refusal of a delete: each agent once for its draft and once for its published version.
+ * Agents are told apart by id, so two agents with the same name both appear.
+ */
 export function deleteRefusalMessage(skillName: string, usage: SkillUsedBy): string {
-	const users = [
-		...usage.drafts.map((draft) => `${draft.agentName} (draft)`),
-		...usage.pins.map(
-			(pin) =>
-				`${pin.agentName} (${pin.version === null ? 'older published version' : `published v${pin.version}`})`,
-		),
-	];
-	if (usage.hiddenAgents > 0) users.push(agentsInOtherProjects(usage.hiddenAgents));
-	return `Skill "${skillName}" is used by ${[...new Set(users)].join(', ')} and cannot be deleted.`;
+	const users = new Map<string, string>();
+	for (const draft of usage.drafts) {
+		users.set(`draft:${draft.agentId}`, `${draft.agentName} (draft)`);
+	}
+	for (const pin of usage.pins) {
+		const version = pin.version === null ? 'older published version' : `published v${pin.version}`;
+		users.set(`pin:${pin.agentId}`, `${pin.agentName} (${version})`);
+	}
+	const named = [...users.values()];
+	if (usage.hiddenAgents > 0) named.push(agentsInOtherProjects(usage.hiddenAgents));
+	return `Skill "${skillName}" is used by ${named.join(', ')} and cannot be deleted.`;
 }

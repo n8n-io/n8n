@@ -174,11 +174,22 @@ describe('blocksDelete and deleteRefusalMessage', () => {
 			message: 'Skill "Brand voice" is used by 2 agents in other projects and cannot be deleted.',
 		},
 		{
-			case: 'each agent once, then the hidden count',
+			case: 'one agent once, then the hidden count',
 			usage: { drafts: [draft, draft], pins: [], hiddenAgents: 1 },
 			blocks: true,
 			message:
 				'Skill "Brand voice" is used by Support (draft), 1 agent in other projects and cannot be deleted.',
+		},
+		{
+			case: 'two agents with the same name, both',
+			usage: {
+				drafts: [draft, { ...draft, agentId: 'agent-2', projectId: 'Q' }],
+				pins: [],
+				hiddenAgents: 0,
+			},
+			blocks: true,
+			message:
+				'Skill "Brand voice" is used by Support (draft), Support (draft) and cannot be deleted.',
 		},
 	])('$case → blocks: $blocks', ({ usage, blocks, message }) => {
 		expect(blocksDelete(usage)).toBe(blocks);
