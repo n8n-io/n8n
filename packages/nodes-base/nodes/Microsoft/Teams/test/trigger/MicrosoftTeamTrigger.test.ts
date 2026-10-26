@@ -511,7 +511,8 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(staticData.subscriptionIds).toEqual(['new']);
 			});
 
-			it('keeps one of two stored live subscriptions on one resource', async () => {
+			// An earlier version stored every own subscription, so either one can carry a foreign secret.
+			it('creates the resource again when two stored live subscriptions cover it', async () => {
 				const staticData: Record<string, unknown> = {
 					subscriptionIds: ['a', 'b'],
 					webhookSecret: 'secret',
@@ -521,13 +522,20 @@ describe('Microsoft Teams Trigger Node', () => {
 					own('a', '/me/chats', HOUR),
 					own('b', '/me/chats', 2 * HOUR),
 				]);
-				(microsoftApiRequest.call as Mock).mockResolvedValue({});
+				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'new' });
 
 				const result = await checkExists(ctx);
 
 				expect(result).toBe(true);
-				expect(graphCalls()).toEqual([['DELETE', '/v1.0/subscriptions/a']]);
-				expect(staticData.subscriptionIds).toEqual(['b']);
+				expect(graphCalls()).toEqual([
+					['DELETE', '/v1.0/subscriptions/a'],
+					['DELETE', '/v1.0/subscriptions/b'],
+					['POST', '/v1.0/subscriptions'],
+				]);
+				expect(calls('POST')[0][3]).toEqual(
+					expect.objectContaining({ clientState: 'secret', resource: '/me/chats' }),
+				);
+				expect(staticData.subscriptionIds).toEqual(['new']);
 			});
 
 			it('removes a stored subscription whose resource is no longer required', async () => {
@@ -763,6 +771,30 @@ describe('Microsoft Teams Trigger Node', () => {
 					'Microsoft Teams Trigger: failed to create subscription',
 					expect.objectContaining({ resource: '/teams/team2/channels' }),
 				);
+				expect(staticData).toEqual({ subscriptionIds: [] });
+			});
+
+			it('stores the ids that landed before it throws, so cleanup removes them without a listing', async () => {
+				const staticData: Record<string, unknown> = {};
+				const ctx = hookCtx(staticData, { event: 'newChannel', watchAllTeams: true });
+				const error = new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, method: string, _path: string, body?: Record<string, unknown>) => {
+						if (method === 'GET') return { value: [{ id: 'team1' }, { id: 'team2' }] };
+						if (method !== 'POST') return {};
+						if (body?.resource === '/teams/team1/channels') return { id: 'landed' };
+						throw error;
+					},
+				);
+
+				await expect(create(ctx)).rejects.toBe(error);
+				expect(staticData).toEqual({ subscriptionIds: ['landed'] });
+
+				// Core runs `delete()` next, and here its listing fails too.
+				(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(new Error('list failed'));
+				await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(ctx);
+
+				expect(calls('DELETE').map((call) => call[2])).toEqual(['/v1.0/subscriptions/landed']);
 				expect(staticData).toEqual({});
 			});
 		});
@@ -1052,7 +1084,7 @@ describe('Microsoft Teams Trigger Node', () => {
 			const { ctx, res } = arrange({
 				value: [
 					{ clientState: 'secret', resourceData: { id: '1' } },
-					{ clientState: 'wrong', resourceData: { id: '2' } },
+					{ subscriptionId: 'subX', clientState: 'wrong', resourceData: { id: '2' } },
 				],
 			});
 
@@ -1061,8 +1093,30 @@ describe('Microsoft Teams Trigger Node', () => {
 			expect(res.status).not.toHaveBeenCalled();
 			expect(result).toEqual({ workflowData: [[{ json: { id: '1' } }]] });
 			expect(ctx.logger.debug).toHaveBeenCalledWith(
-				'Microsoft Teams Trigger: rejected notifications with an unknown clientState',
-				expect.objectContaining({ workflowId: 'wf1', rejected: 1 }),
+				'Microsoft Teams Trigger: rejected notifications without the stored clientState',
+				expect.objectContaining({ workflowId: 'wf1', rejected: 1, subscriptionIds: ['subX'] }),
+			);
+		});
+
+		it('caps the logged subscription ids of the rejected notifications', async () => {
+			const rejectedItems = Array.from({ length: 25 }, (_, index) => ({
+				subscriptionId: `${index}`.padStart(100, 'x'),
+				clientState: 'wrong',
+			}));
+			const { ctx } = arrange({
+				value: [{ clientState: 'secret', resourceData: { id: '1' } }, ...rejectedItems, {}],
+			});
+
+			await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			const fields = ctx.logger.debug.mock.calls.find(
+				([message]) =>
+					message ===
+					'Microsoft Teams Trigger: rejected notifications without the stored clientState',
+			)?.[1];
+			expect(fields).toMatchObject({ rejected: 26 });
+			expect(fields?.subscriptionIds).toEqual(
+				rejectedItems.slice(0, 20).map(({ subscriptionId }) => subscriptionId.slice(0, 64)),
 			);
 		});
 

@@ -8,7 +8,6 @@ import type {
 	TeamResponse,
 	ChannelResponse,
 	SubscriptionResponse,
-	SubscriptionFailure,
 	LifecycleNotification,
 } from './types';
 import { verifySignature as verifySignatureGeneric } from '../../../../../utils/webhook-signature-verification';
@@ -69,15 +68,15 @@ export function getStoredIds(webhookData: IDataObject): string[] {
 }
 
 /**
- * Deletes every id once, one after the other. Never throws: a 404 counts as done, an id
- * that fails validation is warned only, and every other refusal is warned and reported,
- * so the caller decides what it means.
+ * Deletes every id once, one after the other, and returns the ids Graph refused to remove.
+ * Never throws: a 404 counts as done, an id that fails validation is warned only, and every
+ * other refusal is warned and returned, so the caller decides what it means.
  */
 export async function deleteSubscriptions(
 	this: IHookFunctions | IWebhookFunctions,
 	ids: Iterable<string>,
-): Promise<Array<Extract<SubscriptionFailure, { step: 'delete' }>>> {
-	const failures: Array<Extract<SubscriptionFailure, { step: 'delete' }>> = [];
+): Promise<string[]> {
+	const refused: string[] = [];
 	for (const id of new Set(ids)) {
 		let path: string;
 		try {
@@ -94,15 +93,14 @@ export async function deleteSubscriptions(
 			await microsoftApiRequest.call(this, 'DELETE', path);
 		} catch (error) {
 			if (error instanceof NodeApiError && error.httpCode === '404') continue;
-			const failure = ensureError(error);
 			logTrigger.call(this, 'warn', 'failed to remove subscription', {
 				subscriptionId: id,
-				error: failure.message,
+				error: ensureError(error).message,
 			});
-			failures.push({ step: 'delete', id, error: failure });
+			refused.push(id);
 		}
 	}
-	return failures;
+	return refused;
 }
 
 export async function fetchAllTeams(
@@ -159,36 +157,35 @@ export async function createSubscription(
 
 /**
  * Creates one subscription per resource in parallel. Every POST settles first, so the
- * ids that landed are visible to the cleanup core runs next (`delete()` lists by URL).
- * A failure keeps its error as thrown, so a Graph 403 keeps its hint copy.
+ * ids that landed are known before the cleanup core runs next. An error is returned as
+ * thrown (`ensureError` keeps the object), so a Graph 403 keeps its hint copy.
  */
 export async function createSubscriptions(
 	this: IHookFunctions | IWebhookFunctions,
 	webhookUrl: string,
 	resources: string[],
 	clientState: string,
-): Promise<{ ids: string[]; failures: SubscriptionFailure[] }> {
+): Promise<{ ids: string[]; errors: Error[] }> {
 	const results = await Promise.allSettled(
 		resources.map(
 			async (resource) => await createSubscription.call(this, webhookUrl, resource, clientState),
 		),
 	);
 	const ids: string[] = [];
-	const failures: SubscriptionFailure[] = [];
+	const errors: Error[] = [];
 	results.forEach((result, index) => {
 		if (result.status === 'fulfilled') {
 			ids.push(result.value.id);
 			return;
 		}
-		const resource = resources[index];
 		const error = ensureError(result.reason);
 		logTrigger.call(this, 'warn', 'failed to create subscription', {
-			resource,
+			resource: resources[index],
 			error: error.message,
 		});
-		failures.push({ step: 'create', resource, error });
+		errors.push(error);
 	});
-	return { ids, failures };
+	return { ids, errors };
 }
 
 export async function listOwnSubscriptions(
@@ -208,7 +205,8 @@ export async function listOwnSubscriptions(
  * Applies the ownership rule to one own listing: one stored live subscription per
  * required resource stays, every other own subscription goes, and the uncovered
  * resources are created with the stored secret. Reads and writes `subscriptionIds`
- * itself, so the trust decision and the write share one source. Never throws.
+ * itself, so the trust decision and the write share one source. Returns the create
+ * errors. Never throws.
  */
 export async function reconcileSubscriptions(
 	this: IHookFunctions | IWebhookFunctions,
@@ -216,14 +214,14 @@ export async function reconcileSubscriptions(
 		webhookUrl: string;
 		clientState: string;
 		requiredResources: string[];
-		/** The own listing, with the usable PATCH answers of this request merged in. */
+		/** The own listing. A lifecycle batch merges in the usable PATCH answers of the request. */
 		subscriptions: SubscriptionResponse[];
 		/** Ids a PATCH in this request succeeded for: live, and preferred as keepers. */
 		renewed?: ReadonlySet<string>;
 		/** Ids Graph reported removed. */
 		gone?: ReadonlySet<string>;
 	},
-): Promise<{ ids: string[]; failures: SubscriptionFailure[] }> {
+): Promise<Error[]> {
 	const { webhookUrl, clientState, subscriptions, renewed = new Set(), gone = new Set() } = input;
 	const webhookData = this.getWorkflowStaticData('node');
 	const storedIds = getStoredIds(webhookData);
@@ -235,9 +233,9 @@ export async function reconcileSubscriptions(
 			.filter((sub) => !gone.has(sub.id) && (renewed.has(sub.id) || isLiveSubscription(sub)))
 			.map((sub) => sub.id),
 	);
-	// Trust needs the own listing and the stored id, so an orphan with another secret never
-	// becomes a keeper. Renewed first, then the later expiry, then the id: two mains pick
-	// the same one.
+	// Trust needs the own listing and the stored id, so an orphan that this version did not
+	// store never becomes a keeper. Renewed first, then the later expiry, then the id: two
+	// mains pick the same one.
 	const candidates = subscriptions
 		.filter(
 			(sub) => storedIds.includes(sub.id) && live.has(sub.id) && required.includes(sub.resource),
@@ -249,20 +247,29 @@ export async function reconcileSubscriptions(
 				(a.id < b.id ? -1 : 1),
 		);
 	const keepers = new Map<string, string>();
+	const ambiguous = new Set<string>();
 	for (const sub of candidates) {
-		if (!keepers.has(sub.resource)) keepers.set(sub.resource, sub.id);
+		const keeper = keepers.get(sub.resource);
+		if (keeper === undefined) keepers.set(sub.resource, sub.id);
+		// Earlier versions stored every own subscription, whatever its secret. A renewal in this
+		// request proves the secret (its lifecycle item passed verification); without one, two
+		// stored subscriptions on one resource are both untrusted and the resource is created again.
+		else if (!renewed.has(keeper)) ambiguous.add(sub.resource);
 	}
+	for (const resource of ambiguous) keepers.delete(resource);
 	const keeperIds = new Set(keepers.values());
 
 	const listedIds = new Set(subscriptions.map((sub) => sub.id));
 	const storedAbsent = storedIds.filter((id) => !listedIds.has(id) && !gone.has(id));
 	// Every other own subscription goes first: Graph refuses a second `/teams/{id}/channels`
 	// subscription, and the two must never deliver together.
-	const deleteFailures = await deleteSubscriptions.call(this, [
-		...subscriptions.map((sub) => sub.id).filter((id) => !keeperIds.has(id)),
-		...storedAbsent,
-	]);
-	const { ids: created, failures: createFailures } = await createSubscriptions.call(
+	const refused = new Set(
+		await deleteSubscriptions.call(this, [
+			...subscriptions.map((sub) => sub.id).filter((id) => !keeperIds.has(id)),
+			...storedAbsent,
+		]),
+	);
+	const { ids: created, errors } = await createSubscriptions.call(
 		this,
 		webhookUrl,
 		required.filter((resource) => !keepers.has(resource)),
@@ -270,9 +277,8 @@ export async function reconcileSubscriptions(
 	);
 
 	// A stored id that is not listed and that Graph refused to remove stays, so the next
-	// activation retries the delete; the by-URL listing cannot find it.
-	const failedIds = new Set(deleteFailures.map((failure) => failure.id));
-	const retained = storedAbsent.filter((id) => failedIds.has(id));
+	// reconcile retries the delete; the by-URL listing cannot find it.
+	const retained = storedAbsent.filter((id) => refused.has(id));
 	const ids = [
 		...new Set([
 			...required.flatMap((resource) => keepers.get(resource) ?? []),
@@ -287,7 +293,7 @@ export async function reconcileSubscriptions(
 	const unchanged =
 		raw !== undefined && raw.length === ids.length && ids.every((id) => raw.includes(id));
 	if (!unchanged) webhookData.subscriptionIds = ids;
-	return { ids, failures: [...deleteFailures, ...createFailures] };
+	return errors;
 }
 
 /**
@@ -352,7 +358,7 @@ export function isSubscriptionResponse(value: unknown): value is SubscriptionRes
  * Runs after `webhook()` sent the 202. Never throws: a throw skips the static-data
  * save and core would answer an ended response. Renews the stored ids the batch names;
  * a batch with a removal, an unknown id, a failed renewal or a rejected item lists once
- * and reconciles.
+ * and reconciles, and so does a trigger that watches one resource but stores more ids.
  */
 export async function handleLifecycleNotifications(
 	this: IWebhookFunctions,
@@ -445,9 +451,17 @@ export async function handleLifecycleNotifications(
 	}
 
 	// A plain renewal lists nothing: Graph allows 25 `GET /subscriptions` per 20 s per app
-	// per tenant and 40 per 20 s per app across tenants.
+	// per tenant and 40 per 20 s per app across tenants. A trigger that watches one resource
+	// but stores more ids lists anyway: earlier versions stored duplicates with the valid
+	// secret, and they renew forever unless a listing removes them.
+	const watchesMany =
+		this.getNodeParameter('watchAllTeams', false) === true ||
+		this.getNodeParameter('watchAllChannels', false) === true;
 	const renewOnly =
-		rejectedCount === 0 && gone.size === 0 && [...toRenew].every((id) => renewed.has(id));
+		rejectedCount === 0 &&
+		gone.size === 0 &&
+		[...toRenew].every((id) => renewed.has(id)) &&
+		(watchesMany || storedIds.length <= 1);
 	if (renewOnly) return;
 
 	let subscriptions: SubscriptionResponse[];

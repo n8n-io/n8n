@@ -388,8 +388,10 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				}
 
 				if (clientState === undefined) {
-					// Without the secret nothing own can be verified and no stored id can be
-					// trusted, so `create()` starts clean.
+					// Without the secret nothing own can be verified and no stored id can be trusted,
+					// so `create()` starts with a fresh secret. A subscription that cannot be removed
+					// keeps a secret the node does not hold, so its deliveries are rejected until it
+					// expires.
 					await deleteSubscriptions.call(this, [
 						...subscriptions.map((subscription) => subscription.id),
 						...storedIds,
@@ -399,17 +401,16 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				}
 
 				const requiredResources = [await getResourcePath.call(this, event)].flat();
-				const { failures } = await reconcileSubscriptions.call(this, {
+				const [createError] = await reconcileSubscriptions.call(this, {
 					webhookUrl,
 					clientState,
 					requiredResources,
 					subscriptions,
 				});
 				// A resource without a live subscription is a dark trigger, so the activation
-				// fails with the Graph error. A failed removal only warns: the next activation
+				// fails with the Graph error. A failed removal only warns: the next reconcile
 				// retries it, from the listing or from the stored ids.
-				const createFailure = failures.find((failure) => failure.step === 'create');
-				if (createFailure) throw createFailure.error;
+				if (createError) throw createError;
 				return true;
 			},
 
@@ -430,15 +431,16 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 				const clientState = generateClientState();
 				const requiredResources = [await getResourcePath.call(this, event)].flat();
-				const { ids, failures } = await createSubscriptions.call(
+				const { ids, errors } = await createSubscriptions.call(
 					this,
 					webhookUrl,
 					requiredResources,
 					clientState,
 				);
-				if (failures.length > 0) throw failures[0].error;
-
+				// Stored before the throw, so core's cleanup removes them even when its listing fails.
 				webhookData.subscriptionIds = ids;
+				if (errors.length > 0) throw errors[0];
+
 				webhookData.webhookSecret = clientState;
 				return true;
 			},
@@ -466,13 +468,13 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						},
 					);
 				}
-				const failures = await deleteSubscriptions.call(this, ids);
+				const refused = await deleteSubscriptions.call(this, ids);
 				// A leftover at this URL is removed by the next publish, one at an old URL expires
 				// within three days, and core ignores the result.
 				delete webhookData.subscriptionIds;
 				delete webhookData.webhookSecret;
 				delete webhookData.staleSubscriptionIds;
-				return failures.length === 0;
+				return refused.length === 0;
 			},
 		},
 	};
@@ -493,15 +495,25 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			return { noWebhookResponse: true };
 		}
 
-		// `verifyWebhook` proved a non-empty array and dropped the items without the expected
+		// `verifyWebhook` proved a non-empty array and dropped the items without the stored
 		// clientState. When the batch also carries an accepted lifecycle item, the handler
 		// lists and reconciles for the dropped ones (not in a manual run). Only records become
 		// workflow items.
 		const notifications: unknown[] = req.body.value;
 		const rejected = notifications.length - accepted.length;
 		if (rejected > 0) {
-			logTrigger.call(this, 'debug', 'rejected notifications with an unknown clientState', {
+			// The ids name the leftover subscriptions; the values are capped like other logged input.
+			const subscriptionIds = notifications
+				.filter((item) => !accepted.includes(item))
+				.flatMap((item) =>
+					isRecord(item) && typeof item.subscriptionId === 'string'
+						? [item.subscriptionId.slice(0, 64)]
+						: [],
+				)
+				.slice(0, 20);
+			logTrigger.call(this, 'debug', 'rejected notifications without the stored clientState', {
 				rejected,
+				subscriptionIds,
 			});
 		}
 		const lifecycleNotifications = accepted.filter(isLifecycleNotification);
