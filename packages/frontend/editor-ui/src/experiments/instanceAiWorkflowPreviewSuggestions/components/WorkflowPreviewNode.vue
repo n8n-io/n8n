@@ -94,7 +94,7 @@ const iconLightInvert = computed(() => activeIcon.value.lightInvert === true);
 				oklch(from var(--color--neutral-white) l c h / 0.15)
 			)
 		);
-	color: var(--node--icon--color, var(--color--foreground--shade-1));
+	color: var(--n8n-node-icon--color, var(--color--foreground--shade-1));
 	transition: border-color 0.2s ease;
 
 	&::after {

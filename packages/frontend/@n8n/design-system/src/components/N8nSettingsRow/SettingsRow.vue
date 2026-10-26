@@ -245,7 +245,7 @@ function onKeydown(event: KeyboardEvent) {
 							<N8nText
 								ref="descriptionRef"
 								:class="$style.description"
-								:style="{ '--settings-row--description-lines': descriptionLines }"
+								:style="{ '--n8n-settings-row--description-lines': descriptionLines }"
 								size="small"
 								color="text-light"
 							>
@@ -428,7 +428,7 @@ $expand-easing: motion.$blur-motion-easing;
 .description {
 	display: -webkit-box;
 	-webkit-box-orient: vertical;
-	-webkit-line-clamp: var(--settings-row--description-lines, 2);
+	-webkit-line-clamp: var(--n8n-settings-row--description-lines, 2);
 	overflow: hidden;
 }
 

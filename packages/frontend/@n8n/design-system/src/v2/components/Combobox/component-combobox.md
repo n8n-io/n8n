@@ -69,7 +69,7 @@ The dropdown content defaults to a max height of **500px** with vertical scrolli
 
 ```css
 .my-combobox-content {
-  --combobox-content--max-height: 300px;
+  --n8n-combobox-content--max-height: 300px;
 }
 ```
 
@@ -383,7 +383,7 @@ const value = ref<string[]>(['apple']);
 
 ```css
 .narrow-combobox {
-  --combobox-content--max-height: 300px;
+  --n8n-combobox-content--max-height: 300px;
 }
 ```
 

@@ -90,10 +90,10 @@ const onClick = (event: MouseEvent) => {
 	font-size: var(--font-size--2xs);
 	display: flex;
 	color: var(--notice--color--text);
-	margin: var(--notice--margin, var(--spacing--sm) 0);
+	margin: var(--n8n-notice--margin, var(--spacing--sm) 0);
 	padding: var(--spacing--2xs);
-	background-color: var(--notice--color--background);
-	border: 1px solid var(--notice--color--border-color);
+	background-color: var(--n8n-notice--color--background);
+	border: 1px solid var(--n8n-notice--color--border-color);
 	border-radius: var(--radius--xs);
 	line-height: var(--line-height--sm);
 
@@ -112,8 +112,8 @@ const onClick = (event: MouseEvent) => {
 }
 
 .warning {
-	--notice--color--border-color: var(--color--yellow-500);
-	--notice--color--background: light-dark(
+	--n8n-notice--color--border-color: var(--color--yellow-500);
+	--n8n-notice--color--background: light-dark(
 		var(--color--yellow-50),
 		color-mix(in srgb, var(--color--yellow-500), transparent 80%)
 	);
@@ -121,8 +121,8 @@ const onClick = (event: MouseEvent) => {
 }
 
 .danger {
-	--notice--color--border-color: var(--color--red-500);
-	--notice--color--background: light-dark(
+	--n8n-notice--color--border-color: var(--color--red-500);
+	--n8n-notice--color--background: light-dark(
 		var(--color--red-50),
 		color-mix(in srgb, var(--color--red-500), transparent 80%)
 	);
@@ -130,8 +130,8 @@ const onClick = (event: MouseEvent) => {
 }
 
 .success {
-	--notice--color--border-color: var(--color--green-500);
-	--notice--color--background: light-dark(
+	--n8n-notice--color--border-color: var(--color--green-500);
+	--n8n-notice--color--background: light-dark(
 		var(--color--green-50),
 		color-mix(in srgb, var(--color--green-500), transparent 80%)
 	);
@@ -139,8 +139,8 @@ const onClick = (event: MouseEvent) => {
 }
 
 .info {
-	--notice--color--border-color: var(--color--blue-500);
-	--notice--color--background: light-dark(
+	--n8n-notice--color--border-color: var(--color--blue-500);
+	--n8n-notice--color--background: light-dark(
 		var(--color--blue-50),
 		color-mix(in srgb, var(--color--blue-500), transparent 80%)
 	);

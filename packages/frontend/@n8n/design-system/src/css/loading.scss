@@ -58,7 +58,7 @@
 	}
 
 	.circular {
-		--animation--spin--duration: 2s;
+		--n8n-animation--spin--duration: 2s;
 
 		max-height: 100%;
 		height: var.$loading-spinner-size;

@@ -109,8 +109,11 @@ $index-tooltip: 2001;
 
 /* Disable base
 -------------------------- */
-$disabled-fill-base: var(--input--color--background--disabled, var(--color--background--light-2));
-$disabled-color-base: var(--input--color--disabled, var(--color--text));
+$disabled-fill-base: var(
+	--n8n-input--color--background--disabled,
+	var(--color--background--light-2)
+);
+$disabled-color-base: var(--n8n-input--color--disabled, var(--color--text));
 $disabled-border-base: var(--input--border-color--disabled, var(--border-color));
 
 /* Icon
@@ -389,47 +392,50 @@ $notification-danger-icon-color: var(--color--danger);
 
 /* Input
 -------------------------- */
-$input-placeholder-color: var(--input--placeholder--color, var(--color--text--tint-1));
-$input-focus-border: var(--input--border-color--focus, var(--color--secondary));
-$input-border-color: var(--input--border-color, var(--border-color));
+$input-placeholder-color: var(--n8n-input--placeholder--color, var(--color--text--tint-1));
+$input-focus-border: var(--n8n-input--border-color--focus, var(--color--secondary));
+$input-border-color: var(--n8n-input--border-color, var(--border-color));
 $input-border-style: var(--input--border-style, var(--border-style));
-$input-border-width: var(--input--border-width, var(--border-width));
+$input-border-width: var(--n8n-input--border-width, var(--border-width));
 $input-border: $input-border-color $input-border-style $input-border-width;
 $input-border-right-color: var(
 	--input--border-right-color,
-	var(--input--border-color, var(--border-color))
+	var(--n8n-input--border-color, var(--border-color))
 );
 $input-border-bottom-color: var(
 	--input--border-bottom-color,
-	var(--input--border-color, var(--border-color))
+	var(--n8n-input--border-color, var(--border-color))
 );
 
-$input-font-size: var(--input--font-size, var(--font-size--sm));
+$input-font-size: var(--n8n-input--font-size, var(--font-size--sm));
 /// color||Color|0
-$input-font-color: var(--input--color--text, var(--color--text--shade-1));
+$input-font-color: var(--n8n-input--color--text, var(--color--text--shade-1));
 /// height||Other|4
 $input-width: 140px;
 /// height||Other|4
 $input-height: 40px;
 /// borderRadius||Border|2
-$input-border-radius: var(--input--radius, var(--radius));
-$input-border-top-left-radius: var(--input--radius--top-left, var(--input--radius, var(--radius)));
+$input-border-radius: var(--n8n-input--radius, var(--radius));
+$input-border-top-left-radius: var(
+	--n8n-input--radius--top-left,
+	var(--n8n-input--radius, var(--radius))
+);
 $input-border-top-right-radius: var(
 	--input-triple--radius--top-right,
-	var(--input--radius, var(--radius)),
+	var(--n8n-input--radius, var(--radius)),
 );
 $input-border-bottom-left-radius: var(
-	--input--radius--bottom-left,
-	var(--input--radius, var(--radius)),
+	--n8n-input--radius--bottom-left,
+	var(--n8n-input--radius, var(--radius)),
 );
 $input-border-bottom-right-radius: var(
 	--input-triple--radius--bottom-right,
-	var(--input--radius, var(--radius)),
+	var(--n8n-input--radius, var(--radius)),
 );
-$input-border-radius: var(--input--radius, var(--radius));
+$input-border-radius: var(--n8n-input--radius, var(--radius));
 $input-border-color-hover: $border-color-hover;
 /// color||Color|0
-$input-background-color: var(--input--color--background, var(--color--foreground--tint-2));
+$input-background-color: var(--n8n-input--color--background, var(--color--foreground--tint-2));
 $input-fill-disabled: $disabled-fill-base;
 $input-color-disabled: $font-color-disabled-base;
 /// color||Color|0
@@ -446,7 +452,7 @@ $input-disabled-color: $disabled-color-base;
 $input-disabled-placeholder-color: var(--color--text--tint-1);
 
 /// fontSize||Font|1
-$input-medium-font-size: var(--input--font-size, 14px);
+$input-medium-font-size: var(--n8n-input--font-size, 14px);
 /// height||Other|4
 $input-medium-height: 36px;
 /// fontSize||Font|1
@@ -498,10 +504,10 @@ $tab-vertical-header-count-fill: var(--color--text--tint-1);
 
 /* Button
 -------------------------- */
-$button-font-size: var(--button--font-size, var(--font-size--sm));
+$button-font-size: var(--n8n-button--font-size, var(--font-size--sm));
 $button-padding-vertical: var(--button--padding--vertical, var(--spacing--xs));
 $button-padding-horizontal: var(--button--padding--horizontal, var(--spacing--md));
-$button-border-radius: var(--button--radius, 4px);
+$button-border-radius: var(--n8n-button--radius, 4px);
 
 /// fontSize||Font|1
 $button-medium-font-size: $font-size-base;
@@ -529,28 +535,31 @@ $button-mini-padding-horizontal: 15px;
 
 // All buttons colors (defaults to primary buttons style).
 // Default
-$button-font-color: var(--button--color--text, var(--button--color--text--primary));
-$button-border-color: var(--button--border-color, var(--button--border-color--primary));
+$button-font-color: var(--n8n-button--color--text, var(--button--color--text--primary));
+$button-border-color: var(--n8n-button--border-color, var(--button--border-color--primary));
 $button-background-color: var(
-	--button--color--background,
+	--n8n-button--color--background,
 	var(--button--color--background--primary)
 );
 
 // Hover
-$button-hover-font-color: var(--button--color--text--hover, var(--button--color--text--primary));
+$button-hover-font-color: var(
+	--n8n-button--color--text--hover,
+	var(--button--color--text--primary)
+);
 $button-hover-border-color: var(
-	--button--border-color--hover,
+	--n8n-button--border-color--hover,
 	var(--button--border-color--primary--hover-active)
 );
 $button-hover-background-color: var(
-	--button--color--background--hover,
+	--n8n-button--color--background--hover,
 	var(--button--color--background--primary--hover-active-focus)
 );
 
 // Active
 $button-active-font-color: var(--button--color--text--active, var(--button--color--text--primary));
 $button-active-border-color: var(
-	--button--border-color--active,
+	--n8n-button--border-color--active,
 	var(--button--border-color--primary--hover-active)
 );
 $button-active-background-color: var(

@@ -420,7 +420,7 @@ async function onRegenerate() {
 /* Padding is per-section so the row dividers can span the full card width, as in
    the design, rather than stopping short at a card-level inset. */
 .card {
-	--card--padding: 0;
+	--n8n-card--padding: 0;
 
 	width: 100%;
 }

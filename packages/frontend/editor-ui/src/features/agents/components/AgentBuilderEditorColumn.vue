@@ -551,7 +551,7 @@ defineExpose({ onSetupTaskAction });
 }
 
 .settingsCard.settingsCard {
-	--card--padding: var(--spacing--sm);
+	--n8n-card--padding: var(--spacing--sm);
 
 	align-items: stretch;
 	background-color: var(--background--surface);

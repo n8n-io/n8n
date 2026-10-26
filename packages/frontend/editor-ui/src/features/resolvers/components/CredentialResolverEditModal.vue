@@ -549,7 +549,7 @@ onMounted(async () => {
 
 <style module lang="scss">
 .resolverModal {
-	--dialog--max-width: 1200px;
+	--n8n-dialog--max-width: 1200px;
 	--dialog--close--spacing--top: 31px;
 	--dialog--max-height: 750px;
 

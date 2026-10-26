@@ -104,13 +104,13 @@ const emit = defineEmits<{
 }
 
 .emptyAddButton {
-	--button--color: var(--text-color--subtler);
+	--n8n-button--color: var(--text-color--subtler);
 	margin-left: calc(-1 * var(--spacing--xs));
 	margin-top: calc(-1 * var(--spacing--4xs));
 
 	/** TODO: Consider making this style a generic N8nButton style. DS-652 **/
 	&:hover {
-		--button--color: var(--text-color);
+		--n8n-button--color: var(--text-color);
 		background-color: transparent;
 	}
 }

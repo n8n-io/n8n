@@ -20,14 +20,14 @@ Freeform tag entry field. Users type values and create tags via delimiter (defau
 - `delimiter?: string | RegExp` - Creates a tag from typed input. Default: `','`. Pass `''` to disable delimiter splitting
 - `displayValue?: (value: TagsInputValue) => string` - Label for tags. Falls back to string/number/bigint/`'null'`, or `value.label` for objects
 - `convertValue?: (value: string) => TagsInputValue` - Required when tags are objects
-- `size?: 'mini' | 'small' | 'medium' | 'large' | 'xlarge'` - Sets `--input--height`. Tag height is `height − 2× inset`; inset/gap share `--tags-input--padding`. Default: `'large'`
+- `size?: 'mini' | 'small' | 'medium' | 'large' | 'xlarge'` - Sets `--n8n-input--height`. Tag height is `height − 2× inset`; inset/gap share `--n8n-tags-input--padding`. Default: `'large'`
 - `embedded?: boolean` - When `true`, drops the field chrome so a parent (e.g. Combobox) owns the border/background. Default: `false`
 - `addOnPaste?: boolean` / `addOnBlur?: boolean` / `addOnTab?: boolean` - Extra ways to commit a tag
 - `max?: number` - Max tags. Reka treats `0` as unlimited
 - `duplicate?: boolean` - When `true`, allow duplicate tags. When `false` (default), adding an existing tag moves it to the end of the list
 - `name?: string` / `required?: boolean` - Form field props forwarded to Reka
 
-Cap height with `--tags-input--max-height` on a parent (or the field). The chrome stays fixed; tags scroll inside.
+Cap height with `--n8n-tags-input--max-height` on a parent (or the field). The chrome stays fixed; tags scroll inside.
 
 The draft input grows with typed text (`field-sizing: content`) so it wraps to the next row when it no longer fits beside existing tags, instead of clipping in the leftover space.
 
@@ -43,7 +43,7 @@ The draft input grows with typed text (`field-sizing: content`) so it wraps to t
 **Slots**
 
 - `input`: `{ id?, placeholder, autoFocus?, disabled?, class }` - Replace the default text input. Apply `class` so the field keeps TagsInput input styles. Re-exported `TagsInputInput` can be used when composing a custom input.
-- `trailing` - Content at the end of the field, outside the scrolling tags. The slot is unstyled. Position the content yourself. `--tag--height` is the chip height (`--input--height` minus twice `--tags-input--padding`). Set the content height to `calc(var(--input--height) - 2px)` to fill one row. That value is the field height minus the 1px padding on each side.
+- `trailing` - Content at the end of the field, outside the scrolling tags. The slot is unstyled. Position the content yourself. `--tag--height` is the chip height (`--n8n-input--height` minus twice `--n8n-tags-input--padding`). Set the content height to `calc(var(--n8n-input--height) - 2px)` to fill one row. That value is the field height minus the 1px padding on each side.
 - `tag`: `{ value, displayValue, index, disabled, ui }` - Replace tag content inside the item chrome. Keep using `TagsInputItemText` / `TagsInputItemDelete` (re-exported from `@n8n/design-system`) for label + remove a11y. Put `@mousedown.prevent` on `TagsInputItemDelete` so removing a tag does not steal focus. Prefer `as-child` with an explicit `aria-label` (e.g. “Remove {tag}”) and clear `aria-labelledby` — reka’s default names the delete control after the tag text alone. `ui.text` / `ui.delete` are the default class names
 
 

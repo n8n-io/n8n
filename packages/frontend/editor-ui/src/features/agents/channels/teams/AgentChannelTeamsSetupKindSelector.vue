@@ -60,7 +60,7 @@ const options = computed(() => [
 
 <style module lang="scss">
 .teamsSetupKindSelector {
-	--input--radius: var(--radius--xs);
+	--n8n-input--radius: var(--radius--xs);
 
 	width: 240px;
 }

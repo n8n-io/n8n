@@ -1099,20 +1099,20 @@ defineExpose({
 }
 
 .scrollToBottomButton {
-	--button--color: var(--icon-color--strong);
-	--button--color--background: var(--background--surface);
-	--button--color--background-hover: var(--color--foreground--tint-2);
-	--button--color--background-active: var(--color--foreground--tint-2);
-	--button--shadow: var(--shadow--xs);
-	--button--shadow--hover: var(--shadow--xs);
-	--button--shadow--active: var(--shadow--xs);
-	--button--border-color: var(--border-color);
-	--button--border-color--hover: var(--border-color);
-	--button--border-color--active: var(--border-color);
-	--button--border--shadow: 0 0 0 1px var(--button--border-color);
-	--button--border--shadow--hover: 0 0 0 1px var(--button--border-color--hover);
-	--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);
-	--button--radius: var(--radius--full);
+	--n8n-button--color: var(--icon-color--strong);
+	--n8n-button--color--background: var(--background--surface);
+	--n8n-button--color--background-hover: var(--color--foreground--tint-2);
+	--n8n-button--color--background-active: var(--color--foreground--tint-2);
+	--n8n-button--shadow: var(--shadow--xs);
+	--n8n-button--shadow--hover: var(--shadow--xs);
+	--n8n-button--shadow--active: var(--shadow--xs);
+	--n8n-button--border-color: var(--border-color);
+	--n8n-button--border-color--hover: var(--border-color);
+	--n8n-button--border-color--active: var(--border-color);
+	--n8n-button--border--shadow: 0 0 0 1px var(--n8n-button--border-color);
+	--n8n-button--border--shadow--hover: 0 0 0 1px var(--n8n-button--border-color--hover);
+	--n8n-button--border--shadow--active: 0 0 0 1px var(--n8n-button--border-color--active);
+	--n8n-button--radius: var(--radius--full);
 
 	pointer-events: auto;
 

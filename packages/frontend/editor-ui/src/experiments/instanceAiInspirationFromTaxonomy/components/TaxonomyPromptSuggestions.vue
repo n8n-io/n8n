@@ -208,7 +208,7 @@ function handleSuggestionClick(suggestion: TaxonomyDisplaySuggestion) {
 	cursor: pointer;
 
 	@include motion.fade-in-up;
-	--animation--fade-in-up--translate: var(--spacing--3xs);
+	--n8n-animation--fade-in-up--translate: var(--spacing--3xs);
 	animation-delay: var(--suggestion-enter-delay, 0ms);
 	animation-fill-mode: backwards;
 

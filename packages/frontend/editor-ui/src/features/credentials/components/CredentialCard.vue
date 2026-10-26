@@ -328,7 +328,7 @@ function moveResource() {
 @use '@n8n/design-system/css/mixins/breakpoints';
 
 .cardLink {
-	--card--padding: 0 0 0 var(--spacing--sm);
+	--n8n-card--padding: 0 0 0 var(--spacing--sm);
 
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -386,8 +386,8 @@ function moveResource() {
 
 @include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
-		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
-		--card--append--width: 100%;
+		--n8n-card--padding: 0 var(--spacing--sm) var(--spacing--sm);
+		--n8n-card--append--width: 100%;
 
 		flex-wrap: wrap;
 	}

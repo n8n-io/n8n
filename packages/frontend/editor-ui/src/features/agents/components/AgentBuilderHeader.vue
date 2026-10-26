@@ -369,7 +369,7 @@ function onMenuSelect(id: string) {
 }
 
 .headerActionsMenu {
-	--n8n--dropdown-menu-width: var(--spacing--5xl);
+	--n8n-dropdown-menu--width: var(--spacing--5xl);
 }
 
 .destructiveItem,

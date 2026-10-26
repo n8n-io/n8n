@@ -536,12 +536,12 @@ const customNodeStyles = `
 	gap: var(--spacing--2xs);
 	box-sizing: border-box;
 	width: 100%;
-	height: var(--tree-item-height);
+	height: var(--n8n-tree--item-height);
 	position: relative;
-	padding-block: var(--tree-item-padding-block);
-	padding-inline: var(--tree-item-padding-inline);
+	padding-block: var(--n8n-tree--item-padding-block);
+	padding-inline: var(--n8n-tree--item-padding-inline);
 	padding-left: calc(
-		var(--tree-item-padding-inline) + var(--tree-indent-unit) * var(--tree-indent, 0)
+		var(--n8n-tree--item-padding-inline) + var(--n8n-tree--indent-unit) * var(--n8n-tree--indent, 0)
 	);
 	border-radius: var(--radius--lg);
 	cursor: pointer;
@@ -554,7 +554,7 @@ const customNodeStyles = `
 }
 
 .${customNodeClass.treeItem}[data-has-toggle] {
-	padding-right: calc(var(--tree-item-padding-inline) * 2);
+	padding-right: calc(var(--n8n-tree--item-padding-inline) * 2);
 }
 
 .${customNodeClass.treeItem}:hover:not([data-disabled]) {
@@ -596,8 +596,8 @@ const customNodeStyles = `
 	top: 0;
 	bottom: 0;
 	left: calc(
-		var(--tree-item-padding-inline) + var(--tree-indent-unit) * var(--indent) +
-			var(--tree-icon-size) / 2
+		var(--n8n-tree--item-padding-inline) + var(--n8n-tree--indent-unit) * var(--indent) +
+			var(--n8n-tree--icon-size) / 2
 	);
 	z-index: 1;
 	width: 1px;
@@ -610,8 +610,8 @@ const customNodeStyles = `
 	flex-shrink: 0;
 	align-items: center;
 	justify-content: center;
-	width: var(--tree-icon-size);
-	height: var(--tree-icon-size);
+	width: var(--n8n-tree--icon-size);
+	height: var(--n8n-tree--icon-size);
 	border-radius: var(--radius--full);
 	font-size: var(--font-size--sm);
 	line-height: 1;
@@ -704,7 +704,7 @@ const TreeNodeCustom = defineComponent({
 					[customNodeClass.treeItemDisabled]: disabled,
 				},
 			]"
-			:style="{ '--tree-indent': indentLevel }"
+			:style="{ '--n8n-tree--indent': indentLevel }"
 			:data-disabled="disabled ? '' : undefined"
 			:data-has-toggle="showExpandArrow && hasChildren ? '' : undefined"
 			@click="!disabled && handleSelect()"

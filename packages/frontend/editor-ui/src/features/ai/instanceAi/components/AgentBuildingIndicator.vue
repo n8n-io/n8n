@@ -154,8 +154,8 @@ useIntervalFn(() => {
 	width: fit-content;
 	transition: transform var(--duration--base);
 
-	--animation--fade-in-up--end: calc(var(--spacing--lg) * -1);
-	transform: translateY(var(--animation--fade-in-up--end));
+	--n8n-animation--fade-in-up--end: calc(var(--spacing--lg) * -1);
+	transform: translateY(var(--n8n-animation--fade-in-up--end));
 	@include motion.fade-in-up;
 	animation-delay: 1s;
 	animation-fill-mode: backwards;

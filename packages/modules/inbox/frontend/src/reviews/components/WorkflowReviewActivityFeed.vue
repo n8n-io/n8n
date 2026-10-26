@@ -261,8 +261,8 @@ onMounted(() => {
 }
 
 .itemEntering {
-	--animation--fade-in-up--translate: var(--spacing--2xs);
-	--animation--fade-in-up--easing: var(--easing--ease-out-quint);
+	--n8n-animation--fade-in-up--translate: var(--spacing--2xs);
+	--n8n-animation--fade-in-up--easing: var(--easing--ease-out-quint);
 
 	@include motion.fade-in-up;
 }

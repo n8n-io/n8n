@@ -253,7 +253,7 @@ function onAction(action: string) {
 
 <style lang="css" module>
 .card {
-	--card--padding: var(--spacing--2xs);
+	--n8n-card--padding: var(--spacing--2xs);
 	padding-left: var(--spacing--sm);
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;

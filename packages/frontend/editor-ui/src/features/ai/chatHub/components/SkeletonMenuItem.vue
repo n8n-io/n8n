@@ -19,9 +19,9 @@
 
 .skeletonAvatar,
 .skeletonText {
-	--animation--skeleton-pulse--duration: 1s;
-	--animation--skeleton-pulse--opacity-start: 0.6;
-	--animation--skeleton-pulse--opacity-end: 0.3;
+	--n8n-animation--skeleton-pulse--duration: 1s;
+	--n8n-animation--skeleton-pulse--opacity-start: 0.6;
+	--n8n-animation--skeleton-pulse--opacity-end: 0.3;
 
 	background: var(--color--foreground);
 	@include motion.skeleton-pulse;

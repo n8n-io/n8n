@@ -101,7 +101,7 @@ function isLastRow(index: number, total: number): boolean {
 }
 
 .animated {
-	--animation--skeleton-pulse--duration: 1.5s;
+	--n8n-animation--skeleton-pulse--duration: 1.5s;
 
 	@include motion.skeleton-pulse;
 }

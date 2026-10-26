@@ -99,10 +99,13 @@ function onDelete() {
 <style lang="scss">
 .canvas-edge-toolbar-button {
 	border-width: 0;
-	--button--color--text: light-dark(var(--color--neutral-700), var(--color--neutral-250));
-	--button--color--text--hover: light-dark(var(--color--neutral-850), var(--color--neutral-150));
-	--button--color--background: light-dark(var(--color--neutral-200), var(--color--neutral-850));
-	--button--color--background--hover: light-dark(
+	--n8n-button--color--text: light-dark(var(--color--neutral-700), var(--color--neutral-250));
+	--n8n-button--color--text--hover: light-dark(
+		var(--color--neutral-850),
+		var(--color--neutral-150)
+	);
+	--n8n-button--color--background: light-dark(var(--color--neutral-200), var(--color--neutral-850));
+	--n8n-button--color--background--hover: light-dark(
 		var(--color--neutral-250),
 		var(--color--neutral-800)
 	);

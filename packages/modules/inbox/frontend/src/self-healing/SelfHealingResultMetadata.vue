@@ -193,8 +193,8 @@ const usageRows = computed(() => {
 }
 
 .card {
-	--card--padding: var(--spacing--xs);
-	--n8n--card-body--gap: var(--spacing--2xs);
+	--n8n-card--padding: var(--spacing--xs);
+	--n8n-card-body--gap: var(--spacing--2xs);
 	align-items: stretch;
 	border-color: var(--border-color);
 	background-color: transparent;
@@ -205,7 +205,7 @@ const usageRows = computed(() => {
 }
 
 .peopleCard {
-	--n8n--card-body--gap: var(--spacing--sm);
+	--n8n-card-body--gap: var(--spacing--sm);
 }
 
 .section {

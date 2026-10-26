@@ -58,7 +58,7 @@ const emit = defineEmits<{
 <style lang="scss" module>
 .dangerAction {
 	&:hover {
-		--button--color--text--hover: var(--color--danger);
+		--n8n-button--color--text--hover: var(--color--danger);
 	}
 }
 </style>

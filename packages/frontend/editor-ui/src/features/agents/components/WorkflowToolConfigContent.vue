@@ -520,9 +520,9 @@ defineExpose({
 }
 
 .field .invalidDescription {
-	--input--border-color: var(--color--danger);
-	--input--border-color--hover: var(--color--danger);
-	--input--border-color--focus: var(--color--danger);
+	--n8n-input--border-color: var(--color--danger);
+	--n8n-input--border-color--hover: var(--color--danger);
+	--n8n-input--border-color--focus: var(--color--danger);
 }
 
 .label {

@@ -199,7 +199,7 @@ onBeforeUnmount(function cleanUpActions() {
 }
 
 .iconSwap {
-	--animation--blur-swap--blur: 2px;
+	--n8n-animation--blur-swap--blur: 2px;
 
 	position: relative;
 	display: inline-flex;

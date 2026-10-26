@@ -210,17 +210,17 @@ function onInputBlur() {
 
 .copyInput {
 	gap: 0;
-	border-radius: var(--input--radius);
-	background-color: var(--input--color--background);
-	box-shadow: inset var(--input--border--shadow);
+	border-radius: var(--n8n-input--radius);
+	background-color: var(--n8n-input--color--background);
+	box-shadow: inset var(--n8n-input--border--shadow);
 
 	&:hover:not(.disabled):not(.focused) {
-		box-shadow: inset var(--input--border--shadow--hover);
+		box-shadow: inset var(--n8n-input--border--shadow--hover);
 	}
 
 	&.focused {
 		@include focus.focus-ring;
-		box-shadow: inset var(--input--border--shadow--focus);
+		box-shadow: inset var(--n8n-input--border--shadow--focus);
 	}
 
 	&.disabled {
@@ -231,13 +231,13 @@ function onInputBlur() {
 	// The input wrapper keeps its layout but hands border, background and focus
 	// ring over to this container, through the variables it already consumes.
 	> div {
-		--input--color--background: transparent;
-		--input--shadow: 0 0 0 0 transparent;
-		--input--shadow--hover: 0 0 0 0 transparent;
-		--input--shadow--focus: 0 0 0 0 transparent;
-		--input--border--shadow: 0 0 0 0 transparent;
-		--input--border--shadow--hover: 0 0 0 0 transparent;
-		--input--border--shadow--focus: 0 0 0 0 transparent;
+		--n8n-input--color--background: transparent;
+		--n8n-input--shadow: 0 0 0 0 transparent;
+		--n8n-input--shadow--hover: 0 0 0 0 transparent;
+		--n8n-input--shadow--focus: 0 0 0 0 transparent;
+		--n8n-input--border--shadow: 0 0 0 0 transparent;
+		--n8n-input--border--shadow--hover: 0 0 0 0 transparent;
+		--n8n-input--border--shadow--focus: 0 0 0 0 transparent;
 
 		&:focus-within {
 			outline: none;
@@ -261,12 +261,12 @@ function onInputBlur() {
 			&:hover:not(:disabled),
 			&:active:not(:disabled) {
 				z-index: 1;
-				background-color: var(--input--color--background);
+				background-color: var(--n8n-input--color--background);
 				background-repeat: no-repeat;
 				background-position: center;
-				background-size: calc(100% - (2 * var(--input--border-width, var(--border-width))))
-					calc(100% - (2 * var(--input--border-width, var(--border-width))));
-				box-shadow: inset var(--input--border--shadow--hover);
+				background-size: calc(100% - (2 * var(--n8n-input--border-width, var(--border-width))))
+					calc(100% - (2 * var(--n8n-input--border-width, var(--border-width))));
+				box-shadow: inset var(--n8n-input--border--shadow--hover);
 
 				&:before {
 					background-color: transparent;
@@ -275,15 +275,15 @@ function onInputBlur() {
 
 			&:hover:not(:disabled) {
 				background-image: linear-gradient(
-					var(--button--color--background-hover),
-					var(--button--color--background-hover)
+					var(--n8n-button--color--background-hover),
+					var(--n8n-button--color--background-hover)
 				);
 			}
 
 			&:active:not(:disabled) {
 				background-image: linear-gradient(
-					var(--button--color--background-active),
-					var(--button--color--background-active)
+					var(--n8n-button--color--background-active),
+					var(--n8n-button--color--background-active)
 				);
 			}
 
@@ -291,20 +291,20 @@ function onInputBlur() {
 				content: '';
 				position: absolute;
 				left: 0;
-				top: var(--input--border-width, var(--border-width));
-				height: calc(100% - (2 * var(--input--border-width, var(--border-width))));
-				width: var(--input--border-width, var(--border-width));
-				background-color: var(--input--border-color);
+				top: var(--n8n-input--border-width, var(--border-width));
+				height: calc(100% - (2 * var(--n8n-input--border-width, var(--border-width))));
+				width: var(--n8n-input--border-width, var(--border-width));
+				background-color: var(--n8n-input--border-color);
 			}
 		}
 
 		// Adjacent controls share one edge. The hovered shadow covers that divider.
 		> * + * {
-			margin-left: calc(-1 * var(--input--border-width, var(--border-width)));
+			margin-left: calc(-1 * var(--n8n-input--border-width, var(--border-width)));
 		}
 
 		> :last-child {
-			border-radius: 0 var(--input--radius) var(--input--radius) 0;
+			border-radius: 0 var(--n8n-input--radius) var(--n8n-input--radius) 0;
 		}
 	}
 
@@ -320,7 +320,7 @@ function onInputBlur() {
 
 		> span:first-child {
 			position: absolute;
-			inset: 25% var(--input--padding);
+			inset: 25% var(--n8n-input--padding);
 			margin: 0;
 			padding: 0;
 			opacity: 1;
@@ -335,7 +335,7 @@ function onInputBlur() {
  * a glyph this small instead of morphing it.
  */
 .iconSwap {
-	--animation--blur-swap--blur: 2px;
+	--n8n-animation--blur-swap--blur: 2px;
 
 	position: relative;
 	display: inline-flex;

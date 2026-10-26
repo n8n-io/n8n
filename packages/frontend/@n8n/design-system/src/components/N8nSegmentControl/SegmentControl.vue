@@ -156,7 +156,7 @@ function onUpdate(raw: AcceptableValue) {
 	--n8n-segment-control--padding: var(--spacing--5xs);
 	--n8n-segment-control--font-size: var(--font-size--2xs);
 	--n8n-segment-control--item-padding: 0 var(--spacing--xs);
-	--n8n-segment-control--height: var(--input--height);
+	--n8n-segment-control--height: var(--n8n-input--height);
 
 	display: inline-flex;
 	align-items: stretch;

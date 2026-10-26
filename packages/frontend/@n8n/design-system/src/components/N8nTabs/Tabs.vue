@@ -264,12 +264,12 @@ function scroll(direction: 'left' | 'right') {
 }
 
 .tab {
-	--tabs--tab--border-width--active: 2px;
+	--n8n-tabs--tab--border-width--active: 2px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
 	padding: 0 var(--spacing--sm);
-	padding-bottom: calc(var(--spacing--2xs) + var(--tabs--tab--border-width--active));
+	padding-bottom: calc(var(--spacing--2xs) + var(--n8n-tabs--tab--border-width--active));
 	font-size: var(--font-size--sm);
 
 	cursor: pointer;
@@ -291,7 +291,7 @@ function scroll(direction: 'left' | 'right') {
 	}
 
 	.modern & {
-		padding-bottom: calc(var(--spacing--xs) + var(--tabs--tab--border-width--active));
+		padding-bottom: calc(var(--spacing--xs) + var(--n8n-tabs--tab--border-width--active));
 		font-size: var(--font-size--2xs);
 		font-weight: var(--font-weight--medium);
 	}
@@ -320,7 +320,7 @@ function scroll(direction: 'left' | 'right') {
 .activeTab {
 	color: var(--color--primary);
 	padding-bottom: var(--spacing--2xs);
-	border-bottom: var(--color--primary) var(--tabs--tab--border-width--active) solid;
+	border-bottom: var(--color--primary) var(--n8n-tabs--tab--border-width--active) solid;
 
 	.modern & {
 		padding-bottom: var(--spacing--xs);
@@ -412,7 +412,7 @@ function scroll(direction: 'left' | 'right') {
 	justify-content: center;
 	padding-inline: 0;
 	border: 0;
-	background: var(--tabs--arrow-buttons--color, transparent);
+	background: var(--n8n-tabs--arrow-buttons--color, transparent);
 	font-family: inherit;
 	line-height: inherit;
 

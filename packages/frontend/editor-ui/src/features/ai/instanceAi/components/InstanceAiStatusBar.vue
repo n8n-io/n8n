@@ -159,13 +159,13 @@ onUnmounted(() => {
 }
 
 .label {
-	--animation--shimmer--duration: 1.5s;
-	--animation--shimmer--background: color-mix(
+	--n8n-animation--shimmer--duration: 1.5s;
+	--n8n-animation--shimmer--background: color-mix(
 		in srgb,
 		var(--text-color--subtler) 30%,
 		var(--background--subtle) 70%
 	);
-	--animation--shimmer--foreground: var(--text-color--subtler);
+	--n8n-animation--shimmer--foreground: var(--text-color--subtler);
 	@include motion.shimmer;
 }
 

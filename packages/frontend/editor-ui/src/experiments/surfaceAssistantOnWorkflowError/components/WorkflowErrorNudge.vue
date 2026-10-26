@@ -268,22 +268,25 @@ onBeforeUnmount(stopTracking);
 .embed .action.action {
 	position: relative;
 	z-index: 1;
-	--button--color: light-dark(var(--color--purple-700), var(--color--purple-300));
-	--button--color--background: light-dark(var(--color--purple-50), var(--color--purple-alpha-100));
-	--button--color--background-hover: light-dark(
+	--n8n-button--color: light-dark(var(--color--purple-700), var(--color--purple-300));
+	--n8n-button--color--background: light-dark(
+		var(--color--purple-50),
+		var(--color--purple-alpha-100)
+	);
+	--n8n-button--color--background-hover: light-dark(
 		var(--color--purple-100),
 		var(--color--purple-alpha-200)
 	);
-	--button--color--background-active: light-dark(
+	--n8n-button--color--background-active: light-dark(
 		var(--color--purple-200),
 		var(--color--purple-alpha-300)
 	);
-	--button--border-color: light-dark(var(--color--purple-200), var(--color--purple-alpha-300));
-	--button--border-color--hover: light-dark(
+	--n8n-button--border-color: light-dark(var(--color--purple-200), var(--color--purple-alpha-300));
+	--n8n-button--border-color--hover: light-dark(
 		var(--color--purple-300),
 		var(--color--purple-alpha-400)
 	);
-	--button--border-color--active: light-dark(
+	--n8n-button--border-color--active: light-dark(
 		var(--color--purple-300),
 		var(--color--purple-alpha-400)
 	);

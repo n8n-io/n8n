@@ -89,12 +89,12 @@ function splitKeyMemory(text: string): string[] {
 
 /** When https://github.com/n8n-io/n8n/pull/30611 is merged we can replace with proper N8nHoverCard component **/
 .popoverContent {
-	--popover--offset--slide-x: 0;
-	--popover--offset--slide-y: 0;
-	--popover--offset--origin-x: center;
-	--popover--offset--origin-y: center;
-	--animation--popover-in--translate-x: var(--popover--offset--slide-x);
-	--animation--popover-in--translate-y: var(--popover--offset--slide-y);
+	--n8n-popover--offset--slide-x: 0;
+	--n8n-popover--offset--slide-y: 0;
+	--n8n-popover--offset--origin-x: center;
+	--n8n-popover--offset--origin-y: center;
+	--n8n-animation--popover-in--translate-x: var(--n8n-popover--offset--slide-x);
+	--n8n-animation--popover-in--translate-y: var(--n8n-popover--offset--slide-y);
 
 	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);
@@ -102,7 +102,7 @@ function splitKeyMemory(text: string): string[] {
 		var(--shadow--md),
 		inset var(--shadow--outline);
 	will-change: transform, opacity;
-	transform-origin: var(--popover--offset--origin-x) var(--popover--offset--origin-y);
+	transform-origin: var(--n8n-popover--offset--origin-x) var(--n8n-popover--offset--origin-y);
 
 	&[data-state='open'] {
 		@include motion.popover-in;
@@ -114,47 +114,47 @@ function splitKeyMemory(text: string): string[] {
 }
 
 .popoverContent[data-state='open'][data-side='top'] {
-	--popover--offset--slide-y: -2px;
-	--popover--offset--origin-y: bottom;
+	--n8n-popover--offset--slide-y: -2px;
+	--n8n-popover--offset--origin-y: bottom;
 }
 
 .popoverContent[data-state='open'][data-side='right'] {
-	--popover--offset--slide-x: 2px;
-	--popover--offset--origin-x: left;
+	--n8n-popover--offset--slide-x: 2px;
+	--n8n-popover--offset--origin-x: left;
 }
 
 .popoverContent[data-state='open'][data-side='bottom'] {
-	--popover--offset--slide-y: 2px;
-	--popover--offset--origin-y: top;
+	--n8n-popover--offset--slide-y: 2px;
+	--n8n-popover--offset--origin-y: top;
 }
 
 .popoverContent[data-state='open'][data-side='left'] {
-	--popover--offset--slide-x: -2px;
-	--popover--offset--origin-x: right;
+	--n8n-popover--offset--slide-x: -2px;
+	--n8n-popover--offset--origin-x: right;
 }
 
 .popoverContent[data-state='open'][data-side='top'][data-align='start'],
 .popoverContent[data-state='open'][data-side='bottom'][data-align='start'] {
-	--popover--offset--slide-x: -2px;
-	--popover--offset--origin-x: left;
+	--n8n-popover--offset--slide-x: -2px;
+	--n8n-popover--offset--origin-x: left;
 }
 
 .popoverContent[data-state='open'][data-side='top'][data-align='end'],
 .popoverContent[data-state='open'][data-side='bottom'][data-align='end'] {
-	--popover--offset--slide-x: 2px;
-	--popover--offset--origin-x: right;
+	--n8n-popover--offset--slide-x: 2px;
+	--n8n-popover--offset--origin-x: right;
 }
 
 .popoverContent[data-state='open'][data-side='left'][data-align='start'],
 .popoverContent[data-state='open'][data-side='right'][data-align='start'] {
-	--popover--offset--slide-y: -2px;
-	--popover--offset--origin-y: top;
+	--n8n-popover--offset--slide-y: -2px;
+	--n8n-popover--offset--origin-y: top;
 }
 
 .popoverContent[data-state='open'][data-side='left'][data-align='end'],
 .popoverContent[data-state='open'][data-side='right'][data-align='end'] {
-	--popover--offset--slide-y: 2px;
-	--popover--offset--origin-y: bottom;
+	--n8n-popover--offset--slide-y: 2px;
+	--n8n-popover--offset--origin-y: bottom;
 }
 
 .panel {

@@ -449,8 +449,8 @@ watch(
 
 .searchInput {
 	border-bottom: var(--border);
-	--input--border-color: none;
-	--input--font-size: var(--font-size--2xs);
+	--n8n-input--border-color: none;
+	--n8n-input--font-size: var(--font-size--2xs);
 	width: 100%;
 	z-index: 1;
 }

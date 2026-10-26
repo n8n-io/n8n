@@ -511,40 +511,43 @@ defineExpose({
 }
 
 .ghost {
-	--n8n--markdown-editor--background-color: transparent;
+	--n8n-markdown-editor--background-color: transparent;
 	background-color: transparent;
 }
 
 .contained {
-	--input--height: var(--height--lg);
-	--input--radius: var(--radius--2xs);
-	--input--font-size: var(--font-size--sm);
-	--input--padding: var(--spacing--xs);
-	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
-	--input--shadow: 0 0 0 0 transparent;
-	--input--shadow--hover: 0 0 0 0 transparent;
-	--input--shadow--focus: 0 0 0 0 transparent;
-	--input--border-color: var(--border-color);
-	--input--border-color--hover: var(--border-color--strong);
-	--input--border-color--focus: var(--focus--border-color);
-	--input--border--shadow: 0 0 0 1px var(--input--border-color);
-	--input--border--shadow--hover: 0 0 0 1px var(--input--border-color--hover);
-	--input--border--shadow--focus: 0 0 0 1px var(--input--border-color--focus);
+	--n8n-input--height: var(--height--lg);
+	--n8n-input--radius: var(--radius--2xs);
+	--n8n-input--font-size: var(--font-size--sm);
+	--n8n-input--padding: var(--spacing--xs);
+	--n8n-input--color--background: light-dark(
+		var(--color--neutral-white),
+		var(--color--neutral-950)
+	);
+	--n8n-input--shadow: 0 0 0 0 transparent;
+	--n8n-input--shadow--hover: 0 0 0 0 transparent;
+	--n8n-input--shadow--focus: 0 0 0 0 transparent;
+	--n8n-input--border-color: var(--border-color);
+	--n8n-input--border-color--hover: var(--border-color--strong);
+	--n8n-input--border-color--focus: var(--focus--border-color);
+	--n8n-input--border--shadow: 0 0 0 1px var(--n8n-input--border-color);
+	--n8n-input--border--shadow--hover: 0 0 0 1px var(--n8n-input--border-color--hover);
+	--n8n-input--border--shadow--focus: 0 0 0 1px var(--n8n-input--border-color--focus);
 
-	min-height: var(--input--height);
+	min-height: var(--n8n-input--height);
 	padding: 1px;
-	border-radius: var(--input--radius);
-	background-color: var(--input--color--background);
-	box-shadow: var(--input--shadow), var(--input--border--shadow);
+	border-radius: var(--n8n-input--radius);
+	background-color: var(--n8n-input--color--background);
+	box-shadow: var(--n8n-input--shadow), var(--n8n-input--border--shadow);
 
 	@include focus.focus-within-ring;
 
 	&:hover:not(.disabled):not(:focus-within) {
-		box-shadow: var(--input--shadow--hover), var(--input--border--shadow--hover);
+		box-shadow: var(--n8n-input--shadow--hover), var(--n8n-input--border--shadow--hover);
 	}
 
 	&:focus-within {
-		box-shadow: var(--input--shadow--focus), var(--input--border--shadow--focus);
+		box-shadow: var(--n8n-input--shadow--focus), var(--n8n-input--border--shadow--focus);
 	}
 }
 
@@ -566,7 +569,7 @@ defineExpose({
 		outline: none;
 		padding: var(--spacing--xs);
 		font-family: inherit;
-		font-size: var(--input--font-size, inherit);
+		font-size: var(--n8n-input--font-size, inherit);
 	}
 
 	&.padTop :global(.n8n-markdown) {
@@ -638,8 +641,8 @@ defineExpose({
 	background-color: var(--color--neutral-black);
 	color: var(--color--neutral-white);
 
-	--button--color--background: var(--color--neutral-black);
-	--button--color: var(--color--neutral-white);
+	--n8n-button--color--background: var(--color--neutral-black);
+	--n8n-button--color: var(--color--neutral-white);
 
 	&:hover {
 		background-color: color-mix(
@@ -677,7 +680,7 @@ defineExpose({
 	background-color: transparent;
 	color: inherit;
 	font-family: inherit;
-	font-size: var(--input--font-size, inherit);
+	font-size: var(--n8n-input--font-size, inherit);
 	line-height: 1.5em;
 
 	&::placeholder {

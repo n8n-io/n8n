@@ -704,16 +704,16 @@ function getItemKey(_item: INodeParameters, index: number) {
 	.controls {
 		:global(.button) {
 			font-weight: var(--font-weight--regular);
-			--button--color--text: var(--color--text--shade-1);
-			--button--border-color: var(--color--foreground);
-			--button--color--background: var(--color--background);
+			--n8n-button--color--text: var(--color--text--shade-1);
+			--n8n-button--border-color: var(--color--foreground);
+			--n8n-button--color--background: var(--color--background);
 
-			--button--color--text--hover: var(--color--text--shade-1);
-			--button--border-color--hover: var(--color--foreground);
-			--button--color--background--hover: var(--color--background);
+			--n8n-button--color--text--hover: var(--color--text--shade-1);
+			--n8n-button--border-color--hover: var(--color--foreground);
+			--n8n-button--color--background--hover: var(--color--background);
 
 			--button--color--text--active: var(--color--text--shade-1);
-			--button--border-color--active: var(--color--foreground);
+			--n8n-button--border-color--active: var(--color--foreground);
 			--button--color--background--active: var(--color--background);
 
 			--button--color--text--focus: var(--color--text--shade-1);

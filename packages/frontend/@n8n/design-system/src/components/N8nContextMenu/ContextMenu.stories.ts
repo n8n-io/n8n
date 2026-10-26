@@ -481,7 +481,7 @@ const meta = {
 		contentClass: {
 			control: 'text',
 			description:
-				'Extra CSS class for every panel. Set --context-menu--width for a fixed panel width.',
+				'Extra CSS class for every panel. Set --n8n-context-menu--width for a fixed panel width.',
 		},
 		modal: {
 			control: 'boolean',
@@ -869,7 +869,7 @@ export const CustomWidth: Story = {
 	render: (args) => ({
 		components: { ContextMenu },
 		setup() {
-			const customWidthStyle = '.context-menu-custom-width { --context-menu--width: 20rem; }';
+			const customWidthStyle = '.context-menu-custom-width { --n8n-context-menu--width: 20rem; }';
 			return { args, logSelect, customWidthStyle };
 		},
 		template: `

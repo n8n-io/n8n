@@ -358,8 +358,8 @@ onBeforeUnmount(() => {
 					:class="$style['sub-content']"
 					:style="[
 						subContentMaxHeight ? { maxHeight: subContentMaxHeight } : {},
-						subMenuMaxHeight ? { '--n8n-dropdown-sub-max-height': subMenuMaxHeight } : {},
-						{ '--n8n--dropdown-menu-width': menuWidth },
+						subMenuMaxHeight ? { '--n8n-dropdown--sub-max-height': subMenuMaxHeight } : {},
+						{ '--n8n-dropdown-menu--width': menuWidth },
 					]"
 					:side-offset="1"
 					:prioritize-position="true"
@@ -683,13 +683,13 @@ onBeforeUnmount(() => {
 	background-color: var(--background--surface);
 	z-index: var.$index-popper;
 	width: fit-content;
-	min-width: calc(var(--n8n--dropdown-menu-width, 24rem) / 4);
-	max-width: var(--n8n--dropdown-menu-width, 24rem);
+	min-width: calc(var(--n8n-dropdown-menu--width, 24rem) / 4);
+	max-width: var(--n8n-dropdown-menu--width, 24rem);
 	max-height: min(
 		var(--reka-dropdown-menu-content-available-height),
-		var(--n8n-dropdown-sub-max-height, 75vh)
+		var(--n8n-dropdown--sub-max-height, 75vh)
 	);
-	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
+	transform-origin: var(--n8n-dropdown--offset--origin-x) var(--n8n-dropdown--offset--origin-y);
 	overflow: hidden;
 	scrollbar-width: none;
 

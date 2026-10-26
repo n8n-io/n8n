@@ -1,5 +1,6 @@
 import stylelint from 'stylelint';
 import type { Rule } from 'stylelint';
+import { COMPONENT_VARIABLE_PATTERN } from './component-css-vars.js';
 
 const ruleName = '@n8n/css-var-naming';
 const DESIGN_SYSTEM_CSS_PATH_SEGMENT = '/frontend/@n8n/design-system/src/css/';
@@ -165,6 +166,8 @@ function shouldValidateFile(filePath: string | undefined) {
 }
 
 function shouldSkip(variable: string) {
+	if (COMPONENT_VARIABLE_PATTERN.test(variable)) return true;
+
 	if (variable.startsWith(N8N_BYPASS_PREFIX)) {
 		const groups = variable.slice(2).split('--').slice(1);
 		const hasKnownProperty = groups.some((group) => PROPERTY_VOCABULARY.has(group));

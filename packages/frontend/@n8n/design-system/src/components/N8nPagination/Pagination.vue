@@ -397,10 +397,10 @@ function handlePagerKeydown(event: KeyboardEvent) {
 	}
 
 	.jumper {
-		--jumper-height: var(--height--md);
-		--jumper-inset: var(--spacing--xs);
-		--jumper-font-size: var(--font-size--sm);
-		--jumper-radius: var(--radius--3xs);
+		--n8n-pagination-jumper--height: var(--height--md);
+		--n8n-pagination-jumper--inset: var(--spacing--xs);
+		--n8n-pagination-jumper--font-size: var(--font-size--sm);
+		--n8n-pagination-jumper--radius: var(--radius--3xs);
 	}
 }
 
@@ -419,10 +419,10 @@ function handlePagerKeydown(event: KeyboardEvent) {
 	}
 
 	.jumper {
-		--jumper-height: var(--height--sm);
-		--jumper-inset: var(--spacing--2xs);
-		--jumper-font-size: var(--font-size--xs);
-		--jumper-radius: var(--radius--3xs);
+		--n8n-pagination-jumper--height: var(--height--sm);
+		--n8n-pagination-jumper--inset: var(--spacing--2xs);
+		--n8n-pagination-jumper--font-size: var(--font-size--xs);
+		--n8n-pagination-jumper--radius: var(--radius--3xs);
 	}
 }
 
@@ -449,11 +449,11 @@ function handlePagerKeydown(event: KeyboardEvent) {
 	display: inline-flex;
 	align-items: center;
 	margin-inline-start: calc(var(--spacing--2xs) - var(--spacing--xs));
-	min-height: var(--jumper-height, var(--height--md));
-	border-radius: var(--jumper-radius, var(--radius--3xs));
+	min-height: var(--n8n-pagination-jumper--height, var(--height--md));
+	border-radius: var(--n8n-pagination-jumper--radius, var(--radius--3xs));
 	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 	box-shadow: inset 0 0 0 1px var(--border-color);
-	font-size: var(--jumper-font-size, var(--font-size--sm));
+	font-size: var(--n8n-pagination-jumper--font-size, var(--font-size--sm));
 
 	@include focus.focus-within-ring;
 
@@ -472,13 +472,13 @@ function handlePagerKeydown(event: KeyboardEvent) {
 }
 
 .jumperPrefix {
-	padding-inline-start: var(--jumper-inset, var(--spacing--xs));
+	padding-inline-start: var(--n8n-pagination-jumper--inset, var(--spacing--xs));
 	color: var(--text-color--subtler);
 }
 
 .jumperInput {
-	min-height: var(--jumper-height, var(--height--md));
-	padding-inline: var(--jumper-inset, var(--spacing--xs));
+	min-height: var(--n8n-pagination-jumper--height, var(--height--md));
+	padding-inline: var(--n8n-pagination-jumper--inset, var(--spacing--xs));
 	border: none;
 	background: transparent;
 	outline: none;

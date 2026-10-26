@@ -99,9 +99,9 @@ const hasSplit = computed(() => props.items.length > 0);
 
 	.splitButtonMain,
 	.splitButtonCaret {
-		--button--border--shadow: 0 0 0 0 transparent;
-		--button--border--shadow--hover: 0 0 0 0 transparent;
-		--button--border--shadow--active: 0 0 0 0 transparent;
+		--n8n-button--border--shadow: 0 0 0 0 transparent;
+		--n8n-button--border--shadow--hover: 0 0 0 0 transparent;
+		--n8n-button--border--shadow--active: 0 0 0 0 transparent;
 		border-left: 0;
 	}
 

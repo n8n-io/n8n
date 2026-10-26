@@ -142,7 +142,7 @@ const totalCount = computed(() => props.skills.length);
 }
 
 .row {
-	--card--append--width: auto;
+	--n8n-card--append--width: auto;
 
 	:global(.n8n-card-append) {
 		gap: var(--spacing--2xs);

@@ -1,7 +1,7 @@
 .root {
-	--tree-item-height: var(--spacing--xl);
-	--tree-icon-size: var(--spacing--lg);
-	--tree-item-padding-block: var(--spacing--4xs);
-	--tree-item-padding-inline: var(--tree-item-padding-block);
-	--tree-indent-unit: calc(var(--tree-item-padding-inline) + var(--tree-icon-size));
+	--n8n-tree--item-height: var(--spacing--xl);
+	--n8n-tree--icon-size: var(--spacing--lg);
+	--n8n-tree--item-padding-block: var(--spacing--4xs);
+	--n8n-tree--item-padding-inline: var(--n8n-tree--item-padding-block);
+	--n8n-tree--indent-unit: calc(var(--n8n-tree--item-padding-inline) + var(--n8n-tree--icon-size));
 }

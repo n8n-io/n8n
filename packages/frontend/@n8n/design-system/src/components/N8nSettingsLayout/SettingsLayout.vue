@@ -55,7 +55,7 @@ const emit = defineEmits<{ back: [] }>();
 <style lang="scss" module>
 .layout {
 	/* The single component-scoped width token; 45rem === 720px at a 16px root. */
-	--settings-content--max-width: 45rem;
+	--n8n-settings-content--max-width: 45rem;
 
 	display: flex;
 	flex-direction: column;
@@ -78,12 +78,12 @@ const emit = defineEmits<{ back: [] }>();
 
 .content {
 	width: 100%;
-	max-width: var(--settings-content--max-width);
+	max-width: var(--n8n-settings-content--max-width);
 	margin-inline: auto;
 
 	/*
 	 * Center each child within its own cap. The page header caps itself at
-	 * --settings-content--max-width, so it stays centered on the page even when the
+	 * --n8n-settings-content--max-width, so it stays centered on the page even when the
 	 * content region goes full-width; full-width children (width: 100%) are unaffected.
 	 */
 	> * {

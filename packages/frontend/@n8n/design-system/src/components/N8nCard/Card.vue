@@ -58,7 +58,7 @@ function getClasses() {
 	border: var(--border);
 	box-shadow: var(--shadow--xs);
 	background-color: var(--background--surface);
-	padding: var(--card--padding, var(--spacing--sm));
+	padding: var(--n8n-card--padding, var(--spacing--sm));
 	display: flex;
 	flex-direction: row;
 	width: 100%;
@@ -87,7 +87,7 @@ function getClasses() {
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
-	gap: var(--n8n--card-body--gap, 0);
+	gap: var(--n8n-card-body--gap, 0);
 }
 
 .icon {
@@ -112,6 +112,6 @@ function getClasses() {
 	display: flex;
 	align-items: center;
 	cursor: default;
-	width: var(--card--append--width, unset);
+	width: var(--n8n-card--append--width, unset);
 }
 </style>

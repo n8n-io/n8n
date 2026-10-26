@@ -36,26 +36,29 @@ $input-sizes: (
 @mixin size-variables($size: 'large') {
 	$config: map.get($input-sizes, $size);
 
-	--input--height: #{map.get($config, height)};
-	--input--radius: #{map.get($config, radius)};
-	--input--font-size: #{map.get($config, font-size)};
-	--input--padding: #{map.get($config, padding)};
+	--n8n-input--height: #{map.get($config, height)};
+	--n8n-input--radius: #{map.get($config, radius)};
+	--n8n-input--font-size: #{map.get($config, font-size)};
+	--n8n-input--padding: #{map.get($config, padding)};
 }
 
 @mixin theme-variables($border-color: var(--border-color)) {
-	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
-	--input--color--background--disabled: var(--background--disabled);
-	--input--color--text: var(--color--text--shade-1);
-	--input--placeholder--color: var(--color--text--tint-1);
-	--input--color--disabled: var(--color--text--tint-1);
-	--input--placeholder--color--disabled: var(--input--color--disabled);
-	--input--shadow: 0 0 0 0 transparent;
-	--input--shadow--hover: 0 0 0 0 transparent;
-	--input--shadow--focus: 0 0 0 0 transparent;
-	--input--border-color: #{$border-color};
-	--input--border-color--hover: var(--border-color--strong);
-	--input--border-color--focus: var(--focus--border-color);
-	--input--border--shadow: 0 0 0 1px var(--input--border-color);
-	--input--border--shadow--hover: 0 0 0 1px var(--input--border-color--hover);
-	--input--border--shadow--focus: 0 0 0 1px var(--input--border-color--focus);
+	--n8n-input--color--background: light-dark(
+		var(--color--neutral-white),
+		var(--color--neutral-950)
+	);
+	--n8n-input--color--background--disabled: var(--background--disabled);
+	--n8n-input--color--text: var(--color--text--shade-1);
+	--n8n-input--placeholder--color: var(--color--text--tint-1);
+	--n8n-input--color--disabled: var(--color--text--tint-1);
+	--n8n-input--placeholder--color--disabled: var(--n8n-input--color--disabled);
+	--n8n-input--shadow: 0 0 0 0 transparent;
+	--n8n-input--shadow--hover: 0 0 0 0 transparent;
+	--n8n-input--shadow--focus: 0 0 0 0 transparent;
+	--n8n-input--border-color: #{$border-color};
+	--n8n-input--border-color--hover: var(--border-color--strong);
+	--n8n-input--border-color--focus: var(--focus--border-color);
+	--n8n-input--border--shadow: 0 0 0 1px var(--n8n-input--border-color);
+	--n8n-input--border--shadow--hover: 0 0 0 1px var(--n8n-input--border-color--hover);
+	--n8n-input--border--shadow--focus: 0 0 0 1px var(--n8n-input--border-color--focus);
 }

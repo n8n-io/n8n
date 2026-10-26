@@ -71,7 +71,7 @@ const isStacked = computed(() => bp.value !== 'default');
 	flex-grow: 1;
 	z-index: 0;
 
-	--input--radius: 0;
+	--n8n-input--radius: 0;
 
 	// Suppress gap in our N8nInput wrapper (no prepend/append in triple)
 	:global(.n8n-input) {
@@ -93,8 +93,8 @@ const isStacked = computed(() => bp.value !== 'default');
 }
 
 .item:first-of-type {
-	--input--radius--top-left: var(--radius);
-	--input--radius--bottom-left: var(--radius);
+	--n8n-input--radius--top-left: var(--radius);
+	--n8n-input--radius--bottom-left: var(--radius);
 	--input-triple--radius--top-right: 0;
 	--input-triple--radius--bottom-right: 0;
 
@@ -115,10 +115,10 @@ const isStacked = computed(() => bp.value !== 'default');
 }
 
 .item:last-of-type {
-	--input--radius--top-left: 0;
-	--input--radius--bottom-left: 0;
-	--input--radius--top-right: var(--radius);
-	--input--radius--bottom-right: var(--radius);
+	--n8n-input--radius--top-left: 0;
+	--n8n-input--radius--bottom-left: 0;
+	--n8n-input--radius--top-right: var(--radius);
+	--n8n-input--radius--bottom-right: var(--radius);
 	--input-triple--radius--top-right: var(--radius);
 	--input-triple--radius--bottom-right: var(--radius);
 
@@ -148,10 +148,10 @@ const isStacked = computed(() => bp.value !== 'default');
 	}
 
 	.item:first-of-type {
-		--input--radius--top-left: var(--radius);
+		--n8n-input--radius--top-left: var(--radius);
 		--input-triple--radius--top-right: 0;
-		--input--radius--bottom-left: 0;
-		--input--radius--bottom-right: 0;
+		--n8n-input--radius--bottom-left: 0;
+		--n8n-input--radius--bottom-right: 0;
 	}
 
 	.item:first-of-type :global(.cm-editor) {
@@ -170,11 +170,11 @@ const isStacked = computed(() => bp.value !== 'default');
 		flex-basis: 100%;
 		margin-top: -1px;
 
-		--input--radius--top-left: 0;
-		--input--radius--top-right: 0;
+		--n8n-input--radius--top-left: 0;
+		--n8n-input--radius--top-right: 0;
 		--input-triple--radius--top-right: 0;
-		--input--radius--bottom-left: var(--radius);
-		--input--radius--bottom-right: var(--radius);
+		--n8n-input--radius--bottom-left: var(--radius);
+		--n8n-input--radius--bottom-right: var(--radius);
 		--input-triple--radius--bottom-right: var(--radius);
 	}
 
@@ -203,15 +203,15 @@ const isStacked = computed(() => bp.value !== 'default');
 
 	.middle:not(.item:last-of-type) {
 		width: 100%;
-		--input--radius: 0;
+		--n8n-input--radius: 0;
 	}
 
 	.item:first-of-type {
-		--input--radius--top-left: var(--radius);
-		--input--radius--top-right: var(--radius);
+		--n8n-input--radius--top-left: var(--radius);
+		--n8n-input--radius--top-right: var(--radius);
 		--input-triple--radius--top-right: var(--radius);
-		--input--radius--bottom-left: 0;
-		--input--radius--bottom-right: 0;
+		--n8n-input--radius--bottom-left: 0;
+		--n8n-input--radius--bottom-right: 0;
 		--input-triple--radius--bottom-right: 0;
 	}
 
@@ -241,11 +241,11 @@ const isStacked = computed(() => bp.value !== 'default');
 	}
 
 	.item:last-of-type {
-		--input--radius--top-left: 0;
-		--input--radius--top-right: 0;
+		--n8n-input--radius--top-left: 0;
+		--n8n-input--radius--top-right: 0;
 		--input-triple--radius--top-right: 0;
-		--input--radius--bottom-left: var(--radius);
-		--input--radius--bottom-right: var(--radius);
+		--n8n-input--radius--bottom-left: var(--radius);
+		--n8n-input--radius--bottom-right: var(--radius);
 		--input-triple--radius--bottom-right: var(--radius);
 	}
 

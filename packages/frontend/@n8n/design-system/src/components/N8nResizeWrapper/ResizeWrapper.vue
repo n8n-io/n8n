@@ -240,11 +240,11 @@ function getIsAtDirectionLimit(direction: Direction): DirectionLimit {
 }
 
 .resize {
-	--resizer--size: 4px;
-	--resizer--spacing--side: calc(var(--resizer--size) / -2);
-	--resizer--spacing--corner: -3px;
-	--resizer--indicator--thickness: var(--spacing--3xs);
-	--resizer--indicator--color: light-dark(var(--color--neutral-250), var(--color--neutral-700));
+	--n8n-resizer--size: 4px;
+	--n8n-resizer--spacing--side: calc(var(--n8n-resizer--size) / -2);
+	--n8n-resizer--spacing--corner: -3px;
+	--n8n-resizer--indicator--thickness: var(--spacing--3xs);
+	--n8n-resizer--indicator--color: light-dark(var(--color--neutral-250), var(--color--neutral-700));
 
 	position: relative;
 	width: 100%;
@@ -258,10 +258,10 @@ function getIsAtDirectionLimit(direction: Direction): DirectionLimit {
 }
 
 .right {
-	width: var(--resizer--size);
+	width: var(--n8n-resizer--size);
 	height: 100%;
-	top: var(--resizer--spacing--side);
-	right: var(--resizer--spacing--side);
+	top: var(--n8n-resizer--spacing--side);
+	right: var(--n8n-resizer--spacing--side);
 	cursor: col-resize;
 	border-color: var(--border-color);
 	border-color: var(--color--neutral-400);
@@ -269,57 +269,57 @@ function getIsAtDirectionLimit(direction: Direction): DirectionLimit {
 
 .top {
 	width: 100%;
-	height: var(--resizer--size);
-	top: var(--resizer--spacing--side);
-	left: var(--resizer--spacing--side);
+	height: var(--n8n-resizer--size);
+	top: var(--n8n-resizer--spacing--side);
+	left: var(--n8n-resizer--spacing--side);
 	cursor: row-resize;
 }
 
 .bottom {
 	width: 100%;
-	height: var(--resizer--size);
-	bottom: var(--resizer--spacing--side);
-	left: var(--resizer--spacing--side);
+	height: var(--n8n-resizer--size);
+	bottom: var(--n8n-resizer--spacing--side);
+	left: var(--n8n-resizer--spacing--side);
 	cursor: row-resize;
 }
 
 .left {
-	width: var(--resizer--size);
+	width: var(--n8n-resizer--size);
 	height: 100%;
-	top: var(--resizer--spacing--side);
-	left: var(--resizer--spacing--side);
+	top: var(--n8n-resizer--spacing--side);
+	left: var(--n8n-resizer--spacing--side);
 	cursor: col-resize;
 }
 
 .topLeft {
-	width: var(--resizer--size);
-	height: var(--resizer--size);
-	top: var(--resizer--spacing--corner);
-	left: var(--resizer--spacing--corner);
+	width: var(--n8n-resizer--size);
+	height: var(--n8n-resizer--size);
+	top: var(--n8n-resizer--spacing--corner);
+	left: var(--n8n-resizer--spacing--corner);
 	cursor: nw-resize;
 }
 
 .topRight {
-	width: var(--resizer--size);
-	height: var(--resizer--size);
-	top: var(--resizer--spacing--corner);
-	right: var(--resizer--spacing--corner);
+	width: var(--n8n-resizer--size);
+	height: var(--n8n-resizer--size);
+	top: var(--n8n-resizer--spacing--corner);
+	right: var(--n8n-resizer--spacing--corner);
 	cursor: ne-resize;
 }
 
 .bottomLeft {
-	width: var(--resizer--size);
-	height: var(--resizer--size);
-	bottom: var(--resizer--spacing--corner);
-	left: var(--resizer--spacing--corner);
+	width: var(--n8n-resizer--size);
+	height: var(--n8n-resizer--size);
+	bottom: var(--n8n-resizer--spacing--corner);
+	left: var(--n8n-resizer--spacing--corner);
 	cursor: sw-resize;
 }
 
 .bottomRight {
-	width: var(--resizer--size);
-	height: var(--resizer--size);
-	bottom: var(--resizer--spacing--corner);
-	right: var(--resizer--spacing--corner);
+	width: var(--n8n-resizer--size);
+	height: var(--n8n-resizer--size);
+	bottom: var(--n8n-resizer--spacing--corner);
+	right: var(--n8n-resizer--spacing--corner);
 	cursor: se-resize;
 }
 
@@ -340,7 +340,7 @@ function getIsAtDirectionLimit(direction: Direction): DirectionLimit {
 	&::after {
 		content: '';
 		position: absolute;
-		background-color: var(--resizer--indicator--color);
+		background-color: var(--n8n-resizer--indicator--color);
 		opacity: 0;
 		pointer-events: none;
 	}
@@ -357,7 +357,7 @@ function getIsAtDirectionLimit(direction: Direction): DirectionLimit {
 	bottom: 0;
 	left: 50%;
 	transform: translateX(-50%);
-	width: var(--resizer--indicator--thickness);
+	width: var(--n8n-resizer--indicator--thickness);
 }
 
 .top::after,
@@ -366,7 +366,7 @@ function getIsAtDirectionLimit(direction: Direction): DirectionLimit {
 	right: 0;
 	top: 50%;
 	transform: translateY(-50%);
-	height: var(--resizer--indicator--thickness);
+	height: var(--n8n-resizer--indicator--thickness);
 }
 
 .right.atMinLimit,

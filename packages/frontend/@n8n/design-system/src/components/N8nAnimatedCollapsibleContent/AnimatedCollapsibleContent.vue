@@ -21,12 +21,12 @@ withDefaults(defineProps<{ blur?: boolean }>(), { blur: false });
 	overflow: hidden;
 
 	&[data-state='open'] {
-		--animation--collapsible-slide--duration: 0.2s;
+		--n8n-animation--collapsible-slide--duration: 0.2s;
 		@include motion.collapsible-slide-down;
 	}
 
 	&[data-state='closed'] {
-		--animation--collapsible-slide--duration: 0.2s;
+		--n8n-animation--collapsible-slide--duration: 0.2s;
 		@include motion.collapsible-slide-up;
 	}
 }

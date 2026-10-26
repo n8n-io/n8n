@@ -295,16 +295,17 @@ defineExpose({ focus, select });
 	background-color: var(--code--color--background);
 	padding: 3px;
 	line-height: 9px;
-	border: var(--input--border-color, var(--border-color))
-		var(--input--border-style, var(--border-style)) var(--input--border-width, var(--border-width));
+	border: var(--n8n-input--border-color, var(--border-color))
+		var(--input--border-style, var(--border-style))
+		var(--n8n-input--border-width, var(--border-width));
 	cursor: pointer;
 	border-radius: 0;
 	border-top-left-radius: var(--radius);
 
 	&:hover {
-		border: var(--input--border-color, var(--border-color))
+		border: var(--n8n-input--border-color, var(--border-color))
 			var(--input--border-style, var(--border-style))
-			var(--input--border-width, var(--border-width));
+			var(--n8n-input--border-width, var(--border-width));
 	}
 
 	svg {
@@ -332,7 +333,7 @@ defineExpose({ focus, select });
 }
 
 .droppable {
-	--input--border-color: transparent;
+	--n8n-input--border-color: transparent;
 	--input--border-right-color: transparent;
 
 	:global(.cm-editor) {
@@ -344,9 +345,9 @@ defineExpose({ focus, select });
 }
 
 .activeDrop {
-	--input--border-color: var(--color--success);
+	--n8n-input--border-color: var(--color--success);
 	--input--border-right-color: var(--color--success);
-	--input--color--background: var(--color--foreground--tint-2);
+	--n8n-input--color--background: var(--color--foreground--tint-2);
 	--input--border-style: solid;
 
 	:global(.cm-editor) {

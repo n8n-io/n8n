@@ -177,12 +177,12 @@ watch(
 }
 
 .hoverCardContent {
-	--hover-card--offset--slide-x: 0;
-	--hover-card--offset--slide-y: 0;
-	--hover-card--offset--origin-x: center;
-	--hover-card--offset--origin-y: center;
-	--animation--popover-in--translate-x: var(--hover-card--offset--slide-x);
-	--animation--popover-in--translate-y: var(--hover-card--offset--slide-y);
+	--n8n-hover-card--offset--slide-x: 0;
+	--n8n-hover-card--offset--slide-y: 0;
+	--n8n-hover-card--offset--origin-x: center;
+	--n8n-hover-card--offset--origin-y: center;
+	--n8n-animation--popover-in--translate-x: var(--n8n-hover-card--offset--slide-x);
+	--n8n-animation--popover-in--translate-y: var(--n8n-hover-card--offset--slide-y);
 
 	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);
@@ -190,7 +190,7 @@ watch(
 		var(--shadow--md),
 		inset var(--shadow--outline);
 	will-change: transform, opacity;
-	transform-origin: var(--hover-card--offset--origin-x) var(--hover-card--offset--origin-y);
+	transform-origin: var(--n8n-hover-card--offset--origin-x) var(--n8n-hover-card--offset--origin-y);
 
 	&[data-state='open'] {
 		@include motion.popover-in;
@@ -202,46 +202,46 @@ watch(
 }
 
 .hoverCardContent[data-state='open'][data-side='top'] {
-	--hover-card--offset--slide-y: -2px;
-	--hover-card--offset--origin-y: bottom;
+	--n8n-hover-card--offset--slide-y: -2px;
+	--n8n-hover-card--offset--origin-y: bottom;
 }
 
 .hoverCardContent[data-state='open'][data-side='right'] {
-	--hover-card--offset--slide-x: 2px;
-	--hover-card--offset--origin-x: left;
+	--n8n-hover-card--offset--slide-x: 2px;
+	--n8n-hover-card--offset--origin-x: left;
 }
 
 .hoverCardContent[data-state='open'][data-side='bottom'] {
-	--hover-card--offset--slide-y: 2px;
-	--hover-card--offset--origin-y: top;
+	--n8n-hover-card--offset--slide-y: 2px;
+	--n8n-hover-card--offset--origin-y: top;
 }
 
 .hoverCardContent[data-state='open'][data-side='left'] {
-	--hover-card--offset--slide-x: -2px;
-	--hover-card--offset--origin-x: right;
+	--n8n-hover-card--offset--slide-x: -2px;
+	--n8n-hover-card--offset--origin-x: right;
 }
 
 .hoverCardContent[data-state='open'][data-side='top'][data-align='start'],
 .hoverCardContent[data-state='open'][data-side='bottom'][data-align='start'] {
-	--hover-card--offset--slide-x: -2px;
-	--hover-card--offset--origin-x: left;
+	--n8n-hover-card--offset--slide-x: -2px;
+	--n8n-hover-card--offset--origin-x: left;
 }
 
 .hoverCardContent[data-state='open'][data-side='top'][data-align='end'],
 .hoverCardContent[data-state='open'][data-side='bottom'][data-align='end'] {
-	--hover-card--offset--slide-x: 2px;
-	--hover-card--offset--origin-x: right;
+	--n8n-hover-card--offset--slide-x: 2px;
+	--n8n-hover-card--offset--origin-x: right;
 }
 
 .hoverCardContent[data-state='open'][data-side='left'][data-align='start'],
 .hoverCardContent[data-state='open'][data-side='right'][data-align='start'] {
-	--hover-card--offset--slide-y: -2px;
-	--hover-card--offset--origin-y: top;
+	--n8n-hover-card--offset--slide-y: -2px;
+	--n8n-hover-card--offset--origin-y: top;
 }
 
 .hoverCardContent[data-state='open'][data-side='left'][data-align='end'],
 .hoverCardContent[data-state='open'][data-side='right'][data-align='end'] {
-	--hover-card--offset--slide-y: 2px;
-	--hover-card--offset--origin-y: bottom;
+	--n8n-hover-card--offset--slide-y: 2px;
+	--n8n-hover-card--offset--origin-y: bottom;
 }
 </style>

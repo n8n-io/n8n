@@ -439,8 +439,8 @@ defineExpose({ showDropdown });
 // radii that the multi-mode layout squares off to butt against the selector.
 .singleMode {
 	.inputContainer {
-		--input--radius--top-left: var(--radius);
-		--input--radius--bottom-left: var(--radius);
+		--n8n-input--radius--top-left: var(--radius);
+		--n8n-input--radius--bottom-left: var(--radius);
 	}
 }
 </style>

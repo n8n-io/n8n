@@ -7,7 +7,7 @@ const commonThemeProps = (isReadOnly = false) => ({
 	},
 	'.cm-content': {
 		fontFamily: 'var(--font-family--monospace)',
-		color: 'var(--input--color--text, var(--color--text--shade-1))',
+		color: 'var(--n8n-input--color--text, var(--color--text--shade-1))',
 		caretColor: isReadOnly ? 'transparent' : 'var(--code--caret--color)',
 	},
 	'.cm-line': {
@@ -27,18 +27,18 @@ export const inputTheme = ({ rows, isReadOnly } = { rows: 5, isReadOnly: false }
 			padding: '0 0 0 var(--spacing--2xs)',
 			borderWidth: 'var(--border-width)',
 			borderStyle: 'var(--input--border-style, var(--border-style))',
-			borderColor: 'var(--input--border-color, var(--border-color))',
+			borderColor: 'var(--n8n-input--border-color, var(--border-color))',
 			borderRightColor:
-				'var(--input--border-right-color,var(--input--border-color, var(--border-color)))',
+				'var(--input--border-right-color,var(--n8n-input--border-color, var(--border-color)))',
 			borderBottomColor:
-				'var(--input--border-bottom-color,var(--input--border-color, var(--border-color)))',
-			borderRadius: 'var(--input--radius, var(--radius))',
+				'var(--input--border-bottom-color,var(--n8n-input--border-color, var(--border-color)))',
+			borderRadius: 'var(--n8n-input--radius, var(--radius))',
 			borderTopLeftRadius: 0,
 			borderTopRightRadius:
-				'var(--input-triple--radius--top-right, var(--input--radius, var(--radius)))',
+				'var(--input-triple--radius--top-right, var(--n8n-input--radius, var(--radius)))',
 			borderBottomLeftRadius: 0,
 			borderBottomRightRadius:
-				'var(--input-triple--radius--bottom-right, var(--input--radius, var(--radius)))',
+				'var(--input-triple--radius--bottom-right, var(--n8n-input--radius, var(--radius)))',
 			backgroundColor: 'white',
 		},
 		'.cm-cursor, .cm-dropCursor': {

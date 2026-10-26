@@ -112,7 +112,7 @@ if (import.meta.env.DEV) {
 	gap: var(--spacing--2xs);
 	width: 100%;
 	/* The header column stays capped even when the layout content is full-width. */
-	max-width: var(--settings-content--max-width, 45rem);
+	max-width: var(--n8n-settings-content--max-width, 45rem);
 	/*
 	 * The 48px gap to the content below is owned and enforced by N8nSettingsLayout
 	 * (`.content > header + *`), not by an external margin here, so it stays deterministic

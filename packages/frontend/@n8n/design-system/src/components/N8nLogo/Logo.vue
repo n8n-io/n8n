@@ -79,14 +79,14 @@ onMounted(() => {
 }
 
 .logo {
-	--logo-icon-fill: var(--background--brand);
+	--n8n-logo--icon-fill: var(--background--brand);
 
 	&.dev {
-		--logo-icon-fill: var(--text-color--subtler);
+		--n8n-logo--icon-fill: var(--text-color--subtler);
 	}
 
 	path {
-		fill: var(--logo-icon-fill);
+		fill: var(--n8n-logo--icon-fill);
 	}
 }
 

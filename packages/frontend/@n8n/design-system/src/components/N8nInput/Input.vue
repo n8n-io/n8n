@@ -310,22 +310,22 @@ defineExpose({ focus, blur, select });
 	align-items: center;
 	flex: 1;
 	min-width: 0;
-	gap: var(--input--padding);
-	padding: 0 var(--input--padding);
-	min-height: var(--input--height);
-	border-radius: var(--input--radius--top-left, var(--input--radius))
-		var(--input--radius--top-right, var(--input--radius))
-		var(--input--radius--bottom-right, var(--input--radius))
-		var(--input--radius--bottom-left, var(--input--radius));
-	background-color: var(--input--color--background);
+	gap: var(--n8n-input--padding);
+	padding: 0 var(--n8n-input--padding);
+	min-height: var(--n8n-input--height);
+	border-radius: var(--n8n-input--radius--top-left, var(--n8n-input--radius))
+		var(--n8n-input--radius--top-right, var(--n8n-input--radius))
+		var(--n8n-input--radius--bottom-right, var(--n8n-input--radius))
+		var(--n8n-input--radius--bottom-left, var(--n8n-input--radius));
+	background-color: var(--n8n-input--color--background);
 	box-shadow:
-		var(--input--shadow),
-		inset var(--input--border--shadow);
+		var(--n8n-input--shadow),
+		inset var(--n8n-input--border--shadow);
 
 	/** NOTE (@heymynameisrob): Handles autofill colouring as padding from above isn't included **/
 	> input {
-		padding: 0 var(--input--padding);
-		margin-inline: calc(var(--input--padding) * -1);
+		padding: 0 var(--n8n-input--padding);
+		margin-inline: calc(var(--n8n-input--padding) * -1);
 		border-radius: inherit;
 	}
 
@@ -333,14 +333,14 @@ defineExpose({ focus, blur, select });
 
 	&:hover:not(.disabled):not(:focus-within) {
 		box-shadow:
-			var(--input--shadow--hover),
-			inset var(--input--border--shadow--hover);
+			var(--n8n-input--shadow--hover),
+			inset var(--n8n-input--border--shadow--hover);
 	}
 
 	&:focus-within {
 		box-shadow:
-			var(--input--shadow--focus),
-			inset var(--input--border--shadow--focus);
+			var(--n8n-input--shadow--focus),
+			inset var(--n8n-input--border--shadow--focus);
 	}
 
 	&.disabled {
@@ -375,18 +375,18 @@ defineExpose({ focus, blur, select });
 .input {
 	flex: 1;
 	min-width: 0;
-	min-height: var(--input--height);
+	min-height: var(--n8n-input--height);
 	padding: 0;
 	border: none;
 	background: transparent;
 	outline: none;
 	font-family: inherit;
-	font-size: var(--input--font-size, var(--font-size--md));
-	color: var(--input--color--text);
+	font-size: var(--n8n-input--font-size, var(--font-size--md));
+	color: var(--n8n-input--color--text);
 }
 
 .input::placeholder {
-	color: var(--input--placeholder--color);
+	color: var(--n8n-input--placeholder--color);
 }
 
 .input:read-only {
@@ -395,10 +395,10 @@ defineExpose({ focus, blur, select });
 
 .input:disabled {
 	cursor: not-allowed;
-	color: var(--input--color--disabled);
+	color: var(--n8n-input--color--disabled);
 
 	&::placeholder {
-		color: var(--input--placeholder--color--disabled);
+		color: var(--n8n-input--placeholder--color--disabled);
 	}
 }
 
@@ -406,17 +406,17 @@ defineExpose({ focus, blur, select });
 	flex: 1;
 	min-width: 0;
 	resize: vertical;
-	padding: var(--input--padding);
+	padding: var(--n8n-input--padding);
 	line-height: var(--line-height--md);
 	border: none;
 	background: transparent;
 	outline: none;
 	font-family: inherit;
-	font-size: var(--input--font-size, var(--font-size--base));
+	font-size: var(--n8n-input--font-size, var(--font-size--md));
 }
 
 .textarea::placeholder {
-	color: var(--input--placeholder--color);
+	color: var(--n8n-input--placeholder--color);
 }
 
 .textarea:read-only {
@@ -425,10 +425,10 @@ defineExpose({ focus, blur, select });
 
 .textarea:disabled {
 	cursor: not-allowed;
-	color: var(--input--color--disabled);
+	color: var(--n8n-input--color--disabled);
 
 	&::placeholder {
-		color: var(--input--placeholder--color--disabled);
+		color: var(--n8n-input--placeholder--color--disabled);
 	}
 }
 

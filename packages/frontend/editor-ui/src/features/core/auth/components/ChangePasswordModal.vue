@@ -524,9 +524,9 @@ const onSubmit = async () => {
 
 /* The input declares its own border variable, so set it on the input element itself. */
 .fieldInvalid :global(.n8n-input) {
-	--input--border-color: var(--color--danger);
-	--input--border-color--hover: var(--color--danger);
-	--input--border-color--focus: var(--color--danger);
+	--n8n-input--border-color: var(--color--danger);
+	--n8n-input--border-color--hover: var(--color--danger);
+	--n8n-input--border-color--focus: var(--color--danger);
 }
 
 /* The reveal clips its content, so give the input's focus ring room on both sides. */

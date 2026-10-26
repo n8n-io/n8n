@@ -476,7 +476,7 @@ defineExpose({
 		}
 		input,
 		input:focus {
-			--input--border-color: var(--color--danger);
+			--n8n-input--border-color: var(--color--danger);
 			border-color: var(--color--danger);
 		}
 	}

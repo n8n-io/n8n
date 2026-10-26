@@ -226,8 +226,8 @@ function handleTaskKeydown(event: KeyboardEvent): void {
 }
 
 .trigger {
-	--animation--fade-in--translate: 0;
-	--animation--fade-in--blur: 0;
+	--n8n-animation--fade-in--translate: 0;
+	--n8n-animation--fade-in--blur: 0;
 
 	position: relative;
 	display: flex;
@@ -272,7 +272,7 @@ function handleTaskKeydown(event: KeyboardEvent): void {
 }
 
 .triggerLabel {
-	--animation--blur-swap--blur: var(--spacing--5xs);
+	--n8n-animation--blur-swap--blur: var(--spacing--5xs);
 
 	display: inline-grid;
 

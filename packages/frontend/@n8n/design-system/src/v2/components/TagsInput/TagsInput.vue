@@ -232,42 +232,47 @@ function getInputClass(isEmpty: boolean): string {
 	@include input-mixin.size-variables('large');
 	@include input-mixin.theme-variables(var(--border-color));
 
-	--tags-input--gap: calc(var(--tags-input--padding) - 1px);
-	--tag--height: calc(var(--input--height) - 2 * var(--tags-input--padding));
-	--tag--gap: var(--spacing--4xs);
-	--tag--delete--size: max(var(--height--4xs), calc(var(--tag--height) - 2 * var(--spacing--4xs)));
-	--tag--padding-inline-end: calc((var(--tag--height) - var(--tag--delete--size) - 2px) / 2);
+	--n8n-tags-input--gap: calc(var(--n8n-tags-input--padding) - 1px);
+	--tag--height: calc(var(--n8n-input--height) - 2 * var(--n8n-tags-input--padding));
+	--n8n-tag--gap: var(--spacing--4xs);
+	--n8n-tag--delete--size: max(
+		var(--height--4xs),
+		calc(var(--tag--height) - 2 * var(--spacing--4xs))
+	);
+	--n8n-tag--padding-inline-end: calc(
+		(var(--tag--height) - var(--n8n-tag--delete--size) - 2px) / 2
+	);
 }
 
 .root {
 	display: flex;
 	flex: 1;
 	width: 100%;
-	min-height: var(--input--height);
-	max-height: var(--tags-input--max-height, none);
+	min-height: var(--n8n-input--height);
+	max-height: var(--n8n-tags-input--max-height, none);
 	padding: 1px;
 	overflow: hidden;
-	border-radius: var(--input--radius);
-	background-color: var(--input--color--background);
+	border-radius: var(--n8n-input--radius);
+	background-color: var(--n8n-input--color--background);
 	box-shadow:
-		var(--input--shadow),
-		inset var(--input--border--shadow);
-	color: var(--input--color--text);
-	font-size: var(--input--font-size);
+		var(--n8n-input--shadow),
+		inset var(--n8n-input--border--shadow);
+	color: var(--n8n-input--color--text);
+	font-size: var(--n8n-input--font-size);
 
 	@include focus.focus-within-ring;
 
 	&:not(:has([data-disabled])):hover:not(:focus-within) {
 		cursor: text;
 		box-shadow:
-			var(--input--shadow--hover),
-			inset var(--input--border--shadow--hover);
+			var(--n8n-input--shadow--hover),
+			inset var(--n8n-input--border--shadow--hover);
 	}
 
 	&:focus-within {
 		box-shadow:
-			var(--input--shadow--focus),
-			inset var(--input--border--shadow--focus);
+			var(--n8n-input--shadow--focus),
+			inset var(--n8n-input--border--shadow--focus);
 	}
 
 	&:has([data-disabled]) {
@@ -284,10 +289,10 @@ function getInputClass(isEmpty: boolean): string {
 .mini {
 	@include input-mixin.size-variables('mini');
 
-	--tags-input--padding: var(--spacing--4xs);
-	--tags-input--input--padding-inline-start: var(--spacing--5xs);
-	--tag--padding-block-end: 1px;
-	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--4xs);
+	--n8n-tags-input--padding: var(--spacing--4xs);
+	--n8n-tags-input--input--padding-inline-start: var(--spacing--5xs);
+	--n8n-tag--padding-block-end: 1px;
+	--tag--padding: 0 var(--n8n-tag--padding-inline-end) 0 var(--spacing--4xs);
 	--tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--3xs);
 }
@@ -295,10 +300,10 @@ function getInputClass(isEmpty: boolean): string {
 .small {
 	@include input-mixin.size-variables('small');
 
-	--tags-input--padding: var(--spacing--4xs);
-	--tags-input--input--padding-inline-start: var(--spacing--4xs);
-	--tag--padding-block-end: var(--spacing--5xs);
-	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
+	--n8n-tags-input--padding: var(--spacing--4xs);
+	--n8n-tags-input--input--padding-inline-start: var(--spacing--4xs);
+	--n8n-tag--padding-block-end: var(--spacing--5xs);
+	--tag--padding: 0 var(--n8n-tag--padding-inline-end) 0 var(--spacing--3xs);
 	--tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--2xs);
 }
@@ -306,10 +311,10 @@ function getInputClass(isEmpty: boolean): string {
 .medium {
 	@include input-mixin.size-variables('medium');
 
-	--tags-input--padding: var(--spacing--4xs);
-	--tags-input--input--padding-inline-start: var(--spacing--4xs);
-	--tag--padding-block-end: var(--spacing--5xs);
-	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
+	--n8n-tags-input--padding: var(--spacing--4xs);
+	--n8n-tags-input--input--padding-inline-start: var(--spacing--4xs);
+	--n8n-tag--padding-block-end: var(--spacing--5xs);
+	--tag--padding: 0 var(--n8n-tag--padding-inline-end) 0 var(--spacing--3xs);
 	--tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--2xs);
 }
@@ -317,10 +322,10 @@ function getInputClass(isEmpty: boolean): string {
 .large {
 	@include input-mixin.size-variables('large');
 
-	--tags-input--padding: var(--spacing--4xs);
-	--tags-input--input--padding-inline-start: var(--spacing--3xs);
-	--tag--padding-block-end: var(--spacing--5xs);
-	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
+	--n8n-tags-input--padding: var(--spacing--4xs);
+	--n8n-tags-input--input--padding-inline-start: var(--spacing--3xs);
+	--n8n-tag--padding-block-end: var(--spacing--5xs);
+	--tag--padding: 0 var(--n8n-tag--padding-inline-end) 0 var(--spacing--3xs);
 	--tag--radius: var(--radius--3xs);
 	--tag--font-size: var(--font-size--xs);
 }
@@ -328,10 +333,10 @@ function getInputClass(isEmpty: boolean): string {
 .xlarge {
 	@include input-mixin.size-variables('xlarge');
 
-	--tags-input--padding: var(--spacing--4xs);
-	--tags-input--input--padding-inline-start: var(--spacing--2xs);
-	--tag--padding-block-end: var(--spacing--5xs);
-	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--2xs);
+	--n8n-tags-input--padding: var(--spacing--4xs);
+	--n8n-tags-input--input--padding-inline-start: var(--spacing--2xs);
+	--n8n-tag--padding-block-end: var(--spacing--5xs);
+	--tag--padding: 0 var(--n8n-tag--padding-inline-end) 0 var(--spacing--2xs);
 	--tag--radius: var(--radius--3xs);
 	--tag--font-size: var(--font-size--xs);
 }
@@ -342,11 +347,11 @@ function getInputClass(isEmpty: boolean): string {
 	flex-wrap: wrap;
 	align-items: center;
 	align-content: flex-start;
-	gap: var(--tags-input--gap);
+	gap: var(--n8n-tags-input--gap);
 	min-width: 0;
 	min-height: 0;
 	width: 100%;
-	padding: calc(var(--tags-input--padding) - 1px);
+	padding: calc(var(--n8n-tags-input--padding) - 1px);
 	overflow: auto;
 }
 
@@ -357,7 +362,7 @@ function getInputClass(isEmpty: boolean): string {
 .tag {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--tag--gap);
+	gap: var(--n8n-tag--gap);
 	max-width: 100%;
 	min-width: 0;
 	height: var(--tag--height);
@@ -383,7 +388,7 @@ function getInputClass(isEmpty: boolean): string {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	line-height: normal;
-	padding-block-end: var(--tag--padding-block-end);
+	padding-block-end: var(--n8n-tag--padding-block-end);
 }
 
 .tagDelete {
@@ -391,8 +396,8 @@ function getInputClass(isEmpty: boolean): string {
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
-	width: var(--tag--delete--size);
-	height: var(--tag--delete--size);
+	width: var(--n8n-tag--delete--size);
+	height: var(--n8n-tag--delete--size);
 	padding: 0;
 	border: none;
 	border-radius: var(--radius--4xs);
@@ -427,7 +432,7 @@ function getInputClass(isEmpty: boolean): string {
 	min-width: var(--spacing--2xl);
 	min-height: var(--tag--height);
 	padding: 0;
-	padding-inline-start: var(--tags-input--input--padding-inline-start);
+	padding-inline-start: var(--n8n-tags-input--input--padding-inline-start);
 	border: none;
 	background: transparent;
 	outline: none;
@@ -439,7 +444,7 @@ function getInputClass(isEmpty: boolean): string {
 	}
 
 	&::placeholder {
-		color: var(--input--placeholder--color);
+		color: var(--n8n-input--placeholder--color);
 	}
 
 	&:focus,
@@ -449,15 +454,15 @@ function getInputClass(isEmpty: boolean): string {
 
 	&:disabled {
 		cursor: not-allowed;
-		color: var(--input--color--disabled);
+		color: var(--n8n-input--color--disabled);
 
 		&::placeholder {
-			color: var(--input--placeholder--color--disabled);
+			color: var(--n8n-input--placeholder--color--disabled);
 		}
 	}
 
 	&.inputEmpty {
-		padding-inline: calc(var(--input--padding) - var(--tags-input--padding));
+		padding-inline: calc(var(--n8n-input--padding) - var(--n8n-tags-input--padding));
 	}
 }
 </style>

@@ -247,7 +247,7 @@ describe('TrialBanner', () => {
 
 			const { container } = renderComponent();
 			const button = container.querySelector('button');
-			expect(button?.style.getPropertyValue('--button--color--background')).toBe(
+			expect(button?.style.getPropertyValue('--n8n-button--color--background')).toBe(
 				'var(--color--success)',
 			);
 		});
@@ -266,7 +266,7 @@ describe('TrialBanner', () => {
 			const { container } = renderComponent();
 			const button = container.querySelector('button');
 			expect(button?.className).toContain('destructive');
-			expect(button?.style.getPropertyValue('--button--color--background')).toBe('');
+			expect(button?.style.getPropertyValue('--n8n-button--color--background')).toBe('');
 		});
 
 		it.each([
@@ -286,8 +286,10 @@ describe('TrialBanner', () => {
 
 			const { container } = renderComponent();
 			const button = container.querySelector('button');
-			expect(button?.style.getPropertyValue('--button--color--background')).toBe(expectedColor);
-			expect(button?.style.getPropertyValue('--button--color')).toBe('var(--color--neutral-white)');
+			expect(button?.style.getPropertyValue('--n8n-button--color--background')).toBe(expectedColor);
+			expect(button?.style.getPropertyValue('--n8n-button--color')).toBe(
+				'var(--color--neutral-white)',
+			);
 		});
 	});
 });

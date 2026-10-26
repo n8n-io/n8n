@@ -148,9 +148,9 @@ function onRadioGroupChange(group: ContextMenuRadioGroupNode<T>, value: string |
 
 .separated {
 	border-top: var(--border);
-	padding-block-start: var(--context-menu--padding);
-	margin-inline: calc(-1 * var(--context-menu--padding) + var(--border-width));
-	padding-inline: calc(var(--context-menu--padding) - var(--border-width));
+	padding-block-start: var(--n8n-context-menu--padding);
+	margin-inline: calc(-1 * var(--n8n-context-menu--padding) + var(--border-width));
+	padding-inline: calc(var(--n8n-context-menu--padding) - var(--border-width));
 }
 
 .group {

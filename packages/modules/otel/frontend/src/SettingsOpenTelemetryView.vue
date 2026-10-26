@@ -912,8 +912,8 @@ watch(
 	// N8nInput exposes per-corner radius custom properties; square the right side
 	// so the unit slug visually continues the input.
 	> :first-child {
-		--input--radius--top-right: 0;
-		--input--radius--bottom-right: 0;
+		--n8n-input--radius--top-right: 0;
+		--n8n-input--radius--bottom-right: 0;
 
 		width: var(--spacing--4xl);
 		min-width: 0;

@@ -17,6 +17,14 @@ async function lintCSS(code: string) {
 }
 
 describe('css-var-naming rule', () => {
+	it('accepts public component variables in shared stylesheets', async () => {
+		const result = await lintCSS(`.input {
+			--n8n-input--background-color: red;
+			transform: translateX(var(--n8n-animation--fade-in--translate));
+		}`);
+		expect(result.warnings).toHaveLength(0);
+	});
+
 	describe('namespace validation', () => {
 		it('should accept valid n8n namespace', async () => {
 			const namespacePattern = `

@@ -327,8 +327,8 @@ function formatJson(value: unknown): string {
 }
 
 .statusDot {
-	--animation--opacity-pulse--duration: 1.5s;
-	--animation--opacity-pulse--opacity-end: 0.3;
+	--n8n-animation--opacity-pulse--duration: 1.5s;
+	--n8n-animation--opacity-pulse--opacity-end: 0.3;
 
 	width: 6px;
 	height: 6px;

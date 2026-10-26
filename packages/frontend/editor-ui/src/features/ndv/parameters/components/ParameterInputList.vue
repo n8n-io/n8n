@@ -1075,7 +1075,7 @@ watch(
 @use '@/app/css/variables' as *;
 
 .parameter-input-list-wrapper {
-	--input--color--background--disabled: var(--color--background);
+	--n8n-input--color--background--disabled: var(--color--background);
 	.icon-button {
 		position: absolute;
 		opacity: 0;

@@ -111,8 +111,8 @@ onBeforeUnmount(() => {
 }
 
 .message {
-	--animation--fade-in-up--duration: var(--duration--base);
-	--animation--fade-in-up--translate: var(--spacing--5xs);
+	--n8n-animation--fade-in-up--duration: var(--duration--base);
+	--n8n-animation--fade-in-up--translate: var(--spacing--5xs);
 
 	margin: 0;
 	color: var(--color--text);

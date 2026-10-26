@@ -260,7 +260,7 @@ watch(
 
 .base,
 .overlay {
-	--animation--popover-in--scale: 0.95;
+	--n8n-animation--popover-in--scale: 0.95;
 
 	align-self: end;
 }

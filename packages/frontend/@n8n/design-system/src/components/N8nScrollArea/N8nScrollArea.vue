@@ -51,7 +51,7 @@ export interface Props {
 	/**
 	 * Fade the content out at this edge of the viewport, or at both edges of this axis, as a
 	 * hint that more of it scrolls into view. The fade is a CSS mask, so it works on any
-	 * background. Set `--scroll-area--fade-size` on the component to change its depth.
+	 * background. Set `--n8n-scroll-area--fade-size` on the component to change its depth.
 	 */
 	edgeFade?: ScrollAreaEdgeFade;
 }
@@ -241,7 +241,7 @@ defineExpose({
 }
 
 /* The mask sits on the viewport, so the scrollbar next to it stays untouched. */
-$fade-size: var(--scroll-area--fade-size, var(--spacing--sm));
+$fade-size: var(--n8n-scroll-area--fade-size, var(--spacing--sm));
 
 .fadeTop {
 	@include mixins.scroll-mask(top, $fade-size);

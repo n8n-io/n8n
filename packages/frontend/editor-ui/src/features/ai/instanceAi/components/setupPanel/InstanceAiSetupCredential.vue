@@ -863,7 +863,7 @@ onScopeDispose(() => {
 }
 
 .help {
-	--button--color: var(--text-color--subtler);
+	--n8n-button--color: var(--text-color--subtler);
 	padding-inline: var(--spacing--2xs);
 }
 
