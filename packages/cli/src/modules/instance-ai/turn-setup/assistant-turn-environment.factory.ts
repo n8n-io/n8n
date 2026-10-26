@@ -336,6 +336,7 @@ export class AssistantTurnEnvironmentFactory {
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 			modelId,
+			modelFetch: this.modelService.getModelFetch(),
 			allowSendingParameterValues,
 		});
 
@@ -507,6 +508,7 @@ export class AssistantTurnEnvironmentFactory {
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
+			modelFetch: this.modelService.getModelFetch(),
 			modelStreamStallOptions: modelStreamStallOptions(this.aiConfig),
 			eventBus: runtime.eventBus,
 			logger: this.logger,

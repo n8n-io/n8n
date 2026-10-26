@@ -5301,6 +5301,7 @@ export class InstanceAiService {
 					llmTitle = await titleTracing.withActiveSpan(titleTracing.rootRun, async () => {
 						const title = await generateTitleForRun(modelId, userText, {
 							...(titleTelemetry ? { telemetry: titleTelemetry } : {}),
+							modelFetch: this.modelService.getModelFetch(),
 						});
 						if (title) {
 							await titleTracing.finishRun(titleTracing.rootRun, {
@@ -5319,7 +5320,9 @@ export class InstanceAiService {
 					releaseTraceClient(titleTracing.rootRun.traceId);
 				}
 			} else {
-				llmTitle = await generateTitleForRun(modelId, userText);
+				llmTitle = await generateTitleForRun(modelId, userText, {
+					modelFetch: this.modelService.getModelFetch(),
+				});
 			}
 			if (!llmTitle) return;
 

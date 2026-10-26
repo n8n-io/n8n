@@ -232,6 +232,7 @@ export async function createInstanceAgent(
 	if (mcpConnectionFailures.length > 0) {
 		agent.mcpConnectionFailures(mcpConnectionFailures);
 	}
+	if (options.modelFetch) agent.modelFetch(options.modelFetch);
 	if (options.thinkingEnabled !== false) {
 		applyAgentThinking(agent, modelId);
 	}

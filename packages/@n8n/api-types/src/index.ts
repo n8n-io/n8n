@@ -18,6 +18,7 @@ export * from './instance-registry-types';
 export type * from './instance-reporting';
 export type * from './worker-pools';
 export * from './node-type-availability';
+export type * from './sub-workflow-policy-check';
 export type * from './credential-type-availability';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
@@ -512,6 +513,11 @@ export {
 	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
 	AI_GATEWAY_MANAGED_TAG,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiEvalExportExecutionRequest,
+	InstanceAiEvalRestoreExecutionRequest,
+	instanceAiEvalFailedExecutionEnvelopeSchema,
+	type InstanceAiEvalFailedExecutionEnvelope,
+	type InstanceAiEvalFailedExecutionSummary,
 	InstanceAiEvalSeedDataTableRowsRequest,
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
