@@ -126,16 +126,19 @@ type ResolvedScope = { allowedCategories: ActivityEventCategory[] } & (
 	| {
 			surface: 'conversation';
 			projectIds: string[];
-			/** Whether the caller holds `execution:read` on the thread's project. */
-			runsVisible: boolean;
+			/** The thread's project if the caller holds `execution:read` on it, else empty. */
+			runProjectIds: string[];
 	  }
 	| {
 			surface: 'mcp';
 			projectIds: ActivityProjectScope;
 			/** Of those, the ones whose credential entries the caller may read. */
 			credentialProjectIds: ActivityProjectScope;
-			/** Whether the run leg may be read at all. */
-			runsVisible: boolean;
+			/**
+			 * Of those, the ones whose runs the caller may read: the token must cover executions
+			 * and the caller must hold `execution:read` on the project.
+			 */
+			runProjectIds: ActivityProjectScope;
 	  }
 );
 
@@ -310,9 +313,9 @@ export class InstanceContextService {
 
 			const [entries, runs, inventory] = await Promise.all([
 				this.readEntries({ cursor, now, scope: resolved }),
-				!resolved.runsVisible
-					? Promise.resolve([])
-					: this.readRuns({ projectIds, cursor, now, mcpVisibleOnly }),
+				hasProjectScope(resolved.runProjectIds)
+					? this.readRuns({ projectIds: resolved.runProjectIds, cursor, now, mcpVisibleOnly })
+					: Promise.resolve([]),
 				// Only on the opening block. A delta skips it: the estate has not changed in a way
 				// the earlier block failed to cover.
 				isUpdate
@@ -685,27 +688,33 @@ export class InstanceContextService {
 					surface: 'conversation',
 					projectIds: [projectId],
 					allowedCategories: credentials ? ['workflow', 'credential'] : ['workflow'],
-					runsVisible: executions,
+					runProjectIds: executions ? [projectId] : [],
 				};
 			}
 
 			// The personal project is credential-readable by its owner without a project role, so
 			// naming it explicitly must not lose its credential entries.
-			const credentialProjectIds = scope.credentialGranted
-				? await this.credentialReadableProjectIds(
-						user,
-						[projectId],
-						(await this.projectRepository.getPersonalProjectForUser(user.id))?.id,
-					)
-				: [];
+			// The same holds for its runs.
+			const personalProjectId =
+				scope.credentialGranted || scope.executionGranted
+					? (await this.projectRepository.getPersonalProjectForUser(user.id))?.id
+					: undefined;
+			const [credentialProjectIds, runProjectIds] = await Promise.all([
+				scope.credentialGranted
+					? this.projectIdsWithScope(user, 'credential:read', [projectId], personalProjectId)
+					: [],
+				scope.executionGranted
+					? this.projectIdsWithScope(user, 'execution:read', [projectId], personalProjectId)
+					: [],
+			]);
 			return {
 				surface: 'mcp',
 				projectIds: [projectId],
 				credentialProjectIds,
-				allowedCategories: hasCredentialProjectScope(credentialProjectIds)
+				allowedCategories: hasProjectScope(credentialProjectIds)
 					? ['workflow', 'credential']
 					: ['workflow'],
-				runsVisible: scope.executionGranted,
+				runProjectIds,
 			};
 		}
 
@@ -717,19 +726,19 @@ export class InstanceContextService {
 			// Reading every workflow does not imply reading every credential, and the two are
 			// resolved apart: global `credential:read` opens all of them, otherwise the caller may
 			// still hold it on individual projects and should see those.
-			const credentialProjectIds: ActivityProjectScope = !scope.credentialGranted
-				? []
-				: hasGlobalScope(user, ['credential:read'], { mode: 'allOf' })
-					? 'all-projects'
-					: await this.credentialReadableProjectIds(user, null, undefined);
+			// Runs follow the same rule with `execution:read`.
+			const [credentialProjectIds, runProjectIds] = await Promise.all([
+				scope.credentialGranted ? this.globalOrProjectIdsWithScope(user, 'credential:read') : [],
+				scope.executionGranted ? this.globalOrProjectIdsWithScope(user, 'execution:read') : [],
+			]);
 			return {
 				surface: 'mcp',
 				projectIds: 'all-projects',
 				credentialProjectIds,
-				allowedCategories: hasCredentialProjectScope(credentialProjectIds)
+				allowedCategories: hasProjectScope(credentialProjectIds)
 					? ['workflow', 'credential']
 					: ['workflow'],
-				runsVisible: scope.executionGranted,
+				runProjectIds,
 			};
 		}
 
@@ -743,32 +752,46 @@ export class InstanceContextService {
 			: scopedIds;
 		if (projectIds.length === 0) return null;
 
-		const credentialProjectIds = scope.credentialGranted
-			? await this.credentialReadableProjectIds(user, projectIds, personalProject?.id)
-			: [];
+		const [credentialProjectIds, runProjectIds] = await Promise.all([
+			scope.credentialGranted
+				? this.projectIdsWithScope(user, 'credential:read', projectIds, personalProject?.id)
+				: [],
+			scope.executionGranted
+				? this.projectIdsWithScope(user, 'execution:read', projectIds, personalProject?.id)
+				: [],
+		]);
 
 		return {
 			surface: 'mcp',
 			projectIds,
 			credentialProjectIds,
-			allowedCategories: hasCredentialProjectScope(credentialProjectIds)
+			allowedCategories: hasProjectScope(credentialProjectIds)
 				? ['workflow', 'credential']
 				: ['workflow'],
-			runsVisible: scope.executionGranted,
+			runProjectIds,
 		};
 	}
 
-	/**
-	 * Of the projects already in scope, the ones where the caller really may read credentials.
-	 *
-	 * The token's `credential:read` grant is not this. A grant narrows a token and any user may
-	 * request it, so it cannot stand in for the permission — and the two come apart for real:
-	 * a custom project role may hold `workflow:read` without `credential:read`, and its holder
-	 * would otherwise read credential names and types for a project whose credentials they cannot
-	 * list.
-	 */
-	private async credentialReadableProjectIds(
+	/** `'all-projects'` for a global holder of `scope`, otherwise the projects where it is held. */
+	private async globalOrProjectIdsWithScope(
 		user: User,
+		scope: 'credential:read' | 'execution:read',
+	): Promise<ActivityProjectScope> {
+		if (hasGlobalScope(user, [scope], { mode: 'allOf' })) return 'all-projects';
+		return await this.projectIdsWithScope(user, scope, null, undefined);
+	}
+
+	/**
+	 * Of the projects already in scope, the ones where the caller really holds `scope`.
+	 *
+	 * The token's grant is not this. A grant narrows a token and any user may request it, so it
+	 * cannot stand in for the permission — and the two come apart for real: a custom project role
+	 * may hold `workflow:read` without `credential:read` or `execution:read`, and its holder would
+	 * otherwise read credential entries or run summaries for a project they cannot read them in.
+	 */
+	private async projectIdsWithScope(
+		user: User,
+		scope: 'credential:read' | 'execution:read',
 		/**
 		 * Narrow to these, or `null` for a whole-instance reader, which has no list to narrow to.
 		 * Passing the list keeps the query bounded to what the caller can already see; asking for
@@ -782,7 +805,7 @@ export class InstanceContextService {
 
 		const readable = await this.projectService.getProjectIdsWithScope(
 			user,
-			['credential:read'],
+			[scope],
 			projectIds ?? undefined,
 		);
 		const readableSet = new Set(readable);
@@ -855,7 +878,7 @@ export class InstanceContextService {
 	}
 }
 
-function hasCredentialProjectScope(projectIds: ActivityProjectScope): boolean {
+function hasProjectScope(projectIds: ActivityProjectScope): boolean {
 	return projectIds === 'all-projects' || projectIds.length > 0;
 }
 
@@ -874,7 +897,7 @@ function resolveCategory(
 	if (category !== undefined && !scope.allowedCategories.includes(category)) return null;
 	if (scope.surface !== 'mcp') return category;
 
-	if (hasCredentialProjectScope(scope.credentialProjectIds)) return category;
+	if (hasProjectScope(scope.credentialProjectIds)) return category;
 
 	if (category === 'credential') return null;
 	// No category asked for, and only one of the two is visible anywhere — so name it rather than

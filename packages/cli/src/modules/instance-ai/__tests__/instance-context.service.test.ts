@@ -1054,6 +1054,8 @@ describe('InstanceContextService', () => {
 		describe('the opening block', () => {
 			it('filters the aggregate legs inside the query, not after it', async () => {
 				const service = serviceWith();
+				// The caller holds `execution:read` on the project, so the run leg is read.
+				projectService.getProjectIdsWithScope.mockResolvedValue([PROJECT_ID]);
 				workflowRepository.findRecentForProjects.mockResolvedValue({
 					total: 1,
 					workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: false }],
