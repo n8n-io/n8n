@@ -1805,8 +1805,24 @@ describe('McpAgentToolsService', () => {
 			const { id: _id, ...thread } = sessionDetail.thread;
 			expect(result.structuredContent).toEqual({
 				ok: true,
-				session: { sessionId: 'session-1', ...thread },
+				session: { sessionId: 'session-1', ...thread, title: 'Session #1' },
 				executions: sessionDetail.executions,
+			});
+		});
+
+		it('keeps a stored session title', async () => {
+			agentContextService.readSession.mockResolvedValue({
+				...sessionDetail,
+				thread: { ...sessionDetail.thread, title: 'Order questions' },
+			});
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+			});
+
+			expect(result.structuredContent).toMatchObject({
+				session: { sessionId: 'session-1', title: 'Order questions' },
 			});
 		});
 

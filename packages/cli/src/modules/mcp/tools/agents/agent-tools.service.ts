@@ -1033,8 +1033,16 @@ export class McpAgentToolsService {
 							message: `Execution "${executionId}" not found in session "${sessionId}"`,
 						};
 					}
-					const { id, ...thread } = detail.thread;
-					return { ok: true, session: { sessionId: id, ...thread }, executions };
+					const { id, title, ...thread } = detail.thread;
+					return {
+						ok: true,
+						session: {
+							sessionId: id,
+							...thread,
+							title: title?.trim() || `Session #${thread.sessionNumber}`,
+						},
+						executions,
+					};
 				}),
 		};
 	}
