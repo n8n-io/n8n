@@ -1,7 +1,9 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
@@ -9,6 +11,7 @@ import { License } from '@/license';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
 import { InboxSourceRegistry } from '../../inbox/inbox-source.registry';
+import { SelfHealingConfigurationService } from '../self-healing/self-healing-configuration.service';
 import { SelfHealingResultService } from '../self-healing/self-healing-result.service';
 
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
@@ -19,13 +22,19 @@ import { InstanceAiModule } from '../instance-ai.module';
 import { InstanceAiService } from '../instance-ai.service';
 import { SelfHealingInvestigationService } from '../self-healing/self-healing-investigation.service';
 
-const { loadSuggestionEventRelay, createSuggestionEventRelay, loadResultController } = vi.hoisted(
-	() => ({
-		loadSuggestionEventRelay: vi.fn(),
-		createSuggestionEventRelay: vi.fn(),
-		loadResultController: vi.fn(),
-	}),
-);
+const {
+	loadSuggestionEventRelay,
+	createSuggestionEventRelay,
+	loadResultController,
+	loadConfigurationController,
+	loadEvalController,
+} = vi.hoisted(() => ({
+	loadSuggestionEventRelay: vi.fn(),
+	createSuggestionEventRelay: vi.fn(),
+	loadResultController: vi.fn(),
+	loadConfigurationController: vi.fn(),
+	loadEvalController: vi.fn(),
+}));
 
 vi.mock('@/credentials/instance-credential-broker', () => ({
 	InstanceCredentialBroker: vi.fn(),
@@ -48,6 +57,9 @@ vi.mock('../instance-ai-event-relay.service', () => ({
 vi.mock('../event-bus/interrupted-run-sweeper', () => ({
 	InterruptedRunSweeper: vi.fn(),
 }));
+vi.mock('../self-healing/self-healing-configuration.service', () => ({
+	SelfHealingConfigurationService: vi.fn(),
+}));
 vi.mock('../self-healing/self-healing-result.service', () => ({
 	SelfHealingResultService: vi.fn(),
 }));
@@ -57,6 +69,14 @@ vi.mock('../self-healing/self-healing-investigation.service', () => ({
 }));
 vi.mock('../instance-ai.controller', () => ({}));
 vi.mock('../mcp/instance-ai-mcp-connection.controller', () => ({}));
+vi.mock('../self-healing/self-healing-configurations.controller', () => {
+	loadConfigurationController();
+	return {};
+});
+vi.mock('../eval/eval.controller', () => {
+	loadEvalController();
+	return {};
+});
 vi.mock('../self-healing/self-healing-results.controller', () => {
 	loadResultController();
 	return {};
@@ -66,7 +86,7 @@ vi.mock('../workflow-suggestions/workflow-suggestion-event-relay.service', () =>
 	@Service()
 	class WorkflowSuggestionEventRelay {
 		constructor() {
-			createSuggestionEventRelay();
+			createSuggestionEventRelay(this);
 		}
 	}
 	return { WorkflowSuggestionEventRelay };
@@ -74,17 +94,23 @@ vi.mock('../workflow-suggestions/workflow-suggestion-event-relay.service', () =>
 
 describe('InstanceAiModule.init', () => {
 	function setup() {
-		const config = mockInstance(InstanceAiConfig, { workflowSuggestionsEnabled: false });
+		const config = mockInstance(InstanceAiConfig, {
+			workflowSuggestionsEnabled: false,
+			evalInstance: false,
+		});
+		const instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main' });
 		const sources = mockInstance(InboxSourceRegistry);
+		const mutationHooks = mockInstance(WorkflowMutationHooksProxy);
+		const configurations = mockInstance(SelfHealingConfigurationService);
 		mockInstance(SelfHealingResultService);
 		mockInstance(InstanceCredentialBroker);
 		mockInstance(SandboxSettingsService);
-		const settingsService = mockInstance(InstanceAiSettingsService);
+		const settings = mockInstance(InstanceAiSettingsService);
 		const license = mockInstance(License);
 		const moduleRegistry = mockInstance(ModuleRegistry);
 		mockInstance(InstanceAiSetupTelemetryService);
 		mockInstance(InstanceAiEventRelay);
-		mockInstance(InstanceAiService);
+		const runtime = mockInstance(InstanceAiService);
 		const sweeper = mockInstance(InterruptedRunSweeper);
 		sweeper.sweep.mockResolvedValue();
 		const investigations = mockInstance(SelfHealingInvestigationService);
@@ -94,18 +120,22 @@ describe('InstanceAiModule.init', () => {
 		vi.stubEnv('E2E_TESTS', 'false');
 		return {
 			config,
+			mutationHooks,
+			configurations,
 			sources,
 			sweeper,
 			investigations,
 			logger,
-			settingsService,
+			instanceSettings,
+			settings,
+			runtime,
 			license,
 			moduleRegistry,
 		};
 	}
 
 	it('loads suggestion listeners only when workflow suggestions are enabled', async () => {
-		const { config, sources, investigations } = setup();
+		const { config, sources, investigations, mutationHooks, configurations } = setup();
 
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
@@ -113,7 +143,9 @@ describe('InstanceAiModule.init', () => {
 		expect(loadSuggestionEventRelay).not.toHaveBeenCalled();
 		expect(createSuggestionEventRelay).not.toHaveBeenCalled();
 		expect(loadResultController).not.toHaveBeenCalled();
+		expect(loadConfigurationController).not.toHaveBeenCalled();
 		expect(sources.register).not.toHaveBeenCalled();
+		expect(mutationHooks.registerProvider).toHaveBeenCalledWith(configurations);
 
 		config.workflowSuggestionsEnabled = true;
 		await new InstanceAiModule().init();
@@ -121,10 +153,62 @@ describe('InstanceAiModule.init', () => {
 
 		expect(loadSuggestionEventRelay).toHaveBeenCalledOnce();
 		expect(createSuggestionEventRelay).toHaveBeenCalledOnce();
+		expect(mutationHooks.registerProvider).toHaveBeenCalledWith(
+			createSuggestionEventRelay.mock.calls[0][0],
+		);
 		expect(loadResultController).toHaveBeenCalledOnce();
+		expect(loadConfigurationController).toHaveBeenCalledOnce();
 		expect(sources.register).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'self_healing_result' }),
 		);
+	});
+
+	it.each(['worker', 'webhook'] as const)(
+		'keeps the Assistant runtime off %s processes',
+		async (instanceType) => {
+			const {
+				config,
+				instanceSettings,
+				settings,
+				runtime,
+				investigations,
+				sources,
+				mutationHooks,
+			} = setup();
+			config.workflowSuggestionsEnabled = true;
+			Object.assign(instanceSettings, { instanceType });
+			const module = new InstanceAiModule();
+
+			await module.init();
+
+			expect(await module.settings()).toEqual({});
+			expect(await module.systemTasks()).toEqual([]);
+
+			await module.shutdown();
+
+			expect(settings.loadFromDb).not.toHaveBeenCalled();
+			expect(runtime.shutdown).not.toHaveBeenCalled();
+			expect(investigations.reconcile).not.toHaveBeenCalled();
+			expect(sources.register).not.toHaveBeenCalled();
+			expect(mutationHooks.registerProvider).not.toHaveBeenCalled();
+			expect(loadResultController).not.toHaveBeenCalled();
+			expect(loadConfigurationController).not.toHaveBeenCalled();
+		},
+	);
+
+	it('registers the eval controller only on an eval instance', async () => {
+		const { config, investigations } = setup();
+
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
+
+		expect(loadEvalController).not.toHaveBeenCalled();
+
+		config.evalInstance = true;
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
+
+		expect(loadEvalController).toHaveBeenCalledOnce();
 	});
 
 	it('starts reconciliation after the interrupted-run sweep finishes', async () => {
@@ -168,15 +252,15 @@ describe('InstanceAiModule.init', () => {
 	});
 
 	it('re-checks the Assistant default on a license change, then refreshes its settings', async () => {
-		const { settingsService, license, moduleRegistry } = setup();
+		const { settings, license, moduleRegistry } = setup();
 		const recheck = createDeferredPromise();
-		settingsService.keepEnabledIfInUse.mockReturnValue(recheck.promise);
+		settings.keepEnabledIfInUse.mockReturnValue(recheck.promise);
 
 		await new InstanceAiModule().init();
 		const [[onLicenseChange]] = license.onCertRefresh.mock.calls;
 		onLicenseChange('cert');
 
-		expect(settingsService.keepEnabledIfInUse).toHaveBeenCalledOnce();
+		expect(settings.keepEnabledIfInUse).toHaveBeenCalledOnce();
 		expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
 		recheck.resolve();
 		await vi.waitFor(() =>
@@ -185,9 +269,9 @@ describe('InstanceAiModule.init', () => {
 	});
 
 	it('refreshes the settings and logs a failed re-check after a license change', async () => {
-		const { settingsService, license, moduleRegistry, logger } = setup();
+		const { settings, license, moduleRegistry, logger } = setup();
 		const error = new Error('Settings write failed.');
-		settingsService.keepEnabledIfInUse.mockRejectedValue(error);
+		settings.keepEnabledIfInUse.mockRejectedValue(error);
 
 		await new InstanceAiModule().init();
 		const [[onLicenseChange]] = license.onCertRefresh.mock.calls;

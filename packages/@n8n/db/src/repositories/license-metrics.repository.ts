@@ -41,6 +41,8 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 		const credentialTable = this.toTableName('credentials_entity');
 		const workflowStatsTable = this.toTableName('workflow_statistics');
 		const testRunTable = this.toTableName('test_run');
+		// Service accounts share the user table but do not take a seat.
+		const isPerson = `${this.toColumnName('kind')} = 'person'`;
 
 		const [
 			{
@@ -56,8 +58,8 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 			},
 		] = (await this.query(`
 			SELECT
-				(SELECT COUNT(*) FROM ${userTable} WHERE disabled = false) AS enabled_user_count,
-				(SELECT COUNT(*) FROM ${userTable}) AS total_user_count,
+				(SELECT COUNT(*) FROM ${userTable} WHERE disabled = false AND ${isPerson}) AS enabled_user_count,
+				(SELECT COUNT(*) FROM ${userTable} WHERE ${isPerson}) AS total_user_count,
 				(SELECT COUNT(*) FROM ${workflowTable} WHERE ${this.toColumnName('activeVersionId')} IS NOT NULL) AS active_workflow_count,
 				(SELECT COUNT(*) FROM ${workflowTable}) AS total_workflow_count,
 				(SELECT COUNT(*) FROM ${credentialTable}) AS total_credentials_count,

@@ -77,6 +77,7 @@ E2E_TESTS=true \
 N8N_INSTANCE_AI_ENABLED=true \
 N8N_ENABLED_MODULES=instance-ai,agents \
 N8N_AI_ENABLED=true \
+N8N_INSTANCE_AI_EVAL_INSTANCE=true \
 pnpm exec dotenvx run -f ../../.env.eval -- pnpm start
 ```
 

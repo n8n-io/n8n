@@ -1470,6 +1470,7 @@ export class InstanceAiSettingsService {
 		if (!baseUrl && !apiKey) return null;
 		const headers = modelCredentialHeaders(credentialType, data);
 		return {
+			kind: 'endpoint',
 			id,
 			url: baseUrl,
 			...(apiKey ? { apiKey } : {}),
@@ -1650,6 +1651,7 @@ export class InstanceAiSettingsService {
 
 		if (modelUrl) {
 			return {
+				kind: 'endpoint',
 				id,
 				url: modelUrl,
 				...(modelApiKey ? { apiKey: modelApiKey } : {}),
@@ -1659,6 +1661,7 @@ export class InstanceAiSettingsService {
 
 		if (modelApiKey) {
 			return {
+				kind: 'endpoint',
 				id,
 				url: '',
 				apiKey: modelApiKey,
@@ -1694,6 +1697,7 @@ export class InstanceAiSettingsService {
 		const googleCredentials = this.config.vertexServiceAccountJson?.trim() || undefined;
 
 		return {
+			kind: 'vertex-anthropic',
 			id,
 			project: this.resolveVertexProjectId(),
 			location: this.resolveVertexLocation(),

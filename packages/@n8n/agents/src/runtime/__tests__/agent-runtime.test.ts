@@ -1714,6 +1714,26 @@ describe('AgentRuntime — guardrails', () => {
 		expect(onInputBoundary).toHaveBeenCalledTimes(2);
 	});
 
+	it('prices a Foundry deployment by the model it serves', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: {
+				id: 'azure-openai/my-chat',
+				catalogModelId: 'azure-openai/gpt-4.1',
+				apiKey: 'az-key',
+				endpointType: 'foundry',
+				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+			},
+			instructions: 'You are a test assistant.',
+			eventBus: new AgentEventBus(),
+		});
+
+		await runtime.generate('hi');
+
+		expect(getModelCost).toHaveBeenCalledWith('azure-openai/gpt-4.1');
+	});
+
 	it('does not start the next model call after a turn spends the session cap', async () => {
 		vi.mocked(getModelCost).mockResolvedValueOnce({ input: 1_000_000, output: 1_000_000 });
 		streamText.mockReturnValueOnce({
@@ -10144,7 +10164,7 @@ describe('AgentRuntime — empty model responses', () => {
 		};
 	}
 
-	it.each(['other', 'unknown', 'content-filter'])(
+	it.each(['other', 'unknown', 'interrupted', 'content-filter'])(
 		'stream: yields an error chunk when the model returns no output with finish reason "%s"',
 		async (finishReason) => {
 			streamText.mockReturnValue(makeEmptyStream(finishReason));

@@ -1504,6 +1504,7 @@ describe('InstanceAiSettingsService', () => {
 			);
 
 			expect(result).toEqual({
+				kind: 'endpoint',
 				id: 'openai/gpt-4.1',
 				url: '',
 				apiKey: 'admin-key',
@@ -1552,6 +1553,7 @@ describe('InstanceAiSettingsService', () => {
 			await service.updateAdminSettings({ modelCredentialId: credential.id, modelName });
 
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				kind: 'endpoint',
 				...expected,
 				url,
 				apiKey: 'admin-key',
@@ -1571,6 +1573,7 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				kind: 'endpoint',
 				id: 'openai/gpt-5',
 				url: '',
 				apiKey: 'environment-key',
@@ -1598,6 +1601,7 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				kind: 'endpoint',
 				id: 'openai/model-y',
 				url: '',
 				apiKey: 'updated-key',
@@ -1632,7 +1636,7 @@ describe('InstanceAiSettingsService', () => {
 						},
 					}),
 				),
-			).resolves.toEqual({ id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
+			).resolves.toEqual({ kind: 'endpoint', id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
 		});
 
 		it('falls back to the user credential when the admin credential data is incomplete', async () => {
@@ -1664,7 +1668,7 @@ describe('InstanceAiSettingsService', () => {
 						},
 					}),
 				),
-			).resolves.toEqual({ id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
+			).resolves.toEqual({ kind: 'endpoint', id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Could not resolve the configured model credential; using environment fallback',
 				{
@@ -1698,7 +1702,7 @@ describe('InstanceAiSettingsService', () => {
 						},
 					}),
 				),
-			).resolves.toEqual({ id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
+			).resolves.toEqual({ kind: 'endpoint', id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Could not resolve the configured model credential; using environment fallback',
 				{ credentialUseId: 'instance-ai:model', error: 'gone' },
@@ -1725,7 +1729,7 @@ describe('InstanceAiSettingsService', () => {
 						},
 					}),
 				),
-			).resolves.toEqual({ id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
+			).resolves.toEqual({ kind: 'endpoint', id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
 			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
 		});
 		it('reads the configured model credential from the broker', async () => {
@@ -2069,19 +2073,29 @@ describe('InstanceAiSettingsService', () => {
 			['openai/original', 'replacement', 'openai/replacement'],
 			['original', 'replacement', 'custom/replacement'],
 			[
-				{ id: 'anthropic/original', url: '', apiKey: 'key' },
+				{ kind: 'endpoint', id: 'anthropic/original', url: '', apiKey: 'key' },
 				'replacement',
-				{ id: 'anthropic/replacement', url: '', apiKey: 'key' },
+				{ kind: 'endpoint', id: 'anthropic/replacement', url: '', apiKey: 'key' },
 			],
 			[
-				{ id: 'original', url: '', apiKey: 'key' },
+				{ kind: 'endpoint', id: 'original', url: '', apiKey: 'key' },
 				'replacement',
-				{ id: 'custom/replacement', url: '', apiKey: 'key' },
+				{ kind: 'endpoint', id: 'custom/replacement', url: '', apiKey: 'key' },
 			],
 			[
-				{ id: 'google-vertex-anthropic/original', project: 'acme', location: 'us-east5' },
+				{
+					kind: 'vertex-anthropic',
+					id: 'google-vertex-anthropic/original',
+					project: 'acme',
+					location: 'us-east5',
+				},
 				'replacement',
-				{ id: 'google-vertex-anthropic/replacement', project: 'acme', location: 'us-east5' },
+				{
+					kind: 'vertex-anthropic',
+					id: 'google-vertex-anthropic/replacement',
+					project: 'acme',
+					location: 'us-east5',
+				},
 			],
 		] as const)(
 			'replaces the selected model while keeping its provider',
@@ -2116,7 +2130,7 @@ describe('InstanceAiSettingsService', () => {
 					{ type: 'openAiApi', data: { apiKey: 'key' } },
 					'gpt-5.4',
 				),
-			).toEqual({ id: 'openai/gpt-5.4', url: '', apiKey: 'key' });
+			).toEqual({ kind: 'endpoint', id: 'openai/gpt-5.4', url: '', apiKey: 'key' });
 
 			expect(() =>
 				service.buildModelConfigForConnection(
@@ -2138,6 +2152,7 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				kind: 'endpoint',
 				id: 'openai/gpt-4',
 				url: 'https://model.example.com/v1',
 				apiKey: 'model-key',
@@ -2145,6 +2160,7 @@ describe('InstanceAiSettingsService', () => {
 
 			globalConfig.instanceAi.modelUrl = '';
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				kind: 'endpoint',
 				id: 'openai/gpt-4',
 				url: '',
 				apiKey: 'model-key',
@@ -2167,6 +2183,7 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				kind: 'vertex-anthropic',
 				id: 'google-vertex-anthropic/claude-opus-4-8',
 				project: 'instance-ai-494613',
 				location: 'global',
@@ -2188,6 +2205,7 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				kind: 'vertex-anthropic',
 				id: 'google-vertex-anthropic/claude-opus-4-8',
 				project: 'from-json',
 				location: 'global',

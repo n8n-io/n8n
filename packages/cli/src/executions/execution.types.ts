@@ -1,5 +1,10 @@
 import type { SerializedCursor } from '@n8n/api-types';
-import type { AuthenticatedRequest, ExecutionSummaries, ExecutionEntity } from '@n8n/db';
+import type {
+	AuthenticatedRequest,
+	ExecutionSummaries,
+	ExecutionEntity,
+	IExecutionResponse,
+} from '@n8n/db';
 import type { AnnotationVote, ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
 import type { ExecutionCursor } from '@/executions/execution-cursor';
@@ -46,6 +51,16 @@ export declare namespace ExecutionRequest {
 
 	type Update = AuthenticatedRequest<RouteParams.ExecutionId, {}, ExecutionUpdatePayload, {}>;
 }
+
+/**
+ * The execution a retry started. The execution data fields are absent when the
+ * user may not read the workflow's executions.
+ */
+export type RetriedExecution = Omit<
+	IExecutionResponse,
+	'createdAt' | 'data' | 'workflowData' | 'customData' | 'annotation'
+> &
+	Partial<Pick<IExecutionResponse, 'data' | 'workflowData' | 'customData' | 'annotation'>>;
 
 export type StopResult = {
 	mode: WorkflowExecuteMode;
