@@ -153,7 +153,7 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 					<N8nIcon color="text-light" :icon="metadata.trigger.icon" />
 					<N8nText step="xs" bold>{{ metadata.trigger.label }}</N8nText>
 				</li>
-				<li>
+				<li :class="$style.numericMetadata">
 					<N8nIcon color="text-light" icon="hash" />
 					<N8nText step="xs" bold>
 						{{ tokenFormatter.format(metadata.totalTokens).toUpperCase() }}
@@ -162,7 +162,7 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 						>
 					</N8nText>
 				</li>
-				<li>
+				<li :class="$style.numericMetadata">
 					<N8nIcon color="text-light" icon="clock" />
 					<N8nText step="xs" bold>{{ metadata.durationLabel }}</N8nText>
 				</li>
@@ -304,6 +304,10 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 	white-space: nowrap;
 	margin-left: auto;
 }
+.numericMetadata {
+	font-variant-numeric: tabular-nums;
+}
+
 .descriptionList {
 	display: flex;
 	flex-wrap: wrap;
