@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/alwaysAllow.test.ts
+  s_6f3bf766fd9fe0::t_7789b094ab3de6 1-79,81-99
+  s_6f3bf766fd9fe0::t_629314df3e9891 80
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantConfirmationCard.vue
+  s_6f3bf766fd9fe0::t_3ba43538cc25fa 41-43,48-60
+  s_6f3bf766fd9fe0::t_906c05bb2dbc84 17,238-250,252-273,275-391
+  s_6f3bf766fd9fe0::t_0e3a89f632185a 90-94
+packages/frontend/editor-ui/src/features/ai/instanceAi/alwaysAllow.ts
+  s_6f3bf766fd9fe0::t_b2fcf4f95042c0 48,50
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantConfirmation.ts
+  s_6f3bf766fd9fe0::t_18d82f756d73f3 66-68,72
+  s_6f3bf766fd9fe0::t_8aded32c3074ae 3
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantConfirmationCard.test.ts
+  ai_agent 120
+  s_6f3bf766fd9fe0::t_e6f3f73d8f88e8 3,88-101,104-108,110-119,121-136,187
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantConfirmation.test.ts
+  s_6f3bf766fd9fe0::t_22e09bc064e077 47,55-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f7798a693df73bed94d6c9990bf830f94c74e0f",
+  "prompts": {},
+  "sessions": {
+    "s_6f3bf766fd9fe0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54b552f3-ed95-47f8-bae0-29b5254ca51c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
