@@ -167,7 +167,7 @@ describe('AgentSessionTimelineView', () => {
 		});
 	});
 
-	it('gives the Close button an accessible name and emits close', () => {
+	it('gives the Close button an accessible name and emits close', async () => {
 		const wrapper = shallowMount(AgentSessionTimelineHeader, {
 			global: { stubs: { N8nTooltip: { template: '<slot />' } } },
 			props: {
@@ -179,10 +179,10 @@ describe('AgentSessionTimelineView', () => {
 				langsmithExportLoading: false,
 			},
 		});
-		const button = wrapper.getComponent('[data-testid="agent-session-timeline-close"]');
+		const button = wrapper.get('[data-testid="agent-session-timeline-close"]');
 
 		expect(button.attributes('aria-label')).toBe('Close');
-		button.vm.$emit('click');
+		await button.trigger('click');
 		expect(wrapper.emitted('close')).toEqual([[]]);
 		expect(wrapper.emitted('edit')).toBeUndefined();
 	});

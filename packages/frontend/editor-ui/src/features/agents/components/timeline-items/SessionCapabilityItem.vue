@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { VIEWS } from '@/app/constants/navigation';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { formatTimelineTime } from '../../utils/timeline-time';
 import {
@@ -7,6 +8,7 @@ import {
 	N8nAiActivityStepChevron,
 	N8nAiActivityStepResultSection,
 	N8nAnimatedCollapsibleContent,
+	N8nButton,
 	N8nCallout,
 	N8nCodeBlock,
 	N8nIcon,
@@ -18,6 +20,7 @@ import { useI18n } from '@n8n/i18n';
 import { truncate } from '@n8n/utils/string/truncate';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { useTimelineItemExpansion } from '../../composables/useTimelineItemExpansion';
 import type { TimelineItem } from '../../session-timeline.types';
 import {
@@ -35,6 +38,19 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const router = useRouter();
+
+const fullExecutionHref = computed(() => {
+	const item = props.item;
+	if (item.kind !== 'workflow' || !item.workflowId || !item.workflowExecutionId) return '';
+	return router.resolve({
+		name: VIEWS.EXECUTION_PREVIEW,
+		params: {
+			workflowId: item.workflowId,
+			executionId: item.workflowExecutionId,
+		},
+	}).href;
+});
 
 const nodeType = computed(() => {
 	if (props.item.kind !== 'node' || !props.item.nodeType) return null;
@@ -185,6 +201,19 @@ const { isOpen } = useTimelineItemExpansion({
 							:class="$style.toolCode"
 						/>
 					</N8nAiActivityStepResultSection>
+					<N8nAiActivityStepResultSection v-if="fullExecutionHref" :class="$style.toolSection">
+						<div :class="$style.executionButton">
+							<N8nButton
+								variant="outline"
+								size="small"
+								:label="i18n.baseText('agentSessions.workflowLog.openFull')"
+								:href="fullExecutionHref"
+								target="_blank"
+								rel="noopener noreferrer"
+								data-test-id="open-full-execution"
+							/>
+						</div>
+					</N8nAiActivityStepResultSection>
 				</div>
 			</N8nAnimatedCollapsibleContent>
 		</CollapsibleRoot>
@@ -266,6 +295,10 @@ const { isOpen } = useTimelineItemExpansion({
 
 	/** Vertically aligns the rail with center of icon **/
 	transform: translateX(calc(var(--spacing--sm) + 2px));
+}
+
+.executionButton {
+	padding-top: var(--spacing--xs);
 }
 
 .toolCode {

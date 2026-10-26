@@ -137,6 +137,8 @@ export const useStubAgentSessionStore = defineStore('stubAgentSession', () => {
 						toolCallId: `stub-workflow-${status}`,
 						name: 'weekly_metrics',
 						workflowName: 'Collect weekly metrics',
+						workflowId: 'stub-workflow',
+						workflowExecutionId: `stub-workflow-execution-${status}`,
 						input: { period: 'weekly' },
 						output: { completedTasks: 12, pendingReviews: 2 },
 						startTime: timestamp + 7500,
