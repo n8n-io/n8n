@@ -5,6 +5,13 @@
 	--banner--height: 48px;
 }
 
+::selection {
+	background-color: light-dark(
+		color-mix(in oklch, var(--background--brand) 30%, transparent),
+		var(--background--brand)
+	);
+}
+
 .clickable {
 	cursor: pointer !important;
 }
