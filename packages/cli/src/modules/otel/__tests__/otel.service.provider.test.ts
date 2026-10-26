@@ -475,6 +475,7 @@ describe('OtelService on the startup OTel setup', () => {
 		await service.init();
 
 		startWorkflowSpan().end();
+		startWorkflowSpan().end();
 
 		const [exported] = await exportedAfterFlush();
 		expect(exported.span.resource.attributes[ATTR.OTEL_SERVICE_NAME]).toBe('n8n');
