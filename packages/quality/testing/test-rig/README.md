@@ -116,6 +116,17 @@ Each new stack activates the key again. For many runs a cert is faster: start on
 
 `LEADER_HOOKS` logs each leader takeover and step-down in the mains. `fastLeaderElection` shortens the leader key TTL and check interval. `currentLeader` waits until exactly one main leads. `oneLeaderAtATime` finds periods in which two mains both led.
 
+## Chaos runs
+
+`pnpm chaos` starts a stack with one main and two workers, sends a steady webhook workload, and applies a random schedule of faults chosen from a seed. A fault can kill or stop a process, freeze it, delay or cut its link to Postgres or Redis, or arm a hook for a while that makes a worker skip its lock renewal or fail a job. Two faults on one container never overlap in time. After the schedule, the run checks that every execution finished, no accepted request was lost, no run wrote its row twice, every successful run wrote its row, and the queue drained.
+
+```bash
+TEST_IMAGE_N8N=n8nio/n8n:2.42.2 pnpm chaos                       # random seed
+TEST_IMAGE_N8N=n8nio/n8n:2.42.2 pnpm chaos --seed 1234 --shrink  # replay a seed and shrink it
+```
+
+The run prints its seed and the schedule first, so you can replay a failing schedule with `--seed`. The command exits with a non-zero code when an invariant fails or a fault could not be applied. With `--shrink`, a failing run removes faults one at a time until the smallest failing schedule is left, which can be the empty schedule. A seed fixes the schedule but not the outcome, because Docker timing still varies, so the shrinker runs each candidate `--repeats` times and keeps it only when it fails at least `--min-failures` times. The logs and a `record.json` for each run go to `test-rig-chaos/` under your system temporary directory, or to `--out`. Run `pnpm chaos --help` for the other options.
+
 ## How it works
 
 The rig builds on the `n8n-containers` stacks. It loads a preload script into every n8n process through `NODE_OPTIONS`. The preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container. It reads hits from `[test-rig]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`. Network faults run `tc netem` in a short-lived sidecar that shares the network of the sender container. The rig builds the `n8n-test-rig/netem` image on first use.
@@ -160,7 +171,7 @@ A test with shortened timeouts shows the mechanism of a bug, not its timing in p
 
 ## Clean up
 
-The tests call `stopAllStacks` after each test. If a process dies before that, remove what is left:
+The tests call `stopAllStacks` after each test, and `pnpm chaos` calls it on Ctrl-C. If a process dies before that, remove what is left:
 
 ```bash
 docker ps -aq --filter 'name=^rig-' | xargs docker rm -f
@@ -174,4 +185,4 @@ pnpm test                                  # unit tests, no Docker
 pnpm --filter @n8n/test-rig test:docker    # contract tests against real stacks
 ```
 
-The Docker tests start real stacks one at a time. The smoke test runs on `n8nio/n8n:2.42.2`, or on the image in `TEST_IMAGE_N8N`. The install test checks that every method in the catalogue installs in each scenario image you have locally. The network test checks that a delay, a cut and a restore change the link from a main to Postgres.
+The Docker tests start real stacks one at a time. The smoke test runs on `n8nio/n8n:2.42.2`, or on the image in `TEST_IMAGE_N8N`. The install test checks that every method in the catalogue installs in each scenario image you have locally. The network test checks that a delay, a cut and a restore change the link from a main to Postgres. The workload test checks that a healthy stack records one effect for each accepted request.
