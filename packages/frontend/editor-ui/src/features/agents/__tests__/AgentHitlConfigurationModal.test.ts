@@ -1,5 +1,6 @@
 import { mount, flushPromises } from '@vue/test-utils';
 import { defineComponent } from 'vue';
+import { N8nSwitch2 } from '@n8n/design-system';
 import type { AgentHitlConfiguration, AgentJsonConfig } from '@n8n/api-types';
 import AgentHitlConfigurationModal from '../components/AgentHitlConfigurationModal.vue';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
@@ -206,5 +207,21 @@ it('preserves an existing channel configuration and queries its selected connect
 			id: 'existing',
 			recipient: { kind: 'user', id: 'U1', name: 'Reviewer' },
 		}),
+	]);
+});
+
+it('defaults administrator approval off and saves the selected policy', async () => {
+	const wrapper = render({ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' });
+	await flushPromises();
+	const toggle = wrapper.getComponent(N8nSwitch2);
+	expect(toggle.props('modelValue')).toBe(false);
+	toggle.vm.$emit('update:modelValue', true);
+	await wrapper.vm.$nextTick();
+	await wrapper
+		.findAll('button')
+		.find((button) => button.text() === 'Save')
+		?.trigger('click');
+	expect(wrapper.emitted('save')?.[0]).toEqual([
+		expect.objectContaining({ disallowRequesterApproval: true, workflowId: 'wf' }),
 	]);
 });

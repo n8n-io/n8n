@@ -840,7 +840,7 @@ export class AgentRuntimeReconstructionService {
 		route: AgentApprovalRoute | undefined,
 		options: RuntimeReconstructionOptions,
 	): BuiltTool {
-		const effective = route ?? options.config.defaultApprovalRoute;
+		const effective = route;
 		if (!effective || effective.type === 'conversation') {
 			return wrapToolForApproval(tool, { requireApproval: true });
 		}
@@ -849,6 +849,13 @@ export class AgentRuntimeReconstructionService {
 			projectId: options.projectId,
 			published: options.runType === 'production',
 			integrations: options.credentialIntegrations,
+			integrationType: options.integrationType,
+			userId: options.attributionUserId ?? options.user?.id,
+			previewChat: options.previewChat,
+			publishedN8nChat:
+				options.runType === 'production' &&
+				options.integrationType === N8N_CHAT_INTEGRATION_TYPE &&
+				options.attributionUserId !== undefined,
 		});
 	}
 

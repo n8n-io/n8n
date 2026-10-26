@@ -10,7 +10,6 @@ const props = defineProps<{
 	modelValue?: AgentApprovalRoute;
 	context: AgentHitlContext;
 	projectId: string;
-	agentDefault?: boolean;
 	disabled?: boolean;
 }>();
 const emit = defineEmits<{ 'update:modelValue': [value: AgentApprovalRoute | undefined] }>();
@@ -18,9 +17,7 @@ const i18n = useI18n();
 const creating = ref(false);
 const configurations = computed(() => props.context.getConfig()?.hitlConfigurations ?? []);
 const selected = computed(() =>
-	props.modelValue?.type === 'configuration'
-		? props.modelValue.configurationId
-		: (props.modelValue?.type ?? 'default'),
+	props.modelValue?.type === 'configuration' ? props.modelValue.configurationId : 'default',
 );
 function select(value: string) {
 	if (value === 'create') {
@@ -29,11 +26,7 @@ function select(value: string) {
 	}
 	emit(
 		'update:modelValue',
-		value === 'default'
-			? undefined
-			: value === 'conversation'
-				? { type: 'conversation' }
-				: { type: 'configuration', configurationId: value },
+		value === 'default' ? undefined : { type: 'configuration', configurationId: value },
 	);
 }
 function save(configuration: AgentHitlConfiguration) {
@@ -53,15 +46,7 @@ function save(configuration: AgentHitlConfiguration) {
 			data-testid="agent-approval-route"
 			@update:model-value="select"
 		>
-			<N8nOption
-				value="default"
-				:label="i18n.baseText(agentDefault ? 'agents.hitl.conversation' : 'agents.hitl.useDefault')"
-			/>
-			<N8nOption
-				v-if="!agentDefault"
-				value="conversation"
-				:label="i18n.baseText('agents.hitl.conversation')"
-			/>
+			<N8nOption value="default" :label="i18n.baseText('agents.hitl.useDefault')" />
 			<N8nOption
 				v-for="configuration in configurations"
 				:key="configuration.id"

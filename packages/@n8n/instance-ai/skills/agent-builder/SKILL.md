@@ -188,8 +188,9 @@ unsupported interaction, explain that it cannot be completed here and send the
 user to the Preview link from `sessionContext` to run it again.
 
 The Advanced HITL spike adds workflow and connected-channel approval for saved
-Agents called from a workflow. It requires Message an Agent version 4. It does
-not yet support scheduled Agent tasks. Do not promise that path.
+Agents called from a workflow or conversation. Workflow calls require Message
+an Agent version 4. It does not yet support scheduled Agent tasks. Do not promise
+that path.
 
 Use `hitlConfigurations` for named approval destinations. A workflow configuration
 has `id`, `name`, `method: "workflow"`, and `workflowId`. A channel configuration
@@ -201,11 +202,18 @@ user ID, and the user must first message the bot. Do not use a Telegram username
 Slack and Discord provide searchable destination lists in Settings. The channel
 path uses existing durable send-and-wait nodes with the connected credential.
 
-Set
-`defaultApprovalRoute: { type: "configuration", configurationId }` to use one
-destination for all gated tools. A tool or MCP server can set `approvalRoute`
-to override that default. Keep `requireApproval` and MCP permission rules.
-The route selects the destination. It does not require approval by itself.
+Set `approvalRoute: { type: "configuration", configurationId }` on each tool or
+MCP server that uses a destination. There is no Agent-wide default destination.
+Keep `requireApproval` and MCP permission rules. The route selects the destination.
+It does not require approval by itself.
+
+With no configuration, approval uses the current conversation behavior. With a
+configuration, a conversation still asks its requester unless
+`disallowRequesterApproval: true` is set on that configuration. Workflow calls
+use the selected destination because they have no conversational requester.
+When requester approval is disabled, the conversation shows a fixed administrator
+waiting message with no approval actions. The configured workflow or channel
+controls its approvers. This option does not add an n8n administrator-role check.
 
 A decision workflow starts with `n8n-nodes-base.agentDecisionTrigger`. Add
 review steps and return one terminal item with `{ approved: boolean }`.

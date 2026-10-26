@@ -7,9 +7,10 @@ import type {
 import { AGENT_DECISION_TRIGGER_NODE_TYPE } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { UserError, type IWorkflowBase } from 'n8n-workflow';
 import { NotFoundError } from '@n8n/errors';
+import { AgentHitlWorkflowRepository } from '../repositories/agent-hitl-workflow.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { AgentCredentialLookupService } from '../integrations/agent-credential-lookup.service';
@@ -78,6 +79,20 @@ export class AgentChannelHitlService {
 			query,
 			httpClient: this.outboundHttp.requests({ useDefaultSsrfPolicy: 'unsafe' }),
 		});
+	}
+
+	async prepareWorkflow(
+		configuration: AgentHitlChannelConfiguration,
+		integrations: AgentIntegrationConfig[],
+		projectId: string,
+		agentId: string,
+		callerWorkflowId?: string,
+	): Promise<IWorkflowBase> {
+		this.requireConnection(configuration.channel, configuration.credentialId, integrations);
+		const ownerId =
+			callerWorkflowId ??
+			(await Container.get(AgentHitlWorkflowRepository).ensureExecutionOwner(projectId, agentId));
+		return this.buildWorkflow(configuration, integrations, ownerId);
 	}
 
 	buildWorkflow(

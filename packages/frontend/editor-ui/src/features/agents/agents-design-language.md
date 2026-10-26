@@ -384,6 +384,16 @@ Focus each approval as it appears. Return focus to the composer after the last
 decision. Keep tool steps, questions, and display cards in the conversation.
 If a surface keeps a resolved card, show the decision without active actions.
 
+Advanced HITL settings use `AgentChipRow` and `AgentChipButton`, as the Build
+page does. Each pill opens its configuration. Put the add action after the pills.
+Use the item context menu for removal. Select a destination on each gated tool
+or MCP server. Do not show an Agent-wide default destination.
+
+Keep requester approval enabled by default. The configuration's administrator
+approval switch routes conversations to the configured destination. Show a fixed
+waiting message with no approval actions in the requester's conversation. The
+configured workflow or channel owns approver access.
+
 ## Preview composer queue
 
 Use one action on the right. Show Stop when a turn can be stopped and the

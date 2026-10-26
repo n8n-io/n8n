@@ -11,6 +11,7 @@ export const AgentHitlChannelSchema = z.enum(['slack', 'telegram', 'discord']);
 const configurationBase = {
 	id: z.string().min(1),
 	name: z.string().trim().min(1),
+	disallowRequesterApproval: z.boolean().optional(),
 };
 export const AgentHitlConfigurationSchema = z
 	.discriminatedUnion('method', [

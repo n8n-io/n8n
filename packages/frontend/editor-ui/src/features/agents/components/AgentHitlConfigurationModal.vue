@@ -9,6 +9,7 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
+	N8nSwitch2,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -30,6 +31,7 @@ import type {
 import { getAgentHitlChannels, getAgentHitlChannelOptions } from '../composables/useAgentApi';
 import type { AgentHitlContext } from './agent-hitl.types';
 import AgentModal from './modals/AgentModal.vue';
+import AgentFormSettingRow from './AgentFormSettingRow.vue';
 import AgentHitlDestinationPicker from './AgentHitlDestinationPicker.vue';
 
 const props = defineProps<{
@@ -53,6 +55,7 @@ const name = ref(
 	props.configuration?.name ??
 		i18n.baseText('agents.hitl.defaultName', { interpolate: { number: String(props.nextNumber) } }),
 );
+const disallowRequesterApproval = ref(props.configuration?.disallowRequesterApproval ?? false);
 const method = ref<'workflow' | 'channel'>(props.configuration?.method ?? 'workflow');
 const workflowId = ref(
 	props.configuration?.method === 'workflow' ? props.configuration.workflowId : '',
@@ -230,7 +233,11 @@ async function loadOptions(field: 'guild' | 'channel' | 'user', query: string, c
 function save() {
 	submitted.value = true;
 	if (!name.value.trim() || !destinationValid.value) return;
-	const base = { id: props.configuration?.id ?? uuid(), name: name.value.trim() };
+	const base = {
+		id: props.configuration?.id ?? uuid(),
+		name: name.value.trim(),
+		disallowRequesterApproval: disallowRequesterApproval.value,
+	};
 	if (method.value === 'workflow')
 		emit('save', { ...base, method: 'workflow', workflowId: workflowId.value });
 	else if (channel.value) {
@@ -266,6 +273,18 @@ function save() {
 		@update:open="emit('close')"
 	>
 		<div :class="$style.fields">
+			<AgentFormSettingRow
+				control-id="agent-hitl-disallow-requester"
+				:title="i18n.baseText('agents.hitl.disallowRequester')"
+				:description="i18n.baseText('agents.hitl.disallowRequesterHelp')"
+			>
+				<N8nSwitch2
+					id="agent-hitl-disallow-requester"
+					v-model="disallowRequesterApproval"
+					:aria-label="i18n.baseText('agents.hitl.disallowRequester')"
+					data-testid="agent-hitl-disallow-requester"
+				/>
+			</AgentFormSettingRow>
 			<N8nInputLabel :label="i18n.baseText('agents.hitl.method')">
 				<N8nSelect v-model="method" :teleported="false" data-testid="agent-hitl-method">
 					<N8nOption value="workflow" :label="i18n.baseText('agents.hitl.workflowMethod')" />

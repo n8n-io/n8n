@@ -466,7 +466,6 @@ export const BudgetGuardrailConfigSchema = z
 export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
 
 export const AgentJsonConfigBaseSchema = z.object({
-	defaultApprovalRoute: AgentApprovalRouteSchema.optional(),
 	hitlConfigurations: z
 		.array(AgentHitlConfigurationSchema)
 		.refine((entries) => new Set(entries.map(({ id }) => id)).size === entries.length, {

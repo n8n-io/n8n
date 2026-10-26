@@ -1,3 +1,5 @@
+import { Container } from '@n8n/di';
+import { AgentHitlWorkflowRepository } from '../../repositories/agent-hitl-workflow.repository';
 import { mock } from 'vitest-mock-extended';
 import type { User } from '@n8n/db';
 import type { AgentHitlChannelConfiguration, AgentIntegrationConfig } from '@n8n/api-types';
@@ -140,4 +142,19 @@ describe('Agent channel approval', () => {
 		});
 	});
 	expectProjectScopedAgentRoutes(AgentHitlChannelsController);
+});
+
+it('gives a conversational channel request a saved execution owner', async () => {
+	const { service } = setup([slack]);
+	const owners = mock<AgentHitlWorkflowRepository>();
+	Container.set(AgentHitlWorkflowRepository, owners);
+	try {
+		owners.ensureExecutionOwner.mockResolvedValue('owner');
+		const workflow = await service.prepareWorkflow(configuration, [slack], 'project', 'agent');
+		expect(workflow.id).toBe('owner');
+		expect(owners.ensureExecutionOwner).toHaveBeenCalledWith('project', 'agent');
+		expect(workflow.nodes[1].type).toBe('n8n-nodes-base.slack');
+	} finally {
+		Container.reset();
+	}
 });

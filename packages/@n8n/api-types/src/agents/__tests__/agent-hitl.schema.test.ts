@@ -29,3 +29,18 @@ it('requires a Discord server and excludes Linear', () => {
 		false,
 	);
 });
+
+it('accepts the requester approval policy for both methods', () => {
+	for (const configuration of [
+		{ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' },
+		{ ...base, channel: 'telegram' },
+	]) {
+		expect(
+			AgentHitlConfigurationSchema.parse(configuration).disallowRequesterApproval,
+		).toBeUndefined();
+		expect(
+			AgentHitlConfigurationSchema.parse({ ...configuration, disallowRequesterApproval: true })
+				.disallowRequesterApproval,
+		).toBe(true);
+	}
+});

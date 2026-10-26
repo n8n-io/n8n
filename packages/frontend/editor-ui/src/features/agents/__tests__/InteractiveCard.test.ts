@@ -56,6 +56,32 @@ describe('InteractiveCard', () => {
 		expect(wrapper.emitted('submit')).toEqual([[{ type: 'button', value: 'cancel' }]]);
 	});
 
+	it('renders administrator waiting text without approval controls', () => {
+		const wrapper = mount(InteractiveCard, {
+			props: {
+				payload: {
+					toolName: WAIT_TOOL_NAME,
+					toolCallId: 'call',
+					runId: 'run',
+					input: {
+						card: {
+							title: 'The Agent is waiting for approval from an administrator.',
+							components: [
+								{
+									type: 'section',
+									text: 'The Agent will continue when the approval request is resolved.',
+								},
+							],
+						},
+					},
+				},
+			},
+		});
+		expect(wrapper.text()).toContain('waiting for approval from an administrator');
+		expect(wrapper.findAll('button')).toHaveLength(0);
+		expect(wrapper.emitted('submit')).toBeUndefined();
+	});
+
 	it('renders a host extension card and emits its resume data', async () => {
 		const wrapper = mount(InteractiveCard, {
 			props: { payload: extensionPayload },

@@ -27,7 +27,6 @@ const configuration: AgentJsonConfig = {
 	hitlConfigurations: [
 		{ id: 'review', name: 'Review', method: 'workflow', workflowId: 'workflow' },
 	],
-	defaultApprovalRoute: { type: 'configuration', configurationId: 'review' },
 };
 
 function setup() {
@@ -45,11 +44,16 @@ function setup() {
 	);
 	const handler = vi.fn().mockResolvedValue('executed');
 	const tool: BuiltTool = { name: 'write', description: 'Write a record', handler };
-	const wrapped = service.wrap(tool, undefined, configuration, {
-		agentId: 'agent',
-		projectId: 'project',
-		published: false,
-	});
+	const wrapped = service.wrap(
+		tool,
+		{ type: 'configuration', configurationId: 'review' },
+		configuration,
+		{
+			agentId: 'agent',
+			projectId: 'project',
+			published: false,
+		},
+	);
 	const suspend = vi.fn().mockResolvedValue('waiting');
 	const context: InterruptibleToolContext = {
 		suspend,
@@ -159,7 +163,7 @@ describe('Agent decision workflow approval', () => {
 		const channels = mock<AgentChannelHitlService>();
 		Container.set(AgentChannelHitlService, channels);
 		Container.set(WorkflowRunner, mock<WorkflowRunner>());
-		channels.buildWorkflow.mockReturnValue({
+		channels.prepareWorkflow.mockResolvedValue({
 			id: 'caller',
 			name: 'Channel approval',
 			nodes: [{ name: 'Agent decision', type: 'n8n-nodes-base.agentDecisionTrigger' }],
@@ -188,12 +192,17 @@ describe('Agent decision workflow approval', () => {
 				},
 			],
 		} as AgentJsonConfig;
-		const wrapped = service.wrap(tool, undefined, config, {
-			agentId: 'agent',
-			projectId: 'project',
-			published: false,
-			integrations: [integration],
-		});
+		const wrapped = service.wrap(
+			tool,
+			{ type: 'configuration', configurationId: 'review' },
+			config,
+			{
+				agentId: 'agent',
+				projectId: 'project',
+				published: false,
+				integrations: [integration],
+			},
+		);
 		expect(
 			await wrapped.handler?.(
 				{ secret: 'hidden' },
@@ -222,9 +231,11 @@ describe('Agent decision workflow approval', () => {
 				},
 			),
 		).toBe('waiting');
-		expect(channels.buildWorkflow).toHaveBeenCalledWith(
+		expect(channels.prepareWorkflow).toHaveBeenCalledWith(
 			config.hitlConfigurations?.[0],
 			[integration],
+			'project',
+			'agent',
 			'caller',
 		);
 		expect(execute.mock.calls[0][2]).toMatchObject({
@@ -295,6 +306,180 @@ describe('Agent decision workflow approval', () => {
 		expect(handler).toHaveBeenCalledOnce();
 		expect(loader.loadWorkflow).not.toHaveBeenCalled();
 	});
+
+	it('keeps the current approval behavior when no configuration is selected', async () => {
+		const { service, tool, handler, suspend, context, loader } = setup();
+		const wrapped = service.wrap(tool, undefined, configuration, {
+			agentId: 'agent',
+			projectId: 'project',
+			published: false,
+		});
+		await wrapped.handler?.({}, { ...context, continuation: undefined, suspendPayload: undefined });
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'approval', toolName: 'write' }),
+			expect.anything(),
+		);
+		expect(loader.loadWorkflow).not.toHaveBeenCalled();
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it.each(['n8n_chat', 'slack', 'telegram', 'discord'])(
+		'asks the requester in %s when administrator approval is off',
+		async (integrationType) => {
+			const { service, tool, handler, suspend, context, loader } = setup();
+			const wrapped = service.wrap(
+				tool,
+				{ type: 'configuration', configurationId: 'review' },
+				configuration,
+				{
+					agentId: 'agent',
+					projectId: 'project',
+					published: false,
+					integrationType,
+				},
+			);
+			await wrapped.handler?.(
+				{},
+				{ ...context, continuation: undefined, suspendPayload: undefined },
+			);
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'approval', toolName: 'write' }),
+				expect.anything(),
+			);
+			expect(loader.loadWorkflow).not.toHaveBeenCalled();
+			expect(handler).not.toHaveBeenCalled();
+			await wrapped.handler?.(
+				{},
+				{
+					...context,
+					continuation: suspend.mock.calls[0][1].continuation,
+					suspendPayload: suspend.mock.calls[0][0],
+					resumeData: { approved: true },
+				},
+			);
+			expect(handler).toHaveBeenCalledOnce();
+		},
+	);
+
+	it.each([
+		['n8n_chat', true, false],
+		['n8n_chat', false, true],
+		['slack', false, false],
+	] as const)(
+		'routes administrator approval outside %s (preview=%s, publishedChat=%s)',
+		async (integrationType, previewChat, publishedN8nChat) => {
+			const { service, tool, jobs, executions, loader, context, suspend, handler } = setup();
+			Container.set(WorkflowRunner, mock<WorkflowRunner>());
+			const execute = vi
+				.spyOn(workflowTools, 'executeWorkflow')
+				.mockResolvedValue({ executionId: 'child', status: 'waiting' });
+			loader.loadWorkflow.mockResolvedValue(
+				mock<WorkflowEntity>({
+					id: 'decision',
+					nodes: [
+						{
+							id: 'trigger',
+							disabled: false,
+							name: 'Agent decision',
+							type: 'n8n-nodes-base.agentDecisionTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					settings: {},
+				}),
+			);
+			jobs.findWorkflowJobByExecutionId.mockResolvedValue(
+				mock<AgentBackgroundJob>({ id: 'job', status: 'running' }),
+			);
+			executions.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({ status: 'waiting' }),
+			);
+			const adminConfig = {
+				...configuration,
+				hitlConfigurations: configuration.hitlConfigurations?.map((entry) => ({
+					...entry,
+					disallowRequesterApproval: true,
+				})),
+			};
+			const wrapped = service.wrap(
+				tool,
+				{ type: 'configuration', configurationId: 'review' },
+				adminConfig,
+				{
+					agentId: 'agent',
+					projectId: 'project',
+					published: publishedN8nChat,
+					integrationType,
+					previewChat,
+					publishedN8nChat,
+					userId: 'requester',
+				},
+			);
+			const initial: InterruptibleToolContext = {
+				...context,
+				continuation: undefined,
+				suspendPayload: undefined,
+				runId: 'run',
+				toolCallId: 'call',
+				persistence: {
+					threadId: 'thread',
+					resourceId: 'resource',
+					hostMetadata: encodeAgentSandboxHostMetadata({
+						projectId: 'project',
+						principalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'requester' }),
+					}),
+				},
+			};
+			await wrapped.handler?.({}, initial);
+			expect(execute.mock.calls[0][3].agentRun).toMatchObject({
+				integrationType,
+				previewChat,
+				publishedN8nChat,
+				userId: 'requester',
+				threadId: 'thread',
+				runId: 'run',
+				toolCallId: 'call',
+			});
+			expect(execute.mock.calls[0][3].agentRun?.workflowCaller).toBeUndefined();
+			expect(suspend.mock.calls[0][0]).toEqual({
+				type: 'workflow_wait',
+				title: 'The Agent is waiting for approval from an administrator.',
+				components: [
+					{
+						type: 'section',
+						text: 'The Agent will continue when the approval request is resolved.',
+					},
+				],
+			});
+			// A requester resume cannot turn an unfinished review into an approval.
+			await wrapped.handler?.(
+				{},
+				{
+					...initial,
+					continuation: suspend.mock.calls[0][1].continuation,
+					suspendPayload: suspend.mock.calls[0][0],
+					resumeData: { approved: true },
+				},
+			);
+			expect(handler).not.toHaveBeenCalled();
+			expect(execute).toHaveBeenCalledOnce();
+			jobs.findWorkflowJobByExecutionId.mockResolvedValue(
+				mock<AgentBackgroundJob>({ status: 'completed', result: '{"approved":true}' }),
+			);
+			await wrapped.handler?.(
+				{},
+				{
+					...initial,
+					continuation: suspend.mock.calls[0][1].continuation,
+					suspendPayload: suspend.mock.calls[0][0],
+					resumeData: { type: 'workflow_finished' },
+				},
+			);
+			expect(handler).toHaveBeenCalledOnce();
+		},
+	);
 
 	it('uses an explicit conversation override', () => {
 		const { service, tool } = setup();

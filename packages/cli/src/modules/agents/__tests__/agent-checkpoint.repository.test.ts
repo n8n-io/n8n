@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { TransactionRunner } from '@n8n/db';
-import { MoreThan } from '@n8n/typeorm';
+import { In, IsNull, MoreThan } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
 
+import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 
@@ -17,6 +18,21 @@ describe('AgentCheckpointRepository', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		repository = new AgentCheckpointRepository(mockDataSource as never, mock<TransactionRunner>());
+	});
+
+	it('releases only settled approval receipts when a run finishes', async () => {
+		await repository.expireByRunIdAndAgentId('run-1', 'agent-1');
+		expect(entityManager.update).toHaveBeenCalledWith(
+			AgentBackgroundJob,
+			{
+				parentRunId: 'run-1',
+				parentAgentId: 'agent-1',
+				kind: 'approval',
+				status: In(['completed', 'failed', 'cancelled']),
+				notifiedAt: IsNull(),
+			},
+			{ notifiedAt: expect.any(Date) },
+		);
 	});
 
 	describe('claimForResume', () => {

@@ -28,6 +28,17 @@ import { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-load
 import { collectAgentDecision } from './decision-result';
 import { readWorkflowCaller } from './workflow-caller';
 
+interface ApprovalRunIdentity {
+	agentId: string;
+	projectId: string;
+	published: boolean;
+	integrations?: AgentIntegrationConfig[];
+	integrationType?: string;
+	userId?: string;
+	previewChat?: boolean;
+	publishedN8nChat?: boolean;
+}
+
 export const DECISION_CONTINUATION_SCHEMA = z.object({
 	__agentDecisionWorkflow: z.literal(true),
 	executionId: z.string(),
@@ -50,14 +61,9 @@ export class AgentDecisionWorkflowService {
 		tool: BuiltTool,
 		route: AgentApprovalRoute | undefined,
 		agentConfig: AgentJsonConfig,
-		identity: {
-			agentId: string;
-			projectId: string;
-			published: boolean;
-			integrations?: AgentIntegrationConfig[];
-		},
+		identity: ApprovalRunIdentity,
 	): BuiltTool {
-		const effective = route ?? agentConfig.defaultApprovalRoute;
+		const effective = route;
 		if (!effective || effective.type === 'conversation') {
 			return wrapToolForApproval(tool, { requireApproval: true });
 		}
@@ -65,6 +71,7 @@ export class AgentDecisionWorkflowService {
 			(entry) => entry.id === effective.configurationId,
 		);
 		const handler = tool.handler;
+		const conversational = wrapToolForApproval(tool, { requireApproval: true });
 		return {
 			...tool,
 			approval: { required: true },
@@ -73,10 +80,21 @@ export class AgentDecisionWorkflowService {
 			handler: async (input, ctx) => {
 				if (!('suspend' in ctx)) throw new OperationalError('Approval requires a resumable tool');
 				const pending = DECISION_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
-				if (ctx.suspendPayload !== undefined && !pending.success) {
+				if (
+					ctx.suspendPayload !== undefined &&
+					!pending.success &&
+					!(identity.integrationType && !configuration?.disallowRequesterApproval)
+				) {
 					return await handler?.call(tool, input, ctx);
 				}
 				if (!configuration) throw new UserError('The selected HITL configuration is unavailable');
+				if (
+					!pending.success &&
+					identity.integrationType &&
+					!configuration.disallowRequesterApproval
+				) {
+					return await conversational.handler?.call(conversational, input, ctx);
+				}
 				return await this.decide(tool, input, ctx, configuration, identity);
 			},
 		};
@@ -98,12 +116,7 @@ export class AgentDecisionWorkflowService {
 		input: unknown,
 		ctx: InterruptibleToolContext,
 		configuration: NonNullable<AgentJsonConfig['hitlConfigurations']>[number],
-		identity: {
-			agentId: string;
-			projectId: string;
-			published: boolean;
-			integrations?: AgentIntegrationConfig[];
-		},
+		identity: ApprovalRunIdentity,
 	): Promise<unknown> {
 		const pending = DECISION_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
 		let executionId: string;
@@ -111,17 +124,22 @@ export class AgentDecisionWorkflowService {
 			executionId = pending.data.executionId;
 		} else {
 			const caller = readWorkflowCaller(ctx.persistence?.hostMetadata?.workflowCaller);
-			if (!caller || !ctx.runId || !ctx.toolCallId || !ctx.persistence) {
-				throw new UserError(
-					'This spike supports advanced approvals from Message an Agent version 4',
-				);
+			if (
+				!ctx.runId ||
+				!ctx.toolCallId ||
+				!ctx.persistence ||
+				(!caller && !identity.integrationType)
+			) {
+				throw new UserError('Advanced approvals require a resumable conversation or workflow run');
 			}
 			const workflow =
 				configuration.method === 'channel'
-					? Container.get(AgentChannelHitlService).buildWorkflow(
+					? await Container.get(AgentChannelHitlService).prepareWorkflow(
 							configuration,
 							identity.integrations ?? [],
-							caller.workflowId,
+							identity.projectId,
+							identity.agentId,
+							caller?.workflowId,
 						)
 					: await this.loader.loadWorkflow(
 							identity.projectId,
@@ -133,7 +151,7 @@ export class AgentDecisionWorkflowService {
 			);
 			if (!workflow || !trigger)
 				throw new UserError('Select a workflow with an Agent decision trigger');
-			if (configuration.method === 'workflow' && workflow.id === caller.workflowId)
+			if (configuration.method === 'workflow' && workflow.id === caller?.workflowId)
 				throw new UserError('A decision workflow cannot call itself');
 			const { WorkflowRunner } = await import('@/workflow-runner.js');
 			const result = await executeWorkflow(
@@ -227,8 +245,15 @@ export class AgentDecisionWorkflowService {
 			return await ctx.suspend(
 				{
 					type: WORKFLOW_WAIT_SUSPEND_TYPE,
-					title: `Waiting for ${configuration.name}`,
-					components: [],
+					title: identity.integrationType
+						? 'The Agent is waiting for approval from an administrator.'
+						: `Waiting for ${configuration.name}`,
+					components: [
+						{
+							type: 'section',
+							text: 'The Agent will continue when the approval request is resolved.',
+						},
+					],
 				},
 				{
 					continuation: { __agentDecisionWorkflow: true, executionId },

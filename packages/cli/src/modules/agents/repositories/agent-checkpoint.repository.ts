@@ -1,6 +1,6 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, MoreThan } from '@n8n/typeorm';
+import { DataSource, In, IsNull, MoreThan } from '@n8n/typeorm';
 
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
@@ -110,6 +110,17 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 			AgentCheckpoint,
 			{ runId, agentId },
 			{ expired: true, state: null },
+		);
+		await this.managerFor(ctx).update(
+			AgentBackgroundJob,
+			{
+				parentRunId: runId,
+				parentAgentId: agentId,
+				kind: 'approval',
+				status: In(['completed', 'failed', 'cancelled']),
+				notifiedAt: IsNull(),
+			},
+			{ notifiedAt: new Date() },
 		);
 	}
 

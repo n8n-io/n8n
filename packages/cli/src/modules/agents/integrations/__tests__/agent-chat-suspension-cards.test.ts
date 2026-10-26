@@ -34,3 +34,14 @@ describe('buildSuspendCardPayload', () => {
 		expect(card).toBeUndefined();
 	});
 });
+
+it('shows administrator waiting text without requester approval buttons', () => {
+	const payload = {
+		type: 'workflow_wait',
+		title: 'The Agent is waiting for approval from an administrator.',
+		components: [
+			{ type: 'section', text: 'The Agent will continue when the approval request is resolved.' },
+		],
+	};
+	expect(buildSuspendCardPayload(payload)).toEqual(payload);
+});
