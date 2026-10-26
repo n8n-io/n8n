@@ -699,6 +699,25 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(2);
 	});
 
+	test.each([
+		'workflow_builder_create_tasks',
+		'workflow_builder_complete_checkpoint',
+		'create-tasks',
+		'complete-checkpoint',
+	])('historical %s calls are hidden without splitting a thinking run', (toolName) => {
+		const blocks = blocksOf(
+			[toolEntry('tc-before', 'r1'), toolEntry('tc-old', 'r1'), toolEntry('tc-after', 'r1')],
+			[
+				makeToolCall({ toolCallId: 'tc-before' }),
+				makeToolCall({ toolCallId: 'tc-old', toolName }),
+				makeToolCall({ toolCallId: 'tc-after' }),
+			],
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(2);
+	});
+
 	test('historical eval setup calls are hidden without splitting a thinking run', () => {
 		const blocks = blocksOf(
 			[toolEntry('tc-before', 'r1'), toolEntry('tc-eval', 'r1'), toolEntry('tc-after', 'r1')],

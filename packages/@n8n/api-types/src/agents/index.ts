@@ -34,6 +34,7 @@ export type {
 	AgentChatErrorCode,
 	AgentSseEvent,
 	AgentSseMessage,
+	AgentTokenUsage,
 	ForwardedChildChunkWire,
 	ToolSuspendedPayload,
 } from '../agent-sse';

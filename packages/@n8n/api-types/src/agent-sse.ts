@@ -72,6 +72,14 @@ export type ForwardedChildChunkWire =
 			endTime: number;
 	  };
 
+/** Cumulative usage from completed model calls in one execution. Cost is estimated USD. */
+export interface AgentTokenUsage {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	cost?: number;
+}
+
 export type AgentSseEvent =
 	| {
 			type: 'message-steered';
@@ -89,6 +97,7 @@ export type AgentSseEvent =
 	  }
 	| { type: 'start-step' }
 	| { type: 'finish-step' }
+	| { type: 'usage'; usage: AgentTokenUsage }
 	| { type: 'text-start'; id: string }
 	| { type: 'text-delta'; id: string; delta: string }
 	| { type: 'text-end'; id: string }
@@ -146,6 +155,24 @@ export type AgentSseEvent =
 	  }
 	| { type: 'message'; message: AgentSseMessage }
 	| {
+			/**
+			 * A custom event from a system-agent provider during a turn. The
+			 * client renders it through an extension keyed by `name`. A client
+			 * without an extension for the name ignores it. The runtime records
+			 * the event with the turn, so history returns it as a `host-event`
+			 * content part.
+			 */
+			type: 'host-event';
+			name: string;
+			/**
+			 * Set when the event can update. The client replaces the earlier
+			 * event of the same message with the same name and key, and keeps
+			 * its position.
+			 */
+			key?: string;
+			payload: unknown;
+	  }
+	| {
 			/** A warning message from the MCP server when it fails to connect or initialize. */
 			type: 'warning';
 			message: string;
@@ -160,6 +187,7 @@ export type AgentSseEvent =
 			 */
 			type: 'finish';
 			finishReason: string;
+			usage?: AgentTokenUsage;
 			guardrail?: { code: string };
 	  }
 	| {

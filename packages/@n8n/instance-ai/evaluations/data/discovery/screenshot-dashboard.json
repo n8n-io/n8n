@@ -2,10 +2,7 @@
 	"id": "screenshot-dashboard",
 	"userMessage": "Take a screenshot of the Stripe dashboard I have open in my browser so I can attach it to this workflow.",
 	"instanceState": {
-		"computerUse": {
-			"localComputer": { "status": "disconnected" },
-			"browser": { "status": "connected", "toolCategories": ["browser"] }
-		}
+		"browserUse": { "status": "connected" }
 	},
 	"expectedToolInvocations": {
 		"anyOf": ["browser_screenshot", "browser_snapshot", "browser_navigate"]

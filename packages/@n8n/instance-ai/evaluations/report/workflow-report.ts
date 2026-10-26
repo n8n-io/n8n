@@ -1005,18 +1005,6 @@ function renderStep(step: TranscriptStep): string | null {
 
 function renderInteraction(interaction: ToolInteraction): string | null {
 	switch (interaction.kind) {
-		case 'plan': {
-			if (interaction.tasks.length === 0) return null;
-			const lines = interaction.tasks
-				.map((t, i) => {
-					const title = t.title ?? `Task ${String(i + 1)}`;
-					const desc = t.description ? `: ${escapeHtml(t.description)}` : '';
-					return `<li><strong>${escapeHtml(title)}</strong>${desc}</li>`;
-				})
-				.join('');
-			const word = interaction.tasks.length === 1 ? 'task' : 'tasks';
-			return `<details class="transcript-aside" open><summary>📋 plan (${String(interaction.tasks.length)} ${word})</summary><ul class="transcript-plan">${lines}</ul></details>`;
-		}
 		case 'ask-user': {
 			if (interaction.questions.length === 0) return null;
 			const answerByQId = new Map<string, string>();

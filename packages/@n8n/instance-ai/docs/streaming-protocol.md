@@ -277,10 +277,9 @@ also emit `tool-error` if its resume path throws.
 
 | Field | Type | When used |
 |-------|------|-----------|
-| `inputType` | `'approval'` \| `'text'` \| `'questions'` \| `'plan-review'` | Controls which UI component renders. Default: `approval` |
+| `inputType` | `'approval'` \| `'text'` \| `'questions'` | Controls which UI component renders. Default: `approval` |
 | `questions` | `[{id, question, type, options?}]` | Structured Q&A wizard (`inputType=questions`) |
-| `tasks` | `TaskList` | Plan approval checklist (`inputType=plan-review`) |
-| `introMessage` | string | Intro text shown above questions or plan review |
+| `introMessage` | string | Intro text shown above questions |
 | `credentialRequests` | array | Credential setup requests |
 | `credentialFlow` | `{stage: 'generic' \| 'finalize'}` | Controls credential picker UX |
 | `setupRequests` | `WorkflowSetupNode[]` | Per-node setup cards for workflow credential/parameter config |
@@ -599,8 +598,7 @@ frontend therefore tracks its reconnect cursor as the max id seen and drops
 already-seen ids on replay overlap.
 
 Ids are database-assigned sequence numbers, and only DURABLE facts carry an
-`id:` line. Ephemeral frames (`text-delta`, `reasoning-delta`, `status`,
-`filesystem-request`) are live-only: their SSE frames have no `id:` line, so
+`id:` line. Ephemeral frames (`text-delta`, `reasoning-delta`, `status`) are live-only: their SSE frames have no `id:` line, so
 the browser's replay cursor never points at them (the same mechanism as the
 `run-sync` control frames). On replay, the deltas a client missed are covered
 by coalesced `text-block` / `reasoning-block` facts, which the shared run
@@ -639,7 +637,6 @@ The frontend renders events as a collapsible tree grouped by `agentId`:
 🤖 Orchestrator
 ├── 💭 "Let me check what credentials are available..."
 ├── 🔧 workflow_builder_credentials → [slack-bot, weather-api]
-├── 📋 workflow_builder_create_tasks: build → verify
 ├── 🔧 agent_builder_build_agent → agent-123
 │
 ├── 🤖 Agent Builder
@@ -732,7 +729,6 @@ creating duplicate messages.
 | `thread-title-updated` | `title` | Thread title changed |
 | `preferences-applied` | `preferences`, `renderedLength`, `injectedThisTurn`, `carriedFromRunId?` | Which saved preferences the turn carried |
 | `preference-card` | `toolCallId`, `preferenceId`, `state` (`edited` or `undone`), `content?`, `scope?`, `projectId?` | A saved preference was edited or undone from the chat card |
-| `filesystem-request` | `requestId`, `toolCall` | Local gateway MCP tool request (internal) |
 | `tool-input-start` | `toolCallId`, `toolName` | Tool arguments began streaming |
 | `text-block` | `text` (`responseId` is on the event) | Completed text segment, coalesced |
 | `reasoning-block` | `text` (`responseId` is on the event) | Completed reasoning segment, coalesced |

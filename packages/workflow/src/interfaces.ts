@@ -1189,6 +1189,12 @@ export interface SchedulingFunctions {
 }
 
 export type NodeTypeAndVersion = {
+	/**
+	 * Stable canvas node ID. Unlike `name`, it survives a rename.
+	 * Optional so that existing callers that build this type by hand keep compiling;
+	 * the execution engine always sets it.
+	 */
+	id?: string;
 	name: string;
 	type: string;
 	typeVersion: number;
@@ -4613,7 +4619,6 @@ export interface IUserSettings {
 	instanceAi?: {
 		credentialId?: string | null;
 		modelName?: string;
-		localGatewayDisabled?: boolean;
 	};
 	mcpJsonNudge?: {
 		impressions: number;
@@ -4699,4 +4704,4 @@ export interface StructuredChunk {
 	};
 }
 
-export type ApiKeyAudience = 'public-api' | 'mcp-server-api' | 'scim-api';
+export type ApiKeyAudience = 'public-api' | 'mcp-server-api';
