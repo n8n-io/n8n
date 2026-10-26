@@ -24,7 +24,7 @@ skills/
   database/
     entities/          Skill, SkillVersion, SkillFile
     repositories/      SkillRepository
-  errors/              SkillNameTakenError
+  errors/              SkillNameTakenError, SkillParseError
   utils/               shared types, content helpers, hashes, name rules
   sources/             (Skill Sync) source clients and their registry
   __tests__/           unit tests, integration/, test-utils/
@@ -38,7 +38,7 @@ Put a file in the folder of its role. Keep the n8n file infixes: `.service.ts`, 
 | `services/`, `sources/` | services, repositories, utils, errors | controllers |
 | `database/repositories/` | entities, types from utils, `@n8n/db`, `@n8n/typeorm` | services |
 | `database/entities/` | `@n8n/db`, `@n8n/typeorm`, types from `@n8n/api-types` | other files of the module |
-| `utils/`, `errors/` | `@n8n/api-types`, shared packages, entity types with `import type` | DI, I/O, repositories |
+| `utils/`, `errors/` | `@n8n/api-types`, shared packages, entity types with `import type`, each other | DI, I/O, repositories |
 
 The layer table is a convention for review. Lint does not enforce it.
 
