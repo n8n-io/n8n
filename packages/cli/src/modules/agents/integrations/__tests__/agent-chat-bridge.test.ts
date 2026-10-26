@@ -2338,13 +2338,16 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it.each([
-			{ name: 'reposts the reply', repostFails: false, expected: { markdown: 'Hello' } },
+			{ name: 'reposts the reply', repostFails: false, posts: [{ markdown: 'Hello' }] },
 			{
 				name: 'posts a delivery error when the repost also fails',
 				repostFails: true,
-				expected: "⚠️ The agent's reply couldn't be posted here in full. Please try again.",
+				posts: [
+					{ markdown: 'Hello' },
+					"⚠️ The agent's reply couldn't be posted here in full. Please try again.",
+				],
 			},
-		])('$name after the streaming post fails', async ({ repostFails, expected }) => {
+		])('$name after the streaming post fails', async ({ repostFails, posts }) => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			thread.post.mockRejectedValueOnce(new Error('send failed'));
@@ -2366,7 +2369,8 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
-			expect(thread.post).toHaveBeenLastCalledWith(expected);
+			// The first post is the failed stream.
+			expect(thread.post.mock.calls.slice(1).map(([message]) => message)).toEqual(posts);
 		});
 
 		it('posts a generic error when an errored tool result ends without output', async () => {
