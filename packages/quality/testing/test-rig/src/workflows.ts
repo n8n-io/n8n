@@ -1,0 +1,56 @@
+import { nanoid } from 'nanoid';
+
+export interface WorkflowNode {
+	id: string;
+	name: string;
+	type: string;
+	typeVersion: number;
+	position: [number, number];
+	parameters: Record<string, unknown>;
+	webhookId?: string;
+}
+
+const node = (
+	name: string,
+	type: string,
+	typeVersion: number,
+	parameters: Record<string, unknown> = {},
+): WorkflowNode => ({
+	id: nanoid(8),
+	name,
+	type,
+	typeVersion,
+	position: [0, 0],
+	parameters,
+});
+
+export const nodes = {
+	webhook: (path: string, responseMode: 'onReceived' | 'lastNode' = 'onReceived') => ({
+		...node('Webhook', 'n8n-nodes-base.webhook', 2, { httpMethod: 'POST', path, responseMode }),
+		webhookId: path,
+	}),
+	code: (name: string, jsCode: string) => node(name, 'n8n-nodes-base.code', 2, { jsCode }),
+};
+
+/** A workflow whose nodes run one after the other in the given order. */
+export function chain(
+	name: string,
+	steps: WorkflowNode[],
+	settings: Record<string, unknown> = {},
+): Record<string, unknown> {
+	const placed = steps.map((step, index) => ({ ...step, position: [index * 220, 0] }));
+	const connections: Record<string, unknown> = {};
+	for (let i = 0; i + 1 < placed.length; i++) {
+		connections[placed[i].name] = {
+			main: [[{ node: placed[i + 1].name, type: 'main', index: 0 }]],
+		};
+	}
+	return {
+		name: `${name} ${nanoid(6)}`,
+		nodes: placed,
+		connections,
+		settings: { executionOrder: 'v1', ...settings },
+	};
+}
+
+export const webhookPath = (prefix: string) => `${prefix}-${nanoid(8)}`;
