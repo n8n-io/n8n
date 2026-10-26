@@ -283,10 +283,10 @@ confirm those selections before you finish the build.
    discovery lookups the plan names: `agent-context({ type: "integrations" })`
    for a chat channel, and one `agent-context({ type: "integrations", queries })`
    call for each callable service.
-4. In the next response, call `agent_builder_get_node_types` once for every
+4. In the next response, call `get_node_types` once for every
    node and operation the build uses, and resolve the model in the same
    response (see Model selection). Use the node results from the discovery
-   lookups. Do not search again with `agent_builder_search_nodes` for a service
+   lookups. Do not search again with `search_nodes` for a service
    that a lookup already returned, and do not fetch one service per call.
 5. Write the config once, with everything discovery found: the name, the
    target-Agent `instructions`, the model, every node tool, and the drafts for
@@ -553,9 +553,9 @@ configure a node tool.
   - `kind: "mcp"`: follow the MCP Servers section of
     `agent-builder-external-services`.
   - `kind: "node"`: load `agent-builder-node-tools`, use the returned node
-    results, and continue with `agent_builder_get_node_types`.
+    results, and continue with `get_node_types`.
 
-Use `agent_builder_search_nodes` directly only when the user explicitly asks
+Use `search_nodes(scope="agent_tool")` directly only when the user explicitly asks
 for an n8n node, to refine node results, or when a verified MCP server lacks the
 requested capability. To refine MCP results, send another `agent-context`
 integration query.
@@ -637,8 +637,8 @@ Verify:
 
 ### Add an n8n node tool to an existing Agent
 
-1. Load `agent-builder-node-tools`, then call `agent_builder_search_nodes` and
-   `agent_builder_get_node_types`.
+1. Load `agent-builder-node-tools`, then call `search_nodes(scope="agent_tool")`
+   and `get_node_types`.
 2. `agent_builder_ask_credential` for every required slot.
 3. `agent-context({ type: "config" })`.
 4. `agent_builder_patch_config(...)` adding the node tool to `/tools/-`. If the

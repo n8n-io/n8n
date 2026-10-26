@@ -348,7 +348,7 @@ describe('NodeResourceExplorerService', () => {
 			'Slack API rate-limited',
 		);
 		expect(logger.error).toHaveBeenCalledWith(
-			'Failed to load options for explore-resources',
+			'Failed to load node parameter options',
 			expect.objectContaining({ error: 'Slack API rate-limited' }),
 		);
 	});

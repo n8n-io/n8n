@@ -38,9 +38,6 @@ vi.mock('../executions.tool', () => ({
 }));
 
 vi.mock('../nodes.tool', () => ({
-	createNodesTool: vi.fn((_context: unknown, scope?: string) => ({
-		id: scope ? `workflow_builder_nodes-${scope}` : 'workflow_builder_nodes',
-	})),
 	createSearchNodesTool: vi.fn(() => ({ id: 'search_nodes' })),
 	createGetNodeTypesTool: vi.fn(() => ({ id: 'get_node_types' })),
 	createGetNodeParameterOptionsTool: vi.fn(() => ({ id: 'get_node_parameter_options' })),

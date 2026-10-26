@@ -44,7 +44,7 @@ import { getBase } from '@/workflow-execute-additional-data';
  */
 const MAX_AVAILABILITY_PAGES = 5;
 
-/** Display name for the managed n8n Connect credential slot in explore-resources. */
+/** Display name for the managed n8n Connect credential slot in node parameter option lookups. */
 const N8N_CONNECT_DISPLAY_NAME = 'Gateway credits';
 
 /**
@@ -93,7 +93,7 @@ export class NodeResourceExplorerService {
 
 		// Look up the property's builderHint so the agent sees selection guidance
 		// alongside the raw list. This makes the hint reachable even when the
-		// agent jumps straight to explore-resources without reading type-definition.
+		// agent calls get_node_parameter_options without reading get_node_types first.
 		const builderHint = nodeDescription
 			? findBuilderHintForMethod(nodeDescription, params.methodName, params.methodType)
 			: undefined;
@@ -151,7 +151,7 @@ export class NodeResourceExplorerService {
 				...(builderHint ? { builderHint } : {}),
 			};
 		} catch (error) {
-			this.logger.error('Failed to load options for explore-resources', {
+			this.logger.error('Failed to load node parameter options', {
 				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
@@ -378,7 +378,7 @@ export class NodeResourceExplorerService {
 	}
 
 	/**
-	 * Resolve credentials for explore-resources / availability checks.
+	 * Resolve credentials for node parameter option lookups and availability checks.
 	 * The n8n Connect managed tag skips the credential store and passes the
 	 * gateway-managed marker so CredentialsHelper mints a synthetic credential
 	 * against the gateway allowlist.

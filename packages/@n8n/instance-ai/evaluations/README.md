@@ -896,7 +896,7 @@ By default a build sees **no credentials**: the harness pins every build thread'
 
 Agent Builder model catalog requests also stay local. Eval threads return one deterministic fake model for each model provider. They do not decrypt the placeholder credential or contact the provider. Production threads continue to use live model catalogs.
 
-Live resource lookups (`workflow_builder_nodes(action="explore-resources")`) on a declared credential stay local too: they return "Resource exploration is not available.", the answer production gives when lookups are not available, and they do not contact the provider. A credential declared `valid: false` or `blank: true` still runs the live lookup, so it fails the way a broken credential does. Setting a live `EVAL_*_ACCESS_TOKEN` does not turn lookups back on.
+Live resource lookups (`get_node_parameter_options`) on a declared credential stay local too: they return "Resource exploration is not available.", the answer production gives when lookups are not available, and they do not contact the provider. A credential declared `valid: false` or `blank: true` still runs the live lookup, so it fails the way a broken credential does. Setting a live `EVAL_*_ACCESS_TOKEN` does not turn lookups back on.
 
 A case that tests credential behaviour declares what should exist:
 

@@ -1671,7 +1671,7 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
-	/** Optional — presence gates the `execute` action on the `workflow_builder_nodes` tool. */
+	/** Optional — presence gates the `execute_node` tool. */
 	executeNodeService?: InstanceAiExecuteNodeService;
 	/** Optional — wired by the host when the run has a bound project. Presence
 	 *  gates the `conversation-history` tool (orchestrator only). */
