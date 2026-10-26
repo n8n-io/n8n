@@ -197,7 +197,6 @@ interface RuntimeDependencies
 		| 'supportsHitl'
 		| 'allowBackgroundTasks'
 		| 'unavailableTools'
-		| 'previewChat'
 	> {
 	agent: RuntimeAgent;
 	agentId: string;
@@ -1243,6 +1242,10 @@ export class AgentRuntimeReconstructionService {
 			const rootSessionCapUsd = sessionCap !== undefined && sessionCap > 0 ? sessionCap : undefined;
 			runBackgroundSubAgent = await this.attachBackgroundJobTools({
 				...delegationParams,
+				planTasksEnabled:
+					params.previewChat === true &&
+					params.allowPlanTools !== false &&
+					Container.get(AgentsConfig).planToolsEnabled,
 				...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
 				...(rootSessionCapUsd !== undefined ? { rootSessionCapUsd } : {}),
 			});
@@ -1378,6 +1381,7 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	private async attachBackgroundJobTools(params: {
+		planTasksEnabled: boolean;
 		agent: RuntimeAgent;
 		parentAgentId: string;
 		projectId: string;
@@ -1391,7 +1395,15 @@ export class AgentRuntimeReconstructionService {
 		rootSessionCapUsd?: number;
 		abortSignal?: AbortSignal;
 	}): Promise<NonNullable<CreateDelegateSubAgentToolOptions['runBackgroundSubAgent']>> {
-		const { agent, parentAgentId, projectId, delegation, abortSignal, ...runContext } = params;
+		const {
+			agent,
+			parentAgentId,
+			projectId,
+			delegation,
+			planTasksEnabled,
+			abortSignal,
+			...runContext
+		} = params;
 		const {
 			createBackgroundSubAgentHandler,
 			createCheckBackgroundJobsTool,
@@ -1421,6 +1433,7 @@ export class AgentRuntimeReconstructionService {
 
 		this.logger.debug('Injected background job tools', { agentId: parentAgentId });
 		return createBackgroundSubAgentHandler({
+			planTasksEnabled,
 			jobService,
 			backgroundRunner: Container.get(SubAgentBackgroundRunner),
 			sourcesById: delegation.sourcesById,

@@ -1,5 +1,5 @@
 import { createChildSubAgentTaskPath } from '@n8n/agents';
-import type { SubAgentSource, SubAgentTaskDifficulty } from '@n8n/api-types';
+import type { AgentPlanTaskRef, SubAgentSource, SubAgentTaskDifficulty } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -40,6 +40,10 @@ export type BackgroundSubAgentRunContext = Pick<
 >;
 
 export interface BackgroundSpawnRequest {
+	sourceExecutionId?: string;
+	planTask?: AgentPlanTaskRef;
+	validatePlanTask?: boolean;
+	inheritedPlanTask?: boolean;
 	subAgentId: string;
 	source: SubAgentSource;
 	taskName: string;
@@ -95,6 +99,10 @@ export class SubAgentBackgroundRunner {
 			id: jobId,
 			parentAgentId: context.parentAgentId,
 			parentThreadId: request.parentThreadId,
+			sourceExecutionId: request.sourceExecutionId,
+			planTask: request.planTask,
+			validatePlanTask: request.validatePlanTask,
+			inheritedPlanTask: request.inheritedPlanTask,
 			parentResourceId: request.parentResourceId,
 			parentPrincipalHash: request.parentSandboxPrincipalHash,
 			title: request.taskName,
@@ -143,6 +151,7 @@ export class SubAgentBackgroundRunner {
 					instrumentation: context.instrumentation,
 					abortSignal: abortController.signal,
 					backgroundJobId: jobId,
+					planTask: request.planTask,
 					shouldPause: async () => await this.jobService.shouldPause(jobId),
 					parentMessageContext: request.parentMessageContext,
 					// The parent thread is the root session: the child debits it, not
@@ -212,6 +221,10 @@ export class SubAgentBackgroundRunner {
 					},
 					{
 						...context,
+						planTask:
+							job.planId && job.planTaskId
+								? { planId: job.planId, planTaskId: job.planTaskId }
+								: undefined,
 						shouldPause: async () => await this.jobService.shouldPause(job.id),
 						abortSignal: controller.signal,
 						selfDelegationDifficulty: metadata.difficulty,
@@ -318,6 +331,10 @@ export class SubAgentBackgroundRunner {
 					},
 					{
 						...context,
+						planTask:
+							job.planId && job.planTaskId
+								? { planId: job.planId, planTaskId: job.planTaskId }
+								: undefined,
 						abortSignal: controller.signal,
 						selfDelegationDifficulty: metadata.difficulty,
 						runtimeSnapshot: metadata.runtimeSnapshot,

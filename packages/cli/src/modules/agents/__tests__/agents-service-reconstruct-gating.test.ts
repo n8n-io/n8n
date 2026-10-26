@@ -1233,6 +1233,57 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		).toHaveLength(1);
 	});
 
+	it.each([
+		{ previewChat: true, allowPlanTools: true, planToolsEnabled: true, expected: true },
+		{ previewChat: false, allowPlanTools: true, planToolsEnabled: true, expected: false },
+		{ previewChat: true, allowPlanTools: false, planToolsEnabled: true, expected: false },
+		{ previewChat: true, allowPlanTools: true, planToolsEnabled: false, expected: false },
+	])(
+		'validates plan tasks only in enabled Preview runs: %j',
+		async ({ previewChat, allowPlanTools, planToolsEnabled, expected }) => {
+			Container.get(AgentsConfig).backgroundTasksEnabled = true;
+			Container.get(AgentsConfig).planToolsEnabled = planToolsEnabled;
+			Container.set(AgentPlanService, mock<AgentPlanService>());
+			const backgroundRunner = mock<SubAgentBackgroundRunner>();
+			backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+			Container.set(SubAgentBackgroundRunner, backgroundRunner);
+			try {
+				await makeReconstructionService().reconstructFromAgentEntity(
+					storedRunSource(makeAgentEntity()),
+					mock<CredentialProvider>(),
+					'test',
+					undefined,
+					undefined,
+					undefined,
+					'manual',
+					undefined,
+					{ previewChat, allowPlanTools },
+				);
+				const delegate = getInjectedDelegateTool();
+				if (!delegate?.handler) throw new Error('Expected delegation tool');
+				await delegate.handler(
+					{ mode: 'background', subAgentId: 'inline', taskName: 'Research', goal: 'Review notes' },
+					{
+						persistence: {
+							threadId: 'thread-1',
+							resourceId: 'resource-1',
+							hostMetadata: encodeAgentSandboxHostMetadata({
+								projectId: 'project-1',
+								principalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' }),
+							}),
+						},
+					},
+				);
+				expect(backgroundRunner.spawn).toHaveBeenCalledWith(
+					expect.objectContaining({ validatePlanTask: expected }),
+					expect.any(Object),
+				);
+			} finally {
+				Container.get(AgentsConfig).planToolsEnabled = false;
+			}
+		},
+	);
+
 	it('excludes disabled sub-agents from foreground and background delegation', async () => {
 		Container.get(AgentsConfig).backgroundTasksEnabled = true;
 		const agentRepository = mock<AgentRepository>();

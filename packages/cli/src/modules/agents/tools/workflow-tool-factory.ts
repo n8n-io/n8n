@@ -1,3 +1,4 @@
+import { readPlanTaskContext } from '../plans/agent-plan-task-context';
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
@@ -39,6 +40,7 @@ import {
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
+import { hostMetadataExecutionId } from '../types/agent-queued-message';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -793,9 +795,11 @@ async function backgroundWaitingExecution(
 	try {
 		const jobService = Container.get(AgentBackgroundJobService);
 		const receipt = await jobService.registerWorkflowJob({
+			planTask: readPlanTaskContext(ctx.persistence?.hostMetadata),
 			id: uuid(),
 			parentAgentId: agentRun.agentId,
 			parentThreadId: agentRun.threadId,
+			sourceExecutionId: hostMetadataExecutionId(ctx.persistence?.hostMetadata),
 			parentResourceId,
 			parentPrincipalHash: sandboxScope.principalHash,
 			title: reference.workflowName,
