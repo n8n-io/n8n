@@ -42,7 +42,7 @@ const message = useMessage();
 const documentTitle = useDocumentTitle();
 const loadingService = useLoadingService();
 const { isAvailable: isPromotionsAvailable } = usePromotionsEnabled();
-const { switchTo: switchEnvironmentsVersion } = useEnvironmentsVersionSwitch();
+const { busy: switchBusy, switchTo: switchEnvironmentsVersion } = useEnvironmentsVersionSwitch();
 const title = computed(() =>
 	locale.baseText(
 		isPromotionsAvailable.value
@@ -308,6 +308,7 @@ watch(connectionType, () => {
 						variant="outline"
 						size="small"
 						:label="locale.baseText('settings.sourceControl.switch.button')"
+						:loading="switchBusy"
 						data-test-id="source-control-switch-to-v2"
 						@click="switchEnvironmentsVersion('v2')"
 					/>

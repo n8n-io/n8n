@@ -51,7 +51,11 @@ const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
 const { next: nextLoad } = useLatestFetch();
 const { connectErrors, canClone, connect } = usePromotionCheckout();
-const { canSwitchBack, switchTo: switchEnvironmentsVersion } = useEnvironmentsVersionSwitch();
+const {
+	busy: switchBusy,
+	canSwitchBack,
+	switchTo: switchEnvironmentsVersion,
+} = useEnvironmentsVersionSwitch();
 const {
 	busy: protectionBusy,
 	isProtected,
@@ -252,6 +256,7 @@ async function remove(environment: PromotionEnvironment) {
 					<button
 						type="button"
 						:class="$style.switchBack"
+						:disabled="switchBusy"
 						data-test-id="promotions-switch-to-v1"
 						@click="switchEnvironmentsVersion('v1')"
 					>

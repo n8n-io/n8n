@@ -69,6 +69,33 @@ describe('useEnvironmentsVersionSwitch', () => {
 		},
 	);
 
+	it('ignores a second switch while the first one saves', async () => {
+		const save = Promise.withResolvers<void>();
+		sourceControlStore.updatePreferences.mockReturnValue(save.promise);
+		const { busy, switchTo } = useEnvironmentsVersionSwitch();
+
+		const first = switchTo('v2');
+		await switchTo('v2');
+
+		expect(busy.value).toBe(true);
+		expect(mockConfirm).toHaveBeenCalledTimes(1);
+		save.resolve();
+		await first;
+		expect(sourceControlStore.updatePreferences).toHaveBeenCalledTimes(1);
+		expect(busy.value).toBe(false);
+	});
+
+	it('clears the busy flag and shows the error when the confirmation fails', async () => {
+		mockConfirm.mockRejectedValue(new Error('closed'));
+		const { busy, switchTo } = useEnvironmentsVersionSwitch();
+
+		await switchTo('v2');
+
+		expect(sourceControlStore.updatePreferences).not.toHaveBeenCalled();
+		expect(mockShowError).toHaveBeenCalled();
+		expect(busy.value).toBe(false);
+	});
+
 	it('changes nothing when the admin cancels', async () => {
 		mockConfirm.mockResolvedValue('cancel');
 
