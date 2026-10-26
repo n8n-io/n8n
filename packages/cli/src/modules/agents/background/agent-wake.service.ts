@@ -357,12 +357,21 @@ export class AgentWakeService {
 		this.activeWakes.add(threadId);
 
 		try {
+			const first = jobs[0];
+			const isFinal =
+				!first.pauseRequestId &&
+				!(await this.jobRepository.findByParentThread(threadId)).some(
+					(job) =>
+						this.hasSameParentIdentity(job, first) &&
+						['running', 'suspended', 'paused'].includes(job.status),
+				);
 			await this.orchestrator.executeForWake({
 				agentId: agent.id,
 				projectId: agent.projectId,
 				message: formatWakeMessage(jobs),
 				pauseReport: Boolean(jobs[0]?.pauseRequestId),
 				backgroundJobSignal: {
+					...(isFinal ? { isFinal: true } : {}),
 					tasks: jobs.flatMap(({ id, title, kind, status }) =>
 						status === 'running' ||
 						status === 'suspended' ||

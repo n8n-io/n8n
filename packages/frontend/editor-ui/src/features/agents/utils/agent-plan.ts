@@ -87,6 +87,47 @@ export function isAgentPlanFinished(plan: AgentPlanView): boolean {
 	);
 }
 
+function taskSummaryExecutions(messages: ChatMessage[]): Set<string> {
+	const executions = new Set<string>();
+	for (const message of messages) {
+		if (message.role !== 'assistant' || message.stopReport) continue;
+		const key = message.executionId ?? message.id;
+		if (message.backgroundJobSignal?.isFinal) executions.add(key);
+		for (const call of message.toolCalls ?? []) {
+			if (
+				!['update_plan', 'close_plan'].includes(call.tool) ||
+				call.state !== 'done' ||
+				call.canceled
+			)
+				continue;
+			const plan = planSchema.safeParse(call.output);
+			if (!plan.success) continue;
+			if (isAgentPlanFinished(plan.data)) executions.add(key);
+			else executions.delete(key);
+		}
+	}
+	return executions;
+}
+
+/** Put one summary at the end of each task result turn, including saved turns. */
+export function getTaskSummaryGroupIds(
+	messages: ChatMessage[],
+	groups: DisplayGroup[],
+): Set<string> {
+	const executions = taskSummaryExecutions(messages);
+	const lastGroups = new Map<string, string>();
+	for (const group of groups) {
+		if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) continue;
+		if (group.kind === DISPLAY_GROUP_KIND.MESSAGE && group.message.role !== 'assistant') continue;
+		const key =
+			(group.kind === DISPLAY_GROUP_KIND.TOOL_RUN
+				? group.executionId
+				: group.message.executionId) ?? group.id;
+		if (executions.has(key)) lastGroups.set(key, group.id);
+	}
+	return new Set(lastGroups.values());
+}
+
 const comparisonDocumentSchema = planSchema.shape.document.passthrough().extend({
 	items: z.array(
 		z.discriminatedUnion('kind', [
@@ -222,7 +263,14 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 		}
 	}
 
-	const groups = buildDisplayGroups(messages);
+	const summaryExecutions = taskSummaryExecutions(messages);
+	const groups = buildDisplayGroups(
+		messages.map((message) =>
+			message.backgroundJobSignal?.isFinal
+				? { ...message, backgroundJobSignal: undefined }
+				: message,
+		),
+	);
 
 	return groups.flatMap((group): DisplayGroup[] => {
 		if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return [group];
@@ -240,6 +288,7 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 
 		const toolCalls = group.toolCalls.filter((call) => !hiddenCalls.has(call.toolCallId));
 		if (
+			!summaryExecutions.has(group.executionId ?? group.id) &&
 			!toolCalls.length &&
 			!group.active &&
 			!group.finalMessage?.content.trim() &&

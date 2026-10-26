@@ -477,6 +477,7 @@ const {
 	tasksStopping,
 	stopDisabled,
 	stopNotice,
+	preparingSummary,
 	stopTasks,
 	respondToApproval,
 } = useAgentChatTaskControls({
@@ -1452,7 +1453,9 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 		</div>
 
-		<template v-if="displayedMessages.length === 0 && !isStreaming && !stopNotice">
+		<template
+			v-if="displayedMessages.length === 0 && !isStreaming && !stopNotice && !preparingSummary"
+		>
 			<slot name="empty-state">
 				<AgentChatEmptyState :agent-config="agentConfig" />
 			</slot>
@@ -1460,6 +1463,7 @@ onBeforeUnmount(() => {
 		<AgentChatMessageList
 			v-else
 			:messages="displayedMessages"
+			:preparing-summary="preparingSummary"
 			:messaging-state="displayedMessagingState"
 			:project-id="projectId"
 			:agent-id="agentId"

@@ -1,8 +1,75 @@
 import { describe, expect, it } from 'vitest';
 import { convertDbMessages } from '@/features/ai/shared/agentsChat/messageMappers';
-import { buildAgentPlanDisplayGroups } from '../utils/agent-plan';
+import {
+	buildAgentPlanDisplayGroups,
+	getTaskSummaryGroupIds,
+	isAgentPlanFinished,
+} from '../utils/agent-plan';
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { planMessage, planTask, planView } from './fixtures/agent-plan';
+
+describe('task summaries', () => {
+	it('keeps one summary at the end of a completed plan turn', () => {
+		const completed = {
+			...planMessage(planView({ document: { title: 'Research', items: [planTask(1, 'done')] } }), {
+				tool: 'update_plan',
+			}),
+			executionId: 'complete',
+			status: 'streaming' as const,
+		};
+		const reply: ChatMessage = {
+			id: 'summary',
+			executionId: 'complete',
+			role: 'assistant',
+			content: 'Found 12 threads.',
+			status: 'success',
+		};
+		const messages = [completed, reply, { id: 'later', role: 'user' as const, content: 'Thanks' }];
+		const groups = buildAgentPlanDisplayGroups(messages);
+		expect([...getTaskSummaryGroupIds(messages, groups)]).toEqual([completed.id]);
+		expect(groups[0]).toMatchObject({ kind: 'toolRun', finalMessage: reply });
+	});
+
+	it('does not label unfinished or stopped plans as final summaries', () => {
+		for (const status of ['pending', 'in_progress', 'paused'] as const) {
+			const messages = [
+				planMessage(planView({ document: { title: 'Research', items: [planTask(1, status)] } }), {
+					tool: 'update_plan',
+				}),
+			];
+			expect(getTaskSummaryGroupIds(messages, buildAgentPlanDisplayGroups(messages)).size).toBe(0);
+		}
+		expect(isAgentPlanFinished(planView({ document: { title: 'Empty', items: [] } }))).toBe(false);
+	});
+
+	it('keeps final result turns separate from partial result cards', () => {
+		const signal = {
+			tasks: [
+				{ id: 'job', title: 'Research', kind: 'subagent' as const, status: 'completed' as const },
+			],
+		};
+		const messages: ChatMessage[] = [
+			{
+				id: 'partial',
+				executionId: 'partial',
+				role: 'assistant',
+				content: 'Some results.',
+				backgroundJobSignal: signal,
+			},
+			{
+				id: 'final',
+				executionId: 'final',
+				role: 'assistant',
+				content: '',
+				status: 'streaming',
+				backgroundJobSignal: { ...signal, isFinal: true },
+			},
+		];
+		const groups = buildAgentPlanDisplayGroups(messages);
+		expect(groups.filter((group) => group.kind === 'backgroundJobSignal')).toHaveLength(1);
+		expect([...getTaskSummaryGroupIds(messages, groups)]).toEqual(['final']);
+	});
+});
 
 describe('buildAgentPlanDisplayGroups', () => {
 	const initialCallId = expect.stringMatching(/^plan-call-\d+$/);

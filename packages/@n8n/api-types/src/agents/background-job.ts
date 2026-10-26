@@ -20,6 +20,8 @@ export interface AgentBackgroundJobDto {
 }
 
 export interface AgentBackgroundJobSignal {
+	/** All background jobs for this parent identity have reached a final status. */
+	isFinal?: boolean;
 	tasks: Array<
 		Pick<AgentBackgroundJobDto, 'id' | 'title' | 'kind'> & {
 			status: Exclude<AgentBackgroundJobDto['status'], 'running' | 'suspended' | 'paused'>;

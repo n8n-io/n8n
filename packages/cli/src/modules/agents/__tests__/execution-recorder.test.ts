@@ -90,6 +90,7 @@ describe('ExecutionRecorder', () => {
 	it('keeps the initial background signal in snapshots and final storage', () => {
 		const onSnapshot = vi.fn();
 		const recorder = new ExecutionRecorder(undefined, onSnapshot, {
+			isFinal: true,
 			tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
 		});
 		const initial = structuredClone(recorder.getMessageRecord().timeline);
@@ -98,6 +99,7 @@ describe('ExecutionRecorder', () => {
 				type: 'background-task-signal',
 				timestamp: recorder.startedAt.getTime(),
 				signal: {
+					isFinal: true,
 					tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
 				},
 			},

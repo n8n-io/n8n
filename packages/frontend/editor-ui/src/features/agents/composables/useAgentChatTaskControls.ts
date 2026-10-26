@@ -353,6 +353,16 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 		return null;
 	});
 
+	const preparingSummary = computed(
+		() =>
+			options.backgroundJobsActive() &&
+			!hideStoppedStack.value &&
+			!stopNotice.value &&
+			(!currentPlan.value || planFinished.value) &&
+			backgroundJobs.value.length > 0 &&
+			backgroundJobs.value.every((job) => ['completed', 'failed', 'cancelled'].includes(job.status)),
+	);
+
 	watch(hideStoppedStack, () => {
 		void restoreTaskStopFocus();
 	});
@@ -392,6 +402,7 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 		tasksStopping,
 		stopDisabled,
 		stopNotice,
+		preparingSummary,
 		stopTasks,
 		respondToApproval,
 	};

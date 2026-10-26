@@ -318,6 +318,7 @@ export class ExecutionRecorder {
 				type: 'background-task-signal',
 				timestamp: this.startTime,
 				signal: {
+					...(backgroundJobSignal.isFinal ? { isFinal: true } : {}),
 					tasks: backgroundJobSignal.tasks.map(({ id, title, kind, status }) => ({
 						id,
 						title: scrubSecretsInText(title),

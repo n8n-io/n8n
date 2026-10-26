@@ -8877,6 +8877,8 @@
 	"agents.chat.tasks.inline.preparing": "Preparing a summary…",
 	"agents.chat.tasks.inline.failed": "Some tasks may still be running. Retry stopping them.",
 	"agents.chat.tasks.inline.reportFailed": "The stop summary couldn't be generated. View the trace for task status.",
+	"agents.chat.tasks.summary.preparing": "Preparing the summary…",
+	"agents.chat.tasks.summary.empty": "No summary was generated. Check the task status in the trace.",
 	"agents.chat.tasks.stopAll": "Stop all tasks",
 	"agents.chat.tasks.stopping": "Stopping tasks…",
 	"agents.chat.tasks.stopped": "Stopped",

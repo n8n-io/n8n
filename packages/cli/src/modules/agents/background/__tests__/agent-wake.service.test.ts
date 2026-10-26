@@ -152,6 +152,22 @@ describe('AgentWakeService', () => {
 		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
 	});
 
+	it.each(['running', 'suspended', 'paused', 'completed', 'failed', 'cancelled'] as const)(
+		'identifies the final result batch when the other job is %s',
+		async (status) => {
+			const { service, jobRepository, orchestrator } = setup();
+			jobRepository.findByParentThread.mockResolvedValue([
+				makeJob(),
+				makeJob({ id: 'other-job', status }),
+				makeJob({ id: 'other-author', status: 'running', parentResourceId: 'draft-chat:user-2' }),
+			]);
+			await service.attemptWake('thread-1');
+			expect(
+				orchestrator.executeForWake.mock.calls[0][0].backgroundJobSignal.isFinal === true,
+			).toBe(['completed', 'failed', 'cancelled'].includes(status));
+		},
+	);
+
 	it('leaves jobs captured by a pending ancestor Stop to its report', async () => {
 		const { service, cancellations, jobRepository, orchestrator } = setup();
 		jobRepository.findWakeableUnconsumed.mockResolvedValue([
@@ -277,6 +293,7 @@ describe('AgentWakeService', () => {
 		expect(orchestrator.executeForWake).toHaveBeenCalledWith(
 			expect.objectContaining({
 				backgroundJobSignal: {
+					isFinal: true,
 					tasks: [
 						{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' },
 						{ id: 'job-2', title: 'Research', kind: 'workflow', status: 'failed' },
