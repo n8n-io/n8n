@@ -61,7 +61,8 @@ vi.mock('@ai-sdk/openai', () => {
 				baseURL: opts?.baseURL,
 				fetch: opts?.fetch,
 				headers: opts?.headers,
-				specificationVersion: 'v3',
+				// Match the real provider: `ai` adapts a v3 model and reads its result content.
+				specificationVersion: 'v4',
 				supportedUrls: {},
 				doGenerate: callEndpoint,
 				doStream: callEndpoint,

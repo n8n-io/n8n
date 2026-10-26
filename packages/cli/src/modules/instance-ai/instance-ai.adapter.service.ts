@@ -117,6 +117,7 @@ import {
 	WorkflowEditorLockedError,
 	OutsideThreadProjectError,
 	formatRedactedError,
+	RESOURCE_EXPLORATION_UNAVAILABLE,
 } from '@n8n/instance-ai';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
@@ -148,6 +149,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	OperationalError,
 	UnexpectedError,
 	UserError,
 	isTriggerNodeType,
@@ -639,7 +641,7 @@ export class InstanceAiAdapterService {
 				projectId,
 			),
 			credentialService,
-			nodeService: this.createNodeAdapter(user),
+			nodeService: this.createNodeAdapter(user, shouldBypassCredentialTest),
 			dataTableService,
 			...(configEvalsEnabled && this.evaluationConfigService
 				? {
@@ -3918,7 +3920,12 @@ export class InstanceAiAdapterService {
 		return this.nodeCatalogService ?? Container.get(NodeCatalogService);
 	}
 
-	private createNodeAdapter(user: User): InstanceAiNodeService {
+	/** `shouldBypassCredentialTest` (eval-only) marks a credential the harness treats as
+	 *  connected; its live resource lookups are answered as unavailable. */
+	private createNodeAdapter(
+		user: User,
+		shouldBypassCredentialTest?: (credentialId: string) => boolean,
+	): InstanceAiNodeService {
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
 		const getAllNodes = async () => await this.getNodesFromCache();
@@ -4298,8 +4305,20 @@ export class InstanceAiAdapterService {
 				}
 			},
 
-			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> =>
-				await this.nodeResourceExplorerService.exploreResources(user, params),
+			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> => {
+				// Eval-only: a seeded credential stands for one the user already connected, but
+				// it carries a placeholder token, so a live lookup fails with a real provider auth
+				// error and the agent tells the user the credential is broken. Answer as production
+				// does when exploration is unavailable, which gives no hint that this is an eval.
+				// Read per call: the harness registers bypasses mid-run. A seed marked broken is
+				// not on the list, so its lookup still fails for real. The access and type check
+				// still runs first, so a credential the user cannot use is rejected as usual.
+				if (shouldBypassCredentialTest?.(params.credentialId) === true) {
+					await this.nodeResourceExplorerService.assertExploreCredentialAccess(user, params);
+					throw new OperationalError(RESOURCE_EXPLORATION_UNAVAILABLE);
+				}
+				return await this.nodeResourceExplorerService.exploreResources(user, params);
+			},
 
 			findUnavailableLocatorValues: async (params): Promise<UnavailableLocatorValue[]> =>
 				await this.nodeResourceExplorerService.findUnavailableResourceLocatorValues(user, params),
