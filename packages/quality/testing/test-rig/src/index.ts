@@ -21,3 +21,4 @@ export { licenceEnv, scaledTimeouts } from './timeouts';
 export { anything, below, excludes, includes, is, isNot, Scenario } from './scenario';
 export { chain, nodes, webhookPath } from './workflows';
 export type { WorkflowNode } from './workflows';
+export { network } from './network';
