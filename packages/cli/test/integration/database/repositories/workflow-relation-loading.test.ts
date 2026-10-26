@@ -560,6 +560,37 @@ describe('Workflow relation loading', () => {
 		});
 	});
 
+	describe('folder transfer (WorkflowRepository.findInFoldersForTransfer)', () => {
+		it('loads shares with projects without repeating the JSON per share', async () => {
+			const { result, draftCopies, publishedCopies } = await measure(
+				async () =>
+					await Container.get(WorkflowRepository).findInFoldersForTransfer([folder.id], {
+						withNodes: true,
+					}),
+			);
+
+			expect(draftCopies).toBe(1);
+			expect(publishedCopies).toBe(1);
+			expect(result.map(({ id }) => id)).toEqual([workflow.id]);
+			expect(result[0].activeVersion?.versionId).toBe(publishedVersionId);
+			expect(sortedProjectIds(result[0].shared)).toEqual(allProjectIds());
+			expect(result[0].shared.every((share) => share.project?.id === share.projectId)).toBe(true);
+		});
+
+		it('leaves the nodes out when not asked', async () => {
+			const { result, draftCopies, publishedCopies } = await measure(
+				async () =>
+					await Container.get(WorkflowRepository).findInFoldersForTransfer([folder.id], {
+						withNodes: false,
+					}),
+			);
+
+			expect(draftCopies).toBe(0);
+			expect(publishedCopies).toBe(0);
+			expect(sortedProjectIds(result[0].shared)).toEqual(allProjectIds());
+		});
+	});
+
 	describe('loading tags and shares for many workflows (WorkflowRepository.loadCollections)', () => {
 		it('reads ids in batches the database accepts and merges the results', async () => {
 			// 10,001 ids span two batches. Only the first and the last exist.

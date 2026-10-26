@@ -703,15 +703,17 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 						'id',
 						'name',
 						'activeVersionId',
-						'shared',
 						...(withNodes ? (['nodes', 'activeVersion'] as const) : []),
 					],
-					relations: ['shared', 'shared.project', ...(withNodes ? ['activeVersion'] : [])],
+					relations: { activeVersion: withNodes },
 					where: { parentFolder: { id: In(chunk) } },
 				})),
 			);
 		}
 
+		// Loaded separately: joining shares would repeat each workflow's nodes and published
+		// version once per share.
+		await loadWorkflowCollections(this.manager, workflows, { shared: { project: true } });
 		return workflows;
 	}
 
