@@ -1,0 +1,37 @@
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_6766773bb82a48::t_1d6a9ea18e9304 56-61
+  s_6766773bb82a48::t_b902b7417e3252 55
+packages/cli/src/modules/agents/sub-agents/format-sub-agent-tool-output.ts
+  s_6766773bb82a48::t_673bdf09b333c3 25
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_6766773bb82a48::t_0c54efca4799e1 214-230,232-267
+  s_6766773bb82a48::t_6fee8ffdd7d38b 27
+  s_6766773bb82a48::t_fe70df343a7b14 141,164-165,184
+  s_6766773bb82a48::t_44d305447c4824 24,231
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_6766773bb82a48::t_673bdf09b333c3 85
+packages/@n8n/api-types/src/agents/sub-agent.schema.ts
+  s_6766773bb82a48::t_673bdf09b333c3 37-38
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_6766773bb82a48::t_fe70df343a7b14 514
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_6766773bb82a48::t_59e2d0ce7bb251 146-164
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_6766773bb82a48::t_673bdf09b333c3 27,43,148-149,193,415-426,501-506,513,564-585
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "51f46f44d7c98af690663b17b69d23aa0087ab9c",
+  "prompts": {},
+  "sessions": {
+    "s_6766773bb82a48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "823bd4ec-cb35-4791-a5bb-53cae1cb7ca3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
