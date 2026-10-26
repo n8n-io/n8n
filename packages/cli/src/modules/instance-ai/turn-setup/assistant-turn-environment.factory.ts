@@ -285,6 +285,7 @@ export class AssistantTurnEnvironmentFactory {
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
+			assistantSkillsEnabled,
 		} = gates;
 		runtime.turnState.setSetupPanelEnabled(setupPanelEnabled);
 		// Resumed segments use the gates bound to the original turn.
@@ -335,6 +336,7 @@ export class AssistantTurnEnvironmentFactory {
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
+			assistantSkillsEnabled,
 			modelId,
 			modelFetch: this.modelService.getModelFetch(),
 			allowSendingParameterValues,
