@@ -40,15 +40,11 @@ const props = defineProps<{
 const i18n = useI18n();
 const router = useRouter();
 const uiStore = useUIStore();
-const { fetchDependencies, fetchDependencyCounts, getDependencies, getDependencyCounts } =
-	useDependencies();
+const { fetchDependencies, getDependencies } = useDependencies();
 const unpublishing = ref(false);
 
 onMounted(async () => {
-	await Promise.all([
-		fetchDependencies([props.data.workflowId], 'workflow'),
-		fetchDependencyCounts([props.data.workflowId], 'workflow'),
-	]);
+	await fetchDependencies([props.data.workflowId], 'workflow');
 });
 
 const hrefFor = (dep: ResolvedDependency): string | undefined => {
@@ -71,21 +67,11 @@ const affectedDependencies = computed(() => {
 		.map((dep) => ({ ...dep, href: hrefFor(dep) }));
 });
 
-// Keep the existing dependency-count behavior; accuracy changes belong to LIGO-1310.
-const hiddenAffectedCount = computed(() => {
-	const counts = getDependencyCounts(props.data.workflowId, 'workflow');
-	if (!counts) return 0;
-	const total = AFFECTED_TYPES.reduce((sum, type) => sum + counts[type], 0);
-	const visibleEntries = getDependencies(props.data.workflowId, 'workflow')?.dependencies ?? [];
-	const visibleCount = visibleEntries.filter((dep) => AFFECTED_TYPES.includes(dep.type)).length;
-	return Math.max(0, total - visibleCount);
-});
+const hiddenAffectedCount = computed(
+	() => getDependencies(props.data.workflowId, 'workflow')?.inaccessibleAffectedCount ?? 0,
+);
 
-const affectedCount = computed(() => {
-	const counts = getDependencyCounts(props.data.workflowId, 'workflow');
-	if (!counts) return affectedDependencies.value.length;
-	return Math.max(affectedDependencies.value.length, AFFECTED_TYPES.reduce((sum, type) => sum + counts[type], 0));
-});
+const affectedCount = computed(() => affectedDependencies.value.length + hiddenAffectedCount.value);
 
 const closeModal = () => {
 	uiStore.closeModal(props.modalName);
