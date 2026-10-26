@@ -48,12 +48,14 @@ const placeholder = computed(() =>
 // frame loads the new link.
 const loadedLiveViewUrls = ref(new Set<string>());
 function onFrameLoad(liveViewUrl: string) {
-	loadedLiveViewUrls.value = new Set([...loadedLiveViewUrls.value, liveViewUrl]);
+	loadedLiveViewUrls.value.add(liveViewUrl);
 }
 // Only the frames on screen are tracked, so the set never holds a link that is gone.
 watch(frames, (current) => {
 	const shown = new Set(current.map((frame) => frame.liveViewUrl));
-	loadedLiveViewUrls.value = new Set([...loadedLiveViewUrls.value].filter((url) => shown.has(url)));
+	for (const url of loadedLiveViewUrls.value) {
+		if (!shown.has(url)) loadedLiveViewUrls.value.delete(url);
+	}
 });
 const showsPlaceholder = computed(
 	() =>

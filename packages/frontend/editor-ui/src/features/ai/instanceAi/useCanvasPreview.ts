@@ -366,9 +366,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	function closeTab(tabId: string) {
 		if (isBrowserTabId(tabId)) {
 			const taskId = tabId.slice(BROWSER_TAB_PREFIX.length);
-			openedBrowserTaskIds.value = new Set(
-				[...openedBrowserTaskIds.value].filter((id) => id !== taskId),
-			);
+			openedBrowserTaskIds.value.delete(taskId);
 			if (activeTabId.value === tabId) {
 				activeTabId.value = openTabs.value.find((tab) => tab.id !== tabId)?.id;
 				if (userTabId.value === tabId) userTabId.value = undefined;
@@ -408,7 +406,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 			(task) => task.taskId === taskId && task.state === 'running',
 		);
 		if (!isRunning) return;
-		openedBrowserTaskIds.value = new Set([...openedBrowserTaskIds.value, taskId]);
+		openedBrowserTaskIds.value.add(taskId);
 		selectTab(`${BROWSER_TAB_PREFIX}${taskId}`);
 	}
 
