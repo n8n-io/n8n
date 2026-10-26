@@ -164,12 +164,20 @@ export class AgentTurnExecutionService {
 
 			const stream = await this.admitTurn(preparedTurn, config, recorder, state, chatControl);
 			yield* this.streamTurn(stream, preparedTurn, config, recorder, state);
+			if (!state.receivedFinish && state.executionId && (await this.isStoppedTurn(turn))) {
+				const finish: StreamChunk = { type: 'finish', finishReason: 'cancelled' };
+				recorder.record(finish);
+				yield finish;
+			}
 		} catch (error) {
-			if (
-				(await this.isStoppedChatTurn(turn, config)) &&
-				!(error instanceof AgentExecutionRecordingError)
-			)
+			if ((await this.isStoppedTurn(turn)) && !(error instanceof AgentExecutionRecordingError)) {
+				if (state.executionId && !state.receivedFinish) {
+					const finish: StreamChunk = { type: 'finish', finishReason: 'cancelled' };
+					recorder.record(finish);
+					yield finish;
+				}
 				return;
+			}
 
 			state.executionError = error;
 			const formatted = await config.formatError?.(error);
@@ -189,16 +197,11 @@ export class AgentTurnExecutionService {
 		}
 	}
 
-	private async isStoppedChatTurn(
-		turn: AgentTurnRequest | undefined,
-		config: ExecuteTurnConfig,
-	): Promise<boolean> {
+	private async isStoppedTurn(turn: AgentTurnRequest | undefined): Promise<boolean> {
 		const signal = turn?.options.abortSignal;
-		if (!signal?.aborted || config.chatSurface === undefined) return false;
+		if (!signal?.aborted) return false;
 		const { isAbortError } = await import('@n8n/agents');
-		return Boolean(
-			config.chatSurface !== undefined && signal?.aborted && isAbortError(signal.reason),
-		);
+		return isAbortError(signal.reason);
 	}
 
 	private createChatExecutionControl(
@@ -277,11 +280,8 @@ export class AgentTurnExecutionService {
 				continue;
 			}
 
-			// The runtime reports requested stops as errors. Keep chat outcomes consistent.
-			if (
-				(chunk.type === 'error' || (chunk.type === 'finish' && chunk.finishReason === 'error')) &&
-				(await this.isStoppedChatTurn(turn, config))
-			) {
+			// Report requested stops consistently across chat and integration streams.
+			if ((chunk.type === 'error' || chunk.type === 'finish') && (await this.isStoppedTurn(turn))) {
 				if (chunk.type === 'error') continue;
 				chunk = { ...chunk, finishReason: 'cancelled' };
 			}

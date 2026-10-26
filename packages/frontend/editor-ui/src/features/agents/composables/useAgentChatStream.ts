@@ -39,6 +39,7 @@ import {
 import {
 	applyOpenSuspensions,
 	convertDbMessages,
+	createStoppedMessage,
 	findOpenInteractive,
 	findTailOpenInteractive,
 	findTailSteerableInteractive,
@@ -1284,6 +1285,23 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			case 'finish': {
 				if (event.usage) notifyUsage(session, event.usage);
+				if (event.finishReason === 'cancelled' && session.executionId) {
+					settleOpenReasoning(session);
+					for (const message of session.minted) {
+						for (const toolCall of message.toolCalls ?? []) {
+							if (
+								toolCall.state === TOOL_CALL_STATE.PENDING ||
+								toolCall.state === TOOL_CALL_STATE.RUNNING
+							) {
+								toolCall.state = TOOL_CALL_STATE.CANCELLED;
+								toolCall.canceled = true;
+							}
+						}
+						markMessageSuccessIfSettled(message);
+					}
+					const notice = createStoppedMessage(session.executionId);
+					if (!messages.value.some(({ id }) => id === notice.id)) messages.value.push(notice);
+				}
 				if (!params.budgetCards || event.finishReason !== 'guardrail') break;
 				const code = event.guardrail?.code;
 				if (code !== undefined && isBudgetStopCode(code)) attachBudgetNotice(session, code);

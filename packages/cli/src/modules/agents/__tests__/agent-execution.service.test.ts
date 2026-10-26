@@ -589,6 +589,19 @@ describe('AgentExecutionService', () => {
 		return params;
 	}
 
+	it('stops only the selected execution through its runtime signal', async () => {
+		await startSnapshotExecution();
+		const signal = service.getAbortSignal('execution-1');
+
+		service.stopExecution('other-execution');
+		expect(signal.aborted).toBe(false);
+
+		service.stopExecution('execution-1');
+		expect(signal.aborted).toBe(true);
+		expect(signal.reason).toMatchObject({ name: 'AbortError' });
+		expect(agentExecutionRepository.updateIfRunning).not.toHaveBeenCalled();
+	});
+
 	it('retries failed heartbeats and aborts only after confirmed ownership loss', async () => {
 		vi.useFakeTimers();
 		try {

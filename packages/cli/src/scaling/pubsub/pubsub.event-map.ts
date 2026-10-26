@@ -161,6 +161,10 @@ export type PubSubCommandMap = {
 
 	'cancel-agent-chat-foreground': PubSubCommandMap['cancel-agent-chat-execution'];
 
+	'stop-agent-session': {
+		executionIds: string[];
+	};
+
 	'relay-agent-message-queue-update': {
 		data: PushPayload<'agentMessageQueueUpdated'>;
 		userIds: string[];

@@ -40,8 +40,15 @@ const props = withDefaults(
 		langsmithExportLoading: boolean;
 		isPreviewOpen?: boolean;
 		showPreview?: boolean;
+		showStop?: boolean;
+		stopLoading?: boolean;
 	}>(),
-	{ isPreviewOpen: false, showPreview: false },
+	{
+		isPreviewOpen: false,
+		showPreview: false,
+		showStop: false,
+		stopLoading: false,
+	},
 );
 
 const emit = defineEmits<{
@@ -49,6 +56,7 @@ const emit = defineEmits<{
 	'session-select': [sessionId: string];
 	'langsmith-export': [];
 	'toggle-preview': [];
+	stop: [];
 	close: [];
 }>();
 
@@ -104,7 +112,10 @@ const breadcrumbItems = computed(() =>
 				</template>
 			</N8nBreadcrumbs>
 		</div>
-		<div v-if="props.showMetrics || props.showPreview" :class="$style.topBarRight">
+		<div
+			v-if="props.showMetrics || props.showPreview || props.showStop"
+			:class="$style.topBarRight"
+		>
 			<N8nTooltip
 				v-if="props.showMetrics && props.showLangsmithExport"
 				:content="i18n.baseText('agentSessions.langsmithExport.button')"
@@ -153,6 +164,22 @@ const breadcrumbItems = computed(() =>
 				data-testid="agent-session-timeline-preview-btn"
 				@click="emit('toggle-preview')"
 			/>
+			<N8nTooltip
+				v-if="props.showStop"
+				:content="i18n.baseText('agentSessions.stop')"
+				:disabled="props.stopLoading"
+			>
+				<N8nIconButton
+					variant="ghost"
+					size="medium"
+					icon="square"
+					:class="$style.stopButton"
+					:aria-label="i18n.baseText('agentSessions.stop')"
+					:loading="props.stopLoading"
+					data-testid="agent-session-stop"
+					@click="emit('stop')"
+				/>
+			</N8nTooltip>
 			<N8nTooltip :content="i18n.baseText('generic.close')">
 				<N8nButton
 					variant="ghost"
@@ -172,13 +199,14 @@ const breadcrumbItems = computed(() =>
 <style module lang="scss">
 .topBar {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--md);
 	background-color: var(--background--surface);
 	border-bottom: var(--border);
 	flex-shrink: 0;
-	height: var(--height--4xl);
+	min-height: var(--height--4xl);
 }
 
 .topBarLeft {
@@ -190,6 +218,8 @@ const breadcrumbItems = computed(() =>
 
 .topBarLeft :global(.n8n-breadcrumbs) {
 	min-width: 0;
+	max-width: 100%;
+	flex-wrap: wrap;
 }
 
 .topBarLeft :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
@@ -201,7 +231,10 @@ const breadcrumbItems = computed(() =>
 
 .topBarRight {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
+	justify-content: flex-end;
+	max-width: 100%;
 	gap: var(--spacing--3xs);
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--medium);
@@ -212,6 +245,10 @@ const breadcrumbItems = computed(() =>
 
 .sep {
 	color: var(--text-color--subtler);
+}
+
+.stopButton {
+	color: var(--color--danger);
 }
 
 .metricItem {

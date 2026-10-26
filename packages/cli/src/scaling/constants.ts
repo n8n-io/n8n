@@ -48,6 +48,7 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'relay-agent-queued-chat',
 	'cancel-agent-chat-execution',
 	'cancel-agent-chat-foreground',
+	'stop-agent-session',
 	'relay-agent-message-queue-update',
 	'relay-agent-background-tasks-update',
 	'relay-agent-update',

@@ -383,6 +383,12 @@ export class AgentExecutionService {
 		return this.executionControllers.get(executionId)?.signal ?? AbortSignal.abort();
 	}
 
+	stopExecution(executionId: string): void {
+		this.executionControllers
+			.get(executionId)
+			?.abort(new DOMException('Execution stopped', 'AbortError'));
+	}
+
 	reportUsage(
 		context: AgentExecutionLogRef & { projectId: string },
 		usage: AgentTokenUsage,

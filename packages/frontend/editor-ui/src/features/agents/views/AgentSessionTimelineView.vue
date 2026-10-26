@@ -26,6 +26,7 @@ import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgent
 import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
+import { useAgentSessionStop } from '@/features/agents/composables/useAgentSessionStop';
 import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
 import type { AgentResource, AgentUsageUpdate } from '@/features/agents/types';
 import {
@@ -214,6 +215,18 @@ const {
 const totalTokens = computed(() => sessionUsage.value.totalTokens);
 
 const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
+const { canStop, stoppingSessionIds, stop: stopSession } = useAgentSessionStop(projectId, agentId);
+const canStopSession = computed(
+	() =>
+		hasLoadedThread.value &&
+		canStop.value &&
+		executions.value.some(({ status }) => status === 'running'),
+);
+
+function onStopSession() {
+	if (canStopSession.value) void stopSession(threadId.value);
+}
+
 const canPreviewSession = computed(
 	() =>
 		currentSessionIsLocallyMinted.value ||
@@ -414,10 +427,13 @@ function viewPreviewTrace() {
 			:langsmith-export-loading="isExporting"
 			:show-preview="canPreviewSession"
 			:is-preview-open="previewVisible"
+			:show-stop="canStopSession"
+			:stop-loading="stoppingSessionIds.has(threadId)"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
 			@langsmith-export="sendSession({ projectId, agentId, threadId })"
 			@toggle-preview="togglePreview"
+			@stop="onStopSession"
 			@close="closeTimeline"
 		/>
 

@@ -635,6 +635,10 @@ export interface AgentSessionLangSmithExportResponse {
 	traceId: string;
 }
 
+export interface AgentSessionStopResponse {
+	cancelRequested: boolean;
+}
+
 /**
  * Integration type for n8n Chat. Preview injects its tools per run. A configured
  * channel entry enables production chat after publish.

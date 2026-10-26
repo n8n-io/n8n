@@ -1,5 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type * as AgentApiModule from '../composables/useAgentApi';
 import { ref, reactive, nextTick, effectScope, type Ref } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import {
@@ -54,7 +55,7 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 }));
 
 vi.mock('../composables/useAgentApi', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('../composables/useAgentApi')>();
+	const actual = await importOriginal<typeof AgentApiModule>();
 	return {
 		...actual,
 		getAgentChatQueue: (...args: unknown[]) => getAgentChatQueueMock(...args),
@@ -271,6 +272,38 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		vi.stubGlobal('localStorage', originalLocalStorage);
 		vi.restoreAllMocks();
 	});
+
+	it.each(['chat', 'n8n-chat'] as const)(
+		'shows a stop notice in %s when another surface stops the execution',
+		async (channel) => {
+			globalThis.fetch = vi.fn().mockResolvedValue(
+				makeSseResponse([
+					{ type: 'execution-started', executionId: 'exec-stopped', sessionId: 'thread-1' },
+					{ type: 'text-delta', id: 'text', delta: 'Working on it' },
+					{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'work', input: {} },
+					{ type: 'finish', finishReason: 'cancelled' },
+					{ type: 'finish', finishReason: 'cancelled' },
+					{ type: 'done', executionId: 'exec-stopped' },
+				]),
+			);
+			const hook = buildHook(undefined, { channel: ref(channel) });
+
+			await hook.sendMessage('Start');
+			await flushPromises();
+
+			expect(hook.messages.value.filter(({ id }) => id === 'exec-stopped:stopped')).toHaveLength(1);
+			expect(hook.messages.value.at(-1)).toMatchObject({
+				content: 'agentSessions.stopped',
+				executionId: 'exec-stopped',
+			});
+			expect(hook.messages.value.flatMap(({ toolCalls }) => toolCalls ?? [])).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ toolCallId: 'tc-1', state: 'cancelled' }),
+				]),
+			);
+			expect(cancelAgentChatExecutionMock).not.toHaveBeenCalled();
+		},
+	);
 
 	it('reports usage at turn boundaries and refreshes it at completion', async () => {
 		const onUsageUpdated = vi.fn();
@@ -3885,7 +3918,11 @@ describe('useAgentChatStream — execution recovery', () => {
 			for (const hook of [first, second]) {
 				expect(hook.isStreaming.value).toBe(false);
 				expect(hook.isCancelling.value).toBe(false);
-				expect(hook.messages.value.map((message) => message.content)).toEqual(['retained answer']);
+				expect(hook.messages.value.map((message) => message.content)).toEqual(
+					status === 'cancelled'
+						? ['retained answer', 'agentSessions.stopped']
+						: ['retained answer'],
+				);
 			}
 			expect(fetch).not.toHaveBeenCalled();
 		},

@@ -10,6 +10,7 @@ import type { AgentMessageSteeringService } from '../agent-message-steering.serv
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
 import type { ExecutionRecorder } from '../execution-recorder';
+import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentTurnFinalizeOutcome } from '../types/agent-turn-outcome';
 
 it('ends a preview turn stopped during preparation without recording an error', async () => {
@@ -78,6 +79,7 @@ describe('onBeforeFinalize', () => {
 			onBeforeFinalize?: (outcome: AgentTurnFinalizeOutcome) => Promise<void>;
 			onRecorderCreated?: (recorder: ExecutionRecorder) => void;
 			beforeStream?: () => void;
+			streamError?: Error;
 		} = {},
 	) {
 		const executions = mock<AgentExecutionService>();
@@ -95,6 +97,7 @@ describe('onBeforeFinalize', () => {
 		const agentInstance = mock<RuntimeAgent>();
 		agentInstance.stream.mockImplementation(async () => {
 			options.beforeStream?.();
+			if (options.streamError) throw options.streamError;
 			return { stream: streamOf(chunks) } as never;
 		});
 		const abortController = options.abortController ?? new AbortController();
@@ -105,7 +108,8 @@ describe('onBeforeFinalize', () => {
 			recording: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 		} as unknown as AgentTurnRequest;
 		const onBeforeFinalize = vi.fn(options.onBeforeFinalize ?? (async () => {}));
-		for await (const _chunk of service.execute({
+		const outputChunks: AgentExecutionStreamChunk[] = [];
+		for await (const chunk of service.execute({
 			admittedExecution: { executionId: 'exec-1', startedAt: new Date(), inputMessageIds: [] },
 			agentInstance,
 			toolRegistry: new Map(),
@@ -115,9 +119,9 @@ describe('onBeforeFinalize', () => {
 			onRecorderCreated: options.onRecorderCreated,
 			prepare: async () => turn,
 		})) {
-			// Read the stream to the end.
+			outputChunks.push(chunk);
 		}
-		return { onBeforeFinalize, executions };
+		return { onBeforeFinalize, executions, chunks: outputChunks };
 	}
 
 	it('broadcasts server duration with each model turn before finalization', async () => {
@@ -216,13 +220,41 @@ describe('onBeforeFinalize', () => {
 
 	it('reports a cancelled turn', async () => {
 		const abortController = new AbortController();
-		const { onBeforeFinalize } = await runTurn([], {
+		const { onBeforeFinalize, chunks } = await runTurn([], {
 			abortController,
 			beforeStream: () => abortController.abort(),
 		});
 
 		expect(onBeforeFinalize).toHaveBeenCalledWith({ executionId: 'exec-1', status: 'cancelled' });
+		expect(chunks).toEqual([{ type: 'finish', finishReason: 'cancelled' }]);
 	});
+
+	it.each(['throw', 'error-chunks'] as const)(
+		'reports an integration stop through %s without a failure message',
+		async (mode) => {
+			const controller = new AbortController();
+			const error = new DOMException('Execution stopped', 'AbortError');
+			const { chunks, executions } = await runTurn(
+				mode === 'throw'
+					? []
+					: [
+							{ type: 'error', error },
+							{ type: 'finish', finishReason: 'error' },
+						],
+				{
+					abortController: controller,
+					beforeStream: () => controller.abort(error),
+					streamError: mode === 'throw' ? error : undefined,
+				},
+			);
+
+			expect(chunks).toEqual([{ type: 'finish', finishReason: 'cancelled' }]);
+			expect(executions.finalizeExecution.mock.calls[0][1].record).toMatchObject({
+				finishReason: 'cancelled',
+				error: null,
+			});
+		},
+	);
 
 	it('stores the turn when the hook fails', async () => {
 		const { executions } = await runTurn([{ type: 'finish', finishReason: 'stop' }], {

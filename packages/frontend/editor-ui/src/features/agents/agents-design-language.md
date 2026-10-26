@@ -43,6 +43,18 @@ Reserve 480 pixels for the editor. When both panels are open, share the
 remaining width in proportion to each panel's requested extra width above
 320 pixels. Do not save automatic layout adjustments as user resize choices.
 
+## Session controls
+
+Show `Stop session` for a running session when the user can execute the Agent.
+Put it in the session list menu and beside Close in the session detail header.
+Use a red, icon-only ghost control in the header. Match the Preview control's
+size. Disable the action while the request runs. Keep the session running until
+the server reports its final status. Then remove the stop icon and show
+`Session stopped` in the conversation. Keep the notice after a reload. Send the same
+notice to a user who talks to the Agent through a channel.
+Wrap the header breadcrumbs and actions on narrow screens. Keep Stop and Close
+inside the available width.
+
 ## Preview history
 
 Show token usage after a model turn reports it. Hide the cost when pricing is

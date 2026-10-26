@@ -1,4 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
+import type * as AgentThreadsApiModule from '../composables/useAgentThreadsApi';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { shallowMount, flushPromises } from '@vue/test-utils';
 import { nextTick, reactive } from 'vue';
@@ -39,7 +40,12 @@ const routerReplace = vi.fn();
 const sessionThreads = reactive<SessionThread[]>([]);
 const previewSessionThreads = reactive<SessionThread[]>([]);
 const pushListeners = new Set<(event: PushMessage) => void>();
-const agentPermissions = vi.hoisted(() => ({ canUpdate: { value: true } }));
+const agentPermissions = vi.hoisted(() => ({
+	canUpdate: { value: true },
+	canExecute: { value: true },
+}));
+const stopSession = vi.hoisted(() => vi.fn());
+const showError = vi.hoisted(() => vi.fn());
 const deleteSession = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 const fetchSessionThreads = vi.fn().mockResolvedValue(undefined);
 const upsertSessionThread = vi.fn((thread: SessionThread) => {
@@ -100,6 +106,15 @@ vi.mock('@/features/agents/composables/useAgentSessionLangSmithExport', () => ({
 	}),
 }));
 
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError }),
+}));
+
+vi.mock('@/features/agents/composables/useAgentThreadsApi', async (importOriginal) => ({
+	...(await importOriginal<typeof AgentThreadsApiModule>()),
+	stopSession,
+}));
+
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	getAgent: vi.fn().mockResolvedValue({ id: 'a1', name: 'Agent One' }),
 }));
@@ -151,6 +166,9 @@ describe('AgentSessionTimelineView', () => {
 		setActivePinia(createPinia());
 		localStorage.removeItem('N8N_AGENT_PREVIEW_OPEN:p1:a1');
 		agentPermissions.canUpdate.value = true;
+		agentPermissions.canExecute.value = true;
+		stopSession.mockReset().mockResolvedValue({ cancelRequested: true });
+		showError.mockClear();
 		deleteSession.mockClear();
 		fetchSessionThreads.mockReset().mockResolvedValue(undefined);
 		upsertSessionThread.mockClear();
@@ -161,6 +179,92 @@ describe('AgentSessionTimelineView', () => {
 		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
 			'thread-b' as unknown as ReturnType<typeof globalThis.crypto.randomUUID>,
 		);
+	});
+
+	it('stops a running integration session without opening Preview', async () => {
+		const wrapper = await renderPrivateTimeline();
+		const panel = wrapper.getComponent(AgentSessionTimelinePanel);
+		const header = wrapper.getComponent(AgentSessionTimelineHeader);
+		panel.vm.$emit('loaded', {
+			thread: { ...privateThread('thread-a'), canContinueInPreview: false },
+			executions: [{ id: 'e1', source: 'slack', status: 'running' }],
+		});
+		await nextTick();
+		expect(header.props('showStop')).toBe(true);
+		expect(wrapper.findComponent(AgentPreviewDock).exists()).toBe(false);
+
+		const pending = Promise.withResolvers<{ cancelRequested: boolean }>();
+		stopSession.mockReturnValueOnce(pending.promise);
+		header.vm.$emit('stop');
+		header.vm.$emit('stop');
+		await nextTick();
+		expect(header.props('stopLoading')).toBe(true);
+		expect(stopSession).toHaveBeenCalledExactlyOnceWith({}, 'p1', 'a1', 'thread-a');
+		pending.resolve({ cancelRequested: true });
+		await flushPromises();
+		expect(header.props('stopLoading')).toBe(false);
+		expect(header.props('showStop')).toBe(true);
+
+		panel.vm.$emit('loaded', {
+			thread: privateThread('thread-a'),
+			executions: [{ id: 'e1', source: 'slack', status: 'cancelled' }],
+		});
+		await nextTick();
+		expect(header.props('showStop')).toBe(false);
+		wrapper.unmount();
+	});
+
+	it.each(['success', 'error', 'cancelled', 'interrupted'])(
+		'hides Stop for a %s execution',
+		async (status) => {
+			const wrapper = await renderPrivateTimeline();
+			wrapper.getComponent(AgentSessionTimelinePanel).vm.$emit('loaded', {
+				thread: privateThread('thread-a'),
+				executions: [{ id: 'e1', status }],
+			});
+			await nextTick();
+			const header = wrapper.getComponent(AgentSessionTimelineHeader);
+			expect(header.props('showStop')).toBe(false);
+			header.vm.$emit('stop');
+			expect(stopSession).not.toHaveBeenCalled();
+			wrapper.unmount();
+		},
+	);
+
+	it('requires execute permission to stop a session', async () => {
+		const wrapper = await renderPrivateTimeline();
+		agentPermissions.canExecute.value = false;
+		wrapper.getComponent(AgentSessionTimelinePanel).vm.$emit('loaded', {
+			thread: privateThread('thread-a'),
+			executions: [{ id: 'e1', status: 'running' }],
+		});
+		await nextTick();
+		const header = wrapper.getComponent(AgentSessionTimelineHeader);
+		expect(header.props('showStop')).toBe(false);
+		header.vm.$emit('stop');
+		expect(stopSession).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('keeps the stop action available after a failed request', async () => {
+		const wrapper = await renderPrivateTimeline();
+		wrapper.getComponent(AgentSessionTimelinePanel).vm.$emit('loaded', {
+			thread: privateThread('thread-a'),
+			executions: [{ id: 'e1', status: 'running' }],
+		});
+		await nextTick();
+		const error = new Error('Request failed');
+		stopSession.mockRejectedValueOnce(error);
+		const header = wrapper.getComponent(AgentSessionTimelineHeader);
+		header.vm.$emit('stop');
+		await flushPromises();
+		expect(showError).toHaveBeenCalledWith(error, expect.any(String));
+		expect(header.props('stopLoading')).toBe(false);
+		expect(header.props('showStop')).toBe(true);
+		header.vm.$emit('stop');
+		await flushPromises();
+		expect(stopSession).toHaveBeenCalledTimes(2);
+		wrapper.unmount();
 	});
 
 	it('uses update permission for preview session deletion', async () => {
@@ -384,8 +488,9 @@ describe('AgentSessionTimelineView', () => {
 		wrapper.unmount();
 	});
 
-	it('shows Preview controls before a new session has metrics', () => {
+	it('removes the stop icon without a replacement status after stopping', async () => {
 		const wrapper = shallowMount(AgentSessionTimelineHeader, {
+			global: { stubs: { N8nTooltip: { template: '<span><slot /></span>' } } },
 			props: {
 				breadcrumbItems: [],
 				projectIcon: { type: 'icon', value: 'user' },
@@ -401,10 +506,26 @@ describe('AgentSessionTimelineView', () => {
 				showLangsmithExport: false,
 				langsmithExportLoading: false,
 				showPreview: true,
+				showStop: true,
 			},
 		});
 
 		expect(wrapper.find('[data-testid="agent-session-timeline-preview-btn"]').exists()).toBe(true);
+		const stopButton = wrapper.get('[data-testid="agent-session-stop"]');
+		await stopButton.trigger('click');
+		expect(wrapper.emitted('stop')).toEqual([[]]);
+		await wrapper.setProps({ stopLoading: true });
+		expect(wrapper.getComponent('[data-testid="agent-session-stop"]').props()).toMatchObject({
+			variant: 'ghost',
+			size: 'medium',
+			icon: 'square',
+			loading: true,
+		});
+		expect(stopButton.attributes('aria-label')).toBe('Stop session');
+		await wrapper.setProps({ showStop: false, showMetrics: true });
+		expect(wrapper.text()).not.toContain('Session stopped');
+		expect(wrapper.find('[data-testid="agent-session-stop"]').exists()).toBe(false);
+		wrapper.unmount();
 	});
 
 	it('replaces the stale thread with an empty state when a new preview session starts', async () => {
