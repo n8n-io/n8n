@@ -1,6 +1,5 @@
 # Advanced HITL workflow spike
 
-Enable `N8N_AGENTS_ADVANCED_HITL_ENABLED=true` on every main and worker.
 Run the database migrations. Use Message an Agent version 4.
 
 This branch implements the workflow path in the Advanced HITL investigation.
@@ -50,8 +49,8 @@ arguments. Child redaction and private credential markers pass back to the paren
   workflow references. The current runtime rejects unavailable configurations.
 - The snapshot includes config and tool assets. It needs review against execution
   export, redaction, and storage rules before delivery.
-- The new nodes are registered globally. The Agent UI and new request dispatch are
-  behind the flag. The node catalog needs the same rollout policy before release.
+- The new nodes, Agent UI, and request dispatch are available in this spike.
+  Set the rollout policy before release.
 - The migration and generated schema docs are included. Test upgrade and downgrade
   with active requests before release.
 

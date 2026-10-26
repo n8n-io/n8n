@@ -1,6 +1,5 @@
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import type { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { IExecutionResponse, WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -31,13 +30,11 @@ const configuration: AgentJsonConfig = {
 };
 
 function setup() {
-	const config = mock<AgentsConfig>({ advancedHitlEnabled: true });
 	const jobs = mock<AgentBackgroundJobRepository>();
 	const executions = mock<ExecutionPersistence>();
 	const loader = mock<WorkflowToolWorkflowLoader>();
 	const jobService = mock<AgentBackgroundJobService>();
 	const service = new AgentDecisionWorkflowService(
-		config,
 		loader,
 		mock<SubworkflowPolicyChecker>(),
 		mock<ActiveExecutions>(),
@@ -60,7 +57,6 @@ function setup() {
 		suspendPayload: { type: 'workflow_wait' },
 	};
 	return {
-		config,
 		jobs,
 		jobService,
 		loader,
@@ -206,15 +202,15 @@ describe('Agent decision workflow approval', () => {
 		},
 	);
 
-	it('drains a persisted decision after the experiment is disabled', async () => {
-		const { config, jobs, wrapped, context, handler } = setup();
-		config.advancedHitlEnabled = false;
+	it('resumes a persisted decision without dispatching another workflow', async () => {
+		const { jobs, loader, wrapped, context, handler } = setup();
 		jobs.findWorkflowJobByExecutionId.mockResolvedValue({
 			status: 'completed',
 			result: '{"approved":true}',
 		} as AgentBackgroundJob);
 		await wrapped.handler?.({}, context);
 		expect(handler).toHaveBeenCalledOnce();
+		expect(loader.loadWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('uses an explicit conversation override', () => {

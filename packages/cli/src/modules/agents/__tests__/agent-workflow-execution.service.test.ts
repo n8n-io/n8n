@@ -3,7 +3,7 @@ import type { AgentMessageSteeringService } from '../agent-message-steering.serv
 import type { Agent as RuntimeAgent, ExecutionOptions, RunOptions, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import type { AiConfig, AgentsConfig } from '@n8n/config';
+import type { AiConfig } from '@n8n/config';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
 import { Container } from '@n8n/di';
@@ -150,7 +150,6 @@ function makeService() {
 	const executionLevelTracer = mock<ExecutionLevelTracer>();
 	const nodeToolAiGatewayService = mock<NodeToolAiGatewayService>();
 	const integrationMessageContextService = mock<IntegrationMessageContextService>();
-	const agentsConfig = mock<AgentsConfig>();
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const backgroundJobs = mock<AgentBackgroundJobRepository>();
 	integrationMessageContextService.getLatest.mockResolvedValue(null);
@@ -191,14 +190,12 @@ function makeService() {
 		integrationMessageContextService,
 		settingsService,
 		skillRefs,
-		agentsConfig,
 		checkpointStorage,
 		backgroundJobs,
 	);
 
 	return {
 		service,
-		agentsConfig,
 		checkpointStorage,
 		backgroundJobs,
 		skillRefs,
@@ -218,15 +215,8 @@ function makeService() {
 
 describe('workflow approval continuation', () => {
 	it('restores a suspended run from its snapshot and consumes the result after completion', async () => {
-		const {
-			service,
-			agentsConfig,
-			agentRepository,
-			reconstructionService,
-			checkpointStorage,
-			backgroundJobs,
-		} = makeService();
-		agentsConfig.advancedHitlEnabled = true;
+		const { service, agentRepository, reconstructionService, checkpointStorage, backgroundJobs } =
+			makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		const first = makeRuntime([
 			{

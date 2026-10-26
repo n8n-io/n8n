@@ -261,7 +261,6 @@ export class AgentsModule implements ModuleInterface {
 			knowledgeBaseEnabled: Container.get(KnowledgeAvailabilityService).isFileKnowledgeEnabled(),
 			proxyEnabled,
 			skillsHubEnabled: Container.get(SkillsHubRollout).isEnabled,
-			advancedHitlEnabled: Container.get(AgentsConfig).advancedHitlEnabled,
 		};
 	}
 

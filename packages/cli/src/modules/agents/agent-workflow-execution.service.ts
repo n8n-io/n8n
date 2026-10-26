@@ -14,7 +14,7 @@ import {
 	sanitizeAgentSkillBodies,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AiConfig, AgentsConfig } from '@n8n/config';
+import { AiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { context } from '@opentelemetry/api';
 import type { JSONSchema7 } from 'json-schema';
@@ -209,7 +209,6 @@ export class AgentWorkflowExecutionService {
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
 		private readonly settingsService: AgentsSettingsService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
-		private readonly agentsConfig: AgentsConfig,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly backgroundJobs: AgentBackgroundJobRepository,
 	) {}
@@ -898,7 +897,7 @@ export class AgentWorkflowExecutionService {
 			extraTools?.length ? extraTools : undefined,
 			sandboxScope?.principalHash,
 			instrumentation,
-			this.agentsConfig.advancedHitlEnabled && workflowContext?.supportsSuspension === true,
+			workflowContext?.supportsSuspension === true,
 		);
 		if (!compiled.ok || !compiled.agent) {
 			const error = new OperationalError(
@@ -908,9 +907,7 @@ export class AgentWorkflowExecutionService {
 			throw error;
 		}
 		const snapshot: WorkflowRunSnapshot | undefined =
-			agentData.schema &&
-			workflowContext?.supportsSuspension &&
-			this.agentsConfig.advancedHitlEnabled
+			agentData.schema && workflowContext?.supportsSuspension
 				? {
 						config: toAgentDocument(agentData.schema, runSource.skillRefs),
 						assets: getAgentRuntimeAssets(agentData, runSource.skills),

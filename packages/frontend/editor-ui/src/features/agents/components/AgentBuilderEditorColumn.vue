@@ -403,7 +403,7 @@ defineExpose({ onSetupTaskAction });
 				>
 					<div :class="$style.settingsCards">
 						<AgentHitlPanel
-							v-if="settingsStore.moduleSettings.agents?.advancedHitlEnabled && !agentUnsaved"
+							v-if="!agentUnsaved"
 							:config="localConfig"
 							:project-id="projectId"
 							:agent-id="agentId"

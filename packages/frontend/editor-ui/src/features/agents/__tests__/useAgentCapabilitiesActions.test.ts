@@ -1,3 +1,4 @@
+import type { AgentHitlContext } from '../components/agent-hitl.types';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { computed, ref, type Ref } from 'vue';
@@ -104,6 +105,7 @@ function setup(
 
 type ToolsModalData = {
 	supportsToolApproval?: boolean;
+	approvalContext?: AgentHitlContext;
 	onConfirm: (payload: {
 		tools?: AgentJsonConfig['tools'];
 		mcpServers?: AgentJsonMcpServerConfig[];
@@ -133,6 +135,13 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 		modalData.onConfirm({ tools: [], mcpServers: [mcpServer] });
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools: [], mcpServers: [mcpServer] });
+	});
+
+	it('offers HITL configuration without an instance feature flag', () => {
+		const { uiStore, actions, localConfig } = setup({ agentId: ref('saved-agent') });
+		actions.onOpenAddToolModal();
+		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
+		expect(modalData.approvalContext?.getConfig()).toBe(localConfig.value);
 	});
 
 	it('forwards the host approval capability into the tools modal data', () => {

@@ -188,9 +188,8 @@ unsupported interaction, explain that it cannot be completed here and send the
 user to the Preview link from `sessionContext` to run it again.
 
 The Advanced HITL spike adds workflow approval for saved Agents called from a
-workflow. It requires `N8N_AGENTS_ADVANCED_HITL_ENABLED` and Message an Agent
-version 4. It does not yet support scheduled Agent tasks or direct channel
-delivery. Do not promise these paths.
+workflow. It requires Message an Agent version 4. It does not yet support
+scheduled Agent tasks or direct channel delivery. Do not promise these paths.
 
 Use `hitlConfigurations` for named workflow destinations. Each configuration
 has `id`, `name`, `method: "workflow"`, and `workflowId`. Set

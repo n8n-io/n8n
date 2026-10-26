@@ -7,7 +7,6 @@ import {
 	type AgentApprovalRoute,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
-import { AgentsConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { OperationalError, UserError, jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -36,7 +35,6 @@ const RESUME_SCHEMA = z.object({ type: z.string().optional(), value: z.string().
 @Service()
 export class AgentDecisionWorkflowService {
 	constructor(
-		private readonly config: AgentsConfig,
 		private readonly loader: WorkflowToolWorkflowLoader,
 		private readonly policyChecker: SubworkflowPolicyChecker,
 		private readonly activeExecutions: ActiveExecutions,
@@ -84,8 +82,6 @@ export class AgentDecisionWorkflowService {
 		identity: { agentId: string; projectId: string; published: boolean },
 	): Promise<unknown> {
 		const pending = DECISION_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
-		if (!this.config.advancedHitlEnabled && !pending.success)
-			throw new UserError('Advanced HITL is not enabled');
 		let executionId: string;
 		if (pending.success) {
 			executionId = pending.data.executionId;

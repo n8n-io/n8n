@@ -34,13 +34,6 @@ class AgentsModuleArray extends CommaSeparatedStringArray<AgentsModuleName> {
 
 @Config
 export class AgentsConfig {
-	/**
-	 * Enable experimental workflow-based tool approval for saved Agents.
-	 * Set the same value on every main and worker.
-	 */
-	@Env('N8N_AGENTS_ADVANCED_HITL_ENABLED')
-	advancedHitlEnabled: boolean = false;
-
 	@Env('N8N_AGENTS_PLAN_TOOLS_ENABLED')
 	planToolsEnabled: boolean = false;
 

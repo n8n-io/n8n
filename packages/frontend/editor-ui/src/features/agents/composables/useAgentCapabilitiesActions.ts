@@ -157,8 +157,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	);
 
 	function hitlContext() {
-		if (supportsToolApproval === false || !settingsStore.moduleSettings.agents?.advancedHitlEnabled)
-			return undefined;
+		if (supportsToolApproval === false) return undefined;
 		const targetAgentId = agentId.value;
 		return {
 			getConfig: () => (agentId.value === targetAgentId ? localConfig.value : null),
