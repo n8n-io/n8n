@@ -58,6 +58,7 @@ const MODEL_ENV_KEYS = [
 	'N8N_INSTANCE_AI_EVAL_JUDGE_MODEL',
 	'N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT',
 	'N8N_INSTANCE_AI_EVAL_USAGE_LOG',
+	'N8N_INSTANCE_AI_MODEL_REQUEST_LABELS',
 ];
 
 function resetModelEnv(): void {
@@ -161,6 +162,15 @@ describe('eval agent model config', () => {
 		}
 
 		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('test-agent');
+	});
+
+	it('turns a helper name with spaces or slashes into a safe caller id', () => {
+		process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+		process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS = 'true';
+
+		createEvalAgent('eval mock/Slack node', { instructions: 'Do the task.' });
+
+		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('eval-mock-Slack-node');
 	});
 
 	it('prefers env-based model resolution over the fallback', () => {

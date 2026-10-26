@@ -292,7 +292,8 @@ export function createEvalAgent(
 		options.fallbackModelConfig,
 	);
 	const agent = new Agent(name).model(model);
-	if (requestLabelsEnabled()) agent.functionId(name);
+	// The SDK accepts only `[A-Za-z0-9._-]` in a caller id.
+	if (requestLabelsEnabled()) agent.functionId(name.replace(/[^A-Za-z0-9._-]+/g, '-'));
 	if (options.modelFetch) agent.modelFetch(options.modelFetch);
 	if (options.telemetry) agent.telemetry(options.telemetry);
 
