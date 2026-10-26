@@ -6,6 +6,7 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import type { OtelConfigureHook } from '../otel-configure-hook';
 import { OtelExporterFactory } from '../otel-exporter.factory';
 import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
 import type { OtelConfig } from '../otel.config';
@@ -200,6 +201,7 @@ describe('OtelService', () => {
 			moduleRegistry,
 			publisher,
 			mock<ExternalHooks>(),
+			mock<OtelConfigureHook>(),
 		);
 
 	beforeEach(() => {

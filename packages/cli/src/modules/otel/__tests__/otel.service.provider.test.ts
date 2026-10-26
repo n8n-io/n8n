@@ -19,6 +19,7 @@ import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { withExecutionIdentity } from '../execution-identity';
+import { OtelConfigureHook, type OtelConfigureHookApi } from '../otel-configure-hook';
 import { OtelExporterFactory } from '../otel-exporter.factory';
 import { OtelSettingsController } from '../otel-settings.controller';
 import type { OtelSettingsService } from '../otel-settings.service';
@@ -27,12 +28,7 @@ import { ATTR } from '../otel.constants';
 import { OtelService } from '../otel.service';
 
 import { N8N_VERSION } from '@/constants';
-import type {
-	ExternalHooks,
-	OtelConfigureHookApi,
-	OtelOutboundBaggageMapper,
-	OtelResourceAttributeMapper,
-} from '@/external-hooks';
+import type { ExternalHooks } from '@/external-hooks';
 import { OtelSdk } from '@/observability/otel-sdk';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -129,21 +125,12 @@ describe('OtelService on the startup OTel setup', () => {
 	let service: OtelService;
 	let publisher: ReturnType<typeof mock<Publisher>>;
 	let externalHooks: ReturnType<typeof mock<ExternalHooks>>;
+	let configureHook: OtelConfigureHook;
 
-	const registerMappers = ({
-		resource,
-		baggage,
-	}: {
-		resource?: OtelResourceAttributeMapper;
-		baggage?: OtelOutboundBaggageMapper;
-	}) => {
-		externalHooks.run.mockImplementation(async (hookName, params) => {
-			if (hookName !== 'otel.configure' || !params) return;
-			const [api] = params as [OtelConfigureHookApi];
-			if (resource) api.registerResourceAttributeMapper(resource);
-			if (baggage) api.registerOutboundBaggageMapper(baggage);
-		});
-	};
+	const onConfigure = (configure: (api: OtelConfigureHookApi) => void) =>
+		externalHooks.run.mockImplementation(async (_hookName, params) =>
+			configure((params as [OtelConfigureHookApi])[0]),
+		);
 
 	beforeEach(() => {
 		process.env.OTEL_NODE_RESOURCE_DETECTORS = 'env';
@@ -170,6 +157,7 @@ describe('OtelService on the startup OTel setup', () => {
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
 		externalHooks = mock<ExternalHooks>();
+		configureHook = new OtelConfigureHook(logger);
 		service = new OtelService(
 			otelSettingsService,
 			mock<InstanceSettings>({ instanceId: 'inst-1', instanceType: 'main' }),
@@ -179,6 +167,7 @@ describe('OtelService on the startup OTel setup', () => {
 			mock<ModuleRegistry>(),
 			publisher,
 			externalHooks,
+			configureHook,
 		);
 	});
 
@@ -232,9 +221,9 @@ describe('OtelService on the startup OTel setup', () => {
 			[ATTR.INSTANCE_ROLE]: 'main',
 		});
 		expect(externalHooks.run).toHaveBeenCalledExactlyOnceWith('otel.configure', [
-			expect.any(Object),
+			configureHook.api,
 		]);
-		expect(service.buildOutboundBaggage({ [ATTR.PROJECT_ID]: 'p1' })).toEqual({});
+		expect(configureHook.buildOutboundBaggage({ [ATTR.PROJECT_ID]: 'p1' })).toEqual({});
 	});
 
 	it('exports every span field unchanged apart from the resource', async () => {
@@ -452,18 +441,20 @@ describe('OtelService on the startup OTel setup', () => {
 	});
 
 	it('adds the resource attributes of the otel.configure hook to matching spans and lets the n8n attributes win', async () => {
-		registerMappers({
-			resource: (attrs): Record<string, string> => {
+		onConfigure((api) =>
+			api.registerResourceAttributeMapper((attrs): Record<string, string> => {
 				const projectId = attrs[ATTR.PROJECT_ID];
 				if (typeof projectId !== 'string') return {};
 				return { 'project.id': projectId, [ATTR.OTEL_SERVICE_NAME]: 'from-hook' };
-			},
-		});
+			}),
+		);
 		await service.init();
 
-		const tracer = trace.getTracer('n8n-workflow');
-		tracer.startSpan('node.execute', { attributes: { [ATTR.PROJECT_ID]: 'p1' } }).end();
-		tracer.startSpan('workflow.execute').end();
+		trace
+			.getTracer('n8n-workflow')
+			.startSpan('node.execute', { attributes: { [ATTR.PROJECT_ID]: 'p1' } })
+			.end();
+		startWorkflowSpan().end();
 
 		const [withProject, withoutProject] = await exportedAfterFlush();
 		expect(withProject.span.resource.attributes).toMatchObject({
@@ -476,11 +467,11 @@ describe('OtelService on the startup OTel setup', () => {
 	});
 
 	it('keeps exporting with the base resource and warns once when a resource mapper throws', async () => {
-		registerMappers({
-			resource: () => {
+		onConfigure((api) =>
+			api.registerResourceAttributeMapper(() => {
 				throw new Error('boom');
-			},
-		});
+			}),
+		);
 		await service.init();
 
 		startWorkflowSpan().end();
@@ -494,15 +485,15 @@ describe('OtelService on the startup OTel setup', () => {
 	});
 
 	it('builds outbound baggage from the otel.configure hook and keeps only string values', async () => {
-		registerMappers({
-			baggage: ({ spanAttributes }) => ({
-				'project.id': String(spanAttributes[ATTR.PROJECT_ID]),
+		onConfigure((api) =>
+			api.registerOutboundBaggageMapper((attrs) => ({
+				'project.id': String(attrs[ATTR.PROJECT_ID]),
 				count: 1 as unknown as string,
-			}),
-		});
+			})),
+		);
 		await service.init();
 
-		expect(service.buildOutboundBaggage({ [ATTR.PROJECT_ID]: 'p1' })).toEqual({
+		expect(configureHook.buildOutboundBaggage({ [ATTR.PROJECT_ID]: 'p1' })).toEqual({
 			'project.id': 'p1',
 		});
 	});

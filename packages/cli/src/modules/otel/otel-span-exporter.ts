@@ -9,48 +9,46 @@ export function mergeResourceAttributes(
 	const overrides = resourceFromAttributes(attributes);
 	const mergedResources = new WeakMap<Resource, Resource>();
 
-	const mergedResource = (resource: Resource): Resource => {
+	return withMappedResource(exporter, ({ resource }) => {
 		const cached = mergedResources.get(resource);
 		if (cached) return cached;
 
 		const merged = resource.merge(overrides);
 		mergedResources.set(resource, merged);
 		return merged;
-	};
-
-	return withExport(exporter, (spans, resultCallback) =>
-		exporter.export(
-			spans.map((span) => withResource(span, mergedResource(span.resource))),
-			resultCallback,
-		),
-	);
+	});
 }
 
 export function mapResourceAttributes(
 	exporter: SpanExporter,
 	mapAttributes: (spanAttributes: Attributes) => Attributes,
 ): SpanExporter {
-	const mergedResources = new WeakMap<Resource, Map<string, Resource>>();
+	const mergedResources = new Map<string, Resource>();
 
-	const mergedResource = (resource: Resource, mapped: Attributes): Resource => {
-		const key = JSON.stringify(Object.entries(mapped).sort(([a], [b]) => a.localeCompare(b)));
-		const byKey = mergedResources.get(resource) ?? new Map<string, Resource>();
-		mergedResources.set(resource, byKey);
+	return withMappedResource(exporter, ({ resource, attributes }) => {
+		const mapped = mapAttributes(attributes);
+		const entries = Object.entries(mapped).sort(([a], [b]) => a.localeCompare(b));
+		if (entries.length === 0) return resource;
 
-		const cached = byKey.get(key);
+		const key = JSON.stringify(entries);
+		const cached = mergedResources.get(key);
 		if (cached) return cached;
 
 		const merged = resource.merge(resourceFromAttributes(mapped));
-		byKey.set(key, merged);
+		mergedResources.set(key, merged);
 		return merged;
-	};
+	});
+}
 
+function withMappedResource(
+	exporter: SpanExporter,
+	resolveResource: (span: ReadableSpan) => Resource,
+): SpanExporter {
 	return withExport(exporter, (spans, resultCallback) =>
 		exporter.export(
 			spans.map((span) => {
-				const mapped = mapAttributes(span.attributes);
-				if (Object.keys(mapped).length === 0) return span;
-				return withResource(span, mergedResource(span.resource, mapped));
+				const resource = resolveResource(span);
+				return resource === span.resource ? span : withResource(span, resource);
 			}),
 			resultCallback,
 		),

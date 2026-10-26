@@ -14,7 +14,7 @@ import {
 	type OtelConfig,
 	OtelCustomAttributesConfig,
 } from '../otel.config';
-import type { OtelService } from '../otel.service';
+import type { OtelConfigureHook } from '../otel-configure-hook';
 import { OtelTestProvider } from './support/otel-test-provider';
 
 describe('ExecutionLevelTracer', () => {
@@ -36,7 +36,7 @@ describe('ExecutionLevelTracer', () => {
 	}: {
 		settings?: Partial<OtelConfig>;
 		prefixes?: CustomAttributePrefixes;
-		buildOutboundBaggage?: OtelService['buildOutboundBaggage'];
+		buildOutboundBaggage?: OtelConfigureHook['buildOutboundBaggage'];
 	} = {}) => {
 		const customAttributesConfig = new OtelCustomAttributesConfig();
 		if (prefixes) customAttributesConfig.prefixes = prefixes;
@@ -44,7 +44,7 @@ describe('ExecutionLevelTracer', () => {
 			makeOtelSettingsService(settings),
 			logger,
 			customAttributesConfig,
-			mock<OtelService>({ buildOutboundBaggage }),
+			mock<OtelConfigureHook>({ buildOutboundBaggage }),
 		);
 	};
 

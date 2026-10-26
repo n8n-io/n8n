@@ -116,12 +116,11 @@ object. n8n keeps only string values.
   the resource of each exported span. n8n's own resource attributes (`service.name`,
   `service.version`, `n8n.instance.*`) win over the hook. Without a mapper, n8n does not wrap
   the exporter.
-- `registerOutboundBaggageMapper(({ spanAttributes }) => entries)`: the result is sent as a
+- `registerOutboundBaggageMapper((spanAttributes) => entries)`: the result is sent as a
   `baggage` header next to `traceparent` on outbound requests. Without a mapper, n8n sends no
   `baggage` header.
 
-A mapper that throws logs one warning for each call and n8n keeps the span as it is. A hook
-that throws while it registers stops the start of n8n, like every other external hook.
+A mapper that throws logs one warning for each call and n8n keeps the span as it is.
 
 Example hook file. Load it with `EXTERNAL_HOOK_FILES=/absolute/path/to/otel-project-resource.hook.js`:
 
@@ -135,16 +134,13 @@ module.exports = {
 	otel: {
 		configure: [
 			async (api) => {
-				api.registerResourceAttributeMapper((spanAttributes) => projectIdFrom(spanAttributes));
-				api.registerOutboundBaggageMapper(({ spanAttributes }) => projectIdFrom(spanAttributes));
+				api.registerResourceAttributeMapper(projectIdFrom);
+				api.registerOutboundBaggageMapper(projectIdFrom);
 			},
 		],
 	},
 };
 ```
-
-With this file, each exported span carries `project.id` as a resource attribute, and each
-outbound request from a workflow carries `baggage: project.id=<id>`.
 
 ### Module architecture
 ```mermaid

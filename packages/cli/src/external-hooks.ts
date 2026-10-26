@@ -10,7 +10,6 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Attributes } from '@opentelemetry/api';
 import { ErrorReporter } from 'n8n-core';
 import type {
 	IRun,
@@ -24,6 +23,7 @@ import type clientOAuth1 from 'oauth-1.0a';
 
 import type { AbstractServer } from '@/abstract-server';
 import type { Config } from '@/config';
+import type { OtelConfigureHookApi } from '@/modules/otel/otel-configure-hook';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 type Repositories = {
@@ -68,15 +68,6 @@ export function toWorkflowLifecycleHookActor(user?: User): WorkflowLifecycleHook
 		role: user.role?.slug,
 	};
 }
-
-export type OtelResourceAttributeMapper = (spanAttributes: Attributes) => Record<string, string>;
-export type OtelOutboundBaggageMapper = (input: {
-	spanAttributes: Attributes;
-}) => Record<string, string>;
-export type OtelConfigureHookApi = {
-	registerResourceAttributeMapper(mapper: OtelResourceAttributeMapper): void;
-	registerOutboundBaggageMapper(mapper: OtelOutboundBaggageMapper): void;
-};
 
 type ExternalHooksMap = {
 	'n8n.ready': [server: AbstractServer, config: Config];

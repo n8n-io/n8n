@@ -1,10 +1,8 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
-import { isRecord } from '@n8n/utils/is-record';
 import { latestWins } from '@n8n/utils/promise/latest-wins';
 import { raceAbort } from '@n8n/utils/race-abort';
-import type { Attributes } from '@opentelemetry/api';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
@@ -18,6 +16,7 @@ import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
 import { ExecutionIdentitySpanProcessor } from './execution-identity';
+import { OtelConfigureHook } from './otel-configure-hook';
 import {
 	OtelExporterFactory,
 	type ExportField,
@@ -30,12 +29,7 @@ import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
 import { mapResourceAttributes, mergeResourceAttributes } from './otel-span-exporter';
 
 import { N8N_VERSION } from '@/constants';
-import {
-	ExternalHooks,
-	type OtelConfigureHookApi,
-	type OtelOutboundBaggageMapper,
-	type OtelResourceAttributeMapper,
-} from '@/external-hooks';
+import { ExternalHooks } from '@/external-hooks';
 import { OtelSdk } from '@/observability/otel-sdk';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import {
@@ -74,10 +68,6 @@ export class OtelService {
 
 	private isShutDown = false;
 
-	private readonly resourceAttributeMappers: OtelResourceAttributeMapper[] = [];
-
-	private readonly outboundBaggageMappers: OtelOutboundBaggageMapper[] = [];
-
 	constructor(
 		private readonly otelSettingsService: OtelSettingsService,
 		private readonly instanceSettings: InstanceSettings,
@@ -87,47 +77,12 @@ export class OtelService {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly publisher: Publisher,
 		private readonly externalHooks: ExternalHooks,
+		private readonly configureHook: OtelConfigureHook,
 	) {}
 
 	async init(): Promise<void> {
-		await this.runConfigureHook();
+		await this.externalHooks.run('otel.configure', [this.configureHook.api]);
 		await this.applySavedSettings();
-	}
-
-	buildOutboundBaggage(spanAttributes: Attributes): Record<string, string> {
-		return this.runMappers(this.outboundBaggageMappers, { spanAttributes }, 'outbound baggage');
-	}
-
-	private async runConfigureHook(): Promise<void> {
-		const api: OtelConfigureHookApi = {
-			registerResourceAttributeMapper: (mapper) => {
-				this.resourceAttributeMappers.push(mapper);
-			},
-			registerOutboundBaggageMapper: (mapper) => {
-				this.outboundBaggageMappers.push(mapper);
-			},
-		};
-		await this.externalHooks.run('otel.configure', [api]);
-	}
-
-	private runMappers<T>(
-		mappers: Array<(input: T) => Record<string, string>>,
-		input: T,
-		label: string,
-	): Record<string, string> {
-		const merged: Record<string, string> = {};
-		for (const mapper of mappers) {
-			try {
-				const result: unknown = mapper(input);
-				if (!isRecord(result)) continue;
-				for (const [key, value] of Object.entries(result)) {
-					if (typeof value === 'string') merged[key] = value;
-				}
-			} catch (error) {
-				this.logger.warn(`OpenTelemetry ${label} mapper failed`, { error: getErrorMessage(error) });
-			}
-		}
-		return merged;
 	}
 
 	readonly applySavedSettings = latestWins(async () => {
@@ -291,12 +246,11 @@ export class OtelService {
 				await this.exporterFactory.createTraceExporter(settings),
 				this.resourceAttributes(settings.exporterServiceName),
 			);
-			const hookedExporter =
-				this.resourceAttributeMappers.length > 0
-					? mapResourceAttributes(exporter, (spanAttributes) =>
-							this.runMappers(this.resourceAttributeMappers, spanAttributes, 'resource attribute'),
-						)
-					: exporter;
+			const hookedExporter = this.configureHook.hasResourceAttributeMappers
+				? mapResourceAttributes(exporter, (spanAttributes) =>
+						this.configureHook.mapResourceAttributes(spanAttributes),
+					)
+				: exporter;
 			return [new ExecutionIdentitySpanProcessor(), new BatchSpanProcessor(hookedExporter)];
 		} catch (error) {
 			this.logger.error('Failed to start OpenTelemetry tracing, so tracing stays off', {
