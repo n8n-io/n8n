@@ -11,7 +11,7 @@ import type { BinaryData } from './types';
 import { FileLocation, TEMP_EXECUTION_ID } from './utils';
 import { FileNotFoundError } from '../errors/file-not-found.error';
 
-/** Execution prefixes deleted at once, so a large batch cannot open every listing together. */
+/** Execution directories deleted at once, so a large batch cannot remove every tree together. */
 const PREFIX_DELETE_CONCURRENCY = 5;
 
 /** Captures `workflowId` (group 1) and `executionId` (group 2) from an execution fileId. */

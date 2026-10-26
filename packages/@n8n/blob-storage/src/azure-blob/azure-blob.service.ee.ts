@@ -171,16 +171,6 @@ export class AzureBlobService {
 		}
 	}
 
-	async *listPages(prefix: string) {
-		try {
-			for await (const page of this.containerClient.listBlobsFlat({ prefix }).byPage()) {
-				yield page.segment.blobItems.map((blob) => blob.name);
-			}
-		} catch (e) {
-			this.handleError(e);
-		}
-	}
-
 	private handleError(e: unknown): never {
 		const error = ensureError(e);
 		throw new UnexpectedError(`Request to Azure Blob storage failed: ${error.message}`, {
