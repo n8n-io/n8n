@@ -158,6 +158,38 @@ describe('ExecutionPersistence', () => {
 			expect(row?.deletedAt).toBeInstanceOf(Date);
 		});
 
+		it('leaves the starter out of execution reads', async () => {
+			const workflow = await createWorkflow();
+			const executionId = await executionPersistence.create({
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'manual',
+				finished: false,
+				status: 'running',
+				workflowId: workflow.id,
+				startedByUserId: randomUUID(),
+			});
+
+			const reads = await Promise.all([
+				executionPersistence.findSingleExecution(executionId),
+				executionPersistence.findSingleExecution(executionId, {
+					includeData: true,
+					unflattenData: true,
+				}),
+				executionPersistence.findSingleExecution(executionId, {
+					includeData: true,
+					unflattenData: true,
+					maxDataSizeBytes: 1,
+				}),
+			]);
+
+			expect(reads[2]).toMatchObject({ dataTooLargeToDisplay: true });
+			for (const [index, execution] of reads.entries()) {
+				expect(execution, `read ${index}`).toMatchObject({ id: executionId });
+				expect(execution, `read ${index}`).not.toHaveProperty('startedByUserId');
+			}
+		});
+
 		it('returns the run data of an unsaved manual execution to the user who started it', async () => {
 			const startedByUserId = randomUUID();
 			const { workflow, executionId } = await createUnsavedManualExecution(startedByUserId);

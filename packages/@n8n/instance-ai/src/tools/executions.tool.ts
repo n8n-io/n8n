@@ -594,11 +594,11 @@ const REDACTED_RESULT_GUIDANCE =
  * saved, and `list` does not show them.
  */
 const UNSAVED_EXECUTION_GUIDANCE =
-	' When saving manual executions is turned off, n8n keeps a manual run only for a ' +
-	'short time after it finishes, only for the user who ran it, and `list` does not ' +
-	'show it. Read such a run by its execution id. When the execution the user means ' +
-	'is not found, tell the user that n8n no longer has that run. Do not debug a ' +
-	'different execution from `list` in its place.';
+	' When saving manual executions is turned off, n8n can keep a finished manual run ' +
+	'for a short time, only for the user who ran it, and `list` does not show it. ' +
+	'Read such a run by its execution id. When the execution the user means is not ' +
+	'found, tell the user that you cannot read that run. Do not debug a different ' +
+	'execution from `list` in its place.';
 
 export function createExecutionsTool(
 	context: InstanceAiContext,

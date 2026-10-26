@@ -1051,7 +1051,8 @@ export class ExecutionPersistence {
 		bundle: ExecutionDataPayload,
 		options: { unflattenData?: boolean; includeAnnotation?: boolean },
 	) {
-		const { metadata, annotation, ...rest } = entity;
+		// `startedByUserId` is internal: only the lookup of unsaved manual executions uses it.
+		const { metadata, annotation, startedByUserId: _startedByUserId, ...rest } = entity;
 		const ref = { workflowId: entity.workflowId, executionId: entity.id };
 		const data = await this.parseExecutionData(ref, bundle.data, options);
 		const serializedAnnotation = this.serializeAnnotation(annotation);
@@ -1115,7 +1116,7 @@ export class ExecutionPersistence {
 		options: { includeAnnotation?: boolean },
 		snapshot?: BundleWorkflowSnapshot,
 	) {
-		const { metadata, annotation, ...rest } = entity;
+		const { metadata, annotation, startedByUserId: _startedByUserId, ...rest } = entity;
 		const serializedAnnotation = this.serializeAnnotation(annotation);
 		const workflowData = snapshot?.workflowData ?? {
 			id: entity.workflowId,

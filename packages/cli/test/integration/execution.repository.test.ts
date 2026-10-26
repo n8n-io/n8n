@@ -390,6 +390,15 @@ describe('UserRepository', () => {
 			expect(await executionRepository.softDeleteUnsavedManualExecution(execution.id)).toBe(false);
 		});
 
+		test('does not soft-delete a non-manual execution', async () => {
+			const { execution } = await createUnsavedManualExecution();
+			await executionRepository.update({ id: execution.id }, { mode: 'webhook' });
+
+			expect(await executionRepository.softDeleteUnsavedManualExecution(execution.id)).toBe(false);
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.deletedAt).toBeNull();
+		});
+
 		test('finds the execution only for the user who started it', async () => {
 			const member = await createMember();
 			const { workflow, execution } = await createUnsavedManualExecution();
@@ -439,7 +448,7 @@ describe('UserRepository', () => {
 			await executionRepository.softDeleteUnsavedManualExecution(unfinished.id);
 			const { execution: webhook } = await createUnsavedManualExecution();
 			await executionRepository.update({ id: webhook.id }, { mode: 'webhook' });
-			await executionRepository.softDeleteUnsavedManualExecution(webhook.id);
+			await executionRepository.softDelete(webhook.id);
 
 			expect(await executionRepository.findUnsavedManualExecution(running.id, owner.id)).toBeNull();
 			expect(

@@ -18,12 +18,18 @@ export function keepsUnsavedManualExecutions(
  * The user to record on a new manual execution that n8n will not save. Only that
  * user can read it after it finishes. Recorded at start, because a resumed run may
  * act as a different user.
+ *
+ * Only for a run that a browser shows, which has a `pushRef`. n8n also starts manual
+ * runs without one, for example to fetch an evaluation dataset, and does not keep them.
  */
 export function resolveUnsavedManualExecutionStarter(
-	data: Pick<IWorkflowExecutionDataProcess, 'executionMode' | 'workflowData' | 'userId'>,
+	data: Pick<
+		IWorkflowExecutionDataProcess,
+		'executionMode' | 'workflowData' | 'userId' | 'pushRef'
+	>,
 	config: Pick<ExecutionsConfig, 'pruneData' | 'pruneDataHardDeleteBuffer'>,
 ): string | undefined {
-	if (data.executionMode !== 'manual' || !data.userId) return undefined;
+	if (data.executionMode !== 'manual' || !data.userId || !data.pushRef) return undefined;
 	if (!keepsUnsavedManualExecutions(config)) return undefined;
 	return toSaveSettings(data.workflowData.settings).manual ? undefined : data.userId;
 }

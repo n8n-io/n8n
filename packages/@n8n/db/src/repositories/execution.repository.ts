@@ -363,7 +363,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			return undefined;
 		}
 
-		const { executionData, metadata, annotation, ...rest } = execution;
+		// `startedByUserId` is internal: only the lookup of unsaved manual executions uses it.
+		const { startedByUserId: _startedByUserId, ...publicExecution } = execution;
+		const { executionData, metadata, annotation, ...rest } = publicExecution;
 		const serializedAnnotation = this.serializeAnnotation(annotation);
 
 		if (execution.status === 'success' && executionData?.data === '[]') {
@@ -377,7 +379,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 		if (!options?.includeData) {
 			// Not including run data, so return early.
-			const { executionData, ...rest } = execution;
+			const { executionData, ...rest } = publicExecution;
 			return {
 				...rest,
 				...(options?.includeAnnotation &&
@@ -777,12 +779,12 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		await this.createQueryBuilder()
 			.update(ExecutionEntity)
 			.set({ deletedAt: () => dbNowLiteral(isPostgres) })
-			.where({ id: executionId, deletedAt: IsNull() })
+			.where({ id: executionId, mode: 'manual', deletedAt: IsNull() })
 			.execute();
 
 		const execution = await this.findOne({
 			select: ['id', 'startedByUserId'],
-			where: { id: executionId },
+			where: { id: executionId, mode: 'manual', deletedAt: Not(IsNull()) },
 			withDeleted: true,
 		});
 		return Boolean(execution?.startedByUserId);

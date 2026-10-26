@@ -101,12 +101,12 @@ viewing its execution `<id>`". Read that execution by its id. Do not pick a run
 from `list` instead: `list` can return an older run, and it does not show a
 manual run that n8n did not save.
 
-When saving manual executions is turned off, n8n keeps a manual run only for a
-short time after it finishes, and only the user who ran it can read it. You act
-as that user, so you can read it by its id in that time. When the id is not
-found, tell the user that n8n no longer has that run. Ask the user to run it
-again, or offer to run it yourself: n8n saves every run you start. A new run
-repeats what its nodes do, so check for write nodes first (see below).
+When saving manual executions is turned off, n8n can keep a finished manual run
+for a short time, only for the user who ran it. You act as that user, so you can
+read it by its id in that time. When the id is not found, tell the user that you
+cannot read that run. Ask the user to run it again, or offer to run it yourself:
+n8n saves every run you start. A new run repeats what its nodes do, so check for
+write nodes first (see below).
 
 ## Failed execution
 

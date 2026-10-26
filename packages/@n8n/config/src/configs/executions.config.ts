@@ -154,8 +154,8 @@ export class ExecutionsConfig {
 
 	/**
 	 * Whether to save execution data for manual executions. You can override this for each workflow.
-	 * When set to false and pruning is on, n8n keeps each finished manual execution only for the user
-	 * who ran it, for example to debug it with the n8n Assistant, and deletes it once
+	 * When set to false and pruning is on, n8n still keeps a manual execution that a user runs in
+	 * the editor for that user alone, for example to debug it with the n8n Assistant, until
 	 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER` has passed.
 	 */
 	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')

@@ -205,6 +205,7 @@ describe('ActiveExecutions', () => {
 		const unsavedExecutionData: IWorkflowExecutionDataProcess = {
 			...executionData,
 			workflowData: { ...executionData.workflowData, settings: { saveManualExecutions: false } },
+			pushRef: 'push-ref',
 		};
 
 		const { pruneData, pruneDataHardDeleteBuffer } = executionsConfig;
@@ -247,6 +248,14 @@ describe('ActiveExecutions', () => {
 
 		test('Should not record a starter for a non-manual execution', async () => {
 			await activeExecutions.add({ ...unsavedExecutionData, executionMode: 'webhook' });
+
+			expect(executionPersistence.create).toHaveBeenCalledWith(
+				expect.objectContaining({ startedByUserId: null }),
+			);
+		});
+
+		test('Should not record a starter for a manual execution that no browser shows', async () => {
+			await activeExecutions.add({ ...unsavedExecutionData, pushRef: undefined });
 
 			expect(executionPersistence.create).toHaveBeenCalledWith(
 				expect.objectContaining({ startedByUserId: null }),

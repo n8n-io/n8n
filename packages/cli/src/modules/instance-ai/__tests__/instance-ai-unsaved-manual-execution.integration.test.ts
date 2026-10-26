@@ -8,7 +8,7 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
@@ -23,6 +23,7 @@ import { ExecutionRedactionService } from '@/modules/redaction/executions/execut
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 import { createExecution } from '@test-integration/db/executions';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
@@ -47,6 +48,7 @@ describe('Instance AI unsaved manual executions (integration)', () => {
 	let alice: User;
 	/** A member of the same team project, who can read the workflow's executions. */
 	let bob: User;
+	let teamProject: Project;
 	let workflow: IWorkflowBase;
 
 	const licenseMocker = new LicenseMocker();
@@ -134,7 +136,7 @@ describe('Instance AI unsaved manual executions (integration)', () => {
 	});
 
 	beforeEach(async () => {
-		const teamProject = await createTeamProject('Team', alice);
+		teamProject = await createTeamProject('Team', alice);
 		await linkUserToProject(bob, teamProject, 'project:editor');
 		workflow = await createWorkflowWithHistory({ nodes }, teamProject);
 	});
@@ -209,6 +211,28 @@ describe('Instance AI unsaved manual executions (integration)', () => {
 
 			expect(output.redaction).toEqual({ reason: 'workflow_redaction_policy', canReveal: true });
 			expect(JSON.stringify(output)).not.toContain('C07SW3BQX8R');
+		});
+	});
+
+	describe('a starter without execution:read on the workflow', () => {
+		it('gets nothing, although they started the run', async () => {
+			const workflowOnlyRole = await createCustomRoleWithScopeSlugs([
+				'workflow:read',
+				'workflow:list',
+				'workflow:execute',
+				'project:read',
+				'project:list',
+			]);
+			const carol = await createMember();
+			await linkUserToProject(carol, teamProject, workflowOnlyRole.slug);
+			const executionId = await createUnsavedManualExecution(carol);
+
+			await expect(executionsFor(carol).getDebugInfo(executionId)).rejects.toThrow(
+				`Execution ${executionId} not found`,
+			);
+			await expect(executionsFor(carol).getNodeOutput(executionId, 'Trigger')).rejects.toThrow(
+				`Execution ${executionId} not found`,
+			);
 		});
 	});
 
