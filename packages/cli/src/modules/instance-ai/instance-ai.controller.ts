@@ -1010,6 +1010,7 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId);
+		void this.instanceAiService.maybeDeliverCloudBrowserTaskResults(req.user, threadId);
 
 		// ?raw=true returns the old format for the thread inspector
 		if (query.raw === 'true') {

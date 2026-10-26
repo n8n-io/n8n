@@ -3518,7 +3518,7 @@ export class InstanceAiService {
 	 * it ends, but the method skips delivery if the cloud browser is disabled or unavailable.
 	 * It logs errors without propagating them to the calling run.
 	 */
-	private async maybeDeliverCloudBrowserTaskResults(user: User, threadId: string): Promise<void> {
+	async maybeDeliverCloudBrowserTaskResults(user: User, threadId: string): Promise<void> {
 		try {
 			if (!this.settingsService.isCloudBrowserEnabled()) return;
 			if (!(await this.cloudBrowserService.isAvailable())) return;
