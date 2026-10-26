@@ -6,6 +6,7 @@ import {
 	TooltipRoot,
 	TooltipTrigger,
 } from 'reka-ui';
+import { useZIndex } from 'element-plus';
 import { computed, ref, useAttrs, watch } from 'vue';
 
 import type { N8nTooltipProps } from './Tooltip.types';
@@ -75,6 +76,20 @@ const isControlled = computed(() => props.visible !== undefined);
 const handleOpenChange = (open: boolean) => {
 	isOpen.value = open;
 };
+
+// Element Plus poppers (for example the N8nSelect list) take a higher z-index from a
+// shared counter each time they open. A fixed z-index would keep the tooltip behind
+// them, so take the next value from the same counter on each open.
+const { nextZIndex } = useZIndex();
+const contentZIndex = ref<number>();
+
+watch(
+	isOpen,
+	(open) => {
+		if (open) contentZIndex.value = nextZIndex();
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -101,6 +116,7 @@ const handleOpenChange = (open: boolean) => {
 				<TooltipContent
 					data-test-id="tooltip-content"
 					:class="['n8n-tooltip', contentClass]"
+					:style="contentZIndex === undefined ? undefined : { zIndex: contentZIndex }"
 					:side="placementParts.side"
 					:align="placementParts.align"
 					:side-offset="offset"
