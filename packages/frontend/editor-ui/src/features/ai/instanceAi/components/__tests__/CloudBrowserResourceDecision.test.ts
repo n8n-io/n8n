@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
+import type { ComponentProps } from 'vue-component-type-helpers';
 import { createComponentRenderer } from '@/__tests__/render';
 import CloudBrowserResourceDecision from '../CloudBrowserResourceDecision.vue';
 
@@ -17,23 +18,25 @@ vi.mock('@n8n/stores/useRootStore', () => ({ useRootStore: () => ({ instanceId: 
 
 const renderComponent = createComponentRenderer(CloudBrowserResourceDecision);
 
-const hostProps = {
+type Props = ComponentProps<typeof CloudBrowserResourceDecision>;
+
+const hostProps: Props = {
 	requestId: 'req-1',
 	kind: 'host',
 	resource: 'example.com',
 	description: 'Browser: example.com',
 	options: ['denyOnce', 'allowOnce', 'allowForSession'],
 	taskTitle: 'Compare plan prices',
-} as const;
+};
 
-const credentialProps = {
+const credentialProps: Props = {
 	requestId: 'req-2',
 	kind: 'credential-write',
 	resource: 'credentials',
 	description: 'Create credential "Acme API" (acmeApi)',
 	options: ['denyOnce', 'allowOnce'],
 	taskTitle: 'Get the API key',
-} as const;
+};
 
 describe('CloudBrowserResourceDecision', () => {
 	beforeEach(() => {
