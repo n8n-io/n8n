@@ -22,5 +22,6 @@ export function formatSubAgentToolOutput(result: SubAgentRunResult): DelegateSub
 		...(output.status === 'suspended' && result.resumeContext !== undefined
 			? { resumeContext: result.resumeContext }
 			: {}),
+		...(result.files?.length ? { files: result.files } : {}),
 	};
 }

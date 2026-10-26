@@ -55,6 +55,13 @@ export function createBackgroundSubAgentHandler(
 		if (input.taskName.length > 255) {
 			return { status: 'rejected', note: 'Background task names must not exceed 255 characters.' };
 		}
+		// ponytail: background sub-agents do not get files yet. Grant the files at spawn time to add this.
+		if (input.fileIds?.length) {
+			return {
+				status: 'rejected',
+				note: 'Background sub-agents cannot receive files. Use foreground mode to pass files.',
+			};
+		}
 		const parentThreadId = threadIdOf(ctx);
 		const parentResourceId = ctx.persistence?.resourceId;
 		if (!parentThreadId || !parentResourceId) {
