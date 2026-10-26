@@ -47,6 +47,13 @@ const scopeField = z
 		'project: one project can use the skill. instance: every project can use it. On update, a new scope moves the skill. The move is refused if an agent that uses the skill cannot use it in the new scope',
 	);
 
+const availableToAssistantField = z
+	.boolean()
+	.optional()
+	.describe(
+		'Allow the n8n Assistant to use the skill. On update, changing only this setting keeps the content version',
+	);
+
 const skillContentShape = {
 	name: agentSkillShape.name,
 	description: agentSkillShape.description.describe(
@@ -85,6 +92,7 @@ const createAction = z.object({
 	scope: scopeField,
 	projectId: projectIdField,
 	skill: z.object(skillContentShape).strict(),
+	availableToAssistant: availableToAssistantField,
 });
 
 const updateAction = z.object({
@@ -101,6 +109,7 @@ const updateAction = z.object({
 	references: skillContentShape.references,
 	scope: scopeField.optional(),
 	projectId: projectIdField,
+	availableToAssistant: availableToAssistantField,
 });
 
 const deleteAction = z.object({
@@ -133,7 +142,7 @@ function sessionGrantKey(action: WriteAction): string {
 	return `${DOMAIN_TOOL_IDS.SKILLS}:${action}`;
 }
 
-function summary(item: SkillListItem) {
+function summary(item: SkillListItem, assistantSkillsEnabled: boolean) {
 	return {
 		id: item.id,
 		name: item.name,
@@ -143,6 +152,7 @@ function summary(item: SkillListItem) {
 		projectName: item.projectName,
 		agentId: item.agentId,
 		agentName: item.agentName,
+		...(assistantSkillsEnabled ? { availableToAssistant: item.availableToAssistant } : {}),
 		latestVersion: item.latestVersion,
 		usedByAgents: item.usedByAgents,
 		canEdit: item.canEdit,
@@ -150,9 +160,9 @@ function summary(item: SkillListItem) {
 	};
 }
 
-function details(detail: SkillDetail) {
+function details(detail: SkillDetail, assistantSkillsEnabled: boolean) {
 	return {
-		...summary(detail),
+		...summary(detail, assistantSkillsEnabled),
 		skill: detail.skill,
 		skillHash: detail.skillHash,
 		usedBy: detail.usedBy,
@@ -204,6 +214,19 @@ function scopeRefusal(scope: 'project' | 'instance' | undefined, projectId: stri
 	return reason ? { success: false, refused: true, reason } : undefined;
 }
 
+function changesContent(input: Extract<FullInput, { action: 'update' }>): boolean {
+	return [input.name, input.description, input.instructions, input.references].some(
+		(field) => field !== undefined,
+	);
+}
+
+function availabilityMessage(availableToAssistant: boolean | undefined): string {
+	if (availableToAssistant === undefined) return '';
+	return availableToAssistant
+		? ' Allow the n8n Assistant to use it.'
+		: ' Stop the n8n Assistant from using it.';
+}
+
 async function audience(
 	context: InstanceAiContext,
 	scope: 'project' | 'instance',
@@ -236,11 +259,13 @@ async function handleCreate(
 		'create',
 		async () => ({
 			requestId: nanoid(),
-			message: `Create the skill ${await audience(context, input.scope, input.projectId)}`,
+			message: `Create the skill ${await audience(context, input.scope, input.projectId)}${input.availableToAssistant ? ', and allow the n8n Assistant to use it' : ''}`,
 			resourceName: input.skill.name,
 			severity: 'info',
 		}),
-		async () => ({ skill: details(await service.create(input)) }),
+		async () => ({
+			skill: details(await service.create(input), service.assistantSkillsEnabled),
+		}),
 	);
 }
 
@@ -273,7 +298,7 @@ async function handleUpdate(
 					: '';
 			return {
 				requestId: nanoid(),
-				message: `Save a new version of the skill.${move} ${usedByMessage(current)}`,
+				message: `${changesContent(input) ? 'Save a new version of the skill.' : 'Update the skill.'}${move}${availabilityMessage(input.availableToAssistant)} ${usedByMessage(current)}`,
 				resourceName: current.name,
 				severity: 'warning',
 			};
@@ -325,7 +350,17 @@ async function handleDelete(
 }
 
 export function createSkillsTool(context: InstanceAiContext) {
-	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
+	const actions =
+		context.skillService?.assistantSkillsEnabled === true
+			? allActions
+			: ([
+					listAction,
+					getAction,
+					createAction.omit({ availableToAssistant: true }),
+					updateAction.omit({ availableToAssistant: true }),
+					deleteAction,
+				] as const);
+	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...actions]));
 
 	return new Tool(DOMAIN_TOOL_IDS.SKILLS)
 		.description(
@@ -348,10 +383,13 @@ export function createSkillsTool(context: InstanceAiContext) {
 						limit: input.limit ?? DEFAULT_LIST_LIMIT,
 						skip: input.skip ?? 0,
 					});
-					return { count, skills: data.map(summary) };
+					return {
+						count,
+						skills: data.map((item) => summary(item, service.assistantSkillsEnabled)),
+					};
 				}
 				case 'get':
-					return details(await service.get(input.skillId));
+					return details(await service.get(input.skillId), service.assistantSkillsEnabled);
 				case 'create':
 					return await handleCreate(context, service, input, ctx);
 				case 'update':

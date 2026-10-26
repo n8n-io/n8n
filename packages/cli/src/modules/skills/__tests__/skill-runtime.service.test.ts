@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import type { SkillFile } from '../database/entities/skill-file.entity';
 import {
 	createSkillServices,
 	PROJECT,
@@ -113,7 +114,11 @@ describe('SkillRuntimeService', () => {
 				row.skill.projectId = projectId;
 				projectScope.getProjectIds.mockResolvedValue(allowed === null ? null : [...allowed]);
 				const result = await runtime.readForAssistant(context, 'skill-1');
-				expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', authorizedProjectId);
+				expect(skills.findAssistantSkill).toHaveBeenCalledWith(
+					'skill-1',
+					authorizedProjectId,
+					undefined,
+				);
 				expect(skills.findLatestSaved).not.toHaveBeenCalled();
 				if (eligible) expect(result).toMatchObject({ id: 'skill-1', projectId });
 				else expect(result).toBeNull();
@@ -124,7 +129,7 @@ describe('SkillRuntimeService', () => {
 			row.skill.projectId = 'project-1';
 			projectScope.getProjectIds.mockResolvedValue(null);
 			expect(await runtime.readForAssistant({ user: context.user }, 'skill-1')).toBeNull();
-			expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', null);
+			expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', null, undefined);
 		});
 
 		it('reads enabled content with its saved version', async () => {
@@ -141,13 +146,55 @@ describe('SkillRuntimeService', () => {
 			});
 		});
 
-		it('returns the path and content of each saved file', async () => {
+		it('returns the path of each saved file without its content', async () => {
 			row = versionRow(row.skill, 1, { id: 'version-1' }, [
 				{ path: 'ref.md', content: 'Reference' },
 			]);
 			expect((await runtime.readForAssistant(context, 'skill-1'))?.files).toEqual([
-				{ path: 'ref.md', content: 'Reference' },
+				{ path: 'ref.md' },
 			]);
+		});
+
+		it.each(['disabled', 'agent', 'other-project', 'permission', 'missing'])(
+			'refuses a reference that is %s',
+			async (reason) => {
+				row.skill.projectId = 'project-1';
+				if (reason === 'disabled') row.skill.availableToAssistant = false;
+				if (reason === 'agent') row.skill.agentId = 'agent-1';
+				if (reason === 'other-project') row.skill.projectId = 'project-2';
+				if (reason === 'permission') vi.mocked(userHasScopes).mockResolvedValue(false);
+				skills.findAssistantSkillFile.mockResolvedValue(
+					reason === 'missing'
+						? null
+						: {
+								skill: row.skill,
+								file: mock<SkillFile>({ path: 'references/guide.md', content: 'Guide.' }),
+							},
+				);
+				expect(
+					await runtime.readFileForAssistant(
+						context,
+						'skill-1',
+						'version-1',
+						'references/guide.md',
+					),
+				).toBeNull();
+			},
+		);
+
+		it('reads the content of a reference of an enabled skill', async () => {
+			skills.findAssistantSkillFile.mockResolvedValue({
+				skill: row.skill,
+				file: mock<SkillFile>({ path: 'references/guide.md', content: 'Guide.' }),
+			});
+			expect(
+				await runtime.readFileForAssistant(context, 'skill-1', 'version-1', 'references/guide.md'),
+			).toEqual({
+				skillId: 'skill-1',
+				versionId: 'version-1',
+				path: 'references/guide.md',
+				content: 'Guide.',
+			});
 		});
 
 		it('allows instance skills without project access', async () => {

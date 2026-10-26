@@ -141,7 +141,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [settings](settings.md) | 3 |  | table |
 | [shared_credentials](shared_credentials.md) | 5 |  | table |
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
-| [skill](skill.md) | 8 |  | table |
+| [skill](skill.md) | 9 |  | table |
 | [skill_file](skill_file.md) | 5 |  | table |
 | [skill_version](skill_version.md) | 11 |  | table |
 | [tag_entity](tag_entity.md) | 4 |  | table |
@@ -1744,13 +1744,13 @@ erDiagram
 }
 "self_healing_investigation" {
   varchar backgroundUserId FK
-  TEXT baseline
   INTEGER configurationId FK
   datetime_3_ createdAt
   varchar_36_ executionId
   datetime_3_ finishedAt
   varchar_36_ id PK
   varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
   varchar_36_ resultId FK
   varchar runId
   varchar threadId
@@ -1797,6 +1797,7 @@ erDiagram
 "skill" {
   varchar_36_ agentId FK
   boolean availableToAssistant
+  boolean availableToMCP
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK

@@ -300,6 +300,31 @@ describe('McpService scope enforcement', () => {
 		},
 	);
 
+	it.each([
+		['skills on and an API key', true, true, undefined, true],
+		['skills on and skill:read', true, true, ['skill:read'], true],
+		['skills on and skill:write', true, true, ['skill:write'], true],
+		['skills on and no skill scope', true, true, ['workflow:read'], false],
+		['skills off', false, true, undefined, false],
+		['the feature flag off', true, false, undefined, false],
+	])(
+		'declares the skills extension with %s',
+		async (_, skillsEnabled, skillsExtensionEnabled, grantedScopes, declared) => {
+			mockInstance(SkillService);
+			mockInstance(SkillsGate, { isEnabled: skillsEnabled });
+			const server = await buildService({ builderEnabled: false }).getServer(
+				user,
+				mcpFeatureFlags({ skillsExtensionEnabled }),
+				undefined,
+				{ grantedScopes },
+			);
+
+			expect(server.server.getCapabilities().extensions).toEqual(
+				declared ? { 'io.modelcontextprotocol/skills': {} } : undefined,
+			);
+		},
+	);
+
 	it.each([true, false])(
 		'sets all context tools and the resource from the shared flag override: %s',
 		async (enabled) => {

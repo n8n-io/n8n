@@ -1,4 +1,4 @@
-import type { SkillUsedBy } from '@n8n/api-types';
+import type { SkillAgentOption, SkillUsedBy } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 
 /** An agent as the skills module sees it: an agent skill takes its project from its agent. */
@@ -31,6 +31,18 @@ export abstract class SkillUsage {
 
 	/** The agents that use the skill: a draft ref or a published pin. */
 	abstract findUsingAgentIds(skillId: string, ctx: OperationContext): Promise<string[]>;
+
+	/** The skills the agent uses: a draft ref or a published pin. */
+	abstract findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext): Promise<string[]>;
+
+	/**
+	 * Id and name of the agents in these projects (null for every project), searched by
+	 * name and cut to `limit`. Reads no agent config.
+	 */
+	abstract findAgentSummaries(
+		projectIds: string[] | null,
+		filter: { search?: string; limit: number },
+	): Promise<SkillAgentOption[]>;
 
 	/** Refuses a rename that makes the skill clash by name with another skill of an agent. */
 	abstract assertRenameKeepsNamesApart(

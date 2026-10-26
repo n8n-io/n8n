@@ -4,6 +4,8 @@ import type { User } from '@n8n/db';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
+
 import {
 	createSkillServices,
 	PROJECT,
@@ -937,6 +939,81 @@ describe('SkillService', () => {
 				service.setAssistantAvailability('skill_a', true, { projectId: PROJECT, agentId: null }),
 			).rejects.toThrow(ConflictError);
 			expect(skills.setAssistantAvailability).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('MCP reads', () => {
+		const instanceSkill = versionRow(skillRow('skill-1'), 2, {}, [
+			{ path: 'references/style.md', content: 'Be brief.' },
+		]);
+		const projectSkill = versionRow(skillRow('skill-2', { projectId: 'project-1' }), 1);
+		const agentSkill = versionRow(skillRow('skill-3', { agentId: 'agent-1' }), 1);
+		const rows = [instanceSkill, projectSkill, agentSkill];
+
+		beforeEach(() => {
+			skills.findLatestSaved.mockImplementation(
+				async (ids) =>
+					new Map(
+						rows.filter((row) => ids.includes(row.skill.id)).map((row) => [row.skill.id, row]),
+					),
+			);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+		});
+
+		it('lists one page of the project and instance skills the user can list, without agent skills', async () => {
+			projectScope.getProjectIds.mockResolvedValue(['project-1']);
+			skills.findVisiblePage.mockResolvedValue({
+				skills: [instanceSkill.skill, projectSkill.skill],
+				count: 7,
+			});
+
+			const result = await service.listForMcp(user, 100, 50);
+
+			expect(skills.findVisiblePage).toHaveBeenCalledWith(
+				{ projectIds: ['project-1'], agentIds: [] },
+				{ skip: 100, take: 50 },
+			);
+			expect(result).toEqual({
+				count: 7,
+				skills: [
+					{ id: 'skill-1', projectId: null, skill: toAgentSkill(instanceSkill) },
+					{ id: 'skill-2', projectId: 'project-1', skill: toAgentSkill(projectSkill) },
+				],
+			});
+		});
+
+		it('lists the skills of every project for a user with a global scope', async () => {
+			projectScope.getProjectIds.mockResolvedValue(null);
+			skills.findVisiblePage.mockResolvedValue({ skills: [], count: 0 });
+
+			await service.listForMcp(user, 0, 100);
+
+			expect(skills.findVisiblePage).toHaveBeenCalledWith(
+				{ projectIds: 'all', agentIds: [] },
+				{ skip: 0, take: 100 },
+			);
+		});
+
+		it('reads the latest version of a readable skill', async () => {
+			expect(await service.readForMcp(user, 'skill-2')).toEqual({
+				id: 'skill-2',
+				projectId: 'project-1',
+				skill: toAgentSkill(projectSkill),
+			});
+		});
+
+		it('does not read an agent skill', async () => {
+			expect(await service.readForMcp(user, 'skill-3')).toBeNull();
+		});
+
+		it('does not read a skill the user cannot read', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			expect(await service.readForMcp(user, 'skill-2')).toBeNull();
+		});
+
+		it('does not read a missing skill', async () => {
+			expect(await service.readForMcp(user, 'missing')).toBeNull();
 		});
 	});
 

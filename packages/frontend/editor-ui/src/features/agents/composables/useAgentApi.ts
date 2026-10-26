@@ -16,6 +16,8 @@ import type {
 	AgentConfigValidationResponse,
 	AgentDisconnectIntegrationResponse,
 	AgentFileDto,
+	AgentMemoryEntriesPageDto,
+	AgentMemorySourceFacetsDto,
 	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
 	AgentWhatsAppVerifyTokenResponse,
@@ -40,6 +42,7 @@ import type {
 	SkillCreateMethod,
 	SkillNewNameQueryDto,
 	SkillNewNameResponse,
+	ListAgentMemoryEntriesQueryDto,
 	VectorStoreTestResult,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-client';
@@ -390,6 +393,50 @@ export const deleteAgentFile = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/files/${fileId}`,
+	);
+};
+
+export type AgentMemorySourceSelection = Pick<
+	ListAgentMemoryEntriesQueryDto,
+	'source' | 'sourceFacet' | 'sourceFacetId'
+>;
+
+export const listAgentMemoryEntries = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	options: { limit: number; cursor?: string } & AgentMemorySourceSelection,
+): Promise<AgentMemoryEntriesPageDto> => {
+	return await makeRestApiRequest<AgentMemoryEntriesPageDto>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/memory-entries`,
+		options,
+	);
+};
+
+export const getAgentMemorySourceFacets = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentMemorySourceFacetsDto> => {
+	return await makeRestApiRequest<AgentMemorySourceFacetsDto>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/memory-entries/facets`,
+	);
+};
+
+export const deleteAgentMemoryEntry = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	entryId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/memory-entries/${entryId}`,
 	);
 };
 

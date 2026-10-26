@@ -54,6 +54,20 @@ describe('InstanceAiModelService', () => {
 		vi.useRealTimers();
 	});
 
+	describe('getModelFetch', () => {
+		it('builds the AI transport once and reuses it', () => {
+			const baseFetch = vi.fn();
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
+
+			expect(service.getModelFetch()).toBe(baseFetch);
+			expect(service.getModelFetch()).toBe(baseFetch);
+			expect(outboundHttp.transport).toHaveBeenCalledTimes(1);
+			expect(outboundHttp.transport).toHaveBeenCalledWith(
+				expect.objectContaining({ proxy: 'env', useDefaultSsrfPolicy: 'unsafe' }),
+			);
+		});
+	});
+
 	describe('isProxyEnabled', () => {
 		it('should mirror the AI service proxy state', () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
@@ -271,10 +285,16 @@ describe('InstanceAiModelService', () => {
 			await expect(
 				service.resolveMemoryModelConfig(
 					fakeUser,
-					{ id: 'anthropic/claude-opus-5-5', url: 'https://anthropic.example', apiKey: 'main-key' },
+					{
+						kind: 'endpoint',
+						id: 'anthropic/claude-opus-5-5',
+						url: 'https://anthropic.example',
+						apiKey: 'main-key',
+					},
 					{},
 				),
 			).resolves.toEqual({
+				kind: 'endpoint',
 				id: 'anthropic/claude-haiku-4-5',
 				url: 'https://anthropic.example',
 				apiKey: 'main-key',

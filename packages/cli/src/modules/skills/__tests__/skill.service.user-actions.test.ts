@@ -219,6 +219,92 @@ describe('SkillService user actions', () => {
 			expect(result.count).toBe(3);
 		});
 
+		it('passes the creator filter and the sort to the repository', async () => {
+			await service.list(user, query({ createdById: 'user-2', sortBy: 'name:asc' }));
+
+			expect(repository.findVisiblePage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					createdById: 'user-2',
+					sort: { by: 'name', order: 'ASC' },
+				}),
+			);
+		});
+
+		it.each([
+			['updatedAt:asc' as const, { by: 'updatedAt', order: 'ASC' }],
+			['updatedAt:desc' as const, { by: 'updatedAt', order: 'DESC' }],
+			['name:desc' as const, { by: 'name', order: 'DESC' }],
+		])('maps the sort %s', async (sortBy, sort) => {
+			await service.list(user, query({ sortBy }));
+
+			expect(repository.findVisiblePage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ sort }),
+			);
+		});
+
+		it('keeps the default order without a sort', async () => {
+			await service.list(user, query());
+
+			expect(repository.findVisiblePage.mock.calls[0][1].sort).toBeUndefined();
+		});
+
+		it('answers a project the user may not list with an empty page', async () => {
+			const result = await service.list(user, query({ projectId: 'project-hidden' }));
+
+			expect(result).toEqual({ count: 0, data: [] });
+			expect(repository.findVisiblePage).not.toHaveBeenCalled();
+			expect(skillUsage.findAgentIdsInProjects).not.toHaveBeenCalledWith(['project-hidden']);
+		});
+
+		it('filters by any project for a user with global scopes', async () => {
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+
+			await service.list(user, query({ projectId: 'project-2' }));
+
+			expect(repository.findVisiblePage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ project: { id: 'project-2', agentIds: [] } }),
+			);
+		});
+
+		it('filters by the skills an agent uses, when the user may read the agent', async () => {
+			skillUsage.findSkillIdsUsedByAgent.mockResolvedValue(['skill_a', 'skill_b']);
+
+			await service.list(user, query({ agentId: 'agent-1', search: 'voice' }));
+
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:read']);
+			expect(repository.findVisiblePage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					usedBy: { agentId: 'agent-1', skillIds: ['skill_a', 'skill_b'] },
+					search: 'voice',
+				}),
+			);
+		});
+
+		it.each([
+			['an unknown agent', 'agent-gone', ['project-1']],
+			['an agent the user may not read', 'agent-1', ['project-2']],
+		])('answers %s with an empty page', async (_, agentId, readable) => {
+			projectScopeService.getProjectIds.mockImplementation(async (_user, scopes) =>
+				scopes.includes('agent:read') ? readable : ['project-1'],
+			);
+
+			const result = await service.list(user, query({ agentId }));
+
+			expect(result).toEqual({ count: 0, data: [] });
+			expect(skillUsage.findSkillIdsUsedByAgent).not.toHaveBeenCalled();
+			expect(repository.findVisiblePage).not.toHaveBeenCalled();
+		});
+
+		it('refuses attachableTo together with agentId', async () => {
+			await expect(
+				service.list(user, query({ attachableTo: 'agent-1', agentId: 'agent-1' })),
+			).rejects.toThrow(UserError);
+		});
+
 		it('passes the agent that attaches skills, with its project', async () => {
 			await service.list(user, query({ attachableTo: 'agent-1', search: 'voice' }));
 
@@ -338,6 +424,65 @@ describe('SkillService user actions', () => {
 			expect(accessCheck).toHaveBeenCalledWith(user, 'update');
 			expect(accessCheck).toHaveBeenCalledWith(user, 'delete');
 			expect(canAccess).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('listAgents', () => {
+		it('searches the agents in the projects where the user may read agents', async () => {
+			skillUsage.findAgentSummaries.mockResolvedValue([{ id: 'agent-1', name: 'Support bot' }]);
+
+			const result = await service.listAgents(user, { search: 'bot', take: 50 });
+
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:read']);
+			expect(skillUsage.findAgentSummaries).toHaveBeenCalledWith(['project-1'], {
+				search: 'bot',
+				limit: 50,
+			});
+			expect(result).toEqual([{ id: 'agent-1', name: 'Support bot' }]);
+		});
+
+		it('searches every project for a user with the global agent scope', async () => {
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+			skillUsage.findAgentSummaries.mockResolvedValue([]);
+
+			await service.listAgents(user, { take: 10 });
+
+			expect(skillUsage.findAgentSummaries).toHaveBeenCalledWith(null, {
+				search: undefined,
+				limit: 10,
+			});
+		});
+	});
+
+	describe('listCreators', () => {
+		it('names the creators of the skills the user may see', async () => {
+			repository.findVisibleCreatorIds.mockResolvedValue(['user-2']);
+			userRepository.findManyByIds.mockResolvedValue([
+				mock<User>({
+					id: 'user-2',
+					email: 'ada@example.com',
+					firstName: 'Ada',
+					lastName: 'Lovelace',
+				}),
+			]);
+
+			const result = await service.listCreators(user);
+
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['projectSkill:list']);
+			expect(repository.findVisibleCreatorIds).toHaveBeenCalledWith({
+				projectIds: ['project-1'],
+				agentIds: ['agent-1'],
+			});
+			expect(result).toEqual([
+				{ id: 'user-2', email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' },
+			]);
+		});
+
+		it('skips the user query when no visible skill has a creator', async () => {
+			repository.findVisibleCreatorIds.mockResolvedValue([]);
+
+			expect(await service.listCreators(user)).toEqual([]);
+			expect(userRepository.findManyByIds).not.toHaveBeenCalled();
 		});
 	});
 
@@ -479,6 +624,35 @@ describe('SkillService user actions', () => {
 				createdById: user.id,
 			});
 			expect(detail.id).toBe('skill_new');
+		});
+
+		it('makes the new skill available to the Assistant in the create transaction', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await service.create(user, payload({ availableToAssistant: true }));
+
+			const target = { projectId: null, agentId: null };
+			expect(createTrusted).toHaveBeenCalledWith(expect.objectContaining({ target }), TX_CTX);
+			expect(setAssistantAvailability).toHaveBeenCalledWith('skill_new', true, target, TX_CTX);
+		});
+
+		it('creates without a transaction when the skill is not available to the Assistant', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await service.create(user, payload({ availableToAssistant: false }));
+
+			expect(txRunner.run).not.toHaveBeenCalled();
+			expect(setAssistantAvailability).not.toHaveBeenCalled();
+		});
+
+		it('refuses the Assistant availability when the Assistant flag is off', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+			rollout.isEnabled.mockResolvedValue(false);
+
+			await expect(service.create(user, payload({ availableToAssistant: true }))).rejects.toThrow(
+				UserError,
+			);
+			expect(createTrusted).not.toHaveBeenCalled();
 		});
 
 		it('stores the source the caller passed', async () => {

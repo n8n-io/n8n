@@ -74,6 +74,7 @@ describe('GlobalExecutionsListItem', () => {
 			},
 		});
 
+		await fireEvent.click(getByTestId('execution-actions-menu'));
 		await fireEvent.click(getByTestId('execution-retry-saved-dropdown-item'));
 		expect(emitted().retrySaved).toBeTruthy();
 
@@ -96,11 +97,12 @@ describe('GlobalExecutionsListItem', () => {
 			},
 		});
 
+		await fireEvent.click(getByTestId('execution-actions-menu'));
 		await fireEvent.click(getByTestId('execution-delete-dropdown-item'));
 		expect(emitted().delete).toBeTruthy();
 	});
 
-	it('disables the delete dropdown item when the user cannot delete executions, even with workflow edit rights', () => {
+	it('disables the delete dropdown item when the user cannot delete executions, even with workflow edit rights', async () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				execution: {
@@ -116,10 +118,11 @@ describe('GlobalExecutionsListItem', () => {
 			},
 		});
 
+		await fireEvent.click(getByTestId('execution-actions-menu'));
 		expect(getByTestId('execution-delete-dropdown-item')).toHaveClass('is-disabled');
 	});
 
-	it('enables the delete dropdown item when the user can delete executions', () => {
+	it('enables the delete dropdown item when the user can delete executions', async () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				execution: {
@@ -134,6 +137,7 @@ describe('GlobalExecutionsListItem', () => {
 			},
 		});
 
+		await fireEvent.click(getByTestId('execution-actions-menu'));
 		expect(getByTestId('execution-delete-dropdown-item')).not.toHaveClass('is-disabled');
 	});
 
