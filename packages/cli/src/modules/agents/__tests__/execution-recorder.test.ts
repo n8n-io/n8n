@@ -14,6 +14,29 @@ function makeToolResultChunk(toolName: string, output: unknown, toolCallId = 'tc
 
 describe('ExecutionRecorder', () => {
 	it.each([true, false])(
+		'keeps cumulative usage when final usage is absent (finish: %s)',
+		(finish) => {
+			const recorder = new ExecutionRecorder();
+			recorder.record({
+				type: 'usage',
+				model: 'openai/test',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+			});
+			recorder.record({
+				type: 'usage',
+				model: 'openai/test',
+				usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.02 },
+			});
+			if (finish) recorder.record({ type: 'finish', finishReason: 'error' });
+			expect(recorder.getMessageRecord()).toMatchObject({
+				model: 'openai/test',
+				usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30 },
+				totalCost: 0.02,
+			});
+		},
+	);
+
+	it.each([true, false])(
 		'keeps canceled tool state in saved chat messages (started: %s)',
 		(started) => {
 			const recorder = new ExecutionRecorder();

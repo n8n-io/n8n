@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
-import type { ModuleInterface } from '@n8n/decorators';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
+import type { ModuleInterface, SystemTaskClass } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -30,6 +30,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');
 		await import('./agent-knowledge.controller.js');
+		await import('./agent-memory.controller.js');
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
 		await import('./system-agents/system-agent-chat.controller.js');
@@ -227,11 +228,20 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentChannelMediaRetentionTask } = await import(
 			'./agent-channel-media-retention.task.js'
 		);
-		return [
+
+		const tasks: SystemTaskClass[] = [
 			AgentCheckpointPruningTask,
 			AgentInterruptedExecutionSweepTask,
 			AgentChannelMediaRetentionTask,
 		];
+
+		// Like `telemetry-pulse`: make sure no job is scheduled when telemetry is off.
+		if (Container.get(GlobalConfig).diagnostics.enabled) {
+			const { AgentKnowledgeSnapshotTask } = await import('./agent-knowledge-snapshot.task.js');
+			tasks.push(AgentKnowledgeSnapshotTask);
+		}
+
+		return tasks;
 	}
 
 	async settings() {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
 import { AGENT_TEMPLATES, applyAgentTemplate, isAgentConfigBlank } from '../agentTemplates';
 
 function blankConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
@@ -224,5 +224,31 @@ describe('AGENT_TEMPLATES', () => {
 			expect(seen.has(key)).toBe(false);
 			seen.add(key);
 		}
+	});
+});
+
+describe('default n8n Chat channel', () => {
+	const n8nChat = { type: N8N_CHAT_INTEGRATION_TYPE, credentialId: '' } as const;
+
+	it('still counts an agent with only n8n Chat as blank', () => {
+		expect(isAgentConfigBlank(blankConfig({ integrations: [n8nChat] }))).toBe(true);
+	});
+
+	it('keeps n8n Chat when a template is applied', () => {
+		const slackDraft = { type: 'slack', credentialId: '' } as NonNullable<
+			AgentJsonConfig['integrations']
+		>[number];
+		const template = {
+			...AGENT_TEMPLATES[0],
+			config: { ...AGENT_TEMPLATES[0].config, integrations: [slackDraft] },
+		};
+
+		const result = applyAgentTemplate(
+			blankConfig({ integrations: [n8nChat] }),
+			template,
+			'New Agent',
+		);
+
+		expect(result?.integrations).toEqual([n8nChat, slackDraft]);
 	});
 });

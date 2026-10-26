@@ -171,10 +171,6 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 		}
 	}
 
-	getClient(): SandboxClient {
-		return this.client;
-	}
-
 	private async isRemoteGone(): Promise<boolean> {
 		if (!this.sandboxId) return false;
 		try {

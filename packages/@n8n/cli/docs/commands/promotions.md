@@ -195,13 +195,13 @@ the deployment can hold a different checkout.
 Export all team projects, commit them, and push to the configured branch.
 
 ```bash
-n8n-cli promotion-environment promote env-1 --message="Promote team projects"
+n8n-cli promotion-environment promote env-1
 n8n-cli promotion-environment promote env-1 -m "Promote team projects" --force
 ```
 
 | Flag | Description |
 |------|-------------|
-| `-m, --message` | Commit message. Required. |
+| `-m, --message` | Commit message. If you omit it, the commit uses a generated message. |
 | `--force` | Overwrite the remote branch when it has diverged. |
 
 Personal projects are not included. Connect the environment first. This command
@@ -245,7 +245,7 @@ n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -m "Promote che
 | Flag | Description |
 |------|-------------|
 | `-w, --workflow` | Workflow ID to promote. Repeat the flag for more than one. Required. |
-| `-m, --message` | Commit message. A default is used when omitted. |
+| `-m, --message` | Commit message. If you omit it, the commit uses a generated message. |
 
 Archived workflows stay on the branch as archived. A selected workflow that was
 deleted or moved to another project leaves this project's branch. The request

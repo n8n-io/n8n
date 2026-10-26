@@ -684,11 +684,19 @@ function hookFunctionsSave(
 					);
 				}
 
-				await executionPersistence.deleteInFlightExecution({
-					workflowId: this.workflowData.id,
-					executionId: this.executionId,
-					storedAt: fullRunData.storedAt,
-				});
+				await executionPersistence.deleteInFlightExecution(
+					{
+						workflowId: this.workflowData.id,
+						executionId: this.executionId,
+						storedAt: fullRunData.storedAt,
+					},
+					{
+						status: fullRunData.status,
+						// oxlint-disable-next-line typescript/no-deprecated
+						finished: fullRunData.finished ?? false,
+						stoppedAt: fullRunData.stoppedAt,
+					},
+				);
 
 				return;
 			}
@@ -996,11 +1004,19 @@ export function getLifecycleHooksForScalingMain(
 			(fullRunData.status !== 'success' && !saveSettings.error);
 
 		if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
-			await executionPersistence.deleteInFlightExecution({
-				workflowId: this.workflowData.id,
-				executionId: this.executionId,
-				storedAt: fullRunData.storedAt,
-			});
+			await executionPersistence.deleteInFlightExecution(
+				{
+					workflowId: this.workflowData.id,
+					executionId: this.executionId,
+					storedAt: fullRunData.storedAt,
+				},
+				{
+					status: fullRunData.status,
+					// oxlint-disable-next-line typescript/no-deprecated
+					finished: fullRunData.finished ?? false,
+					stoppedAt: fullRunData.stoppedAt,
+				},
+			);
 		} else {
 			// Only save metadata if execution is being kept
 			await updateExistingExecutionMetadata(
