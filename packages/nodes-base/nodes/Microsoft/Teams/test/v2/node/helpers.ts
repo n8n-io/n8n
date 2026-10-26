@@ -23,15 +23,4 @@ export function setParams(ctx: MockProxy<IExecuteFunctions>, params: Record<stri
 	);
 }
 
-/** A raw Graph error, in the shape the delegated request helper rejects with. */
-export function graphError(statusCode: number, code: string, message: string) {
-	return Object.assign(
-		new Error(`${statusCode} - ${JSON.stringify({ error: { code, message } })}`),
-		{
-			statusCode,
-			error: { error: { code, message } },
-		},
-	);
-}
-
 export const meetingHeaders = { Prefer: 'include-unknown-enum-members' };
