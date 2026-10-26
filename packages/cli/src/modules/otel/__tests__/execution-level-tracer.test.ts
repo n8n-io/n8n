@@ -14,6 +14,7 @@ import {
 	type OtelConfig,
 	OtelCustomAttributesConfig,
 } from '../otel.config';
+import type { OtelConfigureHook } from '../otel-configure-hook';
 import type { OtelService } from '../otel.service';
 import { OtelTestProvider } from './support/otel-test-provider';
 
@@ -33,10 +34,12 @@ describe('ExecutionLevelTracer', () => {
 		otelService = otel.asOtelService(),
 		settings,
 		prefixes,
+		buildOutboundBaggage = () => ({}),
 	}: {
 		otelService?: OtelService;
 		settings?: Partial<OtelConfig>;
 		prefixes?: CustomAttributePrefixes;
+		buildOutboundBaggage?: OtelConfigureHook['buildOutboundBaggage'];
 	} = {}) => {
 		const customAttributesConfig = new OtelCustomAttributesConfig();
 		if (prefixes) customAttributesConfig.prefixes = prefixes;
@@ -45,6 +48,7 @@ describe('ExecutionLevelTracer', () => {
 			makeOtelSettingsService(settings),
 			logger,
 			customAttributesConfig,
+			mock<OtelConfigureHook>({ buildOutboundBaggage }),
 		);
 	};
 
@@ -877,6 +881,7 @@ describe('ExecutionLevelTracer', () => {
 
 			expect(headers.traceparent).toBeDefined();
 			expect(headers.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/);
+			expect(headers).not.toHaveProperty('baggage');
 
 			tracer.endNode({
 				executionId: 'exec-10',
@@ -886,6 +891,42 @@ describe('ExecutionLevelTracer', () => {
 			});
 			tracer.endWorkflow({
 				executionId: 'exec-10',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+		});
+
+		it('should write a baggage header from the node span attributes next to traceparent', () => {
+			const buildOutboundBaggage = vi.fn((attrs: Record<string, unknown>) => ({
+				'project.id': String(attrs['n8n.project.id']),
+			}));
+			const baggageTracer = makeTracer({ buildOutboundBaggage });
+			baggageTracer.startWorkflow({
+				executionId: 'exec-baggage',
+				workflow: defaultWorkflow,
+				project: { id: 'project-1' },
+			});
+			const httpNode = { id: 'n1', name: 'HTTP', type: 'test', typeVersion: 1 };
+			baggageTracer.startNode({ executionId: 'exec-baggage', node: httpNode });
+
+			const headers: Record<string, string> = {};
+			baggageTracer.injectTraceHeaders('exec-baggage', 'HTTP', headers);
+
+			expect(headers.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/);
+			expect(headers.baggage).toBe('project.id=project-1');
+			expect(buildOutboundBaggage).toHaveBeenCalledWith(
+				expect.objectContaining({ 'n8n.project.id': 'project-1', 'n8n.node.name': 'HTTP' }),
+			);
+
+			baggageTracer.endNode({
+				executionId: 'exec-baggage',
+				node: httpNode,
+				inputItemCount: 1,
+				outputItemCount: 1,
+			});
+			baggageTracer.endWorkflow({
+				executionId: 'exec-baggage',
 				status: 'success',
 				mode: 'manual',
 				isRetry: false,

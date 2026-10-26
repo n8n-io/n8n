@@ -8,10 +8,13 @@ import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import type { OtelConfigureHook } from '../otel-configure-hook';
 import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
 import type { OtelConfig } from '../otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from '../otel.constants';
 import { OtelService } from '../otel.service';
+
+import type { ExternalHooks } from '@/external-hooks';
 
 const shutdown = vi.fn();
 const providerGetTracer = vi.fn();
@@ -196,7 +199,14 @@ describe('OtelService', () => {
 		waitForReady.mockImplementation((_deadline: number, callback: (error?: Error) => void) =>
 			callback(),
 		);
-		service = new OtelService(otelSettingsService, instanceSettings, logger, outboundHttp);
+		service = new OtelService(
+			otelSettingsService,
+			instanceSettings,
+			logger,
+			outboundHttp,
+			mock<ExternalHooks>(),
+			mock<OtelConfigureHook>(),
+		);
 	});
 	afterEach(() => vi.restoreAllMocks());
 

@@ -31,12 +31,15 @@ import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
 import { ExecutionIdentitySpanProcessor } from './execution-identity';
+import { OtelConfigureHook } from './otel-configure-hook';
 import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelConfig } from './otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
+import { mapResourceAttributes } from './otel-span-exporter';
 
 import { N8N_VERSION } from '@/constants';
+import { ExternalHooks } from '@/external-hooks';
 
 export type OtelTestTraceResult = { success: true } | { success: false; error: string };
 
@@ -57,9 +60,12 @@ export class OtelService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly externalHooks: ExternalHooks,
+		private readonly configureHook: OtelConfigureHook,
 	) {}
 
 	async init(): Promise<void> {
+		await this.externalHooks.run('otel.configure', [this.configureHook.api]);
 		const settings = await this.otelSettingsService.loadSettings();
 		await this.start(settings);
 	}
@@ -164,7 +170,12 @@ export class OtelService {
 	}
 
 	private async startProvider(settings: OtelConfig): Promise<NodeTracerProvider> {
-		const traceExporter = await this.createTraceExporter(settings);
+		const exporter = await this.createTraceExporter(settings);
+		const traceExporter = this.configureHook.hasResourceAttributeMappers
+			? mapResourceAttributes(exporter, (spanAttributes) =>
+					this.configureHook.mapResourceAttributes(spanAttributes),
+				)
+			: exporter;
 
 		this.provider = new NodeTracerProvider({
 			resource: this.buildResource(settings.exporterServiceName),
