@@ -11,7 +11,10 @@ export function messageBreak(used: number, text: string, max: number): number | 
 	const lineEnd = text.lastIndexOf('\n', room - 1);
 	if (lineEnd !== -1) return lineEnd + 1;
 	if (text.length <= room) return undefined;
-	return used > 0 ? 0 : room;
+	if (used > 0) return 0;
+	// Keep both halves of a surrogate pair, such as an emoji, in one message.
+	const code = text.charCodeAt(room - 1);
+	return code >= 0xd800 && code <= 0xdbff ? room - 1 : room;
 }
 
 /** Splits text into messages of at most `max` characters. */
