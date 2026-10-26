@@ -4,6 +4,7 @@ import isEqual from 'lodash/isEqual';
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
+	AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
@@ -438,8 +439,10 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 
 	if (!description) {
 		errors.description = i18n.baseText('agents.builder.skills.validation.descriptionRequired');
-	} else if (description.length > 512) {
-		errors.description = i18n.baseText('agents.builder.skills.validation.descriptionMaxLength');
+	} else if (description.length > AGENT_SKILL_DESCRIPTION_MAX_LENGTH) {
+		errors.description = i18n.baseText('agents.builder.skills.validation.descriptionMaxLength', {
+			interpolate: { max: AGENT_SKILL_DESCRIPTION_MAX_LENGTH.toLocaleString() },
+		});
 	}
 
 	if (!instructions) {

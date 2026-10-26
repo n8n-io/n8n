@@ -64,10 +64,18 @@ const agentSkillReferencesSchema = z
  * intentionally not part of the body.
  */
 export const AGENT_SKILL_NAME_MAX_LENGTH = 128;
+/** The limit of the Agent Skills format, so skills from other tools fit without cuts. */
+export const AGENT_SKILL_DESCRIPTION_MAX_LENGTH = 1024;
 
 export const agentSkillShape = {
 	name: z.string().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH),
-	description: z.string().min(1).max(512),
+	description: z
+		.string()
+		.min(1)
+		.max(
+			AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
+			`Description must be ${AGENT_SKILL_DESCRIPTION_MAX_LENGTH} characters or fewer`,
+		),
 	// Measured in characters like the name, description and reference limits,
 	// so the editor can show the user the same count the server enforces.
 	instructions: z

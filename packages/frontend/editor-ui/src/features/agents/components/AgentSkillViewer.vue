@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import {
+	AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
@@ -56,7 +57,7 @@ const formValidation = reactive({
 });
 
 const descriptionValidationRules: Array<Rule | RuleGroup> = [
-	{ name: 'MAX_LENGTH', config: { maximum: 512 } },
+	{ name: 'MAX_LENGTH', config: { maximum: AGENT_SKILL_DESCRIPTION_MAX_LENGTH } },
 ];
 const referenceNameValidationRules: Array<Rule | RuleGroup> = [{ name: 'referenceFileName' }];
 const referenceNameValidators: Record<string, IValidator> = {

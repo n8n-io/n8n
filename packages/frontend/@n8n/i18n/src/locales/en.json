@@ -9191,7 +9191,7 @@
 	"agents.builder.skills.validation.nameMaxLength": "Name must be 128 characters or fewer.",
 	"agents.builder.skills.validation.nameDuplicate": "Agent already has a skill with a name like this.",
 	"agents.builder.skills.validation.descriptionRequired": "Enter a description.",
-	"agents.builder.skills.validation.descriptionMaxLength": "Description must be 512 characters or fewer.",
+	"agents.builder.skills.validation.descriptionMaxLength": "Description must be {max} characters or fewer.",
 	"agents.builder.skills.validation.instructionsRequired": "Enter instructions.",
 	"agents.builder.skills.validation.instructionsMaxLength": "Instructions must be {max} characters or fewer.",
 	"agents.builder.skills.missingContent.callout": "This skill's content is missing. Fill it in and save to recreate it.",

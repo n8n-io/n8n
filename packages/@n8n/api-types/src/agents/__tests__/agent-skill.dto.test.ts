@@ -72,6 +72,17 @@ describe('agent skill DTOs', () => {
 		).toBe(false);
 	});
 
+	// The Agent Skills format allows descriptions of up to 1024 characters, so skills from
+	// GitHub fit without cuts.
+	it.each([
+		{ length: 1024, accepted: true },
+		{ length: 1025, accepted: false },
+	])('a description of $length characters → accepted $accepted', ({ length, accepted }) => {
+		expect(
+			agentSkillSchema.safeParse({ ...validSkill, description: 'x'.repeat(length) }).success,
+		).toBe(accepted);
+	});
+
 	it('measures the instructions limit in characters, not UTF-8 bytes', () => {
 		expect(
 			agentSkillSchema.safeParse({

@@ -316,6 +316,27 @@ describe('AgentSkillModal', () => {
 		});
 	});
 
+	// The Agent Skills format allows descriptions of up to 1024 characters.
+	it.each([
+		{ length: 1024, saved: true },
+		{ length: 1025, saved: false },
+	])('saves a description of $length characters → $saved', async ({ length, saved }) => {
+		const onConfirm = vi.fn();
+		const { getByTestId } = renderModal({
+			onConfirm,
+			skillId: 'skill-1',
+			skill: { name: 'Research', description: 'Use for research', instructions: 'Research' },
+		});
+
+		await fireEvent.update(
+			getByTestId('agent-skill-description-input').querySelector('input')!,
+			'x'.repeat(length),
+		);
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		expect(onConfirm).toHaveBeenCalledTimes(saved ? 1 : 0);
+	});
+
 	it('explains why overlong instructions cannot be saved', async () => {
 		const onConfirm = vi.fn();
 		const { container } = renderModal({
