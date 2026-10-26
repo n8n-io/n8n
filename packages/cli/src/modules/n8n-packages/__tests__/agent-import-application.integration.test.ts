@@ -342,7 +342,6 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 		agentId: initial.id,
 		versionId: initial.versionId!,
 		schema: initial.schema,
-		skills: initial.skills,
 		tools: initial.tools,
 		publishedBy: 'Test',
 	});
@@ -509,7 +508,6 @@ it.each(['draft', 'publication'] as const)(
 				agentId: saved.id,
 				versionId: saved.versionId!,
 				schema: saved.schema,
-				skills: saved.skills,
 				tools: saved.tools,
 				publishedBy: 'Test',
 			});
