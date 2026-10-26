@@ -44,6 +44,10 @@ vi.mock('@n8n/composables/useToast', () => {
 	return { useToast: () => ({ showMessage, showError }) };
 });
 
+vi.mock('../composables/useAgentsN8nChatFlag', () => ({
+	useAgentsN8nChatFlag: () => ({ value: false }),
+}));
+
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
 
@@ -122,6 +126,13 @@ const blockingIssue: AgentConfigValidationIssue = {
 	code: 'missing_required',
 	path: 'model',
 	capability: { kind: 'agent' },
+};
+
+const restrictedIssue: AgentConfigValidationIssue = {
+	code: 'restricted_node_type',
+	path: 'tools.0.node.nodeType',
+	capability: { kind: 'tool', toolType: 'node', id: 'Post message', index: 0 },
+	restriction: { nodeType: 'n8n-nodes-base.slackTool', scope: 'instance' },
 };
 
 const notPublishedIssue: AgentConfigValidationIssue = {
@@ -497,6 +508,51 @@ describe('AgentPublishButton', () => {
 			expect(
 				publishedWrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled'),
 			).toBe('true');
+		});
+
+		it('blocks publishing while a policy restricts a tool node type', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'invalid',
+				configValidationIssues: [restrictedIssue],
+			});
+
+			expect(
+				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([false]);
+		});
+
+		it('blocks publishing while a policy restricts an MCP server node type', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'invalid',
+				configValidationIssues: [
+					{
+						code: 'restricted_node_type',
+						path: 'mcpServers.0',
+						capability: { kind: 'mcpServer', id: 'Docs', index: 0 },
+						restriction: { nodeType: '@n8n/n8n-nodes-langchain.mcpClientTool', scope: 'project' },
+					},
+				],
+			});
+
+			expect(
+				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
+		});
+
+		it('allows publishing again once the restricted tool is removed', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'valid',
+				configValidationIssues: [],
+			});
+
+			expect(
+				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeUndefined();
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([true]);
 		});
 
 		it('reports readiness when tool credentials and validation change', async () => {
