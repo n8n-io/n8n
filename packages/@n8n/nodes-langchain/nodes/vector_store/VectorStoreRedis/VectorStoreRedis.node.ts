@@ -454,6 +454,22 @@ function parseMetadataSchema(
 	return parsed as MetadataFieldSchema[];
 }
 
+async function getInitializedRedisClient(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	itemIndex: number,
+) {
+	const client = await getRedisClient(context);
+
+	if (client === null) {
+		throw new NodeOperationError(context.getNode(), 'Redis client not initialized', {
+			itemIndex,
+			description: 'Please check your Redis connection details',
+		});
+	}
+
+	return client;
+}
+
 export class VectorStoreRedis extends createVectorStoreNode({
 	meta: {
 		displayName: 'Redis Vector Store',
@@ -547,15 +563,32 @@ export class VectorStoreRedis extends createVectorStoreNode({
 			filterTerms.length > 0 ? filterTerms : undefined,
 		);
 	},
-	async populateVectorStore(context, embeddings, documents, itemIndex) {
-		const client = await getRedisClient(context);
+	// Version 1.4+: runs once before the batches, so that later batches do not drop the documents of earlier ones
+	async beforeInsert(context, _embeddings, itemIndex) {
+		if (context.getNode().typeVersion < 1.4) {
+			return;
+		}
 
-		if (client === null) {
-			throw new NodeOperationError(context.getNode(), 'Redis client not initialized', {
+		// Validate the schema first, so that an invalid schema leaves the index intact
+		parseMetadataSchema(context, getMetadataSchema(context, itemIndex).trim(), itemIndex);
+
+		if (!getOverwrite(context, itemIndex)) {
+			return;
+		}
+
+		const client = await getInitializedRedisClient(context, itemIndex);
+		try {
+			await client.ft.dropIndex(getIndexName(context, itemIndex).trim(), { DD: true });
+		} catch (error) {
+			context.logger.info(`Error while populating the store: ${error.message}`);
+			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
 				itemIndex,
-				description: 'Please check your Redis connection details',
+				description: 'Please check your index/schema and parameters',
 			});
 		}
+	},
+	async populateVectorStore(context, embeddings, documents, itemIndex, allDocuments = documents) {
+		const client = await getInitializedRedisClient(context, itemIndex);
 
 		try {
 			const indexField = getIndexName(context, itemIndex).trim();
@@ -565,19 +598,20 @@ export class VectorStoreRedis extends createVectorStoreNode({
 			const contentField = getContentKey(context, itemIndex).trim();
 			const embeddingField = getEmbeddingKey(context, itemIndex).trim();
 			const ttl = getTtl(context, itemIndex);
+			const nodeVersion = context.getNode().typeVersion;
 
-			if (overwrite) {
+			// From version 1.4, beforeInsert drops the index once before the batches
+			if (overwrite && nodeVersion < 1.4) {
 				await client.ft.dropIndex(indexField, { DD: true });
 			}
-
-			const nodeVersion = context.getNode().typeVersion;
 
 			// Version 1.4+: Use FluentRedisVectorStore with custom schema support
 			if (nodeVersion >= 1.4) {
 				const metadataSchemaJson = getMetadataSchema(context, itemIndex).trim();
+				// Infer from all batches: the first batch creates the index and fixes its schema
 				const customSchema =
 					parseMetadataSchema(context, metadataSchemaJson, itemIndex) ??
-					inferMetadataSchema(documents);
+					inferMetadataSchema(allDocuments);
 
 				await ExtendedRedisVectorSearch.fromDocuments(documents, embeddings, {
 					redisClient: client,

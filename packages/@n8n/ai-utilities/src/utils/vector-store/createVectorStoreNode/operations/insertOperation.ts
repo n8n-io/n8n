@@ -73,7 +73,7 @@ export async function handleInsertOperation<T extends VectorStore = VectorStore>
 		// Populate the vector store with the processed documents in batches
 		for (let i = 0; i < documentsForEmbedding.length; i += embeddingBatchSize) {
 			const nextBatch = documentsForEmbedding.slice(i, i + embeddingBatchSize);
-			await args.populateVectorStore(context, embeddings, nextBatch, 0);
+			await args.populateVectorStore(context, embeddings, nextBatch, 0, documentsForEmbedding);
 		}
 	}
 

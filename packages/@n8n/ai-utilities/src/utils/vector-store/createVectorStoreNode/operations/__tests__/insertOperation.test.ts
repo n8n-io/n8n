@@ -215,6 +215,7 @@ describe('handleInsertOperation', () => {
 				}),
 			]),
 			0,
+			expect.any(Array),
 		);
 	});
 
@@ -234,6 +235,13 @@ describe('handleInsertOperation', () => {
 
 		// Should call populateVectorStore multiple times based on batch size
 		expect(mockArgs.populateVectorStore).toHaveBeenCalledTimes(4); // 10 documents with batch size 3 = 4 batches
+
+		// Each batch call also receives all documents of the insert
+		const calls = vi.mocked(mockArgs.populateVectorStore).mock.calls;
+		expect(calls.map(([, , batch]) => batch.length)).toEqual([3, 3, 3, 1]);
+		for (const [, , , , allDocuments] of calls) {
+			expect(allDocuments).toHaveLength(10);
+		}
 	});
 
 	it('should run populateVectorStore for each item when node version is 1', async () => {
