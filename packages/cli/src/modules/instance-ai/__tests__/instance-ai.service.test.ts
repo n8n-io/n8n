@@ -314,7 +314,11 @@ import { INSTANCE_AI_RUN_TIMEOUT_REASON } from '../liveness/instance-ai-liveness
 import { InstanceAiRunLimitError } from '../instance-ai-run-limit.error';
 import { InstanceAiSkillsService } from '../instance-ai-skills.service';
 import { InstanceAiService } from '../instance-ai.service';
-import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../internal-messages';
+import {
+	buildRunStoppedMessage,
+	buildThreadArtifactsBlock,
+	buildThreadContextBlock,
+} from '../internal-messages';
 import { InstanceAiSandboxService } from '../sandbox';
 import type {
 	SelfHealingAgentService,
@@ -624,9 +628,11 @@ type TerminalGuardOrderServiceInternals = {
 	syncPlannedTasksToUi: Mock;
 	taskProjector: { syncFromWorkflowLoop: Mock };
 	maybeStartWorkflowSetupFollowUp: Mock;
-	cloudBrowserTaskService: { startTask: Mock; deliverPendingResults: Mock };
+	cloudBrowserTaskService: { startTask: Mock; deliverPendingResults: Mock; hasPendingTasks: Mock };
+	agentMemory?: { saveMessages: Mock };
 	finalizeRun: Mock;
 	preserveHitlOnShutdown: Set<string>;
+	userStoppedRunIds: Set<string>;
 	inFlightExecutions: Set<Promise<unknown>>;
 	shutdown: () => Promise<void>;
 	executeRun: (
@@ -724,6 +730,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.failedInternalFollowUpStreaks = new Map();
 	service.schedulePlannedTasks = vi.fn(async () => {});
 	service.preserveHitlOnShutdown = new Set();
+	service.userStoppedRunIds = new Set();
 
 	service.terminalOutcome = new InstanceAiTerminalOutcomeService({
 		eventBus: service.eventBus,
@@ -751,7 +758,11 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 }
 
 function stubCloudBrowserTaskService() {
-	return { startTask: vi.fn(), deliverPendingResults: vi.fn(async () => {}) };
+	return {
+		startTask: vi.fn(),
+		deliverPendingResults: vi.fn(async () => {}),
+		hasPendingTasks: vi.fn(async () => false),
+	};
 }
 
 function stubInitialRunSurface(
@@ -5630,12 +5641,9 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		},
 	);
 
-	it.each([
-		{ stopped: false, delivered: true },
-		{ stopped: true, delivered: false },
-	])(
-		'delivers cloud browser task results when a chat run ends, unless it was stopped (%j)',
-		async ({ stopped, delivered }) => {
+	it.each([false, true])(
+		'delivers cloud browser task results when a chat run ends, also after a stop (stopped: %s)',
+		async (stopped) => {
 			const service = createTerminalGuardOrderService();
 			stubInitialRunSurface(service);
 			service.runState.hasSuspendedRun = vi.fn(() => false);
@@ -5657,14 +5665,10 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 
 			await service.executeRun(fakeUser, 'thread-a', 'run-1', 'Hello', abortController);
 
-			if (delivered) {
-				expect(service.cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
-					fakeUser,
-					'thread-a',
-				);
-			} else {
-				expect(service.cloudBrowserTaskService.deliverPendingResults).not.toHaveBeenCalled();
-			}
+			expect(service.cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
+				fakeUser,
+				'thread-a',
+			);
 		},
 	);
 
@@ -5781,6 +5785,157 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		});
 		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
 	});
+
+	describe('after a user stop', () => {
+		const runStoppedNote = {
+			threadId: 'thread-a',
+			resourceId: 'user-1',
+			messages: [
+				expect.objectContaining({
+					type: 'llm',
+					role: 'user',
+					content: [{ type: 'text', text: buildRunStoppedMessage() }],
+				}),
+			],
+		};
+
+		/** A resumed run that ends cancelled, with the cloud browser on. */
+		function createStoppedResumeService() {
+			const service = createTerminalGuardOrderService();
+			const abortController = new AbortController();
+			service.runState.hasSuspendedRun = vi.fn(() => false);
+			service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+			service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+			service.agentMemory = { saveMessages: vi.fn(async () => {}) };
+			service.cloudBrowserTaskService = stubCloudBrowserTaskService();
+			Object.assign(service, {
+				settingsService: { isCloudBrowserEnabled: () => true },
+				cloudBrowserService: { isAvailable: async () => true },
+			});
+			mockClaimedResumeResult({
+				status: 'cancelled',
+				agentRunId: 'agent-run-1',
+				text: Promise.resolve(''),
+				workSummary: emptyWorkSummary(),
+			});
+			return { service, abortController };
+		}
+
+		it('saves the run-stopped note before it delivers the cloud browser results', async () => {
+			const { service, abortController } = createStoppedResumeService();
+			const callOrder: string[] = [];
+			service.userStoppedRunIds.add('run-1');
+			service.cloudBrowserTaskService.hasPendingTasks.mockResolvedValue(true);
+			service.agentMemory?.saveMessages.mockImplementation(async () => {
+				callOrder.push('saveMessages');
+			});
+			service.cloudBrowserTaskService.deliverPendingResults.mockImplementation(async () => {
+				callOrder.push('deliverPendingResults');
+			});
+			abortController.abort();
+
+			await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
+
+			expect(service.cloudBrowserTaskService.hasPendingTasks).toHaveBeenCalledWith('thread-a');
+			expect(service.agentMemory?.saveMessages).toHaveBeenCalledWith(runStoppedNote);
+			expect(service.cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
+				fakeUser,
+				'thread-a',
+			);
+			expect(callOrder).toEqual(['saveMessages', 'deliverPendingResults']);
+			expect(service.userStoppedRunIds.has('run-1')).toBe(false);
+			// A stop does not start the setup follow-up.
+			expect(service.maybeStartWorkflowSetupFollowUp).not.toHaveBeenCalled();
+		});
+
+		it('forgets a stopped run that skips the post-run work, so the stopped runs do not pile up', async () => {
+			const { service, abortController } = createStoppedResumeService();
+			// Another run of the thread waits at a card, so this run skips the post-run work.
+			service.runState.hasSuspendedRun = vi.fn(() => true);
+			service.userStoppedRunIds.add('run-1');
+			abortController.abort();
+
+			await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
+
+			expect(service.userStoppedRunIds.size).toBe(0);
+			expect(service.agentMemory?.saveMessages).not.toHaveBeenCalled();
+			expect(service.cloudBrowserTaskService.deliverPendingResults).not.toHaveBeenCalled();
+		});
+
+		it('does not read the cloud browser tasks for the note when the cloud browser is off', async () => {
+			const { service, abortController } = createStoppedResumeService();
+			Object.assign(service, { settingsService: { isCloudBrowserEnabled: () => false } });
+			service.userStoppedRunIds.add('run-1');
+			abortController.abort();
+
+			await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
+
+			expect(service.cloudBrowserTaskService.hasPendingTasks).not.toHaveBeenCalled();
+			expect(service.agentMemory?.saveMessages).not.toHaveBeenCalled();
+		});
+
+		it('does not save the run-stopped note when the thread has no pending cloud browser tasks', async () => {
+			const { service, abortController } = createStoppedResumeService();
+			service.userStoppedRunIds.add('run-1');
+			abortController.abort();
+
+			await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
+
+			expect(service.cloudBrowserTaskService.hasPendingTasks).toHaveBeenCalledWith('thread-a');
+			expect(service.agentMemory?.saveMessages).not.toHaveBeenCalled();
+			expect(service.cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
+				fakeUser,
+				'thread-a',
+			);
+			expect(service.userStoppedRunIds.has('run-1')).toBe(false);
+		});
+
+		it('does not save the run-stopped note for a run that the user did not stop', async () => {
+			const { service, abortController } = createStoppedResumeService();
+			service.cloudBrowserTaskService.hasPendingTasks.mockResolvedValue(true);
+			abortController.abort();
+
+			await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
+
+			expect(service.cloudBrowserTaskService.hasPendingTasks).not.toHaveBeenCalled();
+			expect(service.agentMemory?.saveMessages).not.toHaveBeenCalled();
+			// Results still reach the user after any cancelled run.
+			expect(service.cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
+				fakeUser,
+				'thread-a',
+			);
+		});
+
+		it('logs a failed run-stopped note save and still delivers the cloud browser results', async () => {
+			const { service, abortController } = createStoppedResumeService();
+			service.userStoppedRunIds.add('run-1');
+			service.cloudBrowserTaskService.hasPendingTasks.mockResolvedValue(true);
+			service.agentMemory?.saveMessages.mockRejectedValue(new Error('memory unavailable'));
+			abortController.abort();
+
+			await expect(
+				service.processResumedStream({}, {}, resumedStreamOpts(abortController)),
+			).resolves.toBeUndefined();
+
+			expect(service.logger.warn).toHaveBeenCalledWith('Failed to persist the run-stopped note', {
+				threadId: 'thread-a',
+				error: 'memory unavailable',
+			});
+			expect(service.cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
+				fakeUser,
+				'thread-a',
+			);
+		});
+
+		it('does not deliver the cloud browser results when the run was stopped for quota', async () => {
+			const { service, abortController } = createStoppedResumeService();
+			abortController.abort({ errorCode: 'quota_exhausted' });
+
+			await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
+
+			expect(service.cloudBrowserTaskService.deliverPendingResults).not.toHaveBeenCalled();
+		});
+	});
 });
 
 describe('InstanceAiService run input gates', () => {
@@ -5801,6 +5956,7 @@ describe('InstanceAiService run input gates', () => {
 			orchestrationContext: {},
 		};
 		const service = Object.assign(Object.create(InstanceAiService.prototype), {
+			userStoppedRunIds: new Set<string>(),
 			webhookBaseUrl: 'https://acme.example.com/webhook',
 			formBaseUrl: 'https://acme.example.com/form',
 			tracing: { createOrchestratorResumeTraceContext: vi.fn(async () => undefined) },
@@ -5948,6 +6104,7 @@ describe('InstanceAiService — planned-task follow-up permissions', () => {
 			orchestrationContext: {},
 		};
 		const service = Object.assign(Object.create(InstanceAiService.prototype), {
+			userStoppedRunIds: new Set<string>(),
 			adapterService: {
 				resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
 			},
@@ -6073,6 +6230,7 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		taskProjector: { syncFromWorkflowLoop: Mock };
 		browserSessionService: { getExtensionTraceContext: Mock };
 		adapterService: { resolveExperimentGates: Mock };
+		userStoppedRunIds: Set<string>;
 	};
 
 	function createCancelPersistenceService(): ExecuteRunInternals {
@@ -6087,6 +6245,7 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		// hasSuspendedRun → true short-circuits the finally's post-run scheduling
 		service.runState = { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) };
 		service.domainAccessTrackersByThread = new Map();
+		service.userStoppedRunIds = new Set();
 		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
 		service.instanceAiErrorReporter = {
 			beginRun: vi.fn(() => Symbol('error-reporter-execution')),
@@ -6190,11 +6349,87 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
 		expect(service.taskProjector.syncFromWorkflowLoop).toHaveBeenCalledWith('thread-1', 'run-1');
 	});
+
+	describe('after a user stop', () => {
+		function createStoppedRunService() {
+			const service = createCancelPersistenceService();
+			service.runState.hasSuspendedRun = vi.fn(() => false);
+			service.schedulePlannedTasks = vi.fn(async () => {});
+			service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+			const cloudBrowserTaskService = stubCloudBrowserTaskService();
+			Object.assign(service, {
+				cloudBrowserTaskService,
+				settingsService: { isCloudBrowserEnabled: () => true },
+				cloudBrowserService: { isAvailable: async () => true },
+			});
+			const abortController = new AbortController();
+			abortController.abort();
+			return { service, cloudBrowserTaskService, abortController };
+		}
+
+		const runStoppedNoteSave = expect.objectContaining({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [
+				expect.objectContaining({
+					role: 'user',
+					content: [{ type: 'text', text: buildRunStoppedMessage() }],
+				}),
+			],
+		});
+
+		it('saves the run-stopped note and still delivers the cloud browser results', async () => {
+			const { service, cloudBrowserTaskService, abortController } = createStoppedRunService();
+			cloudBrowserTaskService.hasPendingTasks.mockResolvedValue(true);
+			service.userStoppedRunIds.add('run-1');
+
+			await service.executeRun(fakeUser, 'thread-1', 'run-1', '', abortController);
+
+			expect(service.agentMemory.saveMessages).toHaveBeenCalledWith(runStoppedNoteSave);
+			expect(cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
+				fakeUser,
+				'thread-1',
+			);
+			expect(service.userStoppedRunIds.has('run-1')).toBe(false);
+		});
+
+		it('does not save the run-stopped note when the thread has no pending cloud browser tasks', async () => {
+			const { service, cloudBrowserTaskService, abortController } = createStoppedRunService();
+			service.userStoppedRunIds.add('run-1');
+
+			await service.executeRun(fakeUser, 'thread-1', 'run-1', '', abortController);
+
+			expect(cloudBrowserTaskService.hasPendingTasks).toHaveBeenCalledWith('thread-1');
+			expect(service.agentMemory.saveMessages).not.toHaveBeenCalled();
+			expect(cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
+				fakeUser,
+				'thread-1',
+			);
+		});
+
+		it('does not save the run-stopped note for a run that the user did not stop', async () => {
+			const { service, cloudBrowserTaskService, abortController } = createStoppedRunService();
+			cloudBrowserTaskService.hasPendingTasks.mockResolvedValue(true);
+
+			await service.executeRun(fakeUser, 'thread-1', 'run-1', '', abortController);
+
+			expect(cloudBrowserTaskService.hasPendingTasks).not.toHaveBeenCalled();
+			expect(service.agentMemory.saveMessages).not.toHaveBeenCalled();
+			expect(cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
+				fakeUser,
+				'thread-1',
+			);
+		});
+	});
 });
 
 describe('InstanceAiService — planned task settlement', () => {
 	type SettlementService = {
-		cancelRun: (threadId: string, reason?: string) => void;
+		cancelRun: (
+			threadId: string,
+			reason?: string,
+			options?: { skipTasksDetachedFromTurn?: boolean },
+		) => void;
 		cancelBackgroundTask: (threadId: string, taskId: string) => void;
 		schedulePlannedTasks: Mock;
 		syncPlannedTasksToUi: Mock;
@@ -6212,6 +6447,7 @@ describe('InstanceAiService — planned task settlement', () => {
 		tracing: { finalizeBackgroundTaskTracing: Mock };
 		terminalOutcome: { recordBackgroundTerminalOutcome: Mock };
 		suspendedThreads: { dropPendingConfirmationsForThread: Mock };
+		userStoppedRunIds: Set<string>;
 	};
 
 	const task = {
@@ -6246,6 +6482,7 @@ describe('InstanceAiService — planned task settlement', () => {
 			eventBus: { publish: vi.fn() },
 			terminalOutcome: { recordBackgroundTerminalOutcome: vi.fn(async () => {}) },
 			suspendedThreads: { dropPendingConfirmationsForThread: vi.fn(async () => {}) },
+			userStoppedRunIds: new Set<string>(),
 		});
 		return { service, plannedTaskService, graph };
 	}
@@ -6322,6 +6559,47 @@ describe('InstanceAiService — planned task settlement', () => {
 			}),
 		);
 	});
+
+	it('forwards the option to skip tasks detached from their turn when the thread is cancelled', () => {
+		const { service } = createSettlementService();
+
+		service.cancelRun('thread-a', 'user_cancelled', { skipTasksDetachedFromTurn: true });
+
+		expect(service.backgroundTasks.cancelThread).toHaveBeenCalledWith('thread-a', undefined, {
+			skipTasksDetachedFromTurn: true,
+		});
+	});
+
+	it('records the active run as stopped by the user when the user cancels it', () => {
+		const { service } = createSettlementService();
+		const abortController = new AbortController();
+		service.runState.cancelThread.mockReturnValue({
+			active: { runId: 'run-1', abortController },
+			suspended: undefined,
+		});
+
+		service.cancelRun('thread-a', 'user_cancelled');
+
+		expect(service.userStoppedRunIds.has('run-1')).toBe(true);
+		expect(abortController.signal.aborted).toBe(true);
+	});
+
+	it.each(['quota_exhausted', 'agent_rebuild_failed'])(
+		'does not record the active run as stopped by the user when the reason is %s',
+		(reason) => {
+			const { service } = createSettlementService();
+			const abortController = new AbortController();
+			service.runState.cancelThread.mockReturnValue({
+				active: { runId: 'run-1', abortController },
+				suspended: undefined,
+			});
+
+			service.cancelRun('thread-a', reason);
+
+			expect(service.userStoppedRunIds.size).toBe(0);
+			expect(abortController.signal.aborted).toBe(true);
+		},
+	);
 
 	it('marks the agent-completed event of a detached task when the thread is cancelled', async () => {
 		const { service } = createSettlementService();
@@ -7069,7 +7347,9 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 
 			await service.routeCancelRun('thread-a');
 
-			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+			expect(service.cancelRun).toHaveBeenCalledWith('thread-a', 'user_cancelled', {
+				skipTasksDetachedFromTurn: true,
+			});
 			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'relay-instance-ai-task-control',
 				payload: { threadId: 'thread-a', action: 'cancel-thread' },
@@ -7081,7 +7361,9 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 
 			await service.routeCancelRun('thread-a');
 
-			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+			expect(service.cancelRun).toHaveBeenCalledWith('thread-a', 'user_cancelled', {
+				skipTasksDetachedFromTurn: true,
+			});
 			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
@@ -7143,7 +7425,9 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 				});
 
 				expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
-				expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+				expect(service.cancelRun).toHaveBeenCalledWith('thread-a', 'user_cancelled', {
+					skipTasksDetachedFromTurn: true,
+				});
 				expect(service.clearThreadState).toHaveBeenCalledWith('thread-a', userId);
 				expect(service.publisher.publishCommand).not.toHaveBeenCalled();
 			},

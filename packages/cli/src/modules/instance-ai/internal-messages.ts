@@ -138,6 +138,7 @@ const TRAILING_CONTEXT_BLOCKS = [
 	'past-conversations',
 	'ai-preferences',
 	'onboarding-answer',
+	'run-stopped',
 ].map(trailingBlockRegex);
 
 /** Strip each trailing block once, in whatever order they were composed. */
@@ -342,6 +343,21 @@ export function buildOnboardingAnswerMessage(answers: OnboardingAnswer[]): strin
 				]
 			: []),
 		'</onboarding-answer>',
+	].join('\n');
+}
+
+/**
+ * Tells the agent that the user stopped its last reply. Without it, a later run (for example one
+ * that reports a finished background task) sees the request as unanswered and resumes it. It rides
+ * a hidden user turn, like the onboarding answers.
+ */
+export function buildRunStoppedMessage(): string {
+	return [
+		AUTO_FOLLOW_UP_MESSAGE,
+		'',
+		'<run-stopped>',
+		'The user stopped your previous reply. Do not continue the work of that reply unless the user asks again.',
+		'</run-stopped>',
 	].join('\n');
 }
 

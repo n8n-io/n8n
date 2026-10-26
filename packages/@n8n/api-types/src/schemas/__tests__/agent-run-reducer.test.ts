@@ -1086,6 +1086,42 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['sub-1'].agentChange).toBe('none');
 		});
 
+		it('agent-result-delivered marks a completed agent whose result reached the orchestrator', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, makeAgentCompleted('run-1', 'sub-1', 'done'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+			reduceEvent(state, {
+				type: 'agent-result-delivered',
+				runId: 'run-1',
+				agentId: 'sub-1',
+				payload: {},
+			});
+
+			expect(state.agentsById['sub-1'].resultDelivered).toBe(true);
+			expect(state.agentsById['sub-1'].status).toBe('completed');
+			expect(toAgentTree(state).children[0].resultDelivered).toBe(true);
+		});
+
+		it.each(['error', 'cancelled'] as const)(
+			'agent-result-delivered marks a completed agent after the run finished with %s',
+			(runStatus) => {
+				const state = stateWithRun('run-1', 'root');
+				reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+				reduceEvent(state, makeAgentCompleted('run-1', 'sub-1', 'done'));
+				reduceEvent(state, makeRunFinish('run-1', 'root', runStatus));
+				reduceEvent(state, {
+					type: 'agent-result-delivered',
+					runId: 'run-1',
+					agentId: 'sub-1',
+					payload: {},
+				});
+
+				expect(state.agentsById['sub-1'].resultDelivered).toBe(true);
+				expect(state.agentsById['sub-1'].status).toBe('completed');
+			},
+		);
+
 		it('agent-completed with error sets error status', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));

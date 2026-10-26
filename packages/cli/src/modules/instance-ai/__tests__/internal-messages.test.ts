@@ -7,6 +7,7 @@ import {
 	buildInstanceUrlsBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
+	buildRunStoppedMessage,
 	buildThreadArtifactsBlock,
 	buildThreadContextBlock,
 	buildWorkflowTestRequestBlock,
@@ -213,6 +214,10 @@ describe('cleanStoredUserMessage', () => {
 
 	it('returns null for auto-follow-up message', () => {
 		expect(cleanStoredUserMessage(AUTO_FOLLOW_UP_MESSAGE)).toBeNull();
+	});
+
+	it('returns null for the run-stopped message', () => {
+		expect(cleanStoredUserMessage(buildRunStoppedMessage())).toBeNull();
 	});
 
 	it('returns null for auto-follow-up after stripping task block', () => {
@@ -1117,5 +1122,14 @@ describe('buildThreadContextBlock', () => {
 		].join('\n\n');
 
 		expect(cleanStoredUserMessage(stored)).toBe('why does <project-context> show up in my logs?');
+	});
+});
+
+describe('buildRunStoppedMessage', () => {
+	it('wraps the stop notice in a run-stopped block after the auto follow-up text', () => {
+		const message = buildRunStoppedMessage();
+
+		expect(message.startsWith(AUTO_FOLLOW_UP_MESSAGE)).toBe(true);
+		expect(message).toMatch(/<run-stopped>\n.*stopped your previous reply.*\n<\/run-stopped>$/);
 	});
 });

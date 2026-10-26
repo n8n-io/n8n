@@ -228,6 +228,7 @@ import {
 	buildOnboardingSkillBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
+	buildRunStoppedMessage,
 	buildThreadArtifactsBlock,
 	buildThreadContextBlock,
 	buildWorkflowTestRequestBlock,
@@ -756,6 +757,9 @@ export class InstanceAiService {
 	private readonly runState = new RunStateRegistry<User>((user) => user.id);
 
 	private readonly finalizingSelfHealingRuns = new Set<string>();
+
+	/** Live runs the user stopped, until their run-end handling saves the run-stopped note. */
+	private readonly userStoppedRunIds = new Set<string>();
 
 	private readonly backgroundTasks: BackgroundTaskManager;
 
@@ -1745,10 +1749,14 @@ export class InstanceAiService {
 		}
 	}
 
-	cancelRun(threadId: string, reason = 'user_cancelled'): void {
+	cancelRun(
+		threadId: string,
+		reason = 'user_cancelled',
+		options: { skipTasksDetachedFromTurn?: boolean } = {},
+	): void {
 		const quotaStop = reason === 'quota_exhausted';
 		const abortReason = quotaStop ? assistantCreditsExhaustedError() : undefined;
-		const cancelledTasks = this.backgroundTasks.cancelThread(threadId, abortReason);
+		const cancelledTasks = this.backgroundTasks.cancelThread(threadId, abortReason, options);
 		const user = this.runState.getThreadUser(threadId);
 		for (const task of cancelledTasks) {
 			void this.tracing.finalizeBackgroundTaskTracing(task, 'cancelled');
@@ -1792,6 +1800,7 @@ export class InstanceAiService {
 		const { active, suspended } = this.runState.cancelThread(threadId);
 		if (active) {
 			if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) this.liveness.markRunTimedOut(active.runId);
+			if (reason === 'user_cancelled') this.userStoppedRunIds.add(active.runId);
 			active.abortController.abort(abortReason);
 			// inline-kind rows are dropped via the resolve-callback fired by
 			// runState.cancelThread; suspended-kind rows (no in-memory
@@ -1908,7 +1917,9 @@ export class InstanceAiService {
 			}
 			case 'cancel-thread':
 				// A thread's run + tasks can be spread across mains, so always fan out.
-				this.cancelRun(threadId);
+				// The user stopped the reply. A task detached from its turn runs next to the chat, and
+				// the user stops it from its own card.
+				this.cancelRun(threadId, 'user_cancelled', { skipTasksDetachedFromTurn: true });
 				return false;
 			case 'clear-thread':
 				await this.clearThreadState(threadId, userId);
@@ -3979,6 +3990,37 @@ export class InstanceAiService {
 	}
 
 	/**
+	 * Tell later runs that the user stopped this one, so the run that reports a finished cloud
+	 * browser task does not resume the stopped work. Only for threads with such a task: no other
+	 * run starts after a stop. Runs after the SDK has saved the partial reply, so the note comes
+	 * after it.
+	 */
+	private async persistRunStoppedNote(threadId: string, userId: string): Promise<void> {
+		try {
+			if (!this.settingsService.isCloudBrowserEnabled()) return;
+			if (!(await this.cloudBrowserTaskService.hasPendingTasks(threadId))) return;
+			await this.agentMemory.saveMessages({
+				threadId,
+				resourceId: userId,
+				messages: [
+					{
+						id: nanoid(),
+						createdAt: new Date(),
+						type: 'llm',
+						role: 'user',
+						content: [{ type: 'text', text: buildRunStoppedMessage() }],
+					},
+				],
+			});
+		} catch (error) {
+			this.logger.warn('Failed to persist the run-stopped note', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	/**
 	 * Splits a message's attachments into the resource references that feed the
 	 * context block. The canvas node-context and Assistant mentions flags both
 	 * accept `nodes` attachments. Workflow and agent references always pass.
@@ -5149,6 +5191,8 @@ export class InstanceAiService {
 			);
 		} finally {
 			this.runState.clearActiveRun(threadId);
+			// Read once and cleared on every exit, also when the run suspended, so the set cannot grow.
+			const stoppedByUser = this.userStoppedRunIds.delete(runId);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
 			// Note: don't delete threadPushRef here. Planned tasks (build agent,
 			// checkpoint verifications) dispatch later in this same finally and
@@ -5188,6 +5232,7 @@ export class InstanceAiService {
 			//      call, and tick() is a no-op when no graph exists.
 			//   3. UI projection — always, so a stopped run's task states reach
 			//      the client.
+			//   4. Cloud browser results — even on a stop, see below.
 			if (!segmentSuspended && !this.runState.hasSuspendedRun(threadId)) {
 				const reschedule = !signal.aborted && !blockedForQuota;
 				if (checkpoint?.isCheckpointFollowUp) {
@@ -5200,10 +5245,12 @@ export class InstanceAiService {
 					await this.schedulePlannedTasks(user, threadId);
 				}
 				await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
-				if (reschedule) {
-					await this.maybeStartWorkflowSetupFollowUp(user, threadId);
-					await this.maybeDeliverCloudBrowserTaskResults(user, threadId);
-				}
+				if (reschedule) await this.maybeStartWorkflowSetupFollowUp(user, threadId);
+				// Even after a stop: a stop does not stop cloud browser tasks, so their results
+				// still have to reach the user. The run-stopped note keeps the delivery run from
+				// resuming the stopped work.
+				if (stoppedByUser) await this.persistRunStoppedNote(threadId, user.id);
+				if (!blockedForQuota) await this.maybeDeliverCloudBrowserTaskResults(user, threadId);
 			}
 			if (errorReporterExecutionToken) {
 				this.instanceAiErrorReporter.endRun(runId, errorReporterExecutionToken);
@@ -6738,6 +6785,7 @@ export class InstanceAiService {
 			);
 		} finally {
 			this.runState.clearActiveRun(opts.threadId, opts.resumeExecutionToken);
+			const stoppedByUser = this.userStoppedRunIds.delete(opts.runId);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
 			// See note in executeRun's finally — keep threadPushRef alive for
 			// post-run planned-task dispatch.
@@ -6792,8 +6840,9 @@ export class InstanceAiService {
 					await this.markWorkflowSetupHandled(opts.threadId, completedSetupWorkflowId, opts.runId);
 				}
 				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
-				if (reschedule) {
-					await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+				if (reschedule) await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+				if (stoppedByUser) await this.persistRunStoppedNote(opts.threadId, opts.user.id);
+				if (!blockedForQuota) {
 					await this.maybeDeliverCloudBrowserTaskResults(opts.user, opts.threadId);
 				}
 			}

@@ -49,6 +49,17 @@ const CLOUD_BROWSER_AGENT_ROLE = 'cloud-browser';
  */
 const TASK_SUMMARY_MAX_LENGTH = 4000;
 
+/** How often the main that runs a task records that it is still alive. */
+export const TASK_ALIVE_INTERVAL_MS = 5 * 60 * 1000;
+
+/**
+ * A running task whose main has not recorded that it is alive for this long has stopped, for
+ * example because n8n restarted. It is three intervals, so one missed update does not fail a task.
+ */
+export const TASK_STALE_AFTER_MS = 3 * TASK_ALIVE_INTERVAL_MS;
+
+const TASK_STOPPED_SUMMARY = 'The browser task stopped because n8n restarted.';
+
 export interface InstanceAiCloudBrowserTaskServiceOptions {
 	logger: Logger;
 	eventBus: InstanceAiEventBus;
@@ -300,6 +311,17 @@ export class InstanceAiCloudBrowserTaskService {
 		const { taskId, agentId } = task;
 		const { user, runId, threadId } = run;
 		const confirmationCards = new Set<string>();
+		// Any main can fail a task that stops being marked alive, so this one keeps marking it. A timer,
+		// not agent activity, because a task can wait hours for an approval without doing anything.
+		const aliveTimer = setInterval(() => {
+			this.taskStore.markAlive(threadId, taskId).catch((error: unknown) => {
+				logger.warn('Failed to mark a cloud browser task alive', {
+					taskId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
+		}, TASK_ALIVE_INTERVAL_MS);
+		aliveTimer.unref();
 
 		try {
 			const mcpServer = await cloudBrowserService.createServer(
@@ -343,6 +365,7 @@ export class InstanceAiCloudBrowserTaskService {
 			});
 			throw error;
 		} finally {
+			clearInterval(aliveTimer);
 			// The task manager does not settle a stopped task, so its result is delivered here.
 			if (signal.aborted) {
 				await this.deliverPendingResults(user, threadId).catch((error: unknown) => {
@@ -462,12 +485,44 @@ export class InstanceAiCloudBrowserTaskService {
 		await this.options.suspendedThreads.dropPendingConfirmation(requestId);
 	}
 
+	/** True while a task of the thread runs or its result waits for delivery. */
+	async hasPendingTasks(threadId: string): Promise<boolean> {
+		return (await this.taskStore.list(threadId)).length > 0;
+	}
+
+	/**
+	 * Fails the running tasks whose main stopped, for example on a restart, so they are delivered
+	 * with the others and their card closes. Without this, they would show as running forever.
+	 */
+	private async failStoppedTasks(threadId: string): Promise<void> {
+		const failed = await this.taskStore.failStale(
+			threadId,
+			new Date(Date.now() - TASK_STALE_AFTER_MS),
+			{ outcome: 'failed', summary: TASK_STOPPED_SUMMARY },
+		);
+		for (const task of failed) {
+			this.options.eventBus.publish(threadId, {
+				type: 'agent-completed',
+				runId: task.runId,
+				agentId: task.agentId,
+				detachedFromTurn: true,
+				payload: {
+					role: CLOUD_BROWSER_AGENT_ROLE,
+					result: '',
+					error: TASK_STOPPED_SUMMARY,
+					status: 'error',
+				},
+			});
+		}
+	}
+
 	/**
 	 * Starts one follow-up run with every finished task the orchestrator has not heard about.
 	 * Called when a task ends and when a run ends, so a result that arrives mid-run reaches the
 	 * orchestrator as soon as that run is over. The claim is released when no run started.
 	 */
 	async deliverPendingResults(user: User, threadId: string): Promise<void> {
+		await this.failStoppedTasks(threadId);
 		const undelivered = await this.taskStore.claimUndelivered(threadId);
 		if (undelivered.length === 0) return;
 
@@ -482,6 +537,16 @@ export class InstanceAiCloudBrowserTaskService {
 				buildTasksCompletedMessage(undelivered),
 				messageGroupId,
 			);
+			if (!runId) return;
+
+			for (const task of undelivered) {
+				this.options.eventBus.publish(threadId, {
+					type: 'agent-result-delivered',
+					runId: task.runId,
+					agentId: task.agentId,
+					payload: {},
+				});
+			}
 		} finally {
 			if (!runId) await this.taskStore.releaseClaim(threadId, undelivered);
 		}

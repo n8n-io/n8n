@@ -45,7 +45,7 @@ describe('AiGatewayBrowserUseService', () => {
 	};
 
 	describe('createSession()', () => {
-		it('creates a session without keepAlive through the gateway', async () => {
+		it('creates a session without keepAlive, at the live view size, through the gateway', async () => {
 			aiGatewayService.sendProviderRequest.mockResolvedValue({
 				id: 'sess-1',
 				connectUrl: 'wss://connect.example.com',
@@ -58,7 +58,7 @@ describe('AiGatewayBrowserUseService', () => {
 			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
 				...sessionRequest,
 				path: '/v1/sessions',
-				body: { keepAlive: false },
+				body: { keepAlive: false, browserSettings: { viewport: { width: 1280, height: 800 } } },
 			});
 		});
 
@@ -68,6 +68,36 @@ describe('AiGatewayBrowserUseService', () => {
 			await expect(service.createSession({ userId: 'user-1', attribution })).rejects.toThrow(
 				'invalid browser session',
 			);
+		});
+	});
+
+	describe('getLiveView()', () => {
+		it("reads the session's live view link", async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+				pages: [],
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess/1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1' });
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
+				...sessionRequest,
+				method: 'GET',
+				path: '/v1/sessions/sess%2F1/debug',
+			});
+		});
+
+		it('throws when the response has no live view link', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({ pages: [] });
+
+			await expect(
+				service.getLiveView({ userId: 'user-1', attribution, sessionId: 'sess-1' }),
+			).rejects.toThrow('invalid browser live view');
 		});
 	});
 

@@ -232,6 +232,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'run-finish',
 	'agent-spawned',
 	'agent-completed',
+	'agent-result-delivered',
 	'text-delta',
 	'reasoning-delta',
 	'text-block',
@@ -487,6 +488,12 @@ export const agentSpawnedPayloadSchema = z.object({
 		.optional()
 		.describe('Resource this agent works on'),
 });
+
+/**
+ * A background agent's result reached the orchestrator in a later run. `runId` and `agentId` name
+ * the agent, so the payload is empty.
+ */
+export const agentResultDeliveredPayloadSchema = z.object({});
 
 export const agentCompletedPayloadSchema = z.object({
 	role: z.string(),
@@ -1140,6 +1147,23 @@ export interface InstanceAiBrowserCreateLinkResponse {
 	ttlSeconds: number | null;
 }
 
+/**
+ * The live view of a cloud browser task:
+ * - `live`: a session is open. The link lets anyone who has it control the browser, so the
+ *   client keeps it in memory only.
+ * - `starting`: a session is opening.
+ * - `no-session`: the task runs, but the agent has not opened a session yet.
+ * - `disconnected`: the session closed while the task runs. The agent can open a new one.
+ * - `not-found`: this instance has no browser for the task. The task finished, n8n restarted, the
+ *   task runs on another main, or it is not the user's.
+ */
+export type InstanceAiCloudBrowserLiveViewResponse =
+	| { status: 'live'; liveViewUrl: string }
+	| { status: 'starting' }
+	| { status: 'no-session' }
+	| { status: 'disconnected'; reason: 'connectionLost' | 'idleTimeout' }
+	| { status: 'not-found' };
+
 export interface InstanceAiBrowserStatusResponse {
 	connected: boolean;
 	connectedAt: string | null;
@@ -1299,6 +1323,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		type: z.literal('agent-completed'),
 		...eventBase,
 		payload: agentCompletedPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('agent-result-delivered'),
+		...eventBase,
+		payload: agentResultDeliveredPayloadSchema,
 	}),
 	z.object({ type: z.literal('text-delta'), ...eventBase, payload: textDeltaPayloadSchema }),
 	z.object({
@@ -2032,6 +2061,8 @@ export interface InstanceAiAgentNode {
 	activity?: InstanceAiAgentActivity;
 	/** Whether this sub-agent changed its Agent. */
 	agentChange?: InstanceAiAgentChange;
+	/** A finished background agent whose result reached the orchestrator in a later run. */
+	resultDelivered?: boolean;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
 	/** Brief task description for distinguishing sibling agents. */

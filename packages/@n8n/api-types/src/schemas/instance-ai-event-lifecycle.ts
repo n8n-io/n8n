@@ -16,6 +16,8 @@ function isRunActivity(event: InstanceAiEvent): boolean {
 		case 'thread-title-updated':
 		case 'preference-card':
 		case 'tasks-update':
+		// Arrives after a background agent completed, when a later run picks up its result.
+		case 'agent-result-delivered':
 			return false;
 		default:
 			return true;

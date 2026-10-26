@@ -91,6 +91,12 @@ vi.mock('../instanceAi.memory.api', async (importOriginal) => ({
 	}),
 }));
 
+const fetchCloudBrowserLiveViewSpy = vi.hoisted(() => vi.fn());
+vi.mock('../instanceAi.api', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../instanceAi.api')>()),
+	fetchCloudBrowserLiveView: fetchCloudBrowserLiveViewSpy,
+}));
+
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackSpy }),
 }));
@@ -2232,6 +2238,64 @@ describe('InstanceAiThreadView', () => {
 		expect(builderSection).toHaveAttribute('data-agent-id', 'agent-builder-child');
 		expect(builderSection).toHaveTextContent('Building agent');
 		expect(queryByTestId('instance-ai-assistant-message')).not.toBeInTheDocument();
+	});
+
+	it('fetches live views only for running browser tasks', async () => {
+		fetchCloudBrowserLiveViewSpy.mockResolvedValue({ status: 'starting' });
+		const browserAgent = (agentId: string, taskId: string, status: 'active' | 'completed') => ({
+			agentId,
+			role: 'cloud-browser',
+			kind: 'cloud-browser',
+			title: 'Find the price',
+			taskId,
+			status,
+			textContent: '',
+			reasoning: '',
+			timeline: [],
+			children: [],
+			// Both tasks opened a session, so only the task state decides which one is fetched.
+			toolCalls: [
+				{
+					toolCallId: `start-${taskId}`,
+					toolName: 'browser_start_session',
+					args: {},
+					isLoading: false,
+				},
+			],
+		});
+		thread.messages = [
+			{
+				id: 'msg-browser',
+				role: 'assistant',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'orchestrator-1',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					timeline: [],
+					toolCalls: [],
+					children: [
+						browserAgent('browser-running', 'task-running', 'active'),
+						browserAgent('browser-done', 'task-done', 'completed'),
+					],
+				},
+			},
+		] as never;
+
+		renderView({ props: { threadId: 'thread-1' } });
+		await flushPromises();
+
+		expect(fetchCloudBrowserLiveViewSpy).toHaveBeenCalledTimes(1);
+		expect(fetchCloudBrowserLiveViewSpy).toHaveBeenCalledWith(
+			expect.anything(),
+			'thread-1',
+			'task-running',
+		);
 	});
 
 	it('closes the agent artifact preview from the wrapper toggle', async () => {
