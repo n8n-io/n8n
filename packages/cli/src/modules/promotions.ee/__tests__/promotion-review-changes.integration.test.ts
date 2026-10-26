@@ -351,7 +351,18 @@ it('lists a workflow that moves to another project without other changes', async
 		{ workflowId: quote.id },
 		{ projectId: support.id },
 	);
+	// Promote now refuses a move between projects, but a branch can still get one from an older
+	// version or a hand edit, so the review must still show it. Skip the refusal to write one.
+	const guard = vi
+		.spyOn(
+			Container.get(PromotionsService) as unknown as {
+				assertNoProjectMovesSinceBranch: () => Promise<void>;
+			},
+			'assertNoProjectMovesSinceBranch',
+		)
+		.mockResolvedValue();
 	const review = await promote('Move');
+	guard.mockRestore();
 
 	const changes = await changesOf(review.reviewId);
 

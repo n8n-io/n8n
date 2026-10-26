@@ -2030,6 +2030,37 @@ describe('Apply moves and renames within a project', () => {
 		expect((await folderOf(b.id)).parentFolder?.id).toBe(a.id);
 	});
 
+	it('refuses an instance promote that would write a move between team projects', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id);
+		const {
+			project: orders,
+			workflows: [moved],
+		} = await setupProjectWithWorkflows('Orders', ['Process order']);
+		const { project: billing } = await setupProjectWithWorkflows('Billing', []);
+		const promote = async () =>
+			await service.promote(environments.promote.id, owner, {
+				canExportVariableValues: true,
+				commitMessage: 'Export',
+			});
+		await promote();
+		const head = async () => (await simpleGit(remote.bareDir).revparse(['main'])).trim();
+		const before = await head();
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: moved.id, role: 'workflow:owner' },
+			{ projectId: billing.id },
+		);
+
+		await expect(promote()).rejects.toMatchObject({
+			httpStatusCode: 400,
+			message: expect.stringContaining(
+				`workflow "${moved.name}" (${moved.id}) is in project "${billing.name}" here and in project "${orders.name}" on the branch`,
+			),
+		});
+		expect(await head()).toBe(before);
+	});
+
 	it('renames only the folders that hold a selected workflow on project Apply', async () => {
 		const { promote } = await connect();
 		const {

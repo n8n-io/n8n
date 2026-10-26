@@ -65,6 +65,7 @@ import { projectHolding } from './branch-placement';
 import {
 	crossProjectMoves,
 	describeCrossProjectMoves,
+	describePromotedMoves,
 	foldersInScope,
 	type CrossProjectMoves,
 } from './cross-project-moves';
@@ -201,7 +202,7 @@ export class PromotionsService {
 		const targetBranchName = target?.targetBranchName;
 		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
-		await this.assertNoWorkflowsMovedOutOfTeamProjects(
+		await this.assertNoProjectMovesSinceBranch(
 			input,
 			branchName,
 			credentials,
@@ -1164,11 +1165,14 @@ export class PromotionsService {
 	}
 
 	/**
-	 * A workflow on the branch that a personal project owns now is not exported, because personal
-	 * projects stay out of scope. The promote would drop it from the branch, and Apply would then
-	 * delete it on the destination. Refuse until the workflow moves back to its team project.
+	 * Refuses a promote that would write a move between projects to the branch.
+	 * - A workflow that a personal project owns now is not exported, because personal projects stay
+	 *   out of scope. The promote would drop it from the branch, and Apply would then delete it on
+	 *   the destination.
+	 * - A workflow or folder that another team project holds now would reach the branch, but Apply
+	 *   refuses moves between projects, so the destination would be stuck until it moves back.
 	 */
-	private async assertNoWorkflowsMovedOutOfTeamProjects(
+	private async assertNoProjectMovesSinceBranch(
 		input: PromotionOperationInput,
 		branchName: string,
 		credentials: PromotionGitCredentials,
@@ -1176,18 +1180,32 @@ export class PromotionsService {
 	): Promise<void> {
 		const manifest = await this.readRemoteManifest(input, branchName, credentials, baseCommitSha);
 		if (manifest === null) return;
-		const workflows = readBranchWorkflowPlacements(manifest, BRANCH_MANIFEST_PATH);
-		if (workflows.length === 0) return;
+		const branch = readBranchPlacements(manifest, BRANCH_MANIFEST_PATH);
+		if (branch.workflows.length === 0 && branch.folders.length === 0) return;
 
-		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
-			workflows.map(({ id }) => id),
-		);
-		const moved = workflows.filter(({ id }) => {
+		const [owners, folders] = await Promise.all([
+			this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
+				branch.workflows.map(({ id }) => id),
+			),
+			this.folderService.getFoldersByIds(branch.folders.map(({ folder }) => folder.id)),
+		]);
+		const droppedWorkflows = branch.workflows.filter(({ id }) => {
 			const owner = owners.get(id);
 			return owner !== undefined && owner.type !== 'team';
 		});
-		if (moved.length > 0) {
-			throw new BadRequestError(describeWorkflowsMovedToPersonalProjects(moved));
+		if (droppedWorkflows.length > 0) {
+			throw new BadRequestError(describeWorkflowsMovedToPersonalProjects(droppedWorkflows));
+		}
+
+		const moves = crossProjectMoves({
+			inventory: branch,
+			owners,
+			folderHomes: new Map(folders.map(({ id, homeProject }) => [id, homeProject])),
+			// Promote writes every team project, so each branch project exists on the destination.
+			existingProjectIds: new Set(branch.projects.map(({ id }) => id)),
+		});
+		if (moves.workflows.length > 0 || moves.folders.length > 0) {
+			throw new BadRequestError(describePromotedMoves(moves));
 		}
 	}
 
@@ -1417,9 +1435,7 @@ async function isDirectory(folder: string): Promise<boolean> {
 const BRANCH_MANIFEST_PATH = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
 
 /** Leaves out the personal project's name: it holds the owner's email, and error text reaches the UI and telemetry. */
-function describeWorkflowsMovedToPersonalProjects(
-	moved: Array<{ id: string; name: string; projectName: string }>,
-): string {
+function describeWorkflowsMovedToPersonalProjects(moved: BranchPlacements['workflows']): string {
 	const items = moved.map(
 		({ id, name, projectName }) =>
 			`"${name}" (${id}) is in a personal project here and in team project "${projectName}" on the branch`,
@@ -1431,16 +1447,20 @@ function describeWorkflowsMovedToPersonalProjects(
 const branchPlacementsSchema = z.object({
 	projects: z.array(manifestEntrySchema).optional(),
 	workflows: z.array(manifestEntrySchema).optional(),
+	folders: z.array(manifestEntrySchema).optional(),
 });
 
+type BranchPlacements = {
+	projects: Array<{ id: string; name: string }>;
+	workflows: Array<{ id: string; name: string; projectId: string; projectName: string }>;
+	folders: Array<{ projectId: string; folder: { id: string; name: string } }>;
+};
+
 /**
- * The id, name and team project of every workflow that the branch manifest lists. It fails closed
+ * The team project of every workflow and folder that the branch manifest lists. It fails closed
  * and names the broken entry: skipping it could hide a workflow that Apply would delete.
  */
-function readBranchWorkflowPlacements(
-	raw: string | undefined,
-	manifestPath: string,
-): Array<{ id: string; name: string; projectName: string }> {
+function readBranchPlacements(raw: string | undefined, manifestPath: string): BranchPlacements {
 	let json: unknown;
 	try {
 		json = raw === undefined ? undefined : jsonParse(raw);
@@ -1459,14 +1479,21 @@ function readBranchWorkflowPlacements(
 				? `Entry ${index + 1} of "${key}" in "${manifestPath}"`
 				: `"${manifestPath}"`;
 		throw new BadRequestError(
-			`${part} on the branch is not readable${id}, so promote can't check it for workflows that moved to a personal project. Fix the file on the branch, then promote again.`,
+			`${part} on the branch is not readable${id}, so promote can't check it for workflows and folders that moved between projects. Fix the file on the branch, then promote again.`,
 		);
 	}
 
-	const { projects, workflows = [] } = parsed.data;
-	return workflows.map(({ id, name, target }) => ({
-		id,
-		name,
-		projectName: projectHolding(projects, target)?.name ?? 'unknown',
-	}));
+	const { projects = [], workflows = [], folders = [] } = parsed.data;
+	// An entry outside every project directory has no project to compare, so it is left out.
+	return {
+		projects: projects.map(({ id, name }) => ({ id, name })),
+		workflows: workflows.flatMap(({ id, name, target }) => {
+			const project = projectHolding(projects, target);
+			return project ? [{ id, name, projectId: project.id, projectName: project.name }] : [];
+		}),
+		folders: folders.flatMap(({ id, name, target }) => {
+			const project = projectHolding(projects, target);
+			return project ? [{ projectId: project.id, folder: { id, name } }] : [];
+		}),
+	};
 }

@@ -3,6 +3,7 @@ import type { InventoryWorkflow } from '@/modules/n8n-packages/io/directory/pack
 import {
 	crossProjectMoves,
 	describeCrossProjectMoves,
+	describePromotedMoves,
 	type InstanceProject,
 } from '../cross-project-moves';
 
@@ -105,5 +106,13 @@ describe('describeCrossProjectMoves', () => {
 		expect(message).toContain('and project "Beta" does not exist on this instance yet');
 		expect(message).toMatch(/Move them back on the source instance, then promote again\.$/);
 		expect(message).not.toContain('Alpha');
+	});
+
+	it('tells promote to move them back on this instance', () => {
+		expect(
+			describePromotedMoves({ workflows: [move], folders: [], personalProjectIds: new Set() }),
+		).toBe(
+			'Promote can\'t move workflows or folders between projects, because Apply would refuse them on the destination: workflow "Invoices" (w1) is in project "Alpha" here and in project "Beta" on the branch. Move them back on this instance, then promote again.',
+		);
 	});
 });

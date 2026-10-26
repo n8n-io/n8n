@@ -330,10 +330,61 @@ describe('PromotionsService', () => {
 				expect(gitService.commitAndPush).not.toHaveBeenCalled();
 			});
 
-			it('promotes when branch workflows moved to team projects or are gone', async () => {
-				// A move between team projects is exported as it is. w2 has no owner any more.
+			it('refuses a promote while a branch workflow belongs to another team project', async () => {
 				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
-					new Map([['w1', mock<Project>({ id: 'p-other', type: 'team', name: 'Ops' })]]),
+					new Map([
+						['w1', mock<Project>({ id: 'p-ops', type: 'team', name: 'Ops' })],
+						['w2', mock<Project>({ id: 'p-billing', type: 'team', name: 'Billing' })],
+					]),
+				);
+
+				await expect(
+					service.promote(ENVIRONMENT_ID, actor, {
+						canExportVariableValues: true,
+						commitMessage: 'sync projects',
+					}),
+				).rejects.toMatchObject({
+					httpStatusCode: 400,
+					message: expect.stringContaining(
+						'workflow "Invoices" (w1) is in project "Ops" here and in project "Billing" on the branch',
+					),
+				});
+				expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+				expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			});
+
+			it('refuses a promote while a branch folder belongs to another team project', async () => {
+				gitService.readFilesAtCommit.mockResolvedValue(
+					new Map([
+						[
+							'n8n/manifest.json',
+							JSON.stringify({
+								...manifest,
+								folders: [{ id: 'f1', name: 'Payments', target: 'projects/billing/folders/f' }],
+							}),
+						],
+					]),
+				);
+				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
+				folderService.getFoldersByIds.mockResolvedValue([
+					{ id: 'f1', homeProject: { id: 'p-ops', name: 'Ops', type: 'team' } },
+				] as never);
+
+				await expect(
+					service.promote(ENVIRONMENT_ID, actor, {
+						canExportVariableValues: true,
+						commitMessage: 'sync projects',
+					}),
+				).rejects.toThrow(
+					'folder "Payments" (f1) is in project "Ops" here and in project "Billing" on the branch',
+				);
+				expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			});
+
+			it('promotes when branch workflows stay in their project or are gone', async () => {
+				// w1 stays in Billing. w2 has no owner any more, so the promote removes it.
+				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+					new Map([['w1', mock<Project>({ id: 'p-billing', type: 'team', name: 'Billing' })]]),
 				);
 
 				await service.promote(ENVIRONMENT_ID, actor, {

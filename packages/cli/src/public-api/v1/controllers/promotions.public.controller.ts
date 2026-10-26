@@ -498,7 +498,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:push')
 	@ApiSummary('Promote all team projects')
 	@ApiDescription(
-		'Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. A workflow on the branch that moved to a personal project is refused with 400, because the destination would delete it. Requires a connected Promote environment with instance scope. The API key also needs variable:list when the workflows reference variables.',
+		"Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. A workflow on the branch that moved to a personal project is refused with 400, because the destination would delete it. A workflow or folder on the branch that moved to another team project is refused with 400, because Apply can't move it between projects. Requires a connected Promote environment with instance scope. The API key also needs variable:list when the workflows reference variables.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotePackageResultDto)

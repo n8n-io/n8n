@@ -1,8 +1,6 @@
 import type { ApplyCheckResult } from '@n8n/api-types';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { PackageDirectoryInventory } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
-
 export type CrossProjectMove = ApplyCheckResult['movedWorkflows'][number];
 
 export type CrossProjectMoves = {
@@ -15,10 +13,18 @@ export type CrossProjectMoves = {
 /** A project on this instance that holds a workflow or folder of the package. */
 export type InstanceProject = { id: string; name: string; type: string };
 
-type Inventory = Pick<PackageDirectoryInventory, 'projects' | 'workflows' | 'folders'>;
+/** Where the package holds each workflow and folder. The Apply inventory and the branch manifest both fit. */
+type Inventory = {
+	projects: ReadonlyArray<{ id: string; name: string }>;
+	workflows: ReadonlyArray<{ id: string; name: string; projectId: string }>;
+	folders: ReadonlyArray<{ projectId: string; folder: { id: string; name: string } }>;
+};
 
 /** The import of a project reads only the folders that the package holds under it. */
-export function foldersInScope(folders: Inventory['folders'], projectId?: string) {
+export function foldersInScope<F extends Inventory['folders'][number]>(
+	folders: readonly F[],
+	projectId?: string,
+): F[] {
 	return folders.filter((entry) => projectId === undefined || entry.projectId === projectId);
 }
 
@@ -86,25 +92,29 @@ export function crossProjectMoves({
 	};
 }
 
-/**
- * Names each item and both of its projects, so the user knows what to move and where. An item
- * can't move here to a branch project that does not exist here yet, so then only the source fix
- * is offered.
- */
-export function describeCrossProjectMoves({
-	workflows,
-	folders,
-	personalProjectIds,
-}: CrossProjectMoves): string {
+/** One line per item, with both of its projects. A personal project is never named. */
+function describeItems({ workflows, folders, personalProjectIds }: CrossProjectMoves): string {
 	const here = ({ id, name }: CrossProjectMove['instanceProject']) =>
 		personalProjectIds.has(id) ? 'a personal project' : `project "${name}"`;
 	const describe =
 		(type: 'workflow' | 'folder') =>
 		({ id, name, project, projectExists, instanceProject }: CrossProjectMove) =>
 			`${type} "${name}" (${id}) is in ${here(instanceProject)} here and in project "${project.name}" on the branch${projectExists ? '' : `, and project "${project.name}" does not exist on this instance yet`}`;
-	const moved = [...workflows.map(describe('workflow')), ...folders.map(describe('folder'))];
-	const remedy = [...workflows, ...folders].every(({ projectExists }) => projectExists)
+	return [...workflows.map(describe('workflow')), ...folders.map(describe('folder'))].join('; ');
+}
+
+/**
+ * The Apply refusal. An item can't move here to a branch project that does not exist here yet, so
+ * then only the source fix is offered.
+ */
+export function describeCrossProjectMoves(moves: CrossProjectMoves): string {
+	const remedy = [...moves.workflows, ...moves.folders].every(({ projectExists }) => projectExists)
 		? 'Move them on this instance to match the branch, or move them back on the source instance and promote again.'
 		: 'Move them back on the source instance, then promote again.';
-	return `Apply can't move workflows or folders between projects: ${moved.join('; ')}. ${remedy}`;
+	return `Apply can't move workflows or folders between projects: ${describeItems(moves)}. ${remedy}`;
+}
+
+/** The promote refusal: the branch would hold a move that Apply then refuses. */
+export function describePromotedMoves(moves: CrossProjectMoves): string {
+	return `Promote can't move workflows or folders between projects, because Apply would refuse them on the destination: ${describeItems(moves)}. Move them back on this instance, then promote again.`;
 }
