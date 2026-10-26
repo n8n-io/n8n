@@ -17,8 +17,8 @@
 	 * @typedef {MethodRef & {
 	 *   point: string, kind?: string, arm?: string, once?: boolean, scope?: MethodRef,
 	 *   where?: Array<{ path: string, equals?: unknown, truthy?: boolean }>,
-	 *   detail?: Record<string, string>, phase?: string, returns?: unknown, async?: boolean,
-	 *   preserve?: string[], message?: string, roles?: string[], lazy?: boolean, installed?: boolean
+	 *   detail?: Record<string, string>, phase?: string, returns?: unknown,
+	 *   preserve?: string[], roles?: string[], lazy?: boolean, installed?: boolean
 	 * }} Hook
 	 * @typedef {{ args: unknown[], this: unknown, scope?: any, result?: unknown }} Context
 	 */
@@ -128,7 +128,7 @@
 	for (const hook of hooks) {
 		hook.kind = hook.kind || 'pause';
 		hook.arm = hook.arm || (hook.kind === 'observe' ? 'always' : 'file');
-		hook.once = hook.once ?? true;
+		hook.once = hook.once ?? hook.kind !== 'drop';
 		if (hook.scope && !scopes.has(scopeKey(hook.scope))) {
 			scopes.set(scopeKey(hook.scope), { ...hook.scope, storage: new AsyncLocalStorage() });
 		}
@@ -166,6 +166,20 @@
 				);
 				return result;
 			}
+			if (hook.kind === 'fault' && hook.phase !== 'before') {
+				const result = original.apply(this, args);
+				/** @type {any} */
+				const failed = Promise.resolve(result).then((value) => {
+					const after = { ...ctx, result: value };
+					if (!shouldFire(hook, after)) return value;
+					hit(hook, after);
+					throw new Error(`test-rig fault at ${hook.point}`);
+				});
+				for (const prop of hook.preserve || []) {
+					if (typeof result?.[prop] === 'function') failed[prop] = result[prop].bind(result);
+				}
+				return failed;
+			}
 			if (hook.phase === 'after') {
 				const result = original.apply(this, args);
 				const settle = (/** @type {unknown} */ value) => {
@@ -176,6 +190,14 @@
 				return typeof result?.then === 'function' ? result.then(settle) : settle(result);
 			}
 			if (!shouldFire(hook, ctx)) return original.apply(this, args);
+			if (hook.kind === 'drop') {
+				hit(hook, ctx);
+				return Promise.resolve(hook.returns);
+			}
+			if (hook.kind === 'fault') {
+				hit(hook, ctx);
+				return Promise.reject(new Error(`test-rig fault at ${hook.point}`));
+			}
 			return waitRelease(hook, hit(hook, ctx)).then(() => original.apply(this, args));
 		};
 	}

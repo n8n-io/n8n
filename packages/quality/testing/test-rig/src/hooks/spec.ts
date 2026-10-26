@@ -3,6 +3,11 @@ import { z } from 'zod';
 /** Compiled files the hooks patch, as path suffixes inside the n8n image. */
 export const FILES = {
 	jobProcessor: 'n8n/dist/scaling/job-processor.js',
+	taskRequester: 'n8n/dist/task-runners/task-managers/task-requester.js',
+	taskBroker: 'n8n/dist/task-runners/task-broker/task-broker.service.js',
+	workflowExecute: 'n8n-core/dist/execution-engine/workflow-execute.js',
+	bullJob: 'bull/lib/job.js',
+	bullScripts: 'bull/lib/scripts.js',
 } as const;
 
 const ROLES = ['main', 'worker'] as const;
@@ -17,7 +22,7 @@ const methodRef = z.object({
 export const hookSpecSchema = methodRef
 	.extend({
 		point: z.string().regex(/^[\w-]+$/, 'letters, digits, _ and - only'),
-		kind: z.enum(['pause', 'observe']).optional(),
+		kind: z.enum(['pause', 'observe', 'fault', 'drop']).optional(),
 		arm: z.enum(['file', 'always']).optional(),
 		once: z.boolean().optional(),
 		scope: methodRef.optional(),
@@ -38,6 +43,8 @@ export const hookSpecSchema = methodRef
 			.optional(),
 		detail: z.record(z.string()).optional(),
 		phase: z.enum(['before', 'after']).optional(),
+		returns: z.unknown().optional(),
+		preserve: z.array(z.string()).optional(),
 		roles: z.array(z.enum(ROLES)).min(1).optional(),
 		/** Set when the patched file loads only on first use, so the install check skips it. */
 		lazy: z.boolean().optional(),
