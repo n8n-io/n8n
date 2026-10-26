@@ -30,7 +30,7 @@ requestBody:
             type: string
             minLength: 1
             maxLength: 1000
-            description: Message for the promotion commit. A default is used when omitted.
+            description: Message for the promotion commit. If you omit it, the commit uses a generated message.
         required:
           - workflowIds
         additionalProperties: false

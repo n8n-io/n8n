@@ -24,7 +24,7 @@ export default class PromotionEnvironmentPromoteSelection extends BaseCommand {
 		}),
 		message: Flags.string({
 			char: 'm',
-			description: 'Commit message. A default is used when omitted.',
+			description: 'Commit message. If you omit it, the commit uses a generated message.',
 		}),
 	};
 

@@ -429,7 +429,7 @@ export class N8nClient {
 		return await this.del<undefined>(`/promotions/environments/${id}/projects/${projectId}`);
 	}
 
-	async promotePackage(id: string, body: { commitMessage: string; force?: boolean }) {
+	async promotePackage(id: string, body: { commitMessage?: string; force?: boolean }) {
 		return await this.post<PromotePackageResult>(`/promotions/environments/${id}/promote`, body);
 	}
 

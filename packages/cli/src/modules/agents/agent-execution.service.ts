@@ -724,6 +724,18 @@ export class AgentExecutionService {
 	}
 
 	/**
+	 * Delete the SDK-memory threads of an agent's sessions. Call before the agent
+	 * is removed: the cascade then deletes the execution threads that list them.
+	 */
+	async deleteMemoryThreadsForAgent(agentId: string): Promise<void> {
+		const memory = this.n8nMemory.getImplementation(agentId);
+		const threadIds = await this.agentExecutionThreadRepository.findIdsByAgentId(agentId);
+		for (const batch of chunk(threadIds, AgentExecutionService.logDeletionBatchSize)) {
+			await memory.deleteThreads(batch);
+		}
+	}
+
+	/**
 	 * Get paginated execution threads for an agent.
 	 * Each thread is annotated with the first non-empty user message for preview
 	 * and the earliest non-null execution source for channel origin.
