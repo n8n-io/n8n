@@ -1,7 +1,7 @@
 import type { SelfHealingResultDetail } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import {
 	fetchResultWorkflow,
@@ -11,6 +11,10 @@ import {
 	type SelfHealingSelection,
 } from './selfHealingResults.api';
 
+function resultKey({ projectId, workflowId, id }: SelfHealingSelection) {
+	return `${projectId}/${workflowId}/${id}`;
+}
+
 export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', () => {
 	const rootStore = useRootStore();
 	const selection = ref<SelfHealingSelection | null>(null);
@@ -19,7 +23,10 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 	const loading = ref(false);
 	const error = ref<unknown>(null);
 	const workflowError = ref<unknown>(null);
-	const pendingAction = ref<SelfHealingResultAction | null>(null);
+	const pendingActions = ref(new Map<string, SelfHealingResultAction>());
+	const pendingAction = computed(() =>
+		selection.value ? (pendingActions.value.get(resultKey(selection.value)) ?? null) : null,
+	);
 	let detailRequestSequence = 0;
 	let workflowRequestSequence = 0;
 
@@ -102,6 +109,18 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 		}
 	}
 
+	function beginAction(target: SelfHealingSelection, action: SelfHealingResultAction) {
+		const key = resultKey(target);
+		if (pendingActions.value.has(key)) return false;
+
+		pendingActions.value.set(key, action);
+		return true;
+	}
+
+	function endAction(target: SelfHealingSelection) {
+		pendingActions.value.delete(resultKey(target));
+	}
+
 	async function select(target: SelfHealingSelection) {
 		detailRequestSequence++;
 		workflowRequestSequence++;
@@ -126,6 +145,8 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 		refreshDetail,
 		refreshWorkflow,
 		acceptResult,
+		beginAction,
+		endAction,
 		setError,
 		isSelected,
 	};

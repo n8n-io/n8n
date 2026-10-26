@@ -39,6 +39,12 @@ export type SelfHealingChatInput = Pick<
 	'resultId' | 'workflowId' | 'report' | 'outcome' | 'reviewState' | 'execution'
 >;
 
+/**
+ * `started` means the chat opened and the report is on its way, so do not start it again.
+ * `busy` and `failed` mean no chat started, so the caller can offer another try.
+ */
+export type SelfHealingChatStartOutcome = 'started' | 'busy' | 'failed' | 'unavailable';
+
 export interface SelfHealingChatHandoff {
 	available: ComputedRef<boolean>;
 	/**
@@ -47,5 +53,5 @@ export interface SelfHealingChatHandoff {
 	 */
 	resolveProjectId(): Promise<string | null>;
 	/** Opens a chat in the project and sends the report through the normal Assistant handoff. */
-	start(projectId: string, input: SelfHealingChatInput): Promise<void>;
+	start(projectId: string, input: SelfHealingChatInput): Promise<SelfHealingChatStartOutcome>;
 }

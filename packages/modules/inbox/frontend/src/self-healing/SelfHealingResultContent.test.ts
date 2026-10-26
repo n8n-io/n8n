@@ -96,7 +96,7 @@ describe('SelfHealingResultContent', () => {
 			within(menu)
 				.getAllByRole('menuitem')
 				.map((item) => item.textContent?.trim()),
-		).toEqual(['Apply and publish', 'Continue with Assistant', 'Continue with editor']);
+		).toEqual(['Apply and publish', 'Continue with Assistant', 'Continue with Editor']);
 		expect(menu).toHaveTextContent(
 			'Continuing saves the changes to the workflow draft. It does not publish them.',
 		);
@@ -108,7 +108,7 @@ describe('SelfHealingResultContent', () => {
 
 	it.each([
 		['Continue with Assistant', 'chat'],
-		['Continue with editor', 'editor'],
+		['Continue with Editor', 'editor'],
 	])('emits %s from the Review menu', async (name, action) => {
 		const { emitted } = renderContent();
 
@@ -127,7 +127,7 @@ describe('SelfHealingResultContent', () => {
 			'data-disabled',
 		);
 		expect(
-			within(menu).getByRole('menuitem', { name: 'Continue with editor' }),
+			within(menu).getByRole('menuitem', { name: 'Continue with Editor' }),
 		).not.toHaveAttribute('data-disabled');
 		expect(menu).toHaveTextContent('Publish permission is required to apply and publish.');
 	});
@@ -172,9 +172,9 @@ describe('SelfHealingResultContent', () => {
 				within(menu)
 					.getAllByRole('menuitem')
 					.map((item) => item.textContent?.trim()),
-			).toEqual(['Assistant', 'Editor']);
-			expect(menu.textContent?.includes('Continuing saves the changes')).toBe(notice);
-			await userEvent.click(within(menu).getByRole('menuitem', { name: 'Editor' }));
+			).toEqual(['Continue with Assistant', 'Continue with Editor']);
+			expect(menu.textContent?.includes('Continuing')).toBe(notice);
+			await userEvent.click(within(menu).getByRole('menuitem', { name: 'Continue with Editor' }));
 			await userEvent.click(getByRole('button', { name: 'Discard and close' }));
 
 			expect(emitted('action')).toEqual([['editor'], ['dismiss']]);
@@ -226,12 +226,12 @@ describe('SelfHealingResultContent', () => {
 
 		expect(getByRole('button', { name: 'Discard and close' })).toBeEnabled();
 		const menu = await openMenu('Continue in…');
-		expect(within(menu).getByRole('menuitem', { name: 'Assistant' })).toHaveAttribute(
+		expect(within(menu).getByRole('menuitem', { name: 'Continue with Assistant' })).toHaveAttribute(
 			'data-disabled',
 		);
-		expect(within(menu).getByRole('menuitem', { name: 'Editor' })).not.toHaveAttribute(
-			'data-disabled',
-		);
+		expect(
+			within(menu).getByRole('menuitem', { name: 'Continue with Editor' }),
+		).not.toHaveAttribute('data-disabled');
 		expect(menu).toHaveTextContent(
 			'Assistant is unavailable. You can still continue in the editor.',
 		);
@@ -306,7 +306,7 @@ describe('SelfHealingResultContent', () => {
 
 		expect(queryByTestId('self-healing-activity-panel')).not.toBeInTheDocument();
 		const menu = await openMenu('Continue in…');
-		await userEvent.click(within(menu).getByRole('menuitem', { name: 'Assistant' }));
+		await userEvent.click(within(menu).getByRole('menuitem', { name: 'Continue with Assistant' }));
 		expect(emitted('action')).toEqual([['chat']]);
 	});
 

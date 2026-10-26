@@ -79,8 +79,9 @@ it('returns no chat project when the personal project cannot load', async () => 
 });
 
 it('starts the normal chat handoff with the full report and execution attachment', async () => {
+	mocks.startThread.mockResolvedValue('started');
 	const handoff = createHandoff();
-	await handoff.start('personal-project', result);
+	await expect(handoff.start('personal-project', result)).resolves.toBe('started');
 
 	expect(mocks.startThread).toHaveBeenCalledExactlyOnceWith(
 		'personal-project',
@@ -112,11 +113,21 @@ it('omits an unavailable execution from the workflow attachment', async () => {
 	expect(mocks.startThread.mock.calls[0]?.[4]).toEqual([{ type: 'workflow', id: 'workflow-1' }]);
 });
 
+it.each([
+	{ handoff: 'busy', outcome: 'busy' },
+	{ handoff: 'failed', outcome: 'failed' },
+	{ handoff: 'setup', outcome: 'unavailable' },
+] as const)('reports a $handoff handoff as $outcome', async ({ handoff, outcome }) => {
+	mocks.startThread.mockResolvedValue(handoff);
+
+	await expect(createHandoff().start('personal-project', result)).resolves.toBe(outcome);
+});
+
 it('requires the Assistant to be ready before starting a conversation', async () => {
 	const handoff = createHandoff();
 	expect(handoff.available.value).toBe(true);
 	ready.value = false;
-	await handoff.start('personal-project', result);
+	await expect(handoff.start('personal-project', result)).resolves.toBe('unavailable');
 
 	expect(handoff.available.value).toBe(false);
 	expect(mocks.startThread).not.toHaveBeenCalled();

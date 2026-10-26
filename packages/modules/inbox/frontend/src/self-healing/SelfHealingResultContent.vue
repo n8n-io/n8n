@@ -84,22 +84,14 @@ const menuItems = computed<Array<DropdownMenuItemProps<MenuAction>>>(() => {
 	const continuation: Array<DropdownMenuItemProps<MenuAction>> = [
 		{
 			id: 'chat',
-			label: i18n.baseText(
-				isFixReady.value
-					? 'inbox.selfHealing.action.continueWithAssistant'
-					: 'inbox.selfHealing.action.assistant',
-			),
+			label: i18n.baseText('inbox.selfHealing.action.continueWithAssistant'),
 			icon: { type: 'icon', value: 'message-circle-plus' },
 			disabled: !props.canChat,
 			divided: isFixReady.value,
 		},
 		{
 			id: 'editor',
-			label: i18n.baseText(
-				isFixReady.value
-					? 'inbox.selfHealing.action.continueWithEditor'
-					: 'inbox.selfHealing.action.editor',
-			),
+			label: i18n.baseText('inbox.selfHealing.action.continueWithEditor'),
 			icon: { type: 'icon', value: 'square-pen' },
 		},
 	];
@@ -334,7 +326,7 @@ function onTabChange(tab: string) {
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 	max-width: 16rem;
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	padding: 0 var(--spacing--xs) var(--spacing--xs);
 }
 
 .detailBody {

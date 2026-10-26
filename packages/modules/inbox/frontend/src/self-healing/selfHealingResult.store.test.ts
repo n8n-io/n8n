@@ -65,3 +65,22 @@ it('keeps the report available when the workflow metadata request fails', async 
 	expect(store.workflowError).toBe(error);
 	expect(store.error).toBeNull();
 });
+
+it('tracks a pending action for each result', async () => {
+	const store = useSelfHealingResultStore();
+	const second = { ...resultSelection, id: 'other' };
+	await store.select(resultSelection);
+
+	expect(store.beginAction(resultSelection, 'editor')).toBe(true);
+	expect(store.beginAction(resultSelection, 'dismiss')).toBe(false);
+	expect(store.pendingAction).toBe('editor');
+
+	await store.select(second);
+	expect(store.pendingAction).toBeNull();
+	expect(store.beginAction(second, 'dismiss')).toBe(true);
+
+	store.endAction(resultSelection);
+	expect(store.pendingAction).toBe('dismiss');
+	await store.select(resultSelection);
+	expect(store.pendingAction).toBeNull();
+});

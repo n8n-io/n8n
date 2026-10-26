@@ -13,9 +13,11 @@ Assistant details live in `src/self-healing`. They show saved reports, workflow
 changes, review activity, and usage. Result actions use the existing self-healing
 API. Actions are available only while a result is open.
 Fix ready shows Discard and close beside a Review menu: Apply and publish,
-Continue with Assistant, and Continue with editor.
-Needs attention shows Discard and close beside a Continue in… menu with Assistant
-and Editor. It has no publish action.
+Continue with Assistant, and Continue with Editor.
+Needs attention shows Discard and close beside a Continue in… menu with Continue
+with Assistant and Continue with Editor. It has no publish action.
+When a result has a suggestion, both menus show a note that tells what
+continuing does.
 Could not fix closes automatically and shows no actions.
 Continuation applies a suggestion to the workflow draft, or dismisses a result
 without one. It does not publish. The first successful action closes the result.
