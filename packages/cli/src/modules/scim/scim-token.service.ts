@@ -1,5 +1,6 @@
 import { type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import { randomUUID } from 'crypto';
 
 import { JwtService, UrlService } from '@n8n/backend-services';
@@ -62,7 +63,8 @@ export class ScimTokenService {
 
 	/**
 	 * Verify a SCIM API key. The key must be a valid JWT, exist in the
-	 * database, and belong to a user that still exists and is not disabled.
+	 * database, and belong to a user that still exists, is not disabled and
+	 * still holds `scim:manage`.
 	 */
 	async verifyApiKey(apiKey: string, ctx: OperationContext = {}): Promise<boolean> {
 		try {
@@ -77,7 +79,16 @@ export class ScimTokenService {
 		// invalid token would tell the IdP to treat its credential as revoked.
 		const key = await this.apiKeyRepository.findByKey(apiKey, ctx);
 
-		return !!key && !!key.user && !key.user.disabled;
+		if (!key?.user || key.user.disabled) return false;
+
+		// The scope is checked on each request, not only when the key is made,
+		// because the user can lose it later through any kind of role change.
+		return this.canHoldToken(key.user);
+	}
+
+	/** Whether the user's global role still allows a SCIM token. */
+	canHoldToken(user: User): boolean {
+		return hasGlobalScope(user, 'scim:manage');
 	}
 
 	/**

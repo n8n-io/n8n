@@ -96,6 +96,9 @@ onBeforeUnmount(() => {
 
 const ICONS: Record<PromotionDirection, IconName> = { apply: 'arrow-down', promote: 'arrow-up' };
 
+// The tooltip trigger is the span or link itself (`as-child`), so keyboard focus opens it.
+// A blocked badge only informs. Its span takes the focus and the hover, because a disabled
+// button does neither, and the tooltip gives the reason.
 const badges = computed(() => {
 	const projectId = currentProjectId.value;
 	if (!projectId) return [];
@@ -104,17 +107,23 @@ const badges = computed(() => {
 		{ direction: 'promote' as const, show: showPromote.value, changes: promote },
 	];
 	return entries
-		.filter(({ show, changes }) => show && (changes.failed.value || changes.changeCount.value > 0))
+		.filter(
+			({ show, changes }) =>
+				show && (changes.failed.value || changes.changeCount.value > 0 || !!changes.blocker.value),
+		)
 		.map(({ direction, changes }) => ({
 			direction,
 			failed: changes.failed.value,
+			blocked: !!changes.blocker.value,
 			changeCount: changes.changeCount.value,
 			label: changes.failed.value
 				? i18n.baseText(`promotions.preview.badge.failed.${direction}`)
-				: i18n.baseText(`promotions.preview.badge.${direction}`, {
-						adjustToNumber: changes.changeCount.value,
-						interpolate: { count: String(changes.changeCount.value) },
-					}),
+				: changes.blocker.value
+					? i18n.baseText('promotions.preview.badge.blocked.promote')
+					: i18n.baseText(`promotions.preview.badge.${direction}`, {
+							adjustToNumber: changes.changeCount.value,
+							interpolate: { count: String(changes.changeCount.value) },
+						}),
 			to: { name: PROMOTION_PREVIEW_VIEWS[direction], params: { projectId } },
 		}));
 });
@@ -122,8 +131,28 @@ const badges = computed(() => {
 
 <template>
 	<div v-if="badges.length > 0" :class="$style.badges" data-test-id="promotion-preview-badges">
-		<N8nTooltip v-for="badge in badges" :key="badge.direction" :content="badge.label">
+		<N8nTooltip v-for="badge in badges" :key="badge.direction" :content="badge.label" as-child>
+			<span
+				v-if="badge.blocked"
+				role="button"
+				tabindex="0"
+				aria-disabled="true"
+				:aria-label="badge.label"
+				:class="[$style.link, $style.disabled]"
+				:data-test-id="`promotion-preview-badge-${badge.direction}`"
+			>
+				<N8nBadge
+					:class="$style.inert"
+					variant="subtle"
+					size="small"
+					:leading-icon="ICONS[badge.direction]"
+					clickable
+					disabled
+					aria-hidden="true"
+				/>
+			</span>
 			<RouterLink
+				v-else
 				:to="badge.to"
 				:aria-label="badge.label"
 				:class="$style.link"
@@ -134,7 +163,7 @@ const badges = computed(() => {
 					size="small"
 					:leading-icon="badge.failed ? 'circle-alert' : ICONS[badge.direction]"
 				>
-					<template v-if="!badge.failed">{{ badge.changeCount }}</template>
+					<template v-if="!badge.failed" #default>{{ badge.changeCount }}</template>
 				</N8nBadge>
 			</RouterLink>
 		</N8nTooltip>
@@ -157,5 +186,14 @@ const badges = computed(() => {
 		outline: var(--focus--border-width) solid var(--focus--outline-color);
 		outline-offset: var(--focus--border-width);
 	}
+}
+
+.disabled {
+	cursor: not-allowed;
+}
+
+/* The disabled badge swallows pointer events, so the span around it gets them. */
+.inert {
+	pointer-events: none;
 }
 </style>

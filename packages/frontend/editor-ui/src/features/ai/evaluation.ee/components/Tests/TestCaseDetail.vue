@@ -287,7 +287,6 @@ async function handleRun() {
 			</div>
 			<N8nActionDropdown
 				:items="caseMenuItems"
-				activator-icon="ellipsis-vertical"
 				activator-size="small"
 				data-test-id="tests-detail-menu"
 				@select="onCaseMenu"

@@ -8,7 +8,7 @@ import type {
 	ModelConfig,
 	RetrievedEpisodicMemoryEntry,
 } from '../../types';
-import { getModelIdString } from '../../utils/model';
+import { getCatalogModelId } from '../../utils/model';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { createModel } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';
@@ -79,7 +79,8 @@ export function createEpisodicMemoryReflectFn(
 		return {
 			reflection: response.output,
 			usage: toTokenUsage(response.usage, response.finalStep.providerMetadata),
-			model: getModelIdString(model),
+			// The host prices side calls by this id, so report the model a deployment serves.
+			model: getCatalogModelId(model),
 		};
 	};
 }
