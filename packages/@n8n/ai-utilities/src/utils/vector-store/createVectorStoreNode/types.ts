@@ -50,7 +50,8 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 	/**
 	 * Optional function called once before any documents are inserted.
 	 * Use this for one-time setup operations like clearing an index.
-	 * Only called for node version 1.1+ where batch processing is used.
+	 * Only called for node version 1.1+ where batch processing is used,
+	 * and only when the insert has at least one document.
 	 */
 	beforeInsert?: (
 		context: IExecuteFunctions | ISupplyDataFunctions,

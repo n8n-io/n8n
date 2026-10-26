@@ -175,6 +175,46 @@ describe('handleInsertOperation', () => {
 		expect(logAiEvent).toHaveBeenCalledTimes(1);
 	});
 
+	it('should call beforeInsert once before the batches', async () => {
+		const callOrder: string[] = [];
+		mockArgs.beforeInsert = vi.fn().mockImplementation(async () => {
+			callOrder.push('beforeInsert');
+		});
+		vi.mocked(mockArgs.populateVectorStore).mockImplementation(async () => {
+			callOrder.push('populateVectorStore');
+		});
+		mockContext.getNodeParameter.mockImplementation(createNodeParameterMock(1));
+
+		await handleInsertOperation(mockContext, mockArgs, mockEmbeddings);
+
+		expect(callOrder).toEqual([
+			'beforeInsert',
+			'populateVectorStore',
+			'populateVectorStore',
+			'populateVectorStore',
+		]);
+	});
+
+	it('should not call beforeInsert when there are no documents to insert', async () => {
+		mockArgs.beforeInsert = vi.fn().mockResolvedValue(undefined);
+		mockContext.getInputData.mockReturnValue([]);
+
+		await handleInsertOperation(mockContext, mockArgs, mockEmbeddings);
+
+		expect(mockArgs.beforeInsert).not.toHaveBeenCalled();
+		expect(mockArgs.populateVectorStore).not.toHaveBeenCalled();
+	});
+
+	it('should not call beforeInsert when execution is cancelled before the first item', async () => {
+		mockArgs.beforeInsert = vi.fn().mockResolvedValue(undefined);
+		mockContext.getExecutionCancelSignal.mockReturnValue(createMockAbortSignal(true));
+
+		await handleInsertOperation(mockContext, mockArgs, mockEmbeddings);
+
+		expect(mockArgs.beforeInsert).not.toHaveBeenCalled();
+		expect(mockArgs.populateVectorStore).not.toHaveBeenCalled();
+	});
+
 	it('should handle different document input types', async () => {
 		// Test with Binary Loader
 		const mockBinaryLoader = mock<N8nBinaryLoader>();
