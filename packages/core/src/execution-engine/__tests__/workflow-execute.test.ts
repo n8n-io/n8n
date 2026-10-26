@@ -112,6 +112,76 @@ describe('WorkflowExecute', () => {
 			expect(result.finished).toBe(true);
 			expect(runNodeSpy).toHaveBeenCalledTimes(1);
 		});
+
+		describe('after the execution is cancelled', () => {
+			const setup = (nodeOverrides: Partial<INode> = {}) => {
+				const retryNode: INode = {
+					...createNodeData({ name: 'retryNode' }),
+					retryOnFail: true,
+					maxTries: 3,
+					waitBetweenTries: 1,
+					...nodeOverrides,
+				};
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [retryNode],
+					connections: {},
+					active: false,
+					nodeTypes,
+				});
+				const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+				const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+				return { workflowExecute, workflow, retryNode };
+			};
+
+			it('should not retry a node that throws', async () => {
+				const { workflowExecute, workflow, retryNode } = setup();
+				let execution: ReturnType<WorkflowExecute['run']> | undefined;
+				const runNodeSpy = vi.spyOn(workflowExecute, 'runNode').mockImplementation(async () => {
+					execution!.cancel();
+					throw new Error('aborted');
+				});
+
+				execution = workflowExecute.run({ workflow, startNode: retryNode });
+				const result = await execution;
+
+				expect(runNodeSpy).toHaveBeenCalledTimes(1);
+				expect(result.data.resultData.error?.message).toBe('aborted');
+			});
+
+			it('should not retry a node that continues on error', async () => {
+				const { workflowExecute, workflow, retryNode } = setup({
+					onError: 'continueRegularOutput',
+				});
+				let execution: ReturnType<WorkflowExecute['run']> | undefined;
+				const runNodeSpy = vi.spyOn(workflowExecute, 'runNode').mockImplementation(async () => {
+					execution!.cancel();
+					return { data: [[{ json: { error: 'aborted' } }]] };
+				});
+
+				execution = workflowExecute.run({ workflow, startNode: retryNode });
+				await execution;
+
+				expect(runNodeSpy).toHaveBeenCalledTimes(1);
+			});
+
+			it('should stop waiting between tries', async () => {
+				const { workflowExecute, workflow, retryNode } = setup({ waitBetweenTries: 5000 });
+				let execution: ReturnType<WorkflowExecute['run']> | undefined;
+				const runNodeSpy = vi.spyOn(workflowExecute, 'runNode').mockImplementation(async () => {
+					setTimeout(() => execution!.cancel(), 10);
+					throw new Error('failed');
+				});
+
+				const startedAt = Date.now();
+				execution = workflowExecute.run({ workflow, startNode: retryNode });
+				await execution;
+
+				expect(runNodeSpy).toHaveBeenCalledTimes(1);
+				expect(Date.now() - startedAt).toBeLessThan(1000);
+			});
+		});
 	});
 
 	describe('v0 execution order', () => {
@@ -2964,6 +3034,31 @@ describe('WorkflowExecute', () => {
 			expect(result?.[0][0].pairedItem).toBeUndefined();
 			expect(result?.[0][1].pairedItem).toBeUndefined();
 			expect(result?.[0][2].pairedItem).toBeUndefined();
+		});
+
+		test('should fill empty output slots with empty arrays', () => {
+			// Execute Sub-workflow < v1.3 with "Continue" on error writes successful items to
+			// output 0 and the error for item i to output i, so earlier slots stay empty.
+			const nodeOutput: INodeExecutionData[][] = [];
+			nodeOutput[0] = [
+				{ json: { n: 1 }, pairedItem: { item: 0 } },
+				{ json: { n: 2 }, pairedItem: { item: 1 } },
+			];
+			nodeOutput[2] = [{ json: { error: 'Item 3 failed' }, pairedItem: { item: 2 } }];
+			const executionData = mock<IExecuteData>({
+				data: { main: [[{ json: { n: 1 } }, { json: { n: 2 } }, { json: { n: 3 } }]] },
+			});
+
+			const result = workflowExecute.assignPairedItems(nodeOutput, executionData);
+
+			expect(result).toEqual([
+				[
+					{ json: { n: 1 }, pairedItem: { item: 0 } },
+					{ json: { n: 2 }, pairedItem: { item: 1 } },
+				],
+				[],
+				[{ json: { error: 'Item 3 failed' }, pairedItem: { item: 2 } }],
+			]);
 		});
 	});
 

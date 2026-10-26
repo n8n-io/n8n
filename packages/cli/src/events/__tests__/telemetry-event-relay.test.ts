@@ -400,6 +400,21 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it.each([
+			['v2', TELEMETRY_EVENT.PROMOTIONS.USER_SWITCHED_TO_ENVIRONMENTS_V2],
+			['v1', TELEMETRY_EVENT.PROMOTIONS.USER_SWITCHED_BACK_TO_ENVIRONMENTS_V1],
+		] as const)(
+			'should track the switch to %s on `source-control-environments-version-switched` event',
+			(version, entry) => {
+				eventService.emit('source-control-environments-version-switched', {
+					userId: 'user123',
+					version,
+				});
+
+				expect(telemetry.track).toHaveBeenCalledWith(entry, { user_id: 'user123' });
+			},
+		);
+
 		it('should track on `source-control-user-started-pull-ui` event', () => {
 			const event: RelayEventMap['source-control-user-started-pull-ui'] = {
 				workflowUpdates: 5,

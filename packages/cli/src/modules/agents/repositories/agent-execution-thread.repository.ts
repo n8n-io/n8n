@@ -438,6 +438,26 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		});
 	}
 
+	/**
+	 * Top-level private sessions of one user with any instance (system) agent,
+	 * in every project, oldest first. It does not check that a provider is
+	 * registered for the agent, so user deletion finds every session.
+	 */
+	async findOwnedSystemAgentSessions(
+		ownerId: string,
+	): Promise<Array<Pick<AgentExecutionThread, 'id' | 'agentId' | 'projectId'>>> {
+		return await this.find({
+			select: ['id', 'agentId', 'projectId'],
+			where: {
+				ownerId,
+				accessScope: 'user',
+				parentThreadId: IsNull(),
+				agent: { scope: 'instance' },
+			},
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
 	/** One top-level private session of a user with an agent. */
 	async findOwnedById(
 		agentId: string,
@@ -531,6 +551,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		const hasMore = threads.length > limit;
 		if (hasMore) threads.pop();
 		return { threads, hasMore };
+	}
+
+	async findIdsByAgentId(agentId: string): Promise<string[]> {
+		const threads = await this.find({ select: { id: true }, where: { agentId } });
+		return threads.map((thread) => thread.id);
 	}
 
 	/** Sessions of an agent last updated before `cutoff`, oldest first, for pruning. */

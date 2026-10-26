@@ -7,7 +7,6 @@ import { ConflictError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
 import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
@@ -87,8 +86,6 @@ describe('AgentRepository', () => {
 	});
 
 	afterEach(async () => {
-		// The rollout keeps the flag it read, so set it back off for the next test.
-		setSkillsHubFlag(false);
 		vi.restoreAllMocks();
 		await agentHistoryRepo.delete({});
 		await agentRepo.delete({});
@@ -166,7 +163,6 @@ describe('AgentRepository', () => {
 		};
 
 		it('rolls back Agent creation with its skill references, then commits one creation on retry', async () => {
-			setSkillsHubFlag(true);
 			const skillRepo = Container.get(SkillRepository);
 			const skillRefs = Container.get(AgentSkillRefsService);
 			const skillId = uuid();
@@ -213,6 +209,7 @@ describe('AgentRepository', () => {
 				),
 				completion,
 				mock<AgentSetupCompletionService>(),
+				mock(),
 			);
 			const user = mock<User>();
 			const id = uuid();
@@ -331,7 +328,6 @@ describe('AgentRepository', () => {
 		});
 
 		it('replaces the complete draft and preserves existing task creation times', async () => {
-			setSkillsHubFlag(true);
 			const agent = await createAgent();
 			await Container.get(SkillRepository).createSkill(
 				{
@@ -924,6 +920,25 @@ describe('AgentRepository', () => {
 			await createPublishedAgent();
 
 			await expect(agentRepo.findPublishedIds([])).resolves.toEqual(new Set());
+		});
+	});
+
+	describe('findSummariesByProjectIds - search', () => {
+		it('matches % and _ in the search as plain text', async () => {
+			const underscore = await createAgent({ name: 'Ops_bot' });
+			const percent = await createAgent({ name: '100% bot' });
+			await createAgent({ name: 'Opsxbot' });
+			await createAgent({ name: '100 bot' });
+
+			const byUnderscore = await agentRepo.findSummariesByProjectIds([projectId], {
+				query: 'ops_',
+			});
+			const byPercent = await agentRepo.findSummariesByProjectIds([projectId], {
+				query: '100%',
+			});
+
+			expect(byUnderscore.map((agent) => agent.id)).toEqual([underscore.id]);
+			expect(byPercent.map((agent) => agent.id)).toEqual([percent.id]);
 		});
 	});
 

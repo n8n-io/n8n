@@ -2,10 +2,30 @@ import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 
-@BackendModule({ name: 'instance-ai', instanceTypes: ['main'] })
+@BackendModule({ name: 'instance-ai', instanceTypes: ['main', 'worker', 'webhook'] })
 export class InstanceAiModule implements ModuleInterface {
+	private isMain(): boolean {
+		return Container.get(InstanceSettings).instanceType === 'main';
+	}
+
 	async init() {
+		await import('./self-healing/self-healing-trigger.service.js');
+
+		// Workers and webhook processes only relay eligible failures to main.
+		if (!this.isMain()) return;
+
+		const { WorkflowMutationHooksProxy } = await import('@n8n/backend-services');
+		const { SelfHealingConfigurationService } = await import(
+			'./self-healing/self-healing-configuration.service.js'
+		);
+
+		// Clean up selections after transfers even when self-healing is disabled.
+		Container.get(WorkflowMutationHooksProxy).registerProvider(
+			Container.get(SelfHealingConfigurationService),
+		);
+
 		const { InstanceCredentialBroker } = await import(
 			'@/credentials/instance-credential-broker.js'
 		);
@@ -31,8 +51,12 @@ export class InstanceAiModule implements ModuleInterface {
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 		const { InstanceAiConfig } = await import('@n8n/config');
+		if (Container.get(InstanceAiConfig).evalInstance) {
+			await import('./eval/eval.controller.js');
+		}
 		if (Container.get(InstanceAiConfig).workflowSuggestionsEnabled) {
 			await import('./self-healing/self-healing-results.controller.js');
+			await import('./self-healing/self-healing-configurations.controller.js');
 			const { InboxSourceRegistry } = await import('../inbox/inbox-source.registry.js');
 			const { SelfHealingResultService } = await import(
 				'./self-healing/self-healing-result.service.js'
@@ -47,7 +71,9 @@ export class InstanceAiModule implements ModuleInterface {
 			const { WorkflowSuggestionEventRelay } = await import(
 				'./workflow-suggestions/workflow-suggestion-event-relay.service.js'
 			);
-			Container.get(WorkflowSuggestionEventRelay);
+			Container.get(WorkflowMutationHooksProxy).registerProvider(
+				Container.get(WorkflowSuggestionEventRelay),
+			);
 		}
 
 		// Instantiating the relay registers its `user-deleted` listener, which
@@ -80,6 +106,8 @@ export class InstanceAiModule implements ModuleInterface {
 	}
 
 	async systemTasks() {
+		if (!this.isMain()) return [];
+
 		const { InstanceAiConfig } = await import('@n8n/config');
 		const { SelfHealingReconciliationTask } = await import(
 			'./self-healing/self-healing-reconciliation.task.js'
@@ -93,6 +121,8 @@ export class InstanceAiModule implements ModuleInterface {
 	}
 
 	async settings() {
+		if (!this.isMain()) return {};
+
 		const { GlobalConfig } = await import('@n8n/config');
 		const { InstanceAiService } = await import('./instance-ai.service.js');
 		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service.js');
@@ -115,6 +145,7 @@ export class InstanceAiModule implements ModuleInterface {
 			workflowBuilderAvailable: enabled && sandboxStatus.workflowBuilderAvailable,
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
+			workflowSuggestionsEnabled: globalConfig.instanceAi.workflowSuggestionsEnabled,
 		};
 	}
 
@@ -157,6 +188,18 @@ export class InstanceAiModule implements ModuleInterface {
 			'./self-healing/database/self-healing-investigation.entity.js'
 		);
 
+		const { SelfHealingConfiguration } = await import(
+			'./self-healing/database/self-healing-configuration.entity.js'
+		);
+
+		const { SelfHealingConfigurationWorkflow } = await import(
+			'./self-healing/database/self-healing-configuration-workflow.entity.js'
+		);
+
+		const { SelfHealingConfigurationReviewer } = await import(
+			'./self-healing/database/self-healing-configuration-reviewer.entity.js'
+		);
+
 		return [
 			InstanceAiThread,
 			InstanceAiMessage,
@@ -175,11 +218,16 @@ export class InstanceAiModule implements ModuleInterface {
 			WorkflowSuggestionActivity,
 			SelfHealingResult,
 			SelfHealingInvestigation,
+			SelfHealingConfigurationReviewer,
+			SelfHealingConfigurationWorkflow,
+			SelfHealingConfiguration,
 		];
 	}
 
 	@OnShutdown()
 	async shutdown() {
+		if (!this.isMain()) return;
+
 		const { InstanceAiService } = await import('./instance-ai.service.js');
 		await Container.get(InstanceAiService).shutdown();
 	}

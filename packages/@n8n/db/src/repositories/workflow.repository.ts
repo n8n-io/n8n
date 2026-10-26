@@ -13,7 +13,7 @@ import type {
 	EntityManager,
 } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { PROJECT_ROOT, UnexpectedError, UserError } from 'n8n-workflow';
+import { PROJECT_ROOT, UnexpectedError, UserError, type IWorkflowSettings } from 'n8n-workflow';
 
 import type { ActivityProjectScope } from './activity-event.repository';
 import { BaseRepository } from './base-repository';
@@ -265,6 +265,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			select: { isArchived: true },
 			where: { id: workflowId },
 		});
+	}
+
+	/** The settings of a workflow, or `undefined` when it has none or no longer exists. */
+	async findSettings(workflowId: string): Promise<IWorkflowSettings | undefined> {
+		const workflow = await this.findOne({ select: ['settings'], where: { id: workflowId } });
+		return workflow?.settings;
 	}
 
 	async getAllActiveIds() {
@@ -678,6 +684,35 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			// `activeVersionId` tells the publish check whether the workflow is published.
 			select: ['id', 'name', 'nodes', 'connections', 'activeVersionId'],
 		});
+	}
+
+	/**
+	 * Every workflow in the given folders, with its owner sharing. `withNodes` adds the nodes of
+	 * the draft and of the published version, for policy checks.
+	 */
+	async findInFoldersForTransfer(
+		folderIds: string[],
+		{ withNodes }: { withNodes: boolean },
+	): Promise<WorkflowEntity[]> {
+		const workflows: WorkflowEntity[] = [];
+
+		for (const chunk of chunkIds(folderIds)) {
+			workflows.push(
+				...(await this.find({
+					select: [
+						'id',
+						'name',
+						'activeVersionId',
+						'shared',
+						...(withNodes ? (['nodes', 'activeVersion'] as const) : []),
+					],
+					relations: ['shared', 'shared.project', ...(withNodes ? ['activeVersion'] : [])],
+					where: { parentFolder: { id: In(chunk) } },
+				})),
+			);
+		}
+
+		return workflows;
 	}
 
 	async findOneByAgentToolReference(

@@ -23,9 +23,9 @@ export function targetTasksSkill(): RuntimeSkill {
 			'agent_builder_ask_questions',
 			'agent_builder_patch_config',
 			'agent_builder_write_config',
-			'agent_builder_search_nodes',
-			'agent_builder_get_node_types',
-			'agent_builder_ask_credential',
+			'search_nodes',
+			'get_node_types',
+			'setup_credentials',
 			'agent_builder_publish_agent',
 		],
 		instructions: `\

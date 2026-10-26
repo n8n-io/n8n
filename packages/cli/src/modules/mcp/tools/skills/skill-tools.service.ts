@@ -39,7 +39,7 @@ const searchSkillsInput = {
 } satisfies z.ZodRawShape;
 
 const skillIdInput = {
-	skillId: z.string().min(1).describe('The skill ID from search_skills'),
+	skillId: z.string().min(1).describe('The skill ID from search_n8n_skills'),
 } satisfies z.ZodRawShape;
 
 const createSkillInput = {
@@ -48,6 +48,9 @@ const createSkillInput = {
 		.describe('project: one project can use the skill. instance: every project can use it'),
 	projectId: z.string().min(1).optional().describe('Required when scope is project'),
 	skill: CreateSkillDto.schema.shape.skill,
+	availableToAssistant: CreateSkillDto.schema.shape.availableToAssistant.describe(
+		'Allow the n8n Assistant to use this skill. Defaults to false.',
+	),
 } satisfies z.ZodRawShape;
 
 const updateSkillInput = {
@@ -106,14 +109,17 @@ export class McpSkillToolsService {
 
 	async registerTools(registerTool: RegisterToolFn, user: User): Promise<void> {
 		const assistantSkillsEnabled = await this.assistantSkillsRollout.isEnabled();
-		const { availableToAssistant: _availability, ...updateWithoutAssistant } = updateSkillInput;
+		const { availableToAssistant: _createAvailability, ...createWithoutAssistant } =
+			createSkillInput;
+		const { availableToAssistant: _updateAvailability, ...updateWithoutAssistant } =
+			updateSkillInput;
 		registerTool({
-			name: 'search_skills',
+			name: 'search_n8n_skills',
 			config: {
 				description: 'Search the skills hub. Skills are reusable instructions.',
 				inputSchema: searchSkillsInput,
 				annotations: {
-					title: 'Search Skills',
+					title: 'Search n8n Skills',
 					readOnlyHint: true,
 					destructiveHint: false,
 					idempotentHint: true,
@@ -121,7 +127,7 @@ export class McpSkillToolsService {
 				},
 			},
 			handler: async (input: SearchSkillsInput) =>
-				await this.run(user, 'search_skills', { scope: input.scope }, async () => {
+				await this.run(user, 'search_n8n_skills', { scope: input.scope }, async () => {
 					const { count, data } = await this.skillsApi.list(
 						user,
 						ListSkillsQueryDto.parse({
@@ -161,7 +167,7 @@ export class McpSkillToolsService {
 			name: 'create_skill',
 			config: {
 				description: 'Create a skill in the skills hub.',
-				inputSchema: createSkillInput,
+				inputSchema: assistantSkillsEnabled ? createSkillInput : createWithoutAssistant,
 				annotations: {
 					title: 'Create Skill',
 					readOnlyHint: false,
@@ -179,6 +185,7 @@ export class McpSkillToolsService {
 								scope: input.scope,
 								projectId: input.projectId,
 								skill: input.skill,
+								availableToAssistant: input.availableToAssistant,
 							}),
 							'mcp',
 						);
