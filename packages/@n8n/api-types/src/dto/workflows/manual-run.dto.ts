@@ -64,8 +64,8 @@ export type ManualRunResponse =
 	| { executionId: string }
 	| {
 			waitingForWebhook: true;
-			/** Names of the nodes whose test webhooks the backend registered for this run. */
-			registeredTriggerNodes: string[];
+			/** Test URLs of the Form Triggers the backend registered for this run. */
+			formTestUrls: string[];
 	  };
 
 // Payloads with neither a trigger nor a destination fit none of the cases.

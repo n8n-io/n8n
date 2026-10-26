@@ -173,7 +173,7 @@ describe('chat trigger test webhooks', () => {
 		const listening = await startListening(workflow.id);
 		expect(listening.body.data).toEqual({
 			waitingForWebhook: true,
-			registeredTriggerNodes: [TRIGGER_NAME],
+			formTestUrls: [],
 		});
 
 		const url = `/${webhookTestEndpoint}/${trigger.webhookId}/chat`;
@@ -216,7 +216,7 @@ describe('chat trigger test webhooks', () => {
 		const listening = await startListening(workflow.id);
 		expect(listening.body.data).toEqual({
 			waitingForWebhook: true,
-			registeredTriggerNodes: [TRIGGER_NAME],
+			formTestUrls: [],
 		});
 
 		await webhookAgent
@@ -240,7 +240,7 @@ describe('chat trigger test webhooks', () => {
 		const listening = await startListening(workflow.id);
 		expect(listening.body.data).toEqual({
 			waitingForWebhook: true,
-			registeredTriggerNodes: [TRIGGER_NAME],
+			formTestUrls: [],
 		});
 
 		await webhookAgent
@@ -269,7 +269,7 @@ describe('chat trigger test webhooks', () => {
 		const listening = await startListening(workflow.id, chatSessionId);
 		expect(listening.body.data).toEqual({
 			waitingForWebhook: true,
-			registeredTriggerNodes: [TRIGGER_NAME],
+			formTestUrls: [],
 		});
 
 		const response = await webhookAgent

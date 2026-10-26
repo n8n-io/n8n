@@ -13,7 +13,6 @@ import {
 	generateFakeDataFromSchema,
 } from './executions.utils';
 import type {
-	INode,
 	ExecutionError,
 	INodeTypeDescription,
 	Workflow,
@@ -21,13 +20,11 @@ import type {
 } from 'n8n-workflow';
 import { type INodeUi, type IWorkflowDb } from '@/Interface';
 import {
-	CHAT_TRIGGER_NODE_TYPE,
 	CORE_NODES_CATEGORY,
 	FORM_TRIGGER_NODE_TYPE,
 	GITHUB_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { VNode } from 'vue';
@@ -92,103 +89,53 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 }));
 
 describe('displayForm', () => {
-	const getTestUrlMock = vi.fn();
+	const formTestUrl = 'http://localhost:5678/form-test/form-path';
 	let fetchSpy: MockInstance;
-
-	const formTrigger = createTestNode({ name: 'Form Trigger', type: FORM_TRIGGER_NODE_TYPE });
-	const webhookTrigger = createTestNode({ name: 'Webhook', type: WEBHOOK_NODE_TYPE });
-	const chatTrigger = createTestNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE });
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		// `restoreMocks` restores spies before each test, so re-establish them here.
 		windowOpenSpy = vi.spyOn(window, 'open').mockReturnValue(null);
 		fetchSpy = vi.spyOn(global, 'fetch');
-		getTestUrlMock.mockImplementation((node: INode) => `http://test-url.com/${node.name}`);
 	});
 
-	it('should open the popup for a form trigger listed in registeredTriggerNodes', () => {
-		displayForm({
-			nodes: [formTrigger],
-			registeredTriggerNodes: ['Form Trigger'],
-			source: undefined,
-			getTestUrl: getTestUrlMock,
-		});
+	it('should open the popup for each form test URL', () => {
+		const otherFormTestUrl = 'http://localhost:5678/webhook-test/other-form/n8n-form';
 
-		expect(windowOpenSpy).toHaveBeenCalledTimes(1);
-		expect(windowOpenSpy).toHaveBeenCalledWith(
-			'http://test-url.com/Form Trigger',
+		displayForm({ formTestUrls: [formTestUrl, otherFormTestUrl], source: undefined });
+
+		expect(windowOpenSpy).toHaveBeenCalledTimes(2);
+		expect(windowOpenSpy).toHaveBeenNthCalledWith(
+			1,
+			formTestUrl,
+			expect.any(String),
+			expect.any(String),
+		);
+		expect(windowOpenSpy).toHaveBeenNthCalledWith(
+			2,
+			otherFormTestUrl,
 			expect.any(String),
 			expect.any(String),
 		);
 	});
 
-	it('should not open the popup for a form trigger that is not listed in registeredTriggerNodes', () => {
-		displayForm({
-			nodes: [formTrigger, webhookTrigger],
-			registeredTriggerNodes: [],
-			source: undefined,
-			getTestUrl: getTestUrlMock,
-		});
-
-		expect(windowOpenSpy).not.toHaveBeenCalled();
-	});
-
-	it('should not open the popup for non-form nodes even if they are listed', () => {
-		displayForm({
-			nodes: [webhookTrigger, chatTrigger],
-			registeredTriggerNodes: ['Webhook', 'Chat Trigger'],
-			source: undefined,
-			getTestUrl: getTestUrlMock,
-		});
+	it('should not open the popup if there are no form test URLs', () => {
+		displayForm({ formTestUrls: [], source: undefined });
 
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
 	it('should not open the popup if source is "RunData.ManualChatMessage"', () => {
-		displayForm({
-			nodes: [formTrigger],
-			registeredTriggerNodes: ['Form Trigger'],
-			source: 'RunData.ManualChatMessage',
-			getTestUrl: getTestUrlMock,
-		});
+		displayForm({ formTestUrls: [formTestUrl], source: 'RunData.ManualChatMessage' });
 
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
 	it('should not send a request to the form test URL', () => {
-		displayForm({
-			nodes: [formTrigger],
-			registeredTriggerNodes: ['Form Trigger'],
-			source: undefined,
-			getTestUrl: getTestUrlMock,
-		});
+		displayForm({ formTestUrls: [formTestUrl], source: undefined });
 
 		expect(windowOpenSpy).toHaveBeenCalledTimes(1);
 		expect(fetchSpy).not.toHaveBeenCalled();
-	});
-
-	it('should open the popup only for the listed form triggers when there are several', () => {
-		const otherFormTrigger = createTestNode({
-			name: 'Other Form Trigger',
-			type: FORM_TRIGGER_NODE_TYPE,
-		});
-
-		displayForm({
-			nodes: [formTrigger, otherFormTrigger],
-			registeredTriggerNodes: ['Other Form Trigger'],
-			source: undefined,
-			getTestUrl: getTestUrlMock,
-		});
-
-		expect(getTestUrlMock).toHaveBeenCalledTimes(1);
-		expect(getTestUrlMock).toHaveBeenCalledWith(otherFormTrigger);
-		expect(windowOpenSpy).toHaveBeenCalledTimes(1);
-		expect(windowOpenSpy).toHaveBeenCalledWith(
-			'http://test-url.com/Other Form Trigger',
-			expect.any(String),
-			expect.any(String),
-		);
 	});
 });
 

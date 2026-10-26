@@ -122,7 +122,7 @@ describe('webhook runs on engine v2', () => {
 		const listening = await startListening(workflow.id);
 		expect(listening.body.data).toEqual({
 			waitingForWebhook: true,
-			registeredTriggerNodes: [TRIGGER_NAME],
+			formTestUrls: [],
 		});
 
 		const response = await webhookAgent

@@ -458,10 +458,11 @@ describe('useRunWorkflow({ router })', () => {
 				} as unknown as WorkflowData);
 			});
 
-			it('should open the popup for a form trigger listed in registeredTriggerNodes', async () => {
+			it('should open the popup at the form test URL the backend returns', async () => {
+				const formTestUrl = 'http://localhost:5678/webhook-test/v1-form/n8n-form';
 				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
 					waitingForWebhook: true,
-					registeredTriggerNodes: ['Form Trigger'],
+					formTestUrls: [formTestUrl],
 				});
 				const { runWorkflow } = useRunWorkflow({ router });
 
@@ -469,16 +470,16 @@ describe('useRunWorkflow({ router })', () => {
 
 				expect(windowOpenSpy).toHaveBeenCalledTimes(1);
 				expect(windowOpenSpy).toHaveBeenCalledWith(
-					'http://localhost:5678/form-test/form-path',
+					formTestUrl,
 					expect.any(String),
 					expect.any(String),
 				);
 			});
 
-			it('should not open the popup if the form trigger is not in registeredTriggerNodes', async () => {
+			it('should not open the popup if the backend returns no form test URLs', async () => {
 				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
 					waitingForWebhook: true,
-					registeredTriggerNodes: ['Webhook'],
+					formTestUrls: [],
 				});
 				const { runWorkflow } = useRunWorkflow({ router });
 

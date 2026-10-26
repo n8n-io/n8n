@@ -9,7 +9,6 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	IDataObject,
-	INode,
 	IRunData,
 	ExecutionError,
 	INodeTypeBaseDescription,
@@ -138,29 +137,19 @@ export const openFormPopupWindow = (url: string) => {
 
 export const clearPopupWindowState = () => (formPopupWindow = false);
 
-/**
- * Opens the test form popup for Form Trigger nodes that the backend registered
- * a test webhook for in this manual run.
- */
+/** Opens the test form popup for each Form Trigger the backend registered in this manual run. */
 export function displayForm({
-	nodes,
-	registeredTriggerNodes,
+	formTestUrls,
 	source,
-	getTestUrl,
 }: {
-	nodes: INode[];
-	registeredTriggerNodes: string[];
+	formTestUrls: string[];
 	source: string | undefined;
-	getTestUrl: (node: INode) => string;
 }) {
 	if (source === 'RunData.ManualChatMessage') return;
 
-	for (const node of nodes) {
-		if (node.type !== FORM_TRIGGER_NODE_TYPE) continue;
-		if (!registeredTriggerNodes.includes(node.name)) continue;
-
+	for (const formTestUrl of formTestUrls) {
 		clearPopupWindowState();
-		openFormPopupWindow(getTestUrl(node));
+		openFormPopupWindow(formTestUrl);
 	}
 }
 

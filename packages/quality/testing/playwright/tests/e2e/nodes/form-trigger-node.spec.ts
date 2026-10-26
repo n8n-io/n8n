@@ -1,4 +1,5 @@
-import type { IWorkflowBase } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
+import type { INodeParameters, IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect } from '../../../fixtures/base';
 import { PublicFormPage } from '../../../pages/PublicFormPage';
@@ -319,5 +320,72 @@ test.describe(
 				await formPage.expectText('This worked');
 			});
 		});
+	},
+);
+
+test.describe(
+	'Form Trigger test popup',
+	{
+		annotation: [{ type: 'owner', description: 'NODES' }],
+	},
+	() => {
+		const formTriggerVersions = [
+			{
+				typeVersion: 1,
+				parameters: (path: string): INodeParameters => ({ path }),
+				testPath: (path: string) => `/webhook-test/${path}/n8n-form`,
+			},
+			{
+				typeVersion: 2,
+				parameters: (path: string): INodeParameters => ({ path: `={{ "${path}" }}` }),
+				testPath: (path: string) => `/form-test/${path}`,
+			},
+			{
+				typeVersion: 2.1,
+				parameters: (path: string): INodeParameters => ({ path: `={{ "${path}" }}` }),
+				testPath: (path: string) => `/form-test/${path}`,
+			},
+			{
+				typeVersion: 2.6,
+				parameters: (path: string): INodeParameters => ({ options: { path } }),
+				testPath: (path: string) => `/form-test/${path}`,
+			},
+		];
+
+		for (const { typeVersion, parameters, testPath } of formTriggerVersions) {
+			test(`should open the served test form for a v${typeVersion} Form Trigger`, async ({
+				n8n,
+			}) => {
+				const path = `form-${nanoid()}`;
+				const formTitle = `Form v${typeVersion}`;
+				const workflow = await n8n.api.workflows.createWorkflow({
+					name: `Form Trigger v${typeVersion} test popup`,
+					nodes: [
+						{
+							id: nanoid(),
+							name: 'Form',
+							type: 'n8n-nodes-base.formTrigger',
+							typeVersion,
+							position: [0, 0],
+							webhookId: crypto.randomUUID(),
+							parameters: {
+								...parameters(path),
+								formTitle,
+								formFields: { values: [{ fieldLabel: 'name' }] },
+							},
+						},
+					],
+					connections: {},
+				});
+				await n8n.start.fromExistingWorkflow(workflow.id);
+
+				const popupPromise = n8n.page.waitForEvent('popup');
+				await n8n.canvas.clickExecuteWorkflowButton();
+				const popup = await popupPromise;
+
+				expect(new URL(popup.url()).pathname).toBe(testPath(path));
+				await expect(popup.getByText(formTitle)).toBeVisible();
+			});
+		}
 	},
 );

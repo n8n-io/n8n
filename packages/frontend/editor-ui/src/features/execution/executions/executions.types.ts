@@ -70,7 +70,7 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 export interface IExecutionPushResponse {
 	executionId?: string;
 	waitingForWebhook?: boolean;
-	registeredTriggerNodes?: string[];
+	formTestUrls?: string[];
 }
 
 export interface IExecutionResponse extends IExecutionBase {

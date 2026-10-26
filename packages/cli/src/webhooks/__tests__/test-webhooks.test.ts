@@ -123,10 +123,10 @@ describe('TestWebhooks', () => {
 				toWebhook('Webhook', 'webhook-path', 'POST'),
 			]);
 
-			const registeredNodes = await testWebhooks.registerWebhooks(args);
+			const { nodeNames } = await testWebhooks.registerWebhooks(args);
 
 			expect(registrations.register).toHaveBeenCalledTimes(6);
-			expect(registeredNodes).toEqual(['Form Trigger', 'Webhook']);
+			expect(nodeNames).toEqual(['Form Trigger', 'Webhook']);
 		});
 
 		test('registers with a TTL that covers the listener window plus the buffer', async () => {
@@ -187,22 +187,22 @@ describe('TestWebhooks', () => {
 			await expect(registration).rejects.toThrowError(msg);
 		});
 
-		test('if no webhook is found to start workflow, should return an empty list', async () => {
+		test('if no webhook is found to start workflow, should return no registered nodes', async () => {
 			webhook.webhookDescription.restartWebhook = true;
 			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
 			const result = await testWebhooks.registerWebhooks(args);
 
-			expect(result).toEqual([]);
+			expect(result).toEqual({ nodeNames: [], formTestUrls: [] });
 			expect(registrations.register).not.toHaveBeenCalled();
 		});
 
-		test('returns an empty list if a triggerToStartFrom with triggerData is given', async () => {
+		test('returns no registered nodes if a triggerToStartFrom with triggerData is given', async () => {
 			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
 			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
 			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
-			const registeredNodes = await testWebhooks.registerWebhooks({
+			const registered = await testWebhooks.registerWebhooks({
 				...args,
 				triggerToStartFrom: {
 					name: 'trigger',
@@ -210,7 +210,7 @@ describe('TestWebhooks', () => {
 				},
 			});
 
-			expect(registeredNodes).toEqual([]);
+			expect(registered).toEqual({ nodeNames: [], formTestUrls: [] });
 			expect(registrations.register).not.toHaveBeenCalled();
 		});
 
@@ -228,7 +228,7 @@ describe('TestWebhooks', () => {
 			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook, webhook2]);
 
 			// ACT
-			const registeredNodes = await testWebhooks.registerWebhooks({
+			const registered = await testWebhooks.registerWebhooks({
 				...args,
 				triggerToStartFrom: { name: 'trigger' },
 			});
@@ -240,7 +240,7 @@ describe('TestWebhooks', () => {
 			expect(registerOrder).toBeLessThan(createOrder);
 			expect(registrations.register.mock.calls[0][0].webhook.node).toBe(webhook2.node);
 			expect(webhookService.createWebhookIfNotExists.mock.calls[0][1].node).toBe(webhook2.node);
-			expect(registeredNodes).toEqual(['trigger']);
+			expect(registered.nodeNames).toEqual(['trigger']);
 		});
 
 		test('should use sessionId-based path for ChatTrigger nodes when chatSessionId is provided', async () => {
@@ -587,12 +587,12 @@ describe('TestWebhooks', () => {
 						"Because of limitations in Telegram Trigger, n8n can't listen for test executions at the same time as listening for production ones. Unpublish the workflow to execute.",
 					);
 				} else {
-					const registeredNodes = await testWebhooks.registerWebhooks({
+					const registered = await testWebhooks.registerWebhooks({
 						...args,
 						workflowIsActive,
 					});
 
-					expect(registeredNodes).toEqual(['Webhook', 'Telegram Trigger']);
+					expect(registered.nodeNames).toEqual(['Webhook', 'Telegram Trigger']);
 				}
 			},
 		);

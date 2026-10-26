@@ -138,7 +138,7 @@ describe('WorkflowExecutionService', () => {
 	beforeEach(() => {
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 		defaultTestWebhooks.registerWebhooks.mockReset();
-		defaultTestWebhooks.registerWebhooks.mockResolvedValue([]);
+		defaultTestWebhooks.registerWebhooks.mockResolvedValue({ nodeNames: [], formTestUrls: [] });
 	});
 
 	describe('runWorkflow()', () => {
@@ -961,6 +961,7 @@ describe('WorkflowExecutionService', () => {
 
 		describe('registered trigger nodes', () => {
 			const user = mock<User>({ id: 'user-id' });
+			const formTestUrl = 'http://localhost:5678/form-test/form-path';
 			const formTriggerNode: INode = {
 				id: '333f1db0-e7be-44c5-9ce9-3e35362490f2',
 				name: 'Form Trigger',
@@ -994,12 +995,15 @@ describe('WorkflowExecutionService', () => {
 				...overrides,
 			});
 
-			test('returns the registered trigger nodes when a known trigger waits for a webhook', async () => {
+			test('returns the form test URLs when a known trigger waits for a webhook', async () => {
 				const workflowData = toWorkflowData([formTriggerNode]);
 				const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
 					triggerToStartFrom: { name: formTriggerNode.name },
 				};
-				defaultTestWebhooks.registerWebhooks.mockResolvedValue([formTriggerNode.name]);
+				defaultTestWebhooks.registerWebhooks.mockResolvedValue({
+					nodeNames: [formTriggerNode.name],
+					formTestUrls: [formTestUrl],
+				});
 
 				const result = await workflowExecutionService.executeManually(
 					workflowData,
@@ -1010,22 +1014,19 @@ describe('WorkflowExecutionService', () => {
 				expect(defaultTestWebhooks.registerWebhooks).toHaveBeenCalledWith(
 					expect.objectContaining({ triggerToStartFrom: runPayload.triggerToStartFrom }),
 				);
-				expect(result).toEqual({
-					waitingForWebhook: true,
-					registeredTriggerNodes: [formTriggerNode.name],
-				});
+				expect(result).toEqual({ waitingForWebhook: true, formTestUrls: [formTestUrl] });
 				expect(workflowRunner.run).not.toHaveBeenCalled();
 			});
 
-			test('returns the registered trigger nodes when an unknown trigger waits for a webhook', async () => {
+			test('returns the form test URLs when an unknown trigger waits for a webhook', async () => {
 				const workflowData = toWorkflowData([webhookNode, formTriggerNode]);
 				const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
 					destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
 				};
-				defaultTestWebhooks.registerWebhooks.mockResolvedValue([
-					webhookNode.name,
-					formTriggerNode.name,
-				]);
+				defaultTestWebhooks.registerWebhooks.mockResolvedValue({
+					nodeNames: [webhookNode.name, formTriggerNode.name],
+					formTestUrls: [formTestUrl],
+				});
 
 				const result = await workflowExecutionService.executeManually(
 					workflowData,
@@ -1036,10 +1037,7 @@ describe('WorkflowExecutionService', () => {
 				expect(defaultTestWebhooks.registerWebhooks).toHaveBeenCalledWith(
 					expect.objectContaining({ destinationNode: runPayload.destinationNode }),
 				);
-				expect(result).toEqual({
-					waitingForWebhook: true,
-					registeredTriggerNodes: [webhookNode.name, formTriggerNode.name],
-				});
+				expect(result).toEqual({ waitingForWebhook: true, formTestUrls: [formTestUrl] });
 				expect(workflowRunner.run).not.toHaveBeenCalled();
 			});
 
@@ -1048,7 +1046,7 @@ describe('WorkflowExecutionService', () => {
 				const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
 					destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
 				};
-				defaultTestWebhooks.registerWebhooks.mockResolvedValue([]);
+				defaultTestWebhooks.registerWebhooks.mockResolvedValue({ nodeNames: [], formTestUrls: [] });
 				workflowRunner.run.mockResolvedValue('fake-execution-id');
 
 				const result = await workflowExecutionService.executeManually(
@@ -1209,7 +1207,10 @@ describe('WorkflowExecutionService', () => {
 				chatSessionId: 'test-session-123',
 			};
 
-			testWebhooks.registerWebhooks.mockResolvedValue([chatTrigger.name]);
+			testWebhooks.registerWebhooks.mockResolvedValue({
+				nodeNames: [chatTrigger.name],
+				formTestUrls: [],
+			});
 
 			const service = new WorkflowExecutionService(
 				mock(),
@@ -1237,10 +1238,7 @@ describe('WorkflowExecutionService', () => {
 			expect(testWebhooks.registerWebhooks).toHaveBeenCalledWith(
 				expect.objectContaining({ chatSessionId: 'test-session-123' }),
 			);
-			expect(result).toEqual({
-				waitingForWebhook: true,
-				registeredTriggerNodes: [chatTrigger.name],
-			});
+			expect(result).toEqual({ waitingForWebhook: true, formTestUrls: [] });
 		});
 	});
 
