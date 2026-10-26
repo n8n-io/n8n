@@ -8,9 +8,9 @@ import { User } from './user';
 export class ServiceAccount extends User {
 	override readonly kind = 'service' as const;
 
-	/** Not set when the query did not load it. */
+	/** Undefined when the query did not load it. Null when no details row exists. */
 	@OneToOne('ServiceAccountDetails', 'serviceAccount')
-	details?: Relation<ServiceAccountDetails>;
+	details?: Relation<ServiceAccountDetails> | null;
 
 	/** A service account never waits for an invite. */
 	override computeIsPending(): void {
