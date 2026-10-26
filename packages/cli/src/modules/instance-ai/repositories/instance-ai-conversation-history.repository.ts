@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { DataSource, type SelectQueryBuilder } from '@n8n/typeorm';
 
 import {
-	ASK_USER_CONTENT_MARKER,
+	ASK_USER_CONTENT_MARKERS,
 	buildMessageMatchCondition,
 	buildSearchLikePattern,
 	buildVisibleRowCondition,
@@ -127,7 +127,7 @@ export class InstanceAiConversationHistoryRepository {
 				.where('m.threadId = :threadId', { threadId })
 				.andWhere(buildMessageMatchCondition('m'), {
 					pattern: buildSearchLikePattern(query),
-					askUserMarker: ASK_USER_CONTENT_MARKER,
+					...ASK_USER_CONTENT_MARKERS,
 				})
 				.take(maxRowsPerThread)
 				.getMany();
@@ -273,7 +273,7 @@ export class InstanceAiConversationHistoryRepository {
 			.andWhere(`(LOWER(t.title) LIKE :pattern ${LIKE_ESCAPE_CLAUSE} OR EXISTS ${messageMatch})`)
 			.setParameters({
 				pattern: buildSearchLikePattern(params.query),
-				askUserMarker: ASK_USER_CONTENT_MARKER,
+				...ASK_USER_CONTENT_MARKERS,
 			});
 	}
 

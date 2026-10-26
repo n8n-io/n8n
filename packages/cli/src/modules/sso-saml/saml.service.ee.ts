@@ -20,7 +20,7 @@ import type {
 import { AuthError, BadRequestError } from '@n8n/errors';
 import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { CacheService, UrlService } from '@n8n/backend-services';
+import { CacheService, EventService, UrlService } from '@n8n/backend-services';
 import {
 	getSamlLoginLabel,
 	isSamlLicensedAndEnabled,
@@ -103,6 +103,7 @@ export class SamlService {
 		private readonly cacheService: CacheService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly authIdentityRepository: AuthIdentityRepository,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -396,6 +397,22 @@ export class SamlService {
 				'saml',
 			);
 			if (identity?.user) {
+				if (identity.user.email?.toLowerCase() !== lowerCasedEmail) {
+					// The identity is authoritative. A different asserted email usually means the
+					// identity provider sends one principal name for more than one person.
+					this.logger.warn(
+						'SAML login: asserted email differs from the user linked to this identity',
+						{
+							userId: identity.user.id,
+							providerId: attributes.userPrincipalName,
+						},
+					);
+					this.eventService.emit('user-login-email-conflict', {
+						user: identity.user,
+						authenticationMethod: 'saml',
+						assertedEmail: lowerCasedEmail,
+					});
+				}
 				await this.applySsoProvisioning(identity.user, attributes, rawAttributes);
 				return {
 					authenticatedUser: identity.user,
@@ -506,9 +523,12 @@ export class SamlService {
 		this.isReloading = true;
 		try {
 			this.logger.debug('SAML configuration changed, starting to load it from the database');
-			await this.loadFromDbAndApplySamlPreferences(true, false);
-
+			// Read the method that the other main saved before the preferences
+			// apply. Otherwise this main still has `saml` when SAML login turned
+			// off, and it emits `sso-login-disabled` a second time.
 			await reloadAuthenticationMethod();
+
+			await this.loadFromDbAndApplySamlPreferences(true, false);
 
 			const samlLoginEnabled = isSamlLoginEnabled();
 

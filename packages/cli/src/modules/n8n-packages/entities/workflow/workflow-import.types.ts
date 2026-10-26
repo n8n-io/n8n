@@ -63,6 +63,11 @@ export type WorkflowPlanItem =
 			action: 'update';
 			existing: WorkflowEntity;
 			archiveTransition: WorkflowArchiveTransition | null;
+			/**
+			 * Set under `layoutConflictPolicy=follow-package`: the folder the update moves the workflow to.
+			 * `null` is the project root.
+			 */
+			moveToFolderId?: string | null;
 	  } & PreparedWorkflow)
 	| ({ action: 'skip'; existing: WorkflowEntity } & PreparedWorkflow);
 
@@ -79,7 +84,7 @@ export interface WorkflowFolderConflict {
 	sourceWorkflowId: string;
 	existingWorkflowId: string;
 	existingParentFolderId: string | null;
-	targetFolderId: string;
+	targetFolderId: string | null;
 	name: string;
 }
 

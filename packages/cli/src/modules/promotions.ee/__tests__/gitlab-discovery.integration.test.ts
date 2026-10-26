@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
-import { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
+import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 
 const fixturePath = process.env.GITLAB_TEST_CONFIG;
 const fixtureSchema = z.object({
@@ -41,39 +41,41 @@ describe.skipIf(!fixturePath)('GitLab discovery live compatibility', () => {
 		});
 		expect(created.status, JSON.stringify(created.body)).toBe(201);
 		const root = `/promotions/providers/${created.body.provider.id}`;
-		let connectionId: string | undefined;
+		let environmentId: string | undefined;
 		try {
-			const target = {
+			const remote = {
 				schemaVersion: 1,
 				remoteUrl: `${baseUrl.replace(/\/$/, '')}/${fixture.projectPath}.git`,
 			};
-			const connection = await agent.post('/promotions/connections').send({
+			const environment = await agent.post('/promotions/environments').send({
 				name: 'GitLab repository identity verification',
 				scope: 'projects',
 				providerId: created.body.provider.id,
-				target,
+				remote,
+				direction: 'apply',
+				settings: { schemaVersion: 1, branchName: 'main' },
 			});
-			expect(connection.status, JSON.stringify(connection.body)).toBe(201);
-			connectionId = z.string().parse(connection.body.id);
-			const publicTarget = { ...target, repositoryPath: fixture.projectPath };
-			expect(connection.body.target).toEqual(publicTarget);
+			expect(environment.status, JSON.stringify(environment.body)).toBe(201);
+			environmentId = z.string().parse(environment.body.id);
+			const publicRemote = { ...remote, repositoryPath: fixture.projectPath };
+			expect(environment.body.remote).toEqual(publicRemote);
 			expect(
-				(await Container.get(PromotionConnectionRepository).findByIdWithProvider(connectionId))
-					?.target,
+				(await Container.get(PromotionEnvironmentRepository).findByIdWithProvider(environmentId))
+					?.remote,
 			).toEqual({ schemaVersion: 1, repositoryPath: fixture.projectPath });
-			const saved = await agent.get(`/promotions/connections/${connectionId}`);
+			const saved = await agent.get(`/promotions/environments/${environmentId}`);
 			expect(saved.status).toBe(200);
-			expect(saved.body.target).toEqual(publicTarget);
+			expect(saved.body.remote).toEqual(publicRemote);
 
 			const branches = await agent.get(
-				`${root}/repositories/${encodeURIComponent(saved.body.target.repositoryPath)}/branches`,
+				`${root}/repositories/${encodeURIComponent(saved.body.remote.repositoryPath)}/branches`,
 			);
 			expect(branches.status, JSON.stringify(branches.body)).toBe(200);
 			expect(branches.body.data).toContainEqual(expect.objectContaining({ isDefault: true }));
 			expect(JSON.stringify(branches.body)).not.toContain(fixture.accessToken);
 		} finally {
-			if (connectionId) {
-				expect((await agent.delete(`/promotions/connections/${connectionId}`)).status).toBe(204);
+			if (environmentId) {
+				expect((await agent.delete(`/promotions/environments/${environmentId}`)).status).toBe(204);
 			}
 			expect((await agent.delete(root)).status).toBe(204);
 		}

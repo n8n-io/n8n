@@ -40,6 +40,36 @@ describe('AgentThreadRepository', () => {
 		return jsonParse(row.metadata ?? 'null');
 	}
 
+	describe('findBuilderSessionIds', () => {
+		it('returns only builder session IDs with the exact literal prefix', async () => {
+			await repository.save(
+				[
+					'ia-builder:host%_thread:agent-2',
+					'ia-builder:host%_thread:agent-1',
+					'ia-builder:Host%_thread:agent-case',
+					'ia-builder:host-other_thread:agent-percent',
+					'ia-builder:host%xthread:agent-underscore',
+					'ia-builder:host%_thread-other:agent-other',
+					'agent-thread-1',
+					'assistant-thread-1',
+				].map((id) =>
+					repository.create({
+						id,
+						resourceId: 'user-1',
+						title: 'Chat',
+					}),
+				),
+			);
+
+			const threadIds = await repository.findBuilderSessionIds('ia-builder:host%_thread:');
+
+			expect(threadIds.sort()).toEqual([
+				'ia-builder:host%_thread:agent-1',
+				'ia-builder:host%_thread:agent-2',
+			]);
+		});
+	});
+
 	describe('patchThread', () => {
 		it('replaces the metadata, so a patch can remove keys', async () => {
 			await seedThread({ keep: 1, drop: 2 });

@@ -7,24 +7,24 @@ export function resourceLocatorsSkill(): RuntimeSkill {
 		id: 'agent-builder-resource-locators',
 		name: 'Agent Builder Resource Locators',
 		description:
-			'Use when adding or changing node tools with stable dynamic selector fields: resourceLocator, loadOptionsMethod, loadOptions routing, "Name or ID" parameters, teamId, channelId, projectId, calendarId, databaseId, tableId, model selectors, or when write_config/patch_config rejects $fromAI on a dynamic selector.',
+			'Use when adding or changing node tools with stable dynamic selector fields: resourceLocator, loadOptionsMethod, loadOptions routing, "Name or ID" parameters, teamId, channelId, projectId, calendarId, databaseId, tableId, model selectors, or when agent_builder_write_config/agent_builder_patch_config rejects $fromAI on a dynamic selector.',
 		recommendedTools: [
 			'search_nodes',
 			'get_node_types',
-			'ask_credential',
-			'get_resource_locator_options',
+			'setup_credentials',
+			'get_node_parameter_options',
 			'agent-context',
-			'patch_config',
+			'agent_builder_patch_config',
 		],
 		allowedTools: [
 			'search_nodes',
 			'get_node_types',
-			'ask_credential',
-			'get_resource_locator_options',
-			'ask_questions',
+			'setup_credentials',
+			'get_node_parameter_options',
+			'agent_builder_ask_questions',
 			'agent-context',
-			'patch_config',
-			'write_config',
+			'agent_builder_patch_config',
+			'agent_builder_write_config',
 		],
 		instructions: `\
 ## Purpose
@@ -40,24 +40,26 @@ locator values that the target agent cannot reliably guess at runtime.
   database, table, model, folder, or another "Name or ID" field.
 - \`get_node_types\` shows a parameter with \`type: "resourceLocator"\`,
   \`typeOptions.loadOptionsMethod\`, or \`typeOptions.loadOptions\`.
-- \`write_config\` or \`patch_config\` rejects a node parameter with a dynamic
-  selector / \`get_resource_locator_options\` error.
+- \`agent_builder_write_config\` or \`agent_builder_patch_config\` rejects a node parameter with a dynamic
+  selector / \`get_node_parameter_options\` error.
 
 ## Initial-build timing
 
 ${INITIAL_BUILD_NOTE} If the tool needs a credential to resolve a stable
 selector, skip adding that tool for now instead of blocking the rest of the
-build. Include the credential in the trailing \`finish_setup\` call, then run
+build. Include the credential in the trailing \`agent_builder_finish_setup\` call, then run
 the option lookup with the returned credential in the same turn and write the
 config mutation only when the result is unambiguous (an exact or single
-filtered match). If options remain ambiguous, do not call \`ask_questions\` —
+filtered match). If options remain ambiguous, do not call \`agent_builder_ask_questions\` —
 leave the tool deferred and add a one-line setup checklist item naming the
 pending selection; resolve it in a later turn. In an addition to an existing
 agent, resolve the credential and any ambiguity immediately instead.
 
 ## Workflow
 
-1. Discover and inspect the node with \`search_nodes\`, then \`get_node_types\`.
+1. Inspect the node with \`get_node_types\`. Use the node results
+   from the \`agent-context\` integration lookup and the definitions you already
+   fetched. Call \`search_nodes\` (with \`scope: "agent_tool"\`) only when no lookup returned the node.
 2. Identify dynamic selectors from node metadata. Treat these as build-time
    lookup fields:
    - \`type: "resourceLocator"\`
@@ -67,16 +69,17 @@ agent, resolve the credential and any ambiguity immediately instead.
 3. Build the current static \`nodeParameters\` first: \`resource\`,
    \`operation\`, authentication mode, and any parent selectors already known.
    Dynamic lookups often depend on those values.
-4. If the node needs credentials, call \`ask_credential\` before resolving the
-   selector. Pass the returned \`credentials\` object to
-   \`get_resource_locator_options\`.
-5. Call \`get_resource_locator_options\` with:
-   - \`nodeType\` and \`nodeTypeVersion\` from discovery
+4. If the node needs credentials, call
+   \`setup_credentials({ target: "agent", credentials: [{ credentialType: "<type from node metadata>", reason: "..." }] })\`
+   before resolving the selector. Pass the returned \`credentials\` object to
+   \`get_node_parameter_options\`.
+5. Call \`get_node_parameter_options\` with:
+   - \`nodeType\` and \`version\` from discovery
    - \`parameterPath\`, for example \`teamId\` or \`additionalFields.teamId\`
    - current \`nodeParameters\`
    - returned \`credentials\`, when available
    - \`filter\` when the user named a specific team, channel, project, or object
-6. If results are ambiguous, use \`ask_questions\` with the returned option
+6. If results are ambiguous, use \`agent_builder_ask_questions\` with the returned option
    names (existing agents only — during an initial build, defer per
    Initial-build timing above). If there are many pages, retry with
    \`paginationToken\` or a narrower \`filter\`.
@@ -93,8 +96,9 @@ agent, resolve the credential and any ambiguity immediately instead.
   from user context, date ranges, counts, or booleans.
 - Never invent resource IDs, credential IDs, node type names, parameter paths,
   or provider tool keys.
-- If \`get_resource_locator_options\` returns \`missing_credentials\`, call
-  \`ask_credential\` for one of the returned credential slots and retry. Do not
+- If \`get_node_parameter_options\` returns \`missing_credentials\`, call
+  \`setup_credentials\` with \`target: "agent"\` and a \`credentials\` entry for each
+  returned credential type, then retry. Do not
   fall back to \`$fromAI\` for a required stable selector.
 - If the user skips credentials and no exact ID is otherwise available, explain
   that the selector cannot be resolved yet. Ask for the credential or exact ID
@@ -104,12 +108,12 @@ agent, resolve the credential and any ambiguity immediately instead.
 
 ## Recovery From Config Errors
 
-When \`write_config\` or \`patch_config\` rejects a dynamic selector using
+When \`agent_builder_write_config\` or \`agent_builder_patch_config\` rejects a dynamic selector using
 \`$fromAI\`:
 
 1. Read the error path to find the offending node parameter.
 2. Inspect the node metadata if needed.
-3. Resolve the parameter with \`get_resource_locator_options\`.
+3. Resolve the parameter with \`get_node_parameter_options\`.
 4. Patch the config by replacing only that parameter with the returned
    \`parameterValue\`.
 
@@ -119,8 +123,9 @@ For a Linear "Create Issue" node tool:
 
 1. Use \`resource: "issue"\`, \`operation: "create"\`, and the selected
    authentication mode in \`nodeParameters\`.
-2. Call \`ask_credential\` for the Linear credential slot.
-3. Call \`get_resource_locator_options\` for \`parameterPath: "teamId"\` with
+2. Call
+   \`setup_credentials({ target: "agent", credentials: [{ credentialType: "linearApi", reason: "Create Linear issues" }] })\`.
+3. Call \`get_node_parameter_options\` for \`parameterPath: "teamId"\` with
    those \`nodeParameters\` and credentials.
 4. Write the selected team's \`parameterValue\` to \`teamId\`.
 5. Use \`$fromAI\` for runtime issue content such as \`title\` and
@@ -132,7 +137,7 @@ For a Linear "Create Issue" node tool:
   \`$fromAI\`.
 - Runtime content fields still use \`$fromAI\` where the target agent should
   decide them.
-- Node credentials come from \`ask_credential\`; no credential IDs are invented.
+- Node credentials come from \`setup_credentials(target: "agent")\`; no credential IDs are invented.
 - A validation error about dynamic selectors has been fixed by replacing the
   rejected field, not by changing unrelated config.`,
 	};

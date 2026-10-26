@@ -1,17 +1,20 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { EventService } from '@n8n/backend-services';
+// EOF Experiment cleanup
 import type { AgentActor, AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import isEqual from 'lodash/isEqual';
+import { InstanceSettings } from 'n8n-core';
 
 import { Telemetry } from '@/telemetry';
 
+import { buildVectorStoreFingerprints } from './agent-knowledge-telemetry';
 import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
+import { builderTelemetrySessionProperties } from './builder/builder-telemetry-session';
 import type { Agent } from './entities/agent.entity';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
-import { isUnconfiguredAgent } from './utils/agent-capabilities';
-
-export { isUnconfiguredAgent };
 
 export type { AgentActor } from '@n8n/api-types';
 
@@ -29,6 +32,7 @@ export type AgentConfigPart =
 	| 'credential'
 	| 'memory'
 	| 'name'
+	| 'description'
 	| 'config'
 	| 'tools'
 	| 'providerTools'
@@ -39,6 +43,10 @@ export type AgentConfigPart =
 	| 'mcpServers'
 	| 'vectorStores';
 
+export type AgentConfigSetting = NonNullable<
+	InferTelemetryProps<typeof TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT>['changed_settings']
+>[number];
+
 /** Declaration order of the telemetry enum, so payloads are stable. */
 const CONFIG_PARTS = [
 	'instructions',
@@ -46,6 +54,7 @@ const CONFIG_PARTS = [
 	'credential',
 	'memory',
 	'name',
+	'description',
 	'config',
 	'tools',
 	'providerTools',
@@ -80,6 +89,64 @@ export function diffAgentConfigParts(
 	});
 }
 
+const CONFIG_SETTINGS: Array<{
+	name: AgentConfigSetting;
+	select: (config: AgentJsonConfig | null) => unknown;
+}> = [
+	{
+		name: 'monthly_budget',
+		select: (config) => config?.config?.guardrails?.budget?.monthlyBudgetUsd,
+	},
+	{
+		name: 'budget_alert',
+		select: (config) => config?.config?.guardrails?.budget?.alertThresholdPercent,
+	},
+	{
+		name: 'session_cost_cap',
+		select: (config) => config?.config?.guardrails?.budget?.sessionCostCapUsd,
+	},
+	{
+		name: 'custom_model_routing',
+		select: (config) => [
+			config?.subAgents?.modelsByDifficulty?.low?.model,
+			config?.subAgents?.modelsByDifficulty?.medium?.model,
+			config?.subAgents?.modelsByDifficulty?.high?.model,
+		],
+	},
+	{
+		name: 'memory_model',
+		select: (config) => {
+			const episodicMemory = config?.memory?.episodicMemory;
+			return [
+				config?.memory?.observationalMemory?.observerModel?.model,
+				config?.memory?.observationalMemory?.reflectorModel?.model,
+				episodicMemory?.enabled ? episodicMemory.reflectorModel?.model : undefined,
+			];
+		},
+	},
+	{
+		name: 'cache_duration',
+		select: (config) => config?.config?.promptCaching?.anthropic?.ttl,
+	},
+	{
+		name: 'tool_concurrency',
+		select: (config) => config?.config?.toolCallConcurrency,
+	},
+	{
+		name: 'max_iterations',
+		select: (config) => config?.config?.maxIterations,
+	},
+];
+
+export function diffAgentConfigSettings(
+	previous: AgentJsonConfig | null,
+	next: AgentJsonConfig | null,
+): AgentConfigSetting[] {
+	return CONFIG_SETTINGS.filter(({ select }) => !isEqual(select(previous), select(next))).map(
+		({ name }) => name,
+	);
+}
+
 export interface AgentModificationEvent {
 	/** Post-save entity, so the reported profile is the one that landed. */
 	agent: Agent;
@@ -89,22 +156,10 @@ export interface AgentModificationEvent {
 	user: User;
 	by: AgentActor;
 	changedParts: AgentConfigPart[];
-	/**
-	 * Whether the agent was still unconfigured before this write. The write
-	 * that leaves it configured is what creates it as far as telemetry is
-	 * concerned, so it reports the creation event for `by` instead of the
-	 * modification one — a write is never counted as both.
-	 */
-	wasUnconfigured: boolean;
+	changedSettings?: AgentConfigSetting[];
 }
 
-export function captureAgentMutation(agent: Agent, skillRefs: AgentSkillRefs) {
-	const schema = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
-	const integrations = agent.integrations ?? [];
-	return { schema, integrations, wasUnconfigured: isUnconfiguredAgent(schema, integrations) };
-}
-
-export type AgentMutationSnapshot = ReturnType<typeof captureAgentMutation>;
+export type AgentCreationEvent = Omit<AgentModificationEvent, 'changedParts' | 'changedSettings'>;
 
 export type AgentSidecarChanges = Partial<Record<'tools' | 'skills' | 'tasks', boolean>>;
 
@@ -113,8 +168,7 @@ export function buildAgentMutationEvent(
 	skillRefs: AgentSkillRefs,
 	projectId: string,
 	context: AgentMutationTelemetryContext,
-	previous: AgentMutationSnapshot,
-	sidecarChanges: AgentSidecarChanges,
+	changedParts: AgentConfigPart[],
 ): AgentModificationEvent {
 	const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
 	return {
@@ -123,14 +177,7 @@ export function buildAgentMutationEvent(
 		projectId,
 		user: context.user,
 		by: context.modifiedBy,
-		changedParts: diffAgentConfigParts(
-			previous.schema,
-			config,
-			previous.integrations,
-			agent.integrations ?? [],
-			sidecarChanges,
-		),
-		wasUnconfigured: previous.wasUnconfigured,
+		changedParts,
 	};
 }
 
@@ -151,40 +198,118 @@ function modificationProperties({
 	} as const;
 }
 
-/**
- * Single emitter for the six agent creation and modification events. Every
- * config write reports through here, so the only things that differ between
- * them are the surface that wrote and whether the write was the agent's first —
- * and a union across all six is complete.
- */
+/** Reports committed Agent creations and subsequent configuration changes. */
 @Service()
 export class AgentModificationTelemetryService {
-	constructor(private readonly telemetry: Telemetry) {}
+	constructor(
+		private readonly telemetry: Telemetry,
+		private readonly instanceSettings: InstanceSettings,
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		private readonly eventService: EventService,
+		// EOF Experiment cleanup
+	) {}
 
 	record(event: AgentModificationEvent): void {
 		if (event.changedParts.length === 0) return;
 		try {
-			const { agent, config, by, wasUnconfigured } = event;
-			if (wasUnconfigured && isUnconfiguredAgent(config, agent.integrations)) return;
+			const { by } = event;
+			const properties = {
+				...modificationProperties(event),
+				...this.vectorStoreFingerprints(event),
+			};
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			this.recordAssistantActivity(event, properties.capability_count, event.changedParts);
+			// EOF Experiment cleanup
 
-			const properties = modificationProperties(event);
-			if (wasUnconfigured) {
-				this.recordCreation(by, properties);
+			if (by === 'user') {
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT, {
+					...properties,
+					changed_settings: event.changedSettings ?? [],
+					event_version: '2',
+				});
 				return;
 			}
 
-			const entry = {
-				user: TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
-				builder: TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT,
-				mcp: TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT,
-			}[by];
-			this.telemetry.track(entry, { ...properties, event_version: '1' });
+			if (by === 'builder') {
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT, {
+					...properties,
+					...builderTelemetrySessionProperties(),
+					event_version: '2',
+				});
+				return;
+			}
+
+			this.telemetry.track(TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT, {
+				...properties,
+				event_version: '2',
+			});
 		} catch {
 			// Telemetry must never fail a write that already succeeded.
 		}
 	}
 
-	private recordCreation(
+	/** Make sure a failed fingerprint leaves out only the fingerprints, not the whole event. */
+	private vectorStoreFingerprints(event: AgentModificationEvent): {
+		vector_store_fingerprints?: string[];
+	} {
+		if (!event.changedParts.includes('vectorStores')) {
+			return {};
+		}
+
+		try {
+			return {
+				vector_store_fingerprints: buildVectorStoreFingerprints(
+					event.config?.vectorStores ?? [],
+					this.instanceSettings.hmacSignatureSecret,
+				),
+			};
+		} catch {
+			return {};
+		}
+	}
+
+	recordCreation(event: AgentCreationEvent): void {
+		try {
+			const changedParts = diffAgentConfigParts(
+				null,
+				event.config,
+				[],
+				event.agent.integrations ?? [],
+			);
+			const properties = modificationProperties({ ...event, changedParts });
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			this.recordAssistantActivity(event, properties.capability_count);
+			// EOF Experiment cleanup
+			this.trackCreation(event.by, properties);
+		} catch {
+			// Telemetry must never fail a write that already succeeded.
+		}
+	}
+
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	private recordAssistantActivity(
+		event: AgentCreationEvent,
+		capabilityCount: number,
+		changedParts?: AgentConfigPart[],
+	): void {
+		if (event.by !== 'builder') return;
+		// Empty shells and cosmetic changes alone do not count as Assistant use.
+		if (
+			!event.config?.model?.trim() &&
+			!event.config?.instructions?.trim() &&
+			capabilityCount === 0 &&
+			!changedParts?.some((part) => part !== 'name' && part !== 'description')
+		) {
+			return;
+		}
+		this.eventService.emit('experiment-assistant-change-saved', {
+			userId: event.user.id,
+			at: Date.now(),
+		});
+	}
+	// EOF Experiment cleanup
+
+	private trackCreation(
 		by: AgentActor,
 		properties: ReturnType<typeof modificationProperties>,
 	): void {
@@ -193,19 +318,20 @@ export class AgentModificationTelemetryService {
 			case 'user':
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
 					...properties,
-					event_version: '2',
+					event_version: '3',
 				});
 				return;
 			case 'builder':
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
 					...properties,
-					event_version: '2',
+					...builderTelemetrySessionProperties(),
+					event_version: '3',
 				});
 				return;
 			case 'mcp':
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.MCP_CREATED_AGENT, {
 					...properties,
-					event_version: '1',
+					event_version: '2',
 				});
 				return;
 		}

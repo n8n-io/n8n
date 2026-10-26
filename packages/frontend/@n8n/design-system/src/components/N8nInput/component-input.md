@@ -25,6 +25,7 @@ A versatile text input component for collecting user text, numbers, passwords, a
 - `autofocus?: boolean` - When `true`, automatically focuses the input on mount. Default: `false`
 - `autocomplete?: InputAutocomplete` - HTML autocomplete attribute. Values: `'off' | 'on' | 'new-password' | 'current-password' | 'given-name' | 'family-name' | 'one-time-code' | 'email'`. Default: `'off'`
 - `name?: string` - HTML name attribute for the input element.
+- `appendClass?: string` - Replaces the default append slot class. The slot then uses only this class.
 
 **Events**
 

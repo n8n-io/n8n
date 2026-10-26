@@ -215,11 +215,18 @@ describe('TeamsCredentialCheckService', () => {
 				.concat('signature')
 				.join('.');
 
-		it('reports approved when the Graph token carries Files.Read.All', async () => {
+		it('reports approved when the Graph token carries every permission', async () => {
 			withCredential(workingCredential);
 			request.mockResolvedValue({
 				statusCode: 200,
-				body: { access_token: tokenWithRoles(['Files.Read.All']) },
+				body: {
+					access_token: tokenWithRoles([
+						'Files.Read.All',
+						'User.ReadBasic.All',
+						'Team.ReadBasic.All',
+						'Channel.ReadBasic.All',
+					]),
+				},
 			});
 
 			expect(await service.checkFileAccess(user, PROJECT_ID, CREDENTIAL_ID)).toEqual({
@@ -229,9 +236,12 @@ describe('TeamsCredentialCheckService', () => {
 			expect(options.body).toContain('scope=https%3A%2F%2Fgraph.microsoft.com%2F.default');
 		});
 
-		it('reports not approved when the token lacks it', async () => {
+		it('reports not approved while the token lacks any permission', async () => {
 			withCredential(workingCredential);
-			request.mockResolvedValue({ statusCode: 200, body: { access_token: tokenWithRoles([]) } });
+			request.mockResolvedValue({
+				statusCode: 200,
+				body: { access_token: tokenWithRoles(['Files.Read.All']) },
+			});
 
 			expect(await service.checkFileAccess(user, PROJECT_ID, CREDENTIAL_ID)).toEqual({
 				status: 'notApproved',

@@ -1,4 +1,8 @@
-import type { InboxSelfHealingItem, InboxWorkflowReviewItem } from '@n8n/api-types';
+import type {
+	InboxPromotionReviewItem,
+	InboxSelfHealingItem,
+	InboxWorkflowReviewItem,
+} from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
@@ -246,6 +250,54 @@ it.each([
 		expect(dot).not.toHaveAccessibleName(/approved/i);
 	},
 );
+
+it('renders promotion review rows with the branch as fallback title and the GitLab problem', () => {
+	const promotion = (props: Partial<InboxPromotionReviewItem>): InboxPromotionReviewItem => ({
+		type: 'promotion_review',
+		id: 'promotion',
+		state: 'closed',
+		reviewState: 'merged',
+		reviewType: 'gitlab',
+		title: 'Promote the thing',
+		webUrl: null,
+		branchName: 'n8n-promotion/1',
+		environmentName: null,
+		requester: null,
+		approver: null,
+		remoteError: null,
+		headCommitSha: null,
+		runCommitSha: null,
+		hasConflicts: false,
+		createdAt: '2026-01-01T00:00:00.000Z',
+		updatedAt: '2026-01-01T00:00:00.000Z',
+		...props,
+	});
+	const { getByRole } = renderComponent({
+		props: {
+			sections: [
+				section('waiting', {
+					items: [
+						promotion({}),
+						promotion({
+							id: 'unanswered',
+							state: 'open',
+							reviewState: 'open',
+							title: null,
+							branchName: 'n8n-promotion/2',
+							remoteError: 'unreachable',
+						}),
+					],
+				}),
+			],
+		},
+	});
+	const [merged, unanswered] = within(getByRole('list')).getAllByRole('button');
+	expect(within(merged).getByText('Promote the thing')).toBeInTheDocument();
+	expect(within(merged).getByText('Promotion')).toBeInTheDocument();
+	expect(within(merged).getByRole('img', { name: 'Merged' }).className).toContain('merged');
+	expect(within(unanswered).getByText('n8n-promotion/2')).toBeInTheDocument();
+	expect(within(unanswered).getByText('GitLab unreachable')).toBeInTheDocument();
+});
 
 it('separates partial-source recovery from a failed page retry', () => {
 	const { getByTestId, emitted } = renderComponent({

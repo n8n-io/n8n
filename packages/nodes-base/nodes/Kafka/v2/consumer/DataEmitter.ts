@@ -1,4 +1,5 @@
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { raceAbort } from '@n8n/utils/race-abort';
 import { sleep } from '@n8n/utils/sleep';
 import type { INodeExecutionData, IRun, ITriggerFunctions } from 'n8n-workflow';
 import { NodeOperationError, OperationalError } from 'n8n-workflow';
@@ -106,19 +107,14 @@ function createAwaitingEmitter(
 	const deadlineSeconds = options.executionTimeoutSeconds ?? DEFAULT_EXECUTION_TIMEOUT_SECONDS;
 	const errorRetryDelay = resolveRetryDelay(options.errorRetryDelay, ctx.logger);
 
-	// Two views of closing, because the two waits below want different things.
-	// The rejecting one ends the wait for an execution with a reason, which is
-	// what gets logged. The quiet one only needs to stop the retry pause, and
-	// deriving it here also handles the rejection, so the one that loses the race
-	// is not reported as an unhandled rejection.
-	const closedWithReason = rejectOnClose(closeSignal);
-	const closedQuietly = closedWithReason.catch(() => undefined);
+	const closedError = () =>
+		new OperationalError('Trigger closed before the execution finished, offsets not resolved.');
 
 	return async (items) => {
 		if (closeSignal.aborted) return HOLD_BACK;
 
 		try {
-			const run = await awaitExecution(ctx, items, deadlineSeconds, closedWithReason);
+			const run = await awaitExecution(ctx, items, deadlineSeconds, closeSignal, closedError);
 
 			if (allowedStatuses && !allowedStatuses.includes(run.status)) {
 				throw new NodeOperationError(
@@ -130,7 +126,7 @@ function createAwaitingEmitter(
 			return ADVANCE;
 		} catch (caught) {
 			// The retry backoff must not delay teardown.
-			if (!closeSignal.aborted) await Promise.race([sleep(errorRetryDelay), closedQuietly]);
+			if (!closeSignal.aborted) await sleep(errorRetryDelay, closeSignal).catch(() => undefined);
 
 			const error = ensureError(caught);
 			// Teardown cancelling an in-flight execution is expected, not a failure,
@@ -164,19 +160,6 @@ function resolveAllowedStatuses(
 	return options.allowedStatuses;
 }
 
-/** Rejects when the trigger closes, so a wait ends with a reason rather than hanging. */
-async function rejectOnClose(closeSignal: AbortSignal): Promise<never> {
-	return await new Promise<never>((_, reject) => {
-		const fail = () =>
-			reject(
-				new OperationalError('Trigger closed before the execution finished, offsets not resolved.'),
-			);
-		// The abort event fires once. If it already fired, no listener would run.
-		if (closeSignal.aborted) return fail();
-		closeSignal.addEventListener('abort', fail, { once: true });
-	});
-}
-
 /**
  * Starts one execution and waits for it, bounded by the workflow's timeout and
  * by close.
@@ -189,12 +172,13 @@ async function awaitExecution(
 	ctx: DataEmitterContext,
 	items: INodeExecutionData[],
 	deadlineSeconds: number,
-	closedWithReason: Promise<never>,
+	closeSignal: AbortSignal,
+	closedError: () => Error,
 ): Promise<IRun> {
 	const response = ctx.helpers.createDeferredPromise<IRun>();
 	ctx.emit([items], undefined, response);
 
-	const finished = Promise.race([response.promise, closedWithReason]);
+	const finished = raceAbort(response.promise, closeSignal, closedError);
 	if (deadlineSeconds <= 0) return await finished;
 
 	// Past the 32-bit timer limit setTimeout fires after 1ms instead of waiting,

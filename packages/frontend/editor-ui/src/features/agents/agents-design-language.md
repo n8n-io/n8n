@@ -33,7 +33,26 @@ column.
 
 Reduce the editor column side padding when the column is narrow.
 
+## Builder side panel widths
+
+Start the Assistant and Preview panels at 30% of the builder container width.
+Limit this default to 320–720 pixels. Use 480 pixels before measurement.
+Keep saved Assistant widths and user resize choices. Double-click a resize
+handle to reset its panel to the current default.
+Reserve 480 pixels for the editor. When both panels are open, share the
+remaining width in proportion to each panel's requested extra width above
+320 pixels. Do not save automatic layout adjustments as user resize choices.
+
 ## Preview history
+
+Show token usage after a model turn reports it. Hide the cost when pricing is
+unavailable. Keep known token counts visible. Show a positive cost below the
+display precision as `<$0.0001`. Replace live totals with saved session totals
+after the execution completes. Show server-measured duration with each model
+turn update and when execution ends. Hide duration until a positive server value
+is available. Keep the last confirmed duration between updates. Exclude time
+spent waiting for human approval. Keep progress visible in the session trace
+when the Preview panel is closed.
 
 Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.
 The shared button shows the history icon and the chat title. Click the title or
@@ -54,6 +73,12 @@ Keep the test error and its fix action inside the callout. Move the action below
 the error when the row does not fit the panel. Wrap long URLs and error text.
 
 Agent artifacts inside an Assistant chat keep the handoff in that chat.
+
+## Setup checklist
+
+Show `Finish setup` after the Agent exists and the Assistant finishes building it.
+Keep the checklist hidden while the Assistant builds or updates the Agent.
+Use this behavior in Agent artifacts and the standalone Agent Builder.
 
 ## Item context menus
 
@@ -89,6 +114,35 @@ or deactivation.
 
 ## Modal patterns
 
+### Channel behavior settings
+
+Put optional channel behavior controls in the channel edit view after setup.
+Use a Settings Row with a labeled control and a short description of its scope.
+Use `AgentFormSettingRow` for channel switches. Align labels with the form
+fields and switches with the right edge. Keep descriptions visible when they
+wrap. Use the same row for reply controls, approvals, and managed app behavior.
+Keep changes local until Save. Cancel and Close discard them. Show the same
+behavior controls for managed and manual connections.
+
+Group related controls in labeled Settings Row Groups, as Slack and WhatsApp do.
+Put reply controls in Conversations and approval controls in Agent permissions. Keep
+the credential selector outside these groups. Use inset dividers between rows.
+Keep each control on the right and its full description on the left. Keep the
+approval action selector inside its setting row.
+When channel approval is on, show a full-width action picker directly below
+Actions that need approval. Do not show a mode picker or helper text for this
+field. Show saved approval for all actions as a selection of every action.
+
+### Form spacing
+
+Use `--spacing--md` as the gap between independent fields and settings in flat
+Agent forms. The parent owns this gap. Fields and settings must not add outer
+vertical padding, margins, or a minimum row height. Keep label and description
+spacing inside the field. Use `AgentFormSettingRow` for inline controls in
+channel and tool forms. It grows with the text and control content.
+Keep grouped settings surfaces, such as expandable Teams availability, in
+their Settings Row Group layout.
+
 ### Canonical components
 
 Use these components:
@@ -105,14 +159,14 @@ design work.
 
 ### Layout contract
 
-| Area       | Rule                                                                                                                         |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                      |
-| Header     | Do not add a bottom divider. Put Back on the left and Close on the right.                                                     |
-| Title      | Use an editable local name when the asset supports one. Show the asset icon beside the name in tool configuration modals.    |
-| Body       | Let `AgentModal` own the outer body inset. Do not repeat it on the first content wrapper. Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
-| Footer     | Keep the footer's top divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.               |
-| Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                              |
+| Area       | Rule                                                                                                                                                                                                                                                                                                                                                           |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                                                                                                                                                                                                                                                        |
+| Header     | Keep Back on the left and Close on the right. Do not add a divider under the header.                                                                                                                                                                                                                                                                           |
+| Title      | Use an editable local name when the asset supports one. Show the asset icon beside the name in tool configuration modals.                                                                                                                                                                                                                                      |
+| Body       | Let `AgentModal` own the outer body inset. Match the header: `--spacing--md` vertical and `--spacing--lg` horizontal. Do not repeat it on the first content wrapper. Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
+| Footer     | Use the same inset as the header. Keep the footer's top divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.                                                                                                                                                                                                              |
+| Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                                                                                                                                                                                                                                                                |
 
 Use CSS variables for all sizes, spacing, colors, and motion. Do not add a new
 global dialog primitive.
@@ -131,6 +185,9 @@ set it on short modals, such as confirmations, descriptions, and budgets.
 Do not add top padding or a top margin to a modal's first content wrapper. The
 shell supplies that space. Use the flush body only for a full-bleed workspace.
 The workspace must then own all of its edge spacing.
+Keep the shell's bottom body padding when a footer is present. Leave
+`--spacing--md` between the last form control and the footer divider, including
+after scrolling to the end. Do not add this space again in individual forms.
 
 When a nested credential or parameter editor dialog is open, release the parent
 focus trap and block parent dismissal. The nested dialog owns Escape until it
@@ -354,7 +411,7 @@ Put the action to send a message to the current execution immediately before Edi
 ## Preview retries
 
 Show Resend message inside the latest error callout only for errors that explicitly
-support retry. Use the subtle button style, as Fix with Assistant does. Support the
+support retry. Use the outline button style, as Fix with Assistant does. Support the
 saved empty-answer error and the stream-stall error. Do not offer resend for other
 failures. Send the original message and its attachments through the normal send
 action. Keep the failed turn visible. Move the button below the text when needed.

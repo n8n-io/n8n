@@ -12,7 +12,7 @@ const GRAPH_V1 = `${GRAPH_ORIGIN}/v1.0`;
 export interface GraphHttp {
 	get(
 		url: string,
-		config?: { responseType?: 'arraybuffer'; maxContentLength?: number },
+		config?: { responseType?: 'arraybuffer'; maxContentLength?: number; signal?: AbortSignal },
 	): Promise<{ data: unknown }>;
 }
 
@@ -83,7 +83,7 @@ export function graphMessagePaths(activity: unknown): GraphMessagePaths | undefi
 	};
 }
 
-function statusOf(error: unknown): unknown {
+export function statusOf(error: unknown): unknown {
 	return isRecord(error) && isRecord(error.response) ? error.response.status : undefined;
 }
 

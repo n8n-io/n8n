@@ -14,6 +14,7 @@ export interface ImportPackageFields {
 	folderId?: string;
 	credentialMatchingMode?: string;
 	credentialMissingMode?: string;
+	credentialConflictPolicy?: string;
 	bindings?: string;
 	workflowConflictPolicy: string;
 	workflowPublishingPolicy?: string;
@@ -75,11 +76,22 @@ export interface ExportPackageResult {
 
 export interface ImportPackageCounts {
 	projects: { created: number; updated: number; skipped: number; deleted: number };
-	folders: { created: number; skipped: number; removed: number };
+	folders: {
+		created: number;
+		updated: number;
+		skipped: number;
+		/** Part of `updated`: folders that Apply moved under another parent of their project. */
+		moved: number;
+		/** Part of `updated`: folders that Apply gave the name on the branch. */
+		renamed: number;
+		removed: number;
+	};
 	workflows: {
 		created: number;
 		updated: number;
 		skipped: number;
+		/** Part of `updated`: workflows that Apply also moved to another folder of their project. */
+		moved: number;
 		archived: number;
 		deleted: number;
 		publishing: {
@@ -102,7 +114,7 @@ export interface ImportPackageCounts {
 	tags: { matched: number; created: number; renamed: number; reconciled: number; skipped: number };
 }
 
-/** The direction a promotion config, checkout, or operation works in. */
+/** The direction a promotion environment, checkout, or operation works in. */
 export type PromotionDirection = 'apply' | 'promote';
 
 /** The Git part of a promotion operation result. */
@@ -112,17 +124,16 @@ export interface PromotionGitResult {
 	branchName: string;
 }
 
-/** Outcome of promoting the team projects of a connection. */
+/** Outcome of promoting the team projects through an environment. */
 export type PromotePackageResult = {
-	connectionId: string;
-	configId: string;
+	environmentId: string;
 	counts: ExportPackageCounts;
 	git: PromotionGitResult;
 };
 
 /** The reviewed source that Apply must still match. Any mismatch reports `source-changed`. */
 export interface PromotionExpectedSource {
-	configId: string;
+	environmentId: string;
 	branchName: string;
 	commitSha: string;
 }
@@ -144,8 +155,7 @@ export type PromotionProjectDeletion = {
 };
 
 type ApplyPackageIdentity = {
-	connectionId: string;
-	configId: string;
+	environmentId: string;
 	git: PromotionGitResult;
 };
 
@@ -183,10 +193,9 @@ export interface ProjectPromotionChanges {
 	changes: PromotableResourceSummary[];
 }
 
-/** State of one direction's local checkout, after a clone or a disconnect. */
+/** State of an environment's local checkout, after a connect or a disconnect. */
 export type PromotionCheckoutResult = {
-	connectionId: string;
-	configId: string;
+	environmentId: string;
 	direction: PromotionDirection;
 	branchName: string;
 	hasCheckout: boolean;
@@ -376,73 +385,57 @@ export class N8nClient {
 		return await this.del<undefined>(`/promotions/providers/${id}`);
 	}
 
-	// ─── Promotion connections ─────────────────────────────────────
+	// ─── Promotion environments ────────────────────────────────────
 
-	async listPromotionConnections(query: Record<string, string> = {}, limit?: number) {
-		return await this.paginate<Record<string, unknown>>('/promotions/connections', query, limit);
+	async listPromotionEnvironments(query: Record<string, string> = {}, limit?: number) {
+		return await this.paginate<Record<string, unknown>>('/promotions/environments', query, limit);
 	}
 
-	async getPromotionConnection(id: string) {
-		return await this.get<Record<string, unknown>>(`/promotions/connections/${id}`);
+	async getPromotionEnvironment(id: string) {
+		return await this.get<Record<string, unknown>>(`/promotions/environments/${id}`);
 	}
 
-	async createPromotionConnection(body: unknown) {
-		return await this.post<Record<string, unknown>>('/promotions/connections', body);
+	async createPromotionEnvironment(body: unknown) {
+		return await this.post<Record<string, unknown>>('/promotions/environments', body);
 	}
 
-	async updatePromotionConnection(id: string, body: unknown) {
-		return await this.put<Record<string, unknown>>(`/promotions/connections/${id}`, body);
+	async updatePromotionEnvironment(id: string, body: unknown) {
+		return await this.put<Record<string, unknown>>(`/promotions/environments/${id}`, body);
 	}
 
-	async deletePromotionConnection(id: string) {
-		return await this.del<undefined>(`/promotions/connections/${id}`);
+	async deletePromotionEnvironment(id: string) {
+		return await this.del<undefined>(`/promotions/environments/${id}`);
 	}
 
-	/** Creates the config of one direction, or replaces it with the settings sent. */
-	async setPromotionConfig(id: string, direction: PromotionDirection, body: unknown) {
-		return await this.put<Record<string, unknown>>(
-			`/promotions/connections/${id}/configs/${direction}`,
-			body,
+	async connectPromotionCheckout(id: string) {
+		return await this.post<PromotionCheckoutResult>(`/promotions/environments/${id}/connect`);
+	}
+
+	async disconnectPromotionCheckout(id: string) {
+		return await this.post<PromotionCheckoutResult>(`/promotions/environments/${id}/disconnect`);
+	}
+
+	async listPromotionEnvironmentProjects(id: string) {
+		return await this.get<{ projectIds: string[] }>(`/promotions/environments/${id}/projects`);
+	}
+
+	async addProjectToPromotionEnvironment(id: string, projectId: string) {
+		return await this.post<{ environmentId: string; projectId: string }>(
+			`/promotions/environments/${id}/projects/${projectId}`,
 		);
 	}
 
-	async deletePromotionConfig(id: string, direction: PromotionDirection) {
-		return await this.del<undefined>(`/promotions/connections/${id}/configs/${direction}`);
+	async removeProjectFromPromotionEnvironment(id: string, projectId: string) {
+		return await this.del<undefined>(`/promotions/environments/${id}/projects/${projectId}`);
 	}
 
-	async clonePromotionCheckout(id: string, direction: PromotionDirection) {
-		return await this.post<PromotionCheckoutResult>(
-			`/promotions/connections/${id}/${direction}/clone`,
-		);
-	}
-
-	async disconnectPromotionCheckout(id: string, direction: PromotionDirection) {
-		return await this.post<PromotionCheckoutResult>(
-			`/promotions/connections/${id}/${direction}/disconnect`,
-		);
-	}
-
-	async listPromotionConnectionProjects(id: string) {
-		return await this.get<{ projectIds: string[] }>(`/promotions/connections/${id}/projects`);
-	}
-
-	async addProjectToPromotionConnection(id: string, projectId: string) {
-		return await this.post<{ connectionId: string; projectId: string }>(
-			`/promotions/connections/${id}/projects/${projectId}`,
-		);
-	}
-
-	async removeProjectFromPromotionConnection(id: string, projectId: string) {
-		return await this.del<undefined>(`/promotions/connections/${id}/projects/${projectId}`);
-	}
-
-	async promotePackage(id: string, body: { commitMessage: string; force?: boolean }) {
-		return await this.post<PromotePackageResult>(`/promotions/connections/${id}/promote`, body);
+	async promotePackage(id: string, body: { commitMessage?: string; force?: boolean }) {
+		return await this.post<PromotePackageResult>(`/promotions/environments/${id}/promote`, body);
 	}
 
 	async applyPackage(id: string, expectedSource?: PromotionExpectedSource) {
 		return await this.post<ApplyPackageResult>(
-			`/promotions/connections/${id}/apply`,
+			`/promotions/environments/${id}/apply`,
 			expectedSource ? { expectedSource } : undefined,
 		);
 	}
@@ -452,7 +445,7 @@ export class N8nClient {
 		expectedSource: PromotionExpectedSource,
 		confirmDestructiveChanges?: boolean,
 	) {
-		return await this.post<ApplyPackageResult>(`/promotions/connections/${id}/apply/continue`, {
+		return await this.post<ApplyPackageResult>(`/promotions/environments/${id}/apply/continue`, {
 			expectedSource,
 			confirmDestructiveChanges,
 		});

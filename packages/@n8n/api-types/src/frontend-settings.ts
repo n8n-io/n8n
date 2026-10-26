@@ -183,11 +183,6 @@ export interface FrontendSettings {
 	workflowsGroupsWithTriggersEnabled: boolean;
 	workflowsGroupsWithManyBoundariesEnabled: boolean;
 	useWorkflowPublicationService: boolean;
-	/**
-	 * Granular credential sharing: a personal credential is usable in any
-	 * project its owner works in. Set from `N8N_ENV_FEAT_CRED_SHARING`.
-	 */
-	granularCredentialSharing: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
@@ -404,7 +399,6 @@ export type FrontendModuleSettings = {
 	'instance-ai'?: {
 		enabled: boolean;
 		mcpConnectionsAvailable: boolean;
-		localGatewayDisabled: boolean;
 		browserUseEnabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
@@ -415,6 +409,7 @@ export type FrontendModuleSettings = {
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
 		runDebugEnabled: boolean;
+		workflowSuggestionsEnabled: boolean;
 	};
 
 	/**
@@ -465,7 +460,7 @@ export type FrontendModuleSettings = {
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
-		/** Whether agents use the skills hub (`N8N_AGENTS_SKILLS_HUB_ENABLED`, read at startup). */
+		/** Whether agents use the skills hub (`SkillsHubRollout.isEnabled`). */
 		skillsHubEnabled?: boolean;
 	};
 };

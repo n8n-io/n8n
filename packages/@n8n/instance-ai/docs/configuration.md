@@ -20,7 +20,6 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 | `N8N_INSTANCE_AI_REASONING_EFFORT` | string | unset | Optional reasoning effort for `custom/*` (`none`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max`). Unset = known-model map in `src/utils/custom-model-defaults.ts`; still unresolved = omit. |
 | `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS` | string | unset | Optional `true`/`false` for `custom/*` structured-output support. Unset = known-model map; still unresolved = omit. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
-| `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
 | `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` | boolean | `true` | Deprecated; removal is planned for v4. Allow Instance AI to receive workflow and node parameter values. The effective value is `true` only when this variable and the "Send actual data values" setting in Settings > AI usage are both on. Instance AI reads it at the start of each run. When it is `false`, the adapter hides parameter values and execution data, and the Assistant runs in a limited mode: it cannot create or edit workflows. After it is turned on, the Assistant must read a workflow again before it can rebuild or save it. This is a global n8n AI setting. |
 
 For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
@@ -43,9 +42,10 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_THINKING_ENABLED` | boolean | `true` | Extended thinking / reasoning. When `false`, reasoning is not enabled on the model. |
+| `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED` | boolean | `false` | Enable workflow suggestions, internal self-healing investigations, and result review routes. Restart n8n after changing this setting. Investigations require a backend caller. This does not add automatic triggers. |
 | `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` | boolean | `false` | Force-enable canvas node context. `false` falls back to the PostHog flag. |
-| `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `workflows(action="list")`). `false` falls back to the PostHog flag. |
-| `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Computer Use browser tooling, used for credential setup. |
+| `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `workflow_builder_workflows(action="list")`). `false` falls back to the PostHog flag. |
+| `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Browser Use tooling, used for credential setup. |
 | `N8N_INSTANCE_AI_PROMPT_VERSION` | string | `''` | Pin every run on this instance to one published prompt profile, e.g. `concise@1`. Empty keeps the backend experiment assignment. An unknown version fails the Instance AI run, not the instance. See [prompt profiles](./prompt-profiles.md). |
 
 The PostHog flag `118_instance_ai_setup_overhaul` selects the setup flow.
@@ -63,21 +63,9 @@ the wizard.
 | `N8N_INSTANCE_AI_TRACE_INTERNAL` / `N8N_INSTANCE_AI_TRACE_INCLUDE_INTERNAL` | boolean | `false` | Include internal orchestration data in trace inputs. Either variable enables it. |
 | `N8N_INSTANCE_AI_EVAL_TIMING` | boolean | `false` | When `true`, logs a per-execution `[EvalMock][timing]` phase breakdown (hints / bypass-pin / http-mock / ai-turn) for the eval mock-execution path, to attribute mocked-execution latency. A no-op otherwise. |
 | `N8N_INSTANCE_AI_EVAL_MODEL` | string | unset | Optional model override for evaluation helper agents. Falls back to `N8N_INSTANCE_AI_MODEL`. |
+| `N8N_INSTANCE_AI_EVAL_MODEL_URL` | string | unset | Base URL for `N8N_INSTANCE_AI_EVAL_MODEL` when it differs from the builder model, for example a `custom/*` OpenAI-compatible endpoint. A judge or helper with a fixed model id uses this URL only when its id equals `N8N_INSTANCE_AI_EVAL_MODEL`. |
+| `N8N_INSTANCE_AI_EVAL_MODEL_API_KEY` | string | unset | API key for `N8N_INSTANCE_AI_EVAL_MODEL_URL`. A `custom/*` eval model may omit it. Other keys are never sent to that URL. |
 | `EVAL_MODAL_LLM_HEADERS` | string | `''` | Eval-only JSON object of extra HTTP headers for Modal (or other custom) LLM endpoints. Used by eval helpers (`createEvalAgent`, mock generation, verification) with `N8N_INSTANCE_AI_MODEL_URL`. |
-
-### Local Computer Use gateway
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_GATEWAY_API_KEY` | string | `''` | Static API key for the local gateway. It authenticates initialization, SSE, responses, and disconnect. It is not user-scoped and cannot create credentials. When empty, use dynamic user pairing. |
-
-Local machine access requires the `@n8n/computer-use` gateway daemon. The user
-selects the local-computer setup action in n8n, copies the generated command,
-and runs it on their machine. The command contains the instance URL and a
-short-lived pairing token.
-
-See `docs/filesystem-access.md` for the full architecture, gateway protocol spec,
-and security model.
 
 ### Web Research
 
@@ -114,8 +102,8 @@ without search results. `research(action="fetch-url")` still works.
 | `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` | boolean | `false` | Local-dev only. When `1` or `true`, pack `@n8n/utils`, `@n8n/errors`, `n8n-workflow`, and `@n8n/workflow-sdk` from the host monorepo into each sandbox after `npm install`. Build all four packages first. Start a new AI thread after changing this because existing sandboxes keep their initialized `node_modules`. |
 
 When sandbox is enabled, Instance AI writes workflow source files in the runtime
-workspace and `build-workflow` runs TypeScript sources through the sandbox
-`tsx` build runner before saving. The model still calls only `build-workflow`;
+workspace and `workflow_builder_build_workflow` runs TypeScript sources through the sandbox
+`tsx` build runner before saving. The model still calls only `workflow_builder_build_workflow`;
 there is no no-sandbox TypeScript build fallback.
 
 Sandbox workspaces persist per thread. The same remote sandbox is reused across
@@ -332,3 +320,25 @@ search:
     - html
     - json   # required for Instance AI
 ```
+
+## Verification helper and provider request traces
+
+When product tracing is enabled, the workflow destructiveness classifier and
+simulation-fixture generator reuse the current product trace and provider.
+Their spans carry `evalRole=helper` and the helper name in `agent_role`. Their
+prompt and output recording is disabled. Calls outside an active product trace
+keep their existing behavior.
+
+Product model calls also emit `model.provider.request` spans per HTTP attempt.
+These report provider/model identity, HTTP status and time to response headers.
+They preserve the configured transport and parent span. They contain no request
+URL, headers, body, response body, token usage, or exception text. HTTP success
+does not mean a stream completed: the parent generation span reports stream
+errors, tokens and timing. Generation spans own usage, so request spans must not
+be summed into generation/token totals. Prebuilt external LanguageModel objects
+bypass the SDK transport and must supply their own request tracing.
+
+The agents SDK option `BuiltTelemetry.traceModelRequests` is opt-in. Instance AI
+enables it for product calls; external harnesses with their own fetch tracing
+leave it unset to avoid duplicate attempt spans. The existing trace enablement,
+redaction and provider lifetime rules still apply.

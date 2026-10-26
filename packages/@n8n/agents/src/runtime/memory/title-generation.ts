@@ -9,7 +9,7 @@ import type {
 	TokenUsage,
 } from '../../types/sdk/agent';
 import type { AgentDbMessage } from '../../types/sdk/message';
-import { getModelIdString } from '../../utils/model';
+import { getCatalogModelId } from '../../utils/model';
 import { createFilteredLogger } from '../logger';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { computeSideCallCost } from '../loop/side-call-cost';
@@ -161,7 +161,7 @@ export async function generateTitleFromMessage(
 export async function generateTitleAndEmojiFromMessage(
 	model: LanguageModel,
 	userMessage: string,
-	opts?: { instructions?: string; executionCounter?: AgentExecutionCounter },
+	opts?: GenerateTitleFromMessageOptions,
 ): Promise<{ title: string | null; emoji?: string; usage?: TokenUsage } | null> {
 	const trimmed = userMessage.trim();
 	if (!trimmed) return null;
@@ -180,6 +180,7 @@ ${trimmed}
 		model,
 		instructions: opts?.instructions ?? DEFAULT_TITLE_AND_EMOJI_INSTRUCTIONS,
 		messages: [{ role: 'user', content: wrappedMessage }],
+		...buildAiSdkTelemetry(opts?.telemetry, { fallbackFunctionId: 'title-generation' }),
 	});
 	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);
 	const usage = toTokenUsage(result.usage, result.finalStep.providerMetadata);
@@ -231,6 +232,7 @@ export async function generateThreadTitle(opts: {
 	agentModel: ModelConfig;
 	/** Proxy/SSRF-aware `fetch` for the title model call (see {@link AgentRuntimeConfig.modelFetch}). */
 	modelFetch?: FetchFn;
+	telemetry?: BuiltTelemetry;
 	/** Messages from the current turn, used to find the first user message. */
 	turnDelta: AgentDbMessage[];
 	executionCounter?: AgentExecutionCounter;
@@ -256,9 +258,10 @@ export async function generateThreadTitle(opts: {
 		if (!userText) return;
 
 		const titleModelId = opts.titleConfig.model ?? opts.agentModel;
-		const titleModel = createModel(titleModelId, opts.modelFetch);
+		const titleModel = createModel(titleModelId, opts.modelFetch, opts.telemetry);
 		const generated = await generateTitleAndEmojiFromMessage(titleModel, userText, {
 			instructions: opts.titleConfig.instructions,
+			telemetry: opts.telemetry,
 			executionCounter: opts.executionCounter,
 		});
 		if (!generated) return;
@@ -276,7 +279,8 @@ export async function generateThreadTitle(opts: {
 		if (usage && opts.onSideCallUsage) {
 			await reportTitleUsage(
 				opts.onSideCallUsage,
-				getModelIdString(titleModelId),
+				// Priced by this id, so report the model a deployment serves.
+				getCatalogModelId(titleModelId),
 				usage,
 				opts.promptCaching,
 			);
@@ -300,8 +304,9 @@ export async function generateThreadTitle(opts: {
 }
 
 /**
- * Price a title-generation model turn and forward it to the host. Best-effort:
- * a catalog lookup or host failure is logged and never breaks title generation.
+ * Price a title-generation model turn and forward it to the host. An unpriced
+ * call is still forwarded without `cost`. Best-effort: a host failure is
+ * logged and never breaks title generation.
  */
 async function reportTitleUsage(
 	onSideCallUsage: (report: SideCallUsageReport) => void | Promise<void>,
@@ -311,12 +316,11 @@ async function reportTitleUsage(
 ): Promise<void> {
 	try {
 		const cost = await computeSideCallCost(modelId, usage, promptCaching);
-		if (cost === undefined) return;
 		await onSideCallUsage({
 			task: 'title',
 			model: modelId,
 			usage,
-			cost,
+			...(cost !== undefined ? { cost } : {}),
 			reportId: crypto.randomUUID(),
 		});
 	} catch (error) {

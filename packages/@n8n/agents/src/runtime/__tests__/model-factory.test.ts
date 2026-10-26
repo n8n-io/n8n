@@ -1,7 +1,9 @@
 import { createGoogleVertex } from '@ai-sdk/google-vertex';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { LanguageModel } from 'ai';
 
 import {
+	mintAzureFoundryDeploymentsToken,
 	createEmbeddingModel,
 	createModel,
 	supportsSplitSystemMessages,
@@ -10,6 +12,7 @@ import { forgetEndpointApiStyles } from '../model/openai-api-style';
 
 type ProviderOpts = {
 	apiKey?: string;
+	authToken?: string;
 	baseURL?: string;
 	fetch?: typeof globalThis.fetch;
 	headers?: Record<string, string>;
@@ -24,6 +27,7 @@ vi.mock('@ai-sdk/anthropic', () => ({
 		provider: 'anthropic',
 		modelId: model,
 		apiKey: opts?.apiKey,
+		authToken: opts?.authToken,
 		baseURL: opts?.baseURL,
 		fetch: opts?.fetch,
 		headers: opts?.headers,
@@ -37,7 +41,7 @@ vi.mock('@ai-sdk/openai', () => {
 	// error (an `APICallError` carries `statusCode`) when the endpoint rejects it.
 	const buildModel =
 		(opts: ProviderOpts | undefined, api?: 'chat-completions') => (model: string) => {
-			const callEndpoint = async () => {
+			const callEndpoint = async (options?: { providerOptions?: unknown }) => {
 				const base = (opts?.baseURL ?? 'https://api.openai.com/v1').replace(/\/+$/, '');
 				const url = `${base}${api === 'chat-completions' ? '/chat/completions' : '/responses'}`;
 				const response = await (opts?.fetch ?? globalThis.fetch)(url, { method: 'POST' });
@@ -47,7 +51,7 @@ vi.mock('@ai-sdk/openai', () => {
 						url,
 					});
 				}
-				return { api, url };
+				return { api, url, providerOptions: options?.providerOptions };
 			};
 			return {
 				provider: 'openai',
@@ -57,7 +61,8 @@ vi.mock('@ai-sdk/openai', () => {
 				baseURL: opts?.baseURL,
 				fetch: opts?.fetch,
 				headers: opts?.headers,
-				specificationVersion: 'v3',
+				// Match the real provider: `ai` adapts a v3 model and reads its result content.
+				specificationVersion: 'v4',
 				supportedUrls: {},
 				doGenerate: callEndpoint,
 				doStream: callEndpoint,
@@ -192,14 +197,14 @@ vi.mock('@ai-sdk/azure', () => ({
 }));
 
 vi.mock('@openrouter/ai-sdk-provider', () => ({
-	createOpenRouter: (opts?: ProviderOpts) => (model: string) => ({
+	createOpenRouter: vi.fn((opts?: ProviderOpts) => (model: string) => ({
 		provider: 'openrouter',
 		modelId: model,
 		apiKey: opts?.apiKey,
 		baseURL: opts?.baseURL,
 		fetch: opts?.fetch,
 		specificationVersion: 'v3',
-	}),
+	})),
 }));
 
 // Entra OAuth2 token mint: stubbed so the model-factory's tokenProvider
@@ -270,6 +275,7 @@ vi.mock('@ai-sdk/minimax', () => ({
 vi.mock('@ai-sdk/amazon-bedrock', () => ({
 	createAmazonBedrock:
 		(opts?: {
+			apiKey?: string;
 			region?: string;
 			accessKeyId?: string;
 			secretAccessKey?: string;
@@ -278,6 +284,7 @@ vi.mock('@ai-sdk/amazon-bedrock', () => ({
 		(model: string) => ({
 			provider: 'aws-bedrock',
 			modelId: model,
+			apiKey: opts?.apiKey,
 			region: opts?.region,
 			accessKeyId: opts?.accessKeyId,
 			secretAccessKey: opts?.secretAccessKey,
@@ -311,7 +318,9 @@ vi.mock('undici', () => ({
 
 /** What the mocked OpenAI stubs report back about the endpoint they reached. */
 type EndpointModel = {
-	doGenerate: (options: unknown) => Promise<{ api?: string; url: string }>;
+	doGenerate: (
+		options: unknown,
+	) => Promise<{ api?: string; url: string; providerOptions?: unknown }>;
 	doStream: (options: unknown) => Promise<{ api?: string; url: string }>;
 };
 
@@ -413,6 +422,21 @@ describe('createModel', () => {
 				url: 'https://proxy.example/v1/responses',
 			});
 			expect(paths).toEqual(['/v1/responses']);
+		});
+
+		it('sends Responses calls to a custom endpoint with store disabled', async () => {
+			// Reported failure: LiteLLM serves /responses without storing items, so the
+			// SDK default `store: true` replayed history as unresolvable item_reference.
+			const { fetchFn } = fakeEndpoint({ '/v1/responses': 200 });
+			const model = build({ url: 'https://litellm.example/v1' }, fetchFn);
+
+			const result = await model.doGenerate({
+				prompt: [],
+				providerOptions: { openai: { reasoningEffort: 'low' } },
+			});
+			expect(result.providerOptions).toEqual({
+				openai: { store: false, reasoningEffort: 'low' },
+			});
 		});
 
 		it('moves to chat completions when the endpoint has no /responses route', async () => {
@@ -517,6 +541,21 @@ describe('createModel', () => {
 		expect(model.modelId).toBe('ft:gpt-4o:my-org:custom:abc123');
 	});
 
+	it('passes a gateway model ID after the provider through unchanged', () => {
+		const model = createModel('openai/@OpenAI/gpt-5-mini') as unknown as Record<string, unknown>;
+		expect(model.provider).toBe('openai');
+		expect(model.modelId).toBe('@OpenAI/gpt-5-mini');
+	});
+
+	it('passes credential headers to the OpenAI provider', () => {
+		const model = createModel({
+			id: 'openai/gpt-5-mini',
+			apiKey: 'key',
+			headers: { 'x-custom-header': 'value' },
+		}) as unknown as Record<string, unknown>;
+		expect(model.headers).toEqual({ 'x-custom-header': 'value' });
+	});
+
 	it('should not pass fetch when no proxy env vars are set', () => {
 		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
 		expect(model.fetch).toBeUndefined();
@@ -585,7 +624,7 @@ describe('createModel', () => {
 			}) as unknown as Record<string, unknown>;
 			expect(model.provider).toBe('openrouter');
 			expect(model.modelId).toBe('openai/gpt-4o');
-			expect(model.apiKey).toBe('or-test');
+			expect(createOpenRouter).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'or-test' }));
 		});
 
 		it('should create model for nvidia with SDK defaults for usage and structured outputs', () => {
@@ -829,23 +868,7 @@ describe('createModel', () => {
 			expect(model.useDeploymentBasedUrls).toBe(true);
 		});
 
-		it('should use the user-provided deploymentName as the deployment id for classic', () => {
-			const model = createModel({
-				id: 'azure-openai/gpt-4o',
-				apiKey: 'az-key',
-				resourceName: 'my-resource',
-				apiVersion: '2024-02-01',
-				endpointType: 'classic',
-				deploymentName: 'my-gpt4o-deployment',
-			}) as unknown as Record<string, unknown>;
-			// The catalog model id is not the Azure deployment id; the factory
-			// hands the user's deployment name to .chat(...).
-			expect(model.modelId).toBe('my-gpt4o-deployment');
-			expect(model.builder).toBe('chat');
-			expect(model.useDeploymentBasedUrls).toBe(true);
-		});
-
-		it('should fall back to the catalog model id when classic has no deploymentName', () => {
+		it('should use the model id as the deployment id for classic', () => {
 			const model = createModel({
 				id: 'azure-openai/gpt-4o',
 				apiKey: 'az-key',
@@ -871,19 +894,6 @@ describe('createModel', () => {
 			expect(model.baseURL).toBe(foundryURL);
 			expect(model.builder).toBeUndefined();
 			expect(model.useDeploymentBasedUrls).toBeUndefined();
-		});
-
-		it('should use the deployment name on a Foundry endpoint when provided', () => {
-			// A Foundry deployment can be named differently from the model it
-			// serves, so the user's deployment name must reach the request path.
-			const model = createModel({
-				id: 'azure-openai/gpt-4.1-nano',
-				apiKey: 'az-key',
-				endpointType: 'foundry',
-				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
-				deploymentName: 'my-chat-model',
-			}) as unknown as Record<string, unknown>;
-			expect(model.modelId).toBe('my-chat-model');
 		});
 
 		it('should treat a foundry endpoint without resourceName as valid', () => {
@@ -914,6 +924,58 @@ describe('createModel', () => {
 					apiKey: 'az-key',
 				}),
 			).toThrow(/Invalid credentials for provider "azure-openai"[\s\S]*resourceName/);
+		});
+
+		it('sends a Claude deployment to the Anthropic endpoint of the Foundry resource', () => {
+			const model = createModel({
+				id: 'azure-openai/anthropic/my-claude',
+				apiKey: 'az-key',
+				endpointType: 'foundry',
+				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+			}) as unknown as Record<string, unknown>;
+
+			expect(model.provider).toBe('anthropic');
+			expect(model.modelId).toBe('my-claude');
+			expect(model.apiKey).toBe('az-key');
+			expect(model.baseURL).toBe('https://my-resource.services.ai.azure.com/anthropic/v1');
+		});
+
+		it('builds a Foundry Claude deployment for its served model and still names the deployment', async () => {
+			let sentBody: Record<string, unknown> | undefined;
+			const baseFetch = vi.fn(async (_input: unknown, init?: RequestInit) => {
+				sentBody = JSON.parse(init?.body as string) as Record<string, unknown>;
+				return new Response('{}', { status: 200 });
+			}) as unknown as typeof globalThis.fetch;
+
+			const model = createModel(
+				{
+					id: 'azure-openai/anthropic/my-claude',
+					apiKey: 'az-key',
+					endpointType: 'foundry',
+					baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+					catalogModelId: 'azure-openai/claude-opus-4-5',
+				},
+				baseFetch,
+			) as unknown as { modelId: string; fetch: typeof globalThis.fetch };
+
+			expect(model.modelId).toBe('claude-opus-4-5');
+			await model.fetch('https://example.com', {
+				method: 'POST',
+				body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 64000 }),
+			});
+			expect(sentBody).toEqual({ model: 'my-claude', max_tokens: 64000 });
+		});
+
+		it('rejects a Claude deployment on a classic credential', () => {
+			expect(() =>
+				createModel({
+					id: 'azure-openai/anthropic/my-claude',
+					apiKey: 'az-key',
+					resourceName: 'my-resource',
+					apiVersion: '2024-02-01',
+					endpointType: 'classic',
+				}),
+			).toThrow('Claude deployments need a Microsoft Foundry credential');
 		});
 
 		it('should throw if a foundry endpoint is missing baseURL', () => {
@@ -1006,17 +1068,100 @@ describe('createModel', () => {
 			expect(mockClientOAuth2.credentials.getToken).toHaveBeenCalledTimes(1);
 		});
 
-		it('uses the deployment name on the Foundry Entra path when provided', () => {
-			// The deployment name can differ from the model it serves; it reaches
-			// the OpenAI-compatible path as the model id.
-			const model = createModel({
-				id: 'azure-openai/gpt-4.1-nano',
-				endpointType: 'foundry',
-				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
-				deploymentName: 'my-chat-model',
-				...entraCreds,
-			}) as unknown as Record<string, unknown>;
-			expect(model.modelId).toBe('my-chat-model');
+		type EntraModel = { tokenProvider: () => Promise<string>; fetch: typeof globalThis.fetch };
+		it.each([
+			{
+				endpoint: {
+					endpointType: 'classic' as const,
+					resourceName: 'my-resource',
+					apiVersion: '2024-02-01',
+				},
+				mint: async (model: EntraModel) => await model.tokenProvider(),
+			},
+			{
+				endpoint: {
+					endpointType: 'foundry' as const,
+					baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+				},
+				mint: async (model: EntraModel) => await model.fetch('https://example.com'),
+			},
+		])(
+			'mints a $endpoint.endpointType Entra token within the given outbound policy',
+			async ({ endpoint, mint }) => {
+				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+				const ssrfBridge = {
+					validateUrl: vi.fn(),
+					validateRedirectSync: vi.fn(),
+					createSecureLookup: vi.fn(),
+				};
+				const baseFetch = vi.fn(
+					async () => new Response('{}', { status: 200 }),
+				) as unknown as typeof globalThis.fetch;
+				const model = createModel(
+					{ id: 'azure-openai/gpt-4o', ...endpoint, ...entraCreds, ssrfBridge },
+					baseFetch,
+				) as unknown as EntraModel;
+
+				await mint(model);
+
+				expect(ClientOAuth2).toHaveBeenLastCalledWith(
+					expect.objectContaining({
+						additionalBodyProperties: { resource: 'https://cognitiveservices.azure.com/' },
+						ssrfBridge,
+					}),
+				);
+			},
+		);
+
+		it('mints a Foundry deployments token within the given outbound policy', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const ssrfBridge = {
+				validateUrl: vi.fn(),
+				validateRedirectSync: vi.fn(),
+				createSecureLookup: vi.fn(),
+			};
+
+			const token = await mintAzureFoundryDeploymentsToken(
+				{
+					endpointType: 'foundry',
+					baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+					...entraCreds,
+				},
+				ssrfBridge,
+			);
+
+			expect(token).toBe('minted-bearer');
+			expect(ClientOAuth2).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					additionalBodyProperties: { resource: 'https://ai.azure.com/' },
+					ssrfBridge,
+				}),
+			);
+		});
+
+		it('sends a fresh Bearer token, not an API key, for a Foundry Claude deployment', async () => {
+			let capturedHeaders: Headers | undefined;
+			const baseFetch = vi.fn(async (_input: unknown, init?: RequestInit) => {
+				capturedHeaders = new Headers(init?.headers);
+				return new Response('{}', { status: 200 });
+			}) as unknown as typeof globalThis.fetch;
+
+			const model = createModel(
+				{
+					id: 'azure-openai/anthropic/my-claude',
+					endpointType: 'foundry',
+					baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+					...entraCreds,
+				},
+				baseFetch,
+			) as unknown as { fetch: typeof globalThis.fetch; apiKey?: string; provider: string };
+
+			expect(model.provider).toBe('anthropic');
+			expect(model.apiKey).toBeUndefined();
+			await model.fetch('https://example.com', {
+				headers: { Authorization: 'Bearer entra-id' },
+			});
+			expect(capturedHeaders?.get('Authorization')).toBe('Bearer minted-bearer');
 		});
 
 		it('rejects credentials that supply both apiKey and Entra', () => {
@@ -1071,6 +1216,16 @@ describe('createModel', () => {
 			expect(model.modelId).toBe('amazon.titan-text-lite-v1');
 			expect(model.region).toBe('us-east-1');
 			expect(model.accessKeyId).toBe('AKIAIOSFODNN7EXAMPLE');
+		});
+
+		it('should pin an empty apiKey so the SDK ignores AWS_BEARER_TOKEN_BEDROCK', () => {
+			const model = createModel({
+				id: 'aws-bedrock/amazon.titan-text-lite-v1',
+				region: 'us-east-1',
+				accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
+				secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+			}) as unknown as Record<string, unknown>;
+			expect(model.apiKey).toBe('');
 		});
 
 		it('should throw if region is missing', () => {
@@ -1242,6 +1397,8 @@ describe('supportsSplitSystemMessages', () => {
 		['google-vertex/gemini-3-flash-preview', false],
 		['google-vertex/mistral-large-2411', false],
 		['google-vertex/xai/grok-4', false],
+		['azure-openai/anthropic/my-claude', true],
+		['azure-openai/my-chat', false],
 	] as const)('checks split system messages for %s', (model, expected) => {
 		expect(supportsSplitSystemMessages(model)).toBe(expected);
 	});

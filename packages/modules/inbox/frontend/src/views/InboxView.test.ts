@@ -1,5 +1,6 @@
 import type {
 	DecideWorkflowReviewRequestResponse,
+	InboxPromotionReviewItem,
 	InboxSelfHealingItem,
 	InboxWorkflowReviewItem,
 	WorkflowReviewRequestDetail,
@@ -11,7 +12,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { defineComponent, type PropType } from 'vue';
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
 
-import type { InboxItemChange } from '../inbox.constants';
+import type { InboxItemChange, InboxSelection } from '../inbox.constants';
 import * as inboxApi from '../inbox.api';
 import { InboxModule } from '../inbox.module';
 import { createInboxListSlice, useInboxStore } from '../inbox.store';
@@ -34,6 +35,7 @@ vi.mock('@n8n/composables/useDocumentTitle', () => ({
 }));
 const detailMounted = vi.fn();
 let reportChange: (change: InboxItemChange) => void;
+let reportResultChange: (change: InboxItemChange) => void;
 const router = createRouter({
 	history: createMemoryHistory(),
 	routes: [
@@ -81,9 +83,27 @@ const renderOptions = {
     <slot v-if="!listItem" />
     </div>`,
 			}),
-			SelfHealingResultDetail: {
-				props: ['selection'],
-				template: '<div data-test-id="result-detail" :data-id="selection.id" />',
+			SelfHealingResultDetail: defineComponent({
+				props: {
+					selection: { type: Object as PropType<InboxSelection>, required: true },
+					tab: String,
+					onItemChange: {
+						type: Function as PropType<(change: InboxItemChange) => void>,
+						required: true,
+					},
+				},
+				emits: ['update:tab'],
+				setup(props) {
+					reportResultChange = props.onItemChange;
+				},
+				template: `<div data-test-id="result-detail" :data-id="selection.id" :data-tab="tab">
+    <button data-test-id="select-result-changes-tab" @click="$emit('update:tab', 'changes')" />
+    <button data-test-id="select-result-activity-tab" @click="$emit('update:tab', 'activity')" />
+    </div>`,
+			}),
+			PromotionReviewDetail: {
+				props: ['item'],
+				template: '<div data-test-id="promotion-detail" :data-id="item.id" />',
 			},
 		},
 	},
@@ -166,6 +186,21 @@ it('clears source context and keeps the current state and tab', async () => {
 	expect(router.currentRoute.value.fullPath).toBe('/inbox?state=closed&tab=changes');
 });
 
+it('renders a promotion review from its loaded row until its source becomes disabled', async () => {
+	await router.replace('/inbox/promotion-reviews/rev-1');
+	const { getByTestId, queryByTestId } = renderComponent();
+	expect(queryByTestId('promotion-detail')).not.toBeInTheDocument();
+
+	store.lists.waiting.items = [promotionItem()];
+	await waitAllPromises();
+	expect(getByTestId('promotion-detail')).toHaveAttribute('data-id', 'rev-1');
+
+	store.disabledSources = ['promotion_review'];
+	await waitAllPromises();
+	expect(router.currentRoute.value.fullPath).toBe('/inbox');
+	expect(queryByTestId('promotion-detail')).not.toBeInTheDocument();
+});
+
 it('clears a disabled-source deep link without mounting its detail entry', async () => {
 	await router.replace('/inbox/reviews/req-1');
 	store.disabledSources = ['workflow_review'];
@@ -219,6 +254,71 @@ it('writes detail tabs to the URL and keeps selection and state', async () => {
 	expect(router.currentRoute.value.query).toEqual({
 		state: 'closed',
 	});
+});
+
+it('keeps Assistant selection through detail tabs and reconciles its closure through the Inbox', async () => {
+	const inboxSettings = useSettingsStore().settings.inbox;
+	createTestingPinia({ stubActions: false });
+	useSettingsStore().settings.inbox = inboxSettings;
+	const inbox = useInboxStore();
+	const closedResult: InboxSelfHealingItem = { ...resultItem(), state: 'closed' };
+	const metadata = { partial: false, failedSources: [], disabledSources: [] };
+	vi.mocked(inboxApi.fetchInboxSummary).mockResolvedValue({
+		...metadata,
+		counts: { open: 2, closed: 0 },
+	});
+	vi.mocked(inboxApi.fetchInbox).mockImplementation(async (_ctx, query) => ({
+		...metadata,
+		nextCursor: null,
+		hasMore: false,
+		data:
+			query.category === 'authored'
+				? []
+				: query.state === 'closed'
+					? [closedResult]
+					: [reviewItem(), resultItem()],
+	}));
+	await router.replace('/inbox/assistant-results/req-1?projectId=p1&workflowId=w1');
+	const { getByTestId, queryByTestId } = renderRoutedComponent();
+	await waitAllPromises();
+
+	getByTestId('select-result-changes-tab').click();
+	await waitAllPromises();
+	expect(router.currentRoute.value.query).toEqual({
+		projectId: 'p1',
+		workflowId: 'w1',
+		tab: 'changes',
+	});
+	expect(getByTestId('result-detail')).toHaveAttribute('data-tab', 'changes');
+	getByTestId('select-result-activity-tab').click();
+	await waitAllPromises();
+	expect(router.currentRoute.value.query).toEqual({ projectId: 'p1', workflowId: 'w1' });
+	expect(getByTestId('result-detail')).toHaveAttribute('data-tab', 'activity');
+	expect(inbox.openCount).toBe(2);
+	expect(inbox.closedCount).toBe(0);
+
+	reportResultChange({ type: 'self_healing_result', id: 'req-1', state: 'closed' });
+	await waitAllPromises();
+
+	expect(inbox.reconcileItemChange).toHaveBeenCalledExactlyOnceWith({
+		type: 'self_healing_result',
+		id: 'req-1',
+		state: 'closed',
+	});
+	expect(inbox.openCount).toBe(1);
+	expect(inbox.closedCount).toBe(1);
+	expect(inbox.lists.waiting.items).toEqual([reviewItem()]);
+	expect(inbox.lists.closed.items).toEqual([closedResult]);
+	expect(inbox.activeTab).toBe('closed');
+	expect(router.currentRoute.value.path).toBe('/inbox/assistant-results/req-1');
+	expect(router.currentRoute.value.query).toEqual({
+		projectId: 'p1',
+		workflowId: 'w1',
+		state: 'closed',
+	});
+	expect(getByTestId('result-detail')).toHaveAttribute('data-id', 'req-1');
+	expect(queryByTestId('review-detail')).not.toBeInTheDocument();
+	expect(inboxApi.fetchInboxSummary).toHaveBeenCalledOnce();
 });
 
 it('follows a selected item to Closed after its detail reports the new state', async () => {
@@ -423,6 +523,28 @@ function reviewItem(): InboxWorkflowReviewItem {
 		updatedAt: '2024-01-01T00:00:00.000Z',
 	};
 }
+function promotionItem(): InboxPromotionReviewItem {
+	return {
+		type: 'promotion_review',
+		id: 'rev-1',
+		state: 'open',
+		reviewState: 'open',
+		reviewType: 'gitlab',
+		title: 'Promote the thing',
+		webUrl: null,
+		branchName: 'n8n-promotion/1',
+		environmentName: null,
+		requester: null,
+		approver: null,
+		remoteError: null,
+		headCommitSha: null,
+		runCommitSha: null,
+		hasConflicts: false,
+		createdAt: '2026-01-01T00:00:00.000Z',
+		updatedAt: '2026-01-01T00:00:00.000Z',
+	};
+}
+
 function resultItem(): InboxSelfHealingItem {
 	return {
 		type: 'self_healing_result',

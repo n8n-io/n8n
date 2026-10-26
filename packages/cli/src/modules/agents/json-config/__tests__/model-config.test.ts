@@ -1,11 +1,13 @@
 import type { CredentialProvider, ResolvedCredential } from '@n8n/agents';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import {
-	resolveCredentialAwareModelConfig,
-	type AiGatewayModelCredentialResolver,
-} from '../model-config';
+import { resolveCredentialAwareModelConfig } from '../model-config';
+import type { AiGatewayModelCredentialResolver } from '../../agent-credential-provider.contracts';
+import { AzureFoundryDeploymentsService } from '../../azure-foundry-deployments.service';
 
 const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
 vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
@@ -140,6 +142,70 @@ describe('resolveCredentialAwareModelConfig', () => {
 		});
 	});
 
+	describe('azure-openai', () => {
+		const foundryDeployments = mock<AzureFoundryDeploymentsService>();
+		beforeEach(() => {
+			Container.set(AzureFoundryDeploymentsService, foundryDeployments);
+			foundryDeployments.findUnderlyingModel.mockReset();
+		});
+
+		const foundryCredential = {
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+			apiKey: 'az-key',
+			project: 'my-project',
+		};
+
+		it('adds the catalog id of the model a Foundry deployment serves', async () => {
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.resolve.mockResolvedValue(foundryCredential);
+			foundryDeployments.findUnderlyingModel.mockResolvedValue('gpt-4.1');
+
+			const result = await resolveCredentialAwareModelConfig(
+				'azure-openai/my-chat',
+				'cred-1',
+				credentialProvider,
+			);
+
+			expect(foundryDeployments.findUnderlyingModel).toHaveBeenCalledWith(
+				'cred-1',
+				foundryCredential,
+				'my-chat',
+			);
+			expect(result).toMatchObject({
+				id: 'azure-openai/my-chat',
+				catalogModelId: 'azure-openai/gpt-4.1',
+			});
+		});
+
+		it('leaves the catalog id out when the served model is unknown', async () => {
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.resolve.mockResolvedValue(foundryCredential);
+			foundryDeployments.findUnderlyingModel.mockResolvedValue(undefined);
+
+			const result = await resolveCredentialAwareModelConfig(
+				'azure-openai/my-chat',
+				'cred-1',
+				credentialProvider,
+			);
+
+			expect(result).not.toHaveProperty('catalogModelId');
+		});
+
+		it('does not look up deployments for a classic credential', async () => {
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.resolve.mockResolvedValue({
+				endpointType: 'classic',
+				resourceName: 'my-resource',
+				apiKey: 'az-key',
+			});
+
+			await resolveCredentialAwareModelConfig('azure-openai/gpt-4o', 'cred-1', credentialProvider);
+
+			expect(foundryDeployments.findUnderlyingModel).not.toHaveBeenCalled();
+		});
+	});
+
 	it('resolves the managed tag through the provider gateway resolver, keyed by provider prefix', async () => {
 		const credentialProvider = mock<CredentialProvider & AiGatewayModelCredentialResolver>();
 		credentialProvider.resolveAiGatewayModelCredential.mockResolvedValue({
@@ -175,5 +241,58 @@ describe('resolveCredentialAwareModelConfig', () => {
 			resolveCredentialAwareModelConfig('openai/gpt-5', AI_GATEWAY_MANAGED_TAG, credentialProvider),
 		).rejects.toThrow('cannot resolve Gateway credits');
 		expect(resolve).not.toHaveBeenCalled();
+	});
+	describe('Azure OpenAI outbound policy', () => {
+		const ssrfProtectionService = mock<SsrfProtectionService>();
+		const entraCredential = {
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+			clientId: 'client-id',
+			accessTokenUrl: 'https://login.microsoftonline.com/tenant/oauth2/v2.0/token',
+			oauthTokenData: { access_token: 'stored-token' },
+		};
+		const apiKeyCredential = {
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+			apiKey: 'az-key',
+		};
+
+		beforeEach(() => {
+			Container.set(SsrfProtectionService, ssrfProtectionService);
+		});
+
+		afterEach(() => {
+			Container.reset();
+		});
+
+		async function resolveAzure(credential: ResolvedCredential, enabled: boolean) {
+			Container.set(SsrfProtectionConfig, mock<SsrfProtectionConfig>({ enabled }));
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.resolve.mockResolvedValue(credential);
+			return await resolveCredentialAwareModelConfig(
+				'azure-openai/gpt-4o',
+				'cred-azure',
+				credentialProvider,
+			);
+		}
+
+		it('adds the SSRF bridge to an Entra ID credential when protection is enabled', async () => {
+			const result = await resolveAzure(entraCredential, true);
+
+			expect(result).toMatchObject({ ssrfBridge: ssrfProtectionService });
+		});
+
+		it.each([
+			{
+				name: 'an Entra ID credential with protection disabled',
+				credential: entraCredential,
+				enabled: false,
+			},
+			{ name: 'an API key credential', credential: apiKeyCredential, enabled: true },
+		])('leaves the SSRF bridge out for $name', async ({ credential, enabled }) => {
+			const result = await resolveAzure(credential, enabled);
+
+			expect(result).not.toHaveProperty('ssrfBridge');
+		});
 	});
 });

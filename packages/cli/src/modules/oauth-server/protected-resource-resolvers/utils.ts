@@ -3,6 +3,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { INode, N8nOAuth2BrowserFlowMode } from 'n8n-workflow';
 import { CHAT_TRIGGER_NODE_TYPE, resolveOAuthClientMode } from 'n8n-workflow';
 
+import { SYSTEM_TRUSTED_SOURCE_ID } from '@/modules/inbound-auth-core/constants';
+
 /**
  * Scopes advertised for per-workflow MCP trigger resources. Empty on purpose:
  * the gate enforces no scopes and tokens carry none, and an empty list makes
@@ -49,6 +51,18 @@ export function isOAuthProtectedChatTrigger(node: INode, disablePublicChat: bool
 		mode === 'hostedChat' &&
 		node.parameters.authentication === 'n8nUserAuth'
 	);
+}
+
+/**
+ * The trusted sources a trigger accepts: the one its `trustedSource` parameter names. A node
+ * saved before the parameter existed, or one that never left the default, holds none and keeps
+ * accepting the instance's own OAuth2 server only, which is what it accepted before.
+ */
+export function acceptedTrustedSourceIds(node: INode): string[] {
+	const { trustedSource } = node.parameters;
+	return [
+		typeof trustedSource === 'string' && trustedSource ? trustedSource : SYSTEM_TRUSTED_SOURCE_ID,
+	];
 }
 
 export function trimTrailingSlash(path: string): string {

@@ -1,3 +1,4 @@
+import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
@@ -55,7 +56,9 @@ import {
 } from './import-orchestrator';
 import {
 	buildImportResult,
+	credentialsUpdatedAcrossScopes,
 	identifyRequirements,
+	reconcileCredentialSummary,
 	reconcileVariableSummary,
 	scopeCredentialBindingsToRequirements,
 	toImportedWorkflowSummaries,
@@ -66,8 +69,6 @@ import {
 import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
-import type { SerializedCredential } from '../spec/serialized/credential.schema';
-import type { SerializedVariable } from '../spec/serialized/variable.schema';
 
 @Service()
 export class ProjectPackageImporter {
@@ -276,7 +277,15 @@ export class ProjectPackageImporter {
 			folders,
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
-			credentials: { matched, stubbed, seeded, incomplete },
+			credentials: reconcileCredentialSummary({
+				matched,
+				stubbed,
+				seeded,
+				incomplete,
+				updated: credentialsUpdatedAcrossScopes(
+					applied.map(({ content }) => content.credentialResult),
+				),
+			}),
 			dataTables: {
 				matched: dataTablesMatched,
 				created: dataTablesCreated,
@@ -383,6 +392,8 @@ export class ProjectPackageImporter {
 			// sub-workflow, or it would archive a dependency and leave its packaged parent unpublishable.
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
 			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
+			checkRootPlacement: true,
+			...(request.selection ? { movableFolderIds: foldersHolding(folders, workflows) } : {}),
 		};
 	}
 
@@ -427,4 +438,26 @@ function deletesForProject(
 ): string[] | undefined {
 	if (!selection || selection.selectedProjectId !== projectId) return undefined;
 	return selection.deletedWorkflowIds;
+}
+
+/** The folders that hold a selected workflow, with every folder above them. */
+function foldersHolding(
+	folders: Array<{ sourceFolderId: string; parentFolderId: string | null }>,
+	workflows: Array<{ parentFolderId: string | null }>,
+): Set<string> {
+	const parentOf = new Map(
+		folders.map(({ sourceFolderId, parentFolderId }) => [sourceFolderId, parentFolderId]),
+	);
+	const holding = new Set<string>();
+	for (const workflow of workflows) {
+		// A visited folder ends the walk, which also stops a cycle.
+		for (
+			let current = workflow.parentFolderId;
+			current !== null && !holding.has(current);
+			current = parentOf.get(current) ?? null
+		) {
+			holding.add(current);
+		}
+	}
+	return holding;
 }

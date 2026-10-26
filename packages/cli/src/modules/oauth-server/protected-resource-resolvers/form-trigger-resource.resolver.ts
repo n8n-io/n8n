@@ -11,6 +11,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { triggerResourceGate } from '../resource-gate';
 import {
+	acceptedTrustedSourceIds,
 	FORM_TRIGGER_CONSENT_HINTS,
 	FORM_TRIGGER_SCOPES,
 	trimSlashes,
@@ -87,6 +88,7 @@ export class FormTriggerResourceResolver implements ProtectedResourceResolver {
 				getResourceUrl: () => resourceUrl,
 				getAudiences: () => audiences,
 				getAllowedRedirectUris: async () => [resourceUrl],
+				getAcceptedSourceIds: () => acceptedTrustedSourceIds(node),
 				scopes: FORM_TRIGGER_SCOPES,
 				displayName: workflow.name,
 				uiHints: FORM_TRIGGER_CONSENT_HINTS,

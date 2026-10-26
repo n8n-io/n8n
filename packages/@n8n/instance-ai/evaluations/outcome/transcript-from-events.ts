@@ -6,7 +6,7 @@
  * LangSmith LLM-run outputs, not forwarded over SSE.
  */
 
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import { resolveBuilderToolName, type InstanceAiConfirmRequest } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import { redactSecrets, redactSecretsInText, redactSecretsInTextDeep } from '../harness/redact';
@@ -14,7 +14,6 @@ import type {
 	AskUserAnswer,
 	AskUserQuestion,
 	CapturedEvent,
-	PlanTask,
 	SetupCardRequest,
 	SetupWizardCompletedNode,
 	SetupWizardSkippedNode,
@@ -24,6 +23,7 @@ import type {
 } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { splitEventsIntoTurns } from './event-parser';
+import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 
 type ProxyResponses = Map<string, InstanceAiConfirmRequest>;
@@ -95,7 +95,7 @@ function extractUserTurnText(event: CapturedEvent): string | undefined {
 // ---------------------------------------------------------------------------
 // Per-turn assembly
 //
-// Each tool can emit two events for one logical interaction (e.g. ask-user
+// Each tool can emit two events for one logical interaction (e.g. workflow_builder_ask_user
 // fires both a tool-call and a confirmation-request). To render it once,
 // only the variant carrying the richer payload handles it; the other is
 // skipped. This relies on both events arriving in the same turn — which
@@ -199,25 +199,18 @@ function interpretToolCall(
 	outcomeByCallId: Map<string, ToolOutcome>,
 ): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
-	const toolName = getString(payload, 'toolName') ?? '';
+	const toolName = resolveBuilderToolName(getString(payload, 'toolName') ?? '');
 	const args = getRecord(payload, 'args') ?? {};
 
-	// ask-user is rendered from the confirmation-request (which has the answers).
-	if (toolName === 'ask-user') return null;
-
-	if (toolName === 'create-tasks') {
-		const tasks = Array.isArray(args.tasks) ? extractPlanTasks(args.tasks) : [];
-		if (tasks.length > 0) return { kind: 'plan', tasks };
-		// Empty plan: fall through and render as a plain tool-call so the call
-		// stays visible (1:1 with what happened) instead of vanishing.
-	}
+	// workflow_builder_ask_user is rendered from the confirmation-request (which has the answers).
+	if (toolName === DOMAIN_TOOL_IDS.ASK_USER) return null;
 
 	// Every named call renders — no de-duping, so repeat calls aren't dropped.
 	if (!toolName) return null;
 	const callId = getString(payload, 'toolCallId');
 	const outcome = callId ? outcomeByCallId.get(callId) : undefined;
-	// `workflows` output is rendered as the setup-wizard block — don't duplicate its result here.
-	const result = toolName === 'workflows' ? undefined : outcome?.result;
+	// `workflow_builder_workflows` output is rendered as the setup-wizard block — don't duplicate its result here.
+	const result = toolName === DOMAIN_TOOL_IDS.WORKFLOWS ? undefined : outcome?.result;
 	return {
 		kind: 'tool-call',
 		toolName,
@@ -234,10 +227,10 @@ function interpretToolCall(
 
 function interpretToolResult(event: CapturedEvent): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
-	const toolName = getString(payload, 'toolName') ?? '';
+	const toolName = resolveBuilderToolName(getString(payload, 'toolName') ?? '');
 	const result = payload.result;
 
-	if (toolName === 'workflows' && isRecord(result)) {
+	if (toolName === DOMAIN_TOOL_IDS.WORKFLOWS && isRecord(result)) {
 		return extractSetupWizardOutcome(result);
 	}
 	return null;
@@ -275,12 +268,7 @@ function interpretConfirmationRequest(
 		toolName,
 		resumeReason: inferResumeReason(payload, response),
 		approved: inferApproval(response),
-		// Plan-review prompts are boilerplate and the plan is rendered separately;
-		// keep the message only for confirm types where it's specific.
-		message:
-			payload.inputType === 'plan-review'
-				? undefined
-				: (getString(payload, 'message') ?? getString(payload, 'introMessage')),
+		message: getString(payload, 'message') ?? getString(payload, 'introMessage'),
 		feedback: inferFeedback(response),
 	};
 }
@@ -430,25 +418,14 @@ function inferResumeReason(
 function inferApproval(response: InstanceAiConfirmRequest | undefined): boolean | undefined {
 	if (!response) return undefined;
 	if (response.kind === 'approval') return response.approved;
-	if (response.kind === 'planDeny' || response.kind === 'domainAccessDeny') return false;
+	if (response.kind === 'domainAccessDeny') return false;
 	return true;
 }
 
-/** Free-text the user attached to their decision (e.g. plan-review feedback via userInput). */
+/** Free-text the user attached to their decision (via userInput). */
 function inferFeedback(response: InstanceAiConfirmRequest | undefined): string | undefined {
 	if (response?.kind === 'approval' && response.userInput) return response.userInput;
 	return undefined;
-}
-
-export function extractPlanTasks(raw: unknown[]): PlanTask[] {
-	const tasks: PlanTask[] = [];
-	for (const item of raw) {
-		if (!isRecord(item)) continue;
-		const title = typeof item.title === 'string' ? item.title : undefined;
-		const description = typeof item.description === 'string' ? item.description : undefined;
-		if (title || description) tasks.push({ title, description });
-	}
-	return tasks;
 }
 
 export function extractAskUserQuestions(raw: unknown[]): AskUserQuestion[] {

@@ -316,11 +316,7 @@ describe('AgentsListView — project page', () => {
 		expect(mocks.toastShowMessage).toHaveBeenCalledWith(
 			expect.objectContaining({ title: 'agents.duplicate.modal.success', type: 'success' }),
 		);
-		// A duplicate is born configured, so the backend creation events never
-		// fire for it; the duplicate is tracked directly, mirroring
-		// "User duplicated workflow" — the source agent id distinguishes it.
-		// Routed through the safe wrapper so a telemetry failure can't
-		// misreport a successful duplicate.
+		// The frontend event keeps the source Agent context.
 		expect(mocks.trackDuplicatedAgent).toHaveBeenCalledWith({
 			sourceAgentId: 'agent-1',
 			agentId: 'agent-2',

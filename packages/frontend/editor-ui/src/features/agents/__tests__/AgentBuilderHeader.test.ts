@@ -44,6 +44,7 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<i data-testid="stub-assistant-icon" />',
 		props: ['size'],
 	},
+	N8nText: { template: '<span><slot /></span>', props: ['step', 'color'] },
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nButton: {
 		template:
@@ -63,6 +64,10 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<button :data-testid="testId" @click="$emit(\'select\', id)">{{ label }}</button>',
 		props: ['id', 'label', 'icon', 'testId'],
 		emits: ['select'],
+	},
+	N8nHoverCard: {
+		name: 'N8nHoverCard',
+		template: '<div><slot name="trigger" /><slot name="content" /></div>',
 	},
 	N8nTooltip: {
 		name: 'N8nTooltip',
@@ -122,11 +127,6 @@ const baseAgent = {
 } as unknown as AgentResource;
 
 const globalStubs = {
-	ProjectIcon: {
-		name: 'ProjectIcon',
-		template: '<span data-testid="stub-project-icon" />',
-		props: ['icon', 'size', 'borderLess'],
-	},
 	AgentPublishButton: {
 		name: 'AgentPublishButton',
 		template: '<div data-testid="stub-publish" />',
@@ -169,7 +169,6 @@ function mountHeader(
 			headerActions: (overrides.headerActions ?? []) as Array<{ id: string; label: string }>,
 			mode: overrides.mode,
 			artifactMode: overrides.artifactMode,
-			isPreviewOpen: overrides.isPreviewOpen,
 			currentSessionTitle: overrides.currentSessionTitle,
 			sessionOptions: overrides.sessionOptions,
 			configValidationStatus: overrides.configValidationStatus,
@@ -192,9 +191,24 @@ describe('AgentBuilderHeader', () => {
 	it('renders breadcrumbs, publish and action dropdown', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
 		expect(wrapper.find('[data-testid="stub-breadcrumbs"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-header-preview-btn"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-header-preview-btn"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="stub-publish"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(true);
+	});
+
+	it('links the help trigger and card to the Agent documentation', () => {
+		const wrapper = mountHeader();
+		for (const testId of ['agent-documentation-help', 'agent-documentation-link']) {
+			const link = wrapper.get(`[data-testid="${testId}"]`);
+			expect(link.attributes('href')).toBe('https://blog.n8n.io/introducing-n8n-agents/');
+			expect(link.attributes('target')).toBe('_blank');
+		}
+		expect(wrapper.get('[data-testid="agent-documentation-help"]').attributes('aria-label')).toBe(
+			'agents.builder.header.documentation',
+		);
+		expect(wrapper.get('[data-testid="agent-documentation-link"]').text()).toContain(
+			'agents.builder.header.documentation.description',
+		);
 	});
 
 	it('hides breadcrumbs and switcher in artifact mode', () => {
@@ -241,12 +255,15 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.text()).toContain('Darwin');
 	});
 
-	it('shows the project icon before the breadcrumb', () => {
+	it('passes the project icon to the breadcrumb', () => {
 		const projectIcon = { type: 'emoji' as const, value: '🚀' };
 		const wrapper = mountHeader({ projectIcon });
+		const breadcrumbs = wrapper.findComponent({ name: 'N8nBreadcrumbs' });
+		const items = breadcrumbs.props('items') as Array<{
+			icon?: { type: 'icon' | 'emoji'; value: string };
+		}>;
 
-		expect(wrapper.getComponent({ name: 'ProjectIcon' }).props('icon')).toEqual(projectIcon);
-		expect(wrapper.getComponent({ name: 'ProjectIcon' }).props('size')).toBe('mini');
+		expect(items[0].icon).toEqual(projectIcon);
 	});
 
 	it('links the project breadcrumb to the project agents page', () => {
@@ -330,65 +347,6 @@ describe('AgentBuilderHeader', () => {
 		const action = getDropdown(wrapper, 'agent-header-actions');
 		action.vm.$emit('select', 'delete');
 		expect(wrapper.emitted('header-action')).toEqual([['delete']]);
-	});
-
-	it.each([
-		{
-			label: 'opens',
-			isPreviewOpen: false,
-			event: 'open-preview',
-			accessibleLabel: 'agents.builder.preview.button',
-		},
-		{
-			label: 'closes',
-			isPreviewOpen: true,
-			event: 'close-preview',
-			accessibleLabel: 'agents.builder.preview.close.ariaLabel',
-		},
-	])(
-		'$label Preview from the preview action',
-		async ({ isPreviewOpen, event, accessibleLabel }) => {
-			const wrapper = mountHeader({ isPreviewOpen });
-			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
-			expect(previewButton.attributes('data-icon')).toBe('flask-conical');
-			expect(previewButton.text()).toBe(accessibleLabel);
-
-			await previewButton.trigger('click');
-			expect(wrapper.emitted(event)).toEqual([[]]);
-			expect(wrapper.emitted(isPreviewOpen ? 'open-preview' : 'close-preview')).toBeUndefined();
-		},
-	);
-
-	it('disables preview with a tooltip when the agent is not runnable', async () => {
-		const wrapper = mountHeader({
-			agent: { ...baseAgent, isRunnable: false } as AgentResource,
-		});
-		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
-
-		expect(previewButton.attributes('disabled')).toBeDefined();
-		expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled')).toBe('false');
-		expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-content')).toBe(
-			'agents.builder.preview.disabledTooltip',
-		);
-
-		await previewButton.trigger('click');
-
-		expect(wrapper.emitted('open-preview')).toBeUndefined();
-	});
-
-	it('keeps the close action enabled when the open preview agent is not runnable', async () => {
-		const wrapper = mountHeader({
-			isPreviewOpen: true,
-			agent: { ...baseAgent, isRunnable: false } as AgentResource,
-		});
-		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
-
-		expect(previewButton.attributes('disabled')).toBeUndefined();
-
-		await previewButton.trigger('click');
-
-		expect(wrapper.emitted('close-preview')).toEqual([[]]);
-		expect(wrapper.emitted('open-preview')).toBeUndefined();
 	});
 
 	it('emits switch-agent when a switcher item is selected', async () => {

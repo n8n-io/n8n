@@ -7,10 +7,12 @@ import { ConflictError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
+import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
+import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
+import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import type { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
@@ -19,12 +21,14 @@ import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
-import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
+import { SkillRepository } from '@/modules/skills/skill.repository';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
 import type { AgentDefinition } from '@/modules/agents/utils/agent-definition';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
+import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { toAgentDocument } from '@/modules/agents/json-config/agent-document';
 import {
 	composeStoredJsonConfig,
@@ -67,8 +71,9 @@ describe('AgentRepository', () => {
 	}
 
 	beforeAll(async () => {
-		await testModules.loadModules(['agents']);
+		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
+		registerSkillAgentsProvider();
 		agentRepo = Container.get(AgentRepository);
 		agentHistoryRepo = Container.get(AgentHistoryRepository);
 		taskRepo = Container.get(AgentTaskRepository);
@@ -160,6 +165,108 @@ describe('AgentRepository', () => {
 			timezone: null,
 		};
 
+		it('rolls back Agent creation with its skill references, then commits one creation on retry', async () => {
+			setSkillsHubFlag(true);
+			const skillRepo = Container.get(SkillRepository);
+			const skillRefs = Container.get(AgentSkillRefsService);
+			const skillId = uuid();
+			await skillRepo.createSkill(
+				{ id: skillId, target: { projectId, agentId: null }, source: 'ui', createdById: null },
+				{
+					name: 'Writing',
+					description: 'Write notes',
+					instructions: 'Use short sentences',
+					frontmatter: null,
+					files: [],
+				},
+			);
+			const credentials = mock<CredentialsService>();
+			credentials.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+			const policy = mock<AgentPolicyService>();
+			const completion = mock<AgentSaveCompletionService>();
+			const service = new AgentsService(
+				mockLogger(),
+				agentRepo,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				taskRepo,
+				mock(),
+				mock(),
+				mock(),
+				credentials,
+				mock(),
+				mock(),
+				policy,
+				skillRefs,
+				transactionRunner,
+				new AgentConfigPreparationService(
+					credentials,
+					mock<WorkflowRepository>(),
+					mock<NodeToolAiGatewayService>(),
+					agentRepo,
+					taskRepo,
+					skillRefs,
+					policy,
+				),
+				completion,
+				mock<AgentSetupCompletionService>(),
+				mock(),
+			);
+			const user = mock<User>();
+			const id = uuid();
+			const options = {
+				id,
+				user,
+				actor: { kind: 'user', user },
+				createdBy: 'user',
+				adoptOnCollision: true,
+				config: { instructions: 'Help users', skills: [{ type: 'skill', id: skillId }] },
+			} as const;
+			const replaceRefs = skillRefs.replaceDraftRefs.bind(skillRefs);
+			vi.spyOn(skillRefs, 'replaceDraftRefs').mockImplementationOnce(async (agent, refs, ctx) => {
+				await replaceRefs(agent, refs, ctx);
+				throw new Error('Skill reference write failed');
+			});
+
+			await expect(service.createOrAdopt(projectId, 'Support Agent', options)).rejects.toThrow(
+				'Skill reference write failed',
+			);
+			expect(await agentRepo.findById(id)).toBeNull();
+			expect(
+				(await Container.get(AgentSkillRepository).findDependencies([id])).get(id) ?? [],
+			).toEqual([]);
+			expect(completion.configurationCreated).not.toHaveBeenCalled();
+
+			const created = await service.createOrAdopt(projectId, 'Support Agent', options);
+			expect(created).toMatchObject({
+				adopted: false,
+				config: { instructions: 'Help users', skills: [{ type: 'skill', id: skillId }] },
+			});
+			expect(created.configHash).toBe(getAgentConfigHash(created.config));
+			expect(await agentRepo.findById(id)).toMatchObject({
+				schema: { instructions: 'Help users' },
+			});
+			expect(
+				(await Container.get(AgentSkillRepository).findDependencies([id])).get(id),
+			).toMatchObject([{ skillId }]);
+			expect(completion.configurationCreated).toHaveBeenCalledOnce();
+
+			const adopted = await service.createOrAdopt(projectId, 'Losing request', {
+				...options,
+				createdBy: 'builder',
+				config: { instructions: 'Do not overwrite the winner' },
+			});
+			expect(adopted).toMatchObject({
+				adopted: true,
+				config: created.config,
+				configHash: created.configHash,
+			});
+			expect(completion.configurationCreated).toHaveBeenCalledOnce();
+		});
+
 		it('rolls back a config save when task cleanup fails and can retry the complete write', async () => {
 			const schema: AgentJsonConfig = {
 				name: 'Agent',
@@ -184,12 +291,16 @@ describe('AgentRepository', () => {
 					credentials,
 					mock<WorkflowRepository>(),
 					mock<NodeToolAiGatewayService>(),
+					agentRepo,
+					taskRepo,
+					Container.get(AgentSkillRefsService),
+					mock<AgentPolicyService>(),
 				),
 				setup,
 				transactionRunner,
 				completion,
-				mock<AgentPolicyService>(),
 				Container.get(AgentSkillRefsService),
+				mock<ChatIntegrationRegistry>(),
 			);
 			const deleteTasks = taskRepo.deleteForAgent.bind(taskRepo);
 			vi.spyOn(taskRepo, 'deleteForAgent').mockImplementationOnce(async (id, ids, ctx) => {
@@ -814,6 +925,25 @@ describe('AgentRepository', () => {
 			await createPublishedAgent();
 
 			await expect(agentRepo.findPublishedIds([])).resolves.toEqual(new Set());
+		});
+	});
+
+	describe('findSummariesByProjectIds - search', () => {
+		it('matches % and _ in the search as plain text', async () => {
+			const underscore = await createAgent({ name: 'Ops_bot' });
+			const percent = await createAgent({ name: '100% bot' });
+			await createAgent({ name: 'Opsxbot' });
+			await createAgent({ name: '100 bot' });
+
+			const byUnderscore = await agentRepo.findSummariesByProjectIds([projectId], {
+				query: 'ops_',
+			});
+			const byPercent = await agentRepo.findSummariesByProjectIds([projectId], {
+				query: '100%',
+			});
+
+			expect(byUnderscore.map((agent) => agent.id)).toEqual([underscore.id]);
+			expect(byPercent.map((agent) => agent.id)).toEqual([percent.id]);
 		});
 	});
 

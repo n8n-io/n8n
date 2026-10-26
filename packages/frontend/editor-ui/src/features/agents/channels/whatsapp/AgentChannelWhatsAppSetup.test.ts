@@ -126,6 +126,15 @@ describe('AgentChannelWhatsAppSetup', () => {
 			);
 		});
 
+		it('puts the Meta icon on the dashboard button', async () => {
+			const { getByTestId } = renderComponent({ props: props() });
+			await flushPromises();
+
+			expect(
+				getByTestId('whatsapp-meta-dashboard-link').querySelector('[data-icon="meta"]'),
+			).not.toBeNull();
+		});
+
 		it('shows the webhook URL and the verify token', async () => {
 			const { getByTestId } = renderComponent({ props: props() });
 
@@ -502,7 +511,9 @@ describe('AgentChannelWhatsAppSetup', () => {
 				.mockResolvedValueOnce({ verified: false })
 				.mockResolvedValueOnce({ verified: false })
 				.mockResolvedValue({ verified: true });
-			const { getByTestId, queryByTestId } = renderComponent({ props: props() });
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
 			await flushPromises();
 
 			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(1);
@@ -697,23 +708,21 @@ describe('AgentChannelWhatsAppSetup', () => {
 	});
 
 	describe('connect', () => {
-		const NEEDS = 'agents.channels.whatsapp.setup.connect';
-
 		it.each([
-			{ credential: true, webhook: true, enabled: true, hint: null },
-			{ credential: true, webhook: false, enabled: false, hint: `${NEEDS}.needsWebhook` },
-			{ credential: false, webhook: true, enabled: false, hint: `${NEEDS}.needsCredential` },
-			{ credential: false, webhook: false, enabled: false, hint: `${NEEDS}.needsBoth` },
+			{ credential: true, webhook: true, enabled: true },
+			{ credential: true, webhook: false, enabled: false },
+			{ credential: false, webhook: true, enabled: false },
+			{ credential: false, webhook: false, enabled: false },
 		])(
 			'credential verified $credential, webhook verified $webhook: enabled $enabled',
-			async ({ credential, webhook, enabled, hint }) => {
+			async ({ credential, webhook, enabled }) => {
 				vi.mocked(checkWhatsAppCredential).mockResolvedValue(
 					credential
 						? { status: 'ok', profile: PROFILE }
 						: { status: 'failed', reason: 'mismatch' },
 				);
 				vi.mocked(getWhatsAppWebhookStatus).mockResolvedValue({ verified: webhook });
-				const { getByTestId, queryByTestId } = renderComponent({
+				const { getByTestId } = renderComponent({
 					props: props({ modelValue: 'cred-1' }),
 				});
 
@@ -722,32 +731,35 @@ describe('AgentChannelWhatsAppSetup', () => {
 
 				if (enabled) {
 					expect(getByTestId('whatsapp-connect')).toBeEnabled();
-					expect(queryByTestId('whatsapp-connect-blocked')).toBeNull();
 				} else {
 					expect(getByTestId('whatsapp-connect')).toBeDisabled();
-					expect(getByTestId('whatsapp-connect-blocked')).toHaveTextContent(hint ?? '');
 				}
 			},
 		);
 
-		it('needs both when no credential is picked yet', async () => {
+		it('disables Connect when no credential is picked yet', async () => {
 			const { getByTestId } = renderComponent({ props: props() });
 			await flushPromises();
 
 			expect(getByTestId('whatsapp-connect')).toBeDisabled();
-			expect(getByTestId('whatsapp-connect-blocked')).toHaveTextContent(`${NEEDS}.needsBoth`);
 		});
 
-		it('disables Connect with no hint once connected', async () => {
+		it('hides the waiting line until a credential is picked', async () => {
+			const { queryByTestId } = renderComponent({ props: props() });
+			await flushPromises();
+
+			expect(queryByTestId('whatsapp-webhook-waiting')).toBeNull();
+		});
+
+		it('disables Connect once connected', async () => {
 			vi.mocked(getWhatsAppWebhookStatus).mockResolvedValue({ verified: true });
-			const { getByTestId, queryByTestId } = renderComponent({
+			const { getByTestId } = renderComponent({
 				props: props({ modelValue: 'cred-1', connected: true }),
 			});
 			await waitFor(() => expect(checkWhatsAppCredential).toHaveBeenCalled());
 			await flushPromises();
 
 			expect(getByTestId('whatsapp-connect')).toBeDisabled();
-			expect(queryByTestId('whatsapp-connect-blocked')).toBeNull();
 		});
 
 		it('shows the verified profile in the identity card', async () => {
@@ -798,15 +810,6 @@ describe('AgentChannelWhatsAppSetup', () => {
 
 			await waitFor(() => expect(queryByTestId('whatsapp-connect-error')).toBeNull());
 		});
-
-		it('asks to publish a connected agent that is not published', async () => {
-			const { getByTestId } = renderComponent({
-				props: props({ modelValue: 'cred-1', connected: true, isPublished: false }),
-			});
-
-			await waitFor(() => expect(getByTestId('whatsapp-publish-notice')).toBeVisible());
-			expect(getByTestId('step-connect')).toContainElement(getByTestId('whatsapp-publish-notice'));
-		});
 	});
 
 	describe('exposed state', () => {
@@ -839,22 +842,9 @@ describe('AgentChannelWhatsAppSetup', () => {
 			});
 		});
 
-		it('adds the publish notice to the toast for an unpublished agent', async () => {
-			const { getByTestId } = renderHost({ props: { viewProps: props({ isPublished: false }) } });
-			await flushPromises();
-
-			await fireEvent.click(getByTestId('after-save'));
-
-			expect(showMessage).toHaveBeenCalledExactlyOnceWith({
-				type: 'success',
-				title: 'agents.channels.whatsapp.setup.connect.connected',
-				message: 'agents.channels.setup.publishNotice',
-			});
-		});
-
 		it('shows no toast after saving in edit mode', async () => {
 			const { getByTestId } = renderHost({
-				props: { viewProps: props({ mode: 'edit', connected: true, isPublished: false }) },
+				props: { viewProps: props({ mode: 'edit', connected: true }) },
 			});
 			await flushPromises();
 
@@ -947,7 +937,7 @@ describe('AgentChannelWhatsAppSetup', () => {
 	});
 
 	describe('edit mode', () => {
-		it('shows the identity, settings and webhook fields, without the stepper', async () => {
+		it('shows the identity and settings, without the stepper or the webhook fields', async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: props({ mode: 'edit', connected: true, modelValue: 'cred-1' }),
 			});
@@ -956,9 +946,23 @@ describe('AgentChannelWhatsAppSetup', () => {
 				expect(getByTestId('whatsapp-identity-name')).toHaveTextContent('Acme Support'),
 			);
 			expect(getByTestId('whatsapp-settings')).toBeInTheDocument();
-			expect(getByTestId('whatsapp-webhook-url')).toHaveValue(WEBHOOK_URL);
+			expect(queryByTestId('whatsapp-webhook-url')).toBeNull();
+			expect(queryByTestId('whatsapp-verify-token')).toBeNull();
+			expect(getWhatsAppVerifyToken).not.toHaveBeenCalled();
 			expect(queryByTestId('step-credential')).toBeNull();
 			expect(queryByTestId('whatsapp-connect')).toBeNull();
+		});
+
+		it('links to the Meta app dashboard in a new tab', async () => {
+			const { getByTestId } = renderComponent({
+				props: props({ mode: 'edit', connected: true, modelValue: 'cred-1' }),
+			});
+			await flushPromises();
+
+			const link = getByTestId('whatsapp-find-meta-app');
+			expect(link).toHaveAttribute('href', 'https://developers.facebook.com/apps');
+			expect(link).toHaveAttribute('target', '_blank');
+			expect(link).toHaveTextContent('agents.channels.whatsapp.settings.findMetaApp');
 		});
 
 		it('shows a credential problem under the identity', async () => {

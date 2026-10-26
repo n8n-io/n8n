@@ -1,6 +1,6 @@
 {
   "name": "@n8n/frontend-module-inbox",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
@@ -29,6 +29,7 @@
     "@n8n/stores": "workspace:*",
     "n8n-workflow": "workspace:*",
     "pinia": "catalog:frontend",
+    "reka-ui": "^2.5.0",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend",
     "@n8n/frontend-constants": "workspace:*",

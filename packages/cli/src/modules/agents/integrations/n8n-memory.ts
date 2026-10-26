@@ -4,8 +4,6 @@ import {
 	estimateObservationTokens,
 	normalizeObservationLogReflection,
 	hashEpisodicMemoryContent,
-	hashEpisodicMemoryEvidence,
-	markLifecycleActive,
 	normalizeFlatReflectionActions,
 	rankEpisodicMemoryEntries,
 	supersededLifecycleState,
@@ -30,6 +28,8 @@ import {
 	type NewEpisodicMemoryEntrySourceForEntry,
 	type NewObservationLogEntry,
 	type ObservationCursor,
+	type ObservationLogBatch,
+	type ObservationLogBatchCommitResult,
 	type ObservationLogEntry,
 	type ObservationLogReadOptions,
 	type ObservationLogReflection,
@@ -40,6 +40,7 @@ import {
 	type RetrievedEpisodicMemoryEntry,
 	type Thread,
 } from '@n8n/agents';
+import type { AgentMessageAuthor } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm';
@@ -53,7 +54,7 @@ import { AgentMemoryEntryCandidateEntity } from '../entities/agent-memory-entry-
 import { AgentMemoryEntryLockEntity } from '../entities/agent-memory-entry-lock.entity';
 import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity';
 import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
-import type { AgentMessageEntity } from '../entities/agent-message.entity';
+import type { AgentMessageEntity, AgentMessageOrigin } from '../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
@@ -69,14 +70,31 @@ import { AgentObservationRepository } from '../repositories/agent-observation.re
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
-import {
-	episodicMemoryWriteScopeId,
-	isIntegrationMemoryResourceId,
-	threadMemoryResourceId,
-} from '../utils/agent-memory-scope';
+import { isIntegrationMemoryResourceId } from '../utils/agent-memory-scope';
 
-/** Bounds the `IN` list of thread scopes one recall reads; older threads fall out first. */
-const EPISODIC_MEMORY_MAX_THREAD_SCOPES = 200;
+/**
+ * Integration chats are shared conversations, so each channel resolves its own
+ * scope. A turn on an integration resource without one has no owner: it must
+ * not capture, and it recalls nothing. Other runs keep their resource as scope.
+ */
+function episodicWriteScopeId(scope: Pick<EpisodicMemoryScope, 'resourceId' | 'episodic'>): string {
+	if (scope.episodic) return scope.episodic.writeScopeId;
+	if (isIntegrationMemoryResourceId(scope.resourceId)) {
+		throw new UnexpectedError('An integration turn needs a resolved episodic memory scope');
+	}
+	return scope.resourceId;
+}
+
+/** The write scope as a list: empty when the turn has no owner, so reads stay empty. */
+function episodicWriteScopeIds(scope: EpisodicMemoryScope): string[] {
+	const hasOwner = scope.episodic !== undefined || !isIntegrationMemoryResourceId(scope.resourceId);
+	return hasOwner ? [episodicWriteScopeId(scope)] : [];
+}
+
+function episodicReadScopeIds(scope: EpisodicMemoryScope): string[] {
+	if (scope.episodic) return scope.episodic.readScopeIds;
+	return isIntegrationMemoryResourceId(scope.resourceId) ? [] : [scope.resourceId];
+}
 
 @Service()
 export class N8nMemory {
@@ -110,6 +128,11 @@ export class N8nMemory {
 	}
 }
 
+export type EpisodicMemorySourceWithMessageContext = EpisodicMemoryEntrySource & {
+	author?: AgentMessageAuthor;
+	origin?: AgentMessageOrigin;
+};
+
 export class N8nMemoryImpl
 	implements
 		BuiltMemory,
@@ -133,6 +156,8 @@ export class N8nMemoryImpl
 	) {}
 
 	readonly episodic: BuiltEpisodicMemoryCaptureStore['episodic'] = {
+		getEntriesByContentHashes: async (scope, contentHashes) =>
+			await this.getEpisodicMemoryEntriesByContentHashes(scope, contentHashes),
 		saveEntryWithSources: async (entry, sources) =>
 			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
 		searchEntries: async (scope, query, opts) =>
@@ -243,7 +268,16 @@ export class N8nMemoryImpl
 	}
 
 	async deleteThreadsByPrefix(threadIdPrefix: string): Promise<void> {
-		const observationScopeId = Like(`${threadIdPrefix}%`);
+		await this.deleteThreadsMatching(Like(`${threadIdPrefix}%`));
+	}
+
+	/** Delete many threads and their thread-scoped state in one transaction. */
+	async deleteThreads(threadIds: string[]): Promise<void> {
+		if (threadIds.length === 0) return;
+		await this.deleteThreadsMatching(In(threadIds));
+	}
+
+	private async deleteThreadsMatching(observationScopeId: FindOperator<string>): Promise<void> {
 		await this.threadRepository.manager.transaction(async (trx) => {
 			await this.dropEpisodicEntriesWithoutSources(trx, observationScopeId);
 			const observationScope = { agentId: this.agentId, observationScopeId };
@@ -319,6 +353,12 @@ export class N8nMemoryImpl
 	}
 
 	// ── Observation log ──────────────────────────────────────────────────
+
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		return await this.observationRepository.commitObservationLogBatch(this.agentId, batch);
+	}
 
 	async appendObservationLogEntries(
 		rows: NewObservationLogEntry[],
@@ -571,11 +611,12 @@ export class N8nMemoryImpl
 	private async enqueueEpisodicMemoryCaptureCandidate(
 		candidate: NewEpisodicMemoryCaptureCandidate,
 	): Promise<EpisodicMemoryCaptureCandidate> {
-		const resourceId = episodicMemoryWriteScopeId(candidate);
+		const resourceId = episodicWriteScopeId(candidate);
 		await this.resourceRepository.ensureExists(resourceId);
+		const { episodic: _episodic, ...candidateData } = candidate;
 		const entity = await this.memoryEntryCandidateRepository.enqueueCandidate({
 			agentId: this.agentId,
-			...candidate,
+			...candidateData,
 			resourceId,
 		});
 		return this.toEpisodicMemoryCaptureCandidate(entity);
@@ -587,7 +628,7 @@ export class N8nMemoryImpl
 	): Promise<EpisodicMemoryCaptureCandidate[]> {
 		const entities = await this.memoryEntryCandidateRepository.findPendingForResource(
 			this.agentId,
-			episodicMemoryWriteScopeId(scope),
+			episodicWriteScopeId(scope),
 			opts?.limit ?? 100,
 		);
 		return entities.map((entity) => this.toEpisodicMemoryCaptureCandidate(entity));
@@ -612,7 +653,7 @@ export class N8nMemoryImpl
 		scope: EpisodicMemoryScope,
 		opts: { ttlMs: number; holderId: string },
 	): Promise<EpisodicMemoryTaskLockHandle | null> {
-		const resourceId = episodicMemoryWriteScopeId(scope);
+		const resourceId = episodicWriteScopeId(scope);
 		await this.resourceRepository.ensureExists(resourceId);
 
 		const now = new Date();
@@ -662,84 +703,33 @@ export class N8nMemoryImpl
 		});
 	}
 
+	private async getEpisodicMemoryEntriesByContentHashes(
+		scope: EpisodicMemoryScope,
+		contentHashes: string[],
+	): Promise<EpisodicMemoryEntry[]> {
+		const entities = await this.memoryEntryRepository.findByContentHashes(
+			this.agentId,
+			episodicWriteScopeId(scope),
+			contentHashes,
+		);
+		return entities.map((entity) => this.toEpisodicMemoryEntry(entity));
+	}
+
 	private async saveEpisodicMemoryEntryWithSources(
 		entry: NewEpisodicMemoryEntry,
 		sources: NewEpisodicMemoryEntrySourceForEntry[],
 	): Promise<EpisodicMemoryEntry | null> {
-		const sourceThreadId = sources[0]?.threadId;
-		const resourceId = sourceThreadId
-			? episodicMemoryWriteScopeId({ resourceId: entry.resourceId, threadId: sourceThreadId })
-			: entry.resourceId;
+		const { episodic: _episodic, ...entryData } = entry;
+		const resourceId = episodicWriteScopeId(entry);
 		await this.resourceRepository.ensureExists(resourceId);
 
-		return await this.memoryEntryRepository.manager.transaction(async (trx) => {
-			const entryRepo = trx.getRepository(AgentMemoryEntryEntity);
-			const sourceRepo = trx.getRepository(AgentMemoryEntrySourceEntity);
-			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
-			const now = new Date();
-			const entity = entryRepo.create({
-				agentId: this.agentId,
-				resourceId,
-				content: entry.content,
-				contentHash,
-				...activeLifecycleState(),
-				embeddingModel: entry.embeddingModel ?? null,
-				embedding: entry.embedding ?? null,
-				metadata: entry.metadata ?? null,
-				createdAt: entry.createdAt ?? now,
-				lastSeenAt: entry.lastSeenAt ?? now,
-			});
-
-			let persisted: AgentMemoryEntryEntity | null = null;
-			try {
-				const [saved] = await entryRepo.save([entity]);
-				persisted = saved ?? null;
-			} catch (error) {
-				if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
-				const existing = await entryRepo.findOneBy({
-					agentId: this.agentId,
-					resourceId,
-					contentHash,
-				});
-				if (!existing) throw error;
-				markLifecycleActive(existing);
-				existing.lastSeenAt = entry.lastSeenAt ?? now;
-				existing.updatedAt = now;
-				const [saved] = await entryRepo.save([existing]);
-				persisted = saved ?? existing;
-			}
-
-			if (!persisted) return null;
-
-			for (const source of sources) {
-				const evidenceHash = hashEpisodicMemoryEvidence(source.evidenceText);
-				const sourceEntity = sourceRepo.create({
-					agentId: this.agentId,
-					memoryEntryId: persisted.id,
-					observationId: source.observationId ?? null,
-					candidateId: source.candidateId ?? null,
-					threadId: source.threadId,
-					evidenceHash,
-					evidenceText: source.evidenceText,
-					createdAt: source.createdAt,
-				});
-				try {
-					await sourceRepo.save([sourceEntity]);
-				} catch (error) {
-					if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
-					const existing = await sourceRepo.findOneBy({
-						agentId: this.agentId,
-						memoryEntryId: persisted.id,
-						observationId: source.observationId ?? IsNull(),
-						candidateId: source.candidateId ?? IsNull(),
-						evidenceHash,
-					});
-					if (!existing) throw error;
-				}
-			}
-
-			return this.toEpisodicMemoryEntry(persisted);
-		});
+		const persisted = await this.memoryEntryRepository.saveEntryWithSources(
+			this.agentId,
+			{ ...entryData, resourceId },
+			sources,
+			{},
+		);
+		return this.toEpisodicMemoryEntry(persisted);
 	}
 
 	private async searchEpisodicMemoryEntries(
@@ -750,8 +740,9 @@ export class N8nMemoryImpl
 		const statuses = opts?.includeStatuses ?? ['active'];
 		// Reflection must not pull entries from other scopes into a shared thread.
 		const resourceIds = opts?.writeScopeOnly
-			? [episodicMemoryWriteScopeId(scope)]
-			: await this.episodicMemoryReadScopeIds(scope);
+			? episodicWriteScopeIds(scope)
+			: episodicReadScopeIds(scope);
+		if (resourceIds.length === 0) return [];
 		const entities = await this.memoryEntryRepository.find({
 			where: {
 				agentId: this.agentId,
@@ -773,25 +764,6 @@ export class N8nMemoryImpl
 		);
 	}
 
-	/**
-	 * Own scope plus every integration thread the resource has posted in: a
-	 * participant recalls a thread's notes wherever they ask, and a late joiner
-	 * gets them as soon as they post there.
-	 */
-	private async episodicMemoryReadScopeIds(scope: EpisodicMemoryScope): Promise<string[]> {
-		if (!isIntegrationMemoryResourceId(scope.resourceId)) return [scope.resourceId];
-		const threadIds = await this.messageRepository.findRecentThreadIdsByResourceId(
-			this.agentId,
-			scope.resourceId,
-			EPISODIC_MEMORY_MAX_THREAD_SCOPES,
-		);
-		return uniqueStrings([
-			scope.resourceId,
-			threadMemoryResourceId(scope.threadId),
-			...threadIds.map(threadMemoryResourceId),
-		]);
-	}
-
 	private async getEpisodicMemoryEntrySources(
 		entryIds: string[],
 	): Promise<EpisodicMemoryEntrySource[]> {
@@ -803,12 +775,34 @@ export class N8nMemoryImpl
 		return entities.map((entity) => this.toEpisodicMemoryEntrySource(entity));
 	}
 
+	/**
+	 * Memory sources with the author and origin of the message each one quoted.
+	 * Observation-backed sources, and sources whose message is gone, carry neither.
+	 */
+	async getEntrySourcesWithMessageContext(
+		entryIds: string[],
+	): Promise<EpisodicMemorySourceWithMessageContext[]> {
+		const sources = await this.getEpisodicMemoryEntrySources(entryIds);
+		const sourceMessages = await this.memoryEntryCandidateRepository.findSourceMessages(
+			this.agentId,
+			sources.flatMap(({ candidateId }) => candidateId ?? []),
+		);
+		return sources.map((source) => {
+			const message = source.candidateId ? sourceMessages.get(source.candidateId) : undefined;
+			return {
+				...source,
+				...(message?.author ? { author: message.author } : {}),
+				...(message?.origin ? { origin: message.origin } : {}),
+			};
+		});
+	}
+
 	private async applyEpisodicMemoryReflection(
 		scope: EpisodicMemoryScope,
 		reflection: EpisodicMemoryReflectionApply,
 	): Promise<EpisodicMemoryReflectionResult> {
 		// Recall spans several scopes; lifecycle changes stay inside the one being written.
-		const resourceId = episodicMemoryWriteScopeId(scope);
+		const resourceId = episodicWriteScopeId(scope);
 		return await this.memoryEntryRepository.manager.transaction(async (trx) => {
 			const entryRepo = trx.getRepository(AgentMemoryEntryEntity);
 			const sourceRepo = trx.getRepository(AgentMemoryEntrySourceEntity);

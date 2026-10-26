@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
-import { N8nButton, N8nCopyInput, N8nIcon, N8nStepper, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCopyInput, N8nIcon, N8nLink, N8nStepper, N8nText } from '@n8n/design-system';
 import {
 	resolveWhatsAppSettings,
 	type AgentJsonConfig,
@@ -42,7 +42,6 @@ const props = withDefaults(
 		credentialsLoading?: boolean;
 		loading?: boolean;
 		connected?: boolean;
-		isPublished?: boolean;
 		errorMessage?: string;
 		errorIsConflict?: boolean;
 		savedSettings?: AgentWhatsAppIntegrationSettings;
@@ -57,7 +56,6 @@ const props = withDefaults(
 		credentialsLoading: false,
 		loading: false,
 		connected: false,
-		isPublished: true,
 		errorMessage: '',
 		errorIsConflict: false,
 		savedSettings: undefined,
@@ -299,9 +297,10 @@ watch(credentialId, (id) => {
 });
 
 onMounted(() => {
+	// Only the setup shows the webhook fields and this step. A connected channel has its own adapter answer Meta.
+	if (props.mode !== 'setup') return;
 	void loadVerifyToken();
-	// Only the setup shows this step. A connected channel has its own adapter answer Meta.
-	if (props.mode === 'setup') void resetThenPollWebhookStatus(webhookRun);
+	void resetThenPollWebhookStatus(webhookRun);
 });
 
 onBeforeUnmount(() => {
@@ -314,17 +313,6 @@ onBeforeUnmount(() => {
 // ---------------------------------------------------------------------------
 
 const ready = computed(() => credentialVerified.value && webhookVerified.value && !props.connected);
-
-const connectBlockedHint = computed(() => {
-	if (props.connected || ready.value) return '';
-	if (!credentialVerified.value && !webhookVerified.value) {
-		return i18n.baseText('agents.channels.whatsapp.setup.connect.needsBoth');
-	}
-	if (!webhookVerified.value) {
-		return i18n.baseText('agents.channels.whatsapp.setup.connect.needsWebhook');
-	}
-	return i18n.baseText('agents.channels.whatsapp.setup.connect.needsCredential');
-});
 
 // A conflict is about the credential itself, so it stays in step 2.
 const showConnectError = computed(
@@ -355,7 +343,6 @@ const steps = computed(() => [
 	{
 		id: 'connect',
 		title: i18n.baseText('agents.channels.whatsapp.setup.connect.title'),
-		description: i18n.baseText('agents.channels.whatsapp.setup.connect.description'),
 	},
 ]);
 
@@ -402,8 +389,6 @@ async function afterSave() {
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('agents.channels.whatsapp.setup.connect.connected'),
-		// An unpublished agent does not answer yet, so the try-it hint needs this.
-		...(props.isPublished ? {} : { message: i18n.baseText('agents.channels.setup.publishNotice') }),
 	});
 }
 
@@ -424,6 +409,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							target="_blank"
 							variant="outline"
 							size="medium"
+							icon="meta"
 							data-testid="whatsapp-meta-dashboard-link"
 						>
 							{{ i18n.baseText('agents.channels.whatsapp.setup.createApp.button') }}
@@ -434,63 +420,66 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 						<N8nText :class="$style.hint" size="small">
 							{{ i18n.baseText('agents.channels.whatsapp.setup.credential.hint') }}
 						</N8nText>
-						<AgentIntegrationCredentialConnection
-							v-if="!connected"
-							v-model="credentialId"
-							:integration-type="integration.type"
-							:integration-label="integration.label"
-							:credentials="credentials"
-							:credential-permissions="credentialPermissions"
-							:credentials-loading="credentialsLoading"
-							:disabled="loading"
-							:loading="loading"
-							:error-message="showConnectError ? '' : errorMessage"
-							:error-is-conflict="errorIsConflict"
-							:force-new-credential="forceNewCredential"
-							@create="emit('create')"
-							@edit="emit('edit')"
-						/>
-						<template v-if="!connected && credentialId">
-							<N8nText
-								v-if="checking"
-								:class="$style.hint"
-								size="small"
-								data-testid="whatsapp-credential-checking"
-							>
-								{{ i18n.baseText('agents.channels.whatsapp.setup.credential.checking') }}
-							</N8nText>
-							<template v-else-if="credentialProblem">
+						<div :class="$style.credentialGroup">
+							<AgentIntegrationCredentialConnection
+								v-if="!connected"
+								compact-label
+								v-model="credentialId"
+								:integration-type="integration.type"
+								:integration-label="integration.label"
+								:credentials="credentials"
+								:credential-permissions="credentialPermissions"
+								:credentials-loading="credentialsLoading"
+								:disabled="loading"
+								:loading="loading"
+								:error-message="showConnectError ? '' : errorMessage"
+								:error-is-conflict="errorIsConflict"
+								:force-new-credential="forceNewCredential"
+								@create="emit('create')"
+								@edit="emit('edit')"
+							/>
+							<template v-if="!connected && credentialId">
 								<N8nText
+									v-if="checking"
+									:class="$style.hint"
 									size="small"
-									:class="$style.error"
-									data-testid="whatsapp-credential-problem"
+									data-testid="whatsapp-credential-checking"
 								>
-									{{
-										i18n.baseText(
-											`agents.channels.whatsapp.setup.credential.failed.${credentialProblem}`,
-										)
-									}}
+									{{ i18n.baseText('agents.channels.whatsapp.setup.credential.checking') }}
 								</N8nText>
-								<N8nButton
-									variant="ghost"
+								<template v-else-if="credentialProblem">
+									<N8nText
+										size="small"
+										:class="$style.error"
+										data-testid="whatsapp-credential-problem"
+									>
+										{{
+											i18n.baseText(
+												`agents.channels.whatsapp.setup.credential.failed.${credentialProblem}`,
+											)
+										}}
+									</N8nText>
+									<N8nButton
+										variant="ghost"
+										size="small"
+										data-testid="whatsapp-credential-recheck"
+										@click="runCredentialCheck"
+									>
+										{{ i18n.baseText('agents.channels.whatsapp.setup.credential.recheck') }}
+									</N8nButton>
+								</template>
+								<N8nText
+									v-else-if="credentialVerified"
 									size="small"
-									data-testid="whatsapp-credential-recheck"
-									@click="runCredentialCheck"
+									color="success"
+									:class="$style.verified"
+									data-testid="whatsapp-credential-verified"
 								>
-									{{ i18n.baseText('agents.channels.whatsapp.setup.credential.recheck') }}
-								</N8nButton>
+									<N8nIcon icon="check" size="small" />
+									{{ i18n.baseText('agents.channels.whatsapp.setup.credential.verified') }}
+								</N8nText>
 							</template>
-							<N8nText
-								v-else-if="credentialVerified"
-								size="small"
-								color="success"
-								:class="$style.verified"
-								data-testid="whatsapp-credential-verified"
-							>
-								<N8nIcon icon="check" size="small" />
-								{{ i18n.baseText('agents.channels.whatsapp.setup.credential.verified') }}
-							</N8nText>
-						</template>
+						</div>
 					</div>
 
 					<div v-else-if="step.id === 'webhook'" :class="$style.stepStack">
@@ -503,6 +492,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							<N8nCopyInput
 								id="whatsapp-webhook-url"
 								:value="webhookUrl"
+								:label="i18n.baseText('agents.builder.addTrigger.whatsapp.webhookUrl.label')"
 								size="large"
 								:class="$style.urlInput"
 								:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
@@ -527,6 +517,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							<N8nCopyInput
 								id="whatsapp-verify-token"
 								:value="verifyToken"
+								:label="i18n.baseText('agents.builder.addTrigger.whatsapp.verifyToken.label')"
 								size="large"
 								:class="$style.urlInput"
 								:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
@@ -548,7 +539,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							{{ i18n.baseText('agents.channels.whatsapp.setup.verify.verified') }}
 						</N8nText>
 						<N8nText
-							v-else
+							v-else-if="credentialId"
 							size="small"
 							:class="[$style.hint, $style.verified]"
 							data-testid="whatsapp-webhook-waiting"
@@ -567,14 +558,6 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							show-connect
 							@connect="emit('connect')"
 						/>
-						<N8nText
-							v-if="connectBlockedHint"
-							:class="$style.hint"
-							size="small"
-							data-testid="whatsapp-connect-blocked"
-						>
-							{{ connectBlockedHint }}
-						</N8nText>
 						<!-- Connect errors otherwise land in step 2, far from this button. -->
 						<N8nText
 							v-if="showConnectError"
@@ -584,28 +567,28 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 						>
 							{{ errorMessage }}
 						</N8nText>
-						<N8nText
-							v-if="connected && !isPublished"
-							:class="$style.hint"
-							size="small"
-							data-testid="whatsapp-publish-notice"
-						>
-							{{ i18n.baseText('agents.channels.setup.publishNotice') }}
-						</N8nText>
 					</div>
 				</div>
 			</template>
 		</N8nStepper>
 
 		<div v-else :class="$style.formContent">
+			<div :class="$style.field">
+				<N8nText step="sm" bold>
+					{{ i18n.baseText('agents.channels.whatsapp.settings.label') }}
+				</N8nText>
+				<AgentChannelWhatsAppSettings :model-value="settings" @update:model-value="editSettings" />
+			</div>
+
 			<div :class="$style.field" data-testid="whatsapp-identity-field">
-				<N8nText size="small" bold>
+				<N8nText step="sm" bold>
 					{{ i18n.baseText('agents.channels.whatsapp.settings.identityLabel') }}
 				</N8nText>
 				<AgentChannelWhatsAppIdentityCard
 					:profile="profile"
 					:personalisation="personalisation"
 					:ready="credentialVerified"
+					show-manager-link
 				/>
 				<N8nText
 					v-if="credentialProblem"
@@ -619,54 +602,18 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 				</N8nText>
 			</div>
 
-			<div :class="$style.field">
-				<label for="whatsapp-webhook-url">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.builder.addTrigger.whatsapp.webhookUrl.label') }}
-					</N8nText>
-				</label>
-				<N8nCopyInput
-					id="whatsapp-webhook-url"
-					:value="webhookUrl"
-					size="large"
-					:class="$style.urlInput"
-					:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
-					:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
-					data-testid="whatsapp-webhook-url"
-				/>
-			</div>
-			<div :class="$style.field">
-				<label for="whatsapp-verify-token">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.builder.addTrigger.whatsapp.verifyToken.label') }}
-					</N8nText>
-				</label>
-				<N8nCopyInput
-					id="whatsapp-verify-token"
-					:value="verifyToken"
-					size="large"
-					:class="$style.urlInput"
-					:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
-					:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
-					data-testid="whatsapp-verify-token"
-				/>
-			</div>
-
-			<div :class="$style.field">
-				<N8nText size="small" bold>
-					{{ i18n.baseText('agents.channels.whatsapp.settings.label') }}
-				</N8nText>
-				<AgentChannelWhatsAppSettings :model-value="settings" @update:model-value="editSettings" />
-			</div>
-
-			<N8nText
-				v-if="connected && !isPublished"
-				:class="$style.hint"
+			<N8nLink
+				:href="META_APP_DASHBOARD_URL"
+				target="_blank"
+				rel="noopener noreferrer"
 				size="small"
-				data-testid="whatsapp-publish-notice"
+				data-testid="whatsapp-find-meta-app"
 			>
-				{{ i18n.baseText('agents.channels.setup.publishNotice') }}
-			</N8nText>
+				<span :class="$style.linkContent">
+					{{ i18n.baseText('agents.channels.whatsapp.settings.findMetaApp') }}
+					<N8nIcon icon="arrow-up-right" size="xsmall" />
+				</span>
+			</N8nLink>
 		</div>
 	</div>
 </template>
@@ -701,7 +648,15 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 .field {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--3xs);
+	gap: var(--spacing--2xs);
+	width: 100%;
+}
+
+/* The picker and its check result read as one control, so they sit closer than steps do. */
+.credentialGroup {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 	width: 100%;
 }
 
@@ -711,6 +666,12 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 
 .error {
 	color: var(--color--danger);
+}
+
+.linkContent {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .verified {

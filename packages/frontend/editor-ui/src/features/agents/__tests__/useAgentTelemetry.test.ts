@@ -19,21 +19,134 @@ describe('useAgentTelemetry', () => {
 		trackMock.mockReset();
 	});
 
-	it('trackClickedNewAgent fires event with source, minted agent_id and session_id', () => {
+	it.each(['build', 'sessions', 'knowledge', 'settings'] as const)(
+		'tracks the %s tab with editor context',
+		(name) => {
+			useAgentTelemetry().trackClickedAgentsTab({ agentId: 'ag-1', name });
+			expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_AGENTS_TAB,
+				{ agent_id: 'ag-1', push_ref: 'session-xyz', name },
+			);
+		},
+	);
+
+	it('tracks knowledge upload with only editor context', () => {
+		useAgentTelemetry().trackClickedKnowledgeUpload({ agentId: 'ag-1' });
+		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_KNOWLEDGE_UPLOAD,
+			{ agent_id: 'ag-1', push_ref: 'session-xyz' },
+		);
+	});
+
+	it.each([
+		'user',
+		'agent',
+		'skill',
+		'tool',
+		'node',
+		'workflow',
+		'execution-error',
+		'suspension',
+		'hitl-response',
+		'background-task-signal',
+	] as const)('tracks %s trace selection without trace content', (itemType) => {
+		useAgentTelemetry().trackClickedTraceItem({ agentId: 'ag-1', itemType });
+		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
+			{ agent_id: 'ag-1', push_ref: 'session-xyz', item_type: itemType },
+		);
+	});
+
+	it('tracks changed filter names without values', () => {
+		useAgentTelemetry().trackAppliedSessionFilter({
+			agentId: 'ag-1',
+			filterNames: ['status', 'origin', 'start_date', 'end_date'],
+		});
+		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER,
+			{
+				agent_id: 'ag-1',
+				push_ref: 'session-xyz',
+				filter_names: ['status', 'origin', 'start_date', 'end_date'],
+			},
+		);
+	});
+
+	it.each(['test-panel', 'shortcut', 'standalone'] as const)(
+		'tracks a new test chat from %s',
+		(source) => {
+			useAgentTelemetry().trackClickedNewTestChat({ agentId: 'ag-1', source });
+			expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL,
+				{ agent_id: 'ag-1', push_ref: 'session-xyz', source },
+			);
+		},
+	);
+
+	it('tracks opening the preview More menu', () => {
+		useAgentTelemetry().trackClickedPreviewMoreOptions({ agentId: 'ag-1' });
+		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_MORE_OPTIONS_FROM_TEST_PANEL,
+			{ agent_id: 'ag-1', push_ref: 'session-xyz' },
+		);
+	});
+
+	it.each([
+		'copy-link',
+		'copy-conversation',
+		'open-in-new-tab',
+		'toggle-full-width',
+		'export-session',
+		'delete-session',
+	] as const)('tracks the %s preview More action', (option) => {
+		useAgentTelemetry().trackClickedPreviewMoreOption({ agentId: 'ag-1', option });
+		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ agent_id: 'ag-1', push_ref: 'session-xyz', option },
+		);
+	});
+
+	it('trackClickedNewAgent fires event with source, minted agent_id and push_ref', () => {
 		useAgentTelemetry().trackClickedNewAgent('button', 'aBcDeFgHiJkLmNoP');
 		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
 			source: 'button',
 			agent_id: 'aBcDeFgHiJkLmNoP',
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
 		});
 	});
+
+	it.each([
+		{
+			method: 'trackRevertedChangesOnAgent',
+			event: TELEMETRY_EVENT.AGENTS.USER_REVERTED_CHANGES_ON_AGENT,
+		},
+		{
+			method: 'trackClickedTraceDetailsFromTestPanel',
+			event: TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL,
+		},
+	] as const)(
+		'$method sends only agent and editor session ids and stays best-effort',
+		({ method, event }) => {
+			const track = useAgentTelemetry()[method];
+			track({ agentId: 'agent-1' });
+
+			expect(trackMock).toHaveBeenCalledExactlyOnceWith(event, {
+				agent_id: 'agent-1',
+				push_ref: 'session-xyz',
+			});
+			trackMock.mockImplementationOnce(() => {
+				throw new Error('telemetry unavailable');
+			});
+			expect(() => track({ agentId: 'agent-1' })).not.toThrow();
+		},
+	);
 
 	it('trackClickedNewAgent tracks card source', () => {
 		useAgentTelemetry().trackClickedNewAgent('card', 'aBcDeFgHiJkLmNoP');
 		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
 			source: 'card',
 			agent_id: 'aBcDeFgHiJkLmNoP',
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
 		});
 	});
 
@@ -47,7 +160,7 @@ describe('useAgentTelemetry', () => {
 			source: 'empty_state_template',
 			agent_id: 'aBcDeFgHiJkLmNoP',
 			template_id: 'morning-news-brief',
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
 		});
 	});
 
@@ -56,7 +169,7 @@ describe('useAgentTelemetry', () => {
 		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
 			source: 'empty_state_blank',
 			agent_id: 'aBcDeFgHiJkLmNoP',
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
 		});
 	});
 
@@ -82,7 +195,7 @@ describe('useAgentTelemetry', () => {
 			mode: 'test',
 			status: 'draft',
 			agent_config: fingerprint,
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
 		});
 	});
 
@@ -100,7 +213,25 @@ describe('useAgentTelemetry', () => {
 			triggers: ['slack', 'telegram'],
 			config_version: 'v4',
 			status: 'draft',
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
+		});
+	});
+
+	it('trackRemovedTrigger fires with the removed trigger_type and the remaining triggers', () => {
+		useAgentTelemetry().trackRemovedTrigger({
+			agentId: 'ag-1',
+			triggerType: 'n8n_chat',
+			triggers: ['slack'],
+			configVersion: 'v5',
+			status: 'production',
+		});
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_REMOVED_TRIGGER_FROM_AGENT, {
+			agent_id: 'ag-1',
+			trigger_type: 'n8n_chat',
+			triggers: ['slack'],
+			config_version: 'v5',
+			status: 'production',
+			push_ref: 'session-xyz',
 		});
 	});
 
@@ -109,7 +240,7 @@ describe('useAgentTelemetry', () => {
 		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_TOOL, {
 			agent_id: 'ag-1',
 			tool_type: 'node',
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
 		});
 	});
 
@@ -118,15 +249,61 @@ describe('useAgentTelemetry', () => {
 		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_SKILL, {
 			agent_id: 'ag-1',
 			skill_id: 'skill-42',
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
 		});
+	});
+
+	it('trackOpenedKnowledgeTab fires with agent_id and push_ref', () => {
+		useAgentTelemetry().trackOpenedKnowledgeTab({ agentId: 'ag-1' });
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_KNOWLEDGE_TAB, {
+			agent_id: 'ag-1',
+			push_ref: 'session-xyz',
+		});
+	});
+
+	it('trackStartedAddingKnowledge sends the file count for files', () => {
+		useAgentTelemetry().trackStartedAddingKnowledge({
+			agentId: 'ag-1',
+			kind: 'file',
+			fileCount: 3,
+		});
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_STARTED_ADDING_AGENT_KNOWLEDGE,
+			{ agent_id: 'ag-1', kind: 'file', file_count: 3, push_ref: 'session-xyz' },
+		);
+	});
+
+	it('trackStartedAddingKnowledge sends no file count for a vector store', () => {
+		useAgentTelemetry().trackStartedAddingKnowledge({ agentId: 'ag-1', kind: 'vector_store' });
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_STARTED_ADDING_AGENT_KNOWLEDGE,
+			{ agent_id: 'ag-1', kind: 'vector_store', push_ref: 'session-xyz' },
+		);
+	});
+
+	it('trackFailedKnowledgeUpload reports a client stage failure with its reason', () => {
+		useAgentTelemetry().trackFailedKnowledgeUpload({
+			agentId: 'ag-1',
+			reason: 'too_many_files',
+			fileCount: 12,
+		});
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_FAILED_AGENT_KNOWLEDGE_UPLOAD,
+			{
+				stage: 'client',
+				agent_id: 'ag-1',
+				file_count: 12,
+				reason: 'too_many_files',
+				push_ref: 'session-xyz',
+			},
+		);
 	});
 
 	it('trackOpenedAddSkillModal fires with agent_id', () => {
 		useAgentTelemetry().trackOpenedAddSkillModal({ agentId: 'ag-1' });
 		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_OPENED_ADD_SKILL_MODAL, {
 			agent_id: 'ag-1',
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
 		});
 	});
 
@@ -140,7 +317,7 @@ describe('useAgentTelemetry', () => {
 			source_agent_id: 'agent-1',
 			agent_id: 'agent-2',
 			project_id: 'project-1',
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
 		});
 	});
 
@@ -169,7 +346,7 @@ describe('useAgentTelemetry', () => {
 			agent_id: 'agent-1',
 			source: 'library',
 			variant: 'variant-a',
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
 		});
 	});
 
@@ -180,7 +357,7 @@ describe('useAgentTelemetry', () => {
 			agent_id: 'agent-1',
 			source: 'card',
 			variant: null,
-			session_id: 'session-xyz',
+			push_ref: 'session-xyz',
 		});
 	});
 
@@ -200,7 +377,7 @@ describe('useAgentTelemetry', () => {
 				thread_id: 'thread-1',
 				is_new_thread: true,
 				variant: 'variant-b',
-				session_id: 'session-xyz',
+				push_ref: 'session-xyz',
 			},
 		);
 	});
@@ -215,7 +392,7 @@ describe('useAgentTelemetry', () => {
 			{
 				item: 'new_chat',
 				variant: 'variant-a',
-				session_id: 'session-xyz',
+				push_ref: 'session-xyz',
 			},
 		);
 	});
@@ -231,7 +408,7 @@ describe('useAgentTelemetry', () => {
 				item: 'chat',
 				chat_type: 'agent',
 				variant: 'variant-a',
-				session_id: 'session-xyz',
+				push_ref: 'session-xyz',
 			},
 		);
 	});

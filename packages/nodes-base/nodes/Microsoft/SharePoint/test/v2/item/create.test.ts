@@ -154,6 +154,16 @@ describe('Microsoft SharePoint v2 — Item: Create', () => {
 		);
 	});
 
+	it('fails instead of creating an empty item when auto-map has no columns', async () => {
+		setParams({ ...baseParams, 'columns.mappingMode': 'autoMapInputData', 'columns.schema': [] });
+		ctx.getInputData.mockReturnValue([{ json: { Title: 'Mapped' } }]);
+
+		await expect(node.execute.call(ctx)).rejects.toThrow(
+			'Could not map the input data to the list columns',
+		);
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
 	it('creates the item with server defaults when the mapper value is its shipped default null', async () => {
 		setParams({ ...baseParams, 'columns.value': null });
 		apiRequest.mockResolvedValue({ id: '1' });

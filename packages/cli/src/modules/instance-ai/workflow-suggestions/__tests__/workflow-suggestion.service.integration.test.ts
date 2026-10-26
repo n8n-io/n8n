@@ -24,7 +24,6 @@ import { License } from '@/license';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { createUser } from '@test-integration/db/users';
 
-import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 
@@ -40,7 +39,6 @@ beforeAll(async () => {
 });
 afterAll(async () => await testDb.terminate());
 afterEach(async () => {
-	await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).clear();
 	await suggestions.createQueryBuilder().delete().execute();
 });
 
@@ -336,7 +334,7 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('Concurrent workflow saves
 		if (peer?.isInitialized) await peer.destroy();
 	});
 
-	it('preserves an edit made after the final baseline check without blocking it', async () => {
+	it('preserves an edit committed after the final baseline check', async () => {
 		const { saved, workflows, baseline, graph } = await fixture();
 		const prepared = await service.prepareSuggestion(baseline, {
 			resultKind: 'fix_ready',
@@ -349,7 +347,9 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('Concurrent workflow saves
 			.mockImplementationOnce(async (...args) => {
 				await peer.transaction(async (manager) => {
 					await manager.query("SET LOCAL lock_timeout = '250ms'");
-					await manager.update(WorkflowEntity, saved.id, { settings: { executionTimeout: 60 } });
+					await manager.update(WorkflowEntity, saved.id, {
+						settings: { executionTimeout: 60 },
+					});
 				});
 				return await createPending(...args);
 			});

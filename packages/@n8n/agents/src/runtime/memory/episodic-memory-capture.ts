@@ -157,6 +157,7 @@ export interface RunEpisodicMemoryCandidateProcessorOpts {
 	now?: Date;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	modelFetch?: typeof globalThis.fetch;
 	agentName?: string;
 	/**
 	 * Receives each episodic model call's usage the moment it resolves — once
@@ -341,6 +342,43 @@ async function embedTexts(
 	};
 }
 
+async function embedCandidateEntries(
+	opts: RunEpisodicMemoryCandidateProcessorOpts,
+	config: NormalizedEpisodicMemoryConfig,
+	candidates: Array<{ candidate: EpisodicMemoryCaptureCandidate; contentHash: string }>,
+): Promise<{ embeddingsByHash: Map<string, number[]>; report?: EpisodicMemoryUsageReport }> {
+	const contentByHash = new Map<string, string>();
+	for (const { candidate, contentHash } of candidates) {
+		if (!contentByHash.has(contentHash)) contentByHash.set(contentHash, candidate.content);
+	}
+	const existing = await opts.memory.episodic.getEntriesByContentHashes(opts.scope, [
+		...contentByHash.keys(),
+	]);
+	const embeddingsByHash = new Map<string, number[]>();
+	for (const entry of existing) {
+		if (
+			entry.embeddingModel === config.embeddingModel &&
+			entry.embedding !== undefined &&
+			entry.embedding.length > 0 &&
+			entry.embedding.every(Number.isFinite)
+		) {
+			embeddingsByHash.set(entry.contentHash, entry.embedding);
+		}
+	}
+	const missing = [...contentByHash].filter(([contentHash]) => !embeddingsByHash.has(contentHash));
+	if (missing.length === 0) return { embeddingsByHash };
+
+	const embedded = await embedTexts(
+		config,
+		missing.map(([, content]) => content),
+		opts.executionCounter,
+	);
+	for (const [index, [contentHash]] of missing.entries()) {
+		embeddingsByHash.set(contentHash, embedded.embeddings[index]);
+	}
+	return { embeddingsByHash, report: embedded.report };
+}
+
 async function saveCandidateEntries(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
 	config: NormalizedEpisodicMemoryConfig,
@@ -359,11 +397,11 @@ async function saveCandidateEntries(
 			...inferMemoryStoreAttributes(opts.memory),
 		}),
 		async () => {
-			const embedded = await embedTexts(
-				config,
-				candidates.map((candidate) => candidate.content),
-				opts.executionCounter,
-			);
+			const hashedCandidates = candidates.map((candidate) => ({
+				candidate,
+				contentHash: hashEpisodicMemoryContent(candidate.content),
+			}));
+			const embedded = await embedCandidateEntries(opts, config, hashedCandidates);
 			usageReport = embedded.report;
 			// Forward the embed usage before the save loop, so a billed embed
 			// call is priced even when a later saveEntryWithSources throws. The
@@ -371,14 +409,13 @@ async function saveCandidateEntries(
 			// processing.
 			if (embedded.report)
 				reportSideCallUsage(opts.onUsage, embedded.report.model, embedded.report.usage);
-			const embeddings = embedded.embeddings;
-			for (const [index, candidate] of candidates.entries()) {
+			for (const { candidate, contentHash } of hashedCandidates) {
 				const saved = await opts.memory.episodic.saveEntryWithSources(
 					{
 						...opts.scope,
 						content: candidate.content,
-						contentHash: hashEpisodicMemoryContent(candidate.content),
-						embedding: embeddings[index],
+						contentHash,
+						embedding: embedded.embeddingsByHash.get(contentHash),
 						embeddingModel: config.embeddingModel,
 						createdAt: now,
 						lastSeenAt: now,
@@ -425,6 +462,7 @@ async function runEpisodicMemoryReflection(
 		entries: cluster,
 		sources,
 		executionCounter: opts.executionCounter,
+		modelFetch: opts.modelFetch,
 	});
 	const reflectionResult =
 		'reflection' in reflectResult

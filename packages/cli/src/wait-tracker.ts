@@ -164,6 +164,18 @@ export class WaitTracker {
 			throw new UnexpectedError('Only saved workflows can be resumed.');
 		}
 
+		// Wait for the old segment to settle before replacement on the same main.
+		// JobOutcomeTracker keys separate completion reports across mains.
+		if (fullExecutionData.data.waitReason === 'suspended') {
+			// A running row is another attempt's live segment, not this suspension.
+			if (fullExecutionData.status !== 'waiting') {
+				throw new ExecutionAlreadyResumingError(executionId);
+			}
+			if (this.activeExecutions.has(executionId)) {
+				await this.activeExecutions.getPostExecutePromise(executionId);
+			}
+		}
+
 		const workflowId = fullExecutionData.workflowData.id;
 		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 
@@ -432,6 +444,7 @@ export class WaitTracker {
 		clearInterval(this.mainTimer);
 		Object.keys(this.waitingExecutions).forEach((executionId) => {
 			clearTimeout(this.waitingExecutions[executionId].timer);
+			delete this.waitingExecutions[executionId];
 		});
 
 		this.logger.debug('Stopped tracking waiting executions');

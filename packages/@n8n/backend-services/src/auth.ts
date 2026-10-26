@@ -1,5 +1,9 @@
 export { AuthStrategyRegistry } from './services/auth-strategy.registry';
-export { type AuthStrategyOptions, type AuthStrategy } from './services/auth-strategy.types';
+export {
+	type AuthStrategyOptions,
+	type AuthStrategy,
+	type AuthStrategyResult,
+} from './services/auth-strategy.types';
 export {
 	type ProtectedResource,
 	type ProtectedResourceResolver,
@@ -15,7 +19,11 @@ export {
 	type OAuthTokenVerifier,
 	OAuthTokenVerifierProxy,
 } from './services/oauth-token-verifier-proxy.service';
-export { type N8nOAuth2Flow, OAuth2FlowProxy } from './services/oauth2-flow-proxy.service';
+export {
+	type N8nOAuth2Flow,
+	type OAuth2FlowRequest,
+	OAuth2FlowProxy,
+} from './services/oauth2-flow-proxy.service';
 export {
 	type RoleResolverContext,
 	type RoleMappingConfig,

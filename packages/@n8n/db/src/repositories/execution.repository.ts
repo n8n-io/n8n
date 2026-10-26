@@ -27,7 +27,7 @@ import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { stringify } from 'flatted';
 import chunk from 'lodash/chunk';
 import pick from 'lodash/pick';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
@@ -190,7 +190,6 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly binaryDataService: BinaryDataService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		transactionRunner: TransactionRunner,
 	) {
@@ -617,7 +616,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		});
 	}
 
-	async deleteExecutionsByFilter({
+	async findExecutionsToDelete({
 		filters,
 		accessibleWorkflowIds,
 		deleteConditions,
@@ -657,23 +656,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			return [];
 		}
 
-		const refs = executions.map(({ id, workflowId, storedAt }) => ({
+		return executions.map(({ id, workflowId, storedAt }) => ({
 			executionId: id,
 			workflowId,
 			storedAt,
 		}));
-
-		const toDelete = [...refs];
-		do {
-			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = toDelete.splice(0, this.hardDeletionBatchSize);
-			await Promise.all([
-				this.delete(batch.map(({ executionId }) => executionId)),
-				this.binaryDataService.deleteMany(batch.map((b) => ({ type: 'execution' as const, ...b }))),
-			]);
-		} while (toDelete.length > 0);
-
-		return refs;
 	}
 
 	async getIdsSince(date: Date) {

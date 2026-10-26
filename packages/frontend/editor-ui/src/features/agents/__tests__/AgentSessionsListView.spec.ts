@@ -2,6 +2,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 // Hoisted mock state so vi.mock factories (which run before any imports)
 // can reference these without hitting a temporal-dead-zone error.
@@ -15,6 +16,7 @@ const {
 	loadMore,
 	deleteThread,
 	setFilters,
+	track,
 } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	storeState: {
@@ -22,7 +24,7 @@ const {
 		loading: false,
 		nextCursor: null as string | null,
 		autoRefresh: true,
-		filters: { status: 'all', origin: 'all', startDate: '', endDate: '' },
+		filters: { status: 'all', origin: 'all', startDate: '', endDate: '' } as AgentSessionFilters,
 	},
 	fetchThreads: vi.fn(),
 	startAutoRefresh: vi.fn(),
@@ -31,10 +33,18 @@ const {
 	loadMore: vi.fn(),
 	deleteThread: vi.fn(),
 	setFilters: vi.fn(),
+	track: vi.fn(),
 }));
 
 let documentAddEventListenerSpy: ReturnType<typeof vi.spyOn>;
 let documentRemoveEventListenerSpy: ReturnType<typeof vi.spyOn>;
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz' }),
+}));
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -140,10 +150,6 @@ vi.mock('../components/AgentSessionsFilter.vue', () => ({
 	},
 }));
 
-vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: () => ({ confirm: vi.fn() }),
-}));
-
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
@@ -151,10 +157,6 @@ vi.mock('@n8n/composables/useToast', () => ({
 vi.mock('../utils/thread-title', () => ({
 	useThreadTitle: () => (thread: { title?: string | null; firstMessage?: string | null }) =>
 		thread.title ?? thread.firstMessage ?? 'Session',
-}));
-
-vi.mock('@/app/constants', () => ({
-	MODAL_CONFIRM: 'modal-confirm',
 }));
 
 vi.mock('@/app/utils/formatters/dateFormatter', () => ({
@@ -167,14 +169,25 @@ vi.mock('@/features/agents/constants', () => ({
 	EXECUTIONS_SECTION_KEY: '__executions',
 }));
 
-vi.mock('@n8n/api-types', () => ({}));
-
 vi.mock('element-plus', () => ({
 	ElSkeletonItem: { template: '<div />' },
 }));
 
-import type { AgentExecutionThread } from '../composables/useAgentThreadsApi';
+import type { AgentExecutionThread, AgentSessionFilters } from '../composables/useAgentThreadsApi';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
+
+const defaultFilters: AgentSessionFilters = {
+	status: 'all',
+	origin: 'all',
+	startDate: '',
+	endDate: '',
+};
+const activeFilters: AgentSessionFilters = {
+	status: 'error',
+	origin: 'slack',
+	startDate: '2026-10-01T00:00:00.000Z',
+	endDate: '2026-10-20T00:00:00.000Z',
+};
 
 function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
 	return {
@@ -291,18 +304,81 @@ describe('AgentSessionsListView', () => {
 		);
 	});
 
-	it('requests filtered results when the filter changes', async () => {
-		const wrapper = await mountView();
+	it.each(['success', 'failure'])(
+		'tracks filter changes before requesting results with %s',
+		async (outcome) => {
+			if (outcome === 'failure') setFilters.mockRejectedValueOnce(new Error('Request failed'));
+			const wrapper = await mountView();
+			expect(track).not.toHaveBeenCalled();
 
-		await wrapper.get('[data-test-id="agent-sessions-filter"]').trigger('click');
+			await wrapper.get('[data-test-id="agent-sessions-filter"]').trigger('click');
+			await flushPromises();
 
-		expect(setFilters).toHaveBeenCalledWith('project-1', 'agent-1', {
-			status: 'error',
-			origin: 'all',
-			startDate: '',
-			endDate: '',
-		});
-	});
+			expect(setFilters).toHaveBeenCalledWith('project-1', 'agent-1', {
+				status: 'error',
+				origin: 'all',
+				startDate: '',
+				endDate: '',
+			});
+			expect(track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER,
+				{ agent_id: 'agent-1', push_ref: 'session-xyz', filter_names: ['status'] },
+			);
+			expect(track.mock.invocationCallOrder[0]).toBeLessThan(
+				setFilters.mock.invocationCallOrder[0],
+			);
+		},
+	);
+
+	it.each([
+		{
+			action: 'changes several filters',
+			previous: defaultFilters,
+			next: activeFilters,
+			filterNames: ['status', 'origin', 'start_date', 'end_date'],
+		},
+		{
+			action: 'resets filters',
+			previous: activeFilters,
+			next: defaultFilters,
+			filterNames: ['status', 'origin', 'start_date', 'end_date'],
+		},
+		{
+			action: 'clears one filter',
+			previous: activeFilters,
+			next: { ...activeFilters, startDate: '' },
+			filterNames: ['start_date'],
+		},
+		{
+			action: 'keeps filter values unchanged',
+			previous: activeFilters,
+			next: { ...activeFilters },
+			filterNames: [],
+		},
+		{
+			action: 'uses equivalent date objects',
+			previous: { ...activeFilters, startDate: new Date('2026-10-01T00:00:00.000Z') },
+			next: { ...activeFilters, startDate: new Date('2026-10-01T00:00:00.000Z') },
+			filterNames: [],
+		},
+	])(
+		'reports only changed field names when the user $action',
+		async ({ previous, next, filterNames }) => {
+			const wrapper = await mountView({ filters: previous });
+			wrapper.getComponent({ name: 'AgentSessionsFilter' }).vm.$emit('filterChanged', next);
+			await flushPromises();
+
+			expect(setFilters).toHaveBeenCalledWith('project-1', 'agent-1', next);
+			if (filterNames.length === 0) {
+				expect(track).not.toHaveBeenCalled();
+				return;
+			}
+			expect(track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER,
+				{ agent_id: 'agent-1', push_ref: 'session-xyz', filter_names: filterNames },
+			);
+		},
+	);
 
 	it('shows guidance in the empty state when there are no sessions', async () => {
 		const wrapper = await mountView({
