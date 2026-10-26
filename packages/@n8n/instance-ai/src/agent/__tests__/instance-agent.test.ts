@@ -415,6 +415,7 @@ describe('createInstanceAgent', () => {
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 			modelFetch,
+			requestLabels: true,
 		} as never);
 		await createInstanceAgent({
 			modelId: 'test-model',
@@ -427,6 +428,7 @@ describe('createInstanceAgent', () => {
 		expect(mockAgentInstances[0]?.modelFetch).toHaveBeenCalledWith(modelFetch);
 		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('instance-ai.orchestrator');
 		expect(mockAgentInstances[1]?.modelFetch).not.toHaveBeenCalled();
+		expect(mockAgentInstances[1]?.functionId).not.toHaveBeenCalled();
 	});
 
 	it('attaches native telemetry from the trace context when present', async () => {

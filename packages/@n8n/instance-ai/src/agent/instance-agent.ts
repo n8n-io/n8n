@@ -228,7 +228,6 @@ export async function createInstanceAgent(
 	});
 	const agent = new Agent('n8n-instance-agent')
 		.model(modelId)
-		.functionId(functionId)
 		.instructions(systemPrompt, {
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -240,6 +239,7 @@ export async function createInstanceAgent(
 		agent.mcpConnectionFailures(mcpConnectionFailures);
 	}
 	if (options.modelFetch) agent.modelFetch(options.modelFetch);
+	if (options.requestLabels) agent.functionId(functionId);
 	if (options.thinkingEnabled !== false) {
 		applyAgentThinking(agent, modelId);
 	}

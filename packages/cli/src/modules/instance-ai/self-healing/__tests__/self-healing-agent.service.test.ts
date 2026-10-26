@@ -92,7 +92,11 @@ const validOutput = {
 
 describe('SelfHealingAgentService', () => {
 	const config = mock<GlobalConfig>({
-		instanceAi: { workflowSuggestionsEnabled: true, thinkingEnabled: false },
+		instanceAi: {
+			workflowSuggestionsEnabled: true,
+			thinkingEnabled: false,
+			modelRequestLabels: true,
+		},
 		ai: {},
 	});
 	const logger = mock<Logger>();
@@ -296,6 +300,7 @@ describe('SelfHealingAgentService', () => {
 			expect.objectContaining({
 				context: expect.objectContaining({ threadId: options.threadId, runId: options.runId }),
 				modelFetch,
+				requestLabels: true,
 			}),
 		);
 		expect(streamAgentRun).toHaveBeenCalledWith(

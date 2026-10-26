@@ -136,6 +136,7 @@ export class AssistantAgentFactory {
 			onMemoryTaskEvent: runtime.onMemoryTaskEvent,
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 			modelFetch: this.modelService.getLabeledModelFetch({ runId, threadId }),
+			requestLabels: this.instanceAiConfig.modelRequestLabels,
 		});
 		// Surface MCP connection failures as a non-fatal status event. Publishing
 		// here (rather than at each call site) covers the foreground run and both

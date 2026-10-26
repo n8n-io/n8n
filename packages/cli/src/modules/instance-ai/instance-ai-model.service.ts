@@ -1,4 +1,3 @@
-import { X_N8N_FUNCTION_ID_HEADER } from '@n8n/agents';
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	UNLIMITED_CREDITS,
@@ -53,21 +52,9 @@ export class InstanceAiModelService {
 
 	private modelFetch?: CustomFetch;
 
-	/**
-	 * Transport for Instance AI model calls on the direct path (long AI timeouts, env proxy).
-	 * Unless `N8N_INSTANCE_AI_MODEL_REQUEST_LABELS` is on, it drops the `x-n8n-function-id`
-	 * header the agents SDK adds, so a direct provider gets no n8n labels.
-	 */
+	/** Transport for Instance AI model calls on the direct path (long AI timeouts, env proxy). */
 	getModelFetch(): CustomFetch {
-		if (this.modelFetch) return this.modelFetch;
-		const baseFetch = createAiProxyFetch(this.outboundHttp);
-		this.modelFetch = this.instanceAiConfig.modelRequestLabels
-			? baseFetch
-			: async (input, init) => {
-					const headers = new Headers(init?.headers);
-					headers.delete(X_N8N_FUNCTION_ID_HEADER);
-					return await baseFetch(input, { ...init, headers });
-				};
+		this.modelFetch ??= createAiProxyFetch(this.outboundHttp);
 		return this.modelFetch;
 	}
 

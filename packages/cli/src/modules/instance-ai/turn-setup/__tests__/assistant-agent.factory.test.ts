@@ -159,7 +159,7 @@ describe('AssistantAgentFactory — model transport', () => {
 			buildMcpServers: vi.fn(async () => []),
 			createAgentMemoryOptions: vi.fn(() => ({})),
 			subscribeToAgentErrors: vi.fn(),
-			instanceAiConfig: { thinkingEnabled: true },
+			instanceAiConfig: { thinkingEnabled: true, modelRequestLabels: true },
 			_mcpClientManager: {},
 			modelService: { getLabeledModelFetch: vi.fn(() => modelFetch) },
 		}) as unknown as AssistantAgentFactory;
@@ -176,7 +176,9 @@ describe('AssistantAgentFactory — model transport', () => {
 			{ user: { id: 'user-1' } as User, threadId: 'thread-1', runId: 'run-1' },
 		);
 
-		expect(createInstanceAgent).toHaveBeenCalledWith(expect.objectContaining({ modelFetch }));
+		expect(createInstanceAgent).toHaveBeenCalledWith(
+			expect.objectContaining({ modelFetch, requestLabels: true }),
+		);
 		expect(
 			(factory as unknown as { modelService: { getLabeledModelFetch: unknown } }).modelService
 				.getLabeledModelFetch,

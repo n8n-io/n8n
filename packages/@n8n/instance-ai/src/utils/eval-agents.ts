@@ -266,6 +266,13 @@ function usageLogHooks(
 	};
 }
 
+/** Same switch as `InstanceAiConfig.modelRequestLabels`, read here so harness callers share it. */
+function requestLabelsEnabled(): boolean {
+	return ['true', '1'].includes(
+		(process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS ?? '').toLowerCase(),
+	);
+}
+
 export function createEvalAgent(
 	name: string,
 	options: {
@@ -284,7 +291,8 @@ export function createEvalAgent(
 		options.judge ? (judgeModelOverride() ?? options.model ?? JUDGE_MODEL) : options.model,
 		options.fallbackModelConfig,
 	);
-	const agent = new Agent(name).model(model).functionId(name);
+	const agent = new Agent(name).model(model);
+	if (requestLabelsEnabled()) agent.functionId(name);
 	if (options.modelFetch) agent.modelFetch(options.modelFetch);
 	if (options.telemetry) agent.telemetry(options.telemetry);
 

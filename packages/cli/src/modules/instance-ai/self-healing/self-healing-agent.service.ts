@@ -505,6 +505,7 @@ export class SelfHealingAgentService {
 			context,
 			thinkingEnabled: this.config.instanceAi.thinkingEnabled,
 			modelFetch: this.models.getLabeledModelFetch({ runId, threadId }),
+			requestLabels: this.config.instanceAi.modelRequestLabels,
 			abortSignal: signal,
 			verifyCandidate: async (args) => {
 				signal.throwIfAborted();

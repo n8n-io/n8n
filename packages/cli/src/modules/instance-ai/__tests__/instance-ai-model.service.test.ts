@@ -128,7 +128,7 @@ describe('InstanceAiModelService', () => {
 			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
 			await fetchFor(service)('https://api.example.test/v1/chat/completions', {
 				method: 'POST',
-				headers: { authorization: 'Bearer key', 'x-n8n-function-id': 'instance-ai.orchestrator' },
+				headers: { authorization: 'Bearer key' },
 			});
 			return new Headers(baseFetch.mock.calls[0]?.[1]?.headers);
 		}
@@ -141,28 +141,13 @@ describe('InstanceAiModelService', () => {
 			expect(headers.get('x-n8n-feature')).toBeNull();
 			expect(headers.get('x-n8n-run-id')).toBeNull();
 			expect(headers.get('x-n8n-thread-id')).toBeNull();
-			expect(headers.get('x-n8n-function-id')).toBeNull();
 		});
 
-		it('sends no function id on the plain transport', async () => {
-			const headers = await headersSentBy((s) => s.getModelFetch());
-			expect(headers.get('authorization')).toBe('Bearer key');
-			expect(headers.get('x-n8n-function-id')).toBeNull();
+		it('uses the plain transport as is, with no header rewriting', () => {
+			const baseFetch = vi.fn();
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
+			expect(service.getModelFetch()).toBe(baseFetch);
 		});
-	});
-
-	it('keeps the function id when model request labels are on', async () => {
-		const baseFetch = vi.fn(
-			async (_input: RequestInfo | URL, _init?: RequestInit) =>
-				await Promise.resolve(new Response('{}')),
-		);
-		outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
-		await service.getModelFetch()('https://api.example.test/v1/chat/completions', {
-			method: 'POST',
-			headers: { 'x-n8n-function-id': 'verification-destructiveness-classifier' },
-		});
-		const headers = new Headers(baseFetch.mock.calls[0]?.[1]?.headers);
-		expect(headers.get('x-n8n-function-id')).toBe('verification-destructiveness-classifier');
 	});
 
 	describe('isProxyEnabled', () => {

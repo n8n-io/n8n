@@ -2173,4 +2173,6 @@ export interface CreateInstanceAgentOptions {
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 	/** Transport for the agent's model calls. Sub-agents and memory tasks inherit it. */
 	modelFetch?: FetchFn;
+	/** Send the `x-n8n-function-id` header on model calls (`N8N_INSTANCE_AI_MODEL_REQUEST_LABELS`). */
+	requestLabels?: boolean;
 }
