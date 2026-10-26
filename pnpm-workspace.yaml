@@ -67,6 +67,7 @@ catalog:
   '@ai-sdk/openai': ^4.0.101
   '@ai-sdk/openai-compatible': ^3.0.77
   '@ai-sdk/otel': ^1.0.150
+  '@ai-sdk/provider': ^4.0.33
   '@ai-sdk/provider-utils': ^5.0.67
   '@ai-sdk/xai': ^4.0.59
   '@asteasolutions/zod-to-openapi': 7.3.4

@@ -128,6 +128,7 @@ export type { JSONArray, JSONObject, JSONValue } from './types/json';
 
 // Chat model classes
 export { LangchainChatModelAdapter } from './adapters/langchain-chat-model';
+export { AiSdkLanguageModelAdapter } from './adapters/ai-sdk-language-model';
 export { BaseChatModel } from './chat-model/base';
 
 // Memory base classes
