@@ -889,10 +889,14 @@ describe('ActiveExecutions', () => {
 			const runningExecutionId = await activeExecutions.add(executionData);
 			activeExecutions.attachWorkflowExecution(runningExecutionId, workflowExecution);
 
-			const outcome = await raceShutdownAgainstTimeout(activeExecutions.shutdown());
+			const shutdown = activeExecutions.shutdown();
 
-			expect(outcome).toBe('timeout');
+			expect(await raceShutdownAgainstTimeout(shutdown)).toBe('timeout');
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
+
+			// Let the drain end so it does not keep polling after the test
+			activeExecutions.finalizeExecution(runningExecutionId, fullRunData);
+			await shutdown;
 		});
 
 		test('resolves once a running execution finishes', async () => {
