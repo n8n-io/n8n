@@ -118,6 +118,14 @@ vi.mock('../components/AgentFilesPanel.vue', () => ({
 	},
 }));
 
+vi.mock('../components/AgentMemoryEntriesPanel.vue', () => ({
+	default: {
+		name: 'AgentMemoryEntriesPanel',
+		template: '<div data-testid="agent-memory-entries-panel" />',
+		props: ['projectId', 'agentId', 'disabled'],
+	},
+}));
+
 vi.mock('../components/AgentPanelHeader.vue', () => ({
 	default: {
 		name: 'AgentPanelHeader',

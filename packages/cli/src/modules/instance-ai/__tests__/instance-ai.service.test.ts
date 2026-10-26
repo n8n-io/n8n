@@ -39,6 +39,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		mergeInstanceContextReach: profiles.mergeInstanceContextReach,
 		suspendedInstanceContextSchema: profiles.suspendedInstanceContextSchema,
 		applyPlannedTaskPermissionOverrides: profiles.applyPlannedTaskPermissionOverrides,
+		enrichMessageWithBackgroundTasks: profiles.enrichMessageWithBackgroundTasks,
 		patchThread: vi.fn(async () => {}),
 		isSetupPanelEnabled: (context: { setupItemsEmitter?: unknown }) =>
 			context.setupItemsEmitter !== undefined,
@@ -244,14 +245,8 @@ vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
 }));
 
+import type { ScopedMemoryTaskEvent, SerializableAgentState } from '@n8n/agents';
 import type {
-	AgentDbMessage,
-	MemoryTaskUsageReport,
-	ScopedMemoryTaskEvent,
-	SerializableAgentState,
-} from '@n8n/agents';
-import type {
-	AiPreferencesAppliedPayload,
 	InstanceAiEvent,
 	InstanceContextInjection,
 	InstanceContextSurface,
@@ -301,8 +296,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { ForbiddenError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { AI_PREFERENCES_CLEARED_BLOCK, renderAiPreferencesBlock } from '@n8n/backend-services';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
@@ -313,7 +306,6 @@ import { INSTANCE_AI_RUN_TIMEOUT_REASON } from '../liveness/instance-ai-liveness
 import { InstanceAiRunLimitError } from '../instance-ai-run-limit.error';
 import { InstanceAiSkillsService } from '../instance-ai-skills.service';
 import { InstanceAiService } from '../instance-ai.service';
-import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../internal-messages';
 import { InstanceAiSandboxService } from '../sandbox';
 import type {
 	SelfHealingAgentService,
@@ -323,6 +315,8 @@ import type {
 } from '../self-healing/self-healing-agent.service';
 import type { InstanceAiTracingService } from '../tracing/instance-ai-tracing.service';
 import { RunStateRegistry } from '@n8n/instance-ai';
+import { AssistantTurnEnvironmentFactory } from '../turn-setup/assistant-turn-environment.factory';
+import { AssistantTurnInputBuilder } from '../turn-setup/assistant-turn-input.builder';
 import type {
 	RebuildSuspendedRunOutcome,
 	ResumableOrphan,
@@ -464,6 +458,68 @@ function queuedMemoryTaskEvent(): ScopedMemoryTaskEvent {
 
 const fakeUser = { id: 'user-1' } as User;
 
+const TURN_ENVIRONMENT_FIELDS = [
+	'logger',
+	'instanceAiConfig',
+	'aiConfig',
+	'oauth2CallbackUrl',
+	'defaultTimeZone',
+	'adapterService',
+	'settingsService',
+	'browserSessionService',
+	'aiService',
+	'dbIterationLogStorage',
+	'instanceWriteAccess',
+	'telemetry',
+	'evalCredentialAllowlists',
+	'modelService',
+	'creditService',
+	'instanceAiErrorReporter',
+	'conversationHistoryService',
+	'aiUsageService',
+	'skillsService',
+	'areMcpConnectionsAvailable',
+] as const;
+
+/** Builds the shared turn setup from the mocks that a test sets on the service. */
+function attachTurnEnvironment(service: object): void {
+	const fields = service as Record<string, unknown>;
+	const turnEnvironment = Object.create(AssistantTurnEnvironmentFactory.prototype) as object;
+	for (const field of TURN_ENVIRONMENT_FIELDS) {
+		if (field in fields) Object.assign(turnEnvironment, { [field]: fields[field] });
+	}
+	Object.assign(service, { turnEnvironment });
+}
+
+const TURN_INPUT_FIELDS = [
+	'logger',
+	'defaultTimeZone',
+	'webhookBaseUrl',
+	'formBaseUrl',
+	'errorReporter',
+	'skillsService',
+	'instanceContext',
+	'aiPreferenceService',
+	'buildWorkflowSetupStateBlock',
+	'resolveBoundProject',
+	'resolveAiPreferencesTurn',
+	'resolveThreadArtifactsTurn',
+] as const;
+
+/**
+ * Builds the turn input builder over the stubs that a test sets on the service.
+ * It reads them when the run uses them, so a stub set later still applies.
+ */
+function attachTurnInput(service: object): void {
+	const fields = service as Record<string, unknown>;
+	const turnInput = Object.create(AssistantTurnInputBuilder.prototype) as object;
+	for (const field of TURN_INPUT_FIELDS) {
+		if (!(field in fields)) continue;
+		Object.defineProperty(turnInput, field, { get: () => fields[field] });
+	}
+	Object.assign(service, { turnInput });
+}
+
 function emptyWorkSummary(): WorkSummary {
 	return { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0, askedClarifyingQuestion: false };
 }
@@ -522,7 +578,7 @@ type ShutdownServiceInternals = {
 	domainAccessTrackersByThread: Map<string, unknown>;
 	eventBus: { clear: MockedFunction<() => void> };
 	eventLog: { flushAll: MockedFunction<() => Promise<void>> };
-	_mcpClientManager?: { disconnect: MockedFunction<() => Promise<void>> };
+	agentFactory: { disconnectMcpClients: MockedFunction<() => Promise<void>> };
 	inFlightExecutions: Set<Promise<unknown>>;
 	logger: { debug: Mock; warn: Mock };
 	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
@@ -667,6 +723,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	const service = Object.create(
 		InstanceAiService.prototype,
 	) as unknown as TerminalGuardOrderServiceInternals;
+	Object.assign(service, { agentFactory: { disconnectMcpClients: vi.fn(async () => {}) } });
 	service.runState = {
 		setBuildMode: vi.fn(),
 		setPromptVersion: vi.fn(),
@@ -770,7 +827,6 @@ function stubInitialRunSurface(
 			orchestrationContext: {},
 		})),
 		snapshotAttachedAgents: vi.fn(),
-		buildMessageWithRunningTasks: vi.fn(async (_threadId: string, text: string) => text),
 		buildWorkflowSetupStateBlock: vi.fn(async () => ''),
 		instanceContext: {
 			buildBlock: vi.fn().mockResolvedValue({ state: 'absent', reason: 'disabled' }),
@@ -780,35 +836,13 @@ function stubInitialRunSurface(
 		buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
 		domainAccessTrackersByThread: new Map(),
 	});
+	const { backgroundTasks } = service as { backgroundTasks?: object };
+	Object.assign(service, {
+		backgroundTasks: { getRunningTasks: vi.fn(() => []), ...backgroundTasks },
+	});
+	attachTurnInput(service);
 	vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
 }
-
-describe('InstanceAiService — MCP connections availability', () => {
-	afterEach(() => {
-		vi.restoreAllMocks();
-	});
-
-	it.each([
-		{ moduleActive: true, accessEnabled: true, expected: true },
-		{ moduleActive: false, accessEnabled: true, expected: false },
-		{ moduleActive: true, accessEnabled: false, expected: false },
-	])(
-		'returns $expected when moduleActive=$moduleActive and accessEnabled=$accessEnabled',
-		({ moduleActive, accessEnabled, expected }) => {
-			const service = Object.create(InstanceAiService.prototype) as unknown as {
-				areMcpConnectionsAvailable: () => boolean;
-				settingsService: { isMcpAccessEnabled: Mock };
-			};
-			service.settingsService = { isMcpAccessEnabled: vi.fn(() => accessEnabled) };
-			vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
-				if (token === ModuleRegistry) return { isActive: () => moduleActive };
-				throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
-			});
-
-			expect(service.areMcpConnectionsAvailable()).toBe(expected);
-		},
-	);
-});
 
 describe('InstanceAiService — runtime workspace setup', () => {
 	beforeEach(() => {
@@ -1051,6 +1085,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			service.adapterService.createContext.mockReturnValue({ builderDelegate: {} });
 		}
 		const loadSkills = vi.spyOn(service.skillsService, 'loadSkills');
+		attachTurnEnvironment(service);
 
 		const environment = await service.createExecutionEnvironment(
 			fakeUser,
@@ -1407,6 +1442,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			destroy: vi.fn(async () => {}),
 		});
 		(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+		attachTurnEnvironment(service);
 
 		const environment = await service.createExecutionEnvironment(
 			fakeUser,
@@ -1480,7 +1516,7 @@ describe('InstanceAiService — shutdown', () => {
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clear: vi.fn() };
 		service.eventLog = { flushAll: vi.fn(async () => {}) };
-		service._mcpClientManager = { disconnect: vi.fn(async () => {}) };
+		service.agentFactory = { disconnectMcpClients: vi.fn(async () => {}) };
 		service.inFlightExecutions = new Set();
 		service.logger = { debug: vi.fn(), warn: vi.fn() };
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
@@ -1589,6 +1625,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 				cancelAwaitingApprovalPlan: vi.fn(),
 				suspendedThreads: { dropPendingConfirmationsForThread: vi.fn() },
 				gatewayService: { disconnectAll: vi.fn() },
+				agentFactory: { disconnectMcpClients: vi.fn(async () => {}) },
 				browserSessionService: { shutdown: vi.fn(async () => {}) },
 				domainAccessTrackersByThread: new Map(),
 				instanceAiErrorReporter: createInstanceAiErrorReporterMock(),
@@ -1864,6 +1901,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 		Object.assign(service.liveness, { clearThreadState: vi.fn() });
 		stubInitialRunSurface(service);
 		Reflect.deleteProperty(service, 'createExecutionEnvironment');
+		attachTurnEnvironment(service);
 		const createContext = vi.fn();
 		Object.assign(service.adapterService, { createContext });
 
@@ -5533,7 +5571,7 @@ describe('InstanceAiService run input gates', () => {
 			threadPushRef: new Map(),
 			createExecutionEnvironment: vi.fn(async () => environment),
 			snapshotAttachedAgents: vi.fn(),
-			buildMessageWithRunningTasks: vi.fn(async (_threadId: string, text: string) => text),
+			backgroundTasks: { getRunningTasks: vi.fn(() => []) },
 			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
 			resolveProjectContextSection: vi.fn(async () => ''),
 			createAgentFromEnvironment: vi.fn(async () => ({})),
@@ -5559,6 +5597,7 @@ describe('InstanceAiService run input gates', () => {
 				resumeReason?: 'background_task_completed',
 			) => Promise<void>;
 		};
+		attachTurnInput(service);
 		return { service, buildBlock };
 	}
 
@@ -5683,7 +5722,7 @@ describe('InstanceAiService — planned-task follow-up permissions', () => {
 				requireApproval: false,
 			})),
 			snapshotAttachedAgents: vi.fn(),
-			buildMessageWithRunningTasks: vi.fn(async (_threadId: string, text: string) => text),
+			backgroundTasks: { getRunningTasks: vi.fn(() => []) },
 			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
 			resolveProjectContextSection: vi.fn(async () => ''),
 			createAgentFromEnvironment: vi.fn(async () => ({})),
@@ -5710,6 +5749,7 @@ describe('InstanceAiService — planned-task follow-up permissions', () => {
 				plannedBuild?: { isPlannedBuildFollowUp: true; buildTaskId: string; workItemId: string },
 			) => Promise<void>;
 		};
+		attachTurnInput(service);
 		return { service, context };
 	}
 
@@ -6034,64 +6074,9 @@ describe('InstanceAiService — planned task settlement', () => {
 	});
 });
 
-describe('InstanceAiService — agent preview handoff scopes', () => {
-	type AgentPreviewPermissionService = {
-		assertAgentPreviewHandoffScopes: (user: User, projectId: string) => Promise<void>;
-	};
-
-	function createAgentPreviewPermissionService(): AgentPreviewPermissionService {
-		return Object.create(InstanceAiService.prototype) as AgentPreviewPermissionService;
-	}
-
-	beforeEach(() => {
-		vi.mocked(userHasScopes).mockReset();
-	});
-
-	it('requires both agent read and update scopes for preview handoffs', async () => {
-		const service = createAgentPreviewPermissionService();
-		vi.mocked(userHasScopes).mockResolvedValue(true);
-
-		await expect(
-			service.assertAgentPreviewHandoffScopes(fakeUser, 'project-1'),
-		).resolves.toBeUndefined();
-
-		expect(userHasScopes).toHaveBeenCalledWith(fakeUser, ['agent:read', 'agent:update'], false, {
-			projectId: 'project-1',
-		});
-	});
-
-	it('rejects preview handoffs when either required agent scope is missing', async () => {
-		const service = createAgentPreviewPermissionService();
-		vi.mocked(userHasScopes).mockResolvedValue(false);
-
-		await expect(service.assertAgentPreviewHandoffScopes(fakeUser, 'project-1')).rejects.toThrow(
-			'You do not have permission to load or edit agent previews in this project.',
-		);
-	});
-});
-
-describe('InstanceAiService — OAuth callback URL', () => {
-	// Regression: the OAuth callback URL exposed to browser-assisted credential
-	// setup must come from urlService.getInstanceBaseUrl() (which honors WEBHOOK_URL
-	// on cloud), not from globalConfig.editorBaseUrl with a localhost fallback.
-	it('builds oauth2CallbackUrl from urlService.getInstanceBaseUrl()', () => {
-		const source = InstanceAiService.toString();
-
-		expect(source).toMatch(
-			/this\.oauth2CallbackUrl\s*=[^;]*this\.urlService\.getInstanceBaseUrl\(\)[^;]*oauth2-credential\/callback/,
-		);
-	});
-
-	it('does not fall back to localhost when editorBaseUrl is empty', () => {
-		const source = InstanceAiService.toString();
-
-		expect(source).not.toMatch(/globalConfig\.editorBaseUrl\s*\|\|/);
-	});
-});
-
 describe('InstanceAiService — editor handoff context resources', () => {
 	it('builds the context block from combined workflow and agent attachments', () => {
-		const source = InstanceAiService.toString();
+		const source = AssistantTurnInputBuilder.toString();
 
 		// Imported helpers compile to `(0,__vite_ssr_import_N__.fn)(args)`. Both
 		// arguments must reach the block, or the editor hand-off drops out of it.
@@ -6919,127 +6904,6 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 	});
 });
 
-describe('createAgentMemoryOptions', () => {
-	type MemoryOptionsInternals = {
-		createAgentMemoryOptions: (
-			user: User,
-			threadId: string,
-			runId: string,
-			memoryModelId?: ModelConfig,
-		) => {
-			observationalMemory: {
-				observerThresholdTokens: number;
-				model?: ModelConfig;
-				onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void>;
-			};
-		};
-		instanceAiConfig: Pick<
-			InstanceAiConfig,
-			'observerMessageTokens' | 'reflectorObservationTokens'
-		>;
-		runState: { getObserverThresholdTokens: Mock };
-		creditService: { claimRunUsage: Mock };
-		logger: { warn: Mock };
-	};
-
-	function buildService(): MemoryOptionsInternals {
-		const service = Object.create(InstanceAiService.prototype) as unknown as MemoryOptionsInternals;
-		service.instanceAiConfig = { observerMessageTokens: 8_000, reflectorObservationTokens: 12_000 };
-		service.runState = { getObserverThresholdTokens: vi.fn().mockReturnValue(undefined) };
-		service.creditService = { claimRunUsage: vi.fn(async () => {}) };
-		service.logger = { warn: vi.fn() };
-		return service;
-	}
-
-	it('uses the instance observer threshold when the thread has no override', () => {
-		const service = buildService();
-		const { observerThresholdTokens } = service.createAgentMemoryOptions(
-			{ id: 'user-1' } as User,
-			'thread-1',
-			'run-1',
-		).observationalMemory;
-		expect(observerThresholdTokens).toBe(8_000);
-		expect(service.runState.getObserverThresholdTokens).toHaveBeenCalledWith('thread-1');
-	});
-
-	it('passes the memory model to the memory tasks, and leaves it unset by default', () => {
-		const service = buildService();
-		const user = { id: 'user-1' } as User;
-		expect(
-			service.createAgentMemoryOptions(user, 'thread-1', 'run-1', 'anthropic/claude-haiku-4-5')
-				.observationalMemory.model,
-		).toBe('anthropic/claude-haiku-4-5');
-		// The proxy and credential paths return object configs, which must pass through as-is.
-		const credentialModel: ModelConfig = {
-			kind: 'endpoint',
-			id: 'anthropic/claude-haiku-4-5',
-			url: '',
-			apiKey: 'main-key',
-		};
-		expect(
-			service.createAgentMemoryOptions(user, 'thread-1', 'run-1', credentialModel)
-				.observationalMemory.model,
-		).toBe(credentialModel);
-		expect(
-			service.createAgentMemoryOptions(user, 'thread-1', 'run-1').observationalMemory.model,
-		).toBeUndefined();
-	});
-
-	it('uses the per-thread override when an eval set one', () => {
-		const service = buildService();
-		service.runState.getObserverThresholdTokens.mockReturnValue(1_000);
-		const { observerThresholdTokens } = service.createAgentMemoryOptions(
-			{ id: 'user-1' } as User,
-			'thread-1',
-			'run-1',
-		).observationalMemory;
-		expect(observerThresholdTokens).toBe(1_000);
-	});
-
-	it('claims converted usage under the orchestrator dedupe key, and skips claiming when usage is zero', async () => {
-		const service = buildService();
-		const user = { id: 'user-1' } as User;
-		const { onTaskUsage } = service.createAgentMemoryOptions(
-			user,
-			'thread-1',
-			'run-1',
-		).observationalMemory;
-
-		await onTaskUsage({
-			task: 'observer',
-			model: 'anthropic/claude-sonnet-4-5',
-			usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
-			reportId: 'report-1',
-		});
-
-		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
-			user,
-			'thread-1',
-			'run-1:memory:observer:report-1',
-			[
-				{
-					type: 'llmTokens',
-					model: 'anthropic/claude-sonnet-4-5',
-					uncachedInput: 0,
-					cacheRead: 0,
-					cacheWrite: 0,
-					output: 20,
-				},
-			],
-			'completed',
-		);
-
-		await onTaskUsage({
-			task: 'reflector',
-			model: 'anthropic/claude-sonnet-4-5',
-			usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
-			reportId: 'report-2',
-		});
-
-		expect(service.creditService.claimRunUsage).toHaveBeenCalledTimes(1);
-	});
-});
-
 describe('InstanceAiService — routeCancelRun zombie fallback', () => {
 	function createCancelService() {
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
@@ -7207,511 +7071,6 @@ describe('InstanceAiService — internal follow-up failure streak', () => {
 			expect(runId).toBe('follow-up-run');
 			expect(service.startExecuteRun).toHaveBeenCalled();
 		});
-	});
-});
-
-describe('InstanceAiService — resolveThreadArtifactsTurn', () => {
-	type Context = {
-		artifacts: Array<{ type: 'workflow'; id: string; name?: string }>;
-		activeId?: string;
-	};
-	type Internals = {
-		resolveThreadArtifactsTurn: (
-			threadId: string,
-			context: Context | undefined,
-			attachments: Array<{ type: 'workflow'; id: string; name: string }>,
-			loadHistory: () => Promise<unknown[]>,
-		) => Promise<string>;
-		getReplayedMessages: (threadId: string) => Promise<unknown[]>;
-		agentMemory: {
-			getMessages: Mock;
-			getCursor: Mock;
-			getActiveObservationLog: Mock;
-			getMessagesForObservationScope: Mock;
-		};
-		logger: { warn: Mock };
-	};
-
-	function createService(): Internals {
-		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
-		service.agentMemory = {
-			getMessages: vi.fn().mockResolvedValue([]),
-			getCursor: vi.fn().mockResolvedValue(null),
-			getActiveObservationLog: vi.fn().mockResolvedValue([]),
-			getMessagesForObservationScope: vi.fn().mockResolvedValue([]),
-		};
-		service.logger = { warn: vi.fn() };
-		return service;
-	}
-
-	const digest = { type: 'workflow' as const, id: 'wf-1', name: 'Digest' };
-	const report = { type: 'workflow' as const, id: 'wf-2', name: 'Report' };
-	const storedUserTurn = (block: string) => ({
-		role: 'user',
-		content: [buildThreadContextBlock(['Ambient context.', block]), 'Change it'].join('\n\n'),
-	});
-
-	async function resolve(
-		service: Internals,
-		context: Context | undefined,
-		attachments: Array<{ type: 'workflow'; id: string; name: string }> = [],
-	) {
-		return await service.resolveThreadArtifactsTurn(
-			'thread-1',
-			context,
-			attachments,
-			async () => await service.getReplayedMessages('thread-1'),
-		);
-	}
-
-	it('sends nothing when the client sent no tabs', async () => {
-		expect(await resolve(createService(), undefined)).toBe('');
-	});
-
-	it('sends the tabs when the history has no tabs block', async () => {
-		const block = await resolve(createService(), { artifacts: [digest], activeId: 'wf-1' });
-
-		expect(block).toContain('<thread-artifacts>');
-		expect(block).toContain('(id: `wf-1`) [current]');
-	});
-
-	it('does not send the tabs again when they have not changed, also after a reorder', async () => {
-		const service = createService();
-		const earlier = buildThreadArtifactsBlock({ artifacts: [digest, report], activeId: 'wf-1' });
-		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(earlier)]);
-
-		expect(await resolve(service, { artifacts: [digest, report], activeId: 'wf-1' })).toBe('');
-		expect(await resolve(service, { artifacts: [report, digest], activeId: 'wf-1' })).toBe('');
-	});
-
-	it('sends the tabs when a tab closed or the active tab changed', async () => {
-		const service = createService();
-		const earlier = buildThreadArtifactsBlock({ artifacts: [digest, report], activeId: 'wf-1' });
-		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(earlier)]);
-
-		expect(await resolve(service, { artifacts: [digest], activeId: 'wf-1' })).toContain(
-			'Workflow "Digest"',
-		);
-		expect(await resolve(service, { artifacts: [digest, report], activeId: 'wf-2' })).toContain(
-			'(id: `wf-2`) [current]',
-		);
-	});
-
-	it('says no tabs are open once, then not again while nothing changes', async () => {
-		const service = createService();
-		const noTabs = await resolve(service, { artifacts: [] });
-		expect(noTabs).toContain('The user has no tabs open in this conversation’s preview.');
-
-		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(noTabs)]);
-		expect(await resolve(service, { artifacts: [] })).toBe('');
-	});
-
-	it('says no tabs are open after a block that listed tabs or only an editor hand-off', async () => {
-		const service = createService();
-		service.agentMemory.getMessages.mockResolvedValue([
-			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [digest] })),
-		]);
-		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
-
-		const handoffOnly = buildThreadArtifactsBlock({ artifacts: [] }, [
-			{ type: 'workflow' as const, id: 'wf-9', name: 'Handed off' },
-		]);
-		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(handoffOnly)]);
-		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
-	});
-
-	it('says no tabs are open again when the same block was compacted out of the replay window', async () => {
-		const service = createService();
-		// The full history has the same block, so only a replay-window read sends it again.
-		service.agentMemory.getMessages.mockResolvedValue([
-			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [] })),
-		]);
-		service.agentMemory.getCursor.mockResolvedValue({
-			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
-			lastObservedMessageId: 'message-1',
-		});
-		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'observation-1' }]);
-		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([]);
-
-		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
-	});
-
-	it('always sends a block that carries an editor hand-off', async () => {
-		const service = createService();
-		const attachments = [{ type: 'workflow' as const, id: 'wf-1', name: 'Digest' }];
-		const earlier = buildThreadArtifactsBlock({ artifacts: [digest] }, attachments);
-		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(earlier)]);
-
-		expect(await resolve(service, { artifacts: [digest] }, attachments)).toBe(earlier);
-	});
-
-	it('sends the tabs again when the earlier block was compacted out of the replay window', async () => {
-		const service = createService();
-		service.agentMemory.getMessages.mockResolvedValue([
-			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [digest] })),
-		]);
-		service.agentMemory.getCursor.mockResolvedValue({
-			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
-			lastObservedMessageId: 'message-1',
-		});
-		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'observation-1' }]);
-		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([]);
-
-		expect(await resolve(service, { artifacts: [digest] })).toContain('Workflow "Digest"');
-	});
-
-	it('sends the tabs when the history cannot be read', async () => {
-		const service = createService();
-		service.agentMemory.getMessages.mockRejectedValue(new Error('database is locked'));
-
-		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
-		expect(service.logger.warn).toHaveBeenCalled();
-	});
-});
-
-describe('InstanceAiService — resolveAiPreferencesTurn', () => {
-	type StoredMessage = { role: string; content: string };
-	type Internals = {
-		resolveAiPreferencesTurn: (
-			userId: string,
-			project: { id: string; name: string; type: 'team' } | undefined,
-			threadId: string,
-		) => Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }>;
-		aiPreferenceService: { getApplicable: Mock };
-		agentMemory: {
-			getMessages: Mock;
-			getCursor: Mock;
-			getActiveObservationLog: Mock;
-			getMessagesForObservationScope: Mock;
-		};
-		eventLog: { getLastPreferencesInjectionRunId: Mock };
-		logger: { warn: Mock };
-	};
-
-	function createService(): Internals {
-		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
-		service.aiPreferenceService = { getApplicable: vi.fn() };
-		service.agentMemory = {
-			getMessages: vi.fn().mockResolvedValue([]),
-			getCursor: vi.fn().mockResolvedValue(null),
-			getActiveObservationLog: vi.fn().mockResolvedValue([]),
-			getMessagesForObservationScope: vi.fn().mockResolvedValue([]),
-		};
-		service.eventLog = { getLastPreferencesInjectionRunId: vi.fn().mockResolvedValue(undefined) };
-		service.logger = { warn: vi.fn() };
-		return service;
-	}
-
-	const applicable = {
-		instance: [],
-		user: [{ id: 'pref-1', content: 'Keep replies short.' }],
-		projects: [
-			{
-				id: 'project-1',
-				name: 'Marketing',
-				items: [{ id: 'pref-2', content: 'Prefer HubSpot nodes.' }],
-			},
-		],
-	};
-	const none = { instance: [], user: [], projects: [] };
-	const boundProject = { id: 'project-1', name: 'Marketing', type: 'team' as const };
-
-	/** A persisted user turn whose leading thread-context carries `block`, as the service stores it. */
-	const storedUserTurn = (
-		block: string | undefined,
-		text = 'Build me a digest',
-	): StoredMessage => ({
-		role: 'user',
-		content: [buildThreadContextBlock(['Ambient context.', block]), text].join('\n\n'),
-	});
-
-	const storedSave = (ok = true, toolName = 'save_user_preference'): AgentDbMessage => ({
-		id: 'save-message',
-		createdAt: new Date('2026-09-01T00:00:00.000Z'),
-		role: 'assistant',
-		content: [
-			{
-				type: 'tool-call',
-				toolCallId: 'save-call',
-				toolName,
-				input: { content: 'Use minimal node names.', scope: 'user' },
-				state: 'resolved',
-				output: ok
-					? {
-							ok: true,
-							preference: { id: 'removed-pref', content: 'Use minimal node names.', scope: 'user' },
-						}
-					: { ok: false, reason: 'failed' },
-			},
-		],
-	});
-
-	it('clears a chat save removed before any preference block carried it', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue(none);
-		service.agentMemory.getMessages.mockResolvedValue([
-			storedUserTurn(undefined, 'Always use minimal node names.'),
-			storedSave(),
-		]);
-
-		const turn = await service.resolveAiPreferencesTurn('user-1', undefined, 'thread-1');
-
-		expect(turn.block).toBe(AI_PREFERENCES_CLEARED_BLOCK);
-		expect(turn.payload).toEqual({
-			preferences: [],
-			renderedLength: AI_PREFERENCES_CLEARED_BLOCK.length,
-			injectedThisTurn: true,
-		});
-	});
-
-	it.each([
-		['other preferences remain', applicable],
-		['no preferences remain', none],
-	])(
-		'refreshes after a removed save when %s, then reuses the refreshed block',
-		async (_, preferences) => {
-			const service = createService();
-			service.aiPreferenceService.getApplicable.mockResolvedValue(preferences);
-			const block = renderAiPreferencesBlock(preferences) ?? AI_PREFERENCES_CLEARED_BLOCK;
-			const history = [storedUserTurn(block), storedSave()];
-			service.agentMemory.getMessages.mockResolvedValue(history);
-
-			const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
-
-			expect(turn.block).toBe(block);
-			expect(turn.payload.injectedThisTurn).toBe(true);
-			expect(turn.payload.preferences.map(({ id }) => id)).not.toContain('removed-pref');
-			expect(service.eventLog.getLastPreferencesInjectionRunId).not.toHaveBeenCalled();
-
-			service.agentMemory.getMessages.mockResolvedValue([...history, storedUserTurn(turn.block)]);
-			service.eventLog.getLastPreferencesInjectionRunId.mockResolvedValue('refresh-run');
-			const nextTurn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
-
-			expect(nextTurn.block).toBeUndefined();
-			expect(nextTurn.payload).toMatchObject({
-				injectedThisTurn: false,
-				carriedFromRunId: 'refresh-run',
-			});
-		},
-	);
-
-	it.each([
-		['failed save', false, 'save_user_preference'],
-		['unrelated tool', true, 'get_workflow'],
-	] as const)('does not refresh for a %s', async (_, ok, toolName) => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue(none);
-		service.agentMemory.getMessages.mockResolvedValue([
-			storedUserTurn(undefined),
-			storedSave(ok, toolName),
-		]);
-
-		const turn = await service.resolveAiPreferencesTurn('user-1', undefined, 'thread-1');
-
-		expect(turn.block).toBeUndefined();
-		expect(turn.payload).toEqual({ preferences: [], renderedLength: 0, injectedThisTurn: false });
-	});
-
-	it('injects the block and reports it when the conversation never carried one', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
-
-		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
-
-		expect(service.aiPreferenceService.getApplicable).toHaveBeenCalledWith('user-1', [
-			boundProject,
-		]);
-		expect(turn.block).toContain('<ai-preferences>');
-		expect(turn.block).toContain('Preferences for project "Marketing":');
-		expect(turn.block).toContain('- Keep replies short.');
-		expect(turn.payload).toEqual({
-			preferences: [
-				{ id: 'pref-1', scope: 'user' },
-				{ id: 'pref-2', scope: 'project', projectId: 'project-1', projectName: 'Marketing' },
-			],
-			renderedLength: turn.block?.length,
-			injectedThisTurn: true,
-		});
-	});
-
-	it('re-uses the previous copy when the rendered text is unchanged, and names the run that sent it', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
-		const block = renderAiPreferencesBlock(applicable);
-		if (!block) throw new Error('expected a block');
-		// A later user turn without a block must not stop the scan.
-		service.agentMemory.getMessages.mockResolvedValue([
-			storedUserTurn(block),
-			{ role: 'assistant', content: 'Done.' },
-			storedUserTurn(undefined, 'Thanks'),
-		]);
-		service.eventLog.getLastPreferencesInjectionRunId.mockResolvedValue('run-1');
-
-		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
-
-		expect(turn.block).toBeUndefined();
-		expect(turn.payload).toEqual({
-			preferences: [
-				{ id: 'pref-1', scope: 'user' },
-				{ id: 'pref-2', scope: 'project', projectId: 'project-1', projectName: 'Marketing' },
-			],
-			renderedLength: block.length,
-			injectedThisTurn: false,
-			carriedFromRunId: 'run-1',
-		});
-	});
-
-	it('re-sends the block when the rendered text differs from the previous copy', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
-		const olderBlock = renderAiPreferencesBlock({
-			...none,
-			user: [{ id: 'pref-1', content: 'Write long replies.' }],
-		});
-		if (!olderBlock) throw new Error('expected a block');
-		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(olderBlock)]);
-
-		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
-
-		expect(turn.block).toContain('- Keep replies short.');
-		expect(turn.payload).toMatchObject({ injectedThisTurn: true });
-		expect(service.eventLog.getLastPreferencesInjectionRunId).not.toHaveBeenCalled();
-	});
-
-	it('publishes an empty payload when the read fails, without touching the history', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockRejectedValue(new Error('db down'));
-
-		const turn = await service.resolveAiPreferencesTurn('user-1', undefined, 'thread-1');
-
-		expect(turn.block).toBeUndefined();
-		expect(turn.payload).toEqual({ preferences: [], renderedLength: 0, injectedThisTurn: false });
-		expect(service.agentMemory.getMessages).not.toHaveBeenCalled();
-		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Instance AI failed to read the AI preferences for this turn',
-			{ userId: 'user-1', error: 'db down' },
-		);
-	});
-
-	it('sends the cleared block once when every preference is gone but the thread carries one', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue(none);
-		const block = renderAiPreferencesBlock(applicable);
-		if (!block) throw new Error('expected a block');
-		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
-
-		const turn = await service.resolveAiPreferencesTurn('user-1', undefined, 'thread-1');
-
-		expect(turn.block).toBe(AI_PREFERENCES_CLEARED_BLOCK);
-		expect(turn.payload).toEqual({
-			preferences: [],
-			renderedLength: AI_PREFERENCES_CLEARED_BLOCK.length,
-			injectedThisTurn: true,
-		});
-
-		// The cleared block obeys the same change rule: a thread that stays empty carries it once.
-		service.agentMemory.getMessages.mockResolvedValue([
-			storedUserTurn(block),
-			storedUserTurn(AI_PREFERENCES_CLEARED_BLOCK),
-		]);
-		const nextTurn = await service.resolveAiPreferencesTurn('user-1', undefined, 'thread-1');
-
-		expect(nextTurn.block).toBeUndefined();
-		expect(nextTurn.payload).toMatchObject({ preferences: [], injectedThisTurn: false });
-	});
-
-	it('sends nothing and reports an empty payload when there are no preferences and never were', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue(none);
-
-		const turn = await service.resolveAiPreferencesTurn('user-1', undefined, 'thread-1');
-
-		expect(turn.block).toBeUndefined();
-		expect(turn.payload).toEqual({ preferences: [], renderedLength: 0, injectedThisTurn: false });
-		expect(service.eventLog.getLastPreferencesInjectionRunId).not.toHaveBeenCalled();
-	});
-
-	it('injects when the history read fails, because re-sending is the safe direction', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
-		service.agentMemory.getMessages.mockRejectedValue(new Error('history down'));
-
-		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
-
-		expect(turn.block).toContain('<ai-preferences>');
-		expect(turn.payload).toMatchObject({ injectedThisTurn: true });
-		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Instance AI failed to read the last AI preferences block of this thread',
-			{ threadId: 'thread-1', error: 'history down' },
-		);
-	});
-
-	it('re-injects when the observation cursor has compacted the turn that carried the block', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
-		const block = renderAiPreferencesBlock(applicable);
-		if (!block) throw new Error('expected a block');
-		// The full table still holds the block, but the model only replays the post-cursor
-		// tail, where the block does not appear — so it must count as absent.
-		const cursor = {
-			observationScopeId: 'thread-1',
-			lastObservedMessageId: 'msg-9',
-			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
-		};
-		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
-		service.agentMemory.getCursor.mockResolvedValue(cursor);
-		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'obs-1' }]);
-		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([
-			storedUserTurn(undefined, 'Thanks'),
-		]);
-
-		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
-
-		expect(turn.block).toContain('<ai-preferences>');
-		expect(turn.payload).toMatchObject({ injectedThisTurn: true });
-		expect(service.agentMemory.getMessages).not.toHaveBeenCalled();
-		expect(service.agentMemory.getMessagesForObservationScope).toHaveBeenCalledWith('thread-1', {
-			since: {
-				sinceCreatedAt: cursor.lastObservedAt,
-				sinceMessageId: cursor.lastObservedMessageId,
-			},
-		});
-	});
-
-	it('reads the full history when a cursor exists without an active observation, like the runtime', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
-		const block = renderAiPreferencesBlock(applicable);
-		if (!block) throw new Error('expected a block');
-		service.agentMemory.getCursor.mockResolvedValue({
-			observationScopeId: 'thread-1',
-			lastObservedMessageId: 'msg-9',
-			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
-		});
-		service.agentMemory.getActiveObservationLog.mockResolvedValue([]);
-		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
-		service.eventLog.getLastPreferencesInjectionRunId.mockResolvedValue('run-1');
-
-		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
-
-		expect(turn.block).toBeUndefined();
-		expect(turn.payload).toMatchObject({ injectedThisTurn: false, carriedFromRunId: 'run-1' });
-		expect(service.agentMemory.getMessagesForObservationScope).not.toHaveBeenCalled();
-	});
-
-	it('still skips an unchanged block when the run attribution lookup fails', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
-		const block = renderAiPreferencesBlock(applicable);
-		if (!block) throw new Error('expected a block');
-		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
-		service.eventLog.getLastPreferencesInjectionRunId.mockRejectedValue(new Error('log down'));
-
-		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
-
-		expect(turn.block).toBeUndefined();
-		expect(turn.payload).toMatchObject({ injectedThisTurn: false });
-		expect(turn.payload).not.toHaveProperty('carriedFromRunId');
 	});
 });
 

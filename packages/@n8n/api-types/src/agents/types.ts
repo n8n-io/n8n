@@ -246,6 +246,44 @@ export interface AgentVersionDto {
 	author: string;
 }
 
+export type AgentMemoryEntrySourceKind =
+	| 'slack'
+	| 'linear'
+	| 'discord'
+	| 'telegram'
+	| 'whatsapp'
+	| 'teams'
+	| 'n8n-chat'
+	| 'preview'
+	| 'build';
+
+/** Where a stored memory came from. Every part except `kind` is dropped when unknown. */
+export interface AgentMemoryEntrySourceDto {
+	kind: AgentMemoryEntrySourceKind;
+	userName?: string;
+	/** The requesting user wrote the source message. Only set for n8n chat, preview and build. */
+	isViewer?: boolean;
+	/** Slack channel name with the leading `#` (e.g. `#general`), or Linear issue identifier (e.g. `ENG-123`). */
+	place?: string;
+	isDirectMessage?: boolean;
+}
+
+export interface AgentMemoryEntryDto {
+	id: string;
+	content: string;
+	createdAt: string;
+	source?: AgentMemoryEntrySourceDto;
+	/** Distinct source threads besides the one shown in `source`. */
+	otherSourceCount: number;
+}
+
+export interface AgentMemoryEntriesPageDto {
+	items: AgentMemoryEntryDto[];
+	/** Count of all active entries, not just this page. */
+	total: number;
+	nextCursor: string | null;
+}
+
 export interface AgentFileDto {
 	id: string;
 	agentId: string;
