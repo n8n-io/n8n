@@ -229,7 +229,10 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('Should not record a starter for a manual execution that n8n saves', async () => {
-			await activeExecutions.add(executionData);
+			await activeExecutions.add({
+				...unsavedExecutionData,
+				workflowData: { ...executionData.workflowData, settings: { saveManualExecutions: true } },
+			});
 
 			expect(executionPersistence.create).toHaveBeenCalledWith(
 				expect.objectContaining({ startedByUserId: null }),

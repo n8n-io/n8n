@@ -302,6 +302,56 @@ describe('processError', () => {
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
 	});
 
+	test('processError clears the starter of a false-positive success for a manual execution that is saved', async () => {
+		const workflow = await createWorkflow({ settings: { saveManualExecutions: true } }, owner);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'manual', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
+		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true }),
+		);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'success',
+				finished: true,
+				mode: 'manual',
+				data: createRunExecutionData({
+					resultData: { runData: { Start: [] }, lastNodeExecuted: 'Start' },
+				}),
+				workflowId: workflow.id,
+				workflowData: workflow,
+			}),
+		);
+		const softDeleteSpy = vi.spyOn(
+			Container.get(ExecutionRepository),
+			'softDeleteUnsavedManualExecution',
+		);
+		const clearStarterSpy = vi
+			.spyOn(Container.get(ExecutionRepository), 'clearUnsavedManualExecutionStarter')
+			.mockResolvedValue(undefined);
+
+		globalConfig.executions.mode = 'queue';
+		await runner.processError(
+			new Error('test') as ExecutionError,
+			new Date(),
+			'manual',
+			execution.id,
+			hooks,
+		);
+
+		await expect(postExecutePromise).resolves.toEqual(
+			expect.objectContaining({ status: 'success', finished: true }),
+		);
+		expect(clearStarterSpy).toHaveBeenCalledWith(execution.id);
+		expect(softDeleteSpy).not.toHaveBeenCalled();
+	});
+
 	test('processError prunes a false-positive success even when the stored execution carries no run data', async () => {
 		const workflow = await createWorkflow(
 			{ settings: { saveDataSuccessExecution: 'none' } },
