@@ -51,6 +51,15 @@ export class WorkflowSettingsModal extends BasePage {
 		return this.container.getByTestId('workflow-settings-timeout-form').locator('input').first();
 	}
 
+	getEngineTypeSelect(): Locator {
+		return this.container.getByTestId('workflow-settings-engine-type-select');
+	}
+
+	async selectEngineType(label: string): Promise<void> {
+		await this.getEngineTypeSelect().click();
+		await this.getVisiblePopoverOption(label, { exact: true }).click();
+	}
+
 	getRedactProductionSelect(): Locator {
 		return this.container.getByTestId('workflow-settings-redact-production-select');
 	}
