@@ -2122,7 +2122,7 @@ export class TelemetryEventRelay extends EventRelay {
 			memory_used_bytes: event.memoryUsedBytes,
 			memory_limit_bytes: event.memoryLimitBytes,
 			freed_memory: event.freedMemory,
-			workflow_deactivated: event.workflowDeactivated,
+			workflow_deactivation_started: event.workflowDeactivationStarted,
 		});
 	}
 

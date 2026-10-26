@@ -186,6 +186,7 @@ describe('MemoryGuardService', () => {
 			productionHold,
 		);
 		memoryStoppedExecutions = new MemoryStoppedExecutions();
+		Object.assign(journal, { crashes: { none: 3, hold: 1, stop: 2 } });
 		guard = new MemoryGuardService(
 			logger,
 			activeExecutions,
@@ -746,7 +747,7 @@ describe('MemoryGuardService', () => {
 				memoryUsedBytes: 960 * MB,
 				memoryLimitBytes: 1_000 * MB,
 				freedMemory: true,
-				workflowDeactivated: false,
+				workflowDeactivationStarted: false,
 			});
 		});
 
@@ -775,20 +776,6 @@ describe('MemoryGuardService', () => {
 				}),
 			);
 		});
-
-		it('should report an active hold once the metrics listen', async () => {
-			utilization = 0.82;
-			await sample(2);
-			eventService.emit.mockClear();
-
-			eventService.listenerCount.mockReturnValueOnce(1);
-			await sample();
-
-			expect(eventService.emit).toHaveBeenCalledWith('memory-guard-hold-started', {
-				memoryUsedBytes: 820 * MB,
-				memoryLimitBytes: 1_000 * MB,
-			});
-		});
 	});
 
 	describe('journal', () => {
@@ -812,15 +799,7 @@ describe('MemoryGuardService', () => {
 			);
 		});
 
-		it('should report the crash totals once, after the metrics listen', async () => {
-			Object.assign(journal, { crashes: { none: 3, hold: 1, stop: 2 } });
-			await sample();
-			expect(eventService.emit).not.toHaveBeenCalledWith(
-				'memory-guard-crashes-counted',
-				expect.anything(),
-			);
-
-			eventService.listenerCount.mockReturnValueOnce(1);
+		it('should report the crash totals once, when it starts', async () => {
 			await sample(2);
 
 			const reports = eventService.emit.mock.calls.filter(
@@ -892,10 +871,13 @@ describe('MemoryGuardService', () => {
 				type: 'workflowAutoDeactivated',
 				data: { workflowId: 'repeat' },
 			});
-			expect(eventService.emit).toHaveBeenLastCalledWith(
+			expect(eventService.emit).toHaveBeenCalledWith(
 				'memory-guard-execution-stopped',
-				expect.objectContaining({ workflowDeactivated: true }),
+				expect.objectContaining({ executionId: '3', workflowDeactivationStarted: true }),
 			);
+			expect(eventService.emit).toHaveBeenCalledWith('memory-guard-workflow-deactivated', {
+				workflowId: 'repeat',
+			});
 		});
 
 		it.each([
@@ -914,6 +896,10 @@ describe('MemoryGuardService', () => {
 			await stopOnce('3');
 			expect(stopLogs()).toHaveLength(3);
 			expect(mailer.notifyWorkflowAutodeactivated).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'memory-guard-workflow-deactivated',
+				expect.anything(),
+			);
 
 			await stopOnce('4');
 
@@ -931,6 +917,10 @@ describe('MemoryGuardService', () => {
 
 			expect(stoppedIds()).toEqual(['1', '2', '3', '4']);
 			expect(deactivateWorkflowAsSystem).toHaveBeenCalledTimes(1);
+			const reportedIds = eventService.emit.mock.calls
+				.filter(([event]) => event === 'memory-guard-execution-stopped')
+				.map(([, payload]) => (payload as { executionId: string }).executionId);
+			expect(reportedIds).toEqual(['1', '2', '3', '4']);
 		});
 
 		it('should push the deactivation when the email fails', async () => {

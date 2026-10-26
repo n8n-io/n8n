@@ -44,9 +44,11 @@ export const PLATFORM_TELEMETRY = defineTelemetryEvents({
 			memory_used_bytes: z.number(),
 			memory_limit_bytes: z.number(),
 			freed_memory: z.boolean().describe('Whether memory fell enough after the stop'),
-			workflow_deactivated: z
+			workflow_deactivation_started: z
 				.boolean()
-				.describe('Whether the guard deactivated the workflow after repeated stops'),
+				.describe(
+					'Whether this stop made the guard start to deactivate the workflow, after repeated stops',
+				),
 		}),
 	},
 });

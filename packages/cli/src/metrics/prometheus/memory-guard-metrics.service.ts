@@ -13,6 +13,8 @@ import type { PrometheusMetricsCollector } from './base';
  */
 @Service()
 export class PrometheusMemoryGuardMetricsService implements PrometheusMetricsCollector {
+	private isInitialized = false;
+
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
 		private readonly memoryGuardConfig: MemoryGuardConfig,
@@ -24,7 +26,10 @@ export class PrometheusMemoryGuardMetricsService implements PrometheusMetricsCol
 		return this.memoryGuardConfig.enabled && this.executionsConfig.mode === 'regular';
 	}
 
+	/** Start calls this before the guard starts, so that no guard event comes before the listeners. */
 	init() {
+		if (this.isInitialized) return;
+		this.isInitialized = true;
 		const prefix = this.config.prefix;
 
 		const holds = new promClient.Counter({
@@ -80,9 +85,10 @@ export class PrometheusMemoryGuardMetricsService implements PrometheusMetricsCol
 			heldSeconds.inc(heldMs / 1000);
 		});
 
+		this.eventService.on('memory-guard-workflow-deactivated', () => deactivations.inc());
+
 		this.eventService.on('memory-guard-execution-stopped', (event) => {
 			stops.inc({ trigger: event.trigger.replace('-', '_'), freed: String(event.freedMemory) });
-			if (event.workflowDeactivated) deactivations.inc();
 		});
 	}
 }

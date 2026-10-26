@@ -90,14 +90,17 @@ describe('PrometheusMemoryGuardMetricsService', () => {
 			...stopEvent,
 			trigger: 'hold-limit',
 			freedMemory: true,
-			workflowDeactivated: true,
+			workflowDeactivationStarted: true,
 		});
 		eventService.emit('memory-guard-execution-stopped', {
 			...stopEvent,
 			trigger: 'critical',
 			freedMemory: false,
-			workflowDeactivated: false,
+			workflowDeactivationStarted: false,
 		});
+		expect(await value('n8n_memory_guard_deactivations_total')).toBe(0);
+
+		eventService.emit('memory-guard-workflow-deactivated', { workflowId: 'workflow-1' });
 
 		expect(
 			await value('n8n_memory_guard_stops_total', { trigger: 'hold_limit', freed: 'true' }),
@@ -106,6 +109,15 @@ describe('PrometheusMemoryGuardMetricsService', () => {
 			await value('n8n_memory_guard_stops_total', { trigger: 'critical', freed: 'false' }),
 		).toBe(1);
 		expect(await value('n8n_memory_guard_deactivations_total')).toBe(1);
+	});
+
+	it('should register its metrics only once when started twice', async () => {
+		service.init();
+		service.init();
+
+		eventService.emit('memory-guard-hold-started', { memoryUsedBytes: 1, memoryLimitBytes: 2 });
+
+		expect(await value('n8n_memory_guard_holds_total')).toBe(1);
 	});
 
 	it('should count crashes by the last guard action', async () => {

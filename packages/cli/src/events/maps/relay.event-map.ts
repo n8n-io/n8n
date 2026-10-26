@@ -1142,6 +1142,10 @@ export type RelayEventMap = {
 		crashes: Record<'none' | 'hold' | 'stop', number>;
 	};
 
+	'memory-guard-workflow-deactivated': {
+		workflowId: string;
+	};
+
 	'memory-guard-execution-stopped': {
 		executionId: string;
 		workflowId: string;
@@ -1153,7 +1157,7 @@ export type RelayEventMap = {
 		memoryUsedBytes: number;
 		memoryLimitBytes: number;
 		freedMemory: boolean;
-		workflowDeactivated: boolean;
+		workflowDeactivationStarted: boolean;
 	};
 
 	// #endregion

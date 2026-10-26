@@ -299,7 +299,7 @@ describe('TelemetryEventRelay', () => {
 				memoryUsedBytes: 960,
 				memoryLimitBytes: 1000,
 				freedMemory: true,
-				workflowDeactivated: false,
+				workflowDeactivationStarted: false,
 			};
 
 			eventService.emit('memory-guard-execution-stopped', event);
@@ -316,7 +316,7 @@ describe('TelemetryEventRelay', () => {
 					memory_used_bytes: 960,
 					memory_limit_bytes: 1000,
 					freed_memory: true,
-					workflow_deactivated: false,
+					workflow_deactivation_started: false,
 				},
 			);
 		});

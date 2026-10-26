@@ -87,8 +87,6 @@ export class MemoryGuardService {
 
 	private lastStopEndedAt = 0;
 
-	private isReportedToMetrics = false;
-
 	private pendingStop: Promise<void> | undefined;
 
 	/**
@@ -135,6 +133,9 @@ export class MemoryGuardService {
 		this.containerLimit = getContainerLimit();
 		this.forceGc = exposeGc();
 		this.memoryStoppedExecutions.enabled = true;
+		this.eventService.emit('memory-guard-crashes-counted', {
+			crashes: { ...this.journal.crashes },
+		});
 		this.scheduleNext(SLOW_INTERVAL_MS);
 	}
 
@@ -153,10 +154,8 @@ export class MemoryGuardService {
 
 	private check() {
 		try {
-			const usage = readMemoryUsage(this.containerLimit);
-			this.reportToMetrics(usage);
 			this.memoryStoppedExecutions.pruneFinishing((id) => this.activeExecutions.has(id));
-			this.evaluate(usage);
+			this.evaluate(readMemoryUsage(this.containerLimit));
 		} catch (error) {
 			this.logger.error('Memory guard check failed', { error: ensureError(error) });
 		}
@@ -169,22 +168,6 @@ export class MemoryGuardService {
 			this.isStandingDown ||
 			Date.now() < this.fastSamplingUntil;
 		this.scheduleNext(isUnderPressure ? FAST_INTERVAL_MS : SLOW_INTERVAL_MS);
-	}
-
-	/** The metrics start after the guard, so report the crash totals and a hold once something listens. */
-	private reportToMetrics(usage: MemoryUsage) {
-		if (this.isReportedToMetrics) return;
-		if (!(this.eventService.listenerCount('memory-guard-crashes-counted') > 0)) return;
-		this.isReportedToMetrics = true;
-		this.eventService.emit('memory-guard-crashes-counted', {
-			crashes: { ...this.journal.crashes },
-		});
-		if (this.isHolding) {
-			this.eventService.emit('memory-guard-hold-started', {
-				memoryUsedBytes: usage.usedBytes,
-				memoryLimitBytes: usage.limitBytes,
-			});
-		}
 	}
 
 	private get isHolding() {
@@ -408,7 +391,7 @@ export class MemoryGuardService {
 			freedMemory &&
 			before.utilization >= STOP_LEVEL &&
 			this.pendingStopWorkflowId === target.workflow.id;
-		const deactivation = isCounted ? this.countStop(target) : Promise.resolve(false);
+		const workflowDeactivationStarted = isCounted && this.countStop(target);
 
 		this.logger.warn(
 			`Stopped execution ${target.rootId} of workflow ${target.workflow.id} at ${formatBytes(before.usedBytes)} of ${formatBytes(before.limitBytes)} (${trigger}). It held an estimated ${formatBytes(target.estimatedBytes)} of run data. Memory after the stop: ${formatBytes(after.usedBytes)}`,
@@ -422,22 +405,19 @@ export class MemoryGuardService {
 			);
 		}
 
-		// The event waits for the deactivation, but the next stop does not.
-		void deactivation.then((workflowDeactivated) =>
-			this.eventService.emit('memory-guard-execution-stopped', {
-				executionId: target.rootId,
-				workflowId: target.workflow.id,
-				mode: target.mode,
-				trigger,
-				runningNodeType: target.runningNodeType,
-				largestDataNodeType: target.largestDataNodeType,
-				estimatedBytes: target.estimatedBytes,
-				memoryUsedBytes: before.usedBytes,
-				memoryLimitBytes: before.limitBytes,
-				freedMemory,
-				workflowDeactivated,
-			}),
-		);
+		this.eventService.emit('memory-guard-execution-stopped', {
+			executionId: target.rootId,
+			workflowId: target.workflow.id,
+			mode: target.mode,
+			trigger,
+			runningNodeType: target.runningNodeType,
+			largestDataNodeType: target.largestDataNodeType,
+			estimatedBytes: target.estimatedBytes,
+			memoryUsedBytes: before.usedBytes,
+			memoryLimitBytes: before.limitBytes,
+			freedMemory,
+			workflowDeactivationStarted,
+		});
 	}
 
 	private async measureAfterStop(before: MemoryUsage, estimatedBytes: number) {
@@ -542,10 +522,10 @@ export class MemoryGuardService {
 
 	/**
 	 * Count only stops of production runs, because a manual run uses the draft, not the published
-	 * version. Resolves with whether the workflow was deactivated. Do not await it, so that slow
-	 * trigger teardown does not delay the next stop.
+	 * version. Returns whether this stop starts a deactivation. Do not wait for the deactivation,
+	 * so that slow trigger teardown delays neither the next stop nor the report of this one.
 	 */
-	private async countStop({ workflow, mode }: StopTarget) {
+	private countStop({ workflow, mode }: StopTarget) {
 		if (!isProductionMode(mode) || !isWorkflowIdValid(workflow.id)) return false;
 
 		const stops = (this.stopsByWorkflow.get(workflow.id) ?? 0) + 1;
@@ -553,11 +533,8 @@ export class MemoryGuardService {
 		if (stops < STOPS_TO_DEACTIVATE || this.deactivating.has(workflow.id)) return false;
 
 		this.deactivating.add(workflow.id);
-		try {
-			return await this.deactivate(workflow.id);
-		} finally {
-			this.deactivating.delete(workflow.id);
-		}
+		void this.deactivate(workflow.id).finally(() => this.deactivating.delete(workflow.id));
+		return true;
 	}
 
 	/** Never throws. After a failure, the count stays, so the next counted stop tries again. */
@@ -566,7 +543,7 @@ export class MemoryGuardService {
 			const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
 			if (!workflow || workflow.activeVersionId === null) {
 				this.stopsByWorkflow.delete(workflowId);
-				return false;
+				return;
 			}
 
 			// Lazy import, as in crash recovery, because the workflow service has many dependencies.
@@ -577,14 +554,13 @@ export class MemoryGuardService {
 				`Deactivated workflow ${workflowId}, because n8n stopped ${STOPS_TO_DEACTIVATE} of its executions to keep the instance from running out of memory`,
 				{ workflowId },
 			);
+			this.eventService.emit('memory-guard-workflow-deactivated', { workflowId });
 			void this.notifyDeactivated(workflow);
-			return true;
 		} catch (error) {
 			this.logger.error(`Failed to deactivate workflow ${workflowId}`, {
 				workflowId,
 				error: ensureError(error),
 			});
-			return false;
 		}
 	}
 
