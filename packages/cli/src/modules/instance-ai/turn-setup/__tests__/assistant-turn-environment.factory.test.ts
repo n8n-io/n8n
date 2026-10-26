@@ -68,6 +68,7 @@ function createSetupFactory() {
 			getCredits: vi.fn(async () => ({ creditsQuota: -1, creditsClaimed: 0 })),
 			resolveAgentModelConfig: vi.fn(async () => 'anthropic/claude-sonnet'),
 			resolveMemoryModelConfig: vi.fn(async () => undefined),
+			getModelFetch: vi.fn(() => undefined),
 		},
 		creditService: { claimRunUsage: vi.fn() },
 		instanceAiErrorReporter: {

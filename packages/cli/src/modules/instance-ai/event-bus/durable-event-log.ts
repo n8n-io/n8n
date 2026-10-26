@@ -277,12 +277,6 @@ export class DurableEventLog {
 		return await this.repo.getSetupItemsSnapshots(threadId);
 	}
 
-	/** The run that sent the ai-preferences block the thread still carries (see repository). */
-	async getLastPreferencesInjectionRunId(threadId: string) {
-		await this.flush(threadId);
-		return await this.repo.getLastPreferencesInjectionRunId(threadId);
-	}
-
 	/**
 	 * What the thread's latest turn reported as applied (see repository). No flush: the
 	 * caller reads the SSE cursor first, so a fact still queued here replays over SSE,

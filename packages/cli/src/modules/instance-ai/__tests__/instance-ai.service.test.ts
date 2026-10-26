@@ -908,6 +908,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveProxyModel: Mock;
 				resolveMemoryModelConfig: Mock;
 				getCredits: Mock;
+				getModelFetch: Mock;
 			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
@@ -984,6 +985,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
 			resolveMemoryModelConfig: vi.fn(async () => undefined),
+			getModelFetch: vi.fn(),
 			getCredits: vi.fn(async () => ({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
@@ -1076,6 +1078,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		// The agent-building skills follow whether the context has a builder delegate.
 		expect(loadSkills).toHaveBeenCalledWith(
 			expect.objectContaining({ agentBuildingEnabled: agentBuildingAvailable }),
+			expect.objectContaining({ user: fakeUser }),
 		);
 		const expectedGates = boundGates ?? {
 			instanceContextEnabled,
@@ -1272,6 +1275,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveProxyModel: Mock;
 				resolveMemoryModelConfig: Mock;
 				getCredits: Mock;
+				getModelFetch: Mock;
 			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
@@ -1339,6 +1343,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				nodeContextEnabled: false,
 				folderExplorationEnabled: true,
 				aiPreferencesEnabled: false,
+				assistantSkillsEnabled: enabled,
 			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
@@ -1346,6 +1351,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
 			resolveMemoryModelConfig: vi.fn(async () => undefined),
+			getModelFetch: vi.fn(),
 			getCredits: vi.fn(async () => ({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
@@ -1436,6 +1442,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ folderExplorationEnabled: true }),
+		);
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ assistantSkillsEnabled: enabled }),
 		);
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),
@@ -5914,7 +5924,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			}),
 		).toBeUndefined();
 		expect(
-			service.getWorkflowSetupSuspensionWorkflowId('workflow_builder_credentials', {
+			service.getWorkflowSetupSuspensionWorkflowId('credentials', {
 				workflowId: 'wf-1',
 				setupRequests: [],
 			}),
