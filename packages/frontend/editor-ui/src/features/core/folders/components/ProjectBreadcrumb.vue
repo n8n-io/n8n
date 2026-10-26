@@ -4,12 +4,14 @@ import { useI18n } from '@n8n/i18n';
 import { type Project, ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
 
-import { N8nLink, N8nText } from '@n8n/design-system';
+import { N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 type Props = {
 	currentProject?: Project;
 	isDragging?: boolean;
 	isShared?: boolean;
+	heading?: boolean;
+	description?: string;
 	icon?: IconOrEmoji;
 };
 
@@ -17,6 +19,8 @@ const props = withDefaults(defineProps<Props>(), {
 	currentProject: undefined,
 	isDragging: false,
 	isShared: false,
+	heading: false,
+	description: '',
 	icon: undefined,
 });
 
@@ -84,23 +88,35 @@ const onProjectMouseUp = () => {
 </script>
 <template>
 	<div
-		:class="{ [$style['home-project']]: true, [$style.dragging]: isDragging }"
+		:class="{
+			[$style['home-project']]: true,
+			[$style.dragging]: isDragging,
+			[$style.heading]: heading,
+		}"
 		data-test-id="home-project"
 		data-droppable
 		@mouseenter="onHover"
 		@mouseup="isDragging ? onProjectMouseUp() : null"
 	>
-		<N8nLink :to="projectLink" :underline="false" :class="[$style['project-link']]">
-			<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" :title="projectName" />
-			<N8nText
-				size="medium"
-				color="text-base"
-				:class="$style['project-label']"
-				:title="projectName"
-			>
-				{{ projectName }}
-			</N8nText>
-		</N8nLink>
+		<N8nTooltip :content="description" :disabled="!description" placement="top">
+			<N8nLink :to="projectLink" :underline="false" :class="[$style['project-link']]">
+				<ProjectIcon
+					:icon="projectIcon"
+					:border-less="true"
+					:size="heading ? 'medium' : 'mini'"
+					:title="description ? undefined : projectName"
+				/>
+				<N8nText
+					:size="heading ? 'xlarge' : 'medium'"
+					:bold="heading"
+					color="text-base"
+					:class="$style['project-label']"
+					:title="projectName"
+				>
+					{{ projectName }}
+				</N8nText>
+			</N8nLink>
+		</N8nTooltip>
 	</div>
 </template>
 
@@ -131,6 +147,10 @@ const onProjectMouseUp = () => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.heading .project-link :global(.n8n-text) {
+	gap: var(--spacing--xs);
 }
 
 :global(.n8n-text).project-label {

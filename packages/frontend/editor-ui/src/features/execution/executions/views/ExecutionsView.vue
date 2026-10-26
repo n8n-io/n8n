@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { ExecutionFilterType } from '../executions.types';
+import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import GlobalExecutionsList from '../components/global/GlobalExecutionsList.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -149,6 +150,9 @@ async function onExecutionStop() {
 	<PageViewLayout v-else-if="hasNoWorkflows">
 		<template #header>
 			<ProjectHeader>
+				<template v-if="overview.isProjectsSubPage" #title="{ description }">
+					<FolderBreadcrumbs heading :project-description="description" />
+				</template>
 				<InsightsSummary
 					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"
@@ -171,6 +175,7 @@ async function onExecutionStop() {
 	<GlobalExecutionsList
 		v-else
 		:key="filtersKey"
+		filters-in-header
 		:executions="allExecutions"
 		:filters="filters"
 		:total="executionsCount"
@@ -178,13 +183,21 @@ async function onExecutionStop() {
 		@execution:stop="onExecutionStop"
 		@update:filters="onUpdateFilters"
 	>
-		<ProjectHeader>
-			<InsightsSummary
-				v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
-				:loading="insightsStore.weeklySummary.isLoading"
-				:summary="insightsStore.weeklySummary.state"
-				time-range="week"
-			/>
-		</ProjectHeader>
+		<template #default="{ filters: FiltersToolbar }">
+			<ProjectHeader>
+				<template v-if="overview.isProjectsSubPage" #title="{ description }">
+					<FolderBreadcrumbs heading :project-description="description" />
+				</template>
+				<template #filters>
+					<component :is="FiltersToolbar" />
+				</template>
+				<InsightsSummary
+					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
+					:loading="insightsStore.weeklySummary.isLoading"
+					:summary="insightsStore.weeklySummary.state"
+					time-range="week"
+				/>
+			</ProjectHeader>
+		</template>
 	</GlobalExecutionsList>
 </template>

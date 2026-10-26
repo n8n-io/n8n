@@ -9,6 +9,7 @@ import { DEBOUNCE_TIME, DEFAULT_WORKFLOW_PAGE_SIZE } from '@/app/constants';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
@@ -267,6 +268,7 @@ onMounted(async () => {
 <template>
 	<ResourcesListLayout
 		v-model:filters="filters"
+		filters-in-header
 		resource-key="agents"
 		type="list-paginated"
 		:resources="allAgents"
@@ -287,8 +289,14 @@ onMounted(async () => {
 		@update:search="onSearchUpdated"
 		@update:pagination-and-sort="setPaginationAndSort"
 	>
-		<template #header>
+		<template #header="{ filters: FiltersToolbar }">
 			<ProjectHeader main-button="agent">
+				<template v-if="projectPages.isProjectsSubPage" #title="{ description }">
+					<FolderBreadcrumbs heading :project-description="description" />
+				</template>
+				<template #filters>
+					<component :is="FiltersToolbar" />
+				</template>
 				<InsightsSummary
 					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"

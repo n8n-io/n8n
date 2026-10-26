@@ -1,4 +1,5 @@
 <script lang="ts" setup generic="ResourceType extends Resource = Resource">
+import { createReusableTemplate } from '@vueuse/core';
 import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue';
 
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
@@ -50,6 +51,7 @@ const props = withDefaults(
 		disabled: boolean;
 		initialize?: () => Promise<void>;
 		filters?: BaseFilters;
+		filtersInHeader?: boolean;
 		additionalFiltersHandler?: (
 			resource: ResourceType,
 			filters: BaseFilters,
@@ -122,8 +124,10 @@ const emit = defineEmits<{
 	'update:search': [value: string];
 }>();
 
+const [DefineFilters, ReuseFilters] = createReusableTemplate();
+
 const slots = defineSlots<{
-	header(): unknown;
+	header(props: { filters: typeof ReuseFilters }): unknown;
 	empty(): unknown;
 	preamble(): unknown;
 	postamble(): unknown;
@@ -600,9 +604,70 @@ defineExpose({
 </script>
 
 <template>
+	<DefineFilters>
+		<div
+			v-if="!props.filtersInHeader || (!showLoadingState && !showEmptyState)"
+			:class="[$style['filters-row'], props.filtersInHeader && $style.headerFilters]"
+		>
+			<div :class="$style.filters">
+				<slot name="breadcrumbs"></slot>
+				<N8nInput
+					v-if="props.uiConfig.searchEnabled"
+					ref="search"
+					:model-value="filtersModel.search"
+					:class="$style.search"
+					:placeholder="getResourceText('search.placeholder', 'search.placeholder')"
+					size="medium"
+					clearable
+					data-test-id="resources-list-search"
+					@update:model-value="onSearch"
+				>
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
+				</N8nInput>
+				<div
+					v-if="props.uiConfig.sortEnabled"
+					:class="[$style['sort-and-filter'], $style.sortControl]"
+				>
+					<N8nSelect
+						v-model="sortBy"
+						size="small"
+						:class="$style.resourceList"
+						data-test-id="resources-list-sort"
+						@change="setSorting(sortBy)"
+					>
+						<N8nOption
+							v-for="sortOption in sortOptions"
+							:key="sortOption"
+							data-test-id="resources-list-sort-item"
+							:value="sortOption"
+							:label="getResourceText(`sort.${sortOption}`, `sort.${sortOption}`)"
+						/>
+					</N8nSelect>
+				</div>
+				<div v-if="props.uiConfig.showFiltersDropdown" :class="$style['sort-and-filter']">
+					<ResourceFiltersDropdown
+						:keys="filterKeys"
+						:reset="resetFilters"
+						:model-value="filtersModel"
+						:shareable="shareable"
+						:just-icon="true"
+						@update:model-value="onUpdateFilters"
+						@update:filters-length="onUpdateFiltersLength"
+					>
+						<template #default="resourceFiltersSlotProps">
+							<slot name="filters" v-bind="resourceFiltersSlotProps" />
+						</template>
+					</ResourceFiltersDropdown>
+					<slot name="add-button"></slot>
+				</div>
+			</div>
+		</div>
+	</DefineFilters>
 	<PageViewLayout>
 		<template #header>
-			<slot name="header" />
+			<slot name="header" :filters="ReuseFilters" />
 		</template>
 		<div v-if="showLoadingState" class="resource-list-loading">
 			<N8nLoading :rows="25" :shrink-last="false" />
@@ -620,59 +685,7 @@ defineExpose({
 			</div>
 			<PageViewLayoutList v-else>
 				<template #header>
-					<div :class="$style['filters-row']">
-						<div :class="$style.filters">
-							<slot name="breadcrumbs"></slot>
-							<N8nInput
-								v-if="props.uiConfig.searchEnabled"
-								ref="search"
-								:model-value="filtersModel.search"
-								:class="$style.search"
-								:placeholder="getResourceText('search.placeholder', 'search.placeholder')"
-								size="medium"
-								clearable
-								data-test-id="resources-list-search"
-								@update:model-value="onSearch"
-							>
-								<template #prefix>
-									<N8nIcon icon="search" />
-								</template>
-							</N8nInput>
-							<div v-if="props.uiConfig.sortEnabled" :class="$style['sort-and-filter']">
-								<N8nSelect
-									v-model="sortBy"
-									size="small"
-									:class="$style.resourceList"
-									data-test-id="resources-list-sort"
-									@change="setSorting(sortBy)"
-								>
-									<N8nOption
-										v-for="sortOption in sortOptions"
-										:key="sortOption"
-										data-test-id="resources-list-sort-item"
-										:value="sortOption"
-										:label="getResourceText(`sort.${sortOption}`, `sort.${sortOption}`)"
-									/>
-								</N8nSelect>
-							</div>
-							<div v-if="props.uiConfig.showFiltersDropdown" :class="$style['sort-and-filter']">
-								<ResourceFiltersDropdown
-									:keys="filterKeys"
-									:reset="resetFilters"
-									:model-value="filtersModel"
-									:shareable="shareable"
-									:just-icon="true"
-									@update:model-value="onUpdateFilters"
-									@update:filters-length="onUpdateFiltersLength"
-								>
-									<template #default="resourceFiltersSlotProps">
-										<slot name="filters" v-bind="resourceFiltersSlotProps" />
-									</template>
-								</ResourceFiltersDropdown>
-								<slot name="add-button"></slot>
-							</div>
-						</div>
-					</div>
+					<ReuseFilters v-if="!props.filtersInHeader" />
 
 					<slot name="callout"></slot>
 
@@ -693,8 +706,6 @@ defineExpose({
 							</N8nLink>
 						</N8nInfoTip>
 					</div>
-
-					<div class="pb-xs" />
 				</template>
 
 				<slot name="preamble" />
@@ -820,6 +831,34 @@ defineExpose({
 		grid-auto-flow: row;
 		grid-auto-columns: unset;
 		grid-template-columns: 1fr;
+	}
+}
+
+.headerFilters {
+	width: auto;
+
+	.filters {
+		display: flex;
+		flex-wrap: wrap;
+	}
+
+	@include breakpoints.breakpoint('sm-and-down') {
+		.filters {
+			justify-content: flex-start;
+		}
+
+		.sort-and-filter {
+			width: auto;
+		}
+
+		.sortControl {
+			flex: 1;
+			min-width: 0;
+
+			.resourceList {
+				width: 100%;
+			}
+		}
 	}
 }
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
@@ -198,6 +199,7 @@ watch(
 <template>
 	<ResourcesListLayout
 		ref="layout"
+		filters-in-header
 		resource-key="dataTable"
 		type="list-paginated"
 		:resources="dataTableResources"
@@ -219,8 +221,14 @@ watch(
 		@update:search="onSearchUpdated"
 		@update:pagination-and-sort="onPaginationUpdate"
 	>
-		<template #header>
+		<template #header="{ filters: FiltersToolbar }">
 			<ProjectHeader main-button="dataTable">
+				<template v-if="projectPages.isProjectsSubPage" #title="{ description }">
+					<FolderBreadcrumbs heading :project-description="description" />
+				</template>
+				<template #filters>
+					<component :is="FiltersToolbar" />
+				</template>
 				<InsightsSummary
 					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"

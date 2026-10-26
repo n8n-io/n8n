@@ -468,23 +468,34 @@ const onSelect = (action: string, source: CreateSource) => {
 	<div>
 		<div ref="projectHeaderRef" :class="$style.projectHeader">
 			<div :class="$style.projectDetails">
-				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
+				<ProjectIcon
+					v-if="showProjectIcon && !$slots.title"
+					:icon="headerIcon"
+					:border-less="true"
+					size="medium"
+				/>
 				<div :class="$style.headerActions">
 					<div :class="$style.titleRow">
-						<N8nHeading
-							v-if="projectName"
-							bold
-							tag="h2"
-							size="xlarge"
-							data-test-id="project-name"
-							>{{ projectName }}</N8nHeading
-						>
+						<slot name="title" :description="sectionDescription || projectDescription">
+							<N8nHeading
+								v-if="projectName"
+								bold
+								tag="h2"
+								size="xlarge"
+								data-test-id="project-name"
+								>{{ projectName }}</N8nHeading
+							>
+						</slot>
 						<PromotionPreviewBadges />
 					</div>
-					<N8nText v-if="sectionDescription" color="text-light" data-test-id="project-subtitle">
+					<N8nText
+						v-if="sectionDescription && !$slots.title"
+						color="text-light"
+						data-test-id="project-subtitle"
+					>
 						{{ sectionDescription }}
 					</N8nText>
-					<template v-else-if="projectDescription">
+					<template v-else-if="projectDescription && !$slots.title">
 						<div :class="$style.projectDescriptionWrapper">
 							<N8nText color="text-light" data-test-id="project-subtitle">
 								{{ projectDescriptionTruncated || projectDescription }}
@@ -538,12 +549,17 @@ const onSelect = (action: string, source: CreateSource) => {
 		</div>
 		<slot></slot>
 		<div :class="$style.actions">
-			<ProjectTabs
-				:page-type="pageType"
-				:show-executions="!projectPages.isSharedSubPage"
-				:show-settings="showSettings"
-				:additional-tabs="customProjectTabs"
-			/>
+			<div :class="$style.tabs">
+				<ProjectTabs
+					:page-type="pageType"
+					:show-executions="!projectPages.isSharedSubPage"
+					:show-settings="showSettings"
+					:additional-tabs="customProjectTabs"
+				/>
+			</div>
+			<div v-if="$slots.filters" :class="$style.filters">
+				<slot name="filters" />
+			</div>
 		</div>
 	</div>
 </template>
@@ -555,7 +571,6 @@ const onSelect = (action: string, source: CreateSource) => {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
-	min-height: var(--spacing--3xl);
 }
 
 .projectDetails {
@@ -564,7 +579,33 @@ const onSelect = (action: string, source: CreateSource) => {
 }
 
 .actions {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
 	padding: var(--spacing--2xs) 0 var(--spacing--xs);
+}
+
+.tabs {
+	min-width: 0;
+}
+
+.filters {
+	flex-shrink: 0;
+	margin-left: auto;
+}
+
+@include breakpoints.breakpoint('sm-and-down') {
+	.actions {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.filters {
+		min-width: 0;
+		margin-left: 0;
+	}
 }
 
 .projectDescriptionWrapper {

@@ -5,6 +5,7 @@ import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vu
 import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import type { BaseFilters, Resource } from '@/Interface';
 import type { ICredentialsResponse, ICredentialTypeMap } from '../credentials.types';
+import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
@@ -304,6 +305,7 @@ onMounted(() => {
 	<ResourcesListLayout
 		ref="layout"
 		v-model:filters="filters"
+		filters-in-header
 		resource-key="credentials"
 		:resources="allCredentials"
 		:initialize="initialize"
@@ -314,8 +316,17 @@ onMounted(() => {
 		@update:filters="updateFilter"
 		@update:search="onSearchUpdated"
 	>
-		<template #header>
+		<template #header="{ filters: FiltersToolbar }">
 			<ProjectHeader main-button="credential">
+				<template
+					v-if="overview.isProjectsSubPage || overview.isSharedSubPage"
+					#title="{ description }"
+				>
+					<FolderBreadcrumbs heading :project-description="description" />
+				</template>
+				<template #filters>
+					<component :is="FiltersToolbar" />
+				</template>
 				<InsightsSummary
 					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"
