@@ -1,10 +1,4 @@
-import { AgentEvent } from '@n8n/agents';
-import type {
-	Message,
-	ScopedMemoryTaskEvent,
-	AgentEventData,
-	MemoryTaskUsageReport,
-} from '@n8n/agents';
+import type { Message, ScopedMemoryTaskEvent } from '@n8n/agents';
 import {
 	mcpConnectRequestSchema,
 	credentialSetupHintSchema,
@@ -33,21 +27,14 @@ import {
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { SsrfProtectionService } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
-import {
-	GlobalConfig,
-	SsrfProtectionConfig,
-	type AiConfig,
-	type InstanceAiConfig,
-} from '@n8n/config';
+import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
 	SELF_HEALING_PROFILE_VERSION,
 	MAX_STEPS,
-	createInstanceAgent,
 	resolvePromptProfile,
 	setTracePromptVersion,
 	setTraceModelId,
@@ -60,7 +47,6 @@ import {
 	carryAgentBuildRunState,
 	createInstanceAiLivenessPolicyConfig,
 	InstanceAiLivenessPolicy,
-	McpClientManager,
 	BackgroundTaskManager,
 	MemoryTaskRegistry,
 	isQuotaExhaustedError,
@@ -72,7 +58,6 @@ import {
 	RunStateRegistry,
 	suspendedInstanceContextSchema,
 	shutdownProductTelemetryProviders,
-	tokenUsageToBuilderUsageItems,
 	RunDebugBuffer,
 	buildRunDebugLabel,
 	createRunDebugStepHooks,
@@ -82,13 +67,11 @@ import {
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
 	orchestratorAgentId,
-	resolveAgentPreviewSession,
 	type ConfirmationData,
 	type DomainAccessTracker,
 	type InstanceAiContext,
 	type InstanceAiEventBus,
 	type ManagedBackgroundTask,
-	type McpServerConfig,
 	type ModelConfig,
 	type AgentSnapshotArtifact,
 	type OrchestrationContext,
@@ -127,19 +110,14 @@ import { nanoid } from 'nanoid';
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
-import { InstanceAiAgentContextAdapterService } from './instance-ai-agent-context.adapter';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { AiService } from '@/services/ai.service';
 import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
-import { canAccessAgentPreviewHandoff } from './agent-preview-handoff';
 import { buildPreferencesAppliedTelemetry } from './ai-preferences-telemetry';
-import { getAgentContextService, isAgentsAccessEnabled } from './agents-access';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
@@ -147,10 +125,7 @@ import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
-import {
-	getAgentErrorSeverity,
-	InstanceAiErrorReporterService,
-} from './instance-ai-error-reporter.service';
+import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
@@ -169,7 +144,6 @@ import {
 	extractStoredMessageText,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
-import { InstanceAiMcpRegistryService } from './mcp';
 import {
 	buildInstanceAiObservabilityContext,
 	runMetricsModelLabel,
@@ -204,6 +178,7 @@ import {
 	assistantCreditsExhaustedError,
 	QuotaExhaustedStreamError,
 } from './turn-setup/assistant-credits';
+import { AssistantAgentFactory, type InstanceAgent } from './turn-setup/assistant-agent.factory';
 import {
 	AssistantTurnEnvironmentFactory,
 	type AssistantProxyRunConfig,
@@ -234,7 +209,6 @@ import {
 } from './tracing';
 import { WorkflowVerificationObligationService } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
-import { formatPreviewSessionContext } from './format-agent-session-context';
 
 /**
  * A resource attachment as the trace records it: the reference, not its contents.
@@ -567,24 +541,8 @@ type InstanceContextTurnBinding = {
 	nodeUsageEnabled: boolean;
 };
 
-/** The built orchestrator agent type returned by `createInstanceAgent`. */
-type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
-
 @Service()
 export class InstanceAiService {
-	private _mcpClientManager?: McpClientManager;
-	private readonly _ssrfProtectionConfig: SsrfProtectionConfig;
-	private readonly _ssrfProtectionService: SsrfProtectionService;
-	private get mcpClientManager(): McpClientManager {
-		if (!this._mcpClientManager) {
-			this._mcpClientManager = new McpClientManager(
-				this._ssrfProtectionConfig.enabled ? this._ssrfProtectionService : undefined,
-				{ onToolCallSettled: (event) => this.trackMcpToolCall(event) },
-			);
-		}
-		return this._mcpClientManager;
-	}
-
 	private readonly instanceAiConfig: InstanceAiConfig;
 
 	private readonly aiConfig: AiConfig;
@@ -702,12 +660,9 @@ export class InstanceAiService {
 		private readonly observationCursorRepo: InstanceAiObservationCursorRepository,
 		private readonly eventLogRepository: InstanceAiEventLogRepository,
 		private readonly telemetry: Telemetry,
-		private readonly mcpRegistryService: InstanceAiMcpRegistryService,
 		private readonly userRepository: UserRepository,
 		private readonly temporaryWorkflowService: InstanceAiTemporaryWorkflowService,
 		private readonly errorReporter: ErrorReporter,
-		ssrfProtectionConfig: SsrfProtectionConfig,
-		ssrfProtectionService: SsrfProtectionService,
 		private readonly eventService: EventService,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		runProbe: InstanceAiRunProbe,
@@ -715,11 +670,11 @@ export class InstanceAiService {
 		private readonly creditService: InstanceAiCreditService,
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
-		private readonly push: Push,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
 		private readonly selfHealingAgent: SelfHealingAgentService,
 		private readonly turnEnvironment: AssistantTurnEnvironmentFactory,
 		private readonly turnInput: AssistantTurnInputBuilder,
+		private readonly agentFactory: AssistantAgentFactory,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -824,16 +779,12 @@ export class InstanceAiService {
 		});
 		this.defaultTimeZone = globalConfig.generic.timezone;
 
-		this._ssrfProtectionConfig = ssrfProtectionConfig;
-		this._ssrfProtectionService = ssrfProtectionService;
-
 		// Runtime clients capture provider settings at creation, so rebuild them
 		// after admin settings change. In-flight sandbox users retain their entry.
 		this.eventService.on('instance-ai-settings-updated', ({ mcpSettingsChanged }) => {
 			this.sandboxService.invalidateCachedWorkspaces();
 			if (!mcpSettingsChanged) return;
-			if (!this._mcpClientManager) return;
-			this._mcpClientManager.disconnect().catch((error: unknown) => {
+			this.agentFactory.disconnectMcpClients().catch((error: unknown) => {
 				this.logger.warn('Failed to disconnect MCP clients after settings change', {
 					error: getErrorMessage(error),
 				});
@@ -1083,29 +1034,6 @@ export class InstanceAiService {
 			};
 			this.logger.info(`Observational memory task ${event.type}`, logContext);
 		};
-	}
-
-	/**
-	 * Surface the agent's background/best-effort failures to Sentry. The SDK emits
-	 * `AgentEvent.Error` for these but nothing consumed it, so they were lost: memory
-	 * observer/reflector/episodic indexing and the eager input / turn-on-suspend
-	 * persists all fail silently. Optional memory processing is warning-level;
-	 * persistence stays error-level because it can lose turn data. We report only
-	 * the `source`-tagged events — the main agentic-loop errors (no source) already
-	 * reach Sentry via the errored run/stream result.
-	 */
-	private subscribeToAgentErrors(agent: InstanceAgent, threadId: string, runId: string): void {
-		agent.on(AgentEvent.Error, (event: AgentEventData) => {
-			if (event.type !== AgentEvent.Error) return;
-			if (!event.source) return;
-			const severity = getAgentErrorSeverity(event.source);
-			this.instanceAiErrorReporter.report(event.error, {
-				component: `instance-ai-${event.source}`,
-				...(severity ? { severity } : {}),
-				threadId,
-				runId,
-			});
-		});
 	}
 
 	isRunDebugEnabled(): boolean {
@@ -2063,7 +1991,7 @@ export class InstanceAiService {
 		await this.eventLog.flushAll();
 
 		this.eventBus.clear();
-		await this._mcpClientManager?.disconnect();
+		await this.agentFactory.disconnectMcpClients();
 
 		// Final drain of every trace's LangSmith provider so spans still sitting
 		// in the batch exporter (e.g. from late memory tasks) are not lost on
@@ -2212,47 +2140,6 @@ export class InstanceAiService {
 				error: getErrorMessage(error),
 			});
 		}
-	}
-
-	private createAgentMemoryOptions(
-		user: User,
-		threadId: string,
-		runId: string,
-		memoryModelId: ModelConfig | undefined,
-	) {
-		return {
-			observationalMemory: {
-				model: memoryModelId,
-				observerThresholdTokens:
-					this.runState.getObserverThresholdTokens(threadId) ??
-					this.instanceAiConfig.observerMessageTokens,
-				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
-				midRunObservation: this.instanceAiConfig.midRunObservation,
-				// Observer/reflector calls run in the background outside the run's
-				// finish-chunk usage, so they are claimed here per report. Best-effort:
-				// a billing failure must never block observation persistence.
-				onTaskUsage: async (report: MemoryTaskUsageReport) => {
-					try {
-						const items = tokenUsageToBuilderUsageItems(report.model, report.usage);
-						if (items.length === 0) return;
-						await this.creditService.claimRunUsage(
-							user,
-							threadId,
-							`${runId}:memory:${report.task}:${report.reportId}`,
-							items,
-							'completed',
-						);
-					} catch (error) {
-						this.logger.warn('Failed to claim observational-memory usage', {
-							threadId,
-							runId,
-							task: report.task,
-							error: getErrorMessage(error),
-						});
-					}
-				},
-			},
-		};
 	}
 
 	private trackWorkflowVerificationObligation(
@@ -2464,6 +2351,7 @@ export class InstanceAiService {
 			memory: this.agentMemory,
 			resourceId: user.id,
 			eventBus: this.eventBus,
+			checkpointStore: this.checkpointStore,
 			turnState: {
 				getBuildMode: () => this.runState.getBuildMode(threadId),
 				setBuildMode: (mode) => this.runState.setBuildMode(threadId, mode),
@@ -2472,6 +2360,7 @@ export class InstanceAiService {
 					this.runState.setPromptConfiguration(threadId, configuration),
 				setSetupPanelEnabled: (enabled) => this.runState.setSetupPanelEnabled(threadId, enabled),
 				getBrowserUseAvailable: () => this.runState.getBrowserUseAvailable(threadId),
+				getObserverThresholdTokens: () => this.runState.getObserverThresholdTokens(threadId),
 			},
 			sessionGrants: {
 				load: async () => await this.loadThreadSessionGrants(threadId, user.id),
@@ -2518,62 +2407,6 @@ export class InstanceAiService {
 			schedulePlannedTasks: async () => await this.schedulePlannedTasks(user, threadId),
 			sendCorrectionToTask: (taskId, correction) =>
 				this.sendCorrectionToTask(threadId, taskId, correction),
-		};
-	}
-
-	/** Wire project-scoped, read-only Agent context for the current user. */
-	private async bindAgentContextReader(
-		context: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>['context'],
-		user: User,
-	): Promise<void> {
-		const projectId = context.projectId;
-		if (!projectId) return;
-		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) return;
-
-		if (!isAgentsAccessEnabled()) return;
-		context.agentContextService = Container.get(InstanceAiAgentContextAdapterService).createReader(
-			user,
-			projectId,
-		);
-	}
-
-	/**
-	 * Hydrate the thread-persisted preview-session reference (if any) and wire
-	 * the on-demand transcript resolver. Must run before createInstanceAgent so
-	 * createOrchestrationTools can register get-session on follow-up turns.
-	 */
-	private async bindAgentPreviewSession(
-		context: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>['context'],
-		user: User,
-	): Promise<void> {
-		await resolveAgentPreviewSession(context);
-		const projectId = context.projectId;
-		if (!context.agentPreviewSession || !projectId) return;
-		if (!isAgentsAccessEnabled()) {
-			context.agentPreviewSession = undefined;
-			return;
-		}
-		if (!(await canAccessAgentPreviewHandoff(user, projectId))) {
-			context.agentPreviewSession = undefined;
-			return;
-		}
-
-		context.resolvePreviewSession = async (ref) => {
-			const service = getAgentContextService();
-			if (!service) return null;
-			const detail = await service.readSession(user, projectId, ref.agentId, ref.threadId);
-			if (!detail) return null;
-			const transcript = formatPreviewSessionContext(
-				detail.thread,
-				detail.executions,
-				ref.executionId,
-			);
-			if (transcript === null) return null;
-			return {
-				title: detail.thread.title?.trim() || `Session #${detail.thread.sessionNumber}`,
-				sessionNumber: detail.thread.sessionNumber,
-				transcript,
-			};
 		};
 	}
 
@@ -4502,31 +4335,6 @@ export class InstanceAiService {
 		);
 	}
 
-	private async buildMcpServers(
-		user: User,
-		threadId: string,
-		runId: string,
-		tracing: InstanceAiTraceContext | undefined,
-		messageGroupId?: string,
-	): Promise<McpServerConfig[]> {
-		const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
-		const registryMcpServers = this.settingsService.isMcpAccessEnabled()
-			? await this.instanceAiErrorReporter.withBoundary(
-					'instance-ai-mcp-setup',
-					{
-						threadId,
-						runId,
-						tracing,
-						agentId: orchestratorAgentId(runId),
-						userId: user.id,
-						messageGroupId,
-					},
-					async () => await this.mcpRegistryService.getRegistryMcpServers(user),
-				)
-			: [];
-		return [...staticMcpServers, ...registryMcpServers];
-	}
-
 	private async createAgentFromEnvironment(
 		environment: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>,
 		threadId: string,
@@ -4534,61 +4342,18 @@ export class InstanceAiService {
 		user: User,
 		tracing: InstanceAiTraceContext | undefined,
 	): Promise<InstanceAgent> {
-		if (tracing) {
-			environment.orchestrationContext.tracing = tracing;
-		}
-		await this.bindAgentContextReader(environment.context, user);
-		await this.bindAgentPreviewSession(environment.context, user);
-		const mcpServers = await this.buildMcpServers(
-			user,
-			threadId,
-			runId,
-			tracing,
-			environment.orchestrationContext.messageGroupId,
-		);
-		const { agent, mcpConnectionFailures } = await createInstanceAgent({
-			modelId: environment.modelId,
-			context: environment.context,
-			orchestrationContext: environment.orchestrationContext,
-			mcpServers,
-			mcpManager: this.mcpClientManager,
-			memoryConfig: this.createAgentMemoryOptions(user, threadId, runId, environment.memoryModelId),
-			memory: environment.memory,
-			checkpointStore: this.checkpointStore,
-			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId, tracing),
-			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
-		});
-		// Surface MCP connection failures as a non-fatal status event. Publishing
-		// here (rather than at each call site) covers the foreground run and both
-		// resume paths (auto-setup rebuild + process-restart resume), so the user
-		// is informed whenever a server is skipped — including after a resume.
-		// Failures come from createInstanceAgent's result (threaded from the MCP
-		// manager's getRegularTools call), not a shared manager field, so they
-		// reflect this run's config and can't leak another run's server names.
-		if (mcpConnectionFailures.length > 0) {
-			const names = mcpConnectionFailures.map((f) => f.server).join(', ');
-			for (const failure of mcpConnectionFailures) {
-				this.errorReporter.error(
-					new Error(`MCP server "${failure.server}" failed to connect: ${failure.error}`),
-					{
-						level: 'warning',
-						tags: { component: 'instance-ai-mcp', server: failure.server },
-						extra: { runId, threadId, server: failure.server, error: failure.error },
-						shouldIsolate: true,
-					},
-				);
-			}
-			this.eventBus.publish(threadId, {
-				type: 'status',
-				runId,
-				agentId: orchestratorAgentId(runId),
-				payload: {
-					message: `Couldn't reach MCP server${mcpConnectionFailures.length > 1 ? 's' : ''} ${names}; continuing without their tools.`,
+		return await this.agentFactory.createAgent(
+			environment,
+			{
+				eventBus: this.eventBus,
+				checkpointStore: this.checkpointStore,
+				onMemoryTaskEvent: this.memoryTaskObserverFor(threadId, tracing),
+				turnState: {
+					getObserverThresholdTokens: () => this.runState.getObserverThresholdTokens(threadId),
 				},
-			});
-		}
-		this.subscribeToAgentErrors(agent, threadId, runId);
-		return agent;
+			},
+			{ user, threadId, runId, tracing },
+		);
 	}
 
 	private async buildFreshInstanceAgent(
@@ -6454,42 +6219,5 @@ export class InstanceAiService {
 	private async readRunEvents(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
 		await this.eventLog.flush(threadId);
 		return await this.eventLog.getEventsForRuns(threadId, runIds);
-	}
-
-	private parseMcpServers(raw: string): McpServerConfig[] {
-		if (!raw.trim()) return [];
-
-		return raw.split(',').map((entry) => {
-			const [name, url] = entry.trim().split('=');
-			return { name: name.trim(), url: url?.trim() };
-		});
-	}
-
-	private trackMcpToolCall({
-		server,
-		toolName,
-		success,
-	}: {
-		server: McpServerConfig;
-		toolName: string;
-		success: boolean;
-	}): void {
-		const serverSlug = server.metadata?.serverSlug;
-		const userId = server.metadata?.userId;
-		const connectionId = server.metadata?.connectionId;
-		if (serverSlug && userId) {
-			this.telemetry.track('Instance AI mcp tool called', {
-				user_id: userId,
-				server_slug: serverSlug,
-				tool_name: toolName,
-				success,
-			});
-		}
-
-		if (!success && connectionId && userId) {
-			this.push.sendToUsers({ type: 'instanceAiMcpToolCallFailed', data: { connectionId } }, [
-				userId,
-			]);
-		}
 	}
 }

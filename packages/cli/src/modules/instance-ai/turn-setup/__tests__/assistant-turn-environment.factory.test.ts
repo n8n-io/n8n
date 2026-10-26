@@ -101,6 +101,7 @@ function createRuntime(overrides: Partial<AssistantTurnRuntime> = {}): Assistant
 			setPromptConfiguration: vi.fn(),
 			setSetupPanelEnabled: vi.fn(),
 			getBrowserUseAvailable: vi.fn(() => undefined),
+			getObserverThresholdTokens: vi.fn(() => undefined),
 		},
 		sessionGrants: {
 			load: vi.fn(async () => new Set(['tool:run'])),
