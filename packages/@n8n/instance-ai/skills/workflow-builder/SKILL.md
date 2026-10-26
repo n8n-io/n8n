@@ -10,8 +10,8 @@ description: >-
   data-table-manager first, then this skill. Do not load planning or
   workflow_builder_create_tasks first. Load planning only when multiple coordinated workflows
   or shared cross-task data tables require a dependency-aware task graph.
-  Do a one-time request (no repeat or trigger words) now: do not ask, and do not
-  build or change a kept workflow. For one node, load one-off-operations and run
+  Do a one-time request (no repeat or trigger words) now: do not ask if it should repeat, and do
+  not build or change a kept workflow. For one node, load one-off-operations and run
   it with workflow_builder_nodes(action="execute"). Once the user wants a workflow, load
   it before you ask any question about that workflow. Do not load it to ask
   about a request that does not yet say what to build. Also load for a
