@@ -133,7 +133,7 @@ function mockProjectCredential(
 ) {
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([cred]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
-	credentialsService.decrypt.mockResolvedValue({});
+	credentialsService.decryptForUse.mockResolvedValue({});
 }
 
 function buildServiceWith(
@@ -462,11 +462,49 @@ describe('ChatIntegrationService', () => {
 				);
 
 				expect(credentialsService.findAllCredentialIdsForProject).toHaveBeenCalledWith('project-1');
-				expect(credentialsService.decrypt).toHaveBeenCalledWith(cred, true);
+				expect(credentialsService.decryptForUse).toHaveBeenCalledWith(
+					cred,
+					{ kind: 'system', reason: 'integration' },
+					'project-1',
+				);
 			} finally {
 				loadMemoryStateSpy.mockRestore();
 				loadChatSdkSpy.mockRestore();
 			}
+		});
+
+		it.each(['project', 'global'])('checks %s credentials before channel setup', async (scope) => {
+			const integration = new FakeIntegration('slack', false);
+			const createAdapter = vi.spyOn(integration, 'createAdapter');
+			const onBeforeConnect = vi.fn();
+			Object.assign(integration, { onBeforeConnect });
+			const registry = new ChatIntegrationRegistry();
+			registry.register(integration);
+			const credential = mock<CredentialsEntity>({ id: 'cred-1', type: 'slackApi' });
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.findAllCredentialIdsForProject.mockResolvedValue(
+				scope === 'project' ? [credential] : [],
+			);
+			credentialsService.findAllGlobalCredentialIds.mockResolvedValue(
+				scope === 'global' ? [credential] : [],
+			);
+			const refusal = new Error('Credential type is not available');
+			credentialsService.decryptForUse.mockRejectedValue(refusal);
+			const { service } = buildServiceWith({ registry, credentialsService });
+
+			await expect(
+				service.validateBeforeConnect('agent-1', slackIntegration, 'project-1'),
+			).rejects.toBe(refusal);
+			await expect(service.connect('agent-1', slackIntegration, 'project-1')).rejects.toBe(refusal);
+
+			expect(credentialsService.decryptForUse).toHaveBeenCalledWith(
+				credential,
+				{ kind: 'system', reason: 'integration' },
+				'project-1',
+			);
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(onBeforeConnect).not.toHaveBeenCalled();
+			expect(createAdapter).not.toHaveBeenCalled();
 		});
 
 		it('fails to connect when the credential is not accessible to the project', async () => {
@@ -576,7 +614,7 @@ describe('ChatIntegrationService', () => {
 			await expect(service.connect('agent-1', slackIntegration, 'project-1')).rejects.toThrow(
 				'shutting down',
 			);
-			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(credentialsService.decryptForUse).not.toHaveBeenCalled();
 			expect(service.getChatInstance('agent-1', slackIntegration)).toBeUndefined();
 		});
 
@@ -786,7 +824,7 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 			service.getChatInstanceForTools('agent-1', slackIntegration),
 		).resolves.toBeUndefined();
 
-		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		expect(credentialsService.decryptForUse).not.toHaveBeenCalled();
 	});
 
 	it('disposes a stale outbound connection when the agent is published', async () => {
@@ -1000,7 +1038,7 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 			service.getChatInstanceForTools('agent-1', telegramIntegration),
 		).resolves.toBeUndefined();
 
-		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		expect(credentialsService.decryptForUse).not.toHaveBeenCalled();
 	});
 
 	it('does not create an outbound fallback on a follower for a published webhook channel', async () => {
@@ -1023,7 +1061,7 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 			service.getChatInstanceForTools('agent-1', slackIntegration),
 		).resolves.toBeUndefined();
 
-		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		expect(credentialsService.decryptForUse).not.toHaveBeenCalled();
 	});
 });
 

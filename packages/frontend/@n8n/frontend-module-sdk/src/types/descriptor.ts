@@ -24,14 +24,32 @@ export type ModulePlaceholderPage = {
 	component: () => Promise<Component>;
 };
 
+/**
+ * A heading in the settings sidebar. The shell lists them in this order:
+ * Personal, People & access, AI, Integrations, Security, Operations, Billing.
+ */
+export type SettingsSectionId =
+	| 'personal'
+	| 'people'
+	| 'ai'
+	| 'integrations'
+	| 'security'
+	| 'operations'
+	| 'billing';
+
 /** A link in the settings sidebar. Shell and modules both use it. */
 export type IMenuSettingItem = IMenuItem & {
 	/**
-	 * @description Sort position, low to high. Shell links use 10, 20, 30, ... so pick a number
-	 * between two of them to land between them. No `order` means last. Equal values
-	 * keep registration order.
+	 * @description Sort position inside the section, low to high. Shell links use 10, 20, 30, ...
+	 * in each section, so pick a number between two of them to land between them. No `order`
+	 * means last in the section. Equal values keep registration order.
 	 */
 	order?: number;
+	/**
+	 * @description Heading the link is listed under. No `section` means the link is listed before
+	 * the first heading.
+	 */
+	section?: SettingsSectionId;
 };
 
 /**

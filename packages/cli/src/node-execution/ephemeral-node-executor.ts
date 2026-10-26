@@ -57,7 +57,7 @@ export interface InlineNodeExecutionRequest {
 	/** Credential type name → credential instance display name (resolved at execution). */
 	credentials?: Record<string, string>;
 	/**
-	 * Pre-resolved credential ids (e.g. from ToolFromNode which has { id, name } from agent_builder_list_credentials).
+	 * Pre-resolved credential ids (e.g. from ToolFromNode which has { id, name } from credentials setup).
 	 */
 	credentialDetails?: Record<string, INodeCredentialsDetails>;
 	inputData: INodeExecutionData[];
