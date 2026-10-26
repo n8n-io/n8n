@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "self_healing_result" ("id" varchar(36) PRIMARY KEY NOT NULL, "workflowId" varchar(36) NOT NULL, "projectId" varchar(36) NOT NULL, "backgroundUserId" varchar NOT NULL, "outcome" varchar(16) NOT NULL, "summary" text NOT NULL, "report" text NOT NULL, "completedAt" datetime(3) NOT NULL, "executionId" varchar(36) NOT NULL, "suggestionId" varchar(36), "usage" text NOT NULL, "dismissedAt" datetime(3), "dismissedById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_self_healing_result_outcome" CHECK ("outcome" IN ('fix_ready', 'needs_you', 'could_not_fix')), CONSTRAINT "FK_9a3fe8a8f872917949d8de1bb4a" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE, CONSTRAINT "FK_3cb48b62bf261b7a6da666fee2d" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_8366669b58b0f63a07cf2bbffcc" FOREIGN KEY ("backgroundUserId") REFERENCES "user" ("id") ON DELETE CASCADE, CONSTRAINT "FK_738c3c0198c5ad104645a14fdc1" FOREIGN KEY ("suggestionId") REFERENCES "workflow_suggestion" ("id") ON DELETE CASCADE, CONSTRAINT "FK_98095dea3ff814d4ee37a1380e6" FOREIGN KEY ("dismissedById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "self_healing_result" ("id" varchar(36) PRIMARY KEY NOT NULL, "workflowId" varchar(36) NOT NULL, "projectId" varchar(36) NOT NULL, "backgroundUserId" varchar NOT NULL, "outcome" varchar(16) NOT NULL, "summary" text NOT NULL, "report" text NOT NULL, "completedAt" datetime(3) NOT NULL, "executionId" varchar(36) NOT NULL, "suggestionId" varchar(36), "usage" text NOT NULL, "dismissedAt" datetime(3), "dismissedById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "configurationId" integer NOT NULL, CONSTRAINT "CHK_self_healing_result_outcome" CHECK (("outcome" IN ('fix_ready', 'needs_you', 'could_not_fix'))), CONSTRAINT "FK_98095dea3ff814d4ee37a1380e6" FOREIGN KEY ("dismissedById") REFERENCES "user" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_738c3c0198c5ad104645a14fdc1" FOREIGN KEY ("suggestionId") REFERENCES "workflow_suggestion" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_8366669b58b0f63a07cf2bbffcc" FOREIGN KEY ("backgroundUserId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_3cb48b62bf261b7a6da666fee2d" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_9a3fe8a8f872917949d8de1bb4a" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_self_healing_result_configuration" FOREIGN KEY ("configurationId") REFERENCES "self_healing_configuration" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -17,6 +17,7 @@ CREATE TABLE "self_healing_result" ("id" varchar(36) PRIMARY KEY NOT NULL, "work
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | backgroundUserId | varchar |  | false |  | [user](user.md) |  |
 | completedAt | datetime(3) |  | false |  |  |  |
+| configurationId | INTEGER |  | false |  | [self_healing_configuration](self_healing_configuration.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | dismissedAt | datetime(3) |  | true |  |  |  |
 | dismissedById | varchar |  | true |  | [user](user.md) |  |
@@ -35,12 +36,13 @@ CREATE TABLE "self_healing_result" ("id" varchar(36) PRIMARY KEY NOT NULL, "work
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("outcome" IN ('fix_ready', 'needs_you', 'could_not_fix')) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (dismissedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (suggestionId) REFERENCES workflow_suggestion (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 3) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 4) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - | CHECK | CHECK (("outcome" IN ('fix_ready', 'needs_you', 'could_not_fix'))) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 3) | FOREIGN KEY | FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 4) | FOREIGN KEY | FOREIGN KEY (suggestionId) REFERENCES workflow_suggestion (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 5) | FOREIGN KEY | FOREIGN KEY (dismissedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_self_healing_result_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -52,6 +54,7 @@ CREATE TABLE "self_healing_result" ("id" varchar(36) PRIMARY KEY NOT NULL, "work
 | IDX_8366669b58b0f63a07cf2bbffc | CREATE INDEX "IDX_8366669b58b0f63a07cf2bbffc" ON "self_healing_result" ("backgroundUserId")  |
 | IDX_98095dea3ff814d4ee37a1380e | CREATE INDEX "IDX_98095dea3ff814d4ee37a1380e" ON "self_healing_result" ("dismissedById")  |
 | IDX_9a3fe8a8f872917949d8de1bb4 | CREATE INDEX "IDX_9a3fe8a8f872917949d8de1bb4" ON "self_healing_result" ("workflowId")  |
+| IDX_self_healing_result_configurationId | CREATE INDEX "IDX_self_healing_result_configurationId" ON "self_healing_result" ("configurationId")  |
 | IDX_self_healing_result_suggestionId | CREATE UNIQUE INDEX "IDX_self_healing_result_suggestionId" ON "self_healing_result" ("suggestionId") WHERE "suggestionId" IS NOT NULL |
 | sqlite_autoindex_self_healing_result_1 | PRIMARY KEY (id) |
 
@@ -61,6 +64,7 @@ CREATE TABLE "self_healing_result" ("id" varchar(36) PRIMARY KEY NOT NULL, "work
 erDiagram
 
 "self_healing_result" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_result" }o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_result" }o--o| "user" : "FOREIGN KEY (dismissedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "self_healing_investigation" }o--o| "self_healing_result" : "FOREIGN KEY (resultId) REFERENCES self_healing_result (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_result" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -70,6 +74,7 @@ erDiagram
 "self_healing_result" {
   varchar backgroundUserId FK
   datetime_3_ completedAt
+  INTEGER configurationId FK
   datetime_3_ createdAt
   datetime_3_ dismissedAt
   varchar dismissedById FK
@@ -90,6 +95,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   varchar id PK
+  VARCHAR_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled
@@ -101,14 +107,24 @@ erDiagram
   TEXT settings
   datetime_3_ updatedAt
 }
+"self_healing_configuration" {
+  datetime_3_ createdAt
+  boolean enabled
+  varchar enabledById FK
+  INTEGER id
+  varchar_36_ projectId FK
+  varchar_16_ scope
+  datetime_3_ updatedAt
+}
 "self_healing_investigation" {
   varchar backgroundUserId FK
-  TEXT baseline
+  INTEGER configurationId FK
   datetime_3_ createdAt
   varchar_36_ executionId
   datetime_3_ finishedAt
   varchar_36_ id PK
   varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
   varchar_36_ resultId FK
   varchar runId
   varchar threadId

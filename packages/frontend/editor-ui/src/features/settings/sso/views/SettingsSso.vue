@@ -16,6 +16,7 @@ import {
 	N8nSettingsPageHeader,
 	N8nText,
 } from '@n8n/design-system';
+import AuthenticationBackLink from '../components/AuthenticationBackLink.vue';
 import SamlSettingsForm from '../components/SamlSettingsForm.vue';
 import OidcSettingsForm from '../components/OidcSettingsForm.vue';
 import { useUserRoleProvisioningStore } from '../provisioning/composables/userRoleProvisioning.store';
@@ -111,6 +112,7 @@ onMounted(() => {
 
 <template>
 	<div class="pb-2xl">
+		<AuthenticationBackLink />
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.sso.title')"
 			:description="i18n.baseText('settings.sso.info')"

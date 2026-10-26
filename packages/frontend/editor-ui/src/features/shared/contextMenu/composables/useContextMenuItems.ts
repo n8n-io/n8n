@@ -489,7 +489,10 @@ export function useContextMenuItems(
 						? i18n.baseText('contextMenu.activate', i18nOptions)
 						: i18n.baseText('contextMenu.deactivate', i18nOptions),
 					shortcut: { keys: ['D'] },
-					disabled: isReadOnly.value || nodes.some(nodeTypesStore.isNodeDeprecated),
+					disabled:
+						isReadOnly.value ||
+						nodes.some(nodeTypesStore.isNodeDeprecated) ||
+						nodes.some(isRestricted),
 				},
 				!onlyStickies && {
 					id: 'toggle_pin',

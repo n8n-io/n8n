@@ -22,6 +22,7 @@ import { validateNodeConfig } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { RESOURCE_EXPLORATION_UNAVAILABLE } from '../constants/resource-exploration';
 import type { InstanceAiContext, NodeDescription } from '../types';
 import { restrictToolActions } from './restrict-tool-actions';
 import { needsModelSelection } from './nodes/model-selection';
@@ -471,7 +472,7 @@ async function handleExploreResources(
 	if (!context.nodeService.exploreResources) {
 		return {
 			results: [],
-			error: 'Resource exploration is not available.',
+			error: RESOURCE_EXPLORATION_UNAVAILABLE,
 		};
 	}
 
@@ -604,17 +605,9 @@ async function handleExecute(
 	}
 
 	const grantKey = buildExecuteNodeSessionGrantKey(input.type, input.config.parameters);
-	const requireApproval = context.requireRunWorkflowApproval === true;
-	// A scoped `always_allow` names the workflow IDs it covers, and a standalone node run has no
-	// workflow ID to match, so a scoped override never covers this call.
-	const scopedRunOverride =
-		context.allowedRunWorkflowIds !== undefined || context.allowedRunWorkflowNames !== undefined;
-	const allowedByScope =
-		!requireApproval && !scopedRunOverride && context.permissions?.executeNode === 'always_allow';
+	const allowedByScope = context.permissions?.executeNode === 'always_allow';
 	const allowedBySessionGrant =
-		!requireApproval &&
-		grantKey !== null &&
-		context.sessionApprovedToolKeys?.has(grantKey) === true;
+		grantKey !== null && context.sessionApprovedToolKeys?.has(grantKey) === true;
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {

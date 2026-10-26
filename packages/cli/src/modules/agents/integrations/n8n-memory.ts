@@ -268,7 +268,16 @@ export class N8nMemoryImpl
 	}
 
 	async deleteThreadsByPrefix(threadIdPrefix: string): Promise<void> {
-		const observationScopeId = Like(`${threadIdPrefix}%`);
+		await this.deleteThreadsMatching(Like(`${threadIdPrefix}%`));
+	}
+
+	/** Delete many threads and their thread-scoped state in one transaction. */
+	async deleteThreads(threadIds: string[]): Promise<void> {
+		if (threadIds.length === 0) return;
+		await this.deleteThreadsMatching(In(threadIds));
+	}
+
+	private async deleteThreadsMatching(observationScopeId: FindOperator<string>): Promise<void> {
 		await this.threadRepository.manager.transaction(async (trx) => {
 			await this.dropEpisodicEntriesWithoutSources(trx, observationScopeId);
 			const observationScope = { agentId: this.agentId, observationScopeId };
