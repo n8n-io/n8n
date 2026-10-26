@@ -4216,7 +4216,7 @@
 	"settings.promotions.providers.type.git": "Generic Git",
 	"settings.promotions.providers.type.gitlab": "GitLab",
 	"settings.promotions.provider.form.baseUrl": "GitLab base URL",
-	"settings.promotions.provider.form.baseUrl.placeholder": "https://gitlab.example.com",
+	"settings.promotions.provider.form.baseUrl.placeholder": "https://gitlab.com",
 	"settings.promotions.provider.form.accessToken": "Access token",
 	"settings.promotions.provider.form.accessToken.hint": "Use a personal, group, or project access token with api and write_repository scopes",
 	"settings.promotions.provider.form.accessToken.urlChangeHint": "Enter an access token for the new GitLab URL",
