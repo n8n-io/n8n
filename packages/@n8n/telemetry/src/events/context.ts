@@ -50,11 +50,11 @@ const skillProjectId = z
 		'The project of a project skill, or the project of the agent for an agent skill. Absent for an instance skill',
 	);
 
-/** The surface that wrote the skill. Kept apart from `skill.source`, which stores no MCP value. */
+/** The surface that wrote the skill. The same values as `skill.source`. */
 const skillSource = z
-	.enum(['ui', 'agent', 'mcp', 'assistant'])
+	.enum(['ui', 'agent', 'mcp', 'assistant', 'github'])
 	.describe(
-		'`ui` is the Skills settings page. `agent` is the agent builder: a person in its skill modal, or n8n Assistant when it builds the agent. `mcp` is an MCP client. `assistant` is n8n Assistant outside the agent builder',
+		'`ui` is the Skills settings page. `agent` is the agent builder: a person in its skill modal, or n8n Assistant when it builds the agent. `mcp` is an MCP client. `assistant` is n8n Assistant outside the agent builder. `github` is Skill Sync from a GitHub source',
 	);
 
 /** Whether a person or an assistant wrote the text. */
