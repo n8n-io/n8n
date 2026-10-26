@@ -288,6 +288,23 @@ describe('AgentFileBridge', () => {
 			expect(result).toEqual({ items: [{ json: {}, binary: { data: 'aid-1' } }], files: [] });
 		});
 
+		it('replaces the binary ID in the json of an unchanged input file', async () => {
+			readable();
+			const input = await bridge.toBinary({ data: 'aid-1' }, readScope);
+			const binaryId = 'filesystem-v2:agents/a/attachments/aid-1';
+
+			const result = await bridge.adoptFromItems(
+				[{ json: { image: { id: binaryId } }, binary: input!.binary }],
+				scope,
+				input!.stored,
+			);
+
+			expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+			expect(result.items).toEqual([
+				{ json: { image: { id: 'aid-1' } }, binary: { data: 'aid-1' } },
+			]);
+		});
+
 		it('stores a changed binary as a new file', async () => {
 			readable();
 			attachmentService.storeInbound.mockResolvedValue(
