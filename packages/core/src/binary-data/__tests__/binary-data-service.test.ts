@@ -68,6 +68,8 @@ describe('BinaryDataService', () => {
 		const setup = (mode: BinaryData.ServiceMode) => {
 			const fsManager = mock<BinaryData.Manager>();
 			const azureManager = mock<BinaryData.Manager>();
+			const s3Manager = mock<BinaryData.Manager>();
+			const databaseManager = mock<BinaryData.Manager>();
 			// The `ServiceMode` type does not accept `filesystem`, so this test cannot call `setManager`.
 			// `init()` assigns that key on `managers` directly.
 			Object.assign(service, {
@@ -76,9 +78,11 @@ describe('BinaryDataService', () => {
 					filesystem: fsManager,
 					'filesystem-v2': fsManager,
 					azure: azureManager,
+					s3: s3Manager,
+					database: databaseManager,
 				},
 			});
-			return { fsManager, azureManager };
+			return { fsManager, azureManager, s3Manager, databaseManager };
 		};
 
 		it('should delete from both Azure and disk in azure mode', async () => {
@@ -88,6 +92,25 @@ describe('BinaryDataService', () => {
 
 			expect(azureManager.deleteMany).toHaveBeenCalledWith(locations);
 			expect(fsManager.deleteMany).toHaveBeenCalledWith(locations);
+		});
+
+		it('should delete only from S3 in s3 mode', async () => {
+			const { fsManager, azureManager, s3Manager } = setup('s3');
+
+			await service.deleteMany(locations);
+
+			expect(s3Manager.deleteMany).toHaveBeenCalledWith(locations);
+			expect(fsManager.deleteMany).not.toHaveBeenCalled();
+			expect(azureManager.deleteMany).not.toHaveBeenCalled();
+		});
+
+		it('should delete only from the database manager in database mode', async () => {
+			const { fsManager, databaseManager } = setup('database');
+
+			await service.deleteMany(locations);
+
+			expect(databaseManager.deleteMany).toHaveBeenCalledWith(locations);
+			expect(fsManager.deleteMany).not.toHaveBeenCalled();
 		});
 
 		it('should call the shared filesystem manager once in filesystem mode', async () => {

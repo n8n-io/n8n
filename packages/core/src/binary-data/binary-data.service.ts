@@ -159,12 +159,13 @@ export class BinaryDataService {
 	}
 
 	async deleteMany(locations: BinaryData.FileLocation[]) {
-		// Filesystem and filesystem-v2 share one manager, so the Set calls it once. A
-		// non-filesystem mode also clears the disk copy, which can be left on disk.
+		// Filesystem and filesystem-v2 share one manager, so the Set calls it once.
+		// Azure also clears a disk copy left behind by a switch to blob storage.
 		const managers = new Set(
-			[this.managers[this.mode], this.managers.filesystem].filter(
-				(manager): manager is BinaryData.Manager => manager !== undefined,
-			),
+			[
+				this.managers[this.mode],
+				this.mode === 'azure' ? this.managers.filesystem : undefined,
+			].filter((manager): manager is BinaryData.Manager => manager !== undefined),
 		);
 
 		const results = await Promise.allSettled(
