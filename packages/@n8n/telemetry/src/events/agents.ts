@@ -387,6 +387,24 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Age in full days, when the run ends, of the oldest knowledge file that read_file read successfully. Absent when the run read no file.',
 				),
+			file_age_days_avg: z
+				.number()
+				.optional()
+				.describe(
+					'Average age in full days of the knowledge files that read_file read successfully, with one decimal. Each file counts once, also when the run read it more than once. Absent when the run read no file.',
+				),
+			file_age_days_median: z
+				.number()
+				.optional()
+				.describe(
+					'Median age in full days of the knowledge files that read_file read successfully. Each file counts once. With an even number of files, it is the average of the two middle ages. Absent when the run read no file.',
+				),
+			file_ages_days_first_25: z
+				.array(z.number())
+				.optional()
+				.describe(
+					'Ages in full days of the first 25 different knowledge files that read_file read successfully, in the order of their first read. Absent when the run read no file.',
+				),
 		}),
 	},
 	AGENT_EXECUTION_COUNT: {

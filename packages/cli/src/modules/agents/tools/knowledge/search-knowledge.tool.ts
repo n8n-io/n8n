@@ -72,7 +72,7 @@ function withFileUploadedAt(
 		return result;
 	}
 
-	return { ...result, fileUploadedAt: output.createdAt };
+	return { ...result, readFile: { fileId: output.fileId, uploadedAt: output.createdAt } };
 }
 
 function truncateForModel(text: string, maxChars: number): { text: string; truncated: boolean } {

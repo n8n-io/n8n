@@ -187,7 +187,7 @@ describe('createKnowledgeRetrievalTools', () => {
 		expect(finishToolCall).toHaveBeenCalledWith({
 			failed: false,
 			contentChars,
-			fileUploadedAt: '2026-10-01T00:00:00.000Z',
+			readFile: { fileId: 'file-1', uploadedAt: '2026-10-01T00:00:00.000Z' },
 		});
 	});
 
@@ -219,7 +219,10 @@ describe('createKnowledgeRetrievalTools', () => {
 		const output = await getToolHandler(tool)({ file: 'notes.txt' }, { runId: 'run-1' });
 
 		expect(finishToolCall).toHaveBeenCalledWith(
-			expect.objectContaining({ failed: false, fileUploadedAt: '2026-10-01T00:00:00.000Z' }),
+			expect.objectContaining({
+				failed: false,
+				readFile: { fileId: 'file-1', uploadedAt: '2026-10-01T00:00:00.000Z' },
+			}),
 		);
 		expect(tool.toModelOutput?.(output)).not.toHaveProperty('createdAt');
 	});

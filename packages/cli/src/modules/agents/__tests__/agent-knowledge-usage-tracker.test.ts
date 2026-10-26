@@ -182,27 +182,68 @@ describe('AgentKnowledgeUsageTracker', () => {
 			tracker.sendRunUsage('run-1', { agentId: 'agent-1', runType: 'production' });
 		}
 
-		it('sends the ages in full days of the newest and the oldest file that the run read', () => {
+		/** A successful read of one file, uploaded the given number of days before `now`. */
+		function readOf(fileId: string, daysAgo: number): KnowledgeToolCallResult {
+			const uploadedAt = new Date(now.getTime() - daysAgo * day).toISOString();
+			return { failed: false, contentChars: 10, readFile: { fileId, uploadedAt } };
+		}
+
+		it('sends the age stats in full days of the files that the run read', () => {
 			vi.useFakeTimers({ now });
 			const telemetry = mock<Telemetry>();
 
 			sendRun(telemetry, [
-				{
-					failed: false,
-					contentChars: 10,
-					fileUploadedAt: new Date(now.getTime() - 30 * day - 1).toISOString(),
-				},
-				{
-					failed: false,
-					contentChars: 10,
-					fileUploadedAt: new Date(now.getTime() - 2.5 * day).toISOString(),
-				},
+				readOf('file-a', 30.1),
+				readOf('file-b', 2.5),
+				readOf('file-c', 10),
+				readOf('file-d', 4),
 			]);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.AGENT_RUN_USED_KNOWLEDGE,
-				expect.objectContaining({ file_age_days_min: 2, file_age_days_max: 30 }),
+				expect.objectContaining({
+					file_age_days_min: 2,
+					file_age_days_max: 30,
+					file_age_days_avg: 11.5,
+					file_age_days_median: 7,
+					file_ages_days_first_25: [30, 2, 10, 4],
+				}),
 			);
+		});
+
+		it('counts a file read more than once as one file', () => {
+			vi.useFakeTimers({ now });
+			const telemetry = mock<Telemetry>();
+
+			sendRun(telemetry, [
+				readOf('file-a', 30),
+				readOf('file-a', 30),
+				readOf('file-a', 30),
+				readOf('file-b', 2),
+			]);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_RUN_USED_KNOWLEDGE,
+				expect.objectContaining({
+					file_age_days_avg: 16,
+					file_age_days_median: 16,
+					file_ages_days_first_25: [30, 2],
+				}),
+			);
+		});
+
+		it('lists the ages of the first 25 files only', () => {
+			vi.useFakeTimers({ now });
+			const telemetry = mock<Telemetry>();
+			const reads = Array.from({ length: 30 }, (_, index) => readOf(`file-${index}`, index));
+
+			sendRun(telemetry, reads);
+
+			const [, properties] = telemetry.track.mock.calls[0];
+			expect(properties).toMatchObject({
+				file_ages_days_first_25: Array.from({ length: 25 }, (_, index) => index),
+				file_age_days_max: 29,
+			});
 		});
 
 		it('sends no ages when the run read no file', () => {
@@ -213,6 +254,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 			const [, properties] = telemetry.track.mock.calls[0];
 			expect(properties).not.toHaveProperty('file_age_days_min');
 			expect(properties).not.toHaveProperty('file_age_days_max');
+			expect(properties).not.toHaveProperty('file_ages_days_first_25');
 		});
 
 		it('sends the counts of a run that used knowledge, then forgets the run', () => {

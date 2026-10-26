@@ -1,6 +1,7 @@
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { smartDecimal } from '@n8n/utils/number/smart-decimal';
 
 import type { AgentRunTelemetryType } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
@@ -9,10 +10,10 @@ export type KnowledgeToolCall = 'file_find' | 'file_search' | 'file_read' | 'vec
 
 /**
  * A failed call sends no knowledge content, so it has no characters to count.
- * `fileUploadedAt` is the upload time of the file that a successful read used.
+ * `readFile` is the file that a successful read used, with its upload time.
  */
 export type KnowledgeToolCallResult =
-	| { failed: false; contentChars: number; fileUploadedAt?: string }
+	| { failed: false; contentChars: number; readFile?: { fileId: string; uploadedAt: string } }
 	| { failed: true };
 
 export type FinishKnowledgeToolCall = (result: KnowledgeToolCallResult) => void;
@@ -59,8 +60,7 @@ const STALE_RUN_MS = Time.days.toMilliseconds;
 interface TrackedRun {
 	usage: KnowledgeRunUsage;
 	lastCallAt: number;
-	newestFileUploadedAt?: number;
-	oldestFileUploadedAt?: number;
+	readFileUploadTimes: Map<string, number>;
 }
 
 /**
@@ -105,7 +105,11 @@ export class AgentKnowledgeUsageTracker {
 		const now = Date.now();
 		this.removeStaleRuns(now);
 
-		const run: TrackedRun = this.runs.get(runId) ?? { usage: emptyUsage(), lastCallAt: now };
+		const run: TrackedRun = this.runs.get(runId) ?? {
+			usage: emptyUsage(),
+			lastCallAt: now,
+			readFileUploadTimes: new Map(),
+		};
 		run.usage[usageKeyByCall[call]]++;
 		run.lastCallAt = now;
 		this.runs.set(runId, run);
@@ -120,8 +124,8 @@ export class AgentKnowledgeUsageTracker {
 				run.usage[failedKeyByCall[call]]++;
 			} else {
 				run.usage[contentKeyByCall[call]] += result.contentChars;
-				if (result.fileUploadedAt) {
-					recordFileUploadedAt(run, Date.parse(result.fileUploadedAt));
+				if (result.readFile) {
+					recordReadFile(run, result.readFile);
 				}
 			}
 
@@ -149,27 +153,46 @@ export class AgentKnowledgeUsageTracker {
 	}
 }
 
-function recordFileUploadedAt(run: TrackedRun, uploadedAt: number) {
-	if (Number.isNaN(uploadedAt)) {
+function recordReadFile(run: TrackedRun, readFile: { fileId: string; uploadedAt: string }) {
+	const uploadedAt = Date.parse(readFile.uploadedAt);
+	if (Number.isNaN(uploadedAt) || run.readFileUploadTimes.has(readFile.fileId)) {
 		return;
 	}
 
-	run.newestFileUploadedAt = Math.max(run.newestFileUploadedAt ?? uploadedAt, uploadedAt);
-	run.oldestFileUploadedAt = Math.min(run.oldestFileUploadedAt ?? uploadedAt, uploadedAt);
+	run.readFileUploadTimes.set(readFile.fileId, uploadedAt);
 }
 
-/** Ages in full days when the run ends. Empty when the run read no file. */
+function median(sortedValues: number[]) {
+	const middle = Math.floor(sortedValues.length / 2);
+	if (sortedValues.length % 2 === 1) {
+		return sortedValues[middle];
+	}
+
+	return (sortedValues[middle - 1] + sortedValues[middle]) / 2;
+}
+
+function ageInFullDays(uploadedAt: number, now: number) {
+	const fullDays = Math.floor((now - uploadedAt) / Time.days.toMilliseconds);
+	// A small clock difference can put a new upload in the future, so the age is never below 0.
+	return Math.max(0, fullDays);
+}
+
+/** Ages in full days when the run ends, each read file once. Empty when the run read no file. */
 function fileAges(run: TrackedRun, now: number) {
-	if (run.newestFileUploadedAt === undefined || run.oldestFileUploadedAt === undefined) {
+	if (run.readFileUploadTimes.size === 0) {
 		return {};
 	}
 
-	// A small clock difference can put a new upload in the future, so the age is never below 0.
-	const toDays = (uploadedAt: number) =>
-		Math.max(0, Math.floor((now - uploadedAt) / Time.days.toMilliseconds));
+	const uploadTimes = [...run.readFileUploadTimes.values()];
+	const ages = uploadTimes.map((uploadedAt) => ageInFullDays(uploadedAt, now));
+	const sortedAges = [...ages].sort((a, b) => a - b);
+	const averageAge = ages.reduce((sum, age) => sum + age, 0) / ages.length;
 	return {
-		file_age_days_min: toDays(run.newestFileUploadedAt),
-		file_age_days_max: toDays(run.oldestFileUploadedAt),
+		file_age_days_min: sortedAges[0],
+		file_age_days_max: sortedAges[sortedAges.length - 1],
+		file_age_days_avg: smartDecimal(averageAge, 1),
+		file_age_days_median: median(sortedAges),
+		file_ages_days_first_25: ages.slice(0, 25), // adds a random limit to avoid huge arrays
 	};
 }
 
