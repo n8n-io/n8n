@@ -162,8 +162,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			message: turn.type === 'start' ? turn.message : '',
 			timeZone: request.timeZone,
 			fileAttachments,
-			isReplanFollowUp: false,
-			isPostPlanFollowUp: false,
 		});
 
 		let turnInput: AssistantTurnInput | undefined;
@@ -180,7 +178,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				),
 				handoffContext: request.context,
 				timeZone: request.timeZone,
-				isMachineFollowUp: false,
 				threadArtifacts: request.threadArtifacts,
 			});
 		}

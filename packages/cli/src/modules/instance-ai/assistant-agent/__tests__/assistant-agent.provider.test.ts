@@ -202,7 +202,6 @@ describe('AssistantAgentProvider', () => {
 			await expect(runtime.getProjectId()).resolves.toBe('project-1');
 			expect(runtime.sessionGrants).toBe(turn.sessionGrants);
 			expect(runtime.cancelBackgroundTask).toBeUndefined();
-			expect(runtime.schedulePlannedTasks).toBeUndefined();
 
 			expect(turnInput.buildInput).toHaveBeenCalledWith(
 				expect.anything(),
