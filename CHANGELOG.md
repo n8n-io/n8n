@@ -1,3 +1,12 @@
+## [1.123.88](https://github.com/n8n-io/n8n/compare/n8n@1.123.87...n8n@1.123.88) (2026-10-26)
+
+
+### Bug Fixes
+
+* **core:** Release the SQLite write lock when the write connection fails to open ([#41918](https://github.com/n8n-io/n8n/issues/41918)) ([01b5e80](https://github.com/n8n-io/n8n/commit/01b5e80adc8fc772b6622808a087234c11caa062))
+* Update certifi to 2026.10.23 in task runner ([#41995](https://github.com/n8n-io/n8n/issues/41995)) ([3012503](https://github.com/n8n-io/n8n/commit/3012503701d9e1243afeb54ba389e924be1a2ec4))
+
+
 ## [1.123.87](https://github.com/n8n-io/n8n/compare/n8n@1.123.86...n8n@1.123.87) (2026-10-23)
 
 
