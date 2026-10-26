@@ -322,6 +322,15 @@ describe('spawn', () => {
 		expect(runner.run.mock.calls[1][0]).not.toHaveProperty('parentExecutionId');
 	});
 
+	it('forwards files to the run, which grants them to the child', async () => {
+		const { backgroundRunner, runner, context } = setup();
+
+		await backgroundRunner.spawn({ ...request, fileIds: ['file-1'] }, context);
+		await flushDetachedRun();
+
+		expect(runner.run.mock.calls[0][0]).toMatchObject({ fileIds: ['file-1'] });
+	});
+
 	it('runs on its own abort scope without parent telemetry or execution counter', async () => {
 		const { backgroundRunner, runner, context } = setup();
 

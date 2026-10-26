@@ -50,6 +50,8 @@ export interface BackgroundSpawnRequest {
 	goal: string;
 	context?: string;
 	expectedOutput?: string;
+	/** Files of the parent that the child can read. The runner grants them before the child runs. */
+	fileIds?: string[];
 	/** Self-delegation only: model tier override applied by the runner. */
 	difficulty?: SubAgentTaskDifficulty;
 	parentThreadId: string;
@@ -134,6 +136,7 @@ export class SubAgentBackgroundRunner {
 					...(request.expectedOutput !== undefined
 						? { expectedOutput: request.expectedOutput }
 						: {}),
+					...(request.fileIds !== undefined ? { fileIds: request.fileIds } : {}),
 					parentThreadId: request.parentThreadId,
 					...(request.parentExecutionId !== undefined
 						? { parentExecutionId: request.parentExecutionId }
