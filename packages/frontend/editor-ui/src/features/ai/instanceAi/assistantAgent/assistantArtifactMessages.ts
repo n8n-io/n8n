@@ -22,8 +22,6 @@ type ReadonlyChatMessages = ReadonlyArray<DeepReadonly<ChatMessage>>;
  * the Assistant runtime.
  */
 
-const ORCHESTRATOR_AGENT_ID = 'agent-001';
-
 const IN_FLIGHT_STATES = new Set<ToolCall['state']>([
 	TOOL_CALL_STATE.PENDING,
 	TOOL_CALL_STATE.RUNNING,
@@ -76,7 +74,8 @@ function toAgentTree(message: DeepReadonly<ChatMessage>, isLive: boolean): Insta
 			? 'error'
 			: 'completed';
 	return {
-		agentId: ORCHESTRATOR_AGENT_ID,
+		// The readers match tool calls, not agent ids. The message id keeps each node unique.
+		agentId: message.id,
 		role: 'orchestrator',
 		status,
 		// The readers do not use the text. Without it, a streamed text delta does

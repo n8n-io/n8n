@@ -81,6 +81,7 @@ describe('toAssistantArtifactMessages', () => {
 		});
 		expect(user.agentTree).toBeUndefined();
 		expect(assistant.agentTree).toMatchObject({
+			agentId: 'a1',
 			role: 'orchestrator',
 			status: 'completed',
 			toolCalls: [expect.objectContaining({ toolCallId: 'tc-1' })],
