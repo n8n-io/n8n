@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_fa01e7d99bfb8b::t_24aca8a0ecd03f 3,309
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "74c413e15fd3cc7a144e296a7b532d4a37e8fa02",
+  "prompts": {},
+  "sessions": {
+    "s_fa01e7d99bfb8b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15935-fb41-7250-ac6e-a688e4da1483",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
