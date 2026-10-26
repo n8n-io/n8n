@@ -72,6 +72,7 @@ import {
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	ASSISTANT_SKILLS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
@@ -7683,6 +7684,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
 			instanceContextEnabled: false,
+			assistantSkillsEnabled: false,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
@@ -7714,10 +7716,24 @@ describe('resolveExperimentGates', () => {
 			expect(second.nodeUsageEnabled).toBe(false);
 			expect(getFeatureFlagForInstance.mock.calls).toEqual([
 				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				[ASSISTANT_SKILLS_FLAG],
 				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				[ASSISTANT_SKILLS_FLAG],
 			]);
 		},
 	);
+
+	it.each([true, false])('reads Assistant skills %s from its instance flag', async (enabled) => {
+		stubContainer({});
+		getFeatureFlagForInstance.mockImplementation(
+			async (flag: string) => flag === ASSISTANT_SKILLS_FLAG && enabled,
+		);
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			assistantSkillsEnabled: enabled,
+			instanceContextEnabled: false,
+		});
+	});
 
 	it('keeps instance activity off when its evaluation fails', async () => {
 		stubContainer(allEnabled, true);
@@ -7778,6 +7794,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
+			assistantSkillsEnabled: false,
 		});
 	});
 
@@ -7837,6 +7854,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
+			assistantSkillsEnabled: false,
 		});
 	});
 
@@ -7856,6 +7874,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
+			assistantSkillsEnabled: false,
 		});
 	});
 });
@@ -8703,6 +8722,83 @@ describe('createCredentialAdapter', () => {
 				expect.objectContaining({ data: { apiKey: 'secret' } }),
 			);
 		});
+
+		describe('eval bypass', () => {
+			const headerAuthCredential = {
+				id: 'cred-1',
+				name: 'Acme API header',
+				type: 'httpHeaderAuth',
+			};
+
+			/** A bypassed credential, with `hasConnectionTest` answering `testable` for its type. */
+			const bypassedAdapter = (
+				storedCredential: { id: string; name: string; type: string },
+				testable: boolean,
+			) => {
+				const decryptForUse = vi.fn().mockResolvedValue({ name: 'Authorization', value: 'x' });
+				const test = vi.fn().mockResolvedValue({
+					status: 'Error',
+					message: 'No testing function found for this credential.',
+				});
+				const hasConnectionTest = vi.fn().mockReturnValue(testable);
+				const { service, mockUser } = createNodeAdapterServiceForTests([], {
+					credentialsFinderService: {
+						findCredentialForUser: vi.fn().mockResolvedValue(storedCredential),
+					},
+					credentialsService: { decryptForUse, test, hasConnectionTest },
+				});
+				const { credentialService } = service.createContext(mockUser, {
+					shouldBypassCredentialTest: () => true,
+				});
+				return { credentialService, decryptForUse, test, hasConnectionTest };
+			};
+
+			// A synthetic pass on a type production cannot test tells the agent a credential
+			// was verified when a user would have been told it cannot be.
+			it('returns the real test result for a type with no connection test', async () => {
+				const { credentialService, test, hasConnectionTest } = bypassedAdapter(
+					headerAuthCredential,
+					false,
+				);
+
+				await expect(credentialService.test('cred-1')).resolves.toEqual({
+					success: false,
+					message: 'No testing function found for this credential.',
+				});
+				expect(hasConnectionTest).toHaveBeenCalledWith('httpHeaderAuth');
+				expect(test).toHaveBeenCalled();
+			});
+
+			it('resolves as passing without contacting the provider for a type with a connection test', async () => {
+				const { credentialService, decryptForUse, test } = bypassedAdapter(
+					{ id: 'cred-1', name: 'Slack account', type: 'slackApi' },
+					true,
+				);
+
+				await expect(credentialService.test('cred-1')).resolves.toEqual({
+					success: true,
+					message: 'Connection tested successfully',
+				});
+				expect(decryptForUse).not.toHaveBeenCalled();
+				expect(test).not.toHaveBeenCalled();
+			});
+
+			it('does not ask about testability when the thread bypasses nothing', async () => {
+				const decryptForUse = vi.fn().mockResolvedValue({});
+				const test = vi.fn().mockResolvedValue({ status: 'OK', message: 'ok' });
+				const hasConnectionTest = vi.fn();
+				const { credentialService } = createNodeAdapterServiceForTests([], {
+					credentialsFinderService: {
+						findCredentialForUser: vi.fn().mockResolvedValue(headerAuthCredential),
+					},
+					credentialsService: { decryptForUse, test, hasConnectionTest },
+				});
+
+				await credentialService.test('cred-1');
+
+				expect(hasConnectionTest).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('getCredentialFillState', () => {
@@ -8974,38 +9070,28 @@ describe('createContext — skill service wiring', () => {
 
 	it.each([
 		{
-			name: 'wires skills when the hub is on',
+			name: 'wires skills when the agents module is active',
 			moduleActive: true,
-			hubEnabled: true,
 			agentsEnabled: true,
 			expected: true,
 		},
 		{
 			name: 'wires skills when Settings > Agents is off',
 			moduleActive: true,
-			hubEnabled: true,
 			agentsEnabled: false,
 			expected: true,
 		},
 		{
-			name: 'omits skills when the hub is off',
-			moduleActive: true,
-			hubEnabled: false,
-			agentsEnabled: true,
-			expected: false,
-		},
-		{
 			name: 'omits skills when the agents module is inactive',
 			moduleActive: false,
-			hubEnabled: true,
 			agentsEnabled: true,
 			expected: false,
 		},
-	])('$name', ({ moduleActive, hubEnabled, agentsEnabled, expected }) => {
+	])('$name', ({ moduleActive, agentsEnabled, expected }) => {
 		const skillService = mock<InstanceAiSkillService>();
 		const moduleRegistry = {
 			isActive: vi.fn().mockReturnValue(moduleActive),
-			settings: new Map([['agents', { enabled: agentsEnabled, skillsHubEnabled: hubEnabled }]]),
+			settings: new Map([['agents', { enabled: agentsEnabled }]]),
 		};
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === ModuleRegistry) return moduleRegistry;
@@ -9021,4 +9107,27 @@ describe('createContext — skill service wiring', () => {
 
 		expect(context.skillService).toBe(expected ? skillService : undefined);
 	});
+
+	it.each([true, false])(
+		'passes Assistant skills %s to the skills adapter',
+		(assistantSkillsEnabled) => {
+			const createService = vi.fn().mockReturnValue(mock<InstanceAiSkillService>());
+			vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+				if (token === ModuleRegistry) {
+					return {
+						isActive: vi.fn().mockReturnValue(true),
+						settings: new Map([['agents', { enabled: true }]]),
+					};
+				}
+				if (token === InstanceAiSkillsAdapterService) return { createService };
+				if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
+				throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+			});
+			const service = createAdapterWithGatewayMock(vi.fn());
+
+			service.createContext(mockUser, { threadId: 'thread-1', assistantSkillsEnabled });
+
+			expect(createService).toHaveBeenCalledWith(mockUser, assistantSkillsEnabled);
+		},
+	);
 });

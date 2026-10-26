@@ -1,13 +1,14 @@
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
-
-import type { ConfirmationData } from './run-state-registry';
+import type {
+	InstanceAiConfirmRequest,
+	InstanceAiCredentialDestinationDecision,
+} from '@n8n/api-types';
 
 /**
  * The two-step translation from a frontend confirmation to a tool resume payload:
  * wire union → flat `ConfirmationData` → the object handed to `runtime.resume()`,
  * which the suspended tool's `resumeSchema` validates.
  *
- * Kept next to `ConfirmationData` and the tool schemas (rather than in the
+ * Kept with `ConfirmationData` and near the tool schemas (rather than in the
  * service) because a field the emitter names differently from the receiving
  * schema is silently dropped at resume time — `resumeSchema` validation strips
  * undeclared keys. `confirmation-payload.test.ts` pins emitter and schemas
@@ -18,13 +19,46 @@ import type { ConfirmationData } from './run-state-registry';
  * still exercise the real translation.
  */
 
+/**
+ * Flat confirmation payload consumed by native tool `resumeSchema`s and sub-agent HITL.
+ * The service layer constructs this from the typed `InstanceAiConfirmRequest` discriminated
+ * union sent by the frontend — only one subset of fields is populated per call, matching
+ * the confirmation kind that was originally requested.
+ */
+export interface ConfirmationData {
+	approved: boolean;
+	credentials?: Record<string, string>;
+	nodeCredentials?: Record<string, Record<string, string>>;
+	userInput?: string;
+	domainAccessAction?: string;
+	action?: 'apply' | 'test-trigger';
+	nodeParameters?: Record<string, Record<string, unknown>>;
+	/** Workflow-setup cards the user actively skipped, by node name. */
+	skippedNodes?: string[];
+	testTriggerNode?: string;
+	answers?: Array<{
+		questionId: string;
+		selectedOptions: string[];
+		customText?: string;
+		skipped?: boolean;
+	}>;
+	/** User's resource-access decision (e.g. 'allowForSession'). */
+	resourceDecision?: string;
+	/** `'session'` means the user chose "always allow": the resuming tool should
+	 *  persist a thread-level grant so the same action isn't re-asked. */
+	scope?: 'once' | 'session';
+	autoSetup?: { credentialType: string; attemptId?: string };
+	credentialDestination?: InstanceAiCredentialDestinationDecision;
+	connectedSlugs?: string[];
+}
+
 /** Collapse the frontend's typed confirmation union into the flat payload
  *  consumed by native tool resume schemas and sub-agent HITL. Only the fields
  *  relevant to the submitted kind are populated — everything else stays undefined.
  *
  *  Most kinds carry implicit approval (you wouldn't be submitting answers,
- *  selected credentials, or a setup action otherwise) — only `approval`,
- *  `domainAccessDeny`, and `planDeny` carry a denial path. */
+ *  selected credentials, or a setup action otherwise) — only `approval`
+ *  and `domainAccessDeny` carry a denial path. */
 export function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
 	switch (request.kind) {
 		case 'approval':
@@ -33,8 +67,6 @@ export function toConfirmationData(request: InstanceAiConfirmRequest): Confirmat
 			return { approved: true, domainAccessAction: request.domainAccessAction };
 		case 'domainAccessDeny':
 			return { approved: false };
-		case 'planDeny':
-			return { approved: false, denied: true };
 		case 'questions':
 			return { approved: true, answers: request.answers };
 		case 'credentialSelection':
@@ -94,7 +126,6 @@ export function buildResumeData(data: ConfirmationData): Record<string, unknown>
 		...(data.scope ? { scope: data.scope } : {}),
 		...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 		...(data.credentialDestination ? { credentialDestination: data.credentialDestination } : {}),
-		...(data.denied ? { denied: true } : {}),
 		...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),
 	};
 }

@@ -152,28 +152,6 @@ describe('InstanceContextService', () => {
 			expect(executionRepository.summariseRunsForProjects).not.toHaveBeenCalled();
 		});
 
-		it('builds nothing on a machine follow-up turn, and reads nothing either', async () => {
-			const service = serviceWith();
-			workflowRepository.findRecentForProjects.mockResolvedValue({
-				total: 5,
-				workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: true }],
-			});
-
-			const built = await service.buildBlock({
-				enabled: true,
-				user: USER,
-				scope: BOUND,
-				cursor: null,
-				isMachineFollowUp: true,
-				now: NOW,
-			});
-
-			expect(built).toMatchObject({ state: 'absent', reason: 'machine-follow-up' });
-			expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
-			expect(executionRepository.summariseRunsForProjects).not.toHaveBeenCalled();
-			expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
-		});
-
 		/** A narrowed scope keeps its cursor: it reads less than the cursor accounted for. */
 		it('keeps the cursor when the scope narrows', async () => {
 			userHasScopes.mockImplementation(async (...args: unknown[]) => {
@@ -1518,7 +1496,7 @@ describe('toContextInjection', () => {
 		});
 	});
 
-	it.each(['disabled', 'machine-follow-up', 'empty', 'failed'] as const)(
+	it.each(['disabled', 'empty', 'failed'] as const)(
 		'passes an absent result through with its %s reason intact',
 		(reason) => {
 			expect(toContextInjection({ state: 'absent', reason })).toEqual({
@@ -1554,7 +1532,7 @@ describe('shouldTraceContextInjection', () => {
 		expect(shouldTraceContextInjection({ state: 'absent', reason: 'failed' })).toBe(true);
 	});
 
-	it.each(['disabled', 'machine-follow-up'] as const)(
+	it.each(['disabled'] as const)(
 		'stays out of the trace on a %s turn, which has no reader to inform',
 		(reason) => {
 			expect(shouldTraceContextInjection({ state: 'absent', reason })).toBe(false);
