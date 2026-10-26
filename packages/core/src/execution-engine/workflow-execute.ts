@@ -3119,7 +3119,7 @@ export class WorkflowExecute {
 							});
 						}
 
-						if (pairedInputItem === null) {
+						if (!pairedInputItem) {
 							errorItems.push(item);
 						} else {
 							errorItems.push({

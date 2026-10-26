@@ -1759,14 +1759,17 @@ describe('WorkflowExecute', () => {
 			]);
 		});
 
-		test('should route an error item to the error output when its input item cannot be resolved', async () => {
-			const [successOutput, errorOutput] = await runWithErrorOutput([
-				{ json: { error: 'boom' }, pairedItem: { item: 5 } },
-			]);
+		test.each([5, -1, NaN])(
+			'should route an error item to the error output when its input item %s cannot be resolved',
+			async (item) => {
+				const [successOutput, errorOutput] = await runWithErrorOutput([
+					{ json: { error: 'boom' }, pairedItem: { item } },
+				]);
 
-			expect(successOutput).toEqual([]);
-			expect(errorOutput).toEqual([{ json: { error: 'boom' }, pairedItem: { item: 5 } }]);
-		});
+				expect(successOutput).toEqual([]);
+				expect(errorOutput).toEqual([{ json: { error: 'boom' }, pairedItem: { item } }]);
+			},
+		);
 	});
 
 	describe('handleNodeErrorOutput', () => {
