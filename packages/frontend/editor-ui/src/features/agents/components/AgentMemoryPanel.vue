@@ -174,7 +174,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 								size="medium"
 								button-size="large"
 								:credential-type="AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE"
-								:selected-credential-id="null"
+								:selected-credential-id="episodicMemory?.credential ?? null"
 								:project-id="projectId"
 								:show-delete="false"
 								:hide-create-new="false"
