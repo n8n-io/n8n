@@ -1,4 +1,5 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
+import { CacheService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -20,6 +21,8 @@ export class ScimSwitchReader {
 	constructor(
 		private readonly licenseState: LicenseState,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly cacheService: CacheService,
+		private readonly logger: Logger,
 	) {}
 
 	register(read: () => Promise<boolean>, turnOff: (protocol: 'saml' | 'oidc') => Promise<void>) {
@@ -43,10 +46,27 @@ export class ScimSwitchReader {
 
 	/**
 	 * Turns SCIM off, because `protocol` sign-in turned off. An error reaches
-	 * the caller. Before the SCIM module starts, this does nothing: the module
-	 * turns SCIM off at its own start.
+	 * the caller.
+	 *
+	 * Without the SCIM module, for example while `feat:scim` is not licensed,
+	 * this saves the switch as off. Otherwise SCIM would turn on again with
+	 * single sign-on when the license comes back.
 	 */
 	async turnOff(protocol: 'saml' | 'oidc'): Promise<void> {
-		await this.turnOffScim?.(protocol);
+		if (this.turnOffScim) {
+			await this.turnOffScim(protocol);
+			return;
+		}
+
+		const row = await this.settingsRepository.findByKey(SCIM_PROVISIONING_ENABLED_KEY);
+		if (row?.value !== 'true') return;
+
+		await this.settingsRepository.upsertByKey(SCIM_PROVISIONING_ENABLED_KEY, 'false', true, {});
+		// The SCIM module reads the cache before the settings table.
+		await this.cacheService.set(SCIM_PROVISIONING_ENABLED_KEY, 'false');
+
+		this.logger.info(
+			`SCIM provisioning turned off, because ${protocol.toUpperCase()} single sign-on turned off. The SCIM token and the SCIM settings are kept.`,
+		);
 	}
 }

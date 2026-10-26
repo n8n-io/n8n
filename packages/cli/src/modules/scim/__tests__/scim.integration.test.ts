@@ -1,4 +1,4 @@
-import { ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { CacheService, EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
@@ -7,6 +7,7 @@ import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
+import { ScimSwitchReader } from '@/sso.ee/scim-switch-reader';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
@@ -512,6 +513,26 @@ describe('SCIM and single sign-on', () => {
 				await Container.get(SettingsRepository).findByKey('scim.provisioning.enabled'),
 			).toMatchObject({ value: 'false' }),
 		);
+	});
+
+	// Without `feat:scim` the module does not start and cannot turn SCIM off.
+	// A switch that stays on would serve SCIM again with single sign-on once
+	// the license comes back.
+	it('saves the switch as off when single sign-on turns off without the SCIM module', async () => {
+		await scimSettings().setEnabled(true);
+		const readerWithoutModule = new ScimSwitchReader(
+			Container.get(LicenseState),
+			Container.get(SettingsRepository),
+			Container.get(CacheService),
+			Container.get(Logger),
+		);
+
+		await readerWithoutModule.turnOff('saml');
+
+		expect(
+			await Container.get(SettingsRepository).findByKey('scim.provisioning.enabled'),
+		).toMatchObject({ value: 'false' });
+		await expectScimOff();
 	});
 
 	// A silent failure leaves SCIM on, and SCIM serves again when SAML turns

@@ -1,4 +1,5 @@
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import type { CacheService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { SettingsRepository } from '@n8n/db';
 import { InternalServerError } from '@n8n/errors';
@@ -30,7 +31,12 @@ describe('ScimSsoService', () => {
 		scimSettingsService = mock<ScimSettingsService>();
 		moduleRegistry = mock<ModuleRegistry>();
 		logger = mockLogger();
-		scimSwitchReader = new ScimSwitchReader(mock<LicenseState>(), mock<SettingsRepository>());
+		scimSwitchReader = new ScimSwitchReader(
+			mock<LicenseState>(),
+			mock<SettingsRepository>(),
+			mock<CacheService>(),
+			mockLogger(),
+		);
 		settingsRepository = mock<SettingsRepository>();
 		service = new ScimSsoService(
 			logger,

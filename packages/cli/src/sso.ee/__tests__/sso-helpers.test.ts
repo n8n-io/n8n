@@ -1,6 +1,6 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { EventService } from '@n8n/backend-services';
+import { CacheService, EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository, type Settings } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -158,6 +158,7 @@ describe('sso-helpers', () => {
 		const eventService = mock<EventService>();
 		const logger = mockLogger();
 		const licenseState = mock<LicenseState>();
+		const cacheService = mock<CacheService>();
 		let scimSwitchReader: ScimSwitchReader;
 		const turnOffScim = vi.fn<(protocol: 'saml' | 'oidc') => Promise<void>>();
 
@@ -169,7 +170,12 @@ describe('sso-helpers', () => {
 
 		beforeEach(() => {
 			licenseState.isLicensed.mockReturnValue(true);
-			scimSwitchReader = new ScimSwitchReader(licenseState, settingsRepository);
+			scimSwitchReader = new ScimSwitchReader(
+				licenseState,
+				settingsRepository,
+				cacheService,
+				logger,
+			);
 			Container.set(EventService, eventService);
 			Container.set(ScimSwitchReader, scimSwitchReader);
 			Container.set(Logger, logger);
@@ -288,14 +294,36 @@ describe('sso-helpers', () => {
 			});
 		});
 
-		// The SCIM module turns SCIM off at its own start.
-		it('does not turn SCIM off while the SCIM module has not started', async () => {
+		// Without `feat:scim` the module does not start. A switch that stays on
+		// would turn SCIM on again with single sign-on when the license comes back.
+		it('saves the switch as off while the SCIM module has not started', async () => {
+			licenseState.isLicensed.mockReturnValue(false);
 			savedScimSwitch('true');
 
 			await expect(emitSsoLoginDisabled('saml')).resolves.toBeUndefined();
 
 			expect(turnOffScim).not.toHaveBeenCalled();
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledExactlyOnceWith(
+				'scim.provisioning.enabled',
+				'false',
+				true,
+				{},
+			);
+			expect(cacheService.set).toHaveBeenCalledWith('scim.provisioning.enabled', 'false');
 		});
+
+		it.each([['false'], [null]])(
+			'writes nothing while the SCIM module has not started and the saved switch is %s',
+			async (saved) => {
+				if (saved === null) vi.mocked(settingsRepository.findByKey).mockResolvedValue(null);
+				else savedScimSwitch(saved);
+
+				await emitSsoLoginDisabled('oidc');
+
+				expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+				expect(cacheService.set).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('isSsoCurrentAuthenticationMethod', () => {
