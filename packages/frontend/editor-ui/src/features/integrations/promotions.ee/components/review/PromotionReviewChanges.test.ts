@@ -156,6 +156,18 @@ describe('when the host dropped the commits of a finished review', () => {
 		expect(getByTestId('promotion-review-outcome').querySelector('b')).toBeNull();
 	});
 
+	it('opens only an http or https review URL', async () => {
+		vi.mocked(api.getPromotionReviewChanges).mockResolvedValue(
+			unavailable({ state: 'closed', at: null, by: null, webUrl: 'javascript:alert(1)' }),
+		);
+		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+		const { getByRole } = await render();
+		await userEvent.click(getByRole('button', { name: 'Open in GitLab' }));
+
+		expect(open).not.toHaveBeenCalled();
+	});
+
 	it('states when the review was closed without naming a user', async () => {
 		vi.mocked(api.getPromotionReviewChanges).mockResolvedValue(
 			unavailable({ state: 'closed', at: '2026-10-02T10:00:00.000Z', by: null, webUrl }),

@@ -25,6 +25,7 @@ import {
 } from '../../promotionPreview.selection';
 import { buildPreviewTree, cardOrder } from '../../promotionPreview.tree';
 import { defaultActiveWorkflow, hasWorkflowDiff } from '../../promotionPreview.workflow';
+import { httpUrl } from '../../promotionResult';
 import { getPromotionReviewChanges, getPromotionReviewDetails } from '../../promotions.api';
 import PromotionChangeCards from '../preview/PromotionChangeCards.vue';
 import PromotionResourceTree from '../preview/PromotionResourceTree.vue';
@@ -102,7 +103,8 @@ const outcomeDescription = computed(() => {
 	return i18n.baseText('promotions.review.outcome.description.unknown');
 });
 function openOnHost() {
-	if (outcome.value) window.open(outcome.value.webUrl, '_blank', 'noopener,noreferrer');
+	const url = httpUrl(outcome.value?.webUrl);
+	if (url) window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 const inspectedKey = ref<ResourceKey>();
