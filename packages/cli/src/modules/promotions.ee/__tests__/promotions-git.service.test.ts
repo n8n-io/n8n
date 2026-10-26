@@ -666,6 +666,37 @@ describe('PromotionsGitService (git operations)', () => {
 		});
 	});
 
+	describe('hasRemoteBranch', () => {
+		const call = async () =>
+			await gitService.hasRemoteBranch({
+				remoteUrl,
+				credentials,
+				paths,
+				branchName: 'main',
+				environmentId,
+			});
+
+		it('reports a branch that the remote holds', async () => {
+			mockGit.listRemote.mockResolvedValue('def456\trefs/heads/main\n');
+
+			await expect(call()).resolves.toBe(true);
+			expect(mockGit.listRemote).toHaveBeenCalledWith(['--heads', 'origin', 'refs/heads/main']);
+			expect(mockGit.fetch).not.toHaveBeenCalled();
+		});
+
+		it('reports a branch that the remote does not hold', async () => {
+			mockGit.listRemote.mockResolvedValue('');
+
+			await expect(call()).resolves.toBe(false);
+		});
+
+		it('throws when the remote cannot be reached', async () => {
+			mockGit.listRemote.mockRejectedValue(new Error('Could not resolve host: github.com'));
+
+			await expect(call()).rejects.toThrow(BadRequestError);
+		});
+	});
+
 	describe('prepareCheckoutForPromotion', () => {
 		const call = async () =>
 			await gitService.prepareCheckoutForPromotion({

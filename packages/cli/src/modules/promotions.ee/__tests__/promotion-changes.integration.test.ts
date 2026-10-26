@@ -302,6 +302,38 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 	);
 }, 30_000);
 
+it('marks a workflow that moved into a project that has no files on the branch yet', async () => {
+	const owner = await createOwner();
+	const billing = await createTeamProject('Billing', owner);
+	const workflow = await createWorkflow({ name: 'Invoices', nodes: [], connections: {} }, billing);
+	const environments = await createInstanceEnvironments();
+	await Container.get(PromotionsService).promote(environments.promote.id, owner, {
+		commitMessage: 'Baseline',
+		canExportVariableValues: true,
+	});
+	// Created after the promote, so the branch holds nothing for it.
+	const later = await createTeamProject('Later', owner);
+	await Container.get(SharedWorkflowRepository).update(
+		{ workflowId: workflow.id, role: 'workflow:owner' },
+		{ projectId: later.id },
+	);
+	const branch = await Container.get(PromotionsService).readBranchPackage(later.id, 'promote');
+	expect(branch.files).toEqual([]);
+	expect(branch.hasManifest).toBe(true);
+
+	const preview = (
+		await server.authAgentFor(owner).get(`/promotions/${later.id}/changes/promote`).expect(200)
+	).body.data;
+
+	expect(preview.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${workflow.id}`,
+			change: 'added',
+			movedFromProject: { id: billing.id, name: billing.name },
+		}),
+	);
+}, 30_000);
+
 it('preserves workflow moves and changes across workflow files', async () => {
 	const owner = await createOwner();
 	const project = await createTeamProject('Moves', owner);

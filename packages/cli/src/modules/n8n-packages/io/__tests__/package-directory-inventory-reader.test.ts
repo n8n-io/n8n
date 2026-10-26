@@ -188,6 +188,12 @@ describe('PackageDirectoryInventoryReader', () => {
 		['projects/p1/project.json', 'projects/p1/folders/f1/workflow.json', workflow('w1')],
 		// `folders/` with no folder entry before `workflows/` is malformed.
 		['projects/p1/project.json', 'projects/p1/folders/workflows/w1/workflow.json', workflow('w1')],
+		// A folder file needs a folder entry after `folders/`.
+		[
+			'projects/p1/project.json',
+			'projects/p1/folders/folder.json',
+			{ id: 'f1', name: 'F1', parentFolderId: null },
+		],
 		['projects/p1/project.json', 'projects/p1/credentials/credential.json', credential('c1')],
 		['projects/p1/project.json', 'variables/a/b/variable.json', variable('A')],
 		['projects/p1/project.json', 'projects/p1/data-tables/data-table.json', dataTable('dt1')],

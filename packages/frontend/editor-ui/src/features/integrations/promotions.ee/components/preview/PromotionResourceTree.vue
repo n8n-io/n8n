@@ -186,10 +186,11 @@ function onToggle(resource: PromotionResource) {
 							</N8nText>
 						</span>
 					</button>
-					<N8nTooltip v-if="marker.blocked" placement="right">
+					<!-- Only Apply has a Blockers tab to open, so Promote shows a plain marker. As the
+					trigger itself, each one opens the tooltip on keyboard focus. -->
+					<N8nTooltip v-if="marker.blocked" placement="right" as-child>
 						<!-- Plain text: a personal project name such as `Name <email>` is not HTML. -->
 						<template #content>{{ marker.blocked }}</template>
-						<!-- Only Apply has a Blockers tab to open, so Promote shows a plain marker. -->
 						<N8nButton
 							v-if="direction === 'apply'"
 							variant="ghost"
@@ -206,6 +207,7 @@ function onToggle(resource: PromotionResource) {
 						<span
 							v-else
 							role="img"
+							tabindex="0"
 							:aria-label="marker.blocked"
 							:class="$style.blockerMarker"
 							data-test-id="promotion-preview-tree-blocker"
@@ -312,6 +314,10 @@ function onToggle(resource: PromotionResource) {
 	display: inline-flex;
 	align-items: center;
 	padding: var(--spacing--5xs);
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--outline-color);
+	}
 }
 
 .meta {

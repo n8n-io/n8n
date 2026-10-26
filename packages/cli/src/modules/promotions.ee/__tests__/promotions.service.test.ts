@@ -421,8 +421,9 @@ describe('PromotionsService', () => {
 				expect(gitService.commitAndPush).toHaveBeenCalled();
 			});
 
-			it('promotes, and so creates the branch, when the branch cannot be read', async () => {
+			it('promotes, and so creates the branch, when the remote does not hold the branch', async () => {
 				gitService.listBranchTree.mockRejectedValue(new Error("couldn't find remote ref staging"));
+				gitService.hasRemoteBranch.mockResolvedValue(false);
 
 				await service.promote(ENVIRONMENT_ID, actor, {
 					canExportVariableValues: true,
@@ -431,6 +432,37 @@ describe('PromotionsService', () => {
 
 				expect(gitService.readFilesAtCommit).not.toHaveBeenCalled();
 				expect(gitService.commitAndPush).toHaveBeenCalled();
+			});
+
+			it('refuses a promote when the branch exists but cannot be read', async () => {
+				const readFailure = new BadRequestError('Could not complete the Git operation');
+				gitService.listBranchTree.mockRejectedValue(readFailure);
+				gitService.hasRemoteBranch.mockResolvedValue(true);
+
+				await expect(
+					service.promote(ENVIRONMENT_ID, actor, {
+						canExportVariableValues: true,
+						commitMessage: 'sync projects',
+					}),
+				).rejects.toBe(readFailure);
+				expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+				expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			});
+
+			it('refuses a promote when the remote cannot be reached', async () => {
+				gitService.listBranchTree.mockRejectedValue(new Error('fetch failed'));
+				gitService.hasRemoteBranch.mockRejectedValue(
+					new BadRequestError('Could not complete the Git operation'),
+				);
+
+				await expect(
+					service.promote(ENVIRONMENT_ID, actor, {
+						canExportVariableValues: true,
+						commitMessage: 'sync projects',
+					}),
+				).rejects.toThrow('Could not complete the Git operation');
+				expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+				expect(gitService.commitAndPush).not.toHaveBeenCalled();
 			});
 		});
 
@@ -1529,6 +1561,7 @@ describe('PromotionsService', () => {
 				commitSha,
 				lsTreeOutput:
 					[
+						'100644 blob m1\tn8n/manifest.json',
 						'100644 blob p1\tn8n/projects/orders-p1/project.json',
 						`100644 blob w1\t${workflowPath}`,
 						'100644 blob x1\tn8n/projects/other-p2/project.json',
@@ -1551,10 +1584,16 @@ describe('PromotionsService', () => {
 						'n8n/data-tables/',
 						'n8n/variables/',
 						'n8n/tags/',
+						'n8n/manifest.json',
 					],
 				}),
 			);
-			expect(branch).toMatchObject({ environmentId: ENVIRONMENT_ID, branchName: 'dev', commitSha });
+			expect(branch).toMatchObject({
+				environmentId: ENVIRONMENT_ID,
+				branchName: 'dev',
+				commitSha,
+				hasManifest: true,
+			});
 			expect(branch.files.map(({ entityId, type }) => ({ entityId, type }))).toEqual([
 				{ entityId: 'p1', type: 'project' },
 				{ entityId: 'w1', type: 'workflow' },
@@ -1582,6 +1621,7 @@ describe('PromotionsService', () => {
 				branchName: 'dev',
 				commitSha: null,
 				files: [],
+				hasManifest: false,
 			});
 			await expect(branch.readFiles(['n8n/manifest.json'])).rejects.toThrow('no exported package');
 			expect(gitService.readFilesAtCommit).not.toHaveBeenCalled();
@@ -1682,8 +1722,8 @@ describe('PromotionsService', () => {
 				});
 				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
 					new Map([
-						['wa1', mock<Project>({ id: 'p1', name: 'Alpha' })],
-						['wa2', mock<Project>({ id: 'p1', name: 'Alpha' })],
+						['wa1', mock<Project>({ id: 'p1', name: 'Alpha', type: 'team' })],
+						['wa2', mock<Project>({ id: 'p1', name: 'Alpha', type: 'team' })],
 					]),
 				);
 
@@ -1697,6 +1737,47 @@ describe('PromotionsService', () => {
 				expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
 			});
 
+			it('refuses items in a personal project here without naming that project', async () => {
+				const personal = mock<Project>({
+					id: 'p9',
+					name: 'Ada Lovelace <ada@example.com>',
+					type: 'personal',
+				});
+				inventoryReader.read.mockResolvedValue({
+					projects: [alpha, beta],
+					workflows: [mock<InventoryWorkflow>({ id: 'wa1', name: 'Invoices', projectId: 'p2' })],
+					folders: [
+						{
+							path: 'projects/beta/folders/payments/folder.json',
+							projectId: 'p2',
+							folder: { id: 'f1', name: 'Payments', parentFolderId: null },
+						},
+					],
+					credentials: [],
+					variables: [],
+					dataTables: [],
+				});
+				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+					new Map([['wa1', personal]]),
+				);
+				folderService.getFoldersByIds.mockResolvedValue([
+					{ id: 'f1', homeProject: personal },
+				] as never);
+
+				const refusal = service.apply(ENVIRONMENT_ID, actor);
+
+				await expect(refusal).rejects.toMatchObject({
+					httpStatusCode: 409,
+					message: expect.stringContaining(
+						'workflow "Invoices" (wa1) is in a personal project here and in project "Beta" on the branch; folder "Payments" (f1) is in a personal project here and in project "Beta" on the branch',
+					),
+				});
+				// A personal project's name holds its owner's email.
+				await expect(refusal).rejects.not.toMatchObject({
+					message: expect.stringContaining('ada@example.com'),
+				});
+			});
+
 			it('offers only the source fix when the branch project does not exist here yet', async () => {
 				const gamma = { id: 'p3', name: 'Gamma', path: 'projects/gamma' };
 				inventoryReader.read.mockResolvedValue({
@@ -1708,7 +1789,7 @@ describe('PromotionsService', () => {
 					dataTables: [],
 				});
 				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
-					new Map([['wa1', mock<Project>({ id: 'p1', name: 'Alpha' })]]),
+					new Map([['wa1', mock<Project>({ id: 'p1', name: 'Alpha', type: 'team' })]]),
 				);
 
 				const refusal = service.apply(ENVIRONMENT_ID, actor);
@@ -1740,7 +1821,7 @@ describe('PromotionsService', () => {
 					dataTables: [],
 				});
 				folderService.getFoldersByIds.mockResolvedValue([
-					{ id: 'f1', homeProject: { id: 'p1', name: 'Alpha' } },
+					{ id: 'f1', homeProject: { id: 'p1', name: 'Alpha', type: 'team' } },
 				] as never);
 
 				await expect(service.apply(ENVIRONMENT_ID, actor)).rejects.toMatchObject({
@@ -2031,8 +2112,8 @@ describe('PromotionsService', () => {
 			const foreignWorkflow = mock<InventoryWorkflow>({ id: 'foreign', projectId: 'p2' });
 			// Owned by p1 on the instance, but the package now holds it under p2: a move.
 			const movedWorkflow = mock<InventoryWorkflow>({ id: 'moved', projectId: 'p2' });
-			const project = mock<Project>({ id: 'p1', name: 'Alpha' });
-			const foreignProject = mock<Project>({ id: 'p2', name: 'Ops' });
+			const project = mock<Project>({ id: 'p1', name: 'Alpha', type: 'team' });
+			const foreignProject = mock<Project>({ id: 'p2', name: 'Ops', type: 'team' });
 			const inventory = {
 				projects: [
 					{ id: 'p1', name: 'Alpha', path: 'projects/alpha' },
@@ -2170,7 +2251,7 @@ describe('PromotionsService', () => {
 					],
 				});
 				folderService.getFoldersByIds.mockResolvedValue([
-					{ id: 'f1', homeProject: { id: 'p2', name: 'Ops' } },
+					{ id: 'f1', homeProject: { id: 'p2', name: 'Ops', type: 'team' } },
 				] as never);
 
 				await expect(
@@ -2197,7 +2278,7 @@ describe('PromotionsService', () => {
 					],
 				});
 				folderService.getFoldersByIds.mockResolvedValue([
-					{ id: 'f1', homeProject: { id: 'p1', name: 'Alpha' } },
+					{ id: 'f1', homeProject: { id: 'p1', name: 'Alpha', type: 'team' } },
 				] as never);
 
 				await service.applyProjectSelection('p1', actor, { workflowIds: ['w1'] });

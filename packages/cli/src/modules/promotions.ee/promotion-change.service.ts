@@ -179,16 +179,19 @@ export class PromotionChangeService {
 	): Promise<PromotionPreview> {
 		const comparison = await this.compareProject(user, projectId, direction);
 		const { branch, instance, archiveState } = comparison;
-		// Promote compares with the branch manifest to see renames and moves. A branch without
-		// package files has no manifest yet.
+		// Promote compares with the branch manifest to see renames and moves. The manifest can list
+		// other projects while this project has no files on the branch yet, and the move markers
+		// still need it.
 		const promoteBase =
-			direction === 'promote' && branch.files.length > 0
+			direction === 'promote' && (branch.hasManifest || branch.files.length > 0)
 				? await this.readBranchManifest(branch)
 				: null;
 		const branchSide: PreviewSide = {
 			manifest:
 				comparison.branchManifest ??
-				(promoteBase && scopeManifestToProject(promoteBase, projectId)),
+				(promoteBase && branch.files.length > 0
+					? scopeManifestToProject(promoteBase, projectId)
+					: null),
 			blobByPath: blobsByPath(branch.files),
 		};
 		const instanceSide: PreviewSide = {

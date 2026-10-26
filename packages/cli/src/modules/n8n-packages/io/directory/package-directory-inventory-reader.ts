@@ -196,9 +196,7 @@ export class PackageDirectoryInventoryReader {
 		const seenIds = new Set<string>();
 
 		for (const file of files.filter((f) => f.kind === 'folders')) {
-			if (file.segments[0] !== PACKAGE_ENTITY_LAYOUT.folders.directory) {
-				throw unsupportedLocation(file);
-			}
+			if (!isFolderLocation(file.segments)) throw unsupportedLocation(file);
 			const projectId = projectIdOf(file);
 			if (projectId === null) {
 				throw new UserError(`Package folder file at ${file.path} is not inside a project.`);
@@ -330,6 +328,11 @@ function isWorkflowLocation(segments: string[]): boolean {
 	if (container.length === 0) return true; // root workflow
 	// A folder chain needs a slug after `folders/`.
 	return container[0] === PACKAGE_ENTITY_LAYOUT.folders.directory && container.length >= 2;
+}
+
+/** `folders/<a>/folder.json`, or deeper under a `folders/<a>/<b>/…` chain of bare slugs. */
+function isFolderLocation(segments: string[]): boolean {
+	return segments.length >= 3 && segments[0] === PACKAGE_ENTITY_LAYOUT.folders.directory;
 }
 
 function unsupportedLocation(file: EntityFile): UserError {

@@ -700,6 +700,13 @@ export class PromotionsService {
 		]);
 		const homes = new Map(folders.map(({ id, homeProject }) => [id, homeProject]));
 		const existing = new Set(existingProjects.map(({ id }) => id));
+		// The refusal message leaves out these names: a personal project's name holds its owner's
+		// email, and the message reaches the UI and telemetry.
+		const personalProjectIds = new Set(
+			[...owners.values(), ...homes.values()]
+				.filter(({ type }) => type !== 'team')
+				.map(({ id }) => id),
+		);
 		const branchProjects = new Map(inventory.projects.map(({ id, name }) => [id, { id, name }]));
 		const branchProjectOf = (id: string) => {
 			const project = branchProjects.get(id);
@@ -736,6 +743,7 @@ export class PromotionsService {
 					toMove(folder, branchProjectId, homes.get(folder.id)),
 				)
 				.sort(byId),
+			personalProjectIds,
 		};
 	}
 
@@ -851,8 +859,8 @@ export class PromotionsService {
 		// every selection: the import would meet it whatever the user selected.
 		const requested = new Set(workflowIds);
 		const blocking = {
+			...moves,
 			workflows: moves.workflows.filter(({ id }) => requested.has(id)),
-			folders: moves.folders,
 		};
 		if (blocking.workflows.length > 0 || blocking.folders.length > 0) {
 			throw new ConflictError(describeCrossProjectMoves(blocking));
@@ -1036,20 +1044,26 @@ export class PromotionsService {
 
 		const paths = this.workingDirectory.paths(input.environmentId);
 		const branchName = checkoutBranchName(input.config);
+		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
 		const { commitSha, lsTreeOutput } = await this.gitService.listBranchTree({
 			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
 			paths,
 			branchName,
 			environmentId: input.environmentId,
-			pathspecs: BASE_BRANCH_DIRECTORIES.map((directory) => `${PACKAGE_SUBFOLDER}/${directory}/`),
+			pathspecs: [
+				...BASE_BRANCH_DIRECTORIES.map((directory) => `${PACKAGE_SUBFOLDER}/${directory}/`),
+				manifestPath,
+			],
 		});
 
 		return {
 			environmentId: input.environmentId,
 			branchName,
 			commitSha,
+			// The parser skips the manifest, which sits at the package root.
 			files: parseBaseBranchFiles(lsTreeOutput, { exportRoot: PACKAGE_SUBFOLDER, projectId }),
+			hasManifest: lsTreeOutput.split('\0').some((record) => record.endsWith(`\t${manifestPath}`)),
 			readFiles: async (filePaths) => {
 				if (commitSha === null) {
 					throw new BadRequestError(
@@ -1182,22 +1196,20 @@ export class PromotionsService {
 	): Promise<void> {
 		const paths = this.workingDirectory.paths(input.environmentId);
 		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
+		const operation = {
+			remoteUrl: repositoryUrl(input),
+			credentials,
+			paths,
+			branchName,
+			environmentId: input.environmentId,
+		};
 		let head: { commitSha: string | null; lsTreeOutput: string };
 		try {
-			head = await this.gitService.listBranchTree({
-				remoteUrl: repositoryUrl(input),
-				credentials,
-				paths,
-				branchName,
-				environmentId: input.environmentId,
-				pathspecs: [manifestPath],
-			});
+			head = await this.gitService.listBranchTree({ ...operation, pathspecs: [manifestPath] });
 		} catch (error) {
-			// A missing branch holds no workflow to drop, and a fetch that fails also fails the push,
-			// so the promote can go on. It creates the branch when the branch is missing.
-			this.logger.warn('Skipped the moved-workflow check because the branch could not be read', {
-				error,
-			});
+			// A branch the remote doesn't hold has no workflow to drop, and the push creates it. Any
+			// other read failure stops the promote, so a transient error never skips this check.
+			if (await this.gitService.hasRemoteBranch(operation)) throw error;
 			return;
 		}
 		// An empty remote, or a branch without a package: nothing on the branch can be dropped.
@@ -1404,18 +1416,29 @@ async function isDirectory(folder: string): Promise<boolean> {
 }
 
 type CrossProjectMove = ApplyCheckResult['movedWorkflows'][number];
-type CrossProjectMoves = { workflows: CrossProjectMove[]; folders: CrossProjectMove[] };
+type CrossProjectMoves = {
+	workflows: CrossProjectMove[];
+	folders: CrossProjectMove[];
+	/** Instance projects that are personal. The refusal message names none of them. */
+	personalProjectIds: ReadonlySet<string>;
+};
 
 /**
  * Names each item and both of its projects, so the user knows what to move and where. An item
  * can't move here to a branch project that does not exist here yet, so then only the source fix
  * is offered.
  */
-function describeCrossProjectMoves({ workflows, folders }: CrossProjectMoves): string {
+function describeCrossProjectMoves({
+	workflows,
+	folders,
+	personalProjectIds,
+}: CrossProjectMoves): string {
+	const here = ({ id, name }: CrossProjectMove['instanceProject']) =>
+		personalProjectIds.has(id) ? 'a personal project' : `project "${name}"`;
 	const describe =
 		(type: 'workflow' | 'folder') =>
 		({ id, name, project, projectExists, instanceProject }: CrossProjectMove) =>
-			`${type} "${name}" (${id}) is in project "${instanceProject.name}" here and in project "${project.name}" on the branch${projectExists ? '' : `, and project "${project.name}" does not exist on this instance yet`}`;
+			`${type} "${name}" (${id}) is in ${here(instanceProject)} here and in project "${project.name}" on the branch${projectExists ? '' : `, and project "${project.name}" does not exist on this instance yet`}`;
 	const moved = [...workflows.map(describe('workflow')), ...folders.map(describe('folder'))];
 	const remedy = [...workflows, ...folders].every(({ projectExists }) => projectExists)
 		? 'Move them on this instance to match the branch, or move them back on the source instance and promote again.'

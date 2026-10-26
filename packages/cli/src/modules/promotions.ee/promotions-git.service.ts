@@ -328,6 +328,23 @@ export class PromotionsGitService {
 		}
 	}
 
+	/** Whether the remote holds the branch. Throws when the remote can't be reached. */
+	async hasRemoteBranch(operation: GitOperation): Promise<boolean> {
+		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
+		try {
+			// The lock also covers SSH, which can write known_hosts in sshDir.
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const refs = await this.withGit(
+					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
+					async (git) => await git.listRemote(['--heads', 'origin', `refs/heads/${branchName}`]),
+				);
+				return refs.trim() !== '';
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
 	/** Reset the checkout to the latest base branch before one branched promotion. */
 	async prepareCheckoutForPromotion(operation: GitOperation): Promise<void> {
 		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;

@@ -149,14 +149,19 @@ describe('FolderImporter', () => {
 	it('still reports a folder that belongs to another project', async () => {
 		const folderService = mock<FolderService>();
 		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-2', null)]);
+		const importer = new FolderImporter(folderService);
+		const ctx = context('follow-package');
 
-		const plan = await new FolderImporter(folderService).plan(context('follow-package'), [
-			folder('a', null),
-		]);
+		// The package also renames it, so a skipped project check would plan an update.
+		const plan = await importer.plan(ctx, [{ ...folder('a', null), name: 'Renamed' }]);
+		await importer.apply(ctx, plan);
+		await importer.applyUpdates(ctx, plan);
 
 		expect(plan.conflicts).toEqual([
 			expect.objectContaining({ kind: 'id-in-other-project', existingProjectId: 'project-2' }),
 		]);
+		expect(plan.items).toEqual([]);
+		expect(folderService.createFolder).not.toHaveBeenCalled();
 		expect(folderService.updateFolder).not.toHaveBeenCalled();
 	});
 
