@@ -8,6 +8,7 @@ import ElementPlus from 'element-plus';
 // @ts-expect-error no types
 import lang from 'element-plus/dist/locale/en.mjs';
 import { createPinia } from 'pinia';
+import { TooltipProvider } from 'reka-ui';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { applyN8nTheme } from './applyN8nTheme';
@@ -96,6 +97,12 @@ const withN8nTheme: Decorator = (storyFn, context) => {
 	return storyFn();
 };
 
-export const decorators = [withN8nTheme];
+/** Share tooltip delay state across all triggers in a story. */
+const withTooltipProvider: Decorator = (storyFn) => ({
+	components: { Story: storyFn(), TooltipProvider },
+	template: '<TooltipProvider :skip-delay-duration="2000"><Story /></TooltipProvider>',
+});
+
+export const decorators = [withN8nTheme, withTooltipProvider];
 
 export const tags = ['autodocs'];

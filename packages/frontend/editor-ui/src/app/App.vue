@@ -30,6 +30,7 @@ import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
+import { TooltipProvider } from 'reka-ui';
 import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStyles } from '@n8n/composables/useStyles';
@@ -41,6 +42,9 @@ import type {
 	WorkflowDocumentId,
 	WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+
+/** Keep nearby tooltips instant for two seconds after one closes. */
+const tooltipSkipDelayDuration = 2_000;
 
 const route = useRoute();
 const router = useRouter();
@@ -139,27 +143,29 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 </script>
 
 <template>
-	<LoadingView v-if="loading" />
-	<BaseLayout v-else id="n8n-app" :class="$style.app">
-		<template #banners>
-			<AppBanners />
-		</template>
-		<AppLayout @mounted="setLayoutRef">
-			<RouterView />
-		</AppLayout>
-		<AppModals />
-		<AppCommandBar />
-		<template #overlays>
-			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
-			<E2ETestModeMarker />
-			<!-- Experiment cleanup (119_surface_assistant_on_workflow_error) -->
-			<WorkflowErrorNudge />
-			<!-- EOF Experiment cleanup -->
-		</template>
-		<template #aside>
-			<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />
-		</template>
-	</BaseLayout>
+	<TooltipProvider :skip-delay-duration="tooltipSkipDelayDuration">
+		<LoadingView v-if="loading" />
+		<BaseLayout v-else id="n8n-app" :class="$style.app">
+			<template #banners>
+				<AppBanners />
+			</template>
+			<AppLayout @mounted="setLayoutRef">
+				<RouterView />
+			</AppLayout>
+			<AppModals />
+			<AppCommandBar />
+			<template #overlays>
+				<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
+				<E2ETestModeMarker />
+				<!-- Experiment cleanup (119_surface_assistant_on_workflow_error) -->
+				<WorkflowErrorNudge />
+				<!-- EOF Experiment cleanup -->
+			</template>
+			<template #aside>
+				<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />
+			</template>
+		</BaseLayout>
+	</TooltipProvider>
 </template>
 
 <style lang="scss" module>
