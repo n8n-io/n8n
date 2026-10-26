@@ -1,6 +1,7 @@
 import { TransactionRunner } from '@n8n/db';
 import {
 	AgentIntegrationConfigSchema,
+	N8N_CHAT_INTEGRATION_TYPE,
 	isDraftIntegration,
 	type AgentIntegrationConfig,
 	type ChatIntegrationDescriptor,
@@ -24,7 +25,11 @@ import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
-import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import {
+	ChatIntegrationRegistry,
+	type AgentChatIntegration,
+} from './integrations/agent-chat-integration';
+import { N8nChatFlagService } from './integrations/platforms/n8n-chat/n8n-chat-flag.service';
 import { assertSingleConnections } from './integrations/single-connection';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
@@ -89,6 +94,26 @@ function projectIntegrations(
 	return next.map((entry) => (matchesIntegrationRef(entry, add) ? add : entry));
 }
 
+function toChatIntegrationDescriptor(i: AgentChatIntegration): ChatIntegrationDescriptor {
+	return {
+		type: i.type,
+		label: i.displayLabel,
+		icon: i.displayIcon,
+		credentialTypes: i.credentialTypes,
+		approvableActions: i.actionToolDefinitions.map(({ name, sensitive }) => ({
+			name,
+			sensitive: sensitive === true,
+		})),
+		...(i.builderGuidance
+			? {
+					capabilities: i.builderGuidance.capabilities,
+					useIntegrationWhen: i.builderGuidance.useIntegrationWhen,
+					useNodeToolWhen: i.builderGuidance.useNodeToolWhen,
+				}
+			: {}),
+	};
+}
+
 @Service()
 export class AgentIntegrationPersistenceService {
 	constructor(
@@ -100,6 +125,7 @@ export class AgentIntegrationPersistenceService {
 		private readonly credentialsService: CredentialsService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly n8nChatFlag: N8nChatFlagService,
 		private readonly definitionService: AgentDefinitionService,
 		private readonly transactionRunner: TransactionRunner,
 	) {}
@@ -109,23 +135,18 @@ export class AgentIntegrationPersistenceService {
 	 * FE display metadata. Used by `GET /agents/integrations`.
 	 */
 	listChatIntegrations(): ChatIntegrationDescriptor[] {
-		return this.chatIntegrationRegistry.listPublic().map((i) => ({
-			type: i.type,
-			label: i.displayLabel,
-			icon: i.displayIcon,
-			credentialTypes: i.credentialTypes,
-			approvableActions: i.actionToolDefinitions.map(({ name, sensitive }) => ({
-				name,
-				sensitive: sensitive === true,
-			})),
-			...(i.builderGuidance
-				? {
-						capabilities: i.builderGuidance.capabilities,
-						useIntegrationWhen: i.builderGuidance.useIntegrationWhen,
-						useNodeToolWhen: i.builderGuidance.useNodeToolWhen,
-					}
-				: {}),
-		}));
+		return this.chatIntegrationRegistry.listPublic().map(toChatIntegrationDescriptor);
+	}
+
+	/**
+	 * Return the channels the Agent Builder can offer to this user: the public
+	 * catalog, plus n8n Chat while the user is in an active arm of its experiment.
+	 */
+	async listBuilderChatIntegrations(user: User): Promise<ChatIntegrationDescriptor[]> {
+		const integrations = this.listChatIntegrations();
+		const n8nChat = this.chatIntegrationRegistry.get(N8N_CHAT_INTEGRATION_TYPE);
+		if (!n8nChat || !(await this.n8nChatFlag.isEnabledFor(user))) return integrations;
+		return [...integrations, toChatIntegrationDescriptor(n8nChat)];
 	}
 
 	/**

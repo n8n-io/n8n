@@ -188,6 +188,31 @@ describe('PromotionPreviewView', () => {
 		expect(router.currentRoute.value.query.resource).toBe('dataTable:t1');
 	});
 
+	it('should share one selection between the card headers and the tree', async () => {
+		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+			git: { branchName: 'main', commitSha: COMMIT_SHA },
+		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+		const { getAllByTestId, getByTestId } = await render();
+		const cardCheckbox = (key: string) =>
+			card(getAllByTestId, key).getByTestId('promotion-preview-card-checkbox');
+
+		// The folder card clears the workflows inside the folder, and the card stays open.
+		await userEvent.click(cardCheckbox('folder:f1'));
+		expect(cardToggle(getAllByTestId, 'folder:f1')).toHaveAttribute('aria-expanded', 'true');
+		expect(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox')).not.toBeChecked();
+		expect(cardCheckbox('workflow:w2')).not.toBeChecked();
+		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('2 of 5');
+
+		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
+		expect(cardCheckbox('workflow:w1')).toBeChecked();
+		expect(cardCheckbox('folder:f1')).toHaveAttribute('data-state', 'indeterminate');
+
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1', 'w3', 'w4'],
+		});
+	});
+
 	it('should load the changed resources and only the active workflow at the commit of the preview', async () => {
 		await render();
 
