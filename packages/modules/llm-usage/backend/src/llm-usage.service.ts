@@ -52,6 +52,9 @@ const toCallItem = (call: LlmUsageCall): LlmUsageCallItem => ({
 	projectName: call.projectName,
 	userId: call.userId,
 	userEmail: call.userEmail,
+	// Only the name: the API never returns credential IDs.
+	credentialName: call.credentialName,
+	managedBy: call.managedBy,
 	provider: call.provider,
 	model: call.model,
 	inputTokens: call.inputTokens,

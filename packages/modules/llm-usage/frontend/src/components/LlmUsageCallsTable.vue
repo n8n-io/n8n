@@ -42,6 +42,12 @@ const callSources = computed(() => {
 // Rows always come from `store.calls.items`. The fallback only satisfies the type.
 const sourceOf = (call: LlmUsageCallItem) => callSources.value.get(call.callId) ?? { title: '' };
 
+function credentialLabel(call: LlmUsageCallItem) {
+	if (call.managedBy === 'aiGateway') return i18n.baseText('settings.llmUsage.managedBy.aiGateway');
+	if (call.managedBy === 'assistant') return i18n.baseText('settings.llmUsage.managedBy.assistant');
+	return call.credentialName ?? i18n.baseText('settings.llmUsage.notSet');
+}
+
 const NUMERIC_COLUMNS = ['durationMs', 'inputTokens', 'outputTokens', 'estimatedCostUsd'];
 
 /**
@@ -66,12 +72,17 @@ const headers: Array<TableHeader<LlmUsageCallItem>> = [
 	column('finishedAt', 'settings.llmUsage.column.date', 170, (call) =>
 		formatDateTime(call.finishedAt),
 	),
-	column('name', 'settings.llmUsage.column.name', 280, (call) => sourceOf(call).title),
-	column('caller', 'settings.llmUsage.column.caller', 130, (call) =>
+	column('name', 'settings.llmUsage.column.name', 210, (call) => sourceOf(call).title),
+	column('caller', 'settings.llmUsage.column.caller', 110, (call) =>
 		dynamicLlmUsageText(i18n, `caller.${call.callerType}`),
 	),
-	column('provider', 'settings.llmUsage.column.provider', 110, (call) => call.provider),
-	column('model', 'settings.llmUsage.column.model', 210, (call) => call.model),
+	column('provider', 'settings.llmUsage.column.provider', 100, (call) => call.provider),
+	column('model', 'settings.llmUsage.column.model', 170, (call) => call.model),
+	{
+		...column('credential', 'settings.llmUsage.column.credential', 140, credentialLabel),
+		// The API sorts by its own keys only, and a credential name is not one of them.
+		disableSort: true,
+	},
 	column('durationMs', 'settings.llmUsage.column.duration', 90, (call) =>
 		call.durationMs === null ? '' : formatSeconds(call.durationMs),
 	),
@@ -141,6 +152,9 @@ async function onOptionsChange(options: TableOptions) {
 		</template>
 		<template #[`item.model`]="{ item }">
 			<div :class="$style.ellipsis" :title="item.model">{{ item.model }}</div>
+		</template>
+		<template #[`item.credential`]="{ item }">
+			<div :class="$style.ellipsis" :title="credentialLabel(item)">{{ credentialLabel(item) }}</div>
 		</template>
 		<template #[`item.provider`]="{ item }">
 			<span :class="$style.badge">{{ item.provider }}</span>

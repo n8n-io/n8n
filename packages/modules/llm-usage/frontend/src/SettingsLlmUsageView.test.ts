@@ -66,6 +66,8 @@ const call = (overrides: Partial<LlmUsageCallItem>): LlmUsageCallItem => ({
 	projectName: 'Ops',
 	userId: 'user-1',
 	userEmail: 'ada@example.com',
+	credentialName: 'Support key',
+	managedBy: null,
 	provider: 'moonshot',
 	model: 'kimi-k3',
 	inputTokens: 1200,
@@ -89,6 +91,8 @@ const calls: LlmUsageCallsResponse = {
 			agentName: 'Triage agent',
 			threadId: 'session-1',
 			threadTitle: 'Refund question',
+			credentialName: null,
+			managedBy: 'aiGateway',
 			durationMs: null,
 			provider: 'anthropic',
 			model: 'claude-x',
@@ -103,6 +107,8 @@ const calls: LlmUsageCallsResponse = {
 			nodeName: null,
 			threadId: 'thread-2',
 			threadTitle: 'Another user session',
+			credentialName: null,
+			managedBy: 'assistant',
 			userId: 'user-2',
 			provider: 'openai',
 			model: 'gpt-y',
@@ -117,6 +123,7 @@ const calls: LlmUsageCallsResponse = {
 			nodeName: null,
 			threadId: 'thread-1',
 			threadTitle: 'Fix the invoice workflow',
+			credentialName: null,
 			provider: 'openai',
 			model: 'gpt-x',
 			durationMs: 1500,
@@ -172,6 +179,10 @@ describe('SettingsLlmUsageView', () => {
 		// A cost below a cent keeps its significant digits.
 		expect(within(table).getByText('$0.00003')).toBeInTheDocument();
 		expect(within(table).getByText('Unpriced')).toBeInTheDocument();
+		// The credential name, or the credits that pay when n8n manages the key.
+		expect(within(table).getByText('Support key')).toBeInTheDocument();
+		expect(within(table).getByText('Gateway credits')).toBeInTheDocument();
+		expect(within(table).getByText('Assistant credits')).toBeInTheDocument();
 		expect(fetchCallsMock).toHaveBeenCalledWith(expect.anything(), {
 			days: 30,
 			skip: 0,

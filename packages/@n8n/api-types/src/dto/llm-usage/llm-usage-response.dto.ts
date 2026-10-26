@@ -40,6 +40,10 @@ export interface LlmUsageCallItem {
 	projectName: string | null;
 	userId: string | null;
 	userEmail: string | null;
+	/** The name of the credential that paid for the call. The API never returns its ID. */
+	credentialName: string | null;
+	/** Set when n8n credits paid for the call instead of a credential. */
+	managedBy: 'aiGateway' | 'assistant' | null;
 	provider: string;
 	model: string;
 	inputTokens: number;

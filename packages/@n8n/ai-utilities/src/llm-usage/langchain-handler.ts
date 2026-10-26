@@ -4,7 +4,7 @@ import { AIMessage, AIMessageChunk, type BaseMessage } from '@langchain/core/mes
 import type { LLMResult } from '@langchain/core/outputs';
 
 import { reportLlmUsage } from './report';
-import type { LlmCallContext } from './types';
+import type { LlmCallContext, LlmUsageCredential } from './types';
 
 interface RunStart {
 	startedAt: Date;
@@ -40,7 +40,13 @@ export class LangChainUsageTracker {
 	 * `provider` wins over what the library reports: the caller can know the vendor better,
 	 * for example from the node's credential.
 	 */
-	end(output: LLMResult, runId: string, context?: LlmCallContext, provider?: string) {
+	end(
+		output: LLMResult,
+		runId: string,
+		context?: LlmCallContext,
+		provider?: string,
+		credential?: LlmUsageCredential,
+	) {
 		const run = this.runs.get(runId);
 		this.runs.delete(runId);
 		const finishedAt = new Date();
@@ -70,6 +76,7 @@ export class LangChainUsageTracker {
 					startedAt: run?.startedAt,
 					finishedAt,
 					subType: 'llm',
+					credential,
 				},
 				context,
 			);
@@ -91,6 +98,7 @@ export class LangChainUsageTracker {
 				startedAt: run?.startedAt,
 				finishedAt,
 				subType: 'llm',
+				credential,
 			},
 			context,
 		);

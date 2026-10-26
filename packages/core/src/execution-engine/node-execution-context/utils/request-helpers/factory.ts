@@ -69,9 +69,19 @@ export const getRequestHelperFunctions = (
 	const evalLlmMock = additionalData.evalLlmMockHandler;
 
 	// Reports the LLM calls that the helpers below send, with the node and its run.
-	const captureLlmUsage = async <T>(requestBody: unknown, send: () => Promise<T>) =>
+	const captureLlmUsage = async <T>(
+		requestBody: unknown,
+		send: () => Promise<T>,
+		credentialType?: string,
+	) =>
 		await withLlmUsageCapture(
-			{ workflow, node, additionalData, llmUsageRun: { runExecutionData, mode: executionMode } },
+			{
+				workflow,
+				node,
+				additionalData,
+				llmUsageRun: { runExecutionData, mode: executionMode },
+				credentialType,
+			},
 			requestBody,
 			send,
 		);
@@ -143,6 +153,7 @@ export const getRequestHelperFunctions = (
 						additionalData,
 						additionalCredentialOptions,
 					),
+				credentialsType,
 			);
 		},
 		async refreshOAuth2Token(
@@ -210,6 +221,7 @@ export const getRequestHelperFunctions = (
 						additionalCredentialOptions,
 						itemIndex,
 					),
+				credentialsType,
 			);
 		},
 

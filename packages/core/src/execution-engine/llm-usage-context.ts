@@ -1,5 +1,6 @@
 import type {
 	INode,
+	INodeCredentials,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	LlmUsageNodeContext,
@@ -22,6 +23,10 @@ export interface LlmUsageHooks {
 		context: LlmUsageNodeContext;
 		/** The credential types of the node. A provider credential names the provider. */
 		credentialTypes: string[];
+		/** The credential slots of the node, to record which credential pays for the call. */
+		credentials?: INodeCredentials;
+		/** The credential type that the helper authenticates with, when it is known. */
+		credentialType?: string;
 		requestBody: unknown;
 	}): LlmResponseInspector | undefined;
 }

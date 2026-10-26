@@ -80,6 +80,7 @@ describe('resolveCredentialAwareModelConfig', () => {
 				location: 'europe-west4',
 				clientEmail: 'agent@example.iam.gserviceaccount.com',
 				privateKey: 'private-key',
+				usageCredential: { id: 'vertex' },
 				...(sdk !== undefined && { sdk }),
 			});
 		},
@@ -117,6 +118,7 @@ describe('resolveCredentialAwareModelConfig', () => {
 			expect(result).toEqual({
 				id: 'vercel/anthropic/claude-sonnet-5.5',
 				apiKey: 'gateway-key',
+				usageCredential: { id: 'cred-vercel' },
 			});
 		},
 	);
@@ -139,6 +141,7 @@ describe('resolveCredentialAwareModelConfig', () => {
 			id: 'openai/gpt-5',
 			apiKey: 'real-key',
 			baseURL: 'https://api.openai.com',
+			usageCredential: { id: 'cred-123' },
 		});
 	});
 
@@ -225,6 +228,7 @@ describe('resolveCredentialAwareModelConfig', () => {
 			id: 'openai/gpt-5',
 			apiKey: 'gateway-jwt',
 			baseURL: 'https://gw.example/v1/gateway/openai/v1',
+			usageCredential: { managedBy: 'aiGateway' },
 			// The gateway serves OpenAI's Responses API; without this the model
 			// factory infers /chat/completions from the baseURL.
 			apiStyle: 'responses',

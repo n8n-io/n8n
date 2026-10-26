@@ -1367,6 +1367,7 @@ describe('anthropicTokensUsageParser', () => {
 			);
 
 			expect(records[0].provider).toBe('deepseek');
+			expect(records[0].credential).toEqual({ id: '1' });
 		});
 	});
 });

@@ -39,6 +39,12 @@ export class CreateLlmUsageTable1793007369435 implements ReversibleMigration {
 				column('threadId').varchar(128),
 				column('projectId').varchar(36),
 				column('userId').uuid,
+				column('credentialId').varchar(36),
+				column('managedBy')
+					.varchar(32)
+					// The values of `LlmUsageCredential.managedBy` in `@n8n/ai-utilities/llm-usage`.
+					.withEnumCheck(['aiGateway', 'assistant'])
+					.comment('Set when n8n credits pay for the call instead of a credential'),
 				column('provider').varchar(64).notNull,
 				column('model').varchar(255).notNull,
 				column('providerResponseId').varchar(255),

@@ -105,7 +105,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_monitoring_report](instance_monitoring_report.md) | 10 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
-| [llm_usage](llm_usage.md) | 24 |  | table |
+| [llm_usage](llm_usage.md) | 26 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
 | [migration_finding](migration_finding.md) | 10 |  | table |
 | [migration_finding_sync](migration_finding_sync.md) | 3 |  | table |
@@ -1462,12 +1462,14 @@ erDiagram
   INTEGER cacheWriteTokens
   varchar_64_ callId PK
   varchar_32_ callerType
+  varchar_36_ credentialId
   INTEGER durationMs
   REAL estimatedCostUsd
   varchar_36_ executionId
   varchar_32_ executionMode
   datetime_3_ finishedAt
   INTEGER inputTokens
+  varchar_32_ managedBy
   varchar_255_ model
   TEXT nodeName
   TEXT nodeType

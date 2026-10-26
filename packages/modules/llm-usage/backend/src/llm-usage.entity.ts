@@ -52,6 +52,13 @@ export class LlmUsage extends BaseEntity {
 	@Column({ type: 'uuid', nullable: true })
 	userId: string | null;
 
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	credentialId: string | null;
+
+	/** The migration limits the column to these values. */
+	@Column({ type: 'varchar', length: 32, nullable: true })
+	managedBy: 'aiGateway' | 'assistant' | null;
+
 	@Column({ type: 'varchar', length: 64 })
 	provider: string;
 

@@ -217,7 +217,13 @@ export class WorkflowBuilderService {
 	/** A new, unsaved workflow has no owner yet, so its calls go to the user's personal project. */
 	private async llmCallContext(payload: ChatPayload, user: IUser): Promise<LlmCallContext> {
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
-		const context: LlmCallContext = { callerType: 'workflow-builder', userId: user.id, workflowId };
+		const context: LlmCallContext = {
+			callerType: 'workflow-builder',
+			userId: user.id,
+			workflowId,
+			// With the AI assistant service, its credits pay for the calls instead of a credential.
+			...(this.client && { credential: { managedBy: 'assistant' } }),
+		};
 		// Without the llm-usage module nothing reads the context, so the project lookups are skipped.
 		if (!getLlmUsageSink()) return context;
 		// Usage capture is optional: a failed lookup only leaves the project out.

@@ -1,8 +1,17 @@
 // LangChain-free on purpose: the LangChain scope and handlers are in `./langchain`, so
 // importing this entry does not load `@langchain/core`.
-export type { LlmCallContext, LlmUsage, LlmUsageRecord, LlmUsageSink } from './types';
+export type {
+	LlmCallContext,
+	LlmUsage,
+	LlmUsageCredential,
+	LlmUsageRecord,
+	LlmUsageSink,
+} from './types';
 export { getLlmUsageSink, setLlmUsageSink } from './state';
 export {
+	credentialFromNode,
+	type NodeCredentialSlots,
+	isLlmUsageCredential,
 	normalizeProvider,
 	providerFromCredential,
 	providerFromCredentials,

@@ -7,8 +7,10 @@ import { AIMessage } from '@langchain/core/messages';
 import type { ChatResult, LLMResult } from '@langchain/core/outputs';
 
 import {
+	credentialFromNode,
 	enrichLlmCallContext,
 	getLlmCallContext,
+	isLlmUsageCredential,
 	normalizeProvider,
 	providerFromCredential,
 	reportLlmUsage,
@@ -338,5 +340,68 @@ describe('llm-usage', () => {
 			threadId: 't-1',
 			projectId: 'project-1',
 		});
+	});
+
+	it('records the credential of the call, else the credential of the scope', async () => {
+		useCollectingSink();
+
+		await runWithLlmCallContext(
+			{ callerType: 'instance-ai', credential: { managedBy: 'assistant' } },
+			async () => {
+				reportLlmUsage(usage());
+				reportLlmUsage(usage({ credential: { id: 'cred-1' } }));
+			},
+		);
+		reportLlmUsage(usage());
+
+		expect(records.map((record) => record.credential)).toEqual([
+			{ managedBy: 'assistant' },
+			{ id: 'cred-1' },
+			undefined,
+		]);
+	});
+
+	describe('credentialFromNode', () => {
+		it('picks the slot of the given credential type', () => {
+			const credentials = {
+				openAiApi: { id: 'cred-openai', name: 'OpenAI' },
+				httpHeaderAuth: { id: 'cred-header', name: 'Header' },
+			};
+
+			expect(credentialFromNode(credentials, 'httpHeaderAuth')).toEqual({ id: 'cred-header' });
+		});
+
+		it('picks the only LLM credential when no type is given', () => {
+			const credentials = {
+				openAiApi: { id: 'cred-openai', name: 'OpenAI' },
+				httpHeaderAuth: { id: 'cred-header', name: 'Header' },
+			};
+
+			expect(credentialFromNode(credentials)).toEqual({ id: 'cred-openai' });
+		});
+
+		it('leaves the credential out when the choice is not clear', () => {
+			const credentials = {
+				openAiApi: { id: 'cred-openai', name: 'OpenAI' },
+				anthropicApi: { id: 'cred-anthropic', name: 'Anthropic' },
+			};
+
+			expect(credentialFromNode(credentials)).toBeUndefined();
+			expect(credentialFromNode(undefined)).toBeUndefined();
+		});
+
+		it('marks a slot that Gateway credits pay for, without an ID', () => {
+			const credentials = { openAiApi: { id: null, name: 'Gateway', __aiGatewayManaged: true } };
+
+			expect(credentialFromNode(credentials)).toEqual({ managedBy: 'aiGateway' });
+		});
+	});
+
+	it('accepts only the known credential shapes', () => {
+		expect(isLlmUsageCredential({ id: 'cred-1' })).toBe(true);
+		expect(isLlmUsageCredential({ managedBy: 'aiGateway' })).toBe(true);
+		expect(isLlmUsageCredential({ managedBy: 'other' })).toBe(false);
+		expect(isLlmUsageCredential('cred-1')).toBe(false);
+		expect(isLlmUsageCredential(undefined)).toBe(false);
 	});
 });

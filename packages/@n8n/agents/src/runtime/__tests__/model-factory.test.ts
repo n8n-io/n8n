@@ -342,7 +342,23 @@ describe('createModel', () => {
 	it('reports usage for every model, with the configured provider', () => {
 		createModel({ id: 'anthropic/claude-sonnet-4-5', apiKey: 'sk-test' });
 
-		expect(withLlmUsageReporting).toHaveBeenLastCalledWith(expect.anything(), 'anthropic');
+		expect(withLlmUsageReporting).toHaveBeenLastCalledWith(
+			expect.anything(),
+			'anthropic',
+			undefined,
+		);
+	});
+
+	it('reports usage with the credential that the host sets on the config', () => {
+		createModel({
+			id: 'anthropic/claude-sonnet-4-5',
+			apiKey: 'sk-test',
+			usageCredential: { id: 'cred-1' },
+		});
+
+		expect(withLlmUsageReporting).toHaveBeenLastCalledWith(expect.anything(), 'anthropic', {
+			id: 'cred-1',
+		});
 	});
 
 	const originalEnv = process.env;

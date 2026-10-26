@@ -35,6 +35,7 @@ export async function resolveCredentialAwareModelConfig(
 		return {
 			id: model,
 			...mapCredentialForProvider(provider, raw),
+			usageCredential: { managedBy: 'aiGateway' },
 			// The gateway serves OpenAI's Responses API, so pin the route here. The
 			// model factory otherwise asks the endpoint which API it speaks, and this
 			// one is known — /chat/completions rejects reasoning effort once tools are
@@ -44,7 +45,11 @@ export async function resolveCredentialAwareModelConfig(
 	}
 
 	const raw = await credentialProvider.resolve(credential);
-	const mapped = mapCredentialForProvider(provider, raw);
+	// The model factory reads it for LLM usage records. It is not a field of the provider.
+	const mapped = {
+		...mapCredentialForProvider(provider, raw),
+		usageCredential: { id: credential },
+	};
 	if (provider === 'google-vertex') {
 		const { getCachedCatalog } = await import('@n8n/agents/catalog');
 		const catalog = await getCachedCatalog();

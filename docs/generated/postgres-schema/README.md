@@ -105,7 +105,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_monitoring_report](public.instance_monitoring_report.md) | 10 |  | BASE TABLE |
 | [public.instance_version_history](public.instance_version_history.md) | 5 |  | BASE TABLE |
 | [public.invalid_auth_token](public.invalid_auth_token.md) | 2 |  | BASE TABLE |
-| [public.llm_usage](public.llm_usage.md) | 24 |  | BASE TABLE |
+| [public.llm_usage](public.llm_usage.md) | 26 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
 | [public.migration_finding](public.migration_finding.md) | 10 |  | BASE TABLE |
 | [public.migration_finding_sync](public.migration_finding_sync.md) | 3 |  | BASE TABLE |
@@ -1476,12 +1476,14 @@ erDiagram
   integer cacheWriteTokens
   varchar_64_ callId
   varchar_32_ callerType
+  varchar_36_ credentialId
   integer durationMs
   double_precision estimatedCostUsd
   varchar_36_ executionId
   varchar_32_ executionMode
   timestamp_3__with_time_zone finishedAt
   integer inputTokens
+  varchar_32_ managedBy
   varchar_255_ model
   text nodeName
   text nodeType

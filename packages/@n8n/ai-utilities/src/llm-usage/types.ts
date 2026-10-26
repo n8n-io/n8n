@@ -1,6 +1,9 @@
 /** What made an LLM call. The `llm_usage` migration checks the same values. */
 export type LlmCallerType = 'node' | 'agent' | 'instance-ai' | 'workflow-builder' | 'unknown';
 
+/** Who pays for an LLM call: an n8n credential, or n8n credits when n8n manages the key. */
+export type LlmUsageCredential = { id: string } | { managedBy: 'aiGateway' | 'assistant' };
+
 /** Who made an LLM call. All records of one scope share the same object. */
 export interface LlmCallContext {
 	callerType: LlmCallerType;
@@ -14,6 +17,8 @@ export interface LlmCallContext {
 	threadId?: string;
 	projectId?: string;
 	userId?: string;
+	/** The credential of every call in the scope, when they all share one. A call's own wins. */
+	credential?: LlmUsageCredential;
 }
 
 /** One LLM call as an adapter reports it. */
@@ -33,6 +38,8 @@ export interface LlmUsage {
 	finishedAt: Date;
 	/** `llm` when a model client reports the call, `http` when a captured HTTP response does. */
 	subType?: 'llm' | 'http';
+	/** The credential of this call. It wins over the credential of the scope. */
+	credential?: LlmUsageCredential;
 }
 
 export interface LlmUsageRecord extends LlmUsage {

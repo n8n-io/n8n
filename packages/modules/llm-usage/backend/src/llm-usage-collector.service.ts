@@ -175,6 +175,9 @@ export class LlmUsageCollector implements LlmUsageSink {
 			threadId: context.threadId ?? null,
 			projectId: context.projectId ?? null,
 			userId: context.userId ?? null,
+			credentialId: usage.credential && 'id' in usage.credential ? usage.credential.id : null,
+			managedBy:
+				usage.credential && 'managedBy' in usage.credential ? usage.credential.managedBy : null,
 			provider: usage.provider,
 			model: usage.model,
 			providerResponseId: usage.providerResponseId ?? null,

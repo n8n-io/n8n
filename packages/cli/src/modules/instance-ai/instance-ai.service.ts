@@ -2061,6 +2061,7 @@ export class InstanceAiService {
 					orchestrationContext?.projectId ??
 					(await this.agentMemory.getThreadProjectId(threadId)) ??
 					undefined,
+				...(this.aiService.isProxyEnabled() && { credential: { managedBy: 'assistant' } }),
 			});
 			return await this.processResumedStream(...args);
 		});

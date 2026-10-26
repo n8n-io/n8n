@@ -57,6 +57,21 @@ describe('LlmUsageCollector', () => {
 		]);
 	});
 
+	it('stores the credential ID, or who manages the credential', async () => {
+		collector.write({ ...record(), credential: { id: 'cred-1' } });
+		collector.write({ ...record(), credential: { managedBy: 'aiGateway' } });
+		collector.write(record());
+
+		await collector.flush();
+
+		const rows = repository.insertIgnoringDuplicates.mock.calls[0][0];
+		expect(rows.map(({ credentialId, managedBy }) => ({ credentialId, managedBy }))).toEqual([
+			{ credentialId: 'cred-1', managedBy: null },
+			{ credentialId: null, managedBy: 'aiGateway' },
+			{ credentialId: null, managedBy: null },
+		]);
+	});
+
 	it('starts a flush at once when the buffer reaches 500 records', () => {
 		for (let i = 0; i < 500; i++) collector.write(record());
 

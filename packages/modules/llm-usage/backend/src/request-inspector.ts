@@ -1,9 +1,11 @@
 import {
 	createUsageReader,
+	credentialFromNode,
 	parseProviderUsage,
 	providerFromCredentials,
 	reportLlmUsage,
 	type LlmCallContext,
+	type NodeCredentialSlots,
 	type ParsedUsage,
 } from '@n8n/ai-utilities/llm-usage';
 import { isRecord } from '@n8n/utils/is-record';
@@ -43,6 +45,8 @@ function isLlmRequest(body: unknown): body is Record<string, unknown> {
 export function inspectRequest(input: {
 	context: LlmCallContext;
 	credentialTypes: string[];
+	credentials?: NodeCredentialSlots;
+	credentialType?: string;
 	requestBody: unknown;
 }) {
 	const body = parseBody(input.requestBody);
@@ -51,6 +55,7 @@ export function inspectRequest(input: {
 	const startedAt = new Date();
 	const requestedModel = typeof body.model === 'string' ? body.model : undefined;
 	const credentialProvider = providerFromCredentials(input.credentialTypes);
+	const credential = credentialFromNode(input.credentials, input.credentialType);
 	let reader: ReturnType<typeof createUsageReader> | undefined;
 
 	const report = (usage: ParsedUsage | undefined) => {
@@ -61,7 +66,7 @@ export function inspectRequest(input: {
 		const provider =
 			usage.provider === 'openai' ? (credentialProvider ?? usage.provider) : usage.provider;
 		reportLlmUsage(
-			{ ...usage, provider, model, startedAt, finishedAt: new Date(), subType: 'http' },
+			{ ...usage, provider, model, startedAt, finishedAt: new Date(), subType: 'http', credential },
 			input.context,
 		);
 	};

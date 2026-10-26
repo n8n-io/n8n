@@ -1,4 +1,8 @@
-import { getLlmUsageSink, reportLlmUsage } from '@n8n/ai-utilities/llm-usage';
+import {
+	getLlmUsageSink,
+	reportLlmUsage,
+	type LlmUsageCredential,
+} from '@n8n/ai-utilities/llm-usage';
 import type * as AiSdk from 'ai';
 
 import { loadAi } from './lazy-ai';
@@ -15,9 +19,14 @@ const reportingModels = new WeakSet<object>();
 /**
  * Reports every call of the model to the LLM usage sink: agent turns, titles, memory and
  * verification calls alike. `provider` is the configured provider; without it, the
- * model's transport name is used, which a proxied model reports as the proxy.
+ * model's transport name is used, which a proxied model reports as the proxy. `credential`
+ * is the credential that the model was built with, when the host knows it.
  */
-export function withLlmUsageReporting(model: WrappableModel, provider?: string): WrappableModel {
+export function withLlmUsageReporting(
+	model: WrappableModel,
+	provider?: string,
+	credential?: LlmUsageCredential,
+): WrappableModel {
 	// Without a sink (the llm-usage module is off), the model stays unwrapped: every stream part
 	// would pass an extra transform for nothing. The module sets the sink at startup, before
 	// any model is built.
@@ -45,6 +54,7 @@ export function withLlmUsageReporting(model: WrappableModel, provider?: string):
 				startedAt,
 				finishedAt: new Date(),
 				subType: 'llm',
+				credential,
 			});
 		} catch {}
 	};

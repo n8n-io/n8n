@@ -20,6 +20,8 @@ export interface LlmUsageCaptureTarget {
 	node: INode;
 	additionalData: IWorkflowExecuteAdditionalData;
 	llmUsageRun?: LlmUsageRun;
+	/** The credential type that the helper authenticates with, when it is known. */
+	credentialType?: string;
 }
 
 const isFullResponse = (
@@ -82,7 +84,7 @@ function outputsLanguageModel(workflow: Workflow, node: INode) {
 }
 
 function startInspection(
-	{ workflow, node, additionalData, llmUsageRun }: LlmUsageCaptureTarget,
+	{ workflow, node, additionalData, llmUsageRun, credentialType }: LlmUsageCaptureTarget,
 	requestBody: unknown,
 ): LlmResponseInspector | undefined {
 	try {
@@ -92,6 +94,8 @@ function startInspection(
 		const inspector = hooks.inspectRequest({
 			context: buildLlmUsageNodeContext(workflow, node, additionalData, llmUsageRun),
 			credentialTypes: Object.keys(node.credentials ?? {}),
+			credentials: node.credentials,
+			credentialType,
 			requestBody,
 		});
 		// Checked only for LLM calls: resolving the outputs can evaluate an expression.

@@ -7674,9 +7674,12 @@ describe('InstanceAiService — LLM usage scope', () => {
 		expect(context).toEqual({ callerType: 'instance-ai', threadId: 'thread-a', userId: 'user-1' });
 	});
 
-	it('adds the project of the suspended run when a run resumes', async () => {
+	it('adds the project of the suspended run and its Assistant credits when a run resumes', async () => {
 		setLlmUsageSink({ write: () => {} });
 		const service = createStartRunService();
+		(service as unknown as { aiService: { isProxyEnabled: () => boolean } }).aiService = {
+			isProxyEnabled: () => true,
+		};
 		let context: LlmCallContext | undefined;
 		const resumed = new Promise<void>((resolve) => {
 			(service as unknown as { processResumedStream: () => Promise<void> }).processResumedStream =
@@ -7701,7 +7704,11 @@ describe('InstanceAiService — LLM usage scope', () => {
 		await resumed;
 
 		expect(context).toEqual(
-			expect.objectContaining({ callerType: 'instance-ai', projectId: 'project-1' }),
+			expect.objectContaining({
+				callerType: 'instance-ai',
+				projectId: 'project-1',
+				credential: { managedBy: 'assistant' },
+			}),
 		);
 	});
 });

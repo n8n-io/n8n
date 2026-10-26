@@ -13,7 +13,7 @@ import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow
 
 import { buildChatGenAiAttributes, type GenAiProviderName } from '../gen-ai';
 import { LangChainUsageTracker } from '../llm-usage/langchain-handler';
-import { providerFromCredentials } from '../llm-usage/report';
+import { credentialFromNode, providerFromCredentials } from '../llm-usage/report';
 import { extractRespondingModel, toRunDataGeneration } from './extract-responding-model';
 import { logAiEvent } from './log-ai-event';
 import { redactHeaderValues } from './redact-headers';
@@ -179,6 +179,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			runId,
 			this.executionFunctions.getLlmUsageContext?.(),
 			this.credentialProvider(),
+			credentialFromNode(this.executionFunctions.getNode().credentials),
 		);
 
 		// The fallback should never happen since handleLLMStart should always set the run details

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { AZURE_FOUNDRY_ANTHROPIC_PREFIX, splitModelId } from '@n8n/ai-utilities/agent-config';
+import { isLlmUsageCredential, type LlmUsageCredential } from '@n8n/ai-utilities/llm-usage';
 import {
 	AZURE_AI_FOUNDRY_AUDIENCE,
 	ensureUrlPathSuffix,
@@ -614,9 +615,14 @@ export function createModel(
 
 	// Collect credential fields: strip `id`, pass the rest to Zod validation.
 	let credFields: Record<string, unknown> = {};
+	let usageCredential: LlmUsageCredential | undefined;
 	if (typeof config !== 'string') {
 		const { id: _id, ...rest } = config;
 		credFields = rest;
+		// Set by the host for LLM usage records. Removed here: it is not a field of the provider.
+		const credential = credFields.usageCredential;
+		delete credFields.usageCredential;
+		if (isLlmUsageCredential(credential)) usageCredential = credential;
 	}
 	// Host configs (e.g. Instance AI's `{ id, url }` for OpenAI-compatible
 	// endpoints) spell the base URL as `url`; the provider schemas only know
@@ -648,7 +654,9 @@ export function createModel(
 		modelName,
 		resolvedFetch,
 	);
-	return typeof model === 'string' ? model : withLlmUsageReporting(model, provider);
+	return typeof model === 'string'
+		? model
+		: withLlmUsageReporting(model, provider, usageCredential);
 }
 
 /**

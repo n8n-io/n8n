@@ -257,6 +257,10 @@ export class AssistantTurnEnvironmentFactory {
 		}
 		// The run's LLM calls start after this point, so they all carry the project.
 		enrichLlmCallContext({ projectId: boundProjectId });
+		// Through the AI service proxy, Assistant credits pay for every model call of the run.
+		if (this.aiService.isProxyEnabled()) {
+			enrichLlmCallContext({ credential: { managedBy: 'assistant' } });
+		}
 
 		const adminSettings = await this.settingsService.getAdminSettings();
 		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;

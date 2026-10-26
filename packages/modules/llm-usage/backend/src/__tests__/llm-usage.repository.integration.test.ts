@@ -1,5 +1,5 @@
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
-import { GLOBAL_MEMBER_ROLE, UserRepository, type User } from '@n8n/db';
+import { CredentialsRepository, GLOBAL_MEMBER_ROLE, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import type { LlmUsage } from '../llm-usage.entity';
@@ -157,6 +157,30 @@ describe('LlmUsageRepository', () => {
 		expect(recent.count).toBe(2);
 		expect(recent.items.map((call) => call.callId)).toEqual(['second', 'first']);
 		expect(recent.items[1]).toMatchObject({ projectName: 'Sales', userEmail: 'ada@example.com' });
+	});
+
+	it('names the credential of a call, and who manages a credential that has no ID', async () => {
+		const credentials = Container.get(CredentialsRepository);
+		const credential = await credentials.save(
+			credentials.create({ name: 'Team OpenAI', type: 'openAiApi', data: '' }),
+		);
+		await repository.insertIgnoringDuplicates([
+			row({ callId: 'own', credentialId: credential.id }),
+			row({ callId: 'deleted', credentialId: 'deleted-credential' }),
+			row({ callId: 'gateway', managedBy: 'aiGateway' }),
+		]);
+
+		const { items } = await repository.listCalls({
+			...range,
+			skip: 0,
+			take: 10,
+			sortBy: 'finishedAt',
+			sortOrder: 'desc',
+		});
+		const byId = new Map(items.map((call) => [call.callId, call]));
+		expect(byId.get('own')).toMatchObject({ credentialName: 'Team OpenAI', managedBy: null });
+		expect(byId.get('deleted')).toMatchObject({ credentialName: null, managedBy: null });
+		expect(byId.get('gateway')).toMatchObject({ credentialName: null, managedBy: 'aiGateway' });
 	});
 
 	it('pages and sorts calls', async () => {

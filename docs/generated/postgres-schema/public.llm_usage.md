@@ -9,12 +9,14 @@
 | cacheWriteTokens | integer | 0 | false |  |  |  |
 | callId | varchar(64) |  | false |  |  | Call identity: SHA-256 of provider, response ID, model and token counts, else a UUIDv7 |
 | callerType | varchar(32) |  | false |  |  | What made the call: a workflow node, an agent, Instance AI or the builder |
+| credentialId | varchar(36) |  | true |  |  |  |
 | durationMs | integer |  | true |  |  |  |
 | estimatedCostUsd | double precision |  | true |  |  | Estimated cost in USD; NULL when not priced |
 | executionId | varchar(36) |  | true |  |  |  |
 | executionMode | varchar(32) |  | true |  |  | Mode of the run that started the work, for example manual or trigger |
 | finishedAt | timestamp(3) with time zone |  | false |  |  |  |
 | inputTokens | integer | 0 | false |  |  |  |
+| managedBy | varchar(32) |  | true |  |  | Set when n8n credits pay for the call instead of a credential |
 | model | varchar(255) |  | false |  |  |  |
 | nodeName | text |  | true |  |  |  |
 | nodeType | text |  | true |  |  |  |
@@ -34,6 +36,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_llm_usage_callerType | CHECK | CHECK ((("callerType")::text = ANY ((ARRAY['node'::character varying, 'agent'::character varying, 'instance-ai'::character varying, 'workflow-builder'::character varying, 'unknown'::character varying])::text[]))) |
+| CHK_llm_usage_managedBy | CHECK | CHECK ((("managedBy")::text = ANY ((ARRAY['aiGateway'::character varying, 'assistant'::character varying])::text[]))) |
 | CHK_llm_usage_subType | CHECK | CHECK ((("subType")::text = ANY ((ARRAY['llm'::character varying, 'http'::character varying])::text[]))) |
 | PK_cac2f69a2cb061fb47291fcd3f2 | PRIMARY KEY | PRIMARY KEY ("callId") |
 | llm_usage_cacheReadTokens_not_null | n | NOT NULL "cacheReadTokens" |
@@ -67,12 +70,14 @@ erDiagram
   integer cacheWriteTokens
   varchar_64_ callId
   varchar_32_ callerType
+  varchar_36_ credentialId
   integer durationMs
   double_precision estimatedCostUsd
   varchar_36_ executionId
   varchar_32_ executionMode
   timestamp_3__with_time_zone finishedAt
   integer inputTokens
+  varchar_32_ managedBy
   varchar_255_ model
   text nodeName
   text nodeType

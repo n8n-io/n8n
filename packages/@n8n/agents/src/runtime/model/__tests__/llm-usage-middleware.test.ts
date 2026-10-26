@@ -80,6 +80,15 @@ describe('withLlmUsageReporting', () => {
 		expect(records[0].provider).toBe('proxy');
 	});
 
+	it('reports the credential that the model was built with', async () => {
+		await generateText({
+			model: withLlmUsageReporting(mockModel(), 'anthropic', { id: 'cred-1' }),
+			prompt: 'hi',
+		});
+
+		expect(records[0].credential).toEqual({ id: 'cred-1' });
+	});
+
 	it('reports each call once when a model is wrapped twice', async () => {
 		const model = withLlmUsageReporting(withLlmUsageReporting(mockModel(), 'anthropic'));
 		await generateText({ model, prompt: 'hi' });

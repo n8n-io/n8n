@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
 
 import { callContextStorage, getLlmUsageSink } from './state';
-import type { LlmCallContext, LlmUsage } from './types';
+import type { LlmCallContext, LlmUsage, LlmUsageCredential } from './types';
 
 /** Provider names that client libraries report, mapped to the one name of pricing and identity. */
 const PROVIDER_ALIASES: Record<string, string> = {
@@ -69,6 +69,41 @@ export function providerFromCredentials(credentialTypes: string[]): string | und
 	return credentialTypes.map(providerFromCredential).find((provider) => provider !== undefined);
 }
 
+/** A node's credential slots, as `INodeCredentials` of `n8n-workflow` holds them. */
+export type NodeCredentialSlots = Record<
+	string,
+	{ id: string | null; __aiGatewayManaged?: boolean }
+>;
+
+/**
+ * The node credential that pays for a call: the slot of `credentialType` when the caller knows
+ * it, else the node's only LLM credential. Undefined when the choice is not clear.
+ */
+export function credentialFromNode(
+	credentials: NodeCredentialSlots | undefined,
+	credentialType?: string,
+): LlmUsageCredential | undefined {
+	if (!credentials) return undefined;
+	let slot = credentialType ? credentials[credentialType] : undefined;
+	if (!credentialType) {
+		const llmSlots = Object.keys(credentials).filter((type) => providerFromCredential(type));
+		if (llmSlots.length === 1) slot = credentials[llmSlots[0]];
+	}
+	if (slot?.__aiGatewayManaged) return { managedBy: 'aiGateway' };
+	return slot?.id ? { id: slot.id } : undefined;
+}
+
+/** Checks a credential that arrives untyped, such as one that a host sets on a model config. */
+export function isLlmUsageCredential(value: unknown): value is LlmUsageCredential {
+	if (typeof value !== 'object' || value === null) return false;
+	const managedBy: unknown = Reflect.get(value, 'managedBy');
+	return (
+		typeof Reflect.get(value, 'id') === 'string' ||
+		managedBy === 'aiGateway' ||
+		managedBy === 'assistant'
+	);
+}
+
 /**
  * The call identity. A provider response ID gives the same ID in every adapter that sees the
  * call. The model and token counts are part of it, because some local servers (Ollama) reuse
@@ -107,12 +142,14 @@ export function reportLlmUsage(usage: LlmUsage, context?: LlmCallContext): void 
 			cacheWriteTokens:
 				usage.cacheWriteTokens === undefined ? undefined : tokenCount(usage.cacheWriteTokens),
 		};
+		const scope = context ?? callContextStorage.getStore() ?? { callerType: 'unknown' };
 		sink.write({
 			...counted,
 			provider,
 			providerResponseId,
+			credential: usage.credential ?? scope.credential,
 			id: callId(provider, providerResponseId, counted),
-			context: context ?? callContextStorage.getStore() ?? { callerType: 'unknown' },
+			context: scope,
 		});
 	} catch {
 		// Capture must never break the caller, also with malformed usage from a library.

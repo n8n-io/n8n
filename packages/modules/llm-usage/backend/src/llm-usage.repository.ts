@@ -5,7 +5,7 @@ import type {
 	LlmUsageGroupBy,
 	LlmUsageTotals,
 } from '@n8n/api-types';
-import { Project, User, WorkflowEntity } from '@n8n/db';
+import { CredentialsEntity, Project, User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, Repository, type BaseEntity, type SelectQueryBuilder } from '@n8n/typeorm';
 
@@ -22,6 +22,7 @@ export type LlmUsageCall = Omit<LlmUsage, keyof BaseEntity> & {
 	threadTitle: string | null;
 	projectName: string | null;
 	userEmail: string | null;
+	credentialName: string | null;
 };
 
 /** A UUID, so that Postgres can cast a thread ID to the uuid type without an error. */
@@ -30,15 +31,15 @@ const UUID_PATTERN =
 
 /** Three parameters for each call keep a statement far below SQLite's parameter limit. */
 const SET_PRICES_CHUNK = 200;
-/** A row has 24 columns, so 500 rows stay below the parameter limits of SQLite and Postgres. */
+/** A row has 26 columns, so 500 rows stay below the parameter limits of SQLite and Postgres. */
 const INSERT_CHUNK = 500;
 
 /**
  * The query aliases of the tables that give names: `wf` workflows, `ag` agents, `proj`
- * projects and `usr` users. The calls list also joins the sessions of n8n Assistant (`iat`)
- * and of agents (`ats`).
+ * projects, `usr` users and `cred` credentials. The calls list also joins the sessions of
+ * n8n Assistant (`iat`) and of agents (`ats`).
  */
-type NameTable = 'wf' | 'ag' | 'proj' | 'usr';
+type NameTable = 'wf' | 'ag' | 'proj' | 'usr' | 'cred';
 
 /**
  * How each group is keyed and labeled. `where` keeps only the calls that have the grouped
@@ -231,9 +232,9 @@ export class LlmUsageRepository extends Repository<LlmUsage> {
 	}
 
 	/**
-	 * One page of calls, with the names of their workflow, agent, session, project and user.
-	 * The page is chosen first, from the `llm_usage` columns alone, and the names are joined
-	 * for that page only. Only a sort by name needs the names for the whole range.
+	 * One page of calls, with the names of their workflow, agent, session, project, user and
+	 * credential. The page is chosen first, from the `llm_usage` columns alone, and the names
+	 * are joined for that page only. Only a sort by name needs the names for the whole range.
 	 */
 	async listCalls({
 		skip,
@@ -273,6 +274,7 @@ export class LlmUsageRepository extends Repository<LlmUsage> {
 			.addSelect('COALESCE(iat.title, ats.title)', 'threadTitle')
 			.addSelect('proj.name', 'projectName')
 			.addSelect('usr.email', 'userEmail')
+			.addSelect('cred.name', 'credentialName')
 			.getRawAndEntities<Record<string, string | null>>();
 		const callsById = new Map(
 			entities.map((call, index): [string, LlmUsageCall] => [
@@ -284,6 +286,7 @@ export class LlmUsageRepository extends Repository<LlmUsage> {
 					threadTitle: raw[index]?.threadTitle ?? null,
 					projectName: raw[index]?.projectName ?? null,
 					userEmail: raw[index]?.userEmail ?? null,
+					credentialName: raw[index]?.credentialName ?? null,
 				},
 			]),
 		);
@@ -306,7 +309,7 @@ export class LlmUsageRepository extends Repository<LlmUsage> {
 	/** Joins the tables that give names, all of them unless `tables` limits them. */
 	private withNames(
 		query: SelectQueryBuilder<LlmUsage>,
-		tables: NameTable[] = ['wf', 'ag', 'proj', 'usr'],
+		tables: NameTable[] = ['wf', 'ag', 'proj', 'usr', 'cred'],
 	) {
 		if (tables.includes('wf')) query.leftJoin(WorkflowEntity, 'wf', 'wf.id = usage.workflowId');
 		if (tables.includes('ag')) {
@@ -314,6 +317,9 @@ export class LlmUsageRepository extends Repository<LlmUsage> {
 		}
 		if (tables.includes('proj')) query.leftJoin(Project, 'proj', 'proj.id = usage.projectId');
 		if (tables.includes('usr')) query.leftJoin(User, 'usr', 'usr.id = usage.userId');
+		if (tables.includes('cred')) {
+			query.leftJoin(CredentialsEntity, 'cred', 'cred.id = usage.credentialId');
+		}
 		return query;
 	}
 

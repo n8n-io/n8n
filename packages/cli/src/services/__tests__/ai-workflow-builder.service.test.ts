@@ -358,6 +358,12 @@ describe('WorkflowBuilderService', () => {
 				expect(await chatWithProbe()).toMatchObject({ projectId: 'personal-1' });
 			});
 
+			it('marks Assistant credits when the AI assistant service runs the chat', async () => {
+				(service as unknown as { client: object }).client = {};
+
+				expect(await chatWithProbe()).toMatchObject({ credential: { managedBy: 'assistant' } });
+			});
+
 			it('runs the chat without a project when the project lookup fails', async () => {
 				const sharedWorkflows = mock<SharedWorkflowRepository>();
 				sharedWorkflows.getWorkflowOwningProject.mockRejectedValue(new Error('db down'));

@@ -146,4 +146,31 @@ describe('inspectRequest provider', () => {
 
 		expect(records.map((record) => record.provider)).toEqual(['openai', 'openai']);
 	});
+
+	it('records the credential that the helper authenticates with, else the only LLM one', () => {
+		const call = (
+			credentials: Record<string, { id: string | null; __aiGatewayManaged?: boolean }>,
+			credentialType?: string,
+		) =>
+			inspectRequest({
+				context: { callerType: 'node' },
+				credentialTypes: Object.keys(credentials),
+				credentials,
+				credentialType,
+				requestBody: { model: 'gpt-x', messages: [] },
+			})?.onResponse({ id: 'chatcmpl-1', usage: { prompt_tokens: 1, completion_tokens: 1 } });
+
+		call(
+			{ openAiApi: { id: 'cred-openai' }, httpHeaderAuth: { id: 'cred-header' } },
+			'httpHeaderAuth',
+		);
+		call({ openAiApi: { id: 'cred-openai' }, httpHeaderAuth: { id: 'cred-header' } });
+		call({ openAiApi: { id: null, __aiGatewayManaged: true } });
+
+		expect(records.map((record) => record.credential)).toEqual([
+			{ id: 'cred-header' },
+			{ id: 'cred-openai' },
+			{ managedBy: 'aiGateway' },
+		]);
+	});
 });

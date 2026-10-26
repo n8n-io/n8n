@@ -72,18 +72,34 @@ describe('withLlmUsageCapture', () => {
 			async () => body,
 		);
 
-		expect(inspectRequest).toHaveBeenCalledWith({
-			context: expect.objectContaining({
-				callerType: 'node',
-				workflowId: 'wf-1',
-				nodeName: 'HTTP Request',
-				executionMode: 'manual',
-				userId: 'user-1',
+		expect(inspectRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				context: expect.objectContaining({
+					callerType: 'node',
+					workflowId: 'wf-1',
+					nodeName: 'HTTP Request',
+					executionMode: 'manual',
+					userId: 'user-1',
+				}),
+				credentialTypes: ['openAiApi'],
+				requestBody,
 			}),
-			credentialTypes: ['openAiApi'],
-			requestBody,
-		});
+		);
+		// By reference: the mocked node answers the matcher lookups of a deep comparison.
+		expect(vi.mocked(inspectRequest).mock.calls[0][0].credentials).toBe(node.credentials);
 		expect(inspector.onResponse).toHaveBeenCalledWith(body);
+	});
+
+	it('passes the credential type that the helper authenticates with', async () => {
+		await withLlmUsageCapture(
+			{ workflow, node, additionalData, credentialType: 'openAiApi' },
+			requestBody,
+			async () => ({ usage: { prompt_tokens: 1 } }),
+		);
+
+		expect(inspectRequest).toHaveBeenCalledWith(
+			expect.objectContaining({ credentialType: 'openAiApi' }),
+		);
 	});
 
 	it('passes the body of a full response to the inspector', async () => {
