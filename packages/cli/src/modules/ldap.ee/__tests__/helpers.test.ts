@@ -1,5 +1,14 @@
+import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { generateNanoId, AuthIdentity, User, UserRepository } from '@n8n/db';
+import {
+	generateNanoId,
+	AuthIdentity,
+	Person,
+	PersonRepository,
+	ServiceAccount,
+	User,
+	UserRepository,
+} from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -7,6 +16,8 @@ import { mock } from 'vitest-mock-extended';
 import * as helpers from '../helpers.ee';
 
 const userRepository = mockInstance(UserRepository);
+const personRepository = mockInstance(PersonRepository);
+const logger = mockInstance(Logger);
 
 describe('Ldap/helpers', () => {
 	describe('createFilter', () => {
@@ -75,13 +86,13 @@ describe('Ldap/helpers', () => {
 			//
 			// ARRANGE
 			//
-			const user = Object.assign(new User(), { id: generateNanoId() } as User);
+			const person = Object.assign(new Person(), { id: generateNanoId() });
 			const authIdentity = Object.assign(new AuthIdentity(), {
-				user: { id: user.id },
+				user: { id: person.id },
 			} as AuthIdentity);
 			const data: Partial<User> = { firstName: 'Nathan', lastName: 'Nathaniel' };
 
-			userRepository.findOneBy.mockResolvedValueOnce(user);
+			personRepository.findById.mockResolvedValueOnce(person);
 
 			//
 			// ACT
@@ -91,11 +102,9 @@ describe('Ldap/helpers', () => {
 			//
 			// ASSERT
 			//
-			expect(userRepository.save).toHaveBeenCalledWith(
-				{ id: user.id, ...data },
-				{ transaction: true },
+			expect(personRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ id: person.id, ...data }),
 			);
-			expect(userRepository.update).not.toHaveBeenCalled();
 		});
 	});
 
@@ -208,7 +217,7 @@ describe('Ldap/helpers', () => {
 			//
 			// ASSERT
 			//
-			expect(transactionManager.save).toHaveBeenCalledWith(User, existingUser);
+			expect(transactionManager.save).toHaveBeenCalledWith(Person, existingUser);
 			expect(existingUser.email).toBe('new@example.com');
 		});
 
@@ -287,7 +296,7 @@ describe('Ldap/helpers', () => {
 			//
 			// ASSERT
 			//
-			expect(transactionManager.save).toHaveBeenCalledWith(User, existingLocalUser);
+			expect(transactionManager.save).toHaveBeenCalledWith(Person, existingLocalUser);
 			expect(existingLocalUser.firstName).toBe('Jane');
 			expect(existingLocalUser.lastName).toBe('Doe');
 		});
@@ -336,6 +345,47 @@ describe('Ldap/helpers', () => {
 			expect(savedAuthIdentity).toBeInstanceOf(AuthIdentity);
 			expect(savedAuthIdentity.providerId).toBe(ldapId);
 			expect(savedAuthIdentity.userId).toBe(createdUser.id);
+		});
+
+		test('skips a user whose email a service account owns, and syncs the others', async () => {
+			const serviceAccountLdapUser = Object.assign(new User(), { email: 'sa@example.com' } as User);
+			const otherLdapUser = Object.assign(new User(), { email: 'other@example.com' } as User);
+			const createdUser = Object.assign(new User(), {
+				id: generateNanoId(),
+				email: 'other@example.com',
+			} as User);
+
+			mockManagerTransaction.mockImplementation(
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
+			);
+			(transactionManager.findOne as Mock).mockResolvedValue(null);
+			(transactionManager.existsBy as Mock).mockImplementation(
+				async (_entity: unknown, where: { email: string }) => where.email === 'sa@example.com',
+			);
+			(userRepository.createUserWithProject as Mock).mockResolvedValueOnce({ user: createdUser });
+
+			await helpers.processUsers(
+				[
+					['ldap-sa', serviceAccountLdapUser],
+					['ldap-other', otherLdapUser],
+				],
+				[],
+				[],
+			);
+
+			expect(transactionManager.existsBy).toHaveBeenCalledWith(ServiceAccount, {
+				email: 'sa@example.com',
+			});
+			expect(userRepository.createUserWithProject).toHaveBeenCalledTimes(1);
+			expect(userRepository.createUserWithProject).toHaveBeenCalledWith(
+				otherLdapUser,
+				transactionManager,
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'LDAP sync skipped a user: A service account owns the email',
+				{ ldapId: 'ldap-sa' },
+			);
 		});
 	});
 });

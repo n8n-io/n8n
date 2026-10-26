@@ -25,6 +25,7 @@ import { BINARY_AD_ATTRIBUTES } from './constants';
 import {
 	createLdapUserOnLocalDb,
 	getUserByEmail,
+	isServiceAccountEmail,
 	getAuthIdentityByLdapId,
 	mapLdapAttributesToUser,
 	createLdapAuthIdentity,
@@ -603,13 +604,18 @@ export class LdapService implements IPasswordAuthHandler<User> {
 				}
 			}
 
-			const emailUser = await getUserByEmail(emailAttributeValue);
+			const emailPerson = await getUserByEmail(emailAttributeValue);
 
 			// check if there is an email user with the same email as the authenticated LDAP user trying to log-in
-			if (emailUser && emailUser.email === emailAttributeValue) {
-				const identity = await createLdapAuthIdentity(emailUser, ldapId);
+			if (emailPerson && emailPerson.email === emailAttributeValue) {
+				const identity = await createLdapAuthIdentity(emailPerson, ldapId);
 				await updateLdapUserOnLocalDb(identity, ldapAttributesValues);
 			} else {
+				if (await isServiceAccountEmail(emailAttributeValue)) {
+					this.logger.warn('LDAP login blocked: A service account owns the email', { ldapId });
+					return undefined;
+				}
+
 				const user = await createLdapUserOnLocalDb(ldapAttributesValues, ldapId);
 				Container.get(EventService).emit('user-signed-up', {
 					user,

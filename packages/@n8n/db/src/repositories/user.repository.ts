@@ -12,9 +12,8 @@ import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { GLOBAL_OWNER_ROLE } from '../constants';
-import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { ApiKey, Project, ProjectRelation, ServiceAccount, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
-import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 /**
  * Loads accounts of both kinds. A full row comes back as the child entity that
@@ -77,6 +76,14 @@ export class UserRepository extends BaseRepository<User> {
 		});
 	}
 
+	/**
+	 * Whether a service account owns `email`. The email is unique across both
+	 * kinds, so a person-only flow must not try to create a person with it.
+	 */
+	async isServiceAccountEmail(email: string): Promise<boolean> {
+		return await this.manager.existsBy(ServiceAccount, { email });
+	}
+
 	async findByEmailWithRole(email: string): Promise<User | null> {
 		return await this.findOne({
 			where: { email },
@@ -119,38 +126,6 @@ export class UserRepository extends BaseRepository<User> {
 	}
 
 	/**
-	 * Change a user's email only if it still equals `oldEmail`. Returns `'stale'`
-	 * when the email changed concurrently and `'email-taken'` when another user
-	 * already owns `newEmail`, so the caller can reject the request.
-	 * Uses `save` (not `update`) so the personal-project rename subscriber fires.
-	 */
-	async changeEmail(
-		userId: string,
-		oldEmail: string,
-		newEmail: string,
-	): Promise<'changed' | 'stale' | 'email-taken'> {
-		return await this.manager.transaction(async (trx) => {
-			const user = await trx.findOne(User, {
-				where: { id: userId },
-				// Serialize concurrent changes on Postgres; SQLite serializes writes.
-				...(trx.connection.options.type === 'postgres'
-					? { lock: { mode: 'pessimistic_write' as const } }
-					: {}),
-			});
-			if (user?.email !== oldEmail) return 'stale';
-			user.email = newEmail;
-			try {
-				await trx.save(User, user);
-			} catch (error) {
-				// Another user took `newEmail` between the caller's check and this save.
-				if (isUniqueConstraintError(error)) return 'email-taken';
-				throw error;
-			}
-			return 'changed';
-		});
-	}
-
-	/**
 	 * True when a claimed instance owner exists. A claimed owner has logged in
 	 * (`lastActiveAt` is set) or has a password. Some setup paths set a password
 	 * before the first login, so the password check is required. The unclaimed
@@ -185,16 +160,6 @@ export class UserRepository extends BaseRepository<User> {
 		return await this.delete({ id: In(userIds) });
 	}
 
-	async findNonShellUser(email: string) {
-		return await this.findOne({
-			where: {
-				email,
-				password: Not(IsNull()),
-			},
-			relations: ['authIdentities', 'role'],
-		});
-	}
-
 	/** Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }` */
 	async countUsersByRole() {
 		const escapedRoleSlug = this.manager.connection.driver.escape('roleSlug');
@@ -209,16 +174,6 @@ export class UserRepository extends BaseRepository<User> {
 			},
 			{} as Record<string, number>,
 		);
-	}
-
-	/**
-	 * Get emails of users who have completed setup, by user IDs.
-	 */
-	async getEmailsByIds(userIds: string[]) {
-		return await this.find({
-			select: ['id', 'email'],
-			where: { id: In(userIds), password: Not(IsNull()) },
-		});
 	}
 
 	async createUserWithProject(

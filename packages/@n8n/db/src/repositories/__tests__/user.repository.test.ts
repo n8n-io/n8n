@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
 
 import { GLOBAL_OWNER_ROLE } from '../../constants';
-import { User } from '../../entities';
+import { ServiceAccount, User } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { UserRepository } from '../user.repository';
 
@@ -25,6 +25,17 @@ describe('UserRepository', () => {
 				}),
 			).toEqual([]);
 			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('isServiceAccountEmail', () => {
+		it('checks for a service account with the email', async () => {
+			entityManager.existsBy.mockResolvedValueOnce(true);
+
+			expect(await userRepository.isServiceAccountEmail('sa@example.com')).toBe(true);
+			expect(entityManager.existsBy).toHaveBeenCalledWith(ServiceAccount, {
+				email: 'sa@example.com',
+			});
 		});
 	});
 
