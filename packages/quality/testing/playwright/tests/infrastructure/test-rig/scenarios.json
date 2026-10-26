@@ -40,5 +40,59 @@
 		"env": {
 			"TEST_RIG_RUNNERS": "external"
 		}
+	},
+	"worker-drain-fetched-job": {
+		"issue": "CAT-4728",
+		"spec": "worker-drain-fetched-job.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:2.44.0"
+	},
+	"worker-drain-dequeued-after-stop": {
+		"issue": "CAT-4728",
+		"spec": "worker-drain-dequeued-after-stop.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:2.44.0"
+	},
+	"worker-drain-fetched-on-complete": {
+		"issue": "CAT-4728",
+		"spec": "worker-drain-fetched-on-complete.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:2.44.0"
+	},
+	"worker-drain-pending-task-request": {
+		"issue": "CAT-4749",
+		"spec": "worker-drain-pending-task-request.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:2.43.0"
+	},
+	"worker-drain-own-error-workflow": {
+		"issue": "CAT-4802",
+		"spec": "worker-drain-own-error-workflow.spec.ts",
+		"before": "n8nio/n8n:2.38.7",
+		"after": "n8nio/n8n:2.43.0"
+	},
+	"worker-drain-enqueued-error-workflow": {
+		"issue": "CAT-4731",
+		"spec": "worker-drain-enqueued-error-workflow.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:2.43.0"
+	},
+	"ecs-style-stop": {
+		"issue": "CAT-4753",
+		"spec": "ecs-style-stop.spec.ts",
+		"before": "n8nio/n8n:2.39.0",
+		"after": "n8nio/n8n:2.44.0"
+	},
+	"ecs-style-stop-runner-gone": {
+		"issue": "CAT-4753",
+		"spec": "ecs-style-stop-runner-gone.spec.ts",
+		"before": "n8nio/n8n:2.39.0",
+		"after": "n8nio/n8n:2.44.0"
+	},
+	"fetched-before-lock": {
+		"issue": "CAT-4776",
+		"spec": "fetched-before-lock.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": null
 	}
 }
