@@ -715,11 +715,10 @@ describe('ExecutionRecoveryService', () => {
 				const workflow = await createActiveWorkflow({ ...OOM_WORKFLOW });
 				for (let i = 0; i < 3; i++) {
 					const execution = await createExecution({ status: 'crashed', mode: 'trigger' }, workflow);
-					await executionPersistence.deleteInFlightExecution({
-						workflowId: workflow.id,
-						executionId: execution.id,
-						storedAt: execution.storedAt,
-					});
+					await executionPersistence.deleteInFlightExecution(
+						{ workflowId: workflow.id, executionId: execution.id, storedAt: execution.storedAt },
+						{ status: 'crashed', finished: false, stoppedAt: new Date() },
+					);
 				}
 				mockOwnershipForDeactivation();
 
@@ -753,11 +752,10 @@ describe('ExecutionRecoveryService', () => {
 					{ status: 'success', mode: 'trigger', startedAt: new Date(now) },
 					workflow,
 				);
-				await executionPersistence.deleteInFlightExecution({
-					workflowId: workflow.id,
-					executionId: success.id,
-					storedAt: success.storedAt,
-				});
+				await executionPersistence.deleteInFlightExecution(
+					{ workflowId: workflow.id, executionId: success.id, storedAt: success.storedAt },
+					{ status: 'success', finished: true, stoppedAt: new Date() },
+				);
 
 				/**
 				 * Act
