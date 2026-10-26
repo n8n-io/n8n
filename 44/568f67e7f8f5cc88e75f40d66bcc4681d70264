@@ -1,0 +1,19 @@
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_12659bd645b914::t_6430f11b56dec6 278,287,1204-1213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "44568f67e7f8f5cc88e75f40d66bcc4681d70264",
+  "prompts": {},
+  "sessions": {
+    "s_12659bd645b914": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3434a46-1f34-45a3-8e4a-9ddcee290a1d",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
