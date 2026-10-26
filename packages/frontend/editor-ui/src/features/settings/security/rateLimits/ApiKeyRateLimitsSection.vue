@@ -58,7 +58,7 @@ const toggleValue = computed({
 			openDialog('enable');
 			return;
 		}
-		void persist({ ...settings.value, enabled: false });
+		void save({ ...settings.value, enabled: false });
 	},
 });
 
@@ -74,7 +74,7 @@ function successMessage(before: boolean, after: boolean) {
 		: i18n.baseText('settings.security.rateLimits.success.disabled');
 }
 
-async function persist(next: PublicApiRateLimitSettings) {
+async function save(next: PublicApiRateLimitSettings) {
 	const wasEnabled = settings.value?.enabled ?? false;
 	isSaving.value = true;
 	try {
@@ -178,7 +178,7 @@ async function persist(next: PublicApiRateLimitSettings) {
 			:defaults="state.defaults"
 			:env-managed-fields="state.envManagedFields"
 			:saving="isSaving"
-			@save="persist"
+			@save="save"
 		/>
 	</N8nSettingsSection>
 </template>

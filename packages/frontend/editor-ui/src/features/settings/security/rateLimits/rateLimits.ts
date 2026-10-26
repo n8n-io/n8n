@@ -55,7 +55,6 @@ export function toInputs(settings: Omit<PublicApiRateLimitSettings, 'enabled'>):
 	};
 }
 
-/** Call only with inputs that have no row errors. A row with no limit keeps its stored window. */
 export function parseInputs(
 	inputs: RateLimitInputs,
 	stored: PublicApiRateLimitSettings,
