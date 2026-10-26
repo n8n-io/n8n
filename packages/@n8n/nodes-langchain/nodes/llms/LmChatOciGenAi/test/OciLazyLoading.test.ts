@@ -91,7 +91,7 @@ async function loadChatNode() {
 	return await import('../LmChatOciGenAi.node.js');
 }
 
-describe.sequential('OCI runtime lazy loading', () => {
+describe('OCI runtime lazy loading', () => {
 	beforeAll(() => {
 		vi.resetModules();
 		resetRuntimeImports();

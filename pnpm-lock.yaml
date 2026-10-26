@@ -3877,13 +3877,13 @@ importers:
         version: link:../../workflow
       oci-common:
         specifier: ^2.139.1
-        version: 2.141.0(encoding@0.1.13)
+        version: 2.144.0(encoding@0.1.13)
       oci-generativeai:
         specifier: ^2.139.1
-        version: 2.141.0(encoding@0.1.13)
+        version: 2.144.0(encoding@0.1.13)
       oci-generativeaiinference:
         specifier: ^2.139.1
-        version: 2.140.2(encoding@0.1.13)
+        version: 2.144.0(encoding@0.1.13)
       openai:
         specifier: 'catalog:'
         version: 6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76)
@@ -17354,6 +17354,9 @@ packages:
   core-js@3.49.0:
     resolution: {integrity: sha512-es1U2+YTtzpwkxVLwAFdSpaIMyQaq0PBgm3YD1W3Qpsn1NAmO3KSgZfu+oGSWVu6NvLHoHCV/aYcsE5wiB7ALg==}
 
+  core-util-is@1.0.2:
+    resolution: {integrity: sha512-3lqz5YjWTYnW6dlDa5TLaTCcShfar1e40rmcJVwCBJC6mWlFuj0eCHIElmG1g5kyuJ/GD+8Wn4FFCcz4gJPfaQ==}
+
   core-util-is@1.0.3:
     resolution: {integrity: sha512-ZQBvi1DcpJ4GDqanjucZ2Hj3wEO5pZDS89BWbkcrvdxksJorwUDDZamX9ldFkp9aw2lmBDLgkObEA4DWNJ9FYQ==}
 
@@ -21472,18 +21475,6 @@ packages:
     resolution: {integrity: sha512-9miFgM2OFba7hB+pRgvtV84pYTBaoTHohvmIgiRt6dRIzbwEOIaNaP+dIlGs2fNFoB0SeISs0Jz5WFVRid6Xyg==}
     engines: {node: '>=12.20.0'}
 
-  oci-common@2.140.2:
-    resolution: {integrity: sha512-bPKnH3VO4wBqsLNlqMB0uUUVmtMGLSfPbBJTUoIIZ1LS5FnKvj+1bG8/Hh+ceDarafuhiATG9SvbDDQU72t2EQ==}
-
-  oci-common@2.141.0:
-    resolution: {integrity: sha512-GlJh8gy4hkX5hk5W0dqlLkyP6S5LsVSS5vhOktcSoq37rwGnbvrJO9C1luxEzUEZOn46A5KRH9RlYR6wJQlJEw==}
-
-  oci-generativeai@2.141.0:
-    resolution: {integrity: sha512-n+vW/tdCGzvRfSYexXjnOXeMkCk0mmV2gMwNx6oT3V0IKcHg4ASNF6x1QkIpKPQsJsEO8ps+zLcM5EoJ7isZjg==}
-
-  oci-generativeaiinference@2.140.2:
-    resolution: {integrity: sha512-XzEVlBwdzIFsR9fm+bJylOj7/8RbTKgf2Obyg7LdBcwbvv8JBk3PxHZsNNkhLmM4r1U7Pr1+qdOFuXFw9GlE7A==}
-
   obug@2.2.1:
     resolution: {integrity: sha512-XrsrhT5sybtKI6wakr2SPOlGZWWYbUXZ7a0jT8/QOeAPau+1X/bSegNe5YR75oJmEZQbKningirmGOEJCIk61Q==}
     engines: {node: '>=12.20.0'}
@@ -21491,6 +21482,15 @@ packages:
   obug@3.0.0:
     resolution: {integrity: sha512-5vvB5+W7ePv+p3uqxi+RcW1XAzLW0/hxt3/4X4Lc4qHudzOhmBiBwOY6DRob4WnanAEGvNcLjF+KNOufrUoEQw==}
     engines: {node: '>=12.20.0'}
+
+  oci-common@2.144.0:
+    resolution: {integrity: sha512-vCrGEuqgw/zvhAlvfRQbkFkdgdPCIt6W4P6yDZc9fbLSA6RW/kYuKH/w2CptLdcNnUz1m8Cq5n4DJJ0LZn0qxg==}
+
+  oci-generativeai@2.144.0:
+    resolution: {integrity: sha512-KrVvD1zmom3eY4KViDrFJqN6y7llaPymy0KrtvlCErvdLJlorLkjLnLYTGO4k38MfCAHzwKFYTkEnYEt4f07xA==}
+
+  oci-generativeaiinference@2.144.0:
+    resolution: {integrity: sha512-THI3dPWUdbSTuaKYPSWv3avk5Tw1VXe4XjqaJokRYeIqZ4IyHVa/mJjOIDOXh0RlIk2+xeMR+Vy0Rib2pSDjeA==}
 
   ohash@2.0.11:
     resolution: {integrity: sha512-RdR9FQrFwNBNXAr4GixM8YaRZRJ5PUWbKYbE5eOsrwAjJW0q2REGcf79oYPsLyskQCZG1PLN+S/K1V00joZAoQ==}
@@ -24371,13 +24371,13 @@ packages:
       react: '>= 16.4.0'
       react-dom: '>= 16.4.0'
 
-  verror@1.10.0:
-    resolution: {integrity: sha512-ZZKSmDAEFOijERBLkmYfJ+vmk3w+7hOLYDNkRCuRuMJGEmqYNCNLyBBFwWKVMhfwaEF3WOd0Zlw86U/WC/+nYw==}
-    engines: {'0': node >=0.6.0}
-
   verkit@0.5.0:
     resolution: {integrity: sha512-u4J1hr6Y+C/hit34GwL3eIcUf3wngT8TlYUjK7tk0jxydKLAq3sYvifjdTDA6U3KCKRcQCQDGf/srjxfZF3l7g==}
     engines: {node: '>=18.12.0'}
+
+  verror@1.10.0:
+    resolution: {integrity: sha512-ZZKSmDAEFOijERBLkmYfJ+vmk3w+7hOLYDNkRCuRuMJGEmqYNCNLyBBFwWKVMhfwaEF3WOd0Zlw86U/WC/+nYw==}
+    engines: {'0': node >=0.6.0}
 
   vfile-message@4.0.3:
     resolution: {integrity: sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==}
@@ -28650,7 +28650,7 @@ snapshots:
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5(patch_hash=3827ce0d19ea8a667a03b05afe753b3d8a7a5a837ccfc4b8f5516e738e6cea82)
-      pg: 8.21.0(pg-native@3.8.0)
+      pg: 8.21.0
       playwright: 1.62.1
       puppeteer: 24.41.0(bufferutil@4.0.9)(supports-color@8.1.1)(typescript@7.0.2)(utf-8-validate@5.0.10)
       redis: 4.6.14
@@ -30310,8 +30310,8 @@ snapshots:
   '@oracle/langchain-oci@0.0.2(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)':
     dependencies:
       '@langchain/core': 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      oci-common: 2.141.0(encoding@0.1.13)
-      oci-generativeaiinference: 2.140.2(encoding@0.1.13)
+      oci-common: 2.144.0(encoding@0.1.13)
+      oci-generativeaiinference: 2.144.0(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
@@ -35138,6 +35138,7 @@ snapshots:
   core-js@3.49.0: {}
 
   core-util-is@1.0.2: {}
+
   core-util-is@1.0.3: {}
 
   cors@2.8.5:
@@ -40250,25 +40251,11 @@ snapshots:
 
   obug@2.1.3: {}
 
-  oci-common@2.140.2(encoding@0.1.13):
-    dependencies:
-      '@types/isomorphic-fetch': 0.0.35
-      '@types/jsonwebtoken': 9.0.3
-      '@types/opossum': 4.1.1
-      '@types/sshpk': 1.10.3
-      '@types/uuid': 8.3.4
-      es6-promise: 4.2.6
-      http-signature: 1.3.1
-      isomorphic-fetch: 3.0.0(encoding@0.1.13)
-      jsonwebtoken: 9.0.3
-      jssha: 3.3.1
-      opossum: 5.0.1
-      sshpk: 1.18.0
-      uuid: 13.0.1
-    transitivePeerDependencies:
-      - encoding
+  obug@2.2.1: {}
 
-  oci-common@2.141.0(encoding@0.1.13):
+  obug@3.0.0: {}
+
+  oci-common@2.144.0(encoding@0.1.13):
     dependencies:
       '@types/isomorphic-fetch': 0.0.35
       '@types/jsonwebtoken': 9.0.3
@@ -40287,23 +40274,19 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  oci-generativeai@2.141.0(encoding@0.1.13):
+  oci-generativeai@2.144.0(encoding@0.1.13):
     dependencies:
-      oci-common: 2.141.0(encoding@0.1.13)
+      oci-common: 2.144.0(encoding@0.1.13)
       opossum: 5.0.1
     transitivePeerDependencies:
       - encoding
 
-  oci-generativeaiinference@2.140.2(encoding@0.1.13):
+  oci-generativeaiinference@2.144.0(encoding@0.1.13):
     dependencies:
-      oci-common: 2.140.2(encoding@0.1.13)
+      oci-common: 2.144.0(encoding@0.1.13)
       opossum: 5.0.1
     transitivePeerDependencies:
       - encoding
-
-  obug@2.2.1: {}
-
-  obug@3.0.0: {}
 
   ohash@2.0.11: {}
 
@@ -40756,9 +40739,14 @@ snapshots:
       libpq: 1.11.0
       pg-types: 2.2.0
 
-  pg-pool@3.14.0(pg@8.21.0):
+  pg-pool@3.14.0(pg@8.21.0(pg-native@3.8.0)):
     dependencies:
       pg: 8.21.0(pg-native@3.8.0)
+
+  pg-pool@3.14.0(pg@8.21.0):
+    dependencies:
+      pg: 8.21.0
+    optional: true
 
   pg-promise@11.9.1(pg-native@3.8.0):
     dependencies:
@@ -40784,10 +40772,21 @@ snapshots:
       postgres-date: 1.0.7
       postgres-interval: 1.2.0
 
-  pg@8.21.0(pg-native@3.8.0):
+  pg@8.21.0:
     dependencies:
       pg-connection-string: 2.14.0
       pg-pool: 3.14.0(pg@8.21.0)
+      pg-protocol: 1.15.0
+      pg-types: 2.2.0
+      pgpass: 1.0.5
+    optionalDependencies:
+      pg-cloudflare: 1.4.0
+    optional: true
+
+  pg@8.21.0(pg-native@3.8.0):
+    dependencies:
+      pg-connection-string: 2.14.0
+      pg-pool: 3.14.0(pg@8.21.0(pg-native@3.8.0))
       pg-protocol: 1.15.0
       pg-types: 2.2.0
       pgpass: 1.0.5
@@ -43942,13 +43941,13 @@ snapshots:
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
 
+  verkit@0.5.0: {}
+
   verror@1.10.0:
     dependencies:
       assert-plus: 1.0.0
       core-util-is: 1.0.2
-      extsprintf: 1.4.1
-
-  verkit@0.5.0: {}
+      extsprintf: 1.3.0
 
   vfile-message@4.0.3:
     dependencies:
