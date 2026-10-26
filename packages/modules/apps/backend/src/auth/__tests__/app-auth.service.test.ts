@@ -55,8 +55,8 @@ function setup(visibility: App['visibility'] = 'project') {
 		path: '/',
 		originalUrl: '/orders/123',
 		cookies: {},
-		query: { code: 'code', state, iss: issuer },
 	});
+	req.query = { code: 'code', state, iss: issuer };
 	const res = mock<Response>();
 	res.set.mockReturnValue(res);
 	res.status.mockReturnValue(res);
@@ -153,6 +153,66 @@ describe('AppAuthService', () => {
 			maxAge: 3600000,
 		});
 		expect(res.redirect).toHaveBeenLastCalledWith('/orders/123?view=all');
+	});
+
+	it.each([
+		['access_denied', 'App sign-in was canceled. Open the app again to restart sign-in.'],
+		['server_error', 'App sign-in failed. Open the app again to restart sign-in.'],
+	])('handles an OAuth %s callback without a code', async (error, message) => {
+		const { service, app, req, res, flow, admission } = setup();
+		await service.begin(app, '/', res);
+		const [name, nonce] = res.cookie.mock.calls[0];
+		req.cookies = { [name]: nonce };
+		req.query = { error, error_description: 'Authorization server details', state, iss: issuer };
+		res.cookie.mockClear();
+		res.redirect.mockClear();
+
+		await expect(service.complete(req, res, appId)).rejects.toMatchObject({
+			message,
+			httpStatusCode: 401,
+		});
+
+		expect(res.clearCookie).toHaveBeenCalledExactlyOnceWith(name, {
+			httpOnly: true,
+			secure: true,
+			sameSite: 'lax',
+			path: '/',
+		});
+		expect(res.set).toHaveBeenCalledWith({
+			'Cache-Control': 'no-store',
+			'Referrer-Policy': 'no-referrer',
+		});
+		expect(flow.complete).not.toHaveBeenCalled();
+		expect(admission.admitBearer).not.toHaveBeenCalled();
+		expect(res.cookie).not.toHaveBeenCalled();
+		expect(res.redirect).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ name: 'an invalid state', query: { state: 'invalid' } },
+		{ name: 'another issuer', query: { iss: 'https://other.example' } },
+		{ name: 'an empty OAuth error', query: { error: '' } },
+		{ name: 'a repeated OAuth error', query: { error: ['access_denied', 'server_error'] } },
+		{ name: 'no code or OAuth error', query: { error: undefined } },
+	])('rejects callbacks with $name', async ({ query }) => {
+		const { service, req, res, flow } = setup();
+		req.cookies = { [`__Host-n8n-app-flow-${state}`]: 'nonce' };
+		req.query = { error: 'access_denied', state, iss: issuer, ...query };
+
+		await expect(service.complete(req, res, appId)).rejects.toThrow('Invalid app sign-in callback');
+
+		expect(flow.complete).not.toHaveBeenCalled();
+		expect(res.cookie).not.toHaveBeenCalled();
+	});
+
+	it('requires a browser flow cookie for an OAuth error callback', async () => {
+		const { service, req, res, flow } = setup();
+		req.query = { error: 'access_denied', state, iss: issuer };
+
+		await expect(service.complete(req, res, appId)).rejects.toThrow('this browser');
+
+		expect(flow.complete).not.toHaveBeenCalled();
+		expect(res.cookie).not.toHaveBeenCalled();
 	});
 
 	it('rejects completion when the exchanged token is not admitted', async () => {

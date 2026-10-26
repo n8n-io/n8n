@@ -101,9 +101,8 @@ export class AppAuthService {
 	async complete(req: Request, res: Response, appId: string): Promise<void> {
 		res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
 		const app = await this.requireApp(req, appId);
-		const { code, state, iss } = req.query;
+		const { code, state, iss, error } = req.query;
 		if (
-			typeof code !== 'string' ||
 			typeof state !== 'string' ||
 			!/^[a-f0-9]{64}$/.test(state) ||
 			iss !== this.urls.getInstanceBaseUrl()
@@ -114,6 +113,16 @@ export class AppAuthService {
 		const nonce = this.cookie(req, name);
 		res.clearCookie(name, this.cookieOptions());
 		if (!nonce) throw new AuthError('Restart app sign-in in this browser.');
+		if (typeof error === 'string' && error) {
+			throw new AuthError(
+				error === 'access_denied'
+					? 'App sign-in was canceled. Open the app again to restart sign-in.'
+					: 'App sign-in failed. Open the app again to restart sign-in.',
+			);
+		}
+		if (typeof code !== 'string' || error !== undefined) {
+			throw new BadRequestError('Invalid app sign-in callback.');
+		}
 		const result = await this.flow.complete(code, state, {
 			method: req.method,
 			url: this.hosts.callbackUrl(app),
