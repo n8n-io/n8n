@@ -78,7 +78,6 @@ onBeforeUnmount(() => {
 			v-model:open="isPopoverVisible"
 			side="top"
 			align="center"
-			:side-offset="8"
 			width="auto"
 			:enable-scrolling="false"
 			@before-enter="onMouseEnter"
