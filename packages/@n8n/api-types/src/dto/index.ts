@@ -384,6 +384,15 @@ export {
 	LlmUsageCallPublicDto,
 } from './llm-usage/llm-usage-public.dto';
 export {
+	CreateLlmBudgetPublicDto,
+	ListLlmBudgetsQueryPublicDto,
+	LlmBudgetListPublicDto,
+	LlmBudgetPublicDto,
+	LlmBudgetStatusPublicDto,
+	llmBudgetIdParamSchema,
+	UpdateLlmBudgetPublicDto,
+} from './llm-budget/llm-budget-public.dto';
+export {
 	InsightsSummaryPublicDto,
 	InsightsSummaryQueryPublicDto,
 } from './insights/insights-summary-public.dto';

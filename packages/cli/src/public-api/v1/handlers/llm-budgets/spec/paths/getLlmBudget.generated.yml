@@ -1,0 +1,28 @@
+operationId: getLlmBudget
+tags:
+  - LLM budgets
+summary: Retrieve an LLM budget
+x-required-scope: llmBudget:read
+parameters:
+  - schema:
+      type: string
+      minLength: 1
+      maxLength: 36
+    required: true
+    name: llmBudgetId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/llmBudgetPublicDto.generated.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

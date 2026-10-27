@@ -102,6 +102,8 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
 	'insights:read',
+	'llmBudget:read',
+	'llmBudget:manage',
 	'llmUsage:read',
 	'role:manage',
 	'role:list',
