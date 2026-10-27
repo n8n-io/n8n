@@ -196,11 +196,19 @@ export class SystemAgentExecutionService {
 		user: User,
 		threadId: string,
 	): Promise<AgentExecutionThread | null> {
-		this.assertRegistered(agentId);
-		const thread = await this.threadRepository.findOwnedById(agentId, user.id, threadId);
+		const thread = await this.findOwnedThread(agentId, user, threadId);
 		if (!thread) return null;
 		await this.assertCanUse(agentId, user, thread.projectId);
 		return thread;
+	}
+
+	private async findOwnedThread(
+		agentId: string,
+		user: User,
+		threadId: string,
+	): Promise<AgentExecutionThread | null> {
+		this.assertRegistered(agentId);
+		return await this.threadRepository.findOwnedById(agentId, user.id, threadId);
 	}
 
 	// ── Threads ──────────────────────────────────────────────────────────────
@@ -280,8 +288,7 @@ export class SystemAgentExecutionService {
 
 	/** Load a thread the user owns. It checks ownership only, not the floor. */
 	async getThread(agentId: string, user: User, threadId: string): Promise<AgentExecutionThread> {
-		this.assertRegistered(agentId);
-		const thread = await this.threadRepository.findOwnedById(agentId, user.id, threadId);
+		const thread = await this.findOwnedThread(agentId, user, threadId);
 		if (!thread) throw new NotFoundError('Session not found');
 		return thread;
 	}
