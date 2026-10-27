@@ -13,8 +13,7 @@ import {
 import type { Agent } from './agent.entity';
 
 /**
- * Immutable snapshot of an agent's published state. Created on publish and
- * never mutated. The currently-active row for an agent is the one pointed to
+ * Immutable definition content with editable version metadata. The currently-active row for an agent is the one pointed to
  * by `Agent.activeVersionId`.
  */
 @Entity({ name: 'agent_history' })
@@ -44,6 +43,12 @@ export class AgentHistory extends WithTimestamps {
 	@JsonColumn({ nullable: true, default: null })
 	skills: Record<string, AgentSkill> | null;
 
+	@Column({ type: 'text', nullable: true })
+	name: string | null;
+
+	@Column({ type: 'text', nullable: true })
+	description: string | null;
+
 	/**
 	 * Runtime pointer to the publishing user. Auto-nulls when the user is
 	 * deleted (DB FK with ON DELETE SET NULL). Read by the schedule trigger
@@ -53,9 +58,9 @@ export class AgentHistory extends WithTimestamps {
 	publishedById: string | null;
 
 	/**
-	 * Denormalized human-readable attribution, frozen at publish time.
+	 * Denormalized save attribution. Legacy rows retain their original publisher.
 	 * Survives user deletion and rename — the version timeline shows the
-	 * name the publisher had at the time of publish.
+	 * name the saver had at the time of save.
 	 */
 	@Column()
 	author: string;
