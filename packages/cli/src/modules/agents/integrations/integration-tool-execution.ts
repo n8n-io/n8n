@@ -153,8 +153,9 @@ export async function executeActionToolBatch(params: {
 	messageContextStore: IntegrationMessageContextStore;
 	actionExecutor: IntegrationActionExecutor;
 	ctx: ToolContext;
+	projectId?: string;
 }): Promise<unknown> {
-	const { operations, descriptor, messageContextStore, actionExecutor, ctx } = params;
+	const { operations, descriptor, messageContextStore, actionExecutor, ctx, projectId } = params;
 	let currentMessageContext = getOptionalCurrentContext({
 		descriptor,
 		persistence: ctx.persistence,
@@ -168,6 +169,7 @@ export async function executeActionToolBatch(params: {
 			messageContextStore,
 			actionExecutor,
 			ctx,
+			projectId,
 			currentMessageContext,
 			allowSuspend: false,
 		});
@@ -188,6 +190,8 @@ export async function executeActionToolOperation(params: {
 	actionExecutor: IntegrationActionExecutor;
 	ctx: ToolContext;
 	interruptCtx?: InterruptibleToolContext;
+	/** Project of the agent. `input.fileIds` resolve in this project only. */
+	projectId?: string;
 	currentMessageContext?: IntegrationMessageContext;
 	allowSuspend: boolean;
 	/** Action the user just approved, so the gate below lets it through once. */
@@ -202,6 +206,7 @@ export async function executeActionToolOperation(params: {
 		interruptCtx,
 		allowSuspend,
 		approvedAction,
+		projectId,
 	} = params;
 	const persistence = ctx.persistence;
 	const message = parseMessage(operation.input.message);
@@ -276,6 +281,9 @@ export async function executeActionToolOperation(params: {
 		runId: ctx.runId,
 		toolCallId: ctx.toolCallId,
 		currentMessageContext,
+		...(projectId && persistence
+			? { fileScope: { projectId, threadId: persistence.threadId } }
+			: {}),
 	});
 
 	if (!result.ok) return result;

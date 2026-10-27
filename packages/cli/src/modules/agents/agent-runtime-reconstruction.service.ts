@@ -70,6 +70,7 @@ import {
 import { AgentWorkspaceService } from './agent-workspace.service';
 import type { AgentRuntimeInstrumentation } from './evaluation/agent-evaluation.contracts';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { buildFileUploadGuidance } from './integrations/integration-tool-descriptions';
 import {
 	createIntegrationActionTool,
 	createIntegrationContextTool,
@@ -1158,7 +1159,7 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	private async attachIntegrationTools(params: RuntimeDependencies): Promise<void> {
-		const { agent, agentId, integrationType, credentialIntegrations } = params;
+		const { agent, agentId, projectId, integrationType, credentialIntegrations } = params;
 		const includeN8nChat = integrationType === N8N_CHAT_INTEGRATION_TYPE;
 		if (credentialIntegrations.length === 0 && !includeN8nChat) return;
 		const integrationRegistry = Container.get(ChatIntegrationRegistry);
@@ -1177,7 +1178,9 @@ export class AgentRuntimeReconstructionService {
 
 		for (const descriptor of descriptors) {
 			agent.tool(createIntegrationContextTool({ descriptor, queryExecutor }));
-			agent.tool(createIntegrationActionTool({ descriptor, messageContextStore, actionExecutor }));
+			agent.tool(
+				createIntegrationActionTool({ descriptor, messageContextStore, actionExecutor, projectId }),
+			);
 		}
 	}
 
@@ -1197,7 +1200,12 @@ export class AgentRuntimeReconstructionService {
 					contextQueries: integrationDef?.contextQueries,
 					actions: integrationDef?.actions,
 					contextToolGuidance: integrationDef?.contextToolGuidance,
-					actionToolGuidance: integrationDef?.actionToolGuidance,
+					actionToolGuidance: [
+						...(integrationDef?.actionToolGuidance ?? []),
+						...(integrationDef?.fileUploadLimits
+							? [buildFileUploadGuidance(integrationDef.fileUploadLimits)]
+							: []),
+					],
 				};
 			},
 		);

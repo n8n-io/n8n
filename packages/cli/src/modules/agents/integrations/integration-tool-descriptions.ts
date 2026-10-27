@@ -1,3 +1,4 @@
+import type { FileUploadLimits } from './agent-chat-integration';
 import { MAX_BATCH_OPERATIONS } from './integration-tool-schema';
 import type { IntegrationToolConnectionDescriptor } from './integration-tool-types';
 
@@ -42,6 +43,11 @@ export function buildActionToolDescription(
 		'Interactive message.card components (button, select, or radio_select) send the message first, then suspend this action until the user responds.',
 		'Display-only message.card components without buttons/selects render the card and let the agent continue immediately.',
 	].join('\n\n');
+}
+
+export function buildFileUploadGuidance(limits: FileUploadLimits): string {
+	const maxMegabytes = Math.floor(limits.maxFileBytes / (1024 * 1024));
+	return `To send files, add input.fileIds to respond, send_dm or send_channel_message. Use fileIds from tool results or user uploads. message.text is sent with the files, so a respond with fileIds is not a text-only respond. Send up to ${limits.maxFiles} files of up to ${maxMegabytes} MB each in one message.`;
 }
 
 function buildGenericCardGuidance(): string[] {

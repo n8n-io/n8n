@@ -122,6 +122,13 @@ export interface AgentChatIntegrationBuilderGuidance {
 	useNodeToolWhen: string[];
 }
 
+export interface FileUploadLimits {
+	/** Maximum number of files in one message. */
+	maxFiles: number;
+	/** Maximum size of one file. */
+	maxFileBytes: number;
+}
+
 export interface PlatformAgentContext {
 	agentUserId?: string;
 }
@@ -314,6 +321,12 @@ export abstract class AgentChatIntegration {
 
 	/** Optional additional guidance appended to the generated action tool description. */
 	readonly actionToolGuidance?: string[];
+
+	/**
+	 * Upload limits of the platform for files that an agent sends with a
+	 * message. Undefined means that the platform cannot send agent files.
+	 */
+	readonly fileUploadLimits?: FileUploadLimits;
 
 	/** Read-only context queries exposed through the generated integration context tool. */
 	get contextQueries(): IntegrationContextQuery[] {

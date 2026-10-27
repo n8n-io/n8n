@@ -1,9 +1,10 @@
 import { richMessageSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import type { Adapter, SentMessage } from 'chat';
+import type { Adapter, FileUpload, SentMessage } from 'chat';
 import { z } from 'zod';
 
+import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { type AgentChatIntegration, ChatIntegrationRegistry } from './agent-chat-integration';
 import type { CallbackMetadata } from './callback-store';
 import { ChatIntegrationService, type ChatInstance } from './chat-integration.service';
@@ -13,6 +14,7 @@ import {
 	type ShortenCallback,
 } from './component-mapper';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
+import { fileIdsSchema } from './integration-tool-definitions';
 import {
 	connectionUnavailable,
 	integrationError,
@@ -34,16 +36,19 @@ import { caughtIntegrationError, channelRateLimitMessage } from './channel-rate-
 // boundary validates against and the editor-ui renderer parses with.
 const messageSchema = richMessageSchema;
 
-export const respondInputSchema = z.object({ message: messageSchema });
+export const respondInputSchema = z.object({ message: messageSchema, fileIds: fileIdsSchema });
 const sendDmInputSchema = z.object({
 	userId: z.string().min(1),
 	message: messageSchema,
+	fileIds: fileIdsSchema,
 });
 const doNotRespondInputSchema = z.object({ reason: z.string().optional() });
 const sendChannelMessageInputSchema = z.object({
 	channelId: z.string().min(1),
 	message: messageSchema,
+	fileIds: fileIdsSchema,
 });
+const fileIdsInputSchema = z.object({ fileIds: fileIdsSchema });
 const editMessageInputSchema = z
 	.object({
 		messageId: z.string().min(1),
@@ -72,6 +77,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
 		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
+		private readonly attachmentService: AgentChatAttachmentService,
 	) {}
 
 	async execute(params: IntegrationActionParams): Promise<IntegrationActionResult> {
@@ -90,6 +96,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			);
 
 		const integrationDef = this.integrationRegistry.get(params.descriptor.integration.type);
+		const files = await this.loadFiles(params, integrationDef);
+		if (!Array.isArray(files)) return files;
+
 		if (integrationDef && !integrationDef.requiresChatInstance) {
 			if (!integrationDef.executeAction) {
 				return unsupportedAction();
@@ -124,10 +133,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 		try {
 			if (params.action === 'respond') {
-				return await this.respondInCurrentThread(chat, params);
+				return await this.respondInCurrentThread(chat, params, files);
 			}
 			if (params.action === 'send_dm') {
-				return await this.sendDirectMessage(chat, params);
+				return await this.sendDirectMessage(chat, params, files);
 			}
 			if (params.action === 'edit_message') {
 				return await this.editMessageInCurrentThread(chat, params);
@@ -149,7 +158,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			}
 
 			if (params.action === 'send_channel_message') {
-				return await this.sendChannelMessage(chat, params);
+				return await this.sendChannelMessage(chat, params, files);
 			}
 
 			return unsupportedAction();
@@ -240,6 +249,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	private async respondInCurrentThread(
 		chat: ChatInstance,
 		params: IntegrationActionParams,
+		files: FileUpload[],
 	): Promise<IntegrationActionResult> {
 		const input = respondInputSchema.parse(params.input);
 		const threadId = params.currentMessageContext?.target.threadId;
@@ -254,7 +264,8 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		const isAutomaticReplyTarget =
 			params.currentMessageContext?.replyExpectation !== undefined &&
 			(replyTargetThreadId === undefined || replyTargetThreadId === threadId);
-		if (!input.message.card && isAutomaticReplyTarget) {
+		// The automatic reply carries text only, so a respond with files is not a duplicate.
+		if (!input.message.card && files.length === 0 && isAutomaticReplyTarget) {
 			return integrationError(
 				INTEGRATION_ERROR_CODES.ACTION_FAILED,
 				'Plain text is already delivered to this conversation as your normal reply — write the text directly in your reply instead of calling respond. Call respond only with message.card, or use an explicit send action for a different target.',
@@ -263,7 +274,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 		const thread = chat.thread(threadId);
 		await this.prepareSentThread(params.descriptor, thread);
-		const sent = await thread.post(await this.toPostable(params.descriptor, input.message, params));
+		const sent = await thread.post(
+			await this.toPostable(params.descriptor, input.message, params, files),
+		);
 
 		return {
 			ok: true,
@@ -278,6 +291,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	private async sendDirectMessage(
 		chat: ChatInstance,
 		params: IntegrationActionParams,
+		files: FileUpload[],
 	): Promise<IntegrationActionResult> {
 		const input = sendDmInputSchema.parse(params.input);
 		// The Chat SDK guesses the adapter from the user ID's shape and knows one
@@ -290,7 +304,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		const thread = supportsOpenDM(adapter)
 			? chat.thread(await adapter.openDM(input.userId))
 			: await chat.openDM(input.userId);
-		const sent = await thread.post(await this.toPostable(params.descriptor, input.message, params));
+		const sent = await thread.post(
+			await this.toPostable(params.descriptor, input.message, params, files),
+		);
 		// Re-anchor at the sent message ts on platforms where a top-level DM
 		// starts its own thread; otherwise keep the openDM thread.
 		const anchoredId = this.sentThreadId(params.descriptor, sent);
@@ -349,6 +365,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	private async sendChannelMessage(
 		chat: ChatInstance,
 		params: IntegrationActionParams,
+		files: FileUpload[],
 	): Promise<IntegrationActionResult> {
 		const input = sendChannelMessageInputSchema.parse(params.input);
 		const platform = params.descriptor.integration.type;
@@ -359,7 +376,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			normalizePlatformId(platform, input.channelId);
 		const channel = chat.channel(channelId);
 		const sent = await channel.post(
-			await this.toPostable(params.descriptor, input.message, params),
+			await this.toPostable(params.descriptor, input.message, params, files),
 		);
 		const threadId = this.sentThreadId(params.descriptor, sent);
 		if (threadId) {
@@ -380,9 +397,12 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		descriptor: IntegrationToolConnectionDescriptor,
 		message: MessagePayload,
 		params: { awaitResponse: boolean; runId?: string; toolCallId?: string },
+		files: FileUpload[] = [],
 	) {
 		const cardPayload = message.card;
-		if (!cardPayload) return message.text ?? '';
+		// A string post is plain text, and `raw` keeps it plain text with files.
+		if (!cardPayload)
+			return files.length ? { raw: message.text ?? '', files } : (message.text ?? '');
 
 		if (params.awaitResponse && (!params.runId || !params.toolCallId)) {
 			throw new Error('Interactive integration actions require runId and toolCallId.');
@@ -406,7 +426,79 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			descriptor.integration.type,
 		);
 
-		return { card };
+		return files.length ? { card, files } : { card };
+	}
+
+	/**
+	 * Load the files of `input.fileIds`. Check the read access of the thread
+	 * and the upload limits of the platform before a byte is loaded. Return
+	 * an error result that the model can act on.
+	 */
+	private async loadFiles(
+		params: IntegrationActionParams,
+		integrationDef: AgentChatIntegration | undefined,
+	): Promise<FileUpload[] | IntegrationActionResult> {
+		if (
+			params.action !== 'respond' &&
+			params.action !== 'send_dm' &&
+			params.action !== 'send_channel_message'
+		) {
+			return [];
+		}
+		const parsed = fileIdsInputSchema.safeParse(params.input);
+		if (!parsed.success) {
+			return integrationError(INTEGRATION_ERROR_CODES.ACTION_FAILED, parsed.error.message);
+		}
+		const fileIds = parsed.data.fileIds;
+		if (!fileIds) return [];
+
+		const platform = params.descriptor.integration.type;
+		const limits = integrationDef?.fileUploadLimits;
+		if (!limits) {
+			return integrationError(
+				INTEGRATION_ERROR_CODES.UNSUPPORTED_ACTION,
+				`The ${platform} integration can't send files. Send the message without fileIds.`,
+			);
+		}
+		if (!params.fileScope) {
+			return integrationError(
+				INTEGRATION_ERROR_CODES.NO_THREAD_CONTEXT,
+				'Files can only be sent from a conversation.',
+			);
+		}
+		if (fileIds.length > limits.maxFiles) {
+			return integrationError(
+				INTEGRATION_ERROR_CODES.FILE_UPLOAD_LIMIT_EXCEEDED,
+				`The ${platform} integration sends up to ${limits.maxFiles} files in one message. Send the other files in another message.`,
+			);
+		}
+
+		const attachments = [];
+		for (const fileId of fileIds) {
+			const attachment = await this.attachmentService.getReadable(fileId, params.fileScope);
+			if (!attachment) {
+				return integrationError(
+					INTEGRATION_ERROR_CODES.FILE_NOT_FOUND,
+					`File "${fileId}" not found in this conversation.`,
+				);
+			}
+			if (attachment.fileSizeBytes > limits.maxFileBytes) {
+				return integrationError(
+					INTEGRATION_ERROR_CODES.FILE_UPLOAD_LIMIT_EXCEEDED,
+					`File "${attachment.fileName}" is ${formatMegabytes(attachment.fileSizeBytes)}. The ${platform} integration sends files up to ${formatMegabytes(limits.maxFileBytes)}.`,
+				);
+			}
+			attachments.push(attachment);
+		}
+
+		// ponytail: loads each file into memory, the same as the inbound path. Stream the upload if large files become common.
+		return await Promise.all(
+			attachments.map(async (attachment) => ({
+				data: await this.attachmentService.getBuffer(attachment),
+				filename: attachment.fileName,
+				mimeType: attachment.mimeType,
+			})),
+		);
 	}
 
 	private getShortenCallback(
@@ -450,6 +542,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			integration?.messageThreadId?.({ id: sent.id, threadId: sent.threadId }) ?? sent.threadId
 		);
 	}
+}
+
+function formatMegabytes(bytes: number): string {
+	return `${Math.round((bytes / (1024 * 1024)) * 10) / 10} MB`;
 }
 
 function supportsMessageEditing(adapter: unknown): adapter is Pick<Adapter, 'editMessage'> {

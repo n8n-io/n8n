@@ -101,6 +101,9 @@ export class TelegramIntegration extends AgentChatIntegration {
 		'For edit_message, pass the messageId returned by a previous Telegram action or get_current_message_context. The current Telegram conversation is selected automatically.',
 	];
 
+	// The Bot API sends up to 50 MB for each file, and up to 10 files as one media group.
+	readonly fileUploadLimits = { maxFiles: 10, maxFileBytes: 50 * 1024 * 1024 };
+
 	readonly needsShortCallbackData = true;
 
 	readonly deleteActionMessageBeforeResume = false;

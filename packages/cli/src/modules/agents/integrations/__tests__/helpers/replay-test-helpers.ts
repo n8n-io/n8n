@@ -331,6 +331,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		chatIntegrationService,
 		registry,
 		channelRateLimitGuard,
+		mock<AgentChatAttachmentService>(),
 	);
 	const descriptor = getIntegrationToolConnectionDescriptors([params.integration], 'agent-1')[0];
 
