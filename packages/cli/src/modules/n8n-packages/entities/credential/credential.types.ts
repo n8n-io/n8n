@@ -80,6 +80,7 @@ export interface CredentialUpdateCandidate extends CredentialMatch {
 }
 
 export interface CredentialImportPlan extends CredentialResolution {
+	stubIds: ImportBindingMap;
 	/** Matched credentials the conflict policy can update. Empty under `keep-existing`. */
 	candidates: CredentialUpdateCandidate[];
 	/** The candidates that `overwrite` would change. */

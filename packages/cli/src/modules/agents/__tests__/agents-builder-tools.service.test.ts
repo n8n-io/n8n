@@ -31,7 +31,6 @@ import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 import type { Telemetry } from '@/telemetry';
 
@@ -42,7 +41,6 @@ import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
-import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
 import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
@@ -97,7 +95,6 @@ function makeService() {
 		versionId: 'v2',
 	}));
 	const secureRuntime = mock<AgentSecureRuntime>();
-	const agentsToolsService = mock<AgentsToolsService>();
 	const builderModelLiveLookupService = mock<BuilderModelLiveLookupService>();
 	const credentialTypes = mock<CredentialTypes>();
 	const mcpRegistryService = mock<McpRegistryService>();
@@ -107,11 +104,8 @@ function makeService() {
 	const telemetry = mock<Telemetry>();
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
-	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
 	const nodeTypes = mock<NodeTypes>();
-	agentsToolsService.getSharedTools.mockReturnValue([]);
 	credentialTypes.recognizes.mockReturnValue(true);
-	agentsToolsService.getSharedTools.mockReturnValue([]);
 	mcpRegistryService.getAll.mockResolvedValue([]);
 
 	const transport = mock<HttpTransport>();
@@ -127,7 +121,6 @@ function makeService() {
 		agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
 		agentSkillsService as unknown as AgentSkillsService,
 		secureRuntime,
-		agentsToolsService,
 		builderModelLiveLookupService,
 		mcpRegistryService,
 		mock(),
@@ -138,7 +131,6 @@ function makeService() {
 		aiService,
 		mock<AiGatewayService>(),
 		outboundHttp,
-		dynamicNodeParametersService,
 		nodeTypes,
 		mock<FreeAiCreditsService>(),
 		telemetry,
@@ -1167,7 +1159,7 @@ describe('AgentsBuilderToolsService', () => {
 				errors: [
 					expect.objectContaining({
 						path: '/tools/0/node/nodeParameters/teamId',
-						message: expect.stringContaining('agent_builder_get_resource_locator_options'),
+						message: expect.stringContaining('get_node_parameter_options'),
 					}),
 				],
 			});
@@ -1956,6 +1948,24 @@ describe('AgentsBuilderToolsService', () => {
 				getBuildCustomTool(service).handler!({ code: 'broken' }, abortableCtx),
 			).rejects.toThrow('compile failed');
 		});
+	});
+
+	// Both tools are always loaded together, so one copy of the objective template is enough.
+	it('shows the task objective template on create_tasks only', () => {
+		const { service } = makeService();
+		const { shared } = service.getTools(
+			agentId,
+			projectId,
+			credentialProvider,
+			credentialService,
+			user,
+		);
+		const schemaText = (name: string) =>
+			JSON.stringify(zodToJsonSchema(shared.find((tool) => tool.name === name)!.inputSchema));
+
+		expect(schemaText(BUILDER_TOOLS.CREATE_TASKS)).toContain('## Success criteria');
+		expect(schemaText(BUILDER_TOOLS.UPDATE_TASK)).not.toContain('## Success criteria');
+		expect(schemaText(BUILDER_TOOLS.UPDATE_TASK)).toContain(BUILDER_TOOLS.CREATE_TASKS);
 	});
 
 	describe('agent_builder_create_skills tool', () => {

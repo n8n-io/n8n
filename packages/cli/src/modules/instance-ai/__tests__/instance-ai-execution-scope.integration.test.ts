@@ -88,9 +88,12 @@ describe('Instance AI execution read scope (integration)', () => {
 			'project:read',
 			'project:list',
 		];
-		const [workflowOnlyRole, executionReaderRole] = await Promise.all([
-			createCustomRoleWithScopeSlugs(workflowScopes),
-			createCustomRoleWithScopeSlugs([...workflowScopes, 'execution:read', 'execution:list']),
+		// Each role creation refreshes the shared cache. Keep the refreshes in order.
+		const workflowOnlyRole = await createCustomRoleWithScopeSlugs(workflowScopes);
+		const executionReaderRole = await createCustomRoleWithScopeSlugs([
+			...workflowScopes,
+			'execution:read',
+			'execution:list',
 		]);
 
 		const owner = await createOwner();

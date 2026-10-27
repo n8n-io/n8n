@@ -116,6 +116,11 @@ describe('BuilderModelLiveLookupService', () => {
 
 			const result = await service.lookupAzureFoundryDeployments(user, projectId, 'cred-1');
 
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+				projectId,
+				excludePersonalRoute: true,
+				excludeResolvable: true,
+			});
 			expect(result).toEqual({
 				status: 'success',
 				policy: 'endpoint-only',
@@ -433,6 +438,7 @@ describe('BuilderModelLiveLookupService', () => {
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId,
 			excludePersonalRoute: true,
+			excludeResolvable: true,
 		});
 		// Credential fields are mapped for the provider (anthropic: apiKey + url→baseURL).
 		expect(listModelsForProvider).toHaveBeenCalledWith(

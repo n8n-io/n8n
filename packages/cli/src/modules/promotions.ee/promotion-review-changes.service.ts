@@ -4,14 +4,13 @@ import {
 	type PromotionResourceDetails,
 	type PromotionReviewChanges,
 	type PromotionReviewDetailsRequestDto,
+	type PromotionReviewOutcome,
 	type PromotionReviewWarning,
-	type SerializedWorkflow,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
-import { jsonParse } from 'n8n-workflow';
 
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
@@ -29,6 +28,7 @@ import {
 import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-merge-request.types';
 import { parsePackageManifest, toDetail, type DetailSide } from './promotion-change.service';
 import { buildPreview, indexProjects, type PreviewSide } from './promotion-preview';
+import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
 import { PromotionReviewInboxService } from './promotion-review-inbox.service';
 import { PromotionsService } from './promotions.service';
@@ -68,15 +68,33 @@ export class PromotionReviewChangesService {
 		if (!headCommitSha) {
 			throw new BadRequestError('GitLab did not report the head commit of the merge request.');
 		}
-		const commits = await this.promotionsService.readReviewCommits(target.environment.id, {
-			headRef: target.headRef,
-			headCommitSha,
-			baseline: baselineOf(mergeRequest),
-		});
+		const baseline = baselineOf(mergeRequest);
+		const outcome = outcomeOf(target.review, mergeRequest);
+		let commits;
+		try {
+			commits = await this.promotionsService.readReviewCommits(target.environment.id, {
+				headRef: target.headRef,
+				headCommitSha,
+				baseline,
+			});
+		} catch (error) {
+			// The host drops the refs of a finished review. Its outcome is still worth showing.
+			if (!(error instanceof PromotionReviewCommitsMissingError) || !outcome) throw error;
+			if (!('commitSha' in baseline)) throw error;
+			return {
+				baselineCommitSha: baseline.commitSha,
+				headCommitSha,
+				resources: [],
+				dependencies: [],
+				warnings: ['commitsUnavailable'],
+				outcome,
+			};
+		}
 		const [base, head] = [await readSide(commits.baseline), await readSide(commits.head)];
 		const commitShas = {
 			baselineCommitSha: commits.baseline.commitSha,
 			headCommitSha: commits.head.commitSha,
+			outcome,
 		};
 		const warnings: PromotionReviewWarning[] = [];
 		if (base.manifestUnreadable) warnings.push('baselineManifestUnreadable');
@@ -85,13 +103,11 @@ export class PromotionReviewChangesService {
 		if (warnings.length > 0) return { ...commitShas, resources: [], dependencies: [], warnings };
 
 		const projectIds = projectIdsOf(base.side.manifest, head.side.manifest);
-		const archiveState = await readArchiveState(commits.head, base.side, head.side, projectIds);
 		const { resources, dependencies } = buildPreview({
 			operation: null,
 			projectIds,
 			base: base.side,
 			desired: head.side,
-			isArchived: (path) => archiveState.get(path) ?? false,
 		});
 		return { ...commitShas, resources, dependencies, warnings };
 	}
@@ -186,6 +202,34 @@ function baselineOf(
 	return { commitSha, targetBranchName: mergeRequest.target_branch };
 }
 
+/**
+ * A merge through n8n reaches the host as its token user, so the n8n approver names the
+ * person and comes first. The time stays unknown when the host omits it: n8n only knows
+ * when it noticed the change, not when the host made it.
+ */
+function outcomeOf(
+	review: PromotionReview,
+	mergeRequest: GitLabMergeRequest,
+): PromotionReviewOutcome | null {
+	const { state, web_url: webUrl } = mergeRequest;
+	if (state !== 'merged' && state !== 'closed') return null;
+	const hostActor =
+		state === 'merged'
+			? (mergeRequest.merge_user ?? mergeRequest.merged_by)?.name
+			: mergeRequest.closed_by?.name;
+	const hostAt = state === 'merged' ? mergeRequest.merged_at : mergeRequest.closed_at;
+	const approver = state === 'merged' ? review.approvedBy : null;
+	const approverName = approver
+		? [approver.firstName, approver.lastName].filter(Boolean).join(' ') || approver.email
+		: null;
+	return {
+		state,
+		at: hostAt ?? null,
+		by: approverName ?? hostActor ?? null,
+		webUrl,
+	};
+}
+
 function newestBranchName({ runs }: PromotionReview): string | null {
 	const newest = runs.toSorted(
 		(a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id),
@@ -211,29 +255,6 @@ function projectIdsOf(...manifests: Array<PackageManifest | null>): string[] {
 	return [
 		...new Set(manifests.flatMap((manifest) => manifest?.projects?.map(({ id }) => id) ?? [])),
 	];
-}
-
-/** Archive state separates "archived" from "modified", so only changed workflows are read. */
-async function readArchiveState(
-	head: PackageCommit,
-	base: PreviewSide,
-	desired: PreviewSide,
-	projectIds: readonly string[],
-): Promise<Map<string, boolean>> {
-	const baseIndex = indexProjects(base, projectIds);
-	const paths = [...indexProjects(desired, projectIds).values()].flatMap((resource) => {
-		const before = baseIndex.get(resource.key);
-		return resource.type === 'workflow' && before && before.blobSha !== resource.blobSha
-			? [resource.path]
-			: [];
-	});
-	const files = await head.readFiles(paths);
-	return new Map(
-		[...files].map(([path, raw]) => [
-			path,
-			jsonParse<SerializedWorkflow>(raw, { fallbackValue: undefined })?.isArchived ?? false,
-		]),
-	);
 }
 
 function detailSide(content: string | undefined): DetailSide {

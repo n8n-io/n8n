@@ -10,8 +10,8 @@ import {
 
 export { MIN_SECRET_LENGTH };
 
-/** The token the control plane presents to the engine. */
-export const IDENTITY_TOKEN: SharedSecretTokenSpec = Object.freeze({
+/** The spec of the token the control plane presents to the engine. */
+export const IDENTITY_TOKEN_SPEC: SharedSecretTokenSpec = Object.freeze({
 	issuer: 'n8n-cp',
 	audience: 'n8n-engine-dp',
 	ttlSeconds: 60,
@@ -30,7 +30,7 @@ export class InvalidIdentityTokenError extends Error {}
 
 /** Signs an identity token the engine's {@link SharedSecretIdentityVerifier} accepts. */
 export function mintIdentityToken(secret: string, caller: AuthenticatedCaller): string {
-	return signSharedSecretToken(IDENTITY_TOKEN, secret, {
+	return signSharedSecretToken(IDENTITY_TOKEN_SPEC, secret, {
 		sub: caller.cpId,
 		tenant_id: caller.tenantId,
 	});
@@ -46,7 +46,7 @@ export class SharedSecretIdentityVerifier implements IdentityVerifier {
 
 	verify(token: string): AuthenticatedCaller {
 		const claims = verifySharedSecretToken(
-			IDENTITY_TOKEN,
+			IDENTITY_TOKEN_SPEC,
 			this.secret,
 			token,
 			identityClaimsSchema,

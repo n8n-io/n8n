@@ -52,8 +52,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `data_tables` | 11 |
 | `workspace` | 8 |
 | `workflow_builder_executions` | 8 |
-| `workflow_builder_credentials` | 6 |
-| `workflow_builder_nodes` | 7 |
+| `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential` | single-purpose |
 | `mcp-servers` | 4 |
 | `conversation-history` | 2 |
 | `workflow_builder_task_control` | 3 |
@@ -62,7 +61,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
 | `skills` | 5 |
-| `workflow_builder_build_workflow`, `workflow_builder_ask_user`, `parse-file`, `workflow_builder_search_models` | single-purpose |
+| `workflow_builder_build_workflow`, `workflow_builder_ask_user`, `parse-file`, `workflow_builder_search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
 
@@ -804,22 +803,24 @@ Cancel a running execution.
 
 ---
 
-## `workflow_builder_credentials` (6 actions)
+## Credential tools
 
-The instance PostHog flag `120_credential_descriptions` controls description
-fields and selection guidance. Only boolean `true` enables them. When the flag
-is false or missing, `list` and `get` omit `description`, including managed entries.
+Both builders use these five tools. The instance PostHog flag
+`120_credential_descriptions` controls description fields and selection
+guidance. Only boolean `true` enables them. When the flag is false or missing,
+`list_credentials` omits `description`, including managed entries.
 
 > **Security note**: The agent never handles raw credential secrets. Credential
 > creation and secret configuration is done through the n8n frontend UI (via
-> `workflow_builder_credentials(action="setup")`) or Browser Use credential capture.
+> `setup_credentials`) or Browser Use credential capture.
 
-### `workflow_builder_credentials(action="list")`
+### `list_credentials`
 
 List credentials accessible to the current user. Never exposes secrets.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `ids` | string[] | no | Read these credentials in full. The other fields do not apply |
 | `type` | string | no | Filter by credential type (e.g., `notionApi`) |
 | `name` | string | no | Case-insensitive substring filter on the credential name |
 | `limit` | number | no | Page size. Default 50 and maximum 200 |
@@ -828,23 +829,16 @@ List credentials accessible to the current user. Never exposes secrets.
 **Returns**: `{ credentials: [{ id, name, type, description }], total, hasMore, hint? }`.
 Descriptions have a 256-character preview limit, including the truncation marker.
 An unset description returns `null`. Read the descriptions when several credentials
-share one type. Use `get` to read the full text if the preview does not resolve the choice.
+share one type. Pass `ids` to read the full text if the preview does not resolve the choice.
 A Gateway credits managed entry has `id: "__AI_GATEWAY_MANAGED__"`,
 `__aiGatewayManaged: true`, and `description: null`.
 
-### `workflow_builder_credentials(action="get")`
+With `ids`, the tool **returns** `{ credentials: [{ id, name, type, description,
+nodesWithAccess? }], notFound? }`. The description contains the full stored
+text, or `null` when unset. `notFound` lists the ids that did not resolve. The
+response never contains credential secret data.
 
-Get credential metadata. Never returns decrypted secrets.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `credentialId` | string | yes | Credential ID |
-
-**Returns**: `{ id, name, type, description, nodesWithAccess? }`.
-The description contains the full stored text, or `null` when unset.
-The response never contains credential secret data.
-
-### `workflow_builder_credentials(action="delete")`
+### `delete_credential`
 
 Permanently delete a credential. **Irreversible** — HITL confirmation required.
 
@@ -855,7 +849,7 @@ Permanently delete a credential. **Irreversible** — HITL confirmation required
 
 **Returns**: `{ success: boolean }`
 
-### `workflow_builder_credentials(action="search-types")`
+### `search_credential_types`
 
 Search available credential types by name or description.
 
@@ -867,14 +861,15 @@ Search available credential types by name or description.
 **Returns**: `{ results: [...] }`. Gateway-credits-only results have
 `{ type, gatewayCredits: true }`.
 
-### `workflow_builder_credentials(action="setup")`
+### `setup_credentials`
 
 Open the credential picker UI for the user to configure credentials securely.
 The LLM never sees secrets — the user interacts with the n8n frontend directly.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `credentials` | array | yes | Requests with `{ credentialType, reason?, suggestedName?, preferNew?, setupHint? }` |
+| `credentials` | array | yes | Requests with `{ credentialType, reason?, suggestedName?, preferNew?, setupHint?, allowManaged? }` |
+| `target` | `"workflow"` \| `"agent"` | no | `agent` sets up credentials for the selected Agent and returns `{ type: { id, name } }` |
 | `workflowId` | string | no | The workflow the credentials are for, when one exists |
 | `requireUserSelection` | boolean | no | Keep the card open for an explicit choice |
 | `credentialFlow` | object | no | `{ stage: "generic" | "finalize" }` |
@@ -892,7 +887,7 @@ returned. Generic auth types (bearer/header/query/basic/etc.) stay preselected
 but always require an explicit Continue, since the type alone does not identify
 a service. When `needsBrowserSetup=true`, the orchestrator should load the
 `credential-setup-with-browser-use` skill, use Browser Use `browser_*` tools
-directly, then call `workflow_builder_credentials(action="setup")` again to select the created
+directly, then call `setup_credentials` again to select the created
 credential.
 
 **Setup panel** (`118_instance_ai_setup_overhaul: variant`): when the call belongs
@@ -908,9 +903,11 @@ build snapshot). Standalone setup, `requireUserSelection`, and an entry with
 `preferNew` keep the card: the panel cannot express "replace the bound
 credential".
 
-### `workflow_builder_credentials(action="test")`
+### `test_credential`
 
-Test whether a credential is valid and can connect to its service.
+Test whether a credential is valid and can connect to its service. The
+description tells the agent to test a listed credential only after a node call
+fails with an authentication or permission error.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -920,89 +917,74 @@ Test whether a credential is valid and can connect to its service.
 
 ---
 
-## `workflow_builder_nodes` (7 actions)
+## Node tools
 
-The full domain surface has seven actions. The orchestrator receives all seven
-actions in the current registry. The tool also defines a restricted
-`type-definition` and `explore-resources` surface, but the orchestrator registry
-does not currently select it. Specialized agents that resolve the full domain
-tool can also receive all seven actions.
+Four tools give access to the node catalog. The orchestrator always loads them.
+The workflow builder and the Agent Builder use the same tools. They replace
+the seven-action `workflow_builder_nodes` tool and the
+`agent_builder_search_nodes`, `agent_builder_get_node_types`, and
+`agent_builder_get_resource_locator_options` tools. The former names stay
+mapped in `@n8n/api-types`, so stored threads still resolve.
 
-### `workflow_builder_nodes(action="list")`
+### `search_nodes`
 
-List available node types in the n8n instance.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `query` | string | no | Filter by name or description |
-| `gatewayCreditsOnly` | boolean | no | Return only nodes supported by Gateway credits |
-
-**Returns**: `{ nodes: [{ name, displayName, description, group, version }] }`
-
-### `workflow_builder_nodes(action="describe")`
-
-Get detailed node description including properties, credentials, inputs, and outputs.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `nodeType` | string | yes | Node type (e.g., `n8n-nodes-base.httpRequest`) |
-
-**Returns**: `{ name, displayName, description, properties, credentials, inputs, outputs }`
-
-### `workflow_builder_nodes(action="type-definition")`
-
-Get TypeScript definitions for one to five node types, including exact
-parameters, credentials, display conditions, and builder annotations.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `nodeTypes` | array | yes | One to five node requests. Each entry is a node type string or `{ nodeType, version?, resource?, operation?, mode? }` |
-
-**Returns**: `{ definitions, error? }`.
-
-### `workflow_builder_nodes(action="search")`
-
-Search nodes ranked by relevance with `@builderHint` annotations. Includes
-subnode requirements and discriminator values.
+Search node types by name, curated category, AI connection type, or Gateway
+credits coverage. Name results are ranked by relevance and include
+`@builderHint` annotations, subnode requirements, and discriminator values.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `query` | string | no | Short search query |
+| `queries` | string[] | no | One to ten search queries for one batched lookup |
+| `categories` | string[] | no | One to three curated workflow technique categories |
+| `scope` | `"all" \| "agent_tool"` | no | `agent_tool` returns only executable `*Tool` nodes that an n8n Agent can use. Default `all` |
 | `connectionType` | string | no | AI sub-node connection type |
-| `limit` | number | no | Maximum results. Default 10 |
+| `gatewayCreditsOnly` | boolean | no | Return only nodes supported by Gateway credits |
+| `limit` | number | no | Maximum results for each query. Default 10 |
 
-**Returns**: `{ results, totalResults }`
+**Returns**: `{ results, totalResults }`. A category-only lookup returns
+`{ results, unknownCategories }`. A mixed lookup adds `categoryResults` and
+`unknownCategories`. A Gateway credits lookup without `connectionType` also
+returns `nodes`.
 
-### `workflow_builder_nodes(action="suggested")`
+### `get_node_types`
 
-Get curated node suggestions for common use cases.
+Get TypeScript definitions for one to ten node types, including exact
+parameters, credentials, display conditions, builder annotations, Gateway
+credits metadata, and webhook or trigger details.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `categories` | string[] | yes | One to three supported technique categories |
+| `nodeTypes` | array | yes | One to ten node requests. Each entry is a node type string or `{ nodeType, version?, resource?, operation?, mode? }` |
 
-**Returns**: `{ results, unknownCategories }`.
+**Returns**: `{ definitions }`. A definition that cannot load carries an
+`error` field.
 
-### `workflow_builder_nodes(action="explore-resources")`
+### `get_node_parameter_options`
 
-Explore a node's dynamic resources (listSearch / loadOptions). Used to discover
-discriminator values like spreadsheet IDs, calendar names, etc.
+Fetch live, credential-backed options for a dynamic node parameter
+(resource locator, `loadOptionsMethod`, or `loadOptions` routing). Examples are
+spreadsheet IDs, Slack channels, and provider models.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `nodeType` | string | yes | Node type |
-| `version` | number | yes | Node version |
-| `methodName` | string | yes | Exact annotated list-search or load-options method |
-| `methodType` | `"listSearch" | "loadOptions"` | yes | Dynamic method type |
-| `credentialType` | string | yes | Credential type key |
-| `credentialId` | string | yes | Credential to use |
+| `version` | number | yes | Node version. `nodeTypeVersion` is an alias |
+| `parameterPath` | string | no | Preferred. Parameter path to resolve, e.g. `channelId` |
+| `methodName` | string | no | Exact annotated list-search or load-options method. Use when `parameterPath` is not set |
+| `methodType` | `"listSearch" \| "loadOptions"` | no | Required with `methodName` |
+| `credentialType` | string | no | Credential type key |
+| `credentialId` | string | no | Credential to use |
+| `credentials` | object | no | Node credentials map, as an alternative to `credentialType` and `credentialId` |
+| `currentNodeParameters` | object | no | Parameters needed by dependent lookups. `nodeParameters` is an alias |
 | `filter` | string | no | Search text |
 | `paginationToken` | string | no | Token from a previous result |
-| `currentNodeParameters` | object | no | Parameters needed by dependent lookups |
 
-**Returns**: `{ results, paginationToken?, builderHint?, error? }`.
+**Returns**: for `parameterPath`, `{ ok, results, ... }` with ready-to-write
+`parameterValue` entries. For `methodName`,
+`{ results, paginationToken?, builderHint?, error? }`.
 
-### `workflow_builder_nodes(action="execute")`
+### `execute_node`
 
 Execute a single node standalone — real credentials, caller-supplied parameters
 and input items — and return its real output items. The node runs through the
@@ -1017,9 +999,8 @@ field-level errors immediately. One exception: a missing discriminator (e.g.
 `resource`/`operation`) does not block — n8n falls back to the node's defaults
 at runtime, so the node can still run and cause side effects.
 
-**Approval mirrors `workflow_builder_executions(action="run")`** — executing one node is
-equivalent to running a one-node workflow, so the same `runWorkflow` admin
-policy applies (`blocked` denies; `always_allow` skips the prompt — a
+**Approval uses the `executeNode` admin policy**, not the `runWorkflow`
+policy (`blocked` denies; `always_allow` skips the prompt — a
 standalone node request is always agent-authored, the analog of an AI-created
 workflow). Under the default `require_approval`, the tool suspends with
 severity `warning`; "Always allow" persists a session grant scoped by node
@@ -1071,7 +1052,7 @@ placeholder/new-credential forms have no stored row and cannot execute.
 Preliminary models.dev catalog search when choosing a model without a relevant
 credential or a suitable named builder-hint recommendation. The orchestrator always loads this tool.
 The `model-selection` skill tells the model when to call it. If a provider credential or Gateway credits is
-available, use `workflow_builder_nodes(action="explore-resources")` with that credential instead.
+available, use `get_node_parameter_options` with that credential instead.
 Do not use catalog search to validate an unfamiliar model or to recover from a
 failed credential lookup.
 
@@ -1346,7 +1327,7 @@ Delegates agent building to the agents-module builder chat
 turn per call. Registered in `createOrchestrationTools` only when the host
 provides `builderDelegate` (agents module active). The builder's own prompt
 and tools drive the build, including its interactive tools (`ask_questions`,
-`ask_credential`, `ask_embedding_credential`, `configure_channel`, and
+`ask_credential`, `configure_channel`, and
 `call_agent` target-tool approvals) and
 lifecycle tools (`publish_agent`, `unpublish_agent`) on the bound target agent —
 the sub-agent session no longer excludes them. Forward publish/unpublish/
@@ -1430,7 +1411,7 @@ data before it returns it to the model.
 ### `skills` *(domain tool — requires the `agents` backend module and the skills hub)*
 
 Manages skills in the skills hub without an Agent. The host wires the tool only
-when the `agents` module is active and `N8N_AGENTS_SKILLS_HUB_ENABLED` is on.
+when the `agents` and `skills` modules are active.
 The tool calls the same service as the Skills settings page, so the same
 permission checks and name rules apply. It reports telemetry with the
 `assistant` source.
@@ -1538,7 +1519,7 @@ thrown tool error — when the service is unavailable or a lookup fails.
 
 The orchestrator receives the safe native domain tools and orchestration tools
 from `src/tools/index.ts`. Its workflow tool omits raw workflow JSON reads and
-full-definition replacements. It receives the full seven-action `workflow_builder_nodes` tool.
+full-definition replacements. It receives the four node tools: `search_nodes`, `get_node_types`, `get_node_parameter_options`, and `execute_node`.
 External and local MCP tools are added after their names are checked against the
 native tools active for the current request.
 

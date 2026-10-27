@@ -527,21 +527,7 @@ export class McpApiHelper {
 		path: string,
 		options?: { headers?: Record<string, string> },
 	): Promise<McpSession> {
-		const initMessage = this.createMessage('initialize', {
-			protocolVersion: '2024-11-05',
-			capabilities: {},
-			clientInfo: { name: 'n8n-e2e-test', version: '1.0.0' },
-		});
-
-		const response = await this.trigger(path, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Accept: 'application/json, text/event-stream',
-				...options?.headers,
-			},
-			data: initMessage,
-		});
+		const response = await this.streamableHttpInitializeRaw(path, options);
 
 		const sessionId = response.headers()['mcp-session-id'];
 		if (!sessionId) {
@@ -553,6 +539,25 @@ export class McpApiHelper {
 			sessionId,
 			transport: 'streamableHttp',
 		};
+	}
+
+	/**
+	 * Sends the Streamable HTTP `initialize` request and returns the raw response,
+	 * for tests that assert on a refused request.
+	 */
+	async streamableHttpInitializeRaw(
+		path: string,
+		options?: { headers?: Record<string, string> },
+	): Promise<APIResponse> {
+		return await this.trigger(path, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'application/json, text/event-stream',
+				...options?.headers,
+			},
+			data: this.createInitializeMessage(),
+		});
 	}
 
 	/**
@@ -724,6 +729,14 @@ export class McpApiHelper {
 			method,
 			...(params !== undefined && { params }),
 		};
+	}
+
+	private createInitializeMessage(): McpJsonRpcRequest {
+		return this.createMessage('initialize', {
+			protocolVersion: '2024-11-05',
+			capabilities: {},
+			clientInfo: { name: 'n8n-e2e-test', version: '1.0.0' },
+		});
 	}
 
 	/**
@@ -944,6 +957,17 @@ export class McpApiHelper {
 			},
 			data: message,
 		});
+	}
+
+	/**
+	 * Sends `initialize` to the internal MCP service with a bearer token, or with
+	 * no credential when the token is omitted. Returns the raw response.
+	 */
+	async internalMcpInitialize(token?: string): Promise<APIResponse> {
+		const message = this.createInitializeMessage();
+		return token
+			? await this.internalMcpSendMessage(token, message)
+			: await this.internalMcpSendMessageNoAuth(message);
 	}
 
 	/**

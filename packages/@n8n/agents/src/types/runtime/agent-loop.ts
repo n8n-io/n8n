@@ -119,6 +119,8 @@ export interface RunOutputSink<TResult> {
 	/** Wait until the host has recorded preceding output before it commits input. */
 	inputBoundary?(signal: AbortSignal): Promise<void>;
 	emitInput?(message: AgentDbMessage): Promise<void>;
+	/** Emit runtime-generated context without treating it as user input. */
+	emitMessage?(message: AgentMessage): Promise<void>;
 	/** Run one LLM turn. Streaming implementations also emit text/tool chunks here. */
 	callModel(ctx: ModelCallContext): Promise<ModelTurnResult>;
 	/**

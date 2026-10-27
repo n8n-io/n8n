@@ -244,6 +244,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-interrupted',
 	'confirmation-request',
 	'instance-context',
+	'skill-update',
 	'tasks-update',
 	'setup-items',
 	'preferences-applied',
@@ -1112,6 +1113,13 @@ export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
 });
 
+/** Host event of an Assistant agent turn with the temporary workflows that the turn end archived. */
+export const ASSISTANT_WORKFLOWS_ARCHIVED_EVENT = 'workflows-archived';
+
+export const workflowsArchivedPayloadSchema = z.object({
+	workflowIds: z.array(z.string()),
+});
+
 /**
  * One entry of the setup panel checklist. Service-keyed (one row per
  * credential type, fanned out to all nodes that use it via `nodeBindings`),
@@ -1213,27 +1221,27 @@ const appliedPreferencesBase = {
 };
 
 /**
- * Two arms, because a turn either sent the block or it did not, and only the second case has a
- * run to name. `injectedThisTurn: false` means the text was unchanged, so an earlier block in
- * the same conversation still carries it and `carriedFromRunId` says which run sent it. A
- * payload that claims both is refused here as well as in the type.
+ * `injectedThisTurn: false` means the turn sent no new block. This happens when the block
+ * text was unchanged (an earlier block in the conversation still carries it), when no
+ * preferences apply, or when the preference read failed. Older stored events can also hold
+ * a `carriedFromRunId` key. The schema strips it, so they still parse.
  */
-export const aiPreferencesAppliedPayloadSchema = z.discriminatedUnion('injectedThisTurn', [
-	// `z.undefined().optional()` rather than a strict object: a present `carriedFromRunId`
-	// fails, an absent one passes, and a field a newer server adds is still ignored.
-	z.object({
-		...appliedPreferencesBase,
-		injectedThisTurn: z.literal(true),
-		carriedFromRunId: z.undefined().optional(),
-	}),
-	z.object({
-		...appliedPreferencesBase,
-		injectedThisTurn: z.literal(false),
-		carriedFromRunId: z.string().optional(),
-	}),
-]);
+export const aiPreferencesAppliedPayloadSchema = z.object({
+	...appliedPreferencesBase,
+	injectedThisTurn: z.boolean(),
+});
 
 export type AiPreferencesAppliedPayload = z.infer<typeof aiPreferencesAppliedPayloadSchema>;
+
+export const skillUpdatePayloadSchema = z.object({
+	skillId: z.string(),
+	name: z.string().optional(),
+	version: z.string().nullable(),
+	change: z.enum(['updated', 'restored', 'unavailable']),
+	/** The content delivered for this response. Older events contain metadata only. */
+	content: z.string().optional(),
+});
+export type InstanceAiSkillUpdatePayload = z.infer<typeof skillUpdatePayloadSchema>;
 
 // ---------------------------------------------------------------------------
 // Event schema (Zod discriminated union — single source of truth)
@@ -1301,6 +1309,7 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: instanceContextPayloadSchema,
 	}),
+	z.object({ type: z.literal('skill-update'), ...eventBase, payload: skillUpdatePayloadSchema }),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
 	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
 	z.object({
@@ -1717,6 +1726,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
  * - `agent_preview` — send a preview chat session to Instance AI
+ * - `self_healing_result` — continue from a saved Assistant report in the Inbox
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `onboarding` — seeded "Welcome to n8n" thread for a new user; the greeting is stored before the first user turn
  * - `preferences_empty_state` — "Suggest preferences" on the empty AI preferences page
@@ -1737,6 +1747,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'credentials_list',
 	'agent_builder_page',
 	'agent_preview',
+	'self_healing_result',
 	'assistant_page',
 	'onboarding',
 	'preferences_empty_state', // Experiment cleanup (127_preferences_empty_state)
@@ -1766,6 +1777,7 @@ export type InstanceAiThreadSourcePersisted =
  * surface that skips this fails typecheck rather than reporting untagged
  * messages. Reported on `User sent builder message` as `prefill_type`.
  *
+ * - `handoff_self_healing_report` — continue from a self-healing report in the Inbox
  * - `handoff_execution_error` — "Ask AI" on a failed execution or node error
  * - `handoff_credential_setup` — credential help from the editor, credentials
  *   list, or the workflow artifact in a live thread
@@ -1790,6 +1802,7 @@ export type InstanceAiThreadSourcePersisted =
  *   AI preferences page, put in the composer for the user to send
  */
 export const INSTANCE_AI_PREFILL_TYPES = [
+	'handoff_self_healing_report',
 	'handoff_execution_error',
 	'handoff_credential_setup',
 	'handoff_fix_with_ai',
@@ -1961,6 +1974,7 @@ export type InstanceAiTimelineEntry =
 	| { type: 'reasoning'; content: string; responseId?: string }
 	| { type: 'tool-call'; toolCallId: string; responseId?: string }
 	| { type: 'child'; agentId: string; responseId?: string }
+	| ({ type: 'skill-update'; runId: string; responseId?: string } & InstanceAiSkillUpdatePayload)
 	/** Store the context summary in the timeline so normal history replay restores it. */
 	| {
 			type: 'instance-context';

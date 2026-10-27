@@ -6,6 +6,9 @@ import { InstanceSettings } from 'n8n-core';
 
 @BackendModule({ name: 'instance-ai', instanceTypes: ['main', 'worker', 'webhook'] })
 export class InstanceAiModule implements ModuleInterface {
+	/** Whether this main registered the n8n Assistant agent on the agents runtime. */
+	private assistantAgentRegistered = false;
+
 	private isMain(): boolean {
 		return Container.get(InstanceSettings).instanceType === 'main';
 	}
@@ -76,6 +79,10 @@ export class InstanceAiModule implements ModuleInterface {
 			);
 		}
 
+		if (Container.get(InstanceAiConfig).assistantAgentEnabled) {
+			await this.registerAssistantAgent();
+		}
+
 		// Instantiating the relay registers its `user-deleted` listener, which
 		// cleans up Instance AI data owned by the deleted user.
 		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service.js');
@@ -90,6 +97,29 @@ export class InstanceAiModule implements ModuleInterface {
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller.js');
 		}
+	}
+
+	/** Run the n8n Assistant as a system agent on the Agents runtime, next to its own runtime. */
+	private async registerAssistantAgent(): Promise<void> {
+		const { ModuleRegistry } = await import('@n8n/backend-common');
+		// This module starts before the agents module, so check that agents will start, not
+		// that it is active. Registration needs only the agents tables.
+		if (!Container.get(ModuleRegistry).eligibleModules.includes('agents')) {
+			Container.get(Logger)
+				.scoped('instance-ai')
+				.warn('The Assistant agent needs the agents module, so it is not registered');
+			return;
+		}
+		const { SystemAgentRegistrationService } = await import(
+			'@/modules/agents/system-agents/system-agent-registration.service.js'
+		);
+		const { AssistantAgentProvider } = await import(
+			'./assistant-agent/assistant-agent.provider.js'
+		);
+		await Container.get(SystemAgentRegistrationService).register(
+			Container.get(AssistantAgentProvider),
+		);
+		this.assistantAgentRegistered = true;
 	}
 
 	private async reconcileInterruptedRuns(): Promise<void> {
@@ -146,6 +176,7 @@ export class InstanceAiModule implements ModuleInterface {
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 			workflowSuggestionsEnabled: globalConfig.instanceAi.workflowSuggestionsEnabled,
+			assistantAgentEnabled: this.assistantAgentRegistered,
 		};
 	}
 

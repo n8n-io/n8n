@@ -4,12 +4,12 @@ import type {
 	PromotionChangesQueryDto,
 	PromotionDirection,
 	PromotionPreview,
+	PromotionResource,
 	PromotionResourceDetail,
 	PromotionResourceDetails,
 	PromotionResourceDetailsRequestDto,
 	PromotionResourceType,
 	PromotionVariableScope,
-	SerializedWorkflow,
 } from '@n8n/api-types';
 import {
 	serializedCredentialSchema,
@@ -23,6 +23,7 @@ import {
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	CredentialsRepository,
+	SharedWorkflowRepository,
 	VariablesRepository,
 	WorkflowRepository,
 	type User,
@@ -59,11 +60,14 @@ import {
 	packageManifestSchema,
 	type ManifestEntry,
 	type PackageManifest,
+	type WorkflowManifestEntry,
 } from '@/modules/n8n-packages/spec/manifest.schema';
 import { getWorkflowConsumerIds } from '@/modules/n8n-packages/spec/requirement-consumers';
 import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
+import { projectHolding } from './branch-placement';
+import { toInstanceProject, type InstanceProject } from './cross-project-moves';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { diffPackageFiles } from './diff-package-files';
 import {
@@ -92,9 +96,9 @@ const DEPENDENCY_COLLECTIONS = {
 	ManifestEntityCollection | null
 >;
 
-const GIT_SCOPES = {
-	promote: 'gitConnection:push',
-	apply: 'gitConnection:pull',
+const PROMOTION_SCOPES = {
+	promote: 'promotions:promote',
+	apply: 'promotions:apply',
 } as const satisfies Record<PromotionDirection, Scope>;
 
 type DesiredPackage = {
@@ -103,7 +107,6 @@ type DesiredPackage = {
 };
 
 type InstancePackage = DesiredPackage & {
-	archiveState: ReadonlyMap<string, boolean>;
 	/** File content by package path, for the files that the caller asked to keep. */
 	contents: ReadonlyMap<string, string>;
 };
@@ -114,7 +117,6 @@ type ProjectComparison = {
 	branchManifest: PackageManifest | null;
 	instance: InstancePackage;
 	destinationVariables: readonly VariableKeyScope[] | null;
-	archiveState: ReadonlyMap<string, boolean>;
 	rows: PromotableResource[];
 };
 
@@ -129,9 +131,7 @@ type PackageDiff = {
 	renamedIds: Set<string>;
 	modifiedIds: Set<string>;
 	dependencyCounts: Map<string, number>;
-	desiredWorkflows: Map<string, ManifestEntry>;
-	desiredWorkflowPaths: Map<string, string>;
-	archiveCheckPaths: string[];
+	desiredWorkflows: Map<string, WorkflowManifestEntry>;
 };
 
 @Service()
@@ -140,6 +140,7 @@ export class PromotionChangeService {
 		private readonly promotionsService: PromotionsService,
 		private readonly packagesService: N8nPackagesService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly variablesRepository: VariablesRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly tagImporter: TagImporter,
@@ -203,10 +204,20 @@ export class PromotionChangeService {
 			}
 		}
 		const comparison = await this.compareProject(user, projectId, direction);
-		const { branch, instance, archiveState } = comparison;
+		const { branch, instance } = comparison;
+		// Promote compares with the branch manifest to see renames and moves. The manifest can list
+		// other projects while this project has no files on the branch yet, and the move markers
+		// still need it.
+		const promoteBase =
+			direction === 'promote' && (branch.hasManifest || branch.files.length > 0)
+				? await this.readBranchManifest(branch)
+				: null;
 		const branchSide: PreviewSide = {
 			manifest:
-				comparison.branchManifest ?? (await this.readPromoteBaseManifest(branch, projectId)),
+				comparison.branchManifest ??
+				(promoteBase && branch.files.length > 0
+					? scopeManifestToProject(promoteBase, projectId)
+					: null),
 			blobByPath: blobsByPath(branch.files),
 		};
 		const instanceSide: PreviewSide = {
@@ -226,9 +237,55 @@ export class PromotionChangeService {
 			projectIds: [projectId],
 			base: direction === 'promote' ? branchSide : instanceSide,
 			desired: direction === 'promote' ? instanceSide : branchSide,
-			isArchived: (path) => archiveState.get(path) ?? false,
 		});
-		return { ...toChanges(comparison, query), resources, dependencies };
+		return {
+			...toChanges(comparison, query),
+			resources: promoteBase
+				? await this.markCrossProjectMoves(projectId, resources, promoteBase)
+				: resources,
+			dependencies,
+		};
+	}
+
+	/**
+	 * A project promote refuses a workflow that moved between projects, so the preview names the
+	 * other project on both sides of the move:
+	 * - a deleted workflow that another project owns now on this instance moved out;
+	 * - an added workflow that the branch holds under another project moved in.
+	 */
+	private async markCrossProjectMoves(
+		projectId: string,
+		resources: PromotionResource[],
+		branchManifest: PackageManifest,
+	): Promise<PromotionResource[]> {
+		const deletedIds = resources
+			.filter(({ type, change }) => type === 'workflow' && change === 'deleted')
+			.map(({ id }) => id);
+		const owners =
+			deletedIds.length > 0
+				? await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(deletedIds)
+				: new Map<string, InstanceProject>();
+		const branchTargets = new Map(
+			(branchManifest.workflows ?? []).map(({ id, target }) => [id, target]),
+		);
+		const elsewhere = <P extends { id: string }>(project: P | undefined) =>
+			project && project.id !== projectId ? project : undefined;
+		const branchProjectOf = (id: string) => {
+			const target = branchTargets.get(id);
+			return target === undefined ? undefined : projectHolding(branchManifest.projects, target);
+		};
+
+		return resources.map((resource) => {
+			if (resource.type !== 'workflow') return resource;
+			const owner = resource.change === 'deleted' ? elsewhere(owners.get(resource.id)) : undefined;
+			if (owner) return { ...resource, movedToProject: toInstanceProject(owner) };
+			// The branch holds team projects only, so its project name is safe to show.
+			const branchProject =
+				resource.change === 'added' ? elsewhere(branchProjectOf(resource.id)) : undefined;
+			return branchProject
+				? { ...resource, movedFromProject: { id: branchProject.id, name: branchProject.name } }
+				: resource;
+		});
 	}
 
 	/**
@@ -356,34 +413,28 @@ export class PromotionChangeService {
 				? { base: branch.files, desired: instance }
 				: { base: instance.files, desired: branchDesired };
 		const diff = this.diffPackages({ projectId, direction, base, desired, destinationVariables });
-		// Archive state separates "archived" from "modified", so the branch is read only for those rows.
-		const archiveState =
-			direction === 'promote'
-				? instance.archiveState
-				: await readBranchArchiveState(branch, diff.archiveCheckPaths);
 		// A deleted row in apply is a local workflow, so its name and version come from the database.
 		const metadata = await this.workflowRepository.findByIds(
 			[...diff.changedIds].filter((id) => direction === 'apply' || diff.desiredWorkflows.has(id)),
 			{ fields: ['name', 'updatedAt', 'versionCounter'] },
 		);
-		const rows = buildPromotableResources({ ...diff, base, archiveState, metadata });
+		const rows = buildPromotableResources({ ...diff, base, metadata });
 
 		return {
 			branch,
 			branchManifest: branchDesired?.manifest ?? null,
 			instance,
 			destinationVariables,
-			archiveState,
 			rows,
 		};
 	}
 
 	/** One route serves both directions, so the per-direction scope is checked here, not on the decorator. */
 	private assertCanPreview(user: User, direction: PromotionDirection) {
-		if (!hasGlobalScope(user, GIT_SCOPES[direction])) {
-			const operation = direction === 'promote' ? 'push' : 'pull';
+		const scope = PROMOTION_SCOPES[direction];
+		if (!hasGlobalScope(user, scope)) {
 			throw new ForbiddenError(
-				`Change preview requires the promotion ${operation} permission. Ask an administrator for access.`,
+				`Change preview requires the ${scope} scope. Ask an administrator for access.`,
 			);
 		}
 	}
@@ -447,29 +498,7 @@ export class PromotionChangeService {
 			fileChangeCount: changes.length,
 			workflowIds: [...changedIds],
 		});
-		const baseWorkflowIds = new Set(
-			base.filter(({ type }) => type === 'workflow').map(({ entityId }) => entityId),
-		);
-		const desiredWorkflowPaths = new Map(
-			desired.files
-				.filter(({ type }) => type === 'workflow')
-				.map(({ entityId, path }) => [entityId, path]),
-		);
-		const archiveCheckPaths = [...changedIds].flatMap((id) => {
-			const path = desiredWorkflowPaths.get(id);
-			return path !== undefined && desiredWorkflows.has(id) && baseWorkflowIds.has(id)
-				? [path]
-				: [];
-		});
-		return {
-			changedIds,
-			renamedIds,
-			modifiedIds,
-			dependencyCounts,
-			desiredWorkflows,
-			desiredWorkflowPaths,
-			archiveCheckPaths,
-		};
+		return { changedIds, renamedIds, modifiedIds, dependencyCounts, desiredWorkflows };
 	}
 
 	private async exportInstancePackage(
@@ -478,7 +507,6 @@ export class PromotionChangeService {
 		{ keepContent }: { keepContent?: (path: string) => boolean } = {},
 	): Promise<InstancePackage> {
 		const writer = new HashingPackageWriter();
-		const archiveState = new Map<string, boolean>();
 		const contents = new Map<string, string>();
 		const { manifest } = await this.packagesService.exportPackageToWriter(
 			{
@@ -496,10 +524,6 @@ export class PromotionChangeService {
 				writeFile(path, content) {
 					writer.writeFile(path, content);
 					const packagePath = `${PACKAGE_SUBFOLDER}/${path}`;
-					if (path.endsWith(`/${PACKAGE_ENTITY_LAYOUT.workflows.fileName}`)) {
-						const workflow = jsonParse<SerializedWorkflow>(String(content));
-						archiveState.set(packagePath, workflow.isArchived);
-					}
 					if (keepContent?.(packagePath)) contents.set(packagePath, String(content));
 				},
 			},
@@ -511,34 +535,27 @@ export class PromotionChangeService {
 			})),
 			{ exportRoot: PACKAGE_SUBFOLDER, projectId },
 		);
-		return { files, manifest, archiveState, contents };
+		return { files, manifest, contents };
 	}
 
 	private async readBranchDesired(
 		branch: BranchPackage,
 		projectId: string,
 	): Promise<DesiredPackage> {
+		const manifest = await this.readBranchManifest(branch);
+		return { files: branch.files, manifest: scopeManifestToProject(manifest, projectId) };
+	}
+
+	/** The whole branch manifest, across every project of the package. */
+	private async readBranchManifest(branch: BranchPackage): Promise<PackageManifest> {
 		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
-		const manifest = parseBranchManifest(
+		const manifest = parsePackageManifest(
 			(await branch.readFiles([manifestPath])).get(manifestPath),
-			projectId,
 		);
 		if (!manifest) {
 			throw new BadRequestError('The package manifest on the branch cannot be read');
 		}
-		return { files: branch.files, manifest };
-	}
-
-	/**
-	 * Promote compares with the branch manifest to see renames and moves.
-	 * A branch without package files has no manifest yet.
-	 */
-	private async readPromoteBaseManifest(
-		branch: BranchPackage,
-		projectId: string,
-	): Promise<PackageManifest | null> {
-		if (branch.files.length === 0) return null;
-		return (await this.readBranchDesired(branch, projectId)).manifest;
+		return manifest;
 	}
 
 	/**
@@ -707,19 +724,6 @@ export function toDetail({
 	}
 }
 
-async function readBranchArchiveState(
-	branch: BranchPackage,
-	paths: readonly string[],
-): Promise<Map<string, boolean>> {
-	const files = await branch.readFiles(paths);
-	return new Map(
-		[...files].map(([path, raw]) => [
-			path,
-			parseBranchJson<SerializedWorkflow>(raw)?.isArchived ?? false,
-		]),
-	);
-}
-
 function applyQuery(
 	changes: PromotableResource[],
 	query: Pick<PromotionChangesQueryDto, 'search' | 'sort' | 'order'>,
@@ -855,8 +859,6 @@ function variableKey(name: string, scope: PromotionVariableScope['kind']): strin
 function buildPromotableResources({
 	base,
 	desiredWorkflows,
-	desiredWorkflowPaths,
-	archiveState,
 	changedIds,
 	renamedIds,
 	modifiedIds,
@@ -864,9 +866,7 @@ function buildPromotableResources({
 	dependencyCounts,
 }: {
 	base: readonly PackageFile[];
-	desiredWorkflows: ReadonlyMap<string, ManifestEntry>;
-	desiredWorkflowPaths: ReadonlyMap<string, string>;
-	archiveState: ReadonlyMap<string, boolean>;
+	desiredWorkflows: ReadonlyMap<string, WorkflowManifestEntry>;
 	changedIds: ReadonlySet<string>;
 	renamedIds: ReadonlySet<string>;
 	modifiedIds: ReadonlySet<string>;
@@ -880,11 +880,11 @@ function buildPromotableResources({
 	return [...changedIds].map((id) => {
 		const entry = desiredWorkflows.get(id);
 		const workflow = metadataById.get(id);
-		const path = desiredWorkflowPaths.get(id);
 		let status: PromotableResource['status'] = 'modified';
 		if (!entry) status = 'deleted';
 		else if (!baseWorkflowSlugs.has(id)) status = 'new';
-		else if (path !== undefined && archiveState.get(path)) status = 'archived';
+		// A package from before the flag has no value, so its archived workflows list as modified.
+		else if (entry.isArchived) status = 'archived';
 		else if (renamedIds.has(id)) {
 			status = modifiedIds.has(id) ? 'renamed-and-modified' : 'renamed';
 		}

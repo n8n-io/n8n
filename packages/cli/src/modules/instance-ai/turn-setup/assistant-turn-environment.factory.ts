@@ -238,11 +238,11 @@ export class AssistantTurnEnvironmentFactory {
 		} = params;
 		const { memory } = runtime;
 		const thread = await memory.getThread(threadId);
-		if (thread && thread.resourceId !== user.id) {
+		if (thread && thread.resourceId !== runtime.resourceId) {
 			throw new ForbiddenError('Not authorized for this thread');
 		}
 
-		const boundProjectId = await memory.getThreadProjectId(threadId);
+		const boundProjectId = await runtime.getProjectId();
 		if (!boundProjectId) {
 			throw new UnexpectedError(
 				`Instance AI thread "${threadId}" has no bound project; it must be created via POST /instance-ai/threads before a run can start`,
@@ -282,6 +282,7 @@ export class AssistantTurnEnvironmentFactory {
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
+			assistantSkillsEnabled,
 		} = gates;
 		runtime.turnState.setSetupPanelEnabled(setupPanelEnabled);
 		// Resumed segments use the gates bound to the original turn.
@@ -332,9 +333,11 @@ export class AssistantTurnEnvironmentFactory {
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
+			assistantSkillsEnabled,
 			modelId,
 			modelFetch: this.modelService.getModelFetch(),
 			allowSendingParameterValues,
+			temporaryWorkflowMarkers: runtime.temporaryWorkflowMarkers,
 		});
 
 		const browserMcpServer = browserUseEnabledGlobally
@@ -444,7 +447,10 @@ export class AssistantTurnEnvironmentFactory {
 			// The agent-building skills need the build-agent tool, which needs a builder delegate.
 			agentBuildingEnabled: context.builderDelegate !== undefined,
 		};
-		const skills = await this.skillsService.loadSkills(skillScope);
+		const skills = await this.skillsService.loadSkills(skillScope, {
+			user,
+			projectId: boundProjectId,
+		});
 		const promptMetadata = describePromptProfile(selectedPrompt, skills.source);
 		runtime.turnState.setPromptConfiguration(promptMetadata);
 		let runtimeWorkspace: Workspace | undefined;
@@ -545,6 +551,8 @@ export class AssistantTurnEnvironmentFactory {
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
 			skills: skills.source,
+			skillAvailabilityNotice: skills.availabilityNotice,
+			mapSkillEventForDisplay: skills.mapSkillEventForDisplay,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			cancelBackgroundTask: runtime.cancelBackgroundTask,
 			touchRun: runtime.touchRun,

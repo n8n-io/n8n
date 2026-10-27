@@ -186,7 +186,7 @@ export async function createInstanceAgent(
 	const hasDeferredExternalMcpTools =
 		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
-	const systemPrompt = getVersionedSystemPrompt(
+	const baseSystemPrompt = getVersionedSystemPrompt(
 		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
 			resolvePromptProfile({}).profile.systemPromptVersion,
 		{
@@ -201,6 +201,7 @@ export async function createInstanceAgent(
 			// for flagged-in users on project-bound runs.
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
 			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
+			skillManagementEnabled: Boolean(context.skillService),
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
@@ -208,6 +209,10 @@ export async function createInstanceAgent(
 					: undefined,
 		},
 	);
+
+	const systemPrompt = orchestrationContext?.skillAvailabilityNotice
+		? `${baseSystemPrompt}\n\n${orchestrationContext.skillAvailabilityNotice}`
+		: baseSystemPrompt;
 
 	setTracePromptVersion(
 		orchestrationContext?.tracing,
@@ -275,6 +280,10 @@ export async function createInstanceAgent(
 						}
 					: {}),
 			});
+		}
+
+		if (memoryConfig.titleGeneration) {
+			mem.titleGeneration({ ...memoryConfig.titleGeneration });
 		}
 
 		agent.memory(mem);

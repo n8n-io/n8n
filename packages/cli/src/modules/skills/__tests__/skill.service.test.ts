@@ -220,7 +220,11 @@ describe('SkillService', () => {
 				row.skill.projectId = projectId;
 				projectScope.getProjectIds.mockResolvedValue(allowed === null ? null : [...allowed]);
 				const result = await service.readForAssistant(context, 'skill-1');
-				expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', authorizedProjectId);
+				expect(skills.findAssistantSkill).toHaveBeenCalledWith(
+					'skill-1',
+					authorizedProjectId,
+					undefined,
+				);
 				expect(skills.findLatestSaved).not.toHaveBeenCalled();
 				if (eligible) expect(result).toMatchObject({ id: 'skill-1', projectId });
 				else expect(result).toBeNull();
@@ -231,7 +235,7 @@ describe('SkillService', () => {
 			row.skill.projectId = 'project-1';
 			projectScope.getProjectIds.mockResolvedValue(null);
 			expect(await service.readForAssistant({ user: context.user }, 'skill-1')).toBeNull();
-			expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', null);
+			expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', null, undefined);
 		});
 
 		it('reads enabled content with its saved version', async () => {
@@ -248,6 +252,33 @@ describe('SkillService', () => {
 			});
 		});
 
+		it.each(['disabled', 'agent', 'other-project', 'permission', 'missing'])(
+			'refuses a reference that is %s',
+			async (reason) => {
+				row.skill.projectId = 'project-1';
+				if (reason === 'disabled') row.skill.availableToAssistant = false;
+				if (reason === 'agent') row.skill.agentId = 'agent-1';
+				if (reason === 'other-project') row.skill.projectId = 'project-2';
+				if (reason === 'permission') vi.mocked(userHasScopes).mockResolvedValue(false);
+				skills.findAssistantSkillFile.mockResolvedValue(
+					reason === 'missing'
+						? null
+						: {
+								skill: row.skill,
+								file: mock<SkillFile>({ path: 'references/guide.md', content: 'Guide.' }),
+							},
+				);
+				expect(
+					await service.readFileForAssistant(
+						context,
+						'skill-1',
+						'version-1',
+						'references/guide.md',
+					),
+				).toBeNull();
+			},
+		);
+
 		it('allows instance skills without project access', async () => {
 			projectScope.getProjectIds.mockResolvedValue([]);
 			expect(await service.readForAssistant(context, 'skill-1')).not.toBeNull();
@@ -255,6 +286,81 @@ describe('SkillService', () => {
 
 		it('returns null for a missing skill', async () => {
 			expect(await service.readForAssistant(context, 'missing')).toBeNull();
+		});
+	});
+
+	describe('MCP reads', () => {
+		const instanceSkill = versionRow(skillRow('skill-1'), 2, {}, [
+			{ path: 'references/style.md', content: 'Be brief.' },
+		]);
+		const projectSkill = versionRow(skillRow('skill-2', { projectId: 'project-1' }), 1);
+		const agentSkill = versionRow(skillRow('skill-3', { agentId: 'agent-1' }), 1);
+		const rows = [instanceSkill, projectSkill, agentSkill];
+
+		beforeEach(() => {
+			skills.findLatestSaved.mockImplementation(
+				async (ids) =>
+					new Map(
+						rows.filter((row) => ids.includes(row.skill.id)).map((row) => [row.skill.id, row]),
+					),
+			);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+		});
+
+		it('lists one page of the project and instance skills the user can list, without agent skills', async () => {
+			projectScope.getProjectIds.mockResolvedValue(['project-1']);
+			skills.findVisiblePage.mockResolvedValue({
+				skills: [instanceSkill.skill, projectSkill.skill],
+				count: 7,
+			});
+
+			const result = await service.listForMcp(user, 100, 50);
+
+			expect(skills.findVisiblePage).toHaveBeenCalledWith(
+				{ projectIds: ['project-1'], agentIds: [] },
+				{ skip: 100, take: 50 },
+			);
+			expect(result).toEqual({
+				count: 7,
+				skills: [
+					{ id: 'skill-1', projectId: null, skill: toAgentSkill(instanceSkill) },
+					{ id: 'skill-2', projectId: 'project-1', skill: toAgentSkill(projectSkill) },
+				],
+			});
+		});
+
+		it('lists the skills of every project for a user with a global scope', async () => {
+			projectScope.getProjectIds.mockResolvedValue(null);
+			skills.findVisiblePage.mockResolvedValue({ skills: [], count: 0 });
+
+			await service.listForMcp(user, 0, 100);
+
+			expect(skills.findVisiblePage).toHaveBeenCalledWith(
+				{ projectIds: 'all', agentIds: [] },
+				{ skip: 0, take: 100 },
+			);
+		});
+
+		it('reads the latest version of a readable skill', async () => {
+			expect(await service.readForMcp(user, 'skill-2')).toEqual({
+				id: 'skill-2',
+				projectId: 'project-1',
+				skill: toAgentSkill(projectSkill),
+			});
+		});
+
+		it('does not read an agent skill', async () => {
+			expect(await service.readForMcp(user, 'skill-3')).toBeNull();
+		});
+
+		it('does not read a skill the user cannot read', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			expect(await service.readForMcp(user, 'skill-2')).toBeNull();
+		});
+
+		it('does not read a missing skill', async () => {
+			expect(await service.readForMcp(user, 'missing')).toBeNull();
 		});
 	});
 
@@ -593,7 +699,7 @@ describe('SkillService', () => {
 
 			const result = await service.save('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
 
-			expect(skillAgents.markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX);
+			expect(skillAgents.markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX, user.id);
 			expect(result.followingAgentIds).toEqual(['agent-1', 'agent-2']);
 		});
 
@@ -875,30 +981,39 @@ describe('SkillService', () => {
 		});
 	});
 
-	describe('snapshotForPublish', () => {
-		it('locks the skills and resolves the version each ref runs', async () => {
-			const a = skillRow('skill_a');
-			const b = skillRow('skill_b');
-			const pinnedB = versionRow(b, 1);
-			skills.findLatestSaved.mockResolvedValue(
+	describe('snapshotForSave', () => {
+		it('resolves each saved version without taking the publication lock', async () => {
+			skills.findLatestVersionIds.mockResolvedValue(
 				new Map([
-					['skill_a', versionRow(a, 3)],
-					['skill_b', versionRow(b, 2)],
+					['skill_a', 'skill_a-v3'],
+					['skill_b', 'skill_b-v2'],
+					['skill_c', 'skill_c-v2'],
 				]),
 			);
-			skills.findVersionsByIds.mockResolvedValue(new Map([[pinnedB.version.id, pinnedB]]));
+			// A pin of another skill falls back to the latest version, as at runtime.
+			skills.findSkillIdsOfVersions.mockResolvedValue(
+				new Map([
+					['skill_b-v1', 'skill_b'],
+					['skill_a-v1', 'skill_a'],
+				]),
+			);
 
-			const snapshot = await service.snapshotForPublish(
-				[{ id: 'skill_a' }, { id: 'skill_b', versionId: pinnedB.version.id }],
+			const versionByRef = await service.snapshotForSave(
+				[
+					{ id: 'skill_a' },
+					{ id: 'skill_b', versionId: 'skill_b-v1' },
+					{ id: 'skill_c', versionId: 'skill_a-v1' },
+				],
 				TX_CTX,
 			);
 
-			expect(skills.lockForPublish).toHaveBeenCalledWith(['skill_a', 'skill_b'], TX_CTX);
-			expect(Object.keys(snapshot.skills)).toEqual(['skill_a', 'skill_b']);
-			expect([...snapshot.versionByRef]).toEqual([
+			expect(skills.lockForPublish).not.toHaveBeenCalled();
+			expect([...versionByRef]).toEqual([
 				['skill_a', 'skill_a-v3'],
 				['skill_b', 'skill_b-v1'],
+				['skill_c', 'skill_c-v2'],
 			]);
+			expect(skills.findLatestSaved).not.toHaveBeenCalled();
 			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
 		});
 	});
