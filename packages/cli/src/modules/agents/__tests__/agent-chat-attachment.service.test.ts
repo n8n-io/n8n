@@ -198,7 +198,7 @@ describe('AgentChatAttachmentService', () => {
 		} as AgentChatAttachment;
 
 		it('grants files that the parent can read', async () => {
-			repository.findByIdInThread.mockResolvedValue(file);
+			repository.findByIdsInThread.mockResolvedValue([file]);
 
 			await service.grantToSubAgent(['att-1'], {
 				projectId: 'project-1',
@@ -206,11 +206,39 @@ describe('AgentChatAttachmentService', () => {
 				childThreadId: 'child',
 			});
 
-			expect(repository.findByIdInThread).toHaveBeenCalledWith('att-1', {
+			expect(repository.findByIdsInThread).toHaveBeenCalledWith(['att-1'], {
 				projectId: 'project-1',
 				threadId: 'root',
 			});
+			expect(grantRepository.findGrantedIds).not.toHaveBeenCalled();
 			expect(grantRepository.grant).toHaveBeenCalledWith(['att-1'], 'child');
+		});
+
+		it('lets a sub-agent pass on files that it got granted', async () => {
+			repository.findByIdsInThread.mockResolvedValue([file]);
+			grantRepository.findGrantedIds.mockResolvedValue(new Set(['att-1']));
+
+			await service.grantToSubAgent(['att-1'], {
+				projectId: 'project-1',
+				parentThreadId: 'child',
+				childThreadId: 'grandchild',
+			});
+
+			expect(grantRepository.findGrantedIds).toHaveBeenCalledWith(['att-1'], 'child');
+			expect(grantRepository.grant).toHaveBeenCalledWith(['att-1'], 'grandchild');
+		});
+
+		it('rejects a file outside the tree', async () => {
+			repository.findByIdsInThread.mockResolvedValue([]);
+
+			await expect(
+				service.grantToSubAgent(['att-1'], {
+					projectId: 'project-1',
+					parentThreadId: 'root',
+					childThreadId: 'child',
+				}),
+			).rejects.toThrow('File "att-1" not found in this conversation');
+			expect(grantRepository.grant).not.toHaveBeenCalled();
 		});
 
 		it('rejects a thread that is not a sub-agent of the parent', async () => {
@@ -225,8 +253,8 @@ describe('AgentChatAttachmentService', () => {
 		});
 
 		it('rejects a file that the parent cannot read', async () => {
-			repository.findByIdInThread.mockResolvedValue(file);
-			grantRepository.isGranted.mockResolvedValue(false);
+			repository.findByIdsInThread.mockResolvedValue([file]);
+			grantRepository.findGrantedIds.mockResolvedValue(new Set());
 
 			await expect(
 				service.grantToSubAgent(['att-1'], {
@@ -235,7 +263,7 @@ describe('AgentChatAttachmentService', () => {
 					childThreadId: 'grandchild',
 				}),
 			).rejects.toThrow('File "att-1" not found in this conversation');
-			expect(grantRepository.isGranted).toHaveBeenCalledWith('att-1', 'child');
+			expect(grantRepository.findGrantedIds).toHaveBeenCalledWith(['att-1'], 'child');
 			expect(grantRepository.grant).not.toHaveBeenCalled();
 		});
 	});

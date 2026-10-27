@@ -1,6 +1,6 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
 import { AgentFileGrant } from '../entities/agent-file-grant.entity';
 
@@ -41,5 +41,19 @@ export class AgentFileGrantRepository {
 		ctx: OperationContext = {},
 	): Promise<boolean> {
 		return await this.table.managerFor(ctx).existsBy(AgentFileGrant, { attachmentId, threadId });
+	}
+
+	/** The ids among `attachmentIds` that are granted to the thread. */
+	async findGrantedIds(
+		attachmentIds: string[],
+		threadId: string,
+		ctx: OperationContext = {},
+	): Promise<Set<string>> {
+		if (attachmentIds.length === 0) return new Set();
+		const grants = await this.table.managerFor(ctx).findBy(AgentFileGrant, {
+			attachmentId: In(attachmentIds),
+			threadId,
+		});
+		return new Set(grants.map((grant) => grant.attachmentId));
 	}
 }

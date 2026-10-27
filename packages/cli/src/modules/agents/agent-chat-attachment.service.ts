@@ -151,12 +151,21 @@ export class AgentChatAttachmentService {
 			throw new UserError('Files can only be granted to a sub-agent of this conversation');
 		}
 		const rootId = chain[chain.length - 1].id;
+		const files = await this.repository.findByIdsInThread(attachmentIds, {
+			projectId: scope.projectId,
+			threadId: rootId,
+		});
+		const creatorById = new Map(files.map((file) => [file.id, file.createdByThreadId]));
+		const granted =
+			scope.parentThreadId === rootId
+				? new Set<string>()
+				: await this.grantRepository.findGrantedIds(attachmentIds, scope.parentThreadId);
 		for (const attachmentId of attachmentIds) {
-			const readable = await this.findReadable(
-				attachmentId,
-				{ projectId: scope.projectId, threadId: scope.parentThreadId },
-				rootId,
-			);
+			const readable =
+				creatorById.has(attachmentId) &&
+				(scope.parentThreadId === rootId ||
+					creatorById.get(attachmentId) === scope.parentThreadId ||
+					granted.has(attachmentId));
 			if (!readable) throw new UserError(`File "${attachmentId}" not found in this conversation`);
 		}
 		await this.grantRepository.grant(attachmentIds, scope.childThreadId);
