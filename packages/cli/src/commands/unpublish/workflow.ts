@@ -1,9 +1,9 @@
-import { WorkflowRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
 import { BaseCommand } from '../base-command';
+import { CliWorkflowPublisher } from '../cli-workflow-publisher';
 
 const flagsSchema = z.object({
 	all: z.boolean().describe('Unpublish all workflows').optional(),
@@ -17,6 +17,16 @@ const flagsSchema = z.object({
 	flagsSchema,
 })
 export class UnpublishWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
+	// Unpublishing evaluates webhook parameters, which may be expressions
+	override needsExpressionEngine = true;
+
+	async init() {
+		await super.init();
+		await this.initLicense();
+		await this.initPolicyEnforcement();
+		await this.initExternalHooks();
+	}
+
 	async run() {
 		const { flags } = this;
 
@@ -30,18 +40,18 @@ export class UnpublishWorkflowCommand extends BaseCommand<z.infer<typeof flagsSc
 			return;
 		}
 
+		const cliWorkflowPublisher = Container.get(CliWorkflowPublisher);
 		if (flags.id) {
 			this.logger.info(`Unpublishing workflow with ID: ${flags.id}`);
-			await Container.get(WorkflowRepository).updateActiveState(flags.id, false);
+			await cliWorkflowPublisher.unpublish(flags.id);
 			this.logger.info('Workflow unpublished successfully');
 		} else {
 			this.logger.info('Unpublishing all workflows');
-			await Container.get(WorkflowRepository).unpublishAll();
+			await cliWorkflowPublisher.unpublishAll();
 			this.logger.info('All workflows unpublished successfully');
 		}
 
-		this.logger.info('Note: Changes will not take effect if n8n is running.');
-		this.logger.info('Please restart n8n for changes to take effect if n8n is currently running.');
+		this.logger.info(cliWorkflowPublisher.whenChangeApplies());
 	}
 
 	async catch(error: Error) {

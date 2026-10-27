@@ -1,9 +1,9 @@
-import { WorkflowRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
 import { BaseCommand } from '../base-command';
+import { CliWorkflowPublisher } from '../cli-workflow-publisher';
 
 const flagsSchema = z.object({
 	active: z.string().describe('Active state the workflow/s should be set to').optional(),
@@ -18,8 +18,18 @@ const flagsSchema = z.object({
 	flagsSchema,
 })
 export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
+	// Publishing and unpublishing evaluate webhook parameters, which may be expressions
+	override needsExpressionEngine = true;
+
+	async init() {
+		await super.init();
+		await this.initLicense();
+		await this.initPolicyEnforcement();
+		await this.initExternalHooks();
+	}
+
 	async run() {
-		const workflowRepository = Container.get(WorkflowRepository);
+		const cliWorkflowPublisher = Container.get(CliWorkflowPublisher);
 		const { flags } = this;
 
 		this.logger.warn('⚠️  WARNING: The "update:workflow" command is deprecated.\n');
@@ -54,16 +64,13 @@ export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchem
 			this.logger.info(`Publishing workflow ${flags.id} with current version`);
 			this.logger.warn(`Please use: publish:workflow --id=${flags.id}\n`);
 			try {
-				await workflowRepository.publishVersion(flags.id);
+				await cliWorkflowPublisher.publish(flags.id);
 			} catch (error) {
 				this.logger.error('Failed to publish workflow');
 				throw error;
 			}
 
-			this.logger.info('Note: Changes will not take effect if n8n is running.');
-			this.logger.info(
-				'Please restart n8n for changes to take effect if n8n is currently running.',
-			);
+			this.logger.info(cliWorkflowPublisher.whenChangeApplies());
 			return;
 		}
 
@@ -85,14 +92,13 @@ export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchem
 
 		if (flags.id) {
 			this.logger.info(`${action} workflow with ID: ${flags.id}`);
-			await workflowRepository.updateActiveState(flags.id, newState);
+			await cliWorkflowPublisher.unpublish(flags.id);
 		} else {
 			this.logger.info(`${action} all workflows`);
-			await workflowRepository.unpublishAll();
+			await cliWorkflowPublisher.unpublishAll();
 		}
 
-		this.logger.info('Note: Changes will not take effect if n8n is running.');
-		this.logger.info('Please restart n8n for changes to take effect if n8n is currently running.');
+		this.logger.info(cliWorkflowPublisher.whenChangeApplies());
 	}
 
 	async catch(error: Error) {

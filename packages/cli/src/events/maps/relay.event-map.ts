@@ -53,7 +53,8 @@ export type WorkflowActionSource =
 	| 'n8n-mcp'
 	| 'n8n-ai'
 	| 'import'
-	| 'review-approval';
+	| 'review-approval'
+	| 'cli';
 
 export type { UserLike };
 

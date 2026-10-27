@@ -11,7 +11,6 @@ import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { FolderRepository } from '../folder.repository';
 import { SharedWorkflowRepository } from '../shared-workflow.repository';
-import { WorkflowHistoryRepository } from '../workflow-history.repository';
 import { WorkflowRepository } from '../workflow.repository';
 
 // Plain objects, not mocks: the subject is a hash of `JSON.stringify(nodes)`, and a mock
@@ -35,7 +34,6 @@ describe('WorkflowRepository.upsertImportedContent', () => {
 		mockInstance(GlobalConfig, { database: { type: 'postgresdb' } }),
 		mockInstance(FolderRepository),
 		mockInstance(SharedWorkflowRepository),
-		mockInstance(WorkflowHistoryRepository),
 		mock<TransactionRunner>(),
 	);
 

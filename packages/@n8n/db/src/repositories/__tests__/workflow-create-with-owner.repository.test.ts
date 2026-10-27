@@ -8,7 +8,6 @@ import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { FolderRepository } from '../folder.repository';
 import { SharedWorkflowRepository } from '../shared-workflow.repository';
-import { WorkflowHistoryRepository } from '../workflow-history.repository';
 import { WorkflowRepository } from '../workflow.repository';
 
 describe('WorkflowRepository.createWorkflowWithOwner', () => {
@@ -19,7 +18,6 @@ describe('WorkflowRepository.createWorkflowWithOwner', () => {
 		mockInstance(GlobalConfig, { database: { type: 'postgresdb' } }),
 		mockInstance(FolderRepository),
 		mockInstance(SharedWorkflowRepository),
-		mockInstance(WorkflowHistoryRepository),
 		transactionRunner,
 	);
 
