@@ -3114,19 +3114,27 @@ export class WorkflowExecute {
 
 						const sourceData = executionData.source[NodeConnectionTypes.Main][pairedItemInputIndex];
 
-						const constPairedItem = dataProxy.$getPairedItem(
-							sourceData!.previousNode,
-							sourceData,
-							pairedItemData,
-						);
+						let pairedInputItem: INodeExecutionData | null = null;
+						try {
+							pairedInputItem = dataProxy.$getPairedItem(
+								sourceData!.previousNode,
+								sourceData,
+								pairedItemData,
+							);
+						} catch (error) {
+							Logger.debug('Could not resolve the input item of an error item', {
+								node: executionData.node.name,
+								error: error instanceof Error ? error.message : String(error),
+							});
+						}
 
-						if (constPairedItem === null) {
+						if (!pairedInputItem) {
 							errorItems.push(item);
 						} else {
 							errorItems.push({
 								...item,
 								json: {
-									...constPairedItem.json,
+									...pairedInputItem.json,
 									...item.json,
 								},
 							});
