@@ -82,6 +82,18 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		});
 	}
 
+	async findAccessibleById(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<AgentExecutionThread | null> {
+		return await this.findOneBy([
+			{ id: threadId, projectId, agentId, accessScope: 'project' },
+			{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
+		]);
+	}
+
 	/**
 	 * Find an existing thread or create a new one.
 	 * Assign a display number on creation. Concurrent sessions can share a number.

@@ -8,9 +8,9 @@ import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
-import { threadBelongsTo } from './utils/agent-thread-access';
 
 @Service()
 export class AgentSessionStopService {
@@ -20,6 +20,7 @@ export class AgentSessionStopService {
 		private readonly publisher: Publisher,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly systemAgents: SystemAgentRegistry,
+		private readonly chatExecutionService: AgentChatExecutionService,
 	) {}
 
 	async stopSession(
@@ -28,12 +29,13 @@ export class AgentSessionStopService {
 		threadId: string,
 		userId: string,
 	): Promise<AgentSessionStopResponse> {
-		const thread = await this.executionService.findThreadById(threadId);
-		if (
-			!thread ||
-			this.systemAgents.has(agentId) ||
-			!threadBelongsTo(thread, projectId, agentId, userId)
-		) {
+		const thread = await this.executionService.findAccessibleThreadById(
+			threadId,
+			projectId,
+			agentId,
+			userId,
+		);
+		if (!thread || this.systemAgents.has(agentId)) {
 			throw new NotFoundError('Session not found');
 		}
 
@@ -41,18 +43,27 @@ export class AgentSessionStopService {
 		const executionIds = running.map(({ id }) => id);
 		if (executionIds.length === 0) return { cancelRequested: false };
 
-		this.onStopSession({ executionIds });
-		if (this.executionsConfig.mode === 'queue') {
-			await this.publisher.publishCommand({
-				command: 'stop-agent-session',
-				payload: { executionIds },
-			});
+		const payload = { agentId, threadId, executionIds };
+		try {
+			await this.onStopSession(payload);
+		} finally {
+			if (this.executionsConfig.mode === 'queue') {
+				await this.publisher.publishCommand({
+					command: 'stop-agent-session',
+					payload,
+				});
+			}
 		}
 		return { cancelRequested: true };
 	}
 
 	@OnPubSubEvent('stop-agent-session')
-	onStopSession({ executionIds }: PubSubCommandMap['stop-agent-session']): void {
+	async onStopSession({
+		agentId,
+		threadId,
+		executionIds,
+	}: PubSubCommandMap['stop-agent-session']): Promise<void> {
 		for (const executionId of executionIds) this.executionService.stopExecution(executionId);
+		await this.chatExecutionService.cancelSessionWork(agentId, threadId, executionIds);
 	}
 }

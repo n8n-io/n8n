@@ -988,6 +988,26 @@ describe('result consumption updates', () => {
 });
 
 describe('cancel', () => {
+	it('cancels active child jobs for a session across its resource IDs', async () => {
+		const { service, jobRepository } = setup();
+		const jobs = [
+			makeJob({ id: 'running', parentResourceId: 'integration:thread-1' }),
+			makeJob({ id: 'suspended', status: 'suspended', parentResourceId: 'draft-chat:user-1' }),
+			makeJob({ id: 'other-agent', parentAgentId: 'other-agent' }),
+			makeJob({ id: 'paused', status: 'paused' }),
+		];
+		jobRepository.findByParentThread.mockImplementation(async (_threadId, ids) =>
+			ids ? jobs.filter(({ id }) => ids.includes(id)) : jobs,
+		);
+		jobRepository.settleIfActive.mockResolvedValue(true);
+
+		await service.cancelForSession('agent-1', 'thread-1');
+
+		expect(jobRepository.settleIfActive.mock.calls.map(([id]) => id)).toEqual([
+			'running',
+			'suspended',
+		]);
+	});
 	it.each([false, true])(
 		'retains paused tasks when the parent reply is cancelled (stale snapshot: %s)',
 		async (staleSnapshot) => {

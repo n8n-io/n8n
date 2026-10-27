@@ -162,6 +162,8 @@ export type PubSubCommandMap = {
 	'cancel-agent-chat-foreground': PubSubCommandMap['cancel-agent-chat-execution'];
 
 	'stop-agent-session': {
+		agentId: string;
+		threadId: string;
 		executionIds: string[];
 	};
 

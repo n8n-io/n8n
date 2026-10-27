@@ -165,16 +165,19 @@ export class AgentTurnExecutionService {
 
 			const stream = await this.admitTurn(preparedTurn, config, recorder, state, chatControl);
 			yield* this.streamTurn(stream, preparedTurn, config, recorder, state);
-			if (!state.receivedFinish && state.executionId && (await this.isStoppedTurn(turn, config))) {
+			if (
+				!state.receivedFinish &&
+				state.executionError === undefined &&
+				state.executionId &&
+				(await this.isStoppedTurn(turn, config))
+			) {
 				const finish: StreamChunk = { type: 'finish', finishReason: 'cancelled' };
 				recorder.record(finish);
 				yield finish;
 			}
 		} catch (error) {
-			if (
-				(await this.isStoppedTurn(turn, config)) &&
-				!(error instanceof AgentExecutionRecordingError)
-			) {
+			const { isAbortError } = await import('@n8n/agents');
+			if ((await this.isStoppedTurn(turn, config)) && isAbortError(error)) {
 				if (state.executionId && !state.receivedFinish) {
 					const finish: StreamChunk = { type: 'finish', finishReason: 'cancelled' };
 					recorder.record(finish);
@@ -294,8 +297,12 @@ export class AgentTurnExecutionService {
 				(chunk.type === 'error' || chunk.type === 'finish') &&
 				(await this.isStoppedTurn(turn, config))
 			) {
-				if (chunk.type === 'error') continue;
-				chunk = { ...chunk, finishReason: 'cancelled' };
+				if (chunk.type === 'error') {
+					const { isAbortError } = await import('@n8n/agents');
+					if (isAbortError(chunk.error)) continue;
+				} else if (state.executionError === undefined) {
+					chunk = { ...chunk, finishReason: 'cancelled' };
+				}
 			}
 
 			if (chunk.type === 'error') {
@@ -336,8 +343,16 @@ export class AgentTurnExecutionService {
 		state: TurnExecutionState,
 		chatControl?: ChatExecutionControl,
 	): Promise<void> {
-		const finalize = async () =>
+		const finalize = async () => {
 			await this.finalizeTurn(turn, config, recorder, executionId, state);
+			// A checkpoint can finish saving after Stop first checks the session.
+			if (turn.options.abortSignal?.reason === SESSION_STOPPED_REASON)
+				await this.chatExecutionService.cancelSessionWork(
+					config.context.agentId,
+					config.context.threadId,
+					[executionId],
+				);
+		};
 		if (chatControl) {
 			await this.chatExecutionService.settle(executionId, finalize, state.suspendedRunId);
 		} else {
@@ -352,7 +367,7 @@ export class AgentTurnExecutionService {
 		executionId: string,
 		state: TurnExecutionState,
 	): Promise<void> {
-		const cancelled = this.isCancelled(turn, recorder, state);
+		const cancelled = await this.isCancelled(turn, recorder, state);
 		await this.runBeforeFinalize(config, recorder, executionId, state, cancelled);
 		const record = recorder.getMessageRecord();
 		let hitlStatus: RecordMessageParams['hitlStatus'];
@@ -391,11 +406,15 @@ export class AgentTurnExecutionService {
 		});
 	}
 
-	private isCancelled(
+	private async isCancelled(
 		turn: AgentTurnRequest,
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
-	): boolean {
+	): Promise<boolean> {
+		if (state.executionError !== undefined) {
+			const { isAbortError } = await import('@n8n/agents');
+			if (!isAbortError(state.executionError)) return false;
+		}
 		return (
 			turn.options.abortSignal?.aborted === true ||
 			(!state.receivedFinish && !recorder.suspended && recorder.getMessageRecord().error === null)

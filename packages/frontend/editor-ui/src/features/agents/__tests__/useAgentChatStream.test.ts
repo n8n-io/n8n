@@ -305,6 +305,51 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		},
 	);
 
+	it.each(['chat', 'n8n-chat'] as const)(
+		'closes suspended cards when a %s execution is stopped elsewhere',
+		async (channel) => {
+			const stream = makeControllableSseResponse(
+				[
+					{ type: 'execution-started', executionId: 'exec-stopped', sessionId: 'thread-1' },
+					{ type: 'tool-call', toolCallId: 'tc-approval', toolName: 'calculator', input: {} },
+					{
+						type: 'tool-call-suspended',
+						payload: {
+							toolCallId: 'tc-approval',
+							runId: 'run-approval',
+							toolName: 'calculator',
+							input: { type: 'approval', toolName: 'calculator', args: {} },
+						},
+					},
+				],
+				null,
+			);
+			globalThis.fetch = vi.fn().mockResolvedValue(stream.response);
+			const hook = buildHook(undefined, { channel: ref(channel) });
+			const sending = hook.sendMessage('Start');
+			await flushPromises();
+			const assistant = hook.messages.value[1];
+			expect(assistant.status).toBe('awaitingUser');
+			expect(assistant.interactive?.resolvedAt).toBeUndefined();
+
+			stream.close([
+				{ type: 'finish', finishReason: 'cancelled' },
+				{ type: 'done', executionId: 'exec-stopped' },
+			]);
+			await sending;
+			await flushPromises();
+
+			expect(assistant.toolCalls?.[0]).toMatchObject({ state: 'cancelled', canceled: true });
+			expect(assistant.interactive).toMatchObject({
+				cancelled: true,
+				resolvedAt: expect.any(Number),
+			});
+			expect(assistant.status).toBe('success');
+			expect(hook.messages.value.at(-1)?.content).toBe('agentSessions.stopped');
+			expect(cancelAgentChatExecutionMock).not.toHaveBeenCalled();
+		},
+	);
+
 	it('reports usage at turn boundaries and refreshes it at completion', async () => {
 		const onUsageUpdated = vi.fn();
 		const stream = makeControllableSseResponse(

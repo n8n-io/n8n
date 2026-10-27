@@ -994,6 +994,20 @@ export class AgentExecutionService {
 		return await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
 	}
 
+	async findAccessibleThreadById(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<AgentExecutionThread | null> {
+		return await this.agentExecutionThreadRepository.findAccessibleById(
+			threadId,
+			projectId,
+			agentId,
+			userId,
+		);
+	}
+
 	async canUseDraftThread(
 		threadId: string,
 		projectId: string,

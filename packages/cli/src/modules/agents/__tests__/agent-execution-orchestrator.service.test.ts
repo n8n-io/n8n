@@ -1466,7 +1466,10 @@ describe('AgentExecutionOrchestratorService', () => {
 			{ name: 'non-chat abort', previewChat: false, abort: true, expectedReason: 'error' },
 		])('emits the correct finish reason after $name', async (scenario) => {
 			const controller = new AbortController();
-			const error = new Error('Runtime ended');
+			const error =
+				scenario.expectedReason === 'cancelled'
+					? new DOMException('Runtime ended', 'AbortError')
+					: new Error('Runtime ended');
 			const usage = { promptTokens: 2, completionTokens: 3, totalTokens: 5, cost: 0.01 };
 			const { stream, executionService, chatExecutionService, backgroundJobs } = makeTurn({
 				previewChat: scenario.previewChat,

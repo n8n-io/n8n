@@ -81,15 +81,17 @@ describe('onBeforeFinalize', () => {
 			onRecorderCreated?: (recorder: ExecutionRecorder) => void;
 			beforeStream?: () => void;
 			streamError?: Error;
+			expectedError?: Error;
 		} = {},
 	) {
 		const executions = mock<AgentExecutionService>();
 		executions.finalizeExecution.mockResolvedValue('exec-1');
 		executions.getAbortSignal.mockReturnValue(new AbortController().signal);
+		const chatExecutions = mock<AgentChatExecutionService>();
 		const service = new AgentTurnExecutionService(
 			mock<Logger>(),
 			executions,
-			mock<AgentChatExecutionService>(),
+			chatExecutions,
 			mock<AgentMessageQueueService>(),
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
@@ -110,19 +112,23 @@ describe('onBeforeFinalize', () => {
 		} as unknown as AgentTurnRequest;
 		const onBeforeFinalize = vi.fn(options.onBeforeFinalize ?? (async () => {}));
 		const outputChunks: AgentExecutionStreamChunk[] = [];
-		for await (const chunk of service.execute({
-			admittedExecution: { executionId: 'exec-1', startedAt: new Date(), inputMessageIds: [] },
-			agentInstance,
-			toolRegistry: new Map(),
-			mcpServerAttributions: new Map(),
-			context: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
-			onBeforeFinalize,
-			onRecorderCreated: options.onRecorderCreated,
-			prepare: async () => turn,
-		})) {
-			outputChunks.push(chunk);
-		}
-		return { onBeforeFinalize, executions, chunks: outputChunks };
+		const collect = async () => {
+			for await (const chunk of service.execute({
+				admittedExecution: { executionId: 'exec-1', startedAt: new Date(), inputMessageIds: [] },
+				agentInstance,
+				toolRegistry: new Map(),
+				mcpServerAttributions: new Map(),
+				context: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+				onBeforeFinalize,
+				onRecorderCreated: options.onRecorderCreated,
+				prepare: async () => turn,
+			})) {
+				outputChunks.push(chunk);
+			}
+		};
+		if (options.expectedError) await expect(collect()).rejects.toBe(options.expectedError);
+		else await collect();
+		return { onBeforeFinalize, executions, chatExecutions, chunks: outputChunks };
 	}
 
 	it('broadcasts server duration with each model turn before finalization', async () => {
@@ -221,14 +227,54 @@ describe('onBeforeFinalize', () => {
 
 	it('reports a session stop', async () => {
 		const abortController = new AbortController();
-		const { onBeforeFinalize, chunks } = await runTurn([], {
+		const { onBeforeFinalize, chunks, executions, chatExecutions } = await runTurn([], {
 			abortController,
 			beforeStream: () => abortController.abort(SESSION_STOPPED_REASON),
 		});
 
 		expect(onBeforeFinalize).toHaveBeenCalledWith({ executionId: 'exec-1', status: 'cancelled' });
 		expect(chunks).toEqual([{ type: 'finish', finishReason: 'cancelled' }]);
+		expect(chatExecutions.cancelSessionWork).toHaveBeenCalledExactlyOnceWith(
+			'agent-1',
+			'thread-1',
+			['exec-1'],
+		);
+		expect(executions.finalizeExecution.mock.invocationCallOrder[0]).toBeLessThan(
+			chatExecutions.cancelSessionWork.mock.invocationCallOrder[0],
+		);
 	});
+
+	it.each(['throw', 'error-chunks'] as const)(
+		'preserves a real failure after Stop through %s',
+		async (mode) => {
+			const controller = new AbortController();
+			const error = new Error('Model request failed');
+			const { onBeforeFinalize, executions, chunks } = await runTurn(
+				mode === 'throw'
+					? []
+					: [
+							{ type: 'error', error },
+							{ type: 'finish', finishReason: 'error' },
+						],
+				{
+					abortController: controller,
+					beforeStream: () => controller.abort(SESSION_STOPPED_REASON),
+					streamError: mode === 'throw' ? error : undefined,
+					expectedError: mode === 'throw' ? error : undefined,
+				},
+			);
+			expect(onBeforeFinalize).toHaveBeenCalledWith({
+				executionId: 'exec-1',
+				status: 'errored',
+				error,
+			});
+			expect(executions.finalizeExecution.mock.calls[0][1].record).toMatchObject({
+				finishReason: 'error',
+				error: 'Model request failed',
+			});
+			expect(chunks).not.toContainEqual({ type: 'finish', finishReason: 'cancelled' });
+		},
+	);
 
 	it('records a caller cancellation without emitting a chat stop event', async () => {
 		const controller = new AbortController();
@@ -239,6 +285,22 @@ describe('onBeforeFinalize', () => {
 
 		expect(onBeforeFinalize).toHaveBeenCalledWith({ executionId: 'exec-1', status: 'cancelled' });
 		expect(chunks).toEqual([]);
+	});
+
+	it('keeps a stream failure when Stop races with an ending that has no finish event', async () => {
+		const controller = new AbortController();
+		const error = new Error('Model request failed');
+		const { chunks, executions, onBeforeFinalize } = await runTurn([{ type: 'error', error }], {
+			abortController: controller,
+			beforeStream: () => controller.abort(SESSION_STOPPED_REASON),
+		});
+		expect(chunks).toEqual([{ type: 'error', error }]);
+		expect(executions.finalizeExecution.mock.calls[0][1].record.error).toBe('Model request failed');
+		expect(onBeforeFinalize).toHaveBeenCalledWith({
+			executionId: 'exec-1',
+			status: 'errored',
+			error,
+		});
 	});
 
 	it.each(['throw', 'error-chunks'] as const)(
