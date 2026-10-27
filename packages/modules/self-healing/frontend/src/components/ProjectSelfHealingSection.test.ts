@@ -193,3 +193,26 @@ describe('personal tab', () => {
 		expect(view.queryByTestId('self-healing-create')).not.toBeInTheDocument();
 	});
 });
+
+it('shows the table with placeholder rows until the configurations load', async () => {
+	const store = useSelfHealingStore();
+	const pending = Promise.withResolvers<undefined>();
+	vi.spyOn(store, 'load').mockReturnValueOnce(pending.promise);
+	const router = createRouter({
+		history: createMemoryHistory(),
+		routes: [{ path: '/projects/:projectId/settings', component: { render: () => null } }],
+	});
+	await router.push('/projects/project/settings');
+	const view = render(ProjectSelfHealingSection, {
+		props: { projectId: 'project' },
+		global: { plugins: [router] },
+	});
+
+	expect(await view.findByText('Scope')).toBeVisible();
+	expect(view.container.querySelector('.table--loading')).toBeInTheDocument();
+	expect(view.queryByText(/No self-healing configuration/)).not.toBeInTheDocument();
+
+	pending.resolve(undefined);
+	expect(await view.findByText(/No self-healing configuration/)).toBeVisible();
+	expect(view.queryByText('Scope')).not.toBeInTheDocument();
+});
