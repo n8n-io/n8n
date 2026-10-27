@@ -104,6 +104,7 @@ const emit = defineEmits<{ click: [] }>();
 	color: var(--text-color--subtler);
 }
 .card {
+	flex: 1;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
