@@ -15,6 +15,7 @@ import { evaluateExpression, setErrorHandler } from './expression-evaluator-prox
 import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
 import { evaluateNatively } from './expressions/native-evaluation';
+import type { NativeFallbackReason } from './expressions/native-evaluation/evaluator';
 import {
 	canVerifyNatively,
 	NativeVerifier,
@@ -598,22 +599,27 @@ export class Expression {
 			native = evaluateNatively(expression, data);
 		} catch (error) {
 			// The error is the expression's result: the engine does not run.
-			this.countNativeResult({ handled: true, value: undefined });
+			this.countNativeResult('handled');
 			throw error;
 		}
-		this.countNativeResult(native);
+		if (native.handled) {
+			this.countNativeResult('handled');
+		} else if (native.fallbackReason) {
+			this.countNativeResult('fallback', native.fallbackReason);
+		} else {
+			this.countNativeResult('declined');
+		}
 		return native;
 	}
 
-	private static countNativeResult(native: ReturnType<typeof evaluateNatively>) {
-		if (this.observability) {
-			const result = native.handled ? 'handled' : native.fallbackReason ? 'fallback' : 'declined';
-			const reason = native.handled ? 'none' : (native.fallbackReason ?? 'none');
-			this.observability.metrics.counter(EXPRESSION_METRICS.nativeEvaluations.name, 1, {
-				result,
-				reason,
-			});
-		}
+	private static countNativeResult(
+		result: 'handled' | 'declined' | 'fallback',
+		reason: NativeFallbackReason | 'none' = 'none',
+	) {
+		this.observability?.metrics.counter(EXPRESSION_METRICS.nativeEvaluations.name, 1, {
+			result,
+			reason,
+		});
 	}
 
 	static initializeGlobalContext(data: IDataObject) {
