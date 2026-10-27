@@ -30,6 +30,7 @@ import type {
 	INodeExecutionData,
 	IPinData,
 	IRunExecutionData,
+	IRun,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
@@ -94,6 +95,7 @@ export class WorkflowExecutionService {
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		deduplicationKey?: string,
 		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
+		completionPromise?: IDeferredPromise<IRun | undefined>,
 	) {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -128,7 +130,14 @@ export class WorkflowExecutionService {
 			callerAwaitsOutcome,
 		};
 
-		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
+		return await this.workflowRunner.run(
+			runData,
+			true,
+			undefined,
+			undefined,
+			responsePromise,
+			completionPromise,
+		);
 	}
 
 	/**
@@ -145,6 +154,7 @@ export class WorkflowExecutionService {
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		fence?: PollLeaseFence,
 		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
+		completionPromise?: IDeferredPromise<IRun | undefined>,
 	): Promise<string | undefined> {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -255,8 +265,10 @@ export class WorkflowExecutionService {
 				undefined,
 				{ executionId, expectedStatus: 'new' },
 				responsePromise,
+				completionPromise,
 			);
 		} catch (error) {
+			completionPromise?.reject(ensureError(error));
 			if (error instanceof ExecutionAlreadyResumingError) {
 				this.logger.debug('Polled execution was already claimed, leaving it to its owner', {
 					executionId,

@@ -5,7 +5,8 @@ import type {
 	PublishedWorkflowDataForExecution,
 	WorkflowPublishedDataService,
 } from '@n8n/backend-services';
-import type { Project, WorkflowEntity } from '@n8n/db';
+import type { ExecutionsConfig } from '@n8n/config';
+import type { ExecutionRepository, Project, WorkflowEntity } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
@@ -13,6 +14,7 @@ import type {
 	BinaryDataService,
 	ErrorReporter,
 	IGetExecutePollFunctions,
+	InstanceSettings,
 	StorageConfig,
 } from 'n8n-core';
 import { UnexpectedError, UserError, Workflow } from 'n8n-workflow';
@@ -34,10 +36,13 @@ import type {
 } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import type { ActiveExecutions } from '@/active-executions';
+import { ActiveExecutions } from '@/active-executions';
+import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExecutionService } from '@/executions/execution.service';
+import type { IWorkflowExecutionDataProcess } from '@/interfaces';
 import type {
 	ScheduleTriggerCollectionSession,
 	ScheduleTriggerJobRegistrar,
@@ -92,7 +97,16 @@ describe('TriggerExecutionContextFactory', () => {
 		vi.clearAllMocks();
 		pollCursorService = mock<PollCursorService>({ enabled: false });
 		workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
-		workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
+		workflowExecutionService.runWorkflow.mockImplementation(async (...args) => {
+			const completion = args[8];
+			if (completion) {
+				void Promise.resolve(activeExecutions.getPostExecutePromise('exec-123')).then(
+					completion.resolve,
+					completion.reject,
+				);
+			}
+			return 'exec-123';
+		});
 		executionService.createErrorExecution.mockResolvedValue(undefined);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Test Project' }),
@@ -108,7 +122,6 @@ describe('TriggerExecutionContextFactory', () => {
 		factory = new TriggerExecutionContextFactory(
 			rootLogger,
 			errorReporter,
-			activeExecutions,
 			eventService,
 			executionService,
 			workflowStaticDataService,
@@ -159,6 +172,7 @@ describe('TriggerExecutionContextFactory', () => {
 					undefined,
 					undefined,
 					'none',
+					undefined,
 				);
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-executed', {
 					workflowId: workflowData.id,
@@ -223,6 +237,7 @@ describe('TriggerExecutionContextFactory', () => {
 					undefined,
 					undefined,
 					'none',
+					undefined,
 				);
 			});
 
@@ -266,6 +281,7 @@ describe('TriggerExecutionContextFactory', () => {
 					undefined,
 					undefined,
 					'none',
+					undefined,
 				);
 			});
 
@@ -300,6 +316,7 @@ describe('TriggerExecutionContextFactory', () => {
 					undefined,
 					'wf-1:node-1:1700000000000',
 					'none',
+					undefined,
 				);
 			});
 
@@ -340,6 +357,7 @@ describe('TriggerExecutionContextFactory', () => {
 					undefined,
 					undefined,
 					'completion',
+					donePromise,
 				);
 			});
 
@@ -375,6 +393,7 @@ describe('TriggerExecutionContextFactory', () => {
 					responsePromise,
 					undefined,
 					'response',
+					undefined,
 				);
 			});
 
@@ -771,6 +790,7 @@ describe('TriggerExecutionContextFactory', () => {
 					undefined,
 					undefined,
 					'none',
+					undefined,
 				);
 			});
 
@@ -822,6 +842,7 @@ describe('TriggerExecutionContextFactory', () => {
 					undefined,
 					undefined,
 					'none',
+					undefined,
 				);
 			});
 
@@ -863,6 +884,7 @@ describe('TriggerExecutionContextFactory', () => {
 					undefined,
 					undefined,
 					'none',
+					undefined,
 				);
 			});
 
@@ -1188,6 +1210,7 @@ describe('TriggerExecutionContextFactory', () => {
 				responsePromise,
 				undefined,
 				'response',
+				undefined,
 			);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
@@ -1220,6 +1243,7 @@ describe('TriggerExecutionContextFactory', () => {
 					responsePromise,
 					undefined,
 					callerAwaitsOutcome,
+					donePromise,
 				);
 			},
 		);
@@ -1353,7 +1377,6 @@ describe('TriggerExecutionContextFactory', () => {
 				const budgetFactory = new TriggerExecutionContextFactory(
 					mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) }),
 					errorReporter,
-					activeExecutions,
 					eventService,
 					executionService,
 					workflowStaticDataService,
@@ -1477,6 +1500,7 @@ describe('TriggerExecutionContextFactory', () => {
 				undefined,
 				undefined,
 				'none',
+				undefined,
 			);
 		});
 
@@ -1709,6 +1733,7 @@ describe('TriggerExecutionContextFactory', () => {
 				undefined,
 				fence,
 				'none',
+				undefined,
 			);
 
 			await fencedContext.__runPoll(async () => {
@@ -2158,6 +2183,18 @@ describe('TriggerExecutionContextFactory', () => {
 				engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
 			});
 
+			test('rejects a poll completion request before dispatch on engine v2', async () => {
+				const donePromise = createDeferredPromise<IRun>();
+				const outcome = donePromise.promise.then(
+					() => 'fulfilled',
+					(error: unknown) => error,
+				);
+				pollContext().__emit([[{ json: {} }]], undefined, donePromise);
+				await sleep(0);
+				expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+				expect(await outcome).toBeInstanceOf(UserError);
+			});
+
 			test('runs a poll emit carrying a file, and keeps what it stored', async () => {
 				const data: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
 
@@ -2195,5 +2232,74 @@ describe('TriggerExecutionContextFactory', () => {
 				expect(workflowExecutionService.runWorkflow).toHaveBeenCalled();
 			});
 		});
+	});
+
+	describe('completion handoff for fast queued executions', () => {
+		test.each([
+			{ order: 'before the execution ID returns', finishBeforeIdReturn: true },
+			{ order: 'after the caller subscribes', finishBeforeIdReturn: false },
+		])(
+			'returns the successful result when execution finishes $order',
+			async ({ finishBeforeIdReturn }) => {
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const runResult = mock<IRun>({ finished: true, status: 'success' });
+				const persistence = mock<ExecutionPersistence>();
+				persistence.create.mockResolvedValue('exec-123');
+				const realActiveExecutions = new ActiveExecutions(
+					mock<Logger>(),
+					mock<ExecutionRepository>(),
+					persistence,
+					mock<ConcurrencyControlService>(),
+					mock<EventService>(),
+					mock<ExecutionsConfig>({ mode: 'queue' }),
+					mock<InstanceSettings>(),
+				);
+				const subscribed = createDeferredPromise<undefined>();
+
+				workflowExecutionService.runWorkflow.mockImplementation(async (...args) => {
+					const executionId = await realActiveExecutions.add(
+						mock<IWorkflowExecutionDataProcess>({ executionMode: 'trigger', workflowData }),
+						undefined,
+						args[8],
+					);
+					subscribed.resolve(undefined);
+					if (finishBeforeIdReturn) {
+						// Related to #19877: a worker can finish before the caller receives the ID.
+						realActiveExecutions.finalizeExecution(executionId, runResult);
+						await new Promise<void>((resolve) => setImmediate(resolve));
+						expect(realActiveExecutions.has(executionId)).toBe(false);
+					}
+					return executionId;
+				});
+				const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					'trigger',
+					'activate',
+					async () => workflowData,
+					vi.fn(),
+					scheduleCollectionSession,
+				);
+				const context = getTriggerFunctions(
+					mock<Workflow>(),
+					mock<INode>(),
+					additionalData,
+					'trigger',
+					'activate',
+				);
+				const donePromise = createDeferredPromise<IRun>();
+				const outcome = donePromise.promise.then(
+					(value) => ({ state: 'fulfilled', value }),
+					(error: unknown) => ({ state: 'rejected', error }),
+				);
+				context.emit([[]], undefined, donePromise);
+				if (!finishBeforeIdReturn) {
+					await subscribed.promise;
+					realActiveExecutions.finalizeExecution('exec-123', runResult);
+				}
+				expect(await outcome).toEqual({ state: 'fulfilled', value: runResult });
+			},
+		);
 	});
 });

@@ -900,7 +900,6 @@ describe('ActiveWorkflowManager', () => {
 			factory = new TriggerExecutionContextFactory(
 				rootLogger,
 				mock(), // errorReporter
-				mock(), // activeExecutions
 				eventService,
 				executionService,
 				workflowStaticDataService,
@@ -976,6 +975,7 @@ describe('ActiveWorkflowManager', () => {
 					undefined,
 					undefined,
 					'none',
+					undefined,
 				);
 
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-executed', {
@@ -1020,6 +1020,7 @@ describe('ActiveWorkflowManager', () => {
 					undefined,
 					'wf-1:node-1:1700000000000',
 					'none',
+					undefined,
 				);
 			});
 

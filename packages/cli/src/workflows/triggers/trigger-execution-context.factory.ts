@@ -32,7 +32,6 @@ import type {
 import { Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-import { ActiveExecutions } from '@/active-executions';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
@@ -91,7 +90,6 @@ export class TriggerExecutionContextFactory {
 	constructor(
 		private logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly activeExecutions: ActiveExecutions,
 		private readonly eventService: EventService,
 		private readonly executionService: ExecutionService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
@@ -108,31 +106,24 @@ export class TriggerExecutionContextFactory {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
 
-	/**
-	 * Bridge an in-flight triggered execution to the node's `donePromise`. It
-	 * always settles: with the finished run, with `undefined` when a duplicate
-	 * scheduled execution was skipped, or rejected if the execution never
-	 * started. Nodes that await it (MQTT, RabbitMQ, AMQP, Kafka) would otherwise
-	 * hang forever on failure.
-	 */
-	private settleDonePromise(
+	/** Settle skipped or failed starts. ActiveExecutions forwards completed runs. */
+	private settleUnstartedExecution(
 		executePromise: Promise<string | undefined>,
 		donePromise: IDeferredPromise<IRun | undefined>,
 	) {
-		void executePromise
-			.then(async (executionId) =>
-				executionId === undefined
-					? undefined
-					: await this.activeExecutions.getPostExecutePromise(executionId),
-			)
-			.then(donePromise.resolve, (error: unknown) => donePromise.reject(ensureError(error)));
+		void executePromise.then(
+			(executionId) => {
+				if (executionId === undefined) donePromise.resolve(undefined);
+			},
+			(error: unknown) => donePromise.reject(ensureError(error)),
+		);
 	}
 
 	/**
 	 * Refuses an emit the engine v2 path cannot carry, settling the response
 	 * promise on the way out. `runWorkflow` never receives that promise when the
 	 * emit is refused, and an unsettled deferred promise leaves the node waiting.
-	 * The done promise needs no help here: {@link settleDonePromise} rejects it
+	 * The done promise needs no help here: {@link settleUnstartedExecution} rejects it
 	 * from the returned promise chain.
 	 */
 	private assertEngineV2Supported(
@@ -237,6 +228,7 @@ export class TriggerExecutionContextFactory {
 							deduplicationKey,
 							// A node awaiting the run's end, or a response from it, must not get a paused segment instead.
 							awaitedByTrigger(responsePromise, donePromise),
+							donePromise,
 						);
 					})
 					.catch((error: unknown) => {
@@ -253,9 +245,7 @@ export class TriggerExecutionContextFactory {
 						throw error;
 					});
 
-				// Registered ahead of the telemetry chain so the post-execute promise
-				// is attached before that chain's ownership lookup yields.
-				if (donePromise) this.settleDonePromise(executePromise, donePromise);
+				if (donePromise) this.settleUnstartedExecution(executePromise, donePromise);
 
 				void executePromise
 					.then(async (executionId) => {
@@ -397,6 +387,9 @@ export class TriggerExecutionContextFactory {
 				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) => {
 					// Decided on the fresh copy, which is the one the dispatcher decides on.
 					const routesToV2 = this.engineV2ActiveTriggers.handles(freshWorkflowData, mode);
+					if (routesToV2 && donePromise) {
+						this.assertEngineV2Supported(data, { responsePromise, donePromise });
+					}
 
 					const runAdditionalData = await this.attributeToPublisher(
 						additionalData,
@@ -413,6 +406,7 @@ export class TriggerExecutionContextFactory {
 							responsePromise,
 							undefined,
 							awaitedByTrigger(responsePromise, donePromise),
+							donePromise,
 						);
 					}
 
@@ -437,10 +431,11 @@ export class TriggerExecutionContextFactory {
 								responsePromise,
 								fence,
 								awaitedByTrigger(responsePromise, donePromise),
+								donePromise,
 							);
 				});
 
-				if (donePromise) this.settleDonePromise(executePromise, donePromise);
+				if (donePromise) this.settleUnstartedExecution(executePromise, donePromise);
 
 				void executePromise.catch((error: unknown) =>
 					this.logTriggerExecutionFailure(error, workflowData, node),

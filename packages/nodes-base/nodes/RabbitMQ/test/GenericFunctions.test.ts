@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Channel, Connection, ConsumeMessage, Message } from 'amqplib';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type {
@@ -567,6 +568,85 @@ describe('RabbitMQ GenericFunctions', () => {
 					workflowId: '123',
 				},
 			);
+		});
+		describe('broker replies after completion errors', () => {
+			beforeEach(() => {
+				mockChannel.ack.mockReset();
+				mockChannel.nack.mockReset();
+				context.emit.mockReset();
+				context.helpers.createDeferredPromise.mockImplementation(createDeferredPromise);
+				context.getWorkflow.mockReturnValue(mock<IWorkflowMetadata>({ id: 'test-workflow' }));
+				context.getNode.mockReturnValue(mock<INode>({ name: 'RabbitMQ Trigger' }));
+			});
+
+			it.each(['executionFinishes', 'executionFinishesSuccessfully', 'laterMessageNode'])(
+				'requeues a message when completion rejects in %s mode',
+				async (mode) => {
+					context.emit.mockImplementation((_items, _hook, done) => {
+						done?.reject(new Error('Completion lookup failed'));
+					});
+					await handleMessage.call(
+						context,
+						{ content: Buffer.from('{}') } as Message,
+						mockChannel,
+						messageTracker,
+						mode,
+						options,
+					);
+					expect(context.emit).toHaveBeenCalledTimes(1);
+					expect(mockChannel.nack).toHaveBeenCalledTimes(1);
+					expect(mockChannel.nack).toHaveBeenCalledWith(expect.anything(), false, true);
+					expect(mockChannel.ack).not.toHaveBeenCalled();
+					expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+				},
+			);
+
+			it('does not send a second reply when acknowledgement throws', async () => {
+				context.emit.mockImplementation((_items, _hook, done) => {
+					done?.resolve(mock<IRun>({ data: { resultData: { runData: {}, error: undefined } } }));
+				});
+				mockChannel.ack.mockImplementation(() => {
+					throw new Error('Channel closed');
+				});
+				await handleMessage.call(
+					context,
+					{ content: Buffer.from('{}') } as Message,
+					mockChannel,
+					messageTracker,
+					'executionFinishesSuccessfully',
+					options,
+				);
+				expect(mockChannel.ack).toHaveBeenCalledTimes(1);
+				expect(mockChannel.nack).not.toHaveBeenCalled();
+				expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+			});
+
+			it('logs a requeue failure without rejecting the message handler', async () => {
+				context.emit.mockImplementation((_items, _hook, done) => {
+					done?.reject(new Error('Completion lookup failed'));
+				});
+				const channelError = new Error('Channel closed');
+				mockChannel.nack.mockImplementation(() => {
+					throw channelError;
+				});
+				await expect(
+					handleMessage.call(
+						context,
+						{ content: Buffer.from('{}') } as Message,
+						mockChannel,
+						messageTracker,
+						'executionFinishesSuccessfully',
+						options,
+					),
+				).resolves.toBeUndefined();
+				expect(context.emit).toHaveBeenCalledTimes(1);
+				expect(mockChannel.nack).toHaveBeenCalledTimes(1);
+				expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+				expect(context.logger.error).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({ acknowledgementError: channelError }),
+				);
+			});
 		});
 	});
 });

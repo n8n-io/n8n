@@ -76,6 +76,7 @@ export class ActiveExecutions {
 	async add(
 		executionData: IWorkflowExecutionDataProcess,
 		existingExecution?: ResumableExecution,
+		completionPromise?: IDeferredPromise<IRun | undefined>,
 	): Promise<string> {
 		let executionStatus: ExecutionStatus = existingExecution ? 'running' : 'new';
 		const mode = executionData.executionMode;
@@ -163,6 +164,10 @@ export class ActiveExecutions {
 
 		const resumingExecution = this.activeExecutions[executionId];
 		const postExecutePromise = createDeferredPromise<IRun | undefined>();
+		if (completionPromise) {
+			// Attach the caller before execution can finish and remove this entry.
+			void postExecutePromise.promise.then(completionPromise.resolve, completionPromise.reject);
+		}
 
 		const execution: IExecutingWorkflowData = {
 			executionData,

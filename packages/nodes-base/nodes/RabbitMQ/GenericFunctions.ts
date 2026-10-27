@@ -208,6 +208,7 @@ export async function handleMessage(
 	acknowledgeMode: string,
 	options: TriggerOptions,
 ) {
+	let acknowledgementAttempted = false;
 	try {
 		if (acknowledgeMode !== 'immediately') {
 			messageTracker.received(message);
@@ -252,12 +253,15 @@ export async function handleMessage(
 			const first = await Promise.race([hookRace, runRace]);
 
 			if (first.kind === 'hook' && first.isRealSendResponse) {
+				acknowledgementAttempted = true;
 				channel.ack(message);
 			} else {
 				const runData = first.kind === 'run' ? first.data : await responsePromise.promise;
 				if (runData?.data?.resultData?.error) {
+					acknowledgementAttempted = true;
 					channel.nack(message);
 				} else {
+					acknowledgementAttempted = true;
 					channel.ack(message);
 				}
 			}
@@ -268,19 +272,31 @@ export async function handleMessage(
 				if (data.data.resultData.error) {
 					// The execution did fail
 					if (acknowledgeMode === 'executionFinishesSuccessfully') {
+						acknowledgementAttempted = true;
 						channel.nack(message);
 						messageTracker.answered(message);
 						return;
 					}
 				}
+				acknowledgementAttempted = true;
 				channel.ack(message);
 				messageTracker.answered(message);
 			});
 		} else {
 			// Acknowledge message directly
+			acknowledgementAttempted = true;
 			channel.ack(message);
 		}
 	} catch (error) {
+		let acknowledgementError: unknown;
+		if (!acknowledgementAttempted && acknowledgeMode !== 'immediately') {
+			try {
+				channel.nack(message, false, true);
+			} catch (requeueError) {
+				// A closed channel returns its deliveries to the broker.
+				acknowledgementError = requeueError;
+			}
+		}
 		const workflow = this.getWorkflow();
 		const node = this.getNode();
 		if (acknowledgeMode !== 'immediately') {
@@ -292,6 +308,7 @@ export async function handleMessage(
 			{
 				node: node.name,
 				workflowId: workflow.id,
+				...(acknowledgementError ? { acknowledgementError } : {}),
 			},
 		);
 	}

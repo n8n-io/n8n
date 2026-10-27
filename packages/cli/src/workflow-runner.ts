@@ -417,6 +417,7 @@ export class WorkflowRunner {
 		realtime?: boolean,
 		existingExecution?: ResumableExecution,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		completionPromise?: IDeferredPromise<IRun | undefined>,
 	): Promise<string> {
 		// The engine v2 path owns the whole run: it keeps no control-plane
 		// execution row, so everything below here does not apply to it.
@@ -434,7 +435,11 @@ export class WorkflowRunner {
 					data.userId,
 				);
 			} catch (error) {
-				const executionId = await this.activeExecutions.add(data, existingExecution);
+				const executionId = await this.activeExecutions.add(
+					data,
+					existingExecution,
+					completionPromise,
+				);
 				await this.failExecution(data, executionId, error, responsePromise);
 				return executionId;
 			}
@@ -450,7 +455,7 @@ export class WorkflowRunner {
 		}
 
 		// Register a new execution
-		const executionId = await this.activeExecutions.add(data, existingExecution);
+		const executionId = await this.activeExecutions.add(data, existingExecution, completionPromise);
 
 		if (establishContextError) {
 			await this.failExecution(data, executionId, establishContextError, responsePromise);

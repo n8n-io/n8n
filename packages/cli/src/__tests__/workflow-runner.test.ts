@@ -874,10 +874,11 @@ describe('run', () => {
 		});
 
 		// ACT
-		await runner.run(data, undefined, false, existingExecution);
+		const completionPromise = createDeferredPromise<IRun | undefined>();
+		await runner.run(data, undefined, false, existingExecution, undefined, completionPromise);
 
 		// ASSERT
-		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
+		expect(addSpy).toHaveBeenCalledWith(data, existingExecution, completionPromise);
 	});
 
 	describe('storedAt', () => {
@@ -986,7 +987,7 @@ describe('run', () => {
 			// ASSERT
 			expect(executionId).toBe('1');
 			expect(startSpy).not.toHaveBeenCalled();
-			expect(addSpy).toHaveBeenCalledWith(data, undefined);
+			expect(addSpy).toHaveBeenCalledWith(data, undefined, undefined);
 		});
 	});
 
