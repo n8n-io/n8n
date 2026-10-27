@@ -85,7 +85,6 @@ export class ModuleRegistry {
 		'mcp-registry',
 		'workflow-reviews',
 		'inbox',
-		// promotions follows inbox: its init registers a source with the inbox registry.
 		'promotions',
 		// skills precedes instance-ai and agents: agents keeps its skills in the
 		// skills hub, so skills must start first. See `eligibleModules`.
