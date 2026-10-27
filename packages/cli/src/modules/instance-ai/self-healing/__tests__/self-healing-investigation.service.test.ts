@@ -1,7 +1,17 @@
+import type { SelfHealingConfigurationRepository } from '../database/self-healing-configuration.repository';
+import type { SelfHealingConfigurationService } from '../self-healing-configuration.service';
+import type { SelfHealingConfiguration } from '../database/self-healing-configuration.entity';
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
-import type { Project, SharedWorkflowRepository, TransactionRunner, User } from '@n8n/db';
+import type {
+	OperationContext,
+	Project,
+	SharedWorkflowRepository,
+	Transaction,
+	TransactionRunner,
+	User,
+} from '@n8n/db';
 import { ConflictError, ForbiddenError } from '@n8n/errors';
 import { selfHealingOutputSchema, type CredentialResolutionResult } from '@n8n/instance-ai';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -11,8 +21,7 @@ import type { DurableEventLog } from '../../event-bus/durable-event-log';
 import type { InterruptedRunSweeper } from '../../event-bus/interrupted-run-sweeper';
 import type { InstanceAiService } from '../../instance-ai.service';
 import type { InstanceAiEventLogRepository } from '../../repositories/instance-ai-event-log.repository';
-import type { WorkflowSuggestion } from '../../workflow-suggestions/database/workflow-suggestion.entity';
-import type { WorkflowSuggestionRepository } from '../../workflow-suggestions/database/workflow-suggestion.repository';
+import type { SelfHealingResultRepository } from '../database/self-healing-result.repository';
 import type { WorkflowSuggestionService } from '../../workflow-suggestions/workflow-suggestion.service';
 import type { SelfHealingInvestigation } from '../database/self-healing-investigation.entity';
 import type { SelfHealingInvestigationRepository } from '../database/self-healing-investigation.repository';
@@ -35,7 +44,7 @@ describe('SelfHealingInvestigationService', () => {
 	const investigations = mock<SelfHealingInvestigationRepository>();
 	const results = mock<SelfHealingResultService>();
 	const suggestions = mock<WorkflowSuggestionService>();
-	const suggestionRepository = mock<WorkflowSuggestionRepository>();
+	const resultRepository = mock<SelfHealingResultRepository>();
 	const ownership = mock<SharedWorkflowRepository>();
 	const executions = mock<SelfHealingExecutionReferenceService>();
 	const runtime = mock<InstanceAiService>();
@@ -45,11 +54,18 @@ describe('SelfHealingInvestigationService', () => {
 	const txRunner = mock<TransactionRunner>();
 	const config = mock<InstanceAiConfig>({ workflowSuggestionsEnabled: true });
 	const logger = mock<Logger>();
+	const configurations = mock<SelfHealingConfigurationRepository>();
+	const configurationService = mock<SelfHealingConfigurationService>();
+	const configuration = mock<SelfHealingConfiguration>({
+		id: 1,
+		enabled: true,
+		enabledById: user.id,
+	});
 	const service = new SelfHealingInvestigationService(
 		investigations,
 		results,
 		suggestions,
-		suggestionRepository,
+		resultRepository,
 		ownership,
 		executions,
 		runtime,
@@ -59,6 +75,8 @@ describe('SelfHealingInvestigationService', () => {
 		txRunner,
 		config,
 		logger,
+		configurations,
+		configurationService,
 	);
 	let investigation: SelfHealingInvestigation;
 	let run: SelfHealingRunResult;
@@ -68,12 +86,15 @@ describe('SelfHealingInvestigationService', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		config.workflowSuggestionsEnabled = true;
+		configurations.findForWorkflow.mockResolvedValue(configuration);
+		configurations.findForUpdate.mockResolvedValue(configuration);
+		configurationService.resolveActorOrPause.mockResolvedValue(user);
 		execution = undefined;
 		controller = new AbortController();
 		investigation = mock<SelfHealingInvestigation>({
 			...input,
 			id: 'investigation',
-			baseline,
+			configurationId: configuration.id,
 			threadId: 'private-thread',
 			runId: 'run',
 			resultId: null,
@@ -100,7 +121,8 @@ describe('SelfHealingInvestigationService', () => {
 		investigations.getForExecution.mockResolvedValue(null);
 		investigations.getUnfinishedForWorkflow.mockResolvedValue(null);
 		investigations.createInvestigation.mockResolvedValue(investigation);
-		suggestionRepository.getPendingForWorkflow.mockResolvedValue(null);
+		resultRepository.getOpenForWorkflow.mockResolvedValue(null);
+		resultRepository.isInCooldown.mockResolvedValue(false);
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		runtime.startSelfHealingRun.mockImplementation(async (_input, lifecycle) => {
 			execution = (async () => {
@@ -145,6 +167,7 @@ describe('SelfHealingInvestigationService', () => {
 		expect(results.complete).toHaveBeenCalledWith(
 			expect.objectContaining({
 				investigationId: investigation.id,
+				baseline,
 				output: run.output,
 				usage: run.usage,
 			}),
@@ -317,8 +340,27 @@ describe('SelfHealingInvestigationService', () => {
 			expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id);
 			expect(run.candidate?.compile).not.toHaveBeenCalled();
 			expect(results.complete).not.toHaveBeenCalled();
+			expect(configurationService.recheckAccess).not.toHaveBeenCalled();
 		},
 	);
+
+	it('rechecks configuration access when the agent returns an access error', async () => {
+		run.status = 'errored';
+		run.error = new ForbiddenError('Workflow edit access is required.');
+		delete run.output;
+
+		await expect(startAndFinish()).rejects.toBe(run.error);
+		await vi.waitFor(() =>
+			expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id),
+		);
+
+		expect(configurationService.recheckAccess).toHaveBeenCalledWith(
+			configuration.id,
+			input.projectId,
+			input.workflowId,
+		);
+		expect(results.complete).not.toHaveBeenCalled();
+	});
 
 	it.each(['error', 'max-iterations', 'other'] as const)(
 		'creates no result for termination reason %s',
@@ -345,11 +387,11 @@ describe('SelfHealingInvestigationService', () => {
 		expect(executions.validateFailure).not.toHaveBeenCalled();
 	});
 
-	it('returns a pending suggestion instead of starting another investigation', async () => {
-		suggestionRepository.getPendingForWorkflow.mockResolvedValue(
-			mock<WorkflowSuggestion>({ id: 'pending' }),
+	it('returns an open result instead of starting another investigation', async () => {
+		resultRepository.getOpenForWorkflow.mockResolvedValue(
+			mock<SelfHealingResult>({ id: 'open-result' }),
 		);
-		expect(await service.start(input)).toEqual({ kind: 'suggestion', suggestionId: 'pending' });
+		expect(await service.start(input)).toEqual({ kind: 'result', resultId: 'open-result' });
 		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
 	});
 
@@ -383,10 +425,79 @@ describe('SelfHealingInvestigationService', () => {
 		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
 	});
 
+	it('rechecks open results inside the claim transaction', async () => {
+		const ctx: OperationContext = { trx: mock<Transaction>() };
+		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
+		resultRepository.getOpenForWorkflow
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce(mock<SelfHealingResult>({ id: 'completed-during-preparation' }));
+
+		await expect(service.start(input)).resolves.toEqual({
+			kind: 'result',
+			resultId: 'completed-during-preparation',
+		});
+		expect(resultRepository.getOpenForWorkflow).toHaveBeenLastCalledWith(
+			input.workflowId,
+			input.projectId,
+			ctx,
+		);
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+	});
+
+	it('skips a cooldown before capturing a baseline or opening the claim', async () => {
+		resultRepository.isInCooldown.mockResolvedValue(true);
+
+		await expect(service.start(input)).resolves.toBeNull();
+
+		expect(resultRepository.isInCooldown).toHaveBeenCalledWith({
+			workflowId: input.workflowId,
+			projectId: input.projectId,
+			completedAfter: expect.any(Date),
+		});
+		expect(suggestions.captureBaseline).not.toHaveBeenCalled();
+		expect(executions.validateFailure).not.toHaveBeenCalled();
+		expect(suggestions.readWorkflowTargetForApply).not.toHaveBeenCalled();
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+	});
+
+	it('returns existing work for the same execution during a cooldown', async () => {
+		investigations.getForExecution.mockResolvedValue(investigation);
+		resultRepository.isInCooldown.mockResolvedValue(true);
+
+		await expect(service.start(input)).resolves.toEqual({
+			kind: 'investigation',
+			investigationId: investigation.id,
+		});
+		expect(resultRepository.isInCooldown).not.toHaveBeenCalled();
+	});
+
+	it('checks a newly completed cannot-fix result inside the locked claim transaction', async () => {
+		const ctx: OperationContext = { trx: mock<Transaction>() };
+		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
+		suggestions.readWorkflowTargetForApply.mockImplementationOnce(async () => {
+			resultRepository.isInCooldown.mockResolvedValue(true);
+			return mock<Awaited<ReturnType<WorkflowSuggestionService['readWorkflowTargetForApply']>>>();
+		});
+
+		await expect(service.start(input)).resolves.toBeNull();
+
+		expect(resultRepository.isInCooldown).toHaveBeenLastCalledWith(
+			{
+				workflowId: input.workflowId,
+				projectId: input.projectId,
+				completedAfter: expect.any(Date),
+			},
+			ctx,
+		);
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+	});
+
 	it('checks current access before returning existing work', async () => {
 		investigations.getForExecution.mockResolvedValue(investigation);
-		suggestions.requireEditor.mockRejectedValue(new ForbiddenError('No access.'));
-		await expect(service.start(input)).rejects.toBeInstanceOf(ForbiddenError);
+		configurationService.resolveActorOrPause.mockResolvedValue(null);
+		await expect(service.start(input)).resolves.toBeNull();
 		expect(investigations.getForExecution).not.toHaveBeenCalled();
 	});
 

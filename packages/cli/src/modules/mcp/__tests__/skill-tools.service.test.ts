@@ -79,20 +79,22 @@ describe('McpSkillToolsService', () => {
 			registered.push(tool);
 			tools.set(tool.name, tool.handler as unknown as Handler);
 		}, user);
-		expect(
-			registered.find((tool) => tool.name === 'update_skill')?.config.inputSchema,
-		).not.toHaveProperty('availableToAssistant');
+		for (const name of ['create_skill', 'update_skill']) {
+			expect(registered.find((tool) => tool.name === name)?.config.inputSchema).not.toHaveProperty(
+				'availableToAssistant',
+			);
+		}
 		skillsApi.get.mockResolvedValue(detail);
 		expect(
 			(await callTool('get_skill', { skillId: 'skill_a' })).structuredContent,
 		).not.toHaveProperty('availableToAssistant');
 	});
 
-	describe('search_skills', () => {
+	describe('search_n8n_skills', () => {
 		it('lists the skills with the filters the client sent', async () => {
 			skillsApi.list.mockResolvedValue({ count: 1, data: [listItem] });
 
-			const result = await callTool('search_skills', {
+			const result = await callTool('search_n8n_skills', {
 				query: 'brand',
 				attachableToAgentId: 'agent-1',
 				limit: 20,
@@ -120,7 +122,7 @@ describe('McpSkillToolsService', () => {
 		it('does not return who created a skill', async () => {
 			skillsApi.list.mockResolvedValue({ count: 1, data: [listItem] });
 
-			const result = await callTool('search_skills', { limit: 50, skip: 0 });
+			const result = await callTool('search_n8n_skills', { limit: 50, skip: 0 });
 
 			expect(JSON.stringify(result.structuredContent)).not.toContain('someone@example.com');
 		});
@@ -180,6 +182,23 @@ describe('McpSkillToolsService', () => {
 				parameters: { scope: 'project' },
 				results: { success: true },
 			});
+		});
+
+		it('creates the skill with the Assistant availability the client sent', async () => {
+			skillsApi.create.mockResolvedValue({ ...detail, availableToAssistant: true });
+
+			const result = await callTool('create_skill', {
+				scope: 'instance',
+				skill,
+				availableToAssistant: true,
+			});
+
+			expect(skillsApi.create).toHaveBeenCalledWith(
+				user,
+				{ scope: 'instance', skill, availableToAssistant: true },
+				'mcp',
+			);
+			expect(result.structuredContent).toMatchObject({ availableToAssistant: true });
 		});
 
 		it('tells the client to choose another name when the name is taken', async () => {

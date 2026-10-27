@@ -185,7 +185,13 @@ export class AiPreferenceService {
 	/** The instance rows, the caller's rows, the rows of readable projects and, for admins, every user's rows. */
 	async list(
 		user: User,
-		page: { skip: number; take: number; ids?: string[]; sortBy?: AiPreferenceSortOption },
+		page: {
+			skip: number;
+			take: number;
+			ids?: string[];
+			search?: string;
+			sortBy?: AiPreferenceSortOption;
+		},
 	): Promise<AiPreferenceListDto> {
 		const access = this.projectAccess(user);
 		const [rows, count] = await this.aiPreferenceRepository.findPageVisible({
@@ -193,6 +199,7 @@ export class AiPreferenceService {
 			skip: page.skip,
 			take: page.take,
 			...(page.ids ? { ids: page.ids } : {}),
+			...(page.search ? { search: page.search } : {}),
 			...(page.sortBy ? { sortBy: page.sortBy } : {}),
 		});
 
@@ -696,13 +703,8 @@ export function flattenAiPreferences(preferences: ApplicableAiPreferences): AiPr
 	];
 }
 
-/**
- * Where the block the model reads came from. A turn either sent it or it did not, and only
- * the second case has a run to name, so the two cannot be reported together.
- */
-export type AppliedPreferencesInjection =
-	| { injectedThisTurn: true }
-	| { injectedThisTurn: false; carriedFromRunId?: string };
+/** Whether this turn sent a new block. `false` also covers a turn with no block to send. */
+export type AppliedPreferencesInjection = { injectedThisTurn: boolean };
 
 /**
  * Names the preferences one turn carried, in the shape the turn publishes.

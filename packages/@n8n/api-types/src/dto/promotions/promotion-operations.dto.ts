@@ -8,12 +8,14 @@ import {
 	promotionBindingPreflightResultSchema,
 	promotionBindingProjectSchema,
 	promotionBindingWarningSchema,
+	promotionInstanceProjectSchema,
 } from './promotion-binding-preflight.dto';
+import { promotionCommitMessageSchema } from './promotion-common.dto';
 import { promotionReviewResultSchema } from './promotion-review.dto';
 
 export class PromotePackageDto extends Z.class(
 	{
-		commitMessage: z.string().trim().min(1).max(1000),
+		commitMessage: promotionCommitMessageSchema,
 		force: z.boolean().optional(),
 	},
 	{ strict: true },
@@ -65,11 +67,29 @@ export class PromotePackageResultDto extends Z.class(promotePackageResultSchema.
 /** What the import changed. Partial results are visible here too. */
 export const applyPackageCountsSchema = z.object({
 	projects: z.object({ created: count(), updated: count(), skipped: count(), deleted: count() }),
-	folders: z.object({ created: count(), skipped: count(), removed: count() }),
+	folders: z.object({
+		created: count(),
+		updated: count().openapi({
+			description: 'Existing folders that Apply moved or renamed to match the branch.',
+		}),
+		skipped: count(),
+		moved: count().openapi({
+			description:
+				'Updated folders that Apply moved under another parent of their project. Included in `updated`.',
+		}),
+		renamed: count().openapi({
+			description: 'Updated folders that Apply gave the name on the branch. Included in `updated`.',
+		}),
+		removed: count(),
+	}),
 	workflows: z.object({
 		created: count(),
 		updated: count(),
 		skipped: count(),
+		moved: count().openapi({
+			description:
+				'Updated workflows that Apply also moved to another folder of their project. Included in `updated`.',
+		}),
 		archived: count(),
 		deleted: count(),
 		publishing: z.object({
@@ -80,7 +100,7 @@ export const applyPackageCountsSchema = z.object({
 			failed: count(),
 		}),
 	}),
-	credentials: z.object({ matched: count(), stubbed: count() }),
+	credentials: z.object({ matched: count(), stubbed: count(), updated: count() }),
 	dataTables: z.object({ matched: count(), created: count(), updated: count() }),
 	variables: z.object({
 		matched: count(),
@@ -192,12 +212,29 @@ export class ApplyCheckQueryDto extends Z.class(
 	{ strict: true },
 ) {}
 
+const crossProjectMoveSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	/** The project that holds the item on the branch. */
+	project: promotionBindingProjectSchema,
+	/**
+	 * False when the branch project does not exist on this instance yet. Then the item can only move
+	 * back on the source instance.
+	 */
+	projectExists: z.boolean(),
+	/** The project that holds the item on this instance. */
+	instanceProject: promotionInstanceProjectSchema,
+});
+
 const applyCheckResultSchema = applyPackageIdentitySchema.extend({
 	preflight: promotionBindingPreflightResultSchema,
-	/** Workflows of this project that the branch holds in another project. A selective Apply cannot move them. */
-	movedWorkflows: z.array(
-		z.object({ id: z.string(), name: z.string(), project: promotionBindingProjectSchema }),
-	),
+	/**
+	 * Workflows that the branch holds in one project and this instance holds in another, where one of
+	 * the two is this project. Apply cannot move them between projects.
+	 */
+	movedWorkflows: z.array(crossProjectMoveSchema),
+	/** Folders that the branch and this instance hold in different projects, as for workflows. */
+	movedFolders: z.array(crossProjectMoveSchema),
 });
 
 export type ApplyCheckResult = z.infer<typeof applyCheckResultSchema>;

@@ -42,6 +42,8 @@ describe('SourceControlController', () => {
 			pushWorkfolder: vi.fn().mockResolvedValue({ statusCode: 200 }),
 			pullWorkfolder: vi.fn().mockResolvedValue({ statusCode: 200 }),
 			getStatus: vi.fn().mockResolvedValue([]),
+			initializeRepository: vi.fn(),
+			start: vi.fn(),
 		} as unknown as SourceControlService;
 
 		sourceControlPreferencesService = mock<SourceControlPreferencesService>();
@@ -229,6 +231,52 @@ describe('SourceControlController', () => {
 			(sourceControlService.getStatus as Mock).mockRejectedValueOnce(error);
 
 			await expect(controller.status(req)).rejects.toBe(error);
+		});
+	});
+
+	describe('updatePreferences', () => {
+		const buildReq = (body: SourceControlRequest.UpdatePreferences['body']) =>
+			mock<SourceControlRequest.UpdatePreferences>({ user: mock<User>({ id: 'user-1' }), body });
+
+		beforeEach(() => {
+			(sourceControlPreferencesService.getPreferences as Mock).mockReturnValue({
+				environmentsVersion: 'v1',
+				repositoryUrl: 'git@github.com:acme/repo.git',
+			});
+		});
+
+		it('emits the switch event only when the environments version changes', async () => {
+			await controller.updatePreferences(buildReq({ environmentsVersion: 'v1' }));
+
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'source-control-environments-version-switched',
+				expect.anything(),
+			);
+
+			await controller.updatePreferences(buildReq({ environmentsVersion: 'v2' }));
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'source-control-environments-version-switched',
+				{ userId: 'user-1', version: 'v2' },
+			);
+		});
+
+		it('switches the version even when Classic Git cannot initialize', async () => {
+			(sourceControlService.start as Mock).mockRejectedValue(
+				new Error('Failed to create SSH private key file'),
+			);
+
+			await expect(
+				controller.updatePreferences(buildReq({ environmentsVersion: 'v2' })),
+			).resolves.toBeDefined();
+
+			expect(sourceControlPreferencesService.setPreferences).toHaveBeenCalledWith(
+				expect.objectContaining({ environmentsVersion: 'v2' }),
+				true,
+			);
+			await expect(
+				controller.updatePreferences(buildReq({ branchColor: '#000000' })),
+			).rejects.toThrow('Failed to create SSH private key file');
 		});
 	});
 

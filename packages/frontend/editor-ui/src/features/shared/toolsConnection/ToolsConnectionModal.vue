@@ -15,7 +15,6 @@ import { useDebounceFn } from '@vueuse/core';
 import { partitionLast } from '@n8n/utils/sort/partition-last';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
-
 import ToolRow from './ToolRow.vue';
 import ToolDetailView from './ToolDetailView.vue';
 import ToolSettingsView from './ToolSettingsView.vue';
@@ -39,8 +38,15 @@ const props = withDefaults(
 	defineProps<{
 		open?: boolean;
 		items: ToolConnectionItem[];
-		/** Tabs to render, in order. Declared categories show even while empty. */
+		/** Tabs to render, in order. Declared categories show even while empty, unless `hideEmptyCategories`. */
 		categories: ToolCategoryKey[];
+		/**
+		 * Hide every tab except "All" while it has no items, and hide the tab strip
+		 * when only "All" is left. For pickers whose categories never fill in late.
+		 */
+		hideEmptyCategories?: boolean;
+		/** The rows have no leading icon, so the create row drops its icon slot to match. */
+		iconlessRows?: boolean;
 		title?: string;
 		searchPlaceholder?: string;
 		detailItem?: ToolConnectionItem | null;
@@ -51,6 +57,8 @@ const props = withDefaults(
 		showSuggestionFooter?: boolean;
 		createAction?: PickerCreateAction;
 		createActionLoading?: boolean;
+		/** Replace the body with a loading screen, e.g. until the consumer has credentials to match rows against. */
+		loading?: boolean;
 		emptyMessage?: string;
 		noResultsMessage?: string;
 		/** Render only the modal body when an owning feature supplies the dialog shell. */
@@ -73,12 +81,15 @@ const props = withDefaults(
 		showSuggestionFooter: false,
 		createAction: undefined,
 		createActionLoading: false,
+		loading: false,
 		emptyMessage: undefined,
 		noResultsMessage: undefined,
 		embedded: false,
 		showConnectActions: false,
 		groupSearchResults: false,
 		persistentScrollbar: false,
+		hideEmptyCategories: false,
+		iconlessRows: false,
 	},
 );
 
@@ -174,6 +185,14 @@ onMounted(() => {
 	}
 });
 
+watch(
+	() => props.loading,
+	(isLoading) => {
+		// The search input is not rendered while loading.
+		if (!isLoading && props.open) focusSearchInput();
+	},
+);
+
 const normalizedSearchQuery = computed(() => debouncedSearchQuery.value.trim());
 const hasActiveSearch = computed(() => normalizedSearchQuery.value.length > 0);
 const isGroupedSearch = computed(() => props.groupSearchResults && hasActiveSearch.value);
@@ -263,13 +282,18 @@ const HIDE_WHEN_EMPTY: ToolCategoryKey[] = ['community'];
  * while typing and the counts alone show where the matches are.
  */
 const visibleCategories = computed(() =>
-	props.categories.filter(
-		(category) => !HIDE_WHEN_EMPTY.includes(category) || itemsForCategory(category).length > 0,
-	),
+	props.categories.filter((category) => {
+		const hideWhenEmpty = props.hideEmptyCategories
+			? category !== 'all'
+			: HIDE_WHEN_EMPTY.includes(category);
+		return !hideWhenEmpty || itemsForCategory(category).length > 0;
+	}),
 );
 
-const tabsVisible = computed(
-	() => props.categories.length > 1 && visibleCategories.value.length > 0,
+const tabsVisible = computed(() =>
+	props.hideEmptyCategories
+		? visibleCategories.value.length > 1
+		: props.categories.length > 1 && visibleCategories.value.length > 0,
 );
 
 async function selectCategory(category: ToolCategoryKey) {
@@ -334,12 +358,17 @@ const tabOptions = computed<Array<TabOptions<ToolCategoryKey>>>(() =>
 
 // The active tab can still disappear — a consumer changing its declared set, or
 // a hide-when-empty category losing its last item. Fall back to a tab that
-// exists rather than leaving no tab selected.
-watch(visibleCategories, (categories) => {
-	if (categories.length > 0 && !categories.includes(activeCategory.value)) {
-		activeCategory.value = categories[0];
-	}
-});
+// exists rather than leaving no tab selected. Runs at once too, because the
+// first declared category can be hidden from the start.
+watch(
+	visibleCategories,
+	(categories) => {
+		if (categories.length > 0 && !categories.includes(activeCategory.value)) {
+			activeCategory.value = categories[0];
+		}
+	},
+	{ immediate: true },
+);
 
 const isListEmpty = computed(() =>
 	isGroupedSearch.value ? groupedSearchRows.value.length === 0 : toolRows.value.length === 0,
@@ -385,7 +414,18 @@ function handleOpenChange(value: boolean) {
 		data-test-id="tools-connection-modal"
 		@update:open="handleOpenChange"
 	>
-		<div v-if="detailItem && detailMode === 'settings'" :class="$style.body">
+		<component :is="bodyComponent" v-if="loading">
+			<div
+				:class="[$style.body, $style.loading]"
+				role="status"
+				:aria-label="i18n.baseText('generic.loading')"
+				data-test-id="tools-connection-loading"
+			>
+				<N8nIcon icon="loader-circle" size="xlarge" spin />
+				<N8nText color="text-light">{{ i18n.baseText('generic.loading') }}</N8nText>
+			</div>
+		</component>
+		<div v-else-if="detailItem && detailMode === 'settings'" :class="$style.body">
 			<ToolSettingsView
 				:key="detailItem.id"
 				:item="detailItem"
@@ -455,7 +495,7 @@ function handleOpenChange(value: boolean) {
 					<button
 						v-if="showCreateAction && createAction"
 						type="button"
-						:class="$style.createRow"
+						:class="[$style.createRow, iconlessRows && $style.createRowIconless]"
 						:disabled="createActionLoading"
 						:aria-busy="createActionLoading"
 						:data-test-id="createAction.testId ?? 'tools-connection-create'"
@@ -514,7 +554,6 @@ function handleOpenChange(value: boolean) {
 									:connected-label="props.connectedLabel?.(row.item)"
 									@open-detail="openDetail($event)"
 									@connect="emit('connect', $event)"
-									@disconnect="emit('disconnect', $event)"
 									@select-credential="
 										(item, authType, credentialId) =>
 											emit('select-credential', item, authType, credentialId)
@@ -543,6 +582,12 @@ function handleOpenChange(value: boolean) {
 	height: 70vh;
 	max-height: calc(var(--height--5xl) * 6);
 	min-height: 0;
+}
+
+.loading {
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--xs);
 }
 
 .embedded {
@@ -625,6 +670,15 @@ function handleOpenChange(value: boolean) {
 	align-items: center;
 	justify-content: center;
 	color: var(--color--primary);
+}
+
+.createRowIconless {
+	// Iconless rows start their text at this inset, so the plus lines up with it.
+	padding-inline-start: var(--spacing--xs);
+
+	.createIcon {
+		width: auto;
+	}
 }
 
 .createText {

@@ -89,7 +89,7 @@ export type AgentSkillModalData = {
 	 */
 	scopeOptions?: AgentSkillModalScopeOption[];
 	initialScope?: string;
-	/** Settings only. Absent hides the Assistant toggle. */
+	/** Settings only. Absent disables Assistant availability editing for every scope. */
 	availableToAssistant?: boolean;
 	/**
 	 * A default name that no skill in the scope has yet, as new workflows get one. Called
@@ -175,7 +175,11 @@ const isSaving = ref(false);
 const serverNameError = ref('');
 const scope = ref(props.data.initialScope ?? props.data.scopeOptions?.[0]?.value ?? '');
 const availableToAssistant = ref(props.data.availableToAssistant ?? false);
-const showAssistantAvailability = computed(() => props.data.availableToAssistant !== undefined);
+const showAssistantAvailability = computed(
+	() =>
+		props.data.availableToAssistant !== undefined &&
+		(scope.value === 'instance' || scope.value.startsWith('project:')),
+);
 const assistantAvailabilityChanged = computed(
 	() =>
 		showAssistantAvailability.value &&
@@ -561,11 +565,6 @@ function onPickerItemAttach(item: ToolConnectionItem) {
 	void attachLibrarySkill(item.skillId);
 }
 
-function onPickerItemDetach(item: ToolConnectionItem) {
-	if (item.kind !== 'skill' || !item.attached || item.attaching) return;
-	props.data.onRemove?.(item.skillId);
-}
-
 async function onPickerItemPreview(item: ToolConnectionItem) {
 	if (item.kind !== 'skill' || item.disabled) return;
 	previewLoading.value = true;
@@ -816,12 +815,20 @@ function onRemove() {
 					description: i18n.baseText('agents.builder.skills.picker.create.description'),
 					testId: 'agent-skill-picker-create',
 				}"
+				:connect-label="() => i18n.baseText('agents.builder.skills.picker.add')"
+				:connect-aria-label="
+					(item) =>
+						i18n.baseText('agents.builder.skills.picker.addAriaLabel', {
+							interpolate: { name: item.title },
+						})
+				"
 				embedded
 				show-connect-actions
+				hide-empty-categories
+				iconless-rows
 				persistent-scrollbar
 				data-testid="agent-skill-picker"
 				@connect="onPickerItemAttach"
-				@disconnect="onPickerItemDetach"
 				@open-detail="onPickerItemPreview"
 				@create="onPickerCreate"
 			/>
