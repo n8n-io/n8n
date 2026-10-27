@@ -5,16 +5,11 @@ export const NoArgumentSpreadRule = ESLintUtils.RuleCreator.withoutDocs({
 		type: 'problem',
 		docs: {
 			description:
-				'Avoid spreading potentially large arrays in function or constructor calls — can cause stack overflows. Use `.apply` or `Reflect.construct` instead.',
+				'Avoid spreading potentially large arrays in function or constructor calls — can cause stack overflows.',
 		},
-		fixable: 'code',
 		messages: {
 			noUnboundedSpread:
-				'Avoid spreading an array in function or constructor calls unless known to be small.',
-			replaceWithApply:
-				'Replace `array.push(...largeArray)` with `array.push.apply(array, largeArray)` to avoid potential stack overflows.',
-			replaceWithReflect:
-				'Replace `new Constructor(...args)` with `Reflect.construct(Constructor, args)` to avoid potential stack overflows.',
+				"Avoid spreading an array in a function or constructor call unless it's known to be small. Note that `.apply` / `Reflect.construct` do not avoid this problem — they hit the same engine argument-count limit. If the input can be large, use a loop, `[].concat()`, or chunking instead.",
 		},
 		schema: [],
 	},
@@ -30,30 +25,9 @@ export const NoArgumentSpreadRule = ESLintUtils.RuleCreator.withoutDocs({
 					// Allow spread of inline arrays
 					if (spreadArg.type === 'ArrayExpression') return;
 
-					// Only autofix if it's the sole argument
-					const canFix = node.arguments.length === 1;
-
 					context.report({
 						node,
-						messageId: 'replaceWithApply',
-						fix: canFix
-							? (fixer) => {
-									const source = context.sourceCode;
-
-									if (node.callee.type === 'MemberExpression') {
-										// Preserve `this`
-										const thisText = source.getText(node.callee.object);
-										const calleeText = source.getText(node.callee);
-										const argText = source.getText(spreadArg);
-										return fixer.replaceText(node, `${calleeText}.apply(${thisText}, ${argText})`);
-									} else {
-										// Not a memberexpression, use undefined as thisArg
-										const calleeText = source.getText(node.callee);
-										const argText = source.getText(spreadArg);
-										return fixer.replaceText(node, `${calleeText}.apply(undefined, ${argText})`);
-									}
-								}
-							: null,
+						messageId: 'noUnboundedSpread',
 					});
 				}
 			},
@@ -66,19 +40,9 @@ export const NoArgumentSpreadRule = ESLintUtils.RuleCreator.withoutDocs({
 
 					if (spreadArg.type === 'ArrayExpression') return;
 
-					const canFix = node.arguments.length === 1;
-
 					context.report({
 						node,
-						messageId: 'replaceWithReflect',
-						fix: canFix
-							? (fixer) => {
-									const source = context.sourceCode;
-									const ctorText = source.getText(node.callee);
-									const argText = source.getText(spreadArg);
-									return fixer.replaceText(node, `Reflect.construct(${ctorText}, ${argText})`);
-								}
-							: null,
+						messageId: 'noUnboundedSpread',
 					});
 				}
 			},
