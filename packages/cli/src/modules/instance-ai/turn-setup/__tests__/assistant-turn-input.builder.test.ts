@@ -555,3 +555,49 @@ describe('AssistantTurnInputBuilder — applyTurnScope', () => {
 		});
 	});
 });
+
+describe('AssistantTurnInputBuilder — resolveOnboardingSkill', () => {
+	type Internals = {
+		resolveOnboardingSkill: (
+			metadata: Record<string, unknown> | undefined,
+			skillScope: unknown,
+		) => Promise<string | undefined>;
+		skillsService: { loadSkill: Mock };
+	};
+
+	function createService(): Internals {
+		const service = Object.create(AssistantTurnInputBuilder.prototype) as unknown as Internals;
+		service.skillsService = {
+			loadSkill: vi.fn().mockResolvedValue({ instructions: 'Suggest automations.' }),
+		};
+		return service;
+	}
+
+	it('preloads the suggest-automations skill on the first turn of the idea route', async () => {
+		const service = createService();
+
+		const skill = await service.resolveOnboardingSkill(
+			{ source: 'onboarding', onboardingRoute: 'idea' },
+			{},
+		);
+
+		expect(skill).toBe('Suggest automations.');
+		expect(service.skillsService.loadSkill).toHaveBeenCalledWith('suggest-automations', {});
+	});
+
+	it.each([
+		['the build-with-AI route', { source: 'onboarding', onboardingRoute: 'build_ai' }],
+		['the canvas route', { source: 'onboarding', onboardingRoute: 'build_canvas' }],
+		['free text in the intent card', { source: 'onboarding', onboardingRoute: 'other' }],
+		[
+			'an idea thread after its first turn',
+			{ source: 'onboarding', onboardingRoute: 'idea', titleRefined: true },
+		],
+		['a thread that is not an onboarding thread', { source: 'assistant_page' }],
+	])('preloads no skill for %s', async (_label, metadata) => {
+		const service = createService();
+
+		expect(await service.resolveOnboardingSkill(metadata, {})).toBeUndefined();
+		expect(service.skillsService.loadSkill).not.toHaveBeenCalled();
+	});
+});

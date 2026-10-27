@@ -172,7 +172,8 @@ export const InstanceAiModule = defineFrontendModule({
 					name: INSTANCE_AI_VIEW,
 					path: '',
 					component: InstanceAiEmptyView,
-					// n8n Cloud sends a new signup to `/assistant?source=onboarding` after its survey.
+					// n8n Cloud sends a new signup to `/assistant?source=onboarding` after its survey, when the
+					// Cloud backend puts the user in the variant of `137_instance_ai_chat_onboarding_v2`.
 					// The onboarding thread opens with the greeting and the first question card in
 					// place, so the guard creates it with the survey and lands on it. `&team=Sales`
 					// answers the team question from the URL, so one account can run it again.

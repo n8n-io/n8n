@@ -147,6 +147,25 @@ describe('InstanceAiQuestions', () => {
 		expect(getByPlaceholderText('Share more context')).toBeTruthy();
 	});
 
+	it.each([singleQuestion, multiQuestion])(
+		'hides the free-text row of a $type question that sets freeText to false',
+		(question) => {
+			const { queryByTestId } = render([{ ...question, freeText: false }]);
+
+			expect(queryByTestId('instance-ai-something-else-input')).toBeNull();
+		},
+	);
+
+	it('stops the arrow keys at the last option when the free-text row is hidden', async () => {
+		const { container, getByTestId } = render([{ ...singleQuestion, freeText: false }]);
+		const keyTarget = getByTestId('instance-ai-questions').firstElementChild as Element;
+
+		for (let i = 0; i < 5; i++) await fireEvent.keyDown(keyTarget, { key: 'ArrowDown' });
+
+		const lastOption = container.querySelector('[data-option-index="1"]');
+		expect(lastOption?.className).toMatch(/highlighted/);
+	});
+
 	it('keeps Submit disabled while an option is only highlighted, not selected', async () => {
 		const { container, getByTestId } = render([singleQuestion]);
 

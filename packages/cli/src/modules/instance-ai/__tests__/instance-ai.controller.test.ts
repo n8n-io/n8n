@@ -1312,7 +1312,42 @@ describe('InstanceAiController', () => {
 			};
 			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
-			await expect(controller.confirm(reqWithBody, res, 'onboarding-card')).rejects.toMatchObject({
+			await expect(
+				controller.confirm(reqWithBody, res, 'onboarding-idea~card'),
+			).rejects.toMatchObject({
+				message: expect.stringContaining('no model configured'),
+			});
+			expect(onboarding.answerCard).not.toHaveBeenCalled();
+		});
+
+		it('should pass the canvas navigation of an onboarding card through', async () => {
+			onboarding.answerCard.mockResolvedValue({
+				threadId: 'thread-1',
+				runId: 'run-4',
+				navigateTo: 'new-workflow',
+			});
+			const body: InstanceAiConfirmRequest = {
+				kind: 'questions',
+				answers: [{ questionId: 'build', selectedOptions: ["I'll build it myself"] }],
+			};
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+
+			const result = await controller.confirm(reqWithBody, res, 'onboarding-build~card');
+
+			expect(result).toEqual({ ok: true, runId: 'run-4', navigateTo: 'new-workflow' });
+		});
+
+		it('should check the model before an idea card pick starts the first turn', async () => {
+			settingsService.isModelConfigured.mockResolvedValue(false);
+			const body: InstanceAiConfirmRequest = {
+				kind: 'questions',
+				answers: [{ questionId: 'goal', selectedOptions: ['Reply to people faster'] }],
+			};
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+
+			await expect(
+				controller.confirm(reqWithBody, res, 'onboarding-idea~card'),
+			).rejects.toMatchObject({
 				message: expect.stringContaining('no model configured'),
 			});
 			expect(onboarding.answerCard).not.toHaveBeenCalled();
@@ -1327,7 +1362,7 @@ describe('InstanceAiController', () => {
 			};
 			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
-			const result = await controller.confirm(reqWithBody, res, 'onboarding-card');
+			const result = await controller.confirm(reqWithBody, res, 'onboarding-idea~card');
 
 			expect(result).toEqual({ ok: true, runId: 'run-2' });
 			expect(instanceAiService.startRun).toHaveBeenCalledWith(
@@ -1338,16 +1373,16 @@ describe('InstanceAiController', () => {
 			expect(instanceAiService.resolveConfirmation).not.toHaveBeenCalled();
 		});
 
-		it('should skip the model check and return the follow-up run when the onboarding card holds no free text', async () => {
+		it('should skip the model check and return the seeded run when a build card pick starts no turn', async () => {
 			settingsService.isModelConfigured.mockResolvedValue(false);
 			onboarding.answerCard.mockResolvedValue({ threadId: 'thread-1', runId: 'run-3' });
 			const body: InstanceAiConfirmRequest = {
 				kind: 'questions',
-				answers: [{ questionId: 'apps', selectedOptions: ['Gmail'] }],
+				answers: [{ questionId: 'build', selectedOptions: ['Describe it, and AI builds it'] }],
 			};
 			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
-			const result = await controller.confirm(reqWithBody, res, 'onboarding-card');
+			const result = await controller.confirm(reqWithBody, res, 'onboarding-build~card');
 
 			expect(result).toEqual({ ok: true, runId: 'run-3' });
 			expect(instanceAiService.startRun).not.toHaveBeenCalled();

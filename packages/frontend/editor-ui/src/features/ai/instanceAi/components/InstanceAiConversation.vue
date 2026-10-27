@@ -60,7 +60,10 @@ import type {
 	WorkflowArtifactReference,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
-import { INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY } from '../constants';
+import {
+	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	ONBOARDING_STEP_THINKING_MS,
+} from '../constants';
 import {
 	agentPreviewContextIcon,
 	formatAgentPreviewContextLabel,
@@ -221,13 +224,11 @@ watch(
 const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
 // ponytail: the host-seeded onboarding greeting shows line by line (CSS below), then the shared
-// thinking block plays a thinking beat, then the apps card takes the input slot. Once per
+// thinking block plays a thinking beat, then the intent card takes the input slot. Once per
 // mount, so a reload replays it. `isStreaming` on the greeting copy hides the message actions.
 /** The third line has risen at ~1.7 s, the card lands at ~2.7 s. */
 const GREETING_LINES_MS = 1760;
 const GREETING_THINKING_MS = 940;
-/** Longer than the greeting's beat, so the last question does not land the moment the card closes. */
-const FOLLOW_UP_THINKING_MS = 1800;
 const greetingPhase = ref<'lines' | 'thinking' | null>(null);
 let greetingShown = false;
 let greetingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -252,20 +253,27 @@ watch(
 	},
 	{ immediate: true },
 );
-// ponytail: the host answers the card without a model turn, so its follow-up would land in the
-// same frame as the click. Hold it behind the thinking block for one beat, like the greeting.
+// ponytail: the host answers each card without a model turn, so the next step would land in the
+// same frame as the click, and the next card would replace the answered one in the same slot.
+// Hold every host-written step behind the thinking block for one beat, like the greeting. A model
+// reply is never held: it already waits for the model.
 const followUpHeld = ref(false);
+const heldMessageCount = ref(0);
 let followUpTimer: ReturnType<typeof setTimeout> | null = null;
 watch(
 	() => displayedMessages.length,
 	(length, previous) => {
-		if (previous !== 1 || length !== 2 || displayedMessages[1].role !== 'assistant') return;
+		if (previous === undefined || length !== previous + 1) return;
+		const added = displayedMessages.at(-1);
+		if (added?.role !== 'assistant' || !thread.isHostSeededRun(added.runId)) return;
 		if (!store.isOnboardingChromeHidden(thread.id)) return;
+		if (followUpTimer) clearTimeout(followUpTimer);
+		heldMessageCount.value = previous;
 		followUpHeld.value = true;
 		followUpTimer = setTimeout(() => {
 			followUpHeld.value = false;
 			followUpTimer = null;
-		}, FOLLOW_UP_THINKING_MS);
+		}, ONBOARDING_STEP_THINKING_MS);
 	},
 );
 onUnmounted(() => {
@@ -274,24 +282,32 @@ onUnmounted(() => {
 });
 /**
  * While the greeting plays: the greeting without its agent tree (the message renders its text
- * from the tree when it has one). While the follow-up is held: the greeting only. The stored
- * messages otherwise.
+ * from the tree when it has one). While a host-written step is held: the messages before it.
+ * The stored messages otherwise.
  */
 const renderedMessages = computed(() => {
 	const greeting = onboardingGreeting.value;
 	if (greeting && greetingPhase.value !== null) {
 		return [{ ...greeting, agentTree: undefined, isStreaming: true }];
 	}
-	return followUpHeld.value ? displayedMessages.slice(0, 1) : displayedMessages;
+	return followUpHeld.value
+		? displayedMessages.slice(0, heldMessageCount.value)
+		: displayedMessages;
 });
 
 // True when at least one pending confirmation should occupy the chat-input
 // slot (questions, generic approvals, or domain/web-search access). Drives
 // the swap between the input and the floating confirmation panel. The
-// onboarding card waits until the greeting has played.
-const hasFloatingConfirmation = computed(
-	() => greetingPhase.value === null && thread.pendingConfirmations.some(isPendingItemFloating),
+// onboarding card waits until the greeting has played, and the next card until its step shows.
+const hasPendingFloatingCard = computed(() =>
+	thread.pendingConfirmations.some(isPendingItemFloating),
 );
+const hasFloatingConfirmation = computed(
+	() => greetingPhase.value === null && !followUpHeld.value && hasPendingFloatingCard.value,
+);
+// A held step with a card keeps the slot empty, so the input does not flash before the card. A
+// held step without one keeps the input: the user types next.
+const isCardHeld = computed(() => followUpHeld.value && hasPendingFloatingCard.value);
 // ponytail: an onboarding thread hides the chat input until its greeting has hydrated; the phase
 // gate above takes over in the same tick, so the input never shows before the card.
 const awaitingOnboardingGreeting = computed(
@@ -976,7 +992,7 @@ defineExpose({
 										kind="floating"
 									/>
 									<InstanceAiInput
-										v-else-if="greetingPhase === null && !awaitingOnboardingGreeting"
+										v-else-if="greetingPhase === null && !isCardHeld && !awaitingOnboardingGreeting"
 										ref="chatInputRef"
 										key="chat-input"
 										:is-streaming="thread.isStreaming"

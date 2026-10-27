@@ -16,6 +16,8 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	UNLIMITED_CREDITS,
+	isInstanceAiOnboardingRoute,
+	type InstanceAiOnboardingRoute,
 	type InstanceAiThreadHistoryResponse,
 	type InstanceAiThreadInfo,
 	type InstanceAiThreadSummary,
@@ -92,6 +94,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		},
 		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
 		onOnboardingLeft: leaveOnboarding,
+		onOnboardingCanvas: openCanvasFromOnboarding,
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
 	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {
@@ -430,6 +433,28 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			)
 		);
 	}
+	/**
+	 * `route` comes from the thread metadata the intent card wrote; P0 threads have none. A caller
+	 * that knows the route passes it, because the thread list can still hold an older copy.
+	 */
+	function trackOnboardingEnded(
+		threadId: string,
+		outcome: OnboardingExitOutcome,
+		leaveReason?: string,
+		route?: InstanceAiOnboardingRoute,
+	): void {
+		const storedRoute = localThreadEntries(threadId)
+			.map((t) => t.metadata?.onboardingRoute)
+			.find(isInstanceAiOnboardingRoute);
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED, {
+			thread_id: threadId,
+			instance_id: rootStore.instanceId,
+			outcome,
+			leave_reason: leaveReason ?? null,
+			route: route ?? storedRoute ?? null,
+		});
+	}
+
 	/** The exit lives in thread metadata, so a reload keeps it. Idempotent. */
 	function leaveOnboarding(
 		threadId: string,
@@ -441,12 +466,27 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		updateThreadMetadata(threadId, { onboardingLeft: true }).catch((error: unknown) => {
 			toast.showError(error, i18n.baseText('generic.error'));
 		});
-		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED, {
-			thread_id: threadId,
-			instance_id: rootStore.instanceId,
-			outcome,
-			leave_reason: leaveReason ?? null,
-		});
+		trackOnboardingEnded(threadId, outcome, leaveReason);
+	}
+
+	/** Set when an onboarding answer sends the user to a blank canvas; the thread view navigates. */
+	const onboardingCanvasRequest = ref<{ threadId: string } | null>(null);
+	function openCanvasFromOnboarding(threadId: string): void {
+		// The backend ends the onboarding for this pick, so a thread list that refreshed first
+		// already shows it as left. The pick still counts as the end, once.
+		if (!leftOnboardingThreadIds.has(threadId)) {
+			if (isOnboardingChromeHidden(threadId)) {
+				updateThreadMetadata(threadId, { onboardingLeft: true }).catch((error: unknown) => {
+					toast.showError(error, i18n.baseText('generic.error'));
+				});
+			}
+			leftOnboardingThreadIds.add(threadId);
+			trackOnboardingEnded(threadId, 'canvas', undefined, 'build_canvas');
+		}
+		onboardingCanvasRequest.value = { threadId };
+	}
+	function clearOnboardingCanvasRequest(): void {
+		onboardingCanvasRequest.value = null;
 	}
 
 	return {
@@ -488,6 +528,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		clearCanvasSelectionRequest,
 		isOnboardingChromeHidden,
 		leaveOnboarding,
+		onboardingCanvasRequest,
+		openCanvasFromOnboarding,
+		clearOnboardingCanvasRequest,
 		requestClearCanvasSelection,
 	};
 });

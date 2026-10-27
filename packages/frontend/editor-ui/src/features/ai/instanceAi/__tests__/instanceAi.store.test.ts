@@ -439,6 +439,104 @@ describe('useInstanceAiStore - onboarding exit', () => {
 			instance_id: 'instance-1',
 			outcome: 'left',
 			leave_reason: 'stop',
+			route: null,
 		});
+	});
+
+	it('openCanvasFromOnboarding ends the onboarding and asks the thread view for a blank canvas', () => {
+		const store = useInstanceAiStore();
+		store.threads = [
+			{
+				id: 'thread-1',
+				title: 'Onboarding',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				metadata: { source: 'onboarding', origin: 'external', onboardingRoute: 'build_canvas' },
+			},
+		];
+
+		// The runtime calls this hook when the confirm response carries `navigateTo: 'new-workflow'`.
+		store.openCanvasFromOnboarding('thread-1');
+
+		expect(store.isOnboardingChromeHidden('thread-1')).toBe(false);
+		expect(store.onboardingCanvasRequest).toEqual({ threadId: 'thread-1' });
+		const { track } = useTelemetry();
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED,
+			expect.objectContaining({ outcome: 'canvas', route: 'build_canvas' }),
+		);
+	});
+
+	it('openCanvasFromOnboarding counts the end once when the thread list already shows it as left', () => {
+		const store = useInstanceAiStore();
+		// The backend wrote `onboardingLeft` with the pick, and the list refreshed before the answer.
+		store.threads = [
+			{
+				id: 'thread-1',
+				title: 'Onboarding',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				metadata: {
+					source: 'onboarding',
+					origin: 'external',
+					onboardingRoute: 'build_canvas',
+					onboardingLeft: true,
+				},
+			},
+		];
+
+		store.openCanvasFromOnboarding('thread-1');
+		store.openCanvasFromOnboarding('thread-1');
+
+		const { track } = useTelemetry();
+		expect(track).toHaveBeenCalledTimes(1);
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED,
+			expect.objectContaining({ outcome: 'canvas', route: 'build_canvas' }),
+		);
+		expect(store.onboardingCanvasRequest).toEqual({ threadId: 'thread-1' });
+	});
+
+	it('openCanvasFromOnboarding reports the canvas route even when the stored route is older', () => {
+		const store = useInstanceAiStore();
+		// The list still holds the route of the intent card, from before the build card answer.
+		store.threads = [
+			{
+				id: 'thread-1',
+				title: 'Onboarding',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				metadata: { source: 'onboarding', origin: 'external', onboardingRoute: 'build' },
+			},
+		];
+
+		store.openCanvasFromOnboarding('thread-1');
+
+		const { track } = useTelemetry();
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED,
+			expect.objectContaining({ outcome: 'canvas', route: 'build_canvas' }),
+		);
+	});
+
+	it('leaveOnboarding tracks the route of an intent-routing thread', () => {
+		const store = useInstanceAiStore();
+		store.threads = [
+			{
+				id: 'thread-1',
+				title: 'Onboarding',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				metadata: { source: 'onboarding', origin: 'external', onboardingRoute: 'build_ai' },
+			},
+		];
+
+		store.leaveOnboarding('thread-1', 'build');
+
+		const { track } = useTelemetry();
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED,
+			expect.objectContaining({ outcome: 'build', route: 'build_ai' }),
+		);
 	});
 });

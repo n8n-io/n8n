@@ -426,6 +426,12 @@ export const runStartPayloadSchema = z.object({
 		.string()
 		.optional()
 		.describe('LangSmith trace ID paired with langsmithRunId for feedback annotation.'),
+	hostSeeded: z
+		.boolean()
+		.optional()
+		.describe(
+			'True for a finished run the host writes with no model call, such as an onboarding step.',
+		),
 });
 
 export const runFinishPayloadSchema = z.object({
@@ -846,6 +852,11 @@ export const instanceAiQuestionSchema = z.object({
 	required: z.boolean().optional(),
 	/** Label of the built-in free-text row; the card shows "Something else" without it. */
 	freeTextLabel: z.string().optional(),
+	/**
+	 * `false` hides the built-in free-text row of a `single` or `multi` question, so the user must
+	 * pick an option. For host-seeded cards only: the agent's `ask-user` tool does not offer it.
+	 */
+	freeText: z.boolean().optional(),
 	/**
 	 * Options that follow an earlier `single` question of the same card: the option selected for
 	 * `questionId` picks the list. A free-text or unknown answer falls back to `options`.
@@ -1693,6 +1704,23 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
 }) {}
 
 /**
+ * Where an onboarding thread goes after its intent card, stored as `onboardingRoute` in the thread
+ * metadata. `build`: the build card is open. `other`: free text started a normal first turn.
+ */
+export const INSTANCE_AI_ONBOARDING_ROUTES = [
+	'build',
+	'build_ai',
+	'build_canvas',
+	'idea',
+	'other',
+] as const;
+export type InstanceAiOnboardingRoute = (typeof INSTANCE_AI_ONBOARDING_ROUTES)[number];
+
+export function isInstanceAiOnboardingRoute(value: unknown): value is InstanceAiOnboardingRoute {
+	return INSTANCE_AI_ONBOARDING_ROUTES.some((route) => route === value);
+}
+
+/**
  * Entry-point taxonomy for Instance AI thread creation. Every new entry point
  * must register a value here — `InstanceAiEnsureThreadRequest.source` requires
  * it, so missing values fail at the API boundary.
@@ -2216,6 +2244,8 @@ export interface InstanceAiThreadStatusResponse {
 export interface InstanceAiConfirmResponse {
 	ok: true;
 	runId?: string;
+	/** Where the client goes after the answer. `new-workflow`: a blank canvas (the onboarding "build it myself" pick). */
+	navigateTo?: 'new-workflow';
 }
 
 // ---------------------------------------------------------------------------

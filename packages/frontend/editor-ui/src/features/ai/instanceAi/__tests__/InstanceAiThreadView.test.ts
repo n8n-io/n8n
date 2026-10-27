@@ -22,6 +22,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from '../constants';
+import { VIEWS } from '@/app/constants';
 import { LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
 import {
@@ -561,6 +562,23 @@ describe('InstanceAiThreadView', () => {
 		await user.click(getByRole('button', { name: 'New chat' }));
 
 		expect(routerPushSpy).toHaveBeenCalledExactlyOnceWith({ name: INSTANCE_AI_VIEW });
+	});
+
+	it('opens a blank canvas a moment after an onboarding answer asks for one', async function () {
+		vi.useFakeTimers();
+		try {
+			renderView({ props: { threadId: 'thread-1' } });
+
+			store.onboardingCanvasRequest = { threadId: 'thread-1' };
+			await nextTick();
+
+			// The chat first plays its thinking beat and shows the canvas message.
+			expect(routerPushSpy).not.toHaveBeenCalled();
+			await vi.advanceTimersByTimeAsync(3000);
+			expect(routerPushSpy).toHaveBeenCalledExactlyOnceWith({ name: VIEWS.NEW_WORKFLOW });
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('shows the session title in the history button', function () {

@@ -1,4 +1,5 @@
 import {
+	INSTANCE_AI_ONBOARDING_ROUTES,
 	INSTANCE_AI_PREFILL_TYPES,
 	instanceContextAbsenceReasonSchema,
 	instanceContextSurfaceSchema,
@@ -728,10 +729,31 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				),
 		}),
 	},
+	USER_PICKED_AI_ASSISTANT_ONBOARDING_OPTION: {
+		name: 'User picked AI Assistant onboarding option',
+		description:
+			'The user answered a routing card of an onboarding thread: the intent card, or the build card that follows it. Fires once per card, from the backend, when the answer is stored.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+			card: z
+				.enum(['intent', 'build'])
+				.describe('intent: "What do you want to do first?". build: "How do you want to build it?"'),
+			route: z
+				.enum(INSTANCE_AI_ONBOARDING_ROUTES)
+				.describe(
+					'The route the answer picked. other: the user typed free text, which starts the first model turn',
+				),
+			custom_text: z
+				.string()
+				.nullable()
+				.describe('Free text typed in the card in place of a pick, redacted'),
+		}),
+	},
 	USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD: {
 		name: 'User answered AI Assistant onboarding card',
 		description:
-			'The user settled the question card an onboarding thread opens with. Fires once per thread, from the backend, when the answers are stored. Carries the picked apps and the free text as typed.',
+			'The user settled the team, apps and goal card of an onboarding thread (the idea route; the P0 opening card before 137_instance_ai_chat_onboarding_v2). Fires once per thread, from the backend, when the answers are stored. Carries the picked apps and the free text as typed.',
 		properties: z.object({
 			user_id: z.string(),
 			thread_id: z.string(),
@@ -746,6 +768,13 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 					'Where the team came from: the n8n Cloud account, the `?team=` query of a test run, or the card. Null when the card step was skipped',
 				),
 			apps: z.array(z.string()).describe('Apps picked in the card, by their shown names'),
+			goal: z
+				.string()
+				.nullable()
+				.optional()
+				.describe(
+					'The pick on "What do you want to automate first?". Null when skipped. Absent on P0 events, which had no goal step',
+				),
 			custom_text: z
 				.string()
 				.nullable()
@@ -755,14 +784,21 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	AI_ASSISTANT_ONBOARDING_ENDED: {
 		name: 'AI Assistant onboarding ended',
 		description:
-			'The onboarding flow of a thread ended and the normal chat came back. Fires once per thread, from the browser, on the first build, when the agent calls `leave-onboarding`, or when a run fails.',
+			'The onboarding flow of a thread ended and the normal chat came back. Fires once per thread, from the browser, on the first build, when the agent calls `leave-onboarding`, when a run fails, or when the user goes to a blank canvas.',
 		properties: z.object({
 			thread_id: z.string(),
 			instance_id: z.string(),
 			outcome: z
-				.enum(['build', 'left', 'run_failed'])
+				.enum(['build', 'left', 'run_failed', 'canvas'])
 				.describe(
-					'build: the agent started the first workflow. left: the agent called `leave-onboarding`. run_failed: the run ended with an error or was interrupted',
+					'build: the agent started the first workflow. left: the agent called `leave-onboarding`. run_failed: the run ended with an error or was interrupted. canvas: the user picked "build it myself" and went to a blank canvas',
+				),
+			route: z
+				.enum(INSTANCE_AI_ONBOARDING_ROUTES)
+				.nullable()
+				.optional()
+				.describe(
+					'The route stored on the thread when the onboarding ended: build_ai, build_canvas, idea or other. Null on P0 threads',
 				),
 			leave_reason: z
 				.string()

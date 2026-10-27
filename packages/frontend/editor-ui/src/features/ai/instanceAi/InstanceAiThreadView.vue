@@ -19,7 +19,11 @@ import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { DEBOUNCE_TIME, LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
+import {
+	DEBOUNCE_TIME,
+	LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO,
+	VIEWS,
+} from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -37,7 +41,11 @@ import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
 import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
 import { useTransitionGate } from './useTransitionGate';
-import { INSTANCE_AI_VIEW } from './constants';
+import {
+	INSTANCE_AI_VIEW,
+	ONBOARDING_CANVAS_READ_MS,
+	ONBOARDING_STEP_THINKING_MS,
+} from './constants';
 import { getDismissedContextKeys } from './instanceAi.handoffContext';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
@@ -89,6 +97,27 @@ const conversationRef = useTemplateRef<InstanceType<typeof InstanceAiConversatio
 // `InstanceAiArtifactsPanel`, a sibling of the conversation rather than a
 // descendant of it.
 const handoffContext = computed(() => conversationRef.value?.pendingComposerContext ?? null);
+
+// An onboarding answer ("build it myself") sends the user to a blank canvas in this tab, once the
+// chat has played its thinking beat and shown "Opening a blank canvas…".
+let onboardingCanvasTimer: ReturnType<typeof setTimeout> | null = null;
+watch(
+	() => store.onboardingCanvasRequest,
+	(request) => {
+		if (request?.threadId !== props.threadId) return;
+		store.clearOnboardingCanvasRequest();
+		if (onboardingCanvasTimer) clearTimeout(onboardingCanvasTimer);
+		onboardingCanvasTimer = setTimeout(() => {
+			onboardingCanvasTimer = null;
+			// The user may have opened another thread in the meantime.
+			if (router.currentRoute.value.params.threadId !== props.threadId) return;
+			void router.push({ name: VIEWS.NEW_WORKFLOW });
+		}, ONBOARDING_STEP_THINKING_MS + ONBOARDING_CANVAS_READ_MS);
+	},
+);
+onUnmounted(() => {
+	if (onboardingCanvasTimer) clearTimeout(onboardingCanvasTimer);
+});
 
 function onThreadMissing() {
 	// The user may have navigated to another thread before this one reported
