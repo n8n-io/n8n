@@ -205,6 +205,13 @@ export class ExecutionService {
 		user: User,
 		redactExecutionData?: boolean,
 	): Promise<IExecutionResponse | undefined> {
+		// Reading a workflow is not reading its runs: a custom project role can
+		// hold `workflow:read` without `execution:read`, as in the executions API.
+		const canReadExecutions = await userHasScopes(user, ['execution:read'], false, {
+			workflowId,
+		});
+		if (!canReadExecutions) return undefined;
+
 		// A workflow runs on one engine, and only that engine holds its executions.
 		const settings = await this.workflowRepository.findSettings(workflowId);
 		const execution =

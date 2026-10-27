@@ -5934,6 +5934,36 @@ describe('GET /workflows/:workflowId/executions/last-successful', () => {
 
 		expect(response.body.data).toBeNull();
 	});
+
+	const readLastSuccessfulAs = async (scopes: string[]) => {
+		const teamProject = await createTeamProject(undefined, owner);
+		const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+		await linkUserToProject(member, teamProject, role.slug);
+		const workflow = await createWorkflow({}, teamProject);
+		const { createSuccessfulExecution } = await import('../shared/db/executions.js');
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authMemberAgent
+			.get(`/workflows/${workflow.id}/executions/last-successful`)
+			.expect(200);
+		return { response, execution };
+	};
+
+	test('a custom project role without execution:read gets null', async () => {
+		const { response } = await readLastSuccessfulAs(['workflow:read', 'workflow:list']);
+
+		expect(response.body.data).toBeNull();
+	});
+
+	test('a custom project role with execution:read gets the execution', async () => {
+		const { response, execution } = await readLastSuccessfulAs([
+			'workflow:read',
+			'workflow:list',
+			'execution:read',
+		]);
+
+		expect(response.body.data).toMatchObject({ id: execution.id });
+	});
 });
 
 describe('GET /workflows/:workflowId/callable-subworkflows', () => {
