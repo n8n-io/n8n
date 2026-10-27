@@ -26,10 +26,6 @@ const configs = {
 			'@n8n/design-system/require-teleported-tooltip-in-dropdown': 'error',
 		},
 	},
-	/**
-	 * Script files. The import ban does not need the Vue template parser.
-	 * Vue files get the same ban from `recommended`.
-	 */
 	componentImports: {
 		files: ['**/*.{ts,tsx}'],
 		plugins,
