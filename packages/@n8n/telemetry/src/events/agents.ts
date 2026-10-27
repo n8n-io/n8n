@@ -388,6 +388,36 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Vector store searches that failed. Each one also counts in vector_store_search_count',
 				),
+			file_age_days_min: z
+				.number()
+				.optional()
+				.describe(
+					'Age in full days, when the run ends, of the newest knowledge file that read_file read successfully. Absent when the run read no file.',
+				),
+			file_age_days_max: z
+				.number()
+				.optional()
+				.describe(
+					'Age in full days, when the run ends, of the oldest knowledge file that read_file read successfully. Absent when the run read no file.',
+				),
+			file_age_days_avg: z
+				.number()
+				.optional()
+				.describe(
+					'Average age in full days of the knowledge files that read_file read successfully, with one decimal. Each file counts once, also when the run read it more than once. Absent when the run read no file.',
+				),
+			file_age_days_median: z
+				.number()
+				.optional()
+				.describe(
+					'Median age of the knowledge files that read_file read successfully. Each file counts once, and each age is in full days. With an even number of files, the median is the average of the two middle ages, so it can end in .5. Absent when the run read no file.',
+				),
+			file_age_days_first_25: z
+				.array(z.number())
+				.optional()
+				.describe(
+					'Ages in full days of the first 25 different knowledge files that read_file read successfully, in the order of their first read. Absent when the run read no file.',
+				),
 		}),
 	},
 	AGENT_EXECUTION_COUNT: {

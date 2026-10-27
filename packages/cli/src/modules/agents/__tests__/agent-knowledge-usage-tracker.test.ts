@@ -3,7 +3,10 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
 
-import { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
+import {
+	AgentKnowledgeUsageTracker,
+	type KnowledgeToolCallResult,
+} from '../agent-knowledge-usage-tracker';
 
 describe('AgentKnowledgeUsageTracker', () => {
 	afterEach(() => {
@@ -167,6 +170,110 @@ describe('AgentKnowledgeUsageTracker', () => {
 	});
 
 	describe('sendRunUsage', () => {
+		const day = 24 * 60 * 60 * 1000;
+		const now = new Date('2026-10-26T12:00:00.000Z');
+
+		function sendRun(telemetry: Telemetry, results: KnowledgeToolCallResult[]) {
+			const tracker = new AgentKnowledgeUsageTracker(telemetry);
+			for (const result of results) {
+				tracker.startToolCall('run-1', 'file_read')(result);
+			}
+
+			tracker.sendRunUsage('run-1', { agentId: 'agent-1', runType: 'production' });
+		}
+
+		/** A successful read of one file, uploaded the given number of days before `now`. */
+		function readOf(fileId: string, daysAgo: number): KnowledgeToolCallResult {
+			const uploadedAt = new Date(now.getTime() - daysAgo * day).toISOString();
+			return { failed: false, contentChars: 10, readFile: { fileId, uploadedAt } };
+		}
+
+		it('sends the age stats in full days of the files that the run read', () => {
+			vi.useFakeTimers({ now });
+			const telemetry = mock<Telemetry>();
+
+			sendRun(telemetry, [
+				readOf('file-a', 30.1),
+				readOf('file-b', 2.5),
+				readOf('file-c', 10),
+				readOf('file-d', 4),
+			]);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_RUN_USED_KNOWLEDGE,
+				expect.objectContaining({
+					file_age_days_min: 2,
+					file_age_days_max: 30,
+					file_age_days_avg: 11.5,
+					file_age_days_median: 7,
+					file_age_days_first_25: [30, 2, 10, 4],
+				}),
+			);
+		});
+
+		it('counts a file read more than once as one file', () => {
+			vi.useFakeTimers({ now });
+			const telemetry = mock<Telemetry>();
+
+			sendRun(telemetry, [
+				readOf('file-a', 30),
+				readOf('file-a', 30),
+				readOf('file-a', 30),
+				readOf('file-b', 2),
+			]);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_RUN_USED_KNOWLEDGE,
+				expect.objectContaining({
+					file_age_days_avg: 16,
+					file_age_days_median: 16,
+					file_age_days_first_25: [30, 2],
+				}),
+			);
+		});
+
+		it('lists the ages in the order the reads started, also when they end in another order', () => {
+			vi.useFakeTimers({ now });
+			const telemetry = mock<Telemetry>();
+			const tracker = new AgentKnowledgeUsageTracker(telemetry);
+			const finishFirstRead = tracker.startToolCall('run-1', 'file_read');
+			const finishSecondRead = tracker.startToolCall('run-1', 'file_read');
+
+			finishSecondRead(readOf('despedidas', 2));
+			finishFirstRead(readOf('saludos', 30));
+			tracker.sendRunUsage('run-1', { agentId: 'agent-1', runType: 'production' });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_RUN_USED_KNOWLEDGE,
+				expect.objectContaining({ file_age_days_first_25: [30, 2] }),
+			);
+		});
+
+		it('lists the ages of the first 25 files only', () => {
+			vi.useFakeTimers({ now });
+			const telemetry = mock<Telemetry>();
+			const reads = Array.from({ length: 30 }, (_, index) => readOf(`file-${index}`, index));
+
+			sendRun(telemetry, reads);
+
+			const [, properties] = telemetry.track.mock.calls[0];
+			expect(properties).toMatchObject({
+				file_age_days_first_25: Array.from({ length: 25 }, (_, index) => index),
+				file_age_days_max: 29,
+			});
+		});
+
+		it('sends no ages when the run read no file', () => {
+			const telemetry = mock<Telemetry>();
+
+			sendRun(telemetry, [{ failed: false, contentChars: 10 }, { failed: true }]);
+
+			const [, properties] = telemetry.track.mock.calls[0];
+			expect(properties).not.toHaveProperty('file_age_days_min');
+			expect(properties).not.toHaveProperty('file_age_days_max');
+			expect(properties).not.toHaveProperty('file_age_days_first_25');
+		});
+
 		it('sends the counts of a run that used knowledge, then forgets the run', () => {
 			const telemetry = mock<Telemetry>();
 			const tracker = new AgentKnowledgeUsageTracker(telemetry);
