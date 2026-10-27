@@ -337,6 +337,7 @@ describe('N8nPackageParser.getSkills', () => {
 
 	it.each([
 		['a non-text instruction', { instructions: 42 }],
+		['instructions without text', { instructions: '   ' }],
 		['a reference outside the skill', { references: [{ path: '../guide.md', content: 'Guide' }] }],
 		['allowed tools', { allowedTools: ['lookup'] }],
 		['a runtime field', { createdAt: '2026-10-01' }],
