@@ -37,7 +37,7 @@ Existing search connections are preserved.
 Open **Self-healing playground** in the sidebar, or navigate to
 `/self-healing-playground` on your n8n instance.
 
-1. Select **Self-healing test**. The playground selects it by default.
+1. Select your personal project or a team project. The playground prefers **Self-healing test** when it exists.
 2. Create and publish a scenario. This does not run the workflow.
 3. Open self-healing settings. Create and enable your configuration. Select the
    workflow and assign yourself as a reviewer.

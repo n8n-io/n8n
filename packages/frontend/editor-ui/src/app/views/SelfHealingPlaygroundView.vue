@@ -65,9 +65,11 @@ const configurationMessage = computed(() =>
 			: 'selfHealingPlayground.configurationRequired',
 	),
 );
-const teamProjects = computed(() =>
-	projectsStore.myProjects.filter((project) => project.type === 'team'),
-);
+const availableProjects = computed(() => projectsStore.myProjects);
+const settingsPath = computed(() => {
+	const project = availableProjects.value.find((project) => project.id === projectId.value);
+	return `/projects/${projectId.value}/${project?.type === 'personal' ? 'self-healing' : 'settings'}`;
+});
 
 function published(workflow: IWorkflowDb) {
 	return Boolean(workflow.activeVersionId && workflow.activeVersionId === workflow.versionId);
@@ -260,8 +262,8 @@ onMounted(async () => {
 	await perform(async () => {
 		await projectsStore.getMyProjects();
 		projectId.value =
-			teamProjects.value.find((project) => project.name === 'Self-healing test')?.id ??
-			teamProjects.value[0]?.id ??
+			availableProjects.value.find((project) => project.name === 'Self-healing test')?.id ??
+			availableProjects.value[0]?.id ??
 			'';
 		await refresh();
 	});
@@ -316,10 +318,10 @@ onMounted(async () => {
 				<div :class="$style.setupContent">
 					<div :class="$style.setupCopy">
 						<h2>{{ i18n.baseText('selfHealingPlayground.setup.title') }}</h2>
-						<p>{{ i18n.baseText('selfHealingPlayground.teamProjectsOnly') }}</p>
+						<p>{{ i18n.baseText('selfHealingPlayground.projectTypes') }}</p>
 						<p>{{ i18n.baseText('selfHealingPlayground.setup.description') }}</p>
 						<div :class="$style.links">
-							<RouterLink v-if="projectId" :to="`/projects/${projectId}/settings`">
+							<RouterLink v-if="projectId" :to="settingsPath">
 								<N8nIcon icon="settings" size="small" />{{
 									i18n.baseText('selfHealingPlayground.settings')
 								}}
@@ -350,7 +352,7 @@ onMounted(async () => {
 							@update:model-value="changeProject"
 						>
 							<N8nOption
-								v-for="project in teamProjects"
+								v-for="project in availableProjects"
 								:key="project.id"
 								:value="project.id"
 								:label="project.name ?? project.id"
@@ -362,8 +364,8 @@ onMounted(async () => {
 					</div>
 				</div>
 			</N8nCard>
-			<N8nCallout v-if="!busy && !teamProjects.length" theme="warning">
-				{{ i18n.baseText('selfHealingPlayground.noTeamProjects') }}
+			<N8nCallout v-if="!busy && !availableProjects.length" theme="warning">
+				{{ i18n.baseText('selfHealingPlayground.noProjects') }}
 			</N8nCallout>
 			<N8nCallout
 				v-if="!busy && projectId && enabled && configurationState !== 'configured'"
@@ -372,7 +374,7 @@ onMounted(async () => {
 			>
 				<p>{{ configurationMessage }}</p>
 				<div :class="$style.links">
-					<RouterLink :to="`/projects/${projectId}/settings`">{{
+					<RouterLink :to="settingsPath">{{
 						i18n.baseText('selfHealingPlayground.settings')
 					}}</RouterLink>
 				</div>
@@ -635,7 +637,8 @@ onMounted(async () => {
 					i18n.baseText('selfHealingPlayground.reset.description', {
 						interpolate: {
 							count: workflows.length,
-							project: teamProjects.find((project) => project.id === projectId)?.name ?? projectId,
+							project:
+								availableProjects.find((project) => project.id === projectId)?.name ?? projectId,
 						},
 					})
 				}}

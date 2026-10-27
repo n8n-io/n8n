@@ -6,6 +6,8 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { RoleService } from '@n8n/backend-services';
 import {
+	ProjectRelationRepository,
+	ProjectRepository,
 	SharedWorkflowRepository,
 	TransactionRunner,
 	UserRepository,
@@ -14,6 +16,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -28,6 +31,8 @@ export class SelfHealingConfigurationService {
 		private readonly configurations: SelfHealingConfigurationRepository,
 		private readonly workflows: WorkflowFinderService,
 		private readonly ownership: SharedWorkflowRepository,
+		private readonly projectRelations: ProjectRelationRepository,
+		private readonly projects: ProjectRepository,
 		private readonly users: UserRepository,
 		private readonly roles: RoleService,
 		private readonly transactionRunner: TransactionRunner,
@@ -37,6 +42,15 @@ export class SelfHealingConfigurationService {
 
 	async afterWorkflowsTransferred(workflowIds: string[]): Promise<void> {
 		await this.configurations.removeWorkflowSelections(workflowIds);
+	}
+
+	async canConfigure(user: User, projectId: string) {
+		if (!(await this.isPersonalProject(projectId))) {
+			return await userHasScopes(user, ['project:update'], false, { projectId });
+		}
+
+		const [relation] = await this.projectRelations.findByUserAndProjects(user.id, [projectId]);
+		return relation?.role.slug === PROJECT_OWNER_ROLE_SLUG;
 	}
 
 	async list(projectId: string) {
@@ -153,16 +167,22 @@ export class SelfHealingConfigurationService {
 
 	private async findEligibleReviewers(projectId: string, userIds?: string[]) {
 		const scopes = ['workflow:read', 'workflow:update'] as const;
-		const [projectRoleSlugs, globalRoleSlugs] = await Promise.all([
+		const [projectRoleSlugs, globalRoleSlugs, isPersonal] = await Promise.all([
 			this.roles.rolesWithScope('project', [...scopes]),
 			this.roles.rolesWithScope('global', [...scopes]),
+			this.isPersonalProject(projectId),
 		]);
 		return await this.users.findEligibleByProjectOrGlobalRoles({
 			projectId,
 			projectRoleSlugs,
-			globalRoleSlugs,
+			globalRoleSlugs: isPersonal ? [] : globalRoleSlugs,
 			userIds,
 		});
+	}
+
+	private async isPersonalProject(projectId: string) {
+		const [project] = await this.projects.findTypesByIds([projectId]);
+		return project?.type === 'personal';
 	}
 
 	private async canEnable(user: User, projectId: string) {

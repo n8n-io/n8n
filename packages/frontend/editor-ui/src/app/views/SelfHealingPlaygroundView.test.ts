@@ -57,7 +57,7 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
 }));
 
 const render = createComponentRenderer(SelfHealingPlaygroundView, {
-	global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } },
+	global: { stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
 });
 let workflow: IWorkflowDb;
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -259,27 +259,28 @@ describe('SelfHealingPlaygroundView', () => {
 		expect(mocks.archive).not.toHaveBeenCalled();
 		expect(mocks.delete).not.toHaveBeenCalled();
 	});
-	it('requires a team project before loading or creating workflows', async () => {
+	it('loads and creates workflows in a personal project', async () => {
 		mocks.projects = [{ id: 'personal', name: 'Personal', type: 'personal' }];
 		const screen = render();
-		expect(await screen.findByText(/Create a team project from the/)).toBeVisible();
-		expect(screen.getByTestId('create-wrong-field')).toBeDisabled();
-		expect(screen.queryByText('Self-healing settings')).not.toBeInTheDocument();
-		expect(mocks.getWorkflows).not.toHaveBeenCalled();
-		expect(mocks.create).not.toHaveBeenCalled();
-	});
-	it('selects a team project even when the personal project has the default name', async () => {
-		mocks.projects = [
-			{ id: 'personal', name: 'Self-healing test', type: 'personal' },
-			{ id: 'project1', name: 'My team', type: 'team' },
-		];
-		const screen = render();
 		await waitFor(() => expect(screen.getByTestId('create-wrong-field')).toBeEnabled());
-		expect(mocks.getWorkflows).toHaveBeenCalledWith(
-			mocks.context,
-			expect.objectContaining({ projectId: 'project1' }),
-			expect.any(Object),
+		expect(mocks.configurations).toHaveBeenCalledWith(
+			'/projects/personal/self-healing-configurations',
 		);
+		expect(screen.getByRole('link', { name: 'Self-healing settings' })).toHaveAttribute(
+			'href',
+			'/projects/personal/self-healing',
+		);
+		await userEvent.click(screen.getByTestId('create-wrong-field'));
+		await waitFor(() =>
+			expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'personal' })),
+		);
+	});
+	it('blocks creation when no projects are available', async () => {
+		mocks.projects = [];
+		const screen = render();
+		expect(await screen.findByText(/No projects are available/)).toBeVisible();
+		expect(screen.getByTestId('create-wrong-field')).toBeDisabled();
+		expect(mocks.getWorkflows).not.toHaveBeenCalled();
 	});
 	it('creates and publishes through the signed-in session without triggering an execution', async () => {
 		const screen = render();

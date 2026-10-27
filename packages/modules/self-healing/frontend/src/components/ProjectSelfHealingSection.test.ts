@@ -1,5 +1,8 @@
 import type { SelfHealingConfigurationDto } from '@n8n/api-types';
-import { SELF_HEALING_CONFIGURATION_VIEW } from '@n8n/frontend-constants/self-healing';
+import {
+	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+	SELF_HEALING_CONFIGURATION_VIEW,
+} from '@n8n/frontend-constants/self-healing';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
@@ -116,4 +119,55 @@ it('opens a new configuration in the current project', async () => {
 			params: { projectId: 'project', configurationId: 'new' },
 		}),
 	);
+});
+
+describe('personal tab', () => {
+	async function renderPersonalTab(configurations: SelfHealingConfigurationDto[]) {
+		const store = useSelfHealingStore();
+		store.configurations.project = configurations;
+		store.options.project = { workflows: [], reviewers: [] };
+		vi.spyOn(store, 'load').mockResolvedValue();
+		const router = createRouter({
+			history: createMemoryHistory(),
+			routes: [
+				{ path: '/projects/:projectId/self-healing', component: { render: () => null } },
+				{
+					path: '/projects/:projectId/self-healing/:configurationId',
+					name: PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+					component: { render: () => null },
+				},
+			],
+		});
+		await router.push('/projects/project/self-healing');
+		const view = render(ProjectSelfHealingSection, {
+			props: { projectId: 'project', variant: 'personalTab' },
+			global: { plugins: [router] },
+		});
+		return { view, router };
+	}
+
+	it('shows an empty state that opens a new configuration in the personal tab', async () => {
+		const { view, router } = await renderPersonalTab([]);
+
+		expect(await view.findByText('Set up self-healing')).toBeVisible();
+		expect(view.queryByText('Self-healing')).not.toBeInTheDocument();
+		expect(view.queryByTestId('self-healing-create')).not.toBeInTheDocument();
+
+		await fireEvent.click(view.getByRole('button', { name: 'Add configuration' }));
+		await waitFor(() =>
+			expect(router.currentRoute.value).toMatchObject({
+				name: PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+				params: { projectId: 'project', configurationId: 'new' },
+			}),
+		);
+	});
+
+	it('shows the configurations table with a create button', async () => {
+		const { view } = await renderPersonalTab([{ ...configuration }]);
+
+		expect(await view.findByText('All workflows')).toBeVisible();
+		expect(view.queryByText('People to notify')).not.toBeInTheDocument();
+		expect(view.queryByText('Set up self-healing')).not.toBeInTheDocument();
+		expect(view.getByTestId('self-healing-create')).toBeVisible();
+	});
 });

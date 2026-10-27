@@ -1,6 +1,10 @@
 import { render, fireEvent, waitFor, within } from '@testing-library/vue';
 import type { SelfHealingConfigurationDto } from '@n8n/api-types';
 import { waitAllPromises } from '@n8n/frontend-test-utils';
+import {
+	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+	PERSONAL_SELF_HEALING_VIEW,
+} from '@n8n/frontend-constants/self-healing';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { createMemoryHistory, createRouter, RouterView, type Router } from 'vue-router';
 
@@ -55,6 +59,17 @@ beforeEach(() => {
 				path: '/projects/:projectId/settings',
 				name: VIEWS.PROJECT_SETTINGS,
 				component: { render: () => null },
+			},
+			{
+				path: '/projects/:projectId/self-healing',
+				name: PERSONAL_SELF_HEALING_VIEW,
+				component: { render: () => null },
+			},
+			{
+				path: '/projects/:projectId/self-healing/:configurationId',
+				name: PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+				component: SelfHealingConfigView,
+				props: true,
 			},
 		],
 	});
@@ -405,6 +420,79 @@ it('returns to project settings at the self-healing section', async () => {
 	);
 });
 
+it('returns to the self-healing tab of a personal project', async () => {
+	const store = useSelfHealingStore();
+	store.configurations.project = [configuration];
+	await router.push('/projects/project/self-healing/1');
+	const view = render(RouterView, { global: { plugins: [router] } });
+	await view.findByRole('button', { name: 'Save changes' });
+	await fireEvent.click(view.getByRole('button', { name: 'Self-healing' }));
+
+	await waitFor(() =>
+		expect(router.currentRoute.value).toMatchObject({
+			name: PERSONAL_SELF_HEALING_VIEW,
+			params: { projectId: 'project' },
+		}),
+	);
+});
+
+describe('personal project', () => {
+	it('creates a configuration with the owner as the only reviewer and no reviewer section', async () => {
+		const store = useSelfHealingStore();
+		const save = vi.spyOn(store, 'save').mockResolvedValue(configuration);
+		await router.push('/projects/project/self-healing/new');
+		const view = render(RouterView, { global: { plugins: [router] } });
+		const button = await view.findByRole('button', { name: 'Create configuration' });
+
+		expect(view.queryByText('Reviewers')).not.toBeInTheDocument();
+		expect(view.queryByTestId('self-healing-reviewers')).not.toBeInTheDocument();
+		expect(view.queryByText(/who hears about it/)).not.toBeInTheDocument();
+		await fireEvent.click(button);
+		await waitFor(() =>
+			expect(save).toHaveBeenCalledWith(
+				'project',
+				expect.objectContaining({ reviewerIds: ['creator'] }),
+				undefined,
+			),
+		);
+	});
+
+	it('reports a missing configuration without pointing to project settings', async () => {
+		await router.push('/projects/project/self-healing/1');
+		render(RouterView, { global: { plugins: [router] } });
+
+		await waitFor(() =>
+			expect(showError).toHaveBeenCalledWith(
+				new Error('This configuration is no longer available.'),
+				expect.any(String),
+			),
+		);
+	});
+
+	it('replaces other reviewers with the owner when it saves an existing configuration', async () => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [{ ...configuration, reviewerIds: ['admin'] }];
+		const save = vi.spyOn(store, 'save').mockResolvedValue(configuration);
+		store.options.project.workflows.push({ id: 'other', name: 'Other workflow' });
+		await router.push('/projects/project/self-healing/1');
+		const view = render(RouterView, { global: { plugins: [router] } });
+		await view.findByRole('button', { name: 'Save changes' });
+
+		await fireEvent.click(view.getByRole('radio', { name: 'Select manually' }));
+		await fireEvent.click(view.getAllByRole('button', { name: 'Show popup' })[0]);
+		await fireEvent.click(await view.findByRole('option', { name: /Other workflow/ }));
+		await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+
+		await waitFor(() =>
+			expect(save).toHaveBeenCalledWith(
+				'project',
+				expect.objectContaining({ reviewerIds: ['creator'] }),
+				1,
+			),
+		);
+	});
+});
+
 it('shows an email-only reviewer once and allows removal', async () => {
 	const store = useSelfHealingStore();
 	store.options.project.reviewers = [
@@ -413,7 +501,7 @@ it('shows an email-only reviewer once and allows removal', async () => {
 	const view = await renderView('new');
 	const reviewer = within(await view.findByTestId('self-healing-selected-reviewer'));
 
-	expect(reviewer.getAllByText('creator@example.com')).toHaveLength(1);
+	expect(reviewer.getAllByText(/creator@example\.com/)).toHaveLength(1);
 	expect(reviewer.getAllByText(/\(you\)/)).toHaveLength(1);
 	await fireEvent.click(reviewer.getByRole('button', { name: 'Remove reviewer' }));
 	expect(view.queryByTestId('self-healing-selected-reviewer')).not.toBeInTheDocument();

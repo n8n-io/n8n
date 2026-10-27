@@ -1,13 +1,16 @@
 import {
 	createTeamProject,
 	createWorkflow,
+	getPersonalProject,
 	linkUserToProject,
 	mockInstance,
 	shareWorkflowWithProjects,
 } from '@n8n/backend-test-utils';
 import {
 	GLOBAL_ADMIN_ROLE,
+	ProjectRepository,
 	TransactionRunner,
+	type User,
 	UserRepository,
 	WorkflowRepository,
 	postgresMigrations,
@@ -22,10 +25,17 @@ import { randomUUID } from 'node:crypto';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { ControllerRegistry } from '@/controller.registry';
+import { UserService } from '@/services/user.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
-import { createUser } from '@test-integration/db/users';
+import {
+	createAdmin,
+	createChatUser,
+	createMember,
+	createOwner,
+	createUser,
+} from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { InstanceAiService } from '../../instance-ai.service';
@@ -355,6 +365,116 @@ it('requires existing project settings permission for every operation', async ()
 	await agent.patch(`${url}/${config.id}`).send(config).expect(403);
 	await agent.patch(`${url}/${config.id}/enabled`).send({ enabled: true }).expect(403);
 	await agent.delete(`${url}/${config.id}`).expect(403);
+});
+
+it('lets a personal project owner manage self-healing in their personal project', async () => {
+	const owner = await createUser();
+	const project = await getPersonalProject(owner);
+	const workflow = await createWorkflow({}, project);
+	const agent = server.authAgentFor(owner);
+	const url = `/projects/${project.id}/self-healing-configurations`;
+
+	const options = await agent.get(`${url}/options`).expect(200);
+	expect(options.body.data).toMatchObject({
+		workflows: [{ id: workflow.id }],
+		reviewers: expect.arrayContaining([expect.objectContaining({ id: owner.id })]),
+	});
+	const created = await agent
+		.post(url)
+		.send({ scope: 'selected', workflowIds: [workflow.id], reviewerIds: [owner.id], enabled: true })
+		.expect(200);
+	const id: number = created.body.data.id;
+	expect(created.body.data).toMatchObject({ enabled: true, enabledById: owner.id });
+	await agent.get(url).expect(200);
+	await agent.get(`${url}/${id}`).expect(200);
+	await agent
+		.patch(`${url}/${id}`)
+		.send({ scope: 'all', workflowIds: [], reviewerIds: [owner.id] })
+		.expect(200);
+	await agent.patch(`${url}/${id}/enabled`).send({ enabled: false }).expect(200);
+	await agent.delete(`${url}/${id}`).expect(200);
+	expect(await configurations.list(project.id)).toEqual([]);
+});
+
+async function expectNoConfigurationAccess(user: User, projectId: string, id: number) {
+	const agent = server.authAgentFor(user);
+	const url = `/projects/${projectId}/self-healing-configurations`;
+	const body = { scope: 'all', workflowIds: [], reviewerIds: [], enabled: false };
+	await agent.get(url).expect(403);
+	await agent.get(`${url}/options`).expect(403);
+	await agent.get(`${url}/${id}`).expect(403);
+	await agent.post(url).send(body).expect(403);
+	await agent.patch(`${url}/${id}`).send(body).expect(403);
+	await agent.patch(`${url}/${id}/enabled`).send({ enabled: false }).expect(403);
+	await agent.delete(`${url}/${id}`).expect(403);
+	expect(await configurations.list(projectId)).toHaveLength(1);
+}
+
+it.each([
+	['member', createUser],
+	['global admin', createAdmin],
+	['global owner', createOwner],
+])("denies a %s access to another user's personal project", async (_, createActor) => {
+	const owner = await createUser();
+	const project = await getPersonalProject(owner);
+	const config = await configurations.save(owner, project.id, {
+		scope: 'all',
+		workflowIds: [],
+		reviewerIds: [owner.id],
+		enabled: false,
+	});
+
+	await expectNoConfigurationAccess(await createActor(), project.id, config.id);
+});
+
+it('offers and accepts only the owner as a reviewer in a personal project', async () => {
+	const owner = await createUser();
+	const admin = await createAdmin();
+	const project = await getPersonalProject(owner);
+	const agent = server.authAgentFor(owner);
+	const url = `/projects/${project.id}/self-healing-configurations`;
+
+	const options = await agent.get(`${url}/options`).expect(200);
+	expect(options.body.data.reviewers).toEqual([expect.objectContaining({ id: owner.id })]);
+	await agent
+		.post(url)
+		.send({ scope: 'all', workflowIds: [], reviewerIds: [owner.id, admin.id], enabled: false })
+		.expect(400);
+	expect(await configurations.list(project.id)).toEqual([]);
+});
+
+it('denies a chat user access to their personal project for every operation', async () => {
+	const chatUser = await createChatUser();
+	const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+		chatUser.id,
+	);
+	const config = await configurations.save(chatUser, project.id, {
+		scope: 'all',
+		workflowIds: [],
+		reviewerIds: [],
+		enabled: false,
+	});
+
+	await expectNoConfigurationAccess(chatUser, project.id, config.id);
+});
+
+it('denies a user downgraded to chat user access to their personal project', async () => {
+	const member = await createMember();
+	const project = await getPersonalProject(member);
+	const config = await configurations.save(member, project.id, {
+		scope: 'all',
+		workflowIds: [],
+		reviewerIds: [member.id],
+		enabled: false,
+	});
+	await server
+		.authAgentFor(member)
+		.get(`/projects/${project.id}/self-healing-configurations`)
+		.expect(200);
+
+	await Container.get(UserService).changeUserRole(member, { newRoleName: 'global:chatUser' });
+
+	await expectNoConfigurationAccess(member, project.id, config.id);
 });
 
 it('reports the investigation time in UTC when the server uses another timezone', async () => {
