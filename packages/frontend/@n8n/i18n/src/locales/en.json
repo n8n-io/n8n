@@ -543,7 +543,6 @@
 	"aiAssistant.builder.settings.threadCreditsUsed": "This thread has used {count} credits so far",
 	"aiAssistant.builder.settings.getMoreCredits": "Get more credits",
 	"aiAssistant.builder.settings.creditsTooltip": "Credits are based on token usage. Credits renew on {renewalDate}. Unused credits expire on {expiryDate}.",
-	"aiAssistant.builder.creditBanner.text": "{remaining}/{total} monthly credits left",
 	"aiAssistant.builder.creditBanner.textUbb": "{remaining} credits left",
 	"aiAssistant.builder.creditBanner.trialText": "{remaining}/{total} credits left in your free trial",
 	"aiAssistant.builder.creditBanner.getMore": "Get more",

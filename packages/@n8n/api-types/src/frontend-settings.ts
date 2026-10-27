@@ -200,7 +200,6 @@ export interface FrontendSettings {
 	aiAssistant: {
 		enabled: boolean;
 		setup: boolean;
-		cloudUbbEnabled: boolean;
 	};
 	/**
 	 * @deprecated Gates the AI Transform node's code generation. No longer gates

@@ -393,26 +393,24 @@ describe('FrontendService', () => {
 			expect(settings.aiGateway).toMatchObject({ enabled: true, cloudUbbEnabled: true });
 		});
 
-		it('should surface the assistant Cloud UBB entitlement when the AI Assistant is enabled and entitled', async () => {
+		it('should enable the AI Assistant when it is licensed', async () => {
 			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
-			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
 			const { service, license } = createMockService();
 			license.isAiAssistantEnabled.mockReturnValue(true);
 
 			const settings = await service.getSettings();
 
-			expect(settings.aiAssistant).toMatchObject({ enabled: true, cloudUbbEnabled: true });
+			expect(settings.aiAssistant).toEqual({ enabled: true, setup: true });
 		});
 
-		it('should keep the assistant Cloud UBB entitlement off when the AI Assistant is disabled', async () => {
-			globalConfig.aiAssistant.baseUrl = '';
-			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
+		it('should keep the AI Assistant disabled when it is not licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
 			const { service, license } = createMockService();
 			license.isAiAssistantEnabled.mockReturnValue(false);
 
 			const settings = await service.getSettings();
 
-			expect(settings.aiAssistant).toMatchObject({ enabled: false, cloudUbbEnabled: false });
+			expect(settings.aiAssistant).toEqual({ enabled: false, setup: false });
 		});
 
 		it('should normalize configured postMessage origins', async () => {

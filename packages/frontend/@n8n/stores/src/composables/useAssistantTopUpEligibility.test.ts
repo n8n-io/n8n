@@ -2,33 +2,20 @@ import type { FrontendSettings } from '@n8n/api-types';
 import { ROLE } from '@n8n/api-types';
 import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
 import { createPinia, setActivePinia } from 'pinia';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { useCloudPlanStore } from '../cloudPlan.store';
 import { useSettingsStore } from '../settings.store';
 import { useUsersStore } from '../users.store';
-import {
-	ASSISTANT_TOP_UP_GA_DATE,
-	useAssistantTopUpEligibility,
-} from './useAssistantTopUpEligibility';
+import { useAssistantTopUpEligibility } from './useAssistantTopUpEligibility';
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
 let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
 
-/**
- * Build a `FrontendSettings` mock with the pieces this composable reads —
- * deployment type and the `aiAssistant.cloudUbbEnabled` flag.
- */
-const settingsFor = ({
-	deploymentType = 'cloud',
-	cloudUbbEnabled = false,
-}: { deploymentType?: string; cloudUbbEnabled?: boolean } = {}) =>
-	mock<FrontendSettings>({
-		deployment: { type: deploymentType },
-		aiAssistant: { enabled: true, setup: true, cloudUbbEnabled },
-	});
+const settingsFor = (deploymentType = 'cloud') =>
+	mock<FrontendSettings>({ deployment: { type: deploymentType } });
 
 const setOwner = () => {
 	usersStore.addUsers([{ id: '1', isPending: false, role: ROLE.Owner }]);
@@ -50,20 +37,12 @@ describe('useAssistantTopUpEligibility', () => {
 		settingsStore = useSettingsStore();
 		usersStore = useUsersStore();
 		cloudPlanStore = useCloudPlanStore();
-		vi.useFakeTimers();
-		// Freeze time before the GA date so the entitlement flag is the only lever
-		// unless a test explicitly steps past GA.
-		vi.setSystemTime(new Date('2026-09-15T00:00:00Z'));
 	});
 
-	afterEach(() => {
-		vi.useRealTimers();
-	});
-
-	test('is false on non-cloud deployments regardless of everything else', () => {
+	test('is false on non-cloud deployments', () => {
 		setOwner();
 		setTrialing(false);
-		settingsStore.setSettings(settingsFor({ deploymentType: 'default', cloudUbbEnabled: true }));
+		settingsStore.setSettings(settingsFor('default'));
 
 		const { isEligible } = useAssistantTopUpEligibility();
 
@@ -73,48 +52,27 @@ describe('useAssistantTopUpEligibility', () => {
 	test('is false for non-owners on cloud', () => {
 		setMember();
 		setTrialing(false);
-		settingsStore.setSettings(settingsFor({ cloudUbbEnabled: true }));
+		settingsStore.setSettings(settingsFor());
 
 		const { isEligible } = useAssistantTopUpEligibility();
 
 		expect(isEligible.value).toBe(false);
 	});
 
-	test('is false for trialing owners even when the entitlement is on', () => {
+	test('is false for trialing owners', () => {
 		setOwner();
 		setTrialing(true);
-		settingsStore.setSettings(settingsFor({ cloudUbbEnabled: true }));
+		settingsStore.setSettings(settingsFor());
 
 		const { isEligible } = useAssistantTopUpEligibility();
 
 		expect(isEligible.value).toBe(false);
 	});
 
-	test('is true for a paid cloud owner when the entitlement is on, before GA', () => {
+	test('is true for a paid cloud owner', () => {
 		setOwner();
 		setTrialing(false);
-		settingsStore.setSettings(settingsFor({ cloudUbbEnabled: true }));
-
-		const { isEligible } = useAssistantTopUpEligibility();
-
-		expect(isEligible.value).toBe(true);
-	});
-
-	test('is false for a paid cloud owner without the entitlement before GA', () => {
-		setOwner();
-		setTrialing(false);
-		settingsStore.setSettings(settingsFor({ cloudUbbEnabled: false }));
-
-		const { isEligible } = useAssistantTopUpEligibility();
-
-		expect(isEligible.value).toBe(false);
-	});
-
-	test('is true for a paid cloud owner without the entitlement at or past GA', () => {
-		setOwner();
-		setTrialing(false);
-		settingsStore.setSettings(settingsFor({ cloudUbbEnabled: false }));
-		vi.setSystemTime(ASSISTANT_TOP_UP_GA_DATE);
+		settingsStore.setSettings(settingsFor());
 
 		const { isEligible } = useAssistantTopUpEligibility();
 
