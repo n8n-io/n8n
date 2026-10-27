@@ -52,6 +52,7 @@ const props = defineProps<{
 		tools: INode[];
 		onConfirm: (tools: INode[]) => void;
 		customAgentId?: string;
+		stacked?: boolean;
 	};
 }>();
 
@@ -389,6 +390,7 @@ function onDialogOpenUpdate(open: boolean) {
 	<N8nDialog
 		:open="modalOpen"
 		size="2xlarge"
+		:stacked="data.stacked === true"
 		:show-close-button="currentView === 'list'"
 		:container-class="$style.modal"
 		@update:open="onDialogOpenUpdate"

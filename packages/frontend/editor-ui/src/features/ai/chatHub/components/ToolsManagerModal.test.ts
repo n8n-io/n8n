@@ -128,7 +128,9 @@ function createMockToolDto(overrides: Partial<INode> = {}, enabled = true): Chat
 
 const DialogStub = {
 	props: ['open'],
-	template: '<div v-if="open" role="dialog"><slot /></div>',
+	emits: ['update:open'],
+	template:
+		'<div v-if="open" role="dialog"><button type="button" data-test-id="dialog-request-close" @click="$emit(\'update:open\', false)" /><slot /></div>',
 };
 
 const dialogPartStub = { template: '<div><slot /></div>' };
@@ -210,6 +212,14 @@ describe('ToolsManagerModal', () => {
 			},
 		};
 	}
+
+	it('closes the dialog when the dialog requests close', async () => {
+		const { getByTestId } = renderComponent({ props: defaultProps() });
+
+		await userEvent.click(getByTestId('dialog-request-close'));
+
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
 
 	it('should render the modal title', () => {
 		const { getByText } = renderComponent({ props: defaultProps() });

@@ -27,6 +27,7 @@ const props = defineProps<{
 		provider: ChatHubLLMProvider;
 		initialValue: string | null;
 		onSelect: (provider: ChatHubLLMProvider, modelId: string) => void;
+		stacked?: boolean;
 	};
 }>();
 
@@ -71,6 +72,7 @@ function onCancel() {
 	<N8nDialog
 		:open="modalOpen"
 		size="medium"
+		:stacked="data.stacked === true"
 		:container-class="$style.dialog"
 		@update:open="onDialogOpenUpdate"
 	>

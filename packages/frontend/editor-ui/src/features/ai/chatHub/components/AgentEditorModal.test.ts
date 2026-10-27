@@ -113,7 +113,9 @@ const MOCK_AGENT_MODEL: ChatModelDto = {
 
 const DialogStub = {
 	props: ['open'],
-	template: '<div v-if="open" role="dialog"><slot /></div>',
+	emits: ['update:open'],
+	template:
+		'<div v-if="open" role="dialog"><button type="button" data-test-id="dialog-request-close" @click="$emit(\'update:open\', false)" /><slot /></div>',
 };
 
 const dialogPartStub = { template: '<div><slot /></div>' };
@@ -133,11 +135,12 @@ const sharedStubs = {
 			'agents',
 			'isLoading',
 			'warnMissingCredentials',
+			'stacked',
 		],
 	},
 	ToolsSelector: {
 		template: '<div data-test-id="tools-selector" />',
-		props: ['disabled', 'disabledTooltip', 'checkedToolIds'],
+		props: ['disabled', 'disabledTooltip', 'checkedToolIds', 'stacked'],
 	},
 	N8nIconPicker: {
 		template: '<div data-test-id="icon-picker" />',
@@ -221,7 +224,7 @@ describe('AgentEditorModal', () => {
 			const { queryByText } = renderModal();
 
 			// No delete button (only shown in edit mode)
-			const deleteButton = document.body.querySelector('.deleteButton');
+			const deleteButton = document.body.querySelector('[data-test-id="agent-editor-delete"]');
 			expect(deleteButton).toBeNull();
 			// But cancel and save are shown
 			expect(queryByText('chatHub.tools.editor.cancel')).toBeTruthy();
@@ -250,6 +253,14 @@ describe('AgentEditorModal', () => {
 		});
 	});
 
+	it('closes the dialog when the dialog requests close', async () => {
+		const { getByTestId } = renderModal();
+
+		await userEvent.click(getByTestId('dialog-request-close'));
+
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
 	describe('edit mode', () => {
 		beforeEach(() => {
 			mockUseCustomAgent.mockReturnValue({
@@ -267,7 +278,7 @@ describe('AgentEditorModal', () => {
 		it('should show delete button', () => {
 			renderModal({ agentId: 'agent-1' });
 
-			const deleteButton = document.body.querySelector('.deleteButton');
+			const deleteButton = document.body.querySelector('[data-test-id="agent-editor-delete"]');
 			expect(deleteButton).toBeTruthy();
 		});
 
@@ -373,7 +384,9 @@ describe('AgentEditorModal', () => {
 				credentials: { openai: 'cred-1' },
 			});
 
-			const deleteButton = document.body.querySelector('.deleteButton') as HTMLElement;
+			const deleteButton = document.body.querySelector(
+				'[data-test-id="agent-editor-delete"]',
+			) as HTMLElement;
 			await userEvent.click(deleteButton);
 
 			await waitFor(() => {
@@ -391,7 +404,9 @@ describe('AgentEditorModal', () => {
 
 			renderModal({ agentId: 'agent-1' });
 
-			const deleteButton = document.body.querySelector('.deleteButton') as HTMLElement;
+			const deleteButton = document.body.querySelector(
+				'[data-test-id="agent-editor-delete"]',
+			) as HTMLElement;
 			await userEvent.click(deleteButton);
 
 			await waitFor(() => {
@@ -410,7 +425,9 @@ describe('AgentEditorModal', () => {
 				credentials: { openai: 'cred-1' },
 			});
 
-			const deleteButton = document.body.querySelector('.deleteButton') as HTMLElement;
+			const deleteButton = document.body.querySelector(
+				'[data-test-id="agent-editor-delete"]',
+			) as HTMLElement;
 			await userEvent.click(deleteButton);
 
 			await waitFor(() => {

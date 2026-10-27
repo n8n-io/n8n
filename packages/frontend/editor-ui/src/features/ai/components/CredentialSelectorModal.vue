@@ -117,6 +117,7 @@ function onCancel() {
 		:open="modalOpen"
 		size="medium"
 		:stacked="data.appendToBody === true"
+		:data-test-id="`${modalName}-modal`"
 		:container-class="$style.credentialSelectorModal"
 		@update:open="onDialogOpenUpdate"
 	>

@@ -66,8 +66,14 @@ const startNewSession = async () => {
 </script>
 
 <template>
-	<N8nDialog :open="modalOpen" size="medium" stacked @update:open="onDialogOpenUpdate">
-		<N8nDialogHeader data-test-id="new-assistant-session-modal">
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		stacked
+		data-test-id="new-assistant-session-modal"
+		@update:open="onDialogOpenUpdate"
+	>
+		<N8nDialogHeader>
 			<N8nDialogTitle>
 				{{ i18n.baseText('aiAssistant.newSessionModal.title.part1') }}
 				<span :class="$style.assistantIcon"><N8nAssistantIcon size="medium" /></span>

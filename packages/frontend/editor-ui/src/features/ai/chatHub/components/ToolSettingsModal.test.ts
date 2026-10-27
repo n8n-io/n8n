@@ -55,7 +55,9 @@ function createMockNode(overrides: Partial<INode> = {}): INode {
 
 const DialogStub = {
 	props: ['open'],
-	template: '<div v-if="open" role="dialog"><slot /></div>',
+	emits: ['update:open'],
+	template:
+		'<div v-if="open" role="dialog"><button type="button" data-test-id="dialog-request-close" @click="$emit(\'update:open\', false)" /><slot /></div>',
 };
 
 const dialogPartStub = { template: '<div><slot /></div>' };
@@ -157,6 +159,14 @@ describe('ToolSettingsModal', () => {
 		await userEvent.click(confirmButton);
 
 		expect(onConfirmMock).toHaveBeenCalledWith(node);
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('closes the dialog when the dialog requests close', async () => {
+		const { getByTestId } = renderModal();
+
+		await userEvent.click(getByTestId('dialog-request-close'));
+
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 

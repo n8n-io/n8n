@@ -487,7 +487,7 @@ watch(documentVisibility, (visibility) => {
 					v-if="isEditMode"
 					variant="outline"
 					icon="trash-2"
-					:class="$style.deleteButton"
+					data-test-id="agent-editor-delete"
 					:disabled="isDeleting"
 					:loading="isDeleting"
 					@click="onDelete"
@@ -604,6 +604,7 @@ watch(documentVisibility, (visibility) => {
 									:is-loading="isLoadingAgents"
 									:class="$style.modelSelector"
 									warn-missing-credentials
+									stacked
 									@change="onModelChange"
 									@select-credential="onCredentialSelected"
 								/>
@@ -626,6 +627,7 @@ watch(documentVisibility, (visibility) => {
 													: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
 										"
 										:checked-tool-ids="toolIds"
+										stacked
 										@toggle="handleToggleAgentTool"
 									/>
 								</div>
