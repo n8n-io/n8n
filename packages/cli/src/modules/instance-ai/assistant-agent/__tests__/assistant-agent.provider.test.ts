@@ -217,15 +217,20 @@ describe('AssistantAgentProvider', () => {
 					timeZone: 'Europe/Helsinki',
 					// Node attachments need their gate, which is off here.
 					contextAttachments: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
+					// The agents runtime titles the thread after the turn.
+					titledByRuntime: true,
 				}),
 			);
 			expect(agentFactory.createAgent).toHaveBeenCalledWith(expect.anything(), runtime, {
 				user,
 				threadId: 'thread-1',
 				runId: 'run-1',
+				generateTitle: true,
 			});
 			expect(handle.agent).toBe(agent);
 			expect(handle.input).toBe('Build a digest');
+			// The title describes the user's words, not the context blocks of the input.
+			expect(handle.runOptions?.titleText).toBe('Build a digest');
 			expect(handle.hostMetadata).toMatchObject({
 				assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
 				buildMode: 'default',
@@ -338,6 +343,66 @@ describe('AssistantAgentProvider', () => {
 				expect.any(Array),
 				'completed',
 			);
+		});
+
+		describe('side-call usage', () => {
+			const usage = { promptTokens: 50, completionTokens: 5, totalTokens: 55 };
+
+			it.each(['title', 'episodic'] as const)(
+				'claims the %s call against the credits',
+				async (task) => {
+					const { provider, creditService } = setup();
+
+					const handle = await provider.prepareTurn(startTurn());
+					await handle.onSideCallUsage?.({
+						task,
+						model: 'anthropic/claude-haiku-4-5',
+						usage,
+						reportId: 'report-1',
+					});
+
+					expect(creditService.claimRunUsage).toHaveBeenCalledWith(
+						user,
+						'thread-1',
+						`run-1:${task}:report-1`,
+						expect.arrayContaining([expect.anything()]),
+						'completed',
+					);
+				},
+			);
+
+			it.each(['observer', 'reflector'] as const)(
+				'does not claim the %s call, which the memory options claim',
+				async (task) => {
+					const { provider, creditService } = setup();
+
+					const handle = await provider.prepareTurn(startTurn());
+					await handle.onSideCallUsage?.({
+						task,
+						model: 'anthropic/claude-haiku-4-5',
+						usage,
+						reportId: 'report-1',
+					});
+
+					expect(creditService.claimRunUsage).not.toHaveBeenCalled();
+				},
+			);
+
+			it('keeps the turn going when the claim fails', async () => {
+				const { provider, creditService } = setup();
+				creditService.claimRunUsage.mockRejectedValueOnce(new Error('billing down'));
+
+				const handle = await provider.prepareTurn(startTurn());
+
+				await expect(
+					handle.onSideCallUsage?.({
+						task: 'title',
+						model: 'anthropic/claude-haiku-4-5',
+						usage,
+						reportId: 'report-1',
+					}),
+				).resolves.toBeUndefined();
+			});
 		});
 
 		describe('temporary workflows', () => {
@@ -533,6 +598,7 @@ describe('AssistantAgentProvider', () => {
 			);
 			expect(turnInput.buildInput).not.toHaveBeenCalled();
 			expect(handle.input).toBeUndefined();
+			expect(handle.runOptions).not.toHaveProperty('titleText');
 		});
 
 		it('gives the turn the sandbox of its workspace lease', async () => {

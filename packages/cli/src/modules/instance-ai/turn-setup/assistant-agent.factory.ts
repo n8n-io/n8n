@@ -12,6 +12,7 @@ import {
 	orchestratorAgentId,
 	resolveAgentPreviewSession,
 	type InstanceAiContext,
+	type InstanceAiMemoryConfig,
 	type McpServerConfig,
 	type ModelConfig,
 	type InstanceAiTraceContext,
@@ -52,6 +53,11 @@ export interface AssistantAgentParams {
 	threadId: string;
 	runId: string;
 	tracing?: InstanceAiTraceContext;
+	/**
+	 * Lets the agent runtime title a thread that has none. The caller bills the
+	 * title call from the run's side-call usage reports.
+	 */
+	generateTitle?: boolean;
 }
 
 /**
@@ -105,7 +111,7 @@ export class AssistantAgentFactory {
 		runtime: AssistantAgentRuntime,
 		params: AssistantAgentParams,
 	): Promise<InstanceAgent> {
-		const { user, threadId, runId, tracing } = params;
+		const { user, threadId, runId, tracing, generateTitle } = params;
 		if (tracing) {
 			environment.orchestrationContext.tracing = tracing;
 		}
@@ -130,6 +136,7 @@ export class AssistantAgentFactory {
 				runId,
 				environment.memoryModelId,
 				runtime.turnState.getObserverThresholdTokens(),
+				generateTitle,
 			),
 			memory: environment.memory,
 			checkpointStore: runtime.checkpointStore,
@@ -260,8 +267,20 @@ export class AssistantAgentFactory {
 		runId: string,
 		memoryModelId: ModelConfig | undefined,
 		observerThresholdTokens: number | undefined,
-	) {
+		generateTitle = false,
+	): InstanceAiMemoryConfig {
 		return {
+			// Titles run on the memory model, like the observer and the reflector.
+			...(generateTitle
+				? {
+						titleGeneration: {
+							...(memoryModelId ? { model: memoryModelId } : {}),
+							// The host copies the title to the thread list when the run ends, so the
+							// title must be saved by then to show after the first turn.
+							sync: true,
+						},
+					}
+				: {}),
 			observationalMemory: {
 				model: memoryModelId,
 				observerThresholdTokens:

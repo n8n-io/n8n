@@ -1,4 +1,4 @@
-import type { JSONObject, TokenUsage } from '@n8n/agents';
+import type { JSONObject, SideCallUsageReport, TokenUsage } from '@n8n/agents';
 import {
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
 	InstanceAiConfirmRequestDto,
@@ -196,6 +196,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				handoffContext: request.context,
 				timeZone: request.timeZone,
 				threadArtifacts: request.threadArtifacts,
+				titledByRuntime: true,
 			});
 		}
 
@@ -203,6 +204,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			user,
 			threadId: thread.id,
 			runId,
+			generateTitle: true,
 		});
 
 		let usage: { model: string; usage: TokenUsage } | undefined;
@@ -219,6 +221,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				recoverUsageOnAbort: true,
 				...modelStreamStallOptions(this.aiConfig),
 				providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+				// The input carries context blocks before the user's words, so title the words only.
+				...(turn.type === 'start' ? { titleText: turn.message } : {}),
 			},
 			onChunk: (chunk) => {
 				// The SDK stores the input when it receives it, so the first chunk means it is accepted.
@@ -249,6 +253,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					this.emitArchivedWorkflows(turn, thread.id, archived);
 				}
 			},
+			onSideCallUsage: async (report) =>
+				await this.claimSideCallUsage(user, thread.id, runId, report),
 			formatError: async (error) => await this.formatTurnError(user, error),
 		};
 	}
@@ -424,7 +430,45 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			});
 		}
 	}
+
+	/**
+	 * Claims a side call of the run, such as the title call, against the
+	 * Assistant credits. Best effort.
+	 */
+	private async claimSideCallUsage(
+		user: User,
+		threadId: string,
+		runId: string,
+		report: SideCallUsageReport,
+	): Promise<void> {
+		// The memory options claim these through `onTaskUsage`, which reports each call again here.
+		if (MEMORY_OPTION_CLAIMED_TASKS.has(report.task)) return;
+		try {
+			const items = tokenUsageToBuilderUsageItems(report.model, report.usage);
+			if (items.length === 0) return;
+			await this.creditService.claimRunUsage(
+				user,
+				threadId,
+				`${runId}:${report.task}:${report.reportId}`,
+				items,
+				'completed',
+			);
+		} catch (error) {
+			this.logger.warn('Failed to claim Assistant side-call usage', {
+				threadId,
+				runId,
+				task: report.task,
+				error: getErrorMessage(error),
+			});
+		}
+	}
 }
+
+/** Side calls that the memory options of the agent factory already claim. */
+const MEMORY_OPTION_CLAIMED_TASKS: ReadonlySet<SideCallUsageReport['task']> = new Set([
+	'observer',
+	'reflector',
+]);
 
 function modelLabel(modelId: ModelConfig): string {
 	return modelConfigId(modelId) ?? 'unknown';
