@@ -34,7 +34,9 @@ describe('OpenWeatherMap Node - request building', () => {
 		ctx.helpers.returnJsonArray.mockImplementation((data) =>
 			(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
 		);
-		ctx.helpers.constructExecutionMetaData.mockImplementation((items) => items);
+		ctx.helpers.constructExecutionMetaData.mockImplementation((data, { itemData }) =>
+			data.map((item) => ({ ...item, pairedItem: itemData })),
+		);
 		ctx.helpers.request.mockResolvedValue(currentWeatherResponse);
 		ctx.helpers.httpRequestWithAuthentication.mockResolvedValue(currentWeatherResponse);
 
@@ -57,7 +59,7 @@ describe('OpenWeatherMap Node - request building', () => {
 				uri: 'https://api.openweathermap.org/data/2.5/weather',
 				json: true,
 			});
-			expect(result).toEqual([[{ json: currentWeatherResponse }]]);
+			expect(result).toEqual([[{ json: currentWeatherResponse, pairedItem: { item: 0 } }]]);
 		});
 	});
 
@@ -77,7 +79,7 @@ describe('OpenWeatherMap Node - request building', () => {
 				url: 'https://gateway.example.com/v1/gateway/openweathermap/data/2.5/weather',
 				json: true,
 			});
-			expect(result).toEqual([[{ json: currentWeatherResponse }]]);
+			expect(result).toEqual([[{ json: currentWeatherResponse, pairedItem: { item: 0 } }]]);
 		});
 
 		it.each([undefined, '', '  '])(
