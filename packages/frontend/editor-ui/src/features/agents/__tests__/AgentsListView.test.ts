@@ -204,12 +204,22 @@ describe('AgentsListView — project page', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = 'project-1';
+		mocks.isSummaryEnabled = false;
 		templatesEnabled.value = false;
 		instanceAiReady.value = false;
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('does not load the insights summary on a project page', async () => {
+		mocks.listAgentsPage.mockResolvedValueOnce({ count: 0, data: [] });
+		mocks.isSummaryEnabled = true;
+
+		await mountView();
+
+		expect(mocks.executeWeeklySummary).not.toHaveBeenCalled();
 	});
 
 	it('calls listAgentsPage with the route project ID', async () => {
