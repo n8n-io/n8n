@@ -1,3 +1,5 @@
+const { createInstanceAgent } = vi.hoisted(() => ({ createInstanceAgent: vi.fn() }));
+
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { MemoryTaskUsageReport } from '@n8n/agents';
@@ -6,6 +8,7 @@ import type { Mock } from 'vitest';
 
 vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/instance-ai')>()),
+	createInstanceAgent,
 	tokenUsageToBuilderUsageItems: (
 		model: string,
 		usage: {
@@ -143,5 +146,36 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		});
 
 		expect(service.creditService.claimRunUsage).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('AssistantAgentFactory — model transport', () => {
+	it('passes the configured model transport to the orchestrator agent', async () => {
+		const modelFetch = vi.fn();
+		createInstanceAgent.mockResolvedValue({ agent: {}, mcpConnectionFailures: [] });
+		const factory = Object.assign(Object.create(AssistantAgentFactory.prototype) as object, {
+			bindAgentContextReader: vi.fn(),
+			bindAgentPreviewSession: vi.fn(),
+			buildMcpServers: vi.fn(async () => []),
+			createAgentMemoryOptions: vi.fn(() => ({})),
+			subscribeToAgentErrors: vi.fn(),
+			instanceAiConfig: { thinkingEnabled: true },
+			_mcpClientManager: {},
+			modelService: { getModelFetch: vi.fn(() => modelFetch) },
+		}) as unknown as AssistantAgentFactory;
+
+		await factory.createAgent(
+			{
+				modelId: 'anthropic/claude-sonnet-4-6',
+				context: {},
+				orchestrationContext: {},
+			} as unknown as Parameters<AssistantAgentFactory['createAgent']>[0],
+			{
+				turnState: { getObserverThresholdTokens: vi.fn() },
+			} as unknown as Parameters<AssistantAgentFactory['createAgent']>[1],
+			{ user: { id: 'user-1' } as User, threadId: 'thread-1', runId: 'run-1' },
+		);
+
+		expect(createInstanceAgent).toHaveBeenCalledWith(expect.objectContaining({ modelFetch }));
 	});
 });
