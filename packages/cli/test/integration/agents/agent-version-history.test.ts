@@ -78,6 +78,28 @@ describe('Agent version history', () => {
 	});
 	afterAll(async () => await testDb.terminate());
 
+	it('reads publication events in the caller transaction and rolls them back', async () => {
+		const rollback = new Error('Cancel publication');
+		await expect(
+			Container.get(TransactionRunner).run({}, async (ctx) => {
+				await publications.record(agentId, versionId, 'activated', owner, ctx);
+
+				expect(await publications.hasPublication(agentId, versionId, ctx)).toBe(true);
+				expect(await publications.hasPublication(agentId, undefined, ctx)).toBe(true);
+				const latest = await publications.findLatestForVersions(agentId, [versionId], ctx);
+				expect(latest.get(versionId)).toMatchObject({ agentId, versionId, userId: owner.id });
+				expect(await publications.list(agentId, 10, 0, ctx)).toMatchObject([
+					{ agentId, versionId, event: 'activated', version: { versionId } },
+				]);
+				throw rollback;
+			}),
+		).rejects.toBe(rollback);
+
+		expect(await publications.hasPublication(agentId, versionId, {})).toBe(false);
+		expect(await publications.findLatestForVersions(agentId, [versionId], {})).toEqual(new Map());
+		expect(await publications.list(agentId, 10, 0, {})).toEqual([]);
+	});
+
 	it('edits labels without changing content, save time, or publication state', async () => {
 		const saved = await history.findByVersionAndAgentId(versionId, agentId);
 		await service.updateVersionMetadata(agentId, projectId, versionId, {
@@ -98,7 +120,7 @@ describe('Agent version history', () => {
 			revision: 0,
 			publicationRevision: 0,
 		});
-		expect(await publications.countBy({ agentId })).toBe(0);
+		expect(await publications.list(agentId, 1, 0, {})).toEqual([]);
 		const summary = await service.getVersionSummary(agentId, projectId, versionId);
 		expect(summary).toMatchObject({
 			versionId,
@@ -243,7 +265,7 @@ describe('Agent version history', () => {
 			activeVersionId: null,
 			publicationRevision: 0,
 		});
-		expect(await publications.countBy({ agentId })).toBe(0);
+		expect(await publications.list(agentId, 1, 0, {})).toEqual([]);
 	});
 
 	it('scopes metadata and timeline reads to the Agent project', async () => {

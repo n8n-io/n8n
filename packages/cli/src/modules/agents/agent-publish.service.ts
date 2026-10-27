@@ -153,6 +153,7 @@ export class AgentPublishService {
 		const wasPublished = await this.publishHistory.hasPublication(
 			agent.id,
 			targetHistory.versionId,
+			{},
 		);
 		await this.assertPublishable(agent, projectId, user, targetHistory);
 
@@ -480,7 +481,7 @@ export class AgentPublishService {
 	 * panel button. Survives unpublish, unlike `agent.activeVersionId`.
 	 */
 	async hasPublishHistory(agentId: string): Promise<boolean> {
-		return await this.publishHistory.hasPublication(agentId);
+		return await this.publishHistory.hasPublication(agentId, undefined, {});
 	}
 
 	/**
@@ -516,6 +517,7 @@ export class AgentPublishService {
 		const publications = await this.publishHistory.findLatestForVersions(
 			agentId,
 			versions.map(({ versionId }) => versionId),
+			{},
 		);
 		return versions.map((version) =>
 			this.versionSummary(agent, version, publications.get(version.versionId)),
@@ -557,7 +559,7 @@ export class AgentPublishService {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		const version = await this.agentHistoryRepository.findSummary(agentId, versionId);
 		if (!version) throw new NotFoundError(`Version "${versionId}" not found`);
-		const publications = await this.publishHistory.findLatestForVersions(agentId, [versionId]);
+		const publications = await this.publishHistory.findLatestForVersions(agentId, [versionId], {});
 		return this.versionSummary(agent, version, publications.get(versionId));
 	}
 
@@ -586,8 +588,8 @@ export class AgentPublishService {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		// Include the preceding event so durations remain correct across page boundaries.
 		const offset = skip > 0 ? 1 : 0;
-		const rows = await this.publishHistory.list(agentId, take + offset, skip - offset);
-		const latest = skip === 0 ? rows[0] : (await this.publishHistory.list(agentId, 1, 0))[0];
+		const rows = await this.publishHistory.list(agentId, take + offset, skip - offset, {});
+		const latest = skip === 0 ? rows[0] : (await this.publishHistory.list(agentId, 1, 0, {}))[0];
 		return rows.slice(offset).map((row, index) => ({
 			id: row.id,
 			versionId: row.versionId,

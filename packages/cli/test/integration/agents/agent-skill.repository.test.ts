@@ -1,9 +1,10 @@
-import { AgentPublishHistoryRepository } from '@/modules/agents/repositories/agent-publish-history.repository';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
+import { AgentPublishHistory } from '@/modules/agents/entities/agent-publish-history.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -91,7 +92,7 @@ describe('AgentSkillRepository', () => {
 	async function publish(agentId: string): Promise<string> {
 		const versionId = randomUUID();
 		await histories.save(histories.create({ versionId, agentId, author: 'Test' }));
-		await Container.get(AgentPublishHistoryRepository).save({
+		await Container.get(DataSource).getRepository(AgentPublishHistory).insert({
 			agentId,
 			versionId,
 			event: 'activated',

@@ -1609,7 +1609,7 @@ describe('AgentPublishService', () => {
 				.mockResolvedValueOnce([event(3), event(2), event(1, { isLegacy: true })])
 				.mockResolvedValueOnce([event(4)]);
 			const rows = await service.listPublishHistory(agentId, projectId, 2, 2);
-			expect(publishHistory.list).toHaveBeenNthCalledWith(1, agentId, 3, 1);
+			expect(publishHistory.list).toHaveBeenNthCalledWith(1, agentId, 3, 1, {});
 			expect(rows).toMatchObject([
 				{ id: 2, isActive: false, endedAt: '2026-01-03T00:00:00.000Z' },
 				{ id: 1, isActive: false, endedAt: null },
