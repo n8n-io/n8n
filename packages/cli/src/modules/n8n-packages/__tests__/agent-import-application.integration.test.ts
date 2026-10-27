@@ -544,12 +544,19 @@ it('saves a changed project skill as a new version unless the Agents are skipped
 		version: 1,
 		instructions: 'Read references/guide.md.',
 	});
+	telemetry.track.mockClear();
 	await importSelected(input);
 	expect(await findSkill(skill.id)).toMatchObject({ projectId: project.id, agentId: null });
 	expect(await findLatestSkillVersion(skill.id)).toMatchObject({
 		version: 2,
 		instructions: 'Changed instructions',
 	});
+	for (const agentId of ['support_source', 'research_source']) {
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+			expect.objectContaining({ agent_id: agentId, changed_parts: ['skills'] }),
+		);
+	}
 	await agents.delete({});
 	await deleteSkill(skill.id);
 });

@@ -1,6 +1,7 @@
+import { skillNameKey } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, UserError } from '@n8n/errors';
 
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import type { AgentSkillWriter } from '@/modules/agents/utils/agent-definition';
@@ -50,7 +51,12 @@ export class SkillImporter {
 		packageSkills: SerializedSkill[],
 		conflictPolicy: ImportConflictPolicy,
 	): Promise<{ plan: SkillImportPlan; issues: AgentImportIssue[] }> {
-		const plan: SkillImportPlan = { shared: [], owned: new Map(), raisedRevisions: new Map() };
+		const plan: SkillImportPlan = {
+			shared: [],
+			owned: new Map(),
+			sharedUsers: new Set(),
+			raisedRevisions: new Map(),
+		};
 		const active = items.filter(({ action }) => action !== 'skip');
 		const users = skillUsers(active);
 		const decisions = await this.decideAll(context.projectId, users, packageSkills, conflictPolicy);
@@ -60,7 +66,7 @@ export class SkillImporter {
 			if (decision.kind === 'issue') {
 				issues.push(...agentIds.map((id) => skillIssue(id, skillId, decision.message)));
 			}
-			if (decision.kind === 'write') addWrite(plan, decision.write);
+			if (decision.kind === 'write') addWrite(plan, decision.write, agentIds);
 		}
 		issues.push(...(await this.agentNameClashes(active, decisions)));
 		await this.assertCanWrite(context.user, allWrites(plan), context.projectPendingCreation);
@@ -92,6 +98,7 @@ export class SkillImporter {
 		if (users.size === 0) return decisions;
 		const packaged = new Map(packageSkills.map((skill) => [skill.id, skill]));
 		const existing = await this.skillService.findLatest([...users.keys()]);
+		const plannedNames = new Set<string>();
 		for (const [skillId, agentIds] of users) {
 			const decision = await this.decide(
 				projectId,
@@ -101,7 +108,8 @@ export class SkillImporter {
 				existing.get(skillId),
 				conflictPolicy,
 			);
-			decisions.set(skillId, decision);
+			const clashes = decision.kind === 'write' && !claimName(plannedNames, decision.write);
+			decisions.set(skillId, clashes ? packageNameClash(decision.name) : decision);
 		}
 		return decisions;
 	}
@@ -125,10 +133,13 @@ export class SkillImporter {
 		await this.skillService.refreshFollowingAgents([...new Set(following)]);
 	}
 
-	/** The writer for the skills of one Agent, for that Agent's save transaction. */
+	/**
+	 * The writer for the skills of one Agent, for that Agent's save transaction. Absent when
+	 * the import writes no skill that the Agent uses.
+	 */
 	writerFor(user: User, plan: SkillImportPlan, agentId: string): AgentSkillWriter | undefined {
 		const writes = plan.owned.get(agentId) ?? [];
-		if (writes.length === 0) return undefined;
+		if (writes.length === 0 && !plan.sharedUsers.has(agentId)) return undefined;
 		const saved = writes.filter(({ base }) => base).map(({ skill }) => skill.id);
 		return async (ctx) => {
 			// The save transaction attaches the refs again after the writes.
@@ -167,13 +178,35 @@ export class SkillImporter {
 		}
 		const decision = decideWrite(packaged, target, row, conflictPolicy);
 		if (decision.kind !== 'write') return decision;
-		if (await this.skillService.isNameTaken(name, target, skillId)) {
-			return {
-				kind: 'issue',
-				message: `Another skill in this scope is already named "${name}". Rename one of the skills.`,
-			};
+		const nameProblem = row
+			? await this.renameProblem(skillId, target, row.skill.name, name)
+			: await this.createNameProblem(skillId, target, name);
+		return nameProblem ? { kind: 'issue', message: nameProblem } : decision;
+	}
+
+	private async createNameProblem(
+		skillId: string,
+		target: SkillTarget,
+		name: string,
+	): Promise<string | undefined> {
+		if (!(await this.skillService.isNameTaken(name, target, skillId))) return undefined;
+		return `Another skill in this scope is already named "${name}". Rename one of the skills.`;
+	}
+
+	/** The rename checks of `SkillService.saveTrusted`, so a rename fails in the preview. */
+	private async renameProblem(
+		skillId: string,
+		target: SkillTarget,
+		oldName: string,
+		newName: string,
+	): Promise<string | undefined> {
+		try {
+			await this.skillService.assertCanRename(skillId, target, oldName, newName);
+			return undefined;
+		} catch (error) {
+			if (error instanceof UserError || error instanceof ConflictError) return error.message;
+			throw error;
 		}
-		return decision;
 	}
 
 	/** The same checks as the skills UI. A pending project gets its creator's project role. */
@@ -282,10 +315,19 @@ function targetOf(skill: SerializedSkill, projectId: string): SkillTarget {
 	return { projectId: null, agentId: null };
 }
 
-function addWrite(plan: SkillImportPlan, write: SkillWrite): void {
+/** Records the name of a planned write. Returns false when another write in its scope has it. */
+function claimName(names: Set<string>, { skill, target }: SkillWrite): boolean {
+	const key = JSON.stringify([target.projectId, target.agentId, skillNameKey(skill.skill.name)]);
+	if (names.has(key)) return false;
+	names.add(key);
+	return true;
+}
+
+function addWrite(plan: SkillImportPlan, write: SkillWrite, agentIds: string[]): void {
 	const agentId = write.target.agentId;
 	if (!agentId) {
-		plan.shared.push(write);
+		plan.shared.push({ ...write, usedBy: agentIds });
+		for (const id of agentIds) plan.sharedUsers.add(id);
 		return;
 	}
 	plan.owned.set(agentId, [...(plan.owned.get(agentId) ?? []), write]);
@@ -293,6 +335,13 @@ function addWrite(plan: SkillImportPlan, write: SkillWrite): void {
 
 function allWrites(plan: SkillImportPlan): SkillWrite[] {
 	return [...plan.shared, ...[...plan.owned.values()].flat()];
+}
+
+function packageNameClash(name: string): SkillDecision {
+	return {
+		kind: 'issue',
+		message: `Another skill of this package has the same name "${name}" in this scope.`,
+	};
 }
 
 /**
