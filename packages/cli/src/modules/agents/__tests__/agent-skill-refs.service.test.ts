@@ -205,6 +205,11 @@ describe('AgentSkillRefsService', () => {
 			await expect(
 				service.replaceAllDraftRefs(agent, [{ type: 'skill', id: 'zeta' }], ctx),
 			).resolves.toEqual([{ type: 'skill', id: 'zeta' }]);
+			expect(agentSkillRepository.replaceDependencies).toHaveBeenCalledWith(
+				'agent-1',
+				[{ skillId: 'zeta', versionId: null }],
+				ctx,
+			);
 		});
 
 		it('fails when a ref points to a skill that no longer exists', async () => {
