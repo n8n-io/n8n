@@ -1164,7 +1164,15 @@ describe('AgentSkillModal', () => {
 					{
 						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
 						usedBy: {
-							drafts: [{ agentId: 'a1', agentName: 'This agent', projectId: 'p1' }],
+							drafts: [
+								{
+									agentId: 'a1',
+									agentName: 'This agent',
+									projectId: 'p1',
+									version: 1,
+									pinned: false,
+								},
+							],
 							pins: [{ agentId: 'a1', agentName: 'This agent', projectId: 'p1', version: 1 }],
 							hiddenAgents: 0,
 						},
@@ -1209,7 +1217,9 @@ describe('AgentSkillModal', () => {
 				[
 					'a draft of another agent',
 					{
-						drafts: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1' }],
+						drafts: [
+							{ agentId: 'a2', agentName: 'Other', projectId: 'p1', version: 1, pinned: false },
+						],
 						pins: [],
 						hiddenAgents: 0,
 					},
@@ -1250,7 +1260,9 @@ describe('AgentSkillModal', () => {
 					{
 						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
 						usedBy: {
-							drafts: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1' }],
+							drafts: [
+								{ agentId: 'a2', agentName: 'Other', projectId: 'p1', version: 1, pinned: false },
+							],
 							pins: [],
 							hiddenAgents: 1,
 						},
@@ -1274,7 +1286,15 @@ describe('AgentSkillModal', () => {
 					{
 						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'agent', agentId: 'a1' }),
 						usedBy: {
-							drafts: [{ agentId: 'a1', agentName: 'This agent', projectId: 'p1' }],
+							drafts: [
+								{
+									agentId: 'a1',
+									agentName: 'This agent',
+									projectId: 'p1',
+									version: 1,
+									pinned: false,
+								},
+							],
 							pins: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1', version: 1 }],
 							hiddenAgents: 0,
 						},
@@ -1443,7 +1463,15 @@ describe('AgentSkillModal from Settings', () => {
 			],
 			initialScope: 'project:p1',
 			usedBy: {
-				drafts: [{ agentId: 'a1', agentName: 'FirstClassDarwin', projectId: 'p1' }],
+				drafts: [
+					{
+						agentId: 'a1',
+						agentName: 'FirstClassDarwin',
+						projectId: 'p1',
+						version: 1,
+						pinned: false,
+					},
+				],
 				pins: [],
 				hiddenAgents: 0,
 			},

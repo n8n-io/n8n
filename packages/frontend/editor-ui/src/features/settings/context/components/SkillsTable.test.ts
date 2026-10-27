@@ -139,7 +139,15 @@ describe('SkillsTable', () => {
 		const skillsStore = mockedStore(useSkillsStore);
 		skillsStore.fetchSkill.mockResolvedValue({
 			usedBy: {
-				drafts: [{ agentId: 'a1', agentName: 'FirstClassDarwin', projectId: 'p1' }],
+				drafts: [
+					{
+						agentId: 'a1',
+						agentName: 'FirstClassDarwin',
+						projectId: 'p1',
+						version: 1,
+						pinned: false,
+					},
+				],
 				pins: [{ agentId: 'a1', agentName: 'FirstClassDarwin', projectId: 'p1', version: 1 }],
 				hiddenAgents: 0,
 			},
