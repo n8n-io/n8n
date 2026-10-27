@@ -270,10 +270,10 @@ async function save() {
 			payload.workflowIds = [];
 		}
 
-		const { scope, workflowIds, reviewerIds, includeAllProjectMembers } = payload;
+		const { enabled, ...edit } = payload;
 		await store.save(
 			props.projectId,
-			isNew.value ? payload : { scope, workflowIds, reviewerIds, includeAllProjectMembers },
+			isNew.value ? payload : edit,
 			isNew.value ? undefined : Number(props.configurationId),
 		);
 

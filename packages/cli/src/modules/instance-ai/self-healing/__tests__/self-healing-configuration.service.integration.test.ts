@@ -304,7 +304,7 @@ it('pauses after the sole reviewer is deleted and requires a replacement before 
 	});
 	await Container.get(UserRepository).delete(reviewer.id);
 	await expect(configurations.setEnabled(user, project.id, configuration.id, true)).rejects.toThrow(
-		'No project member can edit these workflows',
+		'No reviewer can edit these workflows',
 	);
 
 	await configurations.recheckAccess(configuration.id, project.id, workflow.id);
@@ -315,7 +315,7 @@ it('pauses after the sole reviewer is deleted and requires a replacement before 
 	});
 	expect(runtime.routeCancelRun).not.toHaveBeenCalled();
 	await expect(configurations.setEnabled(user, project.id, configuration.id, true)).rejects.toThrow(
-		'No project member can edit these workflows',
+		'No reviewer can edit these workflows',
 	);
 	expect(await configurations.save(user, project.id, input, configuration.id)).toMatchObject({
 		enabled: false,
@@ -694,7 +694,7 @@ it('validates only requested IDs and stores duplicate selections once', async ()
 	const otherEditor = await createUser();
 	await linkUserToProject(otherEditor, project, 'project:editor');
 	const workflowLookup = vi.spyOn(repository, 'listProjectWorkflows');
-	const reviewerLookup = vi.spyOn(repository, 'findProjectMembersWithEditRole');
+	const reviewerLookup = vi.spyOn(repository, 'findProjectMembersWithEditAccess');
 	const workflowIds = [workflow.id, workflow.id];
 	const reviewerIds = [user.id, globalAdmin.id, user.id];
 
@@ -991,7 +991,7 @@ it('reverts and reapplies the configuration schema', async () => {
 	};
 	const migration = findMigration('CreateSelfHealingConfigurations1792742505678');
 	const projectMembers = findMigration(
-		'AddIncludeAllProjectMembersToSelfHealingConfiguration1793099942268',
+		'AddIncludeAllProjectMembersToSelfHealingConfiguration1793106080688',
 	);
 	const runner = db.createQueryRunner();
 	try {
@@ -1101,7 +1101,7 @@ describe('project member reviewers', () => {
 		await linkUserToProject(user, project, 'project:viewer');
 
 		await expect(configurations.save(user, project.id, input)).rejects.toThrow(
-			'No project member can edit these workflows',
+			'No reviewer can edit these workflows',
 		);
 		expect(await configurations.list(project.id)).toEqual([]);
 	});
@@ -1166,7 +1166,7 @@ describe('project member reviewers', () => {
 		});
 		await expect(
 			configurations.setEnabled(user, project.id, configuration.id, true),
-		).rejects.toThrow('No project member can edit these workflows');
+		).rejects.toThrow('No reviewer can edit these workflows');
 	});
 
 	it('pauses when no member can review and resumes after a member gains access', async () => {
@@ -1185,7 +1185,7 @@ describe('project member reviewers', () => {
 		});
 		await expect(
 			configurations.setEnabled(enabler, project.id, configuration.id, true),
-		).rejects.toThrow('No project member can edit these workflows');
+		).rejects.toThrow('No reviewer can edit these workflows');
 
 		const member = await createUser();
 		await linkUserToProject(member, project, 'project:editor');
@@ -1239,14 +1239,121 @@ describe('project member reviewers', () => {
 		const all = { ...input, scope: 'all' as const, workflowIds: [] };
 
 		await expect(configurations.save(user, project.id, input)).rejects.toThrow(
-			'No project member can edit these workflows',
+			'No reviewer can edit these workflows',
 		);
 		await expect(configurations.save(user, project.id, all)).rejects.toThrow(
-			'No project member can edit these workflows',
+			'No reviewer can edit these workflows',
 		);
 
 		const covered = await createWorkflow({}, project);
 		await shareWithPersonalProject(covered, user);
 		expect(await configurations.save(user, project.id, all)).toMatchObject({ scope: 'all' });
+	});
+
+	describe('individual reviewers with workflow share access', () => {
+		async function sharedReviewerFixture() {
+			const data = await fixture();
+			const reviewer = await createUser();
+			await linkUserToProject(reviewer, data.project, 'project:editor');
+			const configuration = await configurations.save(data.user, data.project.id, {
+				...data.input,
+				reviewerIds: [reviewer.id],
+			});
+			await linkUserToProject(reviewer, data.project, 'project:viewer');
+			return { ...data, reviewer, configuration };
+		}
+
+		async function reviewerChoices(projectId: string) {
+			const { reviewers } = await configurations.getConfigurationChoices(projectId);
+			return reviewers.map(({ id }) => id);
+		}
+
+		it('keeps a selected reviewer who can still edit a covered workflow through a share', async () => {
+			const { user, project, workflow, input, reviewer, configuration } =
+				await sharedReviewerFixture();
+			await shareWithPersonalProject(workflow, reviewer);
+
+			expect(await reviewerChoices(project.id)).toContain(reviewer.id);
+			for (const includeAllProjectMembers of [true, false]) {
+				expect(
+					await configurations.save(
+						user,
+						project.id,
+						{ ...input, reviewerIds: [reviewer.id], includeAllProjectMembers },
+						configuration.id,
+					),
+				).toMatchObject({ reviewerIds: [reviewer.id], includeAllProjectMembers });
+			}
+			expect(
+				await configurations.setEnabled(user, project.id, configuration.id, true),
+			).toMatchObject({ enabled: true });
+		});
+
+		it('rejects a selected reviewer who lost edit access, also with the project group', async () => {
+			const { user, project, input, reviewer, configuration } = await sharedReviewerFixture();
+
+			expect(await reviewerChoices(project.id)).not.toContain(reviewer.id);
+			for (const includeAllProjectMembers of [false, true]) {
+				await expect(
+					configurations.save(
+						user,
+						project.id,
+						{ ...input, reviewerIds: [reviewer.id], includeAllProjectMembers },
+						configuration.id,
+					),
+				).rejects.toThrow('project members with workflow edit access');
+			}
+			expect(
+				await configurations.save(
+					user,
+					project.id,
+					{ ...input, reviewerIds: [], includeAllProjectMembers: true },
+					configuration.id,
+				),
+			).toMatchObject({ reviewerIds: [], includeAllProjectMembers: true });
+		});
+
+		it('ignores shares without edit scopes or on workflows outside the project', async () => {
+			const { user, project, workflow, input, reviewer, configuration } =
+				await sharedReviewerFixture();
+			const readOnlyRole = await createCustomRoleWithScopeSlugs(['workflow:read']);
+			const readOnlyProject = await createTeamProject();
+			await linkUserToProject(reviewer, readOnlyProject, readOnlyRole.slug);
+			await shareWorkflowWithProjects(workflow, [{ project: readOnlyProject }]);
+			await shareWithPersonalProject(await createWorkflow({}, await createTeamProject()), reviewer);
+
+			expect(await reviewerChoices(project.id)).not.toContain(reviewer.id);
+			await expect(
+				configurations.save(
+					user,
+					project.id,
+					{ ...input, reviewerIds: [reviewer.id] },
+					configuration.id,
+				),
+			).rejects.toThrow('project members with workflow edit access');
+		});
+
+		it('requires another reviewer when the shared workflow is no longer covered', async () => {
+			const { user, project, workflow, input, reviewer, configuration } =
+				await sharedReviewerFixture();
+			const uncovered = await createWorkflow({}, project);
+			await shareWithPersonalProject(workflow, reviewer);
+			const moved = { ...input, workflowIds: [uncovered.id], reviewerIds: [reviewer.id] };
+
+			await expect(configurations.save(user, project.id, moved, configuration.id)).rejects.toThrow(
+				'No reviewer can edit these workflows',
+			);
+			expect(await configurations.get(project.id, configuration.id)).toMatchObject({
+				workflowIds: [workflow.id],
+			});
+			expect(
+				await configurations.save(
+					user,
+					project.id,
+					{ ...moved, reviewerIds: [reviewer.id, user.id] },
+					configuration.id,
+				),
+			).toMatchObject({ workflowIds: [uncovered.id] });
+		});
 	});
 });

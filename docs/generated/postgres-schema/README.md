@@ -139,6 +139,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.self_healing_configuration_workflow](public.self_healing_configuration_workflow.md) | 3 |  | BASE TABLE |
 | [public.self_healing_investigation](public.self_healing_investigation.md) | 13 |  | BASE TABLE |
 | [public.self_healing_result](public.self_healing_result.md) | 16 |  | BASE TABLE |
+| [public.service_account_details](public.service_account_details.md) | 4 |  | BASE TABLE |
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
 | [public.shared_credentials](public.shared_credentials.md) | 5 |  | BASE TABLE |
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
@@ -415,6 +416,7 @@ erDiagram
 "public.self_healing_result" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--o| "public.workflow_suggestion" : "FOREIGN KEY (#quot;suggestionId#quot;) REFERENCES workflow_suggestion(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--|| "public.self_healing_configuration" : "FOREIGN KEY (#quot;configurationId#quot;) REFERENCES self_healing_configuration(id) ON DELETE CASCADE"
+"public.service_account_details" |o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.shared_credentials" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialsId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.shared_credentials" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.shared_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -1806,6 +1808,12 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   json usage
   varchar_36_ workflowId FK
+}
+"public.service_account_details" {
+  timestamp_3__with_time_zone createdAt
+  varchar_128_ name
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
 }
 "public.settings" {
   varchar_255_ key
