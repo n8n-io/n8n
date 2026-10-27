@@ -127,9 +127,12 @@ describe('IsolatedVmBridge', () => {
 				}),
 			).toThrow('boom');
 
-			expect(() =>
+			expect(
 				bridge.execute('return globalThis.__getValueAtPath(["$json", "value"])', {}),
-			).toThrow('Host callback called after its expression finished');
+			).toMatchObject({
+				__isError: true,
+				message: 'Host callback called after its expression finished',
+			});
 		});
 	});
 });
