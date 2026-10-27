@@ -30,13 +30,23 @@ describe('MCP discovery entry CTA', () => {
 			async (stage) => {
 				discovery.ctaStage = stage;
 				const { getByRole, queryByText } = render({ props: { placement } });
-				const label = stage === 'connect' ? 'Connect Claude' : 'Build with Claude';
+				const label =
+					stage === 'connect'
+						? 'Connect Claude'
+						: placement === 'footer'
+							? 'Build your workflow in Claude'
+							: 'Build in Claude';
 				const button = getByRole('button', { name: label });
 				expect(button).toHaveTextContent(label);
-				if (stage === 'build' && placement === 'sidebar') {
-					expect(button).toHaveAccessibleDescription('Connect to n8n');
+				if (placement === 'sidebar') {
+					expect(queryByText('Build workflows in Claude')).toBeInTheDocument();
+					expect(button).toHaveAccessibleDescription('Describe it in Claude, it appears in n8n.');
 				} else {
-					expect(queryByText('Connect to n8n')).not.toBeInTheDocument();
+					expect(queryByText('Describe it in Claude, it appears in n8n.')).not.toBeInTheDocument();
+				}
+				if (placement === 'footer') {
+					expect(queryByText('Prefer Claude?')).toBeInTheDocument();
+					expect(button).not.toHaveTextContent('Prefer Claude?');
 				}
 				await userEvent.click(button);
 				expect(mocks.trackEntry).toHaveBeenCalledWith(placement, 'clicked');
@@ -55,11 +65,12 @@ describe('MCP discovery entry CTA', () => {
 		);
 	});
 
-	it('hides the subtext when the sidebar is collapsed', () => {
+	it('hides the card copy when the sidebar is collapsed', () => {
 		discovery.ctaStage = 'build';
 		const { getByRole, queryByText } = render({ props: { placement: 'sidebar', collapsed: true } });
-		expect(queryByText('Connect to n8n')).not.toBeInTheDocument();
-		expect(getByRole('button', { name: 'Build with Claude' })).not.toHaveAttribute(
+		expect(queryByText('Describe it in Claude, it appears in n8n.')).not.toBeInTheDocument();
+		expect(queryByText('Build workflows in Claude')).not.toBeInTheDocument();
+		expect(getByRole('button', { name: 'Build in Claude' })).not.toHaveAttribute(
 			'aria-describedby',
 		);
 	});
