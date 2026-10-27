@@ -43,6 +43,7 @@ afterAll(() => {
 
 describe.each(['legacy', 'vm', 'quickjs'] as const)('Form Trigger webhook (%s)', (engine) => {
 	const triggerType = new FormTriggerV2(new FormTrigger().description);
+	const formType = new Form();
 	const trigger: INode = {
 		id: 'form-trigger',
 		name: 'On form submission',
@@ -69,7 +70,7 @@ describe.each(['legacy', 'vm', 'quickjs'] as const)('Form Trigger webhook (%s)',
 	};
 	const nodeTypes = mock<INodeTypes>();
 	nodeTypes.getByNameAndVersion.mockImplementation((type) =>
-		type === FORM_TRIGGER_NODE_TYPE ? triggerType : new Form(),
+		type === FORM_TRIGGER_NODE_TYPE ? triggerType : { description: formType.description },
 	);
 	const workflow = new Workflow({
 		id: 'form-workflow',
@@ -168,7 +169,11 @@ describe.each(['legacy', 'vm', 'quickjs'] as const)('Form Trigger webhook (%s)',
 		);
 	});
 
-	it('renders the next page with the submitted trigger data', async () => {
+	it.each([
+		['inherited title', '', 'Test form'],
+		['trigger output', "={{ $('On form submission').first().json.Name }}", 'Test user'],
+	])('renders the next page with %s', async (_source, formTitle, expectedTitle) => {
+		form.parameters.options = { formTitle };
 		const { context: triggerContext } = createContext(trigger, {
 			method: 'POST',
 			contentType: 'multipart/form-data',
@@ -203,10 +208,10 @@ describe.each(['legacy', 'vm', 'quickjs'] as const)('Form Trigger webhook (%s)',
 		});
 		const { context, response } = createContext(form, {}, runData);
 
-		expect(await new Form().webhook(context)).toEqual({ noWebhookResponse: true });
+		expect(await formType.webhook(context)).toEqual({ noWebhookResponse: true });
 		expect(response.render).toHaveBeenCalledWith(
 			'form-trigger',
-			expect.objectContaining({ formTitle: 'Test form', testRun: true }),
+			expect.objectContaining({ formTitle: expectedTitle, testRun: true }),
 		);
 	});
 
