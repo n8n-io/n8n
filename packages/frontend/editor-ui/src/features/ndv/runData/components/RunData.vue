@@ -2266,6 +2266,7 @@ defineExpose({ enterEditMode });
 				hasNodeRun &&
 				!hasRunError &&
 				displayMode !== 'binary' &&
+				displayMode !== 'html' &&
 				dataCount > pageSize &&
 				!isSchemaView &&
 				!isArtificialRecoveredEventItem

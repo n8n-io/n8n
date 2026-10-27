@@ -16,7 +16,7 @@ test.describe(
 		test('should select the HTML display mode and show the first item', async ({ n8n }) => {
 			const { outputPanel } = n8n.ndv;
 
-			await expect(outputPanel.getDisplayModeOption('html')).toBeVisible();
+			await expect(outputPanel.getDisplayModeOption('html')).toHaveText('HTML');
 			await expect(outputPanel.getActiveDisplayMode()).toHaveAttribute(
 				'data-test-id',
 				'radio-button-html',
@@ -24,6 +24,8 @@ test.describe(
 			await expect(outputPanel.getHtmlPreviewHeading('Item 1')).toBeVisible();
 			// The HTML view shows only the first item
 			await expect(outputPanel.getHtmlPreviewHeadings()).toHaveCount(1);
+			// 30 items are more than one page, but pages have no effect on the HTML view
+			await expect(outputPanel.getPagination()).toBeHidden();
 		});
 
 		test('should show the HTML of the item that matches the search', async ({ n8n }) => {
