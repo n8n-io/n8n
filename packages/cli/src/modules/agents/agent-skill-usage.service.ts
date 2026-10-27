@@ -1,5 +1,5 @@
 import type { SkillAgentOption, SkillUsage } from '@n8n/api-types';
-import type { OperationContext } from '@n8n/db';
+import { UserRepository, type OperationContext } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 
@@ -26,6 +26,7 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 		private readonly skillRepository: SkillRepository,
 		private readonly skillService: SkillService,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	// ---------------------------------------------------------------- publish and revert
@@ -138,6 +139,22 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 		return kept;
 	}
 
+	async assertVersionAccess(
+		agent: { id: string; projectId: string | null },
+		refs: SkillRef[],
+		ctx: OperationContext,
+	): Promise<void> {
+		const ids = refs.map(({ id }) => id);
+		if (ids.length === 0) return;
+		await this.skillRepository.lockForPublish(ids, ctx);
+		const skills = await this.skillRepository.findByIds(ids, ctx);
+		const accessible = new Set(
+			skills.filter((skill) => this.isAttachable(skill, agent)).map(({ id }) => id),
+		);
+		if (ids.some((id) => !accessible.has(id)))
+			throw new UserError('A saved skill is no longer available to this agent');
+	}
+
 	// ---------------------------------------------------------------- SkillAgentsProvider
 
 	async findAgents(agentIds: string[], ctx: OperationContext) {
@@ -211,9 +228,23 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 		}
 	}
 
-	async markFollowersChanged(skillId: string, ctx: OperationContext): Promise<string[]> {
+	async markFollowersChanged(
+		skillId: string,
+		ctx: OperationContext,
+		userId?: string | null,
+	): Promise<string[]> {
 		const followingIds = await this.agentSkillRepository.findFollowingAgentIds([skillId], ctx);
-		await this.agentRepository.markDraftChangedIfInSync(followingIds, ctx);
+		await this.agentRepository.markFollowerDraftsChanged(followingIds, ctx);
+		if (followingIds.length > 0) {
+			// Snapshot capture reads skill refs through this service, so resolve it after construction.
+			const { AgentDefinitionService } = await import('./agent-definition.service.js');
+			const definitions = Container.get(AgentDefinitionService);
+			const user = userId ? await this.userRepository.findByIdWithRole(userId, ctx) : null;
+			for (const id of followingIds) {
+				const agent = await this.agentRepository.findById(id, ctx);
+				if (agent) await definitions.captureVersion(agent, user ?? 'Unknown', ctx);
+			}
+		}
 		return followingIds;
 	}
 

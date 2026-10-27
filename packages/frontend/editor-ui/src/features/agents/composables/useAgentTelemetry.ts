@@ -289,6 +289,36 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackCheckedWhatsAppCredential(params: {
+		agentId: string;
+		trigger: 'auto' | 'recheck';
+		status: 'ok' | 'failed';
+		reason?: InferTelemetryProps<
+			typeof TELEMETRY_EVENT.AGENTS.USER_CHECKED_WHATSAPP_CHANNEL_CREDENTIAL
+		>['reason'];
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CHECKED_WHATSAPP_CHANNEL_CREDENTIAL, {
+			agent_id: params.agentId,
+			trigger: params.trigger,
+			status: params.status,
+			...(params.reason ? { reason: params.reason } : {}),
+			...common(),
+		});
+	}
+
+	function trackClickedWhatsAppLink(params: {
+		agentId: string;
+		target: InferTelemetryProps<
+			typeof TELEMETRY_EVENT.AGENTS.USER_CLICKED_WHATSAPP_CHANNEL_LINK
+		>['target'];
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_WHATSAPP_CHANNEL_LINK, {
+			agent_id: params.agentId,
+			target: params.target,
+			...common(),
+		});
+	}
+
 	function trackClickedDeployToAzure(params: { agentId: string }) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_DEPLOY_TO_AZURE_FOR_TEAMS_CHANNEL, {
 			agent_id: params.agentId,
@@ -453,6 +483,8 @@ export function useAgentTelemetry() {
 		trackClosedChannelSetup,
 		trackFailedToConnectChannel,
 		trackCheckedTeamsCredential,
+		trackCheckedWhatsAppCredential,
+		trackClickedWhatsAppLink,
 		trackClickedDeployToAzure,
 		trackDownloadedTeamsAppPackage,
 		trackSelectedN8nChatAgent,

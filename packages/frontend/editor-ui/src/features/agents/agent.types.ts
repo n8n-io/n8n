@@ -32,6 +32,7 @@ export type Agent = {
 	isCompiled: boolean;
 	isRunnable?: boolean;
 	hasPublishHistory?: boolean;
+	hasVersionHistory?: boolean;
 	createdAt: string;
 	updatedAt: string;
 	versionId: string | null;

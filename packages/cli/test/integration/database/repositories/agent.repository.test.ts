@@ -210,8 +210,9 @@ describe('AgentRepository', () => {
 				completion,
 				mock<AgentSetupCompletionService>(),
 				mock(),
+				definitionService,
 			);
-			const user = mock<User>();
+			const user = mock<User>({ firstName: 'Test', lastName: 'User' });
 			const id = uuid();
 			const options = {
 				id,
@@ -242,6 +243,12 @@ describe('AgentRepository', () => {
 				config: { instructions: 'Help users', skills: [{ type: 'skill', id: skillId }] },
 			});
 			expect(created.configHash).toBe(getAgentConfigHash(created.config));
+			expect(
+				await agentHistoryRepo.findByVersionAndAgentId(created.agent.versionId!, created.agent.id),
+			).toMatchObject({ schema: { instructions: 'Help users' } });
+			expect(
+				await Container.get(AgentSkillRepository).findPinnedSkillIds(created.agent.versionId!),
+			).toEqual([skillId]);
 			expect(await agentRepo.findById(id)).toMatchObject({
 				schema: { instructions: 'Help users' },
 			});
@@ -297,6 +304,7 @@ describe('AgentRepository', () => {
 				completion,
 				Container.get(AgentSkillRefsService),
 				mock<ChatIntegrationRegistry>(),
+				definitionService,
 			);
 			const deleteTasks = taskRepo.deleteForAgent.bind(taskRepo);
 			vi.spyOn(taskRepo, 'deleteForAgent').mockImplementationOnce(async (id, ids, ctx) => {
@@ -309,7 +317,13 @@ describe('AgentRepository', () => {
 				modifiedBy: 'user',
 			} as const;
 			await expect(
-				service.updateConfig(agent.id, projectId, config, mock<User>(), options),
+				service.updateConfig(
+					agent.id,
+					projectId,
+					config,
+					mock<User>({ firstName: 'Test', lastName: 'User' }),
+					options,
+				),
 			).rejects.toThrow('Task cleanup failed');
 			expect(await agentRepo.findById(agent.id)).toMatchObject({
 				schema,
@@ -318,12 +332,31 @@ describe('AgentRepository', () => {
 			expect(await taskRepo.findByAgentId(agent.id)).toMatchObject([{ id: 'task-remove' }]);
 			expect(completion.configurationSaved).not.toHaveBeenCalled();
 
-			const saved = await service.updateConfig(agent.id, projectId, config, mock<User>(), options);
+			const saved = await service.updateConfig(
+				agent.id,
+				projectId,
+				config,
+				mock<User>({ firstName: 'Test', lastName: 'User' }),
+				options,
+			);
 			expect(saved.config).toMatchObject({ name: 'Updated agent', tasks: [] });
 			expect(await agentRepo.findById(agent.id)).toMatchObject({
 				schema: { name: 'Updated agent', tasks: [] },
 			});
 			expect(await taskRepo.findByAgentId(agent.id)).toEqual([]);
+			expect(await agentHistoryRepo.countBy({ agentId: agent.id })).toBe(1);
+			const repeated = await service.updateConfig(
+				agent.id,
+				projectId,
+				saved.config,
+				mock<User>({ firstName: 'Test', lastName: 'User' }),
+				{
+					...options,
+					baseConfigHash: saved.configHash,
+				},
+			);
+			expect(repeated.versionId).toBe(saved.versionId);
+			expect(await agentHistoryRepo.countBy({ agentId: agent.id })).toBe(1);
 			expect(completion.configurationSaved).toHaveBeenCalled();
 		});
 
@@ -439,6 +472,7 @@ describe('AgentRepository', () => {
 				mock(),
 				transactionRunner,
 				Container.get(AgentSkillRefsService),
+				definitionService,
 			);
 			const readTask = taskRepo.findByIdAndAgentId.bind(taskRepo);
 			vi.spyOn(taskRepo, 'findByIdAndAgentId').mockImplementationOnce(async (id, agentId) => {
@@ -459,7 +493,7 @@ describe('AgentRepository', () => {
 					'task-1',
 					{ name: 'Renamed task' },
 					{
-						user: mock<User>(),
+						user: mock<User>({ firstName: 'Test', lastName: 'User' }),
 						modifiedBy: 'user',
 					},
 				),
@@ -653,34 +687,34 @@ describe('AgentRepository', () => {
 			const stale = await agentRepo.findById(agent.id);
 			expect(stale).not.toBeNull();
 
-			// A concurrent publish wins the fence: sets the active pointer and
-			// bumps revision.
-			const publishWon = await agentRepo.setActiveVersionFenced(agent.id, agent.revision, {
-				activeVersionId: publishedVersionId,
-				versionId: publishedVersionId,
-			});
+			// Publication changes its own revision.
+			const publishWon = await agentRepo.setActiveVersionFenced(
+				agent.id,
+				agent.publicationRevision,
+				publishedVersionId,
+			);
 			expect(publishWon).toBe(true);
 
-			// The stale draft save must lose instead of writing its
-			// pre-publish column values over the row.
+			// A concurrent draft save preserves the published pointer.
 			stale!.schema = { name: 'Stale Edit', model: 'm', instructions: 'i' };
 			const draftWon = await agentRepo.saveDraftFenced(stale!);
 
-			expect(draftWon).toBe(false);
+			expect(draftWon).toBe(true);
 			const row = await agentRepo.findById(agent.id);
 			expect(row?.activeVersionId).toBe(publishedVersionId);
-			expect(row?.versionId).toBe(publishedVersionId);
-			expect(row?.schema?.name).toBe('Test Agent');
+			expect(row?.versionId).toBe(stale!.versionId);
+			expect(row?.schema?.name).toBe('Stale Edit');
 		});
 
 		it('never writes the active version pointer, even when it wins', async () => {
 			const agent = await createAgent();
 			const publishedVersionId = uuid();
 			await createHistory(agent.id, publishedVersionId);
-			await agentRepo.setActiveVersionFenced(agent.id, agent.revision, {
-				activeVersionId: publishedVersionId,
-				versionId: publishedVersionId,
-			});
+			await agentRepo.setActiveVersionFenced(
+				agent.id,
+				agent.publicationRevision,
+				publishedVersionId,
+			);
 
 			// Fresh load sees the published state; a draft edit on top of it
 			// must start a new draft without touching the active pointer.
@@ -696,24 +730,55 @@ describe('AgentRepository', () => {
 			expect(row?.schema?.name).toBe('Draft Edit');
 		});
 
-		it('lets a publish lose to a draft edit that won in between', async () => {
+		it('publishes a saved version while preserving a concurrent draft edit', async () => {
 			const agent = await createAgent();
-			const expectedAtLoad = agent.revision;
+			const expectedAtLoad = agent.publicationRevision;
 
 			agent.schema = { name: 'Concurrent Edit', model: 'm', instructions: 'i' };
 			await agentRepo.saveDraftFenced(agent);
 
 			const publishedVersionId = uuid();
 			await createHistory(agent.id, publishedVersionId);
-			const publishWon = await agentRepo.setActiveVersionFenced(agent.id, expectedAtLoad, {
-				activeVersionId: publishedVersionId,
-				versionId: publishedVersionId,
-			});
+			const publishWon = await agentRepo.setActiveVersionFenced(
+				agent.id,
+				expectedAtLoad,
+				publishedVersionId,
+			);
 
-			expect(publishWon).toBe(false);
+			expect(publishWon).toBe(true);
 			const row = await agentRepo.findById(agent.id);
-			expect(row?.activeVersionId).toBeNull();
+			expect(row?.activeVersionId).toBe(publishedVersionId);
 			expect(row?.schema?.name).toBe('Concurrent Edit');
+		});
+	});
+
+	describe('publication revisions', () => {
+		it('allows one competing publication and keeps the draft on unpublish', async () => {
+			const agent = await createAgent();
+			const versionId = uuid();
+			await createHistory(agent.id, versionId);
+			expect(await agentRepo.setActiveVersionFenced(agent.id, 0, versionId)).toBe(true);
+			expect(await agentRepo.setActiveVersionFenced(agent.id, 0, null)).toBe(false);
+			expect(await agentRepo.setActiveVersionFenced(agent.id, 1, null)).toBe(true);
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				versionId: agent.versionId,
+				activeVersionId: null,
+				publicationRevision: 2,
+				revision: 0,
+			});
+		});
+
+		it('invalidates publication validation when live credentials change', async () => {
+			const agent = await createAgent();
+			const versionId = uuid();
+			await createHistory(agent.id, versionId);
+			agent.integrations = [{ type: 'slack', credentialId: 'new-credential' }];
+			expect(await agentRepo.saveDraftFenced(agent)).toBe(true);
+			expect(await agentRepo.setActiveVersionFenced(agent.id, 0, versionId)).toBe(false);
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				activeVersionId: null,
+				publicationRevision: 1,
+			});
 		});
 	});
 

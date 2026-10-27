@@ -2,6 +2,7 @@
 import type { N8nLocale } from '../../types';
 
 export default {
+	'approvalCard.awaitingApproval': 'Awaiting approval',
 	'approvalCard.alwaysAllow': 'Always allow',
 	'approvalCard.alwaysAllowSuffix': 'during this session',
 	'approvalCard.allowOnce': 'Allow once',

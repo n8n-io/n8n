@@ -87,6 +87,7 @@ function makeModuleSettings(
 		sandboxUnavailableReason: null,
 		runDebugEnabled: false,
 		workflowSuggestionsEnabled: false,
+		assistantAgentEnabled: false,
 		...overrides,
 	};
 }
@@ -252,6 +253,22 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	describe('isAssistantAgentEnabled', () => {
+		it('is true when the backend registered the Assistant agent', () => {
+			setModuleSettings(settingsStore, { assistantAgentEnabled: true });
+
+			expect(store.isAssistantAgentEnabled).toBe(true);
+		});
+
+		it('is false when the Assistant is off, or when the backend has no agent', () => {
+			setModuleSettings(settingsStore, { enabled: false, assistantAgentEnabled: true });
+			expect(store.isAssistantAgentEnabled).toBe(false);
+
+			setModuleSettings(settingsStore, {});
+			expect(store.isAssistantAgentEnabled).toBe(false);
+		});
+	});
+
 	describe('settings persistence', () => {
 		const response = {
 			enabled: true,
@@ -293,6 +310,14 @@ describe('useInstanceAiSettingsStore', () => {
 
 			expect(store.settings).toEqual(response);
 			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
+		});
+
+		it('keeps the Assistant agent setting when it applies saved settings', async () => {
+			setModuleSettings(settingsStore, { enabled: false, assistantAgentEnabled: true });
+
+			await store.persistEnabled(true);
+
+			expect(settingsStore.moduleSettings['instance-ai']?.assistantAgentEnabled).toBe(true);
 		});
 	});
 
