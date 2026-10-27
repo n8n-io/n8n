@@ -514,6 +514,106 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 	});
 });
 
+describe('MicrosoftOutlookV2 - immutable IDs', () => {
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockRequestWithAuthentication: Mock;
+
+	beforeEach(() => {
+		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+		mockRequestWithAuthentication = vi.fn().mockResolvedValue({ data: 'test' });
+		mockExecuteFunctions.helpers.requestWithAuthentication = mockRequestWithAuthentication;
+		mockExecuteFunctions.getCredentials.mockResolvedValue({
+			graphApiBaseUrl: 'https://graph.microsoft.com',
+		});
+	});
+
+	afterEach(() => {
+		vi.resetAllMocks();
+	});
+
+	it('should send the immutable ID preference header when enabled', async () => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((name) =>
+			name === 'options' ? { immutableIds: true } : undefined,
+		);
+
+		await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+
+		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+			'microsoftOutlookOAuth2Api',
+			expect.objectContaining({
+				headers: expect.objectContaining({ Prefer: 'IdType="ImmutableId"' }),
+			}),
+		);
+	});
+
+	it('should use the item index to read the option', async () => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((name) =>
+			name === 'options' ? { immutableIds: true } : undefined,
+		);
+
+		await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 2);
+
+		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('options', 2, {});
+	});
+
+	it('should not send the header when the option is disabled', async () => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((name) =>
+			name === 'options' ? { immutableIds: false } : undefined,
+		);
+
+		await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+
+		const options = mockRequestWithAuthentication.mock.calls[0][1];
+		expect(options.headers.Prefer).toBeUndefined();
+	});
+
+	it('should not send the header when the option is missing', async () => {
+		mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
+
+		await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+
+		const options = mockRequestWithAuthentication.mock.calls[0][1];
+		expect(options.headers.Prefer).toBeUndefined();
+	});
+
+	it('should read the option from the current node in load options context', async () => {
+		const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
+		const loadOptionsRequest = mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock;
+		loadOptionsRequest.mockResolvedValue({ data: 'test' });
+		mockLoadOptionsFunctions.getCredentials.mockResolvedValue({
+			graphApiBaseUrl: 'https://graph.microsoft.com',
+		});
+		mockLoadOptionsFunctions.getCurrentNodeParameter.mockImplementation((name) =>
+			name === 'options' ? { immutableIds: true } : undefined,
+		);
+
+		await microsoftApiRequest.call(mockLoadOptionsFunctions, 'GET', '/messages', 0);
+
+		expect(loadOptionsRequest).toHaveBeenCalledWith(
+			'microsoftOutlookOAuth2Api',
+			expect.objectContaining({
+				headers: expect.objectContaining({ Prefer: 'IdType="ImmutableId"' }),
+			}),
+		);
+	});
+
+	it('should fall back to false in load options context when the option is unavailable', async () => {
+		const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
+		const loadOptionsRequest = mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock;
+		loadOptionsRequest.mockResolvedValue({ data: 'test' });
+		mockLoadOptionsFunctions.getCredentials.mockResolvedValue({
+			graphApiBaseUrl: 'https://graph.microsoft.com',
+		});
+		mockLoadOptionsFunctions.getCurrentNodeParameter.mockReturnValue(undefined);
+		mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(undefined);
+
+		await microsoftApiRequest.call(mockLoadOptionsFunctions, 'GET', '/messages', 0);
+
+		const options = loadOptionsRequest.mock.calls[0][1];
+		expect(options.headers.Prefer).toBeUndefined();
+	});
+});
+
 describe('MicrosoftOutlookV2 - getSubfolders', () => {
 	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 

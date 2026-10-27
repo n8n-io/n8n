@@ -7,6 +7,8 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { immutableIdsCollection } from '../options';
+
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -192,6 +194,7 @@ export const properties: INodeProperties[] = [
 			},
 		],
 	},
+	immutableIdsCollection,
 ];
 
 const displayOptions = {

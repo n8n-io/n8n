@@ -3,11 +3,13 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { folderRLC, messageRLC } from '../../descriptions';
+import { immutableIdsCollection } from '../options';
 import { microsoftApiRequest } from '../../transport';
 
 export const properties: INodeProperties[] = [
 	messageRLC,
 	{ ...folderRLC, displayName: 'Parent Folder' },
+	immutableIdsCollection,
 ];
 
 const displayOptions = {

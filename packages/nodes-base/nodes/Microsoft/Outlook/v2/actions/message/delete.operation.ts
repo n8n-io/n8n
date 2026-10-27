@@ -3,9 +3,10 @@ import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { messageRLC } from '../../descriptions';
+import { immutableIdsCollection } from '../options';
 import { microsoftApiRequest } from '../../transport';
 
-export const properties: INodeProperties[] = [messageRLC];
+export const properties: INodeProperties[] = [messageRLC, immutableIdsCollection];
 
 const displayOptions = {
 	show: {

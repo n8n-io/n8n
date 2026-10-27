@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	IHttpRequestMethods,
 	IRequestOptions,
@@ -104,9 +105,12 @@ export async function microsoftApiRequest(
 		apiUrl = `${baseUrl}/v1.0/me${resource}`;
 	}
 
+	const useImmutableIds = getImmutableIds.call(this, itemIndex);
+
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
+			...(useImmutableIds ? { Prefer: 'IdType="ImmutableId"' } : {}),
 		},
 		method,
 		body,
@@ -145,6 +149,25 @@ export async function microsoftApiRequest(
 
 		throw error;
 	}
+}
+
+type ImmutableIdContext = {
+	getNodeParameter(
+		parameterName: string,
+		itemIndexOrFallback?: unknown,
+		fallbackValue?: unknown,
+	): unknown;
+	getCurrentNodeParameter?(parameterName: string): unknown;
+};
+
+function getImmutableIds(this: ImmutableIdContext, itemIndex = 0): boolean {
+	const current = this.getCurrentNodeParameter?.('options');
+	if (isRecord(current) && typeof current.immutableIds === 'boolean') {
+		return current.immutableIds;
+	}
+
+	const options = this.getNodeParameter('options', itemIndex, {});
+	return isRecord(options) && options.immutableIds === true;
 }
 
 export async function microsoftApiRequestAllItems(

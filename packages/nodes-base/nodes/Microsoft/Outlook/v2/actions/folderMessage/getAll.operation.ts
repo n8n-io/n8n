@@ -9,6 +9,7 @@ import { assertNoQueryDelimiters } from '@utils/query-escaping';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { folderRLC, returnAllOrLimit } from '../../descriptions';
+import { immutableIdsOption } from '../options';
 import {
 	decodeOutlookId,
 	messageFields,
@@ -196,6 +197,7 @@ export const properties: INodeProperties[] = [
 		placeholder: 'Add option',
 		default: {},
 		options: [
+			immutableIdsOption,
 			{
 				displayName: 'Attachments Prefix',
 				name: 'attachmentsPrefix',

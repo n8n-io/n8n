@@ -3,6 +3,7 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { contactFields } from '../../descriptions';
+import { immutableIdsCollection } from '../options';
 import { prepareContactFields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -28,6 +29,7 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: contactFields,
 	},
+	immutableIdsCollection,
 ];
 
 const displayOptions = {

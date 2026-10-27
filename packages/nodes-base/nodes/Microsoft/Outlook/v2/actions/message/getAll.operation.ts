@@ -9,6 +9,7 @@ import { assertNoQueryDelimiters } from '@utils/query-escaping';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { returnAllOrLimit } from '../../descriptions';
+import { immutableIdsOption } from '../options';
 import { messageFields, prepareFilterString, simplifyOutputMessages } from '../../helpers/utils';
 import {
 	downloadAttachments,
@@ -212,6 +213,7 @@ export const properties: INodeProperties[] = [
 		placeholder: 'Add option',
 		default: {},
 		options: [
+			immutableIdsOption,
 			{
 				displayName: 'Attachments Prefix',
 				name: 'attachmentsPrefix',

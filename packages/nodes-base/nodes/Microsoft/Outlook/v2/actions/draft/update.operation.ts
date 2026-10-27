@@ -3,6 +3,7 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { draftRLC } from '../../descriptions';
+import { immutableIdsCollection } from '../options';
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -170,6 +171,7 @@ export const properties: INodeProperties[] = [
 			},
 		],
 	},
+	immutableIdsCollection,
 ];
 
 const displayOptions = {

@@ -1,5 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { immutableIdsOption } from '../v2/actions/options';
 import { messageFields } from '../v2/helpers/utils';
 
 export const properties: INodeProperties[] = [
@@ -135,6 +136,7 @@ export const properties: INodeProperties[] = [
 				description:
 					"Whether the message's attachments will be downloaded and included in the output",
 			},
+			immutableIdsOption,
 		],
 	},
 ];

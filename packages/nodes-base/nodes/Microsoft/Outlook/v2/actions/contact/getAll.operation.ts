@@ -4,6 +4,7 @@ import { escapeODataValue } from '@utils/query-escaping';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { returnAllOrLimit } from '../../descriptions';
+import { immutableIdsCollection } from '../options';
 import { contactFields } from '../../helpers/utils';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
@@ -67,6 +68,7 @@ export const properties: INodeProperties[] = [
 			},
 		],
 	},
+	immutableIdsCollection,
 ];
 
 const displayOptions = {

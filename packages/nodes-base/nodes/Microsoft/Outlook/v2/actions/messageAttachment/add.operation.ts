@@ -10,6 +10,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { messageRLC } from '../../descriptions';
+import { immutableIdsOption } from '../options';
 import { microsoftApiRequest } from '../../transport';
 
 export const properties: INodeProperties[] = [
@@ -30,6 +31,7 @@ export const properties: INodeProperties[] = [
 		placeholder: 'Add option',
 		default: {},
 		options: [
+			immutableIdsOption,
 			{
 				displayName: 'File Name',
 				name: 'fileName',
