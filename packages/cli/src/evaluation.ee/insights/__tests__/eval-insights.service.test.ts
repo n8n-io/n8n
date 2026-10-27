@@ -1,5 +1,6 @@
 import type { AiInsightsResponse } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
+import type { HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type {
 	EvaluationCollection,
 	EvaluationCollectionRepository,
@@ -19,10 +20,17 @@ import type { InsightsModelResolver } from '../insights-model-resolver';
 
 // Stub the @n8n/agents SDK: the fluent builder is a no-op and `generate` is a
 // controllable mock so tests drive the model's (in)valid structured output.
-const { generateMock } = vi.hoisted(() => ({ generateMock: vi.fn() }));
+const { generateMock, modelFetchMock } = vi.hoisted(() => ({
+	generateMock: vi.fn(),
+	modelFetchMock: vi.fn(),
+}));
 vi.mock('@n8n/agents', () => ({
 	Agent: class {
 		model() {
+			return this;
+		}
+		modelFetch(fetch: unknown) {
+			modelFetchMock(fetch);
 			return this;
 		}
 		instructions() {
@@ -92,6 +100,7 @@ describe('EvalInsightsService', () => {
 	let logger: Mocked<Logger>;
 	let modelResolver: Mocked<InsightsModelResolver>;
 	let contextBuilder: Mocked<InsightsContextBuilder>;
+	const aiFetch = vi.fn();
 
 	beforeEach(() => {
 		collectionRepo = mock<EvaluationCollectionRepository>();
@@ -124,6 +133,9 @@ describe('EvalInsightsService', () => {
 			logger,
 			modelResolver,
 			contextBuilder,
+			mock<OutboundHttp>({
+				transport: () => mock<HttpTransport>({ asCustomFetch: () => aiFetch }),
+			}),
 		);
 	});
 
@@ -189,6 +201,7 @@ describe('EvalInsightsService', () => {
 				},
 			]);
 			expect(generateMock).toHaveBeenCalledTimes(1);
+			expect(modelFetchMock).toHaveBeenCalledWith(aiFetch);
 			// A successful envelope is cached.
 			expect(collectionRepo.updateInsightsCache).toHaveBeenCalledWith('col-1', result);
 		});

@@ -1,4 +1,5 @@
 import { ModuleRegistry } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -74,6 +75,7 @@ const buildRunner = () =>
 		Container.get(AgentsSettingsService),
 		Container.get(AgentConfigService),
 		Container.get(CredentialsService),
+		Container.get(OutboundHttp),
 	);
 
 /** Insert a minimal real agent row so `agent_eval_dataset.agentId`'s FK holds. */

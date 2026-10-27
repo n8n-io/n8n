@@ -2578,8 +2578,6 @@ describe('openai api-style selection (real SDK)', () => {
 		// With no transport injected, both routes must resolve `globalThis.fetch` at
 		// request time, the way the SDK does. A snapshot taken while the model was
 		// built sends the /responses request through the transport it replaced.
-		vi.stubEnv('HTTPS_PROXY', '');
-		vi.stubEnv('HTTP_PROXY', '');
 		const model = createModel({ id: 'openai/gpt-5.6', apiKey: 'sk-fake', url: CHAT_ONLY });
 		const { fetchFn, calls } = fakeEndpoint({ '/v1/chat/completions': CHAT_OK });
 		const installed = globalThis.fetch;
@@ -2589,7 +2587,6 @@ describe('openai api-style selection (real SDK)', () => {
 			expect((await generateText({ model, prompt: 'hi' })).text).toBe('from chat');
 		} finally {
 			globalThis.fetch = installed;
-			vi.unstubAllEnvs();
 		}
 		expect(paths(calls)).toEqual(['/v1/responses', '/v1/chat/completions']);
 	});

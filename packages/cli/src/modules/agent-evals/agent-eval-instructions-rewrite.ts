@@ -1,3 +1,4 @@
+import type { FetchFn } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { OperationalError } from '@n8n/errors';
@@ -39,6 +40,7 @@ type RewriteDependencies = {
 	agentConfigService: AgentConfigService;
 	credentialsService: CredentialsService;
 	logger: Logger;
+	modelFetch: FetchFn;
 };
 
 type RewriteSubject = {
@@ -116,7 +118,7 @@ function validateRewrite(candidate: string, { currentInstructions, suggestions }
  * caller saves nothing in that case, so a bad rewrite never reaches the agent.
  */
 export async function rewriteAgentInstructions(
-	{ agentConfigService, credentialsService, logger }: RewriteDependencies,
+	{ agentConfigService, credentialsService, logger, modelFetch }: RewriteDependencies,
 	subject: RewriteSubject,
 	ctx: { agentId: string; projectId: string; user: User },
 ): Promise<string> {
@@ -143,6 +145,7 @@ export async function rewriteAgentInstructions(
 	const { Agent } = await import('@n8n/agents');
 	const agent = new Agent('agent-eval-instructions-rewrite')
 		.model(modelConfig)
+		.modelFetch(modelFetch)
 		.instructions(REWRITE_SYSTEM_PROMPT)
 		.structuredOutput(rewriteSchema);
 

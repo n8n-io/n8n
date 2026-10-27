@@ -20,6 +20,7 @@ import type {
 	UpdateAgentEvalDatasetPayload,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { AgentEvalDataset, AgentEvalResult, AgentEvalRun, User } from '@n8n/db';
 import {
 	AgentEvalDatasetRepository,
@@ -36,6 +37,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { AgentEvalCaseGenerationService } from './agent-eval-case-generation.service';
 import { rewriteAgentInstructions } from './agent-eval-instructions-rewrite';
@@ -76,6 +78,7 @@ export class AgentEvalService {
 		private readonly agentConfigService: AgentConfigService,
 		private readonly credentialsService: CredentialsService,
 		private readonly logger: Logger,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	// ---- datasets ----
@@ -261,6 +264,7 @@ export class AgentEvalService {
 				agentConfigService: this.agentConfigService,
 				credentialsService: this.credentialsService,
 				logger: this.logger,
+				modelFetch: createAiProxyFetch(this.outboundHttp),
 			},
 			{
 				currentInstructions: config.instructions,
@@ -421,6 +425,7 @@ export class AgentEvalService {
 				agentConfigService: this.agentConfigService,
 				credentialsService: this.credentialsService,
 				logger: this.logger,
+				modelFetch: createAiProxyFetch(this.outboundHttp),
 			},
 			{
 				currentInstructions: config.instructions,

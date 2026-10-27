@@ -1,4 +1,13 @@
-import { buildCriteriaPrompt, criteriaJudge } from '../criteria';
+import { buildCriteriaPrompt, criteria, criteriaJudge } from '../criteria';
+
+const { runtimeConfigs } = vi.hoisted(() => ({ runtimeConfigs: [] as unknown[] }));
+vi.mock('../../runtime/loop/agent-runtime', () => ({
+	AgentRuntime: class {
+		constructor(config: unknown) {
+			runtimeConfigs.push(config);
+		}
+	},
+}));
 
 const llmReturning = (text: string) => vi.fn(async (_prompt: string) => ({ text }));
 
@@ -42,6 +51,14 @@ describe('criteria judge', () => {
 			expect(llm).not.toHaveBeenCalled();
 		},
 	);
+
+	it('builds the judge runtime with the injected modelFetch', () => {
+		const modelFetch = vi.fn<typeof fetch>();
+
+		criteria().model('anthropic/claude-haiku-4-5').modelFetch(modelFetch).ensureBuilt();
+
+		expect(runtimeConfigs).toContainEqual(expect.objectContaining({ modelFetch }));
+	});
 
 	it('asks for a short reason of one or two sentences', () => {
 		const prompt = buildCriteriaPrompt('the question', 'the answer', 'the rule');

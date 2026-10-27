@@ -1,3 +1,4 @@
+import type { FetchFn } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { z } from 'zod';
@@ -30,6 +31,7 @@ type FixSuggestionDependencies = {
 	agentConfigService: AgentConfigService;
 	credentialsService: CredentialsService;
 	logger: Logger;
+	modelFetch: FetchFn;
 };
 
 type FixSuggestionSubject = {
@@ -62,7 +64,7 @@ function buildUserPrompt(instructions: string, subject: FixSuggestionSubject): s
  * that already exists, so it must never fail the case.
  */
 export async function generateFixSuggestion(
-	{ agentConfigService, credentialsService, logger }: FixSuggestionDependencies,
+	{ agentConfigService, credentialsService, logger, modelFetch }: FixSuggestionDependencies,
 	subject: FixSuggestionSubject,
 	ctx: { agentId: string; projectId: string; user: User },
 ): Promise<string | null> {
@@ -86,6 +88,7 @@ export async function generateFixSuggestion(
 		const { Agent } = await import('@n8n/agents');
 		const agent = new Agent('agent-eval-fix-suggestion')
 			.model(modelConfig)
+			.modelFetch(modelFetch)
 			.instructions(FIX_SUGGESTION_SYSTEM_PROMPT)
 			.structuredOutput(suggestionSchema);
 

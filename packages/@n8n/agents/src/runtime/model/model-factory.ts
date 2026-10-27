@@ -11,7 +11,6 @@ import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { isRecord } from '@n8n/utils/is-record';
 import type * as AiSdk from 'ai';
 import type { EmbeddingModel, LanguageModel } from 'ai';
-import type * as Undici from 'undici';
 
 import { createGoogleVertexModel, parseGoogleVertexAuthOptions } from './google-vertex';
 import { loadAi } from './lazy-ai';
@@ -55,33 +54,10 @@ function isLanguageModel(config: unknown): config is LanguageModel {
 }
 
 /**
- * Env-proxy `fetch` fallback for standalone SDK use.
- *
- * `@n8n/agents` is a standalone SDK and deliberately does not depend on `@n8n/backend-network`,
- * so it cannot build the backend's centrally-guarded transport itself.
- * Inside the n8n backend that guarded `fetch` is always injected into {@link createModel} / {@link createEmbeddingModel}
- * (see cli's `createAiProxyFetch`, which wraps `@n8n/backend-network`), and this fallback is never reached.
- */
-/**
  * Resolves `globalThis.fetch` per request, the same way the SDK does when no
  * `fetch` is passed, so a transport installed after the model was built is used.
  */
 const globalFetch: FetchFn = async (input, init) => await globalThis.fetch(input, init);
-
-function getProxyFetch(): FetchFn | undefined {
-	const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
-	if (!proxyUrl) return undefined;
-
-	// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- standalone SDK cannot depend on @n8n/backend-network; the backend always injects its guarded transport, so this env-proxy path runs only outside the backend (see doc comment above). To drop this: make `fetch` a required arg of createModel/createEmbeddingModel and delete the fallback, so standalone callers always supply their own transport
-	const { ProxyAgent } = require('undici') as typeof Undici;
-	const dispatcher = new ProxyAgent(proxyUrl);
-	return async (url, init) =>
-		await globalThis.fetch(url, {
-			...init,
-			// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
-			dispatcher,
-		});
-}
 
 type EntryBuilder<P extends ProviderId> = (
 	creds: ProviderCredentials<P>,
@@ -657,11 +633,9 @@ export function createModel(
 		throw new Error(`Invalid credentials for provider "${provider}":\n${issues}`);
 	}
 
-	// Caller-injected transport wins; fall back to the ambient env-proxy resolver.
-	const transport = fetch ?? getProxyFetch();
 	const resolvedFetch = telemetry?.traceModelRequests
-		? traceModelRequests(transport ?? globalFetch, telemetry, provider, modelName)
-		: transport;
+		? traceModelRequests(fetch ?? globalFetch, telemetry, provider, modelName)
+		: fetch;
 	// Type cast: the registry guarantees the schema and builder are aligned per provider.
 	return (entry.build as EntryBuilder<typeof provider>)(parsed.data, modelName, resolvedFetch);
 }

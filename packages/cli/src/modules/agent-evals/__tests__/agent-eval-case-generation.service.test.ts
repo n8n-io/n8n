@@ -1,5 +1,6 @@
 import type { AgentJsonConfig, InstanceAiEvalAgentExecutionResult } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { AgentEvalDataset, AgentEvalDatasetRepository, User } from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -18,9 +19,10 @@ import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 
 // Stub the @n8n/agents SDK: fluent builder is a no-op; `generate` is a
 // controllable mock so tests drive the model's (in)valid structured output.
-const { generateMock, criteriaRunMock } = vi.hoisted(() => ({
+const { generateMock, criteriaRunMock, modelFetchMock } = vi.hoisted(() => ({
 	generateMock: vi.fn(),
 	criteriaRunMock: vi.fn(),
+	modelFetchMock: vi.fn(),
 }));
 vi.mock('@n8n/agents', async (importOriginal) => ({
 	// Channel action tools import APPROVAL_* schemas from the SDK; keep those real.
@@ -28,11 +30,17 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 	// The preview judges its run with the rule judge; `criteriaRunMock` drives its verdict.
 	evals: {
 		criteria: () => ({
-			model: () => ({ run: (...args: unknown[]) => criteriaRunMock(...args) }),
+			model: () => ({
+				modelFetch: () => ({ run: (...args: unknown[]) => criteriaRunMock(...args) }),
+			}),
 		}),
 	},
 	Agent: class {
 		model() {
+			return this;
+		}
+		modelFetch(fetch: unknown) {
+			modelFetchMock(fetch);
 			return this;
 		}
 		instructions() {
@@ -89,6 +97,7 @@ describe('AgentEvalCaseGenerationService', () => {
 	let flagGate: Mocked<AgentEvalsFlagGate>;
 	let instanceWriteAccess: Mocked<InstanceWriteAccessService>;
 	let evalAgentExecutionService: Mocked<EvalAgentExecutionService>;
+	const aiFetch = vi.fn();
 
 	beforeEach(() => {
 		logger = mock<Logger>();
@@ -123,6 +132,9 @@ describe('AgentEvalCaseGenerationService', () => {
 			flagGate,
 			instanceWriteAccess,
 			evalAgentExecutionService,
+			mock<OutboundHttp>({
+				transport: () => mock<HttpTransport>({ asCustomFetch: () => aiFetch }),
+			}),
 		);
 	});
 
@@ -181,6 +193,7 @@ describe('AgentEvalCaseGenerationService', () => {
 			expect.stringContaining('Write exactly 6'),
 			expect.anything(),
 		);
+		expect(modelFetchMock).toHaveBeenCalledWith(aiFetch);
 		// Table has the input + criteria string columns.
 		expect(dataTableService.createDataTable).toHaveBeenCalledWith('project-1', {
 			name: 'Draft cases for Support Bot',

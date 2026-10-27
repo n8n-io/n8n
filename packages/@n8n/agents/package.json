@@ -123,7 +123,6 @@
     "ajv": "^8.18.0",
     "google-auth-library": "catalog:",
     "langsmith": "catalog:",
-    "undici": "catalog:undici-v7",
     "yaml": "catalog:",
     "zod-to-json-schema": "catalog:"
   },

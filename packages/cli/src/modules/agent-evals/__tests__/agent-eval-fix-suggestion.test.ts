@@ -9,11 +9,18 @@ import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { generateFixSuggestion } from '../agent-eval-fix-suggestion';
 
 // The SDK is heavy and calls a real model: stub the agent and drive its output.
-const { generateMock } = vi.hoisted(() => ({ generateMock: vi.fn() }));
+const { generateMock, modelFetchMock } = vi.hoisted(() => ({
+	generateMock: vi.fn(),
+	modelFetchMock: vi.fn(),
+}));
 vi.mock('@n8n/agents', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/agents')>()),
 	Agent: class {
 		model() {
+			return this;
+		}
+		modelFetch(fetch: unknown) {
+			modelFetchMock(fetch);
 			return this;
 		}
 		instructions() {
@@ -58,7 +65,12 @@ describe('generateFixSuggestion', () => {
 			instructions: 'Help with invoices.',
 		} as never);
 		logger = mock<Logger>();
-		deps = { agentConfigService, credentialsService: mock<CredentialsService>(), logger };
+		deps = {
+			agentConfigService,
+			credentialsService: mock<CredentialsService>(),
+			logger,
+			modelFetch: vi.fn(),
+		};
 		resolveModelMock.mockReset();
 		resolveModelMock.mockResolvedValue({ id: 'anthropic/claude-sonnet-4-5' });
 		generateMock.mockReset();
@@ -71,6 +83,7 @@ describe('generateFixSuggestion', () => {
 		await expect(generateFixSuggestion(deps, subject, ctx)).resolves.toBe(
 			'Politely decline requests outside invoice support.',
 		);
+		expect(modelFetchMock).toHaveBeenCalledWith(deps.modelFetch);
 	});
 
 	it('puts the instructions, input, output, rule and reason in tagged blocks', async () => {

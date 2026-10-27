@@ -1,4 +1,5 @@
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import type { HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type {
 	AgentEvalDataset,
 	AgentEvalDatasetRepository,
@@ -149,6 +150,9 @@ describe('AgentEvalService', () => {
 			agentConfigService,
 			mock<CredentialsService>(),
 			mock<Logger>(),
+			mock<OutboundHttp>({
+				transport: () => mock<HttpTransport>({ asCustomFetch: () => vi.fn() }),
+			}),
 		);
 	});
 

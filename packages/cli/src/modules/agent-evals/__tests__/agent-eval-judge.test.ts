@@ -11,16 +11,26 @@ import { judgeAgentAnswer } from '../agent-eval-judge';
 
 // The SDK is heavy and its judges call a real model: stub both, and let each
 // test drive the verdict through the run mocks.
-const { criteriaRunMock, correctnessRunMock } = vi.hoisted(() => ({
+const { criteriaRunMock, correctnessRunMock, judgeFetchMock } = vi.hoisted(() => ({
 	criteriaRunMock: vi.fn(),
 	correctnessRunMock: vi.fn(),
+	judgeFetchMock: vi.fn(),
 }));
 vi.mock('@n8n/agents', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/agents')>()),
 	evals: {
-		criteria: () => ({ model: () => ({ run: (...args: unknown[]) => criteriaRunMock(...args) }) }),
+		criteria: () => ({
+			model: () => ({
+				modelFetch: (fetch: unknown) => {
+					judgeFetchMock(fetch);
+					return { run: (...args: unknown[]) => criteriaRunMock(...args) };
+				},
+			}),
+		}),
 		correctness: () => ({
-			model: () => ({ run: (...args: unknown[]) => correctnessRunMock(...args) }),
+			model: () => ({
+				modelFetch: () => ({ run: (...args: unknown[]) => correctnessRunMock(...args) }),
+			}),
 		}),
 	},
 }));
@@ -51,6 +61,7 @@ describe('judgeAgentAnswer', () => {
 			agentConfigService,
 			credentialsService: mock<CredentialsService>(),
 			logger,
+			modelFetch: vi.fn(),
 		};
 		resolveModelMock.mockReset();
 		resolveModelMock.mockResolvedValue({ id: 'anthropic/claude-sonnet-4-5' });
@@ -72,6 +83,7 @@ describe('judgeAgentAnswer', () => {
 			output: 'a',
 			criteria: 'Refuses politely',
 		});
+		expect(judgeFetchMock).toHaveBeenCalledWith(deps.modelFetch);
 		expect(correctnessRunMock).not.toHaveBeenCalled();
 		expect(verdict).toEqual({
 			status: 'completed',
