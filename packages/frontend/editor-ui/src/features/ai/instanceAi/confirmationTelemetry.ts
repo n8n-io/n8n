@@ -103,11 +103,20 @@ export function questionsInputs(
 	answers: QuestionAnswer[],
 ): ConfirmationInputs {
 	const questionsById = new Map(questions.map((q) => [q.id, q]));
+	const answersById = new Map(answers.map((a) => [a.questionId, a]));
 	const provided: ProvidedInput[] = [];
 	const skipped: SkippedInput[] = [];
 	for (const answer of answers) {
 		const questionDef = questionsById.get(answer.questionId);
-		const allOptions = questionDef?.options ?? [];
+		// Options that follow an earlier answer, as the questions card shows them.
+		const dependency = questionDef?.optionsByAnswer;
+		const picked = dependency
+			? answersById.get(dependency.questionId)?.selectedOptions[0]
+			: undefined;
+		const allOptions =
+			(picked === undefined ? undefined : dependency?.options[picked]) ??
+			questionDef?.options ??
+			[];
 		const inputType = questionDef?.type ?? 'text';
 
 		if (answer.skipped) {
