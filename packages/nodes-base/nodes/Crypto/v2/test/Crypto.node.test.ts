@@ -1,4 +1,4 @@
-import { constants, generateKeyPairSync, privateDecrypt, publicEncrypt } from 'crypto';
+import { constants, createSign, generateKeyPairSync, privateDecrypt, publicEncrypt } from 'crypto';
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
@@ -193,6 +193,103 @@ describe('CryptoV2 Node', () => {
 				expect(result[0][0].json.data).toBe(
 					'ZlDI7xX0XElJHwEpTw08Ykz/D+IJ+hQkcb4Cr929bUjiiLRXy8Etagc0Miuld2WnksIaznNmlqn7bom5oOpDnw==',
 				);
+			});
+		});
+
+		describe('Verify action', () => {
+			it('should throw error when signPublicKey is not set in credentials', async () => {
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, string> = {
+						action: 'verify',
+						algorithm: 'RSA-SHA256',
+						encoding: 'base64',
+						dataPropertyName: 'verified',
+						value: 'test value',
+						signature: 'invalid-signature',
+					};
+					return params[paramName];
+				});
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					hmacSecret: 'some-secret',
+					signPrivateKey: '',
+					signPublicKey: '',
+				});
+
+				await expect(cryptoNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					NodeOperationError,
+				);
+				await expect(cryptoNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					'No public key set in credentials',
+				);
+			});
+
+			it('should verify a valid signature', async () => {
+				const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+					modulusLength: 2048,
+					publicKeyEncoding: { type: 'spki', format: 'pem' },
+					privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+				});
+				const signer = createSign('RSA-SHA256');
+				signer.update('test');
+				signer.end();
+				const signature = signer.sign(privateKey, 'base64');
+
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, string> = {
+						action: 'verify',
+						algorithm: 'RSA-SHA256',
+						encoding: 'base64',
+						dataPropertyName: 'verified',
+						value: 'test',
+						signature,
+					};
+					return params[paramName];
+				});
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					hmacSecret: '',
+					signPrivateKey: '',
+					signPublicKey: publicKey,
+				});
+
+				const result = await cryptoNode.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json.verified).toBe(true);
+			});
+
+			it('should return false for a valid signature over different data', async () => {
+				const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+					modulusLength: 2048,
+					publicKeyEncoding: { type: 'spki', format: 'pem' },
+					privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+				});
+				const signer = createSign('RSA-SHA256');
+				signer.update('test');
+				signer.end();
+				const signature = signer.sign(privateKey, 'base64');
+
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, string> = {
+						action: 'verify',
+						algorithm: 'RSA-SHA256',
+						encoding: 'base64',
+						dataPropertyName: 'verified',
+						value: 'tampered-test',
+						signature,
+					};
+					return params[paramName];
+				});
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					hmacSecret: '',
+					signPrivateKey: '',
+					signPublicKey: publicKey,
+				});
+
+				const result = await cryptoNode.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json.verified).toBe(false);
 			});
 		});
 	});
