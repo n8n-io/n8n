@@ -32,6 +32,8 @@ export const PACKAGE_ENTITY_LAYOUT = {
 } as const satisfies Record<ManifestEntityCollection, { directory: string; fileName: string }>;
 
 // Hyphens delimit the slug and ID in exported directory names.
+// Unsafe ID characters become uppercase .XX UTF-8 byte escapes.
+// Promotions decode these paths from Git, so keep the format stable.
 const UNSAFE_ID_CHARACTER = /[^A-Za-z0-9_]/gu;
 const ESCAPED_ID_BYTES = /(?:\.[0-9A-F]{2})+/g;
 

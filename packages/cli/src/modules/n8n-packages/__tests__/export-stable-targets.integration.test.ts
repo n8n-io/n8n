@@ -202,9 +202,9 @@ function targetsById(manifest: PackageManifest): Map<string, string> {
 	return new Map(allEntries(manifest).map((entry) => [entry.id, entry.target]));
 }
 
-/** Entity ids carry no hyphen, so the id is the leaf's final hyphen-separated segment. */
+/** The id follows the leaf's last hyphen, with unsafe characters escaped. */
 function idFromTarget(target: string): string {
-	return target.split('/').at(-1)!.split('-').at(-1)!;
+	return entityIdOfSegment(target.split('/').at(-1)!);
 }
 
 async function parentFolderIdOf(workflowId: string): Promise<string | null> {
@@ -343,7 +343,7 @@ describe('stable export targets', () => {
 			`projects/equipo-ai-Equipo.20AI.26.C3.B31/folders/ops-${folder.id}/workflows/sync-${workflow.id}`,
 		);
 		for (const entry of allEntries(manifest)) {
-			expect(entityIdOfSegment(entry.target.split('/').at(-1)!)).toBe(entry.id);
+			expect(idFromTarget(entry.target)).toBe(entry.id);
 		}
 
 		await Container.get(WorkflowRepository).delete(workflow.id);

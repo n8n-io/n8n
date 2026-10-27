@@ -244,7 +244,7 @@ export class PromotionChangeService {
 		{ commitSha, keys }: PromotionResourceDetailsRequestDto,
 	): Promise<PromotionResourceDetails> {
 		this.assertCanPreview(user, direction);
-		const requestedIds = new Set(keys.map((key) => key.slice(key.lastIndexOf(':') + 1)));
+		const requestedIds = new Set(keys.map((key) => key.slice(key.indexOf(':') + 1)));
 		const readBranch = async (paths: readonly string[]) =>
 			commitSha === null
 				? new Map<string, string>()
