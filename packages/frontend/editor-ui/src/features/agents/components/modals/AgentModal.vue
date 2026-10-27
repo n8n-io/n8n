@@ -424,7 +424,7 @@ function onOpenAutoFocus(event: Event) {
 	.footerActions {
 		width: 100%;
 
-		button {
+		button:not([role='checkbox']) {
 			flex: 1;
 		}
 	}

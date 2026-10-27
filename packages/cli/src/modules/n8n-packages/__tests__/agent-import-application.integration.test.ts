@@ -12,7 +12,6 @@ import {
 	CredentialsRepository,
 	ProjectRepository,
 	ProjectRelationRepository,
-	TransactionRunner,
 	type Project,
 	type User,
 } from '@n8n/db';
@@ -396,7 +395,7 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 		{ type: 'slackApi' },
 	);
 	expect(saved.integrations).toEqual([{ type: 'slack', credentialId: 'source-chat' }]);
-	expect(await Container.get(AgentHistoryRepository).count()).toBe(0);
+	expect(await Container.get(AgentHistoryRepository).count()).toBe(2);
 	expect(observed).toHaveBeenCalledTimes(2);
 	expect(runtimes.clearRuntimes).not.toHaveBeenCalled();
 	expect(broadcaster.notify).toHaveBeenCalled();
@@ -462,24 +461,19 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 	const history = Container.get(AgentHistoryRepository);
 	const skillRefs = Container.get(AgentSkillRefsService);
 	const initialSkills = await skillRefs.readDraft(initial, {});
-	await Container.get(TransactionRunner).run({}, async (ctx) => {
-		const pins = await skillRefs.versionSnapshot(initial, ctx);
-		await history.saveVersion(
-			{
-				agentId: initial.id,
-				versionId: initial.versionId!,
-				schema: initial.schema,
-				tools: initial.tools,
-				publishedBy: 'Test',
-			},
-			ctx,
-		);
-		await skillRefs.pinVersion(initial.versionId!, pins, ctx);
-	});
 	await agents.update(initial.id, { activeVersionId: initial.versionId });
 	first.skills.support_source_skill.instructions = 'Promoted skill instructions';
 	first.skills.support_source_skill.references = [];
-	await importSelected(input);
+	first.tasks[`${first.id}_task`].objective = 'Promoted task objective';
+	const promoted = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
+	expect(await agents.findById(initial.id)).toMatchObject({
+		versionId: promoted.versionId,
+		revision: initial.revision + 1,
+	});
+	expect(await history.count()).toBe(2);
+	expect(
+		await Container.get(AgentTaskSnapshotRepository).findByVersionId(promoted.versionId!),
+	).toMatchObject([{ taskId: task.id, objective: 'Promoted task objective' }]);
 	const promotedSkills = await skillRefs.readDraft(initial, {});
 	expect(promotedSkills.skillRefs).toEqual(initialSkills.skillRefs);
 	expect(promotedSkills.skills.support_source_skill.instructions).toBe(
@@ -534,7 +528,7 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 		{ id: task.id, objective: 'Updated objective' },
 	]);
 	expect(await tasks.count()).toBe(1);
-	expect(await history.count()).toBe(1);
+	expect(await history.count()).toBe(4);
 	expect(await skillRefs.readVersion({ versionId: initial.versionId! }, {})).toEqual(initialSkills);
 	expect(schedule).not.toHaveBeenCalled();
 	const before = await agents.findById(initial.id);
@@ -721,7 +715,7 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 		publishing: { state: 'unchanged' },
 	});
 	expect(await agents.findById(published.id)).toEqual(before);
-	expect(await Container.get(AgentHistoryRepository).count()).toBe(2);
+	expect(await Container.get(AgentHistoryRepository).count()).toBe(5);
 	expect(Container.get(AgentTaskService).requestReconcile).toHaveBeenCalledTimes(2);
 	input.files[`${input.manifest.agents[0].target}/agent-metadata.json`] = {
 		versionId: 'draft-version',

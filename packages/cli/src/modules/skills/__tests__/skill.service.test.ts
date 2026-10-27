@@ -699,7 +699,7 @@ describe('SkillService', () => {
 
 			const result = await service.save('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
 
-			expect(skillAgents.markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX);
+			expect(skillAgents.markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX, user.id);
 			expect(result.followingAgentIds).toEqual(['agent-1', 'agent-2']);
 		});
 
