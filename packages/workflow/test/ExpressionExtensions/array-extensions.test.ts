@@ -128,6 +128,40 @@ describe('Data Transformation Functions', () => {
 
 				expect(unique([proxyFor('Nathan'), proxyFor('Jan')], ['name'])).toHaveLength(2);
 			});
+
+			test('should treat primitives the same way as deep equality does', () => {
+				expect(
+					unique([NaN, NaN, 0, -0, '0', null, undefined, null, undefined, 1n, 1n, 'a', 'a'], []),
+				).toEqual([NaN, 0, '0', null, undefined, 1n, 'a']);
+				expect(unique([-0, 0], [])).toEqual([-0]);
+			});
+
+			test('should still deep-compare when an array mixes primitives and objects', () => {
+				// eslint-disable-next-line no-new-wrappers
+				expect(unique([1, new Number(1), { a: 1 }, { a: 1 }], [])).toEqual([1, { a: 1 }]);
+			});
+		});
+
+		describe('set operations on primitives', () => {
+			const fn = (name: 'union' | 'difference' | 'intersection') =>
+				arrayExtensions.functions[name] as (value: unknown[], extraArgs: unknown[][]) => unknown[];
+
+			test('.union() keeps the order of first occurrences', () => {
+				expect(fn('union')([3, 1, NaN, 3], [[1, 2, NaN, -0, 2]])).toEqual([3, 1, NaN, 2, -0]);
+			});
+
+			test('.difference() matches NaN and signed zero like deep equality', () => {
+				expect(fn('difference')([NaN, 0, 1, '1', null], [[NaN, -0, null]])).toEqual([1, '1']);
+			});
+
+			test('.intersection() collects matches from both arrays', () => {
+				expect(fn('intersection')(['a', 'b', 'c', 'a'], [['c', 'a', 'd']])).toEqual(['a', 'c']);
+			});
+
+			test('primitives match their boxed counterparts like deep equality', () => {
+				// eslint-disable-next-line no-new-wrappers
+				expect(fn('difference')([1, 2], [[new Number(1)]])).toEqual([2]);
+			});
 		});
 
 		test('.isEmpty() should work correctly on an array', () => {
