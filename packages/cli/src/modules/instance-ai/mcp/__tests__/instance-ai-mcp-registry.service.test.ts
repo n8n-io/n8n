@@ -71,7 +71,7 @@ function makeRegistryServer(
 }
 
 describe('InstanceAiMcpRegistryService', () => {
-	const user = { id: 'user-1' } as User;
+	const user = { id: 'user-1', role: { slug: 'global:member', scopes: [] } } as unknown as User;
 	const credential = {
 		id: 'cred-1',
 		name: 'MCP OAuth2',

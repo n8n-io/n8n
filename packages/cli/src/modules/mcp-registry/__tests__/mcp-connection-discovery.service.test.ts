@@ -82,7 +82,7 @@ function makeServer(overrides: Partial<McpRegistryServer> = {}): McpRegistryServ
 }
 
 describe('McpConnectionDiscoveryService', () => {
-	const user = { id: 'user-1' } as User;
+	const user = { id: 'user-1', role: { slug: 'global:member', scopes: [] } } as unknown as User;
 	const credential = {
 		id: 'credential-1',
 		name: 'GitHub OAuth2',
@@ -400,6 +400,35 @@ describe('McpConnectionDiscoveryService', () => {
 				service.discover(user, { slug: 'git hub', credentialId: 'credential-1' }),
 			).resolves.toMatchObject({ status: 'connected' });
 			expect(credentialsHelper.getDecrypted).toHaveBeenCalled();
+		});
+
+		it('allows a read credential when the instance role may use any credential', async () => {
+			const { service, credentialsFinderService, credentialsHelper } = createService();
+			grantReadOnly(credentialsFinderService, {});
+			mcpClientListToolsMock.mockResolvedValue([]);
+			const useAnyUser = {
+				...user,
+				role: { slug: 'custom:credential-user', scopes: [{ slug: 'credential:use' }] },
+			} as unknown as User;
+
+			await expect(
+				service.discover(useAnyUser, { slug: 'git hub', credentialId: 'credential-1' }),
+			).resolves.toMatchObject({ status: 'connected' });
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalled();
+		});
+
+		it('refuses a resolvable credential when the instance role may use any credential', async () => {
+			const { service, credentialsFinderService, credentialsHelper } = createService();
+			grantReadOnly(credentialsFinderService, { isResolvable: true });
+			const useAnyUser = {
+				...user,
+				role: { slug: 'custom:credential-user', scopes: [{ slug: 'credential:use' }] },
+			} as unknown as User;
+
+			await expect(
+				service.discover(useAnyUser, { slug: 'git hub', credentialId: 'credential-1' }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
 		});
 	});
 
