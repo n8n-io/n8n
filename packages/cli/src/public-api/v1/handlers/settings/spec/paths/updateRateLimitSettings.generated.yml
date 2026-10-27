@@ -2,7 +2,7 @@ operationId: updateRateLimitSettings
 tags:
   - SettingsRateLimits
 summary: Set the Public API rate-limit settings
-description: Replace the stored Public API rate-limit settings. Send every writable field. Set a limit to 0 to disable that layer. When rate limiting is enabled, at least one limit must be greater than 0. Changing a field controlled by an environment variable returns 409 without saving any changes. Repeating its current value is accepted. The read-only `envManagedFields` array is ignored on writes, so a GET response can be sent back as a PUT body. Requires the `securitySettings:manage` scope. API-key requests to this route count against the rate limits. If a limit blocks access, use a session request or change the environment variables and restart the instance.
+description: Replace the stored Public API rate-limit settings. Send every writable field. Set a limit to 0 for no limit. When rate limiting is enabled, at least one limit must be greater than 0. Changing a field controlled by an environment variable returns 409 without saving any changes. Repeating its current value is accepted. The read-only `envManagedFields` array is ignored on writes, so a GET response can be sent back as a PUT body. Requires the `securitySettings:manage` scope. API-key requests to this route count against the rate limits. If a limit blocks access, use a session request or change the environment variables and restart the instance.
 x-required-scope: securitySettings:manage
 requestBody:
   required: true
