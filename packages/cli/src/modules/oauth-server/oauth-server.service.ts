@@ -1,5 +1,6 @@
 import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients.js';
 import {
+	InvalidClientMetadataError,
 	InvalidGrantError,
 	InvalidTargetError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
@@ -192,22 +193,28 @@ export class OAuthServerService implements OAuthServerProvider {
 			registerClient: async (
 				client: OAuthClientInformationFull,
 			): Promise<OAuthClientInformationFull> => {
-				this.validateClientRegistration(client);
+				const registeredClient = {
+					...client,
+					grant_types: client.grant_types ?? ['authorization_code'],
+					token_endpoint_auth_method:
+						client.token_endpoint_auth_method ?? 'client_secret_basic',
+				};
+				this.validateClientRegistration(registeredClient);
 
 				await this.oauthClientRepository.insert({
-					id: client.client_id,
-					name: client.client_name,
-					redirectUris: client.redirect_uris,
-					grantTypes: client.grant_types,
-					clientSecret: client.client_secret ?? null,
-					clientSecretExpiresAt: client.client_secret_expires_at ?? null,
-					tokenEndpointAuthMethod: client.token_endpoint_auth_method ?? 'none',
+					id: registeredClient.client_id,
+					name: registeredClient.client_name,
+					redirectUris: registeredClient.redirect_uris,
+					grantTypes: registeredClient.grant_types,
+					clientSecret: registeredClient.client_secret ?? null,
+					clientSecretExpiresAt: registeredClient.client_secret_expires_at ?? null,
+					tokenEndpointAuthMethod: registeredClient.token_endpoint_auth_method,
 					isFirstParty: false,
 				});
 
-				await this.enforceClientLimit(client.client_id);
+				await this.enforceClientLimit(registeredClient.client_id);
 
-				return client;
+				return registeredClient;
 			},
 		};
 	}
@@ -316,38 +323,42 @@ export class OAuthServerService implements OAuthServerProvider {
 
 	private validateClientRegistration(client: OAuthClientInformationFull): void {
 		if (!client.client_name) {
-			throw new Error('client_name is required');
+			throw new InvalidClientMetadataError('client_name is required');
 		}
 
 		if (countCodePointsUpTo(client.client_name, MAX_CLIENT_NAME_LENGTH) > MAX_CLIENT_NAME_LENGTH) {
-			throw new Error(`client_name exceeds maximum length of ${MAX_CLIENT_NAME_LENGTH} characters`);
+			throw new InvalidClientMetadataError(
+				`client_name exceeds maximum length of ${MAX_CLIENT_NAME_LENGTH} characters`,
+			);
 		}
 
 		if (!client.grant_types || client.grant_types.length === 0) {
-			throw new Error('grant_types is required');
+			throw new InvalidClientMetadataError('grant_types is required');
 		}
 
 		if (client.grant_types.length > MAX_GRANT_TYPES) {
-			throw new Error(`grant_types exceeds maximum count of ${MAX_GRANT_TYPES}`);
+			throw new InvalidClientMetadataError(`grant_types exceeds maximum count of ${MAX_GRANT_TYPES}`);
 		}
 
 		for (const grantType of client.grant_types) {
 			if (!SUPPORTED_GRANT_TYPES.includes(grantType)) {
-				throw new Error('grant_types contains an unsupported value');
+				throw new InvalidClientMetadataError('grant_types contains an unsupported value');
 			}
 		}
 
 		if (!client.redirect_uris || client.redirect_uris.length === 0) {
-			throw new Error('redirect_uris is required');
+			throw new InvalidClientMetadataError('redirect_uris is required');
 		}
 
 		if (client.redirect_uris.length > MAX_REDIRECT_URIS) {
-			throw new Error(`redirect_uris exceeds maximum count of ${MAX_REDIRECT_URIS}`);
+			throw new InvalidClientMetadataError(
+				`redirect_uris exceeds maximum count of ${MAX_REDIRECT_URIS}`,
+			);
 		}
 
 		for (const uri of client.redirect_uris) {
 			if (uri.length > MAX_REDIRECT_URI_LENGTH) {
-				throw new Error(
+				throw new InvalidClientMetadataError(
 					`redirect_uri exceeds maximum length of ${MAX_REDIRECT_URI_LENGTH} characters`,
 				);
 			}
@@ -357,7 +368,9 @@ export class OAuthServerService implements OAuthServerProvider {
 			client.token_endpoint_auth_method !== undefined &&
 			!SUPPORTED_TOKEN_ENDPOINT_AUTH_METHODS.includes(client.token_endpoint_auth_method)
 		) {
-			throw new Error('token_endpoint_auth_method contains an unsupported value');
+			throw new InvalidClientMetadataError(
+				'token_endpoint_auth_method contains an unsupported value',
+			);
 		}
 	}
 

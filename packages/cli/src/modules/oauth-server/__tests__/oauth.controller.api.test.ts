@@ -17,6 +17,7 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthServerConfig } from '../oauth-server.config';
+import { OAuthServerService } from '../oauth-server.service';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
 import { pendingFlowFrom } from './oauth-flow-test-utils';
 
@@ -286,6 +287,7 @@ describe('POST /mcp-oauth/register', () => {
 		expect(response.body.redirect_uris).toEqual(['https://example.com/callback']);
 		expect(response.body.grant_types).toEqual(['authorization_code', 'refresh_token']);
 		expect(response.body.token_endpoint_auth_method).toBe('none');
+		expect(response.body.client_secret).toBeUndefined();
 	});
 
 	test('should generate unique client IDs for each registration', async () => {
@@ -333,16 +335,41 @@ describe('POST /mcp-oauth/register', () => {
 			grant_types: ['authorization_code'],
 		});
 
-		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.error).toBe('invalid_client_metadata');
 	});
 
-	test('should reject registration when grant_types is missing', async () => {
+	test('should register a client when optional grant_types and auth method are missing', async () => {
+		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Test Client',
+			redirect_uris: ['https://claude.ai/api/mcp/auth_callback'],
+		});
+
+		expect(response.statusCode).toBe(201);
+		expect(response.body.grant_types).toEqual(['authorization_code']);
+		expect(response.body.token_endpoint_auth_method).toBe('client_secret_basic');
+		expect(response.body.client_secret).toEqual(expect.any(String));
+
+		const storedClient = await Container.get(OAuthServerService).clientsStore.getClient(
+			response.body.client_id,
+		);
+		expect(storedClient).toMatchObject({
+			grant_types: ['authorization_code'],
+			token_endpoint_auth_method: 'client_secret_basic',
+			client_secret: response.body.client_secret,
+		});
+	});
+
+	test('should reject an empty grant_types list as invalid client metadata', async () => {
 		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send({
 			client_name: 'Test Client',
 			redirect_uris: ['https://example.com/callback'],
+			grant_types: [],
+			token_endpoint_auth_method: 'none',
 		});
 
-		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.error).toBe('invalid_client_metadata');
 	});
 
 	test('should reject registration when redirect_uris is missing', async () => {
@@ -581,6 +608,41 @@ describe('POST /mcp-oauth/token', () => {
 		expect(response.body.error).toBeDefined();
 	});
 
+	test('should reject client credentials in both the Basic header and form body', async () => {
+		const response = await testServer.restlessAgent
+			.post('/mcp-oauth/token')
+			.auth('test-client', 'test-secret')
+			.type('form')
+			.send({ client_id: 'test-client', grant_type: 'authorization_code' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.error).toBe('invalid_request');
+	});
+
+	test('should accept extra whitespace after the Basic scheme', async () => {
+		const registration = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Spaced Basic Client',
+			redirect_uris: ['https://example.com/callback'],
+		});
+		expect(registration.statusCode).toBe(201);
+
+		const credentials = Buffer.from(
+			`${registration.body.client_id}:${registration.body.client_secret}`,
+		).toString('base64');
+		const response = await testServer.restlessAgent
+			.post('/mcp-oauth/token')
+			.set('Authorization', `Basic   ${credentials}`)
+			.type('form')
+			.send({
+				grant_type: 'authorization_code',
+				code: 'invalid-code',
+				code_verifier: 'test-verifier',
+			});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.error).toBe('invalid_grant');
+	});
+
 	test('should serve token requests even when MCP access is disabled', async () => {
 		// The token service stays available for other OAuth-protected resources
 		// regardless of the instance MCP toggle (IAM-798): an invalid code yields
@@ -796,6 +858,72 @@ describe('Full authorization-code flow (PKCE)', () => {
 		expect(refreshResponse.statusCode).toBe(200);
 		expect(refreshResponse.body.access_token).toEqual(expect.any(String));
 		expect(refreshResponse.body.access_token).not.toBe(tokenResponse.body.access_token);
+	});
+
+	test('should exchange a code with Basic authentication after registration with default metadata', async () => {
+		const { createHash, randomBytes } = await import('node:crypto');
+		const redirectUri = 'https://example.com/callback';
+		const codeVerifier = randomBytes(32).toString('base64url');
+		const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
+
+		const registerResponse = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Default Flow Client',
+			redirect_uris: [redirectUri],
+		});
+		expect(registerResponse.statusCode).toBe(201);
+		expect(registerResponse.body.grant_types).toEqual(['authorization_code']);
+		expect(registerResponse.body.token_endpoint_auth_method).toBe('client_secret_basic');
+		const clientId = registerResponse.body.client_id;
+		const clientSecret = registerResponse.body.client_secret;
+		expect(clientSecret).toEqual(expect.any(String));
+
+		const authorizeResponse = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
+			client_id: clientId,
+			redirect_uri: redirectUri,
+			response_type: 'code',
+			code_challenge: codeChallenge,
+			code_challenge_method: 'S256',
+		});
+		expect(authorizeResponse.statusCode).toBe(302);
+		const { flowId, cookie } = pendingFlowFrom(authorizeResponse);
+
+		const grantedScopes = mcpScopes.filter(
+			(scope) => scope !== 'communityPackage:install' && !scope.startsWith('aiPreference:'),
+		);
+		const authAgent = testServer.authAgentFor(owner);
+		authAgent.jar.setCookie(cookie ?? '');
+		const consentResponse = await authAgent
+			.post('/consent/approve')
+			.send({ approved: true, scopes: grantedScopes, flow: flowId });
+		expect(consentResponse.statusCode).toBe(200);
+		const code = new URL(consentResponse.body.data.redirectUrl).searchParams.get('code');
+		expect(code).toBeTruthy();
+
+		const invalidSecretResponse = await testServer.restlessAgent
+			.post('/mcp-oauth/token')
+			.auth(clientId, 'wrong-secret')
+			.type('form')
+			.send({
+				grant_type: 'authorization_code',
+				code: code!,
+				code_verifier: codeVerifier,
+				redirect_uri: redirectUri,
+			});
+		expect(invalidSecretResponse.statusCode).toBe(400);
+		expect(invalidSecretResponse.body.error).toBe('invalid_client');
+
+		const tokenResponse = await testServer.restlessAgent
+			.post('/mcp-oauth/token')
+			.auth(clientId, clientSecret)
+			.type('form')
+			.send({
+				grant_type: 'authorization_code',
+				code: code!,
+				code_verifier: codeVerifier,
+				redirect_uri: redirectUri,
+			});
+		expect(tokenResponse.statusCode).toBe(200);
+		expect(tokenResponse.body.access_token).toEqual(expect.any(String));
 	});
 
 	// A client that starts two authorization requests from one browser (a desktop
