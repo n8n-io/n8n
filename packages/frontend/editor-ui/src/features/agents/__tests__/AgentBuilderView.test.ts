@@ -5847,7 +5847,6 @@ describe('AgentBuilderView — three-column shell', () => {
 			],
 		};
 		// Skills drop allowed tools: the edit keeps everything else.
-		const editedSkill = { ...updatedSkill, allowedTools: ['load_workflow'] };
 		intendedConfig = {
 			name: 'Agent One',
 			instructions: 'You are a helpful assistant.',
@@ -5875,9 +5874,9 @@ describe('AgentBuilderView — three-column shell', () => {
 		await nextTick();
 
 		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
-			onConfirm: (payload: { id: string; skill: typeof editedSkill }) => void;
+			onConfirm: (payload: { id: string; skill: typeof updatedSkill }) => void;
 		};
-		modalData.onConfirm({ id: 'summarize_notes', skill: editedSkill });
+		modalData.onConfirm({ id: 'summarize_notes', skill: updatedSkill });
 		await nextTick();
 
 		expect(
