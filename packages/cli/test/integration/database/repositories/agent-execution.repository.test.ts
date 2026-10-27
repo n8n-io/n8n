@@ -63,6 +63,7 @@ import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interru
 import { AgentTurnExecutionService } from '@/modules/agents/agent-turn-execution.service';
 import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
 import type { AgentToolApprovalService } from '@/modules/agents/agent-tool-approval.service';
+import type { AgentKnowledgeUsageTracker } from '@/modules/agents/agent-knowledge-usage-tracker';
 import {
 	AgentMessageQueueService,
 	type ClaimedAgentMessage,
@@ -94,6 +95,7 @@ import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
+import type { SystemAgentUsageRelay } from '@/modules/agents/system-agents/system-agent-usage-relay';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SystemAgentRegistry } from '@/modules/agents/system-agents/system-agent-registry';
 import { N8N_CHAT_PRODUCTION_SOURCE } from '@/modules/agents/utils/agent-thread-access';
@@ -276,6 +278,7 @@ describe('AgentExecutionRepository', () => {
 				queue,
 				steering,
 				mock<AgentToolApprovalService>(),
+				mock<AgentKnowledgeUsageTracker>(),
 			),
 		};
 	}
@@ -507,6 +510,8 @@ describe('AgentExecutionRepository', () => {
 						mockLogger(),
 						new AiConfig(),
 						mock<AgentToolApprovalService>(),
+						repository,
+						mock<SystemAgentUsageRelay>(),
 					),
 					service,
 					mockLogger(),
@@ -4540,6 +4545,112 @@ describe('AgentExecutionRepository', () => {
 			expect(firstPage.threads.map(({ id }) => id)).toEqual([newest.id]);
 			expect(secondPage.threads.map(({ id }) => id)).toEqual([oldest.id]);
 			expect(secondPage.nextCursor).toBeNull();
+		});
+	});
+
+	describe('execution links', () => {
+		/** A top-level turn and two runs that it delegated, each in its own child thread. */
+		async function createDelegation() {
+			const parentThread = await createThread();
+			const childThread = await createThread({ sessionNumber: 2, parentThreadId: parentThread.id });
+			const siblingThread = await createThread({
+				sessionNumber: 3,
+				parentThreadId: parentThread.id,
+			});
+			const turn = await createExecution({
+				threadId: parentThread.id,
+				promptTokens: 1000,
+				cacheReadTokens: 800,
+				cacheWriteTokens: 100,
+				createdAt: new Date('2026-10-08T10:00:00Z'),
+			});
+			const childLinks = await repository.findLinksForChildOf(turn.id);
+			const child = await createExecution({
+				threadId: childThread.id,
+				...childLinks,
+				promptTokens: 300,
+				createdAt: new Date('2026-10-08T10:00:01Z'),
+			});
+			const sibling = await createExecution({
+				threadId: siblingThread.id,
+				...(await repository.findLinksForChildOf(turn.id)),
+				promptTokens: 50,
+				createdAt: new Date('2026-10-08T10:00:02Z'),
+			});
+			return { parentThread, childThread, turn, child, sibling, childLinks };
+		}
+
+		it('links a delegated run to the turn that started it', async () => {
+			const { turn, childLinks } = await createDelegation();
+
+			expect(childLinks).toEqual({ parentExecutionId: turn.id });
+			expect(await repository.findLinksForChildOf(uuid())).toBeNull();
+		});
+
+		it('returns the delegated runs of the given turns, oldest first', async () => {
+			const { parentThread, turn, child, sibling } = await createDelegation();
+			const otherTurn = await createExecution({
+				threadId: parentThread.id,
+				createdAt: new Date('2026-10-08T12:00:00Z'),
+			});
+
+			const turns = await repository.findUsageByThreadId(parentThread.id);
+			expect(turns.map(({ id }) => id)).toEqual([turn.id, otherTurn.id]);
+			expect(turns[0]).toMatchObject({
+				promptTokens: 1000,
+				cacheReadTokens: 800,
+				cacheWriteTokens: 100,
+			});
+
+			const children = await repository.findChildUsageByParentIds([turn.id, otherTurn.id]);
+			expect(children.map(({ id, parentExecutionId }) => [id, parentExecutionId])).toEqual([
+				[child.id, turn.id],
+				[sibling.id, turn.id],
+			]);
+			expect(await repository.findChildUsageByParentIds([])).toEqual([]);
+		});
+
+		it('reuses the link of the first execution in a resumed child thread', async () => {
+			const { parentThread, childThread, turn } = await createDelegation();
+			// A later execution in the child thread links to a different parent turn,
+			// so a lookup of the latest link would return the wrong turn.
+			const laterTurn = await createExecution({
+				threadId: parentThread.id,
+				createdAt: new Date('2026-10-08T10:30:00Z'),
+			});
+			await createExecution({
+				threadId: childThread.id,
+				parentExecutionId: laterTurn.id,
+				createdAt: new Date('2026-10-08T11:00:00Z'),
+			});
+
+			expect(await repository.findFirstLinksInThread(childThread.id)).toEqual({
+				parentExecutionId: turn.id,
+			});
+			expect(await repository.findFirstLinksInThread(uuid())).toBeNull();
+		});
+
+		it('finds the thread of an execution', async () => {
+			const { parentThread, childThread, turn, child } = await createDelegation();
+
+			expect(await repository.findThreadOf(turn.id)).toMatchObject({
+				id: parentThread.id,
+				agentId: parentThread.agentId,
+			});
+			expect(await repository.findThreadOf(child.id)).toMatchObject({ id: childThread.id });
+			expect(await repository.findThreadOf(uuid())).toBeNull();
+		});
+
+		it('keeps delegated executions and clears their link when the parent execution is deleted', async () => {
+			const { turn, child, sibling } = await createDelegation();
+
+			await repository.delete({ id: turn.id });
+
+			for (const { id } of [child, sibling]) {
+				expect(await repository.findOneByOrFail({ id })).toMatchObject({
+					parentExecutionId: null,
+				});
+			}
 		});
 	});
 });

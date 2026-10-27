@@ -339,6 +339,34 @@ describe('AgentSkillRepository', () => {
 		});
 	});
 
+	describe('findSkillIdsUsedByAgent', () => {
+		it('lists the skills of its draft refs and of its published pins, once each', async () => {
+			const drafted = await createSkill({ projectId: project.id });
+			const pinned = await createSkill({ projectId: project.id });
+			const both = await createSkill({ projectId: project.id });
+			const otherAgentOnly = await createSkill({ projectId: project.id });
+			const agent = await createAgent('Agent');
+			const other = await createAgent('Other');
+			await agentSkills.replaceDependencies(agent.id, [{ skillId: drafted }, { skillId: both }]);
+			await agentSkills.replaceDependencies(other.id, [{ skillId: otherAgentOnly }]);
+			const versionId = await publish(agent.id);
+			await agentSkills.insertPins(
+				await Promise.all(
+					[pinned, both].map(async (skillId) => ({
+						agentVersionId: versionId,
+						skillId,
+						skillVersionId: await latestVersionId(skillId),
+					})),
+				),
+			);
+
+			expect((await agentSkills.findSkillIdsUsedByAgent(agent.id)).sort()).toEqual(
+				[drafted, pinned, both].sort(),
+			);
+			expect(await agentSkills.findSkillIdsUsedByAgent('agent-gone')).toEqual([]);
+		});
+	});
+
 	describe('findAgents', () => {
 		it('lists the agents of the given projects', async () => {
 			const support = await createAgent('Support');

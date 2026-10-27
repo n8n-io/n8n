@@ -632,11 +632,13 @@ export class CredentialsService {
 	 * member of. Agents set this because they do not support it yet. The
 	 * instance-wide shortcut for owners and admins in their personal project
 	 * stays in place.
+	 * @param options.excludeResolvable Skip credentials that need an end-user identity.
 	 */
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
 		options: ({ workflowId: string } | { projectId: string }) & {
 			excludePersonalRoute?: boolean;
+			excludeResolvable?: boolean;
 		},
 	): Promise<WorkflowCredentialResult[]> {
 		// necessary to get the scopes
@@ -662,7 +664,8 @@ export class CredentialsService {
 		// workflow or project
 		const usableCredentials = allCredentials.filter(
 			(c) =>
-				credentialIdsForWorkflow.has(c.id) || personalRouteCredentialIds.has(c.id) || c.isGlobal,
+				(!options.excludeResolvable || !c.isResolvable) &&
+				(credentialIdsForWorkflow.has(c.id) || personalRouteCredentialIds.has(c.id) || c.isGlobal),
 		);
 
 		if (usableCredentials.length > 0) {
@@ -1526,6 +1529,11 @@ export class CredentialsService {
 
 	async test(userId: User['id'], credentials: ICredentialsDecrypted) {
 		return await this.credentialsTester.testCredentials(userId, credentials.type, credentials);
+	}
+
+	/** Whether n8n can run a connection test for this credential type at all. */
+	hasConnectionTest(credentialType: string): boolean {
+		return this.credentialsTester.getCredentialTestFunction(credentialType) !== undefined;
 	}
 
 	/**
