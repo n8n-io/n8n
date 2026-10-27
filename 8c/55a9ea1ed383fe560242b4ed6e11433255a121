@@ -1,0 +1,19 @@
+packages/cli/src/modules/agent-evals/assignment/assignment-model-call.ts
+  s_5f84a7000988f4::t_da7799679ac4e5 1-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8c55a9ea1ed383fe560242b4ed6e11433255a121",
+  "prompts": {},
+  "sessions": {
+    "s_5f84a7000988f4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17ef0-0e96-7061-9822-301962dd18c0",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
