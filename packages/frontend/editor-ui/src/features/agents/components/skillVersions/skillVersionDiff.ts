@@ -19,6 +19,12 @@ export type DiffSection = DiffCount & {
 /** The SKILL.md file, as the editor names it in the file list. */
 export const SKILL_FILE = 'SKILL.md';
 
+/**
+ * The largest table the diff fills (about 16 MB). Two long texts with nothing in common
+ * would need far more, so above it the changed part shows as removed and then added.
+ */
+const MAX_TABLE_CELLS = 4_000_000;
+
 function toLines(text: string): string[] {
 	// Empty text has no lines, so a new file counts only the lines it has.
 	return text === '' ? [] : text.split('\n');
@@ -39,6 +45,13 @@ function commonPairs<T>(a: T[], b: T[]): Array<[number, number]> {
 	}
 	const rows = endA - start;
 	const cols = endB - start;
+	const pairs: Array<[number, number]> = [];
+	for (let i = 0; i < start; i++) pairs.push([i, i]);
+	const tail = () => {
+		for (let k = 0; endA + k < a.length; k++) pairs.push([endA + k, endB + k]);
+		return pairs;
+	};
+	if (rows * cols > MAX_TABLE_CELLS) return tail();
 	const table = Array.from({ length: rows + 1 }, () => new Uint32Array(cols + 1));
 	for (let i = rows - 1; i >= 0; i--) {
 		for (let j = cols - 1; j >= 0; j--) {
@@ -48,8 +61,6 @@ function commonPairs<T>(a: T[], b: T[]): Array<[number, number]> {
 					: Math.max(table[i + 1][j], table[i][j + 1]);
 		}
 	}
-	const pairs: Array<[number, number]> = [];
-	for (let i = 0; i < start; i++) pairs.push([i, i]);
 	let i = 0;
 	let j = 0;
 	while (i < rows && j < cols) {
@@ -63,8 +74,7 @@ function commonPairs<T>(a: T[], b: T[]): Array<[number, number]> {
 			j++;
 		}
 	}
-	for (let k = 0; endA + k < a.length; k++) pairs.push([endA + k, endB + k]);
-	return pairs;
+	return tail();
 }
 
 /** Marks the words of `from` and `to` that the other side does not have. */
@@ -82,14 +92,21 @@ export function diffWords(from: string, to: string): { from: DiffSegment[]; to: 
 
 /** The lines of two texts as equal, removed and added lines, in reading order. */
 export function diffLines(from: string, to: string): DiffLine[] {
+	return diffText(from, to).lines;
+}
+
+function diffText(from: string, to: string): DiffCount & { lines: DiffLine[] } {
 	const a = toLines(from);
 	const b = toLines(to);
 	const lines: DiffLine[] = [];
+	const count: DiffCount = { added: 0, removed: 0 };
 	let i = 0;
 	let j = 0;
 	const flush = (untilA: number, untilB: number) => {
 		const removed = a.slice(i, untilA);
 		const added = b.slice(j, untilB);
+		count.removed += removed.length;
+		count.added += added.length;
 		// A removed line and the added line in the same place are one edit: mark its words.
 		const words = removed.map((line, index) =>
 			index < added.length ? diffWords(line, added[index]) : undefined,
@@ -116,17 +133,11 @@ export function diffLines(from: string, to: string): DiffLine[] {
 		j = pairB + 1;
 	}
 	flush(a.length, b.length);
-	return lines;
+	return { lines, ...count };
 }
 
 function section(key: string, from: string, to: string): DiffSection {
-	const lines = diffLines(from, to);
-	return {
-		key,
-		lines,
-		added: lines.filter((line) => line.type === 'added').length,
-		removed: lines.filter((line) => line.type === 'removed').length,
-	};
+	return { key, ...diffText(from, to) };
 }
 
 /** The fields of SKILL.md and every reference file that either version has. */

@@ -4,6 +4,7 @@ import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import type { AgentSkill } from '../types';
+import SkillDiffCount from './skillVersions/SkillDiffCount.vue';
 
 const SKILL_FILE = 'SKILL.md';
 
@@ -38,12 +39,6 @@ function isInvalid(path: string) {
 	return props.invalidPaths.includes(path);
 }
 
-/** The count of a changed file, or undefined for an unchanged one or outside compare mode. */
-function countOf(path: string) {
-	const count = props.changeCounts?.[path];
-	return count && (count.added > 0 || count.removed > 0) ? count : undefined;
-}
-
 function isSelected(path: string) {
 	return props.selectedPath === path;
 }
@@ -68,10 +63,7 @@ function testIdForPath(path: string) {
 		>
 			<N8nIcon icon="file-text" :size="16" :class="$style.icon" />
 			<N8nText size="small" :bold="true" :class="$style.path">{{ SKILL_FILE }}</N8nText>
-			<span v-if="countOf(SKILL_FILE)" :class="$style.counts" data-testid="agent-skill-file-count">
-				<span :class="$style.removedCount">−{{ countOf(SKILL_FILE)!.removed }}</span>
-				<span :class="$style.addedCount">+{{ countOf(SKILL_FILE)!.added }}</span>
-			</span>
+			<SkillDiffCount :count="props.changeCounts?.[SKILL_FILE]" :class="$style.count" />
 		</button>
 
 		<div :class="$style.section">
@@ -128,14 +120,7 @@ function testIdForPath(path: string) {
 						"
 					/>
 					<N8nText size="small" :class="$style.path">{{ reference.path }}</N8nText>
-					<span
-						v-if="countOf(reference.path)"
-						:class="$style.counts"
-						data-testid="agent-skill-file-count"
-					>
-						<span :class="$style.removedCount">−{{ countOf(reference.path)!.removed }}</span>
-						<span :class="$style.addedCount">+{{ countOf(reference.path)!.added }}</span>
-					</span>
+					<SkillDiffCount :count="props.changeCounts?.[reference.path]" :class="$style.count" />
 				</button>
 				<N8nButton
 					v-if="!props.readOnly"
@@ -274,19 +259,7 @@ function testIdForPath(path: string) {
 		overflow-y: auto;
 	}
 }
-.counts {
-	display: flex;
-	flex-shrink: 0;
-	gap: var(--spacing--4xs);
+.count {
 	margin-left: auto;
-	font-size: var(--font-size--3xs);
-}
-
-.removedCount {
-	color: var(--color--danger);
-}
-
-.addedCount {
-	color: var(--color--success);
 }
 </style>

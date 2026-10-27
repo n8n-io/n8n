@@ -57,7 +57,6 @@ import AgentSkillViewer from './AgentSkillViewer.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
 import SkillVersionDiff from './skillVersions/SkillVersionDiff.vue';
 import SkillVersionTimeline from './skillVersions/SkillVersionTimeline.vue';
-import { countsByFile, diffSkills } from './skillVersions/skillVersionDiff';
 
 const SKILL_FILE = 'SKILL.md';
 
@@ -749,9 +748,19 @@ const showAssistantToggle = computed(
 
 const latestVersion = computed(() => (props.data.skillId ? props.data.latestVersion : undefined));
 const versionsOpen = ref(!!props.data.initialVersionsOpen);
-const { versions, viewedVersion, loadVersions, fetchVersion, openVersion } = useSkillVersions(
-	() => props.data.skillId,
-);
+const {
+	versions,
+	viewedVersion,
+	loadVersions,
+	fetchVersion,
+	openVersion,
+	comparison,
+	diffSections,
+	diffCounts,
+	comparedSkill,
+	compareVersions,
+	compareLatestTwo,
+} = useSkillVersions(() => props.data.skillId);
 // The list loads the first time the panel opens.
 watch(
 	versionsOpen,
@@ -768,51 +777,20 @@ async function onOpenVersion(version: number) {
 	await openVersion(version);
 }
 
-/** Compare mode: the two versions and their skills, older first. */
-const comparison = ref<{
-	from: number;
-	to: number;
-	fromSkill: AgentSkill;
-	toSkill: AgentSkill;
-} | null>(null);
-const diffSections = computed(() =>
-	comparison.value ? diffSkills(comparison.value.fromSkill, comparison.value.toSkill) : [],
+const versionOptions = computed(() =>
+	(versions.value ?? []).map(({ version }) => ({
+		value: version,
+		label: i18n.baseText('agents.builder.skills.versions.number', { interpolate: { version } }),
+	})),
 );
-/** Every file either version has, for the file list. */
-const comparedSkill = computed<AgentSkill | null>(() => {
-	if (!comparison.value) return null;
-	const { fromSkill, toSkill } = comparison.value;
-	const paths = new Set((toSkill.references ?? []).map((file) => file.path));
-	return {
-		...toSkill,
-		references: [
-			...(toSkill.references ?? []),
-			...(fromSkill.references ?? []).filter((file) => !paths.has(file.path)),
-		],
-	};
-});
-const versionOptions = computed(() => (versions.value ?? []).map(({ version }) => version));
 
-async function compareVersions(a: number, b: number) {
-	const [from, to] = a < b ? [a, b] : [b, a];
-	const [fromDetail, toDetail] = await Promise.all([fetchVersion(from), fetchVersion(to)]);
-	if (!fromDetail || !toDetail) return;
+async function onCompare(a: number, b: number) {
 	selectedPath.value = SKILL_FILE;
-	comparison.value = { from, to, fromSkill: fromDetail.skill, toSkill: toDetail.skill };
-}
-
-async function onCompareFrom(version: number) {
-	await compareVersions(version, viewedVersion.value?.version ?? versionOptions.value[0]);
-}
-
-async function startInitialCompare() {
-	await loadVersions();
-	const [latest, previous] = versionOptions.value;
-	if (latest !== undefined && previous !== undefined) await compareVersions(previous, latest);
+	await compareVersions(a, b);
 }
 
 onMounted(() => {
-	if (props.data.initialCompare) void startInitialCompare();
+	if (props.data.initialCompare) void compareLatestTwo();
 });
 
 /** Saves the content of an older version as the next version, like any other save. */
@@ -1175,17 +1153,13 @@ function onRemove() {
 					:teleported="false"
 					:class="$style.compareSelect"
 					data-testid="agent-skill-compare-from"
-					@update:model-value="compareVersions(Number($event), comparison.to)"
+					@update:model-value="onCompare(Number($event), comparison.to)"
 				>
 					<N8nOption
-						v-for="version in versionOptions"
-						:key="version"
-						:value="version"
-						:label="
-							i18n.baseText('agents.builder.skills.versions.number', {
-								interpolate: { version },
-							})
-						"
+						v-for="option in versionOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
 					/>
 				</N8nSelect>
 				<N8nText size="small">
@@ -1197,17 +1171,13 @@ function onRemove() {
 					:teleported="false"
 					:class="$style.compareSelect"
 					data-testid="agent-skill-compare-to"
-					@update:model-value="compareVersions(comparison.from, Number($event))"
+					@update:model-value="onCompare(comparison.from, Number($event))"
 				>
 					<N8nOption
-						v-for="version in versionOptions"
-						:key="version"
-						:value="version"
-						:label="
-							i18n.baseText('agents.builder.skills.versions.number', {
-								interpolate: { version },
-							})
-						"
+						v-for="option in versionOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
 					/>
 				</N8nSelect>
 				<N8nButton
@@ -1252,7 +1222,7 @@ function onRemove() {
 					<AgentSkillFileNav
 						:skill="comparedSkill"
 						:selected-path="selectedPath"
-						:change-counts="countsByFile(diffSections)"
+						:change-counts="diffCounts"
 						read-only
 						@select="selectedPath = $event"
 					/>
@@ -1313,7 +1283,7 @@ function onRemove() {
 						:can-restore="canRestore"
 						@open="onOpenVersion"
 						@restore="restoreVersion"
-						@compare="onCompareFrom"
+						@compare="onCompare($event, viewedVersion?.version ?? versionOptions[0].value)"
 					/>
 				</template>
 			</div>

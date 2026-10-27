@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { N8nMarkdown, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
+import SkillDiffCount from './SkillDiffCount.vue';
 import { SKILL_FILE, type DiffLine, type DiffSection } from './skillVersionDiff';
 
 const FIELD_LABELS: Record<string, BaseTextKey> = {
@@ -20,10 +21,15 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
+/** The sections of the selected file, each with its blocks worked out once. */
 const shownSections = computed(() =>
-	props.selectedPath === SKILL_FILE
-		? props.sections.filter((section) => section.key in FIELD_LABELS)
-		: props.sections.filter((section) => section.key === props.selectedPath),
+	props.sections
+		.filter((section) =>
+			props.selectedPath === SKILL_FILE
+				? section.key in FIELD_LABELS
+				: section.key === props.selectedPath,
+		)
+		.map((section) => ({ ...section, blocks: blocksOf(section.lines) })),
 );
 
 type Block =
@@ -65,18 +71,10 @@ function isMarkdown(section: DiffSection): boolean {
 		>
 			<div :class="$style.fieldHeader">
 				<N8nText size="small" bold>{{ labelOf(section) }}</N8nText>
-				<N8nText
-					v-if="section.added || section.removed"
-					size="xsmall"
-					:class="$style.counts"
-					data-testid="skill-version-diff-count"
-				>
-					<span :class="$style.removedCount">−{{ section.removed }}</span>
-					<span :class="$style.addedCount">+{{ section.added }}</span>
-				</N8nText>
+				<SkillDiffCount :count="section" />
 			</div>
 			<div :class="$style.body">
-				<template v-for="(block, index) in blocksOf(section.lines)" :key="index">
+				<template v-for="(block, index) in section.blocks" :key="index">
 					<N8nMarkdown
 						v-if="block.kind === 'equal' && isMarkdown(section)"
 						:class="$style.equal"
@@ -127,19 +125,6 @@ function isMarkdown(section: DiffSection): boolean {
 	justify-content: space-between;
 }
 
-.counts {
-	display: flex;
-	gap: var(--spacing--4xs);
-}
-
-.removedCount {
-	color: var(--color--danger);
-}
-
-.addedCount {
-	color: var(--color--success);
-}
-
 .body {
 	display: flex;
 	flex-direction: column;
@@ -169,20 +154,20 @@ function isMarkdown(section: DiffSection): boolean {
 }
 
 .removed {
-	background-color: var(--color--danger--tint-4);
-	box-shadow: inset 2px 0 0 var(--color--danger);
+	background-color: var(--diff--color--deleted--faint);
+	box-shadow: inset 2px 0 0 var(--diff--color--deleted);
 }
 
 .added {
-	background-color: var(--color--success--tint-4);
-	box-shadow: inset 2px 0 0 var(--color--success);
+	background-color: var(--diff--color--new--faint);
+	box-shadow: inset 2px 0 0 var(--diff--color--new);
 }
 
 .removed .changedWord {
-	background-color: var(--color--danger--tint-3);
+	background-color: var(--diff--color--deleted--light);
 }
 
 .added .changedWord {
-	background-color: var(--color--success--tint-3);
+	background-color: var(--diff--color--new--light);
 }
 </style>

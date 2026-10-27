@@ -1,9 +1,11 @@
-import { ref, toValue, type MaybeRefOrGetter } from 'vue';
+import { computed, ref, shallowRef, toValue, type MaybeRefOrGetter } from 'vue';
 import type { SkillVersionDetail, SkillVersionSummary } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+import { countsByFile, diffSkills } from '../components/skillVersions/skillVersionDiff';
+import type { AgentSkill } from '../types';
 import { getSkillVersion, listSkillVersions } from './useAgentApi';
 
 /** The saved versions of one skill, and the older version the user opened. */
@@ -58,5 +60,57 @@ export function useSkillVersions(skillId: MaybeRefOrGetter<string | undefined>) 
 		if (detail) viewedVersion.value = detail;
 	}
 
-	return { versions, viewedVersion, loadVersions, fetchVersion, openVersion };
+	/** Compare mode: the two versions and their skills, older first. Null outside compare mode. */
+	const comparison = shallowRef<{
+		from: number;
+		to: number;
+		fromSkill: AgentSkill;
+		toSkill: AgentSkill;
+	} | null>(null);
+	const diffSections = computed(() =>
+		comparison.value ? diffSkills(comparison.value.fromSkill, comparison.value.toSkill) : [],
+	);
+	const diffCounts = computed(() => countsByFile(diffSections.value));
+	/** The compared skill with every file either version has, for the file list. */
+	const comparedSkill = computed<AgentSkill | null>(() => {
+		if (!comparison.value) return null;
+		const { fromSkill, toSkill } = comparison.value;
+		const paths = new Set((toSkill.references ?? []).map((file) => file.path));
+		return {
+			...toSkill,
+			references: [
+				...(toSkill.references ?? []),
+				...(fromSkill.references ?? []).filter((file) => !paths.has(file.path)),
+			],
+		};
+	});
+
+	/** Compares two versions, in either order. */
+	async function compareVersions(a: number, b: number) {
+		const [from, to] = a < b ? [a, b] : [b, a];
+		const [fromDetail, toDetail] = await Promise.all([fetchVersion(from), fetchVersion(to)]);
+		if (!fromDetail || !toDetail) return;
+		comparison.value = { from, to, fromSkill: fromDetail.skill, toSkill: toDetail.skill };
+	}
+
+	/** Compares the latest version with the one before it, when there are two. */
+	async function compareLatestTwo() {
+		await loadVersions();
+		const [latest, previous] = versions.value ?? [];
+		if (latest && previous) await compareVersions(previous.version, latest.version);
+	}
+
+	return {
+		versions,
+		viewedVersion,
+		loadVersions,
+		fetchVersion,
+		openVersion,
+		comparison,
+		diffSections,
+		diffCounts,
+		comparedSkill,
+		compareVersions,
+		compareLatestTwo,
+	};
 }

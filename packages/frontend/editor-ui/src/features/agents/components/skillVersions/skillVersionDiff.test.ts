@@ -76,3 +76,16 @@ describe('diffSkills', () => {
 		expect(counts[SKILL_FILE]).toEqual({ added: 2, removed: 1 });
 	});
 });
+
+describe('large texts', () => {
+	it('shows two long texts with nothing in common as removed and then added', () => {
+		const from = Array.from({ length: 3000 }, (_, index) => `old line ${index}`).join('\n');
+		const to = Array.from({ length: 3000 }, (_, index) => `new line ${index}`).join('\n');
+
+		const lines = diffLines(from, to);
+
+		expect(lines).toHaveLength(6000);
+		expect(lines[0].type).toBe('removed');
+		expect(lines[5999].type).toBe('added');
+	});
+});
