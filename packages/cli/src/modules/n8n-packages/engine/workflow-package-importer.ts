@@ -17,7 +17,6 @@ import { canStubNotFoundFailure } from '../entities/credential/credential-missin
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
-import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ResolvedImportRequest } from '../n8n-packages.types';
@@ -56,7 +55,6 @@ export class WorkflowPackageImporter {
 	constructor(
 		private readonly packageParser: N8nPackageParser,
 		private readonly importOrchestrator: ImportOrchestrator,
-		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
 		private readonly licenseState: LicenseState,
@@ -189,11 +187,9 @@ export class WorkflowPackageImporter {
 
 		const content = await this.importOrchestrator.apply(plan);
 
-		// Publishing waits until every workflow is written: activation rejects a parent whose
-		// referenced sub-workflow is not yet published, so the order is resolved across the batch.
-		const published = await this.workflowPublisher.applyToPackage({
+		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
 			user: request.user,
-			persisted: content.workflowOutcomes,
+			content: [content],
 			policy: request.workflowPublishingPolicy,
 			subWorkflowRequirements: plan.input.subWorkflowRequirements,
 		});
@@ -232,7 +228,7 @@ export class WorkflowPackageImporter {
 			tags: toTagSummary(content.tagPlan),
 		});
 
-		return { result, scopes };
+		return { result, scopes, agentOutcomes };
 	}
 
 	private assertFoldersLicensed(): void {
