@@ -6,6 +6,7 @@ import {
 	TooltipRoot,
 	TooltipTrigger,
 } from 'reka-ui';
+import { useZIndex } from 'element-plus';
 import { computed, ref, useAttrs, watch } from 'vue';
 
 import type { N8nTooltipProps } from './Tooltip.types';
@@ -75,6 +76,17 @@ const isControlled = computed(() => props.visible !== undefined);
 const handleOpenChange = (open: boolean) => {
 	isOpen.value = open;
 };
+
+const { nextZIndex } = useZIndex();
+const contentZIndex = ref<number>();
+
+watch(
+	isOpen,
+	(open) => {
+		if (open) contentZIndex.value = nextZIndex();
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -101,6 +113,7 @@ const handleOpenChange = (open: boolean) => {
 				<TooltipContent
 					data-test-id="tooltip-content"
 					:class="['n8n-tooltip', contentClass]"
+					:style="contentZIndex === undefined ? undefined : { zIndex: contentZIndex }"
 					:side="placementParts.side"
 					:align="placementParts.align"
 					:side-offset="offset"
