@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import type { AppResponse } from '@n8n/api-types';
-import { N8nCard, N8nIcon, N8nText, N8nTimeAgo } from '@n8n/design-system';
+import { N8nBadge, N8nCard, N8nIcon, N8nText, N8nTimeAgo } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed } from 'vue';
 
 import AppActions from './AppActions.vue';
-import AppPublicationBadge from './AppPublicationBadge.vue';
 
-defineProps<{ app: AppResponse }>();
+const props = defineProps<{ app: AppResponse }>();
 
 const emit = defineEmits<{ select: [app: AppResponse]; deleted: [appId: string] }>();
 
 const i18n = useI18n();
 const rootStore = useRootStore();
+
+const isPublished = computed(() => props.app.publishedVersionId !== null);
 </script>
 
 <template>
@@ -37,7 +39,12 @@ const rootStore = useRootStore();
 		</div>
 		<template #append>
 			<div :class="$style.actions" @click.stop>
-				<AppPublicationBadge :app="app" />
+				<N8nBadge
+					:variant="isPublished ? 'success' : 'outline'"
+					data-test-id="app-card-publication"
+				>
+					{{ i18n.baseText(isPublished ? 'apps.card.published' : 'apps.card.draft') }}
+				</N8nBadge>
 				<AppActions :app="app" @deleted="emit('deleted', $event)" />
 			</div>
 		</template>

@@ -27,12 +27,13 @@ const renderComponent = createComponentRenderer(AppView, {
 	props: { projectId: 'project-1', appId: 'app-1' },
 	global: {
 		stubs: {
-			RouterLink: { props: ['to'], template: '<a :data-to="to.name"><slot /></a>' },
-			AppActions: {
-				props: ['app'],
-				emits: ['deleted'],
-				template:
-					'<button data-test-id="app-actions" @click="$emit(\'deleted\', app.id)">Delete</button>',
+			AppHeader: {
+				props: ['projectId', 'app', 'tab'],
+				emits: ['deleted', 'update:tab'],
+				template: `<div>
+					<button data-test-id="app-header" @click="$emit('deleted', app?.id)">{{ app?.name }}</button>
+					<button data-test-id="configure" @click="$emit('update:tab', 'configure')" />
+				</div>`,
 			},
 		},
 	},
@@ -45,11 +46,11 @@ describe('AppView', () => {
 
 	it('shows the app after it loads', async () => {
 		vi.mocked(getApp).mockResolvedValue(app('app-1'));
-		const { findByTestId, getByText, getByTestId } = renderComponent();
+		const { findByTestId, getByTestId } = renderComponent();
 
 		expect(getByTestId('app-view-loading')).toBeInTheDocument();
-		expect(await findByTestId('app-view-name')).toHaveTextContent('App app-1');
-		expect(getByText('app-app-1 | Public')).toBeInTheDocument();
+		expect(await findByTestId('app-view-preview')).toBeInTheDocument();
+		expect(getByTestId('app-header')).toHaveTextContent('App app-1');
 		expect(getByTestId('app-view-preview')).toBeInTheDocument();
 		expect(getApp).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1');
 	});
@@ -78,26 +79,32 @@ describe('AppView', () => {
 		const { findByTestId, getByTestId, rerender } = renderComponent();
 
 		await rerender({ projectId: 'project-1', appId: 'app-2' });
-		expect(await findByTestId('app-view-name')).toHaveTextContent('App app-2');
+		await findByTestId('app-view-preview');
+		expect(getByTestId('app-header')).toHaveTextContent('App app-2');
 		resolveFirst(app('app-1'));
 		await new Promise((resolve) => setTimeout(resolve, 0));
 
-		expect(getByTestId('app-view-name')).toHaveTextContent('App app-2');
+		expect(getByTestId('app-header')).toHaveTextContent('App app-2');
 	});
 
 	it('emits deleted when the app is deleted', async () => {
 		vi.mocked(getApp).mockResolvedValue(app('app-1'));
-		const { findByTestId, emitted } = renderComponent();
+		const { findByTestId, getByTestId, emitted } = renderComponent();
 
-		await userEvent.click(await findByTestId('app-actions'));
+		await findByTestId('app-view-preview');
+		await userEvent.click(getByTestId('app-header'));
 
 		expect(emitted('deleted')).toEqual([['app-1']]);
 	});
 
-	it('links back to the apps list of the project', async () => {
+	it('switches between the preview and configure tabs', async () => {
 		vi.mocked(getApp).mockResolvedValue(app('app-1'));
-		const { getByTestId } = renderComponent();
+		const { findByTestId, getByTestId, queryByTestId } = renderComponent();
+		expect(await findByTestId('app-view-preview')).toBeInTheDocument();
 
-		expect(getByTestId('app-view-back')).toHaveAttribute('data-to', 'ProjectApps');
+		await userEvent.click(getByTestId('configure'));
+
+		expect(await findByTestId('app-view-configure')).toBeInTheDocument();
+		expect(queryByTestId('app-view-preview')).not.toBeInTheDocument();
 	});
 });

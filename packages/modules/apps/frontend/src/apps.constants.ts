@@ -4,6 +4,8 @@ export const APPS_LIST_VIEW = 'AppsListView';
 export const PROJECT_APPS = 'ProjectApps';
 export const APP_DETAIL_VIEW = 'AppDetailView';
 
+export type AppViewTab = 'preview' | 'configure';
+
 export const APPS_PAGE_SIZE = 50;
 
 export type AppsSortBy = ListAppsQueryDto['sortBy'];

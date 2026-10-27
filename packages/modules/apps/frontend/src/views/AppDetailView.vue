@@ -24,6 +24,8 @@ function onDeleted() {
 
 <style lang="scss" module>
 .page {
-	padding: var(--spacing--lg) var(--spacing--md);
+	width: 100%;
+	height: 100%;
+	min-height: 0;
 }
 </style>

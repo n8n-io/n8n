@@ -36,7 +36,7 @@ describe('AppCard', () => {
 		expect(getByTestId('app-card-name')).toHaveTextContent('Expense tracker');
 		expect(getByText('expenses')).toBeInTheDocument();
 		expect(getByText('Project members')).toBeInTheDocument();
-		expect(getByTestId('app-publication')).toHaveTextContent('Draft');
+		expect(getByTestId('app-card-publication')).toHaveTextContent('Draft');
 	});
 
 	it('shows the published state when the app has a published version', () => {
@@ -44,7 +44,7 @@ describe('AppCard', () => {
 			props: { app: { ...app, publishedVersionId: 'version-1' } },
 		});
 
-		expect(getByTestId('app-publication')).toHaveTextContent('Published');
+		expect(getByTestId('app-card-publication')).toHaveTextContent('Published');
 	});
 
 	it('emits select when the user clicks the card', async () => {

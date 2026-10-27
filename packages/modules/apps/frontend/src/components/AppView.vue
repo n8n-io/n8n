@@ -2,17 +2,15 @@
 import type { AppResponse } from '@n8n/api-types';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nEmptyState, N8nHeading, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nEmptyState, N8nLoading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
 
 import { getApp } from '../apps.api';
-import { PROJECT_APPS } from '../apps.constants';
-import AppActions from './AppActions.vue';
-import AppPublicationBadge from './AppPublicationBadge.vue';
+import type { AppViewTab } from '../apps.constants';
+import AppHeader from './AppHeader.vue';
 
 const props = defineProps<{ projectId: string; appId: string }>();
 
@@ -25,6 +23,7 @@ const latestFetch = useLatestFetch();
 
 const app = ref<AppResponse | null>(null);
 const loading = ref(true);
+const activeTab = ref<AppViewTab>('preview');
 
 async function loadApp() {
 	const isLatest = latestFetch.next();
@@ -48,47 +47,40 @@ watch(() => [props.projectId, props.appId], loadApp, { immediate: true });
 
 <template>
 	<div :class="$style.view" data-test-id="app-view">
-		<RouterLink
-			:to="{ name: PROJECT_APPS, params: { projectId } }"
-			:class="$style.back"
-			data-test-id="app-view-back"
-		>
-			<N8nIcon icon="arrow-left" size="small" />
-			{{ i18n.baseText('apps.detail.back') }}
-		</RouterLink>
-
-		<N8nLoading v-if="loading" :loading="true" :rows="3" data-test-id="app-view-loading" />
-
-		<N8nEmptyState
-			v-else-if="!app"
-			:heading="i18n.baseText('apps.detail.notFound.heading')"
-			:description="i18n.baseText('apps.detail.notFound.description')"
-			data-test-id="app-view-not-found"
+		<AppHeader
+			v-model:tab="activeTab"
+			:project-id="projectId"
+			:app="app"
+			@deleted="emit('deleted', $event)"
 		/>
 
-		<template v-else>
-			<header :class="$style.header">
-				<div :class="$style.title">
-					<N8nHeading tag="h1" size="xlarge" bold data-test-id="app-view-name">
-						{{ app.name }}
-					</N8nHeading>
-					<N8nText size="small" color="text-light">
-						{{ app.namespace }} | {{ i18n.baseText(`apps.card.visibility.${app.visibility}`) }}
-					</N8nText>
-				</div>
-				<div :class="$style.actions">
-					<AppPublicationBadge :app="app" />
-					<AppActions :app="app" @deleted="emit('deleted', $event)" />
-				</div>
-			</header>
+		<main :class="$style.content">
+			<N8nLoading v-if="loading" :loading="true" :rows="3" data-test-id="app-view-loading" />
 
 			<N8nEmptyState
-				:icon="{ type: 'icon', value: 'eye' }"
-				:heading="i18n.baseText('apps.detail.preview.heading')"
-				:description="i18n.baseText('apps.detail.preview.description')"
-				data-test-id="app-view-preview"
+				v-else-if="!app"
+				:heading="i18n.baseText('apps.detail.notFound.heading')"
+				:description="i18n.baseText('apps.detail.notFound.description')"
+				data-test-id="app-view-not-found"
 			/>
-		</template>
+
+			<template v-else>
+				<N8nEmptyState
+					v-if="activeTab === 'preview'"
+					:icon="{ type: 'icon', value: 'eye' }"
+					:heading="i18n.baseText('apps.detail.preview.heading')"
+					:description="i18n.baseText('apps.detail.preview.description')"
+					data-test-id="app-view-preview"
+				/>
+				<div v-else :class="$style.configure" data-test-id="app-view-configure">
+					<N8nEmptyState
+						:icon="{ type: 'icon', value: 'settings' }"
+						:heading="i18n.baseText('apps.detail.configure.heading')"
+						:description="i18n.baseText('apps.detail.configure.description')"
+					/>
+				</div>
+			</template>
+		</main>
 	</div>
 </template>
 
@@ -96,35 +88,23 @@ watch(() => [props.projectId, props.appId], loadApp, { immediate: true });
 .view {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
+	height: 100%;
+	min-height: 0;
 }
 
-.back {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-1);
-	text-decoration: none;
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-}
-
-.title {
+.content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
-	min-width: 0;
+	flex: 1;
+	min-height: 0;
+	padding: var(--spacing--md);
+	overflow: auto;
 }
 
-.actions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+.configure {
+	width: 100%;
+	max-width: 56rem;
+	margin-inline: auto;
+	padding-block: var(--spacing--xl);
 }
 </style>
