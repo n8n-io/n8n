@@ -84,7 +84,6 @@ describe('SettingsSourceControl', () => {
 		withoutPromotions.unmount();
 
 		settingsStore.settings.activeModules = ['promotions'];
-		settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_PROMOTIONS: 'true' };
 		await nextTick();
 
 		expect(

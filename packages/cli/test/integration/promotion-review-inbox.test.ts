@@ -196,15 +196,10 @@ describe('Promotion reviews in the Inbox', () => {
 		(await reviewRepository.findOneByOrFail({ id: reviewId })).approvedById;
 
 	beforeAll(async () => {
-		process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
 		Container.get(SourceControlPreferencesService).sourceControlPreferences = {
 			environmentsVersion: 'v2',
 		};
 		reviewRepository = Container.get(PromotionReviewRepository);
-	});
-
-	afterAll(() => {
-		delete process.env.N8N_ENV_FEAT_PROMOTIONS;
 	});
 
 	beforeEach(async () => {
@@ -416,7 +411,7 @@ describe('Promotion reviews in the Inbox', () => {
 		expect(calls.slice(callsForFirstPage)).toEqual([1]);
 	});
 
-	it('hides promotion reviews from a member, while the rollout flag is off, and on environments v1', async () => {
+	it('hides promotion reviews from a member and on environments v1', async () => {
 		await insertReview(1);
 		gitlab({ 1: { state: 'opened' } });
 		const member = await createMemberWithApiKey();
@@ -427,15 +422,6 @@ describe('Promotion reviews in the Inbox', () => {
 			open: 0,
 			closed: 0,
 		});
-
-		process.env.N8N_ENV_FEAT_PROMOTIONS = 'false';
-		try {
-			const flagOff = await inbox(owner, { state: 'open', category: 'waiting' });
-			expect(flagOff.body.data.data).toEqual([]);
-			expect(flagOff.body.data.disabledSources).toContain('promotion_review');
-		} finally {
-			process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
-		}
 
 		const preferences = Container.get(SourceControlPreferencesService);
 		preferences.sourceControlPreferences = { environmentsVersion: 'v1' };
@@ -474,17 +460,18 @@ describe('Promotion reviews in the Inbox', () => {
 			expect((await inbox(admin, { state: 'closed' })).body.data.data).toEqual([merged]);
 		});
 
-		it('refuses a member and a disabled rollout flag without a GitLab write', async () => {
+		it('refuses a member and an instance on environments v1 without a GitLab write', async () => {
 			const reviewId = await insertReview(1);
 			gitlab({ 1: { state: 'opened' } });
 			const writes = gitlabWrites(1);
 
 			expect((await approve(await createMember(), reviewId)).status).toBe(403);
-			process.env.N8N_ENV_FEAT_PROMOTIONS = 'false';
+			const preferences = Container.get(SourceControlPreferencesService);
+			preferences.sourceControlPreferences = { environmentsVersion: 'v1' };
 			try {
 				expect((await approve(await createAdmin(), reviewId)).status).toBe(403);
 			} finally {
-				process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
+				preferences.sourceControlPreferences = { environmentsVersion: 'v2' };
 			}
 			expect(writes).toEqual([]);
 		});

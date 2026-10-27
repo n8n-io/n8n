@@ -53,14 +53,12 @@ let environmentId: string;
 let hostMergeRequests: Map<number, GitLabMergeRequest>;
 
 beforeAll(() => {
-	process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
 	Container.get(SourceControlPreferencesService).sourceControlPreferences = {
 		environmentsVersion: 'v2',
 	};
 });
 
 afterAll(async () => {
-	delete process.env.N8N_ENV_FEAT_PROMOTIONS;
 	await rm(instanceFolder, { recursive: true, force: true });
 });
 

@@ -41,15 +41,14 @@ const createTestRouter = () =>
 	});
 
 const setup = ({
-	flag = 'true',
+	activeModules = ['promotions'],
 	environmentsVersion = 'v2',
 	scopes = ['promotions:read', 'promotions:promote', 'promotions:apply'] as Scope[],
-}: { flag?: string; environmentsVersion?: 'v1' | 'v2'; scopes?: Scope[] } = {}) => {
+}: { activeModules?: string[]; environmentsVersion?: 'v1' | 'v2'; scopes?: Scope[] } = {}) => {
 	createTestingPinia({ stubActions: false });
 
 	const settingsStore = useSettingsStore();
-	settingsStore.settings.activeModules = ['promotions'];
-	settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_PROMOTIONS: flag };
+	settingsStore.settings.activeModules = activeModules;
 	useSourceControlStore().preferences.environmentsVersion = environmentsVersion;
 	// Project scopes stay empty, as in the app, where the frontend does not load them.
 	useRBACStore().setGlobalScopes(scopes);
@@ -66,7 +65,7 @@ describe('PromotionsModule settings route', () => {
 	});
 
 	it.each([
-		['the feature flag is off', { flag: 'false' }],
+		['the promotions module is inactive', { activeModules: [] }],
 		['the instance uses v1', { environmentsVersion: 'v1' as const }],
 	])('redirects to the v1 settings when %s', async (_, options) => {
 		setup(options);
@@ -103,8 +102,8 @@ describe('PromotionsModule preview routes', () => {
 		expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
 	});
 
-	it('redirects to home when the feature flag is off', async () => {
-		setup({ flag: 'false' });
+	it('redirects to home when the promotions module is inactive', async () => {
+		setup({ activeModules: [] });
 		const router = createTestRouter();
 
 		await router.push('/projects/p1/promotions/promote');

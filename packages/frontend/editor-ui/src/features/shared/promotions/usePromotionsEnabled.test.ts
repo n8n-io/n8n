@@ -13,26 +13,21 @@ import { usePromotionsEnabled } from './usePromotionsEnabled';
 describe('usePromotionsEnabled', () => {
 	const setup = ({
 		activeModules = ['promotions'],
-		flag = 'true',
 		environmentsVersion,
 	}: {
 		activeModules?: string[];
-		flag?: string;
 		environmentsVersion?: 'v1' | 'v2';
 	}) => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		const settingsStore = useSettingsStore();
-		settingsStore.settings = {
-			activeModules,
-			envFeatureFlags: { N8N_ENV_FEAT_PROMOTIONS: flag },
-		} as unknown as FrontendSettings;
+		settingsStore.settings = { activeModules } as unknown as FrontendSettings;
 		useSourceControlStore().preferences.environmentsVersion = environmentsVersion;
 
 		return usePromotionsEnabled();
 	};
 
-	it('is enabled when the promotions module is active, the flag is on and the instance uses v2', () => {
+	it('is enabled when the promotions module is active and the instance uses v2', () => {
 		const { isAvailable, isEnabled } = setup({ environmentsVersion: 'v2' });
 
 		expect(isAvailable.value).toBe(true);
@@ -54,13 +49,6 @@ describe('usePromotionsEnabled', () => {
 			activeModules: ['source-control'],
 			environmentsVersion: 'v2',
 		});
-
-		expect(isAvailable.value).toBe(false);
-		expect(isEnabled.value).toBe(false);
-	});
-
-	it('is not available when the flag is off', () => {
-		const { isAvailable, isEnabled } = setup({ flag: 'false', environmentsVersion: 'v2' });
 
 		expect(isAvailable.value).toBe(false);
 		expect(isEnabled.value).toBe(false);
