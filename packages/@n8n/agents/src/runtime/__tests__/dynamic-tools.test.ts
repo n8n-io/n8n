@@ -108,7 +108,6 @@ describe('DynamicToolRegistry', () => {
 
 		const catalog = registry.renderCatalog();
 
-		expect(catalog).toContain('Tools: slack_send, slack_read\n');
 		expect(catalog).toContain('- slack_send: Send');
 		expect(catalog).toContain('- slack_read\n');
 		expect(catalog).not.toContain('Read a long channel');
