@@ -387,7 +387,7 @@ export class TriggerExecutionContextFactory {
 				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) => {
 					// Decided on the fresh copy, which is the one the dispatcher decides on.
 					const routesToV2 = this.engineV2ActiveTriggers.handles(freshWorkflowData, mode);
-					if (routesToV2 && donePromise) {
+					if (routesToV2) {
 						this.assertEngineV2Supported(data, { responsePromise, donePromise });
 					}
 

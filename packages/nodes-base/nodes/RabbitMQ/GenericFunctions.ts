@@ -209,6 +209,7 @@ export async function handleMessage(
 	options: TriggerOptions,
 ) {
 	let acknowledgementAttempted = false;
+	let completionWaitStarted = false;
 	try {
 		if (acknowledgeMode !== 'immediately') {
 			messageTracker.received(message);
@@ -250,6 +251,7 @@ export async function handleMessage(
 				kind: 'run',
 				data,
 			}));
+			completionWaitStarted = true;
 			const first = await Promise.race([hookRace, runRace]);
 
 			if (first.kind === 'hook' && first.isRealSendResponse) {
@@ -268,6 +270,7 @@ export async function handleMessage(
 			messageTracker.answered(message);
 		} else if (responsePromise && acknowledgeMode !== 'laterMessageNode') {
 			// Acknowledge message after the execution finished
+			completionWaitStarted = true;
 			await responsePromise.promise.then(async (data: IRun) => {
 				if (data.data.resultData.error) {
 					// The execution did fail
@@ -289,7 +292,7 @@ export async function handleMessage(
 		}
 	} catch (error) {
 		let acknowledgementError: unknown;
-		if (!acknowledgementAttempted && acknowledgeMode !== 'immediately') {
+		if (completionWaitStarted && !acknowledgementAttempted) {
 			try {
 				channel.nack(message, false, true);
 			} catch (requeueError) {

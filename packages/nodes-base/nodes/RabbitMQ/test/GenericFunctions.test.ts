@@ -580,6 +580,47 @@ describe('RabbitMQ GenericFunctions', () => {
 			});
 
 			it.each(['executionFinishes', 'executionFinishesSuccessfully', 'laterMessageNode'])(
+				'does not requeue malformed JSON before completion in %s mode',
+				async (mode) => {
+					await handleMessage.call(
+						context,
+						{ content: Buffer.from('{invalid') } as Message,
+						mockChannel,
+						messageTracker,
+						mode,
+						{ ...options, jsonParseBody: true },
+					);
+					expect(context.emit).not.toHaveBeenCalled();
+					expect(mockChannel.ack).not.toHaveBeenCalled();
+					expect(mockChannel.nack).not.toHaveBeenCalled();
+					expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+					expect(context.logger.error).toHaveBeenCalledTimes(1);
+				},
+			);
+
+			it.each(['executionFinishes', 'executionFinishesSuccessfully', 'laterMessageNode'])(
+				'does not requeue a synchronous emit failure in %s mode',
+				async (mode) => {
+					context.emit.mockImplementation(() => {
+						throw new Error('Emit failed');
+					});
+					await handleMessage.call(
+						context,
+						{ content: Buffer.from('{}') } as Message,
+						mockChannel,
+						messageTracker,
+						mode,
+						options,
+					);
+					expect(context.emit).toHaveBeenCalledTimes(1);
+					expect(mockChannel.ack).not.toHaveBeenCalled();
+					expect(mockChannel.nack).not.toHaveBeenCalled();
+					expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+					expect(context.logger.error).toHaveBeenCalledTimes(1);
+				},
+			);
+
+			it.each(['executionFinishes', 'executionFinishesSuccessfully', 'laterMessageNode'])(
 				'requeues a message when completion rejects in %s mode',
 				async (mode) => {
 					context.emit.mockImplementation((_items, _hook, done) => {

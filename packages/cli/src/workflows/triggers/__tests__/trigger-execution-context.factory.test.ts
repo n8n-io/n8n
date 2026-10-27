@@ -1251,11 +1251,10 @@ describe('TriggerExecutionContextFactory', () => {
 		test('routes to runPolledWorkflowV2, not the transactional runPolledWorkflow, on engine v2', async () => {
 			engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
 			workflowExecutionService.runPolledWorkflowV2.mockResolvedValue('exec-v2');
-			const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
 
 			await context.__runPoll(async () => {
 				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
-				context.__emit(pollData, responsePromise);
+				context.__emit(pollData);
 			});
 			await sleep(0);
 
@@ -1266,12 +1265,44 @@ describe('TriggerExecutionContextFactory', () => {
 				expect.objectContaining({ userId: undefined }),
 				mode,
 				{ lastItemId: 'a' },
-				responsePromise,
+				undefined,
 				undefined,
 			);
 			expect(workflowExecutionService.runPolledWorkflow).not.toHaveBeenCalled();
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
+
+		test.each([
+			{ hasResponse: true, hasDone: false },
+			{ hasResponse: false, hasDone: true },
+			{ hasResponse: true, hasDone: true },
+		])(
+			'rejects a cursor-backed poll request with response=$hasResponse and completion=$hasDone on engine v2',
+			async ({ hasResponse, hasDone }) => {
+				engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
+				const response = hasResponse
+					? createDeferredPromise<IExecuteResponsePromiseData>()
+					: undefined;
+				const done = hasDone ? createDeferredPromise<IRun>() : undefined;
+				const outcomes = [response?.promise, done?.promise]
+					.filter((promise) => promise !== undefined)
+					.map(
+						async (promise) =>
+							await promise.then(
+								() => 'fulfilled',
+								(error: unknown) => error,
+							),
+					);
+				await context.__runPoll(async () => {
+					context.getWorkflowStaticData('node').lastItemId = 'a';
+					context.__emit(pollData, response, done);
+				});
+				await sleep(0);
+				expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+				expect(workflowExecutionService.runPolledWorkflowV2).not.toHaveBeenCalled();
+				for (const outcome of outcomes) expect(await outcome).toBeInstanceOf(UserError);
+			},
+		);
 
 		test('runs a migrated poll that carries a file on engine v2, and keeps the file', async () => {
 			engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
@@ -2183,17 +2214,33 @@ describe('TriggerExecutionContextFactory', () => {
 				engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
 			});
 
-			test('rejects a poll completion request before dispatch on engine v2', async () => {
-				const donePromise = createDeferredPromise<IRun>();
-				const outcome = donePromise.promise.then(
-					() => 'fulfilled',
-					(error: unknown) => error,
-				);
-				pollContext().__emit([[{ json: {} }]], undefined, donePromise);
-				await sleep(0);
-				expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
-				expect(await outcome).toBeInstanceOf(UserError);
-			});
+			test.each([
+				{ hasResponse: true, hasDone: false },
+				{ hasResponse: false, hasDone: true },
+				{ hasResponse: true, hasDone: true },
+			])(
+				'rejects a poll request with response=$hasResponse and completion=$hasDone on engine v2',
+				async ({ hasResponse, hasDone }) => {
+					const response = hasResponse
+						? createDeferredPromise<IExecuteResponsePromiseData>()
+						: undefined;
+					const done = hasDone ? createDeferredPromise<IRun>() : undefined;
+					const outcomes = [response?.promise, done?.promise]
+						.filter((promise) => promise !== undefined)
+						.map(
+							async (promise) =>
+								await promise.then(
+									() => 'fulfilled',
+									(error: unknown) => error,
+								),
+						);
+					pollContext().__emit([[{ json: {} }]], response, done);
+					await sleep(0);
+					expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+					expect(workflowExecutionService.runPolledWorkflowV2).not.toHaveBeenCalled();
+					for (const outcome of outcomes) expect(await outcome).toBeInstanceOf(UserError);
+				},
+			);
 
 			test('runs a poll emit carrying a file, and keeps what it stored', async () => {
 				const data: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
