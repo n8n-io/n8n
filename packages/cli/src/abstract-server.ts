@@ -195,6 +195,7 @@ export abstract class AbstractServer {
 	async init(): Promise<void> {
 		const { app, sslKey, sslCert } = this;
 		const { protocol } = this.globalConfig;
+		// Reserve configured app hosts even when apps are disabled so they cannot serve main routes
 		if (
 			Container.get(ModuleRegistry).eligibleModules.includes('apps') ||
 			process.env.N8N_APPS_BASE_URL
