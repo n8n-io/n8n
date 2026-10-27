@@ -7,8 +7,20 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest } from '../../transport';
-import { visibleToOption } from '../common.description';
+import {
+	encodeCustomFieldsV2,
+	resolveCustomFieldsV2,
+	addFieldsToBody,
+	flattenCustomFieldsToRoot,
+	nestRootCustomFields,
+} from '../../helpers';
+import {
+	customFieldsCollection,
+	rawCustomFieldKeysOption,
+	visibleToOption,
+} from '../common.description';
 import { currencies } from '../../../utils';
+import { loadLeadCustomProperties } from './customProperties';
 
 const properties: INodeProperties[] = [
 	{
@@ -159,8 +171,10 @@ const properties: INodeProperties[] = [
 				default: false,
 				description: 'Whether the lead was seen by someone in the Pipedrive UI',
 			},
+			customFieldsCollection,
 		],
 	},
+	rawCustomFieldKeysOption,
 ];
 
 const displayOptions = {
@@ -176,8 +190,16 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 
+	const {
+		customProperties,
+		error: customPropertiesError,
+		resolveOutput,
+	} = await loadLeadCustomProperties.call(this, 'additionalFields');
+
 	for (let i = 0; i < items.length; i++) {
 		try {
+			if (customPropertiesError) throw customPropertiesError;
+
 			const body: IDataObject = {
 				title: this.getNodeParameter('title', i) as string,
 			};
@@ -190,10 +212,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				body.person_id = this.getNodeParameter('person_id', i) as number;
 			}
 
-			const { value, expected_close_date, ...rest } = this.getNodeParameter(
-				'additionalFields',
-				i,
-			) as {
+			const additionalFields = this.getNodeParameter('additionalFields', i);
+			const { value, expected_close_date, visible_to, ...rest } = additionalFields as {
 				value?: {
 					valueProperties: {
 						amount: number;
@@ -201,11 +221,18 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					};
 				};
 				expected_close_date?: string;
+				visible_to?: string;
 				[key: string]: unknown;
 			};
 
 			if (Object.keys(rest).length) {
-				Object.assign(body, rest);
+				addFieldsToBody(body, rest as IDataObject);
+			}
+
+			// addFieldsToBody would turn visible_to into a number for the v2 API. The v1
+			// leads endpoint takes the string option value, so it is passed through unchanged.
+			if (visible_to !== undefined) {
+				body.visible_to = visible_to;
 			}
 
 			if (value) {
@@ -215,6 +242,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			if (expected_close_date) {
 				body.expected_close_date = expected_close_date.split('T')[0];
 			}
+
+			if (customProperties) {
+				encodeCustomFieldsV2(customProperties, body);
+			}
+			// The v1 Leads endpoint takes custom fields as top-level keys, not nested.
+			flattenCustomFieldsToRoot(body);
 
 			const responseData = await pipedriveApiRequest.call(
 				this,
@@ -229,6 +262,16 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				this.helpers.returnJsonArray(responseData.data as IDataObject),
 				{ itemData: { item: i } },
 			);
+
+			if (customProperties && resolveOutput) {
+				for (const item of executionData) {
+					// v1 returns custom fields at the root; nest them so the shared
+					// resolver can map keys/IDs to human-readable names.
+					nestRootCustomFields(customProperties, item);
+					resolveCustomFieldsV2(customProperties, item);
+				}
+			}
+
 			returnData.push(...executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
