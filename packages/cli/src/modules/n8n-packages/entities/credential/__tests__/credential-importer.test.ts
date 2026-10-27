@@ -1,5 +1,6 @@
 import type { SerializedCredential } from '@n8n/api-types';
 import type { CredentialsFinderService, EventService } from '@n8n/backend-services';
+import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import type { CredentialsEntity, ICredentialsDb, Project, SharedCredentials, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -46,7 +47,7 @@ describe('CredentialImporter', () => {
 	const credentialsOverwrites = mock<CredentialsOverwrites>();
 	const credentialTypes = mock<CredentialTypes>();
 	const targetProject = mock<Project>({ id: 'project-target' });
-	const user = mock<User>({ id: 'user-1' });
+	const user = mock<User>({ id: 'user-1', role: GLOBAL_OWNER_ROLE });
 
 	let importer: CredentialImporter;
 

@@ -293,8 +293,6 @@ export type ImportRequest = {
 	apiKeyScopes?: string[];
 	/** Omit to import the whole package. */
 	selection?: ImportSelection;
-	/** Promotions only, the public API does not set it. Omitted means `allow`. */
-	credentialPersonalRoute?: CredentialPersonalRoute;
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
 	ImportProjectProperties &
@@ -341,7 +339,6 @@ export type ImportSelectionRequest = {
 	tagConflictPolicy?: TagConflictPolicy;
 	/** Omitted means `keep-existing`. */
 	credentialConflictPolicy?: CredentialConflictPolicy;
-	credentialPersonalRoute?: CredentialPersonalRoute;
 } & PromotionLayoutProperties;
 
 export type ImportPackageSelectionRequest = ImportSelectionRequest & {
@@ -377,11 +374,14 @@ export type ResolvedImportFolderProperties = ImportFolderProperties &
 	};
 
 /**
- * Promotion-only. The public import request does not carry it, so a public import keeps `fail`.
- * Omitted means `fail`.
+ * Promotion-only. The public import request does not carry these, so a public import keeps the
+ * defaults.
  */
 export type PromotionLayoutProperties = {
+	/** Omitted means `fail`. */
 	layoutConflictPolicy?: LayoutConflictPolicy;
+	/** Omitted means `allow`. */
+	credentialPersonalRoute?: CredentialPersonalRoute;
 };
 
 export type ResolvedImportRequest = ImportRequest & ResolvedImportFolderProperties;

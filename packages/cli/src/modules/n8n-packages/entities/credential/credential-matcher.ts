@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import { hasGlobalScope } from '@n8n/permissions';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -79,7 +80,7 @@ export abstract class CredentialMatcher {
 			failures: [
 				...orphanFailures,
 				...unknownTypeFailures,
-				...(await this.withNotFoundReasons(notFoundFailures)),
+				...(await this.withNotFoundReasons(notFoundFailures, context.user)),
 				...typeMismatchFailures,
 			],
 		};
@@ -119,14 +120,18 @@ export abstract class CredentialMatcher {
 		return located;
 	}
 
-	/** Adds the reason to each `not_found` failure whose credential the matcher looked up by id. */
+	/**
+	 * Adds the reason to each `not_found` failure whose credential the matcher looked up by id.
+	 * Only a user who can read all credentials gets reasons.
+	 */
 	private async withNotFoundReasons(
 		failures: CredentialResolutionFailure[],
+		user: User,
 	): Promise<CredentialResolutionFailure[]> {
 		const lookupId = ({ sourceId, targetId }: CredentialResolutionFailure) =>
 			targetId ?? (this.matchesById ? sourceId : undefined);
 		const ids = [...new Set(failures.flatMap((failure) => lookupId(failure) ?? []))];
-		if (ids.length === 0) return failures;
+		if (ids.length === 0 || !hasGlobalScope(user, 'credential:read')) return failures;
 
 		const usageScopes = await this.credentialsService.findUsageScopes(ids);
 		return failures.map((failure): CredentialResolutionFailure => {

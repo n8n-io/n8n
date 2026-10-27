@@ -1,3 +1,4 @@
+import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import type { Project, SlimProject, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -32,7 +33,7 @@ const credentialsService = mock<CredentialsService>();
 const credentialTypes = mock<CredentialTypes>();
 const targetProject = mock<Project>({ id: 'project-target' });
 const targetProjectRef = mock<SlimProject>({ id: targetProject.id });
-const user = mock<User>({ id: 'user-1' });
+const user = mock<User>({ id: 'user-1', role: GLOBAL_OWNER_ROLE });
 
 function createMatcherFactory(): CredentialMatcherFactory {
 	Container.set(
@@ -85,6 +86,23 @@ describe('IdBasedCredentialMatcher', () => {
 			projectId: targetProject.id,
 			excludePersonalRoute: false,
 		});
+	});
+
+	it('gives no reason for a missing credential when the user cannot read all credentials', async () => {
+		const member = mock<User>({ id: 'member-1', role: GLOBAL_MEMBER_ROLE });
+		const requirement: PackageCredentialRequirement = {
+			id: 'cred-other',
+			name: 'Other',
+			type: 'httpBasicAuth',
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+		};
+
+		const result = await matcherFactory
+			.getMatcher('id-only')
+			.match([requirement], { ...context, user: member });
+
+		expect(result.failures).toEqual([createFailure(requirement, 'not_found')]);
+		expect(credentialsService.findUsageScopes).not.toHaveBeenCalled();
 	});
 
 	it.each(['id-only', 'name-and-type'] as const)(

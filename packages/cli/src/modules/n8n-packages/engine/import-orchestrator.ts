@@ -361,7 +361,7 @@ export class ImportOrchestrator {
 			});
 		}
 
-		return issues;
+		return withOneFailurePerPolicyCheck(issues);
 	}
 
 	async plan(input: ImportOrchestrationInput): Promise<ImportPlan> {
@@ -858,6 +858,17 @@ function toTagBlockingIssue(
 	});
 
 	return { type: 'tag-unresolved', ...failure, usedBy: mergeRequirementConsumers(consumers) };
+}
+
+/** Several scopes and steps can report the same broken policy check. Keeps the first report. */
+function withOneFailurePerPolicyCheck(issues: BlockingIssue[]): BlockingIssue[] {
+	const failedPoints = new Set<string>();
+	return issues.filter((issue) => {
+		if (issue.type !== 'policy-check-failed') return true;
+		if (failedPoints.has(issue.point)) return false;
+		failedPoints.add(issue.point);
+		return true;
+	});
 }
 
 function variableConsumers(

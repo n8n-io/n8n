@@ -273,7 +273,7 @@ oneOf:
           - not-on-instance
           - access-required
           - incompatible-usage-scope
-        description: 'For `not_found` of a credential named by id: `not-on-instance` (no credential has the id), `access-required` (the credential exists, but it is not shared with the target project or the user cannot read it), or `incompatible-usage-scope` (the credential is not a project credential).'
+        description: 'For `not_found` of a credential named by id, when the caller can read all credentials: `not-on-instance` (no credential has the id), `access-required` (the credential exists, but it is not shared with the target project), or `incompatible-usage-scope` (the credential is not a project credential).'
       sourceId:
         type: string
       targetId:

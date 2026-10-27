@@ -347,16 +347,22 @@ describe('contentImport on a git pull', () => {
 	it('plans the pull in check mode without writing or auditing, and the import still refuses it', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Pulled Project', owner);
+		const otherProject = await createTeamProject('Other Project', owner);
 		await createWorkflow({ name: 'Denied Workflow', nodes: [], connections: {} }, project);
 		await createWorkflow({ name: 'Broken Workflow', nodes: [], connections: {} }, project);
+		await createWorkflow(
+			{ name: 'Other Broken Workflow', nodes: [], connections: {} },
+			otherProject,
+		);
 
 		const service = Container.get(N8nPackagesService);
 		await service.exportPackageToDirectory(
-			{ user: owner, projectIds: [project.id] },
+			{ user: owner, projectIds: [project.id, otherProject.id] },
 			{ targetDir: sourceDir },
 		);
 		deniedWorkflowNames.add('Denied Workflow');
 		brokenWorkflowNames.add('Broken Workflow');
+		brokenWorkflowNames.add('Other Broken Workflow');
 		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		const plan = await service.planPackage(
@@ -365,6 +371,7 @@ describe('contentImport on a git pull', () => {
 			'check',
 		);
 
+		// The check broke in both projects, and the plan reports it once.
 		expect(plan.issues).toEqual([
 			expect.objectContaining({ type: 'policy-violation', name: 'Denied Workflow' }),
 			{ type: 'policy-check-failed', point: 'contentImport' },

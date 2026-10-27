@@ -66,10 +66,10 @@ export const workflowArchiveForbiddenIssueOpenApi: ZodOpenAPIMetadata = {
 export const credentialUnresolvedFieldDocs = {
 	reason: {
 		description:
-			'For `not_found` of a credential named by id: `not-on-instance` (no credential has the ' +
-			'id), `access-required` (the credential exists, but it is not shared with the target ' +
-			'project or the user cannot read it), or `incompatible-usage-scope` (the credential is ' +
-			'not a project credential).',
+			'For `not_found` of a credential named by id, when the caller can read all ' +
+			'credentials: `not-on-instance` (no credential has the id), `access-required` (the ' +
+			'credential exists, but it is not shared with the target project), or ' +
+			'`incompatible-usage-scope` (the credential is not a project credential).',
 	},
 	targetId: {
 		description:

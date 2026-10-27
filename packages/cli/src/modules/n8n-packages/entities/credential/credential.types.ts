@@ -41,9 +41,9 @@ export type CredentialResolutionFailureKind =
 
 /**
  * Why the user cannot use a credential that a reference names by id, for `not_found`.
+ * Set only for a user who can read all credentials.
  * - `not-on-instance`: no credential has the id.
- * - `access-required`: the credential exists, but it is not shared with the target project or
- *   the user cannot read it.
+ * - `access-required`: the credential exists, but it is not shared with the target project.
  * - `incompatible-usage-scope`: the credential exists, but it is not a project credential.
  */
 export type CredentialNotFoundReason =
