@@ -1,4 +1,5 @@
 import type { BuiltTool, DynamicToolNamespace } from '@n8n/agents';
+import { WORKFLOW_TOOL_NAMES } from '@n8n/api-types';
 
 import {
 	AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES,
@@ -31,7 +32,7 @@ export const PRODUCT_TOOL_NAMESPACES: readonly ProductNamespaceDefinition[] = [
 		instructions:
 			'Load this namespace before you read or change a workflow. Use `workflow_builder_build_workflow` to create or edit one.',
 		tools: [
-			DOMAIN_TOOL_IDS.WORKFLOWS,
+			...WORKFLOW_TOOL_NAMES,
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 			ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 			DOMAIN_TOOL_IDS.SEARCH_MODELS,

@@ -14,7 +14,7 @@ describe('splitToolNamespaces', () => {
 	it('keeps unlisted product tools attached and namespaces the listed ones', () => {
 		const result = splitToolNamespaces({
 			tools: registry(
-				tool('workflow_builder_workflows'),
+				tool('list_workflows'),
 				tool('workflow_builder_ask_user'),
 				tool('skills'),
 				tool('research'),
@@ -36,7 +36,7 @@ describe('splitToolNamespaces', () => {
 			'mcp-servers',
 		]);
 		expect(result.namespaces.map((ns) => [ns.name, ns.tools.map((t) => t.name)])).toEqual([
-			['workflow_builder', ['workflow_builder_workflows', 'workflow_builder_build_workflow']],
+			['workflow_builder', ['list_workflows', 'workflow_builder_build_workflow']],
 			['agent_builder', ['agent_builder_write_config', 'agent-context']],
 		]);
 	});

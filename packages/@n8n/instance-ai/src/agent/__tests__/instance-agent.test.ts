@@ -647,7 +647,7 @@ describe('createInstanceAgent', () => {
 		);
 		expect(byName).toEqual({
 			workflow_builder: [
-				'workflow_builder_workflows-dynamic',
+				'list_workflows-dynamic',
 				'workflow_builder_build_workflow-dynamic',
 				'workflow_builder_task_control-dynamic',
 				'verify-built-workflow-dynamic',
@@ -657,7 +657,7 @@ describe('createInstanceAgent', () => {
 		const attached = getAttachedTools();
 		expect(attached['search_nodes-dynamic']).toBeDefined();
 		expect(attached['research-dynamic']).toBeDefined();
-		expect(attached['workflow_builder_workflows-dynamic']).toBeUndefined();
+		expect(attached['list_workflows-dynamic']).toBeUndefined();
 		expect(getSystemPrompt).toHaveBeenCalledWith(
 			expect.objectContaining({ toolSearchEnabled: false, dynamicToolsEnabled: true }),
 		);
