@@ -927,6 +927,32 @@ describe('agent-run-reducer', () => {
 			);
 		});
 
+		it('switches name and card when call_tool resolves to the real tool', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'tool-input-start',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', toolName: 'call_tool' },
+			});
+			expect(state.toolCallsById['tc-1'].renderHint).toBe('default');
+			reduceEvent(state, {
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					toolName: 'workflow_builder_build_workflow',
+					args: { filePath: 'a.ts' },
+				},
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc.toolName).toBe('workflow_builder_build_workflow');
+			expect(tc.renderHint).toBe('builder');
+			expect(state.agentsById['root'].toolCalls).toHaveLength(1);
+		});
+
 		it('duplicate tool-input-start events are idempotent', () => {
 			const state = stateWithRun('run-1', 'root');
 			const event = {

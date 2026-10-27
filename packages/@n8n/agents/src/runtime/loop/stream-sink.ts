@@ -32,6 +32,8 @@ import {
 } from '../streaming/stream-stall';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
 import type { ToolCallBatchResult } from '../../types/runtime/tool-execution';
+import type { StreamChunk } from '../../types';
+import { CALL_TOOL_TOOL_NAME } from '../tools/dynamic-tools';
 
 /**
  * Chunk types that are pure transport bookkeeping: an attempt that stalled
@@ -366,7 +368,7 @@ export class StreamSink implements RunOutputSink<void> {
 		}
 
 		const converted = convertChunk(chunk);
-		if (converted) await this.guard.write(converted);
+		if (converted) await this.guard.write(this.withRealToolName(converted));
 
 		if (chunk.type === 'tool-call' && chunk.providerExecuted) {
 			await this.guard.write({
@@ -376,6 +378,17 @@ export class StreamSink implements RunOutputSink<void> {
 				startTime: Date.now(),
 			});
 		}
+	}
+
+	/**
+	 * The model names `call_tool`, but consumers render cards, labels and
+	 * approvals by the real tool. Rewrite the call so the row shows the real
+	 * tool. Calls that do not resolve keep `call_tool`; the executor reports the error.
+	 */
+	private withRealToolName(chunk: StreamChunk): StreamChunk {
+		if (chunk.type !== 'tool-call' || chunk.toolName !== CALL_TOOL_TOOL_NAME) return chunk;
+		const resolved = this.services.resolveDynamicToolCall?.(chunk.input);
+		return resolved ? { ...chunk, toolName: resolved.toolName, input: resolved.input } : chunk;
 	}
 
 	private async resolveModelTurn(
