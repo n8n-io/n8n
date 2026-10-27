@@ -42,7 +42,6 @@ export type SelfHealingInboxAccess = {
 	globalScopes: Scope[];
 	projectRoles: string[];
 	workflowRoles: string[];
-	globalRoles: string[];
 };
 
 type SelfHealingInboxBoundary =
@@ -72,7 +71,7 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		super(SelfHealingResult, dataSource.manager, transactionRunner);
 	}
 
-	private inboxQuery({ user, globalRoles, ...roles }: SelfHealingInboxAccess) {
+	private inboxQuery({ user, ...roles }: SelfHealingInboxAccess) {
 		const accessible = this.sharedWorkflows.buildSharedWorkflowIdsSubquery(user, roles);
 		const query = this.createQueryBuilder('result')
 			.leftJoin('result.suggestion', 'suggestion')
@@ -86,7 +85,7 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 			.where(`result.workflowId IN (${accessible.getQuery()})`)
 			.setParameters(accessible.getParameters())
 			.setParameter('reviewerId', user.id);
-		return whereReviewer(query, 'configuration', ':reviewerId', globalRoles);
+		return whereReviewer(query, 'configuration', ':reviewerId');
 	}
 
 	async getOpenForWorkflow(workflowId: string, projectId: string, ctx: OperationContext = {}) {

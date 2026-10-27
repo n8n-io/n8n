@@ -176,13 +176,13 @@ Enabling a configuration records the user whose access authorizes subsequent inv
 ### Reviewers
 
 Only current members of the configuration's project are reviewers.
-In team projects, enabled users whose global role gives workflow edit access are implicit members.
-Project Settings shows instance owners and admins as implicit members with full access.
-They do not need a project relation. Personal projects have no implicit members.
+In team projects, instance owners and admins are implicit members, as Project Settings shows.
+They do not need a project relation. Other global roles do not make a user a member.
+Personal projects have no implicit members.
 A configuration can select individual members, the project members group, or both.
 The group stores the `includeAllProjectMembers` flag, not a list of users.
 Each check reads current project membership and global roles. A user who joins the project, or who
-gets a global role with edit access, joins the group. A user who leaves the project, or loses that
+becomes an instance owner or admin, joins the group. A user who leaves the project, or loses that
 global role, stops being a reviewer, also when selected individually.
 The individual picker offers enabled members who can edit a project workflow. The access can come
 from a project role, a global role, or a workflow share. Save accepts the same members, so a

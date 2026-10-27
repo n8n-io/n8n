@@ -13,6 +13,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
+import { GLOBAL_ADMIN_ROLE_SLUG, GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { DataSource, In, type ObjectLiteral, type SelectQueryBuilder } from '@n8n/typeorm';
 import groupBy from 'lodash/groupBy';
 import keyBy from 'lodash/keyBy';
@@ -63,15 +64,13 @@ function sharedWorkflowEditQuery<T extends ObjectLiteral>(
 }
 
 /**
- * Match current project members. In team projects, users whose global role gives edit
- * access are implicit members, as Project settings shows for instance owners and admins.
- * Personal projects have no implicit members, so only the owner qualifies.
+ * Match current project members. Instance owners and admins are implicit members of team
+ * projects, as Project settings shows. Personal projects have no implicit members.
  */
 function projectMemberCondition<T extends ObjectLiteral>(
 	query: SelectQueryBuilder<T>,
 	projectIdExpression: string,
 	userIdExpression: string,
-	globalRoleSlugs: string[],
 ) {
 	const explicit = query
 		.subQuery()
@@ -80,8 +79,6 @@ function projectMemberCondition<T extends ObjectLiteral>(
 		.where(`reviewerMembership.projectId = ${projectIdExpression}`)
 		.andWhere(`reviewerMembership.userId = ${userIdExpression}`)
 		.getQuery();
-	if (globalRoleSlugs.length === 0) return `EXISTS ${explicit}`;
-
 	const implicit = query
 		.subQuery()
 		.select('1')
@@ -89,9 +86,12 @@ function projectMemberCondition<T extends ObjectLiteral>(
 		.innerJoin(Project, 'implicitProject', `implicitProject.id = ${projectIdExpression}`)
 		.where(`implicitMember.id = ${userIdExpression}`)
 		.andWhere('implicitProject.type = :teamProjectType')
-		.andWhere('implicitMember.role IN (:...globalRoleSlugs)')
+		.andWhere('implicitMember.role IN (:...implicitMemberRoles)')
 		.getQuery();
-	query.setParameters({ teamProjectType: 'team', globalRoleSlugs });
+	query.setParameters({
+		teamProjectType: 'team',
+		implicitMemberRoles: [GLOBAL_OWNER_ROLE_SLUG, GLOBAL_ADMIN_ROLE_SLUG],
+	});
 	return `(EXISTS ${explicit} OR EXISTS ${implicit})`;
 }
 
@@ -104,14 +104,8 @@ export function whereReviewer<T extends ObjectLiteral>(
 	query: SelectQueryBuilder<T>,
 	configurationAlias: string,
 	userIdExpression: string,
-	globalRoleSlugs: string[],
 ) {
-	const member = projectMemberCondition(
-		query,
-		`${configurationAlias}.projectId`,
-		userIdExpression,
-		globalRoleSlugs,
-	);
+	const member = projectMemberCondition(query, `${configurationAlias}.projectId`, userIdExpression);
 	const explicit = query
 		.subQuery()
 		.select('1')
@@ -270,7 +264,7 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 			)
 			.select(['user.id', 'user.email', 'user.firstName', 'user.lastName'])
 			.where('user.disabled = :disabled', { disabled: false });
-		query.andWhere(projectMemberCondition(query, ':projectId', 'user.id', roles.globalRoleSlugs));
+		query.andWhere(projectMemberCondition(query, ':projectId', 'user.id'));
 		const sharedWorkflowEdit = sharedWorkflowEditQuery(query, roles);
 		const editAccess = [
 			editRoleCondition(roles),
@@ -285,11 +279,7 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		return await query.getMany();
 	}
 
-	private reviewerMembers(
-		configuration: SelfHealingConfiguration,
-		roles: ReviewerRoles,
-		ctx: OperationContext,
-	) {
+	private reviewerMembers(configuration: SelfHealingConfiguration, ctx: OperationContext) {
 		const query = this.managerFor(ctx)
 			.createQueryBuilder(User, 'user')
 			.innerJoin(SelfHealingConfiguration, 'configuration', 'configuration.id = :configurationId', {
@@ -301,7 +291,7 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 				'projectMember.userId = user.id AND projectMember.projectId = configuration.projectId',
 			)
 			.where('user.disabled = :disabled', { disabled: false });
-		return whereReviewer(query, 'configuration', 'user.id', roles.globalRoleSlugs);
+		return whereReviewer(query, 'configuration', 'user.id');
 	}
 
 	async hasReviewerWithEditRole(
@@ -312,9 +302,7 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		const editRole = editRoleCondition(roles);
 		if (!editRole) return false;
 
-		return await this.reviewerMembers(configuration, roles, ctx)
-			.andWhere(editRole, roles)
-			.getExists();
+		return await this.reviewerMembers(configuration, ctx).andWhere(editRole, roles).getExists();
 	}
 
 	/** Call after selections are saved. */
@@ -323,7 +311,7 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		roles: ReviewerRoles,
 		ctx: OperationContext,
 	) {
-		const query = this.reviewerMembers(configuration, roles, ctx);
+		const query = this.reviewerMembers(configuration, ctx);
 		const sharedWorkflowEdit = sharedWorkflowEditQuery(query, roles);
 		if (!sharedWorkflowEdit) return false;
 
@@ -406,16 +394,11 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		await manager.delete(SelfHealingConfiguration, { id });
 	}
 
-	async isReviewer(
-		configurationId: number,
-		userId: string,
-		globalRoleSlugs: string[],
-		ctx: OperationContext,
-	) {
+	async isReviewer(configurationId: number, userId: string, ctx: OperationContext) {
 		const query = this.managerFor(ctx)
 			.createQueryBuilder(SelfHealingConfiguration, 'configuration')
 			.where('configuration.id = :configurationId', { configurationId })
 			.setParameter('reviewerId', userId);
-		return await whereReviewer(query, 'configuration', ':reviewerId', globalRoleSlugs).getExists();
+		return await whereReviewer(query, 'configuration', ':reviewerId').getExists();
 	}
 }
