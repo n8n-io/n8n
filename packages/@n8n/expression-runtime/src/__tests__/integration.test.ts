@@ -708,6 +708,19 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		});
 	});
 
+	it('should keep an __isUndefined key on a class instance property that also has __isError', () => {
+		const data = { $json: {} };
+		const fromClass = (property: string) =>
+			`{{ (() => { class C { constructor() { this.x = ${property}; } } return new C(); })() }}`;
+
+		expect(
+			evaluator.evaluate(fromClass('{ __isError: true, __isUndefined: true }'), data, caller),
+		).toEqual({ x: { __isError: true, __isUndefined: true } });
+		expect(evaluator.evaluate(fromClass('undefined'), data, caller)).toStrictEqual({
+			x: undefined,
+		});
+	});
+
 	it('should throw on invalid timezone', async () => {
 		const data = { $json: { x: 1 } };
 

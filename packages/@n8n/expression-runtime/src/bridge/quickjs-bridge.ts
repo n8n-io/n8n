@@ -117,11 +117,14 @@ function isNaNSentinel(value: unknown): value is { __isNaN: true } {
 	);
 }
 
+// The guest escapes a user object with this key, unless the object also has
+// __isError. Only the sentinel has this key alone.
 function isUndefinedSentinel(value: unknown): value is { __isUndefined: true } {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
-		(value as Record<string, unknown>).__isUndefined === true
+		(value as Record<string, unknown>).__isUndefined === true &&
+		Object.keys(value).length === 1
 	);
 }
 
