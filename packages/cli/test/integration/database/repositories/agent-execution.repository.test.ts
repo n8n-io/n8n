@@ -1714,7 +1714,13 @@ describe('AgentExecutionRepository', () => {
 			const hiddenInput = input(threadId, 'Hidden follow-up');
 			const hidden = await enqueue(services, {
 				...hiddenInput,
-				payload: { ...hiddenInput.payload, hidden: true },
+				payload: {
+					kind: 'preview',
+					message: 'Hidden follow-up',
+					userId: owner.id,
+					resourceId: `draft-chat:${owner.id}`,
+					hidden: true,
+				},
 			});
 			const other = await enqueue(services, input(uuid(), 'Other session', 'new'));
 
@@ -1729,6 +1735,7 @@ describe('AgentExecutionRepository', () => {
 			expect(await services.queueRepository.findOneBy({ id: active.item.id })).not.toBeNull();
 			expect(await services.queueRepository.findOneBy({ id: other.id })).not.toBeNull();
 			for (const item of [pending, steered, hidden]) {
+				expect(await services.queueRepository.findOneBy({ id: item.id })).toBeNull();
 				expect(
 					await services.messageRepository.findOneByOrFail({ id: item.messageId }),
 				).toMatchObject({

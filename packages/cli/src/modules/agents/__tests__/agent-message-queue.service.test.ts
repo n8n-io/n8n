@@ -13,6 +13,7 @@ import type { ProjectAgent } from '../entities/agent.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
+import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import { N8N_CHAT_PRODUCTION_SOURCE } from '../utils/agent-thread-access';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
@@ -90,7 +91,7 @@ describe('AgentMessageQueueService', () => {
 				mock<AgentMessageQueue>({
 					id: 'queue-1',
 					messageId: 'message-1',
-					message: mock({
+					message: mock<AgentMessageEntity>({
 						content: {
 							role: 'user',
 							content: [
@@ -104,7 +105,9 @@ describe('AgentMessageQueueService', () => {
 					id: 'queue-2',
 					messageId: 'message-2',
 					steeringExecutionId: 'execution-1',
-					message: mock({ content: { role: 'user', content: [{ type: 'text', text: 'Steer' }] } }),
+					message: mock<AgentMessageEntity>({
+						content: { role: 'user', content: [{ type: 'text', text: 'Steer' }] },
+					}),
 				}),
 			]);
 
