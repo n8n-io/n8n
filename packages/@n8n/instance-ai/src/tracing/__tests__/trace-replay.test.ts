@@ -86,11 +86,11 @@ describe('IdRemapper', () => {
 			remapper.learn(
 				{
 					guidance:
-						'Workflow verified successfully. Call `workflow_builder_workflows(action="setup")` with workflowId "old-wf-1" to finish setup.',
+						'Workflow verified successfully. Call `setup_workflow` with workflowId "old-wf-1" to finish setup.',
 				},
 				{
 					guidance:
-						'Workflow verified successfully. Call `workflow_builder_workflows(action="setup")` with workflowId "new-wf-9" to finish setup.',
+						'Workflow verified successfully. Call `setup_workflow` with workflowId "new-wf-9" to finish setup.',
 				},
 			);
 

@@ -6,6 +6,7 @@ import {
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	WORKFLOW_TOOL_NAMES,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
@@ -150,7 +151,7 @@ export function getToolIcon(rawToolName: string): IconName {
 	if (toolName === 'conversation-history') return 'message-square';
 	if (toolName === 'mcp-servers') return 'plug';
 	if (
-		toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS ||
+		WORKFLOW_TOOL_NAMES.includes(toolName) ||
 		toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS ||
 		toolName === WORKFLOW_BUILDER_TOOL_NAMES.NODES ||
 		toolName === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES ||
