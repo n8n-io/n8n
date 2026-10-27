@@ -19,7 +19,6 @@ import {
 	TabsTrigger,
 } from 'reka-ui';
 import { computed, nextTick, ref, shallowRef, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import { useTimeoutFn } from '@vueuse/core';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
@@ -61,7 +60,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const router = useRouter();
 const clipboard = useClipboard();
 const toast = useToast();
 const tabListRef = ref<HTMLElement | null>(null);
@@ -132,7 +130,7 @@ function tabHref(tab: ArtifactTab): string | undefined {
 	if (tab.type === 'agent') {
 		return tab.projectId ? `/projects/${tab.projectId}/agents/${tab.id}` : '/home/agents';
 	}
-	if (tab.type === 'skill') return skillsHubHref(router, tab.id);
+	if (tab.type === 'skill') return skillsHubHref(tab.id);
 	return undefined;
 }
 

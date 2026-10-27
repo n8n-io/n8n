@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { ref, shallowRef, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import type { SkillDetail } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -22,7 +21,6 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
-const router = useRouter();
 const skillsStore = useSkillsStore();
 
 const detail = shallowRef<SkillDetail | null>(null);
@@ -65,7 +63,7 @@ watch(
 );
 
 function openInSkillsHub() {
-	window.open(skillsHubHref(router, props.skillId), '_blank', 'noopener');
+	window.open(skillsHubHref(props.skillId), '_blank', 'noopener');
 }
 </script>
 

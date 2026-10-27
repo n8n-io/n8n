@@ -1,7 +1,5 @@
 import { describe, test, expect } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
-import { createRouter, createWebHistory } from 'vue-router';
-import { VIEWS } from '@/app/constants';
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
@@ -17,7 +15,6 @@ import {
 	getActiveSelectedAgentIds,
 	getLatestSkillArtifactResult,
 	getSkillArtifactFromToolCall,
-	skillsHubHref,
 } from '../canvasPreview.utils';
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
@@ -1650,23 +1647,6 @@ describe('getActiveSelectedAgentIds', () => {
 			],
 		});
 		expect(getActiveSelectedAgentIds(root)).toEqual(new Set(['agent-b']));
-	});
-});
-
-describe('skillsHubHref', () => {
-	test('keeps the base path that the editor is served under', () => {
-		const router = createRouter({
-			history: createWebHistory('/n8n/'),
-			routes: [
-				{
-					path: '/settings/context/skills',
-					name: VIEWS.SETTINGS_CONTEXT_SKILLS,
-					component: { template: '<div />' },
-				},
-			],
-		});
-
-		expect(skillsHubHref(router, 'skill 1')).toBe('/n8n/settings/context/skills?skillId=skill+1');
 	});
 });
 

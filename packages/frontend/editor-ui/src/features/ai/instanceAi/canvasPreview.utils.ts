@@ -7,9 +7,6 @@ import {
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
-import type { Router } from 'vue-router';
-
-import { VIEWS } from '@/app/constants';
 
 export interface ExecutionResult {
 	executionId: string;
@@ -518,8 +515,8 @@ function unwrapUntrustedToolResult(result: unknown): unknown {
 }
 
 /** The Skills Hub deep link that opens one skill. */
-export function skillsHubHref(router: Router, skillId: string): string {
-	return router.resolve({ name: VIEWS.SETTINGS_CONTEXT_SKILLS, query: { skillId } }).href;
+export function skillsHubHref(skillId: string): string {
+	return `/settings/context/skills?skillId=${encodeURIComponent(skillId)}`;
 }
 
 export interface SkillArtifact {

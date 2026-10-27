@@ -11,7 +11,6 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, type Ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
@@ -28,7 +27,6 @@ const projectsStore = useProjectsStore();
 const store = useInstanceAiStore();
 
 const i18n = useI18n();
-const router = useRouter();
 const thread = useThread();
 const project = computed(() => {
 	// The project id arrives with thread hydration. Until then the lookup is
@@ -154,7 +152,7 @@ function artifactHref(artifact: ResourceEntry) {
 			? `/projects/${artifact.projectId}/agents/${artifact.id}`
 			: '/home/agents';
 	}
-	if (artifact.type === 'skill') return skillsHubHref(router, artifact.id);
+	if (artifact.type === 'skill') return skillsHubHref(artifact.id);
 	return '#';
 }
 
