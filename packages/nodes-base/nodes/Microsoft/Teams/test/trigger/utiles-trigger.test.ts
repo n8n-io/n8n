@@ -774,18 +774,26 @@ describe('Microsoft Teams Helpers Functions', () => {
 				expect(ctx.logger.warn).not.toHaveBeenCalled();
 			});
 
-			it('returns the refused ids in input order', async () => {
+			it('returns the refused ids in input order, not in completion order', async () => {
 				const { ctx } = arrange();
+				const forbidden = () =>
+					new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
+				let refuseB: (error: Error) => void = () => {};
 				(microsoftApiRequest.call as Mock).mockImplementation(
 					async (_ctx: unknown, _method: string, path: string) => {
 						if (path === '/v1.0/subscriptions/ok') return {};
-						throw new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
+						if (path === '/v1.0/subscriptions/a') throw forbidden();
+						return await new Promise((_resolve, reject) => {
+							refuseB = reject;
+						});
 					},
 				);
 
-				const result = await deleteSubscriptions.call(ctx, ['b', 'ok', 'a']);
+				const pending = deleteSubscriptions.call(ctx, ['b', 'ok', 'a']);
+				await new Promise((resolve) => setImmediate(resolve));
+				refuseB(forbidden());
 
-				expect(result).toEqual(['b', 'a']);
+				await expect(pending).resolves.toEqual(['b', 'a']);
 			});
 
 			it.each([
@@ -995,16 +1003,16 @@ describe('Microsoft Teams Helpers Functions', () => {
 				expect(staticData.subscriptionIds).toEqual(['new-chats']);
 			});
 
-			it('finishes the deletes before the first create', async () => {
+			it('finishes every delete before the first create', async () => {
 				const { ctx } = arrange({
-					staticData: { subscriptionIds: ['old'], webhookSecret: 'secret' },
+					staticData: { subscriptionIds: ['old1', 'old2'], webhookSecret: 'secret' },
 				});
-				let releaseDelete: (value: unknown) => void = () => {};
+				const releaseDelete: Record<string, (value: unknown) => void> = {};
 				(microsoftApiRequest.call as Mock).mockImplementation(
-					async (_ctx: unknown, method: string) => {
+					async (_ctx: unknown, method: string, path: string) => {
 						if (method === 'DELETE') {
 							return await new Promise((resolve) => {
-								releaseDelete = resolve;
+								releaseDelete[path] = resolve;
 							});
 						}
 						return { id: 'new-chats' };
@@ -1013,9 +1021,11 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 				const pending = reconcile(ctx);
 				await new Promise((resolve) => setImmediate(resolve));
-				expect(deleted()).toEqual(['/v1.0/subscriptions/old']);
+				expect(deleted()).toEqual(['/v1.0/subscriptions/old1', '/v1.0/subscriptions/old2']);
+				releaseDelete['/v1.0/subscriptions/old1']({});
+				await new Promise((resolve) => setImmediate(resolve));
 				expect(created()).toEqual([]);
-				releaseDelete({});
+				releaseDelete['/v1.0/subscriptions/old2']({});
 
 				await expect(pending).resolves.toEqual([]);
 				expect(created()).toEqual(['/me/chats']);
