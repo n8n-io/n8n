@@ -2,7 +2,6 @@ import {
 	AgentIntegrationConfigSchema,
 	AgentIntegrationSchema,
 	isCredentialAgentIntegration,
-	isDraftIntegration,
 	type AgentIntegrationConfig,
 	type AgentIntegrationDisconnectWarning,
 } from '@n8n/api-types';
@@ -27,7 +26,7 @@ import type { ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
-import type { IntegrationRef } from './utils/agent-channel';
+import { findDraftIntegration, type IntegrationRef } from './utils/agent-channel';
 
 interface IntegrationChangeOptions extends IntegrationDelta {
 	agent: ProjectAgent;
@@ -474,8 +473,8 @@ export class AgentIntegrationManagementService {
  * offers these fields.
  */
 function withDraftValues(requested: unknown, current: AgentIntegrationConfig[]): unknown {
-	if (!isRecord(requested)) return requested;
-	const draft = current.find((entry) => entry.type === requested.type && isDraftIntegration(entry));
+	if (!isRecord(requested) || typeof requested.type !== 'string') return requested;
+	const draft = findDraftIntegration(current, requested.type);
 	if (!draft || !isCredentialAgentIntegration(draft)) return requested;
 	return {
 		...(draft.settings !== undefined ? { settings: draft.settings } : {}),
