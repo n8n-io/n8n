@@ -289,6 +289,8 @@ export class AgentSkillRefsService {
 		const existing = new Map(
 			(await this.skillRepository.findByIds(ids, ctx)).map((skill) => [skill.id, skill]),
 		);
+		// Detach old refs to prevent partial Agent snapshots during skill saves.
+		await this.writeDependencies(agent.id, [], ctx);
 		for (const ref of refs ?? []) {
 			const skill = existing.get(ref.id);
 			if (skill) {
