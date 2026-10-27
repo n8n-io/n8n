@@ -24,7 +24,7 @@ import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
-import { locale } from '@n8n/design-system';
+import { locale, N8nTooltipProvider } from '@n8n/design-system';
 import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
@@ -139,27 +139,29 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 </script>
 
 <template>
-	<LoadingView v-if="loading" />
-	<BaseLayout v-else id="n8n-app" :class="$style.app">
-		<template #banners>
-			<AppBanners />
-		</template>
-		<AppLayout @mounted="setLayoutRef">
-			<RouterView />
-		</AppLayout>
-		<AppModals />
-		<AppCommandBar />
-		<template #overlays>
-			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
-			<E2ETestModeMarker />
-			<!-- Experiment cleanup (119_surface_assistant_on_workflow_error) -->
-			<WorkflowErrorNudge />
-			<!-- EOF Experiment cleanup -->
-		</template>
-		<template #aside>
-			<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />
-		</template>
-	</BaseLayout>
+	<N8nTooltipProvider>
+		<LoadingView v-if="loading" />
+		<BaseLayout v-else id="n8n-app" :class="$style.app">
+			<template #banners>
+				<AppBanners />
+			</template>
+			<AppLayout @mounted="setLayoutRef">
+				<RouterView />
+			</AppLayout>
+			<AppModals />
+			<AppCommandBar />
+			<template #overlays>
+				<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
+				<E2ETestModeMarker />
+				<!-- Experiment cleanup (119_surface_assistant_on_workflow_error) -->
+				<WorkflowErrorNudge />
+				<!-- EOF Experiment cleanup -->
+			</template>
+			<template #aside>
+				<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />
+			</template>
+		</BaseLayout>
+	</N8nTooltipProvider>
 </template>
 
 <style lang="scss" module>

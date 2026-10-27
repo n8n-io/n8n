@@ -180,6 +180,7 @@ export { default as N8nText } from './N8nText';
 export { default as N8nTimeAgo } from './N8nTimeAgo';
 export type { TimeAgoProps } from './N8nTimeAgo';
 export { default as N8nTooltip } from './N8nTooltip';
+export { default as N8nTooltipProvider } from './N8nTooltip/TooltipProvider.vue';
 export type { N8nTooltipProps, N8nTooltipSlots } from './N8nTooltip';
 export { default as N8nAiActivityStepButton } from './N8nAiActivityStepButton';
 export { default as N8nAiActivityStepChevron } from './N8nAiActivityStepChevron';

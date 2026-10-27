@@ -10,6 +10,7 @@ import lang from 'element-plus/dist/locale/en.mjs';
 import { createPinia } from 'pinia';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
+import N8nTooltipProvider from '../../design-system/src/components/N8nTooltip/TooltipProvider.vue';
 import { applyN8nTheme } from './applyN8nTheme';
 import { ThemedDocsContainer } from './ThemedDocsContainer';
 import './storybook.scss';
@@ -96,6 +97,12 @@ const withN8nTheme: Decorator = (storyFn, context) => {
 	return storyFn();
 };
 
-export const decorators = [withN8nTheme];
+/** Share tooltip delay state across all triggers in a story. */
+const withTooltipProvider: Decorator = (storyFn) => ({
+	components: { Story: storyFn(), N8nTooltipProvider },
+	template: '<N8nTooltipProvider><Story /></N8nTooltipProvider>',
+});
+
+export const decorators = [withN8nTheme, withTooltipProvider];
 
 export const tags = ['autodocs'];

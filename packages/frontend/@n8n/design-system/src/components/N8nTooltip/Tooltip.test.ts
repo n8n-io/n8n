@@ -1,8 +1,12 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
+import { mount } from '@vue/test-utils';
+import { TooltipProvider } from 'reka-ui';
+import { h } from 'vue';
 
 // eslint-disable-next-line import-x/no-duplicates -- ?raw imports the source as a string
 import Tooltip from './Tooltip.vue';
+import N8nTooltipProvider from './TooltipProvider.vue';
 // eslint-disable-next-line import-x/no-duplicates -- ?raw imports the source as a string
 import tooltipSource from './Tooltip.vue?raw';
 
@@ -35,6 +39,42 @@ function hoverTooltipTrigger(element: Element) {
 }
 
 describe('components/N8nTooltip', () => {
+	describe('provider', () => {
+		it('creates a fallback provider for standalone use', () => {
+			const wrapper = mount(Tooltip, {
+				slots: { default: '<button>Hover me</button>' },
+			});
+
+			expect(wrapper.findAllComponents(TooltipProvider)).toHaveLength(1);
+			wrapper.unmount();
+		});
+
+		it('reuses an existing provider without creating another one', () => {
+			const wrapper = mount({
+				render() {
+					return h(
+						N8nTooltipProvider,
+						{},
+						{
+							default: () =>
+								h(
+									Tooltip,
+									{},
+									{
+										default: () => h('button', 'Hover me'),
+									},
+								),
+						},
+					);
+				},
+			});
+
+			expect(wrapper.findComponent(Tooltip).findAllComponents(TooltipProvider)).toHaveLength(0);
+			expect(wrapper.findComponent(Tooltip).find('button').text()).toBe('Hover me');
+			wrapper.unmount();
+		});
+	});
+
 	describe('rendering', () => {
 		it('should render trigger element', () => {
 			const wrapper = render(Tooltip, {

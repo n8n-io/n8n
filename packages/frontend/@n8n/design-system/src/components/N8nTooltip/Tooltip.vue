@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import {
+	injectTooltipProviderContext,
+	Slot,
+	TooltipProvider,
 	TooltipContent,
 	TooltipPortal,
-	TooltipProvider,
 	TooltipRoot,
 	TooltipTrigger,
 } from 'reka-ui';
@@ -18,12 +20,20 @@ defineOptions({
 	inheritAttrs: false,
 });
 
+/**
+ * Reuse the app provider so moving between tooltips skips the opening delay.
+ * Without a parent provider, add one for standalone use, such as tests and stories.
+ * Slot passes the tooltip through without adding a provider or a DOM element.
+ */
+const parentProvider = injectTooltipProviderContext(null);
+const providerComponent = parentProvider ? Slot : TooltipProvider;
+
 const attrs = useAttrs();
 
 const props = withDefaults(defineProps<N8nTooltipProps>(), {
 	asChild: false,
 	placement: 'top',
-	showAfter: 0,
+	showAfter: 700,
 	enterable: true,
 	teleported: true,
 	offset: 8,
@@ -78,7 +88,7 @@ const handleOpenChange = (open: boolean) => {
 </script>
 
 <template>
-	<TooltipProvider>
+	<component :is="providerComponent">
 		<TooltipRoot
 			:disabled="disabled"
 			:delay-duration="showAfter"
@@ -124,7 +134,7 @@ const handleOpenChange = (open: boolean) => {
 				</TooltipContent>
 			</TooltipPortal>
 		</TooltipRoot>
-	</TooltipProvider>
+	</component>
 </template>
 
 <style lang="scss" module>
@@ -175,5 +185,9 @@ const handleOpenChange = (open: boolean) => {
 
 :global(.n8n-tooltip[data-state='closed']) {
 	animation: none;
+}
+:global(.n8n-tooltip[data-state='instant-open']) {
+	animation: none;
+	transition: none;
 }
 </style>
