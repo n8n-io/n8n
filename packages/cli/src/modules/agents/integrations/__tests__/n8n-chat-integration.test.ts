@@ -156,6 +156,25 @@ describe('N8nChatIntegration', () => {
 		});
 	});
 
+	it('get_user falls back to the email when the person has no name', async () => {
+		personRepository.findById.mockResolvedValue({
+			id: 'user-1',
+			firstName: null,
+			lastName: null,
+			email: 'ada@example.com',
+		} as unknown as Person);
+		const result = await integration.executeContextQuery({
+			chat: undefined,
+			descriptor: mock(),
+			query: 'get_user',
+			input: { userId: 'user-1' },
+		});
+		expect(result).toEqual({
+			ok: true,
+			user: { id: 'user-1', name: 'ada@example.com', email: 'ada@example.com' },
+		});
+	});
+
 	it('get_user fails cleanly for an unknown user or a service account', async () => {
 		personRepository.findById.mockResolvedValue(null);
 		const result = await integration.executeContextQuery({
