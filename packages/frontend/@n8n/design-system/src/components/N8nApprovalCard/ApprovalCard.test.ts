@@ -223,7 +223,7 @@ describe('N8nApprovalCard', () => {
 		expect(emitted('select')).toEqual([['allow-once']]);
 	});
 
-	it('uses one tab stop and lets Tab leave the toolbar', async () => {
+	it('keeps one tab stop when hover changes the active action', async () => {
 		const { getByRole, getAllByRole } = render(N8nApprovalCard, {
 			props: { title: 'Approval required', options: OPTIONS },
 		});
@@ -234,25 +234,41 @@ describe('N8nApprovalCard', () => {
 		expect(buttons[1]).toHaveFocus();
 		expect(buttons.map((button) => button.tabIndex)).toEqual([-1, 0, -1]);
 		await userEvent.hover(buttons[2]);
-		expect(buttons[2]).toHaveFocus();
+		expect(buttons[1]).toHaveFocus();
 		expect(buttons.map((button) => button.tabIndex)).toEqual([-1, -1, 0]);
+		await userEvent.tab();
+		expect(buttons[2]).toHaveFocus();
 		await userEvent.tab();
 		expect(getByRole('toolbar')).not.toContainElement(document.activeElement as HTMLElement);
 	});
 
-	it('focuses the hovered action and uses it for Enter and arrow navigation', async () => {
+	it('highlights the hovered action without stealing focus', async () => {
+		const searchInput = document.createElement('input');
+		document.body.append(searchInput);
+		searchInput.focus();
+
 		const { getAllByRole, emitted } = render(N8nApprovalCard, {
 			props: { title: 'Approval required', options: OPTIONS, autoFocus: false },
 		});
 		const buttons = getAllByRole('button');
-		await userEvent.hover(buttons[2]);
-		expect(buttons[2]).toHaveFocus();
-		expect(buttons.map((button) => button.tabIndex)).toEqual([-1, -1, 0]);
-		await userEvent.keyboard('{Enter}');
-		expect(emitted('select')).toEqual([['deny']]);
-		await userEvent.keyboard('{ArrowUp}');
-		expect(buttons[1]).toHaveFocus();
-		expect(buttons.map((button) => button.tabIndex)).toEqual([-1, 0, -1]);
+		try {
+			await userEvent.hover(buttons[2]);
+			expect(searchInput).toHaveFocus();
+			expect(buttons.map((button) => button.tabIndex)).toEqual([-1, -1, 0]);
+			await userEvent.keyboard('{Enter}');
+			await userEvent.keyboard(' ');
+			expect(emitted('select')).toBeUndefined();
+
+			await userEvent.tab();
+			expect(buttons[2]).toHaveFocus();
+			await userEvent.keyboard('{Enter}');
+			expect(emitted('select')).toEqual([['deny']]);
+			await userEvent.keyboard('{ArrowUp}');
+			expect(buttons[1]).toHaveFocus();
+			expect(buttons.map((button) => button.tabIndex)).toEqual([-1, 0, -1]);
+		} finally {
+			searchInput.remove();
+		}
 	});
 
 	it('does not focus disabled actions on mouse entry', async () => {
