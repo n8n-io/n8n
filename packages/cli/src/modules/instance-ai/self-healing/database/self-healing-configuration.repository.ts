@@ -30,12 +30,35 @@ type ReviewerRoles = {
 	workflowRoleSlugs: string[];
 };
 
+// Edit-access conditions for member queries that alias the project relation as
+// `projectMember` and its user as `user`. Each returns null when no role grants access.
+
 function editRoleCondition({ projectRoleSlugs, globalRoleSlugs }: ReviewerRoles) {
 	const conditions = [
 		...(projectRoleSlugs.length ? ['projectMember.role IN (:...projectRoleSlugs)'] : []),
 		...(globalRoleSlugs.length ? ['user.role IN (:...globalRoleSlugs)'] : []),
 	];
 	return conditions.length ? `(${conditions.join(' OR ')})` : null;
+}
+
+/** Match the workflow finder: a member can also edit a project workflow through a share. */
+function sharedWorkflowEditQuery<T extends ObjectLiteral>(
+	query: SelectQueryBuilder<T>,
+	{ projectRoleSlugs, workflowRoleSlugs }: ReviewerRoles,
+) {
+	if (projectRoleSlugs.length === 0 || workflowRoleSlugs.length === 0) return null;
+
+	return query
+		.subQuery()
+		.select('1')
+		.from(ProjectRelation, 'shareMember')
+		.innerJoin(SharedWorkflow, 'share', 'share.projectId = shareMember.projectId')
+		.innerJoin(SharedWorkflow, 'owner', 'owner.workflowId = share.workflowId')
+		.where('shareMember.userId = projectMember.userId')
+		.andWhere('shareMember.role IN (:...projectRoleSlugs)', { projectRoleSlugs })
+		.andWhere('share.role IN (:...workflowRoleSlugs)', { workflowRoleSlugs })
+		.andWhere('owner.projectId = projectMember.projectId')
+		.andWhere('owner.role = :ownerRole', { ownerRole: 'workflow:owner' });
 }
 
 /**
@@ -196,21 +219,27 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		}
 	}
 
-	async findProjectMembersWithEditRole(
+	async findProjectMembersWithEditAccess(
 		projectId: string,
 		roles: ReviewerRoles,
 		userIds?: string[],
 	) {
-		const editRole = editRoleCondition(roles);
-		if (!editRole || userIds?.length === 0) return [];
+		if (userIds?.length === 0) return [];
 
 		const query = this.manager
 			.createQueryBuilder(User, 'user')
 			.innerJoin(ProjectRelation, 'projectMember', 'projectMember.userId = user.id')
 			.select(['user.id', 'user.email', 'user.firstName', 'user.lastName'])
 			.where('projectMember.projectId = :projectId', { projectId })
-			.andWhere('user.disabled = :disabled', { disabled: false })
-			.andWhere(editRole, roles);
+			.andWhere('user.disabled = :disabled', { disabled: false });
+		const sharedWorkflowEdit = sharedWorkflowEditQuery(query, roles);
+		const editAccess = [
+			editRoleCondition(roles),
+			sharedWorkflowEdit && `EXISTS ${sharedWorkflowEdit.getQuery()}`,
+		].filter(Boolean);
+		if (editAccess.length === 0) return [];
+
+		query.andWhere(`(${editAccess.join(' OR ')})`, roles);
 		if (userIds) {
 			query.andWhere('user.id IN (:...userIds)', { userIds });
 		}
@@ -242,42 +271,18 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		return await this.reviewerMembers(configuration, ctx).andWhere(editRole, roles).getExists();
 	}
 
-	/**
-	 * Match the workflow finder: a member can also edit a covered workflow through a share.
-	 * Call after selections are saved.
-	 */
+	/** Call after selections are saved. */
 	async hasReviewerWithSharedWorkflowAccess(
 		configuration: SelfHealingConfiguration,
-		{ projectRoleSlugs, workflowRoleSlugs }: ReviewerRoles,
+		roles: ReviewerRoles,
 		ctx: OperationContext,
 	) {
-		if (projectRoleSlugs.length === 0 || workflowRoleSlugs.length === 0) return false;
+		const query = this.reviewerMembers(configuration, ctx);
+		const sharedWorkflowEdit = sharedWorkflowEditQuery(query, roles);
+		if (!sharedWorkflowEdit) return false;
 
-		const query = this.reviewerMembers(configuration, ctx)
-			.innerJoin(ProjectRelation, 'shareMember', 'shareMember.userId = projectMember.userId')
-			.innerJoin(SharedWorkflow, 'share', 'share.projectId = shareMember.projectId')
-			.andWhere('shareMember.role IN (:...projectRoleSlugs)', { projectRoleSlugs })
-			.andWhere('share.role IN (:...workflowRoleSlugs)', { workflowRoleSlugs });
-		const covered = this.buildCoveredWorkflowIdsSubquery(query, configuration.id);
-		return await query.andWhere(`share.workflowId IN (${covered.getQuery()})`).getExists();
-	}
-
-	private buildCoveredWorkflowIdsSubquery<T extends ObjectLiteral>(
-		query: SelectQueryBuilder<T>,
-		configurationId: number,
-	) {
-		const owned = query
-			.subQuery()
-			.select('owner.workflowId')
-			.from(SharedWorkflow, 'owner')
-			.innerJoin(
-				SelfHealingConfiguration,
-				'coveringConfiguration',
-				'coveringConfiguration.projectId = owner.projectId',
-			)
-			.where('coveringConfiguration.id = :configurationId', { configurationId })
-			.andWhere('owner.role = :ownerRole', { ownerRole: 'workflow:owner' });
-		return whereCoversWorkflow(owned, 'coveringConfiguration', 'owner.workflowId');
+		const covered = whereCoversWorkflow(sharedWorkflowEdit, 'configuration', 'share.workflowId');
+		return await query.andWhere(`EXISTS ${covered.getQuery()}`).getExists();
 	}
 
 	async replaceSelections(

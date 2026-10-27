@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddIncludeAllProjectMembersToSelfHealingConfiguration1793099942268
+export class AddIncludeAllProjectMembersToSelfHealingConfiguration1793106080688
 	implements ReversibleMigration
 {
 	async up({ escape, runQuery }: MigrationContext) {
