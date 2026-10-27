@@ -12,7 +12,6 @@ import {
 	CredentialsRepository,
 	ProjectRepository,
 	ProjectRelationRepository,
-	TransactionRunner,
 	type Project,
 	type User,
 } from '@n8n/db';
@@ -32,6 +31,7 @@ import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.n
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
+import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
 import { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
@@ -395,7 +395,7 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 		{ type: 'slackApi' },
 	);
 	expect(saved.integrations).toEqual([{ type: 'slack', credentialId: 'source-chat' }]);
-	expect(await Container.get(AgentHistoryRepository).count()).toBe(0);
+	expect(await Container.get(AgentHistoryRepository).count()).toBe(2);
 	expect(observed).toHaveBeenCalledTimes(2);
 	expect(runtimes.clearRuntimes).not.toHaveBeenCalled();
 	expect(broadcaster.notify).toHaveBeenCalled();
@@ -461,24 +461,19 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 	const history = Container.get(AgentHistoryRepository);
 	const skillRefs = Container.get(AgentSkillRefsService);
 	const initialSkills = await skillRefs.readDraft(initial, {});
-	await Container.get(TransactionRunner).run({}, async (ctx) => {
-		const pins = await skillRefs.versionSnapshot(initial, ctx);
-		await history.saveVersion(
-			{
-				agentId: initial.id,
-				versionId: initial.versionId!,
-				schema: initial.schema,
-				tools: initial.tools,
-				publishedBy: 'Test',
-			},
-			ctx,
-		);
-		await skillRefs.pinVersion(initial.versionId!, pins, ctx);
-	});
 	await agents.update(initial.id, { activeVersionId: initial.versionId });
 	first.skills.support_source_skill.instructions = 'Promoted skill instructions';
 	first.skills.support_source_skill.references = [];
-	await importSelected(input);
+	first.tasks[`${first.id}_task`].objective = 'Promoted task objective';
+	const promoted = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
+	expect(await agents.findById(initial.id)).toMatchObject({
+		versionId: promoted.versionId,
+		revision: initial.revision + 1,
+	});
+	expect(await history.count()).toBe(2);
+	expect(
+		await Container.get(AgentTaskSnapshotRepository).findByVersionId(promoted.versionId!),
+	).toMatchObject([{ taskId: task.id, objective: 'Promoted task objective' }]);
 	const promotedSkills = await skillRefs.readDraft(initial, {});
 	expect(promotedSkills.skillRefs).toEqual(initialSkills.skillRefs);
 	expect(promotedSkills.skills.support_source_skill.instructions).toBe(
@@ -533,7 +528,7 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 		{ id: task.id, objective: 'Updated objective' },
 	]);
 	expect(await tasks.count()).toBe(1);
-	expect(await history.count()).toBe(1);
+	expect(await history.count()).toBe(4);
 	expect(await skillRefs.readVersion({ versionId: initial.versionId! }, {})).toEqual(initialSkills);
 	expect(schedule).not.toHaveBeenCalled();
 	const before = await agents.findById(initial.id);
@@ -641,7 +636,8 @@ it('publishes workflows before an Agent cycle and snapshots the committed defini
 		expect(outcome).toMatchObject({ status: 'created', publishing: { state: 'published' } });
 		expect(applied.activeVersionId).toBeNull();
 		expect(outcome.agent.activeVersionId).toBe(applied.versionId);
-		expect(outcome.agent.revision).toBe(applied.revision + 1);
+		expect(outcome.agent.revision).toBe(applied.revision);
+		expect(outcome.agent.publicationRevision).toBe(applied.publicationRevision + 1);
 		expect(
 			await Container.get(AgentHistoryRepository).findByVersionAndAgentId(
 				applied.versionId!,
@@ -719,7 +715,7 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 		publishing: { state: 'unchanged' },
 	});
 	expect(await agents.findById(published.id)).toEqual(before);
-	expect(await Container.get(AgentHistoryRepository).count()).toBe(2);
+	expect(await Container.get(AgentHistoryRepository).count()).toBe(5);
 	expect(Container.get(AgentTaskService).requestReconcile).toHaveBeenCalledTimes(2);
 	input.files[`${input.manifest.agents[0].target}/agent-metadata.json`] = {
 		versionId: 'draft-version',
@@ -967,37 +963,47 @@ it.each(['create', 'update'] as const)(
 	},
 );
 
-it.each(['draft', 'publication'] as const)(
-	'rejects a plan made before a concurrent %s change',
-	async (change) => {
-		const input = fixture();
-		input.manifest.agents.splice(1);
-		const saved = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
-		const plan = await planFor(input);
-		const current = (await agents.findById(saved.id))!;
-		if (change === 'draft') {
-			current.name = 'Concurrent name';
-			await agents.saveDraftFenced(current);
-		} else {
-			await Container.get(AgentHistoryRepository).saveVersion({
-				agentId: saved.id,
-				versionId: saved.versionId!,
-				schema: saved.schema,
-				tools: saved.tools,
-				publishedBy: 'Test',
-			});
-			await agents.setActiveVersionFenced(saved.id, current.revision, {
-				activeVersionId: saved.versionId,
-				versionId: saved.versionId!,
-			});
-		}
-		const before = await agents.findById(saved.id);
-		const effects = vi.spyOn(Container.get(AgentSaveCompletionService), 'definitionSaved');
-		await expect(orchestrator.apply(plan)).rejects.toBeInstanceOf(ConflictError);
-		expect(await agents.findById(saved.id)).toEqual(before);
-		expect(effects).not.toHaveBeenCalled();
-	},
-);
+it('rejects a plan made before a concurrent draft change', async () => {
+	const input = fixture();
+	input.manifest.agents.splice(1);
+	const saved = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
+	const plan = await planFor(input);
+	const current = (await agents.findById(saved.id))!;
+	current.name = 'Concurrent name';
+	await agents.saveDraftFenced(current);
+	const before = await agents.findById(saved.id);
+	const effects = vi.spyOn(Container.get(AgentSaveCompletionService), 'definitionSaved');
+	await expect(orchestrator.apply(plan)).rejects.toBeInstanceOf(ConflictError);
+	expect(await agents.findById(saved.id)).toEqual(before);
+	expect(effects).not.toHaveBeenCalled();
+});
+
+it('keeps a concurrent publication when applying a draft import', async () => {
+	const input = publishableFixture();
+	input.manifest.agents.splice(1);
+	const saved = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
+	source(input).config!.instructions = 'Updated draft instructions.';
+	const plan = await planFor(input);
+	const { agent: published } = await Container.get(AgentPublishService).publishAgent(
+		saved.id,
+		project.id,
+		owner,
+		{ by: 'user', trigger: 'explicit' },
+	);
+	const imported = await orchestrator.apply(plan);
+	const current = (await agents.findById(saved.id))!;
+	expect(imported.agentOutcomes[0]).toMatchObject({ status: 'updated', publishingAction: 'noop' });
+	expect(current).toMatchObject({
+		schema: { instructions: 'Updated draft instructions.' },
+		revision: saved.revision + 1,
+		activeVersionId: saved.versionId,
+		publicationRevision: published.publicationRevision,
+	});
+	expect(current.versionId).not.toBe(saved.versionId);
+	expect(
+		await Container.get(AgentHistoryRepository).findByVersionAndAgentId(saved.versionId!, saved.id),
+	).toMatchObject({ schema: saved.schema, tools: saved.tools });
+});
 
 it('keeps strict creation when a planned ID becomes occupied', async () => {
 	const input = fixture();
