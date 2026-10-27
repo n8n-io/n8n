@@ -14,6 +14,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { buildWorkflowReferencingCredential } from '@/modules/n8n-packages/__tests__/utils/test-builders';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -53,6 +54,9 @@ let hostMergeRequests: Map<number, GitLabMergeRequest>;
 
 beforeAll(() => {
 	process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
+	Container.get(SourceControlPreferencesService).sourceControlPreferences = {
+		environmentsVersion: 'v2',
+	};
 });
 
 afterAll(async () => {

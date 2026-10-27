@@ -133,14 +133,27 @@ export class SkillsApiService {
 		payload: CreateSkillDto,
 		source: SkillTelemetrySource = 'ui',
 	): Promise<SkillDetail> {
+		if (
+			payload.availableToAssistant !== undefined &&
+			!(await this.assistantSkillsRollout.isEnabled())
+		) {
+			throw new UserError("The n8n Assistant can't use skills on this instance.");
+		}
 		const target = await this.targetForCreate(user, payload);
-		const id = await this.skillService.create({
+		const input = {
 			checkNameTaken: true,
 			target,
 			skill: payload.skill,
 			source,
 			createdById: user.id,
-		});
+		};
+		const id = payload.availableToAssistant
+			? await this.txRunner.run({}, async (ctx) => {
+					const createdId = await this.skillService.create(input, ctx);
+					await this.skillService.setAssistantAvailability(createdId, true, target, ctx);
+					return createdId;
+				})
+			: await this.skillService.create(input);
 		await this.skillsTelemetry.created(
 			user.id,
 			[{ id, ...target }],

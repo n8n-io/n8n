@@ -20,7 +20,6 @@ import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentDefinitionService } from '../agent-definition.service';
 import { AgentPublishService } from '../agent-publish.service';
-import { withoutLegacySkillRefs } from '../json-config/agent-document';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSetupCompletionService } from '../agent-setup-completion.service';
@@ -568,14 +567,11 @@ describe('AgentPublishService', () => {
 			{
 				versionId,
 				agentId,
-				// The legacy columns keep the refs and bodies, so a rollback can run this version.
 				schema: {
-					...withoutLegacySkillRefs(agent.schema!),
-					skills: storedSkillRefs(agent),
+					...agent.schema!,
 					integrations: [{ type: 'n8n_chat', credentialId: '' }],
 				},
 				tools: configuredTools,
-				skills: {},
 				publishedBy: user,
 			},
 			ctx,
@@ -1086,44 +1082,6 @@ describe('AgentPublishService', () => {
 		expect(telemetry.track).toHaveBeenCalledTimes(1);
 	});
 
-	it('reports a skills change when a revert with the hub off keeps the ids and restores other bodies', async () => {
-		const {
-			service,
-			agentRepository,
-			taskSnapshotRepository,
-			agentTaskRepository,
-			telemetry,
-			skillRefs,
-		} = makeService();
-		Object.assign(skillRefs, { usesSkillsHub: false });
-		const refs: AgentJsonConfig['skills'] = [{ type: 'skill', id: 'skill-1' }];
-		const activeVersion = makeHistory({
-			versionId: 'published-v1',
-			schema: { ...schema, skills: refs },
-			skills: { 'skill-1': { name: 'Notes', description: 'Notes', instructions: 'Published.' } },
-		});
-		const agent = makeAgent({
-			activeVersionId: 'published-v1',
-			activeVersion,
-			schema: { ...schema, skills: refs },
-			skills: { 'skill-1': { name: 'Notes', description: 'Notes', instructions: 'Draft.' } },
-		});
-		// As the legacy writer: the refs stay, and the bodies of the version come back.
-		skillRefs.restoreDraftRefs.mockImplementation(async (draft, version) => {
-			draft.skills = structuredClone(version.skills ?? {});
-		});
-		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		taskSnapshotRepository.findByVersionId.mockResolvedValue([]);
-		agentTaskRepository.replaceForAgent.mockResolvedValue(false);
-
-		await service.revertToPublishedAgent(agentId, projectId, user, 'user');
-
-		expect(telemetry.track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
-			expect.objectContaining({ changed_parts: expect.arrayContaining(['skills']) }),
-		);
-	});
-
 	it('reads the selected version without using draft or active-version bodies', async () => {
 		const {
 			service,
@@ -1219,14 +1177,10 @@ describe('AgentPublishService', () => {
 			await service.publishAgent(agentId, projectId, user, byBuilder);
 
 			const [[saved, saveCtx]] = agentHistoryRepository.saveVersion.mock.calls;
-			// The legacy columns keep the refs, so a rollback still finds the published skills.
-			expect(saved.schema?.skills).toEqual(skillRefs);
+			// The pins hold the skills, so publish writes no `agent_history.skills`.
+			expect(saved).not.toHaveProperty('skills');
 			expect(refsService.versionSnapshot).toHaveBeenCalledWith(agent, ctx);
-			expect(refsService.pinVersion).toHaveBeenCalledWith(
-				saved.versionId,
-				expect.objectContaining({ pins: expect.any(Map) }),
-				ctx,
-			);
+			expect(refsService.pinVersion).toHaveBeenCalledWith(saved.versionId, expect.any(Map), ctx);
 			expect(saveCtx).toBe(ctx);
 			// The pins need the history row.
 			expect(agentHistoryRepository.saveVersion.mock.invocationCallOrder[0]).toBeLessThan(

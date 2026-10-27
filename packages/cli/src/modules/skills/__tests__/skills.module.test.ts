@@ -8,7 +8,6 @@ import type { PostHogClient } from '@/posthog';
 import { HubAssistantSkillProvider } from '../hub-assistant-skill-provider.service';
 import { SkillAgentsProxy, type SkillAgentsProvider } from '../skill-agents-proxy.service';
 import type { SkillService } from '../skill.service';
-import { SkillsHubRollout } from '../skills-hub-rollout';
 import { SkillsModule } from '../skills.module';
 import { AssistantSkillsRollout } from '../assistant-skills-rollout';
 
@@ -25,10 +24,9 @@ describe('SkillsModule', () => {
 		'gates Assistant reads across module startup (Assistant: %s)',
 		async (assistantEnabled, expected) => {
 			const agents = new SkillAgentsProxy();
-			const rollout = new SkillsHubRollout(agents);
 			const postHog = mock<PostHogClient>();
 			postHog.getFeatureFlagForInstance.mockResolvedValue(assistantEnabled);
-			const assistantRollout = new AssistantSkillsRollout(rollout, postHog);
+			const assistantRollout = new AssistantSkillsRollout(agents, postHog);
 			const service = mock<SkillService>();
 			const proxy = new AssistantSkillProviderProxy();
 			const context = { user: mock<User>() };
@@ -50,7 +48,7 @@ describe('SkillsModule', () => {
 				content: 'Guide.',
 			};
 			service.readFileForAssistant.mockResolvedValue(file);
-			Container.set(SkillsHubRollout, rollout);
+			Container.set(SkillAgentsProxy, agents);
 			Container.set(AssistantSkillProviderProxy, proxy);
 			Container.set(
 				HubAssistantSkillProvider,

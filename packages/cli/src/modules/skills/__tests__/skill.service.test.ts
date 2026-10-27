@@ -983,28 +983,37 @@ describe('SkillService', () => {
 
 	describe('snapshotForPublish', () => {
 		it('locks the skills and resolves the version each ref runs', async () => {
-			const a = skillRow('skill_a');
-			const b = skillRow('skill_b');
-			const pinnedB = versionRow(b, 1);
-			skills.findLatestSaved.mockResolvedValue(
+			skills.findLatestVersionIds.mockResolvedValue(
 				new Map([
-					['skill_a', versionRow(a, 3)],
-					['skill_b', versionRow(b, 2)],
+					['skill_a', 'skill_a-v3'],
+					['skill_b', 'skill_b-v2'],
+					['skill_c', 'skill_c-v2'],
 				]),
 			);
-			skills.findVersionsByIds.mockResolvedValue(new Map([[pinnedB.version.id, pinnedB]]));
+			// A pin of another skill falls back to the latest version, as at runtime.
+			skills.findSkillIdsOfVersions.mockResolvedValue(
+				new Map([
+					['skill_b-v1', 'skill_b'],
+					['skill_a-v1', 'skill_a'],
+				]),
+			);
 
-			const snapshot = await service.snapshotForPublish(
-				[{ id: 'skill_a' }, { id: 'skill_b', versionId: pinnedB.version.id }],
+			const versionByRef = await service.snapshotForPublish(
+				[
+					{ id: 'skill_a' },
+					{ id: 'skill_b', versionId: 'skill_b-v1' },
+					{ id: 'skill_c', versionId: 'skill_a-v1' },
+				],
 				TX_CTX,
 			);
 
-			expect(skills.lockForPublish).toHaveBeenCalledWith(['skill_a', 'skill_b'], TX_CTX);
-			expect(Object.keys(snapshot.skills)).toEqual(['skill_a', 'skill_b']);
-			expect([...snapshot.versionByRef]).toEqual([
+			expect(skills.lockForPublish).toHaveBeenCalledWith(['skill_a', 'skill_b', 'skill_c'], TX_CTX);
+			expect([...versionByRef]).toEqual([
 				['skill_a', 'skill_a-v3'],
 				['skill_b', 'skill_b-v1'],
+				['skill_c', 'skill_c-v2'],
 			]);
+			expect(skills.findLatestSaved).not.toHaveBeenCalled();
 			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
 		});
 	});
