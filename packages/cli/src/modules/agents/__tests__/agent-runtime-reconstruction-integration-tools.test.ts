@@ -498,6 +498,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 					'workspace_execute_command',
 					'load_skill',
 					'mark_session_failed',
+					'create_plan',
+					'read_plan',
+					'update_plan',
+					'close_plan',
+					'resume_background_jobs',
 				],
 			});
 

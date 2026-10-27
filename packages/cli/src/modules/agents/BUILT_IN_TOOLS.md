@@ -32,6 +32,15 @@ These local tools stay eager when they are attached:
 - `workspace_execute_command`
 - `load_skill`
 - `mark_session_failed`
+- `create_plan`
+- `read_plan`
+- `update_plan`
+- `close_plan`
+- `resume_background_jobs`
+
+Planning and Continue must not depend on tool discovery. Their schemas stay
+in model context when the tools are attached. The existing feature flags and
+runtime rules still control whether the tools are attached.
 
 Other eligible local tools are deferred. This includes built-in, custom,
 workflow, node, integration, knowledge, memory, and MCP tools. Provider-native
