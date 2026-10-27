@@ -25,7 +25,8 @@ export class LlmUsageModule implements ModuleInterface {
 
 	async entities() {
 		const { LlmUsage } = await import('./llm-usage.entity.js');
-		return [LlmUsage];
+		const { LlmBudget } = await import('./llm-budget.entity.js');
+		return [LlmUsage, LlmBudget];
 	}
 
 	/** Core finds this object on `additionalData['llm-usage']` and inspects node HTTP requests with it. */

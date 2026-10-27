@@ -9,6 +9,7 @@ import type { LlmUsage } from './llm-usage.entity';
 import { LlmUsageRepository } from './llm-usage.repository';
 import { PriceCatalogService } from './price-catalog.service';
 import { priceUsage } from './pricing';
+import { WorkflowPublisherCache } from './workflow-publisher-cache';
 
 /** How often the buffer is written, and the first retry delay after a failed write. */
 const FLUSH_INTERVAL_MS = 5 * Time.seconds.toMilliseconds;
@@ -55,6 +56,7 @@ export class LlmUsageCollector implements LlmUsageSink {
 		private readonly catalog: PriceCatalogService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
+		private readonly publishers: WorkflowPublisherCache,
 	) {
 		this.logger = this.logger.scoped('llm-usage');
 	}
@@ -175,6 +177,7 @@ export class LlmUsageCollector implements LlmUsageSink {
 			threadId: context.threadId ?? null,
 			projectId: context.projectId ?? null,
 			userId: context.userId ?? null,
+			accountableUserId: this.publishers.accountableUserId(context) ?? null,
 			credentialId: usage.credential && 'id' in usage.credential ? usage.credential.id : null,
 			managedBy:
 				usage.credential && 'managedBy' in usage.credential ? usage.credential.managedBy : null,

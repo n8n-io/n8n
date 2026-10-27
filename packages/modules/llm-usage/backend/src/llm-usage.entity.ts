@@ -52,6 +52,10 @@ export class LlmUsage extends BaseEntity {
 	@Column({ type: 'uuid', nullable: true })
 	userId: string | null;
 
+	/** The user that budgets count: `userId`, else the publisher of the workflow. */
+	@Column({ type: 'uuid', nullable: true })
+	accountableUserId: string | null;
+
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	credentialId: string | null;
 

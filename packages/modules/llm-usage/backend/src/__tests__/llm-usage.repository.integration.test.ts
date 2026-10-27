@@ -1,6 +1,7 @@
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { CredentialsRepository, GLOBAL_MEMBER_ROLE, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { randomUUID } from 'node:crypto';
 
 import type { LlmUsage } from '../llm-usage.entity';
 import { LlmUsageRepository } from '../llm-usage.repository';
@@ -54,6 +55,54 @@ afterAll(async () => {
 });
 
 describe('LlmUsageRepository', () => {
+	it('sums budget spend per user and credential, with Gateway credits as one credential', async () => {
+		const otherUserId = randomUUID();
+		await repository.insertIgnoringDuplicates([
+			row({ accountableUserId: user.id, credentialId: 'cred-1' }),
+			row({ accountableUserId: user.id, managedBy: 'aiGateway' }),
+			row({
+				accountableUserId: otherUserId,
+				credentialId: 'cred-1',
+				estimatedCostUsd: null,
+				priced: false,
+			}),
+			// Not counted: no user, or a caller that budgets skip.
+			row({ credentialId: 'cred-1' }),
+			row({ accountableUserId: user.id, credentialId: 'cred-1', callerType: 'instance-ai' }),
+		]);
+
+		const spend = await repository.spendByKey({
+			from: day(-1),
+			dimensions: { user: 'all', credential: 'all' },
+			callerTypes: ['node', 'agent'],
+		});
+
+		expect(spend).toEqual(
+			expect.arrayContaining([
+				{ values: { user: user.id, credential: 'cred-1' }, costUsd: 0.5, unpriced: 0 },
+				{ values: { user: user.id, credential: 'managed:aiGateway' }, costUsd: 0.5, unpriced: 0 },
+				{ values: { user: otherUserId, credential: 'cred-1' }, costUsd: 0, unpriced: 1 },
+			]),
+		);
+		expect(spend).toHaveLength(3);
+	});
+
+	it('sums budget spend only for the listed IDs and since the window start', async () => {
+		await repository.insertIgnoringDuplicates([
+			row({ workflowId: 'wf-1' }),
+			row({ workflowId: 'wf-1', finishedAt: day(-2) }),
+			row({ workflowId: 'wf-2' }),
+		]);
+
+		const spend = await repository.spendByKey({
+			from: day(-1),
+			dimensions: { workflow: ['wf-1'] },
+			callerTypes: ['node', 'agent'],
+		});
+
+		expect(spend).toEqual([{ values: { workflow: 'wf-1' }, costUsd: 0.5, unpriced: 0 }]);
+	});
+
 	it('stores a call once when the same call ID is inserted twice', async () => {
 		const call = row({ callId: 'same-call' });
 

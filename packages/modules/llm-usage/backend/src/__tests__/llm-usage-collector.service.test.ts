@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import { LlmUsageCollector } from '../llm-usage-collector.service';
 import type { LlmUsageRepository } from '../llm-usage.repository';
 import type { PriceCatalogService } from '../price-catalog.service';
+import type { WorkflowPublisherCache } from '../workflow-publisher-cache';
 
 let sequence = 0;
 const record = (): LlmUsageRecord => ({
@@ -25,13 +26,14 @@ describe('LlmUsageCollector', () => {
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
+	const publishers = mock<WorkflowPublisherCache>();
 	let collector: LlmUsageCollector;
 
 	beforeEach(() => {
 		vi.useFakeTimers();
 		repository.insertIgnoringDuplicates.mockReset().mockResolvedValue(undefined);
 		catalog.lookup.mockReturnValue({ input: 0.01, output: 0.02 });
-		collector = new LlmUsageCollector(repository, catalog, instanceSettings, logger);
+		collector = new LlmUsageCollector(repository, catalog, instanceSettings, logger, publishers);
 	});
 
 	afterEach(() => {
@@ -194,6 +196,7 @@ describe('LlmUsageCollector', () => {
 				catalog,
 				mock<InstanceSettings>({ isLeader: false }),
 				logger,
+				publishers,
 			);
 			follower.start();
 			catalogChanged();

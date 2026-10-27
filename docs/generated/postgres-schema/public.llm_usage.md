@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| accountableUserId | uuid |  | true |  |  | The user that budgets count: userId, else the publisher of the workflow |
 | agentId | varchar(36) |  | true |  |  |  |
 | cacheReadTokens | integer | 0 | false |  |  |  |
 | cacheWriteTokens | integer | 0 | false |  |  |  |
@@ -65,6 +66,7 @@ erDiagram
 
 
 "public.llm_usage" {
+  uuid accountableUserId
   varchar_36_ agentId
   integer cacheReadTokens
   integer cacheWriteTokens

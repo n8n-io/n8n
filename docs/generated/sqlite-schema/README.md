@@ -105,7 +105,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_monitoring_report](instance_monitoring_report.md) | 10 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
-| [llm_usage](llm_usage.md) | 26 |  | table |
+| [llm_budget](llm_budget.md) | 14 |  | table |
+| [llm_usage](llm_usage.md) | 27 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
 | [migration_finding](migration_finding.md) | 10 |  | table |
 | [migration_finding_sync](migration_finding_sync.md) | 3 |  | table |
@@ -1456,7 +1457,24 @@ erDiagram
   datetime_3_ expiresAt
   varchar_512_ token PK
 }
+"llm_budget" {
+  varchar_16_ action
+  datetime_3_ createdAt
+  boolean enabled
+  varchar_255_ externalId
+  varchar_36_ id PK
+  REAL limitAmount
+  varchar_32_ managedBy
+  varchar_16_ metric
+  varchar_128_ name
+  TEXT target
+  TEXT timeWindow
+  datetime_3_ updatedAt
+  INTEGER version
+  TEXT warnAtPercent
+}
 "llm_usage" {
+  varchar accountableUserId
   varchar_36_ agentId
   INTEGER cacheReadTokens
   INTEGER cacheWriteTokens

@@ -105,7 +105,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_monitoring_report](public.instance_monitoring_report.md) | 10 |  | BASE TABLE |
 | [public.instance_version_history](public.instance_version_history.md) | 5 |  | BASE TABLE |
 | [public.invalid_auth_token](public.invalid_auth_token.md) | 2 |  | BASE TABLE |
-| [public.llm_usage](public.llm_usage.md) | 26 |  | BASE TABLE |
+| [public.llm_budget](public.llm_budget.md) | 14 |  | BASE TABLE |
+| [public.llm_usage](public.llm_usage.md) | 27 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
 | [public.migration_finding](public.migration_finding.md) | 10 |  | BASE TABLE |
 | [public.migration_finding_sync](public.migration_finding_sync.md) | 3 |  | BASE TABLE |
@@ -1470,7 +1471,24 @@ erDiagram
   timestamp_3__with_time_zone expiresAt
   varchar_512_ token
 }
+"public.llm_budget" {
+  varchar_16_ action
+  timestamp_3__with_time_zone createdAt
+  boolean enabled
+  varchar_255_ externalId
+  varchar_36_ id
+  double_precision limitAmount
+  varchar_32_ managedBy
+  varchar_16_ metric
+  varchar_128_ name
+  json target
+  json timeWindow
+  timestamp_3__with_time_zone updatedAt
+  integer version
+  json warnAtPercent
+}
 "public.llm_usage" {
+  uuid accountableUserId
   varchar_36_ agentId
   integer cacheReadTokens
   integer cacheWriteTokens

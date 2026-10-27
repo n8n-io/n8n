@@ -1,9 +1,11 @@
-import type {
-	LlmUsageCallSortKey,
-	LlmUsageDay,
-	LlmUsageGroup,
-	LlmUsageGroupBy,
-	LlmUsageTotals,
+import {
+	LLM_BUDGET_DIMENSIONS,
+	type LlmBudgetDimension,
+	type LlmUsageCallSortKey,
+	type LlmUsageDay,
+	type LlmUsageGroup,
+	type LlmUsageGroupBy,
+	type LlmUsageTotals,
 } from '@n8n/api-types';
 import { CredentialsEntity, Project, User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -29,9 +31,29 @@ export type LlmUsageCall = Omit<LlmUsage, keyof BaseEntity> & {
 const UUID_PATTERN =
 	'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$';
 
+/**
+ * The column of each budget dimension, as text, so keys compare the same on SQLite and Postgres.
+ * Gateway credits have no credential, so they count as `managed:<managedBy>`.
+ */
+const DIMENSION_COLUMNS: Record<LlmBudgetDimension, string> = {
+	workflow: 'usage.workflowId',
+	agent: 'usage.agentId',
+	project: 'usage.projectId',
+	user: 'CAST(usage.accountableUserId AS VARCHAR)',
+	credential: "COALESCE(usage.credentialId, 'managed:' || usage.managedBy)",
+};
+
+/** The spend of one counter: the values of the call for each dimension of a budget. */
+export interface LlmSpendRow {
+	values: Partial<Record<LlmBudgetDimension, string>>;
+	costUsd: number;
+	/** Calls without a price, which count as 0. */
+	unpriced: number;
+}
+
 /** Three parameters for each call keep a statement far below SQLite's parameter limit. */
 const SET_PRICES_CHUNK = 200;
-/** A row has 26 columns, so 500 rows stay below the parameter limits of SQLite and Postgres. */
+/** A row has 27 columns, so 500 rows stay below the parameter limits of SQLite and Postgres. */
 const INSERT_CHUNK = 500;
 
 /**
@@ -214,6 +236,40 @@ export class LlmUsageRepository extends Repository<LlmUsage> {
 				...toTotals(raw),
 			}),
 		);
+	}
+
+	/**
+	 * Spend since `from` for each value of the given dimensions: `all`, or only the listed IDs.
+	 * A call without a value for one of the dimensions does not count.
+	 */
+	async spendByKey({
+		from,
+		dimensions,
+		callerTypes,
+	}: {
+		from: Date;
+		dimensions: Partial<Record<LlmBudgetDimension, 'all' | string[]>>;
+		callerTypes: string[];
+	}): Promise<LlmSpendRow[]> {
+		const query = this.createQueryBuilder('usage')
+			.select('COALESCE(SUM(usage.estimatedCostUsd), 0)', 'costUsd')
+			.addSelect('SUM(CASE WHEN usage.priced THEN 0 ELSE 1 END)', 'unpriced')
+			.where('usage.finishedAt >= :from', { from })
+			.andWhere('usage.callerType IN (:...callerTypes)', { callerTypes });
+		const names = LLM_BUDGET_DIMENSIONS.filter((name) => dimensions[name] !== undefined);
+		for (const name of names) {
+			const column = DIMENSION_COLUMNS[name];
+			const filter = dimensions[name];
+			query.addSelect(column, `d_${name}`).addGroupBy(column).andWhere(`${column} IS NOT NULL`);
+			if (Array.isArray(filter))
+				query.andWhere(`${column} IN (:...${name}Ids)`, { [`${name}Ids`]: filter });
+		}
+		const rows = await query.getRawMany<Record<string, unknown>>();
+		return rows.map((raw) => ({
+			values: Object.fromEntries(names.map((name) => [name, String(raw[`d_${name}`])])),
+			costUsd: Number(raw.costUsd),
+			unpriced: Number(raw.unpriced),
+		}));
 	}
 
 	/** The totals of each UTC day with calls, oldest first. Their sum is the range total. */
