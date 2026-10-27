@@ -7,5 +7,9 @@ export const getWorkflowStatisticsTimes = async (
 	context: IRestApiContext,
 	workflowId: string,
 ): Promise<WorkflowStatisticsData<Iso8601DateTimeString | null>> => {
-	return await makeRestApiRequest(context, 'GET', `/workflow-stats/${workflowId}/times`);
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/workflow-stats/${encodeURIComponent(workflowId)}/times`,
+	);
 };

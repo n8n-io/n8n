@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { computed, shallowRef } from 'vue';
 import { getWorkflowStatisticsTimes } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -28,6 +29,8 @@ describe('WorkflowExecutionsLastRunInfo', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 
 	beforeEach(() => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date('2026-10-25T10:00:00.000Z'));
 		createTestingPinia();
 		settingsStore = mockedStore(useSettingsStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
@@ -41,6 +44,7 @@ describe('WorkflowExecutionsLastRunInfo', () => {
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.clearAllMocks();
 	});
 
@@ -49,11 +53,29 @@ describe('WorkflowExecutionsLastRunInfo', () => {
 
 		await userEvent.hover(await findByTestId('last-production-execution-icon'));
 
-		expect(await findByTestId('last-production-success')).toHaveTextContent(/^Succeeded \S/);
-		expect(await findByTestId('last-production-error')).toHaveTextContent(/^Failed \S/);
+		expect(await findByTestId('last-production-success')).toHaveTextContent('Succeeded 5 days ago');
+		expect(await findByTestId('last-production-error')).toHaveTextContent('Failed 4 days ago');
 		expect(queryByTestId('last-production-execution-note')).not.toBeInTheDocument();
-		expect(getWorkflowStatisticsTimes).toHaveBeenCalledTimes(1);
 		expect(getWorkflowStatisticsTimes).toHaveBeenCalledWith(expect.anything(), 'wf-1');
+	});
+
+	it('loads the times again when the pointer enters the icon', async () => {
+		const { findByTestId } = renderComponent();
+		const icon = await findByTestId('last-production-execution-icon');
+		expect(getWorkflowStatisticsTimes).toHaveBeenCalledTimes(1);
+
+		vi.mocked(getWorkflowStatisticsTimes).mockResolvedValue({
+			productionSuccess: '2026-10-25T08:00:00.000Z',
+			productionError: null,
+			manualSuccess: null,
+			manualError: null,
+		});
+		await userEvent.hover(icon);
+
+		expect(getWorkflowStatisticsTimes).toHaveBeenCalledTimes(2);
+		expect(await findByTestId('last-production-success')).toHaveTextContent(
+			'Succeeded 2 hours ago',
+		);
 	});
 
 	it('shows the note when the workflow does not save all production executions', async () => {
@@ -96,6 +118,7 @@ describe('WorkflowExecutionsLastRunInfo', () => {
 		const { queryByTestId } = renderComponent();
 
 		await waitFor(() => expect(getWorkflowStatisticsTimes).toHaveBeenCalled());
+		await flushPromises();
 		expect(queryByTestId('last-production-execution-icon')).not.toBeInTheDocument();
 	});
 

@@ -39,21 +39,26 @@ const isSavingAllProductionExecutions = computed(() => {
 	);
 });
 
+async function loadLastExecutionTimes() {
+	const id = workflowId.value;
+	if (!id || !workflowsStore.isWorkflowSaved[id]) return;
+
+	try {
+		const times = await getWorkflowStatisticsTimes(rootStore.restApiContext, id);
+		if (id !== workflowId.value) return;
+		lastSucceededAt.value = times.productionSuccess;
+		lastFailedAt.value = times.productionError;
+	} catch {
+		// The last execution times are extra context, so a failed request must not affect the sidebar.
+	}
+}
+
 watch(
-	() => [workflowId.value, workflowsStore.isWorkflowSaved[workflowId.value]] as const,
-	async ([id, isSaved]) => {
+	() => [workflowId.value, workflowsStore.isWorkflowSaved[workflowId.value]],
+	async () => {
 		lastSucceededAt.value = null;
 		lastFailedAt.value = null;
-		if (!id || !isSaved) return;
-
-		try {
-			const times = await getWorkflowStatisticsTimes(rootStore.restApiContext, id);
-			if (id !== workflowId.value) return;
-			lastSucceededAt.value = times.productionSuccess;
-			lastFailedAt.value = times.productionError;
-		} catch {
-			// The last execution times are extra context, so a failed request must not affect the sidebar.
-		}
+		await loadLastExecutionTimes();
 	},
 	{ immediate: true },
 );
@@ -109,6 +114,7 @@ watch(
 			color="text-light"
 			:aria-label="i18n.baseText('executionsList.lastProductionExecution.title')"
 			data-test-id="last-production-execution-icon"
+			@mouseenter="loadLastExecutionTimes"
 		/>
 	</N8nTooltip>
 </template>
