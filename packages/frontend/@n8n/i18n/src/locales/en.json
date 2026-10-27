@@ -10426,5 +10426,8 @@
 	"selfHealing.config.noReviewers": "No reviewers yet.",
 	"selfHealing.config.removeWorkflow": "Remove workflow",
 	"selfHealing.config.removeReviewer": "Remove reviewer",
+	"selfHealing.config.projectMembers": "People from {project}",
+	"selfHealing.config.removeProjectMembers": "Remove project members from reviewers",
+	"selfHealing.config.projectMembersIncluded": "All eligible project members are included.",
 	"selfHealing.config.discard": "Discard changes"
 }

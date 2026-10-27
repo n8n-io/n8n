@@ -134,7 +134,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.scheduled_task](public.scheduled_task.md) | 19 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
-| [public.self_healing_configuration](public.self_healing_configuration.md) | 7 |  | BASE TABLE |
+| [public.self_healing_configuration](public.self_healing_configuration.md) | 8 |  | BASE TABLE |
 | [public.self_healing_configuration_reviewer](public.self_healing_configuration_reviewer.md) | 2 |  | BASE TABLE |
 | [public.self_healing_configuration_workflow](public.self_healing_configuration_workflow.md) | 3 |  | BASE TABLE |
 | [public.self_healing_investigation](public.self_healing_investigation.md) | 13 |  | BASE TABLE |
@@ -1760,6 +1760,7 @@ erDiagram
   boolean enabled
   uuid enabledById FK
   integer id
+  boolean includeAllProjectMembers
   varchar_36_ projectId FK
   varchar_16_ scope
   timestamp_3__with_time_zone updatedAt
