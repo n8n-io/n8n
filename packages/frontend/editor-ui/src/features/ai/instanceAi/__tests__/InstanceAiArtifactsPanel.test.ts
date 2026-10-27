@@ -29,6 +29,15 @@ const updateThreadMetadataMock = vi.fn(
 	},
 );
 
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({
+		resolve: ({ query }: { query: { skillId: string } }) => ({
+			href: `/settings/context/skills?skillId=${query.skillId}`,
+		}),
+	}),
+}));
+
 vi.mock('../instanceAi.store', () => ({
 	useThread: vi.fn(() => storeState),
 	useInstanceAiStore: vi.fn(() => ({

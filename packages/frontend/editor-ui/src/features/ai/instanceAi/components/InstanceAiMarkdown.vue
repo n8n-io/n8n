@@ -6,6 +6,7 @@ import {
 	type AgentPreviewTarget,
 } from '@/features/agents/utils/agentPreviewUrl';
 import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
+import { useRouter } from 'vue-router';
 import { useThread } from '../instanceAi.store';
 import { skillsHubHref } from '../canvasPreview.utils';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
@@ -26,6 +27,7 @@ const props = defineProps<{
 
 const thread = useThread();
 const styles = useCssModule();
+const router = useRouter();
 const wrapperRef = ref<HTMLElement | null>(null);
 
 /**
@@ -78,7 +80,7 @@ const URL_BUILDERS: Record<string, (id: string) => string> = {
 	credential: (id) => `/home/credentials/${id}`,
 	'data-table': () => '/home/datatables',
 	agent: () => '/home/agents',
-	skill: (id) => skillsHubHref(id),
+	skill: (id) => skillsHubHref(router, id),
 };
 
 /**

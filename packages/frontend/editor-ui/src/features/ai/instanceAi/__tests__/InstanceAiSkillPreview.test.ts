@@ -7,6 +7,15 @@ import { waitFor } from '@testing-library/vue';
 
 import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
 
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({
+		resolve: ({ query }: { query: { skillId: string } }) => ({
+			href: `/settings/context/skills?skillId=${query.skillId}`,
+		}),
+	}),
+}));
+
 const detail: SkillDetail = {
 	id: 'skill-1',
 	name: 'Brand voice',
