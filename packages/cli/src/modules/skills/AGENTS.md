@@ -82,7 +82,7 @@ Split services by capability, never by caller.
 
 - `SkillService`: list, get, create, update and delete. A user action takes the `User` and checks access through `SkillAccessService`. The writes `createTrusted`, `saveTrusted` and `moveTrusted` check no access. A caller that checked access itself uses them inside its own transaction. After a trusted write commits, the caller calls `trackCreated` or `trackUpdated`.
   A synced skill (`skill.source` is a synced source, such as `github`) is read-only. `saveTrusted` refuses a content change to it with `SkillSyncedError`, unless the caller passes `allowSynced`. Only Skill Sync passes it, with content that it fetched from the source. A `SkillUpdate` holds partial `SkillContent`, so Skill Sync can also replace the frontmatter. It sends `baseContentHash`. An editor sends `baseSkillHash`.
-- `SkillAccessService`: the project of a skill, access to one skill or to a list, and the checks for edit, move and the create target.
+- `SkillAccessService`: the project of a skill, access to one skill or to a list, and the checks for edit, move and the create target. For skill sources: `canOnSource`, `canChangeSourceScope` and `visibleSourceProjects`. A source reuses the skill scopes of its scope, so Skill Sync has no scopes of its own. `services/skill-source.policy.ts` maps each source action to its scope.
 - `SkillRuntimeService`: what a draft runs, runtime names, the publish snapshot, the targets and versions that agents read, and the reads of n8n Assistant. Agent reads have no permission check. The agents module checked access at attach time. The n8n Assistant reads check the project scopes of the session and access to each skill.
 
 ## Gates
@@ -129,7 +129,8 @@ Pick the test by what the behavior depends on:
 
 | The behavior depends on | Test | Where |
 | -- | -- | -- |
-| Only its inputs: a name, scope, move or delete rule | Decision table with `it.each`, no mocks | `services/skill.policy.ts`, `__tests__/skill.policy.test.ts` |
+| Only its inputs: a name, scope, move or delete rule | Decision table with `it.each`, no mocks | `services/skill.policy.ts`, `services/skill-source.policy.ts`, and their tests |
+| Roles and scopes from the database | Integration table: each role against each action and scope | `__tests__/integration/skill-source-access.integration.test.ts` |
 | The order of reads, locks and writes in a service | Unit test over `createSkillServices` | `__tests__/skill.service*.test.ts` |
 | A query, a transaction or a lock | Integration test on `testDb` | `__tests__/integration/*.integration.test.ts` |
 | The agents module | `FakeSkillUsage`, which passes the `SkillUsage` contract cases | `testing/` |
