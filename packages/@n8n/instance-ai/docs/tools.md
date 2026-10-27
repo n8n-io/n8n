@@ -61,7 +61,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
 | `skills` | 5 |
-| `workflow_builder_build_workflow`, `workflow_builder_ask_user`, `parse-file`, `workflow_builder_search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
+| `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `workflow_builder_search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
 
@@ -1235,7 +1235,7 @@ pagination, truncation state, and warnings. Text-like results contain extracted
 content and can include a title or page count. All results identify the source
 attachment and can contain an error.
 
-## `workflow_builder_ask_user`
+## `ask_user`
 
 Suspend the run for one or more human decisions.
 
@@ -1477,7 +1477,7 @@ tool's relevance self-evident.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `action` | `'search' \| 'get-messages'` | yes | Discriminator |
-| `query` | string | no | Case-insensitive text matched against titles, user messages, and workflow_builder_ask_user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
+| `query` | string | no | Case-insensitive text matched against titles, user messages, and ask_user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
 | `limit` | number | no | Max conversations to return (default 10 when searching, 5 when listing recent; max 10) |
 | `threadId` | string | `get-messages` | Conversation id from a search result |
 | `aroundMessageId` | string | no | Center the read on this message id (from a search excerpt) |
@@ -1499,14 +1499,14 @@ tail read to continue recent work.
 **`get-messages`** → `{ threadId, title, messages: [{ messageId, role, createdAt, text, userAnswers?: [{ question, answer }] }], hasMoreBefore, hasMoreAfter, error? }`,
 oldest-first. Defaults for the read window (tail/head/around sizing) are
 applied by the service, not the tool. The read is the conversation as the
-user experienced it: their messages, workflow_builder_ask_user Q&A, and each turn's final
+user experienced it: their messages, ask_user Q&A, and each turn's final
 text-only reply. Mid-turn assistant rows — the agent loop only continues on
 tool calls, so a row carrying them is working narration rather than the reply
 that ended the turn — are filtered out in SQL via structural markers
 (unescaped `"type":"tool-call"` can only be block structure — quotes inside
-text are escaped); workflow_builder_ask_user rows stay visible for their Q&A. Rows only
+text are escaped); ask_user rows stay visible for their Q&A. Rows only
 recognizable after parsing — internal auto-follow-up user rows, rows with no
-visible text, workflow_builder_ask_user rows still awaiting an answer, unreadable content — are
+visible text, ask_user rows still awaiting an answer, unreadable content — are
 dropped by the same visibility predicate the window fetch uses, so
 `before`/`after` count returned messages. The fetch over-reads to fill its
 slots; `hasMoreBefore`/`hasMoreAfter` may over-report after a long run of

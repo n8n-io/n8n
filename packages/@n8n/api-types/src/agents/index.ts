@@ -43,7 +43,7 @@ export {
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
 	isAgentToolNodeType,
 } from '../agent-builder-tool-node-types';
-// ASK_QUESTIONS_TOOL_NAME / CONFIGURE_CHANNEL_TOOL_NAME come from
+// CONFIGURE_CHANNEL_TOOL_NAME comes from
 // ./agent-interaction.schema (re-exported below via `export *`).
 export {
 	APPROVAL_TOOL_NAME,

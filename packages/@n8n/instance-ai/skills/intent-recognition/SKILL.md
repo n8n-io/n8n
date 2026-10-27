@@ -11,7 +11,7 @@ description: >-
   including compound requests, independent automations introduced mid-build,
   one-off questions or reports that need external systems you cannot query
   directly, and requests that need clarification before an anchor can be
-  chosen. An explicit Agent request routes to agent-builder before workflow_builder_ask_user.
+  chosen. An explicit Agent request routes to agent-builder before ask_user.
   Do not load for routine edits or extensions when the conversation already
   targets a workflow or Agent.
 ---
@@ -32,7 +32,7 @@ show up inside that flow.
 If the user asked to build, route on the result: workflow-builder for
 workflow-anchored (a bounded LLM step is an AI node in the graph; an embedded
 agent is an AI Agent step inside it), an agent-oriented design for
-agent-anchored (a tool-use loop), `workflow_builder_ask_user` for needs-clarification, or answer
+agent-anchored (a tool-use loop), `ask_user` for needs-clarification, or answer
 directly for out-of-scope.
 
 ## Inputs
@@ -143,7 +143,7 @@ build.
    even when it could implement the same behavior. You may explain a simpler
    workflow alternative, but switch only after the user chooses it. Route
    missing setup and implementation choices to Agent Builder. The immediate
-   next routing action is to load `agent-builder`. Do not call `workflow_builder_ask_user`
+   next routing action is to load `agent-builder`. Do not call `ask_user`
    between classification and that handoff. Forward the request without
    selecting services, tools, topics, schedules, or other implementation
    details. Agent Builder owns those questions. An explicit
@@ -193,7 +193,7 @@ build.
 Some artifacts look alike. Each row names a pair, the signal that a request
 fits both, and one question that tells them apart. When the user names one
 side and the signal fits the other side too, ask the row's question with
-`workflow_builder_ask_user`, then build what the user picks. Do not build
+`ask_user`, then build what the user picks. Do not build
 either side first. An explicit Agent request does not use this table (step 1).
 A new artifact type adds a row here.
 

@@ -9,7 +9,7 @@ description: >-
   Use it on other threads when the user asks what they could automate or
   wants ideas for a first workflow.
 recommended_tools:
-  - workflow_builder_ask_user
+  - ask_user
   - workflow_builder_build_workflow
 ---
 
@@ -37,7 +37,7 @@ questions again. Two openings:
   `leave-onboarding`, then write a one-sentence reply that invites the user to
   explore the app and to come back with a task.
 
-On any other thread, ask in ONE `workflow_builder_ask_user` call: a `single` question "What
+On any other thread, ask in ONE `ask_user` call: a `single` question "What
 team are you on?" with the options Executive/Owner, Support, Product & Design,
 Sales, IT, Engineering and Marketing, and a `multi` question "Which apps do you
 use?" with the ten apps people use most at work, as product names such as
@@ -70,7 +70,7 @@ Slack or Google Sheets. Never run a command or read a file to find them.
      easier."
    Then, after a blank line, "Here are three ways n8n could help:". With
    nothing to reflect, drop the first part and use the general social proof.
-   Then ONE `workflow_builder_ask_user` call with `questions` only: a `single`
+   Then ONE `ask_user` call with `questions` only: a `single`
    question "Which one feels most useful?", `required: true`, with
    four options: the three suggestions, most relevant first, and last
    `Show me other ideas`. `Show me other ideas` is an action that asks for
@@ -106,7 +106,7 @@ Slack or Google Sheets. Never run a command or read a file to find them.
      "later", or `answered: false`: do not build. On an onboarding thread call
      `leave-onboarding`, then write a one-sentence reply, for example "No
      problem. Explore the app and tell me when you want to automate something."
-4. Ask before you build. Write no text, and make ONE `workflow_builder_ask_user` call with
+4. Ask before you build. Write no text, and make ONE `ask_user` call with
    `questions` only: a `single` question "Nice! Should I build this now?",
    `required: true`, with the options `Yes, build it` and `Not now`. Leave
    `introMessage` and `freeTextLabel` out: the card's own "Something else"
@@ -125,7 +125,7 @@ Slack or Google Sheets. Never run a command or read a file to find them.
 
 ## Rules
 
-- One `workflow_builder_ask_user` call per turn. Keep every message to four sentences or fewer.
+- One `ask_user` call per turn. Keep every message to four sentences or fewer.
 - A build needs `Yes, build it` from the user on the step 4 card, for a
   picked suggestion and for a task in the user's words alike. Never start one
   after a skip, a dismissal, or free text that names nothing.

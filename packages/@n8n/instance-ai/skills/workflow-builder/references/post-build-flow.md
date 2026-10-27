@@ -6,7 +6,7 @@ description: >-
   Load after direct builds, when verificationReadiness requires action, or on
   orchestrator verify/setup follow-up turns.
 recommended_tools:
-  - workflow_builder_ask_user
+  - ask_user
   - workflow_builder_verify_built_workflow
   - workflow_builder_workflows
   - workflow_builder_build_workflow
@@ -494,7 +494,7 @@ then publish and assign only after the user approves.
 
 After successfully publishing a direct new primary workflow,
 ask once whether the user wants to build an error workflow for that workflow.
-Use `workflow_builder_ask_user` with a yes/no choice or a concise visible question. Do **not**
+Use `ask_user` with a yes/no choice or a concise visible question. Do **not**
 create an error workflow before the user opts in.
 
 The opt-in must explicitly mention an error workflow and the target workflow
@@ -678,7 +678,7 @@ reports mocked credentials or `setupRequirement.status === "required"`.
 **Ask once when a service has multiple credentials of the same type.** If
 `list_credentials` shows more than one entry of the type a requested
 integration needs (e.g. two `openAiApi` accounts, three Google Calendar
-accounts), use `workflow_builder_ask_user` with a single-select to let the user pick one before
+accounts), use `ask_user` with a single-select to let the user pick one before
 building, and use the chosen credential name in the workflow code. Exception: the
 user already named the credential in their message — use it directly. With a
 single candidate, auto-apply and do not ask.
@@ -700,7 +700,7 @@ re-litigating the choice. If they had skipped that card earlier, pass
 — the user cannot switch auth types from there. So when
 `search_credential_types` returns more than one auth option for a
 service (e.g. `notionApi` and `notionOAuth2Api`, or `slackApi` and
-`slackOAuth2Api`), use `workflow_builder_ask_user` with a single-select to let the user pick the
+`slackOAuth2Api`), use `ask_user` with a single-select to let the user pick the
 auth type before calling `setup_credentials`. List OAuth2 first and
 present it as the recommended option. Exception: the user has clearly indicated
 an auth type (e.g. "api key", "oauth", "personal token") — map it to the matching

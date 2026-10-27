@@ -114,7 +114,7 @@ account labels or IDs, resource IDs, channel IDs, credential choices,
 credential fields, or timezone; use placeholders or unresolved
 `newCredential()` calls and leave them for post-build workflow setup. Before
 the first successful `workflow_builder_build_workflow` call, use
-`workflow_builder_ask_user` only when a missing choice changes the workflow's
+`ask_user` only when a missing choice changes the workflow's
 intent or topology, such as the missing destination service for "send my team
 a summary". But when that choice is which service to use for a capability the
 user did not name (e.g. web search, scraping, a cloud browser), do not ask yet:
@@ -124,14 +124,14 @@ Gateway credits–covered node instead of asking when the user has no credential
 for a comparable tool (see Gateway credits Preference). Ask only when discovery
 finds no covered option and the choice changes the workflow. Announce known credentials through early
 setup when available, then continue building without waiting for the user.
-After the first build, resolve remaining setup and use `workflow_builder_ask_user` when stuck
+After the first build, resolve remaining setup and use `ask_user` when stuck
 or when choices are ambiguous; do not retry the same
 failing approach more than twice. Never re-ask an answered, deferred, or skipped
 question. A skip grants no additional permission. Choose defaults only for
 unspecified details within the requested task. If a skipped question seeks
 permission to change existing authentication, delete nodes, or expand scope,
 preserve the existing state and report any remaining blocker. Never
-solicit secrets through `workflow_builder_ask_user`; route credential collection through
+solicit secrets through `ask_user`; route credential collection through
 workflow/credential setup surfaces.
 
 ## Placeholders

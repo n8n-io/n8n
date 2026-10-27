@@ -95,7 +95,7 @@ function extractUserTurnText(event: CapturedEvent): string | undefined {
 // ---------------------------------------------------------------------------
 // Per-turn assembly
 //
-// Each tool can emit two events for one logical interaction (e.g. workflow_builder_ask_user
+// Each tool can emit two events for one logical interaction (e.g. ask_user
 // fires both a tool-call and a confirmation-request). To render it once,
 // only the variant carrying the richer payload handles it; the other is
 // skipped. This relies on both events arriving in the same turn — which
@@ -202,7 +202,7 @@ function interpretToolCall(
 	const toolName = resolveBuilderToolName(getString(payload, 'toolName') ?? '');
 	const args = getRecord(payload, 'args') ?? {};
 
-	// workflow_builder_ask_user is rendered from the confirmation-request (which has the answers).
+	// ask_user is rendered from the confirmation-request (which has the answers).
 	if (toolName === DOMAIN_TOOL_IDS.ASK_USER) return null;
 
 	// Every named call renders — no de-duping, so repeat calls aren't dropped.

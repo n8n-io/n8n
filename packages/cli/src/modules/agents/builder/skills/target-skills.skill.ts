@@ -16,14 +16,14 @@ export function targetSkillsSkill(): RuntimeSkill {
 			'agent-context',
 			'agent_builder_update_skill',
 			'agent_builder_create_skills',
-			'agent_builder_ask_questions',
+			'ask_user',
 			'agent_builder_patch_config',
 		],
 		allowedTools: [
 			'agent-context',
 			'agent_builder_update_skill',
 			'agent_builder_create_skills',
-			'agent_builder_ask_questions',
+			'ask_user',
 			'agent_builder_patch_config',
 			'agent_builder_write_config',
 		],
@@ -74,7 +74,7 @@ write a genuinely useful skill: a specific routing description and a body whose
 applicable sections are filled with real content (the actual steps, rules,
 examples, and edge cases). Derive missing domain detail from the user's
 stated goal as stated assumptions, and list them in your summary. For missing
-domain details, use \`agent_builder_ask_questions\` only when even a reasonable
+domain details, use \`ask_user\` only when even a reasonable
 assumption is impossible — never during an initial build: add the open decision
 to the pending setup instead, per the Initial Build rules in the
 \`agent-builder\` skill. For approval to update an attached skill after a field
@@ -114,7 +114,7 @@ vague skill.
   agents: an update saves its next version for every agent that uses it. When replacing \`references\`, first read the content of every existing
   reference that must be preserved, because the field is replaced as a whole.
 - Before you update any attached skill because a field was removed or renamed,
-  use \`agent_builder_ask_questions\` to get explicit confirmation for the
+  use \`ask_user\` to get explicit confirmation for the
   skill changes. Builder context does not show who else uses a skill, so treat
   it as potentially shared. The update saves a version that every draft
   following the latest version will use. If the user does not clearly confirm,

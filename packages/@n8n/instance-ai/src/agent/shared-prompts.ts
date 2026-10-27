@@ -2,7 +2,7 @@
  * Shared prompt snippets composed into multiple agent personas.
  *
  * Keeping these in one place ensures every sub-agent receives the same
- * output discipline, workflow_builder_ask_user fallback, untrusted-content doctrine, and
+ * output discipline, ask_user fallback, untrusted-content doctrine, and
  * placeholder rule — and lets us evolve any of them without hunting for
  * near-duplicate copies across files.
  */
@@ -18,12 +18,12 @@ export const UNTRUSTED_CONTENT_DOCTRINE =
 
 /** Question rules for the orchestrator. The workflow-builder skill holds the workflow-specific rules. */
 export const ASK_USER_RULES =
-	'If you are stuck, need clarification, or need information only a human can provide, use the `workflow_builder_ask_user` tool instead of asking in plain text. Before the first build, ask only about choices that change what you build. Do not retry the same failing approach more than twice — use `workflow_builder_ask_user` instead. Never solicit API keys, tokens, or other secrets through `workflow_builder_ask_user` — route credential collection through credential setup or Browser Use credential capture instead.';
+	'If you are stuck, need clarification, or need information only a human can provide, use the `ask_user` tool instead of asking in plain text. Before the first build, ask only about choices that change what you build. Do not retry the same failing approach more than twice — use `ask_user` instead. Never solicit API keys, tokens, or other secrets through `ask_user` — route credential collection through credential setup or Browser Use credential capture instead.';
 
 /** Sub-agents also get the workflow-specific question rules. */
 export const ASK_USER_FALLBACK =
 	ASK_USER_RULES +
-	' Before the first `workflow_builder_build_workflow` call, use `workflow_builder_ask_user` only for choices that change the workflow intent or topology, such as the missing destination service for "send my team a summary". But when the open choice is which service to use for a capability the user did not name (e.g. web search, scraping, a cloud browser), do not ask yet — first discover coverage with `search_nodes` / `search_nodes(gatewayCreditsOnly=true)`. If a node covered by Gateway credits satisfies the capability and the user has no credential for a comparable tool, use it and do not ask. Only ask when discovery surfaces no covered option and the choice genuinely changes the workflow. Do not use `workflow_builder_ask_user` before the first build for missing setup values after the service is already known, such as notification recipients, account labels or IDs, channel IDs, resource IDs, credential choices, or credential fields; use placeholders or unresolved `newCredential()` calls and leave them for post-build workflow setup.';
+	' Before the first `workflow_builder_build_workflow` call, use `ask_user` only for choices that change the workflow intent or topology, such as the missing destination service for "send my team a summary". But when the open choice is which service to use for a capability the user did not name (e.g. web search, scraping, a cloud browser), do not ask yet — first discover coverage with `search_nodes` / `search_nodes(gatewayCreditsOnly=true)`. If a node covered by Gateway credits satisfies the capability and the user has no credential for a comparable tool, use it and do not ask. Only ask when discovery surfaces no covered option and the choice genuinely changes the workflow. Do not use `ask_user` before the first build for missing setup values after the service is already known, such as notification recipients, account labels or IDs, channel IDs, resource IDs, credential choices, or credential fields; use placeholders or unresolved `newCredential()` calls and leave them for post-build workflow setup.';
 
 export function getSandboxWorkspaceSection(workspaceRoot?: string): string {
 	const isolation = workspaceRoot

@@ -11,7 +11,6 @@ export const WORKFLOW_BUILDER_TOOL_NAMES = {
 	WORKFLOWS: 'workflow_builder_workflows',
 	NODES: 'workflow_builder_nodes',
 	EXECUTIONS: 'workflow_builder_executions',
-	ASK_USER: 'workflow_builder_ask_user',
 	SEARCH_MODELS: 'workflow_builder_search_models',
 	BUILD_WORKFLOW: 'workflow_builder_build_workflow',
 	VERIFY_BUILT_WORKFLOW: 'workflow_builder_verify_built_workflow',
@@ -48,12 +47,14 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 	ASK_CREDENTIAL: 'agent_builder_ask_credential',
 	/** No longer registered. Builders use `setup_credentials` with `allowManaged`. */
 	ASK_EMBEDDING_CREDENTIAL: 'agent_builder_ask_embedding_credential',
+	/** No longer registered. Builders use `ask_user`. */
 	ASK_QUESTIONS: 'agent_builder_ask_questions',
 	CONFIGURE_CHANNEL: 'agent_builder_configure_channel',
 } as const;
 
 /** Orchestrator tools that both builders use. These names have no builder prefix. */
 export const SHARED_BUILDER_TOOL_NAMES = {
+	ASK_USER: 'ask_user',
 	LIST_CREDENTIALS: 'list_credentials',
 	SEARCH_CREDENTIAL_TYPES: 'search_credential_types',
 	SETUP_CREDENTIALS: 'setup_credentials',
@@ -93,7 +94,8 @@ export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	nodes: WORKFLOW_BUILDER_TOOL_NAMES.NODES,
 	executions: WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS,
 	'data-tables': SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
-	'ask-user': WORKFLOW_BUILDER_TOOL_NAMES.ASK_USER,
+	'ask-user': SHARED_BUILDER_TOOL_NAMES.ASK_USER,
+	workflow_builder_ask_user: SHARED_BUILDER_TOOL_NAMES.ASK_USER,
 	searchModels: WORKFLOW_BUILDER_TOOL_NAMES.SEARCH_MODELS,
 	'build-workflow': WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
 	'verify-built-workflow': WORKFLOW_BUILDER_TOOL_NAMES.VERIFY_BUILT_WORKFLOW,
@@ -123,7 +125,8 @@ export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	agent_builder_list_credentials: SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
 	ask_credential: AGENT_BUILDER_TOOL_NAMES.ASK_CREDENTIAL,
 	ask_embedding_credential: AGENT_BUILDER_TOOL_NAMES.ASK_EMBEDDING_CREDENTIAL,
-	ask_questions: AGENT_BUILDER_TOOL_NAMES.ASK_QUESTIONS,
+	ask_questions: SHARED_BUILDER_TOOL_NAMES.ASK_USER,
+	agent_builder_ask_questions: SHARED_BUILDER_TOOL_NAMES.ASK_USER,
 	configure_channel: AGENT_BUILDER_TOOL_NAMES.CONFIGURE_CHANNEL,
 };
 

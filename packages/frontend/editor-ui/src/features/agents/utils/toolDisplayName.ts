@@ -53,13 +53,13 @@ const BUILDER_TOOL_TRANSLATION_KEYS: Record<string, BaseTextKey> = {
 	[AGENT_BUILDER_TOOL_NAMES.RESOLVE_LLM]: 'instanceAi.tools.agent_builder_resolve_llm',
 	search_mcp_servers: 'instanceAi.tools.search_mcp_servers',
 	[AGENT_BUILDER_TOOL_NAMES.VERIFY_MCP_SERVER]: 'instanceAi.tools.agent_builder_verify_mcp_server',
-	[AGENT_BUILDER_TOOL_NAMES.ASK_QUESTIONS]: 'instanceAi.tools.agent_builder_ask_questions',
 	[AGENT_BUILDER_TOOL_NAMES.ASK_CREDENTIAL]: 'instanceAi.tools.agent_builder_ask_credential',
 	[AGENT_BUILDER_TOOL_NAMES.ASK_EMBEDDING_CREDENTIAL]:
 		'instanceAi.tools.agent_builder_ask_embedding_credential',
 	[AGENT_BUILDER_TOOL_NAMES.CONFIGURE_CHANNEL]: 'instanceAi.tools.agent_builder_configure_channel',
 	[AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES]: 'instanceAi.tools.agent_builder_search_nodes',
 	[AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES]: 'instanceAi.tools.agent_builder_get_node_types',
+	[SHARED_BUILDER_TOOL_NAMES.ASK_USER]: 'instanceAi.tools.ask_user',
 	[SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES]: 'instanceAi.tools.search_nodes',
 	[SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES]: 'instanceAi.tools.get_node_types',
 	[SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS]:

@@ -58,9 +58,7 @@ describe('formatToolNameForDisplay', () => {
 		expect(getToolNameTranslationKey('write_config')).toBe(
 			'instanceAi.tools.agent_builder_write_config',
 		);
-		expect(getToolNameTranslationKey(' ask_questions ')).toBe(
-			'instanceAi.tools.agent_builder_ask_questions',
-		);
+		expect(getToolNameTranslationKey(' ask_questions ')).toBe('instanceAi.tools.ask_user');
 
 		const translator = {
 			baseText: (key: BaseTextKey) =>

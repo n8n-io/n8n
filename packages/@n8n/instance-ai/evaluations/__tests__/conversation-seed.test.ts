@@ -564,7 +564,7 @@ describe('transcriptPrefixFromSeed', () => {
 		]);
 	});
 
-	it('renders a seeded workflow_builder_ask_user block as an workflow_builder_ask_user step with the chosen answers', () => {
+	it('renders a seeded ask_user block as an ask_user step with the chosen answers', () => {
 		const turns = transcriptPrefixFromSeed([
 			{
 				id: 'a1',
@@ -573,7 +573,7 @@ describe('transcriptPrefixFromSeed', () => {
 				content: [
 					{
 						type: 'tool-call',
-						toolName: 'workflow_builder_ask_user',
+						toolName: 'ask_user',
 						state: 'resolved',
 						input: {
 							introMessage: 'A couple of questions',

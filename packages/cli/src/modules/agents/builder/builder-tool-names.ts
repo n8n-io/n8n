@@ -8,9 +8,8 @@ import { AGENT_BUILDER_TOOL_NAMES } from '@n8n/api-types';
  * rename a tool, add the former name to `LEGACY_BUILDER_TOOL_NAMES` there so
  * persisted checkpoints still resolve.
  *
- * The interactive tools (`ASK_QUESTIONS_TOOL_NAME`, `CONFIGURE_CHANNEL_TOOL_NAME`)
- * are NOT listed here — they live in `@n8n/api-types` (`agents/agent-interaction.schema.ts`)
- * alongside the suspend/resume schemas they share with instance AI's FE cards.
+ * The interactive `CONFIGURE_CHANNEL_TOOL_NAME` tool is NOT listed here — they live in `@n8n/api-types` (`agents/agent-interaction.schema.ts`)
+ * alongside the suspend/resume schemas it shares with instance AI's FE cards.
  */
 export const BUILDER_TOOLS = {
 	WRITE_CONFIG: AGENT_BUILDER_TOOL_NAMES.WRITE_CONFIG,

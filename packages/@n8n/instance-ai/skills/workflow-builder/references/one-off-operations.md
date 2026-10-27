@@ -15,7 +15,7 @@ recommended_tools:
   - workflow_builder_build_workflow
   - workflow_builder_workflows
   - workflow_builder_executions
-  - workflow_builder_ask_user
+  - ask_user
   - workflow_builder_verify_built_workflow
 ---
 

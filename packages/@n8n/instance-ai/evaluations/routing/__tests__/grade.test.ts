@@ -29,9 +29,9 @@ function callEvent(
 	return { type: 'tool-call', ...base, agentId, payload: { toolCallId: toolName, toolName, args } };
 }
 
-/** The card of an workflow_builder_ask_user call and the user's answer to it. */
+/** The card of an ask_user call and the user's answer to it. */
 function answerEvents(
-	toolCallId = 'workflow_builder_ask_user',
+	toolCallId = 'ask_user',
 	result: unknown = { answered: true },
 ): InstanceAiEvent[] {
 	return [
@@ -41,7 +41,7 @@ function answerEvents(
 			payload: {
 				requestId: 'request-1',
 				toolCallId,
-				toolName: 'workflow_builder_ask_user',
+				toolName: 'ask_user',
 				args: {},
 				severity: 'info',
 				message: 'Two questions',
@@ -59,7 +59,7 @@ function pending(toolName: string, args: Record<string, unknown> = {}) {
 /** A question card call with its own call id. */
 const card = (toolCallId: string) => ({
 	toolCallId,
-	toolName: 'workflow_builder_ask_user',
+	toolName: 'ask_user',
 	args: {},
 });
 
@@ -98,7 +98,7 @@ const isQuestion = ({ route }: RouteResolution) => route === 'clarify';
 const clarify = (steer: RouteResolution['steer']): RouteResolution => ({
 	route: 'clarify',
 	steer,
-	evidence: 'workflow_builder_ask_user call',
+	evidence: 'ask_user call',
 });
 
 describe('traceSteps', () => {
@@ -120,46 +120,40 @@ describe('traceSteps', () => {
 	});
 
 	it('adds the pending call last when it has no event yet', () => {
-		const steps = traceSteps(
-			[textEvent('A question first.')],
-			pending('workflow_builder_ask_user'),
-		);
+		const steps = traceSteps([textEvent('A question first.')], pending('ask_user'));
 
 		expect(steps).toEqual([
 			{ kind: 'text', text: 'A question first.' },
-			{ kind: 'call', toolName: 'workflow_builder_ask_user', args: {} },
+			{ kind: 'call', toolName: 'ask_user', args: {} },
 		]);
 	});
 
 	it('adds the user answer after a question card and no other tool result', () => {
 		const steps = traceSteps([
-			callEvent('workflow_builder_ask_user'),
+			callEvent('ask_user'),
 			...answerEvents(),
 			{ type: 'tool-result', ...base, payload: { toolCallId: 'search-nodes', result: [] } },
 		]);
 
 		expect(steps).toEqual([
-			{ kind: 'call', toolName: 'workflow_builder_ask_user', args: {} },
+			{ kind: 'call', toolName: 'ask_user', args: {} },
 			{ kind: 'answer', result: { answered: true } },
 		]);
 	});
 
 	it('adds no user answer when the user skips the question card', () => {
 		const steps = traceSteps([
-			callEvent('workflow_builder_ask_user'),
-			...answerEvents('workflow_builder_ask_user', { answered: false }),
+			callEvent('ask_user'),
+			...answerEvents('ask_user', { answered: false }),
 		]);
 
-		expect(steps).toEqual([{ kind: 'call', toolName: 'workflow_builder_ask_user', args: {} }]);
+		expect(steps).toEqual([{ kind: 'call', toolName: 'ask_user', args: {} }]);
 	});
 
 	it('does not add the pending call twice when its event is already in', () => {
-		const steps = traceSteps(
-			[callEvent('workflow_builder_ask_user')],
-			pending('workflow_builder_ask_user'),
-		);
+		const steps = traceSteps([callEvent('ask_user')], pending('ask_user'));
 
-		expect(steps).toEqual([{ kind: 'call', toolName: 'workflow_builder_ask_user', args: {} }]);
+		expect(steps).toEqual([{ kind: 'call', toolName: 'ask_user', args: {} }]);
 	});
 });
 
@@ -262,9 +256,9 @@ describe('createRouteWatcher', () => {
 	it('lets a question run when the user can reply, then stops on the route after the answer', async () => {
 		const judge = judgeReturning(stop('clarify', 'agent'), stop('agent', 'agent'));
 		const watcher = createRouteWatcher(judge, isQuestion);
-		const answered = [callEvent('workflow_builder_ask_user'), ...answerEvents()];
+		const answered = [callEvent('ask_user'), ...answerEvents()];
 
-		expect(await watcher.beforeToolCall(pending('workflow_builder_ask_user'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(pending('ask_user'), [])).toBe(false);
 		expect(await watcher.beforeToolCall(pending('agent_builder_build_agent'), answered)).toBe(true);
 		const resolution = await watcher.resolve({
 			instanceEvents: answered,
@@ -274,17 +268,17 @@ describe('createRouteWatcher', () => {
 		expect(resolution).toMatchObject({
 			route: 'agent',
 			evidence: 'agent_builder_build_agent call',
-			questions: [{ route: 'clarify', steer: 'agent', evidence: 'workflow_builder_ask_user call' }],
+			questions: [{ route: 'clarify', steer: 'agent', evidence: 'ask_user call' }],
 		});
 	});
 
 	it('lets a second question run, then stops on a third with both questions in order', async () => {
 		const judge = judgeReturning(stop('clarify'), stop('clarify', 'agent'), stop('clarify'));
 		const watcher = createRouteWatcher(judge, isQuestion);
-		const once = [callEvent('workflow_builder_ask_user'), ...answerEvents()];
+		const once = [callEvent('ask_user'), ...answerEvents()];
 		const twice = [...once, callEvent('ask-user-2'), ...answerEvents('ask-user-2')];
 
-		expect(await watcher.beforeToolCall(pending('workflow_builder_ask_user'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(pending('ask_user'), [])).toBe(false);
 		expect(await watcher.beforeToolCall(card('ask-user-2'), once)).toBe(false);
 		expect(await watcher.beforeToolCall(card('ask-user-3'), twice)).toBe(true);
 		const resolution = await watcher.resolve({
@@ -299,13 +293,10 @@ describe('createRouteWatcher', () => {
 	it('ties the answer to the question it replies to when the user skipped an earlier card', async () => {
 		const judge = judgeReturning(stop('clarify'), stop('clarify', 'agent'), stop('agent', 'agent'));
 		const watcher = createRouteWatcher(judge, isQuestion);
-		const skipped = [
-			callEvent('workflow_builder_ask_user'),
-			...answerEvents('workflow_builder_ask_user', { answered: false }),
-		];
+		const skipped = [callEvent('ask_user'), ...answerEvents('ask_user', { answered: false })];
 		const answered = [...skipped, callEvent('ask-user-2'), ...answerEvents('ask-user-2')];
 
-		expect(await watcher.beforeToolCall(pending('workflow_builder_ask_user'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(pending('ask_user'), [])).toBe(false);
 		expect(await watcher.beforeToolCall(card('ask-user-2'), skipped)).toBe(false);
 		expect(await watcher.beforeToolCall(pending('agent_builder_build_agent'), answered)).toBe(true);
 		const resolution = await watcher.resolve({
@@ -324,9 +315,9 @@ describe('createRouteWatcher', () => {
 
 	it('stops on a second question when the turn has one answer left', async () => {
 		const watcher = createRouteWatcher(judgeReturning(stop('clarify')), isQuestion, 1);
-		const answered = [callEvent('workflow_builder_ask_user'), ...answerEvents()];
+		const answered = [callEvent('ask_user'), ...answerEvents()];
 
-		expect(await watcher.beforeToolCall(pending('workflow_builder_ask_user'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(pending('ask_user'), [])).toBe(false);
 		expect(await watcher.beforeToolCall(card('ask-user-2'), answered)).toBe(true);
 	});
 
@@ -335,10 +326,10 @@ describe('createRouteWatcher', () => {
 			judgeReturning(stop('clarify'), stop('clarify')),
 			isQuestion,
 		);
-		await watcher.beforeToolCall(pending('workflow_builder_ask_user'), []);
+		await watcher.beforeToolCall(pending('ask_user'), []);
 
 		const resolution = await watcher.resolve({
-			instanceEvents: [callEvent('workflow_builder_ask_user')],
+			instanceEvents: [callEvent('ask_user')],
 			streamStatus: 'timed-out',
 		});
 
