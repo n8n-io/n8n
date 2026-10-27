@@ -104,13 +104,12 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 			).map((skill) => [skill.id, skill]),
 		);
 		const kept = refs.filter((ref) => existingIds.has(ref.id) || found.has(ref.id));
-		await this.assertPinsBelongToSkills(kept, existingPins, ctx);
+		const changedPins = kept.filter((ref) => existingPins.get(ref.id) !== ref.versionId);
+		await this.assertPinsBelongToSkills(changedPins, ctx);
 		const newIds = [...new Set(kept.map((ref) => ref.id))].filter(
 			(id) => !existingIds.has(id) && found.has(id),
 		);
-		const repinned = kept.filter(
-			(ref) => existingIds.has(ref.id) && existingPins.get(ref.id) !== ref.versionId,
-		);
+		const repinned = changedPins.filter((ref) => existingIds.has(ref.id));
 		if (newIds.length === 0 && repinned.length === 0) return kept;
 		// Shared lock until the attach commits, so `changeTarget` cannot narrow a skill in between.
 		if (ctx.trx && newIds.length > 0) await this.skillRepository.lockForPublish(newIds, ctx);
@@ -156,18 +155,12 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 		return kept;
 	}
 
-	/**
-	 * Refuses a submitted pin that is not a saved version of the ref's skill. A pin that
-	 * the draft already has is not read again.
-	 */
+	/** Refuses a new or changed pin that is not a saved version of the ref's skill. */
 	private async assertPinsBelongToSkills(
-		refs: SkillRef[],
-		existingPins: Map<string, string | undefined>,
+		changedPins: SkillRef[],
 		ctx: OperationContext,
 	): Promise<void> {
-		const changed = refs.filter(
-			(ref) => ref.versionId !== undefined && existingPins.get(ref.id) !== ref.versionId,
-		);
+		const changed = changedPins.filter((ref) => ref.versionId !== undefined);
 		if (changed.length === 0) return;
 		const versions = await this.skillRepository.findVersionRefs(
 			changed.flatMap((ref) => ref.versionId ?? []),
@@ -219,7 +212,22 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 		projectIds: string[] | 'all',
 		ctx: OperationContext,
 	): Promise<SkillUsage> {
-		return await this.agentSkillRepository.findUsage(skillId, projectIds, ctx);
+		const { drafts, ...usage } = await this.agentSkillRepository.findUsage(
+			skillId,
+			projectIds,
+			ctx,
+		);
+		const versionOf = await this.skillService.runtimeVersions(
+			drafts.map((draft) => ({ id: skillId, versionId: draft.skillVersionId })),
+			ctx,
+		);
+		return {
+			...usage,
+			drafts: drafts.flatMap(({ skillVersionId, ...draft }) => {
+				const runtime = versionOf({ id: skillId, versionId: skillVersionId });
+				return runtime ? [{ ...draft, version: runtime.version, pinned: runtime.pinned }] : [];
+			}),
+		};
 	}
 
 	async countUsingAgents(skillIds: string[], ctx: OperationContext) {
