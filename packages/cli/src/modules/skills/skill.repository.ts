@@ -31,6 +31,18 @@ export type ResolvedSkillRow = {
 	files: SkillFile[];
 };
 
+/** The scope fields checked by Assistant reads. */
+export type AssistantSkillAccess = Pick<
+	Skill,
+	'id' | 'projectId' | 'agentId' | 'availableToAssistant'
+>;
+
+type AssistantSkillAccessRow = {
+	assistantProjectId: string | null;
+	assistantAgentId: string | null;
+	assistantAvailableToAssistant: boolean | number;
+};
+
 /**
  * Which skills one user may list: instance skills always, plus the skills of these
  * projects and of `agentIds`, the agents in these projects.
@@ -207,16 +219,72 @@ export class SkillRepository extends BaseRepository<Skill> {
 			.getRawMany<AssistantSkillSummary>();
 	}
 
+	/** Reads instructions and reference names without reference bodies. */
 	async findAssistantSkill(
 		skillId: string,
 		projectId: string | null,
-	): Promise<ResolvedSkillRow | null> {
-		const version = await assistantVersionsQuery(this.manager, projectId)
+		versionId?: string,
+	): Promise<{
+		skill: AssistantSkillAccess;
+		version: SkillVersion;
+		files: Array<{ path: string }>;
+	} | null> {
+		const {
+			entities: [version],
+			raw: [scope],
+		} = await assistantVersionsQuery(this.manager, projectId, versionId)
 			.andWhere('skill.id = :skillId', { skillId })
-			.getOne();
-		if (!version) return null;
-		const [row] = await this.resolve([version], {});
-		return row ?? null;
+			.addSelect('skill.projectId', 'assistantProjectId')
+			.addSelect('skill.agentId', 'assistantAgentId')
+			.addSelect('skill.availableToAssistant', 'assistantAvailableToAssistant')
+			.getRawAndEntities<AssistantSkillAccessRow>();
+		if (!version || !scope) return null;
+		const skill: AssistantSkillAccess = {
+			id: skillId,
+			projectId: scope.assistantProjectId,
+			agentId: scope.assistantAgentId,
+			availableToAssistant: Boolean(scope.assistantAvailableToAssistant),
+		};
+		const files = await this.manager.find(SkillFile, {
+			where: { skillVersionId: version.id },
+			select: { path: true },
+		});
+		files.sort((left, right) => compareSkillFilePaths(left.path, right.path));
+		return { skill, version, files: files.map(({ path }) => ({ path })) };
+	}
+
+	async findAssistantSkillFile(
+		skillId: string,
+		projectId: string | null,
+		versionId: string,
+		path: string,
+	): Promise<{ skill: AssistantSkillAccess; file: SkillFile } | null> {
+		const {
+			entities: [file],
+			raw: [scope],
+		} = await this.manager
+			.createQueryBuilder(SkillFile, 'file')
+			.innerJoin(SkillVersion, 'version', 'version.id = file.skillVersionId')
+			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
+			.where('version.id = :versionId AND skill.id = :skillId', { versionId, skillId })
+			.andWhere('file.path = :path', { path })
+			.andWhere('skill.availableToAssistant = :enabled', { enabled: true })
+			.andWhere('skill.agentId IS NULL')
+			.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId })
+			.addSelect('skill.projectId', 'assistantProjectId')
+			.addSelect('skill.agentId', 'assistantAgentId')
+			.addSelect('skill.availableToAssistant', 'assistantAvailableToAssistant')
+			.getRawAndEntities<AssistantSkillAccessRow>();
+		if (!file || !scope) return null;
+		return {
+			skill: {
+				id: skillId,
+				projectId: scope.assistantProjectId,
+				agentId: scope.assistantAgentId,
+				availableToAssistant: Boolean(scope.assistantAvailableToAssistant),
+			},
+			file,
+		};
 	}
 
 	async setAssistantAvailability(
@@ -267,6 +335,22 @@ export class SkillRepository extends BaseRepository<Skill> {
 				{ name: v.name, description: v.description, version: v.version },
 			]),
 		);
+	}
+
+	/** The id of the latest version of each skill, keyed by skill id, without its content. */
+	async findLatestVersionIds(
+		skillIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, string>> {
+		const manager = this.managerFor(ctx);
+		const versions = await inChunks(
+			skillIds,
+			async (chunk) =>
+				await latestVersionsQuery(manager, chunk)
+					.select(['version.id', 'version.skillId'])
+					.getMany(),
+		);
+		return new Map(versions.map((version) => [version.skillId, version.id]));
 	}
 
 	/**
@@ -349,14 +433,21 @@ export class SkillRepository extends BaseRepository<Skill> {
 		});
 	}
 
-	/** Whether a skill with this id exists. */
-	async existsById(skillId: string, ctx: OperationContext = {}): Promise<boolean> {
-		return await this.managerFor(ctx).exists(Skill, { where: { id: skillId } });
-	}
-
-	/** Whether the agent owns a skill (an agent skill). */
-	async existsForAgent(agentId: string, ctx: OperationContext = {}): Promise<boolean> {
-		return await this.managerFor(ctx).exists(Skill, { where: { agentId } });
+	/** The skill of each version, keyed by version id, without its content. */
+	async findSkillIdsOfVersions(
+		versionIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, string>> {
+		const manager = this.managerFor(ctx);
+		const versions = await inChunks(
+			unique(versionIds),
+			async (chunk) =>
+				await manager.find(SkillVersion, {
+					select: ['id', 'skillId'],
+					where: { id: In(chunk) },
+				}),
+		);
+		return new Map(versions.map((version) => [version.id, version.skillId]));
 	}
 
 	/** The number of each version, keyed by version id. */
@@ -374,59 +465,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 				}),
 		);
 		return new Map(versions.map((version) => [version.id, version.version]));
-	}
-
-	/** The content hash of each version, keyed by version id. */
-	async findContentHashes(
-		versionIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Map<string, string>> {
-		const manager = this.managerFor(ctx);
-		const versions = await inChunks(
-			versionIds,
-			async (chunk) =>
-				await manager.find(SkillVersion, {
-					select: ['id', 'contentHash'],
-					where: { id: In(chunk) },
-				}),
-		);
-		return new Map(versions.map((version) => [version.id, version.contentHash]));
-	}
-
-	/** The content hash of the latest version of each skill, keyed by skill id. */
-	async findLatestContentHashes(
-		skillIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Map<string, string>> {
-		const manager = this.managerFor(ctx);
-		const versions = await inChunks(
-			skillIds,
-			async (chunk) =>
-				await latestVersionsQuery(manager, chunk)
-					.select(['version.skillId', 'version.contentHash'])
-					.getMany(),
-		);
-		return new Map(versions.map((version) => [version.skillId, version.contentHash]));
-	}
-
-	/**
-	 * Every version of the skills that one agent owns, and of `refSkillIds`, the skills its
-	 * draft refers to. The startup copy reuses a version with the same content.
-	 */
-	async findVersionsOfAgentSkills(
-		agentId: string,
-		refSkillIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Array<Pick<SkillVersion, 'id' | 'skillId' | 'version' | 'contentHash'>>> {
-		const query = this.managerFor(ctx)
-			.createQueryBuilder(SkillVersion, 'version')
-			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
-			.select(['version.id', 'version.skillId', 'version.version', 'version.contentHash'])
-			.where('skill.agentId = :agentId', { agentId });
-		if (refSkillIds.length > 0) {
-			query.orWhere('skill.id IN (:...refSkillIds)', { refSkillIds: unique(refSkillIds) });
-		}
-		return await query.orderBy('version.version', 'ASC').getMany();
 	}
 
 	/** Moves a skill to a project, one agent or the instance. */
@@ -567,8 +605,18 @@ function latestVersionsQuery(manager: EntityManager, skillIds: string[]) {
 	});
 }
 
-function assistantVersionsQuery(manager: EntityManager, projectId: string | null) {
-	return highestVersionsQuery(manager)
+function assistantVersionsQuery(
+	manager: EntityManager,
+	projectId: string | null,
+	versionId?: string,
+) {
+	const versions =
+		versionId !== undefined
+			? manager
+					.createQueryBuilder(SkillVersion, 'version')
+					.where('version.id = :versionId', { versionId })
+			: highestVersionsQuery(manager);
+	return versions
 		.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
 		.andWhere('skill.availableToAssistant = :enabled', { enabled: true })
 		.andWhere('skill.agentId IS NULL')

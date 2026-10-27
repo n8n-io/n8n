@@ -1,6 +1,6 @@
 {
   "name": "@n8n/cli",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "description": "Client CLI for n8n — manage workflows, executions, and credentials from the terminal",
   "license": "LicenseRef-n8n-sustainable-use",
   "bin": {
@@ -17,8 +17,8 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json",
-    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "build": "tsc -p tsconfig.build.json && tsdown",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && tsdown",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "oxlint src --quiet",
@@ -73,7 +73,7 @@
         "description": "Pull changes from the configured source control provider"
       },
       "package": {
-        "description": "Export and import workflows as n8n packages (beta)"
+        "description": "Export and import Agents and workflows as n8n packages (beta)"
       },
       "skill": {
         "description": "Install n8n CLI skills for AI coding agents"
@@ -84,12 +84,14 @@
     "@oclif/core": "^4.5.2"
   },
   "devDependencies": {
+    "@n8n/api-types": "workspace:*",
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
+    "tsdown": "catalog:typescript",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"
   }

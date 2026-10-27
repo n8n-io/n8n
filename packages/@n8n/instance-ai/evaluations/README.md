@@ -167,7 +167,7 @@ Set the mock settings on the n8n server process and the judge settings on the CL
 
 | Env var | Default | Description |
 |---------|---------|-------------|
-| `N8N_INSTANCE_AI_EVAL_MODEL` | `N8N_INSTANCE_AI_MODEL`, then `anthropic/claude-sonnet-4-6` | Model of every eval agent that does not pin one: the mock layer on the server, the user proxy on the CLI |
+| `N8N_INSTANCE_AI_EVAL_MODEL` | `N8N_INSTANCE_AI_MODEL`, then `anthropic/claude-sonnet-5-5` | Model of every eval agent that does not pin one: the mock layer on the server, the user proxy on the CLI. `eval:discovery` reads it as the orchestrator model under test and falls back to `anthropic/claude-sonnet-4-6` |
 | `N8N_INSTANCE_AI_EVAL_EFFORT` | `medium` | Effort of the same agents |
 | `N8N_INSTANCE_AI_EVAL_JUDGE_MODEL` | `anthropic/claude-sonnet-5-5` | Model of the judges: checklist verifier, expectations judge, binary LLM checks, computer-use grader. The user proxy and the mocks keep their model |
 | `N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT` | `high` | Effort of the judges |
@@ -895,7 +895,7 @@ By default a build sees **no credentials**: the harness pins every build thread'
 
 Agent Builder model catalog requests also stay local. Eval threads return one deterministic fake model for each model provider. They do not decrypt the placeholder credential or contact the provider. Production threads continue to use live model catalogs.
 
-Live resource lookups (`workflow_builder_nodes(action="explore-resources")`) on a declared credential stay local too: they return "Resource exploration is not available.", the answer production gives when lookups are not available, and they do not contact the provider. A credential declared `valid: false` or `blank: true` still runs the live lookup, so it fails the way a broken credential does. Setting a live `EVAL_*_ACCESS_TOKEN` does not turn lookups back on.
+Live resource lookups (`get_node_parameter_options`) on a declared credential stay local too: they return "Resource exploration is not available.", the answer production gives when lookups are not available, and they do not contact the provider. A credential declared `valid: false` or `blank: true` still runs the live lookup, so it fails the way a broken credential does. Setting a live `EVAL_*_ACCESS_TOKEN` does not turn lookups back on.
 
 A case that tests credential behaviour declares what should exist:
 

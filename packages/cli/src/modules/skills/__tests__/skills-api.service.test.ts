@@ -606,6 +606,40 @@ describe('SkillsApiService', () => {
 			expect(detail.id).toBe('skill_new');
 		});
 
+		it('makes the new skill available to the Assistant in the create transaction', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await service.create(user, payload({ availableToAssistant: true }));
+
+			const target = { projectId: null, agentId: null };
+			expect(skillService.create).toHaveBeenCalledWith(expect.objectContaining({ target }), TX_CTX);
+			expect(skillService.setAssistantAvailability).toHaveBeenCalledWith(
+				'skill_new',
+				true,
+				target,
+				TX_CTX,
+			);
+		});
+
+		it('creates without a transaction when the skill is not available to the Assistant', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await service.create(user, payload({ availableToAssistant: false }));
+
+			expect(txRunner.run).not.toHaveBeenCalled();
+			expect(skillService.setAssistantAvailability).not.toHaveBeenCalled();
+		});
+
+		it('refuses the Assistant availability when the Assistant flag is off', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+			rollout.isEnabled.mockResolvedValue(false);
+
+			await expect(service.create(user, payload({ availableToAssistant: true }))).rejects.toThrow(
+				UserError,
+			);
+			expect(skillService.create).not.toHaveBeenCalled();
+		});
+
 		it('stores the source the caller passed', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 

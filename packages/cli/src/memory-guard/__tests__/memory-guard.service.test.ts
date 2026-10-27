@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, MemoryGuardConfig } from '@n8n/config';
 import type { ExecutionRepository, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -25,6 +25,7 @@ import type { UserManagementMailer } from '@/user-management/email/user-manageme
 import type { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 
 import { HOLD_LIMIT_MS } from '../memory-guard.constants';
+import type { MemoryGuardJournal } from '../memory-guard-journal';
 import { MemoryGuardService } from '../memory-guard.service';
 import { readMemoryUsage } from '../memory-usage';
 import { ProductionHold } from '../production-hold';
@@ -62,11 +63,21 @@ describe('MemoryGuardService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		executions: { mode: 'regular', concurrency: { productionLimit: -1, evaluationLimit: -1 } },
 	});
+	const defaultLevels = {
+		resumeLevel: 0.75,
+		holdLevel: 0.8,
+		stopLevel: 0.85,
+		criticalLevel: 0.95,
+		stopsToUnpublish: 3,
+	};
+	const memoryGuardConfig = mockInstance(MemoryGuardConfig, { enabled: true, ...defaultLevels });
 	const activeExecutions = mock<ActiveExecutions>();
 	const tracker = mock<RunDataTracker>();
 	const logger = mock<Logger>();
 	const guardLogger = mock<Logger>();
 	logger.scoped.mockReturnValue(guardLogger);
+	const eventService = mock<EventService>();
+	const journal = mock<MemoryGuardJournal>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const executionRecoveryService = mock<ExecutionRecoveryService>();
 	const mailer = mock<UserManagementMailer>();
@@ -183,12 +194,17 @@ describe('MemoryGuardService', () => {
 			productionHold,
 		);
 		memoryStoppedExecutions = new MemoryStoppedExecutions();
+		Object.assign(journal, { crashes: { none: 3, hold: 1, stop: 2 } });
+		Object.assign(memoryGuardConfig, defaultLevels);
 		guard = new MemoryGuardService(
 			logger,
+			memoryGuardConfig,
 			activeExecutions,
 			productionHold,
 			tracker,
 			memoryStoppedExecutions,
+			eventService,
+			journal,
 			workflowRepository,
 			executionRecoveryService,
 			mailer,
@@ -218,6 +234,16 @@ describe('MemoryGuardService', () => {
 			expect(guardLogger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('holding new production executions'),
 			);
+		});
+
+		it('should hold at the configured hold level', async () => {
+			Object.assign(memoryGuardConfig, { resumeLevel: 0.55, holdLevel: 0.6 });
+			utilization = 0.62;
+
+			await sample(2);
+
+			const arrival = concurrencyControl.throttle({ mode: 'webhook', executionId: '1' });
+			expect(await isAdmitted(arrival)).toBe(false);
 		});
 
 		it('should sample fast for a while after the hold ends', async () => {
@@ -704,6 +730,133 @@ describe('MemoryGuardService', () => {
 		});
 	});
 
+	describe('events', () => {
+		it('should report when a hold starts and ends', async () => {
+			utilization = 0.82;
+			await sample(2);
+			expect(eventService.emit).toHaveBeenCalledWith('memory-guard-hold-started', {
+				memoryUsedBytes: 820 * MB,
+				memoryLimitBytes: 1_000 * MB,
+			});
+
+			utilization = 0.7;
+			await sample();
+			expect(eventService.emit).toHaveBeenCalledWith('memory-guard-hold-ended', {
+				heldMs: expect.any(Number),
+			});
+		});
+
+		it('should report the stop with node types and whether it freed memory', async () => {
+			addExecution('large', { megabytes: 300 });
+			utilization = 0.96;
+			readMemoryUsageOnce(0.96);
+			readMemoryUsageOnce(0.96);
+			readMemoryUsageOnce(0.6);
+
+			await sample();
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(eventService.emit).toHaveBeenCalledWith('memory-guard-execution-stopped', {
+				executionId: 'large',
+				workflowId: 'workflow-large',
+				mode: 'webhook',
+				reason: 'critical',
+				runningNodeType: 'n8n-nodes-base.httpRequest',
+				largestDataNodeType: 'n8n-nodes-base.code',
+				estimatedBytes: 300 * MB,
+				memoryUsedBytes: 960 * MB,
+				memoryLimitBytes: 1_000 * MB,
+				freedMemory: true,
+				workflowDeactivationStarted: false,
+			});
+		});
+
+		it('should report the node with the most data across all executions of the tree', async () => {
+			addExecution('root', { megabytes: 300 });
+			estimates.get('root')!.bytesByNode = new Map([
+				['Fetch', 120 * MB],
+				['Big', 90 * MB],
+				['Other', 90 * MB],
+			]);
+			addExecution('child', { megabytes: 150, parentId: 'root' });
+			utilization = 0.96;
+			readMemoryUsageOnce(0.96);
+			readMemoryUsageOnce(0.96);
+			readMemoryUsageOnce(0.6);
+
+			await sample();
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'memory-guard-execution-stopped',
+				expect.objectContaining({
+					executionId: 'root',
+					runningNodeType: 'n8n-nodes-base.httpRequest',
+					largestDataNodeType: 'n8n-nodes-base.code',
+				}),
+			);
+		});
+	});
+
+	describe('journal', () => {
+		it('should record a hold when it starts', async () => {
+			utilization = 0.82;
+			await sample(2);
+
+			expect(journal.record).toHaveBeenCalledWith('hold');
+		});
+
+		it('should record a stop before it stops the execution', async () => {
+			addExecution('large', { megabytes: 300 });
+			utilization = 0.96;
+
+			await sample();
+
+			const stopIndex = journal.record.mock.calls.findIndex(([action]) => action === 'stop');
+			expect(stopIndex).not.toBe(-1);
+			expect(journal.record.mock.invocationCallOrder[stopIndex]).toBeLessThan(
+				activeExecutions.stopExecution.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should report the crash totals once, when it starts', async () => {
+			await sample(2);
+
+			const reports = eventService.emit.mock.calls.filter(
+				([event]) => event === 'memory-guard-crashes-counted',
+			);
+			expect(reports).toEqual([
+				['memory-guard-crashes-counted', { crashes: { none: 3, hold: 1, stop: 2 } }],
+			]);
+		});
+
+		it('should keep the action during a hold below the fast sampling level', async () => {
+			Object.assign(memoryGuardConfig, { resumeLevel: 0.55, holdLevel: 0.6 });
+			utilization = 0.62;
+
+			await sample(3);
+
+			expect(journal.record).toHaveBeenCalledWith('hold');
+			expect(journal.reset).not.toHaveBeenCalled();
+		});
+
+		it('should reset the journal on a clean shutdown', () => {
+			guard.shutdown();
+
+			expect(journal.reset).toHaveBeenCalled();
+		});
+
+		it('should reset the journal only when memory falls below the fast sampling level', async () => {
+			utilization = 0.72;
+			await sample();
+			expect(journal.reset).not.toHaveBeenCalled();
+
+			utilization = 0.69;
+			await sample();
+			expect(journal.reset).toHaveBeenCalled();
+		});
+	});
+
 	describe('deactivation', () => {
 		const stopOnce = async (
 			id: string,
@@ -754,6 +907,13 @@ describe('MemoryGuardService', () => {
 				type: 'workflowAutoDeactivated',
 				data: { workflowId: 'repeat' },
 			});
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'memory-guard-execution-stopped',
+				expect.objectContaining({ executionId: '3', workflowDeactivationStarted: true }),
+			);
+			expect(eventService.emit).toHaveBeenCalledWith('memory-guard-workflow-deactivated', {
+				workflowId: 'repeat',
+			});
 		});
 
 		it.each([
@@ -772,6 +932,10 @@ describe('MemoryGuardService', () => {
 			await stopOnce('3');
 			expect(stopLogs()).toHaveLength(3);
 			expect(mailer.notifyWorkflowAutodeactivated).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'memory-guard-workflow-deactivated',
+				expect.anything(),
+			);
 
 			await stopOnce('4');
 
@@ -789,6 +953,10 @@ describe('MemoryGuardService', () => {
 
 			expect(stoppedIds()).toEqual(['1', '2', '3', '4']);
 			expect(deactivateWorkflowAsSystem).toHaveBeenCalledTimes(1);
+			const reportedIds = eventService.emit.mock.calls
+				.filter(([event]) => event === 'memory-guard-execution-stopped')
+				.map(([, payload]) => (payload as { executionId: string }).executionId);
+			expect(reportedIds).toEqual(['1', '2', '3', '4']);
 		});
 
 		it('should push the deactivation when the email fails', async () => {
@@ -810,6 +978,26 @@ describe('MemoryGuardService', () => {
 			await stopOnce('4');
 
 			expect(stoppedIds()).toEqual(['1', '2', '3', '4']);
+		});
+
+		it('should never deactivate when the stops to unpublish are 0', async () => {
+			memoryGuardConfig.stopsToUnpublish = 0;
+
+			await stopOnce('1');
+			await stopOnce('2');
+			await stopOnce('3');
+			await stopOnce('4');
+
+			expect(stoppedIds()).toEqual(['1', '2', '3', '4']);
+			expect(deactivateWorkflowAsSystem).not.toHaveBeenCalled();
+		});
+
+		it('should deactivate after the configured number of stops', async () => {
+			memoryGuardConfig.stopsToUnpublish = 1;
+
+			await stopOnce('1');
+
+			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat');
 		});
 
 		it('should not count stops of manual executions', async () => {

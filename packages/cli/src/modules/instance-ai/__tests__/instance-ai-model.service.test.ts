@@ -54,6 +54,20 @@ describe('InstanceAiModelService', () => {
 		vi.useRealTimers();
 	});
 
+	describe('getModelFetch', () => {
+		it('builds the AI transport once and reuses it', () => {
+			const baseFetch = vi.fn();
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
+
+			expect(service.getModelFetch()).toBe(baseFetch);
+			expect(service.getModelFetch()).toBe(baseFetch);
+			expect(outboundHttp.transport).toHaveBeenCalledTimes(1);
+			expect(outboundHttp.transport).toHaveBeenCalledWith(
+				expect.objectContaining({ proxy: 'env', useDefaultSsrfPolicy: 'unsafe' }),
+			);
+		});
+	});
+
 	describe('isProxyEnabled', () => {
 		it('should mirror the AI service proxy state', () => {
 			aiService.isProxyEnabled.mockReturnValue(true);

@@ -61,12 +61,7 @@ const RESOURCE_TYPES = {
 } as const satisfies Partial<Record<ManifestEntityCollection, PromotionResourceType>>;
 
 /** Apply keeps the existing state of these resources, so their changes do not show on Apply. */
-const KEPT_BY_APPLY = new Set<PromotionResourceType>([
-	'project',
-	'folder',
-	'credential',
-	'variable',
-]);
+const KEPT_BY_APPLY = new Set<PromotionResourceType>(['project', 'credential', 'variable']);
 
 const TYPE_ORDER: PromotionResourceType[] = [
 	'project',
@@ -281,15 +276,13 @@ function applyOperationRules(
 		return resource;
 	}
 
-	// Apply keeps the names and properties of existing projects and folders, and the values of
-	// existing credentials and variables. It renames tags. A folder move stays: Apply reports it as a conflict.
+	// Apply keeps the names and properties of existing projects, and the values of existing
+	// credentials and variables. It renames tags. It moves and renames a folder within its project.
 	if (change === 'modified') {
-		if (type === 'folder' && resource.previousParentKey !== undefined) {
-			return {
-				...withoutChanges,
-				name: before?.name ?? resource.name,
-				previousParentKey: resource.previousParentKey,
-			};
+		if (type === 'folder') {
+			return resource.previousName !== undefined || resource.previousParentKey !== undefined
+				? resource
+				: unchanged();
 		}
 		if (KEPT_BY_APPLY.has(type)) return unchanged();
 	}
