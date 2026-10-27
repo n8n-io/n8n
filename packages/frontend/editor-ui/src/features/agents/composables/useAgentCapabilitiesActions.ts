@@ -333,7 +333,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		return out;
 	});
 
-	function onOpenSkillFromList(id: string) {
+	function onOpenSkillFromList(id: string, options: { showVersions?: boolean } = {}) {
 		const skill = appliedSkills.value.find((s) => s.id === id)?.skill;
 		if (!skill) return;
 
@@ -358,6 +358,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					? agent.value?.skillVersions?.[id]?.latest
 					: undefined,
 				agentVersions: hubSkillsEnabled.value ? agent.value?.skillVersions?.[id] : undefined,
+				initialVersionsOpen: options.showVersions,
 				onUseVersion: (skillId: string, version: SkillVersionDetail) => {
 					if (agentId.value !== targetAgentId) return;
 					void pinSkillVersion(skillId, version);
@@ -683,35 +684,12 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			showError(error, locale.baseText('agents.builder.skills.useLatest.error'));
 			return;
 		}
-		if (agentId.value !== targetAgentId || agent.value?.id !== targetAgentId) return;
-		if (!localConfig.value) return;
-		const versions = agent.value.skillVersions?.[skillId];
-		agent.value = {
-			...agent.value,
-			skills: { ...(agent.value.skills ?? {}), [skillId]: hubSkill.skill },
-			skillHashes: { ...(agent.value.skillHashes ?? {}), [skillId]: hubSkill.skillHash },
-			outdatedSkillIds: (agent.value.outdatedSkillIds ?? []).filter((id) => id !== skillId),
-			...(versions
-				? {
-						skillVersions: {
-							...agent.value.skillVersions,
-							[skillId]: { ...versions, draft: hubSkill.latestVersion, pinned: false },
-						},
-					}
-				: {}),
-		};
-		scheduleConfigUpdate({
-			skills: (localConfig.value.skills ?? []).map((ref) =>
-				ref.id === skillId ? { type: 'skill', id: skillId } : ref,
-			),
-		});
-		try {
-			await beforeAgentMutation?.();
-		} catch {
-			return;
-		}
 		if (agentId.value !== targetAgentId) return;
-		onOpenSkillFromList(skillId);
+		await applySkillVersion(skillId, {
+			skill: hubSkill.skill,
+			skillHash: hubSkill.skillHash,
+			version: hubSkill.latestVersion,
+		});
 	}
 
 	/**
@@ -719,24 +697,52 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	 * published agent keeps its own until the next publish.
 	 */
 	async function pinSkillVersion(skillId: string, version: SkillVersionDetail) {
+		await applySkillVersion(skillId, {
+			skill: version.skill,
+			version: version.version,
+			versionId: version.id,
+		});
+	}
+
+	/**
+	 * Points the draft ref at a version of the skill: pinned with `versionId`, else following
+	 * the latest. Saves, then reopens the editor on it with the Versions panel shown.
+	 */
+	async function applySkillVersion(
+		skillId: string,
+		target: { skill: AgentSkill; version: number; versionId?: string; skillHash?: string },
+	) {
 		const targetAgentId = agentId.value;
 		if (agent.value?.id !== targetAgentId || !localConfig.value) return;
+		const pinned = target.versionId !== undefined;
 		const versions = agent.value.skillVersions?.[skillId];
 		agent.value = {
 			...agent.value,
-			skills: { ...(agent.value.skills ?? {}), [skillId]: version.skill },
+			skills: { ...(agent.value.skills ?? {}), [skillId]: target.skill },
+			...(target.skillHash
+				? { skillHashes: { ...(agent.value.skillHashes ?? {}), [skillId]: target.skillHash } }
+				: {}),
+			...(pinned
+				? {}
+				: {
+						outdatedSkillIds: (agent.value.outdatedSkillIds ?? []).filter((id) => id !== skillId),
+					}),
 			...(versions
 				? {
 						skillVersions: {
 							...agent.value.skillVersions,
-							[skillId]: { ...versions, draft: version.version, pinned: true },
+							[skillId]: { ...versions, draft: target.version, pinned },
 						},
 					}
 				: {}),
 		};
 		scheduleConfigUpdate({
 			skills: (localConfig.value.skills ?? []).map((ref) =>
-				ref.id === skillId ? { type: 'skill', id: skillId, versionId: version.id } : ref,
+				ref.id !== skillId
+					? ref
+					: pinned
+						? { type: 'skill', id: skillId, versionId: target.versionId }
+						: { type: 'skill', id: skillId },
 			),
 		});
 		try {
@@ -745,7 +751,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			return;
 		}
 		if (agentId.value !== targetAgentId) return;
-		onOpenSkillFromList(skillId);
+		onOpenSkillFromList(skillId, { showVersions: true });
 	}
 
 	function onConnectedTriggersUpdate(triggers: string[]) {

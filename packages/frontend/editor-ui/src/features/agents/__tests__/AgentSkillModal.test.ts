@@ -202,7 +202,9 @@ function renderModal({
 					template: '<button v-bind="$attrs" :disabled="disabled"><slot /></button>',
 					props: ['variant', 'disabled'],
 				},
-				N8nCallout: { template: '<div v-bind="$attrs"><slot /></div>' },
+				N8nCallout: {
+					template: '<div v-bind="$attrs"><slot /><slot name="trailingContent" /></div>',
+				},
 				N8nActionDropdown: ActionDropdownStub,
 				ActionDropdown: ActionDropdownStub,
 				N8nHeading: { template: '<h2><slot /></h2>' },
