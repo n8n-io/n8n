@@ -1,7 +1,7 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { InstanceAiConfig } from '@n8n/config';
+import { GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -220,6 +220,38 @@ describe('InstanceAiModule.init', () => {
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(3));
 		expect(systemAgents.register).not.toHaveBeenCalled();
+	});
+
+	it('tells the editor whether this main registered the Assistant agent', async () => {
+		const { config, investigations, settings, runtime } = setup();
+		mockInstance(SystemAgentRegistrationService).register.mockResolvedValue();
+		mockInstance(AssistantAgentProvider);
+		const modules = mockInstance(ModuleRegistry);
+		Object.defineProperty(modules, 'eligibleModules', { get: () => ['instance-ai', 'agents'] });
+		mockInstance(GlobalConfig, {
+			deployment: { type: 'default' },
+			instanceAi: { runDebugEnabled: false, workflowSuggestionsEnabled: false },
+		} as GlobalConfig);
+		settings.isAgentEnabled.mockReturnValue(true);
+		settings.getSandboxStatus.mockReturnValue({
+			enabled: false,
+			workflowBuilderAvailable: false,
+			unavailableReason: null,
+		} as never);
+		settings.isSetupCompleted.mockResolvedValue(true);
+		runtime.areMcpConnectionsAvailable.mockReturnValue(false);
+		runtime.isProxyEnabled.mockReturnValue(false);
+
+		const withoutAgent = new InstanceAiModule();
+		await withoutAgent.init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
+		expect(await withoutAgent.settings()).toMatchObject({ assistantAgentEnabled: false });
+
+		config.assistantAgentEnabled = true;
+		const withAgent = new InstanceAiModule();
+		await withAgent.init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
+		expect(await withAgent.settings()).toMatchObject({ assistantAgentEnabled: true });
 	});
 
 	it('registers the eval controller only on an eval instance', async () => {

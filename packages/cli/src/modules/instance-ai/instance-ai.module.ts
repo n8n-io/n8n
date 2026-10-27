@@ -6,6 +6,9 @@ import { InstanceSettings } from 'n8n-core';
 
 @BackendModule({ name: 'instance-ai', instanceTypes: ['main', 'worker', 'webhook'] })
 export class InstanceAiModule implements ModuleInterface {
+	/** Whether this main registered the n8n Assistant agent on the agents runtime. */
+	private assistantAgentRegistered = false;
+
 	private isMain(): boolean {
 		return Container.get(InstanceSettings).instanceType === 'main';
 	}
@@ -116,6 +119,7 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(SystemAgentRegistrationService).register(
 			Container.get(AssistantAgentProvider),
 		);
+		this.assistantAgentRegistered = true;
 	}
 
 	private async reconcileInterruptedRuns(): Promise<void> {
@@ -172,6 +176,7 @@ export class InstanceAiModule implements ModuleInterface {
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 			workflowSuggestionsEnabled: globalConfig.instanceAi.workflowSuggestionsEnabled,
+			assistantAgentEnabled: this.assistantAgentRegistered,
 		};
 	}
 
