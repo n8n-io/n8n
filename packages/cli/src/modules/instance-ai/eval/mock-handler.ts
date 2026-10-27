@@ -16,8 +16,11 @@ import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
 import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
-import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE } from 'n8n-workflow';
-import { OperationalError } from '@n8n/errors';
+import {
+	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+	OperationalError,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import { buildDateAnchors } from './date-anchors';
@@ -113,8 +116,7 @@ const PLACEHOLDER_API_NOTE =
  */
 const GENERIC_HTTP_CLIENT_NODE_TYPES = new Set([
 	HTTP_REQUEST_NODE_TYPE,
-	'n8n-nodes-base.httpRequestTool',
-	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
+	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
 	'n8n-nodes-base.graphql',
 ]);
 
