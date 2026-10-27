@@ -1,5 +1,7 @@
 import {
+	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
 	tasksUpdatePayloadSchema,
+	workflowsArchivedPayloadSchema,
 	type InstanceAiAgentNode,
 	type InstanceAiMessage,
 	type InstanceAiToolCallState,
@@ -65,6 +67,22 @@ export function findLatestAssistantTasks(messages: ReadonlyChatMessages): TaskLi
 		}
 	}
 	return null;
+}
+
+/**
+ * The workflows that the turn ends of the thread archived, from the
+ * `workflows-archived` host events. The artifacts panel marks them as archived.
+ */
+export function findArchivedAssistantWorkflowIds(messages: ReadonlyChatMessages): Set<string> {
+	const workflowIds = new Set<string>();
+	for (const message of messages) {
+		for (const event of message.hostEvents ?? []) {
+			if (event.name !== ASSISTANT_WORKFLOWS_ARCHIVED_EVENT) continue;
+			const parsed = workflowsArchivedPayloadSchema.safeParse(event.payload);
+			if (parsed.success) for (const id of parsed.data.workflowIds) workflowIds.add(id);
+		}
+	}
+	return workflowIds;
 }
 
 function toAgentTree(message: DeepReadonly<ChatMessage>, isLive: boolean): InstanceAiAgentNode {

@@ -4,6 +4,7 @@ import { readonly } from 'vue';
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 
 import {
+	findArchivedAssistantWorkflowIds,
 	findLatestAssistantTasks,
 	toAssistantArtifactMessages,
 	toAssistantToolCall,
@@ -14,6 +15,8 @@ const mapToolCall = (call: ToolCall) => toAssistantToolCall(readonly(call));
 const mapMessages = (messages: ChatMessage[], isStreaming: boolean) =>
 	toAssistantArtifactMessages(readonly(messages), isStreaming);
 const latestTasks = (messages: ChatMessage[]) => findLatestAssistantTasks(readonly(messages));
+const archivedIds = (messages: ChatMessage[]) =>
+	findArchivedAssistantWorkflowIds(readonly(messages));
 
 function toolCall(overrides: Partial<ToolCall> = {}): ToolCall {
 	return {
@@ -136,5 +139,42 @@ describe('findLatestAssistantTasks', () => {
 
 	it('gives null when the thread has no task list', () => {
 		expect(latestTasks([{ id: 'u1', role: 'user', content: 'Hi' }])).toBeNull();
+	});
+});
+
+describe('findArchivedAssistantWorkflowIds', () => {
+	it('collects the archived workflows of every turn', () => {
+		const ids = archivedIds([
+			{
+				id: 'a1',
+				role: 'assistant',
+				content: '',
+				hostEvents: [{ id: 'e1', name: 'workflows-archived', payload: { workflowIds: ['wf-1'] } }],
+			},
+			{
+				id: 'a2',
+				role: 'assistant',
+				content: '',
+				hostEvents: [
+					tasksEvent('t1', 'First'),
+					{ id: 'e2', name: 'workflows-archived', payload: { workflowIds: ['wf-2', 'wf-3'] } },
+				],
+			},
+		]);
+
+		expect(ids).toEqual(new Set(['wf-1', 'wf-2', 'wf-3']));
+	});
+
+	it('skips an event that does not match the schema', () => {
+		const ids = archivedIds([
+			{
+				id: 'a1',
+				role: 'assistant',
+				content: '',
+				hostEvents: [{ id: 'e1', name: 'workflows-archived', payload: { workflowIds: 'wf-1' } }],
+			},
+		]);
+
+		expect(ids.size).toBe(0);
 	});
 });
