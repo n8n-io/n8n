@@ -179,6 +179,7 @@ describe('Publisher', () => {
 			'display-workflow-deactivation',
 			'display-workflow-activation-error',
 			'display-workflow-publication-status',
+			'reload-public-api-rate-limit-settings',
 		] as const)('should not debounce `%s`', async (command) => {
 			const publisher = new Publisher(
 				logger,
