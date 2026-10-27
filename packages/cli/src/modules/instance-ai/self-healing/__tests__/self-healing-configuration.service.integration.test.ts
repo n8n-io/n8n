@@ -385,15 +385,31 @@ it('lets a personal project owner manage self-healing in their personal project'
 	});
 	const created = await agent
 		.post(url)
-		.send({ scope: 'selected', workflowIds: [workflow.id], reviewerIds: [owner.id], enabled: true })
+		.send({
+			scope: 'selected',
+			workflowIds: [workflow.id],
+			reviewerIds: [],
+			includeAllProjectMembers: true,
+			enabled: true,
+		})
 		.expect(200);
 	const id: number = created.body.data.id;
-	expect(created.body.data).toMatchObject({ enabled: true, enabledById: owner.id });
+	expect(created.body.data).toMatchObject({
+		enabled: true,
+		enabledById: owner.id,
+		reviewerIds: [],
+		includeAllProjectMembers: true,
+	});
+	expect(await repository.isReviewer(id, owner.id, {})).toBe(true);
+	const configuration = await repository.findOneByOrFail({ id });
+	expect((await configurations.resolveActorOrPause(configuration, workflow.id, {}))?.id).toBe(
+		owner.id,
+	);
 	await agent.get(url).expect(200);
 	await agent.get(`${url}/${id}`).expect(200);
 	await agent
 		.patch(`${url}/${id}`)
-		.send({ scope: 'all', workflowIds: [], reviewerIds: [owner.id] })
+		.send({ scope: 'all', workflowIds: [], reviewerIds: [], includeAllProjectMembers: true })
 		.expect(200);
 	await agent.patch(`${url}/${id}/enabled`).send({ enabled: false }).expect(200);
 	await agent.delete(`${url}/${id}`).expect(200);
@@ -403,7 +419,13 @@ it('lets a personal project owner manage self-healing in their personal project'
 async function expectNoConfigurationAccess(user: User, projectId: string, id: number) {
 	const agent = server.authAgentFor(user);
 	const url = `/projects/${projectId}/self-healing-configurations`;
-	const body = { scope: 'all', workflowIds: [], reviewerIds: [], enabled: false };
+	const body = {
+		scope: 'all',
+		workflowIds: [],
+		reviewerIds: [],
+		includeAllProjectMembers: true,
+		enabled: false,
+	};
 	await agent.get(url).expect(403);
 	await agent.get(`${url}/options`).expect(403);
 	await agent.get(`${url}/${id}`).expect(403);
@@ -424,27 +446,12 @@ it.each([
 	const config = await configurations.save(owner, project.id, {
 		scope: 'all',
 		workflowIds: [],
-		reviewerIds: [owner.id],
+		reviewerIds: [],
+		includeAllProjectMembers: true,
 		enabled: false,
 	});
 
 	await expectNoConfigurationAccess(await createActor(), project.id, config.id);
-});
-
-it('offers and accepts only the owner as a reviewer in a personal project', async () => {
-	const owner = await createUser();
-	const admin = await createAdmin();
-	const project = await getPersonalProject(owner);
-	const agent = server.authAgentFor(owner);
-	const url = `/projects/${project.id}/self-healing-configurations`;
-
-	const options = await agent.get(`${url}/options`).expect(200);
-	expect(options.body.data.reviewers).toEqual([expect.objectContaining({ id: owner.id })]);
-	await agent
-		.post(url)
-		.send({ scope: 'all', workflowIds: [], reviewerIds: [owner.id, admin.id], enabled: false })
-		.expect(400);
-	expect(await configurations.list(project.id)).toEqual([]);
 });
 
 it('denies a chat user access to their personal project for every operation', async () => {
@@ -452,12 +459,14 @@ it('denies a chat user access to their personal project for every operation', as
 	const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		chatUser.id,
 	);
-	const config = await configurations.save(chatUser, project.id, {
-		scope: 'all',
-		workflowIds: [],
-		reviewerIds: [],
-		enabled: false,
-	});
+	const config = await repository.save(
+		repository.create({
+			projectId: project.id,
+			scope: 'all',
+			includeAllProjectMembers: true,
+			enabled: false,
+		}),
+	);
 
 	await expectNoConfigurationAccess(chatUser, project.id, config.id);
 });
@@ -468,7 +477,8 @@ it('denies a user downgraded to chat user access to their personal project', asy
 	const config = await configurations.save(member, project.id, {
 		scope: 'all',
 		workflowIds: [],
-		reviewerIds: [member.id],
+		reviewerIds: [],
+		includeAllProjectMembers: true,
 		enabled: false,
 	});
 	await server

@@ -158,7 +158,8 @@ deduplicated. There is no retry cap for runs that finish without a result.
 Project Settings provides configuration management for team projects under the existing `project:update` permission.
 Only the owner of a personal project can manage the configurations of that project. `project:update` from a global role does not give access.
 This check uses the current `project:personalOwner` relation. Chat users have only the viewer role on their personal project, so they cannot manage its configurations.
-In a personal project, only the owner is an eligible reviewer. Global roles do not make a user eligible.
+Personal configurations use `includeAllProjectMembers` with no individual reviewers.
+The owner is the only member of a personal project. The shared reviewer rules require current membership and workflow edit access.
 This exception applies only to self-healing configurations. It does not grant `project:update`.
 Personal projects show the configurations on their own Self-healing tab, not in Project Settings.
 The same rollout flag controls settings, investigations, and reviews.

@@ -143,7 +143,11 @@ describe('personal tab', () => {
 	async function renderPersonalTab(configurations: SelfHealingConfigurationDto[]) {
 		const store = useSelfHealingStore();
 		store.configurations.project = configurations;
-		store.options.project = { workflows: [], reviewers: [] };
+		store.options.project = {
+			project: { name: 'Personal', icon: null },
+			workflows: [],
+			reviewers: [],
+		};
 		vi.spyOn(store, 'load').mockResolvedValue();
 		const router = createRouter({
 			history: createMemoryHistory(),

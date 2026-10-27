@@ -208,8 +208,8 @@ async function load() {
 			form.value = {
 				scope: configuration.scope,
 				workflowIds: [...configuration.workflowIds],
-				reviewerIds: isPersonalTab.value ? [] : [...configuration.reviewerIds],
-				includeAllProjectMembers: isPersonalTab.value || configuration.includeAllProjectMembers,
+				reviewerIds: [...configuration.reviewerIds],
+				includeAllProjectMembers: configuration.includeAllProjectMembers,
 				enabled: configuration.enabled,
 			};
 		} else {
@@ -217,13 +217,15 @@ async function load() {
 			form.value = {
 				scope: hasAllWorkflowsConfiguration.value ? 'selected' : 'all',
 				workflowIds: [],
-				reviewerIds:
-					!isPersonalTab.value && currentUserId && reviewersById.value.has(currentUserId)
-						? [currentUserId]
-						: [],
-				includeAllProjectMembers: isPersonalTab.value,
+				reviewerIds: currentUserId && reviewersById.value.has(currentUserId) ? [currentUserId] : [],
+				includeAllProjectMembers: false,
 				enabled: true,
 			};
+		}
+
+		if (isPersonalTab.value) {
+			form.value.reviewerIds = [];
+			form.value.includeAllProjectMembers = true;
 		}
 
 		savedForm.value = structuredClone(toRaw(form.value));

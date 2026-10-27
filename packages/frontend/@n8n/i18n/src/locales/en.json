@@ -10426,6 +10426,7 @@
 	"selfHealing.config.unsavedMessage": "Your configuration changes have not been saved.",
 	"selfHealing.config.unavailableWorkflow": "Workflow no longer available",
 	"selfHealing.config.workflowReserved": "In another configuration",
+	"selfHealing.config.noReviewers": "No reviewers yet.",
 	"selfHealing.config.removeWorkflow": "Remove workflow",
 	"selfHealing.config.removeReviewer": "Remove reviewer",
 	"selfHealing.config.projectMembers": "People from {project}",

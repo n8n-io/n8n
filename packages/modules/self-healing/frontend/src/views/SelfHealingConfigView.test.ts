@@ -446,7 +446,7 @@ it('returns to the self-healing tab of a personal project', async () => {
 });
 
 describe('personal project', () => {
-	it('creates a configuration with the owner as the only reviewer and no reviewer section', async () => {
+	it('creates a personal configuration with the project member group and no reviewer section', async () => {
 		const store = useSelfHealingStore();
 		const save = vi.spyOn(store, 'save').mockResolvedValue(configuration);
 		await router.push('/projects/project/self-healing/new');
@@ -460,7 +460,7 @@ describe('personal project', () => {
 		await waitFor(() =>
 			expect(save).toHaveBeenCalledWith(
 				'project',
-				expect.objectContaining({ reviewerIds: ['creator'] }),
+				expect.objectContaining({ reviewerIds: [], includeAllProjectMembers: true }),
 				undefined,
 			),
 		);
@@ -478,9 +478,9 @@ describe('personal project', () => {
 		);
 	});
 
-	it('replaces other reviewers with the owner when it saves an existing configuration', async () => {
+	it('uses the project member group when it saves an existing personal configuration', async () => {
 		const store = useSelfHealingStore();
-		store.configurations.project = [{ ...configuration, reviewerIds: ['admin'] }];
+		store.configurations.project = [configuration];
 		const save = vi.spyOn(store, 'save').mockResolvedValue(configuration);
 		store.options.project.workflows.push({ id: 'other', name: 'Other workflow' });
 		await router.push('/projects/project/self-healing/1');
@@ -495,7 +495,7 @@ describe('personal project', () => {
 		await waitFor(() =>
 			expect(save).toHaveBeenCalledWith(
 				'project',
-				expect.objectContaining({ reviewerIds: ['creator'] }),
+				expect.objectContaining({ reviewerIds: [], includeAllProjectMembers: true }),
 				1,
 			),
 		);
