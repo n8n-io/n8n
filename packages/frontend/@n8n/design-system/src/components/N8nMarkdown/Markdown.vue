@@ -4,7 +4,7 @@ import Markdown from 'markdown-it';
 import markdownEmoji from 'markdown-it-emoji';
 import markdownLink from 'markdown-it-link-attributes';
 import markdownTaskLists from 'markdown-it-task-lists';
-import { computed, ref } from 'vue';
+import { computed, ref, shallowRef, watch, type VNode } from 'vue';
 import type { IWhiteList } from 'xss';
 import xss from 'xss';
 
@@ -74,6 +74,26 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 });
 
 const editor = ref<HTMLDivElement | undefined>(undefined);
+const slots = defineSlots<{
+	/** Render fenced code without changing its whitespace. */
+	'code-block'?: (props: { code: string; language: string }) => VNode[];
+}>();
+const codeBlocks = shallowRef<Array<{ code: string; language: string; target: HTMLElement }>>([]);
+const renderedBlocks: Array<{ code: string; language: string }> = [];
+
+/** Reuse each target so streamed HTML does not reset slot component state. */
+function refreshCodeTargets() {
+	if (props.loading || !slots['code-block'] || !editor.value) {
+		codeBlocks.value = [];
+		return;
+	}
+	codeBlocks.value = renderedBlocks.map((block, index) => {
+		const target = codeBlocks.value[index]?.target ?? document.createElement('div');
+		target.classList.add('not-prose');
+		editor.value?.querySelector(`[data-code-slot="${index}"]`)?.replaceWith(target);
+		return { ...block, target };
+	});
+}
 
 // The shared `.n8n-markdown` styles (css/markdown.scss) change markdown's
 // vertical rhythm. Stickies opt out to keep their legacy layout, so hand-sized
@@ -99,6 +119,15 @@ const md = computed(() => {
 		parser.use(plugin);
 	}
 
+	if (slots['code-block']) {
+		parser.renderer.rules.fence = (tokens, index) => {
+			const token = tokens[index];
+			const blockIndex = renderedBlocks.length;
+			renderedBlocks.push({ code: token.content, language: token.info.trim().split(/\s+/)[0] });
+			return `<div data-code-slot="${blockIndex}"></div>`;
+		};
+	}
+
 	return parser;
 });
 
@@ -112,12 +141,13 @@ const xssWhiteList = {
 	...whiteList,
 	label: ['class', 'for'],
 	/** Keep plugin markers for code actions, table containers, and footnotes. */
-	div: [...(whiteList.div ?? []), 'class', 'data-markdown-token-idx'],
+	div: [...(whiteList.div ?? []), 'class', 'data-markdown-token-idx', 'data-code-slot'],
 	span: [...(whiteList.span ?? []), 'class', 'title'],
 	iframe: ['width', 'height', 'src', 'title', 'frameborder', 'allow', 'referrerpolicy'],
 };
 
 const htmlContent = computed(() => {
+	renderedBlocks.length = 0;
 	if (!props.content) {
 		return '';
 	}
@@ -243,6 +273,10 @@ const htmlContent = computed(() => {
 	return safeHtml;
 });
 
+watch([htmlContent, editor, () => props.loading, () => props.content], refreshCodeTargets, {
+	flush: 'post',
+});
+
 const emit = defineEmits<{
 	'markdown-click': [link: HTMLAnchorElement, e: MouseEvent];
 	'update-content': [content: string];
@@ -321,6 +355,9 @@ const onCheckboxChange = (index: number) => {
 				<div :class="$style.spacer" />
 			</div>
 		</div>
+		<Teleport v-for="(block, index) in codeBlocks" :key="index" :to="block.target">
+			<slot name="code-block" :code="block.code" :language="block.language" />
+		</Teleport>
 	</div>
 </template>
 
@@ -328,58 +365,58 @@ const onCheckboxChange = (index: number) => {
 .markdown {
 	color: color-mix(in oklch, var(--color--text), transparent 8%);
 
-	* {
+	*:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		font-size: var(--n8n-markdown--font-size--base, var(--font-size--md));
 		line-height: var(--line-height--xl);
 	}
 
-	h1,
-	h2,
-	h3,
-	h4 {
+	h1:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	h2:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	h3:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	h4:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		margin-bottom: var(--spacing--sm);
 		font-weight: var(--font-weight--medium);
 	}
 
-	p,
-	span {
+	p:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	span:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		margin-bottom: var(--spacing--sm);
 	}
 
-	ul,
-	ol {
+	ul:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	ol:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		margin-bottom: var(--spacing--sm);
 		padding-left: var(--spacing--md);
 
-		li {
+		li:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 			margin-top: 0.25em;
 		}
 	}
 
 	// The pre box (background + padding) comes from the global .n8n-markdown
 	// styles in css/markdown.scss; a second box on code doubles it up.
-	pre > code {
+	pre > code:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		background-color: transparent;
 		color: var(--color--text--shade-1);
 	}
 
-	li > code,
-	p > code {
+	li > code:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	p > code:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		padding: 0 var(--spacing--4xs);
 		color: var(--color--text--shade-1);
 		background-color: var(--color--background);
 	}
 
-	.label {
+	.label:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		color: var(--color--text);
 	}
 
-	img {
+	img:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		max-width: 100%;
 		border-radius: var(--radius--lg);
 	}
 
-	blockquote {
+	blockquote:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		padding-left: 10px;
 		font-style: italic;
 		border-left: var(--border-color) 2px solid;
@@ -398,96 +435,96 @@ input[type='checkbox'] + label {
 	color: var(--sticky--color--text);
 	overflow-wrap: break-word;
 
-	h1,
-	h2,
-	h3,
-	h4,
-	h5,
-	h6 {
+	h1:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	h2:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	h3:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	h4:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	h5:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	h6:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		color: var(--sticky--color--text);
 	}
 
-	h1,
-	h2,
-	h3,
-	h4 {
+	h1:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	h2:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	h3:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	h4:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		margin-bottom: var(--spacing--2xs);
 		font-weight: var(--font-weight--medium);
 		line-height: var(--line-height--lg);
 	}
 
 	/** Stickies keep their legacy heading scale when no base size is set. */
-	h1 {
+	h1:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 2.25);
 	}
 
-	h2 {
+	h2:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 1.5);
 	}
 
-	h3,
-	h4,
-	h5,
-	h6 {
+	h3:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	h4:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	h5:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	h6:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		font-size: var(--n8n-markdown--font-size--base, var(--font-size--md));
 	}
 
-	p {
+	p:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		margin-bottom: var(--spacing--2xs);
 		font-size: var(--font-size--sm);
 		font-weight: var(--font-weight--regular);
 		line-height: var(--line-height--lg);
 	}
 
-	ul,
-	ol {
+	ul:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	ol:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		margin-bottom: var(--spacing--2xs);
 		padding-left: var(--spacing--md);
 
-		li {
+		li:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 			margin-top: 0.25em;
 			font-size: var(--font-size--sm);
 			font-weight: var(--font-weight--regular);
 			line-height: var(--line-height--md);
 		}
 
-		&:has(input[type='checkbox']) {
+		&:has(input[type='checkbox']):not(:where(:global(.not-prose), :global(.not-prose) *)) {
 			list-style-type: none;
 			padding-left: var(--spacing--5xs);
 		}
 	}
 
-	pre > code {
+	pre > code:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		padding: var(--spacing--sm);
 		background-color: var(--sticky--code--color--background);
 		color: var(--sticky--code--color--text);
 	}
 
-	pre > code,
-	li > code,
-	p > code,
-	td > code {
+	pre > code:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	li > code:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	p > code:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	td > code:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		color: var(--sticky--code--color--text);
 	}
 
 	// Shared markdown link look, minus `font-weight: medium`: a weight change
 	// shifts wrap points and note heights must stay stable (ADO-5800).
 	// Links inside headings keep the heading style, like the shared skin.
-	a:not(:where(h1, h2, h3, h4, h5, h6) *) {
+	a:not(:where(h1, h2, h3, h4, h5, h6) *):not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		color: var(--color--text--shade-1);
 		text-decoration: underline;
 		text-underline-offset: 3px;
 		text-decoration-thickness: 1px;
 		transition: color 0.15s ease;
 
-		&:hover {
+		&:hover:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 			color: var(--color--primary);
 		}
 	}
 
 	// Shared markdown blockquote look with the sticky's compact vertical
 	// rhythm, and sticky-aware colors so it stays visible on all note colors.
-	blockquote {
+	blockquote:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		margin-bottom: var(--spacing--2xs);
 		padding-left: var(--spacing--sm);
 		border-left: var(--spacing--4xs) solid var(--sticky--border-color, currentColor);
@@ -496,14 +533,14 @@ input[type='checkbox'] + label {
 		// The blockquote carries the bottom spacing; don't stack the paragraph's.
 		// No open-quote/close-quote pseudos here: the app reset sets
 		// `blockquote { quotes: none }`, so they never render inside n8n.
-		p:last-of-type {
+		p:last-of-type:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 			margin-bottom: 0;
 		}
 	}
 
 	// Shared markdown table look with the sticky's compact vertical rhythm,
 	// and sticky-aware colors so borders stay visible on all note colors.
-	table {
+	table:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		width: 100%;
 		table-layout: auto;
 		margin-bottom: var(--spacing--2xs);
@@ -511,53 +548,53 @@ input[type='checkbox'] + label {
 		line-height: var(--line-height--lg);
 	}
 
-	thead {
+	thead:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		border-bottom: 1px solid var(--sticky--border-color, currentColor);
 	}
 
-	thead th {
+	thead th:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		color: var(--sticky--color--text);
 		font-weight: var(--font-weight--bold);
 		vertical-align: bottom;
 		padding: 0 0.6em 0.8em;
 	}
 
-	tbody tr {
+	tbody tr:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		border-bottom: 1px solid var(--sticky--border-color, currentColor);
 
-		&:last-child {
+		&:last-child:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 			border-bottom-width: 0;
 		}
 	}
 
-	tbody td {
+	tbody td:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		vertical-align: baseline;
 		padding: 0.8em 0.6em;
 	}
 
-	thead th,
-	tbody td {
+	thead th:not(:where(:global(.not-prose), :global(.not-prose) *)),
+	tbody td:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		text-align: start;
 
-		&:first-child {
+		&:first-child:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 			padding-inline-start: 0;
 		}
 
-		&:last-child {
+		&:last-child:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 			padding-inline-end: 0;
 		}
 	}
 
-	td code {
+	td code:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		font-size: var(--font-size--xs);
 	}
 
-	img {
+	img:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		object-fit: contain;
 		margin-top: var(--spacing--xs);
 		margin-bottom: var(--spacing--2xs);
 
-		&[src*='#full-width'] {
+		&[src*='#full-width']:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 			width: 100%;
 		}
 	}
@@ -565,21 +602,21 @@ input[type='checkbox'] + label {
 
 .sticky,
 .markdown {
-	pre {
+	pre:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		margin-bottom: var(--spacing--sm);
 		display: grid;
 	}
 
-	pre > code {
+	pre > code:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		display: block;
 		overflow-x: auto;
 	}
 
-	iframe {
+	iframe:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		aspect-ratio: 16/9 auto;
 	}
 
-	summary {
+	summary:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		cursor: pointer;
 	}
 }
