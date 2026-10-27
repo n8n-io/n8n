@@ -14,25 +14,30 @@ describe('splitToolNamespaces', () => {
 	it('keeps unlisted product tools attached and namespaces the listed ones', () => {
 		const result = splitToolNamespaces({
 			tools: registry(
-				tool('list_workflows'),
-				tool('ask_user'),
+				tool('workflow_builder_workflows'),
+				tool('workflow_builder_ask_user'),
 				tool('skills'),
-				tool('data_tables'),
 				tool('research'),
 				tool('n8n-docs'),
+				tool('mcp-servers'),
+				tool('agent_builder_write_config'),
+				tool('agent-context'),
+				tool('workflow_builder_build_workflow'),
 			),
 			mcpToolNames: new Set(),
 			localMcpToolNames: new Set(),
 		});
 
 		expect(result.attachedTools.map((t) => t.name)).toEqual([
-			'list_workflows',
-			'ask_user',
+			'workflow_builder_ask_user',
 			'skills',
+			'research',
+			'n8n-docs',
+			'mcp-servers',
 		]);
 		expect(result.namespaces.map((ns) => [ns.name, ns.tools.map((t) => t.name)])).toEqual([
-			['data_tables', ['data_tables']],
-			['research', ['research', 'n8n-docs']],
+			['workflow_builder', ['workflow_builder_workflows', 'workflow_builder_build_workflow']],
+			['agent_builder', ['agent_builder_write_config', 'agent-context']],
 		]);
 	});
 
@@ -58,7 +63,7 @@ describe('splitToolNamespaces', () => {
 
 	it('leaves empty namespaces out', () => {
 		const result = splitToolNamespaces({
-			tools: registry(tool('list_workflows')),
+			tools: registry(tool('skills')),
 			mcpToolNames: new Set(),
 			localMcpToolNames: new Set(),
 		});

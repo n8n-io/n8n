@@ -1,6 +1,10 @@
 import type { BuiltTool, DynamicToolNamespace } from '@n8n/agents';
 
-import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
+import {
+	AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES,
+	DOMAIN_TOOL_IDS,
+	ORCHESTRATION_TOOL_IDS,
+} from '../tools/tool-ids';
 import type { InstanceAiToolRegistry } from '../types';
 
 interface ProductNamespaceDefinition {
@@ -14,14 +18,24 @@ interface ProductNamespaceDefinition {
  * Product tools that the model reaches through `get_tools` and `call_tool`.
  * Product tools that are not listed here stay attached to the model. That
  * default is on purpose: a new tool stays visible until someone places it.
+ * Do not list tools from `ALWAYS_LOADED_TOOL_NAMES` that carry a reason to
+ * stay visible (research, n8n-docs, mcp-servers, activity, ...).
  * Namespace names are part of the cached prompt and of persisted calls, so
  * keep them stable.
  */
 export const PRODUCT_TOOL_NAMESPACES: readonly ProductNamespaceDefinition[] = [
 	{
 		name: 'workflow_builder',
-		description: 'Follow-up steps for a workflow build: credentials, verification and task control',
+		description:
+			'Read, create, build and verify n8n workflows, look up node types, and pick AI models',
+		instructions:
+			'Load this namespace before you read or change a workflow. Use `workflow_builder_build_workflow` to create or edit one.',
 		tools: [
+			DOMAIN_TOOL_IDS.WORKFLOWS,
+			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+			ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
+			DOMAIN_TOOL_IDS.SEARCH_MODELS,
+			DOMAIN_TOOL_IDS.NODES,
 			ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS,
 			ORCHESTRATION_TOOL_IDS.REPORT_VERIFICATION_VERDICT,
 			ORCHESTRATION_TOOL_IDS.TASK_CONTROL,
@@ -29,46 +43,20 @@ export const PRODUCT_TOOL_NAMESPACES: readonly ProductNamespaceDefinition[] = [
 	},
 	{
 		name: 'agent_builder',
-		description: 'Agent preview sessions',
-		tools: [ORCHESTRATION_TOOL_IDS.GET_SESSION],
-	},
-	{
-		name: 'executions',
-		description: 'Run workflows and read their executions',
-		tools: [DOMAIN_TOOL_IDS.EXECUTIONS],
-	},
-	{
-		name: 'data_tables',
-		description: 'Create, read and change n8n data tables',
-		tools: [DOMAIN_TOOL_IDS.DATA_TABLES],
-	},
-	{
-		name: 'research',
-		description: 'n8n documentation, web search and URL fetch',
+		description:
+			'Read, create, configure, test and publish standalone n8n Agents, and inspect their preview sessions',
 		instructions:
-			'For questions about n8n itself, prefer `n8n-docs` over web search. Use web search for third-party services and APIs.',
-		tools: [DOMAIN_TOOL_IDS.RESEARCH, DOMAIN_TOOL_IDS.N8N_DOCS],
+			'Load this namespace for any request about an Agent. Use `agent-context` to read an Agent before you change it.',
+		tools: [
+			DOMAIN_TOOL_IDS.AGENT_CONTEXT,
+			...AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES,
+			ORCHESTRATION_TOOL_IDS.GET_SESSION,
+		],
 	},
 	{
 		name: 'instance',
-		description: 'Projects, tags, folders, MCP server connections and evaluation config',
-		instructions:
-			'Use `mcp-servers` when the user asks for a service that no connected MCP namespace covers, before you say it is unavailable.',
-		tools: [DOMAIN_TOOL_IDS.WORKSPACE, DOMAIN_TOOL_IDS.MCP_SERVERS, DOMAIN_TOOL_IDS.EVAL_CONFIG],
-	},
-	{
-		name: 'user_context',
-		description:
-			'Past conversations, recent activity, user preferences, attached files and onboarding',
-		instructions:
-			'Use `save_user_preference` when the user states a lasting preference. Use `activity` to expand ids from the instance context.',
-		tools: [
-			DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
-			DOMAIN_TOOL_IDS.ACTIVITY,
-			DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
-			DOMAIN_TOOL_IDS.PARSE_FILE,
-			DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,
-		],
+		description: 'Projects, tags, folders and evaluation config',
+		tools: [DOMAIN_TOOL_IDS.WORKSPACE, DOMAIN_TOOL_IDS.EVAL_CONFIG],
 	},
 ];
 
