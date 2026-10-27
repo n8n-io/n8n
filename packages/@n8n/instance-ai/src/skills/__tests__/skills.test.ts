@@ -89,13 +89,13 @@ describe('Instance AI skills', () => {
 		expect(skill).toContain('.group(name, members, { description })');
 	});
 
-	it('defers sticky and other SDK defects to workflow-sdk validate', () => {
+	it('defers sticky and other SDK defects to the build source lint', () => {
 		const skill = readFileSync(
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
 			'utf-8',
 		);
 		expect(skill).toContain('unsolicited `sticky()`');
-		expect(skill).toContain('workflow-sdk validate');
+		expect(skill).toContain('The SDK source lint in `workflow_builder_build_workflow`');
 		expect(skill).not.toMatch(/import \{\n(?:[^\n]*\n)*?\s*sticky,/);
 	});
 
@@ -405,7 +405,8 @@ describe('Instance AI skills', () => {
 		expect(skill?.description).toContain(
 			'For any other new workflow, load intent-recognition first when it is listed',
 		);
-		expect(skill?.description).toContain('workflow-sdk validate');
+		expect(skill?.description).toContain('The build validates the source');
+		expect(skill?.description).not.toContain('workflow-sdk validate');
 		expect(skill?.description).toContain('load data-table-manager first');
 
 		const loaded = await source.loadSkill('workflow-builder');
@@ -414,8 +415,9 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('filePath');
 		expect(loaded?.instructions).toContain('workspace_write_file');
 		expect(loaded?.instructions).toContain(
-			'node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate',
+			'Do not run a separate validation command before the build',
 		);
+		expect(loaded?.instructions).toContain('Do not run it by default');
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('`search_nodes` with `categories`');
 		expect(loaded?.instructions).toContain('`search_nodes` with `query`/`queries`');

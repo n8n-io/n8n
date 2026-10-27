@@ -277,6 +277,17 @@ describe('PACKAGE_JSON', () => {
 		expect(packageJson.dependencies.typescript).toBe('7.0.2');
 	});
 });
+describe('BUILD_MJS', () => {
+	it('should report SDK source lint findings with the build warnings', async () => {
+		vi.resetModules();
+		const { BUILD_MJS } = await import('../sandbox-setup.js');
+
+		expect(BUILD_MJS).toContain('validateWorkflowBuilder(wf, { lint: true, source })');
+		expect(BUILD_MJS).toContain("issue.lintTarget !== 'pythonCode'");
+		expect(BUILD_MJS).toContain('...lintWarnings]');
+	});
+});
+
 /** npm install commands issued, ignoring how cwd/options were passed. */
 function installCommandsFrom(runInSandbox: RunInSandboxMock): string[] {
 	return runInSandbox.mock.calls
