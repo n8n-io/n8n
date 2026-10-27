@@ -8,7 +8,7 @@ description: >-
   workflow-sdk validate via workspace_execute_command, then call workflow_builder_build_workflow
   with filePath. When the workflow creates or writes Data Tables, load
   data-table-manager first, then this skill.
-  Do a one-time request (no repeat or trigger words) now: do not ask if it should repeat, and do
+  Do a one-time request (one result now, no chat or repeat) now: do not ask if it should repeat, and do
   not build or change a kept workflow. For one node, load one-off-operations and run
   it with execute_node. Once the user wants a workflow, load
   it before you ask any question about that workflow. Do not load it to ask
