@@ -8,8 +8,8 @@
  * objective supplies run-specific context beneath the target-agent instructions,
  * and must say where the result is delivered because nobody is watching the run.
  *
- * The `agent-builder-target-tasks` skill shows it. The builder tools only check the
- * section headings, so the always-loaded tool schemas stay small.
+ * The `agent-builder-target-tasks` skill shows it. The builder tools check a saved
+ * objective against it after the save, so the always-loaded tool schemas stay small.
  */
 export const TASK_OBJECTIVE_TEMPLATE = `## Objective
 <One sentence: the run-specific outcome to achieve and why it matters. Do not repeat the agent's overall purpose.>
@@ -44,10 +44,38 @@ export const TASK_OBJECTIVE_SECTIONS = [...TASK_OBJECTIVE_TEMPLATE.matchAll(/^##
 	(match) => match[1],
 );
 
-/** The template sections that an objective does not have as a `## ` heading. */
-export function missingObjectiveSections(objective: string): string[] {
-	const headings = new Set(
-		[...objective.matchAll(/^##\s+(.+?)\s*$/gm)].map((match) => match[1].toLowerCase()),
-	);
-	return TASK_OBJECTIVE_SECTIONS.filter((section) => !headings.has(section.toLowerCase()));
+type ObjectiveSection = { heading: string; body: string };
+
+/** Splits an objective into `## ` sections. A heading line may end with a colon. */
+function parseSections(objective: string): ObjectiveSection[] {
+	const parts = objective.split(/^##[ \t]+(.+?)[ \t:]*$/m);
+	const sections: ObjectiveSection[] = [];
+	for (let i = 1; i < parts.length; i += 2) {
+		sections.push({ heading: parts[i].toLowerCase(), body: parts[i + 1].trim() });
+	}
+	return sections;
+}
+
+function sectionGap(section: string, found: ObjectiveSection | undefined): string | undefined {
+	if (!found) return `${section} missing`;
+	if (!found.body) return `${section} empty`;
+	if (/<[^<>\n]+>/.test(found.body)) return `${section} has placeholder text`;
+	return undefined;
+}
+
+/** How an objective departs from the template: missing, empty, or placeholder sections, and order. */
+export function objectiveTemplateGaps(objective: string): string[] {
+	const sections = parseSections(objective);
+	const gaps = TASK_OBJECTIVE_SECTIONS.flatMap((section) => {
+		const gap = sectionGap(
+			section,
+			sections.find((s) => s.heading === section.toLowerCase()),
+		);
+		return gap ? [gap] : [];
+	});
+	const order = sections
+		.map(({ heading }) => TASK_OBJECTIVE_SECTIONS.findIndex((s) => s.toLowerCase() === heading))
+		.filter((index) => index >= 0);
+	if (order.some((index, i) => i > 0 && index < order[i - 1])) gaps.push('sections out of order');
+	return gaps;
 }

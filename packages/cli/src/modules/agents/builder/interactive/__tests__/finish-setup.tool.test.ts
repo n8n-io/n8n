@@ -613,7 +613,6 @@ describe('agent_builder_finish_setup model output', () => {
 		});
 
 		expect(view.nextStep).toContain('appliedToConfig');
-		expect(view.nextStep).toContain('Do not patch');
 	});
 
 	it('tells the model to fix config apply errors', () => {

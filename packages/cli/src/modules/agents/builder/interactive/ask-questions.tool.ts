@@ -91,7 +91,7 @@ function withNextStep(result: unknown): unknown {
 		return {
 			...result,
 			nextStep:
-				'The user dismissed the questions. Assume a sensible default for each, and do not ask them again.',
+				'The user did not answer the questions. Assume a sensible default for each, and do not ask them again.',
 		};
 	}
 	const answers = Array.isArray(result.answers) ? result.answers : [];

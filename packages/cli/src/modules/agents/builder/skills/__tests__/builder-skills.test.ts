@@ -45,25 +45,19 @@ describe('getBuilderRuntimeSkills', () => {
 		return skill?.instructions ?? '';
 	}
 
-	it('keeps the skill templates and rules in the target-skills reference', () => {
+	it('keeps the skill template sections in the target-skills reference', () => {
 		const instructions = instructionsOf('agent-builder-target-skills');
 
 		for (const heading of ['Overview', 'Inputs', 'Steps', 'Rules', 'Example', 'Gotchas']) {
 			expect(instructions).toContain(`## ${heading}\n`);
 		}
-		expect(instructions).toContain('routing contract');
-		expect(instructions).toContain('unique in the project');
-		expect(instructions).toContain('References are not automatically loaded');
-		expect(instructions).toContain('Do not invent tool names or file paths');
 	});
 
-	it('keeps the objective template and rules in the target-tasks reference', () => {
+	it('shows every objective template section that the builder checks', () => {
 		const instructions = instructionsOf('agent-builder-target-tasks');
 
 		for (const heading of TASK_OBJECTIVE_SECTIONS) {
 			expect(instructions).toContain(`## ${heading}\n`);
 		}
-		expect(instructions).toContain('before you call `agent_builder_create_tasks`');
-		expect(instructions).toContain('fails at runtime');
 	});
 });

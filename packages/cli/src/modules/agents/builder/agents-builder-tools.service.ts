@@ -89,7 +89,7 @@ import type {
 	FinishSetupConfigWrites,
 } from './interactive/finish-setup.tool';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
-import { missingObjectiveSections } from './task-objective-template';
+import { objectiveTemplateGaps } from './task-objective-template';
 import { buildVerifyMcpServerTool, type McpCredentialApplyResult } from './verify-mcp-server.tool';
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
@@ -231,17 +231,17 @@ function withConfigWriteNextStep(result: unknown): unknown {
 const STALE_SKILL_ERROR_MESSAGE =
 	'Skill changed. Call agent-context with type "skill", then retry with its skill and skillHash.';
 
-/** Asks for a fix when a saved task objective misses sections of the objective template. */
+/** Asks for a fix when a saved task objective does not follow the objective template. */
 function incompleteObjectivesNextStep(
 	tasks: Array<{ name: string; objective: string }>,
 ): string | undefined {
 	const gaps = tasks.flatMap(({ name, objective }) => {
-		const missing = missingObjectiveSections(objective);
-		return missing.length > 0 ? [`"${name}" (${missing.join(', ')})`] : [];
+		const objectiveGaps = objectiveTemplateGaps(objective);
+		return objectiveGaps.length > 0 ? [`"${name}" (${objectiveGaps.join(', ')})`] : [];
 	});
 	if (gaps.length === 0) return undefined;
 	return (
-		`These objectives miss template sections: ${gaps.join('; ')}. Load ` +
+		`These objectives do not follow the template: ${gaps.join('; ')}. Load ` +
 		`agent-builder-target-tasks and replace each objective with ${BUILDER_TOOLS.UPDATE_TASK}.`
 	);
 }

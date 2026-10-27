@@ -54,7 +54,10 @@ const selectAgentInputSchema = z.object({
 	createNew: z
 		.boolean()
 		.optional()
-		.describe('True ONLY when the user explicitly wants an ADDITIONAL agent'),
+		.describe(
+			'True ONLY when the user explicitly wants an ADDITIONAL agent. Without it, while an ' +
+				'agent is bound, a new `agentRef` or `name` continues that agent.',
+		),
 });
 
 type SelectAgentInput = z.infer<typeof selectAgentInputSchema>;
