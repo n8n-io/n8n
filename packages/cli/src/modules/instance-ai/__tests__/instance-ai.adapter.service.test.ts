@@ -46,6 +46,10 @@ vi.mock('@n8n/ai-utilities', () => ({
 	braveSearch: vi.fn(),
 	searxngSearch: vi.fn(),
 }));
+vi.mock('@/utils/ai-proxy-fetch', () => ({
+	createAiProxyFetch: vi.fn(() => vi.fn()),
+	createWebSearchFetch: vi.fn(() => vi.fn()),
+}));
 
 import type { PolicyCleared } from '@n8n/decorators';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -2210,6 +2214,7 @@ describe('web-search provider selection', () => {
 			'BSA-key',
 			'quakes',
 			expect.objectContaining({ maxResults: 3 }),
+			expect.any(Function),
 		);
 		expect(searxngSearch).not.toHaveBeenCalled();
 	});
@@ -2232,7 +2237,12 @@ describe('web-search provider selection', () => {
 	it('falls back to SearXNG when only a URL is set', async () => {
 		await buildSearch({ searxngUrl: 'http://searxng:8080' })!('quakes');
 
-		expect(searxngSearch).toHaveBeenCalledWith('http://searxng:8080', 'quakes', expect.anything());
+		expect(searxngSearch).toHaveBeenCalledWith(
+			'http://searxng:8080',
+			'quakes',
+			expect.anything(),
+			expect.any(Function),
+		);
 		expect(braveSearch).not.toHaveBeenCalled();
 	});
 });
