@@ -8,7 +8,12 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_SKILL_MODAL_KEY } from '../constants';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import { createAgentSkill, getHubSkill, getNewSkillName } from '../composables/useAgentApi';
-import { SKILL_NAME_TAKEN_MESSAGE, type SkillDetail, type SkillListItem } from '@n8n/api-types';
+import {
+	SKILL_NAME_TAKEN_MESSAGE,
+	type SkillDetail,
+	type SkillListItem,
+	type SkillVersionDetail,
+} from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import type {
 	AgentJsonConfig,
@@ -176,6 +181,8 @@ type SkillModalData = {
 	hubSkillsEnabled?: boolean;
 	outdated?: boolean;
 	onUseLatestVersion?: (skillId: string) => void;
+	agentVersions?: { draft: number; published: number | null; pinned: boolean; latest: number };
+	onUseVersion?: (skillId: string, version: SkillVersionDetail) => void;
 	getAttachedSkills?: () => Array<{ id: string; name: string }>;
 	canCreateInstanceSkills?: boolean;
 	getDefaultName?: (availableTo: string) => Promise<string>;
@@ -930,6 +937,46 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		const editData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
 		expect(editData.skill).toEqual(latest);
 		expect(editData.outdated).toBe(false);
+	});
+
+	it('pins the draft to a saved version and reopens the editor on it', async () => {
+		const older: AgentSkill = { ...supportTone, instructions: 'Be brief.' };
+		const agent = ref<AgentResource | null>({
+			id: 'agent-1',
+			skills: { tone: supportTone },
+			skillHashes: { tone: 'hash-tone' },
+			skillVersions: { tone: { draft: 3, published: 2, latest: 3, pinned: false } },
+		} as unknown as AgentResource);
+		const { actions, uiStore, localConfig, scheduleConfigUpdate } = setup({
+			agent,
+			agentId: ref('agent-1'),
+		});
+		localConfig.value = makeConfig({ skills: [{ type: 'skill', id: 'tone' }] });
+		actions.onOpenSkillFromList('tone');
+		const data = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(data.agentVersions).toEqual({ draft: 3, published: 2, latest: 3, pinned: false });
+
+		data.onUseVersion?.('tone', {
+			id: 'version-1',
+			version: 1,
+			createdBy: null,
+			createdAt: '2026-10-20T00:00:00.000Z',
+			skill: older,
+		});
+		await flushPromises();
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+			skills: [{ type: 'skill', id: 'tone', versionId: 'version-1' }],
+		});
+		expect(agent.value?.skills.tone).toEqual(older);
+		expect(agent.value?.skillVersions?.tone).toEqual({
+			draft: 1,
+			published: 2,
+			latest: 3,
+			pinned: true,
+		});
+		const reopened = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(reopened.agentVersions?.pinned).toBe(true);
 	});
 
 	function openEdit() {

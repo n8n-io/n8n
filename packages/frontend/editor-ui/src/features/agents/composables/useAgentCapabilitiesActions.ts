@@ -9,6 +9,7 @@ import {
 	type AgentSkillAvailability,
 	type SkillCreateMethod,
 	type SkillDetail,
+	type SkillVersionDetail,
 	type SkillListItem,
 	type SkillNewNameQueryDto,
 } from '@n8n/api-types';
@@ -356,6 +357,11 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				latestVersion: hubSkillsEnabled.value
 					? agent.value?.skillVersions?.[id]?.latest
 					: undefined,
+				agentVersions: hubSkillsEnabled.value ? agent.value?.skillVersions?.[id] : undefined,
+				onUseVersion: (skillId: string, version: SkillVersionDetail) => {
+					if (agentId.value !== targetAgentId) return;
+					void pinSkillVersion(skillId, version);
+				},
 				projectLabel: projectName.value ?? undefined,
 				agentName: agent.value?.name,
 				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
@@ -679,15 +685,58 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		}
 		if (agentId.value !== targetAgentId || agent.value?.id !== targetAgentId) return;
 		if (!localConfig.value) return;
+		const versions = agent.value.skillVersions?.[skillId];
 		agent.value = {
 			...agent.value,
 			skills: { ...(agent.value.skills ?? {}), [skillId]: hubSkill.skill },
 			skillHashes: { ...(agent.value.skillHashes ?? {}), [skillId]: hubSkill.skillHash },
 			outdatedSkillIds: (agent.value.outdatedSkillIds ?? []).filter((id) => id !== skillId),
+			...(versions
+				? {
+						skillVersions: {
+							...agent.value.skillVersions,
+							[skillId]: { ...versions, draft: hubSkill.latestVersion, pinned: false },
+						},
+					}
+				: {}),
 		};
 		scheduleConfigUpdate({
 			skills: (localConfig.value.skills ?? []).map((ref) =>
 				ref.id === skillId ? { type: 'skill', id: skillId } : ref,
+			),
+		});
+		try {
+			await beforeAgentMutation?.();
+		} catch {
+			return;
+		}
+		if (agentId.value !== targetAgentId) return;
+		onOpenSkillFromList(skillId);
+	}
+
+	/**
+	 * Pins the agent draft to one saved version of a skill. The draft runs that version and the
+	 * published agent keeps its own until the next publish.
+	 */
+	async function pinSkillVersion(skillId: string, version: SkillVersionDetail) {
+		const targetAgentId = agentId.value;
+		if (agent.value?.id !== targetAgentId || !localConfig.value) return;
+		const versions = agent.value.skillVersions?.[skillId];
+		agent.value = {
+			...agent.value,
+			skills: { ...(agent.value.skills ?? {}), [skillId]: version.skill },
+			...(versions
+				? {
+						skillVersions: {
+							...agent.value.skillVersions,
+							[skillId]: { ...versions, draft: version.version, pinned: true },
+						},
+					}
+				: {}),
+		};
+		scheduleConfigUpdate({
+			skills: (localConfig.value.skills ?? []).map((ref) =>
+				ref.id === skillId ? { type: 'skill', id: skillId, versionId: version.id } : ref,
 			),
 		});
 		try {

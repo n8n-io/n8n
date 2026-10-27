@@ -13,6 +13,7 @@ import {
 	type SkillDetail,
 	type SkillListItem,
 	type SkillUsage,
+	type SkillVersionDetail,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
@@ -125,6 +126,10 @@ export type AgentSkillModalData = {
 	initialVersionsOpen?: boolean;
 	/** Opens the editor comparing the latest version with the one before it. */
 	initialCompare?: boolean;
+	/** Agent builder: the versions the agent's draft and published agent run. */
+	agentVersions?: { draft: number; published: number | null; pinned: boolean };
+	/** Agent builder: pins the agent draft to a saved version. The caller reopens the editor. */
+	onUseVersion?: (skillId: string, version: SkillVersionDetail) => void;
 	/**
 	 * Called on Save. A promise keeps the modal open until it settles. It closes unless the
 	 * result is an `AgentSkillConfirmFailure`, so a refused save keeps what the user typed.
@@ -302,6 +307,8 @@ const footerPrimaryAction = computed<'add' | 'save' | 'useLatest' | 'viewing' | 
 	if (step.value === 'select') return undefined;
 	if (step.value === 'preview') return previewIsAdded.value ? undefined : 'add';
 	if (viewedVersion.value) return 'viewing';
+	// The pinned bar has its own Use latest button.
+	if (isPinned.value) return 'save';
 	if (isOutdated.value) return props.data.onUseLatestVersion ? 'useLatest' : undefined;
 	return isReadOnly.value ? undefined : 'save';
 });
@@ -315,7 +322,9 @@ const modalTitle = computed(() => {
 const skillAccess = ref<SkillDetail | null>(null);
 const skillAccessLoading = ref(false);
 const skillAccessFailed = ref(false);
-const isOutdated = computed(() => isEditing.value && !!props.data.outdated);
+/** A pinned skill is read-only in the builder: the agent runs that version, not the latest. */
+const isPinned = computed(() => isEditing.value && !!props.data.agentVersions?.pinned);
+const isOutdated = computed(() => isEditing.value && (!!props.data.outdated || isPinned.value));
 const isReadOnly = computed(
 	() =>
 		props.data.readOnly === true ||
@@ -536,7 +545,7 @@ const removeLabel = computed(() =>
 const footerHint = computed(() => {
 	const shownSkill = step.value === 'preview' ? previewSkill.value : skillAccess.value;
 	if (step.value === 'edit' && isOutdated.value) {
-		return i18n.baseText('agents.builder.skills.hint.outdated');
+		return isPinned.value ? '' : i18n.baseText('agents.builder.skills.hint.outdated');
 	}
 	if (!shownSkill || (step.value !== 'preview' && step.value !== 'edit')) return '';
 	if (!shownSkill.canEdit) {
@@ -783,6 +792,37 @@ const versionOptions = computed(() =>
 		label: i18n.baseText('agents.builder.skills.versions.number', { interpolate: { version } }),
 	})),
 );
+
+/** The agent the builder opened the editor from, for the markers and "Use in <agent>". */
+const timelineAgent = computed(() =>
+	props.data.agentVersions && props.data.agentName
+		? { name: props.data.agentName, ...props.data.agentVersions }
+		: undefined,
+);
+const versionsButtonLabel = computed(() => {
+	const agentVersions = props.data.agentVersions;
+	if (!agentVersions) {
+		return i18n.baseText('agents.builder.skills.versions.number', {
+			interpolate: { version: latestVersion.value ?? '' },
+		});
+	}
+	return agentVersions.pinned
+		? i18n.baseText('agents.builder.skills.versions.usingVersion', {
+				interpolate: { version: agentVersions.draft },
+			})
+		: i18n.baseText('agents.builder.skills.versions.usingLatest', {
+				interpolate: { version: latestVersion.value ?? '' },
+			});
+});
+
+async function useVersion(version: number) {
+	const skillId = props.data.skillId;
+	if (!skillId || !props.data.onUseVersion) return;
+	const detail = await fetchVersion(version);
+	if (!detail) return;
+	closeModal();
+	props.data.onUseVersion(skillId, detail);
+}
 
 async function onCompare(a: number, b: number) {
 	selectedPath.value = SKILL_FILE;
@@ -1055,11 +1095,7 @@ function onRemove() {
 				@click="versionsOpen = !versionsOpen"
 			>
 				<template #icon><N8nIcon icon="history" :size="16" /></template>
-				{{
-					i18n.baseText('agents.builder.skills.versions.number', {
-						interpolate: { version: latestVersion },
-					})
-				}}
+				{{ versionsButtonLabel }}
 			</N8nButton>
 		</template>
 		<div v-if="hasPicker" v-show="step === 'select'" :class="$style.picker">
@@ -1191,6 +1227,33 @@ function onRemove() {
 				</N8nButton>
 			</div>
 			<div
+				v-else-if="isPinned && !viewedVersion && data.agentVersions"
+				:class="$style.pinnedBar"
+				data-testid="agent-skill-pinned-bar"
+			>
+				<N8nIcon icon="node-pin" :size="14" />
+				<N8nText size="small">
+					{{
+						i18n.baseText('agents.builder.skills.versions.pinned', {
+							interpolate: {
+								agent: data.agentName ?? '',
+								version: data.agentVersions.draft,
+							},
+						})
+					}}
+				</N8nText>
+				<N8nButton
+					v-if="data.onUseLatestVersion"
+					variant="outline"
+					size="small"
+					:class="$style.compareDone"
+					data-testid="agent-skill-pinned-use-latest"
+					@click="onUseLatestVersion"
+				>
+					{{ i18n.baseText('agents.builder.skills.versions.useLatest') }}
+				</N8nButton>
+			</div>
+			<div
 				v-else-if="viewedVersion"
 				:class="$style.viewingBar"
 				data-testid="agent-skill-viewing-version"
@@ -1284,6 +1347,9 @@ function onRemove() {
 						@open="onOpenVersion"
 						@restore="restoreVersion"
 						@compare="onCompare($event, viewedVersion?.version ?? versionOptions[0].value)"
+						:agent="timelineAgent"
+						@use="useVersion"
+						@use-latest="onUseLatestVersion"
 					/>
 				</template>
 			</div>
@@ -1329,6 +1395,18 @@ function onRemove() {
 					@click="viewedVersion = null"
 				>
 					{{ i18n.baseText('agents.builder.skills.versions.done') }}
+				</N8nButton>
+				<N8nButton
+					v-if="timelineAgent && viewedVersion!.version !== timelineAgent.draft"
+					variant="outline"
+					data-testid="agent-skill-version-use"
+					@click="useVersion(viewedVersion!.version)"
+				>
+					{{
+						i18n.baseText('agents.builder.skills.versions.useVersionIn', {
+							interpolate: { version: viewedVersion!.version, agent: timelineAgent.name },
+						})
+					}}
 				</N8nButton>
 				<N8nButton
 					v-if="canRestore"
@@ -1411,6 +1489,17 @@ function onRemove() {
 
 .compareDone {
 	margin-left: auto;
+}
+
+.pinnedBar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--md);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-radius: var(--radius);
+	background-color: var(--color--warning--tint-2);
+	color: var(--color--warning--shade-1);
 }
 
 .versionsButtonActive {

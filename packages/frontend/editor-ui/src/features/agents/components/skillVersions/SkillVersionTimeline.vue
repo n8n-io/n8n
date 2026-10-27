@@ -1,13 +1,14 @@
 <script setup lang="ts">
+import { useCssModule } from 'vue';
 import type { SkillVersionSummary } from '@n8n/api-types';
-import { N8nActionDropdown, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIconButton, N8nSwitch, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { preferenceUserName } from '@/features/settings/context/context.utils';
 
-type VersionAction = 'open' | 'restore';
+type VersionAction = 'open' | 'restore' | 'use';
 
 const props = defineProps<{
 	/** Newest first, so the first one is the latest. */
@@ -15,6 +16,11 @@ const props = defineProps<{
 	/** The version the editor shows. */
 	shownVersion?: number;
 	canRestore: boolean;
+	/**
+	 * Agent builder only: the agent the editor was opened from, and which versions its
+	 * draft and published agent run. Absent in Settings.
+	 */
+	agent?: { name: string; draft: number; published: number | null; pinned: boolean };
 }>();
 
 const emit = defineEmits<{
@@ -22,9 +28,14 @@ const emit = defineEmits<{
 	restore: [version: number];
 	/** Compare this version with the version the editor shows. */
 	compare: [version: number];
+	/** Agent builder: pin the agent draft to this version. */
+	use: [version: number];
+	/** Agent builder: let the agent draft follow the latest version. */
+	useLatest: [];
 }>();
 
 const i18n = useI18n();
+const $style = useCssModule();
 
 function savedBy(version: SkillVersionSummary): string {
 	const { date, time } = convertToDisplayDate(version.createdAt);
@@ -40,9 +51,20 @@ function savedBy(version: SkillVersionSummary): string {
 	});
 }
 
-function actionsFor(index: number): Array<ActionDropdownItem<VersionAction>> {
+function actionsFor(index: number, version: number): Array<ActionDropdownItem<VersionAction>> {
 	return [
 		{ id: 'open', label: i18n.baseText('agents.builder.skills.versions.open'), icon: 'eye' },
+		...(props.agent && version !== props.agent.draft
+			? [
+					{
+						id: 'use' as const,
+						label: i18n.baseText('agents.builder.skills.versions.useIn', {
+							interpolate: { agent: props.agent.name },
+						}),
+						icon: 'node-pin' as const,
+					},
+				]
+			: []),
 		// The latest version needs no restore: it is what the editor shows.
 		...(props.canRestore && index > 0
 			? [
@@ -58,15 +80,32 @@ function actionsFor(index: number): Array<ActionDropdownItem<VersionAction>> {
 
 function onAction(version: number, action: VersionAction) {
 	if (action === 'open') emit('open', version);
+	else if (action === 'use') emit('use', version);
 	else emit('restore', version);
+}
+
+/** The dot of a row: the draft and the published agent in the builder, the latest in Settings. */
+function dotClass(version: number, index: number) {
+	if (!props.agent) return index === 0 && $style.latestDot;
+	if (version === props.agent.draft) return $style.draftDot;
+	return version === props.agent.published && $style.publishedDot;
 }
 </script>
 
 <template>
 	<aside :class="$style.panel" data-testid="skill-version-timeline">
-		<N8nText tag="h3" size="small" bold :class="$style.title">
-			{{ i18n.baseText('agents.builder.skills.versions.title') }}
-		</N8nText>
+		<div :class="$style.header">
+			<N8nText tag="h3" size="small" bold :class="$style.title">
+				{{ i18n.baseText('agents.builder.skills.versions.title') }}
+			</N8nText>
+			<N8nSwitch
+				v-if="props.agent"
+				:model-value="!props.agent.pinned"
+				:label="i18n.baseText('agents.builder.skills.versions.useLatest')"
+				data-testid="skill-version-use-latest"
+				@update:model-value="$event ? emit('useLatest') : emit('use', props.agent.draft)"
+			/>
+		</div>
 		<ol :class="$style.list">
 			<li
 				v-for="(version, index) in props.versions"
@@ -75,7 +114,7 @@ function onAction(version: number, action: VersionAction) {
 				:data-testid="`skill-version-row-${version.version}`"
 				@click="emit('open', version.version)"
 			>
-				<span :class="[$style.dot, index === 0 && $style.latestDot]" aria-hidden="true" />
+				<span :class="[$style.dot, dotClass(version.version, index)]" aria-hidden="true" />
 				<div :class="$style.text">
 					<N8nText size="small" color="text-dark">
 						{{
@@ -85,6 +124,14 @@ function onAction(version: number, action: VersionAction) {
 						}}
 						<N8nText v-if="index === 0" size="small" color="text-light">
 							· {{ i18n.baseText('agents.builder.skills.versions.latest') }}
+						</N8nText>
+						<N8nText
+							v-if="props.agent && version.version === props.agent.published"
+							size="small"
+							color="text-light"
+							data-testid="skill-version-published"
+						>
+							· {{ i18n.baseText('agents.builder.skills.versions.inPublishedAgent') }}
 						</N8nText>
 					</N8nText>
 					<N8nText size="xsmall" color="text-light">{{ savedBy(version) }}</N8nText>
@@ -104,7 +151,7 @@ function onAction(version: number, action: VersionAction) {
 						@click="emit('compare', version.version)"
 					/>
 					<N8nActionDropdown
-						:items="actionsFor(index)"
+						:items="actionsFor(index, version.version)"
 						activator-icon="ellipsis"
 						activator-size="small"
 						placement="bottom-end"
@@ -128,6 +175,12 @@ function onAction(version: number, action: VersionAction) {
 	padding-left: var(--spacing--md);
 	border-left: var(--border);
 	overflow-y: auto;
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
 }
 
 .title {
@@ -176,6 +229,12 @@ function onAction(version: number, action: VersionAction) {
 	background-color: var(--color--background--light-3);
 }
 
+.draftDot {
+	border-color: var(--color--warning);
+	background-color: var(--color--warning);
+}
+
+.publishedDot,
 .latestDot {
 	border-color: var(--color--success);
 	background-color: var(--color--success);
