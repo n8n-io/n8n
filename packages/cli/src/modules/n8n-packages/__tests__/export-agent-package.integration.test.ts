@@ -86,7 +86,7 @@ beforeAll(async () => {
 		// A skill of a saved agent is a skills hub skill: it has its own id, no
 		// `enabled` flag on the ref, and no `allowedTools`.
 		const skillId = `${draft.id}_skill`;
-		const { allowedTools: _dropped, ...draftSkill } = draft.skills['shared-skill'];
+		const { allowedTools: _dropped, ...draftSkill } = draft.skills[skillId];
 		draft.skills = { [skillId]: draftSkill };
 		draft.config = {
 			...AgentJsonConfigSchema.parse(draft.config),

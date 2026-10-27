@@ -4,7 +4,9 @@ import { getWorkflowConsumerIds } from '../../spec/requirement-consumers';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 export function canStubNotFoundFailure(failure: CredentialResolutionFailure): boolean {
-	return failure.kind === 'not_found' && failure.targetId === undefined;
+	return (
+		failure.kind === 'not_found' && failure.targetId === undefined && failure.type !== undefined
+	);
 }
 
 /**

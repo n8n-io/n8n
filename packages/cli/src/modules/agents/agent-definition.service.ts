@@ -15,6 +15,7 @@ import {
 	getAgentTaskBody,
 	type AgentDefinition,
 	type PendingSkillRefs,
+	type AgentDefinitionMetadata,
 } from './utils/agent-definition';
 import { saveAgentDraftFenced } from './utils/agent-draft.utils';
 
@@ -68,6 +69,7 @@ export class AgentDefinitionService {
 		definition: AgentDefinition,
 		ctx: OperationContext = {},
 		skillPinsFrom?: Pick<AgentHistory, 'versionId'>,
+		metadata?: AgentDefinitionMetadata,
 	): Promise<boolean> {
 		// Preserve workflow input names in the JSON configuration.
 		const document = structuredClone(definition.schema);
@@ -78,7 +80,7 @@ export class AgentDefinitionService {
 			agent.schema = config;
 			agent.tools = deepCopy(definition.tools);
 			if (agent.schema) agent.name = agent.schema.name;
-			await saveAgentDraftFenced(this.agentRepository, agent, txCtx);
+			await saveAgentDraftFenced(this.agentRepository, agent, txCtx, metadata);
 			if (skillPinsFrom) {
 				await this.agentSkillRefs.restoreDraftRefs(agent, skillPinsFrom, skillRefs, txCtx);
 			} else {

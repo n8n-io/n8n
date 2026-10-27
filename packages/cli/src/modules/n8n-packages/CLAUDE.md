@@ -51,7 +51,7 @@ flowchart LR
      (or `ImportWorkflowProperties` / `ImportCredentialProperties`). For a new
      enum, add a `XxxPolicy` / `XxxMode` const **and** its derived type
      (follow `WorkflowIdPolicy`). New single-value modes are RFC seams — keep
-     the function-table convention (`workflow-conflict-policy.ts` etc.), don't
+     the function-table convention (`import-conflict-policy.ts` etc.), don't
      add handler classes for pure logic.
    - Implement the behaviour (e.g. `entities/workflow/workflow-importer.ts`)
      and thread it through `n8n-packages.service.ts` `importPackage`.
