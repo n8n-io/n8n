@@ -15,6 +15,8 @@ const props = defineProps<{
 	checkedToolIds: string[];
 	customAgentId?: string;
 	disabledTooltip?: string;
+	/** Open the tools dialogs above a parent dialog. */
+	stacked?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -69,6 +71,7 @@ function openToolsManager() {
 				.map((t) => t.definition),
 			onConfirm: () => {},
 			customAgentId: props.customAgentId,
+			...(props.stacked ? { stacked: true } : {}),
 		},
 	});
 }
@@ -90,6 +93,7 @@ function openToolSettings(item: ToolMenuItem) {
 			onConfirm: async (configuredNode: INode) => {
 				await chatStore.updateConfiguredTool(tool.id, configuredNode);
 			},
+			...(props.stacked ? { stacked: true } : {}),
 		},
 	});
 }

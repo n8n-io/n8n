@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
+import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import type { DatasetCandidateResponse, EvaluationConfigDto } from '@n8n/api-types';
@@ -139,6 +140,40 @@ describe('AddExecutionToDatasetModal', () => {
 
 		await waitFor(() => expect(showError).toHaveBeenCalled());
 		expect(showMessage).not.toHaveBeenCalled();
+		expect(getByTestId('add-execution-to-dataset-modal')).toBeInTheDocument();
+		expect(useUIStore().modalsById[ADD_EXECUTION_TO_DATASET_MODAL_KEY]?.open).toBe(true);
+	});
+
+	it('does not close a dialog opened again while the add is still running', async () => {
+		let resolveAdd: (rows: Array<{ id: number }>) => void = () => {};
+		addExecutionToDataset.mockImplementation(
+			async () =>
+				await new Promise<Array<{ id: number }>>((resolve) => {
+					resolveAdd = resolve;
+				}),
+		);
+		const { getByTestId } = within(document.body);
+		renderComponent({ props: defaultProps });
+
+		await waitFor(() => expect(getByTestId('add-execution-to-dataset-submit')).toBeEnabled());
+		await userEvent.click(getByTestId('add-execution-to-dataset-submit'));
+
+		const uiStore = useUIStore();
+		uiStore.closeModal(ADD_EXECUTION_TO_DATASET_MODAL_KEY);
+		const nextSession = { workflowId: 'wf-2', executionId: 'exec-2', configs };
+		uiStore.openModalWithData({
+			name: ADD_EXECUTION_TO_DATASET_MODAL_KEY,
+			data: nextSession,
+		});
+
+		resolveAdd([{ id: 1 }]);
+		await flushPromises();
+
+		expect(uiStore.modalsById[ADD_EXECUTION_TO_DATASET_MODAL_KEY]?.open).toBe(true);
+		expect(uiStore.modalsById[ADD_EXECUTION_TO_DATASET_MODAL_KEY]?.data).toMatchObject({
+			workflowId: 'wf-2',
+			executionId: 'exec-2',
+		});
 	});
 
 	it('ignores a stale candidate response when the selected config has changed', async () => {

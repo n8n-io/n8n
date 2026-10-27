@@ -103,6 +103,21 @@ describe('ToolsSelector', () => {
 			);
 		});
 
+		it('opens the tools manager above a parent dialog when stacked', async () => {
+			const { getByTestId } = renderComponent({
+				props: { disabled: false, checkedToolIds: [], stacked: true },
+			});
+
+			await userEvent.click(getByTestId('chat-tools-button'));
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: TOOLS_MANAGER_MODAL_KEY,
+					data: expect.objectContaining({ stacked: true }),
+				}),
+			);
+		});
+
 		it('should not open a dropdown on click', async () => {
 			const { getByTestId } = renderComponent({
 				props: { disabled: false, checkedToolIds: [] },

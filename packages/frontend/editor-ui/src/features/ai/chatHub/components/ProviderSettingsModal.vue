@@ -250,7 +250,12 @@ watch(
 </script>
 
 <template>
-	<N8nDialog :open="modalOpen" size="medium" @update:open="onDialogOpenUpdate">
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:data-test-id="`${modalName}-modal`"
+		@update:open="onDialogOpenUpdate"
+	>
 		<N8nDialogHeader>
 			<N8nDialogTitle>
 				{{

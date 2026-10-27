@@ -41,6 +41,7 @@ const {
 	warnMissingCredentials = false,
 	agents,
 	isLoading,
+	stacked = false,
 } = defineProps<{
 	selectedAgent: ChatModelDto | null;
 	includeCustomAgents?: boolean;
@@ -49,6 +50,8 @@ const {
 	warnMissingCredentials?: boolean;
 	agents: ChatModelsResponse;
 	isLoading: boolean;
+	/** Open the credential and model dialogs above a parent dialog. */
+	stacked?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -115,7 +118,16 @@ function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
 
 	if (existingCredentials.length === 0 && canCreateCredentials.value) {
-		uiStore.openNewCredential(credentialType);
+		uiStore.openNewCredential(
+			credentialType,
+			false,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			stacked ? { appendToBody: true } : {},
+		);
 		return;
 	}
 
@@ -126,6 +138,7 @@ function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 			displayName: providerDisplayNames[provider],
 			initialValue: credentials?.[provider] ?? null,
 			onSelect: (credentialId: string | null) => handleSelectCredentials(provider, credentialId),
+			...(stacked ? { appendToBody: true } : {}),
 		},
 	});
 }
@@ -137,6 +150,7 @@ function openModelByIdSelector(provider: ChatHubLLMProvider) {
 			provider,
 			initialValue: null,
 			onSelect: handleSelectModelById,
+			...(stacked ? { stacked: true } : {}),
 		},
 	});
 }

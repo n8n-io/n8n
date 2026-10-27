@@ -168,21 +168,30 @@ function buildPayloadMapping(): AddDatasetRowDto['mapping'] {
 	return result;
 }
 
+function isCurrentDialogSession(session: typeof props.data): boolean {
+	const current = uiStore.modalsById[ADD_EXECUTION_TO_DATASET_MODAL_KEY];
+	if (current?.open !== true) return false;
+	// A later open replaces the store payload. Finish only the session that started this submit.
+	if (current.data !== undefined && current.data !== session) return false;
+	return true;
+}
+
 async function onSubmit(): Promise<void> {
 	if (!canSubmit.value) return;
+	const session = props.data;
 	submitting.value = true;
 	try {
 		await evaluationStore.addExecutionToDataset({
-			workflowId: props.data.workflowId,
+			workflowId: session.workflowId,
 			configId: selectedConfigId.value,
 			payload: {
-				executionId: props.data.executionId,
+				executionId: session.executionId,
 				mapping: buildPayloadMapping(),
 			},
 		});
 		telemetry.track('User added execution to evaluation dataset', {
-			workflow_id: props.data.workflowId,
-			execution_id: props.data.executionId,
+			workflow_id: session.workflowId,
+			execution_id: session.executionId,
 			config_id: selectedConfigId.value,
 			columns_mapped: mappedColumnCount.value,
 		});
@@ -190,7 +199,7 @@ async function onSubmit(): Promise<void> {
 			type: 'success',
 			title: locale.baseText('evaluations.addToDataset.success.title'),
 		});
-		void closeDialog();
+		if (isCurrentDialogSession(session)) void closeDialog();
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluations.addToDataset.error.submit'));
 	} finally {

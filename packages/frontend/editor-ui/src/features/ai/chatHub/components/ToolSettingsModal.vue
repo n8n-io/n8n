@@ -23,6 +23,7 @@ const props = defineProps<{
 		node: INode | null;
 		existingToolNames?: string[];
 		onConfirm: (configuredNode: INode) => void;
+		stacked?: boolean;
 	};
 }>();
 
@@ -70,7 +71,13 @@ function handleNodeNameUpdate(name: string) {
 </script>
 
 <template>
-	<N8nDialog v-if="data.node" :open="modalOpen" size="2xlarge" @update:open="onDialogOpenUpdate">
+	<N8nDialog
+		v-if="data.node"
+		:open="modalOpen"
+		size="2xlarge"
+		:stacked="data.stacked === true"
+		@update:open="onDialogOpenUpdate"
+	>
 		<N8nDialogHeader>
 			<div :class="$style.header">
 				<NodeIcon
