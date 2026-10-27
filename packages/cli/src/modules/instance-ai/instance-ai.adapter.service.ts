@@ -23,6 +23,7 @@ import {
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
+	ASSISTANT_SKILLS_FLAG,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -86,6 +87,8 @@ import type {
 	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
+	ResolveParameterOptionsParams,
+	ResolveParameterOptionsResult,
 	UnavailableLocatorValue,
 	ProjectSummary,
 	FolderSummary,
@@ -213,7 +216,10 @@ import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
 import { FolderService } from '@/services/folder.service';
-import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
+import {
+	getParameterOptionsCredentialReferences,
+	NodeResourceExplorerService,
+} from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
@@ -416,6 +422,7 @@ export interface InstanceAiFeatureFlags {
 	credentialDescriptionsEnabled: boolean;
 	/** Shared activity recording and retrieval use the same instance gate. */
 	instanceContextEnabled: boolean;
+	assistantSkillsEnabled: boolean;
 }
 
 @Service()
@@ -565,6 +572,7 @@ export class InstanceAiAdapterService {
 			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
 			 *  `save_user_preference` tool. */
 			aiPreferencesEnabled?: boolean;
+			assistantSkillsEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -593,6 +601,7 @@ export class InstanceAiAdapterService {
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
+			assistantSkillsEnabled,
 			modelId,
 			modelFetch,
 			allowSendingParameterValues = this.allowSendingParameterValues,
@@ -647,7 +656,7 @@ export class InstanceAiAdapterService {
 				projectId,
 			),
 			credentialService,
-			nodeService: this.createNodeAdapter(user, shouldBypassCredentialTest),
+			nodeService: this.createNodeAdapter(user, projectId, shouldBypassCredentialTest),
 			dataTableService,
 			...(configEvalsEnabled && this.evaluationConfigService
 				? {
@@ -673,7 +682,7 @@ export class InstanceAiAdapterService {
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
 			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
-			skillService: this.getSkillService(user),
+			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
@@ -730,12 +739,17 @@ export class InstanceAiAdapterService {
 			: provider;
 	}
 
-	private getSkillService(user: User): InstanceAiSkillService | undefined {
+	private getSkillService(
+		user: User,
+		assistantSkillsEnabled: boolean,
+	): InstanceAiSkillService | undefined {
 		try {
 			const moduleRegistry = Container.get(ModuleRegistry);
 			if (!moduleRegistry.isActive('agents')) return undefined;
-			if (moduleRegistry.settings.get('agents')?.skillsHubEnabled !== true) return undefined;
-			return Container.get(InstanceAiSkillsAdapterService).createService(user);
+			return Container.get(InstanceAiSkillsAdapterService).createService(
+				user,
+				assistantSkillsEnabled,
+			);
 		} catch (error) {
 			this.logger.warn('Failed to resolve the skills adapter; skill tools disabled', {
 				error: error instanceof Error ? error.message : String(error),
@@ -784,14 +798,18 @@ export class InstanceAiAdapterService {
 	async resolveExperimentGates(user: User): Promise<InstanceAiFeatureFlags> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		let instanceContextEnabled = false;
+		let assistantSkillsEnabled = false;
 		try {
 			const postHog = Container.get(PostHogClient);
-			const [userFlags, instanceFlag] = await Promise.allSettled([
+			const [userFlags, instanceFlag, assistantSkillsFlag] = await Promise.allSettled([
 				postHog.getFeatureFlags(user),
 				postHog.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+				postHog.getFeatureFlagForInstance(ASSISTANT_SKILLS_FLAG),
 			]);
 			if (userFlags.status === 'fulfilled') flags = userFlags.value;
 			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
+			assistantSkillsEnabled =
+				assistantSkillsFlag.status === 'fulfilled' && assistantSkillsFlag.value === true;
 		} catch {
 			// Leave unreadable flags unassigned.
 		}
@@ -819,6 +837,7 @@ export class InstanceAiAdapterService {
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 			instanceContextEnabled,
+			assistantSkillsEnabled,
 		};
 	}
 
@@ -3935,6 +3954,7 @@ export class InstanceAiAdapterService {
 	 *  connected; its live resource lookups are answered as unavailable. */
 	private createNodeAdapter(
 		user: User,
+		boundProjectId?: string,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiNodeService {
 		// Use the service-level cache instead of a per-adapter closure.
@@ -4151,12 +4171,37 @@ export class InstanceAiAdapterService {
 						...(mode ? { mode } : {}),
 					});
 
-				const result = await getDefinition(nodeType);
-				const unavailable = getUnavailableNotice(nodeType);
-				if (unavailable && !result.error) return { ...result, unavailable };
-				if (!result.error || nodeType.includes('.')) return result;
+				const enrichDefinition = async (
+					nodeId: string,
+					defResult: Awaited<ReturnType<typeof getDefinition>>,
+				) => {
+					if (defResult.error) return defResult;
+					const [nodes, gatewayConfig] = await Promise.all([getAllNodes(), getGatewayConfig()]);
+					const parsedVersion = version ? Number.parseFloat(version.replace(/^v/i, '')) : undefined;
+					const desc = findNodeByVersion(
+						nodes,
+						nodeId,
+						Number.isFinite(parsedVersion) ? parsedVersion : undefined,
+					);
+					const meta = buildMeta(gatewayConfig, desc?.name ?? nodeId);
+					const unavailable = getUnavailableNotice(nodeId);
+					return {
+						...defResult,
+						...(unavailable ? { unavailable } : {}),
+						...(meta ? { aiGateway: meta } : {}),
+						...(desc?.webhooks ? { webhooks: desc.webhooks } : {}),
+						...(desc?.polling ? { polling: desc.polling } : {}),
+						...(desc?.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
+					};
+				};
 
-				return await getDefinition(`${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`);
+				const result = await getDefinition(nodeType);
+				if (!result.error || nodeType.includes('.')) {
+					return await enrichDefinition(nodeType, result);
+				}
+
+				const registryId = `${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`;
+				return await enrichDefinition(registryId, await getDefinition(registryId));
 			},
 
 			listDiscriminators: async (nodeType) => {
@@ -4329,6 +4374,31 @@ export class InstanceAiAdapterService {
 					throw new OperationalError(RESOURCE_EXPLORATION_UNAVAILABLE);
 				}
 				return await this.nodeResourceExplorerService.exploreResources(user, params);
+			},
+
+			resolveParameterOptions: async (
+				params: ResolveParameterOptionsParams,
+			): Promise<ResolveParameterOptionsResult> => {
+				// Eval-only: the same seeded-credential bypass as `exploreResources` above.
+				const references = getParameterOptionsCredentialReferences(params);
+				if (references.some(({ credentialId }) => shouldBypassCredentialTest?.(credentialId))) {
+					try {
+						for (const reference of references) {
+							await this.nodeResourceExplorerService.assertExploreCredentialAccess(user, reference);
+						}
+					} catch (error) {
+						return {
+							ok: false,
+							code: 'lookup_failed',
+							message: error instanceof Error ? error.message : String(error),
+						};
+					}
+					return { ok: false, code: 'lookup_failed', message: RESOURCE_EXPLORATION_UNAVAILABLE };
+				}
+				return await this.nodeResourceExplorerService.resolveParameterOptions(user, {
+					...params,
+					...(boundProjectId ? { projectId: boundProjectId } : {}),
+				});
 			},
 
 			findUnavailableLocatorValues: async (params): Promise<UnavailableLocatorValue[]> =>

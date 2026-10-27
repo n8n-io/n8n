@@ -5,6 +5,7 @@ import { billingPreview, billingResources } from './__tests__/preview.fixtures';
 import {
 	indexBlockers,
 	listBlockers,
+	crossProjectMoveBlockers,
 	scopeCheck,
 	toOperationRequest,
 	touchesDestructiveChange,
@@ -30,6 +31,7 @@ const check = (preflight: Partial<ApplyCheckResult['preflight']> = {}): ApplyChe
 		...preflight,
 	},
 	movedWorkflows: [],
+	movedFolders: [],
 });
 
 describe('promotion operation', () => {
@@ -59,7 +61,16 @@ describe('promotion operation', () => {
 						},
 					],
 				}),
-				movedWorkflows: [{ id: 'w4', name: 'Format currency', project: { id: 'p2', name: 'Ops' } }],
+				movedWorkflows: [
+					{
+						id: 'w4',
+						name: 'Format currency',
+						project: { id: 'p2', name: 'Ops' },
+						projectExists: true,
+						instanceProject: { id: 'p1', name: 'Billing' },
+					},
+				],
+				movedFolders: [],
 			}),
 		);
 
@@ -73,6 +84,53 @@ describe('promotion operation', () => {
 		// A data table change that removes values needs a confirmation, but does not block.
 		expect(touchesDestructiveChange(index, ['workflow:w2'])).toBe(true);
 		expect(touchesDestructiveChange(index, ['workflow:w1', 'workflow:w3'])).toBe(false);
+	});
+
+	it('should mark a moved folder row as blocking without blocking a workflow', () => {
+		const index = indexBlockers(
+			listBlockers({
+				...check(),
+				movedFolders: [
+					{
+						id: 'f1',
+						name: 'Payments',
+						project: { id: 'p2', name: 'Ops' },
+						projectExists: true,
+						instanceProject: { id: 'p1', name: 'Billing' },
+					},
+				],
+			}),
+		);
+
+		expect(index.byResource.get('folder:f1')?.[0]).toMatchObject({
+			kind: 'moved',
+			workflowKeys: [],
+		});
+		expect([...index.blocked]).toEqual([]);
+	});
+
+	it('should block a workflow that moved out of or into the project on promote', () => {
+		const preview = billingPreview();
+		const graph = buildSelectionGraph(
+			{
+				...preview,
+				resources: preview.resources.map((resource) => {
+					if (resource.key === 'workflow:w2') {
+						return { ...resource, change: 'deleted', movedToProject: { id: 'p2', name: 'Ops' } };
+					}
+					if (resource.key === 'workflow:w3') {
+						return { ...resource, change: 'added', movedFromProject: { id: 'p2', name: 'Ops' } };
+					}
+					return resource;
+				}),
+			},
+			'promote',
+		);
+
+		expect([...indexBlockers(crossProjectMoveBlockers(graph)).blocked].sort()).toEqual([
+			'workflow:w2',
+			'workflow:w3',
+		]);
 	});
 
 	it('should ignore the blockers of workflows that the preview does not list', () => {

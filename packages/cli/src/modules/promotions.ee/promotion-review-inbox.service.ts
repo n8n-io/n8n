@@ -22,6 +22,8 @@ import {
 import { hasGlobalScope } from '@n8n/permissions';
 import { singleFlight } from '@n8n/utils/promise/single-flight';
 
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+
 import type { InboxSourceQuery } from '../inbox/inbox-source.registry';
 import type { PromotionReview } from './database/entities/promotion-review.entity';
 import type { PromotionRun } from './database/entities/promotion-run.entity';
@@ -81,14 +83,16 @@ export class PromotionReviewInboxService {
 		private readonly mergeRequests: GitLabMergeRequestClient,
 		private readonly eventService: EventService,
 		private readonly logger: Logger,
+		private readonly sourceControlPreferences: SourceControlPreferencesService,
 	) {
 		this.logger = this.logger.scoped('promotions');
 	}
 
 	isEnabled() {
 		return (
-			this.licenseState.isLicensed(LICENSE_FEATURES.GIT_CONNECTIONS) &&
-			isEnvFeatureEnabled('N8N_ENV_FEAT_PROMOTIONS')
+			this.licenseState.isLicensed(LICENSE_FEATURES.PROMOTIONS) &&
+			isEnvFeatureEnabled('N8N_ENV_FEAT_PROMOTIONS') &&
+			this.sourceControlPreferences.getPreferences().environmentsVersion === 'v2'
 		);
 	}
 
@@ -366,7 +370,7 @@ export class PromotionReviewInboxService {
 	}
 }
 
-const canRead = (user: User) => hasGlobalScope(user, 'gitConnection:readReviews');
+const canRead = (user: User) => hasGlobalScope(user, 'promotions:readReviews');
 
 const failed = (remoteError: PromotionReviewRemoteError): RemoteView => ({
 	mergeRequest: null,

@@ -36,6 +36,11 @@ export class AgentHistory extends WithTimestamps {
 	@JsonColumn({ nullable: true, default: null })
 	tools: Agent['tools'] | null;
 
+	/**
+	 * @deprecated A published version keeps its skills as pins in
+	 * `agent_version_skill_dependency`. Read them through `AgentSkillRefsService`. Only
+	 * the data migration reads this column, and a later release drops it.
+	 */
 	@JsonColumn({ nullable: true, default: null })
 	skills: Record<string, AgentSkill> | null;
 

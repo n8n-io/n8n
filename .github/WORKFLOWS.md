@@ -1190,8 +1190,9 @@ sync re-creates the branch and then calls
 [`sec-sync-retarget-prs.yml`](workflows/sec-sync-retarget-prs.yml), which moves every open PR
 on `master` onto `bundle/2.x` and every one on `1.x` onto `bundle/1.x`. It skips a bundle
 branch that does not exist, and skips PRs whose *head* is `bundle/*` — those are the
-`chore: Bundle/*` cut PRs, which target the base on purpose. It is also dispatchable on its
-own. The retarget runs inside the bundle sync after a missing branch is recreated.
+`chore: Bundle/*` cut PRs, which target the base on purpose. GitHub does not allow the base
+of a PR in a stack to change, so the workflow also skips those PRs. It is also dispatchable
+on its own. The retarget runs inside the bundle sync after a missing branch is recreated.
 
 **`bundle/*` is append-only — never rebase it, never force-push it.** These branches receive
 PRs, and rewriting a branch that receives PRs orphans the copies of its commits that the open
