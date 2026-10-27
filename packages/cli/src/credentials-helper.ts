@@ -7,6 +7,7 @@ import {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { Credentials, FULL_ACCESS_NODE_TYPES, getAdditionalKeys } from 'n8n-core';
 import type {
 	CredentialInformation,
@@ -29,6 +30,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
+	MANAGED_VERSION_KEY,
 	NodeHelpers,
 	OPEN_AI_API_CREDENTIAL_TYPE,
 	Workflow,
@@ -42,6 +44,7 @@ import {
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { hasTokenData } from '@/managed-versions';
 import { DCR_MANAGED_CREDENTIAL_FIELDS, OAUTH_PINNED_FIELDS } from '@/oauth/dcr-managed-fields';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
@@ -563,7 +566,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	/**
-	 * Returns the decrypted credential data with applied overwrites
+	 * Returns the decrypted credential data with applied overwrites. `options.managedVersion`
+	 * names the managed app to apply. By default it is the version stored on the credential.
 	 */
 	async getDecrypted(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -573,7 +577,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		executeData?: IExecuteData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
-		options?: IGetDecryptedCredentialsOptions & { actor?: PolicyActor },
+		options?: IGetDecryptedCredentialsOptions & { actor?: PolicyActor; managedVersion?: number },
 	): Promise<ICredentialDataDecryptedObject> {
 		// Sub-nodes, such as a chat model connected to a chain or agent, inherit executeData.node
 		// from their parent. Prefer expressionResolveValues.node when present: it is always
@@ -706,6 +710,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			mode,
 			executeData,
 			expressionResolveValues,
+			options?.managedVersion,
 		);
 		return this.trackStoredData(decryptedData, credentialsEntity);
 	}
@@ -721,7 +726,25 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	/**
+	 * The managed app version that a new connection of this credential stores.
+	 * `undefined` when the credential does not use a managed app.
+	 */
+	getNewConnectionVersion(type: string, decryptedData: ICredentialDataDecryptedObject) {
+		return this.credentialsOverwrites.getNewConnectionVersion(type, decryptedData);
+	}
+
+	/**
+	 * The managed app version that issued the tokens of a credential. `undefined` for a user-owned
+	 * client or a credential with no tokens.
+	 */
+	getBoundVersion(type: string, decryptedData: ICredentialDataDecryptedObject) {
+		return this.credentialsOverwrites.resolveBoundVersion(type, decryptedData);
+	}
+
+	/**
 	 * Applies credential default data and overwrites
+	 *
+	 * @param managedVersion the managed app version to use. By default it is the version of the credential.
 	 */
 	async applyDefaultsAndOverwrites(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -730,6 +753,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		mode: WorkflowExecuteMode,
 		executeData?: IExecuteData,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
+		managedVersion?: number,
 	): Promise<ICredentialDataDecryptedObject> {
 		const credentialsProperties = this.getCredentialsProperties(type);
 
@@ -743,7 +767,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		// Load and apply the credentials overwrites if any exist
-		const dataWithOverwrites = this.credentialsOverwrites.applyOverwrite(type, storedData);
+		const dataWithOverwrites = this.credentialsOverwrites.applyOverwrite(
+			type,
+			storedData,
+			managedVersion,
+		);
 
 		// Add the default credential values
 		let decryptedData = NodeHelpers.getNodeParameters(
@@ -915,7 +943,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return;
 		}
 
-		await credentials.updateData({ oauthTokenData: data.oauthTokenData });
+		const oauthTokenData = await this.getTokenDataForFirstConnection(
+			type,
+			credentials,
+			data.oauthTokenData,
+		);
+		await credentials.updateData({ oauthTokenData });
 		const { data: newData } = credentials.getDataToSave();
 		if (newData === undefined) {
 			throw new UnexpectedError('Credential data is missing after re-encryption');
@@ -944,6 +977,31 @@ export class CredentialsHelper extends ICredentialsHelper {
 			// A later refresh in the same execution must compare against what is stored now.
 			this.storedDataByDecrypted.set(data, newData);
 		}
+	}
+
+	/**
+	 * Returns the token data with the managed app version added when this is the first token of a
+	 * managed credential. In any other case it returns the data unchanged. It reads the stored
+	 * credential to decide.
+	 *
+	 * A token that n8n fetches itself (client credentials) has no callback that stores the
+	 * version. The first token gets the version of the default app, which the execution used to
+	 * fetch it. A refresh keeps the stored version.
+	 */
+	private async getTokenDataForFirstConnection(
+		type: string,
+		credentials: Credentials,
+		tokenData: ICredentialDataDecryptedObject['oauthTokenData'],
+	) {
+		if (!isRecord(tokenData) || tokenData[MANAGED_VERSION_KEY] !== undefined) return tokenData;
+		// Most instances have no overwrite. Skip the decrypt of the stored data for them.
+		if (!this.credentialsOverwrites.supportsManagedAuth(type)) return tokenData;
+
+		const storedData = await credentials.getData();
+		if (hasTokenData(storedData)) return tokenData;
+
+		const version = this.credentialsOverwrites.getNewConnectionVersion(type, storedData);
+		return version === undefined ? tokenData : { ...tokenData, [MANAGED_VERSION_KEY]: version };
 	}
 }
 

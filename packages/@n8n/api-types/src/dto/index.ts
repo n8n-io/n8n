@@ -103,6 +103,7 @@ export { UpdateProjectDto, UpdateProjectWithRelationsDto } from './project/updat
 export { DeleteProjectDto } from './project/delete-project.dto';
 export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
 export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
+export { TransferPreviewQueryDto } from './project/transfer-preview-query.dto';
 export { ListProjectsQueryDto } from './project/list-projects-query.dto';
 export {
 	projectPublicSchema,
@@ -248,6 +249,11 @@ export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
+export {
+	DependencyListPublicDto,
+	ListDependenciesQueryDto,
+	type DependencyPublicType,
+} from './dependencies/dependency-public.dto';
 export { TagIdsPublicDto, WorkflowTagsPublicDto } from './workflows/workflow-tags-public.dto';
 export { CreateWorkflowPublicDto } from './workflows/create-workflow-public.dto';
 export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
@@ -437,7 +443,9 @@ export {
 export {
 	UsersListFilterDto,
 	type UsersListSortOptions,
+	type UsersListStatus,
 	USERS_LIST_SORT_OPTIONS,
+	USERS_LIST_STATUSES,
 } from './user/users-list-filter.dto';
 
 export { UpdateRoleDto } from './roles/update-role.dto';
@@ -552,6 +560,7 @@ export {
 	ImportResultDto,
 	ImportBlockedErrorDto,
 	importResultSchema,
+	type ImportedAgentChannel,
 } from './packages/import-result.dto';
 export * from './packages/credential.schema';
 export * from './packages/data-table.schema';
@@ -734,6 +743,8 @@ export {
 
 export {
 	PROMOTION_BRANCH_PREFIX,
+	PROMOTION_COMMIT_MESSAGE_MAX_LENGTH,
+	promotionCommitMessageSchema,
 	promotionDisplayNameSchema,
 } from './promotions/promotion-common.dto';
 export {
@@ -860,6 +871,7 @@ export {
 	promotionReviewTabSchema,
 	promotionReviewTypeSchema,
 	type PromotionReviewChanges,
+	type PromotionReviewOutcome,
 	type PromotionReviewWarning,
 	type PromotionReviewResult,
 	type PromotionReviewRemote,

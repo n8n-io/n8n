@@ -2,9 +2,9 @@ import { nanoid } from 'nanoid';
 
 import type { InstanceAiTraceContext } from '../../types';
 import { InstanceAiLivenessPolicy } from '../liveness-policy';
+import type { ConfirmationData } from '../confirmation-payload';
 import type {
 	BackgroundTaskStatusSnapshot,
-	ConfirmationData,
 	PendingConfirmation,
 	SuspendedRunState,
 } from '../run-state-registry';

@@ -12,6 +12,10 @@ import { isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
+import {
+	TRIGGER_INPUT_DATA_DESCRIPTION,
+	TRIGGER_NODE_NAME_DESCRIPTION,
+} from '../shared/trigger-input-descriptions';
 import { buildEmptyOutputNote, buildNodePreviews } from './verification/analyze-result';
 import { deriveVerificationClaim } from './verification/claim';
 import {
@@ -74,34 +78,8 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 			'The work item ID from the build (wi_XXXXXXXX). Optional for follow-up verification; when omitted, the latest build outcome for workflowId in this thread is used.',
 		),
 	workflowId: z.string().describe('The workflow ID to verify'),
-	inputData: z
-		.record(z.unknown())
-		.optional()
-		.describe(
-			"Input data for the workflow trigger. Shape MUST match the trigger's real-world output: " +
-				'Form Trigger -> flat field map like {name: "Alice", email: "a@b.c"} (do NOT wrap in formFields); ' +
-				'Webhook -> a flat payload like {event: "signup", userId: "..."} is placed under `body` and leaves ' +
-				'`query`, `headers` and `params` EMPTY. When any expression reads $json.query.*, $json.headers.* or ' +
-				'$json.params.*, pass the request envelope instead: {body: {...}, query: {caller: "+1555..."}, ' +
-				'headers: {"x-github-event": "issues"}, params: {...}}. A flat payload cannot exercise those fields, they resolve ' +
-				'empty, and a simulated downstream node still looks green; ' +
-				'Chat Trigger -> {chatInput: "user message"}; ' +
-				'Schedule Trigger -> omit inputData. ' +
-				"If you wrap a form payload in {formFields: {...}} the adapter will reject the call; the builder's " +
-				'downstream expressions reference $json.<field>, matching the flat production shape.',
-		),
-	triggerNodeName: z
-		.string()
-		.min(1)
-		.optional()
-		.describe(
-			'Name of the trigger node to start verification from. REQUIRED when the workflow has ' +
-				'more than one trigger: without it a single trigger is auto-detected and the other ' +
-				"triggers' branches are never verified. To cover every branch, call verify once per " +
-				"trigger. Trigger names come from workflow_builder_build_workflow's `triggerNodes` or " +
-				'workflow_builder_workflows(action="get-as-code"). Never disable, delete, reorder, or re-save a workflow — ' +
-				'and never build a throwaway copy — to reach a branch; use this instead.',
-		),
+	inputData: z.record(z.unknown()).optional().describe(TRIGGER_INPUT_DATA_DESCRIPTION),
+	triggerNodeName: z.string().min(1).optional().describe(TRIGGER_NODE_NAME_DESCRIPTION),
 	timeout: z
 		.number()
 		.int()
@@ -254,6 +232,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				workflowTaskService,
 				logger: context.logger,
 				fallbackModelConfig: context.modelId,
+				modelFetch: context.modelFetch,
 			});
 
 			if (buildOutcome.nodeSimulationPlan === undefined) {

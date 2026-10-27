@@ -257,7 +257,7 @@ export class AgentValidationService {
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope = 'publish',
 	): Promise<AgentConfigValidationResponse> {
-		const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, {});
+		const skills = await this.agentSkillRefs.skillsForRefs(skillRefs, {});
 		return await this.validateDefinition(
 			agent.id,
 			projectId,

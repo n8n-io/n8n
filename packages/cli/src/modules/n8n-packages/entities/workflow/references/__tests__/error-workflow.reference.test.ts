@@ -6,6 +6,7 @@ import { errorWorkflowReference } from '../error-workflow.reference';
 const workflow = (errorWorkflow: unknown, id = 'parent'): WorkflowEntity =>
 	({ id, settings: { errorWorkflow } }) as WorkflowEntity;
 const bindings = (workflows: Map<string, string>): PackageImportBindings => ({
+	agents: new Map(),
 	workflows,
 	credentials: new Map(),
 });

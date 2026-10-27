@@ -10,8 +10,10 @@ import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { sleep } from '@n8n/utils/sleep';
+import { FileNotFoundError } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
+import { buffer as streamToBuffer } from 'node:stream/consumers';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
@@ -24,12 +26,13 @@ import { chatErrorCode, emitChunkEvents } from '../agent-sse-stream';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import { N8nMemory } from '../integrations/n8n-memory';
 import {
 	AgentExecutionRepository,
 	type AgentExecutionUsageRow,
 } from '../repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
-import { AgentRepository } from '../repositories/agent.repository';
+import { AgentThreadGrantRepository } from '../repositories/agent-thread-grant.repository';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from '../types/agent-queued-message';
 import type { FormattedTurnError } from '../types/agent-turn-outcome';
@@ -41,6 +44,7 @@ import { SystemAgentHostEventChannel } from './system-agent-host-events';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type {
 	SystemAgentProvider,
+	SystemAgentStartTurn,
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
@@ -133,7 +137,6 @@ export class SystemAgentExecutionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly registry: SystemAgentRegistry,
-		private readonly agentRepository: AgentRepository,
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly executionService: AgentExecutionService,
@@ -144,13 +147,9 @@ export class SystemAgentExecutionService {
 		private readonly txRunner: TransactionRunner,
 		private readonly attachmentService: AgentChatAttachmentService,
 		private readonly conversationState: AgentConversationStateService,
+		private readonly n8nMemory: N8nMemory,
+		private readonly threadGrants: AgentThreadGrantRepository,
 	) {}
-
-	/** Register a provider and make sure its instance agent row exists. */
-	async register(provider: SystemAgentProvider): Promise<void> {
-		await this.agentRepository.ensureInstanceAgent(provider.agentId, provider.name);
-		this.registry.register(provider);
-	}
 
 	resourceIdFor(user: Pick<User, 'id'>): string {
 		return systemChatMemoryResourceId(user.id);
@@ -183,9 +182,33 @@ export class SystemAgentExecutionService {
 		user: User,
 		threadId: string,
 	): Promise<AgentExecutionThread> {
-		const thread = await this.getThread(agentId, user, threadId);
+		const thread = await this.findUsableThread(agentId, user, threadId);
+		if (!thread) throw new NotFoundError('Session not found');
+		return thread;
+	}
+
+	/**
+	 * Like `getUsableThread`, but `null` when the user has no thread with this id,
+	 * for example a new session before its first message.
+	 */
+	async findUsableThread(
+		agentId: string,
+		user: User,
+		threadId: string,
+	): Promise<AgentExecutionThread | null> {
+		const thread = await this.findOwnedThread(agentId, user, threadId);
+		if (!thread) return null;
 		await this.assertCanUse(agentId, user, thread.projectId);
 		return thread;
+	}
+
+	private async findOwnedThread(
+		agentId: string,
+		user: User,
+		threadId: string,
+	): Promise<AgentExecutionThread | null> {
+		this.assertRegistered(agentId);
+		return await this.threadRepository.findOwnedById(agentId, user.id, threadId);
 	}
 
 	// ── Threads ──────────────────────────────────────────────────────────────
@@ -265,8 +288,7 @@ export class SystemAgentExecutionService {
 
 	/** Load a thread the user owns. It checks ownership only, not the floor. */
 	async getThread(agentId: string, user: User, threadId: string): Promise<AgentExecutionThread> {
-		this.assertRegistered(agentId);
-		const thread = await this.threadRepository.findOwnedById(agentId, user.id, threadId);
+		const thread = await this.findOwnedThread(agentId, user, threadId);
 		if (!thread) throw new NotFoundError('Session not found');
 		return thread;
 	}
@@ -589,6 +611,7 @@ export class SystemAgentExecutionService {
 				hostEvents,
 				controller.signal,
 				thread,
+				{ provider, user },
 				async () => {
 					return await provider.prepareTurn({
 						type: 'start',
@@ -597,10 +620,13 @@ export class SystemAgentExecutionService {
 						resourceId,
 						abortSignal: controller.signal,
 						...(workspace ? { workspace: workspace.lease } : {}),
+						...this.turnStateOf(thread),
 						emitHostEvent: hostEvents.emit,
 						executionId: admission.executionId,
 						message: payload.message,
 						attachments,
+						readAttachment: async (ref) =>
+							await this.readTurnAttachment(thread, resourceId, attachments, ref),
 						options: payload.options ?? {},
 					});
 				},
@@ -679,6 +705,7 @@ export class SystemAgentExecutionService {
 			hostEvents,
 			controller.signal,
 			thread,
+			{ provider, user: params.user },
 			async () =>
 				await provider.prepareTurn({
 					type: 'resume',
@@ -687,6 +714,7 @@ export class SystemAgentExecutionService {
 					resourceId,
 					abortSignal: controller.signal,
 					...(workspace ? { workspace: workspace.lease } : {}),
+					...this.turnStateOf(thread),
 					emitHostEvent: hostEvents.emit,
 					runId,
 					toolCallId: pending.toolCallId,
@@ -836,6 +864,44 @@ export class SystemAgentExecutionService {
 		});
 	}
 
+	/** The Agents state of the thread that the provider builds the turn with. */
+	private turnStateOf(
+		thread: AgentExecutionThread,
+	): Pick<SystemAgentStartTurn, 'memory' | 'checkpointStore' | 'sessionGrants'> {
+		return {
+			memory: this.n8nMemory.getImplementation(thread.agentId),
+			checkpointStore: this.checkpointStorage.getStorage(thread.agentId),
+			sessionGrants: {
+				load: async () => await this.threadGrants.findKeys(thread.id),
+				grant: async (key) => await this.threadGrants.grant(thread.id, key),
+				revoke: async (key) => await this.threadGrants.revoke(thread.id, key),
+			},
+		};
+	}
+
+	/** Read an attachment of the turn, from the system chat of the thread's owner. */
+	private async readTurnAttachment(
+		thread: AgentExecutionThread,
+		resourceId: string,
+		attachments: StoredAttachmentRef[],
+		ref: StoredAttachmentRef,
+	): Promise<Buffer | undefined> {
+		if (!attachments.some((attachment) => attachment.id === ref.id)) return undefined;
+		const attachment = await this.attachmentService.getForSystemAgent(ref.id, {
+			agentId: thread.agentId,
+			resourceId,
+			source: SYSTEM_CHAT_SOURCE,
+		});
+		if (attachment?.threadId !== thread.id) return undefined;
+		try {
+			return await streamToBuffer(await this.attachmentService.getStream(attachment));
+		} catch (error) {
+			// Storage can prune the bytes while the attachment row stays.
+			if (error instanceof FileNotFoundError) return undefined;
+			throw error;
+		}
+	}
+
 	/**
 	 * Attach the attachment store on every turn. Memory keeps file references,
 	 * and without the store a later turn cannot load the files of earlier turns.
@@ -888,13 +954,15 @@ export class SystemAgentExecutionService {
 	/**
 	 * Prepare a turn and attach its file store. When this fails, release the
 	 * lease before the error goes up, so that the source does not keep a lease
-	 * for a turn that never ran.
+	 * for a turn that never ran. The error goes up in the form that the
+	 * provider's `formatSetupError` gives.
 	 */
 	private async prepareOrRelease(
 		workspace: TurnWorkspace | undefined,
 		hostEvents: SystemAgentHostEventChannel,
 		signal: AbortSignal,
 		thread: AgentExecutionThread,
+		setup: { provider: SystemAgentProvider; user: User },
 		prepare: () => Promise<SystemAgentTurnHandle>,
 	): Promise<SystemAgentTurnHandle> {
 		try {
@@ -904,7 +972,32 @@ export class SystemAgentExecutionService {
 		} catch (error) {
 			hostEvents.close();
 			await workspace?.release({ status: signal.aborted ? 'cancelled' : 'errored', error });
-			throw error;
+			if (signal.aborted) throw error;
+			const formatted = await this.formatSetupError(setup.provider, setup.user, thread, error);
+			throw formatted ? new AgentFormattedTurnError(formatted, error) : error;
+		}
+	}
+
+	/**
+	 * The user-facing form of an error that `prepareTurn` threw, from the
+	 * provider hook. Follows the same rules as `formatTurnError`.
+	 */
+	private async formatSetupError(
+		provider: SystemAgentProvider,
+		user: User,
+		thread: AgentExecutionThread,
+		error: unknown,
+	): Promise<FormattedTurnError | undefined> {
+		if (!provider.formatSetupError || chatErrorCode(error) !== undefined) return undefined;
+		try {
+			const formatted = await provider.formatSetupError(user, error);
+			return formatted?.message ? formatted : undefined;
+		} catch (formatError) {
+			this.logger.warn('System agent setup error formatter failed', {
+				threadId: thread.id,
+				error: formatError,
+			});
+			return undefined;
 		}
 	}
 

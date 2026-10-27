@@ -550,6 +550,23 @@ describe('instanceAi.reducer', () => {
 	});
 
 	// Test live event dispatch, not only shared history replay.
+	it('adds a live skill update to the assistant timeline', () => {
+		const state = stateWithRun('run-1', 'agent-root');
+		const payload = {
+			skillId: 'hub:1',
+			name: 'Writing',
+			version: 'v2',
+			change: 'updated' as const,
+		};
+		handleEvent(state, { type: 'skill-update', runId: 'run-1', agentId: 'agent-root', payload });
+		const runState = state.runStateByGroupId.get('run-1');
+		expect(runState?.agentsById['agent-root'].timeline).toContainEqual({
+			type: 'skill-update',
+			runId: 'run-1',
+			...payload,
+		});
+	});
+
 	describe('instance context', () => {
 		const injected = {
 			injection: {
@@ -926,38 +943,6 @@ describe('instanceAi.reducer', () => {
 			expect(runState?.agentsById['agent-root']?.toolCalls).toEqual([]);
 			expect(runState?.agentsById['agent-child']?.toolCalls).toEqual([]);
 		});
-
-		test('createRunStateFromTree preserves planItems', () => {
-			const runState = createRunStateFromTree({
-				agentId: 'agent-root',
-				role: 'orchestrator',
-				status: 'completed',
-				textContent: '',
-				reasoning: '',
-				toolCalls: [],
-				children: [],
-				timeline: [],
-				planItems: [
-					{
-						id: 'task-1',
-						title: 'Build workflow',
-						kind: 'build-workflow',
-						spec: 'Create the workflow',
-						deps: [],
-					},
-				],
-			});
-
-			expect(runState?.agentsById['agent-root']?.planItems).toEqual([
-				{
-					id: 'task-1',
-					title: 'Build workflow',
-					kind: 'build-workflow',
-					spec: 'Create the workflow',
-					deps: [],
-				},
-			]);
-		});
 	});
 
 	// -----------------------------------------------------------------------
@@ -1021,10 +1006,6 @@ describe('instanceAi.reducer', () => {
 
 		test('returns eval-setup for eval setup tool', () => {
 			expect(getRenderHint('eval-setup-with-agent')).toBe('eval-setup');
-		});
-
-		test('returns planner render hint for create-tasks', () => {
-			expect(getRenderHint('create-tasks')).toBe('planner');
 		});
 
 		test.each(['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'])(

@@ -777,6 +777,7 @@ export class AgentRuntime {
 			agentModel: this.config.model,
 			modelFetch: this.config.modelFetch,
 			turnDelta: list.turnDelta(),
+			...(options.titleText !== undefined ? { titleText: options.titleText } : {}),
 			executionCounter: options.executionCounter,
 			onSideCallUsage: options.onSideCallUsage,
 			promptCaching: this.config.promptCaching,
@@ -1007,6 +1008,9 @@ export class AgentRuntime {
 		this.assertNotAborted(ctx.abortScope);
 		this.eventBus.emit({ type: AgentEvent.TurnStart });
 		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
+		for (const update of this.activeSkills?.takeUpdates() ?? []) {
+			await sink.emitMessage?.(update);
+		}
 		const turn = await this.callModelWithRetries(ctx, sink, state, modelCallContext);
 		// A guardrail refused the call. Usage from any discarded empty attempt
 		// is already folded in; end the run without a new model turn.
@@ -1122,28 +1126,30 @@ export class AgentRuntime {
 			if (guardrails && guardCtx) await guardrails.after(guardCtx, turn.usage);
 			return turn;
 		};
+		const retryModel = async () => {
+			this.assertNotAborted(ctx.abortScope);
+			return await callModel();
+		};
 
 		let turn = await callModel();
 		// Retry empty stop turns. Charge each attempt before checking for cancellation.
 		for (let retry = 0; turn && retry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn); retry++) {
-			this.recordTurnUsage(ctx, sink, state, turn);
-			this.assertNotAborted(ctx.abortScope);
-			turn = await callModel();
+			[, turn] = await Promise.all([this.recordTurnUsage(ctx, sink, state, turn), retryModel()]);
 		}
 		if (!turn) return undefined;
-		this.recordTurnUsage(ctx, sink, state, turn);
+		await this.recordTurnUsage(ctx, sink, state, turn);
 		return turn;
 	}
 
-	private recordTurnUsage<T>(
+	private async recordTurnUsage<T>(
 		ctx: PreparedLoopContext,
 		sink: RunOutputSink<T>,
 		state: LoopState,
 		turn: ModelTurnResult,
-	): void {
+	): Promise<void> {
 		state.totalUsage = mergeUsage(state.totalUsage, withPromptSizeBreakdown(turn.usage));
 		incrementTokenCountFromUsage(ctx.options?.executionCounter, turn.usage);
-		sink.reportUsage(state.totalUsage);
+		await sink.reportUsage(state.totalUsage);
 	}
 
 	private async finishToolBatch<T>(

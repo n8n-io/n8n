@@ -16,7 +16,6 @@ import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
 import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
@@ -32,6 +31,7 @@ import {
 	isProjectAgent,
 	type ProjectAgent,
 } from '@/modules/agents/entities/agent.entity';
+import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SkillRepository } from '@/modules/skills/skill.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
@@ -65,12 +65,12 @@ describe('Agent skills in the skills hub', () => {
 	const broadcaster = mockInstance(AgentUpdateBroadcaster);
 
 	beforeAll(async () => {
-		setSkillsHubFlag(true);
 		mockInstance(Telemetry);
 		mockInstance(AgentRuntimeCacheService);
 		mockInstance(AgentTaskService).requestReconcile.mockResolvedValue(undefined);
 		const validation = mockInstance(AgentValidationService);
 		validation.validateAgentEntityConfiguration.mockResolvedValue({ status: 'valid', issues: [] });
+		validation.validateAgentHistoryConfiguration.mockResolvedValue({ status: 'valid', issues: [] });
 		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
 		registerSkillAgentsProvider();
@@ -147,6 +147,29 @@ describe('Agent skills in the skills hub', () => {
 			Object.entries(skillsRecord).map(([id, skill]) => [id, skill.instructions]),
 		);
 	}
+
+	it('saves each shared-skill edit as a complete draft version', async () => {
+		const skill = await createSkill(body('Writing', 'First instructions'));
+		const agent = await createAgent([skill]);
+		await saveInstructions(skill, 'Second instructions');
+		const second = await reload(agent);
+		await saveInstructions(skill, 'Third instructions');
+		const third = await reload(agent);
+		expect(new Set([agent.versionId, second.versionId, third.versionId]).size).toBe(3);
+		const history = Container.get(AgentHistoryRepository);
+		for (const [versionId, instructions] of [
+			[agent.versionId, 'First instructions'],
+			[second.versionId, 'Second instructions'],
+			[third.versionId, 'Third instructions'],
+		]) {
+			const saved = await history.findByVersionAndAgentId(versionId!, agent.id);
+			expect(saved).not.toBeNull();
+			const snapshot = await skillRefs.readVersion(saved!, {});
+			expect(snapshot.skills[skill]?.instructions).toBe(instructions);
+			expect(saved?.skills).toBeNull();
+		}
+		expect(third.activeVersionId).toBeNull();
+	});
 
 	it('lists the skills of a draft and of its published version in the same attach order', async () => {
 		const zeta = await createSkill(body('Zeta'));
@@ -321,58 +344,53 @@ describe('Agent skills in the skills hub', () => {
 		expect(await Container.get(SkillRepository).findByIds([created.id])).toHaveLength(1);
 	});
 
-	it('keeps the published skills readable after the flag is turned off', async () => {
+	it('publishes the skills as pins and writes no agent_history.skills', async () => {
 		const skill = await createSkill(body('Published', 'Published text.'));
 		const published = (await publish(await createAgent([skill])))!;
-		await saveInstructions(skill, 'Newer text.');
 		const version = published.activeVersion!;
 
-		setSkillsHubFlag(false);
-		try {
-			// With the flag off, the legacy reader uses the columns that publish wrote.
-			const { skillRefs: refs, skills } = await skillRefs.readVersion(version, {});
-			expect(refs).toEqual([{ type: 'skill', id: skill }]);
-			expect(await instructionsOf(skills)).toEqual({ [skill]: 'Published text.' });
-		} finally {
-			setSkillsHubFlag(true);
-		}
+		expect(version.skills).toBeNull();
+		expect(version.schema).not.toHaveProperty('skills');
+		// The pins hold the skills of the version.
+		const { skillRefs: refs, skills } = await skillRefs.readVersion(version, {});
+		expect(refs).toEqual([{ type: 'skill', id: skill }]);
+		expect(await instructionsOf(skills)).toEqual({ [skill]: 'Published text.' });
 	});
 
-	it('keeps skills on the agent row when the skills hub is off', async () => {
-		setSkillsHubFlag(false);
-		try {
-			const agent = await createAgent([]);
-			const context = { user: editor, modifiedBy: 'builder' as const };
+	it('does not write agents.skills on skill writes, publish or revert', async () => {
+		const agent = await createAgent([]);
+		// A value that an earlier release wrote.
+		const oldSkills = { old: body('Old') };
+		const stored = await reload(agent);
+		stored.skills = oldSkills;
+		await agentRepository.save(stored);
+		const context = { user: editor, modifiedBy: 'builder' as const };
 
-			const created = await agentSkillsService.createAndAttachSkill(
-				agent.id,
-				project.id,
-				body('Triage'),
-				context,
-			);
-			await agentSkillsService.updateSkill(
-				agent.id,
-				project.id,
-				created.id,
-				{ instructions: 'Sort tickets by urgency.' },
-				context,
-				created.skillHash,
-			);
-			const published = (await publish(await reload(agent)))!;
-			await agentSkillsService.deleteSkill(agent.id, project.id, created.id, context);
-			await publishService.revertToPublishedAgent(agent.id, project.id, owner, 'user');
+		const created = await agentSkillsService.createAndAttachSkill(
+			agent.id,
+			project.id,
+			body('Triage'),
+			context,
+		);
+		await agentSkillsService.updateSkill(
+			agent.id,
+			project.id,
+			created.id,
+			{ instructions: 'Sort tickets by urgency.' },
+			context,
+			created.skillHash,
+		);
+		const published = (await publish(await reload(agent)))!;
+		await agentSkillsService.deleteSkill(agent.id, project.id, created.id, context);
+		await publishService.revertToPublishedAgent(agent.id, project.id, owner, 'user');
 
-			const row = await reload(agent);
-			expect(row.schema?.skills).toEqual([{ type: 'skill', id: created.id }]);
-			expect(row.skills[created.id]?.instructions).toBe('Sort tickets by urgency.');
-			expect(published.activeVersion?.skills?.[created.id]?.instructions).toBe(
-				'Sort tickets by urgency.',
-			);
-			expect(await Container.get(SkillRepository).findByIds([created.id])).toEqual([]);
-			expect(await skillRefs.refsForDraft(row, {})).toEqual([{ type: 'skill', id: created.id }]);
-		} finally {
-			setSkillsHubFlag(true);
-		}
+		const row = await reload(agent);
+		expect(row.skills).toEqual(oldSkills);
+		// The revert pins the ref to the published version.
+		expect(await skillRefs.refsForDraft(row, {})).toEqual([
+			{ type: 'skill', id: created.id, versionId: expect.any(String) },
+		]);
+		expect(published.activeVersion?.skills).toBeNull();
 	});
 
 	it('keeps a skill for this agent only, and copies it for a duplicate', async () => {

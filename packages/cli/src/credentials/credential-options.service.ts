@@ -8,6 +8,7 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
+import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -124,7 +125,9 @@ export class CredentialOptionsService {
 				undefined,
 			);
 			return await loader(resolvedData, request.filter, request.paginationToken);
-		} catch {
+		} catch (error) {
+			// The message is static and tells the user to reconnect.
+			if (error instanceof ManagedAppUnavailableError) throw new BadRequestError(error.message);
 			// Provider errors can contain credential data.
 			throw new BadRequestError('Could not load the list. Try again or enter an ID.');
 		}

@@ -39,6 +39,7 @@ const props = withDefaults(
 );
 
 defineSlots<{
+	prefix?: () => unknown;
 	default?: () => unknown;
 	/** Replaces the callout text; the tooltip keeps showing `error`. */
 	errorCallout?: () => unknown;
@@ -54,13 +55,14 @@ const errorTooltip = computed(() =>
 </script>
 
 <template>
-	<div :class="{ [$style.nestedRow]: isNested }">
+	<div :class="{ [$style.nestedRow]: isNested, [$style.row]: !isNested }">
 		<span v-if="isNested" :class="$style.rail">
 			<span :class="$style.railDot" />
 		</span>
 		<CollapsibleRoot v-if="props.hasContent" v-slot="{ open: isOpen }">
 			<CollapsibleTrigger as-child>
 				<N8nAiActivityStepButton size="small" :loading="props.loading">
+					<template #prefix><slot name="prefix" /></template>
 					{{ props.label }}
 					<template #icon>
 						<N8nTooltip v-if="props.error" placement="top">
@@ -95,6 +97,7 @@ const errorTooltip = computed(() =>
 			</N8nAnimatedCollapsibleContent>
 		</CollapsibleRoot>
 		<N8nAiActivityStepButton v-else size="small" :loading="props.loading" :interactive="false">
+			<template #prefix><slot name="prefix" /></template>
 			{{ props.label }}
 			<template #icon>
 				<N8nTooltip v-if="props.error" placement="top">
@@ -114,6 +117,10 @@ const errorTooltip = computed(() =>
 </template>
 
 <style lang="scss" module>
+.row {
+	display: flex;
+	flex-direction: column;
+}
 .nestedRow {
 	display: grid;
 	grid-template-columns: var(--spacing--md) minmax(0, 1fr);

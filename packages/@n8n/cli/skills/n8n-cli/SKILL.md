@@ -213,8 +213,21 @@ n8n-cli promotion-environment connect <promoteId>
 n8n-cli promotion-environment connect <applyId>
 
 # 4. Promote from this instance, or apply to it.
-n8n-cli promotion-environment promote <promoteId> -m "Promote team projects"
+n8n-cli promotion-environment promote <promoteId>
 n8n-cli promotion-environment apply <applyId>
+```
+
+GitLab setup. A GitLab provider lists its repositories and branches, so read the
+remote URL and the branch names from it instead of guessing them:
+
+```bash
+# gitlab-provider.json:
+# {"name":"GitLab","type":"gitlab","config":{"schemaVersion":1,"baseUrl":"https://gitlab.example.com"},
+#  "auth":{"authType":"token","password":"<GitLab access token>"}}
+n8n-cli promotion-provider create --file=gitlab-provider.json --format=id-only   # providerId
+n8n-cli promotion-provider list-repositories <providerId> --search=flows --json  # remoteUrl, fullPath
+n8n-cli promotion-provider list-branches <providerId> <fullPath> --json          # isDefault marks the default branch
+# Put remoteUrl and a branch name in the environment JSON, then create and connect as above.
 ```
 
 Apply a reviewed commit only:
@@ -258,6 +271,8 @@ n8n-cli promotion-provider list
 n8n-cli promotion-provider get <id>          # re-read the public key; the list omits it
 echo '{"name":"New name"}' | n8n-cli promotion-provider update <id> --stdin
 n8n-cli promotion-provider delete <id>       # fails while an environment uses it
+n8n-cli promotion-provider list-repositories <id> --search=<text> --limit=20   # GitLab only
+n8n-cli promotion-provider list-branches <id> <fullPath or repository id>      # GitLab only
 
 # Environments
 n8n-cli promotion-environment list --scope=instance --direction=promote
@@ -281,8 +296,16 @@ n8n-cli promotion-environment remove-project <id> <projectId>
 Key points:
 - Pass every JSON body through `--stdin` or `--file`, never through a flag. This
   keeps credentials off the command line.
-- `authType` is `ssh-key` or `token`. `token` means an HTTP(S) username and
-  password, not a Git host API token. `publicKey` is `null` for a `token` provider.
+- `type` is `git` or `gitlab`. For `git`, `authType` is `ssh-key` or `token`, and
+  `token` means an HTTP(S) username and password. For `gitlab`, `authType` is
+  `token` only: `password` is the GitLab access token (`read_api` and
+  `write_repository`), `config.baseUrl` is required, and n8n ignores `username`.
+  `publicKey` is `null` for a `token` provider.
+- `list-repositories` and `list-branches` work for `gitlab` providers only. A `git`
+  provider fails with an error. Pass the repository as plain `fullPath`
+  (`acme/flows`), `id`, or an environment's `remote.repositoryPath`. Do not URL-encode it.
+  Read `remoteUrl`, `fullPath` and branch names from `--json` output: the table
+  shortens values longer than 60 characters to `...`.
 - `createBranchOnPromotion` is always required in promote settings.
 - `promote` and `apply` work on an `instance` environment of their direction
   only, and need it connected first. Connecting one environment does not make another
@@ -295,7 +318,7 @@ Key points:
   `preflight`.
 - The `--expected-*` flags go together: pass all three or none. The commit SHA
   must be the full SHA.
-- API key scopes for this group are named `gitConnection:*`. `promote` also needs
+- API key scopes for this group are named `promotions:*`. `promote` also needs
   `variable:list` when the workflows reference variables.
 
 ## Other
