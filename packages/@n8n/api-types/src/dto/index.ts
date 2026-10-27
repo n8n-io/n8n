@@ -868,6 +868,7 @@ export {
 	promotionReviewTabSchema,
 	promotionReviewTypeSchema,
 	type PromotionReviewChanges,
+	type PromotionReviewOutcome,
 	type PromotionReviewWarning,
 	type PromotionReviewResult,
 	type PromotionReviewRemote,

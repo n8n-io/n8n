@@ -1,15 +1,3 @@
-/** Utilization at which new production executions start to wait. */
-export const HOLD_LEVEL = 0.8;
-
-/** Utilization below which the hold ends. */
-export const RESUME_LEVEL = 0.75;
-
-/** Utilization at which the guard stops the execution that holds the most run data. */
-export const STOP_LEVEL = 0.85;
-
-/** Utilization at which one sample is enough to hold and to stop. */
-export const CRITICAL_LEVEL = 0.95;
-
 /** Utilization below which the guard samples slowly. */
 export const FAST_SAMPLING_LEVEL = 0.7;
 
@@ -55,9 +43,6 @@ export const REMEASURE_INTERVAL_MS = 500;
 
 /** A stop frees memory if memory drops by at least this share of the stopped execution's estimate. */
 export const FREED_SHARE = 0.5;
-
-/** Number of counted stops after which the guard deactivates a workflow. */
-export const STOPS_TO_DEACTIVATE = 3;
 
 export const MEMORY_DOCS_URL =
 	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/scaling/fix-memory-issues';

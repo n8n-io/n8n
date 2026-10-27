@@ -163,13 +163,13 @@ export type AgentCreationEvent = Omit<AgentModificationEvent, 'changedParts' | '
 
 export type AgentSidecarChanges = Partial<Record<'tools' | 'skills' | 'tasks', boolean>>;
 
-export function buildAgentMutationEvent(
-	agent: Agent,
+export function buildAgentMutationEvent<AgentType extends Agent>(
+	agent: AgentType,
 	skillRefs: AgentSkillRefs,
 	projectId: string,
 	context: AgentMutationTelemetryContext,
 	changedParts: AgentConfigPart[],
-): AgentModificationEvent {
+): AgentModificationEvent & { agent: AgentType } {
 	const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
 	return {
 		agent,
