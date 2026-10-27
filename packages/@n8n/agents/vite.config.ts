@@ -19,7 +19,6 @@ const REWRITE_REQUIRE_TARGETS = [
 	'/src/runtime/model/lazy-ai.ts',
 	'/src/runtime/model/model-factory.ts',
 	'/src/runtime/model/google-vertex.ts',
-	'/src/utils/proxy-fetch.ts',
 ];
 
 function rewriteSourceRequire(): Plugin {

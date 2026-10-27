@@ -33,11 +33,15 @@ describe('workflow_builder_search_models tool', () => {
 				),
 			},
 		});
-		const tool = createSearchModelsTool(new ModelCatalogService());
+		const modelFetch = vi.fn<typeof fetch>();
+		const tool = createSearchModelsTool(new ModelCatalogService(), modelFetch);
 		const input = parseToolInput(tool, { provider: 'openai' });
 		expect(input.success).toBe(true);
 		if (!input.success) throw new Error('Expected valid tool input');
 		const result = searchModelsOutputSchema.parse(await executeTool(tool, input.data));
+		expect(fetchProviderCatalog).toHaveBeenCalledWith(
+			expect.objectContaining({ fetch: modelFetch }),
+		);
 		expect(tool.name).toBe('workflow_builder_search_models');
 		expect(result.models).toHaveLength(10);
 		expect(result.hasMore).toBe(true);

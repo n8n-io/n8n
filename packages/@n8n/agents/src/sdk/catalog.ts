@@ -1,8 +1,6 @@
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { z } from 'zod';
 
-import { getProxyFetch } from '../utils/proxy-fetch';
-
 const MODELS_DEV_URL = 'https://models.dev/api.json';
 
 const MODELS_DEV_PROVIDER_ALIASES: Record<string, string> = {
@@ -185,9 +183,7 @@ export async function fetchProviderCatalog(options?: {
 	signal?: AbortSignal;
 	fetch?: typeof globalThis.fetch;
 }): Promise<ProviderCatalog> {
-	const response = await (options?.fetch ?? getProxyFetch() ?? fetch)(MODELS_DEV_URL, {
-		signal: options?.signal,
-	});
+	const response = await (options?.fetch ?? fetch)(MODELS_DEV_URL, { signal: options?.signal });
 	if (!response.ok) {
 		throw new Error(`Failed to fetch provider catalog: ${response.statusText}`);
 	}
@@ -275,12 +271,15 @@ let catalogFetchPromise: Promise<ProviderCatalog | undefined> | undefined;
  * Get the cached catalog, fetching once if needed.
  * Returns undefined if the fetch fails (offline, timeout, etc.).
  * On failure, clears the in-flight promise so the next call retries.
+ * `fetch` is used only when this call starts the fetch.
  * @internal
  */
-export async function getCachedCatalog(): Promise<ProviderCatalog | undefined> {
+export async function getCachedCatalog(options?: {
+	fetch?: typeof globalThis.fetch;
+}): Promise<ProviderCatalog | undefined> {
 	if (cachedCatalog) return cachedCatalog;
 
-	catalogFetchPromise ??= fetchProviderCatalog()
+	catalogFetchPromise ??= fetchProviderCatalog(options)
 		.then((c) => {
 			cachedCatalog = c;
 			return c;
@@ -303,8 +302,11 @@ export async function getCachedCatalog(): Promise<ProviderCatalog | undefined> {
  * Returns undefined if catalog is unavailable or model not found.
  * @internal
  */
-export async function getModelCost(modelId: string): Promise<ModelCost | undefined> {
-	const catalog = await getCachedCatalog();
+export async function getModelCost(
+	modelId: string,
+	fetch?: typeof globalThis.fetch,
+): Promise<ModelCost | undefined> {
+	const catalog = await getCachedCatalog({ fetch });
 	if (!catalog) return undefined;
 
 	const { provider, model: modelName } = splitModelId(modelId);

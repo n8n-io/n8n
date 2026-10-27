@@ -1,4 +1,4 @@
-import { computeCost, fetchProviderCatalog } from '../catalog';
+import { computeCost, fetchProviderCatalog, getCachedCatalog } from '../catalog';
 
 describe('fetchProviderCatalog', () => {
 	const originalFetch = global.fetch;
@@ -114,7 +114,9 @@ describe('fetchProviderCatalog', () => {
 		});
 
 		await fetchProviderCatalog({ fetch: fetchMock as typeof fetch });
+		await getCachedCatalog({ fetch: fetchMock as typeof fetch });
 
+		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(fetchMock).toHaveBeenCalledWith('https://models.dev/api.json', { signal: undefined });
 	});
 

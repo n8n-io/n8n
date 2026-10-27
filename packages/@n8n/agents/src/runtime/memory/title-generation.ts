@@ -283,6 +283,7 @@ export async function generateThreadTitle(opts: {
 				getCatalogModelId(titleModelId),
 				usage,
 				opts.promptCaching,
+				opts.modelFetch,
 			);
 		}
 
@@ -313,9 +314,10 @@ async function reportTitleUsage(
 	modelId: string,
 	usage: TokenUsage,
 	promptCaching?: PromptCachingConfig,
+	modelFetch?: FetchFn,
 ): Promise<void> {
 	try {
-		const cost = await computeSideCallCost(modelId, usage, promptCaching);
+		const cost = await computeSideCallCost(modelId, usage, promptCaching, modelFetch);
 		await onSideCallUsage({
 			task: 'title',
 			model: modelId,

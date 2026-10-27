@@ -172,9 +172,11 @@ describe('builder model recommendations', () => {
 	it('puts the recommendation section and the Preview link into the session context', async () => {
 		resetModelRecommendationsCacheForTest();
 		fetchProviderCatalog.mockResolvedValueOnce(catalog);
+		const catalogFetch = vi.fn<typeof fetch>();
 
-		const context = await buildBuilderSessionContext('project-1', 'agent-1');
+		const context = await buildBuilderSessionContext('project-1', 'agent-1', catalogFetch);
 
+		expect(fetchProviderCatalog).toHaveBeenCalledWith({ fetch: catalogFetch });
 		expect(context).toContain('### Recommended LLM Models');
 		expect(context).toContain('`openai/gpt-5` GPT-5');
 		expect(context).toContain('[Preview](/projects/project-1/agents/agent-1');
