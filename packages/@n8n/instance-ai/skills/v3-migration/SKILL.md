@@ -27,8 +27,10 @@ saved, so a correct fix closes the finding by itself.
   workflows, even when they have the same finding.
 - Keep everything the finding does not need to change: other nodes,
   credentials, pinned data and connections.
-- Do not publish or activate the workflow. If it is published, tell the user
-  that the published version keeps the old node until they publish again.
+- Do not publish on your own. If the workflow is published, the report marks
+  the finding fixed as soon as the draft is saved, but the published version,
+  which is the one that runs, does not have the fix yet. Say so, and offer to
+  publish the fixed version, following the publish rules in `workflow-builder`.
 
 ## Process
 
