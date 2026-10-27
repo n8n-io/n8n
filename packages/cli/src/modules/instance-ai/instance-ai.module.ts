@@ -104,7 +104,7 @@ export class InstanceAiModule implements ModuleInterface {
 		if (!Container.get(ModuleRegistry).eligibleModules.includes('agents')) {
 			Container.get(Logger)
 				.scoped('instance-ai')
-				.warn('The n8n Assistant agent needs the agents module, so it is not registered');
+				.warn('The Assistant agent needs the agents module, so it is not registered');
 			return;
 		}
 		const { SystemAgentRegistrationService } = await import(

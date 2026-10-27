@@ -38,7 +38,7 @@ function parseClientRequest(value: unknown, logger?: Logger): AssistantClientReq
 	});
 	if (!parsed.success) {
 		// Log only the field paths: the values can hold user content.
-		logger?.warn('Dropped the n8n Assistant client context because it is not valid', {
+		logger?.warn('Dropped the Assistant client context because it is not valid', {
 			fields: parsed.error.issues.map((issue) => issue.path.join('.')),
 		});
 		return {};

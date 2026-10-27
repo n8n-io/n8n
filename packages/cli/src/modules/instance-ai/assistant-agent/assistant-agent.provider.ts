@@ -206,7 +206,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					inputAccepted = this.turnInput
 						.onInputAccepted(environment, runtime, turnInput, { user, threadId: thread.id, runId })
 						.catch((error: unknown) => {
-							this.logger.warn('Failed to record the accepted n8n Assistant turn input', {
+							this.logger.warn('Failed to record the accepted Assistant turn input', {
 								threadId: thread.id,
 								error: getErrorMessage(error),
 							});
@@ -308,7 +308,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				outcome.status,
 			);
 		} catch (error) {
-			this.logger.warn('Failed to claim n8n Assistant turn usage', {
+			this.logger.warn('Failed to claim Assistant turn usage', {
 				threadId,
 				runId,
 				error: getErrorMessage(error),
