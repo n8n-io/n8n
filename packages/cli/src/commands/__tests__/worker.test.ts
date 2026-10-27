@@ -28,6 +28,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { JobProcessor } from '@/scaling/job-processor';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WorkerServer } from '@/scaling/worker-server';
@@ -60,6 +61,7 @@ mockInstance(RedisClientService);
 mockInstance(PubSubRegistry);
 const mockSubscriber = mockInstance(Subscriber);
 mockInstance(WorkerStatusService);
+mockInstance(JobProcessor);
 const mockWorkerServer = mockInstance(WorkerServer);
 mockInstance(LoadNodesAndCredentials);
 const activeExecutions = mockInstance(ActiveExecutions);

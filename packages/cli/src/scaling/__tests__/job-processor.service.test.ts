@@ -2808,10 +2808,13 @@ describe('JobProcessor', () => {
 			await vi.waitFor(() => expect(jobProcessor.getRunningJobsSummary()).toHaveLength(1));
 
 			expect(jobProcessor.stopJobByExecutionId('exec-1')).toBe(true);
-			await assertion;
 
+			// The stop itself frees the job, before the cleanup in processJob runs.
 			expect(cancel).toHaveBeenCalledTimes(1);
 			expect(jobProcessor.getRunningJobsSummary()).toEqual([]);
+			expect(jobProcessor.getTrackedJobIds()).toEqual([]);
+
+			await assertion;
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'execution-cancelled',
 				expect.objectContaining({ executionId: 'exec-1', reason: 'manual' }),
