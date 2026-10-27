@@ -807,6 +807,8 @@ builder, not as standalone calls on the IF node variable. Chain steps inside a
 branch with `.to()`, or pass an array for parallel fan-out:
 
 ```ts
+const isImportant = ifElse({ version: 2.2, config: { name: 'Is Important', parameters: { conditions } } });
+
 export default workflow('id', 'name')
   .add(startTrigger)
   .to(isImportant)
