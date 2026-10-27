@@ -1500,12 +1500,31 @@ describe('AgentPublishService', () => {
 		expect(agent.activeVersionId).toBe('v1');
 	});
 
+	it.each([undefined, versionId])(
+		'rejects a stale caller revision before an idempotent publish of %s',
+		async (targetVersionId) => {
+			const { service, agentRepository, agentValidationService, transactionRunner, eventService } =
+				makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ revision: 1, activeVersionId: versionId }),
+			);
+
+			await expect(
+				service.publishAgent(agentId, projectId, user, byUser, targetVersionId, undefined, 0),
+			).rejects.toBeInstanceOf(ConflictError);
+			expect(agentValidationService.validateAgentEntityConfiguration).not.toHaveBeenCalled();
+			expect(agentValidationService.validateAgentHistoryConfiguration).not.toHaveBeenCalled();
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		},
+	);
+
 	it('passes the loaded revision as the fence expectation on publish', async () => {
 		const { service, agentRepository, ctx } = makeService();
 		const agent = makeAgent({ revision: 3, publicationRevision: 7 });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-		await service.publishAgent(agentId, projectId, user, byUser);
+		await service.publishAgent(agentId, projectId, user, byUser, undefined, undefined, 3);
 
 		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalledWith(agentId, 7, versionId, ctx);
 		expect(agent.revision).toBe(3);
@@ -1518,7 +1537,16 @@ describe('AgentPublishService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(makeHistory());
 			const metadata = { name: 'Release', description: 'Ready for support' };
-			await service.publishAgent(agentId, projectId, user, byUser, versionId, undefined, metadata);
+			await service.publishAgent(
+				agentId,
+				projectId,
+				user,
+				byUser,
+				versionId,
+				undefined,
+				undefined,
+				metadata,
+			);
 			expect(agentHistoryRepository.updateMetadata).toHaveBeenCalledWith(
 				agentId,
 				versionId,
@@ -1537,7 +1565,7 @@ describe('AgentPublishService', () => {
 				issues: [],
 			});
 			await expect(
-				service.publishAgent(agentId, projectId, user, byUser, versionId, undefined, {
+				service.publishAgent(agentId, projectId, user, byUser, versionId, undefined, undefined, {
 					name: 'Release',
 				}),
 			).rejects.toThrow();
@@ -1550,9 +1578,18 @@ describe('AgentPublishService', () => {
 				makeAgent({ activeVersionId: versionId }),
 			);
 			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(makeHistory());
-			await service.publishAgent(agentId, projectId, user, byUser, versionId, undefined, {
-				name: null,
-			});
+			await service.publishAgent(
+				agentId,
+				projectId,
+				user,
+				byUser,
+				versionId,
+				undefined,
+				undefined,
+				{
+					name: null,
+				},
+			);
 			expect(agentHistoryRepository.updateMetadata).toHaveBeenCalledWith(agentId, versionId, {
 				name: null,
 			});
@@ -1616,4 +1653,32 @@ describe('AgentPublishService', () => {
 			]);
 		});
 	});
+
+	it('checks the caller revision and uses the publication revision to unpublish', async () => {
+		const { service, agentRepository, ctx } = makeService();
+		const agent = makeAgent({ revision: 3, publicationRevision: 7, activeVersionId: versionId });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		await service.unpublishAgent(agentId, projectId, user, 'user', undefined, 3);
+
+		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalledWith(agentId, 7, null, ctx);
+		expect(agent.revision).toBe(3);
+		expect(agent.publicationRevision).toBe(8);
+	});
+
+	it.each([null, versionId])(
+		'rejects a stale caller revision before unpublishing %s',
+		async (activeVersionId) => {
+			const { service, agentRepository, transactionRunner, eventService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ revision: 1, activeVersionId }),
+			);
+
+			await expect(
+				service.unpublishAgent(agentId, projectId, user, 'user', undefined, 0),
+			).rejects.toBeInstanceOf(ConflictError);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		},
+	);
 });

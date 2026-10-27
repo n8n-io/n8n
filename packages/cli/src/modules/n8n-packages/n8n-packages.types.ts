@@ -1,3 +1,4 @@
+import type { AgentImportIssue } from './entities/agent/agent-import.types';
 import type { PolicyViolation } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { Readable } from 'node:stream';
@@ -7,6 +8,7 @@ import type {
 	CredentialUpdateForbidden,
 } from './entities/credential/credential.types';
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
+import type { PublishingOutcome } from './entities/publishing';
 import type { TagResolutionFailure } from './entities/tag/tag.types';
 import type {
 	VariableConflict,
@@ -39,21 +41,19 @@ export type CredentialMissingMode = 'must-preexist' | 'create-stub' | 'create-wi
 export type PackageFailureReason = 'access-denied' | 'entity-not-found' | 'blocked' | 'validation';
 
 /* eslint-disable @typescript-eslint/naming-convention -- enum-like members for IDE documentation */
-export const WorkflowConflictPolicy = {
+export const ImportConflictPolicy = {
 	/**
-	 * Updates existing workflows with matching sourceWorkflowId; otherwise creates a new workflow.
-	 * The archived state follows the package: a matched workflow is archived or unarchived to match.
+	 * Updates matched Agents and workflows. Creates entities that have no match.
+	 * A matched workflow is archived or unarchived to match the package.
 	 */
 	NewVersion: 'new-version',
-	/** Fails the import if any matched workflow already exists in the target project. */
+	/** Fails the import if a matched Agent or workflow exists in the target project. */
 	Fail: 'fail',
-	/** Leaves matched workflows unchanged; creates the rest of the workflows in the package. */
+	/** Leaves matched Agents and workflows unchanged. Creates entities that have no match. */
 	Skip: 'skip',
 } as const;
 
 export const WorkflowIdPolicy = {
-	/** Mints a fresh id for each imported workflow; the source id is kept as `sourceWorkflowId`. */
-	New: 'new',
 	/** Reuses the package's own workflow id in the target instance. */
 	Source: 'source',
 } as const;
@@ -201,8 +201,7 @@ export const TagConflictPolicy = {
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
-export type WorkflowConflictPolicy =
-	(typeof WorkflowConflictPolicy)[keyof typeof WorkflowConflictPolicy];
+export type ImportConflictPolicy = (typeof ImportConflictPolicy)[keyof typeof ImportConflictPolicy];
 
 export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowIdPolicy];
 
@@ -276,7 +275,7 @@ export type ImportRequest = {
 	user: User;
 	projectId?: string;
 	folderId?: string;
-	bindings?: Partial<PackageImportBindings>;
+	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
 	apiKeyScopes?: string[];
 	/** Omit to import the whole package. */
 	selection?: ImportSelection;
@@ -309,7 +308,7 @@ export interface ImportSelection {
 
 /**
  * Match or create the destination project from the package. Callers cannot override its location.
- * The service fixes all policies except `workflowConflictPolicy`, `workflowIdPolicy`,
+ * The service fixes all policies except `conflictPolicy`, `idPolicy`,
  * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`),
  * `dataTableSchemaConflictPolicy` (defaults to `fail`), `tagConflictPolicy` (defaults to `skip`),
  * `credentialConflictPolicy` (defaults to `keep-existing`), and `layoutConflictPolicy` (defaults to
@@ -318,9 +317,9 @@ export interface ImportSelection {
 export type ImportSelectionRequest = {
 	user: User;
 	apiKeyScopes?: string[];
-	bindings?: Partial<PackageImportBindings>;
-	workflowConflictPolicy?: WorkflowConflictPolicy;
-	workflowIdPolicy?: WorkflowIdPolicy;
+	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
+	conflictPolicy?: ImportConflictPolicy;
+	idPolicy?: WorkflowIdPolicy;
 	overwriteDeletionPolicy?: OverwriteDeletionPolicy;
 	dataTableSchemaConflictPolicy?: DataTableSchemaConflictPolicy;
 	tagConflictPolicy?: TagConflictPolicy;
@@ -339,10 +338,13 @@ export type ImportCredentialProperties = {
 	credentialConflictPolicy?: CredentialConflictPolicy;
 };
 
-export type ImportWorkflowProperties = {
-	workflowConflictPolicy: WorkflowConflictPolicy;
-	workflowPublishingPolicy: WorkflowPublishingPolicy;
-	workflowIdPolicy: WorkflowIdPolicy;
+export type ImportEntityProperties = {
+	conflictPolicy: ImportConflictPolicy;
+	idPolicy: WorkflowIdPolicy;
+	publishingPolicy: WorkflowPublishingPolicy;
+};
+
+export type ImportWorkflowProperties = ImportEntityProperties & {
 	missingNodeTypeMode: MissingNodeTypeMode;
 };
 
@@ -423,12 +425,19 @@ export interface ImportContext {
 }
 
 export type ImportPackageEventOptions = Required<ImportCredentialProperties> &
-	ImportWorkflowProperties &
+	Omit<ImportWorkflowProperties, 'idPolicy' | 'publishingPolicy'> &
 	ImportProjectProperties &
 	ResolvedImportFolderProperties &
 	ImportDataTableProperties &
 	ImportVariableProperties &
-	ImportTagProperties;
+	ImportTagProperties & {
+		/** Keep existing audit properties when request fields change. */
+		workflowConflictPolicy: ImportConflictPolicy;
+		workflowIdPolicy: WorkflowIdPolicy;
+		agentIdPolicy: WorkflowIdPolicy;
+		workflowPublishingPolicy: WorkflowPublishingPolicy;
+		agentPublishingPolicy: WorkflowPublishingPolicy;
+	};
 
 /** Credential ids involved in a package import, shaped for forward-compatible audit events. */
 export type ImportAuditCredentialIds = {
@@ -442,6 +451,7 @@ export type ImportAuditCredentialIds = {
  * Counts only — no ids — so they can be relayed to analytics without leaking data.
  */
 export type ImportPackageEventCounts = {
+	agents: ImportStatusCounts;
 	workflows: {
 		created: number;
 		updated: number;
@@ -547,6 +557,22 @@ export interface ImportedWorkflowSummary {
 	moved?: true;
 }
 
+export interface ImportedAgentSummary {
+	sourceAgentId: string;
+	localId: string;
+	name: string;
+	projectId: string;
+	activeVersionId: string | null;
+	status: 'created' | 'updated' | 'skipped';
+	publishing: PublishingOutcome;
+}
+
+export interface ImportStatusCounts {
+	created: number;
+	updated: number;
+	skipped: number;
+}
+
 export interface ImportedFolderSummary {
 	sourceFolderId: string;
 	localId: string;
@@ -598,6 +624,7 @@ export interface ImportedProjectSummary {
  * The import aborts when any are present.
  */
 export type BlockingIssue =
+	| AgentImportIssue
 	| ({ type: 'workflow-conflict' } & WorkflowConflict)
 	| ({ type: 'workflow-lineage-conflict' } & WorkflowLineageConflict)
 	| ({ type: 'workflow-id-conflict' } & WorkflowIdConflict)
@@ -712,12 +739,14 @@ export type ImportBindingMap = Map<string, string>;
  * entity type.
  */
 export interface PackageImportBindings {
+	agents: ImportBindingMap;
 	workflows: ImportBindingMap;
 	credentials: ImportBindingMap;
 }
 
 export function createBindings(seed: Partial<PackageImportBindings> = {}): PackageImportBindings {
 	return {
+		agents: new Map(),
 		workflows: new Map(),
 		credentials: new Map(),
 		...seed,
@@ -727,6 +756,7 @@ export function createBindings(seed: Partial<PackageImportBindings> = {}): Packa
 /** Combines per-scope binding maps into one — used when a project package imports several scopes. */
 export function mergeBindings(...bindings: PackageImportBindings[]): PackageImportBindings {
 	return {
+		agents: new Map(bindings.flatMap(({ agents }) => [...agents])),
 		workflows: new Map(bindings.flatMap(({ workflows }) => [...workflows])),
 		credentials: new Map(bindings.flatMap(({ credentials }) => [...credentials])),
 	};
@@ -738,6 +768,7 @@ export type SerializedBindings = Record<keyof PackageImportBindings, Record<stri
 /** Flattens the internal binding `Map`s into the plain objects exposed over the wire. */
 export function serializeBindings(bindings: PackageImportBindings): SerializedBindings {
 	return {
+		agents: Object.fromEntries(bindings.agents),
 		workflows: Object.fromEntries(bindings.workflows),
 		credentials: Object.fromEntries(bindings.credentials),
 	};
@@ -786,6 +817,8 @@ export interface ImportTagSummary {
 
 export interface ImportResult {
 	package: ImportPackageSummary;
+	agents: ImportedAgentSummary[];
+	counts: { agents: ImportStatusCounts };
 	workflows: ImportedWorkflowSummary[];
 	/** Workflows the package did not contain, removed under `folderConflictPolicy=overwrite`. */
 	removedWorkflows: RemovedWorkflowSummary[];

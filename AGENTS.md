@@ -338,7 +338,7 @@ extends one of those layers):
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
-- Always use the `design-system` skill in reviews
+- Always use the `n8n:ui-design` skill in reviews
 
 ### Verify changes
 
