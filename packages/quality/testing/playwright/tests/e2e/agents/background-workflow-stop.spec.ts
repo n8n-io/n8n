@@ -211,7 +211,11 @@ test.describe(
 				const reportRequest = {
 					method: 'POST',
 					path: '/v1/messages',
-					body: { type: 'REGEX', regex: '(?s)(?=.*"stream"\\s*:\\s*true)(?!.*"tools"\\s*:).*' },
+					body: {
+						type: 'JSON',
+						json: JSON.stringify({ stream: true, tool_choice: { type: 'none' } }),
+						matchType: 'ONLY_MATCHING_FIELDS',
+					},
 				};
 				await expect
 					.poll(async () => await n8nContainer.services.proxy.wasRequestMade(reportRequest))
