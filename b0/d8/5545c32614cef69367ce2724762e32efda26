@@ -1,7 +1,7 @@
 packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
-  s_d740321ee1c7f2::t_c697fe6231dd23 2-196,198-204,206-249,252-325,435
+  s_d740321ee1c7f2::t_c697fe6231dd23 2-121,123-175,177-195,198-204,206-249,252-272,275-318,435
 packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
-  s_d740321ee1c7f2::t_7740807cc1837a 1-36,38-219,222-227,229-304,365-374,408-419
+  s_d740321ee1c7f2::t_7740807cc1837a 1-36,38-124,126-219,222-227,229-304,365-374
 ---
 {
   "schema_version": "authorship/3.0.0",
