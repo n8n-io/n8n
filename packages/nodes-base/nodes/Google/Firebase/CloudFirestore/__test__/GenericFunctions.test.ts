@@ -256,6 +256,25 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 			expect(jsonToDocument('9999')).toEqual({ stringValue: '9999' });
 		});
 
+		it('should use doubleValue for fractional numbers, including scientific notation', () => {
+			expect(jsonToDocument(-0.5)).toEqual({ doubleValue: -0.5 });
+			expect(jsonToDocument(1e-6)).toEqual({ doubleValue: 1e-6 });
+			expect(jsonToDocument(1e-7)).toEqual({ doubleValue: 1e-7 });
+			expect(jsonToDocument(-1e-7)).toEqual({ doubleValue: -1e-7 });
+			expect(jsonToDocument(1.25e-7)).toEqual({ doubleValue: 1.25e-7 });
+			expect(jsonToDocument(Number.MIN_VALUE)).toEqual({ doubleValue: Number.MIN_VALUE });
+		});
+
+		it('should use doubleValue for small fractions nested in arrays and objects', () => {
+			expect(jsonToDocument({ a: [1e-7, 1] })).toEqual({
+				mapValue: {
+					fields: {
+						a: { arrayValue: { values: [{ doubleValue: 1e-7 }, { integerValue: 1 }] } },
+					},
+				},
+			});
+		});
+
 		it('should convert string values', () => {
 			expect(jsonToDocument('hello world')).toEqual({ stringValue: 'hello world' });
 			expect(jsonToDocument('')).toEqual({ stringValue: '' });
