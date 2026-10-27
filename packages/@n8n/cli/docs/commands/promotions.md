@@ -18,7 +18,7 @@ for each direction. A direction without a project environment uses the instance
 environment.
 
 Requires the Promotions feature to be licensed. The API key scopes are named
-`gitConnection:*`.
+`promotions:*`.
 
 ## Setup example
 
@@ -229,8 +229,8 @@ n8n-cli promotion-environment list-changes proj-abc apply
 | `--order` | Sort order: `asc` or `desc`. The default is `asc`. |
 
 For `promote` the rows are what a promotion would send to the branch, and the
-API key needs `gitConnection:push`. For `apply` the rows are what applying the
-branch would change on this instance, and the key needs `gitConnection:pull`.
+API key needs `promotions:promote`. For `apply` the rows are what applying the
+branch would change on this instance, and the key needs `promotions:apply`.
 `commitSha` is the commit the rows were read from. Table output shows the rows
 only. Use `--json` to get the rows and `commitSha` together. Connect the
 environment first. Use the `id` of each row to build a selective promote.
@@ -302,7 +302,7 @@ instance hold in different projects is refused before any write, and nothing is
 imported.
 
 Connect the environment first. This command works on an `instance` Apply
-environment only. The API key needs `gitConnection:pull`.
+environment only. The API key needs `promotions:apply`.
 
 ## `promotion-environment apply-continue`
 
@@ -386,7 +386,7 @@ the `apply-selection-continue` command to run after you resolve the bindings; it
 resends the same workflow ids. With `--json`, the output is the full result for
 each status.
 
-Connect the environment first. The API key needs `gitConnection:pull`. The
+Connect the environment first. The API key needs `promotions:apply`. The
 environment is the project's own Apply environment when it has one, otherwise
 the instance Apply environment.
 

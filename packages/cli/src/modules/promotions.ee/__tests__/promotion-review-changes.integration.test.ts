@@ -42,7 +42,7 @@ const mergeRequests = mockInstance(GitLabMergeRequestClient);
 const server = setupTestServer({
 	endpointGroups: ['promotions'],
 	modules: ['promotions', 'n8n-packages'],
-	enabledFeatures: ['feat:gitConnections'],
+	enabledFeatures: ['feat:promotions'],
 });
 
 const author = ['-c', 'user.name=Reviewer', '-c', 'user.email=reviewer@example.com'];
