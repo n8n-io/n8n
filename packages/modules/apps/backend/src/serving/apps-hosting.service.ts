@@ -17,10 +17,6 @@ export class AppsHostingService {
 	) {}
 
 	readonly dispatch: RequestHandler = (req, res, next) => {
-		if (!this.hosts.validRequestHost(req)) {
-			res.sendStatus(400);
-			return;
-		}
 		if (!this.hosts.ownsRequest(req)) {
 			next();
 			return;

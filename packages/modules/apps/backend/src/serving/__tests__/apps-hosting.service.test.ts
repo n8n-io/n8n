@@ -34,17 +34,6 @@ describe('AppsHostingService', () => {
 		expect(service.allowsUpgrade(req)).toBe(false);
 	});
 
-	it('rejects requests with an invalid host before main-route passthrough', () => {
-		const { service, hosts, req, res } = setup(false);
-		hosts.validRequestHost.mockReturnValue(false);
-		const next = vi.fn();
-
-		void service.dispatch(req, res, next);
-
-		expect(res.sendStatus).toHaveBeenCalledExactlyOnceWith(400);
-		expect(next).not.toHaveBeenCalled();
-	});
-
 	it('rejects apps-owned requests without a namespace', () => {
 		const { service, hosts, req, res } = setup();
 		hosts.namespace.mockReturnValue(undefined);
