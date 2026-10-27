@@ -19,13 +19,13 @@ import {
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { ErrorReporter } from 'n8n-core';
 
+import { formatPreviewSessionContext } from '@/modules/agents/format-agent-session-context';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 
 import { canAccessAgentPreviewHandoff } from '../agent-preview-handoff';
 import { getAgentContextService, isAgentsAccessEnabled } from '../agents-access';
-import { formatPreviewSessionContext } from '../format-agent-session-context';
 import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import {

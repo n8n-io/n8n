@@ -16,6 +16,7 @@ const AGENT_ENTRY_POINTS = new Set([
 	'agent-credential-provider.contracts',
 	'agent-draft.service',
 	'agent-draft.contracts',
+	'format-agent-session-context',
 	'builder/agents-builder.service',
 	'builder/builder-session',
 	'evaluation/agent-evaluation.service',

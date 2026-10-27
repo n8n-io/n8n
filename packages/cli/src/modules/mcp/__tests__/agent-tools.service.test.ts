@@ -1801,7 +1801,7 @@ describe('McpAgentToolsService', () => {
 			executions: [turn('execution-1'), turn('execution-2')],
 		};
 
-		it('returns every turn of the session', async () => {
+		it('returns a transcript of every turn', async () => {
 			agentContextService.readSession.mockResolvedValue(sessionDetail);
 
 			const result = await callTool('get_agent_session', {
@@ -1819,8 +1819,15 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent).toEqual({
 				ok: true,
 				session: { sessionId: 'session-1', ...thread, title: 'Session #1' },
-				executions: sessionDetail.executions,
+				transcript: expect.any(String),
 			});
+			const { transcript } = result.structuredContent;
+			expect(transcript).toContain('title: Session #1, session #1, scope: whole session, turns: 2');
+			expect(transcript).toContain('User: Message execution-1');
+			expect(transcript).toContain('User: Message execution-2');
+			expect(transcript).toContain('Tool call: lookup_order | kind=tool | failed | 1ms');
+			expect(transcript).toContain('  Output: {"error":"Order database is not reachable"}');
+			expect(transcript).toContain('Assistant: Reply execution-2');
 		});
 
 		it('keeps a stored session title', async () => {
@@ -1836,6 +1843,7 @@ describe('McpAgentToolsService', () => {
 
 			expect(result.structuredContent).toMatchObject({
 				session: { sessionId: 'session-1', title: 'Order questions' },
+				transcript: expect.stringContaining('title: Order questions,'),
 			});
 		});
 
@@ -1850,8 +1858,10 @@ describe('McpAgentToolsService', () => {
 
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
-				executions: [turn('execution-2')],
+				transcript: expect.stringContaining('scope: single turn, turns: 1'),
 			});
+			expect(result.structuredContent.transcript).toContain('User: Message execution-2');
+			expect(result.structuredContent.transcript).not.toContain('Message execution-1');
 		});
 
 		it('reports an unknown turn', async () => {
