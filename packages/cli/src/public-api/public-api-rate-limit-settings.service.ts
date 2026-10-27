@@ -11,6 +11,7 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -47,6 +48,7 @@ export class PublicApiRateLimitSettingsService {
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly eventService: EventService,
 		private readonly publisher: Publisher,
@@ -109,7 +111,7 @@ export class PublicApiRateLimitSettingsService {
 	}
 
 	private notifyOtherMains() {
-		if (!this.globalConfig.multiMainSetup.enabled) return;
+		if (!this.instanceSettings.isMultiMain) return;
 
 		void this.publisher
 			.publishCommand({ command: 'reload-public-api-rate-limit-settings' })

@@ -4,6 +4,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { PublicApiRateLimitConfig } from '@n8n/config';
 import type { Settings, SettingsRepository } from '@n8n/db';
 import { BadRequestError } from '@n8n/errors';
+import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -37,7 +38,7 @@ describe('PublicApiRateLimitSettingsService', () => {
 	const eventService = mock<EventService>();
 	const publisher = mock<Publisher>();
 	let config: PublicApiRateLimitConfig;
-	let multiMain: boolean;
+	let instanceSettings: { isMultiMain: boolean };
 	let service: PublicApiRateLimitSettingsService;
 
 	const storeRow = (value: string) =>
@@ -48,15 +49,11 @@ describe('PublicApiRateLimitSettingsService', () => {
 	beforeEach(() => {
 		settingsRepository.findByKey.mockResolvedValue(null);
 		config = { ...codeDefaults };
-		multiMain = false;
+		instanceSettings = { isMultiMain: false };
 		publisher.publishCommand.mockResolvedValue(undefined);
 		service = new PublicApiRateLimitSettingsService(
-			{
-				publicApi: { rateLimit: config },
-				get multiMainSetup() {
-					return { enabled: multiMain };
-				},
-			} as GlobalConfig,
+			{ publicApi: { rateLimit: config } } as GlobalConfig,
+			instanceSettings as InstanceSettings,
 			settingsRepository,
 			eventService,
 			publisher,
@@ -208,7 +205,7 @@ describe('PublicApiRateLimitSettingsService', () => {
 		});
 
 		it('tells the other mains to reload the settings on multi-main', async () => {
-			multiMain = true;
+			instanceSettings.isMultiMain = true;
 
 			await service.saveSettings(stored, actor);
 
