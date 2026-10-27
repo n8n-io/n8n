@@ -132,6 +132,7 @@ describe('AgentRuntimeReconstructionService — sub-agent workspace', () => {
 				'load_skill',
 				'mark_session_failed',
 				'delegate_subagent',
+				'check_background_jobs',
 			]),
 		});
 	});

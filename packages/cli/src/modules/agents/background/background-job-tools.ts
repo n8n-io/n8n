@@ -11,6 +11,7 @@ import { readIntegrationMessageContext } from '../integrations/integration-messa
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentBackgroundJobService } from './agent-background-job.service';
 import { EXPIRED_BACKGROUND_CHECKPOINT_ERROR } from './agent-background-job.service';
+import { BACKGROUND_JOB_TOOL_NAMES } from './background-job-messages';
 import {
 	BACKGROUND_PAUSE_USER_TURN_KEY,
 	PARENT_TASK_CANCELLED_REASON,
@@ -162,7 +163,7 @@ export function createBackgroundSubAgentHandler(
 }
 
 export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobService): BuiltTool {
-	return new Tool('check_background_jobs')
+	return new Tool(BACKGROUND_JOB_TOOL_NAMES.check)
 		.description(
 			'List the background jobs of this conversation with their status and, once settled, ' +
 				'their result or error. Pass an empty object {} to list all jobs (required — do not pass null). ' +
@@ -229,7 +230,7 @@ export function createResumeBackgroundJobsTool(
 		'jobService' | 'backgroundRunner' | 'projectId' | 'parentAgentId' | 'runContext'
 	>,
 ): BuiltTool {
-	return new Tool('resume_background_jobs')
+	return new Tool(BACKGROUND_JOB_TOOL_NAMES.resume)
 		.description(
 			'Resume the selected stopped plan tasks. Pass planId and optional taskIds. Omit taskIds for the whole plan. Without planId, use the saved stopped plan, or the latest stop group if there is no plan.',
 		)
@@ -344,7 +345,7 @@ export function createResumeBackgroundJobsTool(
 }
 
 export function createCancelBackgroundJobTool(jobService: AgentBackgroundJobService): BuiltTool {
-	return new Tool('cancel_background_job')
+	return new Tool(BACKGROUND_JOB_TOOL_NAMES.cancel)
 		.description('Cancel a running background job of this conversation by its job id.')
 		.input(z.object({ jobId: z.string() }))
 		.output(z.object({ status: z.enum(['cancelled', 'not-found', 'already-settled']) }))

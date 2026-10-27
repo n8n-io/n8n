@@ -1,6 +1,13 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 
+/** In a module without runtime imports, so the eager tool list does not load the lazy tool module. */
+export const BACKGROUND_JOB_TOOL_NAMES = {
+	check: 'check_background_jobs',
+	resume: 'resume_background_jobs',
+	cancel: 'cancel_background_job',
+} as const;
+
 export const AGENT_BACKGROUND_WAKE_OPEN_TAG = '<background-jobs-settled>';
 export const AGENT_BACKGROUND_WAKE_CLOSE_TAG = '</background-jobs-settled>';
 export const AGENT_BACKGROUND_UPDATES_OPEN_TAG = '<background-updates>';
