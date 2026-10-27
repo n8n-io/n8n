@@ -7,7 +7,6 @@ import {
 	N8nDataTableServer,
 	N8nEmptyState,
 	N8nIconButton,
-	N8nLoading,
 	N8nSwitch,
 	N8nText,
 	N8nTimeAgo,
@@ -188,12 +187,16 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 </script>
 
 <template>
-	<fieldset id="self-healing" ref="sectionRef" data-test-id="project-self-healing">
+	<fieldset
+		v-if="!isPersonalTab || !loading"
+		id="self-healing"
+		ref="sectionRef"
+		data-test-id="project-self-healing"
+	>
 		<h3 v-if="!isPersonalTab">
 			<label>{{ i18n.baseText('selfHealing.config.heading') }}</label>
 		</h3>
-		<N8nLoading v-if="loading && isPersonalTab" :loading="true" :rows="3" />
-		<p v-else-if="loading">{{ i18n.baseText('selfHealing.config.loading') }}</p>
+		<p v-if="loading">{{ i18n.baseText('selfHealing.config.loading') }}</p>
 		<N8nButton v-else-if="failed" type="button" variant="outline" @click="load">{{
 			i18n.baseText('selfHealing.config.retry')
 		}}</N8nButton>
