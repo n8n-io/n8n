@@ -35,17 +35,17 @@ export class PreExecuteErrorCreatesExecutionRule implements IBreakingChangeInsta
 			isAffected: true,
 			instanceIssues: [
 				{
-					title: 'Instance uses the legacy persist-then-fail path',
+					title: 'Instance creates a failed execution when workflow.preExecute throws',
 					description:
-						'This instance sets N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION so a throw from workflow.preExecute still creates a failed execution. After the update, that throw never creates a row and does not count toward Insights or license usage.',
+						'This instance sets N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION, so a throw from workflow.preExecute creates a failed execution. After the update, n8n does not create this execution. Alerts and reports that use these failed executions stop. The throw also does not count toward Insights or license usage.',
 					level: 'warning',
 				},
 			],
 			recommendations: [
 				{
-					action: 'Remove N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION',
+					action: 'Move alerting into the workflow.preExecute hook',
 					description:
-						'Remove the variable before you update. A throw from workflow.preExecute will no longer create an execution.',
+						'If an alert or report uses these failed executions, send the alert from your workflow.preExecute external hook before it throws. Otherwise, you do not need to do anything. n8n 3.0 ignores N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION, so you can remove it at any time.',
 				},
 			],
 		};
