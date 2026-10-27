@@ -2,8 +2,7 @@ import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { messageRLC } from '../../descriptions';
-import { immutableIdsCollection } from '../options';
+import { messageRLC, immutableIdsCollection } from '../../descriptions';
 import { microsoftApiRequest } from '../../transport';
 
 export const properties: INodeProperties[] = [messageRLC, immutableIdsCollection];

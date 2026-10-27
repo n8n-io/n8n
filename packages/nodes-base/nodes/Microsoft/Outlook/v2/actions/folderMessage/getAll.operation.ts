@@ -8,8 +8,7 @@ import type {
 import { assertNoQueryDelimiters } from '@utils/query-escaping';
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { folderRLC, returnAllOrLimit } from '../../descriptions';
-import { immutableIdsOption } from '../options';
+import { folderRLC, returnAllOrLimit, immutableIdsOption } from '../../descriptions';
 import {
 	decodeOutlookId,
 	messageFields,

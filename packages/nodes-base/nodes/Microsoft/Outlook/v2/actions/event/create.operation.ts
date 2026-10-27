@@ -5,8 +5,12 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { calendarRLC, eventAttendeesField, eventLocationField } from '../../descriptions';
-import { immutableIdsCollection } from '../options';
+import {
+	calendarRLC,
+	eventAttendeesField,
+	eventLocationField,
+	immutableIdsCollection,
+} from '../../descriptions';
 import { prepareEventFields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 

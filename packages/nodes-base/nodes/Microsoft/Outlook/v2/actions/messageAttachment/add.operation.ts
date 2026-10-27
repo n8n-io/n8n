@@ -9,8 +9,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { messageRLC } from '../../descriptions';
-import { immutableIdsOption } from '../options';
+import { messageRLC, immutableIdsOption } from '../../descriptions';
 import { microsoftApiRequest } from '../../transport';
 
 export const properties: INodeProperties[] = [

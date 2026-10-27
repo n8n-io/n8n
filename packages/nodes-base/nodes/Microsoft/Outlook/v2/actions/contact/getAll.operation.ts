@@ -3,8 +3,7 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { escapeODataValue } from '@utils/query-escaping';
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { returnAllOrLimit } from '../../descriptions';
-import { immutableIdsCollection } from '../options';
+import { returnAllOrLimit, immutableIdsCollection } from '../../descriptions';
 import { contactFields } from '../../helpers/utils';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 

@@ -2,8 +2,7 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { contactFields } from '../../descriptions';
-import { immutableIdsCollection } from '../options';
+import { contactFields, immutableIdsCollection } from '../../descriptions';
 import { prepareContactFields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 

@@ -3,8 +3,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { folderRLC, messageRLC } from '../../descriptions';
-import { immutableIdsCollection } from '../options';
+import { folderRLC, messageRLC, immutableIdsCollection } from '../../descriptions';
 import { createMessage, decodeOutlookId } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 

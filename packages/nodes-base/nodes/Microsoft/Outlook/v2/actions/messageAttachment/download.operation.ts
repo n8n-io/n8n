@@ -2,8 +2,7 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { attachmentRLC, messageRLC } from '../../descriptions';
-import { immutableIdsCollection } from '../options';
+import { attachmentRLC, messageRLC, immutableIdsCollection } from '../../descriptions';
 import { microsoftApiRequest } from '../../transport';
 
 export const properties: INodeProperties[] = [

@@ -7,7 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { immutableIdsCollection } from '../options';
+import { immutableIdsCollection } from '../../descriptions';
 
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';

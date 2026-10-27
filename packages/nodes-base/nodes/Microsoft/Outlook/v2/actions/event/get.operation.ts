@@ -2,8 +2,7 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { calendarRLC, eventRLC } from '../../descriptions';
-import { immutableIdsCollection } from '../options';
+import { calendarRLC, eventRLC, immutableIdsCollection } from '../../descriptions';
 import { decodeOutlookId, eventfields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 

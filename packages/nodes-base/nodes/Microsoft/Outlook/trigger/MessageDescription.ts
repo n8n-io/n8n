@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { immutableIdsOption } from '../v2/actions/options';
+import { immutableIdsOption } from '../v2/descriptions';
 import { messageFields } from '../v2/helpers/utils';
 
 export const properties: INodeProperties[] = [

@@ -7,8 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { draftRLC } from '../../descriptions';
-import { immutableIdsOption } from '../options';
+import { draftRLC, immutableIdsOption } from '../../descriptions';
 import { messageFields, simplifyOutputMessages } from '../../helpers/utils';
 import { downloadAttachments, microsoftApiRequest } from '../../transport';
 

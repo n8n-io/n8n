@@ -8,8 +8,7 @@ import type {
 import { assertNoQueryDelimiters } from '@utils/query-escaping';
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { returnAllOrLimit } from '../../descriptions';
-import { immutableIdsOption } from '../options';
+import { returnAllOrLimit, immutableIdsOption } from '../../descriptions';
 import { messageFields, prepareFilterString, simplifyOutputMessages } from '../../helpers/utils';
 import {
 	downloadAttachments,

@@ -2,8 +2,7 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { messageRLC, returnAllOrLimit } from '../../descriptions';
-import { immutableIdsOption } from '../options';
+import { messageRLC, returnAllOrLimit, immutableIdsOption } from '../../descriptions';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
 export const properties: INodeProperties[] = [

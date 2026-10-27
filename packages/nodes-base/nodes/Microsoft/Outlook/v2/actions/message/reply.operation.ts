@@ -7,8 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { messageRLC } from '../../descriptions';
-import { immutableIdsOption } from '../options';
+import { messageRLC, immutableIdsOption } from '../../descriptions';
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
