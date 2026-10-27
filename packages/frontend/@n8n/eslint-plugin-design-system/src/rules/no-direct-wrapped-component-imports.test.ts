@@ -112,12 +112,27 @@ ruleTester.run('no-direct-wrapped-component-imports', NoDirectWrappedComponentIm
 			code: "import { DialogRoot, AlertDialogContent } from 'reka-ui';",
 			filename: wrapperFile('components/N8nDialog', 'Dialog.vue'),
 		},
-		// Namespace / star forms do not name a specifier, so they are out of scope.
-		// Closing them would false-positive mixed-module `import * as Reka from 'reka-ui'`.
+		// Package-root namespace, star, and default forms do not name one primitive.
+		// Both libraries still export unwrapped components, so those forms stay out of scope.
 		{ name: 'namespace import bypass', code: "import * as Reka from 'reka-ui';" },
 		{ name: 'star re-export bypass', code: "export * from 'reka-ui';" },
 		{ name: 'namespace re-export bypass', code: "export * as Reka from 'reka-ui';" },
 		{ name: 'default import bypass', code: "import Reka from 'reka-ui';" },
+		{
+			name: 'element-plus namespace import bypass',
+			code: "import * as ElementPlus from 'element-plus';",
+		},
+		{ name: 'element-plus star re-export bypass', code: "export * from 'element-plus';" },
+		{
+			name: 'element-plus namespace re-export bypass',
+			code: "export * as ElementPlus from 'element-plus';",
+		},
+		{ name: 'element-plus default import bypass', code: "import ElementPlus from 'element-plus';" },
+		{
+			name: 'deep path star re-export in the allowed wrapper',
+			code: "export * from 'element-plus/es/components/menu';",
+			filename: wrapperFile('components/N8nNavigationDropdown', 'menu.ts'),
+		},
 		{
 			name: 'a longer element-plus path segment does not match',
 			code: "import Transition from 'element-plus/es/components/menu-item';",
@@ -211,6 +226,21 @@ ruleTester.run('no-direct-wrapped-component-imports', NoDirectWrappedComponentIm
 		{
 			name: 'deep element-plus component path',
 			code: "import Menu from 'element-plus/es/components/menu';",
+			errors: [error('element-plus/es/components/menu', menuBan)],
+		},
+		{
+			name: 'namespace import of a deep element-plus component path',
+			code: "import * as Menu from 'element-plus/es/components/menu';",
+			errors: [error('element-plus/es/components/menu', menuBan)],
+		},
+		{
+			name: 'star re-export of a deep element-plus component path',
+			code: "export * from 'element-plus/es/components/menu';",
+			errors: [error('element-plus/es/components/menu', menuBan)],
+		},
+		{
+			name: 'namespace re-export of a deep element-plus component path',
+			code: "export * as Menu from 'element-plus/es/components/menu';",
 			errors: [error('element-plus/es/components/menu', menuBan)],
 		},
 		{

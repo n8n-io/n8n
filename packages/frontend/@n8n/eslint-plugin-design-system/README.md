@@ -20,7 +20,7 @@ Disallow use of Reka UI and Element Plus primitives that a design-system compone
 
 Callers use the design-system component. The wrapper folder may still import the primitive. Add a row to `src/rules/wrapped-component-bans.ts` when a new wrapper replaces a primitive.
 
-The rule checks script imports and re-exports. In Vue files it also checks Element Plus template tags. Namespace imports, star re-exports, and default imports stay out of scope, because both libraries still export primitives that are not wrapped yet.
+The rule checks script imports and re-exports. In Vue files it also checks Element Plus template tags. A deep Element Plus component path is reported for every import form and every re-export form. Namespace imports, star re-exports, and default imports of a package root (`reka-ui` or `element-plus`) stay out of scope, because both libraries still export primitives that are not wrapped yet.
 
 ### `require-teleported-tooltip-in-dropdown`
 

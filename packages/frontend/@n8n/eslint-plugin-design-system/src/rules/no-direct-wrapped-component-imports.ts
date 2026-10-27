@@ -131,6 +131,8 @@ export const NoDirectWrappedComponentImportsRule = ESLintUtils.RuleCreator.witho
 			});
 		};
 
+		// A deep component path names one primitive, so every import and re-export form is reported.
+		// Package-root namespace, star, and default forms do not name one primitive and stay out of scope.
 		const scriptVisitor: RuleListener = {
 			ImportDeclaration(node) {
 				const source = node.source.value;
@@ -171,6 +173,11 @@ export const NoDirectWrappedComponentImportsRule = ESLintUtils.RuleCreator.witho
 								: undefined;
 					if (ban !== undefined) report(specifier, ban, name);
 				}
+			},
+			ExportAllDeclaration(node) {
+				const source = node.source.value;
+				const moduleBan = matchElementPlusModule(source, context.filename);
+				if (moduleBan !== undefined) report(node, moduleBan, source);
 			},
 		};
 
