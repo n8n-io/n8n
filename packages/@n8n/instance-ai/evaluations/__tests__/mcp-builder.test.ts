@@ -713,6 +713,36 @@ describe('buildWorkflowViaMcp', () => {
 			expect(result.workflowId).toBeNull();
 		});
 
+		it('marks a workflow saved before the build timeout as timed out', async () => {
+			spawnReturning(() =>
+				emitting([
+					initEvent('sess-1'),
+					assistantEvent({
+						type: 'tool_use',
+						id: 'tu-1',
+						name: 'mcp__n8n-local__create_workflow_from_code',
+						input: {},
+					}),
+					toolResultEvent('tu-1', JSON.stringify({ workflowId: 'wfT' })),
+					resultEvent({ result: 'Built it. Which channel?' }),
+				]),
+			);
+			const hungDriver = {
+				recordAssistantMessage: vi.fn(),
+				decideFollowUp: vi.fn(async () => await new Promise<never>(() => {})),
+			};
+
+			const result = await buildWorkflowViaMcp({
+				...buildOpts(),
+				settings: { ...settings, buildTimeoutMs: 50 },
+				createDriver: () => hungDriver,
+			});
+
+			// What was saved is graded, but the verdicts are kept out of the pass rate.
+			expect(result.workflowId).toBe('wfT');
+			expect(result.timeout).toEqual({ kind: 'conversation', turn: 2, elapsedMs: 50 });
+		});
+
 		it('does not retry a conversation that ended without a workflow', async () => {
 			spawnReturning(() =>
 				emitting([initEvent('sess-1'), resultEvent({ result: 'I need more details.' })]),

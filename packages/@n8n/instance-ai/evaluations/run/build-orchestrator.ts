@@ -335,6 +335,10 @@ async function buildWorkflowViaMcpOnLane(config: {
 			}
 		: {};
 
+	// A conversation the build timeout ended is graded on what it saved, with its
+	// verdicts kept out of the rate, as on the Instance AI arm.
+	const timeoutField = result.timeout ? { timeout: result.timeout } : {};
+
 	if (!result.workflowId) {
 		if (artifactRefs.length > 0) {
 			return {
@@ -344,6 +348,7 @@ async function buildWorkflowViaMcpOnLane(config: {
 				createdDataTableIds: [],
 				artifactRefs,
 				...seedFields,
+				...timeoutField,
 				transcript,
 			};
 		}
@@ -361,6 +366,7 @@ async function buildWorkflowViaMcpOnLane(config: {
 		...fetched,
 		...(artifactRefs.length > 0 ? { artifactRefs } : {}),
 		...seedFields,
+		...(fetched.success ? timeoutField : {}),
 		transcript,
 	};
 }

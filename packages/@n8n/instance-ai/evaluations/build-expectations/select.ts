@@ -8,7 +8,9 @@ import { conversationUserTurnsAsText } from '../utils/conversation-text';
 const NO_AGENT_OUTPUT_REASON =
 	'not judged — the build produced no agent output, so there was nothing to grade';
 
-/** Expectations that grade a tool only Instance AI has. An MCP build cannot call it. */
+/** Expectations that grade a tool only Instance AI has. An MCP build cannot call it.
+ *  Matches the wording of `asks-clarifying-question`; a case that names the tool
+ *  another way is graded as usual and fails on MCP. */
 const INSTANCE_AI_ONLY_EXPECTATION = /structured question tool/i;
 const INSTANCE_AI_ONLY_REASON =
 	'not judged — it grades the structured question tool, which only Instance AI has';

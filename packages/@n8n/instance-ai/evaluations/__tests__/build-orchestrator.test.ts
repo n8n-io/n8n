@@ -930,6 +930,26 @@ describe('seeded MCP builds', () => {
 		expect(build.artifactRefs).toEqual([agentRef]);
 	});
 
+	it('carries a timeout from claude onto the build, so its verdicts stay out of the rate', async () => {
+		vi.mocked(prepareMcpBuildSeed).mockResolvedValue(undefined);
+		const timeout = { kind: 'conversation' as const, turn: 2, elapsedMs: 50 };
+		vi.mocked(buildWorkflowViaMcp).mockResolvedValue({
+			workflowId: 'wf-seed',
+			cost: 0.5,
+			turns: 3,
+			durationMs: 1000,
+			logFile: null,
+			transcript: [],
+			timeout,
+		});
+		const orchestrator = createBuildOrchestrator(mcpDeps(mcpLane()));
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.success).toBe(true);
+		expect(build.timeout).toEqual(timeout);
+	});
+
 	it('reports a seed that failed to restore as infra, before claude starts', async () => {
 		vi.mocked(prepareMcpBuildSeed).mockRejectedValue(new Error('restore failed'));
 		const orchestrator = createBuildOrchestrator(mcpDeps(mcpLane()));

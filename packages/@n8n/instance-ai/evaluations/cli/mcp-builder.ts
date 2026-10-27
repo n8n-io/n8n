@@ -38,7 +38,7 @@ import {
 	parseClaudeStream,
 } from './claude-stream';
 import { isTransientProviderError, providerRetryBackoffMs } from '../harness/transient-error';
-import type { ConversationTurn, TranscriptTurn, WorkflowTestCase } from '../types';
+import type { BuildTimeout, ConversationTurn, TranscriptTurn, WorkflowTestCase } from '../types';
 
 // ---------------------------------------------------------------------------
 // MCP config staging — the `--mcp-config` file `claude -p` is pointed at
@@ -562,6 +562,9 @@ export interface McpBuildResult {
 	failureReason?: string;
 	/** The last attempt's conversation: user messages, narration and MCP tool calls. */
 	transcript: TranscriptTurn[];
+	/** Set when the build timeout ended a conversation that had already saved
+	 *  something. That artifact is graded, but its verdicts are kept out of the rate. */
+	timeout?: BuildTimeout;
 }
 
 /** The simulated user of a multi-turn MCP build. `UserProxyLlm` satisfies it. */
@@ -583,6 +586,8 @@ interface ConversationAttempt {
 	/** The last turn's session; undefined when that turn never finished. */
 	lastSession: ClaudeSession | undefined;
 	timedOut: boolean;
+	/** The user turn (1-based) in flight, or about to start, when time ran out. */
+	timeoutTurn?: number;
 	spawnError?: string;
 }
 
@@ -624,6 +629,7 @@ async function runConversationAttempt(opts: {
 		const remainingMs = deadline === undefined ? undefined : deadline - Date.now();
 		if (remainingMs !== undefined && remainingMs <= 0) {
 			attempt.timedOut = true;
+			attempt.timeoutTurn = attempt.transcript.length + 1;
 			break;
 		}
 		const turn = await runClaude(context, {
@@ -648,6 +654,7 @@ async function runConversationAttempt(opts: {
 			tailWorkflowId(`${capture.agentText}\n${capture.session?.result ?? ''}`) ?? trailerWorkflowId;
 		sessionId = capture.sessionId ?? sessionId;
 		attempt.timedOut = turn.timedOut;
+		if (turn.timedOut) attempt.timeoutTurn = attempt.transcript.length;
 		attempt.spawnError = turn.spawnError;
 
 		if (!driver || turn.timedOut || turn.spawnError) break;
@@ -659,6 +666,7 @@ async function runConversationAttempt(opts: {
 			// The simulated user did not answer in time: the conversation is unfinished.
 			// The proxy's model call may still settle later; it no longer holds the lane.
 			attempt.timedOut = true;
+			attempt.timeoutTurn = attempt.transcript.length + 1;
 			attempt.lastSession = undefined;
 			break;
 		}
@@ -775,6 +783,7 @@ export async function buildWorkflowViaMcp(opts: {
 	let totalTurns = 0;
 	let totalDurationMs = 0;
 	let attemptsUsed = 0;
+	let timeout: BuildTimeout | undefined;
 
 	for (let attempt = 1; attempt <= settings.maxAttempts; attempt++) {
 		attemptsUsed = attempt;
@@ -809,6 +818,13 @@ export async function buildWorkflowViaMcp(opts: {
 		if (result.workflowId || result.agent) {
 			workflowId = result.workflowId;
 			failureReason = undefined;
+			if (result.timedOut) {
+				timeout = {
+					kind: 'conversation',
+					turn: result.timeoutTurn ?? result.transcript.length,
+					elapsedMs: settings.buildTimeoutMs ?? 0,
+				};
+			}
 			break;
 		}
 		if (spawnError) {
@@ -880,5 +896,6 @@ export async function buildWorkflowViaMcp(opts: {
 		logFile: lastLogFile,
 		failureReason: built ? undefined : failureReason,
 		transcript,
+		...(timeout ? { timeout } : {}),
 	};
 }
