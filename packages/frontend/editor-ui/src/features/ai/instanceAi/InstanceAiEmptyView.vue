@@ -1107,7 +1107,7 @@ async function handleWorkflowPreviewExampleUse(
 					>
 						<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
 						<template v-if="showClaudeBeforeSuggestions" #before-suggestions>
-							<ClaudeEntryPoint placement="footer" />
+							<ClaudeEntryPoint :class="$style.claudeBeforeSuggestions" placement="footer" />
 						</template>
 						<!-- EOF Experiment cleanup -->
 						<template v-if="canSelectProject" #footer>
@@ -1202,6 +1202,12 @@ async function handleWorkflowPreviewExampleUse(
 	flex-direction: column;
 	gap: var(--spacing--xs);
 }
+
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+.centeredInput .claudeBeforeSuggestions {
+	margin-top: var(--spacing--lg);
+}
+// EOF Experiment cleanup
 
 // Experiment cleanup (124_workflow_previews_above_assistant)
 .workflowPreviewsLayout {

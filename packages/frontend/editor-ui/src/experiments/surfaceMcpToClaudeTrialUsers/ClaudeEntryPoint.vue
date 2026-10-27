@@ -138,15 +138,12 @@ const emit = defineEmits<{ click: [] }>();
 }
 .canvas .mark {
 	padding: var(--spacing--lg);
-	border: calc(var(--border-width) * 2) dashed var(--border-color--strong);
+	border: calc(var(--border-width) * 2) dashed var(--color--foreground--shade-2);
 	border-radius: var(--radius--lg);
 	align-items: center;
 	justify-content: center;
-	background: var(--background--surface);
+	background: var(--color--foreground--tint-2);
 	--mcp-agent-logo-size: var(--spacing--2xl);
 	--mcp-agent-logo-icon-size: calc(var(--spacing--2xl) - var(--spacing--4xs));
-}
-.canvas:hover .mark {
-	border-color: var(--background--brand);
 }
 </style>
