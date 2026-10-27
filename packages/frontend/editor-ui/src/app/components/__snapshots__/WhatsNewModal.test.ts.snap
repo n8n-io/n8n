@@ -18,7 +18,7 @@ exports[`WhatsNewModal > should not render update button when no version updates
     <!-- Needed to support YouTube player embeds. HTML rendered here is sanitized. -->
     <!-- eslint-disable vue/no-v-html -->
     <div
-      class="markdown"
+      class=""
     >
       <p>
         Large, monolithic workflows can slow things down. They’re harder to maintain, tougher to debug, and more difficult to scale. With sub-workflows, you can take a more modular approach, breaking up big workflows into smaller, manageable parts that are easier to reuse, test, understand, and explain.
@@ -144,6 +144,7 @@ exports[`WhatsNewModal > should not render update button when no version updates
         Learn more about 
         <a
           href="https://docs.n8n.io/flow-logic/subworkflows/"
+          rel="noopener"
           target="_blank"
         >
           sub-workflows
@@ -371,6 +372,10 @@ exports[`WhatsNewModal > should not render update button when no version updates
       
 
     </div>
+    
+    
+    
+    
   </div>
 </div>
 `;
