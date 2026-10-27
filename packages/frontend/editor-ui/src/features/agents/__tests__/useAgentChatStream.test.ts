@@ -232,7 +232,7 @@ function buildHook(
 		onUsageUpdated?: UseAgentChatStreamParams['onUsageUpdated'];
 		onAgentUnavailable?: () => void;
 		budgetCards?: boolean;
-		channel?: Ref<'chat' | 'n8n-chat'>;
+		channel?: Ref<'chat' | 'n8n-chat' | 'system'>;
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
 	} = {},
 ) {
@@ -5024,6 +5024,60 @@ describe('useAgentChatStream — queued submissions', () => {
 		stale.resolve({ items: [item] });
 		await flushPromises();
 		expect(hook.queuedMessages.value).toEqual([]);
+		expect(hook.messages.value).toEqual([]);
+	});
+});
+
+describe('useAgentChatStream — system channel', () => {
+	beforeEach(() => {
+		pushListeners.length = 0;
+		connectionState.isConnected = false;
+		getChatMessagesMock.mockReset().mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		getTestChatMessagesMock.mockReset();
+		getAgentChatQueueMock.mockReset().mockResolvedValue({ items: [] });
+		vi.stubGlobal('localStorage', { getItem: vi.fn(() => '') });
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('starts a new session in the project of the query', async () => {
+		globalThis.fetch = vi.fn(async () => makeSseResponse([{ type: 'done' }])) as typeof fetch;
+
+		const hook = buildHook('thread-1', { channel: ref('system'), newSession: ref(true) });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		expect(fetch).toHaveBeenCalledWith(
+			'http://localhost:5678/agents/system/a1/chat?projectId=p1',
+			expect.objectContaining({
+				body: expect.stringContaining('"sessionId":"thread-1"'),
+			}),
+		);
+	});
+
+	it('omits the project when it continues an existing session', async () => {
+		globalThis.fetch = vi.fn(async () => makeSseResponse([{ type: 'done' }])) as typeof fetch;
+
+		const hook = buildHook('thread-1', { channel: ref('system') });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		expect(fetch).toHaveBeenCalledWith(
+			'http://localhost:5678/agents/system/a1/chat',
+			expect.objectContaining({
+				body: expect.stringContaining('"sessionId":"thread-1"'),
+			}),
+		);
+	});
+
+	it('does not fall back to the builder test chat without a session', async () => {
+		const hook = buildHook(undefined, { channel: ref('system') });
+		await hook.loadHistory();
+
+		expect(getTestChatMessagesMock).not.toHaveBeenCalled();
 		expect(hook.messages.value).toEqual([]);
 	});
 });

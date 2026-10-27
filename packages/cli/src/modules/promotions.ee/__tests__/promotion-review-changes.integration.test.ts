@@ -500,6 +500,20 @@ it('lists a workflow that moves to another project without other changes', async
 	);
 }, 60_000);
 
+it('lists a workflow that the review archives', async () => {
+	const sales = await createTeamProject('Sales', owner);
+	const quote = await createWorkflow({ name: 'Quote', nodes: [], connections: {} }, sales);
+	const first = await promote('Baseline');
+	await mergeOnHost(first.iid, first.commitSha);
+
+	await Container.get(WorkflowRepository).update(quote.id, { isArchived: true });
+	const review = await promote('Archive');
+
+	expect(changed((await changesOf(review.reviewId)).resources)).toEqual([
+		[`workflow:${quote.id}`, 'archived'],
+	]);
+}, 60_000);
+
 it('reads a merged review from the target branch after the host deleted its head ref', async () => {
 	const project = await createTeamProject('Sales', owner);
 	const quote = await createWorkflow({ name: 'Quote', nodes: [], connections: {} }, project);

@@ -205,7 +205,7 @@ function publishableFixture(wholeProject = false) {
 
 function addWorkflowTool(input: AgentPackageFixture) {
 	const agent = source(input);
-	const entry = { id: agent.id, name: 'Lookup', target: 'workflows/lookup' };
+	const entry = { id: agent.id, name: 'Lookup', target: 'workflows/lookup', isArchived: false };
 	input.manifest.workflows = [entry];
 	input.files[`${entry.target}/workflow.json`] = serializedWorkflow({
 		id: entry.id,
@@ -321,7 +321,9 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	second.config!.model = 'openai/gpt-4.1-mini';
 	second.config!.credential = AI_GATEWAY_MANAGED_TAG;
 	second.config!.subAgents = { agents: [{ agentId: first.id }] };
-	input.manifest.workflows = [{ id: first.id, name: 'Lookup', target: 'workflows/lookup' }];
+	input.manifest.workflows = [
+		{ id: first.id, name: 'Lookup', target: 'workflows/lookup', isArchived: false },
+	];
 	input.files['workflows/lookup/workflow.json'] = serializedWorkflow({
 		id: first.id,
 		name: 'Lookup',

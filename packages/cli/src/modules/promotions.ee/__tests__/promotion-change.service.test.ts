@@ -2,11 +2,16 @@ import type { User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
+import { entityFilePath } from '@/modules/n8n-packages/io/manifest-entry';
 import { FORMAT_VERSION } from '@/modules/n8n-packages/spec/constants';
-import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+import {
+	packageManifestSchema,
+	type PackageManifest,
+} from '@/modules/n8n-packages/spec/manifest.schema';
 
+import { PACKAGE_SUBFOLDER } from '../constants';
 import { PromotionChangeService } from '../promotion-change.service';
-import { scopeManifestToProject } from '../promotion-preview';
+import { buildPreview, scopeManifestToProject, type PreviewSide } from '../promotion-preview';
 
 const ids = (entries: Array<{ id: string }> | undefined) => entries?.map(({ id }) => id).sort();
 
@@ -20,8 +25,18 @@ const manifest: PackageManifest = {
 		{ id: 'B', name: 'Beta', target: 'projects/beta-B' },
 	],
 	workflows: [
-		{ id: 'wfA', name: 'Alpha flow', target: 'projects/alpha-A/workflows/alpha-flow-wfA' },
-		{ id: 'wfB', name: 'Beta flow', target: 'projects/beta-B/workflows/beta-flow-wfB' },
+		{
+			id: 'wfA',
+			name: 'Alpha flow',
+			target: 'projects/alpha-A/workflows/alpha-flow-wfA',
+			isArchived: false,
+		},
+		{
+			id: 'wfB',
+			name: 'Beta flow',
+			target: 'projects/beta-B/workflows/beta-flow-wfB',
+			isArchived: false,
+		},
 	],
 	variables: [
 		{ id: 'varA', name: 'API_URL', target: 'projects/alpha-A/variables/api-url-varA' },
@@ -74,6 +89,35 @@ describe('scopeManifestToProject', () => {
 		expect(scoped.workflows).toEqual([]);
 		expect(ids(scoped.variables)).toEqual(['varG', 'varT']);
 		expect(scoped.requirements?.variables).toBeUndefined();
+	});
+});
+
+describe('buildPreview', () => {
+	const target = 'projects/alpha-A/workflows/alpha-flow-wfA';
+	const side = (workflow: Record<string, unknown>, blobSha: string): PreviewSide => ({
+		manifest: packageManifestSchema.parse({
+			...manifest,
+			variables: undefined,
+			requirements: undefined,
+			workflows: [{ id: 'wfA', name: 'Alpha flow', target, ...workflow }],
+		}),
+		blobByPath: new Map([[`${PACKAGE_SUBFOLDER}/${entityFilePath('workflows', target)}`, blobSha]]),
+	});
+	const changeOf = (desired: PreviewSide) =>
+		buildPreview({
+			operation: null,
+			projectIds: ['A'],
+			base: side({}, 'before'),
+			desired,
+		}).resources.find(({ key }) => key === 'workflow:wfA')?.change;
+
+	it('labels a changed workflow by the archive flag of its manifest entry', () => {
+		expect(changeOf(side({ isArchived: true }, 'after'))).toBe('archived');
+		expect(changeOf(side({ isArchived: false }, 'after'))).toBe('modified');
+	});
+
+	it('labels a changed workflow of a package without the flag as modified', () => {
+		expect(changeOf(side({}, 'after'))).toBe('modified');
 	});
 });
 
