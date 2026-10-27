@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
 import { TimeoutError, MemoryLimitError } from '../types';
+import { asSandboxValue } from './helpers';
 
 describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 	let evaluator: ExpressionEvaluator;
@@ -325,6 +326,19 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			const result = evaluator.evaluate('{{ $json.dates[0] }}', data, caller);
 
 			expect(result).toBeInstanceOf(Date);
+		});
+
+		it.each([
+			['{{ $json.d }}', (d: Date) => ({ d })],
+			['{{ $json.row.createdAt }}', (d: Date) => ({ row: { createdAt: d } })],
+			['{{ $json.dates[0] }}', (d: Date) => ({ dates: [d] })],
+		])('should read a Date created in the vm2 Code node sandbox through %s', (expr, toJson) => {
+			const data = { $json: toJson(asSandboxValue(new Date('2026-06-30T20:34:04.498Z'))) };
+
+			const result = evaluator.evaluate(expr, data, caller);
+
+			expect(result).toBeInstanceOf(Date);
+			expect((result as Date).toISOString()).toBe('2026-06-30T20:34:04.498Z');
 		});
 	});
 

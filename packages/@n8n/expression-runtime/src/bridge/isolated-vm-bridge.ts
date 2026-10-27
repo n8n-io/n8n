@@ -344,10 +344,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 					};
 				}
 
-				// Dates have no enumerable own keys; pass through instead of
-				// marshaling as an empty object.
+				// Dates have no enumerable own keys; copy instead of marshaling as
+				// an empty object. Copying also covers vm2 Date proxies, which
+				// can't be transferred.
 				if (value instanceof Date) {
-					return value;
+					return new Date(value.getTime());
 				}
 
 				// Handle objects - return metadata with keys
@@ -421,10 +422,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 					return undefined;
 				}
 
-				// Dates have no enumerable own keys; pass through instead of
-				// marshaling as an empty object.
+				// Dates have no enumerable own keys; copy instead of marshaling as
+				// an empty object. Copying also covers vm2 Date proxies, which
+				// can't be transferred.
 				if (element instanceof Date) {
-					return element;
+					return new Date(element.getTime());
 				}
 
 				// If element is object/array, return metadata

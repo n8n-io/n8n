@@ -20,6 +20,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
+import { asSandboxValue } from './helpers';
 
 describe("Typed RPC: $('Foo').first() routes via getNodeFirst", () => {
 	let evaluator: ExpressionEvaluator;
@@ -958,6 +959,30 @@ describe('Typed RPC: items that structured clone rejects (e.g. vm2 proxies)', ()
 
 		expect(() => evaluator.evaluate("{{ $('Code').first().json.value }}", data, caller)).toThrow(
 			`Can't use json.value from node 'Code' in an expression: it is ${kind}`,
+		);
+	});
+
+	it('rebuilds Errors and RegExps that are Proxy objects', () => {
+		const json = {
+			err: asSandboxValue(new TypeError('boom')),
+			re: asSandboxValue(/ab+/g),
+		};
+		const data = { $: () => ({ first: () => new Proxy({ json }, {}) }) };
+		const evaluate = (expr: string) => evaluator.evaluate(`{{ ${expr} }}`, data, caller);
+
+		expect(evaluate("$('Code').first().json.err.message")).toBe('boom');
+		expect(evaluate("$('Code').first().json.err.name")).toBe('TypeError');
+		expect(evaluate("String($('Code').first().json.re)")).toBe('/ab+/g');
+	});
+
+	it('quotes keys that are not identifiers in the error path', () => {
+		const json = { 'my field': { 'a.b': () => 1 } };
+		const data = { $: () => ({ first: () => new Proxy({ json }, {}) }) };
+
+		expect(() =>
+			evaluator.evaluate(`{{ $('Code').first().json['my field']['a.b'] }}`, data, caller),
+		).toThrow(
+			`Can't use json["my field"]["a.b"] from node 'Code' in an expression: it is a function`,
 		);
 	});
 

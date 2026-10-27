@@ -15,7 +15,8 @@ const UNUSABLE = Symbol('unusable');
 
 /**
  * Rebuild a value that structured clone rejects, for example the Proxy objects
- * that vm2 hands out, from plain objects, arrays, Dates, Maps and Sets.
+ * that vm2 hands out, from plain objects, arrays, Dates, Maps, Sets, RegExps
+ * and Errors.
  * Functions, symbols, WeakMaps, WeakSets, Promises and circular references are
  * left out, and their paths are returned in `unusable`.
  */
@@ -62,6 +63,13 @@ export function toTransferSafe(root: unknown): TransferSafeValue {
 				value instanceof Error)
 		) {
 			return value;
+		}
+		if (value instanceof RegExp) return new RegExp(value.source, value.flags);
+		if (value instanceof Error) {
+			const copy = new Error(value.message);
+			copy.name = value.name;
+			copy.stack = value.stack;
+			return copy;
 		}
 		if (value instanceof WeakMap) return markUnusable('a WeakMap');
 		if (value instanceof WeakSet) return markUnusable('a WeakSet');

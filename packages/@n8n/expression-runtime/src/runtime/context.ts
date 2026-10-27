@@ -88,10 +88,13 @@ export interface BridgeCallbacks {
 	callHostTransferSafe: BridgeCallback;
 }
 
+const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+
 function formatPath(path: Array<string | number>): string {
 	let formatted = '';
 	for (const key of path) {
 		if (typeof key === 'number') formatted += `[${key}]`;
+		else if (!IDENTIFIER.test(key)) formatted += `[${JSON.stringify(key)}]`;
 		else if (formatted === '') formatted += key;
 		else formatted += `.${key}`;
 	}

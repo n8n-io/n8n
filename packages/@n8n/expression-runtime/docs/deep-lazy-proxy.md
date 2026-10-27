@@ -38,7 +38,7 @@ Host-side callbacks registered by `IsolatedVmBridge` as `ivm.Reference` objects
 - `callHostTransferSafe(envelope)` — same dispatcher, used by item RPCs (`$('Foo').first()`,
   `$input.all()`, `$items()`, ...) only when structured clone rejects the `callHost` result,
   for example vm2 proxies from the legacy Code node. The host rebuilds the result from JSON
-  values, Dates, Maps and Sets; values it can't rebuild throw an `ExpressionError` when read
+  values, Dates, Maps, Sets, RegExps and Errors; values it can't rebuild throw an `ExpressionError` when read
 
 ## Usage
 
