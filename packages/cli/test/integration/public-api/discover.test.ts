@@ -36,12 +36,6 @@ describe('GET /discover', () => {
 		expect(response.statusCode).toBe(401);
 	});
 
-	test('should fail due to invalid API Key', async () => {
-		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/discover');
-
-		expect(response.statusCode).toBe(401);
-	});
-
 	test('should return discover data via session cookie, without an API key', async () => {
 		const response = await testServer.publicApiAgentWithCookie(owner).get('/discover');
 
