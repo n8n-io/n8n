@@ -226,6 +226,17 @@ describe('WorkingCopyUpdater', () => {
 			expect(branch).not.toHaveProperty('credentials');
 		});
 
+		it('keeps the archive flag from a workflow file', async () => {
+			await writeTree(exportFolder, {
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', { isArchived: true }),
+			});
+
+			const branch = await updater.readBranchLayout(exportFolder);
+
+			expect(branch.workflows).toEqual([{ ...wf('w1'), isArchived: true }]);
+		});
+
 		it('returns an empty state when the export has no entity files', async () => {
 			await mkdir(exportFolder, { recursive: true });
 
@@ -365,6 +376,32 @@ describe('WorkingCopyUpdater', () => {
 	});
 
 	describe('applySelection', () => {
+		it('keeps selected and unselected archived workflows in the rebuilt manifest', async () => {
+			const selected = { ...wf('w1'), isArchived: true };
+			const unselected = { ...wf('w2'), isArchived: true };
+			await apply(
+				{
+					manifest: makeManifest({ projects: [alpha], workflows: [wf('w1'), unselected] }),
+					files: {
+						'projects/alpha/project.json': projectFile,
+						'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+						'projects/alpha/workflows/w2/workflow.json': workflowFile('w2', { isArchived: true }),
+					},
+				},
+				{
+					manifest: makeManifest({ projects: [alpha], workflows: [selected] }),
+					files: {
+						'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', { isArchived: true }),
+					},
+				},
+				{ workflowIds: ['w1'] },
+			);
+
+			const written = await readWrittenManifest();
+			expect(written.workflows).toHaveLength(2);
+			expect(written.workflows).toEqual(expect.arrayContaining([selected, unselected]));
+		});
+
 		it('rejects a cross-project delete before it writes', async () => {
 			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
 			const other = {

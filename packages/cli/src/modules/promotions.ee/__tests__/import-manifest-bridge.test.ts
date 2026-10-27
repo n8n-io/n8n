@@ -60,7 +60,7 @@ describe('import-manifest-bridge', () => {
 		await writeTree({
 			'manifest.json': leftoverManifest({
 				workflows: [
-					{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1', isArchived: true },
+					{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1', isArchived: false },
 				],
 			}),
 			'projects/alpha/project.json': JSON.stringify({ id: 'p1', name: 'Alpha' }),
