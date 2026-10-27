@@ -1,11 +1,16 @@
 packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
   s_952e2dc69e6ab3::t_7c4aadaf94b251 25
+  s_952e2dc69e6ab3::t_79410de9d10dd2 25
 packages/@n8n/cli/docs/commands/package.md
   s_952e2dc69e6ab3::t_ef1c727d944b18 147-154
+  s_952e2dc69e6ab3::t_9c66594239a7eb 151-154
+  s_952e2dc69e6ab3::t_97c31c737643f5 147-150
 packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
   s_952e2dc69e6ab3::t_ee33cc91f887dd 49,181
+  s_952e2dc69e6ab3::t_e150346fb76e75 49,181
 packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
   s_952e2dc69e6ab3::t_f22546ab57c99a 342-349
+  s_952e2dc69e6ab3::t_9c66594239a7eb 342-349
 ---
 {
   "schema_version": "authorship/3.0.0",

@@ -1,5 +1,6 @@
 packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
   s_952e2dc69e6ab3::t_fdeabd6f57ec97 1-3,4-5
+  s_952e2dc69e6ab3::t_538c30ba6e5a61 1-3,4-5
 ---
 {
   "schema_version": "authorship/3.0.0",
