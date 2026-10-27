@@ -42,6 +42,7 @@ packages/modules/apps/frontend/src/apps.module.test.ts
 packages/modules/apps/frontend/src/views/AppsListView.test.ts
   s_b6d332c56aa1c5::t_c3259bbe929bb5 15,19,63,273-282
   s_b6d332c56aa1c5::t_196df1e1239731 283-284
+  s_b6d332c56aa1c5::t_c4bf8bd36160cf 65
 packages/modules/apps/frontend/src/components/AppCard.vue
   s_b6d332c56aa1c5::t_044030b05f39f9 3,7-8,10,12,19,39-41,51,72
 ---
