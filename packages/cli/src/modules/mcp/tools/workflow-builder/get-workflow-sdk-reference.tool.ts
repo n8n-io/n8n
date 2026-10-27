@@ -1,10 +1,13 @@
 import type { User } from '@n8n/db';
+import {
+	getSdkReferenceContent,
+	type SdkReferenceSection,
+} from '@n8n/workflow-sdk/prompts/sdk-reference';
 import z from 'zod';
 
 import type { Telemetry } from '@/telemetry';
 
 import { MCP_GET_SDK_REFERENCE_TOOL } from './constants';
-import { getSdkReferenceContent, type SdkReferenceSection } from './sdk-reference-content';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 

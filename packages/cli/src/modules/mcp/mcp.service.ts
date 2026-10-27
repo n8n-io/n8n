@@ -27,6 +27,7 @@ import {
 } from '@n8n/mcp-apps/server';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { getSdkReferenceContent } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { InstanceSettings } from 'n8n-core';
 import { ManualExecutionCancelledError, type FeatureFlags, type IRun } from 'n8n-workflow';
 import type z from 'zod';
@@ -140,7 +141,6 @@ import { createGetWorkflowNodeTypesTool } from './tools/workflow-builder/get-wor
 import { createGetWorkflowSdkReferenceTool } from './tools/workflow-builder/get-workflow-sdk-reference.tool';
 import { getMcpInstructions } from './tools/workflow-builder/mcp-instructions';
 import { createRestoreWorkflowVersionTool } from './tools/workflow-builder/restore-workflow-version.tool';
-import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content';
 import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-workflow-nodes.tool';
 import { createUpdateWorkflowTool } from './tools/workflow-builder/update-workflow.tool';
 import { createValidateNodeTool } from './tools/workflow-builder/validate-node.tool';
