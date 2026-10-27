@@ -24,6 +24,13 @@ Publish dropdown. Each action opens its tab, including when the panel is already
 open. Keep history available for saved Agents during edits and with read-only access.
 Hide these entry points in embedded Agent artifacts.
 
+## Configuration add actions
+
+Show a leading `plus` icon beside empty-state configuration add labels. Use
+the ghost button variant for skills, channels, schedules, and capabilities.
+Keep the icon visible before hover so users can identify each action.
+Use the existing icon-only add button when the row contains items.
+
 ## Narrow builder panels
 
 Keep a chip and its adjacent add action inside the available row width. Truncate

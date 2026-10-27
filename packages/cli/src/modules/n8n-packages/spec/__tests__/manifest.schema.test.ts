@@ -2,7 +2,6 @@ import { manifestEntrySchema, packageManifestSchema } from '../manifest.schema';
 
 const validManifest = {
 	packageFormatVersion: '1',
-	exportedAt: '2026-05-18T12:00:00.000Z',
 	sourceN8nVersion: '1.0.0',
 	sourceId: 'instance-abc',
 	workflows: [{ id: 'wf-abc', name: 'My workflow', target: 'workflows/my-workflow-abc' }],
@@ -11,6 +10,15 @@ const validManifest = {
 describe('packageManifestSchema', () => {
 	it('accepts a valid manifest', () => {
 		expect(() => packageManifestSchema.parse(validManifest)).not.toThrow();
+	});
+
+	it('accepts an older manifest with exportedAt and drops the field', () => {
+		const parsed = packageManifestSchema.parse({
+			...validManifest,
+			exportedAt: '2026-05-18T12:00:00.000Z',
+		});
+
+		expect(parsed).not.toHaveProperty('exportedAt');
 	});
 
 	it.each([
