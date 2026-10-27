@@ -158,7 +158,7 @@ const decideTemplateName = (name: string, filename: string): ImportDecision | un
 	return { kind: 'direct', library: 'element-plus', name: component };
 };
 
-export const NoDirectWrappedComponentImportsRule = ESLintUtils.RuleCreator.withoutDocs({
+export const NoDirectComponentImportsRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
 		type: 'problem',
 		docs: {

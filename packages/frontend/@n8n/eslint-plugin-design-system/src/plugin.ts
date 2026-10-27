@@ -22,7 +22,7 @@ const configs = {
 		files: ['**/*.vue'],
 		plugins,
 		rules: {
-			'@n8n/design-system/no-direct-wrapped-component-imports': 'error',
+			'@n8n/design-system/no-direct-component-imports': 'error',
 			'@n8n/design-system/require-teleported-tooltip-in-dropdown': 'error',
 		},
 	},
@@ -30,7 +30,7 @@ const configs = {
 		files: ['**/*.{ts,tsx}'],
 		plugins,
 		rules: {
-			'@n8n/design-system/no-direct-wrapped-component-imports': 'error',
+			'@n8n/design-system/no-direct-component-imports': 'error',
 		},
 	},
 } satisfies Record<string, Linter.Config>;

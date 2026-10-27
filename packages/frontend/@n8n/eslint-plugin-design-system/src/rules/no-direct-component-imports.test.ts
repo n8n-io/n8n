@@ -2,7 +2,7 @@ import { RuleTester } from '@typescript-eslint/rule-tester';
 import tseslint from 'typescript-eslint';
 import * as vueParser from 'vue-eslint-parser';
 
-import { NoDirectWrappedComponentImportsRule } from './no-direct-wrapped-component-imports.js';
+import { NoDirectComponentImportsRule } from './no-direct-component-imports.js';
 import {
 	formatWrappedComponentReplacement,
 	wrappedComponentBans,
@@ -69,7 +69,7 @@ const paginationWindowsPath =
 
 const template = (body: string) => `<template>${body}</template>`;
 
-ruleTester.run('no-direct-wrapped-component-imports', NoDirectWrappedComponentImportsRule, {
+ruleTester.run('no-direct-component-imports', NoDirectComponentImportsRule, {
 	valid: [
 		...wrappedComponentBans.flatMap((ban) =>
 			ban.allowedFolders.map((folder) => ({
@@ -310,46 +310,42 @@ ruleTester.run('no-direct-wrapped-component-imports', NoDirectWrappedComponentIm
 
 const menuWrapper = wrapperFile('components/N8nNavigationDropdown', 'NavigationDropdown.vue');
 
-vueRuleTester.run(
-	'no-direct-wrapped-component-imports templates',
-	NoDirectWrappedComponentImportsRule,
-	{
-		valid: [
-			{
-				name: 'a longer template name does not match',
-				filename: 'Component.vue',
-				code: template('<el-menu-button />'),
-			},
-			{
-				name: 'template tags in the allowed wrapper path',
-				filename: menuWrapper,
-				code: template('<el-menu><ElMenu /></el-menu>'),
-			},
-			{
-				name: 'named import in the allowed wrapper path',
-				filename: paginationWrapper,
-				code: "<script>import { PaginationRoot } from 'reka-ui';</script>",
-			},
-		],
-		invalid: [
-			{
-				name: 'kebab-case template tag',
-				filename: 'Component.vue',
-				code: template('<el-menu />'),
-				errors: [error('el-menu', menuBan)],
-			},
-			{
-				name: 'PascalCase template tag',
-				filename: 'Component.vue',
-				code: template('<ElMenu />'),
-				errors: [error('ElMenu', menuBan)],
-			},
-			{
-				name: 'named import and template tag in one vue file',
-				filename: 'Component.vue',
-				code: `<script>import { ElMenu } from 'element-plus';</script>${template('<el-menu />')}`,
-				errors: [error('ElMenu', menuBan), error('el-menu', menuBan)],
-			},
-		],
-	},
-);
+vueRuleTester.run('no-direct-component-imports templates', NoDirectComponentImportsRule, {
+	valid: [
+		{
+			name: 'a longer template name does not match',
+			filename: 'Component.vue',
+			code: template('<el-menu-button />'),
+		},
+		{
+			name: 'template tags in the allowed wrapper path',
+			filename: menuWrapper,
+			code: template('<el-menu><ElMenu /></el-menu>'),
+		},
+		{
+			name: 'named import in the allowed wrapper path',
+			filename: paginationWrapper,
+			code: "<script>import { PaginationRoot } from 'reka-ui';</script>",
+		},
+	],
+	invalid: [
+		{
+			name: 'kebab-case template tag',
+			filename: 'Component.vue',
+			code: template('<el-menu />'),
+			errors: [error('el-menu', menuBan)],
+		},
+		{
+			name: 'PascalCase template tag',
+			filename: 'Component.vue',
+			code: template('<ElMenu />'),
+			errors: [error('ElMenu', menuBan)],
+		},
+		{
+			name: 'named import and template tag in one vue file',
+			filename: 'Component.vue',
+			code: `<script>import { ElMenu } from 'element-plus';</script>${template('<el-menu />')}`,
+			errors: [error('ElMenu', menuBan), error('el-menu', menuBan)],
+		},
+	],
+});

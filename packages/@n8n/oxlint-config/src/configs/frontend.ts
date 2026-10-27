@@ -8,7 +8,7 @@ export const frontendConfig = defineConfig({
 	env: { browser: true, node: true },
 	rules: {
 		'unicorn/filename-case': 'off',
-		'@n8n/design-system/no-direct-wrapped-component-imports': 'error',
+		'@n8n/design-system/no-direct-component-imports': 'error',
 		'vue/define-emits-declaration': ['error', 'type-literal'],
 		'vue/no-reserved-component-names': [
 			'error',

@@ -14,7 +14,7 @@ ESLint is appropriate when a constraint spans component composition or usage con
 
 ## Rules
 
-### `no-direct-wrapped-component-imports`
+### `no-direct-component-imports`
 
 Disallow a direct import of a Reka UI or Element Plus primitive. Callers use the design-system component.
 
