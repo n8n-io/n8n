@@ -197,6 +197,10 @@ function formatFileSize(bytes: number): string {
  * agent can hand the file to a tool that can process it.
  */
 export function fileMetadataText(block: ContentFile): string {
+	return `[${fileLabel(block)} — not directly viewable by this model]`;
+}
+
+function fileLabel(block: ContentFile): string {
 	const name = block.fileRef?.fileName ?? 'file';
 	const details = [
 		block.mediaType,
@@ -205,9 +209,19 @@ export function fileMetadataText(block: ContentFile): string {
 		.filter((part): part is string => part !== undefined)
 		.join(', ');
 	const id = block.fileRef?.id;
-	return `[File attachment "${name}"${details ? ` (${details})` : ''}${
-		id ? `, fileId: ${id}` : ''
-	} — not directly viewable by this model]`;
+	return `File attachment "${name}"${details ? ` (${details})` : ''}${id ? `, fileId: ${id}` : ''}`;
+}
+
+/**
+ * Convert a user content block. A stored file that is sent as bytes gets a
+ * label before it, so the model learns its fileId and can pass it to a tool.
+ */
+function toUserAiContent(block: MessageContent): Array<AiContentPart | undefined> {
+	const part = toAiContent(block);
+	if (part?.type === 'file' && isFile(block) && block.fileRef) {
+		return [{ type: 'text', text: `[${fileLabel(block)}]` }, part];
+	}
+	return [part];
 }
 
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
@@ -462,7 +476,7 @@ function toAiMessageList(
 
 		case 'user': {
 			const parts = msg.content
-				.map((block) => toAiContent(block))
+				.flatMap((block) => toUserAiContent(block))
 				.filter((p): p is TextPart | FilePart => p?.type === 'text' || p?.type === 'file');
 			const base: ModelMessage = { role: 'user', content: parts };
 			return [msg.providerOptions ? { ...base, providerOptions: msg.providerOptions } : base];
