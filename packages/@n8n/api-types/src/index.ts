@@ -18,7 +18,10 @@ export * from './instance-registry-types';
 export type * from './instance-reporting';
 export type * from './worker-pools';
 export * from './node-type-availability';
+export type * from './sub-workflow-policy-check';
 export type * from './credential-type-availability';
+export type * from './transfer-preview';
+export type * from './transfer-result';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
@@ -233,6 +236,8 @@ export {
 	SOURCE_CONTROL_FILE_LOCATION,
 	SOURCE_CONTROL_FILE_STATUS,
 	SOURCE_CONTROL_FILE_TYPE,
+	ENVIRONMENTS_VERSIONS,
+	type EnvironmentsVersion,
 } from './schemas/source-controlled-file.schema';
 
 export {
@@ -448,6 +453,7 @@ export {
 	setupItemSchema,
 	setupItemsPayloadSchema,
 	aiPreferencesAppliedPayloadSchema,
+	skillUpdatePayloadSchema,
 	errorPayloadSchema,
 	mcpToolSchema,
 	mcpToolCallRequestSchema,
@@ -512,6 +518,11 @@ export {
 	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
 	AI_GATEWAY_MANAGED_TAG,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiEvalExportExecutionRequest,
+	InstanceAiEvalRestoreExecutionRequest,
+	instanceAiEvalFailedExecutionEnvelopeSchema,
+	type InstanceAiEvalFailedExecutionEnvelope,
+	type InstanceAiEvalFailedExecutionSummary,
 	InstanceAiEvalSeedDataTableRowsRequest,
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
@@ -628,6 +639,7 @@ export type {
 	InstanceAiPreferenceCardEditResponse,
 	PreferenceCardPayload,
 	AiPreferencesAppliedPayload,
+	InstanceAiSkillUpdatePayload,
 	InstanceAiErrorEvent,
 	McpTool,
 	McpToolAnnotations,

@@ -293,6 +293,22 @@ describe('ExecutionPersistence', () => {
 
 				await expect(executionPersistence.create(createPayload)).rejects.toThrow(fsWriteError);
 			});
+
+			it('removes a filesystem blob when the database transaction fails after writing it', async () => {
+				const mockTx = createMockTransaction();
+				const commitError = new Error('Commit failed');
+				jsonStore.write.mockResolvedValue(123);
+				executionRepository.runInTransaction.mockImplementation(async (_ctx, callback) => {
+					await callback(mockTx, {});
+					throw commitError;
+				});
+
+				await expect(executionPersistence.create(createPayload)).rejects.toBe(commitError);
+
+				expect(jsonStore.delete).toHaveBeenCalledWith([
+					{ workflowId: 'workflow-123', executionId: 'exec-1', storedAt: 'fs' },
+				]);
+			});
 		});
 
 		describe('deduplication key handling', () => {
@@ -2019,16 +2035,17 @@ describe('ExecutionPersistence', () => {
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 		});
 
-		it('should not delete the rows when the binary data delete rejects', async () => {
+		it('should not delete the payload or the rows when the binary data delete rejects', async () => {
 			const target = { ...baseTarget, storedAt: 'fs' as const };
 			binaryDataService.deleteMany.mockRejectedValueOnce(new Error('binary store down'));
 
 			await expect(executionPersistence.hardDelete(target)).rejects.toThrow('binary store down');
 
+			expect(jsonStore.delete).not.toHaveBeenCalled();
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 		});
 
-		it('should delete the rows after both file deletes', async () => {
+		it('should delete binaries, then the payload, then the rows', async () => {
 			const target = { ...baseTarget, storedAt: 'fs' as const };
 
 			await executionPersistence.hardDelete(target);
@@ -2036,12 +2053,53 @@ describe('ExecutionPersistence', () => {
 			const [rows] = executionRepository.deleteByIds.mock.invocationCallOrder;
 			const [binary] = binaryDataService.deleteMany.mock.invocationCallOrder;
 			const [blobs] = jsonStore.delete.mock.invocationCallOrder;
-			expect(rows).toBeGreaterThan(Math.max(binary, blobs));
+			expect(binary).toBeLessThan(blobs);
+			expect(blobs).toBeLessThan(rows);
+		});
+	});
+
+	describe('hardDeleteById', () => {
+		const executionPersistence = createPersistenceService('db');
+
+		it('resolves storage ownership before deleting the row and blob payloads', async () => {
+			executionRepository.findOne.mockResolvedValue(
+				Object.assign(new ExecutionEntity(), {
+					id: 'exec-1',
+					workflowId: 'wf-1',
+					storedAt: 'fs' as const,
+				}),
+			);
+
+			await executionPersistence.hardDeleteById('exec-1');
+
+			expect(executionRepository.findOne).toHaveBeenCalledWith({
+				select: ['id', 'workflowId', 'storedAt'],
+				where: { id: 'exec-1' },
+				withDeleted: true,
+			});
+			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
+			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([
+				{ type: 'execution', executionId: 'exec-1', workflowId: 'wf-1', storedAt: 'fs' },
+			]);
+			expect(jsonStore.delete).toHaveBeenCalledWith([
+				{ executionId: 'exec-1', workflowId: 'wf-1', storedAt: 'fs' },
+			]);
+		});
+
+		it('does nothing when the execution no longer exists', async () => {
+			executionRepository.findOne.mockResolvedValue(null);
+
+			await executionPersistence.hardDeleteById('missing');
+
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+			expect(binaryDataService.deleteMany).not.toHaveBeenCalled();
+			expect(jsonStore.delete).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('hardDeleteBy', () => {
 		const executionPersistence = createPersistenceService('db');
+		Object.assign(executionRepository, { hardDeletionBatchSize: 100 });
 		const criteria = {
 			filters: { id: '1' },
 			accessibleWorkflowIds: ['wf-1'],
@@ -2055,20 +2113,33 @@ describe('ExecutionPersistence', () => {
 				{ workflowId: 'wf-3', executionId: 'exec-3', storedAt: 'az' as const },
 				{ workflowId: 'wf-4', executionId: 'exec-4', storedAt: 'db' as const },
 			];
-			executionRepository.deleteExecutionsByFilter.mockResolvedValue(refs);
+			executionRepository.findExecutionsToDelete.mockResolvedValue(refs);
 
 			await executionPersistence.hardDeleteBy(criteria);
 
-			expect(executionRepository.deleteExecutionsByFilter).toHaveBeenCalledWith(criteria);
+			expect(executionRepository.findExecutionsToDelete).toHaveBeenCalledWith(criteria);
 			expect(jsonStore.delete).toHaveBeenCalledWith([refs[0], refs[1], refs[2]]);
 		});
 
 		it('should delete no blob data when no refs are returned', async () => {
-			executionRepository.deleteExecutionsByFilter.mockResolvedValue([]);
+			executionRepository.findExecutionsToDelete.mockResolvedValue([]);
 
 			await executionPersistence.hardDeleteBy(criteria);
 
-			expect(jsonStore.delete).toHaveBeenCalledWith([]);
+			expect(jsonStore.delete).not.toHaveBeenCalled();
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+		});
+
+		it('should keep the rows and skip the payload delete when the binary delete fails', async () => {
+			executionRepository.findExecutionsToDelete.mockResolvedValue([
+				{ workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'az' as const },
+			]);
+			binaryDataService.deleteMany.mockRejectedValueOnce(new Error('azure down'));
+
+			await expect(executionPersistence.hardDeleteBy(criteria)).rejects.toThrow('azure down');
+
+			expect(jsonStore.delete).not.toHaveBeenCalled();
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 		});
 	});
 

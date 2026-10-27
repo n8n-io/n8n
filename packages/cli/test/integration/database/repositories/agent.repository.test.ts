@@ -7,7 +7,6 @@ import { ConflictError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
 import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
@@ -87,8 +86,6 @@ describe('AgentRepository', () => {
 	});
 
 	afterEach(async () => {
-		// The rollout keeps the flag it read, so set it back off for the next test.
-		setSkillsHubFlag(false);
 		vi.restoreAllMocks();
 		await agentHistoryRepo.delete({});
 		await agentRepo.delete({});
@@ -166,7 +163,6 @@ describe('AgentRepository', () => {
 		};
 
 		it('rolls back Agent creation with its skill references, then commits one creation on retry', async () => {
-			setSkillsHubFlag(true);
 			const skillRepo = Container.get(SkillRepository);
 			const skillRefs = Container.get(AgentSkillRefsService);
 			const skillId = uuid();
@@ -332,8 +328,7 @@ describe('AgentRepository', () => {
 		});
 
 		it('replaces the complete draft and preserves existing task creation times', async () => {
-			setSkillsHubFlag(true);
-			const agent = await createAgent();
+			const agent = await createAgent({ availableInMCP: true });
 			await Container.get(SkillRepository).createSkill(
 				{
 					id: 'writing',
@@ -403,6 +398,7 @@ describe('AgentRepository', () => {
 				tools: definition.tools,
 				revision: 1,
 				updatedAt: agent.updatedAt,
+				availableInMCP: true,
 			});
 			expect(stored?.schema).not.toHaveProperty('skills');
 			// The skill refs live in the dependency rows. The skill body stays in the hub.
@@ -412,7 +408,11 @@ describe('AgentRepository', () => {
 			expect(tasks).toHaveLength(2);
 			expect(tasks).toEqual(
 				expect.arrayContaining([
-					expect.objectContaining({ id: 'task-keep', objective: 'Restored objective', createdAt }),
+					expect.objectContaining({
+						id: 'task-keep',
+						objective: 'Restored objective',
+						createdAt,
+					}),
 					expect.objectContaining({ id: 'task-new', objective: taskBody.objective }),
 				]),
 			);
@@ -633,6 +633,17 @@ describe('AgentRepository', () => {
 			expect(row?.revision).toBe(1);
 		});
 
+		it('rejects a stale import after MCP availability changes', async () => {
+			const agent = await createAgent({ availableInMCP: false });
+			await agentRepo.setAvailableInMCP([agent.id], true);
+
+			const won = await agentRepo.saveDraftFenced(agent, {}, { availableInMCP: false });
+
+			expect(won).toBe(false);
+			const row = await agentRepo.findById(agent.id);
+			expect(row).toMatchObject({ availableInMCP: true, revision: 1 });
+		});
+
 		it('cannot roll back a publish that won between load and save', async () => {
 			const agent = await createAgent();
 			const publishedVersionId = uuid();
@@ -642,34 +653,34 @@ describe('AgentRepository', () => {
 			const stale = await agentRepo.findById(agent.id);
 			expect(stale).not.toBeNull();
 
-			// A concurrent publish wins the fence: sets the active pointer and
-			// bumps revision.
-			const publishWon = await agentRepo.setActiveVersionFenced(agent.id, agent.revision, {
-				activeVersionId: publishedVersionId,
-				versionId: publishedVersionId,
-			});
+			// Publication changes its own revision.
+			const publishWon = await agentRepo.setActiveVersionFenced(
+				agent.id,
+				agent.publicationRevision,
+				publishedVersionId,
+			);
 			expect(publishWon).toBe(true);
 
-			// The stale draft save must lose instead of writing its
-			// pre-publish column values over the row.
+			// A concurrent draft save preserves the published pointer.
 			stale!.schema = { name: 'Stale Edit', model: 'm', instructions: 'i' };
 			const draftWon = await agentRepo.saveDraftFenced(stale!);
 
-			expect(draftWon).toBe(false);
+			expect(draftWon).toBe(true);
 			const row = await agentRepo.findById(agent.id);
 			expect(row?.activeVersionId).toBe(publishedVersionId);
-			expect(row?.versionId).toBe(publishedVersionId);
-			expect(row?.schema?.name).toBe('Test Agent');
+			expect(row?.versionId).toBe(stale!.versionId);
+			expect(row?.schema?.name).toBe('Stale Edit');
 		});
 
 		it('never writes the active version pointer, even when it wins', async () => {
 			const agent = await createAgent();
 			const publishedVersionId = uuid();
 			await createHistory(agent.id, publishedVersionId);
-			await agentRepo.setActiveVersionFenced(agent.id, agent.revision, {
-				activeVersionId: publishedVersionId,
-				versionId: publishedVersionId,
-			});
+			await agentRepo.setActiveVersionFenced(
+				agent.id,
+				agent.publicationRevision,
+				publishedVersionId,
+			);
 
 			// Fresh load sees the published state; a draft edit on top of it
 			// must start a new draft without touching the active pointer.
@@ -685,24 +696,55 @@ describe('AgentRepository', () => {
 			expect(row?.schema?.name).toBe('Draft Edit');
 		});
 
-		it('lets a publish lose to a draft edit that won in between', async () => {
+		it('publishes a saved version while preserving a concurrent draft edit', async () => {
 			const agent = await createAgent();
-			const expectedAtLoad = agent.revision;
+			const expectedAtLoad = agent.publicationRevision;
 
 			agent.schema = { name: 'Concurrent Edit', model: 'm', instructions: 'i' };
 			await agentRepo.saveDraftFenced(agent);
 
 			const publishedVersionId = uuid();
 			await createHistory(agent.id, publishedVersionId);
-			const publishWon = await agentRepo.setActiveVersionFenced(agent.id, expectedAtLoad, {
-				activeVersionId: publishedVersionId,
-				versionId: publishedVersionId,
-			});
+			const publishWon = await agentRepo.setActiveVersionFenced(
+				agent.id,
+				expectedAtLoad,
+				publishedVersionId,
+			);
 
-			expect(publishWon).toBe(false);
+			expect(publishWon).toBe(true);
 			const row = await agentRepo.findById(agent.id);
-			expect(row?.activeVersionId).toBeNull();
+			expect(row?.activeVersionId).toBe(publishedVersionId);
 			expect(row?.schema?.name).toBe('Concurrent Edit');
+		});
+	});
+
+	describe('publication revisions', () => {
+		it('allows one competing publication and keeps the draft on unpublish', async () => {
+			const agent = await createAgent();
+			const versionId = uuid();
+			await createHistory(agent.id, versionId);
+			expect(await agentRepo.setActiveVersionFenced(agent.id, 0, versionId)).toBe(true);
+			expect(await agentRepo.setActiveVersionFenced(agent.id, 0, null)).toBe(false);
+			expect(await agentRepo.setActiveVersionFenced(agent.id, 1, null)).toBe(true);
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				versionId: agent.versionId,
+				activeVersionId: null,
+				publicationRevision: 2,
+				revision: 0,
+			});
+		});
+
+		it('invalidates publication validation when live credentials change', async () => {
+			const agent = await createAgent();
+			const versionId = uuid();
+			await createHistory(agent.id, versionId);
+			agent.integrations = [{ type: 'slack', credentialId: 'new-credential' }];
+			expect(await agentRepo.saveDraftFenced(agent)).toBe(true);
+			expect(await agentRepo.setActiveVersionFenced(agent.id, 0, versionId)).toBe(false);
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				activeVersionId: null,
+				publicationRevision: 1,
+			});
 		});
 	});
 

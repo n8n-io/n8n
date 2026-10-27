@@ -68,6 +68,7 @@ function createSetupFactory() {
 			getCredits: vi.fn(async () => ({ creditsQuota: -1, creditsClaimed: 0 })),
 			resolveAgentModelConfig: vi.fn(async () => 'anthropic/claude-sonnet'),
 			resolveMemoryModelConfig: vi.fn(async () => undefined),
+			getModelFetch: vi.fn(() => undefined),
 		},
 		creditService: { claimRunUsage: vi.fn() },
 		instanceAiErrorReporter: {
@@ -90,9 +91,9 @@ function createRuntime(overrides: Partial<AssistantTurnRuntime> = {}): Assistant
 	return {
 		memory: mock<AssistantTurnRuntime['memory']>({
 			getThread: vi.fn(async () => null),
-			getThreadProjectId: vi.fn(async () => 'project-1'),
 		}),
 		resourceId: 'user-1',
+		getProjectId: vi.fn(async () => 'project-1'),
 		eventBus: mock<AssistantTurnRuntime['eventBus']>(),
 		turnState: {
 			getBuildMode: vi.fn(() => 'progressive' as const),
@@ -200,7 +201,6 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			const runtime = createRuntime({
 				memory: mock<AssistantTurnRuntime['memory']>({
 					getThread: vi.fn(async () => ({ resourceId: 'user-2' }) as never),
-					getThreadProjectId: vi.fn(),
 				}),
 			});
 

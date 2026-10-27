@@ -16,11 +16,14 @@ const AGENT_ENTRY_POINTS = new Set([
 	'agent-credential-provider.contracts',
 	'agent-draft.service',
 	'agent-draft.contracts',
+	'format-agent-session-context',
 	'builder/agents-builder.service',
 	'builder/builder-session',
 	'evaluation/agent-evaluation.service',
 	'evaluation/agent-evaluation.contracts',
 	'evaluation/evaluation-config',
+	'system-agents/system-agent.types',
+	'system-agents/system-agent-registration.service',
 ]);
 
 function isWithin(directory: string, target: string): boolean {

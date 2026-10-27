@@ -84,6 +84,11 @@ export class AgentsBuilderService {
 		return await buildBuilderSessionContext(projectId, agentId);
 	}
 
+	async getCredentialDefaults(user: User, projectId: string, agentId: string) {
+		await this.assertAccess(user, projectId, ['agent:read']);
+		return await this.tools.getCredentialDefaults(agentId, projectId);
+	}
+
 	createCredentialProvider(
 		user: User,
 		projectId: string,

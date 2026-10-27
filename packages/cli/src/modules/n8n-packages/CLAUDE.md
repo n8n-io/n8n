@@ -14,6 +14,9 @@ CLI flag is a silent bug, not a compile error.
 One exception: a policy that only promotions needs can stop at
 `ImportSelectionRequest`, for example `dataTableSchemaConflictPolicy` and
 `tagConflictPolicy`. The public selection import keeps the fixed default.
+When the full directory import (`importPackageFromDirectory`) needs it too,
+declare it on an internal type such as `PromotionLayoutProperties`, never
+on `ImportRequest`.
 
 ```mermaid
 flowchart LR
@@ -48,7 +51,7 @@ flowchart LR
      (or `ImportWorkflowProperties` / `ImportCredentialProperties`). For a new
      enum, add a `XxxPolicy` / `XxxMode` const **and** its derived type
      (follow `WorkflowIdPolicy`). New single-value modes are RFC seams — keep
-     the function-table convention (`workflow-conflict-policy.ts` etc.), don't
+     the function-table convention (`import-conflict-policy.ts` etc.), don't
      add handler classes for pure logic.
    - Implement the behaviour (e.g. `entities/workflow/workflow-importer.ts`)
      and thread it through `n8n-packages.service.ts` `importPackage`.
@@ -80,8 +83,8 @@ flowchart LR
 4. **CLI** — `src/client.ts` `exportPackage(...)`,
    `src/commands/package/export.ts` flag, and the docs/README.
 
-## Reference: the `workflowIdPolicy` change
+## Reference: the `idPolicy` change
 
-The in-tree addition of `workflowIdPolicy` is the canonical example — it landed
+The in-tree addition of `idPolicy` is the canonical example — it landed
 in the module types + importer, the DTO (+ form-fields list), the handler, and
-the CLI. Grep `workflowIdPolicy` to see every site a new import knob must touch.
+the CLI. Grep `idPolicy` to see every site a new import knob must touch.

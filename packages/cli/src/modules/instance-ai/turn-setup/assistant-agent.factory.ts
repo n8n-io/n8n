@@ -19,19 +19,20 @@ import {
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { ErrorReporter } from 'n8n-core';
 
+import { formatPreviewSessionContext } from '@/modules/agents/format-agent-session-context';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 
 import { canAccessAgentPreviewHandoff } from '../agent-preview-handoff';
 import { getAgentContextService, isAgentsAccessEnabled } from '../agents-access';
-import { formatPreviewSessionContext } from '../format-agent-session-context';
 import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import {
 	getAgentErrorSeverity,
 	InstanceAiErrorReporterService,
 } from '../instance-ai-error-reporter.service';
+import { InstanceAiModelService } from '../instance-ai-model.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiMcpRegistryService } from '../mcp';
 import type { AssistantTurnEnvironment } from './assistant-turn-environment.factory';
@@ -78,6 +79,7 @@ export class AssistantAgentFactory {
 		private readonly errorReporter: ErrorReporter,
 		private readonly telemetry: Telemetry,
 		private readonly push: Push,
+		private readonly modelService: InstanceAiModelService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -133,6 +135,7 @@ export class AssistantAgentFactory {
 			checkpointStore: runtime.checkpointStore,
 			onMemoryTaskEvent: runtime.onMemoryTaskEvent,
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
+			modelFetch: this.modelService.getModelFetch(),
 		});
 		// Surface MCP connection failures as a non-fatal status event. Publishing
 		// here (rather than at each call site) covers the foreground run and both

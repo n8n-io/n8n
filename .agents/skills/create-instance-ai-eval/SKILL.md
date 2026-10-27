@@ -1037,3 +1037,11 @@ binary-check scored), **`eval:discovery`** (asserts first-hop tool/dispatch
 routing, no n8n server), **`eval:pairwise`** (head-to-head build comparison vs
 `ai-workflow-builder.ee`). Authoring them is out of scope here — see the README
 sections of the same names.
+
+To measure how much context a prompt, skill, or tool-description change adds or
+removes, run `pnpm context:budget` in `packages/@n8n/instance-ai` before and
+after the change. It needs no instance. It prints the size of the system prompt,
+the skill catalog, each always-loaded tool, and the skills that a build keeps
+loaded. Its test fails when a section grows past its ceiling. Use it next to an
+eval: a smaller context is not an improvement until an eval shows no quality
+loss.

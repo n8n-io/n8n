@@ -1,8 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { AuthenticatedRequest, User } from '@n8n/db';
-import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
+import type { AuthenticatedRequest, Person, User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, PersonRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'crypto';
@@ -110,7 +110,7 @@ export class AuthService {
 		private readonly license: License,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
 		private readonly mfaService: MfaService,
 	) {
@@ -363,14 +363,14 @@ export class AuthService {
 	 * user existence, and hash consistency. Skips browser-id and MFA checks
 	 * since those are not applicable to webhook cookie validation.
 	 *
-	 * @returns the authenticated `User` on success
+	 * @returns the authenticated `Person` on success
 	 * @throws `AuthError('Unauthorized')` if the token is revoked or invalid
 	 */
-	async validateCookieToken(token: string): Promise<User> {
+	async validateCookieToken(token: string): Promise<Person> {
 		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
 		if (isInvalid) throw new AuthError('Unauthorized');
-		const { user } = await this.validateToken(token);
-		return user;
+		const { person } = await this.validateToken(token);
+		return person;
 	}
 
 	async authenticateUserBasedOnToken(
@@ -378,17 +378,17 @@ export class AuthService {
 		method: string,
 		endpoint: string,
 		browserId: string | undefined,
-	): Promise<User> {
+	): Promise<Person> {
 		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
 		if (isInvalid) throw new AuthError('Unauthorized');
 
-		const { user, jwtPayload } = await this.validateToken(token);
+		const { person, jwtPayload } = await this.validateToken(token);
 
 		this.validateBrowserId(jwtPayload, browserId, endpoint, method);
 
-		await this.checkMfaGate(user, jwtPayload);
+		await this.checkMfaGate(person, jwtPayload);
 
-		return user;
+		return person;
 	}
 
 	/**
@@ -399,23 +399,23 @@ export class AuthService {
 	 *
 	 * @param cookie - The JWT string extracted from the `n8n-auth` browser cookie.
 	 */
-	async authenticateUserByCookie(cookie: string): Promise<User> {
+	async authenticateUserByCookie(cookie: string): Promise<Person> {
 		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token: cookie });
 		if (isInvalid) throw new AuthError('Unauthorized');
 
-		const { user, jwtPayload } = await this.validateToken(cookie);
+		const { person, jwtPayload } = await this.validateToken(cookie);
 
-		await this.checkMfaGate(user, jwtPayload);
-		return user;
+		await this.checkMfaGate(person, jwtPayload);
+		return person;
 	}
 
-	private async checkMfaGate(user: User, jwtPayload: IssuedJWT): Promise<void> {
+	private async checkMfaGate(person: Person, jwtPayload: IssuedJWT): Promise<void> {
 		if (jwtPayload.usedMfa ?? false) {
 			return;
 		}
 
 		const mfaEnforced = await this.mfaService.isMFAEnforced();
-		if (!mfaEnforced && !user.mfaEnabled) {
+		if (!mfaEnforced && !person.mfaEnabled) {
 			// MFA is not enforced and the user has MFA not enabled
 			// we are good
 			return;
@@ -449,7 +449,7 @@ export class AuthService {
 	}
 
 	private async validateToken(token: string): Promise<{
-		user: User;
+		person: Person;
 		jwtPayload: IssuedJWT;
 	}> {
 		const jwtPayload = this.jwtService.verify<unknown>('session', token, {
@@ -459,24 +459,21 @@ export class AuthService {
 		if (!isIssuedJWT(jwtPayload)) throw new AuthError('Unauthorized');
 
 		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
-		const user = await this.userRepository.findOne({
-			where: { id: jwtPayload.id },
-			relations: ['role'],
-		});
+		const person = await this.personRepository.findByIdWithRole(jwtPayload.id);
 
 		if (
 			// If not user is found
-			!user ||
+			!person ||
 			// or, If the user has been deactivated (i.e. LDAP users)
-			user.disabled ||
+			person.disabled ||
 			// or, If the email or password has been updated
-			jwtPayload.hash !== this.createJWTHash(user)
+			jwtPayload.hash !== this.createJWTHash(person)
 		) {
 			throw new AuthError('Unauthorized');
 		}
 
 		return {
-			user,
+			person,
 			jwtPayload,
 		};
 	}
@@ -485,8 +482,8 @@ export class AuthService {
 		token: string,
 		req: AuthenticatedRequest,
 		res: Response,
-	): Promise<[User, { usedMfa: boolean }]> {
-		const { user, jwtPayload } = await this.validateToken(token);
+	): Promise<[Person, { usedMfa: boolean }]> {
+		const { person, jwtPayload } = await this.validateToken(token);
 
 		const browserId = this.getBrowserId(req);
 		const endpoint = this.getEndpoint(req);
@@ -501,7 +498,7 @@ export class AuthService {
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): call issueCookie instead of setAuthCookie; keep the call and its arguments.
 			this.setAuthCookie(
 				res,
-				user,
+				person,
 				jwtPayload.usedMfa ?? false,
 				browserId,
 				jwtPayload.isEmbed,
@@ -509,14 +506,14 @@ export class AuthService {
 			);
 		}
 
-		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];
+		return [person, { usedMfa: jwtPayload.usedMfa ?? false }];
 	}
 
-	generateEmailChangeUrl(user: User, newEmail: string) {
+	generateEmailChangeUrl(person: Person, newEmail: string) {
 		const payload: EmailChangeToken = {
-			sub: user.id,
+			sub: person.id,
 			newEmail,
-			hash: this.createJWTHash(user),
+			hash: this.createJWTHash(person),
 		};
 		const token = this.jwtService.sign('emailChange', payload, { expiresIn: '20m' });
 		const url = new URL(`${this.urlService.getInstanceBaseUrl()}/confirm-email-change`);
@@ -526,38 +523,35 @@ export class AuthService {
 
 	async resolveEmailChangeToken(
 		token: string,
-	): Promise<{ user: User; newEmail: string } | undefined> {
+	): Promise<{ person: Person; newEmail: string } | undefined> {
 		let decoded: EmailChangeToken;
 		try {
 			decoded = this.jwtService.verify('emailChange', token);
 		} catch {
 			return;
 		}
-		const user = await this.userRepository.findOne({
-			where: { id: decoded.sub },
-			relations: ['authIdentities', 'role'],
-		});
-		if (!user) return;
-		if (decoded.hash !== this.createJWTHash(user)) return; // password/email changed since issue
-		return { user, newEmail: decoded.newEmail };
+		const person = await this.personRepository.findByIdWithAuthIdentities(decoded.sub);
+		if (!person) return;
+		if (decoded.hash !== this.createJWTHash(person)) return; // password/email changed since issue
+		return { person, newEmail: decoded.newEmail };
 	}
 
-	generatePasswordResetToken(user: User, expiresIn: TimeUnitValue = '20m') {
-		const payload: PasswordResetToken = { sub: user.id, hash: this.createJWTHash(user) };
+	generatePasswordResetToken(person: Person, expiresIn: TimeUnitValue = '20m') {
+		const payload: PasswordResetToken = { sub: person.id, hash: this.createJWTHash(person) };
 		return this.jwtService.sign('passwordReset', payload, { expiresIn });
 	}
 
-	generatePasswordResetUrl(user: User) {
+	generatePasswordResetUrl(person: Person) {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const url = new URL(`${instanceBaseUrl}/change-password`);
 
-		url.searchParams.append('token', this.generatePasswordResetToken(user));
-		url.searchParams.append('mfaEnabled', user.mfaEnabled.toString());
+		url.searchParams.append('token', this.generatePasswordResetToken(person));
+		url.searchParams.append('mfaEnabled', person.mfaEnabled.toString());
 
 		return url.toString();
 	}
 
-	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
+	async resolvePasswordResetToken(token: string): Promise<Person | undefined> {
 		let decodedToken: PasswordResetToken;
 		try {
 			decodedToken = this.jwtService.verify('passwordReset', token);
@@ -570,12 +564,9 @@ export class AuthService {
 			return;
 		}
 
-		const user = await this.userRepository.findOne({
-			where: { id: decodedToken.sub },
-			relations: ['authIdentities', 'role'],
-		});
+		const person = await this.personRepository.findByIdWithAuthIdentities(decodedToken.sub);
 
-		if (!user) {
+		if (!person) {
 			this.logger.debug(
 				'Request to resolve password token failed because no user was found for the provided user ID',
 				{ userId: decodedToken.sub },
@@ -583,12 +574,12 @@ export class AuthService {
 			return;
 		}
 
-		if (decodedToken.hash !== this.createJWTHash(user)) {
+		if (decodedToken.hash !== this.createJWTHash(person)) {
 			this.logger.debug('Password updated since this token was generated');
 			return;
 		}
 
-		return user;
+		return person;
 	}
 
 	createJWTHash({ email, password, mfaEnabled, mfaSecret }: User) {

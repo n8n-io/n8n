@@ -261,7 +261,6 @@ export async function buildImportPackageBuffer(
 
 	const manifest: PackageManifest = {
 		packageFormatVersion: FORMAT_VERSION,
-		exportedAt: new Date().toISOString(),
 		sourceN8nVersion: '1.0.0',
 		sourceId,
 		workflows: workflows.map((w, idx) => ({
@@ -423,7 +422,6 @@ async function writeEntityPackage(
 
 	const manifest: PackageManifest = {
 		packageFormatVersion: FORMAT_VERSION,
-		exportedAt: new Date().toISOString(),
 		sourceN8nVersion: '1.0.0',
 		sourceId: options.sourceId ?? 'integration-test-source',
 		...(workflows.length > 0
