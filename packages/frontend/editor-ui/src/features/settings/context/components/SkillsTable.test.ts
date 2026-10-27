@@ -178,7 +178,7 @@ describe('SkillsTable', () => {
 				pins: [],
 				hiddenAgents: 0,
 			},
-		} as SkillDetail);
+		} as unknown as SkillDetail);
 		const { getByTestId, findByTestId, findByText } = render([skill({ usedByAgents: 1 })]);
 
 		await userEvent.click(getByTestId('skill-agents-trigger'));
