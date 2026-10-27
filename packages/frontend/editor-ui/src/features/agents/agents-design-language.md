@@ -87,6 +87,9 @@ In toggle variants, always show the selector in the standalone builder. In the
 Assistant, show it when an Agent artifact is open and its initial build finishes. Test readiness
 does not control visibility. Disable Test when the Agent cannot run. Use the
 same validation tooltip as the Test button beside the Agent title to explain the setup issues.
+Show one readiness heading. Put missing instructions, model, and credential in a
+bulleted list under `Add:`. Put other blockers in a bulleted list under `Fix:`.
+Call the Assistant's link to this chat `Test`.
 Keep the selector visible during later Assistant work, with both modes disabled.
 Hide it when the Agent artifact closes. Do not show a link from the standalone
 build chat to the full Assistant. Test links and task

@@ -169,7 +169,7 @@ describe('builder model recommendations', () => {
 		);
 	});
 
-	it('puts the recommendation section and the Preview link into the session context', async () => {
+	it('puts the recommendation section and the Test link into the session context', async () => {
 		resetModelRecommendationsCacheForTest();
 		fetchProviderCatalog.mockResolvedValueOnce(catalog);
 
@@ -177,7 +177,9 @@ describe('builder model recommendations', () => {
 
 		expect(context).toContain('### Recommended LLM Models');
 		expect(context).toContain('`openai/gpt-5` GPT-5');
-		expect(context).toContain('[Preview](/projects/project-1/agents/agent-1');
+		expect(context).toContain('[Test](/projects/project-1/agents/agent-1');
+		expect(context).toContain('Use "Test" as the link label.');
+		expect(context).not.toContain('[Preview]');
 	});
 
 	it('tells the builder not to name models when the catalog is unavailable', async () => {

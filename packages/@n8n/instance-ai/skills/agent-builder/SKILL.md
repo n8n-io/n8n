@@ -66,7 +66,7 @@ to a workflow `filePath`.
 
 Naming or renaming the current Agent never silently creates another one.
 
-The result carries `sessionContext`: the Preview link for the selected Agent
+The result carries `sessionContext`: the Test link for the selected Agent
 and the recommended LLM models. Use them as described below. Select the Agent
 again after you switch to a different Agent.
 
@@ -186,11 +186,11 @@ Agent and message it from the connected platform to verify the channel.
 Standard tool approvals pause `agent_builder_call_agent` until the user
 approves or rejects them in this chat. If it returns `approval_required` for an
 unsupported interaction, explain that it cannot be completed here and send the
-user to the Preview link from `sessionContext` to run it again.
+user to the Test link from `sessionContext` to run it again.
 
 After a successful build or config change that leaves the Agent ready to try,
-include that Preview markdown link in your wrap-up. Keep Preview links as
-relative app paths and do not invent a different path.
+include that markdown link in your wrap-up with the label `Test`. Keep Test
+links as relative app paths and do not invent a different path.
 
 Never write empty or placeholder `instructions`. When the user gave a concrete
 goal, write real instructions from it and fill gaps with sensible assumptions
@@ -315,7 +315,7 @@ confirm those selections before you finish the build.
    `agent_builder_finish_setup` returns (or on your last `configHash` when it
    showed no card and returned none). Do not read the config again.
 10. After setup is complete and the Agent is runnable, tell the user that the
-    draft is ready and include the Preview link so they can try it in the test
+    draft is ready and include the Test link so they can try it in the test
     chat. Do not call `agent_builder_call_agent` by default. Call it when the
     user reports a problem with the Agent, to reproduce the problem and to
     confirm your fix. The Agent is not runnable when `agent_builder_finish_setup` returned
@@ -684,8 +684,8 @@ When you mention the Agent editor to the user, use the labels they see:
 
 - Sessions tab: past Agent conversations, tests, and activity. Each item is a
   session. A scheduled task occurrence also appears as a session.
-- Preview: the live test-chat dock. Use the Preview link from `sessionContext`.
-  Preview is not the history list.
+- Test: the live test-chat dock. Use the Test link from `sessionContext`.
+  Test is not the history list.
 - Build, Knowledge, and Settings: the other main tabs.
 - Workflow execution history stays "Executions". Do not use that name for
   Agents.
