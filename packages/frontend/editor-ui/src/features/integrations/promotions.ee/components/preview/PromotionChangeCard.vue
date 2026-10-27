@@ -62,10 +62,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const nameOf = (key: string) => props.graph.resources.get(key)?.name ?? key;
 const { changeLabel, blockerMessage, selectLabel } = usePromotionPreviewLabels();
-// A moved folder explains itself in the card body.
-const blocker = computed(() =>
-	props.resource.type === 'folder' ? undefined : blockerMessage(props.resource, props.blockers),
-);
+const blocker = computed(() => blockerMessage(props.resource, props.blockers));
 
 // Cards start open. Inspecting a resource from the tree opens its card again.
 const open = defineModel<boolean>('open', { default: true });
@@ -122,12 +119,6 @@ const absentSides = computed((): DetailSide[] => {
 		(side) => sideState(current, side).kind === 'absent',
 	);
 });
-const isApplyMove = computed(
-	() =>
-		props.direction === 'apply' &&
-		props.resource.type === 'folder' &&
-		props.resource.previousParentKey !== undefined,
-);
 // Tags belong to the whole instance, so Apply changes them outside this project too.
 const tagNote = computed(() => {
 	const { direction, resource } = props;
@@ -175,7 +166,9 @@ const tagNote = computed(() => {
 						</N8nText>
 					</span>
 					<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
-					<N8nTooltip v-if="blocker" :content="blocker" as-child>
+					<N8nTooltip v-if="blocker" as-child>
+						<!-- Plain text: a personal project name such as `Name <email>` is not HTML. -->
+						<template #content>{{ blocker }}</template>
 						<span
 							role="img"
 							:aria-label="blocker"
@@ -266,9 +259,6 @@ const tagNote = computed(() => {
 						:class="$style.padded"
 					>
 						{{ i18n.baseText('promotions.preview.variable.valueHidden') }}
-					</N8nText>
-					<N8nText v-if="isApplyMove" step="2xs" color="text-light" :class="$style.padded">
-						{{ i18n.baseText('promotions.preview.folder.moveConflict') }}
 					</N8nText>
 					<N8nText v-if="tagNote" step="2xs" color="text-light" :class="$style.padded">
 						{{ tagNote }}

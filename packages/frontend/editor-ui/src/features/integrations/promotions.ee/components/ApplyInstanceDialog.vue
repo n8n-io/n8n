@@ -10,10 +10,12 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref, shallowRef } from 'vue';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { withMoveAndRenameNote } from '../promotionResult';
 import { applyPromotion } from '../promotionsSettings.api';
 import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
 import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
@@ -61,11 +63,15 @@ function reportApplied(result: AppliedResult) {
 	// A workflow can be imported and still fail to publish, so success alone would mislead.
 	toast.showMessage({
 		title: i18n.baseText('settings.promotions.apply.toast.success.title'),
-		message: i18n.baseText(
-			notPublished
-				? 'settings.promotions.apply.toast.success.messageNotPublished'
-				: 'settings.promotions.apply.toast.success.message',
-			{ interpolate },
+		message: withMoveAndRenameNote(
+			i18n,
+			i18n.baseText(
+				notPublished
+					? 'settings.promotions.apply.toast.success.messageNotPublished'
+					: 'settings.promotions.apply.toast.success.message',
+				{ interpolate },
+			),
+			result.counts,
 		),
 		type: notPublished ? 'warning' : 'success',
 	});
@@ -121,9 +127,15 @@ async function submit() {
 		reportSourceChanged();
 		close();
 	} catch (error) {
-		// Apply can save some changes before a later step fails, so the project list can be stale.
+		// A 409 refuses the apply before any write. Other failures can come after some changes
+		// were saved, so the project list can be stale.
+		const refused = error instanceof ResponseError && error.httpStatusCode === 409;
 		toast.showError(error, i18n.baseText('settings.promotions.apply.toast.error'), {
-			message: i18n.baseText('settings.promotions.apply.toast.error.message'),
+			message: i18n.baseText(
+				refused
+					? 'settings.promotions.apply.toast.error.refused'
+					: 'settings.promotions.apply.toast.error.message',
+			),
 		});
 		void refreshProjects();
 	} finally {

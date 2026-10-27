@@ -1,12 +1,8 @@
 import type { WorkflowEntity } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
+import { getStaticSubworkflowId, setStaticSubworkflowId, type INode } from 'n8n-workflow';
 
 import type { PackageImportBindings } from '../../../../n8n-packages.types';
-import {
-	getStaticSubworkflowId,
-	setStaticSubworkflowId,
-	subWorkflowNodeReference,
-} from '../sub-workflow-node.reference';
+import { subWorkflowNodeReference } from '../sub-workflow-node.reference';
 
 function node(
 	type: string,
@@ -34,6 +30,7 @@ const resourceLocator = (value: string, mode = 'list') => ({ __rl: true, mode, v
 const workflow = (nodes: INode[], id = 'parent'): WorkflowEntity =>
 	({ id, nodes }) as WorkflowEntity;
 const bindings = (workflows: Map<string, string>): PackageImportBindings => ({
+	agents: new Map(),
 	workflows,
 	credentials: new Map(),
 });
@@ -140,8 +137,8 @@ describe('getStaticSubworkflowId', () => {
 			).toBeUndefined();
 		});
 
-		it('ignores a non-database source (localFile / parameter / url)', () => {
-			for (const source of ['localFile', 'parameter', 'url']) {
+		it('ignores a non-database source', () => {
+			for (const source of ['localFile', 'parameter', 'url', null]) {
 				expect(
 					getStaticSubworkflowId(node(EXECUTE_WORKFLOW, 1, { source, workflowId: 'wf-child' })),
 				).toBeUndefined();

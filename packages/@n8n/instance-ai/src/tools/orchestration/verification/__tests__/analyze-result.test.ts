@@ -111,7 +111,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		expect(analysis.success).toBe(false);
 		expect(analysis.remediation?.reason).toBe('chat_model_failure');
 		expect(analysis.remediation?.shouldEdit).toBe(true);
-		expect(analysis.remediation?.guidance).toContain('explore-resources');
+		expect(analysis.remediation?.guidance).toContain('get_node_parameter_options');
 	});
 
 	it('includes precomputed replacement suggestions in recovery guidance', () => {
@@ -237,7 +237,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 
 		expect(analysis.remediation?.reason).toBe('chat_model_failure');
 		expect(analysis.remediation?.guidance).not.toContain('claude-x');
-		expect(analysis.remediation?.guidance).toContain('explore-resources');
+		expect(analysis.remediation?.guidance).toContain('get_node_parameter_options');
 	});
 
 	it('omits n8n credits when the gateway covers a different node than the failing one', () => {

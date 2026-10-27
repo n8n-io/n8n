@@ -22,6 +22,7 @@ import type {
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import { WhatsAppIntegration } from '../../../platforms/whatsapp/whatsapp-integration';
 import { WhatsAppOptionPagesStore } from '../../../platforms/whatsapp/whatsapp-option-pages.store';
+import type { WhatsAppSetupTelemetryService } from '../../../platforms/whatsapp/whatsapp-setup-telemetry.service';
 import type { WhatsAppWebhookVerificationStore } from '../../../platforms/whatsapp/whatsapp-webhook-verification.store';
 import {
 	createMockAttachmentService,
@@ -160,6 +161,7 @@ export function createWhatsAppIntegration(
 	webhookVerification: WhatsAppWebhookVerificationStore = mock<WhatsAppWebhookVerificationStore>(),
 	logger: BackendLogger = mock<BackendLogger>(),
 	optionPages: WhatsAppOptionPagesStore = createOptionPagesStore(logger),
+	setupTelemetry: WhatsAppSetupTelemetryService = mock<WhatsAppSetupTelemetryService>(),
 ): WhatsAppIntegration {
 	return new WhatsAppIntegration(
 		logger,
@@ -171,6 +173,7 @@ export function createWhatsAppIntegration(
 		channelRateLimitGuard,
 		webhookVerification,
 		optionPages,
+		setupTelemetry,
 	);
 }
 
@@ -311,6 +314,7 @@ export async function createWhatsAppReplayContext(
 		failureSequence?: WhatsAppFailureSequence;
 		webhookVerification?: WhatsAppWebhookVerificationStore;
 		logger?: BackendLogger;
+		setupTelemetry?: WhatsAppSetupTelemetryService;
 	} = {},
 ): Promise<WhatsAppReplayContext> {
 	const stub = installWhatsAppApiStub(options.failedApiTypes, options.failureSequence);
@@ -324,6 +328,8 @@ export async function createWhatsAppReplayContext(
 		channelRateLimitGuard,
 		options.webhookVerification,
 		options.logger,
+		undefined,
+		options.setupTelemetry,
 	);
 	const integration: AgentIntegrationConfig = options.integration ?? {
 		type: 'whatsapp',

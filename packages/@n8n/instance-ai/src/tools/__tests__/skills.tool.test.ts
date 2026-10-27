@@ -1,5 +1,6 @@
 import type { InstanceAiPermissions, SkillDetail, SkillListItem } from '@n8n/api-types';
 import type { Mock } from 'vitest';
+import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, InstanceAiSkillService } from '../../types';
@@ -35,8 +36,13 @@ const detail: SkillDetail = {
 
 const skill = { name: 'Brand voice', description: 'd', instructions: 'Be kind.' };
 
-function createSkillService(): { [K in keyof InstanceAiSkillService]: Mock } {
+type SkillServiceMock = {
+	[K in Exclude<keyof InstanceAiSkillService, 'assistantSkillsEnabled'>]: Mock;
+} & Pick<InstanceAiSkillService, 'assistantSkillsEnabled'>;
+
+function createSkillService(assistantSkillsEnabled = true): SkillServiceMock {
 	return {
+		assistantSkillsEnabled,
 		list: vi.fn().mockResolvedValue({ count: 1, data: [listItem] }),
 		get: vi.fn().mockResolvedValue(detail),
 		create: vi.fn().mockResolvedValue(detail),
@@ -133,6 +139,95 @@ describe('skills tool', () => {
 
 		expect(service.get).toHaveBeenCalledWith('skill_a');
 		expect(result).toMatchObject({ id: 'skill_a', skill: detail.skill, skillHash: 'hash-2' });
+	});
+
+	describe('Assistant availability', () => {
+		const parseInput = (skillService: InstanceAiSkillService, input: Record<string, unknown>) =>
+			(createSkillsTool(createContext(skillService)).inputSchema as z.ZodType).parse(input);
+
+		it('returns whether the n8n Assistant can use a skill', async () => {
+			service.get.mockResolvedValue({ ...detail, availableToAssistant: true });
+			const tool = createSkillsTool(createContext(service));
+
+			const listed = await executeTool(tool, { action: 'list' });
+			const read = await executeTool(tool, { action: 'get', skillId: 'skill_a' });
+
+			expect(listed).toMatchObject({ skills: [{ availableToAssistant: false }] });
+			expect(read).toMatchObject({ availableToAssistant: true });
+		});
+
+		it('hides the availability when its flag is off', async () => {
+			const tool = createSkillsTool(createContext(createSkillService(false)));
+
+			const listed = await executeTool<{ skills: object[] }>(tool, { action: 'list' });
+			const read = await executeTool(tool, { action: 'get', skillId: 'skill_a' });
+
+			expect(listed.skills[0]).not.toHaveProperty('availableToAssistant');
+			expect(read).not.toHaveProperty('availableToAssistant');
+		});
+
+		it.each([
+			{ action: 'create', scope: 'instance', skill, availableToAssistant: true },
+			{ action: 'update', skillId: 'skill_a', baseSkillHash: 'hash-2', availableToAssistant: true },
+		])('accepts the availability on $action', (input) => {
+			expect(parseInput(service, input)).toMatchObject({ availableToAssistant: true });
+		});
+
+		it.each([
+			{ action: 'create', scope: 'instance', skill, availableToAssistant: true },
+			{ action: 'update', skillId: 'skill_a', baseSkillHash: 'hash-2', availableToAssistant: true },
+		])('drops the availability on $action when its flag is off', (input) => {
+			expect(parseInput(createSkillService(false), input)).not.toHaveProperty(
+				'availableToAssistant',
+			);
+		});
+
+		it('creates the skill for the n8n Assistant once the user approves', async () => {
+			const input = { action: 'create', scope: 'instance', skill, availableToAssistant: true };
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			await executeTool(tool, input, suspendCtx(suspend));
+			await executeTool(tool, input, resumeCtx(true));
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'Create the skill for every project on this instance, and allow the n8n Assistant to use it',
+				}),
+			);
+			expect(service.create).toHaveBeenCalledWith(input);
+		});
+
+		it.each([
+			{ availableToAssistant: true, change: 'Allow the n8n Assistant to use it.' },
+			{ availableToAssistant: false, change: 'Stop the n8n Assistant from using it.' },
+		])(
+			'names the availability change on the update card: $change',
+			async ({ availableToAssistant, change }) => {
+				const input = {
+					action: 'update',
+					skillId: 'skill_a',
+					baseSkillHash: 'hash-2',
+					availableToAssistant,
+				};
+				const suspend = vi.fn();
+				const tool = createSkillsTool(createContext(service));
+
+				await executeTool(tool, input, suspendCtx(suspend));
+				await executeTool(tool, input, resumeCtx(true));
+
+				expect(suspend).toHaveBeenCalledWith(
+					expect.objectContaining({
+						message: `Update the skill. ${change} 3 agents use it.`,
+					}),
+				);
+				expect(service.update).toHaveBeenCalledWith('skill_a', {
+					baseSkillHash: 'hash-2',
+					availableToAssistant,
+				});
+			},
+		);
 	});
 
 	describe('create', () => {
@@ -335,6 +430,24 @@ describe('skills tool', () => {
 				expect.objectContaining({
 					message:
 						'Save a new version of the skill. Move it, so it is available for every project on this instance. 3 agents use it.',
+				}),
+			);
+		});
+
+		it('does not promise a new version when the update only moves the skill', async () => {
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			await executeTool(
+				tool,
+				{ action: 'update', skillId: 'skill_a', baseSkillHash: 'hash-2', scope: 'instance' },
+				suspendCtx(suspend),
+			);
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'Update the skill. Move it, so it is available for every project on this instance. 3 agents use it.',
 				}),
 			);
 		});
