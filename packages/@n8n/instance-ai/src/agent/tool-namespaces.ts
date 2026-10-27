@@ -37,6 +37,10 @@ export const PRODUCT_TOOL_NAMESPACES: readonly ProductNamespaceDefinition[] = [
 			ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 			DOMAIN_TOOL_IDS.SEARCH_MODELS,
 			DOMAIN_TOOL_IDS.NODES,
+			DOMAIN_TOOL_IDS.SEARCH_NODES,
+			DOMAIN_TOOL_IDS.GET_NODE_TYPES,
+			DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS,
+			DOMAIN_TOOL_IDS.EXECUTE_NODE,
 			ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS,
 			ORCHESTRATION_TOOL_IDS.REPORT_VERIFICATION_VERDICT,
 			ORCHESTRATION_TOOL_IDS.TASK_CONTROL,
@@ -52,6 +56,27 @@ export const PRODUCT_TOOL_NAMESPACES: readonly ProductNamespaceDefinition[] = [
 			DOMAIN_TOOL_IDS.AGENT_CONTEXT,
 			...AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES,
 			ORCHESTRATION_TOOL_IDS.GET_SESSION,
+		],
+	},
+	{
+		name: 'executions',
+		description: 'Run workflows and read, debug and stop their executions',
+		tools: [DOMAIN_TOOL_IDS.EXECUTIONS],
+	},
+	{
+		name: 'data_tables',
+		description: 'Create, read and change n8n data tables and their rows',
+		tools: [DOMAIN_TOOL_IDS.DATA_TABLES],
+	},
+	{
+		name: 'credentials',
+		description: 'List, find, set up, test and delete credentials',
+		tools: [
+			DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
+			DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES,
+			DOMAIN_TOOL_IDS.SETUP_CREDENTIALS,
+			DOMAIN_TOOL_IDS.TEST_CREDENTIAL,
+			DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
 		],
 	},
 	{

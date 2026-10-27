@@ -648,15 +648,20 @@ describe('createInstanceAgent', () => {
 		expect(byName).toEqual({
 			workflow_builder: [
 				'list_workflows-dynamic',
+				'search_nodes-dynamic',
+				'get_node_types-dynamic',
+				'get_node_parameter_options-dynamic',
+				'execute_node-dynamic',
 				'workflow_builder_build_workflow-dynamic',
 				'workflow_builder_task_control-dynamic',
 				'verify-built-workflow-dynamic',
 			],
+			executions: ['workflow_builder_executions-dynamic'],
 			mcp_notion: ['notion_search'],
 		});
 		const attached = getAttachedTools();
-		expect(attached['search_nodes-dynamic']).toBeDefined();
 		expect(attached['research-dynamic']).toBeDefined();
+		expect(attached['search_nodes-dynamic']).toBeUndefined();
 		expect(attached['list_workflows-dynamic']).toBeUndefined();
 		expect(getSystemPrompt).toHaveBeenCalledWith(
 			expect.objectContaining({ toolSearchEnabled: false, dynamicToolsEnabled: true }),

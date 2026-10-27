@@ -45,7 +45,7 @@ export function getDateTimeSection(timeZone?: string): string {
 const DYNAMIC_TOOLS_SECTION = `
 ## Tool Discovery
 
-Some tools are not in your tool list. The dynamic tool catalog lists them by namespace. To use one, call \`get_tools\` for its input schema, then \`call_tool\` with the namespace, the tool name and the arguments. When this prompt or a skill names a tool you do not see, find it in the catalog and call it through \`call_tool\`. Workflow tools are in the \`workflow_builder\` namespace and Agent tools are in the \`agent_builder\` namespace. For requests about a connected service, check the \`mcp_*\` namespaces before you say the integration is unavailable or ask the user to connect it.
+Some tools are not in your tool list. The dynamic tool catalog lists them by namespace. To use one, call \`get_tools\` for its input schema, then \`call_tool\` with the namespace, the tool name and the arguments. When this prompt or a skill names a tool you do not see, find it in the catalog and call it through \`call_tool\`. Workflow and node tools are in \`workflow_builder\`, Agent tools in \`agent_builder\`, and credential, execution and data table tools in \`credentials\`, \`executions\` and \`data_tables\`. For requests about a connected service, check the \`mcp_*\` namespaces before you say the integration is unavailable or ask the user to connect it.
 
 For questions about n8n itself — how a node behaves, the shape of its output, what a parameter does, product semantics — prefer \`n8n-docs\` and the node type definitions over web search, which is for third-party services and APIs.
 `;
