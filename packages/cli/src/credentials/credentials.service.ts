@@ -1116,12 +1116,14 @@ export class CredentialsService {
 		if (!credential) throw new NotFoundError('Credential not found or access denied');
 		if (credential.isManaged) throw new BadRequestError('Managed credentials cannot be updated');
 
-		const payload = {
+		const payload: ICredentialsDb = {
 			id: credential.id,
 			name: credential.name,
 			type: credential.type,
 			data: credential.data,
 			description: parseCredentialDescription(description),
+			createdAt: credential.createdAt,
+			updatedAt: credential.updatedAt,
 		};
 		await this.externalHooks.run('credentials.update', [payload]);
 		const normalizedDescription = parseCredentialDescription(payload.description);

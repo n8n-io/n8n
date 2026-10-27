@@ -1798,6 +1798,8 @@ describe('CredentialsService', () => {
 			isManaged: false,
 			isResolvable: false,
 			description: 'Old description',
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
 		});
 
 		beforeEach(() => {
@@ -1834,6 +1836,17 @@ describe('CredentialsService', () => {
 			expect(credentialsRepository.updateDescription).toHaveBeenCalledWith('cred-1', expected, {
 				policyCleared: cleared,
 			});
+			expect(externalHooks.run).toHaveBeenCalledExactlyOnceWith('credentials.update', [
+				{
+					id: credential.id,
+					name: credential.name,
+					type: credential.type,
+					data: credential.data,
+					description: expected,
+					createdAt: credential.createdAt,
+					updatedAt: credential.updatedAt,
+				},
+			]);
 			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('credentials-updated', {
 				user: ownerUser,
 				credentialId: credential.id,
