@@ -1,4 +1,3 @@
-import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResponseError } from '@n8n/rest-api-client';
 import { defineComponent, h, inject, type PropType, type Ref, nextTick, ref } from 'vue';
@@ -210,11 +209,6 @@ const InstanceAiWorkflowPreviewStub = defineComponent({
 	},
 });
 
-const artifactChatModeState = ref({
-	visible: true,
-	disabled: false,
-	testDisabledReason: undefined as string | undefined,
-});
 const InstanceAiAgentPreviewStub = defineComponent({
 	name: 'InstanceAiAgentPreviewStub',
 	props: {
@@ -224,11 +218,7 @@ const InstanceAiAgentPreviewStub = defineComponent({
 		previewOpen: { type: Boolean, required: true },
 	},
 	emits: ['preview-open-change', 'assistant-handoff'],
-	setup(props, { emit, expose }) {
-		expose({
-			chatModeState: artifactChatModeState,
-			setChatMode: async (mode: 'build' | 'test') => emit('preview-open-change', mode === 'test'),
-		});
+	setup(props, { emit }) {
 		const openAgentChatPreview = inject<
 			((agentId: string, projectId: string) => boolean) | undefined
 		>('openAgentChatPreview', undefined);
@@ -393,15 +383,10 @@ describe('InstanceAiThreadView', () => {
 	let thread: ThreadRuntime;
 
 	beforeEach(() => {
-		artifactChatModeState.value = { visible: true, disabled: false, testDisabledReason: undefined };
 		storedThreadTabs.clear();
 		// Default `stubActions: true` — every store action becomes a no-op spy.
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
-		mockedStore(useAgentBuilderExperimentStore).layout = {
-			chatWidth: 'current',
-			testChat: 'inline',
-		};
 
 		useSettingsStore().moduleSettings = {
 			'instance-ai': { ...defaultModuleSettings },
@@ -922,59 +907,8 @@ describe('InstanceAiThreadView', () => {
 
 	// Leaving it open puts the agent chat beside the Assistant composer that now
 	// holds the same request — two places to ask the same thing.
-	it('shows the selector after the first build even if Test is unavailable, and disables it during work', async () => {
-		artifactChatModeState.value.visible = false;
-		const { queryByRole, getByRole, user, getByTestId } = await renderAgentArtifact();
-		expect(queryByRole('button', { name: 'Test' })).not.toBeInTheDocument();
-		artifactChatModeState.value.visible = true;
-		artifactChatModeState.value.testDisabledReason = "Can't test agent yet";
-		await nextTick();
-		expect(getByRole('button', { name: 'Build' })).toBeEnabled();
-		expect(getByRole('button', { name: 'Test' })).toBeDisabled();
-		artifactChatModeState.value.testDisabledReason = undefined;
-		await nextTick();
-		expect(getByRole('button', { name: 'Test' })).toBeEnabled();
-		artifactChatModeState.value.disabled = true;
-		await nextTick();
-		expect(getByRole('button', { name: 'Build' })).toBeDisabled();
-		expect(getByRole('button', { name: 'Test' })).toBeDisabled();
-		artifactChatModeState.value.disabled = false;
-		await nextTick();
-		await user.click(getByRole('button', { name: 'Test' }));
-		expect(getByTestId('instance-ai-agent-test-chat')).toBeVisible();
-		expect(getByTestId('instance-ai-input-stub')).not.toBeVisible();
-		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
-		expect(getByRole('button', { name: 'Build' })).toHaveAttribute('aria-pressed', 'true');
-		expect(getByTestId('instance-ai-input-stub')).toBeVisible();
-	});
-
-	it.each([
-		['current', 'dock', 800, false],
-		['wide', 'dock', 560, false],
-		['wide', 'inline', 560, true],
-		['current', 'inline', 800, true],
-	] as const)(
-		'applies the %s / %s experiment layout to agent artifacts',
-		async (chatWidth, testChat, previewWidth, hasToggle) => {
-			const experiment = mockedStore(useAgentBuilderExperimentStore);
-			experiment.layout = { chatWidth, testChat };
-			experiment.assistantChatRatio = 0.65;
-			const { getByTestId, queryByRole } = await renderAgentArtifact({ threadAreaWidth: 1600 });
-			expect(getByTestId('instance-ai-preview-panel').style.width).toBe(`${previewWidth}px`);
-			expect(Boolean(queryByRole('button', { name: 'Test' }))).toBe(hasToggle);
-			expect(experiment.trackExposure).toHaveBeenCalled();
-		},
-	);
-
-	it('removes the selector when the agent artifact is closed', async () => {
-		const { getByRole, queryByRole, getByTestId, user } = await renderAgentArtifact();
-		expect(getByRole('button', { name: 'Test' })).toBeVisible();
-		await user.click(getByTestId('instance-ai-artifacts-preview-toggle'));
-		expect(queryByRole('button', { name: 'Test' })).not.toBeInTheDocument();
-	});
-
 	it('closes the preview dock once the request is staged in the composer', async () => {
-		const { getByTestId, getByRole, user } = await renderAgentArtifact();
+		const { getByTestId, user } = await renderAgentArtifact();
 		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
 
 		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
@@ -989,7 +923,6 @@ describe('InstanceAiThreadView', () => {
 			'data-preview-open',
 			'false',
 		);
-		expect(getByRole('button', { name: 'Build' })).toHaveAttribute('aria-pressed', 'true');
 	});
 
 	it('keeps the in-place handoff when preview view metadata cannot be saved', async () => {
@@ -2010,20 +1943,6 @@ describe('InstanceAiThreadView', () => {
 		expect(preview).toHaveAttribute('data-preview-open', 'true');
 		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
 	});
-	it.each(['busy', 'not runnable'])(
-		'keeps Build selected when an Agent Preview link is blocked: %s',
-		async (reason) => {
-			const { getByTestId, user } = await renderAgentArtifact();
-			artifactChatModeState.value.disabled = reason === 'busy';
-			artifactChatModeState.value.testDisabledReason =
-				reason === 'not runnable' ? "Can't test agent yet" : undefined;
-			await user.click(getByTestId('instance-ai-agent-preview-link'));
-			expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
-				'data-preview-open',
-				'false',
-			);
-		},
-	);
 
 	it('opens a linked agent that is not a produced artifact', async () => {
 		const { getByTestId, user } = await renderAgentArtifact();

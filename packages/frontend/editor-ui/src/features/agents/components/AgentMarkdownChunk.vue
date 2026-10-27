@@ -4,6 +4,7 @@ import { AGENT_PREVIEW_BUILD_HREF, AGENT_PREVIEW_EDIT_HREF } from '@n8n/api-type
 import type { PluginSimple } from 'markdown-it';
 import { inject } from 'vue';
 import { useRouter } from 'vue-router';
+import { AGENT_BUILDER_STANDALONE_KEY } from './agentBuilderInjectionKeys';
 import { resolveAgentPreviewLink } from '../utils/agentPreviewUrl';
 
 const props = defineProps<{
@@ -32,6 +33,7 @@ const buildLinks: PluginSimple = (parser) => {
 	});
 };
 
+const standaloneBuilder = inject(AGENT_BUILDER_STANDALONE_KEY, false);
 const router = useRouter();
 const openAgentChatPreview = inject<((agentId: string, projectId: string) => boolean) | undefined>(
 	'openAgentChatPreview',
@@ -39,7 +41,7 @@ const openAgentChatPreview = inject<((agentId: string, projectId: string) => boo
 );
 
 function handleLinkClick(event: MouseEvent) {
-	if (!(event.target instanceof Element)) return;
+	if (!standaloneBuilder || !(event.target instanceof Element)) return;
 
 	const link = event.target.closest('a');
 	if (!link) return;
@@ -67,5 +69,9 @@ function handleLinkClick(event: MouseEvent) {
 </script>
 
 <template>
-	<N8nMarkdown :content="source" :plugins="[buildLinks]" @click="handleLinkClick" />
+	<N8nMarkdown
+		:content="source"
+		:plugins="standaloneBuilder ? [buildLinks] : []"
+		@click="handleLinkClick"
+	/>
 </template>

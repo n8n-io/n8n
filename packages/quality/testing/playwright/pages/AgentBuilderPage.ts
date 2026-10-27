@@ -54,13 +54,6 @@ export class AgentBuilderPage extends BasePage {
 			.filter({ hasText: 'Wait for the Assistant to finish working' });
 	}
 
-	async getArtifactChatWidths(): Promise<{ chat: number; area: number }> {
-		const area = await this.page.getByTestId('instance-ai-thread-area').boundingBox();
-		const preview = await this.page.getByTestId('instance-ai-preview-panel').boundingBox();
-		if (!area || !preview) throw new Error('The artifact panels are not visible');
-		return { chat: area.width - preview.width, area: area.width };
-	}
-
 	getBuilderContainer(): Locator {
 		return this.page.locator('[data-testid="agent-builder-container"]');
 	}
@@ -71,25 +64,6 @@ export class AgentBuilderPage extends BasePage {
 
 	getAssistantChat(): Locator {
 		return this.page.locator('[data-testid="agent-ai-chat-panel"]');
-	}
-
-	getArtifactBuildComposer(): Locator {
-		return this.page
-			.getByTestId('instance-ai-builder-chat')
-			.getByTestId('instance-ai-composer')
-			.locator('textarea');
-	}
-
-	getArtifactTestChat(): Locator {
-		return this.page.getByTestId('instance-ai-agent-test-chat');
-	}
-
-	getArtifactPanelToggle(): Locator {
-		return this.page.locator('[data-test-id="instance-ai-artifacts-preview-toggle"]:visible');
-	}
-
-	getTestShowConfigurationButton(): Locator {
-		return this.page.getByTestId('instance-ai-agent-test-show-config');
 	}
 
 	getOpenFullAssistantButton(): Locator {

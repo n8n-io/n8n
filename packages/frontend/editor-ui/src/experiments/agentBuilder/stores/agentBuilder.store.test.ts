@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { reactive, ref } from 'vue';
+import { reactive } from 'vue';
 import {
 	AGENT_BUILDER_EXPERIMENT_COHORT as COHORT,
 	AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT as WIDTH,
@@ -10,18 +10,15 @@ import {
 import { useAgentBuilderExperimentStore } from './agentBuilder.store';
 
 const flags = reactive<Record<string, string | boolean | undefined>>({});
-const storedRatio = ref<string | null>(null);
 const trackExposure = vi.fn();
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({ getVariant: (key: string) => flags[key], trackExposure }),
 }));
-vi.mock('@n8n/composables/useStorage', () => ({ useStorage: () => storedRatio }));
 
 describe('Agent builder experiments', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		for (const key of Object.keys(flags)) delete flags[key];
-		storedRatio.value = null;
 		trackExposure.mockClear();
 	});
 	it.each([
@@ -74,17 +71,6 @@ describe('Agent builder experiments', () => {
 			expect(useAgentBuilderExperimentStore().isEnabled).toBe(false);
 		},
 	);
-	it('keeps the wide Assistant preference separate and rejects invalid ratios', () => {
-		const store = useAgentBuilderExperimentStore();
-		expect(store.assistantChatRatio).toBe(0.65);
-		store.resizeAssistantChat(0.7);
-		expect(storedRatio.value).toBe('0.7');
-		expect(store.assistantChatRatio).toBe(0.7);
-		store.resizeAssistantChat(NaN);
-		expect(store.assistantChatRatio).toBe(0.7);
-		storedRatio.value = 'invalid';
-		expect(store.assistantChatRatio).toBe(0.65);
-	});
 	it('registers both experiments for centralized enrollment tracking', () => {
 		expect(EXPERIMENTS_TO_TRACK).toContain(WIDTH.name);
 		expect(EXPERIMENTS_TO_TRACK).toContain(TOGGLE.name);

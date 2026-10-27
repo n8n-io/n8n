@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
@@ -58,9 +57,6 @@ import { buildFixWithAiPrompt } from './fixWithAi';
 import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
-import AgentBuilderChatMode from '@/features/agents/components/AgentBuilderChatMode.vue';
-import AgentBuilderChatDisclaimer from '@/features/agents/components/AgentBuilderChatDisclaimer.vue';
-import { AGENT_BUILDER_COMPACT_WIDTH } from '@/features/agents/composables/useAgentBuilderLayout';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
@@ -85,28 +81,8 @@ const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = 
 const toast = useToast();
 const recentWorkflowsStore = useRecentWorkflowsStore();
 const mentionsEnabled = useIsAssistantAtMentionsEnabled();
-const builderExperiment = useAgentBuilderExperimentStore();
-const inlineAgentTest = computed(() => builderExperiment.layout.testChat === 'inline');
-const wideAgentChat = computed(
-	() => agentChatActive.value && builderExperiment.layout.chatWidth === 'wide',
-);
 
 const conversationRef = useTemplateRef<InstanceType<typeof InstanceAiConversation>>('conversation');
-const agentPreviewRef = useTemplateRef<InstanceType<typeof InstanceAiAgentPreview>>('agentPreview');
-const agentTestChat = useTemplateRef<HTMLElement>('agentTestChat');
-const agentChatModeState = computed(() => agentPreviewRef.value?.chatModeState);
-const agentChatActive = computed(
-	() => preview.isPreviewVisible.value && !!preview.activeAgentId.value,
-);
-const isAgentTestChat = computed(
-	() => agentChatActive.value && inlineAgentTest.value && isAgentPreviewDockOpen.value,
-);
-async function setAgentChatMode(mode: 'build' | 'test') {
-	const state = agentChatModeState.value;
-	if (!state || state.disabled || (mode === 'test' && (!state.visible || state.testDisabledReason)))
-		return;
-	await agentPreviewRef.value?.setChatMode(mode);
-}
 
 // The conversation owns the composer-handoff state; read it through the
 // template ref for the agent-preview session id below and for
@@ -327,35 +303,9 @@ function consumeAgentReturnNodeId() {
 	agentReturnNodeId.value = undefined;
 }
 
-const pendingAgentTest = ref<{ agentId: string; projectId: string }>();
-watch(
-	[
-		pendingAgentTest,
-		agentPreviewRef,
-		agentChatModeState,
-		preview.activeAgentId,
-		preview.isPreviewVisible,
-	],
-	([target, view, state]) => {
-		if (!target) return;
-		if (
-			!preview.isPreviewVisible.value ||
-			preview.activeAgentId.value !== target.agentId ||
-			preview.activeAgentProjectId.value !== target.projectId ||
-			state?.disabled
-		) {
-			pendingAgentTest.value = undefined;
-			return;
-		}
-		if (!view || !state?.visible) return;
-		pendingAgentTest.value = undefined;
-		void setAgentChatMode('test');
-	},
-	{ flush: 'post' },
-);
 function openAgentChatPreview(agentId: string, projectId: string): boolean {
 	preview.openAgentPreview(agentId, projectId);
-	pendingAgentTest.value = { agentId, projectId };
+	isAgentPreviewDockOpen.value = true;
 	return true;
 }
 
@@ -414,7 +364,7 @@ const isPreviewPanelTransitionEnabled = previewPanelTransitionGate.isEnabled;
 const isPreviewPanelTransitioning = ref(false);
 const artifactsPreviewToggleLabel = computed(() =>
 	i18n.baseText(
-		(compactAgentLayout.value ? isPreviewExpanded.value : preview.isPreviewVisible.value)
+		preview.isPreviewVisible.value
 			? 'instanceAi.artifactsPanel.hidePreview'
 			: 'instanceAi.artifactsPanel.showPreview',
 	),
@@ -431,10 +381,6 @@ const artifactsPanelTransitionName = computed(() =>
 );
 
 function toggleArtifactsPreview() {
-	if (compactAgentLayout.value) {
-		isPreviewExpanded.value = !isPreviewExpanded.value;
-		return;
-	}
 	if (preview.isPreviewVisible.value) {
 		preview.closePreview();
 		return;
@@ -479,24 +425,9 @@ function suppressPanelTransitionsUntilStableRender() {
 	previewPanelTransitionGate.suppressUntilStableRender();
 }
 
-watch(
-	[agentChatActive, () => builderExperiment.enrollment],
-	([active]) => {
-		if (active) builderExperiment.trackExposure();
-	},
-	{ immediate: true, flush: 'post' },
-);
-
 // --- Preview panel resize (when canvas is visible) ---
 const threadAreaRef = useTemplateRef<HTMLElement>('threadArea');
 const { width: threadAreaWidth } = useElementSize(threadAreaRef);
-const compactAgentLayout = computed(
-	() =>
-		agentChatActive.value &&
-		(inlineAgentTest.value || wideAgentChat.value) &&
-		threadAreaWidth.value > 0 &&
-		threadAreaWidth.value < AGENT_BUILDER_COMPACT_WIDTH,
-);
 const mainSidebarOccupiedWidth = computed(() =>
 	isMainSidebarCollapsed.value ? COLLAPSED_MAIN_SIDEBAR_WIDTH : (mainSidebarWidth.value ?? 0),
 );
@@ -573,9 +504,7 @@ const previewMaxWidth = computed(() =>
 	Math.max(threadAreaWidth.value - MIN_SPLIT_PANEL_WIDTH, halfThreadAreaWidth.value),
 );
 const previewPanelWidth = computed(() => {
-	const ratio = wideAgentChat.value
-		? builderExperiment.assistantChatRatio
-		: chatPanelWidthRatio.value;
+	const ratio = chatPanelWidthRatio.value;
 	const chatPanelWidth =
 		ratio >= 0 && ratio <= 1 ? threadAreaWidth.value * ratio : DEFAULT_CHAT_PANEL_CONTENT_WIDTH;
 	return Math.round(
@@ -586,10 +515,7 @@ const previewPanelWidth = computed(() => {
 	);
 });
 const isPreviewResizeEnabled = computed(
-	() =>
-		!compactAgentLayout.value &&
-		!isPreviewExpanded.value &&
-		previewMinWidth.value < previewMaxWidth.value,
+	() => !isPreviewExpanded.value && previewMinWidth.value < previewMaxWidth.value,
 );
 const shouldAnimatePreviewLayout = computed(
 	() =>
@@ -634,9 +560,7 @@ function handleAgentPreviewDockOpenChange(open: boolean) {
 function handlePreviewResize({ width }: { width: number }) {
 	// The wrapper clamps the width, so an unchanged value means the drag hit a limit: keep the stored ratio.
 	if (Math.round(width) === previewPanelWidth.value) return;
-	const ratio = (threadAreaWidth.value - width) / threadAreaWidth.value;
-	if (wideAgentChat.value) builderExperiment.resizeAssistantChat(ratio);
-	else chatPanelWidthRatio.value = ratio;
+	chatPanelWidthRatio.value = (threadAreaWidth.value - width) / threadAreaWidth.value;
 }
 
 function handlePreviewPanelAfterEnter() {
@@ -906,11 +830,9 @@ function handleNewThreadClick() {
 	>
 		<!-- Main chat area -->
 		<div
-			v-show="!compactAgentLayout || !isPreviewExpanded"
 			:class="[
 				$style.chatArea,
 				{
-					[$style.agentChat]: agentChatActive,
 					[$style.agentPreviewLayoutTransition]: shouldAnimatePreviewLayout,
 				},
 			]"
@@ -918,7 +840,6 @@ function handleNewThreadClick() {
 			data-test-id="instance-ai-builder-chat"
 		>
 			<div
-				v-show="!isAgentTestChat"
 				:class="[$style.builderChatHeader, { [$style.chromeHidden]: isOnboardingChromeHidden }]"
 				data-test-id="instance-ai-builder-chat-header"
 			>
@@ -988,16 +909,14 @@ function handleNewThreadClick() {
 						>
 							<Transition name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
 								<N8nIconButton
-									v-if="!preview.isPreviewVisible.value || compactAgentLayout"
+									v-if="!preview.isPreviewVisible.value"
 									icon="panel-right"
 									variant="ghost"
 									size="small"
 									icon-size="large"
 									data-test-id="instance-ai-artifacts-preview-toggle"
 									:aria-label="artifactsPreviewToggleLabel"
-									:aria-pressed="
-										compactAgentLayout ? isPreviewExpanded : preview.isPreviewVisible.value
-									"
+									:aria-pressed="preview.isPreviewVisible.value"
 									:disabled="!hasPreviewTabs"
 									@click="toggleArtifactsPreview"
 								/>
@@ -1020,28 +939,12 @@ function handleNewThreadClick() {
 				data-test-id="instance-ai-content-area"
 			>
 				<InstanceAiConversation
-					v-show="!isAgentTestChat"
 					ref="conversation"
-					:composer-height="agentChatActive ? 'var(--agent-builder-composer-height)' : undefined"
 					:above-input-overlap-height="setupPanelWorkflowId ? setupOverlapHeight : undefined"
 					:mentions-enabled="mentionsEnabled"
 					@thread-missing="onThreadMissing"
 					@agent-attachment-restored="onAgentAttachmentRestored"
 				>
-					<template v-if="agentChatActive && inlineAgentTest" #composer-start>
-						<AgentBuilderChatMode
-							v-if="agentChatModeState?.visible"
-							model-value="build"
-							:disabled="agentChatModeState.disabled"
-							:test-disabled="!!agentChatModeState.testDisabledReason"
-							:test-disabled-reason="agentChatModeState.testDisabledReason"
-							:validation-issues="agentChatModeState.testValidationIssues"
-							@update:model-value="setAgentChatMode"
-						/>
-					</template>
-					<template v-if="agentChatActive" #composer-footer>
-						<AgentBuilderChatDisclaimer />
-					</template>
 					<template #above-input>
 						<InstanceAiSetupPanel
 							v-if="setupPanelWorkflowId"
@@ -1082,12 +985,6 @@ function handleNewThreadClick() {
 						</Transition>
 					</template>
 				</InstanceAiConversation>
-				<div
-					ref="agentTestChat"
-					v-show="isAgentTestChat"
-					:class="$style.agentTestChat"
-					data-test-id="instance-ai-agent-test-chat"
-				/>
 
 				<!-- Artifacts panel (below header, beside chat) -->
 				<Transition :name="artifactsPanelTransitionName" :css="shouldAnimateArtifactsPanel">
@@ -1123,7 +1020,7 @@ function handleNewThreadClick() {
 			@after-leave="handlePreviewPanelAfterLeave"
 		>
 			<div
-				v-show="preview.isPreviewVisible.value && (!compactAgentLayout || isPreviewExpanded)"
+				v-show="preview.isPreviewVisible.value"
 				:class="[
 					$style.canvasArea,
 					{
@@ -1192,7 +1089,6 @@ function handleNewThreadClick() {
 								:refresh-key="preview.dataTableRefreshKey.value"
 							/>
 							<InstanceAiAgentPreview
-								ref="agentPreview"
 								v-if="
 									preview.isPreviewVisible.value &&
 									preview.activeAgentId.value &&
@@ -1203,23 +1099,10 @@ function handleNewThreadClick() {
 								:project-id="preview.activeAgentProjectId.value"
 								:preview-session-id="activeAgentPreviewSessionId"
 								:preview-open="isAgentPreviewDockOpen"
-								:test-chat-target="inlineAgentTest ? agentTestChat : undefined"
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
-							>
-								<template v-if="compactAgentLayout" #test-chat-actions>
-									<N8nIconButton
-										icon="panel-right"
-										variant="ghost"
-										size="small"
-										icon-size="large"
-										:aria-label="artifactsPreviewToggleLabel"
-										data-test-id="instance-ai-agent-test-show-config"
-										@click="toggleArtifactsPreview"
-									/>
-								</template>
-							</InstanceAiAgentPreview>
+							/>
 						</div>
 					</TabsRoot>
 				</N8nResizeWrapper>
@@ -1234,14 +1117,10 @@ function handleNewThreadClick() {
 @use '@n8n/design-system/css/mixins/motion' as motion;
 
 .threadArea {
-	--agent-builder-composer-height: calc(
-		var(--height--5xl) + var(--height--4xl) + var(--height--xs)
-	);
 	--instance-ai-artifacts-panel-width: 280px;
 	--instance-ai-panel-transition-duration: calc(var(--duration--snappy) + 80ms);
 	--instance-ai-panel-transition-easing: var(--easing--ease-in-out);
 
-	position: relative;
 	flex: 1;
 	display: flex;
 	min-width: 0;
@@ -1271,11 +1150,6 @@ function handleNewThreadClick() {
 	overflow: hidden;
 	position: relative;
 	background-color: var(--color--background--light-2);
-}
-
-.agentChat {
-	--instance-ai-chat-max-width: 100%;
-	--instance-ai-input-max-width: 100%;
 }
 
 .canvasArea {
@@ -1309,12 +1183,6 @@ function handleNewThreadClick() {
 	position: relative;
 	transition: --instance-ai-artifacts-layout-width var(--instance-ai-panel-transition-duration)
 		var(--instance-ai-panel-transition-easing);
-}
-
-.agentTestChat {
-	position: absolute;
-	inset: 0;
-	container-type: inline-size;
 }
 
 .artifactsPanelSlot {

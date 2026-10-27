@@ -1,3 +1,4 @@
+import { AGENT_BUILDER_STANDALONE_KEY } from '../components/agentBuilderInjectionKeys';
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns */
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
@@ -32,6 +33,7 @@ function mountTooltip(props: {
 	fallback?: string;
 }) {
 	return mount(AgentValidationTooltip, {
+		global: { provide: { [AGENT_BUILDER_STANDALONE_KEY as symbol]: true } },
 		props: {
 			disabled: false,
 			fallback: 'agents.builder.preview.disabledTooltip',
@@ -45,6 +47,22 @@ function mountTooltip(props: {
 }
 
 describe('AgentValidationTooltip', () => {
+	it('keeps the master tooltip content outside the standalone Agents UI', () => {
+		const wrapper = mount(AgentValidationTooltip, {
+			props: {
+				disabled: false,
+				fallback: 'Cannot test yet',
+				action: 'preview',
+				issues: [{ code: 'missing_required', path: 'instructions', capability: { kind: 'agent' } }],
+			},
+		});
+		expect(wrapper.text()).toContain(
+			'agents.builder.preview.issue.agent.instructions.missingRequired',
+		);
+		expect(wrapper.find('ul').exists()).toBe(false);
+		expect(wrapper.text()).not.toContain('agents.validationTooltip.add');
+	});
+
 	it('lists missing instructions under one Add heading', () => {
 		const wrapper = mountTooltip({
 			action: 'preview',

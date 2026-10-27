@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, useTemplateRef, watch } from 'vue';
+import { inject, ref, useTemplateRef, watch } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
@@ -11,6 +11,9 @@ import type {
 } from '../types';
 import type { BudgetAmountField } from '../utils/budget-config';
 import AgentChatPanel from './AgentChatPanel.vue';
+import { AGENT_BUILDER_STANDALONE_KEY } from './agentBuilderInjectionKeys';
+
+const standaloneBuilder = inject(AGENT_BUILDER_STANDALONE_KEY, false);
 
 const props = withDefaults(
 	defineProps<{
@@ -101,7 +104,7 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				:agent-id="agentId"
 				:placeholder="placeholder"
 				:composer-height="composerHeight"
-				attach-button-icon="plus"
+				:attach-button-icon="standaloneBuilder ? 'plus' : 'paperclip'"
 				:visible="visible"
 				:background-jobs-active="visible"
 				mode="inline"

@@ -1,3 +1,4 @@
+import { AGENT_BUILDER_STANDALONE_KEY } from '../components/agentBuilderInjectionKeys';
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { enableAutoUnmount, mount, shallowMount } from '@vue/test-utils';
@@ -586,8 +587,10 @@ describe('AgentPreviewChatPage', () => {
 			field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
 			amount: number;
 		}) => Promise<boolean>,
+		standalone = false,
 	) {
 		return shallowMount(AgentPreviewChatPage, {
+			global: { provide: { [AGENT_BUILDER_STANDALONE_KEY as symbol]: standalone } },
 			props: {
 				initialized: true,
 				projectId: 'project-1',
@@ -601,6 +604,16 @@ describe('AgentPreviewChatPage', () => {
 			},
 		});
 	}
+
+	it.each([true, false])(
+		'uses the plus icon only in the Agents UI (standalone: %s)',
+		(standalone) => {
+			const wrapper = mountChatPage(undefined, undefined, standalone);
+			expect(wrapper.getComponent({ name: 'AgentChatPanel' }).props('attachButtonIcon')).toBe(
+				standalone ? 'plus' : 'paperclip',
+			);
+		},
+	);
 
 	it('reports a first user message only after one exists', () => {
 		const wrapper = mountChatPage();

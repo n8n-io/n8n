@@ -55,6 +55,10 @@ import {
 	TOOL_CALL_STATE,
 } from '../constants';
 
+import { AGENT_BUILDER_STANDALONE_KEY } from './agentBuilderInjectionKeys';
+
+const standaloneBuilder = inject(AGENT_BUILDER_STANDALONE_KEY, false);
+
 const props = defineProps<{
 	messages: ChatMessage[];
 	messagingState: 'idle' | 'waitingFirstChunk' | 'receiving';
@@ -387,7 +391,7 @@ function onEditWithAssistant(changeRequest: string) {
 }
 
 function onBuildLink(edit: boolean, message: ChatMessage) {
-	if (!canSendToAssistant.value) return;
+	if (!standaloneBuilder || !canSendToAssistant.value) return;
 	if (!edit) {
 		emit('openBuild');
 		return;
@@ -726,7 +730,7 @@ watch(
 						<div :class="$style.markdownContent">
 							<AgentMarkdownChunk
 								:source="group.finalMessage.content"
-								:can-open-build="canSendToAssistant"
+								:can-open-build="standaloneBuilder && canSendToAssistant"
 								@open-build="onBuildLink($event, group.finalMessage)"
 							/>
 						</div>
@@ -875,7 +879,7 @@ watch(
 								<div :class="$style.markdownContent">
 									<AgentMarkdownChunk
 										:source="item.text"
-										:can-open-build="canSendToAssistant"
+										:can-open-build="standaloneBuilder && canSendToAssistant"
 										@open-build="onBuildLink($event, group.message)"
 									/>
 								</div>

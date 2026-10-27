@@ -26,8 +26,6 @@ import {
 } from '@n8n/ai-utilities/agent-config';
 import {
 	AI_GATEWAY_MANAGED_TAG,
-	AGENT_PREVIEW_BUILD_HREF,
-	AGENT_PREVIEW_EDIT_HREF,
 	MANAGED_CREDENTIAL_TOKEN,
 	type AgentModelCredentialConfig,
 	type AgentSkill,
@@ -83,8 +81,7 @@ const WEB_SEARCH_POLICY_INSTRUCTION =
 const PREVIEW_SELF_MODIFICATION_POLICY =
 	'### Preview chat policy\n' +
 	'This conversation only runs you. You can change things in n8n, including your own setup, only through your tools. Your setup is your instructions, model, tools, skills, knowledge, channels, integrations, schedules, name and any other part of your configuration. A request that names no other owner, such as "add a tool" or "connect a Slack channel", is about your setup.\n' +
-	`If none of your tools can make a setup change that the user asks for, say plainly that you cannot make it here. Include [Edit with Assistant](${AGENT_PREVIEW_EDIT_HREF}) to let them carry their request to the n8n Assistant, which edits the agent in Build.\n` +
-	`If the user asks how to build or edit you, or where the n8n Assistant is, explain that Test talks to you and Build talks to the n8n Assistant. Include [Open Build](${AGENT_PREVIEW_BUILD_HREF}). Use these exact link targets. Do not offer them for ordinary requests you can fulfill. The user must click a link to switch chats; the link does not apply or send a change.\n` +
+	'If none of your tools can make a change that the user asks for, say plainly that you cannot make it here, and tell them to ask the n8n Assistant, which edits the agent for them.\n' +
 	'Never claim that a change was applied unless a tool result confirms it.';
 
 /** `null` drops the tool from the agent; `undefined` falls back to the inert marker tool. */

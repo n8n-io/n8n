@@ -63,8 +63,8 @@ an open preview available. Restore Test availability when the Assistant finishes
 
 ## Chat-first builder
 
-The Build/Test experiment variants use one chat area in the standalone builder
-and in Agent artifacts in the Assistant. Users outside the experiments keep the
+The Build/Test experiment variants use one chat area in the standalone Agents UI.
+Keep the full Assistant and its Agent artifacts unchanged. Users outside the experiments keep the
 current layout. Keep each chat mounted when the mode changes. Preserve each
 draft, session, and active response.
 Put the grouped Build/Test selector first in the composer toolbar. Use wrench
@@ -72,7 +72,7 @@ and flask icons. Show a purple active state in both themes. Stop the discovery
 pulse after the first message. Disable the pulse for reduced motion.
 
 In the wide variants, start chat at 65% and configuration at 35% of the
-workspace beside the sidebar. Apply this ratio to both agent surfaces.
+workspace beside the sidebar. Apply this ratio only to the standalone Agents UI.
 Save manual resize choices as a ratio. Keep this preference separate from the
 saved Assistant dock width and the previous fixed configuration width. Keep the
 ratio when the window or sidebar changes size. Double-click the standalone
@@ -93,21 +93,14 @@ the composer. Use a plus icon for the Test file picker, in the same position as
 the Build menu.
 
 Keep chat width and test placement independent. The control layout keeps its
-existing docks. An Agent artifact uses the main Assistant chat area for Test and
-keeps configuration in the artifact panel. On narrow Assistant layouts, use one
-panel at a time. The preview button switches between chat and configuration.
-Keep both mounted and preserve the selected chat mode.
-In toggle variants, always show the selector in the standalone builder. In the
-Assistant, show it when an Agent artifact is open and its initial build finishes. Test readiness
-does not control visibility. Disable Test when the Agent cannot run. Use the
+existing docks. In toggle variants, always show the selector in the standalone
+builder. Test readiness does not control visibility. Disable Test when the Agent cannot run. Use the
 same validation tooltip as the Test button beside the Agent title to explain the setup issues.
 Show one readiness heading. Put missing instructions, model, and credential in a
 bulleted list under `Add:`. Put other blockers in a bulleted list under `Fix:`.
-Call the Assistant's link to this chat `Test`.
 Keep the selector visible during later Assistant work, with both modes disabled.
-Hide it when the Agent artifact closes. Do not show a link from the standalone
-build chat to the full Assistant. Test links and task
-previews select Test. An accepted Fix with Assistant request selects Build.
+Do not show a link from the standalone build chat to the full Assistant.
+Test links and task previews select Test. An accepted Fix with Assistant request selects Build.
 Keep Test selected if the Assistant refuses the request to preserve a draft.
 
 ## Preview history
@@ -149,13 +142,6 @@ Keep the test error and its fix action inside the callout. Move the action below
 the error when the row does not fit the panel. Wrap long URLs and error text.
 
 Agent artifacts inside an Assistant chat keep the handoff in that chat.
-
-In Test, the Agent can link to Build when the user asks about editing or finding
-the Assistant. A navigation link selects Build in place. An edit link stages the
-preceding user request and Test session in the Assistant. Keep an existing Build
-draft if the handoff is refused. Do not send the staged request automatically.
-Render these links as plain text outside Test. Keep this guidance out of the
-Agent's saved instructions and all other execution surfaces.
 
 ## Setup checklist
 

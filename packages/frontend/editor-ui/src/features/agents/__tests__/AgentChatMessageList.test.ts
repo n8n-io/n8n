@@ -1,3 +1,4 @@
+import { AGENT_BUILDER_STANDALONE_KEY } from '../components/agentBuilderInjectionKeys';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { h } from 'vue';
@@ -435,6 +436,7 @@ describe('AgentChatMessageList', () => {
 
 		it.each([true, false])('handles an Agent-authored Build link (edit: %s)', async (edit) => {
 			const wrapper = mount(AgentChatMessageList, {
+				global: { provide: { [AGENT_BUILDER_STANDALONE_KEY as symbol]: true } },
 				props: {
 					messages: [
 						changeRequest,

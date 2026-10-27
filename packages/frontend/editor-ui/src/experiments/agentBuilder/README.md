@@ -1,6 +1,6 @@
 # Agent builder experiments
 
-[AGENT-1181](https://linear.app/n8n/issue/AGENT-1181) defines two experiments. Both apply to the Agents builder and to an open agent artifact in Assistant. Other Assistant artifacts keep their existing layout.
+[AGENT-1181](https://linear.app/n8n/issue/AGENT-1181) defines two experiments. Both apply only to the standalone Agents UI. The full Assistant and its agent artifacts keep the master layout and behavior.
 
 ## Allocation
 
@@ -18,7 +18,7 @@ These are expected audience shares, not exact user counts. The width flag splits
 
 The frontend requires both the matching cohort and a valid experiment variant. Missing, disabled, or unknown values use the current layout with a separate test chat. A user cannot enter both experiments through this store.
 
-Wide layouts start at 65% chat and 35% configuration. Panel minimum widths still apply on small screens. Each surface keeps its resize preference separate from the current layout. The Agents key is `N8N_AGENT_BUILDER_CONFIG_RATIO`. The Assistant key is `N8N_AGENT_BUILDER_ASSISTANT_WIDE_CHAT_RATIO`.
+Wide layouts start at 65% chat and 35% configuration. Panel minimum widths still apply on small screens. The Agents UI keeps its resize preference in `N8N_AGENT_BUILDER_CONFIG_RATIO`, separate from the current layout.
 
 ## PostHog drafts
 
@@ -32,7 +32,7 @@ All flags were created inactive with 0% rollout. No experiment was launched.
 
 The draft metrics use existing events. Width measures conversion to `Builder modified agent`. Toggle measures conversion to `User submitted message to agent`, which is emitted by test chat. Each metric uses a proposed seven-day conversion window. Review these definitions and the required sample size before launch.
 
-The hosts call `trackExposure()` when the agent surface is visible. The central PostHog store deduplicates exposure per flag and variant. Each draft uses `$feature_flag_called`, filtered by its `$feature_flag` key. Central enrollment telemetry also checks the allocation flag. Assignment alone does not count as exposure.
+The standalone builder calls `trackExposure()` when it is visible. Assistant artifacts do not record exposure. The central PostHog store deduplicates exposure per flag and variant. Each draft uses `$feature_flag_called`, filtered by its `$feature_flag` key. Central enrollment telemetry also checks the allocation flag. Assignment alone does not count as exposure.
 
 ## Launch setup
 
@@ -64,6 +64,5 @@ To clear local overrides and saved wide ratios:
 ```js
 localStorage.removeItem('N8N_EXPERIMENT_OVERRIDES');
 localStorage.removeItem('N8N_AGENT_BUILDER_CONFIG_RATIO');
-localStorage.removeItem('N8N_AGENT_BUILDER_ASSISTANT_WIDE_CHAT_RATIO');
 location.reload();
 ```

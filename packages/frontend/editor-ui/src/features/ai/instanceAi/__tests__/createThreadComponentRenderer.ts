@@ -126,7 +126,7 @@ export const InstanceAiInputStub = defineComponent({
 		'mention-reference-removed',
 		'mention-workflow-open',
 	],
-	setup(props, { emit, expose, slots }) {
+	setup(props, { emit, expose }) {
 		const inputDraft = ref(inputState.initialDraft);
 		const hasAttachments = ref(inputState.hasAttachments);
 		// Mirrors the real composer: whatever pre-filled the box is reported on submit,
@@ -159,7 +159,6 @@ export const InstanceAiInputStub = defineComponent({
 		expose({ focus: inputFocusSpy, setText, setPrefill, clearTextIfMatches, isDirty });
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
-				slots['footer-start']?.(),
 				props.suggestions === undefined ? 'unset' : String(props.suggestions.length),
 				h(
 					'span',

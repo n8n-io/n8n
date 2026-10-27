@@ -1,3 +1,4 @@
+import { AGENT_BUILDER_STANDALONE_KEY } from '../components/agentBuilderInjectionKeys';
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,11 +14,31 @@ describe('AgentMarkdownChunk', () => {
 	beforeEach(() => {
 		routerPush.mockReset();
 	});
+	it('keeps the master markdown behavior outside the standalone Agents UI', async () => {
+		const openAgentChatPreview = vi.fn();
+		const wrapper = mount(AgentMarkdownChunk, {
+			props: { source: '[Preview](/projects/p1/agents/a1/preview) [Open Build](#agent-build)' },
+			global: { provide: { openAgentChatPreview } },
+		});
+		let prevented: boolean | undefined;
+		wrapper.element.addEventListener('click', (event: Event) => {
+			prevented = event.defaultPrevented;
+			event.preventDefault();
+		});
+		await wrapper.get('a').trigger('click');
+		expect(prevented).toBe(false);
+		expect(openAgentChatPreview).not.toHaveBeenCalled();
+		expect(routerPush).not.toHaveBeenCalled();
+		expect(wrapper.findAll('a')).toHaveLength(2);
+		expect(wrapper.get('a').attributes('href')).toBe('/projects/p1/agents/a1/preview');
+	});
+
 	it.each([
 		['#agent-build', false],
 		['#agent-edit', true],
 	] as const)('opens the Test-only Build link %s without navigation', async (href, edit) => {
 		const wrapper = mount(AgentMarkdownChunk, {
+			global: { provide: { [AGENT_BUILDER_STANDALONE_KEY as symbol]: true } },
 			props: { source: `[Open Build](${href})`, canOpenBuild: true },
 		});
 		const prevented = vi.fn();
@@ -33,6 +54,7 @@ describe('AgentMarkdownChunk', () => {
 
 	it('routes legacy agent Preview links to the builder dock', async () => {
 		const wrapper = mount(AgentMarkdownChunk, {
+			global: { provide: { [AGENT_BUILDER_STANDALONE_KEY as symbol]: true } },
 			props: {
 				source: '[Preview](/projects/project-1/agents/agent-1/preview)',
 			},
@@ -51,7 +73,7 @@ describe('AgentMarkdownChunk', () => {
 			props: {
 				source: '[Preview](/projects/project-1/agents/agent-1?openPreview=true)',
 			},
-			global: { provide: { openAgentChatPreview } },
+			global: { provide: { openAgentChatPreview, [AGENT_BUILDER_STANDALONE_KEY as symbol]: true } },
 		});
 
 		await wrapper.find('a').trigger('click');
@@ -71,7 +93,12 @@ describe('AgentMarkdownChunk', () => {
 			const openAgentChatPreview = vi.fn(() => true);
 			const wrapper = mount(AgentMarkdownChunk, {
 				props: { source: '[Preview](/projects/project-1/agents/agent-1/preview)' },
-				global: { provide: embedded ? { openAgentChatPreview } : {} },
+				global: {
+					provide: {
+						...(embedded ? { openAgentChatPreview } : {}),
+						[AGENT_BUILDER_STANDALONE_KEY as symbol]: true,
+					},
+				},
 			});
 			const link = wrapper.get('a');
 			let prevented: boolean | undefined;

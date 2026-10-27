@@ -2405,44 +2405,36 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
-	it.each([false, true])(
-		'disables legacy Test entries while the Assistant works (artifact: %s)',
-		async (artifactMode) => {
-			const wrapper = await renderView({
-				props: { artifactMode, artifactProjectId: 'p1', artifactAgentId: 'a1' },
-			});
-			async function setWorking(working: boolean) {
-				if (artifactMode) await wrapper.setProps({ artifactAssistantWorking: working });
-				else {
-					if (!wrapper.findComponent({ name: 'InstanceAiChatPanel' }).exists()) {
-						await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
-					}
-					wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm.$emit('update:working', working);
-				}
-				await nextTick();
+	it('disables legacy Test entries while the embedded Assistant works', async () => {
+		const wrapper = await renderView();
+		async function setWorking(working: boolean) {
+			if (!wrapper.findComponent({ name: 'InstanceAiChatPanel' }).exists()) {
+				await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 			}
-			await setWorking(true);
-			const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
-			expect(editor.props('previewDisabledReason')).toBe('agents.builder.chatMode.building');
-			const trigger = wrapper.get('[data-testid="agent-triggers-preview-chat-button"]');
-			expect(wrapper.getComponent(N8nToggle).props('disabled')).toBe(true);
-			const primary = wrapper.get('[data-testid="agent-header-preview-btn"]');
-			expect(primary.attributes('disabled')).toBeDefined();
-			editor.vm.$emit('open-preview');
-			await trigger.trigger('click');
-			await flushPromises();
-			expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
-			await setWorking(false);
-			expect(editor.props('previewDisabledReason')).toBeUndefined();
-			expect(primary.attributes('disabled')).toBeUndefined();
-			expect(wrapper.getComponent(N8nToggle).props('disabled')).toBe(false);
-			await trigger.trigger('click');
-			await flushPromises();
-			expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
-		},
-	);
+			wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm.$emit('update:working', working);
+			await nextTick();
+		}
+		await setWorking(true);
+		const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('previewDisabledReason')).toBe('agents.builder.chatMode.building');
+		const trigger = wrapper.get('[data-testid="agent-triggers-preview-chat-button"]');
+		expect(wrapper.getComponent(N8nToggle).props('disabled')).toBe(true);
+		const primary = wrapper.get('[data-testid="agent-header-preview-btn"]');
+		expect(primary.attributes('disabled')).toBeDefined();
+		editor.vm.$emit('open-preview');
+		await trigger.trigger('click');
+		await flushPromises();
+		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
+		await setWorking(false);
+		expect(editor.props('previewDisabledReason')).toBeUndefined();
+		expect(primary.attributes('disabled')).toBeUndefined();
+		expect(wrapper.getComponent(N8nToggle).props('disabled')).toBe(false);
+		await trigger.trigger('click');
+		await flushPromises();
+		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+	});
 
-	it('closes Preview from the primary action beside the Agent title while the Assistant works', async () => {
+	it('closes an artifact Preview while editing is locked', async () => {
 		const wrapper = await renderView({
 			props: { artifactMode: true, artifactProjectId: 'p1', artifactAgentId: 'a1' },
 		});
@@ -2451,7 +2443,7 @@ describe('AgentBuilderView — preview routing', () => {
 		await flushPromises();
 		expect(editor.props('isPreviewOpen')).toBe(true);
 
-		await wrapper.setProps({ artifactAssistantWorking: true });
+		await wrapper.setProps({ artifactEditingLocked: true });
 		expect(
 			wrapper.get('[data-testid="agent-header-preview-btn"]').attributes('disabled'),
 		).toBeUndefined();
@@ -7051,29 +7043,29 @@ describe('chat-first builder', () => {
 		).toBeUndefined();
 	});
 
-	it.each([true, false])(
-		'shows the artifact selector after its initial build, with runnable status %s',
-		async (runnable) => {
-			getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: runnable }));
-			const wrapper = await renderView({
-				props: {
-					artifactMode: true,
-					artifactProjectId: 'p1',
-					artifactAgentId: 'a1',
-					artifactAssistantWorking: true,
-				},
-			});
-			expect(wrapper.vm.chatModeState.visible).toBe(false);
-			await wrapper.setProps({ artifactAssistantWorking: false });
-			expect(wrapper.vm.chatModeState.visible).toBe(true);
-			expect(wrapper.vm.chatModeState.testDisabledReason).toBe(
-				runnable ? undefined : 'agents.builder.preview.disabledTooltip',
-			);
-			await wrapper.setProps({ artifactAssistantWorking: true });
-			expect(wrapper.vm.chatModeState.visible).toBe(true);
-			expect(wrapper.vm.chatModeState.disabled).toBe(true);
-		},
-	);
+	it.each([
+		{ chatWidth: 'current', testChat: 'inline' },
+		{ chatWidth: 'wide', testChat: 'inline' },
+		{ chatWidth: 'wide', testChat: 'dock' },
+	])('keeps the Assistant artifact layout unchanged for $chatWidth / $testChat', async (layout) => {
+		builderExperimentMock.layout = layout;
+		trackExperimentExposure.mockClear();
+		const wrapper = await renderView({
+			props: {
+				builderLayout: undefined,
+				artifactMode: true,
+				artifactProjectId: 'p1',
+				artifactAgentId: 'a1',
+			},
+		});
+		expect(wrapper.findComponent({ name: 'AgentBuilderChatMode' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'InstanceAiChatPanel' }).exists()).toBe(false);
+		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('inline')).toBe(false);
+		expect(wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).props('chatFirst')).toBe(
+			false,
+		);
+		expect(trackExperimentExposure).not.toHaveBeenCalled();
+	});
 
 	it('keeps both mode selectors visible and disabled while the Assistant works', async () => {
 		const wrapper = await renderView({ props: { builderLayout: undefined } });
