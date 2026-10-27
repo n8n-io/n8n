@@ -18,7 +18,12 @@ vi.mock('vue-router', async (importOriginal) => ({
 }));
 // Like the real layout: it emits the saved pagination preferences, then calls `initialize`.
 const ResourcesListLayoutStub = defineComponent({
-	props: ['resources', 'initialize'],
+	props: {
+		resources: { type: Array, required: true },
+		initialize: { type: Function, required: true },
+		hasEmptyState: { type: Boolean, default: true },
+		resourcesRefreshing: { type: Boolean, default: false },
+	},
 	emits: ['update:search', 'update:pagination-and-sort'],
 	methods: {
 		async setCurrentPage(page: number) {
@@ -32,11 +37,13 @@ const ResourcesListLayoutStub = defineComponent({
 	},
 	template: `<div>
 		<button data-test-id="search" @click="$emit('update:search', 'expense')" />
+		<button data-test-id="clear-search" @click="$emit('update:search', '')" />
 		<button data-test-id="sort" @click="$emit('update:pagination-and-sort', { sort: 'nameAsc', page: 2 })" />
 		<button data-test-id="sort-inherited" @click="$emit('update:pagination-and-sort', { sort: 'constructor' })" />
 		<button data-test-id="switch-project" @click="$emit('update:filters', { search: '', homeProject: '' }); initialize()" />
+		<div v-if="resourcesRefreshing" data-test-id="refreshing" />
 		<slot name="header" />
-		<slot v-if="resources.length === 0" name="empty" />
+		<slot v-if="hasEmptyState && resources.length === 0" name="empty" />
 		<slot v-for="item in resources" :key="item.id" name="item" :item="item" />
 	</div>`,
 });
@@ -134,6 +141,33 @@ describe('AppsListView', () => {
 		const { findByTestId } = renderComponent();
 
 		expect(await findByTestId('apps-empty-state')).toBeInTheDocument();
+	});
+
+	it('does not show the empty state while a search is cleared', async () => {
+		const { getByTestId, findAllByTestId, queryByTestId } = renderComponent();
+		await findAllByTestId('app-card');
+		vi.mocked(listApps).mockResolvedValue({ data: [], count: 0 });
+		await userEvent.click(getByTestId('search'));
+		await waitFor(() => expect(listApps).toHaveBeenCalledTimes(2));
+		vi.mocked(listApps).mockReturnValue(new Promise(() => {}));
+
+		await userEvent.click(getByTestId('clear-search'));
+
+		await waitFor(() => expect(listApps).toHaveBeenCalledTimes(3));
+		expect(queryByTestId('apps-empty-state')).not.toBeInTheDocument();
+	});
+
+	it('keeps the shown list during a fast reload and shows the loading rows only after a delay', async () => {
+		const { findAllByTestId, findByTestId, getByTestId, queryByTestId } = renderComponent();
+		await findAllByTestId('app-card');
+		sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '0.2');
+		vi.mocked(listApps).mockReturnValue(new Promise(() => {}));
+
+		await userEvent.click(getByTestId('delete-2'));
+
+		expect(listApps).toHaveBeenCalledTimes(2);
+		expect(queryByTestId('refreshing')).not.toBeInTheDocument();
+		expect(await findByTestId('refreshing')).toBeInTheDocument();
 	});
 
 	it('searches by name from the first page', async () => {

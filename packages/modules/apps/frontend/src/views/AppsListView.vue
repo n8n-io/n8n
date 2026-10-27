@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AppResponse } from '@n8n/api-types';
-import { useDebounce } from '@n8n/composables/useDebounce';
+import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nEmptyState } from '@n8n/design-system';
@@ -35,6 +35,7 @@ const projectId = computed(() =>
 const apps = ref<AppResponse[]>([]);
 const totalApps = ref(0);
 const loading = ref(true);
+const hasApps = ref(false);
 const filters = ref({ search: '', homeProject: '' });
 const currentPage = ref(1);
 const pageSize = ref(APPS_PAGE_SIZE);
@@ -46,20 +47,33 @@ function isSortKey(key: string): key is keyof typeof APPS_SORT_MAP {
 
 async function fetchApps() {
 	const isLatest = latestFetch.next();
-	loading.value = true;
+	const search = filters.value.search;
+	// Keep the shown list during a fast reload; the loading rows would only flicker.
+	let loadingTimer: ReturnType<typeof setTimeout> | undefined;
+	if (apps.value.length > 0) {
+		loadingTimer = setTimeout(() => {
+			if (isLatest()) loading.value = true;
+		}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+	} else {
+		loading.value = true;
+	}
 	try {
 		const { data, count } = await listApps(rootStore.restApiContext, projectId.value, {
 			skip: (currentPage.value - 1) * pageSize.value,
 			take: pageSize.value,
 			sortBy: currentSort.value,
-			name: filters.value.search || undefined,
+			name: search || undefined,
 		});
 		if (!isLatest()) return;
 		apps.value = data;
 		totalApps.value = count;
+		// A search without matches does not tell if the project has apps.
+		if (!search || count > 0) hasApps.value = count > 0;
 	} catch (error) {
 		if (!isLatest()) return;
 		toast.showError(error, i18n.baseText('apps.list.error'));
+	} finally {
+		clearTimeout(loadingTimer);
 	}
 	loading.value = false;
 }
@@ -141,6 +155,7 @@ async function onAppDeleted(appId: string) {
 		:custom-page-size="APPS_PAGE_SIZE"
 		:total-items="totalApps"
 		:dont-perform-sorting-and-filtering="true"
+		:has-empty-state="!hasApps"
 		:shareable="false"
 		:ui-config="{ searchEnabled: true, showFiltersDropdown: false, sortEnabled: true }"
 		@update:search="onSearchUpdated"

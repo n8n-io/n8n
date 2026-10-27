@@ -131,7 +131,8 @@ const showEmptyState = computed(() => {
 const showLoadingState = computed(() => {
 	return (
 		props.loading ||
-		(props.resourcesRefreshing &&
+		(props.hasEmptyState &&
+			props.resourcesRefreshing &&
 			props.resources.length === 0 &&
 			!hasFilters.value &&
 			!filtersModel.value.search)
