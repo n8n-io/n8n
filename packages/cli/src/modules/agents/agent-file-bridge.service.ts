@@ -75,8 +75,9 @@ export class AgentFileBridge {
 				threadId,
 			});
 			if (!attachment) throw new UserError(`File "${fileId}" not found in this conversation`);
-			const extension = attachment.fileName.includes('.')
-				? attachment.fileName.split('.').pop()
+			const { fileName } = attachment;
+			const fileExtension = hasExtension(fileName)
+				? fileName.slice(fileName.lastIndexOf('.') + 1)
 				: undefined;
 			binary[key] = {
 				id: attachment.binaryDataId,
@@ -84,7 +85,7 @@ export class AgentFileBridge {
 				data: attachment.binaryDataId.split(':')[0],
 				mimeType: attachment.mimeType,
 				fileName: attachment.fileName,
-				...(extension && { fileExtension: extension }),
+				...(fileExtension && { fileExtension }),
 				bytes: attachment.fileSizeBytes,
 			};
 			stored.set(attachment.binaryDataId, {
