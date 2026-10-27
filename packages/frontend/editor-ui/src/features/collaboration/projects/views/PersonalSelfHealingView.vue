@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { ProjectSelfHealingSection } from '@n8n/frontend-module-self-healing';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
+import ResourcesListSkeleton from '@/app/components/layouts/ResourcesListSkeleton.vue';
 import ProjectHeader from '../components/ProjectHeader.vue';
 import { useProjectsStore } from '../projects.store';
 
@@ -18,19 +19,13 @@ const projectId = computed(() => {
 <template>
 	<PageViewLayout>
 		<template #header>
-			<ProjectHeader />
+			<ProjectHeader main-button="selfHealing" />
 		</template>
-		<ProjectSelfHealingSection
-			v-if="projectId"
-			:class="$style.section"
-			:project-id="projectId"
-			variant="personalTab"
-		/>
+		<ProjectSelfHealingSection v-if="projectId" :project-id="projectId" variant="personalTab">
+			<template #loading>
+				<ResourcesListSkeleton />
+			</template>
+		</ProjectSelfHealingSection>
+		<ResourcesListSkeleton v-else />
 	</PageViewLayout>
 </template>
-
-<style lang="scss" module>
-.section {
-	align-self: start;
-}
-</style>

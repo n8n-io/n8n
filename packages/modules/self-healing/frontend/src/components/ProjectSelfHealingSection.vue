@@ -187,16 +187,18 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 </script>
 
 <template>
-	<fieldset
-		v-if="!isPersonalTab || !loading"
+	<component
+		:is="isPersonalTab ? 'div' : 'fieldset'"
 		id="self-healing"
 		ref="sectionRef"
+		:class="{ [$style.personalTab]: isPersonalTab }"
 		data-test-id="project-self-healing"
 	>
 		<h3 v-if="!isPersonalTab">
 			<label>{{ i18n.baseText('selfHealing.config.heading') }}</label>
 		</h3>
-		<p v-if="loading">{{ i18n.baseText('selfHealing.config.loading') }}</p>
+		<slot v-if="isPersonalTab && loading" name="loading" />
+		<p v-else-if="loading">{{ i18n.baseText('selfHealing.config.loading') }}</p>
 		<N8nButton v-else-if="failed" type="button" variant="outline" @click="load">{{
 			i18n.baseText('selfHealing.config.retry')
 		}}</N8nButton>
@@ -300,7 +302,7 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 			</N8nDataTableServer>
 		</div>
 		<N8nButton
-			v-if="!isPersonalTab || configurations.length"
+			v-if="!isPersonalTab"
 			variant="outline"
 			size="large"
 			icon="plus"
@@ -309,10 +311,14 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 			@click="edit('new')"
 			>{{ i18n.baseText('selfHealing.config.create') }}</N8nButton
 		>
-	</fieldset>
+	</component>
 </template>
 
 <style module lang="scss">
+.personalTab {
+	min-width: 0;
+}
+
 .table {
 	margin-bottom: var(--spacing--sm);
 

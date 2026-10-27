@@ -180,12 +180,12 @@ describe('personal tab', () => {
 		);
 	});
 
-	it('shows the configurations table with a create button', async () => {
+	it('shows the configurations table without the settings create button', async () => {
 		const { view } = await renderPersonalTab([{ ...configuration }]);
 
 		expect(await view.findByText('All workflows')).toBeVisible();
 		expect(view.queryByText('People to notify')).not.toBeInTheDocument();
 		expect(view.queryByText('Set up self-healing')).not.toBeInTheDocument();
-		expect(view.getByTestId('self-healing-create')).toBeVisible();
+		expect(view.queryByTestId('self-healing-create')).not.toBeInTheDocument();
 	});
 });
