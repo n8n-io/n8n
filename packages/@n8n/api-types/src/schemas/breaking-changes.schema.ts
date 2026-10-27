@@ -83,18 +83,18 @@ const recommendationSchema = z.object({
 });
 export type BreakingChangeRecommendation = z.infer<typeof recommendationSchema>;
 
-const instanceIssueSchema = z.object({
+export const breakingChangeInstanceIssueSchema = z.object({
 	title: z.string(),
 	description: z.string(),
 	level: breakingChangeIssueLevelSchema,
 });
-export type BreakingChangeInstanceIssue = z.infer<typeof instanceIssueSchema>;
+export type BreakingChangeInstanceIssue = z.infer<typeof breakingChangeInstanceIssueSchema>;
 
-const workflowIssueSchema = instanceIssueSchema.extend({
+export const breakingChangeWorkflowIssueSchema = breakingChangeInstanceIssueSchema.extend({
 	nodeId: z.string().optional(),
 	nodeName: z.string().optional(),
 });
-export type BreakingChangeWorkflowIssue = z.infer<typeof workflowIssueSchema>;
+export type BreakingChangeWorkflowIssue = z.infer<typeof breakingChangeWorkflowIssueSchema>;
 
 /** `suggested` by the owner heuristic, or `assigned` by a person. */
 export const migrationOwnerSourceSchema = z.enum(['suggested', 'assigned']);
@@ -123,7 +123,7 @@ const affectedWorkflowSchema = z.object({
 	numberOfExecutions: z.number(),
 	lastUpdatedAt: z.date(),
 	lastExecutedAt: z.date().optional(),
-	issues: z.array(workflowIssueSchema),
+	issues: z.array(breakingChangeWorkflowIssueSchema),
 	// Absent when no owner is known for the workflow.
 	owner: workflowOwnerSchema.optional(),
 	// The project that owns the workflow, so an owner picker can list its members.
@@ -146,7 +146,7 @@ const ruleResultBaseSchema = z.object({
 });
 
 const instanceRuleResultsSchema = ruleResultBaseSchema.extend({
-	instanceIssues: z.array(instanceIssueSchema),
+	instanceIssues: z.array(breakingChangeInstanceIssueSchema),
 });
 export type BreakingChangeInstanceRuleResult = z.infer<typeof instanceRuleResultsSchema>;
 

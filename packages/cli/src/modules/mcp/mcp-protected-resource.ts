@@ -24,7 +24,10 @@ import {
 import {
 	areAgentToolsAvailable,
 	arePreferenceToolsEnabled,
+	canChangeMigrationReport,
+	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
+	isMigrationReportAvailable,
 } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
@@ -37,6 +40,10 @@ export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
 const SKILL_SCOPES = new Set<string>(MCP_SKILL_SCOPES);
 const PREFERENCE_SCOPES = new Set<string>(['aiPreference:read', 'aiPreference:write']);
+const MIGRATION_REPORT_SCOPES = new Set<string>([
+	'breakingChanges:list',
+	'breakingChanges:migrate',
+]);
 
 const MCP_RESOURCE_PATH = '/mcp-server/http';
 
@@ -79,10 +86,12 @@ export class McpProtectedResource implements ProtectedResource {
 	get scopes(): string[] {
 		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
 		const skillsAvailable = Container.get(SkillAgentsProxy).hasProvider;
+		const migrationReportAvailable = isMigrationReportAvailable(this.moduleRegistry);
 		return SUPPORTED_SCOPES.filter(
 			(scope) =>
 				(agentsAvailable || !AGENT_SCOPES.has(scope)) &&
-				(skillsAvailable || !SKILL_SCOPES.has(scope)),
+				(skillsAvailable || !SKILL_SCOPES.has(scope)) &&
+				(migrationReportAvailable || !MIGRATION_REPORT_SCOPES.has(scope)),
 		);
 	}
 
@@ -177,6 +186,10 @@ export class McpProtectedResource implements ProtectedResource {
 	 * `aiPreference:*` is dropped for a user outside the preferences experiment
 	 * arm for the same reason, and one more: showing the scopes to the control
 	 * arm exposes the feature to the users the experiment keeps unaware of it.
+	 *
+	 * `breakingChanges:list` and `breakingChanges:migrate` are each dropped for a
+	 * user whose role lacks the permission of the same name, for the first reason:
+	 * registration checks the same permission, so the grant could do nothing more.
 	 */
 	async getGrantableScopes(user: ResourceUser): Promise<string[]> {
 		const { CommunityPackagesConfig } = await import(
@@ -190,11 +203,15 @@ export class McpProtectedResource implements ProtectedResource {
 			user,
 		);
 		const preferencesEnabled = await this.arePreferencesEnabledFor(user);
+		const migrationReportReadable = canReadMigrationReport(this.moduleRegistry, user);
+		const migrationReportChangeable = canChangeMigrationReport(this.moduleRegistry, user);
 
 		return this.scopes.filter(
 			(scope) =>
 				(installAvailable || scope !== 'communityPackage:install') &&
-				(preferencesEnabled || !PREFERENCE_SCOPES.has(scope)),
+				(preferencesEnabled || !PREFERENCE_SCOPES.has(scope)) &&
+				(migrationReportReadable || scope !== 'breakingChanges:list') &&
+				(migrationReportChangeable || scope !== 'breakingChanges:migrate'),
 		);
 	}
 

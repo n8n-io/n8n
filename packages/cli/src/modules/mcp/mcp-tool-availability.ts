@@ -1,4 +1,8 @@
-import { CONTEXT_PREFERENCES_ENABLED_VARIANT, CONTEXT_PREFERENCES_FLAG } from '@n8n/api-types';
+import {
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
+	CONTEXT_PREFERENCES_FLAG,
+	MIGRATION_REPORT_TARGET_VERSION,
+} from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { hasGlobalScope, type AuthPrincipal } from '@n8n/permissions';
@@ -18,6 +22,36 @@ import type { McpConfig } from './mcp.config';
  */
 export function arePreferenceToolsEnabled(flags: FeatureFlags): boolean {
 	return flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT;
+}
+
+/**
+ * Whether this instance has a migration report to serve: a target version is
+ * set and the module that builds the report is active. Consent and registration
+ * both use it, so the scope is never offered for tools that cannot register.
+ */
+export function isMigrationReportAvailable(moduleRegistry: ModuleRegistry): boolean {
+	return MIGRATION_REPORT_TARGET_VERSION !== null && moduleRegistry.isActive('breaking-changes');
+}
+
+/**
+ * Whether the migration report fix and status tools register for this caller. The REST
+ * routes for both need the same permission.
+ */
+export function canChangeMigrationReport(
+	moduleRegistry: ModuleRegistry,
+	user: AuthPrincipal,
+): boolean {
+	return (
+		isMigrationReportAvailable(moduleRegistry) && hasGlobalScope(user, 'breakingChanges:migrate')
+	);
+}
+
+/** Whether the migration report read tools register for this caller. */
+export function canReadMigrationReport(
+	moduleRegistry: ModuleRegistry,
+	user: AuthPrincipal,
+): boolean {
+	return isMigrationReportAvailable(moduleRegistry) && hasGlobalScope(user, 'breakingChanges:list');
 }
 
 export function areAgentToolsAvailable(

@@ -162,6 +162,17 @@ describe('BreakingChangeMigrationService', () => {
 		expect(updateData.nodes.find((n) => n.id === otherNode.id)).toEqual(otherNode);
 	});
 
+	it('tags the save with the source of the request', async () => {
+		const aiNode = createNode('Transform', AI_TRANSFORM_NODE_TYPE, { jsCode: 'return items;' });
+		workflowFinderService.findWorkflowForUser.mockResolvedValue(buildWorkflow([aiNode]));
+		workflowService.update.mockResolvedValue(mock<WorkflowEntity>({ versionId: 'new-version' }));
+
+		await service.migrateWorkflow(RULE_ID, 'wf-1', user, { source: 'n8n-mcp' });
+
+		const [, , , updateOptions] = workflowService.update.mock.calls[0];
+		expect(updateOptions).toEqual(expect.objectContaining({ source: 'n8n-mcp' }));
+	});
+
 	it('keeps the connections of a node-for-node migration intact', async () => {
 		const aiNode = createNode('Transform', AI_TRANSFORM_NODE_TYPE, { jsCode: 'return items;' });
 		const connections = { Transform: { main: [[{ node: 'End', type: 'main', index: 0 }]] } };
