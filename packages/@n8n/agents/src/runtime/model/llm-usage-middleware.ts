@@ -1,4 +1,6 @@
 import {
+	checkLlmCall,
+	getLlmCallContext,
 	getLlmUsageSink,
 	reportLlmUsage,
 	type LlmUsageCredential,
@@ -33,6 +35,13 @@ export function withLlmUsageReporting(
 	if (!getLlmUsageSink() || reportingModels.has(model)) return model;
 	const providerName = provider ?? model.provider;
 
+	// The host runs each agent turn in a call scope, which names the agent, project and user.
+	const check = async () => {
+		const context = getLlmCallContext();
+		if (!context) return;
+		await checkLlmCall({ context, credential, provider: providerName, model: model.modelId });
+	};
+
 	const report = (
 		usage: ModelUsage,
 		modelId: string,
@@ -63,6 +72,7 @@ export function withLlmUsageReporting(
 		model,
 		middleware: {
 			wrapGenerate: async ({ doGenerate }) => {
+				await check();
 				const startedAt = new Date();
 				const result = await doGenerate();
 				report(
@@ -74,6 +84,7 @@ export function withLlmUsageReporting(
 				return result;
 			},
 			wrapStream: async ({ doStream }) => {
+				await check();
 				const startedAt = new Date();
 				const result = await doStream();
 				let modelId = model.modelId;

@@ -14,6 +14,8 @@ export interface LlmResponseInspector {
 	onResponse(body: unknown): void;
 	onStreamChunk(chunk: Buffer): void;
 	onStreamEnd(): void;
+	/** Runs before the request is sent. Rejects to block the call, for example over a budget. */
+	check?(): Promise<void>;
 }
 
 /** Hooks that the llm-usage module puts on `additionalData`. */

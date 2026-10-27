@@ -6,7 +6,7 @@ import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 
-import { setLlmUsageSink, type LlmUsageRecord } from 'src/llm-usage';
+import { setLlmCallGuard, setLlmUsageSink, type LlmUsageRecord } from 'src/llm-usage';
 import * as logAiEventModule from 'src/utils/log-ai-event';
 import { anthropicTokensUsageParser, N8nLlmTracing } from 'src/utils/n8n-llm-tracing';
 import * as tokenEstimatorModule from 'src/utils/tokenizer/token-estimator';
@@ -1287,7 +1287,43 @@ describe('anthropicTokensUsageParser', () => {
 			} as unknown as Mocked<ISupplyDataFunctions>;
 		});
 
-		afterEach(() => setLlmUsageSink(undefined));
+		afterEach(() => {
+			setLlmUsageSink(undefined);
+			setLlmCallGuard(undefined);
+		});
+
+		it('checks the call with the context of the model node before it starts', async () => {
+			const guard = vi.fn().mockResolvedValue(undefined);
+			setLlmCallGuard(guard);
+			const tracer = new N8nLlmTracing(executionFunctions);
+
+			await tracer.handleLLMStart(
+				{} as Serialized,
+				['hi'],
+				'run-1',
+				undefined,
+				undefined,
+				undefined,
+				{
+					ls_model_name: 'gpt-x',
+				},
+			);
+
+			expect(guard).toHaveBeenCalledWith(
+				expect.objectContaining({ context: usageContext, model: 'gpt-x' }),
+			);
+			expect(tracer.raiseError).toBe(false);
+		});
+
+		it('rethrows a blocked call to LangChain with raiseError, before it logs the input', async () => {
+			const blocked = new Error('LLM budget reached');
+			setLlmCallGuard(vi.fn().mockRejectedValue(blocked));
+			const tracer = new N8nLlmTracing(executionFunctions);
+
+			await expect(tracer.handleLLMStart({} as Serialized, ['hi'], 'run-1')).rejects.toBe(blocked);
+			expect(tracer.raiseError).toBe(true);
+			expect(executionFunctions.addInputData).not.toHaveBeenCalled();
+		});
 
 		it('reports each model call with the context of the model node', async () => {
 			const tracer = new N8nLlmTracing(executionFunctions);

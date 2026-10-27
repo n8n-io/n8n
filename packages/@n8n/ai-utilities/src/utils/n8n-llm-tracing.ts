@@ -14,6 +14,7 @@ import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow
 import { buildChatGenAiAttributes, type GenAiProviderName } from '../gen-ai';
 import { LangChainUsageTracker } from '../llm-usage/langchain-handler';
 import { credentialFromNode, providerFromCredentials } from '../llm-usage/report';
+import { checkLlmCall } from '../llm-usage/state';
 import { extractRespondingModel, toRunDataGeneration } from './extract-responding-model';
 import { logAiEvent } from './log-ai-event';
 import { redactHeaderValues } from './redact-headers';
@@ -162,6 +163,26 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		);
 	}
 
+	/**
+	 * Rejects when a policy blocks the call. LangChain rethrows a handler error only with
+	 * `raiseError`, so it is set right before the throw: until then, hook errors are only logged.
+	 */
+	private async checkCall(metadata?: Record<string, unknown>) {
+		const context = this.executionFunctions.getLlmUsageContext?.();
+		if (!context) return;
+		try {
+			await checkLlmCall({
+				context,
+				credential: credentialFromNode(this.executionFunctions.getNode().credentials),
+				provider: this.credentialProvider(),
+				model: typeof metadata?.ls_model_name === 'string' ? metadata.ls_model_name : undefined,
+			});
+		} catch (error) {
+			this.raiseError = true;
+			throw error;
+		}
+	}
+
 	async estimateTokensFromGeneration(generations: LLMResult['generations']) {
 		const messages = generations.flatMap((gen) => gen.map((g) => g.text));
 		return await this.estimateTokensFromStringList(messages);
@@ -275,6 +296,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		_tags?: string[],
 		metadata?: Record<string, unknown>,
 	) {
+		await this.checkCall(metadata);
 		this.usageTracker.start(runId, metadata);
 		const estimatedTokens = await this.estimateTokensFromStringList(prompts);
 		const sourceNodeRunIndex =

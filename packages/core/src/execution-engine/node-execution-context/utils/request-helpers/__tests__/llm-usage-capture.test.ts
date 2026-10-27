@@ -187,6 +187,29 @@ describe('withLlmUsageCapture', () => {
 		).resolves.toEqual({ a: 1 });
 	});
 
+	it('does not send the request when the check rejects it', async () => {
+		const blocked = new Error('LLM budget reached');
+		inspector.check = vi.fn().mockRejectedValue(blocked);
+		const send = vi.fn();
+
+		await expect(
+			withLlmUsageCapture({ workflow, node, additionalData }, requestBody, send),
+		).rejects.toBe(blocked);
+		expect(send).not.toHaveBeenCalled();
+	});
+
+	it('does not check nodes that output a language model, because LangChain checks them', async () => {
+		inspector.check = vi.fn();
+
+		await withLlmUsageCapture(
+			{ workflow: workflowWithOutputs(['ai_languageModel']), node, additionalData },
+			requestBody,
+			async () => ({}),
+		);
+
+		expect(inspector.check).not.toHaveBeenCalled();
+	});
+
 	it('is applied by the httpRequest helper', async () => {
 		const request = vi.fn().mockResolvedValue({ usage: { prompt_tokens: 1 } });
 		const outboundHttp = mock<OutboundHttp>();

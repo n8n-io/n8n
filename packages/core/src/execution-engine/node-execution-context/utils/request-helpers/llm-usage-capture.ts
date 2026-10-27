@@ -119,6 +119,8 @@ export async function withLlmUsageCapture<T>(
 	if (captureInProgress.getStore()) return await send();
 	const inspector = startInspection(target, requestBody);
 	if (!inspector) return await send();
+	// Outside `startInspection`: a capture error never blocks a request, but a check must.
+	await inspector.check?.();
 
 	const response = await captureInProgress.run(true, send);
 	if (isFullResponse(response) && response.body instanceof Readable) {

@@ -1,4 +1,9 @@
-import { setLlmUsageSink, type LlmUsageRecord } from '@n8n/ai-utilities/llm-usage';
+import {
+	runWithLlmCallContext,
+	setLlmCallGuard,
+	setLlmUsageSink,
+	type LlmUsageRecord,
+} from '@n8n/ai-utilities/llm-usage';
 import { generateText, streamText } from 'ai';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 
@@ -94,6 +99,37 @@ describe('withLlmUsageReporting', () => {
 		await generateText({ model, prompt: 'hi' });
 
 		expect(records).toHaveLength(1);
+	});
+
+	it('does not call the model when the guard blocks the call of the agent scope', async () => {
+		const blocked = new Error('LLM budget reached');
+		const guard = vi.fn().mockRejectedValue(blocked);
+		setLlmCallGuard(guard);
+		const model = mockModel();
+
+		try {
+			await expect(
+				runWithLlmCallContext(
+					{ callerType: 'agent', agentId: 'agent-1' },
+					async () =>
+						await generateText({
+							model: withLlmUsageReporting(model, 'anthropic', { id: 'cred-1' }),
+							prompt: 'hi',
+							maxRetries: 0,
+						}),
+				),
+			).rejects.toThrow(blocked.message);
+		} finally {
+			setLlmCallGuard(undefined);
+		}
+
+		expect(guard).toHaveBeenCalledWith({
+			context: { callerType: 'agent', agentId: 'agent-1' },
+			credential: { id: 'cred-1' },
+			provider: 'anthropic',
+			model: 'claude-x',
+		});
+		expect(model.doGenerateCalls).toHaveLength(0);
 	});
 
 	it('leaves the model unwrapped when no sink is set', () => {

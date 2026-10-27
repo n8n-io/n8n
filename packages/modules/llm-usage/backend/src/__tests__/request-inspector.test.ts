@@ -1,4 +1,5 @@
 import {
+	setLlmCallGuard,
 	setLlmUsageSink,
 	type LlmCallContext,
 	type LlmUsageRecord,
@@ -145,6 +146,30 @@ describe('inspectRequest provider', () => {
 		respond();
 
 		expect(records.map((record) => record.provider)).toEqual(['openai', 'openai']);
+	});
+
+	it('checks the call with its credential, the credential provider and the requested model', async () => {
+		const guard = vi.fn().mockResolvedValue(undefined);
+		setLlmCallGuard(guard);
+
+		const context: LlmCallContext = { callerType: 'node', workflowId: 'wf-1' };
+		try {
+			await inspectRequest({
+				context,
+				credentialTypes: ['deepSeekApi'],
+				credentials: { deepSeekApi: { id: 'cred-1' } },
+				requestBody: { model: 'deepseek-chat', messages: [] },
+			})?.check();
+		} finally {
+			setLlmCallGuard(undefined);
+		}
+
+		expect(guard).toHaveBeenCalledWith({
+			context,
+			credential: { id: 'cred-1' },
+			provider: 'deepseek',
+			model: 'deepseek-chat',
+		});
 	});
 
 	it('records the credential that the helper authenticates with, else the only LLM one', () => {

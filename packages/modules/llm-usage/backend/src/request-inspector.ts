@@ -1,4 +1,5 @@
 import {
+	checkLlmCall,
 	createUsageReader,
 	credentialFromNode,
 	parseProviderUsage,
@@ -75,5 +76,12 @@ export function inspectRequest(input: {
 		onResponse: (response: unknown) => report(parseProviderUsage(response)),
 		onStreamChunk: (chunk: Buffer) => (reader ??= createUsageReader()).push(chunk),
 		onStreamEnd: () => report(reader?.result()),
+		check: async () =>
+			await checkLlmCall({
+				context: input.context,
+				credential,
+				provider: credentialProvider,
+				model: requestedModel,
+			}),
 	};
 }
