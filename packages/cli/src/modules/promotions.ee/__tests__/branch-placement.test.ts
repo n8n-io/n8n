@@ -16,6 +16,10 @@ function entry(id: string, name = `name-${id}`, target = `target/${id}`) {
 	return { id, name, target };
 }
 
+function workflow(id: string, name: string, target: string) {
+	return { ...entry(id, name, target), isArchived: false };
+}
+
 const P = 'projects/acme';
 const acme = entry('p1', 'Acme', P);
 
@@ -27,7 +31,7 @@ describe('containerMoves', () => {
 		});
 		const staging = makeManifest({
 			projects: [entry('p1', 'Acme Corp', 'projects/acme-corp')],
-			workflows: [entry('w1', 'W1', 'projects/acme-corp/workflows/w1')],
+			workflows: [workflow('w1', 'W1', 'projects/acme-corp/workflows/w1')],
 		});
 
 		const moves = containerMoves(existing, staging);
@@ -41,7 +45,7 @@ describe('containerMoves', () => {
 		});
 		const staging = makeManifest({
 			folders: [entry('f1', 'B', `${P}/folders/b`), entry('f2', 'D', `${P}/folders/b/d`)],
-			workflows: [entry('w1', 'W1', `${P}/folders/b/d/workflows/w1`)],
+			workflows: [workflow('w1', 'W1', `${P}/folders/b/d/workflows/w1`)],
 		});
 
 		// The order is the parking order: the child must leave before the parent moves.
@@ -68,7 +72,7 @@ describe('containerMoves', () => {
 		const existing = makeManifest({ projects: [acme] });
 		const staging = makeManifest({
 			projects: [entry('p1', 'Acme', P)],
-			workflows: [entry('w1', 'W1', `${P}/workflows/w1`)],
+			workflows: [workflow('w1', 'W1', `${P}/workflows/w1`)],
 		});
 
 		expect(containerMoves(existing, staging)).toEqual([]);
@@ -98,17 +102,17 @@ describe('staleWorkflowTargets', () => {
 		const before = makeManifest({
 			projects: [entry('p1', 'P', 'projects/p')],
 			workflows: [
-				entry('w1', 'kept', 'projects/p/workflows/kept'),
-				entry('w2', 'gone', 'projects/p/workflows/gone'),
-				entry('w3', 'moved', 'projects/p/workflows/old-name'),
-				entry('w4', 'rewritten', 'projects/p/workflows/rewritten'),
+				workflow('w1', 'kept', 'projects/p/workflows/kept'),
+				workflow('w2', 'gone', 'projects/p/workflows/gone'),
+				workflow('w3', 'moved', 'projects/p/workflows/old-name'),
+				workflow('w4', 'rewritten', 'projects/p/workflows/rewritten'),
 			],
 			credentials: [entry('c1', 'cred', 'projects/p/credentials/cred')],
 		});
 		const staging = makeManifest({
 			workflows: [
-				entry('w3', 'moved', 'projects/p/workflows/new-name'),
-				entry('w4', 'rewritten', 'projects/p/workflows/rewritten'),
+				workflow('w3', 'moved', 'projects/p/workflows/new-name'),
+				workflow('w4', 'rewritten', 'projects/p/workflows/rewritten'),
 			],
 		});
 
@@ -123,13 +127,13 @@ describe('staleWorkflowTargets', () => {
 		const before = makeManifest({
 			folders: [entry('f1', 'sales', 'projects/p/folders/sales')],
 			workflows: [
-				entry('w1', 'W1', 'projects/p/folders/sales/workflows/w1'),
-				entry('w2', 'W2', 'projects/p/folders/sales/workflows/w2'),
+				workflow('w1', 'W1', 'projects/p/folders/sales/workflows/w1'),
+				workflow('w2', 'W2', 'projects/p/folders/sales/workflows/w2'),
 			],
 		});
 		const staging = makeManifest({
 			folders: [entry('f1', 'revenue', 'projects/p/folders/revenue')],
-			workflows: [entry('w1', 'W1', 'projects/p/folders/revenue/workflows/w1')],
+			workflows: [workflow('w1', 'W1', 'projects/p/folders/revenue/workflows/w1')],
 		});
 
 		expect(staleWorkflowTargets(before, staging, new Set())).toEqual([
