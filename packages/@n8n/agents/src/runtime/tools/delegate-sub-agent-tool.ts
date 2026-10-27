@@ -123,29 +123,10 @@ function resolveDelegateSubAgentSystemInstruction(
 		...formatAvailableSubAgents(options.availableSubAgents),
 		...formatDelegationPolicyInstructions(options.policy, toolName),
 		...formatDelegationModeInstructions(options, toolName),
-		formatDelegateArguments(options, toolName),
 		`WHEN TO USE ${toolName}:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.`,
 		`WHEN NOT TO USE ${toolName}:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.`,
 		`HOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- Pass files in fileIds, not in the goal or context text. The child can read only those files and the files it makes.\n- Set difficulty (low, medium, or high) when you can estimate task complexity; omit it to keep the default inline model.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your local and deferred tools after safety filtering. ${inlineProviderToolInstruction}\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.`,
 	].join('\n');
-}
-
-/**
- * The tool can be deferred, so the model may call it before it loads the
- * schema. List the arguments from the schema, so the text cannot drift.
- */
-function formatDelegateArguments(
-	options: CreateDelegateSubAgentToolOptions,
-	toolName: string,
-): string {
-	const schema = options.runBackgroundSubAgent
-		? delegateSubAgentModeInputSchema
-		: delegateSubAgentInputSchema;
-	const lines = Object.entries(schema.shape).map(
-		([name, field]) =>
-			`- ${name} (${field.isOptional() ? 'optional' : 'required'}): ${field.description ?? ''}`,
-	);
-	return `${toolName} ARGUMENTS (use only these names):\n${lines.join('\n')}`;
 }
 
 function formatDelegationModeInstructions(
