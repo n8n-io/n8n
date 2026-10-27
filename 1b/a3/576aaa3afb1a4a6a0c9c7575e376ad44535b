@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_952e2dc69e6ab3::t_fdeabd6f57ec97 1-6,337
+  s_952e2dc69e6ab3::t_92661bcf8eb911 33
+packages/cli/src/modules/agents/utils/agent-channel.ts
+  s_952e2dc69e6ab3::t_fdeabd6f57ec97 1-2,23-32
+  s_952e2dc69e6ab3::t_398c9ef40eaa31 33
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  s_952e2dc69e6ab3::t_fdeabd6f57ec97 29,476-477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ba3576aaa3afb1a4a6a0c9c7575e376ad44535b",
+  "prompts": {},
+  "sessions": {
+    "s_952e2dc69e6ab3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1a0aea3-1f8c-4dd8-8134-765698a7bfc4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
