@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentVersionList.vue
+  s_5785bc20fb92a9::t_77a59b0bdb4ce6 30,36,41
+  s_5785bc20fb92a9::t_5edcc360256479 35,37,88,94
+  s_5785bc20fb92a9::t_47403ca87df986 42-43
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVersionHistoryPanel.test.ts
+  s_5785bc20fb92a9::t_a6c7561be3dc64 18,137-147,280-283,285-302
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVersionList.test.ts
+  s_5785bc20fb92a9::t_e66a9dba91e946 5,90-92,100-117,119-121,131-132
+  s_5785bc20fb92a9::t_77a59b0bdb4ce6 11-12,14,118,122-130
+packages/frontend/editor-ui/src/features/agents/composables/useAgentVersionHistory.ts
+  s_5785bc20fb92a9::t_5edcc360256479 1,31-32,51,69,80,96,101,110-118,235
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentVersionHistory.test.ts
+  s_5785bc20fb92a9::t_e66a9dba91e946 222,237,243,255-271,276-281
+  s_5785bc20fb92a9::t_6f817518706e9e 223-236,238-242,244-254,272-275
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentVersionHistoryPanel.vue
+  s_5785bc20fb92a9::t_5edcc360256479 53,208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e97ff6c4add51a1d683587ae7faab069ec4c8a63",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

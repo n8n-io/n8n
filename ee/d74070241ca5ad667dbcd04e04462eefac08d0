@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  s_482f48320b007f::t_09d4604dbebfd2 351-358
+  s_482f48320b007f::t_2b5f3c97f783b5 338-349,359,361-368
+  s_482f48320b007f::t_143e4fafc5beb6 350,360
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+  s_482f48320b007f::t_1e97f8e1ec3af1 20-25,194,196,201
+  s_482f48320b007f::t_09d4604dbebfd2 197-198
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscovery.store.ts
+  s_482f48320b007f::t_1e97f8e1ec3af1 17-23,66-68,72-74
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscovery.store.test.ts
+  s_482f48320b007f::t_2b5f3c97f783b5 6-12,123-129
+  s_482f48320b007f::t_7ca6ccbff97221 130-153
+  s_482f48320b007f::t_52ecf84c4d03f0 154
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_482f48320b007f::t_1e97f8e1ec3af1 394,407-408
+packages/frontend/editor-ui/src/experiments/agentBuilder/enrollment.ts
+  s_482f48320b007f::t_09d4604dbebfd2 9-13
+  s_482f48320b007f::t_1e97f8e1ec3af1 1-8,14-24,30-31
+  s_482f48320b007f::t_7ca6ccbff97221 25-29
+packages/frontend/editor-ui/src/experiments/agentBuilder/stores/agentBuilder.store.ts
+  s_482f48320b007f::t_1e97f8e1ec3af1 10,15
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMarkdownChunk.test.ts
+  s_482f48320b007f::t_2b5f3c97f783b5 63-67
+  s_482f48320b007f::t_8aa162691cbd30 23-26
+  s_482f48320b007f::t_09d4604dbebfd2 68-71,73-74,76-85,87-88
+packages/frontend/editor-ui/src/features/agents/components/AgentMarkdownChunk.vue
+  s_482f48320b007f::t_1e97f8e1ec3af1 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eed74070241ca5ad667dbcd04e04462eefac08d0",
+  "prompts": {},
+  "sessions": {
+    "s_482f48320b007f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163de-1528-7382-879b-fbc784061690",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
