@@ -1077,7 +1077,7 @@ describe('ParameterInput.vue', () => {
 		expect(view.container.contains(expandedInput)).toBe(false);
 		expect(expandedInput.closest('#app-modals')).toBeNull();
 		expect(openDialogs.value.size).toBe(1);
-		await fireEvent.click(view.getByRole('button', { name: 'Close this dialog' }));
+		await fireEvent.click(view.getByRole('button', { name: 'Close dialog' }));
 		await waitFor(() => expect(openDialogs.value.size).toBe(0));
 
 		await fireEvent.click(view.getByTestId('expander'));

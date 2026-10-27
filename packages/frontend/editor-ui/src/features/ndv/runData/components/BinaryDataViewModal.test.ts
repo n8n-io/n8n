@@ -1,9 +1,11 @@
 import { waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { i18n, i18nInstance } from '@n8n/i18n';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import BinaryDataViewModal from './BinaryDataViewModal.vue';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
@@ -49,6 +51,19 @@ describe('BinaryDataViewModal.vue', async () => {
 	afterEach(() => {
 		vi.clearAllMocks();
 		vi.resetAllMocks();
+	});
+
+	it('closes the modal when the dialog reports closed', async () => {
+		const binaryData = createBinaryMetadata({ mimeType: 'text/plain' });
+		const { getByRole } = await renderOpenModal({
+			props: {
+				data: { binaryData },
+			},
+		});
+
+		await userEvent.click(getByRole('button', { name: 'Close dialog' }));
+
+		expect(mockedStore(useUIStore).closeModal).toHaveBeenCalledWith(BINARY_DATA_VIEW_MODAL_KEY);
 	});
 
 	describe('File Type Detection', async () => {
