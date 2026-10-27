@@ -190,7 +190,7 @@ function decorateResourceNames(content: string): string {
 
 	// Build entries sorted longest-name-first to avoid partial-match conflicts
 	const entries = [...registry.values()]
-		.filter((entry) => entry.name.length >= 3 && !isCurrentSubject(entry.type, entry.id))
+		.filter((entry) => entry.name.length >= 3)
 		.sort((a, b) => b.name.length - a.name.length);
 
 	let result = content;
@@ -242,7 +242,6 @@ const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
 	{ pattern: /^\/projects\/[^/]+\/agents(?:\/|$)/, type: 'agent' },
 	{ pattern: /^\/projects\/[^/]+\/apps(?:\/|$)/, type: 'app' },
 ];
-const AGENT_ROUTE_PATTERN = /^\/projects\/[^/]+\/agents\/([^/]+)\/?$/;
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
 
 function getSameOriginUrl(href: string): URL | undefined {
@@ -346,10 +345,6 @@ function enhanceResourceLinks(): void {
 		if (resourceMatch) {
 			const [, type, encodedId] = resourceMatch;
 			const id = decodeResourceId(encodedId);
-			if (isCurrentSubject(type, id)) {
-				link.replaceWith(...link.childNodes);
-				continue;
-			}
 
 			// Look up registry entry to find projectId for project-scoped routes.
 			// Search the name index because it contains both produced and listed
@@ -381,12 +376,6 @@ function enhanceResourceLinks(): void {
 		}
 		const internalUrl = getSameOriginUrl(href);
 		if (!internalUrl) continue;
-
-		const agentId = AGENT_ROUTE_PATTERN.exec(internalUrl.pathname)?.[1];
-		if (agentId && isCurrentSubject('agent', decodeResourceId(agentId))) {
-			link.replaceWith(...link.childNodes);
-			continue;
-		}
 
 		for (const { pattern, type } of INTERNAL_ROUTE_PATTERNS) {
 			if (pattern.test(internalUrl.pathname)) {

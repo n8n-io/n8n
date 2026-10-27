@@ -138,7 +138,7 @@
 		line-height: inherit;
 		background-color: var(--background--subtle);
 		background-color: var(--background--subtle);
-		border: 0.5px solid var(--border-color);
+		border: 1px solid var(--border-color);
 		background-clip: padding-box;
 		border-radius: calc(var(--n8n-markdown--radius) / 2);
 	}
@@ -162,7 +162,7 @@
 		box-sizing: border-box;
 		padding: calc(var(--n8n-markdown--spacing) * 2);
 		background-color: var(--background--subtle);
-		border: 0.5px solid var(--border-color);
+		border: 1px solid var(--border-color);
 		background-clip: padding-box;
 		border-radius: var(--n8n-markdown--radius);
 		display: grid;
@@ -329,7 +329,7 @@
 		table-layout: fixed;
 		border-collapse: separate;
 		border-spacing: 0;
-		border: 0.5px solid var(--border-color);
+		border: 1px solid var(--border-color);
 		background-clip: padding-box;
 		border-radius: var(--n8n-markdown--radius);
 		overflow: hidden;

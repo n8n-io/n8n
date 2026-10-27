@@ -81,6 +81,7 @@ defineSlots<{
 
 .userBubble {
 	max-width: 80%;
+	width: fit-content;
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
 	background: var(--assistant--color--background--user-bubble);
@@ -98,6 +99,7 @@ defineSlots<{
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	padding-inline: var(--spacing--sm);
 
 	&:hover ~ .actions,
 	&:focus-within ~ .actions {

@@ -6,6 +6,33 @@ import { n8nHtml } from '../../directives';
 
 describe('components', () => {
 	describe('N8nMarkdown', () => {
+		it('passes sanitized links and plain labels to the link slot', async () => {
+			const wrapper = render(N8nMarkdown, {
+				props: { content: '[**Workflow**](/workflow/1 "Details")' },
+				slots: {
+					link: (link: {
+						href: string;
+						label: string;
+						title?: string;
+						target?: string;
+						rel?: string;
+					}) =>
+						h(
+							'a',
+							{ href: link.href, title: link.title, target: link.target, rel: link.rel },
+							link.label,
+						),
+				},
+			});
+			await nextTick();
+			expect(wrapper.getByRole('link')).toHaveTextContent('Workflow');
+			expect(wrapper.getByRole('link')).toHaveAttribute('href', '/workflow/1');
+			expect(wrapper.getByRole('link')).toHaveAttribute('title', 'Details');
+			expect(wrapper.getByRole('link')).toHaveAttribute('rel', 'noopener');
+			await wrapper.rerender({ content: '[Unsafe](javascript:alert%281%29)' });
+			await nextTick();
+			expect(wrapper.queryByRole('link')).toBeNull();
+		});
 		it('keeps slot targets across streamed HTML and preserves raw nested fences', async () => {
 			const wrapper = render(N8nMarkdown, {
 				props: { content: '> ```js\n>   first\n> ```' },

@@ -73,8 +73,45 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 	}),
 });
 
+interface MarkdownLink {
+	href: string;
+	label: string;
+	title?: string;
+	target?: string;
+	rel?: string;
+}
+
 const editor = ref<HTMLDivElement | undefined>(undefined);
+const links = shallowRef<Array<{ props: MarkdownLink; target: HTMLElement }>>([]);
+
+/** Read link attributes only after the HTML sanitizer has checked them. */
+function refreshLinkTargets() {
+	if (props.loading || !slots.link || !editor.value) {
+		links.value = [];
+		return;
+	}
+	const nextLinks: typeof links.value = [];
+	for (const anchor of editor.value.querySelectorAll<HTMLAnchorElement>('a[data-link-slot]')) {
+		const href = anchor.getAttribute('href');
+		if (!href) continue;
+		const target = links.value[nextLinks.length]?.target ?? document.createElement('span');
+		nextLinks.push({
+			props: {
+				href,
+				label: anchor.textContent ?? '',
+				title: anchor.getAttribute('title') ?? undefined,
+				target: anchor.getAttribute('target') ?? undefined,
+				rel: anchor.getAttribute('rel') ?? undefined,
+			},
+			target,
+		});
+		anchor.replaceWith(target);
+	}
+	links.value = nextLinks;
+}
 const slots = defineSlots<{
+	/** Render sanitized links with plain text labels. */
+	link?: (props: MarkdownLink) => VNode[];
 	/** Render fenced code without changing its whitespace. */
 	'code-block'?: (props: { code: string; language: string }) => VNode[];
 }>();
@@ -119,6 +156,16 @@ const md = computed(() => {
 		parser.use(plugin);
 	}
 
+	if (slots.link) {
+		const renderLink = parser.renderer.rules.link_open;
+		parser.renderer.rules.link_open = (tokens, index, options, env, self) => {
+			tokens[index].attrSet('data-link-slot', '');
+			return (
+				renderLink?.(tokens, index, options, env, self) ?? self.renderToken(tokens, index, options)
+			);
+		};
+	}
+
 	if (slots['code-block']) {
 		parser.renderer.rules.fence = (tokens, index) => {
 			const token = tokens[index];
@@ -140,6 +187,7 @@ const { whiteList } = xss as unknown as { whiteList: IWhiteList };
 const xssWhiteList = {
 	...whiteList,
 	label: ['class', 'for'],
+	a: [...(whiteList.a ?? []), 'data-link-slot'],
 	/** Keep plugin markers for code actions, table containers, and footnotes. */
 	div: [...(whiteList.div ?? []), 'class', 'data-markdown-token-idx', 'data-code-slot'],
 	span: [...(whiteList.span ?? []), 'class', 'title'],
@@ -273,9 +321,14 @@ const htmlContent = computed(() => {
 	return safeHtml;
 });
 
-watch([htmlContent, editor, () => props.loading, () => props.content], refreshCodeTargets, {
-	flush: 'post',
-});
+watch(
+	[htmlContent, editor, () => props.loading, () => props.content],
+	() => {
+		refreshCodeTargets();
+		refreshLinkTargets();
+	},
+	{ flush: 'post' },
+);
 
 const emit = defineEmits<{
 	'markdown-click': [link: HTMLAnchorElement, e: MouseEvent];
@@ -355,6 +408,9 @@ const onCheckboxChange = (index: number) => {
 				<div :class="$style.spacer" />
 			</div>
 		</div>
+		<Teleport v-for="(link, index) in links" :key="`link-${index}`" :to="link.target">
+			<slot name="link" v-bind="link.props" />
+		</Teleport>
 		<Teleport v-for="(block, index) in codeBlocks" :key="index" :to="block.target">
 			<slot name="code-block" :code="block.code" :language="block.language" />
 		</Teleport>

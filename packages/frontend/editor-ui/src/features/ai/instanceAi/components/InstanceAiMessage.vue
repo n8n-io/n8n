@@ -174,7 +174,6 @@ function formatJson(value: unknown): string {
 <template>
 	<N8nChatMessage
 		:role="props.message.role"
-		:class="isUser ? '$style.user' : '$style.assistant'"
 		:data-test-id="isUser ? 'instance-ai-user-message' : 'instance-ai-assistant-message'"
 	>
 		<!-- User message -->
@@ -234,9 +233,11 @@ function formatJson(value: unknown): string {
 			</N8nCallout>
 
 			<!-- Text content (shown when no agentTree, or streaming dots) -->
-			<N8nText v-if="showContent && !props.message.agentTree && props.message.content" size="large">
-				<InstanceAiMarkdown :content="props.message.content" />
-			</N8nText>
+
+			<InstanceAiMarkdown
+				v-if="showContent && !props.message.agentTree && props.message.content"
+				:content="props.message.content"
+			/>
 
 			<!-- Status indicator while preparing context -->
 			<div v-if="statusMessage && !props.message.content" :class="$style.statusIndicator">
@@ -296,10 +297,6 @@ function formatJson(value: unknown): string {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
-
-.assistant {
-	padding-inline: var(--spacing--xs);
-}
 
 .userMessage {
 	display: flex;
