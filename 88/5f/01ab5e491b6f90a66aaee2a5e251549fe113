@@ -1,0 +1,27 @@
+packages/frontend/@n8n/design-system/src/components/N8nCodeBlock/CodeBlock.vue
+  s_20ce479774c5f3::t_391e89064217cc 9,14,34-61,64-65,69-72,74,109-113,166,172-173,175-187,216-218,241-257
+  s_20ce479774c5f3::t_3792bd2a931172 258
+  s_20ce479774c5f3::t_f2e6e29cb209bf 5,263-264
+packages/frontend/@n8n/design-system/src/components/N8nCodeBlock/CodeBlock.test.ts
+  s_20ce479774c5f3::t_460a651e26ec15 32,39,58-75
+  s_20ce479774c5f3::t_c3725389927cb0 29-31
+  s_20ce479774c5f3::t_f0c2621eaab4a0 33-38
+  s_20ce479774c5f3::t_2fc7f8b2fe0c1c 40
+  s_20ce479774c5f3::t_8d70fba4c871a2 27-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "885f01ab5e491b6f90a66aaee2a5e251549fe113",
+  "prompts": {},
+  "sessions": {
+    "s_20ce479774c5f3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17d81-8dbf-7210-a0f1-7dcc94fd4beb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
