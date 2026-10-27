@@ -35,6 +35,7 @@ import {
 	columnIdConflictError,
 	DataTableImporter,
 } from '../entities/data-table/data-table-importer';
+import { dropRepeatedSharedWrites } from '../entities/skill/skill-import.types';
 import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
@@ -98,6 +99,7 @@ import type {
 	ResolvedImportFolderProperties,
 } from '../n8n-packages.types';
 import { mergeRequirementConsumers } from '../spec/requirement-consumers';
+import type { SerializedSkill } from '../spec/serialized/skill.schema';
 import type {
 	PackageRequirementConsumer,
 	PackageAgentRequirement,
@@ -110,6 +112,7 @@ import {
 	assertArchiveTransitionsAllowed,
 	assertCredentialUpdatesAllowed,
 	assertDataTableWritesAllowed,
+	assertSharedSkillWritesAllowed,
 	assertTagWritesAllowed,
 	assertVariableWritesAllowed,
 	assertPackageImportApiKeyScopes,
@@ -121,6 +124,8 @@ export interface ImportOrchestrationInput {
 	folders: PreparedFolder[];
 	workflows: PreparedWorkflow[];
 	agents?: PreparedAgent[];
+	/** Every skill of the package. A scope imports the ones its Agents reference. */
+	skills?: SerializedSkill[];
 	agentRequirements?: PackageAgentRequirement[];
 	credentialRequest: CredentialBindingRequest;
 	dataTableRequest: DataTableImportRequest;
@@ -277,6 +282,10 @@ export class ImportOrchestrator {
 			if (!plan.agentPlan) continue;
 			assertPackageImportApiKeyScopes(options.apiKeyScopes, requiredAgentScopes(plan.agentPlan));
 		}
+		assertSharedSkillWritesAllowed(
+			options.apiKeyScopes,
+			plans.flatMap(({ agentPlan }) => (agentPlan?.skills ? [agentPlan.skills] : [])),
+		);
 
 		return await this.collectPackageBlockingIssues(plans, options.mode);
 	}
@@ -377,6 +386,7 @@ export class ImportOrchestrator {
 		const plans: ImportPlan[] = [];
 		for (const input of inputs) plans.push(await this.planScope(input, mode));
 		if (!plans.some((plan) => plan.agentPlan)) return plans;
+		dropRepeatedSharedWrites(plans.flatMap(({ agentPlan }) => agentPlan?.skills ?? []));
 
 		const agentImporter = await this.getAgentImporter();
 		const { AgentImportBindings } = await import('../entities/agent/agent-import-bindings.js');
@@ -403,6 +413,7 @@ export class ImportOrchestrator {
 			agentPlan = await agentImporter.plan(
 				{ ...input.context, projectPendingCreation: input.projectPendingCreation },
 				input.agents,
+				input.skills ?? [],
 				input.options,
 			);
 			input = scopeAgentRequirements(input, agentPlan);

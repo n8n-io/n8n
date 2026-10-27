@@ -19,6 +19,7 @@ export {
 export { getSkillHash } from './utils/skill-hash';
 export {
 	isSameSkillTarget,
+	skillContentHashOf,
 	skillScopeOf,
 	withTrimmedName,
 	type AssistantSkillContent,

@@ -79,7 +79,7 @@ n8n-cli package import --file=export.n8np --conflict-policy=fail --bindings='{"c
 | Flag | Description |
 |------|-------------|
 | `--file` | Path to the `.n8np` package file. (required) |
-| `--conflict-policy` | What to do when an Agent or workflow matches an existing destination. `new-version` (CLI default) replaces its definition. It also archives or restores a matched workflow to match the package. These transitions require `workflow:delete`. `fail` blocks the import. `skip` leaves it unchanged. All modes create entities without a match. |
+| `--conflict-policy` | What to do when an Agent or workflow matches an existing destination. `new-version` (CLI default) replaces its definition. It also archives or restores a matched workflow to match the package. These transitions require `workflow:delete`. `fail` blocks the import. `skip` leaves it unchanged. All modes create entities without a match. The policy also applies to the skills of imported Agents: `new-version` saves a changed skill as a new version, and `fail` blocks the import when a matched skill has other content. |
 | `-p, --project-id` | Target project ID. Defaults to your personal project. (alias: `--project`) |
 | `--folder-id` | Target folder ID within the project. Defaults to the project root. (alias: `--folder`) |
 | `--publishing-policy` | Publication policy for Agents and workflows. `preserve-published-state` (instance default) keeps new entities unpublished. It republishes an updated entity only if it was published and the package contains the source-published version. `match-source` publishes that version, or unpublishes when the source has no published version. Both policies leave publication unchanged when the source publishes a version absent from the package. `publish-all` requests publication. `unpublish-all` leaves imported entities unpublished. Skipped entities remain unchanged. Archived workflows remain unpublished. |
@@ -106,6 +106,8 @@ Requires the API key to hold:
 - `workflow:import` — when the package contains workflows
 - `agent:import` and `agent:read` — when the package contains Agents
 - `agent:create`, `agent:update`, `agent:publish`, or `agent:unpublish` — when the import plans that action. Skipped Agents require no write grants.
+- `skill:create` — when the import creates a project or instance skill. The skills of one Agent need only the Agent grants.
+- `skill:update` — when the import saves a new version of a matched project or instance skill.
 - `workflow:delete` — when `--conflict-policy=new-version` archives or restores a matched workflow, or when the effective folder conflict policy is `overwrite` (set directly, or inherited from `--project-conflict-policy=overwrite`)
 - `folder:delete` — when the effective folder conflict policy is `overwrite` (set directly, or inherited from `--project-conflict-policy=overwrite`)
 - `dataTable:create` — when the package references data tables and `--data-table-missing-mode` is `create`

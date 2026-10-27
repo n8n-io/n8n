@@ -54,7 +54,9 @@ export const IMPORT_DESCRIPTION =
 	'Agent packages require `agent:import` and `agent:read`. Workflow packages require ' +
 	'`workflow:import`. Mixed packages require both import grants. Planned Agent actions also ' +
 	'require `agent:create`, `agent:update`, `agent:publish`, or `agent:unpublish`. Skipped Agents ' +
-	'do not require write grants. Destination-project permissions and dependency scopes still apply.\n\n' +
+	'do not require write grants. Creating a project or instance skill requires `skill:create`, ' +
+	'and saving a new version of one requires `skill:update`. ' +
+	'Destination-project permissions and dependency scopes still apply.\n\n' +
 	'The response contains Agent summaries in `agents`, source IDs in `bindings.agents`, and ' +
 	'totals in `counts.agents`. Definition import and publication have separate outcomes. ' +
 	'Check `agents[].publishing.state` and `workflows[].publishing.state` for publication ' +
