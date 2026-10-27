@@ -70,9 +70,6 @@ export interface WorkspacePackageTarball {
 	packagePath: string;
 }
 
-/** @deprecated Use {@link WorkspacePackageTarball} */
-export type WorkspaceSdkTarball = WorkspacePackageTarball & { sdkPath: string };
-
 export function isLinkWorkspaceSdkEnabled(): boolean {
 	const v = process.env[ENV_FLAG];
 	return v === '1' || v === 'true';
@@ -164,25 +161,6 @@ export async function packSandboxLinkedWorkspacePackages(
 	}
 
 	return packed;
-}
-
-/**
- * Pack the host-resolved `@n8n/workflow-sdk` into a tarball using `pnpm pack`.
- *
- * Returns `null` when the feature flag is off (caller can skip work
- * without needing to read the env var themselves).
- */
-export async function packWorkspaceSdk(
-	logger: Logger,
-	packageName = '@n8n/workflow-sdk',
-	// oxlint-disable-next-line typescript/no-deprecated
-): Promise<WorkspaceSdkTarball | null> {
-	if (!isLinkWorkspaceSdkEnabled()) return null;
-
-	const packed = await packWorkspacePackage(logger, packageName);
-	if (!packed) return null;
-
-	return { ...packed, sdkPath: packed.packagePath };
 }
 
 /**

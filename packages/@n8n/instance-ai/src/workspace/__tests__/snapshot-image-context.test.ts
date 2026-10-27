@@ -1,11 +1,8 @@
-import { access, readFile, rm } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import {
-	disposeSnapshotImageContext,
-	stageWorkspaceFilesForImage,
-} from '../snapshot-image-context';
+import { stageWorkspaceFilesForImage } from '../snapshot-image-context';
 
 const WORKSPACE_ROOT = '/home/daytona/workspace';
 
@@ -80,14 +77,6 @@ describe('snapshot-image-context', () => {
 		await expect(
 			readFile(join(results[0].stagingDir, 'knowledge-base/templates/example.ts'), 'utf-8'),
 		).resolves.toBe('export const x = 1;');
-	});
-
-	it('disposeSnapshotImageContext removes the staging directory', async () => {
-		const files = new Map([[`${WORKSPACE_ROOT}/build.mjs`, 'export {};']]);
-		const { stagingDir } = await stageWorkspaceFilesForImage(files, WORKSPACE_ROOT);
-		await disposeSnapshotImageContext(stagingDir);
-
-		await expect(access(stagingDir)).rejects.toThrow();
 	});
 
 	it('throws when a file path is outside the workspace root', async () => {

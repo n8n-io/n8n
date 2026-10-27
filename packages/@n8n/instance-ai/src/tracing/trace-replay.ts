@@ -1,5 +1,4 @@
 import { resolveBuilderToolName } from '@n8n/api-types';
-import { jsonParse } from 'n8n-workflow';
 
 // ── Trace Event Types ───────────────────────────────────────────────────────
 
@@ -374,34 +373,6 @@ export class TraceWriter {
 	toJsonl(): string {
 		return this.events.map((e) => JSON.stringify(e)).join('\n') + '\n';
 	}
-}
-
-// ── JSONL helpers ───────────────────────────────────────────────────────────
-
-const KNOWN_KINDS = new Set(['header', 'tool-call', 'tool-suspend', 'tool-resume']);
-
-function isTraceEvent(value: unknown): value is TraceEvent {
-	if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
-	const kind = (value as { kind?: unknown }).kind;
-	return typeof kind === 'string' && KNOWN_KINDS.has(kind);
-}
-
-export function parseTraceJsonl(jsonl: string): TraceEvent[] {
-	const events: TraceEvent[] = [];
-	const lines = jsonl.split('\n');
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		if (line.trim().length === 0) continue;
-		const parsed: unknown = jsonParse(line);
-		if (!isTraceEvent(parsed)) {
-			const kind = (parsed as { kind?: unknown } | null)?.kind;
-			const detail =
-				typeof kind === 'string' ? `unknown kind '${kind}'` : "missing or invalid 'kind' field";
-			throw new Error(`Invalid trace event on line ${i + 1}: ${detail}`);
-		}
-		events.push(parsed);
-	}
-	return events;
 }
 
 /** Set of tool IDs that should use Tier 2 (pure replay) instead of real execution. */

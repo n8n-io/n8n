@@ -193,14 +193,6 @@ function createSuspendHandler(
 }
 
 /**
- * Check if a tool has suspend/resume schemas (i.e. is interruptible).
- */
-export function isInterruptible(toolName: string, toolMap: Map<string, BuiltTool>): boolean {
-	const builtTool = toolMap.get(toolName);
-	return !!builtTool?.suspendSchema;
-}
-
-/**
  * Build a Map from tool name to BuiltTool for quick lookups. Legacy names are
  * registered too, so persisted calls under a former name still resolve. A
  * current tool name always wins over a legacy name.

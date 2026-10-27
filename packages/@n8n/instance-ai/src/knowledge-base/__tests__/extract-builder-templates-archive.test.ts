@@ -1,7 +1,4 @@
-import {
-	extractBuilderTemplatesArchive,
-	validateBuilderTemplatesArchive,
-} from '../extract-builder-templates-archive';
+import { extractBuilderTemplatesArchive } from '../extract-builder-templates-archive';
 import { makeBuilderTemplatesTarGz } from './builder-templates-archive.fixtures';
 
 const VALID_JSON_INDEX_ARCHIVE = makeBuilderTemplatesTarGz([
@@ -38,7 +35,6 @@ describe('extractBuilderTemplatesArchive', () => {
 
 		expect(extracted?.get('index.txt')).toBe('slack-daily-summary.ts | Daily Slack');
 		expect(extracted?.get('slack-daily-summary.ts')).toBe('export default {};');
-		expect(validateBuilderTemplatesArchive(VALID_CDN_INDEX_TXT_ARCHIVE)).toBeNull();
 	});
 
 	it.each<[string, Buffer]>([
@@ -48,6 +44,5 @@ describe('extractBuilderTemplatesArchive', () => {
 		['malformed gzip', Buffer.from('not-a-gzip-archive')],
 	])('returns null for invalid archive: %s', (_label, archive) => {
 		expect(extractBuilderTemplatesArchive(archive)).toBeNull();
-		expect(validateBuilderTemplatesArchive(archive)).not.toBeNull();
 	});
 });

@@ -74,7 +74,3 @@ export async function stageWorkspaceFilesForImage(
 	stagingByCacheKey.set(cacheKey, staging);
 	return await staging;
 }
-
-export async function disposeSnapshotImageContext(stagingDir: string): Promise<void> {
-	await rm(stagingDir, { recursive: true, force: true });
-}
