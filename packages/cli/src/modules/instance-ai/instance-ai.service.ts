@@ -2163,6 +2163,7 @@ export class InstanceAiService {
 		return {
 			memory: this.agentMemory,
 			resourceId: user.id,
+			getProjectId: async () => (await this.agentMemory.getThreadProjectId(threadId)) ?? undefined,
 			eventBus: this.eventBus,
 			checkpointStore: this.checkpointStore,
 			turnState: {

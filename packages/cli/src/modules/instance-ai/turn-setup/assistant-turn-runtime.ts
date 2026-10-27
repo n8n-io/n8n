@@ -14,11 +14,8 @@ import type {
 	SandboxConfig,
 } from '@n8n/instance-ai';
 
-import type { TypeORMAgentMemory } from '../storage/typeorm-agent-memory';
-
-/** The thread memory reads that the turn setup needs. */
-export type AssistantTurnMemory = ObservationLogObserverMemory &
-	Pick<TypeORMAgentMemory, 'getThread' | 'getThreadProjectId'>;
+/** The thread memory that the turn setup reads and the agent writes. */
+export type AssistantTurnMemory = ObservationLogObserverMemory;
 
 /** Turn settings that the runtime keeps for one thread between turns. */
 export interface AssistantTurnState {
@@ -54,8 +51,10 @@ export interface AssistantTurnRuntime
 		>,
 		Pick<CreateInstanceAgentOptions, 'checkpointStore' | 'onMemoryTaskEvent'> {
 	memory: AssistantTurnMemory;
-	/** The memory resource that owns the thread. */
+	/** The memory resource that owns the thread. The setup refuses a thread of another resource. */
 	resourceId: string;
+	/** The working project of the thread. */
+	getProjectId(): Promise<string | undefined>;
 	eventBus: InstanceAiEventBus;
 	turnState: AssistantTurnState;
 	/** Per-user "always allow" grants on the thread. */
