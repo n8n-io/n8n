@@ -29,6 +29,23 @@ describe('N8nActionToggle', () => {
 		expect(getByText('Duplicate')).toBeInTheDocument();
 		expect(getByText('Delete')).toBeInTheDocument();
 	});
+	it('renders an icon before the label of an item that has one', async () => {
+		const { container } = render(ActionToggle, {
+			props: {
+				actions: [
+					{ label: 'Edit', value: 'edit', icon: 'pencil' },
+					{ label: 'Duplicate', value: 'duplicate' },
+				],
+			},
+		});
+
+		await openMenu(container);
+
+		const items = document.querySelectorAll('[role="menuitem"]');
+		expect(items[0]?.querySelector('svg')).not.toBeNull();
+		expect(items[1]?.querySelector('svg')).toBeNull();
+	});
+
 	it('renders the horizontal ellipsis icon', function () {
 		const { getByRole } = render(ActionToggle, {
 			props: {

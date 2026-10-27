@@ -9,7 +9,7 @@ import {
 	N8nTooltip,
 	N8nUserInfo,
 } from '@n8n/design-system';
-import type { TableHeader, TableOptions } from '@n8n/design-system';
+import type { IconName, TableHeader, TableOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 
@@ -26,6 +26,7 @@ type SkillAction = 'edit' | 'download' | 'delete';
 type SkillActionItem = {
 	value: SkillAction;
 	label: string;
+	icon: IconName;
 	disabled?: boolean;
 	tooltip?: string;
 	destructive?: boolean;
@@ -63,14 +64,17 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 					? 'settings.context.skills.actions.edit'
 					: 'settings.context.skills.actions.view',
 			),
+			icon: skill.canEdit ? 'pencil' : 'eye',
 		},
 		{
 			value: 'download',
 			label: i18n.baseText('settings.context.skills.actions.download'),
+			icon: 'download',
 		},
 		{
 			value: 'delete',
 			label: i18n.baseText('settings.context.skills.actions.delete'),
+			icon: 'trash-2',
 			disabled: deleteBlockedReason(skill) !== undefined,
 			tooltip: deleteBlockedReason(skill),
 			destructive: true,
