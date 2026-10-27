@@ -105,4 +105,19 @@ describe('Expression — nested $json shapes (engine parity)', () => {
 	it('spreads a nested array from $json', () => {
 		expect(evaluate('={{ [...$json.rows] }}', { rows: [1, 2, 3] })).toEqual([1, 2, 3]);
 	});
+
+	it('keeps an undefined object value in the result', () => {
+		expect(evaluate('={{ { a: undefined, b: 1 } }}', {})).toStrictEqual({ a: undefined, b: 1 });
+	});
+
+	it('keeps an undefined array item in the result', () => {
+		expect(evaluate('={{ [1, undefined, 3] }}', {})).toStrictEqual([1, undefined, 3]);
+	});
+
+	it('keeps undefined values nested in the result', () => {
+		expect(evaluate('={{ { list: [undefined], inner: { a: undefined } } }}', {})).toStrictEqual({
+			list: [undefined],
+			inner: { a: undefined },
+		});
+	});
 });
