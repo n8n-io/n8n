@@ -78,10 +78,10 @@ type the remote URL or the branch names.
 PROVIDER_ID=$(n8n-cli promotion-provider create --file=gitlab-provider.json --format=id-only)
 
 # 2. Find the repository. Note its `remoteUrl` and `fullPath`.
-n8n-cli promotion-provider list-repositories "$PROVIDER_ID" --search=flows
+n8n-cli promotion-provider list-repositories "$PROVIDER_ID" --search=flows --json
 
-# 3. List the branches of that repository. The default branch shows `true`.
-n8n-cli promotion-provider list-branches "$PROVIDER_ID" acme/flows
+# 3. List the branches of that repository. The default branch has `isDefault: true`.
+n8n-cli promotion-provider list-branches "$PROVIDER_ID" acme/flows --json
 
 # 4. Create an environment for each direction. Use the `remoteUrl` from step 2
 #    and a branch name from step 3. Then connect, promote, and apply as in the
@@ -89,6 +89,10 @@ n8n-cli promotion-provider list-branches "$PROVIDER_ID" acme/flows
 n8n-cli promotion-environment create --file=promote.json
 n8n-cli promotion-environment connect env-1
 ```
+
+Steps 2 and 3 use `--json` because the table shortens values longer than 60
+characters and adds `...`. A remote URL in a nested GitLab group is often
+longer. JSON output shows the full values, so copy them from there.
 
 `gitlab-provider.json` for step 1:
 
@@ -187,6 +191,9 @@ n8n-cli promotion-provider list-branches prov-1 acme/flows --search=release
 `defaultBranch`. It lists the repositories where the token has at least the
 Developer role. Use `remoteUrl` as `remote.remoteUrl` of an environment.
 `defaultBranch` is `null` (`-` in the table) for a repository without commits.
+
+The table shortens values longer than 60 characters and adds `...`. Use
+`--json` to see the full `fullPath` and `remoteUrl` values before you copy them.
 
 `list-branches` shows `name` and `isDefault`. Give the repository as one of
 these values. Do not URL-encode it.

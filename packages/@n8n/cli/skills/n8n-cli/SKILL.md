@@ -225,8 +225,8 @@ remote URL and the branch names from it instead of guessing them:
 # {"name":"GitLab","type":"gitlab","config":{"schemaVersion":1,"baseUrl":"https://gitlab.example.com"},
 #  "auth":{"authType":"token","password":"<GitLab access token>"}}
 n8n-cli promotion-provider create --file=gitlab-provider.json --format=id-only   # providerId
-n8n-cli promotion-provider list-repositories <providerId> --search=flows         # remoteUrl, fullPath
-n8n-cli promotion-provider list-branches <providerId> <fullPath>                 # isDefault marks the default branch
+n8n-cli promotion-provider list-repositories <providerId> --search=flows --json  # remoteUrl, fullPath
+n8n-cli promotion-provider list-branches <providerId> <fullPath> --json          # isDefault marks the default branch
 # Put remoteUrl and a branch name in the environment JSON, then create and connect as above.
 ```
 
@@ -304,6 +304,8 @@ Key points:
 - `list-repositories` and `list-branches` work for `gitlab` providers only. A `git`
   provider fails with an error. Pass the repository as plain `fullPath`
   (`acme/flows`), `id`, or an environment's `remote.repositoryPath`. Do not URL-encode it.
+  Read `remoteUrl`, `fullPath` and branch names from `--json` output: the table
+  shortens values longer than 60 characters to `...`.
 - `createBranchOnPromotion` is always required in promote settings.
 - `promote` and `apply` work on an `instance` environment of their direction
   only, and need it connected first. Connecting one environment does not make another
