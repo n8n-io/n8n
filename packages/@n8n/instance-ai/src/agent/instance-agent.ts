@@ -13,9 +13,15 @@ import {
 	createClaimedToolNames,
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
+import { splitToolNamespaces } from './tool-namespaces';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
-import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
+import {
+	createToolRegistry,
+	createToolRegistryFromTools,
+	mergeToolRegistries,
+	toolRegistryValues,
+} from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
 	createOrchestrationTools,
@@ -184,11 +190,24 @@ export async function createInstanceAgent(
 			agentRole: 'orchestrator',
 			tags: ['orchestrator'],
 		}) ?? allOrchestratorTools;
+	const dynamicToolsEnabled = !options.disableDeferredTools && options.dynamicToolsEnabled === true;
+	const toolNamespaces = dynamicToolsEnabled
+		? splitToolNamespaces({
+				tools: tracedOrchestratorTools,
+				mcpToolNames: new Set(safeMcpTools.keys()),
+				localMcpToolNames: new Set(safeLocalMcpTools.keys()),
+			})
+		: undefined;
 	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools);
-	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
+	const hasDeferrableTools =
+		!dynamicToolsEnabled && !options.disableDeferredTools && deferredTools.size > 0;
 	const hasDeferredExternalMcpTools =
 		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));
-	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
+	const runtimeTools = toolNamespaces
+		? createToolRegistryFromTools(toolNamespaces.attachedTools)
+		: hasDeferrableTools
+			? coreTools
+			: tracedOrchestratorTools;
 	const baseSystemPrompt = getVersionedSystemPrompt(
 		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
 			resolvePromptProfile({}).profile.systemPromptVersion,
@@ -196,6 +215,7 @@ export async function createInstanceAgent(
 			browserUseState: context.browserUseState,
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
+			dynamicToolsEnabled: toolNamespaces !== undefined && toolNamespaces.namespaces.length > 0,
 			licenseHints: context.licenseHints,
 			branchReadOnly: context.branchReadOnly,
 			parameterValuesHidden: context.allowSendingParameterValues === false,
@@ -246,6 +266,9 @@ export async function createInstanceAgent(
 	}
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
+	}
+	if (toolNamespaces && toolNamespaces.namespaces.length > 0) {
+		agent.dynamicTools({ namespaces: toolNamespaces.namespaces });
 	}
 	// The agents module owns the builder skills that are generated from its config schema.
 	const builderSkills = context.builderDelegate?.getRuntimeSkills() ?? [];
@@ -300,7 +323,11 @@ export async function createInstanceAgent(
 			systemPrompt,
 			promptConfiguration: orchestrationContext?.promptConfiguration,
 			tools: runtimeTools,
-			deferredTools: hasDeferrableTools ? deferredTools : undefined,
+			deferredTools: hasDeferrableTools
+				? deferredTools
+				: toolNamespaces
+					? createToolRegistryFromTools(toolNamespaces.namespaces.flatMap((ns) => ns.tools))
+					: undefined,
 			modelId,
 			memory: options.memory
 				? {
@@ -318,7 +345,11 @@ export async function createInstanceAgent(
 					}
 				: undefined,
 			toolSearchEnabled: hasDeferrableTools,
-			inputProcessors: hasDeferrableTools ? ['NativeToolSearch'] : undefined,
+			inputProcessors: hasDeferrableTools
+				? ['NativeToolSearch']
+				: toolNamespaces
+					? ['DynamicTools']
+					: undefined,
 			skills: skills?.registry,
 		}),
 	);

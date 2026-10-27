@@ -14,6 +14,8 @@ interface SystemPromptOptions {
 	browserUseState?: BrowserUseState;
 	toolSearchEnabled?: boolean;
 	mcpToolSearchEnabled?: boolean;
+	/** Tools sit in namespaces behind `get_tools` and `call_tool`. Replaces tool search. */
+	dynamicToolsEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
@@ -40,10 +42,20 @@ export function getDateTimeSection(timeZone?: string): string {
 	return `The user's current local date and time is: ${isoTime}${tzLabel}. When you need to reference "now", use this date and time.`;
 }
 
+const DYNAMIC_TOOLS_SECTION = `
+## Tool Discovery
+
+Some tools are not in your tool list. The dynamic tool catalog lists them by namespace. To use one, call \`get_tools\` for its input schema, then \`call_tool\` with the namespace, the tool name and the arguments. When this prompt or a skill names a tool you do not see, find it in the catalog and call it through \`call_tool\`. For requests about a connected service, check the \`mcp_*\` namespaces before you say the integration is unavailable or ask the user to connect it.
+
+For questions about n8n itself — how a node behaves, the shape of its output, what a parameter does, product semantics — prefer \`n8n-docs\` and the node type definitions over web search, which is for third-party services and APIs.
+`;
+
 function getToolDiscoverySection(
 	toolSearchEnabled?: boolean,
 	mcpToolSearchEnabled?: boolean,
+	dynamicToolsEnabled?: boolean,
 ): string {
+	if (dynamicToolsEnabled) return DYNAMIC_TOOLS_SECTION;
 	if (!toolSearchEnabled) return '';
 
 	const mcpSearchGuidance = mcpToolSearchEnabled
@@ -249,6 +261,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			browserUseState,
 			toolSearchEnabled,
 			mcpToolSearchEnabled,
+			dynamicToolsEnabled,
 			licenseHints,
 			branchReadOnly,
 			parameterValuesHidden,
@@ -270,7 +283,7 @@ ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
-${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
+${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled, dynamicToolsEnabled)}
 ${communicationStyleSection}
 
 ## Capability Honesty

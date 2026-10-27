@@ -2258,6 +2258,12 @@ export interface CreateInstanceAgentOptions {
 	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
 	disableDeferredTools?: boolean;
+	/**
+	 * Put deferred tools in namespaces behind the fixed `get_tools` and `call_tool`
+	 * tools instead of provider tool search. Works with every model provider.
+	 * Ignored when `disableDeferredTools` is set.
+	 */
+	dynamicToolsEnabled?: boolean;
 	/** When false, extended thinking / reasoning is not enabled. Defaults to true. */
 	thinkingEnabled?: boolean;
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
