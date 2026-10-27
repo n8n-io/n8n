@@ -239,6 +239,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'team-project-deleted': (event) => this.teamProjectDeleted(event),
 			'team-project-created': (event) => this.teamProjectCreated(event),
 			'source-control-settings-updated': (event) => this.sourceControlSettingsUpdated(event),
+			'source-control-environments-version-switched': (event) =>
+				this.sourceControlEnvironmentsVersionSwitched(event),
 			'source-control-user-started-pull-ui': (event) => this.sourceControlUserStartedPullUi(event),
 			'source-control-user-finished-pull-ui': (event) =>
 				this.sourceControlUserFinishedPullUi(event),
@@ -360,6 +362,7 @@ export class TelemetryEventRelay extends EventRelay {
 				this.instanceAiMcpRegistryConnectionDeleted(event),
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 			'runner-disconnected': (event) => this.runnerDisconnected(event),
+			'memory-guard-execution-stopped': (event) => this.memoryGuardExecutionStopped(event),
 		});
 	}
 
@@ -465,6 +468,18 @@ export class TelemetryEventRelay extends EventRelay {
 			connected,
 			connection_type: connectionType,
 		});
+	}
+
+	private sourceControlEnvironmentsVersionSwitched({
+		userId,
+		version,
+	}: RelayEventMap['source-control-environments-version-switched']) {
+		this.telemetry.track(
+			version === 'v2'
+				? TELEMETRY_EVENT.PROMOTIONS.USER_SWITCHED_TO_ENVIRONMENTS_V2
+				: TELEMETRY_EVENT.PROMOTIONS.USER_SWITCHED_BACK_TO_ENVIRONMENTS_V1,
+			{ user_id: userId },
+		);
 	}
 
 	private sourceControlUserStartedPullUi({
@@ -2108,6 +2123,23 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private runnerDisconnected({ reason, mode }: RelayEventMap['runner-disconnected']) {
 		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED, { reason, mode });
+	}
+
+	private memoryGuardExecutionStopped(event: RelayEventMap['memory-guard-execution-stopped']) {
+		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION, {
+			workflow_id: event.workflowId,
+			execution_mode: event.mode,
+			reason: event.reason,
+			running_node_type: event.runningNodeType,
+			largest_data_node_type: event.largestDataNodeType,
+			estimated_bytes: event.estimatedBytes,
+			memory_used_bytes: event.memoryUsedBytes,
+			memory_limit_bytes: event.memoryLimitBytes,
+			freed_memory: event.freedMemory,
+			workflow_deactivation_started: event.workflowDeactivationStarted,
+		});
+		// An OOM kill can follow a stop within the flush interval, so send the event now.
+		void this.telemetry.flushQueue();
 	}
 
 	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {

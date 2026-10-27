@@ -303,7 +303,7 @@ async function validateChannelTypes(
 
 /**
  * Validate input, then auto-resolve every credential slot using the same
- * rules as agent_builder_ask_credential (matching channel credential first, then a single
+ * rules as credentials setup for an Agent (matching channel credential first, then a single
  * existing credential of the type). Slots that cannot be auto-resolved
  * become a phase. Phase order is fixed: questions, then credentials, then
  * one channel phase per requested channel — channels always run last after
