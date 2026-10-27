@@ -237,11 +237,11 @@ The investigation instructions must keep sensitive values out of reports, summar
 suggestion explanations, and error context. The text filter handles recognized patterns.
 It does not remove arbitrary private information.
 
-| Outcome         | Suggestion | Actions                                      |
-| --------------- | ---------- | -------------------------------------------- |
-| `fix_ready`     | Required   | Approve and publish, Open in editor, Discard |
-| `needs_you`     | Optional   | Continue in chat, Dismiss                    |
-| `could_not_fix` | None       | Continue in chat                             |
+| Outcome         | Suggestion | Actions                                                    |
+| --------------- | ---------- | ---------------------------------------------------------- |
+| `fix_ready`     | Required   | Apply and publish, Continue in Assistant or editor, Discard |
+| `needs_you`     | Optional   | Continue in Assistant or editor, Discard                    |
+| `could_not_fix` | None       | None. The result closes automatically                       |
 
 The summary is a plain-language title with at most 80 characters.
 The agent writes the report as one Markdown string with two sections: **What happened**
@@ -279,15 +279,18 @@ Routes use `/projects/:projectId/workflows/:workflowId/self-healing-results`:
 - `POST /:resultId/dismiss`
 
 Assigned reviewers with current workflow edit access can review results. Approval also requires
-publish access. Reviewer filtering applies to Inbox lists, counts, details, and actions.
+publish access. Approval accepts only Fix ready results. Apply accepts Fix ready and Needs attention
+results that have a suggestion. Reviewer filtering applies to Inbox lists, counts, details, and actions.
 Each action resolves its suggestion from the result and returns the updated review.
 Send the editor client ID in `push-ref` for Apply actions.
 Read the returned review state before navigating. A competing action can close the suggestion first.
+The first successful action closes the result. Later Apply, approval, and dismissal requests return
+a conflict and do not save or publish again. An outdated suggestion returns `outdated`.
 Apply saves the proposed fix without publishing; the UI opens the editor when `reviewState` is `applied`.
 Detail reads do not change suggestion state. Workflow events reconcile stale suggestions, and actions
 check the current workflow before writing. If Apply fails, keep the review open and show the error.
 
-Both Discard and Dismiss buttons call `POST /:resultId/dismiss`.
+The Discard and close button calls `POST /:resultId/dismiss`.
 Dismissal discards an attached pending suggestion. Fix-ready results derive their discarded state
 from the suggestion. Needs attention results also record dismissal in the same transaction.
 Dismissal leaves automatically closed Could not fix results unchanged and returns `closed`.
@@ -296,13 +299,15 @@ Already applied, discarded, or outdated suggestions keep their existing closure.
 Apply uses the existing suggestion action service. An applied result stays applied if publication
 returns an error. `publishError` describes that request only. The response includes the workflow
 ID and the suggestion's recorded applied version. Open the normal editor for publication status
-and recovery. Repeating a review action does not save or publish again.
+and recovery.
 
-For Continue in chat, fetch the result detail again to check current access.
-Pass `report` to the normal Assistant handoff. Build a workflow attachment from `workflowId`.
-Include `execution.id` only when `execution.status` is `available`.
-Offer this action for `needs_you` and `could_not_fix` results.
+Continuation applies a suggestion to the workflow draft, or dismisses a result without one.
+It opens the destination only when the result becomes `applied` or `dismissed`.
+For the Assistant, pass `report` to the normal Assistant handoff. Build a workflow attachment
+from `workflowId`. Include `execution.id` only when `execution.status` is `available`.
 The normal handoff opens a new chat in the clicking user's personal project.
+Do not use the result's `projectId`. A reviewer can lack read access to that project.
+Load the personal project before the review action. If it cannot load, keep the result open.
 Normal chat ownership and tool permissions apply. Do not copy the background conversation or grants.
 
 ## Availability

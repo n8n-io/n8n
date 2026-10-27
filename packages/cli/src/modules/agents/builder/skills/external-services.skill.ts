@@ -16,14 +16,14 @@ export function externalServicesSkill(): RuntimeSkill {
 		recommendedTools: [
 			'agent-context',
 			'agent_builder_configure_channel',
-			'agent_builder_ask_credential',
+			'setup_credentials',
 			'agent_builder_verify_mcp_server',
 			'agent_builder_patch_config',
 		],
 		allowedTools: [
 			'agent-context',
 			'agent_builder_configure_channel',
-			'agent_builder_ask_credential',
+			'setup_credentials',
 			'agent_builder_verify_mcp_server',
 			'agent_builder_ask_questions',
 			'agent_builder_patch_config',
@@ -128,7 +128,7 @@ The \`integrations\` array controls how the target agent is triggered.
   \`useNodeToolWhen\` fields before deciding to add an integration.
 - Pick one returned \`type\` and pass it to \`agent_builder_configure_channel\` as
   \`integrationType\`. ALWAYS use \`agent_builder_configure_channel\` for chat-channel
-  credentials — never \`agent_builder_ask_credential\` or a raw config write. The setup UI it
+  credentials — never \`setup_credentials(target: "agent")\` or a raw config write. The setup UI it
   shows creates and persists the channel configuration without publishing the
   agent; do not follow up with \`agent_builder_patch_config\`/\`agent_builder_write_config\` to write the
   credential.
@@ -225,12 +225,12 @@ search terms for that service.
 
 Follow these steps for the selected MCP result:
 
-1. Credential: call \`agent_builder_ask_credential\` with a short \`purpose\`, using
-   \`selectedResult.credentialType\` as \`credentialType\`. Never invent
-   credential IDs.
+1. Credential: call
+   \`setup_credentials({ target: "agent", credentials: [{ credentialType: selectedResult.credentialType, reason: "<short reason>" }] })\`.
+   Never invent credential IDs.
 2. Verify: call \`agent_builder_verify_mcp_server\` with the selected result's \`name\`, \`url\`,
    \`transport\`, \`authentication\`, and optional \`metadata\`, plus the returned
-   \`credentialId\` as \`credential\` when authentication is required.
+   \`credentials[selectedResult.credentialType].id\` as \`credential\` when authentication is required.
 3. Capability check: confirm the verified tool names and descriptions cover the
    capability the user requested.
 4. Write config: call \`agent-context({ type: "config" })\`, then \`agent_builder_patch_config\` to add the entry to
@@ -253,7 +253,7 @@ additions keep the immediate ask + verify flow above unchanged.
 
 If verification succeeds but the tools do not cover the requested capability
 for a generic service request, load \`agent-builder-node-tools\`, call
-\`agent_builder_search_nodes\` with the same service queries, and follow that skill. Do not
+\`search_nodes\` (with \`scope: "agent_tool"\`) with the same service queries, and follow that skill. Do not
 add the MCP server merely because its registry entry matched.
 
 Full schema reference:
@@ -284,20 +284,19 @@ ${mcpServerSchemaText}
 
 ### Credential flow
 
-- For \`bearerAuth\`, call \`agent_builder_ask_credential\` with
-  \`credentialType: "httpBearerAuth"\`.
-- For \`headerAuth\`, call \`agent_builder_ask_credential\` with
-  \`credentialType: "httpHeaderAuth"\`.
-- For \`multipleHeadersAuth\`, call \`agent_builder_ask_credential\` with
-  \`credentialType: "httpMultipleHeadersAuth"\`.
-- For \`mcpOAuth2Api\`, call \`agent_builder_ask_credential\` with
-  \`credentialType: "mcpOAuth2Api"\`.
+Call \`setup_credentials({ target: "agent", credentials: [{ credentialType, reason }] })\`
+with the \`credentialType\` for the authentication:
+
+- For \`bearerAuth\`, use \`credentialType: "httpBearerAuth"\`.
+- For \`headerAuth\`, use \`credentialType: "httpHeaderAuth"\`.
+- For \`multipleHeadersAuth\`, use \`credentialType: "httpMultipleHeadersAuth"\`.
+- For \`mcpOAuth2Api\`, use \`credentialType: "mcpOAuth2Api"\`.
 
 ### Testing the connection
 
 Before writing to config, call \`agent_builder_verify_mcp_server\` with server \`name\`,
 \`url\`, \`transport\`, optional registry \`metadata\`, and (if applicable) the
-credential id from \`agent_builder_ask_credential\`.
+credential id from \`setup_credentials(target: "agent")\` (\`credentials[<credentialType>].id\`).
 
 - Success returns \`{ ok: true, tools: [{ name, description }] }\`, and when a
   matching \`mcpServers\` entry exists, also \`credentialApplied: true,
@@ -318,7 +317,7 @@ invent a credential ID or a placeholder URL to fill the gap, and never abort
 the server addition — always persist what is known and let the user finish
 setup later:
 
-- Credential skipped (\`agent_builder_ask_credential\` returned \`{ skipped: true }\`): omit
+- Credential skipped (the \`setup_credentials(target: "agent")\` result lists the type in \`skipped\`): omit
   only the \`credential\` field.
 - URL skipped: persist \`url: ""\`.
 - Either case: skip \`agent_builder_verify_mcp_server\` (there is nothing to authenticate or
@@ -336,11 +335,11 @@ For custom MCP servers, if credential type is unknown, ask the user which
 credential type to use (OAuth2, Bearer Token, Header Auth, Multiple Headers
 Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 
-- \`bearerAuth\` -> \`agent_builder_ask_credential\` with \`credentialType: "httpBearerAuth"\`
-- \`headerAuth\` -> \`agent_builder_ask_credential\` with \`credentialType: "httpHeaderAuth"\`
-- \`multipleHeadersAuth\` -> \`agent_builder_ask_credential\` with
+- \`bearerAuth\` -> \`setup_credentials(target: "agent")\` with \`credentialType: "httpBearerAuth"\`
+- \`headerAuth\` -> \`setup_credentials(target: "agent")\` with \`credentialType: "httpHeaderAuth"\`
+- \`multipleHeadersAuth\` -> \`setup_credentials(target: "agent")\` with
   \`credentialType: "httpMultipleHeadersAuth"\`
-- \`mcpOAuth2Api\` -> \`agent_builder_ask_credential\` with \`credentialType: "mcpOAuth2Api"\`
+- \`mcpOAuth2Api\` -> \`setup_credentials(target: "agent")\` with \`credentialType: "mcpOAuth2Api"\`
 
 ### Patch pattern
 
@@ -364,7 +363,7 @@ Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 ## Verify
 
 - Configured chat integrations were set up through \`agent_builder_configure_channel\` or the
-  initial-build \`agent_builder_finish_setup\` channel card, not \`agent_builder_ask_credential\` or a manual
+  initial-build \`agent_builder_finish_setup\` channel card, not \`setup_credentials(target: "agent")\` or a manual
   config write.
 - The chosen integration matches \`useIntegrationWhen\`; otherwise resolve the
   callable capability through \`agent-context\` and use MCP, node, or

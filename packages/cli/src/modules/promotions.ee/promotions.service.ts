@@ -18,9 +18,11 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
@@ -32,6 +34,8 @@ import {
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
+import { manifestEntrySchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import {
 	CredentialConflictPolicy,
 	DataTableMissingMode,
@@ -41,6 +45,7 @@ import {
 	FolderConflictPolicy,
 	MissingNodeTypeMode,
 	OverwriteDeletionPolicy,
+	LayoutConflictPolicy,
 	ProjectConflictPolicy,
 	TagConflictPolicy,
 	TagMissingMode,
@@ -53,15 +58,23 @@ import {
 	type ImportResult,
 	type ImportSelection,
 } from '@/modules/n8n-packages/n8n-packages.types';
+import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-files';
+import { projectHolding } from './branch-placement';
 import {
-	GIT_DEFAULT_COMMIT_EMAIL,
-	GIT_DEFAULT_COMMIT_NAME,
-	PACKAGE_SUBFOLDER,
-	PROMOTE_SELECTION_COMMIT_MESSAGE,
-} from './constants';
+	crossProjectMoves,
+	describeCrossProjectMoves,
+	describePromotedMoves,
+	foldersInScope,
+	type CrossProjectMoves,
+} from './cross-project-moves';
+import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
+import {
+	buildInstancePromotionCommitMessage,
+	buildSelectionPromotionCommitMessage,
+} from './promotion-commit-message';
 import { PromotionBindingPreflightService } from './promotion-binding-preflight.service';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
@@ -69,6 +82,7 @@ import { PromotionRunRepository } from './database/repositories/promotion-run.re
 import { PromotionReviewsService } from './promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
+import { PromotionsWorkflowsMovedCrossProjectError } from './promotions-selective-push.error';
 import {
 	buildCacheDescriptor,
 	buildPromotionBranchName,
@@ -82,9 +96,19 @@ import type {
 	PromotionGitCredentials,
 	PromotionOperationInput,
 } from './promotions.types';
-import { WorkingCopyUpdater, type SelectivePushOptions } from './working-copy-updater';
+import {
+	WorkingCopyUpdater,
+	type ScannedBranch,
+	type SelectivePushOptions,
+} from './working-copy-updater';
 
 type ProjectReconciliationResult = { deletedProjectIds: string[] };
+
+type PushedPromotion = {
+	commitSha: string;
+	counts: PromotePackageResultDto['counts'];
+	commitMessage: string;
+};
 
 /** Conflicts that `confirmDestructiveChanges` lets the apply continue past. */
 function isConfirmableConflict(code: PromotionBindingConflict['code']): boolean {
@@ -101,7 +125,7 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	missingNodeTypeMode: MissingNodeTypeMode.Fail,
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
-	credentialConflictPolicy: CredentialConflictPolicy.KeepExisting,
+	credentialConflictPolicy: CredentialConflictPolicy.Overwrite,
 	folderConflictPolicy: FolderConflictPolicy.Overwrite,
 	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 	dataTableMatchingMode: 'by-id',
@@ -128,6 +152,7 @@ export class PromotionsService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectService: ProjectService,
+		private readonly folderService: FolderService,
 		private readonly n8nPackagesService: N8nPackagesService,
 		private readonly bindingPreflight: PromotionBindingPreflightService,
 		private readonly inventoryReader: PackageDirectoryInventoryReader,
@@ -183,9 +208,16 @@ export class PromotionsService {
 
 		const branchName = checkoutBranchName(input.config);
 		const credentials = await this.credentialsFor(input);
-		const targetBranchName = await this.prepareTargetBranch(input, branchName, credentials);
+		const target = await this.prepareTargetBranch(input, branchName, credentials);
+		const targetBranchName = target?.targetBranchName;
 		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
+		await this.assertNoProjectMovesSinceBranch(
+			input,
+			branchName,
+			credentials,
+			target?.baseCommitSha,
+		);
 
 		// The instance environment covers every team project, including projects with
 		// their own environment. Personal projects stay out of scope.
@@ -199,7 +231,7 @@ export class PromotionsService {
 		await mkdir(repositoryFolder, { recursive: true });
 		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${PACKAGE_SUBFOLDER}-`));
 
-		let pushed: { commitSha: string; counts: PromotePackageResultDto['counts'] };
+		let pushed: PushedPromotion;
 		try {
 			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
 				{
@@ -229,6 +261,12 @@ export class PromotionsService {
 				await this.workingDirectory.invalidateDescriptor(input.environmentId);
 			}
 
+			const commitMessage =
+				request.commitMessage ??
+				buildInstancePromotionCommitMessage({
+					projectCount: projectIds.length,
+					workflowCount: exportResult.counts.workflows,
+				});
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
 				credentials,
@@ -237,14 +275,14 @@ export class PromotionsService {
 				targetBranchName,
 				environmentId: input.environmentId,
 				author: this.commitAuthor(actor),
-				commitMessage: request.commitMessage,
+				commitMessage,
 				// A promotion branch must be new, so force does not apply.
 				force: targetBranchName ? false : (request.force ?? false),
 				stagePathspec: PACKAGE_SUBFOLDER,
 				onCheckoutRestored: async () =>
 					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
 			});
-			pushed = { commitSha, counts: exportResult.counts };
+			pushed = { commitSha, counts: exportResult.counts, commitMessage };
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
 		}
@@ -256,7 +294,7 @@ export class PromotionsService {
 			...(await this.openReview(input, actor, {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
-				title: request.commitMessage,
+				commitMessage: pushed.commitMessage,
 				promotionRunContents: { projectIds },
 			})),
 		};
@@ -269,7 +307,7 @@ export class PromotionsService {
 		push: {
 			promotionBranchName: string | undefined;
 			commitSha: string;
-			title: string;
+			commitMessage: string;
 			promotionRunContents: PromotionRunContents;
 		},
 	): Promise<Pick<PromotePackageResultDto, 'review' | 'warnings'>> {
@@ -293,7 +331,8 @@ export class PromotionsService {
 			};
 		}
 		if (!push.promotionBranchName) return {};
-		const lines = push.title.split('\n');
+		// The first line becomes the merge request title, the rest its description.
+		const lines = push.commitMessage.split('\n');
 		const titleIndex = lines.findIndex((line) => line.trim() !== '');
 		if (titleIndex === -1) {
 			return {
@@ -359,21 +398,23 @@ export class PromotionsService {
 	private async promoteSelectionResolved(
 		input: PromotionOperationInput,
 		actor: User,
-		request: { commitMessage: string; canExportVariableValues: boolean },
+		request: { commitMessage?: string; canExportVariableValues: boolean },
 		selection: SelectivePushOptions,
+		movedTo: ReadonlyMap<string, string>,
 	): Promise<PromotePackageResultDto> {
 		// NOTE: This assertion needs adjusting once we add full support for project-scoped promotions.
 		this.assertInstanceScope(input, 'Promote');
 
 		this.workingCopy.validateSelection(selection);
-		await this.assertTeamProject(selection.projectId);
+		const project = await this.assertTeamProject(selection.projectId);
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
 		const credentials = await this.credentialsFor(input);
 		// A branched environment resets the checkout to the latest base here, so the
 		// selection applies on top of it and pushes to a fresh promotion branch.
-		const targetBranchName = await this.prepareTargetBranch(input, branchName, credentials);
+		const targetBranchName = (await this.prepareTargetBranch(input, branchName, credentials))
+			?.targetBranchName;
 
 		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
@@ -395,13 +436,20 @@ export class PromotionsService {
 		}
 
 		const branch = await this.workingCopy.assertSelectionFitsBranch(packageFolder, selection);
+		// After the branch checks, so an id the branch holds elsewhere gets its own error first. The
+		// destination can't tell a move from a removal and would delete the workflow.
+		if (movedTo.size > 0) {
+			throw new PromotionsWorkflowsMovedCrossProjectError(
+				[...movedTo].map(([id, place]) => ({ id, detail: `now in ${place} here` })),
+			);
+		}
 
 		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${PACKAGE_SUBFOLDER}-`));
 		const prePushBackup = `${packageFolder}.pre-selection`;
 		let backedUp = false;
 		let keepPrePushBackup = false;
 
-		let pushed: { commitSha: string; counts: PromotePackageResultDto['counts'] };
+		let pushed: PushedPromotion;
 		try {
 			if (packageExisted) {
 				await rm(prePushBackup, { recursive: true, force: true });
@@ -442,6 +490,9 @@ export class PromotionsService {
 				await this.workingDirectory.invalidateDescriptor(input.environmentId);
 			}
 
+			const commitMessage =
+				request.commitMessage ??
+				this.defaultSelectionCommitMessage(project.name, selection, staging, branch);
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
 				credentials,
@@ -450,7 +501,7 @@ export class PromotionsService {
 				targetBranchName,
 				environmentId: input.environmentId,
 				author: this.commitAuthor(actor),
-				commitMessage: request.commitMessage,
+				commitMessage,
 				// A promotion branch must be new, so force never applies.
 				force: false,
 				stagePathspec: PACKAGE_SUBFOLDER,
@@ -458,7 +509,7 @@ export class PromotionsService {
 				onCheckoutRestored: async () =>
 					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
 			});
-			pushed = { commitSha, counts };
+			pushed = { commitSha, counts, commitMessage };
 		} catch (error) {
 			if (backedUp) {
 				await rm(packageFolder, { recursive: true, force: true }).catch((restoreError: unknown) => {
@@ -504,7 +555,7 @@ export class PromotionsService {
 			...(await this.openReview(input, actor, {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
-				title: request.commitMessage,
+				commitMessage: pushed.commitMessage,
 				promotionRunContents: { projectIds: [selection.projectId] },
 			})),
 		};
@@ -513,8 +564,8 @@ export class PromotionsService {
 	/**
 	 * Promotes a client-chosen set of a project's workflows. The client sends ids
 	 * only; the server reads each one now, so the push carries the current state.
-	 * Live and archived workflows export; an id this project no longer owns (gone,
-	 * or moved to another project) leaves the branch, matching the change list.
+	 * Live and archived workflows export; an id that is gone from the instance leaves
+	 * the branch. A workflow that moved to another project is refused.
 	 */
 	async promoteProjectSelection(
 		projectId: string,
@@ -529,50 +580,57 @@ export class PromotionsService {
 		// the user previewed. resolveForProject validates the project and environment too.
 		const input = await this.resolver.resolveForProject(projectId, 'promote');
 
-		const selection = await this.classifySelection(projectId, request.workflowIds);
+		const { selection, movedTo } = await this.classifySelection(projectId, request.workflowIds);
 
 		return await this.promoteSelectionResolved(
 			input,
 			actor,
 			{
-				commitMessage: request.commitMessage ?? PROMOTE_SELECTION_COMMIT_MESSAGE,
+				commitMessage: request.commitMessage,
 				canExportVariableValues: request.canExportVariableValues,
 			},
 			selection,
+			movedTo,
 		);
 	}
 
 	/**
 	 * Splits selected ids into pushes and deletions, using the current instance
 	 * state. A live or archived workflow this project owns exports; an id it no
-	 * longer owns — gone from the instance, or moved to another project — leaves
-	 * the branch. This matches the change list, which shows both as deletions.
-	 * assertDeletionsOnBranch rejects a deletion the branch does not hold under
-	 * this project, so a foreign id never writes.
+	 * longer owns leaves the branch. An id that another project owns now is also
+	 * returned in `movedTo`, which says where it is now, because promote refuses it
+	 * as a move.
 	 */
 	private async classifySelection(
 		projectId: string,
 		workflowIds: string[],
-	): Promise<SelectivePushOptions> {
+	): Promise<{ selection: SelectivePushOptions; movedTo: Map<string, string> }> {
 		const ownerProjects =
 			await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
 
 		const live: string[] = [];
 		const deleted: string[] = [];
+		const movedTo = new Map<string, string>();
 		for (const id of workflowIds) {
-			// This project does not own the workflow: it is gone, or it moved to
-			// another project. Either way the project has dropped it, so promote it
-			// as a deletion.
-			if (ownerProjects.get(id)?.id !== projectId) {
-				deleted.push(id);
+			const owner = ownerProjects.get(id);
+			if (owner?.id === projectId) {
+				// Archived workflows travel like live ones, so the branch keeps them
+				// archived instead of removing them, matching a full promote.
+				live.push(id);
 				continue;
 			}
-			// Archived workflows travel like live ones, so the branch keeps them
-			// archived instead of removing them, matching a full promote.
-			live.push(id);
+			// A personal project's name holds its owner's email, and error messages reach the UI and
+			// telemetry, so it stays out.
+			if (owner) {
+				movedTo.set(id, owner.type === 'team' ? `project "${owner.name}"` : 'a personal project');
+			}
+			deleted.push(id);
 		}
 
-		return { projectId, workflowIds: live, deletedWorkflowIds: deleted };
+		return {
+			selection: { projectId, workflowIds: live, deletedWorkflowIds: deleted },
+			movedTo,
+		};
 	}
 
 	/** Checks package bindings and imports only when no blocking issues remain. */
@@ -624,36 +682,31 @@ export class PromotionsService {
 		);
 	}
 
+	/** `movedWorkflowIds` comes from findCrossProjectMoves, so a moved workflow is never planned as a deletion. */
 	private async classifyApplySelection(
 		inventory: PackageDirectoryInventory,
 		projectId: string,
 		workflowIds: string[],
-	): Promise<{ selection: ImportSelection; movedWorkflowIds: string[] }> {
+		movedWorkflowIds: ReadonlySet<string>,
+	): Promise<ImportSelection> {
 		const branchWorkflowIds = new Set(
 			inventory.workflows
 				.filter((workflow) => workflow.projectId === projectId)
 				.map(({ id }) => id),
 		);
-		const packageWorkflowIds = new Set(inventory.workflows.map(({ id }) => id));
 		const ownerProjects =
 			await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
 
 		const selectedWorkflowIds: string[] = [];
 		const deletedWorkflowIds: string[] = [];
-		const movedWorkflowIds: string[] = [];
 		const invalidWorkflowIds: string[] = [];
 		for (const id of workflowIds) {
 			if (branchWorkflowIds.has(id)) {
 				selectedWorkflowIds.push(id);
 			} else if (ownerProjects.get(id)?.id === projectId) {
-				// The instance still owns it here. If the package holds it under another
-				// project it is a cross-project move, which a selective apply cannot make;
-				// otherwise the package dropped it, so it is a deletion.
-				if (packageWorkflowIds.has(id)) {
-					movedWorkflowIds.push(id);
-				} else {
-					deletedWorkflowIds.push(id);
-				}
+				// The instance still owns it here. A move is reported, not deleted; otherwise the
+				// package dropped it, so it is a deletion.
+				if (!movedWorkflowIds.has(id)) deletedWorkflowIds.push(id);
 			} else {
 				invalidWorkflowIds.push(id);
 			}
@@ -665,10 +718,34 @@ export class PromotionsService {
 			);
 		}
 
-		return {
-			selection: { selectedProjectId: projectId, selectedWorkflowIds, deletedWorkflowIds },
-			movedWorkflowIds,
-		};
+		return { selectedProjectId: projectId, selectedWorkflowIds, deletedWorkflowIds };
+	}
+
+	/**
+	 * Loads what the move check needs: who holds each package workflow and folder here, and which
+	 * branch projects exist here.
+	 */
+	private async findCrossProjectMoves(
+		inventory: PackageDirectoryInventory,
+		projectId?: string,
+	): Promise<CrossProjectMoves> {
+		const [owners, folders, existingProjects] = await Promise.all([
+			this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
+				inventory.workflows.map(({ id }) => id),
+			),
+			this.folderService.getFoldersByIds(
+				foldersInScope(inventory.folders, projectId).map(({ folder }) => folder.id),
+			),
+			// Instance-wide Apply creates missing projects, but only after this check refuses a move.
+			this.projectRepository.findTypesByIds(inventory.projects.map(({ id }) => id)),
+		]);
+		return crossProjectMoves({
+			inventory,
+			owners,
+			folderHomes: new Map(folders.map(({ id, homeProject }) => [id, homeProject])),
+			existingProjectIds: new Set(existingProjects.map(({ id }) => id)),
+			projectId,
+		});
 	}
 
 	/**
@@ -705,42 +782,24 @@ export class PromotionsService {
 			},
 		});
 
-		const branchWorkflowIds = inventory.workflows
-			.filter((workflow) => workflow.projectId === projectId)
-			.map(({ id }) => id);
-		const ownedWorkflowIds = await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([
-			projectId,
-		]);
-		const { selection, movedWorkflowIds } = await this.classifyApplySelection(
-			inventory,
-			projectId,
-			[...new Set([...branchWorkflowIds, ...ownedWorkflowIds])],
-		);
+		const moves = await this.findCrossProjectMoves(inventory, projectId);
+		// Only workflows on the branch import. Deletions and moves need no bindings.
 		const preflight = await this.bindingPreflight.checkInventory({
 			inventory,
 			selection: {
 				selectedProjectId: projectId,
-				selectedWorkflowIds: selection.selectedWorkflowIds,
+				selectedWorkflowIds: inventory.workflows
+					.filter((workflow) => workflow.projectId === projectId)
+					.map(({ id }) => id),
 			},
 		});
-
-		const projects = new Map(inventory.projects.map(({ id, name }) => [id, { id, name }]));
-		const movedWorkflows = inventory.workflows
-			.filter(({ id }) => movedWorkflowIds.includes(id))
-			.map(({ id, name, projectId: branchProjectId }) => {
-				const project = projects.get(branchProjectId);
-				// The reader requires a project file for every project directory.
-				if (!project)
-					throw new UnexpectedError(`Package inventory has no project "${branchProjectId}"`);
-				return { id, name, project };
-			})
-			.sort((a, b) => a.id.localeCompare(b.id));
 
 		return {
 			environmentId: input.environmentId,
 			git: { commitSha, branchName },
 			preflight,
-			movedWorkflows,
+			movedWorkflows: moves.workflows,
+			movedFolders: moves.folders,
 		};
 	}
 
@@ -790,16 +849,22 @@ export class PromotionsService {
 
 		const reader = new DirectoryPackageReader(packageFolder, this.packageImportConfig);
 		const inventory = await this.inventoryReader.read(reader);
-		const { selection, movedWorkflowIds } = await this.classifyApplySelection(
+		const moves = await this.findCrossProjectMoves(inventory, projectId);
+		const selection = await this.classifyApplySelection(
 			inventory,
 			projectId,
 			workflowIds,
+			new Set(moves.workflows.map(({ id }) => id)),
 		);
-		if (movedWorkflowIds.length > 0) {
-			// Mirror the import engine, which rejects a move-shaped change with 409.
-			throw new ConflictError(
-				`These workflows moved to another project: ${movedWorkflowIds.join(', ')}. A selective apply cannot move them. Apply all projects instead.`,
-			);
+		// A folder the package holds under this project but this instance holds elsewhere blocks
+		// every selection: the import would meet it whatever the user selected.
+		const requested = new Set(workflowIds);
+		const blocking = {
+			...moves,
+			workflows: moves.workflows.filter(({ id }) => requested.has(id)),
+		};
+		if (blocking.workflows.length > 0 || blocking.folders.length > 0) {
+			throw new ConflictError(describeCrossProjectMoves(blocking));
 		}
 		const preflight = await this.bindingPreflight.checkInventory({
 			inventory,
@@ -845,6 +910,8 @@ export class PromotionsService {
 					? DataTableSchemaConflictPolicy.Overwrite
 					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
 				tagConflictPolicy: IMPORT_POLICY.tagConflictPolicy,
+				credentialConflictPolicy: IMPORT_POLICY.credentialConflictPolicy,
+				layoutConflictPolicy: LayoutConflictPolicy.FollowPackage,
 			},
 			{ sourceDir: packageFolder },
 			selection,
@@ -906,9 +973,15 @@ export class PromotionsService {
 			);
 		}
 
-		const preflight = await this.bindingPreflight.checkDirectory({
-			sourceDir: packageFolder,
-		});
+		const inventory = await this.inventoryReader.read(
+			new DirectoryPackageReader(packageFolder, this.packageImportConfig),
+		);
+		const moves = await this.findCrossProjectMoves(inventory);
+		if (moves.workflows.length > 0 || moves.folders.length > 0) {
+			throw new ConflictError(describeCrossProjectMoves(moves));
+		}
+
+		const preflight = await this.bindingPreflight.checkInventory({ inventory });
 		const blockingConflicts = confirmDestructiveChanges
 			? preflight.conflicts.filter(({ code }) => !isConfirmableConflict(code))
 			: preflight.conflicts;
@@ -939,6 +1012,7 @@ export class PromotionsService {
 			{
 				user: actor,
 				...IMPORT_POLICY,
+				layoutConflictPolicy: LayoutConflictPolicy.FollowPackage,
 				dataTableSchemaConflictPolicy: confirmDestructiveChanges
 					? DataTableSchemaConflictPolicy.Overwrite
 					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
@@ -972,20 +1046,26 @@ export class PromotionsService {
 
 		const paths = this.workingDirectory.paths(input.environmentId);
 		const branchName = checkoutBranchName(input.config);
+		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
 		const { commitSha, lsTreeOutput } = await this.gitService.listBranchTree({
 			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
 			paths,
 			branchName,
 			environmentId: input.environmentId,
-			pathspecs: BASE_BRANCH_DIRECTORIES.map((directory) => `${PACKAGE_SUBFOLDER}/${directory}/`),
+			pathspecs: [
+				...BASE_BRANCH_DIRECTORIES.map((directory) => `${PACKAGE_SUBFOLDER}/${directory}/`),
+				manifestPath,
+			],
 		});
 
 		return {
 			environmentId: input.environmentId,
 			branchName,
 			commitSha,
+			// The parser skips the manifest, which sits at the package root.
 			files: parseBaseBranchFiles(lsTreeOutput, { exportRoot: PACKAGE_SUBFOLDER, projectId }),
+			hasManifest: lsTreeOutput.split('\0').some((record) => record.endsWith(`\t${manifestPath}`)),
 			readFiles: async (filePaths) => {
 				if (commitSha === null) {
 					throw new BadRequestError(
@@ -1082,25 +1162,132 @@ export class PromotionsService {
 	 * When the environment creates a branch per promotion, this validates the new name
 	 * and resets the checkout to the latest base, so the promotion builds on it.
 	 * Otherwise the push targets the base branch and there is nothing to prepare.
+	 * `baseCommitSha` is the base commit the checkout was reset to.
 	 */
 	private async prepareTargetBranch(
 		input: PromotionOperationInput,
 		branchName: string,
 		credentials: PromotionGitCredentials,
-	): Promise<string | undefined> {
+	): Promise<{ targetBranchName: string; baseCommitSha: string } | undefined> {
 		if (input.config.direction !== 'promote' || !input.config.settings.createBranchOnPromotion) {
 			return undefined;
 		}
 		const targetBranchName = buildPromotionBranchName(new Date());
 		await this.gitService.validateBranchName(targetBranchName);
-		await this.gitService.prepareCheckoutForPromotion({
+		const { commitSha } = await this.gitService.prepareCheckoutForPromotion({
 			remoteUrl: repositoryUrl(input),
 			credentials,
 			paths: this.workingDirectory.paths(input.environmentId),
 			branchName,
 			environmentId: input.environmentId,
 		});
-		return targetBranchName;
+		return { targetBranchName, baseCommitSha: commitSha };
+	}
+
+	/**
+	 * Refuses a promote that would write a move between projects to the branch.
+	 * - A workflow that a personal project owns now is not exported, because personal projects stay
+	 *   out of scope. The promote would drop it from the branch, and Apply would then delete it on
+	 *   the destination.
+	 * - A workflow or folder that another team project holds now would reach the branch, but Apply
+	 *   refuses moves between projects, so the destination would be stuck until it moves back. Only
+	 *   an item whose branch project still exists here is refused, because only it can move back.
+	 */
+	private async assertNoProjectMovesSinceBranch(
+		input: PromotionOperationInput,
+		branchName: string,
+		credentials: PromotionGitCredentials,
+		baseCommitSha?: string,
+	): Promise<void> {
+		const manifest = await this.readRemoteManifest(input, branchName, credentials, baseCommitSha);
+		if (manifest === null) return;
+		const branch = readBranchPlacements(manifest, BRANCH_MANIFEST_PATH);
+		if (branch.workflows.length === 0 && branch.folders.length === 0) return;
+
+		const [owners, folders, existingProjects] = await Promise.all([
+			this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
+				branch.workflows.map(({ id }) => id),
+			),
+			this.folderService.getFoldersByIds(branch.folders.map(({ folder }) => folder.id)),
+			this.projectRepository.findTypesByIds(branch.projects.map(({ id }) => id)),
+		]);
+		const droppedWorkflows = branch.workflows.filter(({ id }) => {
+			const owner = owners.get(id);
+			return owner !== undefined && owner.type !== 'team';
+		});
+		if (droppedWorkflows.length > 0) {
+			throw new BadRequestError(describeWorkflowsMovedToPersonalProjects(droppedWorkflows));
+		}
+
+		const moves = crossProjectMoves({
+			inventory: branch,
+			owners,
+			folderHomes: new Map(folders.map(({ id, homeProject }) => [id, homeProject])),
+			existingProjectIds: new Set(existingProjects.map(({ id }) => id)),
+		});
+		// An item whose branch project was deleted here can't move back, for example after a project
+		// delete that transferred its workflows. It reaches the branch, and the destination can then
+		// move it to match before Apply.
+		const refused = {
+			...moves,
+			workflows: moves.workflows.filter(({ projectExists }) => projectExists),
+			folders: moves.folders.filter(({ projectExists }) => projectExists),
+		};
+		if (refused.workflows.length > 0 || refused.folders.length > 0) {
+			throw new BadRequestError(describePromotedMoves(refused));
+		}
+	}
+
+	/**
+	 * The branch manifest at the remote head, not the checkout on disk, which can be behind the
+	 * remote. It does not apply the import limits, which a promote never needed. `null` when the
+	 * branch holds nothing to check: the remote doesn't hold the branch (the push creates it), the
+	 * remote is empty, or the branch has no package. Any other read failure throws, so a transient
+	 * error never skips the check. With `knownHead`, a commit just fetched from the remote (branch
+	 * mode), it reads that commit and skips a second fetch.
+	 */
+	private async readRemoteManifest(
+		input: PromotionOperationInput,
+		branchName: string,
+		credentials: PromotionGitCredentials,
+		knownHead?: string,
+	): Promise<string | null> {
+		const paths = this.workingDirectory.paths(input.environmentId);
+		const local = { paths, branchName, environmentId: input.environmentId };
+		const commitSha =
+			knownHead ??
+			(await this.fetchManifestHead({ ...local, remoteUrl: repositoryUrl(input), credentials }));
+		if (commitSha === null) return null;
+
+		const present = await this.gitService.findPathsAtCommit({
+			...local,
+			commitSha,
+			filePaths: [BRANCH_MANIFEST_PATH],
+		});
+		if (!present.has(BRANCH_MANIFEST_PATH)) return null;
+
+		const files = await this.gitService.readFilesAtCommit({
+			...local,
+			commitSha,
+			filePaths: [BRANCH_MANIFEST_PATH],
+		});
+		return files.get(BRANCH_MANIFEST_PATH) ?? '';
+	}
+
+	/** Fetches the branch and returns its head, or `null` when there is no branch or commit yet. */
+	private async fetchManifestHead(
+		operation: Parameters<PromotionsGitService['hasRemoteBranch']>[0],
+	): Promise<string | null> {
+		try {
+			const head = await this.gitService.listBranchTree({
+				...operation,
+				pathspecs: [BRANCH_MANIFEST_PATH],
+			});
+			return head.commitSha;
+		} catch (error) {
+			if (await this.gitService.hasRemoteBranch(operation)) throw error;
+			return null;
+		}
 	}
 
 	/**
@@ -1122,6 +1309,26 @@ export class PromotionsService {
 		if (project.type !== 'team') {
 			throw new BadRequestError('Only team projects can use a promotion environment');
 		}
+		return project;
+	}
+
+	/** A selected workflow the branch already holds counts as updated, otherwise as added. */
+	private defaultSelectionCommitMessage(
+		projectName: string,
+		selection: SelectivePushOptions,
+		staging: PackageManifest,
+		branch: ScannedBranch,
+	): string {
+		const onBranch = new Map((branch.state.workflows ?? []).map((w) => [w.id, w.name]));
+		const exported = new Map((staging.workflows ?? []).map((w) => [w.id, w.name]));
+		const pushed = selection.workflowIds.map((id) => ({ id, name: exported.get(id) ?? id }));
+
+		return buildSelectionPromotionCommitMessage({
+			projectName,
+			added: pushed.filter(({ id }) => !onBranch.has(id)),
+			updated: pushed.filter(({ id }) => onBranch.has(id)),
+			removed: selection.deletedWorkflowIds.map((id) => ({ id, name: onBranch.get(id) ?? id })),
+		});
 	}
 
 	/**
@@ -1209,11 +1416,14 @@ export class PromotionsService {
 				deleted: projectReconciliation.deletedProjectIds.length,
 			},
 			folders: {
-				...tally(importResult.folders, ['created', 'skipped'] as const),
+				...tally(importResult.folders, ['created', 'updated', 'skipped'] as const),
+				moved: importResult.folders.filter(({ moved }) => moved).length,
+				renamed: importResult.folders.filter(({ renamed }) => renamed).length,
 				removed: importResult.removedFolders.length,
 			},
 			workflows: {
 				...tally(importResult.workflows, ['created', 'updated', 'skipped'] as const),
+				moved: importResult.workflows.filter(({ moved }) => moved).length,
 				archived: importResult.removedWorkflows.filter(({ deletion }) => deletion === 'archived')
 					.length,
 				deleted: importResult.removedWorkflows.filter(({ deletion }) => deletion === 'deleted')
@@ -1227,6 +1437,7 @@ export class PromotionsService {
 			credentials: {
 				matched: importResult.credentials.matched.length,
 				stubbed: importResult.credentials.stubbed.length,
+				updated: importResult.credentials.updated.length,
 			},
 			dataTables: {
 				matched: importResult.dataTables.matched,
@@ -1268,4 +1479,70 @@ async function isDirectory(folder: string): Promise<boolean> {
 	} catch {
 		return false;
 	}
+}
+
+const BRANCH_MANIFEST_PATH = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
+
+/** Leaves out the personal project's name: it holds the owner's email, and error text reaches the UI and telemetry. */
+function describeWorkflowsMovedToPersonalProjects(moved: BranchPlacements['workflows']): string {
+	const items = moved.map(
+		({ id, name, projectName }) =>
+			`"${name}" (${id}) is in a personal project here and in team project "${projectName}" on the branch`,
+	);
+	return `A promotion does not include personal projects, so these workflows would be deleted on the destination: ${items.join('; ')}. Move them back to the team project the branch holds them in, then promote again.`;
+}
+
+/** The parts of `manifest.json` that promote checks. The export leaves out an empty list. */
+const branchPlacementsSchema = z.object({
+	projects: z.array(manifestEntrySchema).optional(),
+	workflows: z.array(manifestEntrySchema).optional(),
+	folders: z.array(manifestEntrySchema).optional(),
+});
+
+type BranchPlacements = {
+	projects: Array<{ id: string; name: string }>;
+	workflows: Array<{ id: string; name: string; projectId: string; projectName: string }>;
+	folders: Array<{ projectId: string; folder: { id: string; name: string } }>;
+};
+
+/**
+ * The team project of every workflow and folder that the branch manifest lists. It fails closed
+ * and names the broken entry: skipping it could hide a workflow that Apply would delete.
+ */
+function readBranchPlacements(raw: string | undefined, manifestPath: string): BranchPlacements {
+	let json: unknown;
+	try {
+		json = raw === undefined ? undefined : jsonParse(raw);
+	} catch {
+		json = undefined;
+	}
+	const parsed = branchPlacementsSchema.safeParse(json);
+	if (!parsed.success) {
+		const [key, index] = parsed.error.issues[0]?.path ?? [];
+		const list = typeof key === 'string' && isRecord(json) ? json[key] : undefined;
+		const entry: unknown =
+			Array.isArray(list) && typeof index === 'number' ? list[index] : undefined;
+		const id = isRecord(entry) && typeof entry.id === 'string' ? ` (id "${entry.id}")` : '';
+		const part =
+			typeof key === 'string' && typeof index === 'number'
+				? `Entry ${index + 1} of "${key}" in "${manifestPath}"`
+				: `"${manifestPath}"`;
+		throw new BadRequestError(
+			`${part} on the branch is not readable${id}, so promote can't check it for workflows and folders that moved between projects. Fix the file on the branch, then promote again.`,
+		);
+	}
+
+	const { projects = [], workflows = [], folders = [] } = parsed.data;
+	// An entry outside every project directory has no project to compare, so it is left out.
+	return {
+		projects: projects.map(({ id, name }) => ({ id, name })),
+		workflows: workflows.flatMap(({ id, name, target }) => {
+			const project = projectHolding(projects, target);
+			return project ? [{ id, name, projectId: project.id, projectName: project.name }] : [];
+		}),
+		folders: folders.flatMap(({ id, name, target }) => {
+			const project = projectHolding(projects, target);
+			return project ? [{ projectId: project.id, folder: { id, name } }] : [];
+		}),
+	};
 }

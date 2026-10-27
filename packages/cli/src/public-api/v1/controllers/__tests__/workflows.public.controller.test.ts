@@ -24,6 +24,7 @@ describe('WorkflowsPublicController', () => {
 			mock(), // eventService
 			mock(), // tagService
 			mock(), // redactionEnforcementService
+			mock(), // workflowDependencyQueryService
 		);
 	});
 

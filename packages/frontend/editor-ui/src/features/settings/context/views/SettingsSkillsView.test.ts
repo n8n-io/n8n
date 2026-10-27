@@ -637,7 +637,7 @@ describe('SettingsSkillsView', () => {
 		it.each([
 			['instance', true, false, false],
 			['project', true, true, true],
-			['agent', true, true, undefined],
+			['agent', true, false, false],
 			['instance', false, true, undefined],
 		] as const)(
 			'shows availability in the table and modal behind the Assistant flag (%s, %s)',

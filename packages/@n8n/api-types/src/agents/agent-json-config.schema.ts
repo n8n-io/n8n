@@ -259,7 +259,7 @@ export const McpServerConfigSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Credential id from agent_builder_ask_credential. Required when authentication is not "none"',
+				'Credential id from setup_credentials(target: "agent"). Required when authentication is not "none"',
 			),
 		metadata: z
 			.object({

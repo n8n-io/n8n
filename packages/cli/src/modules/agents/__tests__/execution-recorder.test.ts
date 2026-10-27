@@ -14,6 +14,29 @@ function makeToolResultChunk(toolName: string, output: unknown, toolCallId = 'tc
 
 describe('ExecutionRecorder', () => {
 	it.each([true, false])(
+		'keeps cumulative usage when final usage is absent (finish: %s)',
+		(finish) => {
+			const recorder = new ExecutionRecorder();
+			recorder.record({
+				type: 'usage',
+				model: 'openai/test',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+			});
+			recorder.record({
+				type: 'usage',
+				model: 'openai/test',
+				usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.02 },
+			});
+			if (finish) recorder.record({ type: 'finish', finishReason: 'error' });
+			expect(recorder.getMessageRecord()).toMatchObject({
+				model: 'openai/test',
+				usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30 },
+				totalCost: 0.02,
+			});
+		},
+	);
+
+	it.each([true, false])(
 		'keeps canceled tool state in saved chat messages (started: %s)',
 		(started) => {
 			const recorder = new ExecutionRecorder();
@@ -594,16 +617,40 @@ describe('ExecutionRecorder', () => {
 			});
 		});
 
-		it('sanitizes the payload and returns the recorded event', () => {
+		it('stores the payload as the host sent it and returns the recorded event', () => {
 			const recorder = new ExecutionRecorder();
+			const payload = {
+				workflowId: 'wf-1',
+				items: [
+					{
+						id: 'wf-1:credential:slackApi',
+						kind: 'credential',
+						credentialType: 'slackApi',
+						nodeBindings: [{ nodeName: 'Post message' }],
+					},
+				],
+			};
 
-			const recorded = recorder.recordHostEvent('test.notice', {
-				apiKey: 'secret-api-key',
-				message: 'ok',
-			});
+			const recorded = recorder.recordHostEvent('setup-items', payload, 'workflow:wf-1');
 
-			expect(recorded.payload).toEqual({ apiKey: '[REDACTED]', message: 'ok' });
+			expect(recorded.payload).toEqual(payload);
 			expect(recorder.getMessageRecord().timeline).toEqual([recorded]);
+		});
+
+		it('records a copy, so a later change to the payload does not change the record', () => {
+			const recorder = new ExecutionRecorder();
+			const payload = { items: [{ id: 'a' }] };
+
+			recorder.recordHostEvent('test.progress', payload, 'build');
+			payload.items.push({ id: 'b' });
+			recorder.recordHostEvent('test.other', payload);
+			payload.items.push({ id: 'c' });
+
+			expect(
+				recorder
+					.getMessageRecord()
+					.timeline.map((event) => (event.type === 'host-event' ? event.payload : event.type)),
+			).toEqual([{ items: [{ id: 'a' }] }, { items: [{ id: 'a' }, { id: 'b' }] }]);
 		});
 
 		it('replaces a keyed event in its position and keeps its timestamp', () => {

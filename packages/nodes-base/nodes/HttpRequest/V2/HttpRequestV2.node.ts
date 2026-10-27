@@ -15,10 +15,9 @@ import {
 	NodeOperationError,
 	removeCircularRefs,
 	NodeConnectionTypes,
+	sleepUnlessExecutionCancelled,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
-
-import { sleep } from '@n8n/utils/sleep';
 
 import { applyTemplatedAuth } from '@utils/templated-auth';
 
@@ -795,7 +794,7 @@ export class HttpRequestV2 implements INodeType {
 				const batchSize: number =
 					(options.batchSize as number) > 0 ? (options.batchSize as number) : 1;
 				if (itemIndex % batchSize === 0) {
-					await sleep(options.batchInterval as number);
+					await sleepUnlessExecutionCancelled(this, options.batchInterval as number);
 				}
 			}
 

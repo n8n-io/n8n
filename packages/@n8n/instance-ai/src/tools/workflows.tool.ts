@@ -1561,7 +1561,7 @@ const SETUP_PANEL_ANNOUNCED_GUIDANCE =
 	'The setup panel now lists what this workflow still needs (`open`); nothing is ' +
 	'waiting on you and no card is open. Finish your turn now: tell the user in one or two sentences ' +
 	'what to configure in the panel — name the services and any values — then stop. Do not call setup ' +
-	'again for this workflow, do not call `workflow_builder_credentials(action="setup")`, and do not tell the user to ' +
+	'again for this workflow, do not call `setup_credentials`, and do not tell the user to ' +
 	'open the editor or canvas. Items under `configured` have stored bindings. Report any ' +
 	'validationWarnings; a binding does not prove that a connection or workflow test passed.';
 

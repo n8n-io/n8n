@@ -40,7 +40,7 @@ export class AgentDefinitionService {
 		const skillRefs = pending
 			? pending.skillRefs
 			: await this.agentSkillRefs.refsForDraft(agent, ctx);
-		const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, ctx);
+		const skills = await this.agentSkillRefs.skillsForRefs(skillRefs, ctx);
 		return {
 			...getAgentDefinitionContent(agent, skillRefs, skills),
 			tasks: new Map(tasks.map((task) => [task.id, getAgentTaskBody(task)])),
@@ -67,7 +67,7 @@ export class AgentDefinitionService {
 		agent: Agent,
 		definition: AgentDefinition,
 		ctx: OperationContext = {},
-		skillPinsFrom?: Pick<AgentHistory, 'versionId' | 'skills'>,
+		skillPinsFrom?: Pick<AgentHistory, 'versionId'>,
 	): Promise<boolean> {
 		// Preserve workflow input names in the JSON configuration.
 		const document = structuredClone(definition.schema);
