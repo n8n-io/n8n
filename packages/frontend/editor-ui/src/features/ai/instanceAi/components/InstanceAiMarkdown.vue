@@ -256,7 +256,8 @@ function applyResourceChip(link: HTMLAnchorElement, type: string): void {
 	link.classList.add(styles.resourceChip);
 
 	const iconHtml = ICON_SVGS[type];
-	if (iconHtml) {
+	/** The shared renderer can already supply the resource icon. */
+	if (iconHtml && !link.querySelector('svg')) {
 		const iconSpan = document.createElement('span');
 		iconSpan.classList.add(styles.resourceChipIcon);
 		iconSpan.innerHTML = iconHtml;

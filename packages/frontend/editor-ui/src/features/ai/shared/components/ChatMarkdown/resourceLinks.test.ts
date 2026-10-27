@@ -6,7 +6,7 @@ describe('getResourceLinkIcon', () => {
 		['https://n8n.io/workflow/123', 'workflow'],
 		['https://n8n.io/project/123/workflow/456', 'workflow'],
 		['https://n8n.io/agents/abc', 'bot'],
-		['https://n8n.io/assistant/890', 'n8n-assistant'],
+		['https://n8n.io/assistant/890', 'message-circle'],
 	])('matches resource links on the site: %s', (href, icon) => {
 		expect(getResourceLinkIcon(href, 'https://n8n.io')).toBe(icon);
 	});
@@ -27,7 +27,7 @@ describe('getResourceLinkIcon', () => {
 		['/workflow/123?tab=editor#node', 'workflow'],
 		['/project/123/workflow/456', 'workflow'],
 		['/agents/abc', 'bot'],
-		['/assistant/890', 'n8n-assistant'],
+		['/assistant/890', 'message-circle'],
 	])('matches relative resource links: %s', (href, icon) => {
 		expect(getResourceLinkIcon(href, 'https://n8n.io')).toBe(icon);
 	});
