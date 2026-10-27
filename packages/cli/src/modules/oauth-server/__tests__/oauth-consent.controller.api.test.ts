@@ -41,13 +41,16 @@ beforeAll(async () => {
  * `communityPackage:install` is advertised in discovery (which is
  * unauthenticated and describes what the resource supports) but withheld at
  * consent here, because the community-packages module is inactive in the test
- * instance so `install_community_node` would never register. `aiPreference:*`
- * is withheld too: the test instance has no PostHog, so no user is in the
- * preferences experiment arm and the preference tools never register.
+ * instance so `install_community_node` would never register. The test instance
+ * has no PostHog. The preference and credential description flags are off, so
+ * `aiPreference:*` and `credential:write` are withheld too.
  */
 const grantable = (scopes: string[]) =>
 	scopes.filter(
-		(scope) => scope !== 'communityPackage:install' && !scope.startsWith('aiPreference:'),
+		(scope) =>
+			scope !== 'communityPackage:install' &&
+			scope !== 'credential:write' &&
+			!scope.startsWith('aiPreference:'),
 	);
 
 afterEach(async () => {

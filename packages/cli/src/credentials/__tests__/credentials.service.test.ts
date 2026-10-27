@@ -1971,7 +1971,11 @@ describe('CredentialsService', () => {
 
 		it('keeps hook changes to secret data out of the description write', async () => {
 			externalHooks.run.mockImplementation(async (_name, parameters) => {
-				Object.assign(parameters![0], {
+				const payload = parameters?.[0];
+				if (typeof payload !== 'object' || payload === null) {
+					throw new Error('Expected a credential hook payload');
+				}
+				Object.assign(payload, {
 					description: '  Updated by hook  ',
 					data: 'changed-data',
 					name: 'Changed name',

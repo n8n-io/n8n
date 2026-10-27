@@ -744,10 +744,14 @@ describe('Full authorization-code flow (PKCE)', () => {
 		// grantable subset. `communityPackage:install` is advertised in discovery,
 		// which is unauthenticated and describes what the resource supports, but it
 		// is withheld at consent here because the community-packages module is
-		// inactive in the test instance. `aiPreference:*` is withheld too: the test
-		// instance has no PostHog, so no user is in the preferences experiment arm.
+		// inactive in the test instance. The test instance has no PostHog. The
+		// preference and credential description flags are off, so `aiPreference:*`
+		// and `credential:write` are withheld too.
 		const grantedScopes = mcpScopes.filter(
-			(scope) => scope !== 'communityPackage:install' && !scope.startsWith('aiPreference:'),
+			(scope) =>
+				scope !== 'communityPackage:install' &&
+				scope !== 'credential:write' &&
+				!scope.startsWith('aiPreference:'),
 		);
 		const authAgent = testServer.authAgentFor(owner);
 		authAgent.jar.setCookie(sessionCookie ?? '');
