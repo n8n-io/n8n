@@ -9,7 +9,7 @@ import {
 	type InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
+import { GlobalConfig, type AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -89,8 +89,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 
 	private readonly logger: Logger;
 
-	private readonly instanceAiConfig: InstanceAiConfig;
-
 	private readonly aiConfig: AiConfig;
 
 	constructor(
@@ -105,17 +103,12 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly agentFactory: AssistantAgentFactory,
 	) {
 		this.logger = logger.scoped('instance-ai');
-		this.instanceAiConfig = globalConfig.instanceAi;
 		this.aiConfig = globalConfig.ai;
 	}
 
 	/** The runtime already requires `project:read` on the working project. */
 	async authorize(user: User): Promise<boolean> {
-		return (
-			hasGlobalScope(user, 'instanceAi:message') &&
-			this.settingsService.isAgentEnabled() &&
-			Boolean(this.instanceAiConfig.model)
-		);
+		return hasGlobalScope(user, 'instanceAi:message') && this.settingsService.isAgentEnabled();
 	}
 
 	async chatTurnOptions(

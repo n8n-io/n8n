@@ -73,7 +73,7 @@ function setup() {
 	);
 	const provider = new AssistantAgentProvider(
 		logger,
-		mock<GlobalConfig>({ instanceAi: { model: 'anthropic/claude-sonnet' }, ai: {} }),
+		mock<GlobalConfig>({ ai: {} }),
 		workspace,
 		settingsService,
 		adapterService,
