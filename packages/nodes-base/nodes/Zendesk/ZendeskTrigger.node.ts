@@ -100,6 +100,18 @@ export class ZendeskTrigger implements INodeType {
 				},
 			},
 			{
+				displayName:
+					'Zendesk is retiring API token authentication. Switch this node to OAuth2. <a href="https://developer.zendesk.com/documentation/authentication/oauth-migration/#migration-timeline" target="_blank">Learn more about OAuth migration (Zendesk)</a>',
+				name: 'apiTokenRetirementNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						authentication: ['apiToken'],
+					},
+				},
+			},
+			{
 				displayName: 'Service',
 				name: 'service',
 				type: 'options',

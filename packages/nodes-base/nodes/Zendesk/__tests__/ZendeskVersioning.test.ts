@@ -4,11 +4,13 @@ import { Zendesk } from '../Zendesk.node';
 import { ZendeskTrigger } from '../ZendeskTrigger.node';
 
 function authFieldFor(properties: INodeProperties[], version: number) {
-	return properties.find(
+	const fields = properties.filter(
 		(property) =>
 			property.name === 'authentication' &&
 			property.displayOptions?.show?.['@version']?.includes(version),
 	);
+	expect(fields).toHaveLength(1);
+	return fields[0];
 }
 
 describe.each([
@@ -23,7 +25,15 @@ describe.each([
 	});
 
 	it('keeps API Token for v1 and uses OAuth2 for v1.1', () => {
-		expect(authFieldFor(description.properties, 1)?.default).toBe('apiToken');
-		expect(authFieldFor(description.properties, 1.1)?.default).toBe('oAuth2');
+		expect(authFieldFor(description.properties, 1).default).toBe('apiToken');
+		expect(authFieldFor(description.properties, 1.1).default).toBe('oAuth2');
+	});
+
+	it('shows the retirement notice only for API Token', () => {
+		const notice = description.properties.find(
+			(property) => property.name === 'apiTokenRetirementNotice',
+		);
+		expect(notice?.type).toBe('notice');
+		expect(notice?.displayOptions?.show).toEqual({ authentication: ['apiToken'] });
 	});
 });
