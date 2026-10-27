@@ -1,0 +1,20 @@
+packages/@n8n/api-types/src/schemas/agent-eval-assignment.schema.ts
+  h_8a472ace01776f 116-117,191
+packages/cli/src/modules/agent-evals/assignment/__tests__/assignment-judge.test.ts
+  h_8a472ace01776f 80-102
+packages/cli/src/modules/agent-evals/assignment/assignment-judge.ts
+  h_8a472ace01776f 16-18,20-21,23,65,79,87,97-100,103,128
+packages/cli/src/modules/agent-evals/assignment/assignment-responsibilities.ts
+  h_8a472ace01776f 73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7bc414bcdc154889cd5e977636856544b3119ff9",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
