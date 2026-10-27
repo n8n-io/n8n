@@ -1,8 +1,10 @@
-import type {
-	AgentActor,
-	AgentIntegrationConfig,
-	SlackAgentAppManifest,
-	SlackApiErrorMeta,
+import {
+	isDraftIntegration,
+	type AgentActor,
+	type AgentIntegrationConfig,
+	type AgentSlackIntegrationSettings,
+	type SlackAgentAppManifest,
+	type SlackApiErrorMeta,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
@@ -229,7 +231,7 @@ export class SlackMethodsService {
 		const integration = {
 			type: 'slack',
 			credentialId: credential.id,
-			settings: { messagingExperience: 'agent' },
+			settings: draftSlackSettings(agent) ?? { messagingExperience: 'agent' },
 		} satisfies AgentIntegrationConfig;
 		try {
 			await this.integrationManagementService.connect({
@@ -328,4 +330,12 @@ export class SlackMethodsService {
 			.slice(0, 35);
 		return cleaned.length > 0 ? cleaned : DEFAULT_SLACK_APP_NAME;
 	}
+}
+
+/** Setup completes a Slack draft with its settings. `connect` keeps the draft approval. */
+function draftSlackSettings(agent: ProjectAgent): AgentSlackIntegrationSettings | undefined {
+	for (const entry of agent.integrations ?? []) {
+		if (entry.type === 'slack' && isDraftIntegration(entry)) return entry.settings;
+	}
+	return undefined;
 }
