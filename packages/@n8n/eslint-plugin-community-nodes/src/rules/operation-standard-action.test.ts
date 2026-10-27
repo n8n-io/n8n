@@ -101,6 +101,21 @@ ruleTester.run('operation-standard-action', OperationStandardActionRule, {
 			],
 		},
 		{
+			name: 'lowercase "get all", which the "Get all" rule does not report',
+			code: createOperations("{ name: 'Get Many', value: 'getAll', action: 'get all contacts' }"),
+			errors: [
+				{
+					messageId: 'wrongAction',
+					data: {
+						value: 'getAll',
+						action: 'get all contacts',
+						expected: '"Get many"',
+						example: 'Get many',
+					},
+				},
+			],
+		},
+		{
 			name: 'upsert action with another verb',
 			code: createOperations("{ name: 'Upsert', value: 'upsert', action: 'Upsert a contact' }"),
 			errors: [

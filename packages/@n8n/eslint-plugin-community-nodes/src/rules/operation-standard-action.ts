@@ -7,7 +7,7 @@ import {
 	STANDARD_OPERATION_NAMES,
 } from '../utils/index.js';
 
-const BASE_RULE_GET_ALL_PREFIX = 'get all ';
+const BASE_RULE_GET_ALL_PREFIX = 'Get all ';
 
 const alternatives = new Intl.ListFormat('en', { type: 'disjunction' });
 
@@ -56,7 +56,7 @@ export const OperationStandardActionRule = createRule({
 						!actionProperty ||
 						action === null ||
 						names.some((name) => startsWithName(action, name)) ||
-						(value === 'getAll' && action.toLowerCase().startsWith(BASE_RULE_GET_ALL_PREFIX))
+						(value === 'getAll' && action.startsWith(BASE_RULE_GET_ALL_PREFIX))
 					) {
 						continue;
 					}

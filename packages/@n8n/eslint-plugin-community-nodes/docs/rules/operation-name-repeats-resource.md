@@ -12,7 +12,12 @@ When the operation works on an object inside the resource, name that object. "Ge
 
 The rule compares the operation name with the resource value in `displayOptions.show.resource`. It ignores articles, plurals and the case of the value, so `directoryContext` matches "Get Directory Context". It skips operation lists that are shown for more than one resource.
 
-The standard names "Get Many", "Create or Update", "Insert or Update", "Append or Update" and "Insert or Append" count as one action, so "Get Many Contacts" also repeats the Contact resource. The rule suggests the standard name for the operation value: "Get Many" for `getAll` and "Create or Update" for `upsert`.
+The standard names "Get Many", "Create or Update", "Insert or Update", "Append or Update" and "Insert or Append" count as one action, so "Get Many Contacts" also repeats the Contact resource. For `getAll` and `upsert`, the rule suggests a standard name for the operation value. A name that already starts with one of them keeps it. Otherwise the rule suggests the default:
+
+| `value` | Standard names | Default |
+| --- | --- | --- |
+| `getAll` | "Get Many" | "Get Many" |
+| `upsert` | "Create or Update", "Insert or Update", "Append or Update" | "Create or Update" |
 
 Change only `name`. Keep `value` as it is: saved workflows store it, so changing it breaks them.
 

@@ -40,6 +40,10 @@ ruleTester.run('operation-name-repeats-resource', OperationNameRepeatsResourceRu
 			code: createOperations("'contact', 'company'", "{ name: 'Get Contact', value: 'get' }"),
 		},
 		{
+			name: 'operations shared with a resource the rule cannot read',
+			code: createOperations("'contact', COMPANY", "{ name: 'Get Contact', value: 'get' }"),
+		},
+		{
 			name: 'operations not tied to a resource',
 			code: `
 				const operation = {

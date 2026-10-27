@@ -15,7 +15,10 @@ The rule uses the operation `value` to find the standard name, because `value` i
 | `getAll` | "Get many", for example "Get many contacts" |
 | `upsert` | "Create or update", or "Insert or update" or "Append or update" for databases and spreadsheets |
 
-`n8n-nodes-base/node-param-operation-option-action-wrong-for-get-many` reports and fixes `getAll` actions that start with "Get all", so this rule skips them. `n8n-nodes-base/node-param-operation-option-action-miscased` checks the case, so this rule ignores it.
+The scanner and `n8n-node lint` also run the rules of `eslint-plugin-n8n-nodes-base`. Two of them check the same actions, so this rule leaves those cases to them:
+
+- `node-param-operation-option-action-wrong-for-get-many` reports and fixes `getAll` actions that start with "Get all".
+- `node-param-operation-option-action-miscased` reports actions that are not in sentence case, so this rule ignores the case.
 
 The rule finds the operation parameter by its shape. It also checks operations in description files outside the node class.
 

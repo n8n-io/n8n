@@ -38,9 +38,9 @@ export function getShownResources(node: TSESTree.ObjectExpression): string[] {
 	if (resource?.type !== TSESTree.AST_NODE_TYPES.ArrayExpression) {
 		return [];
 	}
-	return resource.elements
-		.map((element) => getStringLiteralValue(element))
-		.filter((value): value is string => value !== null);
+	const values = resource.elements.map((element) => getStringLiteralValue(element));
+	// A value the rule can't read could be another resource, so the list is unknown.
+	return values.every((value): value is string => value !== null) ? values : [];
 }
 
 const ARTICLES = new Set(['a', 'an', 'the']);
