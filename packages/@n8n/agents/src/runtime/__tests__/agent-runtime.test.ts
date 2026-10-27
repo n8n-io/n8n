@@ -1223,7 +1223,7 @@ describe('AgentRuntime — execution counters', () => {
 	});
 
 	it.each(['generate', 'stream'] as const)(
-		'omits local and provider tools for one %s execution when disabled',
+		'disables tool calls for one %s execution and keeps tool definitions',
 		async (mode) => {
 			generateText.mockResolvedValue(makeGenerateSuccess());
 			streamText.mockImplementation(() => makeStreamSuccess());
@@ -1243,14 +1243,12 @@ describe('AgentRuntime — execution counters', () => {
 				}
 				const model = mode === 'generate' ? generateText : streamText;
 				const request = model.mock.lastCall?.[0];
-				if (toolsEnabled === false) expect(request.tools).toBeUndefined();
-				else {
-					expect(request.tools.work).toBeDefined();
-					expect(request.tools['openai.web_search']).toMatchObject({
-						type: 'provider',
-						isProviderExecuted: true,
-					});
-				}
+				expect(request.toolChoice).toBe(toolsEnabled === false ? 'none' : undefined);
+				expect(request.tools.work).toBeDefined();
+				expect(request.tools['openai.web_search']).toMatchObject({
+					type: 'provider',
+					isProviderExecuted: true,
+				});
 			}
 		},
 	);

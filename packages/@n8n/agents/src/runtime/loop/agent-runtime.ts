@@ -721,12 +721,14 @@ export class AgentRuntime {
 		options?: ExecutionOptions,
 	): {
 		telemetry?: TelemetryOptions;
+		toolChoice?: 'none';
 		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
 		onStepStart?: ExecutionOptions['onStepStart'];
 		onStepEnd?: ExecutionOptions['onStepEnd'];
 	} {
 		return {
 			...this.telemetry.buildTelemetryOptions(options),
+			...(options?.toolsEnabled === false ? { toolChoice: 'none' as const } : {}),
 			...(options?.onStepStart ? { onStepStart: options.onStepStart } : {}),
 			...(options?.onStepEnd ? { onStepEnd: options.onStepEnd } : {}),
 			repairToolCall: async (options) => {
@@ -1087,7 +1089,8 @@ export class AgentRuntime {
 			system: prompt.system,
 			messages: prompt.messages,
 			abortSignal: abortScope.signal,
-			hasTools: options?.toolsEnabled !== false && tools.hasTools,
+			// Provider tools are also needed to replay their earlier calls and results.
+			hasTools: tools.hasTools,
 			aiTools: prompt.aiTools,
 			reasoning: staticContext.reasoning,
 			providerOptions: prompt.providerOptions,
