@@ -11,10 +11,32 @@ export type KnowledgeToolCall = 'file_find' | 'file_search' | 'file_read' | 'vec
 /**
  * A failed call sends no knowledge content, so it has no characters to count.
  * `readFile` is the file that a successful read used, with its upload time.
+ * `searchDurationMs`, `emptySearch` and `errorType` describe search calls only.
  */
 export type KnowledgeToolCallResult =
-	| { failed: false; contentChars: number; readFile?: { fileId: string; uploadedAt: string } }
-	| { failed: true };
+	| {
+			failed: false;
+			contentChars: number;
+			readFile?: { fileId: string; uploadedAt: string };
+			searchDurationMs?: number;
+			emptySearch?: boolean;
+	  }
+	| { failed: true; searchDurationMs?: number; errorType?: string };
+
+type SearchKind = 'file' | 'vector_store';
+
+const searchKindByCall: Partial<Record<KnowledgeToolCall, SearchKind>> = {
+	file_search: 'file',
+	vector_store_search: 'vector_store',
+};
+
+interface SearchStats {
+	count: number;
+	totalDurationMs: number;
+	maxDurationMs: number;
+	emptyCount: number;
+	errorTypes: Set<string>;
+}
 
 export type FinishKnowledgeToolCall = (result: KnowledgeToolCallResult) => void;
 
@@ -64,6 +86,7 @@ interface TrackedRun {
 	startedToolCalls: number;
 	/** Each file that the run read, by file id, with its upload time and the place of its first read call. */
 	readFiles: Map<string, { uploadedAt: number; toolCallOrder: number }>;
+	searches: Partial<Record<SearchKind, SearchStats>>;
 }
 
 /**
@@ -93,6 +116,7 @@ export class AgentKnowledgeUsageTracker {
 			...(run.userId ? { user_id: run.userId } : {}),
 			...trackedRun.usage,
 			...fileAges(trackedRun, Date.now()),
+			...searchProperties(trackedRun),
 		});
 	}
 
@@ -113,6 +137,7 @@ export class AgentKnowledgeUsageTracker {
 			lastToolCallAt: now,
 			startedToolCalls: 0,
 			readFiles: new Map(),
+			searches: {},
 		};
 		const toolCallOrder = run.startedToolCalls++;
 		run.usage[usageKeyByCall[call]]++;
@@ -132,6 +157,11 @@ export class AgentKnowledgeUsageTracker {
 				if (result.readFile) {
 					recordReadFile(run, result.readFile, toolCallOrder);
 				}
+			}
+
+			const searchKind = searchKindByCall[call];
+			if (searchKind && result.searchDurationMs !== undefined) {
+				recordSearch(run, searchKind, result);
 			}
 
 			run.lastToolCallAt = Date.now();
@@ -210,6 +240,49 @@ function fileAges(run: TrackedRun, now: number) {
 		file_age_days_avg: smartDecimal(averageAge, 1),
 		file_age_days_median: median(sortedAges),
 		file_age_days_first_25: ages.slice(0, 25), // adds a random limit to avoid huge arrays
+	};
+}
+
+function recordSearch(run: TrackedRun, kind: SearchKind, result: KnowledgeToolCallResult) {
+	const stats = (run.searches[kind] ??= {
+		count: 0,
+		totalDurationMs: 0,
+		maxDurationMs: 0,
+		emptyCount: 0,
+		errorTypes: new Set(),
+	});
+	const durationMs = result.searchDurationMs ?? 0;
+	stats.count++;
+	stats.totalDurationMs += durationMs;
+	stats.maxDurationMs = Math.max(stats.maxDurationMs, durationMs);
+	if (result.failed) {
+		if (result.errorType) {
+			stats.errorTypes.add(result.errorType);
+		}
+	} else if (result.emptySearch) {
+		stats.emptyCount++;
+	}
+}
+
+function averageDurationMs(stats: SearchStats) {
+	return Math.round(stats.totalDurationMs / stats.count);
+}
+
+/** Search fields for each kind that the run searched. */
+function searchProperties({ searches: { file, vector_store: vectorStore } }: TrackedRun) {
+	return {
+		...(file && {
+			file_search_duration_ms_avg: averageDurationMs(file),
+			file_search_duration_ms_max: file.maxDurationMs,
+			file_empty_search_count: file.emptyCount,
+			file_error_types: [...file.errorTypes].sort(),
+		}),
+		...(vectorStore && {
+			vector_store_search_duration_ms_avg: averageDurationMs(vectorStore),
+			vector_store_search_duration_ms_max: vectorStore.maxDurationMs,
+			vector_store_empty_search_count: vectorStore.emptyCount,
+			vector_store_error_types: [...vectorStore.errorTypes].sort(),
+		}),
 	};
 }
 

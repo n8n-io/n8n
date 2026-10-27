@@ -418,6 +418,54 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Ages in full days of the first 25 different knowledge files that read_file read successfully, in the order of their first read. Absent when the run read no file.',
 				),
+			file_search_duration_ms_avg: z
+				.number()
+				.optional()
+				.describe(
+					'Average duration of the finished search_text calls, failed ones included. Includes sandbox start and file copy. Absent when no call finished.',
+				),
+			file_search_duration_ms_max: z
+				.number()
+				.optional()
+				.describe(
+					'Duration of the slowest finished search_text call. Absent when no call finished.',
+				),
+			file_empty_search_count: z
+				.number()
+				.optional()
+				.describe(
+					'Finished search_text calls that worked and found nothing. Absent when no call finished.',
+				),
+			file_error_types: z
+				.array(z.string())
+				.optional()
+				.describe(
+					'Error names of the failed search_text calls, each name once. Absent when no call finished.',
+				),
+			vector_store_search_duration_ms_avg: z
+				.number()
+				.optional()
+				.describe(
+					'Average duration of the finished vector store searches, failed ones included. Absent when no search finished.',
+				),
+			vector_store_search_duration_ms_max: z
+				.number()
+				.optional()
+				.describe(
+					'Duration of the slowest finished vector store search. Absent when no search finished.',
+				),
+			vector_store_empty_search_count: z
+				.number()
+				.optional()
+				.describe(
+					'Finished vector store searches that worked and found nothing. Absent when no search finished.',
+				),
+			vector_store_error_types: z
+				.array(z.string())
+				.optional()
+				.describe(
+					'Error names of the failed vector store searches, each name once. Absent when no search finished.',
+				),
 		}),
 	},
 	AGENT_EXECUTION_COUNT: {
