@@ -1,3 +1,4 @@
+import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 import {
 	type CredentialsFinderService,
 	type EventService,
@@ -280,6 +281,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		agentRepository.hasRevision.mockResolvedValue(true);
 		const definitionService = new AgentDefinitionService(
 			agentTaskRepository,
+			agentHistoryRepository,
 			agentTaskSnapshotRepository,
 			agentRepository,
 			transactionRunner,
@@ -381,6 +383,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentFileRepository>({
 				getKnowledgeTotals: async () => ({ fileCount: 0, totalBytes: 0 }),
 			}),
+			mock<AgentPublishHistoryRepository>(),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(
