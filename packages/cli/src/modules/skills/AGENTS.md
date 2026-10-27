@@ -17,14 +17,14 @@ Agent refs and publish pins (`agent_skill_dependency` and `agent_version_skill_d
 ```
 skills/
   index.ts             public API: the only import path for other modules
-  testing/             fixtures, the SkillUsage fake and its contract cases, for tests
+  testing/             fixtures, the SkillUsage fake and its contract cases, for tests outside the module
   skills.module.ts     entrypoint: entities and controller import
   controllers/         REST routes
   services/            services, gates, the SkillUsage contract and its proxy
   database/
     entities/          Skill, SkillVersion, SkillFile, SkillSourceConnection, SkillSourceLink
     repositories/      SkillRepository
-  errors/              SkillNameTakenError, SkillParseError, SkillSyncedError
+  errors/              SkillNameTakenError, SkillParseError, SkillSyncedError, SkillSource*Error
   utils/               shared types, content helpers, hashes, name rules
   sources/             (Skill Sync) source clients and their registry
   __tests__/           unit tests, integration/, test-utils/
@@ -112,12 +112,14 @@ Say "skills" or "skills module". Do not say "skills hub". Do not use "provider" 
 
 ## Add a skill source
 
-Skill Sync adds sources such as GitHub and GitLab. Use the Strategy pattern with a registry, as `external-secrets.ee/provider-registry.service.ts` does.
+Skill Sync adds sources such as GitHub and GitLab. It uses the Strategy pattern with a registry. The abstract class `SkillSourceClient` in `sources/` is the contract. A client parses a link, gives the identity of a source, lists its skills and fetches one skill. It knows nothing else. The locator and the skill refs are opaque JSON that only the client reads.
 
-1. Add the abstract class `SkillSourceClient` in `sources/`. A client knows how to list the skills of a location and fetch one skill. It knows nothing else.
-2. Add one client for each source type, such as `GitHubSkillSourceClient`.
+1. Add one client for each source type in `sources/`, such as `GitHubSkillSourceClient`.
+2. Run `describeSkillSourceClientContract` from `__tests__/test-utils/` on it. `__tests__/in-memory-skill-source-client.test.ts` runs the same cases on `InMemorySkillSourceClient`, which reads an `InMemoryPagesStore`: a pages source with no files and no branches. The test sets up the store, and the client only reads it. If the fake cannot pass a new case, the case has a git-only assumption.
 3. Register each client on `SkillSourceClientRegistry`, keyed by its type, in `SkillsModule.init()`.
 4. Keep the shared logic in `SkillSyncService`: compare hashes, build the diff, find conflicts, and write through `createTrusted` and `saveTrusted`. A source never writes skills itself.
+
+A client throws `SkillSourceUrlError` for a link that it cannot read and `SkillSourceNotFoundError` for a source or skill that is gone. Add the optional parts of the contract (change probe, provenance, writer) with the ticket that needs them.
 
 Add a contract only where the implementation varies or a caller cannot import the other side. One implementation stays a concrete class.
 
@@ -139,4 +141,5 @@ If a decision sits between repository reads, move it into a pure function first 
 - `describeSkillUsageContract` in `testing/` holds the cases that every `SkillUsage` passes. `__tests__/skill-usage.fake.test.ts` runs them on the fake, and `../agents/__tests__/agent-skill-usage.integration.test.ts` runs them on the database. When the contract changes, change the cases first.
 - `__tests__/integration/skills-off.integration.test.ts` loads the skills module without the agents module, so the gates are off with nothing stubbed.
 - Tests outside the module use the fixtures in `testing/` to create skills and versions, read them back, and clear the tables. They never import the repository or the entities.
+- `testing/` holds only what tests outside the module import. It is the one test path that the boundary rules allow, as `index.ts` is for code. Before you add a file to `testing/`, find the test outside the module that imports it. If no such test exists, put the file in `__tests__/test-utils/`. Move it to `testing/` with the first outside test that needs it. A fake or a contract suite for a strategy of this module, such as `InMemorySkillSourceClient`, stays in `__tests__/test-utils/`.
 - AI tools report a refused write through `toSkillToolRefusal`, so MCP and n8n Assistant tell the model the same thing.
