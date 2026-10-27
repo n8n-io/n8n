@@ -3,6 +3,7 @@ import {
 	isDelegateSubAgentTool,
 } from './delegate-sub-agent-tool';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
+import { CALL_TOOL_TOOL_NAME } from './dynamic-tools';
 import { ToolCallRunner } from './tool-call-runner';
 import type { BuiltTool, PendingToolCall } from '../../types';
 import type {
@@ -183,9 +184,38 @@ export class ToolCallExecutor {
 				});
 				continue;
 			}
-			calls.push({ ...toolCall, input: normalizedInput.input });
+			const call = { ...toolCall, input: normalizedInput.input };
+			const resolved = this.resolveDynamicCall(call, ctx, errors);
+			if (resolved) calls.push(resolved);
 		}
 		return calls;
+	}
+
+	/**
+	 * Replace a `call_tool` call with the real tool and its arguments. Approval,
+	 * suspend, resume, events and telemetry then all use the real tool name.
+	 */
+	private resolveDynamicCall(
+		call: RuntimeToolCall,
+		ctx: ToolBatchContext,
+		errors: ToolCallError[],
+	): RuntimeToolCall | undefined {
+		const registry = this.deps.dynamicTools;
+		if (!registry || call.toolName !== CALL_TOOL_TOOL_NAME || call.providerExecuted) return call;
+		const resolution = registry.resolveCall(call.input);
+		if (!resolution.ok) {
+			const error = new Error(resolution.error);
+			incrementToolCallCount(ctx.executionCounter);
+			ctx.list.setToolCallError(call.toolCallId, error);
+			errors.push({
+				toolCallId: call.toolCallId,
+				toolName: call.toolName,
+				input: call.input,
+				error,
+			});
+			return undefined;
+		}
+		return { ...call, toolName: resolution.toolName, input: resolution.input, dynamicCall: true };
 	}
 
 	private async executeToolCallBatch(
@@ -209,6 +239,7 @@ export class ToolCallExecutor {
 						approvalContext: ctx.approvalContext,
 						abortSignal: ctx.abortSignal,
 						countToolCall: true,
+						...(tc.dynamicCall ? { dynamicCall: true } : {}),
 					}),
 			),
 		);

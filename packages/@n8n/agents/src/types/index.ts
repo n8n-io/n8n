@@ -82,6 +82,13 @@ export type {
 } from './sdk/tool';
 
 export type {
+	DynamicToolNamespace,
+	DynamicToolNamespaceStatus,
+	DynamicToolPermission,
+	DynamicToolsConfig,
+} from './sdk/dynamic-tools';
+
+export type {
 	Thread,
 	BuiltMemory,
 	BuiltEpisodicMemoryCaptureStore,

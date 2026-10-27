@@ -71,6 +71,7 @@ import { startStreamSession } from '../streaming/stream-session';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
+import { DynamicToolRegistry } from '../tools/dynamic-tools';
 import { fixToolCall } from '../tools/fix-tool-call';
 import { buildToolMap } from '../tools/tool-adapter';
 import { ToolCallExecutor } from '../tools/tool-call-executor';
@@ -187,6 +188,8 @@ export class AgentRuntime {
 
 	private deferredToolManager: DeferredToolManager | undefined;
 
+	private dynamicTools: DynamicToolRegistry | undefined;
+
 	private runId: string;
 
 	private telemetry: RuntimeTelemetry;
@@ -220,7 +223,14 @@ export class AgentRuntime {
 				activeTools: config.tools,
 			});
 		}
-		this.context = new RuntimeContextBuilder(config, this.deferredToolManager);
+		if (config.dynamicTools) {
+			if (config.nativeToolDeferral) {
+				throw new Error('dynamicTools cannot be combined with nativeToolDeferral');
+			}
+			const registry = new DynamicToolRegistry(config.dynamicTools);
+			if (registry.hasNamespaces) this.dynamicTools = registry;
+		}
+		this.context = new RuntimeContextBuilder(config, this.deferredToolManager, this.dynamicTools);
 		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
 		this.eventBus = config.eventBus ?? new AgentEventBus();
 		this.memory = new MemoryOrchestrator(
@@ -238,6 +248,7 @@ export class AgentRuntime {
 			tokenCounter,
 			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
 			...(this.activeSkills ? { loadSkill: this.activeSkills.load.bind(this.activeSkills) } : {}),
+			...(this.dynamicTools ? { dynamicTools: this.dynamicTools } : {}),
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
@@ -546,7 +557,8 @@ export class AgentRuntime {
 		// skills restore only when the loop starts. Accept any registered deferred tool.
 		const tool =
 			buildToolMap(this.context.getCurrentTools(state.persistence)).get(toolCall.toolName) ??
-			this.deferredToolManager?.getTool(toolCall.toolName);
+			this.deferredToolManager?.getTool(toolCall.toolName) ??
+			this.dynamicTools?.getTool(toolCall.toolName);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;

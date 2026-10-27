@@ -50,6 +50,7 @@ import {
 } from '../model/provider-quirks';
 import type { ActiveSkills } from '../skills/active-skills';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
+import type { DynamicToolRegistry } from '../tools/dynamic-tools';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
 /** Wrap tool-instruction fragments in a `<built_in_rules>` block, or `undefined` when there are none. */
@@ -86,6 +87,7 @@ export class RuntimeContextBuilder {
 	constructor(
 		private readonly config: AgentRuntimeConfig,
 		private readonly deferredToolManager: DeferredToolManager | undefined,
+		private readonly dynamicTools?: DynamicToolRegistry,
 	) {}
 
 	get modelId(): string {
@@ -175,7 +177,11 @@ export class RuntimeContextBuilder {
 				)
 			: { tools: catalog, searchToolName: undefined };
 		const aiToolCount = Object.keys(allTools).length;
-		const toolMap = buildToolMap(allUserTools);
+		// Dynamic tools are callable through call_tool but never sent to the model.
+		const toolMap = buildToolMap([
+			...(this.dynamicTools?.getCallableTools() ?? []),
+			...allUserTools,
+		]);
 		const { instructions: effectiveInstructions, volatileInstructions } =
 			this.composeEffectiveInstructions(allUserTools);
 
@@ -275,6 +281,7 @@ export class RuntimeContextBuilder {
 						...this.deferredToolManager.getLoadedTools(),
 					]
 				: []),
+			...(this.dynamicTools?.getControllerTools() ?? []),
 		];
 
 		const recallTool = this.createRecallMemoryToolForRun(persistence, tools, executionCounter);
@@ -387,8 +394,12 @@ export class RuntimeContextBuilder {
 		volatileInstructions: string | undefined;
 	} {
 		const { stableFragments, volatileFragments } = this.collectInstructionFragments(tools);
+		// The catalog changes only when the agent config changes, so it stays in
+		// the cached prefix.
+		const catalog = this.dynamicTools?.renderCatalog();
+		const instructions = prependBuiltInRules(stableFragments, this.config.instructions);
 		return {
-			instructions: prependBuiltInRules(stableFragments, this.config.instructions),
+			instructions: catalog ? `${instructions}\n\n${catalog}` : instructions,
 			volatileInstructions: wrapBuiltInRules(volatileFragments),
 		};
 	}

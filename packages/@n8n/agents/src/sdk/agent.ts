@@ -45,6 +45,7 @@ import {
 	type InlineSubAgentProviderToolsResolver,
 	type SubAgentTaskDifficulty,
 } from '../runtime/tools/delegate-sub-agent-tool';
+import { DYNAMIC_TOOL_CONTROLLER_NAMES } from '../runtime/tools/dynamic-tools';
 import { isSdkOwnedBuiltInTool } from '../runtime/tools/sdk-owned-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../runtime/tools/write-todos-tool';
 import {
@@ -74,6 +75,7 @@ import type {
 	Provider,
 	PromptCachingConfig,
 	NativeToolDeferralConfig,
+	DynamicToolsConfig,
 	ReasoningLevel,
 	RunOptions,
 	StreamResult,
@@ -186,6 +188,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private deferredToolSearchTopK: number | undefined;
 
 	private nativeToolDeferralConfig?: NativeToolDeferralConfig;
+
+	private dynamicToolsConfig?: DynamicToolsConfig;
 
 	private providerTools: BuiltProviderTool[] = [];
 
@@ -325,6 +329,22 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	/** Use provider tool search when the model and endpoint support it. */
 	nativeToolDeferral(config: NativeToolDeferralConfig): this {
 		this.nativeToolDeferralConfig = { eagerToolNames: [...config.eagerToolNames] };
+		return this;
+	}
+
+	/**
+	 * Put tools behind the fixed `get_tools` and `call_tool` tools. The prompt
+	 * lists them in a catalog and the model reads schemas on demand. Works with
+	 * any model and keeps the tool array fixed for prompt caching.
+	 */
+	dynamicTools(config: DynamicToolsConfig): this {
+		this.dynamicToolsConfig = {
+			...config,
+			namespaces: config.namespaces.map((namespace) => ({
+				...namespace,
+				tools: [...namespace.tools],
+			})),
+		};
 		return this;
 	}
 
@@ -1091,6 +1111,22 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			);
 		}
 
+		if (this.dynamicToolsConfig) {
+			const usedNames = new Set([...staticNames, ...deferredNames, ...mcpTools.map((t) => t.name)]);
+			const dynamicCollisions = [
+				...DYNAMIC_TOOL_CONTROLLER_NAMES.filter((name) => usedNames.has(name)),
+				...this.dynamicToolsConfig.namespaces
+					.flatMap((namespace) => namespace.tools)
+					.filter((t) => usedNames.has(t.name))
+					.map((t) => t.name),
+			];
+			if (dynamicCollisions.length > 0) {
+				throw new Error(
+					`Dynamic tool name collision — the following tool names resolve to duplicates or reserved tools: ${dynamicCollisions.join(', ')}`,
+				);
+			}
+		}
+
 		let allTools = [...finalStaticTools, ...mcpTools];
 
 		// Validate checkpoint again after discovering actual MCP tools
@@ -1170,6 +1206,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			reasoning: this.reasoningLevel,
 			promptCaching: this.promptCachingConfig,
 			nativeToolDeferral: this.nativeToolDeferralConfig,
+			...(this.dynamicToolsConfig ? { dynamicTools: this.dynamicToolsConfig } : {}),
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
