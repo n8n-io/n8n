@@ -107,7 +107,8 @@ function onAction(version: number, action: VersionAction) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	width: calc(var(--spacing--5xl) * 2.5);
+	/* About 320px, as in the design. */
+	width: calc(var(--spacing--5xl) * 1.25);
 	flex-shrink: 0;
 	padding-left: var(--spacing--md);
 	border-left: var(--border);
