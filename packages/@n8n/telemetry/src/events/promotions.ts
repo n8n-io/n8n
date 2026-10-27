@@ -6,7 +6,7 @@ const failureKind = z
 	.enum(['user', 'git_remote', 'unexpected'])
 	.optional()
 	.describe(
-		"Set only when the outcome is 'failed'. 'user' = the request or state was wrong (4xx or promotion conflict); 'git_remote' = a Git call to the remote failed (clone, fetch, push, pull or ls-remote), or the Git host timed out, was unreachable or rate-limited the request; 'unexpected' = anything else, such as a failed local Git step. A Git host that rejects the token, a TLS or DNS failure, and a malformed host response report as 'user', because the provider settings need a fix",
+		"Set only when the outcome is 'failed'. 'user' = the request or state was wrong (4xx or promotion conflict); 'git_remote' = a Git call to the remote failed (clone, fetch, push, pull or ls-remote), or the Git host timed out, was unreachable or rate-limited the request; 'unexpected' = anything else, such as a failed local Git step. A Git host that rejects the token, and a TLS, DNS or network-policy failure report as 'user', because the provider settings need a fix. A malformed merge request response from the Git host reports as 'unexpected'",
 	);
 
 const scope = z
