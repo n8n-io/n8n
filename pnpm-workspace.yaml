@@ -411,7 +411,7 @@ overrides:
   'knip>zod': catalog:zod-v4
   js-yaml: 4.3.2
   katex: 0.18.2
-  body-parser: 2.3.0
+  body-parser: 2.4.0
   glob@10: 10.5.0
   glob@7: 7.2.3
   jws@3: 3.2.2
