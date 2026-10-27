@@ -1,4 +1,4 @@
-import { collectNodeTypeUsage, type NodeTypeUsage } from './node-type-usage';
+import { collectNodeTypeUsage, type NodeTypeUsage, type NodeTypeSource } from './node-type-usage';
 import type { PreparedWorkflow } from './workflow-import.types';
 import type { MissingNodeTypeMode } from '../../n8n-packages.types';
 import { getWorkflowConsumerIds } from '../../spec/requirement-consumers';
@@ -13,13 +13,15 @@ export type MissingNodeTypeRequirement = NodeTypeUsage;
 export function collectMissingNodeTypes(
 	workflows: PreparedWorkflow[],
 	getSupportedVersions: (nodeType: string) => number[] | undefined,
+	agentSources: NodeTypeSource[] = [],
 ): MissingNodeTypeRequirement[] {
-	const usage = collectNodeTypeUsage(
-		workflows.map(({ entity, sourceWorkflowId }) => ({
+	const usage = collectNodeTypeUsage([
+		...workflows.map(({ entity, sourceWorkflowId }) => ({
 			workflowId: sourceWorkflowId,
 			nodes: entity.nodes,
 		})),
-	);
+		...agentSources,
+	]);
 
 	const supportedByType = new Map<string, number[] | undefined>();
 	return usage.filter(({ type, typeVersion }) => {

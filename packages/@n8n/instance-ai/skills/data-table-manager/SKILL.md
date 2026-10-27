@@ -23,12 +23,12 @@ For workflow builds that create or write Data Tables, load this skill, then
 `workflow-builder`, before `workflow_builder_build_workflow`.
 
 Use this skill to build and maintain n8n Data Tables in the current turn with
-`data_tables` and, for attachments, `parse-file`. Do not spawn another agent or
-create a background plan for data-table-only work.
+`data_tables` and, for attachments, `parse-file`. Do not spawn another agent for
+data-table-only work.
 
-Also load this skill before planning or building a workflow whose trigger,
-processing steps, or outputs create, inspect, or write Data Table records, then
-pass the relevant schema/row-handling guidance to the planning skill or builder.
+Also load this skill before building a workflow whose trigger, processing
+steps, or outputs create, inspect, or write Data Table records, then pass the
+relevant schema/row-handling guidance to the builder.
 
 n8n Data Tables are flat, workflow-friendly stores. Design them so future
 workflow expressions can read predictable field names and so updates/deletes
@@ -46,8 +46,7 @@ can target rows with narrow filters.
    know it so approval cards show a recognizable label.
 4. Inspect schema before writes, deletes, column changes, imports into an
    existing table, and workflow-facing summaries.
-5. Execute the smallest direct tool sequence. Prefer read -> decide -> write;
-   never use workflow_builder_create_tasks for standalone table work.
+5. Execute the smallest direct tool sequence. Prefer read -> decide -> write.
 6. Close with facts: table name, table ID when available, project if relevant,
    columns changed, row counts inserted/updated/deleted, skipped rows, and any
    approval or permission blocker.

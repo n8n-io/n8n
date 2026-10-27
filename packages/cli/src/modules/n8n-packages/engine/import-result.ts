@@ -47,20 +47,28 @@ export function toImportedWorkflowSummaries(
 	projectId: string,
 	published: PackagePublishingResults,
 ): ImportedWorkflowSummary[] {
-	return outcomes.map(({ workflow, sourceWorkflowId, status }) => {
+	return outcomes.map((outcome) => {
+		const { workflow, sourceWorkflowId, status } = outcome;
 		const result = published.get(sourceWorkflowId);
 		const current = result?.workflow ?? workflow;
+		// The reloaded workflow does not carry its folder, so a move reports its planned target.
+		const moveToFolderId =
+			outcome.status === 'updated' && outcome.item.action === 'update'
+				? outcome.item.moveToFolderId
+				: undefined;
 
 		return {
 			sourceWorkflowId,
 			localId: current.id,
 			name: current.name,
 			projectId,
-			parentFolderId: current.parentFolder?.id ?? null,
+			parentFolderId:
+				moveToFolderId !== undefined ? moveToFolderId : (current.parentFolder?.id ?? null),
 			activeVersionId: current.activeVersionId ?? null,
 			isArchived: current.isArchived,
 			publishing: result?.publishing ?? { state: 'unchanged' },
 			status,
+			...(moveToFolderId !== undefined ? { moved: true as const } : {}),
 		};
 	});
 }
@@ -209,16 +217,18 @@ export function unionTagSummaries(summaries: ImportTagSummary[]): ImportTagSumma
  */
 export function identifyRequirements<T extends { usedBy: PackageRequirementConsumer[] }>(
 	requirements: T[] | undefined,
-	workflows: PreparedWorkflow[],
+	workflows: Array<Pick<PreparedWorkflow, 'sourceWorkflowId'>>,
+	agents: Array<{ sourceAgentId: string }> = [],
 ): T[] | undefined {
 	if (!requirements) return undefined;
 
 	const importedIds = new Set(workflows.map((workflow) => workflow.sourceWorkflowId));
+	const agentIds = new Set(agents.map((agent) => agent.sourceAgentId));
 	return requirements
 		.map((requirement) => ({
 			...requirement,
-			usedBy: requirement.usedBy.filter(
-				({ kind, id }) => kind === 'workflow' && importedIds.has(id),
+			usedBy: requirement.usedBy.filter(({ kind, id }) =>
+				kind === 'workflow' ? importedIds.has(id) : agentIds.has(id),
 			),
 		}))
 		.filter((requirement) => requirement.usedBy.length > 0);

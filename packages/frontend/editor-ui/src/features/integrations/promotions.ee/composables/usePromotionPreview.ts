@@ -114,6 +114,7 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 		preview,
 		check,
 		graph,
+		environment,
 		repositoryName,
 		refreshing,
 		refreshFailed,

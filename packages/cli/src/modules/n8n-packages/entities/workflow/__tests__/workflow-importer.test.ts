@@ -470,4 +470,75 @@ describe('WorkflowImporter.plan', () => {
 			},
 		]);
 	});
+	describe('placement of a matched workflow', () => {
+		const options = {
+			workflowConflictPolicy: 'new-version',
+			workflowIdPolicy: 'source',
+			workflowPublishingPolicy: 'preserve-published-state',
+			missingNodeTypeMode: 'fail',
+		} as const;
+
+		/** The existing workflow sits in `old-folder`. The package puts it in `new-folder`, or at the root. */
+		const planMovedWorkflow = async (
+			layoutConflictPolicy?: 'fail' | 'follow-package',
+			{ toRoot = false } = {},
+		) => {
+			const matchService = mock<WorkflowImportMatchService>();
+			const importer = new WorkflowImporter(
+				matchService,
+				mock<WorkflowCreationService>(),
+				mock<WorkflowService>(),
+				mock<WorkflowFinderService>(),
+			);
+			const existing = Object.assign(makeWorkflow('existing'), {
+				parentFolder: { id: 'old-folder' },
+			});
+			matchService.findBySourceWorkflowIds.mockResolvedValue({
+				matches: new Map([['source', existing]]),
+				lineageConflicts: [],
+			});
+			matchService.findOwningProjectsByWorkflowId.mockResolvedValue(new Map());
+
+			return await importer.plan(
+				toRoot ? { ...context, folderId: null } : context,
+				[
+					{
+						sourceWorkflowId: 'source',
+						entity: makeWorkflow('source'),
+						parentFolderId: toRoot ? null : 'new-folder',
+						sourcePublished: false,
+						sourceArchived: false,
+					},
+				],
+				options,
+				{ checkRootPlacement: toRoot, layoutConflictPolicy },
+			);
+		};
+
+		it('reports a folder conflict by default', async () => {
+			const plan = await planMovedWorkflow();
+
+			expect(plan.folderConflicts).toEqual([
+				expect.objectContaining({
+					existingParentFolderId: 'old-folder',
+					targetFolderId: 'new-folder',
+				}),
+			]);
+			expect(plan.items[0]).not.toHaveProperty('moveToFolderId');
+		});
+
+		it('plans a move to the project root as null', async () => {
+			const plan = await planMovedWorkflow('follow-package', { toRoot: true });
+
+			expect(plan.folderConflicts).toEqual([]);
+			expect(plan.items[0]).toMatchObject({ action: 'update', moveToFolderId: null });
+		});
+
+		it('plans a move under follow-package placement', async () => {
+			const plan = await planMovedWorkflow('follow-package');
+
+			expect(plan.folderConflicts).toEqual([]);
+			expect(plan.items[0]).toMatchObject({ action: 'update', moveToFolderId: 'new-folder' });
+		});
+	});
 });

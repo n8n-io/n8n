@@ -70,7 +70,7 @@ export function createEpisodicMemoryReflectFn(
 	return async (input): Promise<EpisodicMemoryReflectResult> => {
 		const { generateText, Output } = await import('ai');
 		const response = await generateText({
-			model: createModel(model),
+			model: createModel(model, input.modelFetch),
 			instructions: options.reflectionPrompt ?? DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 			prompt: buildEpisodicMemoryReflectorPrompt(input),
 			output: Output.object({ schema: EpisodicMemoryReflectionSchema }),

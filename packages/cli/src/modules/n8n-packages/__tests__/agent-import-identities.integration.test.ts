@@ -62,17 +62,14 @@ async function resolve(projectId = project.id) {
 it('retains persisted Agent and task identities on re-import', async () => {
 	const sourceBefore = structuredClone(sources);
 	const identities = await resolve();
-	const mapping = await service.mapTaskIds(sources, identities);
 	expect(identities.idConflicts).toEqual([]);
-	expect(mapping.idConflicts).toEqual([]);
+	expect(await service.findTaskIdConflicts(sources)).toEqual([]);
 	for (const source of sources) {
 		const { targetAgentId } = identities.identities.get(source.sourceAgentId)!;
 		await seedAgent(targetAgentId);
 		expect(targetAgentId).toBe(source.sourceAgentId);
-		for (const [sourceTaskId, body] of Object.entries(source.tasks)) {
-			const id = mapping.taskIdsBySourceAgentId.get(source.sourceAgentId)!.get(sourceTaskId)!;
+		for (const [id, body] of Object.entries(source.tasks)) {
 			await tasks.save({ ...body, id, agentId: targetAgentId });
-			expect(id).toBe(sourceTaskId);
 		}
 	}
 	const before = await records();
@@ -80,9 +77,7 @@ it('retains persisted Agent and task identities on re-import', async () => {
 	expect([...repeated.identities.values()].map(({ targetAgentId }) => targetAgentId)).toEqual(
 		[...identities.identities.values()].map(({ targetAgentId }) => targetAgentId),
 	);
-	expect((await service.mapTaskIds(sources, repeated)).taskIdsBySourceAgentId).toEqual(
-		mapping.taskIdsBySourceAgentId,
-	);
+	expect(await service.findTaskIdConflicts(sources)).toEqual([]);
 	expect(await records()).toEqual(before);
 	expect(sources).toEqual(sourceBefore);
 });
@@ -111,14 +106,11 @@ it('reports an occupied task ID owned by another Agent', async () => {
 		...taskBody,
 	});
 	const before = await records();
-	const result = await service.mapTaskIds(sources, await resolve());
-	expect(result.taskIdsBySourceAgentId.get('support_source')!.size).toBe(0);
-	expect(result.idConflicts).toEqual([
+	const result = await service.findTaskIdConflicts(sources);
+	expect(result).toEqual([
 		{
 			sourceAgentId: 'support_source',
-			targetAgentId: 'support_source',
 			sourceTaskId: 'support_source_task',
-			targetTaskId: 'support_source_task',
 			conflictingAgentId: 'other-agent',
 		},
 	]);
@@ -127,15 +119,10 @@ it('reports an occupied task ID owned by another Agent', async () => {
 
 it('keeps task and Agent ID namespaces separate', async () => {
 	await seedAgent('support_source');
-	const identities = await resolve();
-	const result = await service.mapTaskIds(
-		[{ sourceAgentId: 'support_source', tasks: { support_source: taskBody } }],
-		identities,
-	);
-	expect(result.taskIdsBySourceAgentId.get('support_source')).toEqual(
-		new Map([['support_source', 'support_source']]),
-	);
-	expect(result.idConflicts).toEqual([]);
+	const result = await service.findTaskIdConflicts([
+		{ sourceAgentId: 'support_source', tasks: { support_source: taskBody } },
+	]);
+	expect(result).toEqual([]);
 });
 
 it('restricts destination matching to projects the user can read', async () => {
@@ -200,8 +187,8 @@ it('returns empty results without database reads', async () => {
 	const agentRead = vi.spyOn(agents, 'find');
 	const taskRead = vi.spyOn(tasks, 'find');
 	const matches = await service.findBySourceAgentIds({ user, projectId: project.id }, []);
-	const identities = await service.allocateAgentIds(matches);
-	expect((await service.mapTaskIds([], identities)).taskIdsBySourceAgentId.size).toBe(0);
+	expect((await service.allocateAgentIds(matches)).identities.size).toBe(0);
+	expect(await service.findTaskIdConflicts([])).toEqual([]);
 	expect(await agents.findImportCandidates(project.id, [])).toEqual([]);
 	expect(agentRead).not.toHaveBeenCalled();
 	expect(taskRead).not.toHaveBeenCalled();

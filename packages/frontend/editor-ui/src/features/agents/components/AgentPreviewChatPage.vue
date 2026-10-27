@@ -4,6 +4,7 @@ import { ref, useTemplateRef, watch } from 'vue';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
 	AgentContinueLoadedEvent,
+	AgentUsageUpdate,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
@@ -43,6 +44,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
@@ -104,6 +106,7 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				:budget-cards="budgetCards"
 				:increase-budget="increaseBudget"
 				@continue-loaded="emit('continue-loaded', $event)"
+				@usage-updated="emit('usage-updated', $event)"
 				@session-created="emit('session-created', $event)"
 				@initial-consumed="emit('initial-consumed')"
 				@open-build="emit('open-build')"

@@ -1,5 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
@@ -9,6 +9,12 @@ import {
 	forbiddenCredentialUpdates,
 	plannedCredentialUpdates,
 } from '../entities/credential/credential-conflict-policy';
+import {
+	requiredAgentScopes,
+	type AgentImportPlan,
+	type PreparedAgent,
+	type PersistedAgentOutcome,
+} from '../entities/agent/agent-import.types';
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
@@ -30,7 +36,7 @@ import type {
 	PreparedFolder,
 } from '../entities/folder/folder-import.types';
 import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
-import { FolderImporter } from '../entities/folder/folder-importer';
+import { FolderImporter, toFolderSummaries } from '../entities/folder/folder-importer';
 import type { FolderRemovalPlan } from '../entities/folder/folder-removal.types';
 import { FolderRemover } from '../entities/folder/folder-remover';
 import { TagImporter } from '../entities/tag/tag-importer';
@@ -80,6 +86,7 @@ import type {
 import { mergeRequirementConsumers } from '../spec/requirement-consumers';
 import type {
 	PackageRequirementConsumer,
+	PackageAgentRequirement,
 	PackageWorkflowRequirement,
 } from '../spec/requirements.schema';
 import { ContentImportPolicyGate, contentImportTransport } from './content-import-policy';
@@ -90,12 +97,16 @@ import {
 	assertCredentialWritesAllowed,
 	assertDataTableWritesAllowed,
 	assertVariableWritesAllowed,
+	assertPackageImportApiKeyScopes,
 } from './import-gates';
+import { identifyRequirements } from './import-result';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
 	folders: PreparedFolder[];
 	workflows: PreparedWorkflow[];
+	agents?: PreparedAgent[];
+	agentRequirements?: PackageAgentRequirement[];
 	credentialRequest: CredentialBindingRequest;
 	dataTableRequest: DataTableImportRequest;
 	variableRequest: VariableImportRequest;
@@ -110,6 +121,11 @@ export interface ImportOrchestrationInput {
 	explicitDeleteWorkflowIds?: string[];
 	/** Treat the project root as a workflow location (project packages, which set the layout). */
 	checkRootPlacement: boolean;
+	/**
+	 * Under `layoutConflictPolicy=follow-package`, the folders a move may touch. A selection moves only the
+	 * folders that hold a selected workflow, so unselected content stays where it is. Omitted means all.
+	 */
+	movableFolderIds?: ReadonlySet<string>;
 }
 
 /**
@@ -118,6 +134,7 @@ export interface ImportOrchestrationInput {
  */
 export interface ImportContentResult {
 	workflowOutcomes: PersistedWorkflowOutcome[];
+	agentOutcomes: PersistedAgentOutcome[];
 	removedWorkflows: RemovedWorkflowSummary[];
 	removedFolders: RemovedFolderSummary[];
 	folderSummaries: ImportedFolderSummary[];
@@ -134,6 +151,7 @@ export interface ImportPlan {
 	folderContext: FolderImportContext;
 	credentialPlan: CredentialImportPlan;
 	workflowPlan: WorkflowImportPlan;
+	agentPlan?: AgentImportPlan;
 	folderPlan: FolderImportPlan;
 	dataTablePlan: DataTableImportPlan;
 	variablePlan: VariableImportPlan;
@@ -144,10 +162,7 @@ export interface ImportPlan {
 	blockingIssues: BlockingIssue[];
 }
 
-/**
- * Coordinates the credential, folder, and workflow importers to bring a package's
- * contents into one resolved project scope
- */
+/** Coordinates entity planning and import across destination projects. */
 @Service()
 export class ImportOrchestrator {
 	constructor(
@@ -219,6 +234,12 @@ export class ImportOrchestrator {
 			if (variablePlan.overwrites.length > 0) {
 				await this.variableImporter.assertCanUpdate(input.context, variablePlan.overwrites);
 			}
+		}
+		for (const plan of plans) {
+			if (!plan.agentPlan) continue;
+			assertPackageImportApiKeyScopes(options.apiKeyScopes, requiredAgentScopes(plan.agentPlan));
+			if (plan.credentialPlan.stubIds.size > 0)
+				assertPackageImportApiKeyScopes(options.apiKeyScopes, ['credential:create']);
 		}
 
 		const issues = await this.collectPackageBlockingIssues(plans);
@@ -302,6 +323,46 @@ export class ImportOrchestrator {
 	}
 
 	async plan(input: ImportOrchestrationInput): Promise<ImportPlan> {
+		return (await this.planPackage([input]))[0];
+	}
+
+	async planPackage(inputs: ImportOrchestrationInput[]): Promise<ImportPlan[]> {
+		const plans: ImportPlan[] = [];
+		for (const input of inputs) plans.push(await this.planScope(input));
+		if (!plans.some((plan) => plan.agentPlan)) return plans;
+		const [{ AgentImporter }, { AgentImportBindings }] = await Promise.all([
+			import('../entities/agent/agent-importer.js'),
+			import('../entities/agent/agent-import-bindings.js'),
+		]);
+		await Container.get(AgentImportBindings).resolve(plans);
+		for (const plan of plans) {
+			if (!plan.agentPlan) continue;
+			await Container.get(AgentImporter).validate(
+				plan.agentPlan,
+				{
+					...plan.input.context,
+					projectPendingCreation: plan.input.projectPendingCreation,
+				},
+				plan.credentialPlan.stubIds.size > 0,
+			);
+			plan.blockingIssues.push(...plan.agentPlan.issues);
+		}
+		return plans;
+	}
+
+	private async planAgents(input: ImportOrchestrationInput): Promise<AgentImportPlan | undefined> {
+		if (!input.agents?.length) return undefined;
+		const { AgentImporter } = await import('../entities/agent/agent-importer.js');
+		return await Container.get(AgentImporter).plan(
+			{ ...input.context, projectPendingCreation: input.projectPendingCreation },
+			input.agents,
+			input.options,
+		);
+	}
+
+	private async planScope(input: ImportOrchestrationInput): Promise<ImportPlan> {
+		const agentPlan = await this.planAgents(input);
+		if (agentPlan) input = scopeAgentRequirements(input, agentPlan);
 		const {
 			context,
 			folders,
@@ -313,18 +374,20 @@ export class ImportOrchestrator {
 			options,
 		} = input;
 
-		await this.workflowPublisher.assertCanPublish(
-			context.user,
-			context.projectId,
-			options.workflowPublishingPolicy,
-			input.projectPendingCreation,
-		);
+		if (workflows.length > 0 || !agentPlan)
+			await this.workflowPublisher.assertCanPublish(
+				context.user,
+				context.projectId,
+				options.workflowPublishingPolicy,
+				input.projectPendingCreation,
+			);
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
 		const variablePlan = await this.variableImporter.plan(context, variableRequest);
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options, {
 			checkRootPlacement: input.checkRootPlacement,
+			layoutConflictPolicy: options.layoutConflictPolicy,
 		});
 		// Tags plan after workflows: only tags referenced by non-skipped workflows gate or create.
 		const tagPlan = await this.tagImporter.plan(
@@ -332,7 +395,12 @@ export class ImportOrchestrator {
 			tagRequest,
 			workflowPlan.items.filter((item) => item.action !== 'skip'),
 		);
-		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
+		const folderContext = {
+			...context,
+			folderConflictPolicy: options.folderConflictPolicy,
+			layoutConflictPolicy: options.layoutConflictPolicy,
+			movableFolderIds: input.movableFolderIds,
+		};
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
 
 		const packageFolderIds = folders.map(({ sourceFolderId }) => sourceFolderId);
@@ -347,13 +415,14 @@ export class ImportOrchestrator {
 			explicitDeleteIds: input.explicitDeleteWorkflowIds,
 		});
 
-		// Which folders end up empty depends on which workflows survive, so this follows the plan above
-		// and reads the surviving placements off it.
+		// Which folders end up empty depends on which workflows survive and where the planned moves put
+		// workflows and folders, so this follows both plans above.
 		const folderRemovalPlan =
 			removesUnpackagedWorkflows(options.folderConflictPolicy) && !input.projectPendingCreation
 				? await this.folderRemover.plan(context, {
 						packageFolderIds,
 						occupiedFolderIds: removalPlan.occupiedFolderIds,
+						folderItems: folderPlan.items,
 					})
 				: { removals: [], failures: [] };
 
@@ -361,6 +430,15 @@ export class ImportOrchestrator {
 		const missingNodeTypes = collectMissingNodeTypes(
 			workflowPlan.items.filter((item) => item.action !== 'skip'),
 			(nodeType) => this.nodeTypes.getSupportedVersions(nodeType),
+			(agentPlan?.items ?? [])
+				.filter(({ action }) => action !== 'skip')
+				.map((item) => ({
+					agentId: item.sourceAgentId,
+					projectId: context.projectId,
+					nodes: (item.config?.tools ?? [])
+						.filter((tool) => tool.type === 'node')
+						.map(({ node }) => ({ type: node.nodeType, typeVersion: node.nodeTypeVersion })),
+				})),
 		);
 
 		const actor: PolicyActor = { kind: 'user', user: context.user };
@@ -397,6 +475,7 @@ export class ImportOrchestrator {
 
 		return {
 			input,
+			agentPlan,
 			folderContext,
 			credentialPlan,
 			workflowPlan,
@@ -435,7 +514,7 @@ export class ImportOrchestrator {
 		// Tags go first because the workflow write attaches them by id.
 		await this.tagImporter.apply(context, tagPlan);
 
-		const folderSummaries = await this.folderImporter.apply(folderContext, folderPlan);
+		await this.folderImporter.apply(folderContext, folderPlan);
 
 		const credentialBindResult = await this.credentialImporter.apply(
 			context,
@@ -476,6 +555,12 @@ export class ImportOrchestrator {
 			}),
 		);
 
+		let agentOutcomes: PersistedAgentOutcome[] = [];
+		if (plan.agentPlan) {
+			const { AgentImporter } = await import('../entities/agent/agent-importer.js');
+			agentOutcomes = await Container.get(AgentImporter).apply(context, plan.agentPlan);
+		}
+
 		// Last of the writes: an overwrite is the only step that rewrites pre-existing data, and no
 		// step above reads a variable, since `$vars` resolves by name at runtime. Still ahead of the
 		// publish sweep, which evaluates trigger parameters against variable values.
@@ -489,6 +574,10 @@ export class ImportOrchestrator {
 			credentialPlan,
 		);
 
+		// After the workflow writes: a failed write then leaves the existing folders as they were.
+		// Before the removals, which plan with the folders in their new places.
+		await this.folderImporter.applyUpdates(folderContext, folderPlan);
+
 		// Removal trails every write: the package's own content is in place first, so a failure
 		// earlier leaves the target with more than the package asked for rather than less. It sits
 		// after the variables above only because nothing here reads them.
@@ -497,12 +586,13 @@ export class ImportOrchestrator {
 		const removedFolders = await this.folderRemover.apply(context, plan.folderRemovalPlan);
 
 		return {
+			agentOutcomes,
 			workflowOutcomes: outcomes.map((outcome) =>
 				withBlockedFromPublish(outcome, blockedFromPublish.get(outcome.sourceWorkflowId)),
 			),
 			removedWorkflows,
 			removedFolders,
-			folderSummaries,
+			folderSummaries: toFolderSummaries(folderPlan),
 			bindings,
 			credentialResult: { ...credentialBindResult, updated: credentialsUpdated },
 			dataTablePlan,
@@ -602,6 +692,40 @@ export class ImportOrchestrator {
 			),
 		];
 	}
+}
+
+function scopeAgentRequirements(
+	input: ImportOrchestrationInput,
+	agentPlan: AgentImportPlan,
+): ImportOrchestrationInput {
+	const active = agentPlan.items.filter(({ action }) => action !== 'skip');
+	const filter = <T extends { usedBy: PackageRequirementConsumer[] }>(
+		requirements: T[] | undefined,
+	) => identifyRequirements(requirements, input.workflows, active);
+	const requirements = filter(input.credentialRequest.requirements);
+	const originalIds = new Set(input.credentialRequest.requirements?.map(({ id }) => id));
+	const activeIds = new Set(requirements?.map(({ id }) => id));
+	const bindings = input.credentialRequest.credentialBindings;
+	return {
+		...input,
+		agentRequirements: filter(input.agentRequirements),
+		subWorkflowRequirements: filter(input.subWorkflowRequirements),
+		credentialRequest: {
+			...input.credentialRequest,
+			requirements,
+			credentialBindings:
+				bindings &&
+				new Map([...bindings].filter(([id]) => !originalIds.has(id) || activeIds.has(id))),
+		},
+		dataTableRequest: {
+			...input.dataTableRequest,
+			requirements: filter(input.dataTableRequest.requirements),
+		},
+		variableRequest: {
+			...input.variableRequest,
+			requirements: filter(input.variableRequest.requirements),
+		},
+	};
 }
 
 function withBlockedFromPublish(

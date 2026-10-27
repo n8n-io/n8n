@@ -61,7 +61,7 @@ describe('SettingsContextView', () => {
 		expect(getByTestId('settings-context-sources-row')).toBeInTheDocument();
 	});
 
-	it('marks Skills and Sources as unavailable while the skills hub is off', () => {
+	it('marks Skills and Sources as unavailable while the agents module is off', () => {
 		const { getByTestId } = renderView();
 
 		expect(getByTestId('settings-context-skills-row')).toHaveTextContent('Coming soon');

@@ -18,8 +18,11 @@ vi.mock('../attachments/parse-file.tool', () => ({
 }));
 
 vi.mock('../credentials.tool', () => ({
-	CREDENTIALS_TOOL_ID: 'workflow_builder_credentials',
-	createCredentialsTool: vi.fn(() => ({ id: 'workflow_builder_credentials' })),
+	createListCredentialsTool: vi.fn(() => ({ id: 'list_credentials' })),
+	createSearchCredentialTypesTool: vi.fn(() => ({ id: 'search_credential_types' })),
+	createSetupCredentialsTool: vi.fn(() => ({ id: 'setup_credentials' })),
+	createTestCredentialTool: vi.fn(() => ({ id: 'test_credential' })),
+	createDeleteCredentialTool: vi.fn(() => ({ id: 'delete_credential' })),
 }));
 
 vi.mock('../data-tables.tool', () => ({
@@ -38,9 +41,10 @@ vi.mock('../executions.tool', () => ({
 }));
 
 vi.mock('../nodes.tool', () => ({
-	createNodesTool: vi.fn((_context: unknown, scope?: string) => ({
-		id: scope ? `workflow_builder_nodes-${scope}` : 'workflow_builder_nodes',
-	})),
+	createSearchNodesTool: vi.fn(() => ({ id: 'search_nodes' })),
+	createGetNodeTypesTool: vi.fn(() => ({ id: 'get_node_types' })),
+	createGetNodeParameterOptionsTool: vi.fn(() => ({ id: 'get_node_parameter_options' })),
+	createExecuteNodeTool: vi.fn(() => ({ id: 'execute_node' })),
 }));
 
 vi.mock('../search-models.tool', () => ({
@@ -63,14 +67,6 @@ vi.mock('../orchestration/builder-tools', () => ({
 	createAgentBuilderTools: vi.fn(() => [
 		{ name: 'agent_builder_write_config', id: 'agent_builder_write_config' },
 	]),
-}));
-
-vi.mock('../orchestration/complete-checkpoint.tool', () => ({
-	createCompleteCheckpointTool: vi.fn(() => ({ id: 'workflow_builder_complete_checkpoint' })),
-}));
-
-vi.mock('../orchestration/plan.tool', () => ({
-	createPlanTool: vi.fn(() => ({ id: 'workflow_builder_create_tasks' })),
 }));
 
 vi.mock('../orchestration/report-verification-verdict.tool', () => ({
@@ -143,25 +139,41 @@ describe('domain tool construction', () => {
 		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
 			workflow_builder_workflows: { id: 'workflow_builder_workflows' },
 			workflow_builder_executions: { id: 'workflow_builder_executions' },
-			workflow_builder_credentials: { id: 'workflow_builder_credentials' },
+			list_credentials: { id: 'list_credentials' },
+			search_credential_types: { id: 'search_credential_types' },
+			setup_credentials: { id: 'setup_credentials' },
+			test_credential: { id: 'test_credential' },
+			delete_credential: { id: 'delete_credential' },
 			data_tables: { id: 'data_tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
 			'n8n-docs': { id: 'n8n-docs' },
-			workflow_builder_nodes: { id: 'workflow_builder_nodes' },
+			search_nodes: { id: 'search_nodes' },
+			get_node_types: { id: 'get_node_types' },
+			get_node_parameter_options: { id: 'get_node_parameter_options' },
+			execute_node: { id: 'execute_node' },
 			workflow_builder_search_models: { id: 'workflow_builder_search_models' },
 			workflow_builder_ask_user: { id: 'workflow_builder_ask_user' },
 			workflow_builder_build_workflow: { id: 'workflow_builder_build_workflow' },
 		});
+		expect(orchestratorTools.has('workflow_builder_nodes')).toBe(false);
 		expect(orchestratorTools.has('templates')).toBe(false);
 		expect(orchestratorTools.has('evals')).toBe(false);
 
 		const { createWorkflowsTool } = await import('../workflows.tool.js');
-		const { createNodesTool } = await import('../nodes.tool.js');
+		const {
+			createSearchNodesTool,
+			createGetNodeTypesTool,
+			createGetNodeParameterOptionsTool,
+			createExecuteNodeTool,
+		} = await import('../nodes.tool.js');
 		const { createSearchModelsTool } = await import('../search-models.tool.js');
 		const { createDataTablesTool } = await import('../data-tables.tool.js');
 		expect(createWorkflowsTool).toHaveBeenCalledWith(context);
-		expect(createNodesTool).toHaveBeenCalledWith(context);
+		expect(createSearchNodesTool).toHaveBeenCalledWith(context);
+		expect(createGetNodeTypesTool).toHaveBeenCalledWith(context);
+		expect(createGetNodeParameterOptionsTool).toHaveBeenCalledWith(context);
+		expect(createExecuteNodeTool).toHaveBeenCalledWith(context);
 		expect(createSearchModelsTool).toHaveBeenCalledOnce();
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
 	});
@@ -289,12 +301,13 @@ describe('domain tool construction', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('agent-context')).toBe(true);
 	});
 
-	it('constructs workflow_builder_create_tasks for the agent to apply profile exclusions', () => {
+	it('does not construct removed orchestration tools', () => {
 		const context = mock<OrchestrationContext>();
 
 		const orchestrationTools = createOrchestrationTools(context);
 
-		expect(orchestrationTools.has('workflow_builder_create_tasks')).toBe(true);
+		expect(orchestrationTools.has('workflow_builder_create_tasks')).toBe(false);
+		expect(orchestrationTools.has('workflow_builder_complete_checkpoint')).toBe(false);
 		expect(orchestrationTools.has('plan')).toBe(false);
 		expect(orchestrationTools.has('delegate')).toBe(false);
 		expect(orchestrationTools.has('eval-setup-with-agent')).toBe(false);

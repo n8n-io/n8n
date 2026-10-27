@@ -44,7 +44,7 @@ function agentFiles(entry: ManifestEntry, availableInMCP: boolean): Record<strin
 		objective: 'Summarize the open requests.',
 		cronExpression: '0 9 * * *',
 	};
-	const skillId = 'shared-skill';
+	const skillId = `${entry.id}_skill`;
 	const toolId = 'shared_tool';
 	const taskId = `${entry.id}_task`;
 	const agent: z.input<typeof serializedAgentSchema> = {
