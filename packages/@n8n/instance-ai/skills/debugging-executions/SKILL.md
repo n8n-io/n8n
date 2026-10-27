@@ -39,11 +39,11 @@ Check what you can see on the n8n side first. These checks are read-only, so
 run them unprompted:
 
 - **Auth errors (401, 403, "unauthorized", "invalid key").** Confirm that the
-  credential exists (`workflow_builder_credentials(action="list")` or `get`),
+  credential exists (`list_credentials`, with `ids` for a specific credential),
   that the node uses it (the node's `credentials` in
   `workflow_builder_workflows(action="get")`; resolved parameters show only the
   auth type, not which credential is bound), and what
-  `workflow_builder_credentials(action="test")` reports. A generic credential,
+  `test_credential` reports. A generic credential,
   such as Header Auth, can pass its test without a call to the service, so a
   pass does not show that the service accepts it. Say so when you report the
   check.

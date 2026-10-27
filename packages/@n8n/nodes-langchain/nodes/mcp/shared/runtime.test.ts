@@ -541,6 +541,22 @@ describe('runtime', () => {
 			expect(manager.size).toBe(1);
 		});
 
+		it('opens one client per execution, so a cached client never sends another execution trace context', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
+			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			await executeMcpTool(createCachedCtx('exec-1'), () => baseConfig, {
+				enableSessionCache: true,
+			});
+			await executeMcpTool(createCachedCtx('exec-2'), () => baseConfig, {
+				enableSessionCache: true,
+			});
+
+			expect(manager.size).toBe(2);
+		});
+
 		it('opens a fresh client per call when the cache is disabled', async () => {
 			const connect = vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });

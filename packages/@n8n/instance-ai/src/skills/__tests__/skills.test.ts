@@ -132,8 +132,6 @@ describe('Instance AI skills', () => {
 			'instance-awareness',
 			'intent-recognition',
 			'n8n-docs-assistant',
-			'planned-task-runtime',
-			'planning',
 			'progressive-building',
 			'suggest-automations',
 			'workflow-builder',
@@ -349,7 +347,13 @@ describe('Instance AI skills', () => {
 
 		expect(skill).toMatchObject({
 			name: 'n8n-docs-assistant',
-			recommendedTools: ['n8n-docs', 'workflow_builder_credentials', 'workflow_builder_nodes'],
+			recommendedTools: [
+				'n8n-docs',
+				'list_credentials',
+				'search_credential_types',
+				'search_nodes',
+				'get_node_types',
+			],
 		});
 		// `n8n-docs` is always loaded, so the catalog must not ask the model to load it.
 		expect(skill?.description).not.toContain('load_tool');
@@ -382,9 +386,15 @@ describe('Instance AI skills', () => {
 			'execute_command',
 			'workflow_builder_build_workflow',
 			'workflow_builder_workflows',
-			'workflow_builder_nodes',
+			'search_nodes',
+			'get_node_types',
+			'get_node_parameter_options',
+			'execute_node',
 			'data_tables',
-			'workflow_builder_credentials',
+			'list_credentials',
+			'search_credential_types',
+			'setup_credentials',
+			'test_credential',
 			'workflow_builder_verify_built_workflow',
 			'workflow_builder_executions',
 		]);
@@ -397,9 +407,6 @@ describe('Instance AI skills', () => {
 		);
 		expect(skill?.description).toContain('workflow-sdk validate');
 		expect(skill?.description).toContain('load data-table-manager first');
-		expect(skill?.description).toContain(
-			'Do not load planning or workflow_builder_create_tasks first',
-		);
 
 		const loaded = await source.loadSkill('workflow-builder');
 		expect(loaded?.instructions).toContain('## Routing');
@@ -410,8 +417,8 @@ describe('Instance AI skills', () => {
 			'node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate',
 		);
 		expect(loaded?.instructions).toContain('workspace source file');
-		expect(loaded?.instructions).toContain('workflow_builder_nodes(action="suggested")');
-		expect(loaded?.instructions).toContain('workflow_builder_nodes(action="search")');
+		expect(loaded?.instructions).toContain('`search_nodes` with `categories`');
+		expect(loaded?.instructions).toContain('`search_nodes` with `query`/`queries`');
 		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
 		expect(loaded?.instructions).toContain('Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
@@ -437,11 +444,8 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('## Trigger URL Sharing');
 		expect(loaded?.instructions).toContain('{formBaseUrl}/{path}');
 		expect(loaded?.instructions).toContain('**Open chat** button');
-		expect(loaded?.instructions).toContain(
-			'batch\n`workflow_builder_nodes(action="type-definition")`',
-		);
+		expect(loaded?.instructions).toContain('batch\n`get_node_types`');
 		expect(loaded?.instructions).toContain('together with the `load_skill` call');
-		expect(loaded?.instructions).toContain('Do not create a plan\njust for verification');
 		expect(loaded?.instructions).toContain(
 			'never stop before the first\n`workflow_builder_build_workflow` call',
 		);
@@ -451,59 +455,12 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
 		);
-		expect(loaded?.instructions).toContain(
-			'`planning` or call `workflow_builder_create_tasks` first',
-		);
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
 		expect(loaded?.instructions).toContain(
 			'Do NOT wire branches as standalone statements after `export default`',
 		);
 		expect(loaded?.instructions).toContain('never reaches the builder');
-	});
-
-	it('loads the bundled planning skill', async () => {
-		const source = loadInstanceAiSkills();
-		const skill = source.registry.skills.find((entry) => entry.name === 'planning');
-
-		expect(skill?.name).toBe('planning');
-		expect(skill?.recommendedTools).toEqual([
-			'workflow_builder_create_tasks',
-			'workflow_builder_workflows',
-			'workflow_builder_nodes',
-			'workflow_builder_credentials',
-			'data_tables',
-			'parse-file',
-			'research',
-			'workflow_builder_ask_user',
-		]);
-		expect(skill?.description).toContain(
-			'If workflow_builder_create_tasks is not visible, load it via load_tool',
-		);
-		expect(skill?.description).toContain('Do NOT use for new one-off workflows');
-
-		const loaded = await source.loadSkill('planning');
-		expect(loaded?.instructions).toContain('## When NOT to use this skill');
-		expect(loaded?.instructions).toContain('Consult the knowledge base before planning');
-		expect(loaded?.instructions).toContain('never load `templates/index.json` wholesale');
-		expect(loaded?.instructions).toContain(
-			'If `workflow_builder_create_tasks` is not visible, load it via `load_tool`',
-		);
-		expect(loaded?.instructions).toContain(
-			'Do not call `workflow_builder_create_tasks` just to get approval',
-		);
-		expect(loaded?.instructions).toContain('planningContext.source: "planning-skill"');
-		expect(loaded?.instructions).toContain('Do not spawn another agent');
-		expect(loaded?.instructions).toContain('`Required effects`');
-		expect(loaded?.instructions).toContain('`Explicit constraints`');
-		expect(loaded?.instructions).toContain('`Empty/invalid behavior`');
-		expect(loaded?.instructions).toContain('`Verify required effects`');
-		expect(loaded?.instructions).toContain("Never ask for the user's timezone");
-		expect(loaded?.instructions).toContain('Trust already-collected briefing context');
-		expect(loaded?.instructions).toContain('Do not add\nroutine "verify this workflow"');
-		expect(loaded?.instructions).toContain('Checkpoint tasks are exceptional semantic checks');
-		expect(loaded?.instructions).not.toContain('submit-plan');
-		expect(loaded?.instructions).not.toContain('add-plan-item');
 	});
 
 	it('loads the bundled one-off-operations skill', async () => {
@@ -588,33 +545,6 @@ describe('Instance AI skills', () => {
 		expect(reference).toContain('Do NOT wrap in `formFields`');
 	});
 
-	it('loads the bundled planned-task-runtime skill', async () => {
-		const source = loadInstanceAiSkills();
-		const skill = source.registry.skills.find((entry) => entry.name === 'planned-task-runtime');
-
-		expect(skill?.description).toContain('planned-task-follow-up');
-
-		const loaded = await source.loadSkill('planned-task-runtime');
-		expect(loaded?.instructions).toContain(
-			'Before calling `workflow_builder_create_tasks`, load it via `load_tool`',
-		);
-		expect(loaded?.instructions).toContain(
-			'load `workflow_builder_create_tasks` via `load_tool` if needed',
-		);
-		expect(loaded?.instructions).toContain('You MUST take action in this same turn');
-		expect(loaded?.instructions).toContain('awaiting_replan');
-		expect(loaded?.instructions).toMatch(/Do NOT reply with an\s+acknowledgement/);
-		expect(loaded?.instructions).toContain('<planned-task-follow-up type="build-workflow">');
-		expect(loaded?.instructions).toContain('<planned-task-follow-up type="checkpoint">');
-		expect(loaded?.instructions).toContain('Always require structured verification evidence');
-		expect(loaded?.instructions).toContain('never trust builder prose');
-		expect(loaded?.instructions).toContain('before `workflow_builder_complete_checkpoint`');
-		expect(loaded?.instructions).toContain('patch in place');
-		expect(loaded?.instructions).toContain('within two rounds');
-		expect(loaded?.instructions).toContain('<background-task-completed>');
-		expect(loaded?.instructions).toContain('Never poll and never sleep');
-	});
-
 	it('loads the bundled instance-awareness skill', async () => {
 		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'instance-awareness');
@@ -642,7 +572,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('unreconstructable-context');
 		expect(loaded?.instructions).toContain('do this unprompted');
 		expect(loaded?.instructions).toContain('## Before you name a cause');
-		expect(loaded?.instructions).toContain('credentials(action="test")');
+		expect(loaded?.instructions).toContain('test_credential');
 		expect(skill?.description).toContain('a live run you started');
 	});
 });
