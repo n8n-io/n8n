@@ -59,11 +59,11 @@ const STALE_RUN_MS = Time.days.toMilliseconds;
 
 interface TrackedRun {
 	usage: KnowledgeRunUsage;
-	lastCallAt: number;
+	lastToolCallAt: number;
 	/** Calls started so far. Gives each call its place, because concurrent calls can end in another order. */
-	startedCalls: number;
+	startedToolCalls: number;
 	/** Each file that the run read, by file id, with its upload time and the place of its first read call. */
-	readFiles: Map<string, { uploadedAt: number; callOrder: number }>;
+	readFiles: Map<string, { uploadedAt: number; toolCallOrder: number }>;
 }
 
 /**
@@ -110,13 +110,13 @@ export class AgentKnowledgeUsageTracker {
 
 		const run: TrackedRun = this.runs.get(runId) ?? {
 			usage: emptyUsage(),
-			lastCallAt: now,
-			startedCalls: 0,
+			lastToolCallAt: now,
+			startedToolCalls: 0,
 			readFiles: new Map(),
 		};
-		const callOrder = run.startedCalls++;
+		const toolCallOrder = run.startedToolCalls++;
 		run.usage[usageKeyByCall[call]]++;
-		run.lastCallAt = now;
+		run.lastToolCallAt = now;
 		this.runs.set(runId, run);
 
 		return (result) => {
@@ -130,11 +130,11 @@ export class AgentKnowledgeUsageTracker {
 			} else {
 				run.usage[contentKeyByCall[call]] += result.contentChars;
 				if (result.readFile) {
-					recordReadFile(run, result.readFile, callOrder);
+					recordReadFile(run, result.readFile, toolCallOrder);
 				}
 			}
 
-			run.lastCallAt = Date.now();
+			run.lastToolCallAt = Date.now();
 		};
 	}
 
@@ -151,7 +151,7 @@ export class AgentKnowledgeUsageTracker {
 
 	private removeStaleRuns(now: number) {
 		for (const [runId, run] of this.runs) {
-			if (now - run.lastCallAt > STALE_RUN_MS) {
+			if (now - run.lastToolCallAt > STALE_RUN_MS) {
 				this.runs.delete(runId);
 			}
 		}
@@ -161,7 +161,7 @@ export class AgentKnowledgeUsageTracker {
 function recordReadFile(
 	run: TrackedRun,
 	readFile: { fileId: string; uploadedAt: string },
-	callOrder: number,
+	toolCallOrder: number,
 ) {
 	const uploadedAt = Date.parse(readFile.uploadedAt);
 	if (Number.isNaN(uploadedAt)) {
@@ -170,11 +170,11 @@ function recordReadFile(
 
 	const knownFile = run.readFiles.get(readFile.fileId);
 	if (knownFile) {
-		knownFile.callOrder = Math.min(knownFile.callOrder, callOrder);
+		knownFile.toolCallOrder = Math.min(knownFile.toolCallOrder, toolCallOrder);
 		return;
 	}
 
-	run.readFiles.set(readFile.fileId, { uploadedAt, callOrder });
+	run.readFiles.set(readFile.fileId, { uploadedAt, toolCallOrder });
 }
 
 function median(sortedValues: number[]) {
@@ -198,8 +198,10 @@ function fileAges(run: TrackedRun, now: number) {
 		return {};
 	}
 
-	const filesInCallOrder = [...run.readFiles.values()].sort((a, b) => a.callOrder - b.callOrder);
-	const ages = filesInCallOrder.map(({ uploadedAt }) => ageInFullDays(uploadedAt, now));
+	const filesInToolCallOrder = [...run.readFiles.values()].sort(
+		(a, b) => a.toolCallOrder - b.toolCallOrder,
+	);
+	const ages = filesInToolCallOrder.map(({ uploadedAt }) => ageInFullDays(uploadedAt, now));
 	const sortedAges = [...ages].sort((a, b) => a - b);
 	const averageAge = ages.reduce((sum, age) => sum + age, 0) / ages.length;
 	return {
