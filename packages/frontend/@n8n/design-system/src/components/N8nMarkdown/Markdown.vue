@@ -4,7 +4,7 @@ import Markdown from 'markdown-it';
 import markdownEmoji from 'markdown-it-emoji';
 import markdownLink from 'markdown-it-link-attributes';
 import markdownTaskLists from 'markdown-it-task-lists';
-import { computed, ref, shallowRef, watch, type VNode } from 'vue';
+import { computed, onBeforeUpdate, ref, shallowRef, watch, type VNode } from 'vue';
 import type { IWhiteList } from 'xss';
 import xss from 'xss';
 
@@ -93,7 +93,8 @@ function refreshLinkTargets() {
 	const nextLinks: typeof links.value = [];
 	for (const anchor of editor.value.querySelectorAll<HTMLAnchorElement>('a[data-link-slot]')) {
 		const href = anchor.getAttribute('href');
-		if (!href) continue;
+		/** Keep rich link content in the sanitized HTML instead of reducing it to text. */
+		if (!href || anchor.children.length > 0) continue;
 		const target = links.value[nextLinks.length]?.target ?? document.createElement('span');
 		nextLinks.push({
 			props: {
@@ -115,7 +116,17 @@ const slots = defineSlots<{
 	/** Render fenced code without changing its whitespace. */
 	'code-block'?: (props: { code: string; language: string }) => VNode[];
 }>();
-const codeBlocks = shallowRef<Array<{ code: string; language: string; target: HTMLElement }>>([]);
+/** Slot presence is not reactive. Update it before each parent-driven render. */
+const hasLinkSlot = ref(Boolean(slots.link));
+const hasCodeSlot = ref(Boolean(slots['code-block']));
+onBeforeUpdate(() => {
+	hasLinkSlot.value = Boolean(slots.link);
+	hasCodeSlot.value = Boolean(slots['code-block']);
+});
+const codeBlocks = shallowRef<
+	Array<{ id: number; code: string; language: string; target: HTMLElement }>
+>([]);
+let nextCodeBlockId = 0;
 const renderedBlocks: Array<{ code: string; language: string }> = [];
 
 /** Reuse each target so streamed HTML does not reset slot component state. */
@@ -124,11 +135,27 @@ function refreshCodeTargets() {
 		codeBlocks.value = [];
 		return;
 	}
+	const available = new Set(codeBlocks.value);
+	/** Match unchanged fences first so a removed fence cannot take another fence's state. */
+	const matches = renderedBlocks.map((block) => {
+		const match = [...available].find(
+			(previous) => previous.code === block.code && previous.language === block.language,
+		);
+		if (match) available.delete(match);
+		return match;
+	});
 	codeBlocks.value = renderedBlocks.map((block, index) => {
-		const target = codeBlocks.value[index]?.target ?? document.createElement('div');
+		const previous =
+			matches[index] ??
+			[...available].find(
+				(candidate) =>
+					candidate === codeBlocks.value[index] && candidate.language === block.language,
+			);
+		if (previous) available.delete(previous);
+		const target = previous?.target ?? document.createElement('div');
 		target.classList.add('not-prose');
 		editor.value?.querySelector(`[data-code-slot="${index}"]`)?.replaceWith(target);
-		return { ...block, target };
+		return { ...block, id: previous?.id ?? nextCodeBlockId++, target };
 	});
 }
 
@@ -156,7 +183,7 @@ const md = computed(() => {
 		parser.use(plugin);
 	}
 
-	if (slots.link) {
+	if (hasLinkSlot.value) {
 		const renderLink = parser.renderer.rules.link_open;
 		parser.renderer.rules.link_open = (tokens, index, options, env, self) => {
 			tokens[index].attrSet('data-link-slot', '');
@@ -166,7 +193,7 @@ const md = computed(() => {
 		};
 	}
 
-	if (slots['code-block']) {
+	if (hasCodeSlot.value) {
 		parser.renderer.rules.fence = (tokens, index) => {
 			const token = tokens[index];
 			const blockIndex = renderedBlocks.length;
@@ -187,7 +214,7 @@ const { whiteList } = xss as unknown as { whiteList: IWhiteList };
 const xssWhiteList = {
 	...whiteList,
 	label: ['class', 'for'],
-	a: [...(whiteList.a ?? []), 'data-link-slot'],
+	a: [...(whiteList.a ?? []), 'rel', 'data-link-slot'],
 	/** Keep plugin markers for code actions, table containers, and footnotes. */
 	div: [...(whiteList.div ?? []), 'class', 'data-markdown-token-idx', 'data-code-slot'],
 	span: [...(whiteList.span ?? []), 'class', 'title'],
@@ -411,7 +438,7 @@ const onCheckboxChange = (index: number) => {
 		<Teleport v-for="(link, index) in links" :key="`link-${index}`" :to="link.target">
 			<slot name="link" v-bind="link.props" />
 		</Teleport>
-		<Teleport v-for="(block, index) in codeBlocks" :key="index" :to="block.target">
+		<Teleport v-for="block in codeBlocks" :key="block.id" :to="block.target">
 			<slot name="code-block" :code="block.code" :language="block.language" />
 		</Teleport>
 	</div>

@@ -2,7 +2,7 @@
 import { useResizeObserver } from '@vueuse/core';
 import { ElNotification as Notification } from 'element-plus';
 import hljs from 'highlight.js/lib/core';
-import { escapeHtml } from 'xss';
+import xss from 'xss';
 import json from 'highlight.js/lib/languages/json';
 import python from 'highlight.js/lib/languages/python';
 import typescript from 'highlight.js/lib/languages/typescript';
@@ -67,7 +67,7 @@ const highlightedCode = computed(() => {
 	}
 
 	if (!hljs.getLanguage(normalizedLanguage.value)) {
-		return escapeHtml(props.code);
+		return xss.escapeHtml(props.code.replace(/&/g, '&amp;'));
 	}
 
 	return hljs.highlight(props.code, {
@@ -113,6 +113,8 @@ async function copyCode() {
 		}, 2000);
 		emit('copy', props.code);
 	} catch {
+		clearTimeout(feedbackTimer);
+		showCopiedFeedback.value = false;
 		Notification({
 			title: t('codeBlock.copyFailed'),
 			type: 'error',

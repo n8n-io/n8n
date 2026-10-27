@@ -21,9 +21,9 @@
 	--n8n-markdown--radius: var(--radius);
 
 	display: block;
-	color: var(--n8n-markdown--color, color-mix(in oklch, var(--color--text), transparent 8%));
-	font-size: var(--n8n-markdown--font-size--base, var(--font-size--md));
-	line-height: var(--line-height--xl);
+	color: var(--n8n-markdown--color, inherit);
+	font-size: var(--n8n-markdown--font-size--base, inherit);
+	line-height: inherit;
 	-webkit-text-size-adjust: 100%;
 	word-break: break-word;
 
@@ -136,8 +136,7 @@
 		font-size: 90%;
 		padding: calc(var(--n8n-markdown--spacing) * 0.25) calc(var(--n8n-markdown--spacing) * 0.5);
 		line-height: inherit;
-		background-color: var(--background--subtle);
-		background-color: var(--background--subtle);
+		background-color: var(--chat--message--pre--background, var(--background--subtle));
 		border: 1px solid var(--border-color);
 		background-clip: padding-box;
 		border-radius: calc(var(--n8n-markdown--radius) / 2);
@@ -326,13 +325,12 @@
 
 	table:not(:where(.not-prose, .not-prose *)) {
 		width: 100%;
-		table-layout: fixed;
+		table-layout: auto;
 		border-collapse: separate;
 		border-spacing: 0;
 		border: 1px solid var(--border-color);
 		background-clip: padding-box;
 		border-radius: var(--n8n-markdown--radius);
-		overflow: hidden;
 		background-color: var(--background--surface);
 		box-shadow: var(--shadow--xs);
 		margin: calc(var(--n8n-markdown--spacing) * 2) 0;

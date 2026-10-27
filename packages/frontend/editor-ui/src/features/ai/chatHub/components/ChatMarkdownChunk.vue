@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { N8nCodeBlock, N8nMarkdown } from '@n8n/design-system';
-import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
+import ChatMarkdown from '@/features/ai/shared/components/ChatMarkdown/ChatMarkdown.vue';
 import type { ChatMessageContentChunk } from '@n8n/api-types';
 import ChatButtons from './ChatButtons.vue';
 
@@ -17,36 +16,17 @@ const {
 }>();
 
 const emit = defineEmits<{ openArtifact: [title: string] }>();
-
-const tableContainerClassName = 'n8n-markdown-table-container';
-const footnoteRefClassName = footnoteStyle === 'pill' ? 'n8n-markdown-footnote-ref' : null;
-
-const markdown = useChatHubMarkdownOptions(tableContainerClassName, footnoteRefClassName);
 </script>
 
 <template>
-	<N8nMarkdown
+	<ChatMarkdown
 		v-if="source.type === 'text'"
 		:content="source.content"
-		:class="['n8n-markdown', { 'n8n-markdown--single-pre': singlePre }]"
-		:options="markdown.options"
-		:plugins="markdown.plugins.value"
-	>
-		<template #code-block="{ code, language }">
-			<N8nCodeBlock :code="code" :language="language || 'auto'" />
-		</template>
-	</N8nMarkdown>
+		:single-pre="singlePre"
+		:options="{ math: true, footnotes: footnoteStyle }"
+	/>
 	<div v-else-if="source.type === 'with-buttons'" :class="$style.container">
-		<N8nMarkdown
-			:content="source.content"
-			class="n8n-markdown"
-			:options="markdown.options"
-			:plugins="markdown.plugins.value"
-		>
-			<template #code-block="{ code, language }">
-				<N8nCodeBlock :code="code" :language="language || 'auto'" />
-			</template>
-		</N8nMarkdown>
+		<ChatMarkdown :content="source.content" :options="{ math: true, footnotes: footnoteStyle }" />
 		<ChatButtons :buttons="source.buttons" :is-disabled="isButtonsDisabled" />
 	</div>
 	<div v-else-if="source.type === 'hidden'" />
