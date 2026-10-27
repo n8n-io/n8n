@@ -7459,6 +7459,9 @@ importers:
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../../../@n8n/backend-network
+      '@n8n/backend-services':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-services
       '@n8n/config':
         specifier: workspace:*
         version: link:../../../@n8n/config
@@ -7474,12 +7477,18 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../../../@n8n/errors
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
+      luxon:
+        specifier: 'catalog:'
+        version: 3.7.2
       n8n-core:
         specifier: workspace:*
         version: link:../../../core
@@ -7496,6 +7505,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
+      '@types/luxon':
+        specifier: 'catalog:'
+        version: 3.2.0
       n8n-containers:
         specifier: workspace:*
         version: link:../../../quality/environments/containers

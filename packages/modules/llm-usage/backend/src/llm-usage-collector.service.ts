@@ -6,6 +6,7 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import type { LlmUsage } from './llm-usage.entity';
+import { LlmBudgetSpendService } from './llm-budget-spend.service';
 import { LlmUsageRepository } from './llm-usage.repository';
 import { PriceCatalogService } from './price-catalog.service';
 import { priceUsage } from './pricing';
@@ -57,6 +58,7 @@ export class LlmUsageCollector implements LlmUsageSink {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly publishers: WorkflowPublisherCache,
+		private readonly budgetSpend: LlmBudgetSpendService,
 	) {
 		this.logger = this.logger.scoped('llm-usage');
 	}
@@ -72,6 +74,8 @@ export class LlmUsageCollector implements LlmUsageSink {
 
 	write(record: LlmUsageRecord) {
 		this.buffer.push(record);
+		// Budgets see the call at once, not after the next flush and refresh.
+		this.budgetSpend.add(this.toRow(record));
 		if (this.draining || this.buffer.length >= FLUSH_SIZE) void this.flush();
 	}
 
