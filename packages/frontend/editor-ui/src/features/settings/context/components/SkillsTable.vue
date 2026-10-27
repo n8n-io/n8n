@@ -55,6 +55,7 @@ const { deleteBlockedReason } = useSkillDeleteRule();
 const usersStore = useUsersStore();
 
 function actionsFor(skill: SkillListItem): SkillActionItem[] {
+	const deleteBlocked = deleteBlockedReason(skill);
 	return [
 		{
 			value: 'edit',
@@ -75,8 +76,8 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			value: 'delete',
 			label: i18n.baseText('settings.context.skills.actions.delete'),
 			icon: 'trash-2',
-			disabled: deleteBlockedReason(skill) !== undefined,
-			tooltip: deleteBlockedReason(skill),
+			disabled: deleteBlocked !== undefined,
+			tooltip: deleteBlocked,
 			destructive: true,
 		},
 	];

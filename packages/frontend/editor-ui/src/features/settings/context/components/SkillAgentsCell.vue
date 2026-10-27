@@ -38,13 +38,12 @@ const agents = computed(() => {
 		byId.set(draft.agentId, {
 			agentName: draft.agentName,
 			projectId: draft.projectId,
-			caption: draft.pinned
-				? i18n.baseText('settings.context.skills.versions.agents.pinned', {
-						interpolate: { version: draft.version },
-					})
-				: i18n.baseText('settings.context.skills.versions.agents.latest', {
-						interpolate: { version: draft.version },
-					}),
+			caption: i18n.baseText(
+				draft.pinned
+					? 'settings.context.skills.versions.agents.pinned'
+					: 'settings.context.skills.versions.agents.latest',
+				{ interpolate: { version: draft.version } },
+			),
 		});
 	}
 	for (const pin of usage.value?.pins ?? []) {
@@ -60,14 +59,12 @@ const items = computed<Array<DropdownMenuItemProps<string, AgentRow>>>(() => {
 			label: i18n.baseText('settings.context.skills.versions.agents.title'),
 			header: true,
 		},
-		...[...agents.value].map(
-			([id, agent]): DropdownMenuItemProps<string, AgentRow> => ({
-				id,
-				label: agent.agentName,
-				icon: { type: 'icon', value: 'bot' },
-				data: agent,
-			}),
-		),
+		...[...agents.value].map(([id, agent]) => ({
+			id,
+			label: agent.agentName,
+			icon: { type: 'icon', value: 'bot' },
+			data: agent,
+		})),
 	];
 	const hidden = usage.value?.hiddenAgents ?? 0;
 	if (hidden > 0) {

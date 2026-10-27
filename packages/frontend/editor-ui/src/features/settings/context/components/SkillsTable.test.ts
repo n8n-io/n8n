@@ -54,6 +54,10 @@ async function openActions(row: HTMLElement) {
 }
 
 describe('SkillsTable', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	beforeEach(() => {
 		createTestingPinia({
 			initialState: {
@@ -183,7 +187,6 @@ describe('SkillsTable', () => {
 
 		expect(open).toHaveBeenCalledWith('/projects/p1/agents/a1', '_blank', 'noopener');
 		expect(push).not.toHaveBeenCalled();
-		open.mockRestore();
 	});
 
 	it('sorts by name and by last update only', async () => {
