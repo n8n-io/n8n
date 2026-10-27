@@ -24,8 +24,6 @@ export function makeThread(): ThreadRuntime {
 		hydrationStatus: 'ready',
 		isHydratingThread: false,
 		amendContext: null,
-		pendingPlanReview: null,
-		updatingPlanRequestIds: new Set<string>(),
 		contextualSuggestion: null,
 		currentTasks: null,
 		producedArtifacts: new Map(),
@@ -63,7 +61,6 @@ export function makeThread(): ThreadRuntime {
 		cancelRun: vi.fn().mockResolvedValue(undefined),
 		resolveConfirmation: vi.fn(),
 		confirmAction: vi.fn().mockResolvedValue(true),
-		requestPlanChanges: vi.fn().mockResolvedValue(true),
 		copyFullTrace: vi.fn(),
 		submitFeedback: vi.fn(),
 	});
@@ -88,7 +85,6 @@ export function makeThread(): ThreadRuntime {
 export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
 	mcpConnectionsAvailable: true,
-	localGatewayDisabled: false,
 	browserUseEnabled: true,
 	proxyEnabled: false,
 	cloudManaged: false,
@@ -96,6 +92,7 @@ export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance
 	workflowBuilderAvailable: true,
 	sandboxUnavailableReason: null,
 	runDebugEnabled: false,
+	workflowSuggestionsEnabled: false,
 };
 
 // Shared mutable fixtures the stub below reads from — tests reset them in `beforeEach`
@@ -103,7 +100,6 @@ export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance
 export const inputState = { initialDraft: '', hasAttachments: false };
 export const inputFocusSpy = vi.fn();
 export const inputSetTextSpy = vi.fn();
-export const planEditSubmitState = { message: 'Make the plan simpler' };
 
 /** Fake `InstanceAiInput` exposing the same surface real callers rely on (focus/setText/…). */
 export const InstanceAiInputStub = defineComponent({
@@ -111,7 +107,6 @@ export const InstanceAiInputStub = defineComponent({
 	props: {
 		suggestions: { type: Array, required: false },
 		isStreaming: { type: Boolean, required: false },
-		isAwaitingPlanReview: { type: Boolean, required: false },
 		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 		contextChip: { type: Object, required: false },
@@ -164,11 +159,6 @@ export const InstanceAiInputStub = defineComponent({
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
 				props.suggestions === undefined ? 'unset' : String(props.suggestions.length),
-				h(
-					'span',
-					{ 'data-test-id': 'instance-ai-input-mode' },
-					props.isAwaitingPlanReview ? 'plan-review' : 'normal',
-				),
 				h(
 					'span',
 					{ 'data-test-id': 'instance-ai-input-busy' },
@@ -228,9 +218,7 @@ export const InstanceAiInputStub = defineComponent({
 					{
 						'data-test-id': 'instance-ai-input-submit',
 						onClick: () => {
-							const message = props.isAwaitingPlanReview
-								? planEditSubmitState.message
-								: inputDraft.value || 'Normal message';
+							const message = inputDraft.value || 'Normal message';
 							const submittedHasAttachments = hasAttachments.value;
 							const authorship = resolveAuthorship(message);
 							const submittedPrefill = activePrefill.value;

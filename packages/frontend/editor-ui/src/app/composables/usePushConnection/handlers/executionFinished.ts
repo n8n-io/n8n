@@ -55,6 +55,7 @@ import {
 	EVALUATION_TRIGGER_NODE_TYPE,
 	TelemetryHelpers,
 	createRunExecutionData,
+	isTerminalExecutionStatus,
 } from 'n8n-workflow';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { PushHandlerOptions } from './types';
@@ -63,6 +64,10 @@ export type SimplifiedExecution = Pick<
 	IExecutionResponse,
 	'workflowId' | 'workflowData' | 'data' | 'status' | 'startedAt' | 'stoppedAt' | 'id'
 >;
+
+export function isFailedOrCanceledStatus(status: ExecutionStatus): boolean {
+	return isTerminalExecutionStatus(status) && status !== 'success';
+}
 
 /**
  * Handles the 'executionFinished' event, which happens when a workflow execution is finished.
@@ -188,7 +193,7 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(data.workflowId, options);
-	} else if (execution.status === 'error' || execution.status === 'canceled') {
+	} else if (isFailedOrCanceledStatus(execution.status)) {
 		handleExecutionFinishedWithErrorOrCanceled(
 			execution,
 			runExecutionData,

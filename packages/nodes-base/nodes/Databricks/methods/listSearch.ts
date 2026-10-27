@@ -22,7 +22,6 @@ import { getRunOutcome } from '../actions/job/runState';
 import { getSelectedLakebaseTarget } from '../actions/lakebase/helpers';
 import { fetchLakebaseFunctions } from '../actions/lakebase/schema';
 import {
-	assertLakebaseOAuth,
 	collectPages,
 	explainLakebaseSchemaError,
 	lakebaseApiRequest,
@@ -719,8 +718,6 @@ export async function getLakebaseTables(
 	if (!schema) {
 		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
 	}
-	// A PAT can read the endpoints, so check before the lookup to name the real cause
-	assertLakebaseOAuth(this);
 	try {
 		const base = await resolveLakebaseRestBase(this, project, branch);
 		const doc: { components?: { schemas?: Record<string, unknown> } } = await lakebaseApiRequest(
@@ -765,7 +762,6 @@ export async function getLakebaseFunctions(
 	if (!schema) {
 		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
 	}
-	assertLakebaseOAuth(this);
 	try {
 		const base = await resolveLakebaseRestBase(this, project, branch);
 		const names = await fetchLakebaseFunctions(

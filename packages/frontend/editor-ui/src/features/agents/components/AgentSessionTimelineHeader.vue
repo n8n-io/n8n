@@ -15,7 +15,8 @@ import {
 } from '@n8n/design-system';
 
 import { useI18n } from '@n8n/i18n';
-import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+import { computed } from 'vue';
+import { formatAgentUsage } from '../utils/agent-usage';
 
 interface SessionDropdownData {
 	date: string;
@@ -33,7 +34,7 @@ const props = withDefaults(
 		triggerIcon: IconName;
 		triggerLabel: string;
 		totalTokens: number;
-		totalCost: number;
+		totalCost: number | null;
 		durationLabel: string;
 		showLangsmithExport: boolean;
 		langsmithExportLoading: boolean;
@@ -52,19 +53,23 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const tokenSpendLabel = computed(() => formatAgentUsage(props.totalTokens, props.totalCost));
+
+const breadcrumbItems = computed(() =>
+	props.breadcrumbItems.map((item, index) =>
+		index === 0 ? { ...item, icon: props.projectIcon } : item,
+	),
+);
 </script>
 
 <template>
 	<div :class="$style.topBar">
 		<div :class="$style.topBarLeft">
 			<N8nBreadcrumbs
-				:items="props.breadcrumbItems"
+				:items="breadcrumbItems"
 				theme="medium"
 				@item-selected="emit('breadcrumb-select', $event)"
 			>
-				<template #prepend>
-					<ProjectIcon :icon="projectIcon" border-less size="mini" aria-hidden="true" />
-				</template>
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu
@@ -121,13 +126,20 @@ const i18n = useI18n();
 				<N8nIcon :icon="props.triggerIcon" :size="12" />
 				<span>{{ props.triggerLabel }}</span>
 			</span>
-			<span v-if="props.showMetrics" :class="$style.sep">·</span>
-			<span v-if="props.showMetrics" :class="$style.metricItem">
-				<N8nIcon icon="circle-dollar-sign" :size="12" />
-				<span>{{ props.totalTokens.toLocaleString() }}t (${{ props.totalCost.toFixed(4) }})</span>
+			<span
+				v-if="props.showMetrics && props.triggerSource && (tokenSpendLabel || props.durationLabel)"
+				:class="$style.sep"
+			>
+				·
 			</span>
-			<span v-if="props.showMetrics" :class="$style.sep">·</span>
-			<span v-if="props.showMetrics" :class="$style.metricItem">
+			<span v-if="props.showMetrics && tokenSpendLabel" :class="$style.metricItem">
+				<N8nIcon icon="circle-dollar-sign" :size="12" />
+				<span>{{ tokenSpendLabel }}</span>
+			</span>
+			<span v-if="props.showMetrics && tokenSpendLabel && props.durationLabel" :class="$style.sep">
+				·
+			</span>
+			<span v-if="props.showMetrics && props.durationLabel" :class="$style.metricItem">
 				<N8nIcon icon="clock" :size="12" />
 				<span>{{ props.durationLabel }}</span>
 			</span>
@@ -180,10 +192,6 @@ const i18n = useI18n();
 	min-width: 0;
 }
 
-.topBarLeft :global(.n8n-breadcrumbs > ul > li:first-child) {
-	display: none;
-}
-
 .topBarLeft :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
 	display: flex;
 	align-items: center;
@@ -210,6 +218,7 @@ const i18n = useI18n();
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
 

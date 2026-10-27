@@ -31,6 +31,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		source: 'ui',
 		createdBy: null,
 		latestVersion: 1,
+		availableToAssistant: false,
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
@@ -151,6 +152,31 @@ describe('SkillsTable', () => {
 		expect(skillsStore.fetchSkill).toHaveBeenCalledWith('s1');
 		// A draft and a published version of one agent show as one entry.
 		expect(await findAllByText('FirstClassDarwin')).toHaveLength(1);
+	});
+
+	it('sorts by name and by last update only', async () => {
+		const { container, emitted } = render([skill()]);
+		const header = (title: string) =>
+			[...container.querySelectorAll('thead th')].find((th) => th.textContent?.includes(title))!;
+
+		await userEvent.click(header('Scope'));
+		await userEvent.click(header('Created by'));
+		expect(emitted('update:options')).toBeUndefined();
+
+		await userEvent.click(header('Skill'));
+		await userEvent.click(header('Last updated'));
+		expect(emitted('update:options')).toEqual([
+			[expect.objectContaining({ sortBy: [{ id: 'name', desc: false }] })],
+			[expect.objectContaining({ sortBy: [{ id: 'updatedAt', desc: false }] })],
+		]);
+	});
+
+	it('lets the user resize every column except the actions column', () => {
+		const { container } = render([skill()]);
+		const headers = [...container.querySelectorAll('thead th')];
+
+		expect(headers.slice(0, -1).every((th) => th.querySelector('.resizer'))).toBe(true);
+		expect(headers.at(-1)?.querySelector('.resizer')).toBeNull();
 	});
 
 	it('emits open when a row is clicked', async () => {

@@ -1545,6 +1545,37 @@ describe('SourceControlService', () => {
 			expect(gitService.fetch).toHaveBeenCalledTimes(2);
 			expect(result).toEqual({ branches: ['main'], currentBranch: 'main' });
 		});
+
+		it('marks the instance as v1 on the first connect, also without a matching branch', async () => {
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(false);
+			gitService.getBranches.mockResolvedValue({ branches: ['develop'], currentBranch: '' });
+
+			await sourceControlService.initializeRepository(
+				{ branchName: 'main', repositoryUrl: 'git@github.com:test/repo.git' } as any,
+				mock<User>(),
+			);
+
+			expect(preferencesService.setPreferences).toHaveBeenCalledWith({
+				branchName: '',
+				connected: true,
+				environmentsVersion: 'v1',
+			});
+		});
+
+		it('keeps the version when a connected repository initializes again', async () => {
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(true);
+			gitService.getBranches.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+
+			await sourceControlService.initializeRepository(
+				{ branchName: 'main', repositoryUrl: 'git@github.com:test/repo.git' } as any,
+				mock<User>(),
+			);
+
+			expect(preferencesService.setPreferences).toHaveBeenCalledWith({
+				branchName: 'main',
+				connected: true,
+			});
+		});
 	});
 
 	describe('sanityCheck', () => {

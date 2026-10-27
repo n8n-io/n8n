@@ -343,6 +343,15 @@ describe('Agent thread repository queries for system agents', () => {
 		});
 	});
 
+	describe('findIdsByAgentId', () => {
+		it('returns only the session ids of the agent', async () => {
+			const threads = [await createThread(), await createThread({ ownerId: otherUserId })];
+			await createThread({ agentId: otherAgentId });
+
+			expect((await threadRepo.findIdsByAgentId(agentId)).sort()).toEqual(ids(threads).sort());
+		});
+	});
+
 	describe('findByAgentUpdatedBefore', () => {
 		it('returns sessions of the agent updated before the cutoff, oldest first', async () => {
 			const oldest = await createThread({}, '2024-01-01T00:00:00.000Z');
