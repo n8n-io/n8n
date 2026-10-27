@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/createSubscription.error.test.ts
+  s_195c75d7f98b4a::t_97eddd2be5a8f6 72-73
+packages/nodes-base/nodes/Microsoft/Teams/v2/transport/forbiddenHints.ts
+  s_195c75d7f98b4a::t_b642323d8a7e2d 99-101,105,107-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "034d8819f6738fef4bc8ab8bf3e98b5e911cf2d1",
+  "prompts": {},
+  "sessions": {
+    "s_195c75d7f98b4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3885c74-afc1-4635-9654-ff109015348d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+packages/@n8n/cli/package.json
+  s_71ad2034164515::t_50983f154e8cf6 76,87
+packages/@n8n/cli/src/commands/package/import.ts
+  s_71ad2034164515::t_c5aa0bfbdd2889 1,10,14-15,17,32,34,36-38,41-49,53-58,60-61,64,66-67,70,72-73,76,78-79,81,83-84,87,89,96,98,100-101,104,106-107,110,112-113,116,118-119,122,124-125,128,130-131,134,136-137,140,142,159,166-168
+  s_71ad2034164515::t_4787a9a3f5b05e 33
+  s_71ad2034164515::t_e46cf7d0c73fdf 50
+  s_71ad2034164515::t_c1b2e1acdf2d6d 90,93
+  s_71ad2034164515::t_bce17f64445ef1 95
+packages/@n8n/cli/src/client.ts
+  s_71ad2034164515::t_8710d4b7da27e3 2-4,7,19-23,25-31,33,37-39,728-729,767,773,781,787,798
+  s_2397c9db9d923f::t_755d5895469f01 736
+  s_2397c9db9d923f::t_7be1fe92591eba 737
+  s_71ad2034164515::t_cc8d5ff1e56d7f 786
+pnpm-lock.yaml
+  s_71ad2034164515::t_fece26912966ff 2137-2139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e43805a1aa894e3963e78b1d5a9c18c6325c5b86",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
