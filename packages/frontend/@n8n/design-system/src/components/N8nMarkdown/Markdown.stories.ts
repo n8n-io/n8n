@@ -62,6 +62,20 @@ Paragraph with **medium emphasis**, *italic*, and a [link](https://docs.n8n.io).
 	loading: false,
 };
 
+/** Compare all heading levels with the smaller base used in Agents chat. */
+export const SmallBaseHeadings = Template.bind({});
+SmallBaseHeadings.args = {
+	...Headings.args,
+	style: { '--n8n-markdown--font-size--base': 'var(--font-size--sm)' },
+};
+
+/** Check that the sticky theme also scales from its legacy default sizes. */
+export const SmallBaseStickyHeadings = Template.bind({});
+SmallBaseStickyHeadings.args = {
+	...SmallBaseHeadings.args,
+	theme: 'sticky',
+};
+
 export const Default = Template.bind({});
 Default.args = {
 	content:

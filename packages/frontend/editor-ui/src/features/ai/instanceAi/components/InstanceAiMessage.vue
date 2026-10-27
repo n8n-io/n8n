@@ -174,11 +174,12 @@ function formatJson(value: unknown): string {
 <template>
 	<N8nChatMessage
 		:role="props.message.role"
+		:class="isUser ? '$style.user' : '$style.assistant'"
 		:data-test-id="isUser ? 'instance-ai-user-message' : 'instance-ai-assistant-message'"
 	>
 		<!-- User message -->
 		<div v-if="isUser" :class="$style.userMessage">
-			<N8nText v-if="props.message.content" size="large">{{ props.message.content }}</N8nText>
+			<span v-if="props.message.content">{{ props.message.content }}</span>
 			<div v-if="attachments.length > 0" :class="$style.userAttachments">
 				<AttachmentPreview
 					v-for="(attachment, index) in attachments"
@@ -295,6 +296,10 @@ function formatJson(value: unknown): string {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
+
+.assistant {
+	padding-inline: var(--spacing--xs);
+}
 
 .userMessage {
 	display: flex;

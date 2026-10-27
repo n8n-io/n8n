@@ -63,29 +63,30 @@
 		scroll-margin-top: calc(var(--markdown--spacing) * 4);
 	}
 
+	/** Scale headings with the Markdown base size. */
 	h1 {
-		font-size: var(--font-size--xl);
+		font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 2);
 		margin-top: calc(var(--markdown--spacing) * 3);
 	}
 
 	h2 {
-		font-size: var(--font-size--lg);
+		font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 1.5);
 		margin-top: calc(var(--markdown--spacing) * 4);
 	}
 
 	h3 {
-		font-size: var(--font-size--md);
+		font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 1.25);
 		margin-top: calc(var(--markdown--spacing) * 4);
 	}
 
 	h4 {
-		font-size: var(--font-size--sm);
+		font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 1.125);
 		margin-top: calc(var(--markdown--spacing) * 4);
 	}
 
 	h5,
 	h6 {
-		font-size: var(--font-size--sm);
+		font-size: var(--n8n-markdown--font-size--base, var(--font-size--md));
 		margin-top: calc(var(--markdown--spacing) * 3);
 	}
 

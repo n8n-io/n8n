@@ -329,7 +329,7 @@ const onCheckboxChange = (index: number) => {
 	color: color-mix(in oklch, var(--color--text), transparent 8%);
 
 	* {
-		font-size: var(--n8n-markdown--base-font-size, var(--font-size--md));
+		font-size: var(--n8n-markdown--font-size--base, var(--font-size--md));
 		line-height: var(--line-height--xl);
 	}
 
@@ -338,7 +338,6 @@ const onCheckboxChange = (index: number) => {
 	h3,
 	h4 {
 		margin-bottom: var(--spacing--sm);
-		font-size: var(--font-size--md);
 		font-weight: var(--font-weight--medium);
 	}
 
@@ -417,19 +416,20 @@ input[type='checkbox'] + label {
 		line-height: var(--line-height--lg);
 	}
 
+	/** Stickies keep their legacy heading scale when no base size is set. */
 	h1 {
-		font-size: 36px;
+		font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 2.25);
 	}
 
 	h2 {
-		font-size: 24px;
+		font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 1.5);
 	}
 
 	h3,
 	h4,
 	h5,
 	h6 {
-		font-size: var(--font-size--md);
+		font-size: var(--n8n-markdown--font-size--base, var(--font-size--md));
 	}
 
 	p {
