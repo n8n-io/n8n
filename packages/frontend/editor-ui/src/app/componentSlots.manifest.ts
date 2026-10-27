@@ -42,6 +42,14 @@ export const registerComponentSlots = () => {
 	);
 
 	componentRegistry.register(
+		'insights-summary',
+		defineAsyncComponent(
+			async () =>
+				await import('@/features/collaboration/projects/components/InsightsSummarySlot.vue'),
+		),
+	);
+
+	componentRegistry.register(
 		'resources-list-layout',
 		defineAsyncComponent(
 			async () => await import('@/app/components/layouts/ResourcesListLayout.vue'),

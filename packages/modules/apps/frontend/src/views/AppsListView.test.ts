@@ -71,7 +71,12 @@ describe('AppsListView', () => {
 		// Read by `useDebounce`: makes every debounced fetch run on the next tick.
 		sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '0');
 		componentRegistry.register('resources-list-layout', ResourcesListLayoutStub);
-		componentRegistry.register('project-header', { template: '<div data-test-id="header" />' });
+		componentRegistry.register('project-header', {
+			template: '<div data-test-id="header"><slot /></div>',
+		});
+		componentRegistry.register('insights-summary', {
+			template: '<div data-test-id="insights-summary" />',
+		});
 		vi.mocked(listApps).mockResolvedValue({ data: [app('1'), app('2')], count: 2 });
 	});
 
@@ -111,6 +116,17 @@ describe('AppsListView', () => {
 		await waitFor(() =>
 			expect(listApps).toHaveBeenCalledWith(expect.anything(), undefined, expect.anything()),
 		);
+	});
+
+	it('shows the insights summary on the overview page only', async () => {
+		const overview = renderComponent();
+		expect(await overview.findByTestId('insights-summary')).toBeInTheDocument();
+		overview.unmount();
+
+		route.params = { projectId: 'project-1' };
+		const project = renderComponent();
+		await project.findAllByTestId('app-card');
+		expect(project.queryByTestId('insights-summary')).not.toBeInTheDocument();
 	});
 
 	it('shows the empty state when there are no apps', async () => {

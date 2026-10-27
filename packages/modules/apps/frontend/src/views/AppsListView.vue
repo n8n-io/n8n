@@ -24,6 +24,7 @@ const latestFetch = useLatestFetch();
 
 const ResourcesListLayout = computed(() => componentRegistry.get('resources-list-layout'));
 const ProjectHeader = computed(() => componentRegistry.get('project-header'));
+const InsightsSummary = computed(() => componentRegistry.get('insights-summary'));
 // The layout keeps its own page state; changing the page through it keeps its pagination in sync.
 const layout = useTemplateRef<{ setCurrentPage: (page: number) => Promise<void> }>('layout');
 
@@ -146,7 +147,9 @@ async function onAppDeleted(appId: string) {
 		@update:pagination-and-sort="onPaginationAndSortUpdated"
 	>
 		<template #header>
-			<component :is="ProjectHeader" v-if="ProjectHeader" />
+			<component :is="ProjectHeader" v-if="ProjectHeader">
+				<component :is="InsightsSummary" v-if="InsightsSummary && !projectId" />
+			</component>
 		</template>
 		<template #empty>
 			<N8nEmptyState

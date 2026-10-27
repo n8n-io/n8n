@@ -17,6 +17,8 @@ import type { DatatableColumn } from '@n8n/design-system';
  * the module needs no knowledge of the promotion types.
  * `project-header` is the overview/project page header with the project tabs, which a
  * resource list page renders above its list.
+ * `insights-summary` is the weekly insights summary of the overview pages. It loads the summary
+ * itself and renders nothing when insights are not available to the user.
  * `resources-list-layout` is the shared resource list page (search, sort, pagination, empty
  * state). It takes the props and slots of the shell's `ResourcesListLayout`.
  */
@@ -25,6 +27,7 @@ export type ModuleComponentSlot =
 	| 'workflow-diff'
 	| 'promotion-changes'
 	| 'project-header'
+	| 'insights-summary'
 	| 'resources-list-layout';
 
 /**
