@@ -2702,12 +2702,18 @@ export class TelemetryEventRelay extends EventRelay {
 		providerId,
 		providerType,
 		authType,
+		outcome,
+		failureKind,
+		durationMs,
 	}: RelayEventMap['promotion-provider-created']) {
 		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_CREATED_PROMOTION_PROVIDER, {
 			user_id: user.id,
 			provider_id: providerId,
 			provider_type: providerType,
 			auth_type: authType,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
 		});
 	}
 
@@ -2734,12 +2740,18 @@ export class TelemetryEventRelay extends EventRelay {
 		providerId,
 		providerType,
 		changedFields,
+		outcome,
+		failureKind,
+		durationMs,
 	}: RelayEventMap['promotion-provider-updated']) {
 		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_UPDATED_PROMOTION_PROVIDER, {
 			user_id: user.id,
 			provider_id: providerId,
 			provider_type: providerType,
 			changed_fields: changedFields,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
 		});
 	}
 

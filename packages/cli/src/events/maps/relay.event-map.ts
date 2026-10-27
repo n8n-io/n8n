@@ -1354,9 +1354,13 @@ export type RelayEventMap = {
 
 	'promotion-provider-created': {
 		user: UserLike;
-		providerId: string;
+		/** Set when the outcome is 'success'. */
+		providerId?: string;
 		providerType: PromotionProviderType;
 		authType: PromotionProviderAuthType;
+		outcome: 'success' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
 	};
 
 	'promotion-environment-created': {
@@ -1375,6 +1379,9 @@ export type RelayEventMap = {
 		providerType: PromotionProviderType;
 		/** The fields the request sent, never their values. */
 		changedFields: Array<'name' | 'auth' | 'config'>;
+		outcome: 'success' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
 	};
 
 	'promotion-provider-deleted': {

@@ -19,12 +19,15 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 	USER_CREATED_PROMOTION_PROVIDER: {
 		name: 'User created promotion provider',
 		description:
-			'A promotion provider (a Git connection) was created. Fires once per created provider.',
+			'A user tried to create a promotion provider (a Git connection). Fires once per attempt, on success and on failure, so a rejected token or an unreachable host shows as a failed attempt.',
 		properties: z.object({
 			user_id: z.string(),
-			provider_id: z.string(),
+			provider_id: z.string().optional().describe("Set only when the outcome is 'success'"),
 			provider_type: z.enum(['git', 'gitlab']),
 			auth_type: z.enum(['ssh-key', 'token']),
+			outcome: z.enum(['success', 'failed']),
+			failure_kind: failureKind,
+			duration_ms: z.number(),
 		}),
 	},
 	USER_CREATED_PROMOTION_ENVIRONMENT: {
@@ -46,7 +49,7 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 	USER_UPDATED_PROMOTION_PROVIDER: {
 		name: 'User updated promotion provider',
 		description:
-			'A promotion provider was updated. Fires once per successful update. A failed or conflicted update does not fire it.',
+			'A user tried to update a promotion provider. Fires once per attempt on an existing provider, on success and on failure, so rejected new credentials show as a failed attempt.',
 		properties: z.object({
 			user_id: z.string(),
 			provider_id: z.string(),
@@ -54,6 +57,9 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 			changed_fields: z
 				.array(z.enum(['name', 'auth', 'config']))
 				.describe('The fields the request sent, never their values. `auth` means new credentials'),
+			outcome: z.enum(['success', 'failed']),
+			failure_kind: failureKind,
+			duration_ms: z.number(),
 		}),
 	},
 	USER_DELETED_PROMOTION_PROVIDER: {

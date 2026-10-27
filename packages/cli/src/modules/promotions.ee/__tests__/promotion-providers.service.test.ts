@@ -145,10 +145,12 @@ describe('PromotionProvidersService', () => {
 				providerId: 'prov1',
 				providerType: 'git',
 				authType: 'token',
+				outcome: 'success',
+				durationMs: expect.any(Number),
 			});
 		});
 
-		it('emits no event when the create fails', async () => {
+		it('emits a failed attempt when the create is rejected', async () => {
 			await expect(
 				service.create(
 					{
@@ -160,7 +162,15 @@ describe('PromotionProvidersService', () => {
 				),
 			).rejects.toThrow(BadRequestError);
 
-			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('promotion-provider-created', {
+				user: actor,
+				providerType: 'git',
+				authType: 'token',
+				outcome: 'failed',
+				failureKind: 'user',
+				durationMs: expect.any(Number),
+			});
+			expect(providerRepository.insertProvider).not.toHaveBeenCalled();
 		});
 
 		it('leaves the stored ciphertext out of the response', async () => {
@@ -228,20 +238,25 @@ describe('PromotionProvidersService', () => {
 				providerId: 'prov1',
 				providerType: 'git',
 				changedFields: ['name', 'auth'],
+				outcome: 'success',
+				durationMs: expect.any(Number),
 			});
 		});
 
-		it('emits no event when the provider is gone after a name-only update', async () => {
+		it('emits a failed attempt when the provider is gone after a name-only update', async () => {
 			providerRepository.findById.mockResolvedValueOnce(sshProvider()).mockResolvedValueOnce(null);
 
 			await expect(
 				service.update('prov1', { name: 'renamed' } as UpdatePromotionProviderDto, actor),
 			).rejects.toThrow(NotFoundError);
 
-			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-provider-updated',
+				expect.objectContaining({ outcome: 'failed', failureKind: 'user' }),
+			);
 		});
 
-		it('emits no event when the update loses a race', async () => {
+		it('emits a failed attempt when the update loses a race', async () => {
 			providerRepository.findById.mockResolvedValue(sshProvider());
 			providerRepository.updateProviderIfUnchanged.mockResolvedValueOnce(false);
 
@@ -253,15 +268,23 @@ describe('PromotionProvidersService', () => {
 				),
 			).rejects.toThrow(ConflictError);
 
-			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-provider-updated',
+				expect.objectContaining({
+					changedFields: ['auth'],
+					outcome: 'failed',
+					failureKind: 'user',
+				}),
+			);
 		});
 
-		it('reports an unknown provider as not found', async () => {
+		it('emits no event for an unknown provider', async () => {
 			providerRepository.findById.mockResolvedValue(null);
 
 			await expect(
 				service.update('missing', { name: 'x' } as UpdatePromotionProviderDto, actor),
 			).rejects.toThrow(NotFoundError);
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 

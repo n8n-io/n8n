@@ -30,6 +30,7 @@ import { PromotionProviderRepository } from './database/repositories/promotion-p
 import { GitHostClients } from './git-hosts/git-host-clients';
 import type { GitHostDiscoveryQuery } from './git-hosts/git-host.types';
 import { mapPromotionConflicts } from './promotion-conflicts';
+import { observePromotion } from './promotion-telemetry';
 import { PromotionsGitService } from './promotions-git.service';
 import {
 	promotionSshKeyAuthPayloadSchema,
@@ -56,6 +57,24 @@ export class PromotionProvidersService {
 		input: CreatePromotionProviderDto,
 		actor: User,
 	): Promise<PromotionProviderCreatedPublicDto> {
+		return await observePromotion(
+			async () => await this.createProvider(input),
+			(observed) =>
+				this.eventService.emit('promotion-provider-created', {
+					user: actor,
+					...(observed.ok && { providerId: observed.result.provider.id }),
+					providerType: input.type,
+					authType: input.auth.authType,
+					outcome: observed.ok ? 'success' : 'failed',
+					...(!observed.ok && { failureKind: observed.failureKind }),
+					durationMs: observed.durationMs,
+				}),
+		);
+	}
+
+	private async createProvider(
+		input: CreatePromotionProviderDto,
+	): Promise<PromotionProviderCreatedPublicDto> {
 		const hostConfig = this.resolveHostConfig(input.type, input.auth.authType, input.config);
 		const { config, credentials } = await this.buildAuthentication(
 			input.type,
@@ -70,12 +89,6 @@ export class PromotionProvidersService {
 			authType: input.auth.authType,
 			config,
 			auth,
-		});
-		this.eventService.emit('promotion-provider-created', {
-			user: actor,
-			providerId: provider.id,
-			providerType: provider.type,
-			authType: provider.authType,
 		});
 		return { provider: this.toPublic(provider), publicKey: this.publicKeyOf(provider) };
 	}
@@ -136,6 +149,30 @@ export class PromotionProvidersService {
 			throw new BadRequestError('At least one field is required');
 		}
 		const current = await this.getEntity(id);
+		return await observePromotion(
+			async () => await this.updateProvider(current, input),
+			(observed) =>
+				this.eventService.emit('promotion-provider-updated', {
+					user: actor,
+					providerId: id,
+					providerType: current.type,
+					changedFields: [
+						...(input.name !== undefined ? ['name' as const] : []),
+						...(input.auth !== undefined ? ['auth' as const] : []),
+						...(input.config !== undefined ? ['config' as const] : []),
+					],
+					outcome: observed.ok ? 'success' : 'failed',
+					...(!observed.ok && { failureKind: observed.failureKind }),
+					durationMs: observed.durationMs,
+				}),
+		);
+	}
+
+	private async updateProvider(
+		current: PromotionProvider,
+		input: UpdatePromotionProviderDto,
+	): Promise<PromotionProviderPublicDto> {
+		const { id } = current;
 		const { changes, config, credentials } = await this.prepareUpdate(current, input);
 		const updatesAuthentication = input.auth !== undefined || input.config !== undefined;
 
@@ -160,19 +197,8 @@ export class PromotionProvidersService {
 		} else {
 			await this.providerRepository.updateProvider(id, changes);
 		}
-		// Read the row back first. A provider deleted in between must not count as updated.
-		const updatedProvider = await this.getEntity(id);
-		this.eventService.emit('promotion-provider-updated', {
-			user: actor,
-			providerId: id,
-			providerType: current.type,
-			changedFields: [
-				...(input.name !== undefined ? ['name' as const] : []),
-				...(input.auth !== undefined ? ['auth' as const] : []),
-				...(input.config !== undefined ? ['config' as const] : []),
-			],
-		});
-		return this.toPublic(updatedProvider);
+		// Read the row back. A provider deleted in between fails the update.
+		return this.toPublic(await this.getEntity(id));
 	}
 
 	/**

@@ -5326,19 +5326,24 @@ describe('TelemetryEventRelay', () => {
 	describe('promotion events', () => {
 		const user = { id: 'user123' };
 
-		it('should track a created provider with its type and authentication', () => {
+		it('should track a failed provider create without a provider id', () => {
 			eventService.emit('promotion-provider-created', {
 				user,
-				providerId: 'prov-1',
 				providerType: 'gitlab',
 				authType: 'token',
+				outcome: 'failed',
+				failureKind: 'user',
+				durationMs: 300,
 			});
 
 			const payload = {
 				user_id: 'user123',
-				provider_id: 'prov-1',
+				provider_id: undefined,
 				provider_type: 'gitlab',
 				auth_type: 'token',
+				outcome: 'failed',
+				failure_kind: 'user',
+				duration_ms: 300,
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.PROMOTIONS.USER_CREATED_PROMOTION_PROVIDER,
@@ -5382,6 +5387,8 @@ describe('TelemetryEventRelay', () => {
 				providerId: 'prov-1',
 				providerType: 'gitlab',
 				changedFields: ['name', 'auth'],
+				outcome: 'success',
+				durationMs: 120,
 			});
 
 			const payload = {
@@ -5389,6 +5396,9 @@ describe('TelemetryEventRelay', () => {
 				provider_id: 'prov-1',
 				provider_type: 'gitlab',
 				changed_fields: ['name', 'auth'],
+				outcome: 'success',
+				failure_kind: undefined,
+				duration_ms: 120,
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.PROMOTIONS.USER_UPDATED_PROMOTION_PROVIDER,
