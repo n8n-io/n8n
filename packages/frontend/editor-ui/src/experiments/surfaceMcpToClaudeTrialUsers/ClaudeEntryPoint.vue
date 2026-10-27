@@ -21,7 +21,7 @@ const emit = defineEmits<{ click: [] }>();
 </script>
 
 <template>
-	<span v-if="placement === 'sidebar' && !collapsed" :class="$style.card">
+	<span v-if="placement === 'sidebar' && !collapsed && title" :class="$style.card">
 		<span :class="$style.cardTitle">
 			<span :class="$style.mark"><ClaudeLogo /></span>
 			<span>{{ title }}</span>

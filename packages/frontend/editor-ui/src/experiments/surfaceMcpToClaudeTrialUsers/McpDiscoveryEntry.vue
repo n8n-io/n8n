@@ -11,8 +11,10 @@ const props = defineProps<{ placement: 'canvas' | 'sidebar' | 'footer'; collapse
 const target = ref<HTMLElement>();
 const i18n = useI18n();
 const { showMcpDiscovery, mcpDiscovery: discovery, entryLabel, openEntry } = useMcpDiscovery();
+const isBuildStage = computed(() => discovery.ctaStage === 'build');
+const showSidebarCard = computed(() => props.placement === 'sidebar' && isBuildStage.value);
 const label = computed(() =>
-	props.placement === 'footer' && discovery.ctaStage !== 'connect'
+	props.placement === 'footer' && isBuildStage.value
 		? i18n.baseText('experiments.mcpDiscovery.footer.build')
 		: entryLabel.value,
 );
@@ -23,18 +25,16 @@ useIntersectionObserver(target, ([entry]) => {
 
 <template>
 	<span v-if="showMcpDiscovery" ref="target" :class="[$style.wrapper, $style[placement]]">
-		<span v-if="placement === 'footer'" :class="$style.prefix">
+		<span v-if="placement === 'footer' && isBuildStage" :class="$style.prefix">
 			{{ i18n.baseText('experiments.mcpDiscovery.footer.prefix') }}
 		</span>
 		<ClaudeEntryPoint
 			:placement="placement"
 			:collapsed="collapsed"
 			:label="label"
-			:title="i18n.baseText('experiments.mcpDiscovery.sidebar.title')"
+			:title="showSidebarCard ? i18n.baseText('experiments.mcpDiscovery.sidebar.title') : undefined"
 			:description="
-				placement === 'sidebar'
-					? i18n.baseText('experiments.mcpDiscovery.sidebar.description')
-					: undefined
+				showSidebarCard ? i18n.baseText('experiments.mcpDiscovery.sidebar.description') : undefined
 			"
 			@click="openEntry(placement)"
 		/>

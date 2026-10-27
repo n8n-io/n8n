@@ -44,8 +44,10 @@ Before rollout, verify:
 - Eligibility remains saved after reload and restart. Control/treatment follows
   the current PostHog value, including local overrides.
 - All four placements open MCP settings before Claude connects, then open Claude in a new tab.
-- The expanded sidebar shows the title, description, and CTA button. The collapsed
-  sidebar shows only the icon. The Assistant prefix stays outside its CTA button.
+- While MCP is disabled, the expanded sidebar shows the title, description, and CTA
+  button. The Assistant prefix stays outside its CTA button. After MCP is enabled,
+  both placements show only the short CTA, with no extra copy. The collapsed sidebar
+  shows only the icon.
 - Modern and legacy Claude clients update the CTA connection state.
 - A successful workflow write through Claude, another MCP client, or an unnamed
   client hides all four entry points. Reads, failed writes and zero-operation

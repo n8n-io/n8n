@@ -33,20 +33,24 @@ describe('MCP discovery entry CTA', () => {
 				const label =
 					stage === 'connect'
 						? 'Connect Claude'
-						: placement === 'footer'
+						: placement === 'footer' && stage === 'build'
 							? 'Build your workflow in Claude'
 							: 'Build in Claude';
 				const button = getByRole('button', { name: label });
 				expect(button).toHaveTextContent(label);
-				if (placement === 'sidebar') {
+				if (placement === 'sidebar' && stage === 'build') {
 					expect(queryByText('Build workflows in Claude')).toBeInTheDocument();
 					expect(button).toHaveAccessibleDescription('Describe it in Claude, it appears in n8n.');
 				} else {
+					expect(queryByText('Build workflows in Claude')).not.toBeInTheDocument();
+					expect(button).not.toHaveAttribute('aria-describedby');
 					expect(queryByText('Describe it in Claude, it appears in n8n.')).not.toBeInTheDocument();
 				}
-				if (placement === 'footer') {
+				if (placement === 'footer' && stage === 'build') {
 					expect(queryByText('Prefer Claude?')).toBeInTheDocument();
 					expect(button).not.toHaveTextContent('Prefer Claude?');
+				} else {
+					expect(queryByText('Prefer Claude?')).not.toBeInTheDocument();
 				}
 				await userEvent.click(button);
 				expect(mocks.trackEntry).toHaveBeenCalledWith(placement, 'clicked');

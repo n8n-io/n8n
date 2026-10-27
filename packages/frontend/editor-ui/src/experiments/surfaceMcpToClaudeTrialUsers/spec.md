@@ -57,11 +57,12 @@ Build an agent / Build a workflow screen does not change.
 | First successful workflow write through any MCP client | Hide all four entry points |
 
 The Create menu and empty canvas use the short CTA above. In the Assistant empty
-state, show `Prefer Claude?` outside the button. Use `Build your workflow in Claude`
-for the Build stages and `Connect Claude` for the connection stage.
-The expanded sidebar shows the title `Build workflows in Claude`, the description
-`Describe it in Claude, it appears in n8n.`, and a separate CTA button. The collapsed
-sidebar shows only the Claude icon with an accessible CTA label.
+state, show `Prefer Claude?` outside the `Build your workflow in Claude` button
+only while MCP is disabled. In this stage, the expanded sidebar shows the title
+`Build workflows in Claude`, the description `Describe it in Claude, it appears in n8n.`,
+and a separate CTA button. Once MCP is enabled, both placements use only the short
+CTA above, without a title, description, or prefix. The collapsed sidebar shows
+only the Claude icon with an accessible CTA label.
 Before Claude connects, all four CTAs open MCP settings in the same tab.
 After Claude connects, all four open `https://claude.ai/new` in a new tab.
 Treatment also changes the MCP settings copy and Connect button styling. These
