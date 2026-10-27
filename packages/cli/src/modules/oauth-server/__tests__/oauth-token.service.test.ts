@@ -27,6 +27,7 @@ import {
 	readStoredPrivateKey,
 	rs256Signer,
 } from './signing-key-fixtures';
+import type { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
@@ -960,6 +961,7 @@ describe('OAuthTokenService', () => {
 				mock<ModuleRegistry>(),
 				mock<LicenseState>(),
 				mock<PostHogClient>(),
+				mock<CredentialDescriptionsService>(),
 			);
 
 			const configuredRegistry = new ProtectedResourceRegistry(mock<Logger>());

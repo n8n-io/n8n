@@ -1,5 +1,9 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
-import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	AgentVectorStoreProvider,
+	ListAgentsQueryDto,
+} from '@n8n/api-types';
 import {
 	BaseRepository,
 	chunkIds,
@@ -20,6 +24,7 @@ import {
 	type ProjectAgent,
 	type ProjectScoped,
 } from '../entities/agent.entity';
+import type { AgentDefinitionMetadata } from '../utils/agent-definition';
 
 export interface AgentListResult {
 	count: number;
@@ -35,6 +40,11 @@ const projectScope = 'project' as const;
 const projectScopeSql = "agent.scope = 'project'";
 /** The same filter for UPDATE builders, which have no `agent` alias. */
 const projectScopeUpdateSql = "scope = 'project'";
+
+export interface PublishedAgentVectorStores {
+	agentId: string;
+	vectorStoreProviders: AgentVectorStoreProvider[];
+}
 
 /** In-memory twin of `AgentRepository.publishedN8nChatSql`: the published integrations carry n8n Chat. */
 export function hasN8nChatChannel(integrations: Array<{ type: string }> | undefined): boolean {
@@ -70,6 +80,27 @@ export class AgentRepository extends BaseRepository<Agent> {
 		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
 		// cannot express, so cast at this boundary.
 		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);
+	}
+
+	async lockForVersionCapture(id: string, ctx: OperationContext): Promise<Agent | null> {
+		const manager = this.managerFor(ctx);
+		const agent = await manager.findOne(Agent, {
+			where: { id, scope: projectScope },
+			...(this.manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
+
+		if (agent && !agent.versionId) {
+			agent.versionId = randomUUID();
+			await manager.update(
+				Agent,
+				{ id },
+				{ versionId: agent.versionId, updatedAt: agent.updatedAt },
+			);
+		}
+
+		return agent;
 	}
 
 	async hasRevision(id: string, revision: number): Promise<boolean> {
@@ -179,7 +210,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 			query.andWhere('agent.projectId IN (:...projectIds)', { projectIds });
 		}
 		if (options.query) {
-			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${options.query}%` });
+			// `%` and `_` in the search match themselves, as in the skill search.
+			query.andWhere(`LOWER(agent.name) LIKE :query ${LIKE_ESCAPE_CLAUSE}`, {
+				query: `%${escapeLike(options.query.toLowerCase())}%`,
+			});
 		}
 		if (options.publishedOnly) {
 			query.andWhere('agent.activeVersionId IS NOT NULL');
@@ -585,7 +619,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<void> {
 		if (agentIds.length === 0) return;
-		await this.update({ id: In(agentIds), scope: projectScope }, { availableInMCP });
+		await this.update(
+			{ id: In(agentIds), scope: projectScope },
+			{ availableInMCP, revision: () => 'revision + 1' },
+		);
 	}
 
 	/**
@@ -787,7 +824,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * `updatedAt` are synced to what was written. Returns whether this caller
 	 * won the fence.
 	 */
-	async saveDraftFenced(agent: Agent, ctx: OperationContext = {}): Promise<boolean> {
+	async saveDraftFenced(
+		agent: Agent,
+		ctx: OperationContext = {},
+		metadata: AgentDefinitionMetadata = {},
+	): Promise<boolean> {
 		const expectedRevision = agent.revision;
 		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
 		// so the in-memory entity can report the exact persisted timestamp.
@@ -800,8 +841,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 				schema: agent.schema,
 				integrations: agent.integrations,
 				tools: agent.tools,
-				skills: agent.skills,
 				versionId: agent.versionId,
+				...(metadata.availableInMCP !== undefined
+					? { availableInMCP: metadata.availableInMCP }
+					: {}),
 				updatedAt,
 				revision: () => 'revision + 1',
 			})
@@ -810,6 +853,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 			.execute();
 		const won = (result.affected ?? 0) > 0;
 		if (won) {
+			if (metadata.availableInMCP !== undefined) agent.availableInMCP = metadata.availableInMCP;
 			agent.revision = expectedRevision + 1;
 			agent.updatedAt = updatedAt;
 		}
@@ -843,57 +887,6 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return changed;
 	}
 
-	/**
-	 * One page of agent keys, oldest first, for the startup skill copy. Pages by the last
-	 * row seen, so an agent deleted meanwhile cannot shift later agents past the next page.
-	 */
-	async findPageForSkillCopy(
-		after: Pick<Agent, 'createdAt' | 'id'> | null,
-		take: number,
-		ctx: OperationContext = {},
-	): Promise<Array<Pick<Agent, 'id' | 'createdAt'>>> {
-		const query = this.managerFor(ctx)
-			.createQueryBuilder(Agent, 'agent')
-			.select(['agent.id', 'agent.createdAt'])
-			.orderBy('agent.createdAt', 'ASC')
-			.addOrderBy('agent.id', 'ASC')
-			.limit(take);
-		if (after) {
-			query.where(
-				'(agent.createdAt > :createdAt OR (agent.createdAt = :createdAt AND agent.id > :id))',
-				{
-					createdAt: after.createdAt,
-					id: after.id,
-				},
-			);
-		}
-		return await query.getMany();
-	}
-
-	/** The inline skill columns of one agent, for the startup skill copy. */
-	async findForSkillCopy(
-		agentId: string,
-		ctx: OperationContext = {},
-	): Promise<Pick<Agent, 'id' | 'schema' | 'skills'> | null> {
-		return await this.managerFor(ctx).findOne(Agent, {
-			select: ['id', 'schema', 'skills'],
-			where: { id: agentId },
-		});
-	}
-
-	/**
-	 * Holds the agent row until the transaction ends, so a draft write to the agent waits
-	 * for the startup skill copy of it. SQLite allows one write transaction at a time.
-	 */
-	async lockForSkillCopy(agentId: string, ctx: OperationContext): Promise<void> {
-		if (this.manager.connection.options.type !== 'postgres') return;
-		await this.managerFor(ctx).find(Agent, {
-			select: ['id'],
-			where: { id: agentId },
-			lock: { mode: 'pessimistic_write' },
-		});
-	}
-
 	/** The project of each agent, to send an update push to the right project. */
 	async findProjectIdsByIds(
 		ids: string[],
@@ -912,27 +905,6 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return agents.filter(isProjectAgent);
 	}
 
-	/**
-	 * Write the `schema` column of a draft. Write `updatedAt` too, with the value
-	 * from the fenced save: without it, TypeORM sets `CURRENT_TIMESTAMP`. This
-	 * write does not check `revision`: call it only in the same transaction as a
-	 * won `saveDraftFenced`.
-	 */
-	async updateDraftSkills(
-		agent: Pick<Agent, 'id' | 'schema' | 'skills' | 'updatedAt'>,
-		ctx: OperationContext,
-	): Promise<void> {
-		// Write `updatedAt` too, with the value of the fenced save: without it, TypeORM
-		// sets `CURRENT_TIMESTAMP`, which drops the milliseconds on SQLite.
-		await this.managerFor(ctx)
-			.createQueryBuilder()
-			.update(Agent)
-			.set({ schema: agent.schema, skills: agent.skills, updatedAt: agent.updatedAt })
-			.where('id = :id', { id: agent.id })
-			.andWhere(projectScopeUpdateSql)
-			.execute();
-	}
-
 	async updateDraftSchema(
 		agent: Pick<Agent, 'id' | 'schema' | 'updatedAt'>,
 		ctx: OperationContext,
@@ -944,6 +916,36 @@ export class AgentRepository extends BaseRepository<Agent> {
 			.where('id = :id', { id: agent.id })
 			.andWhere(projectScopeUpdateSql)
 			.execute();
+	}
+
+	/**
+	 * Returns up to `limit` published project agents, sorted by id.
+	 * For each agent, it lists the vector store providers of the published version. The draft is ignored.
+	 * To read the next page, pass the last `agentId` of this page as `afterId`.
+	 */
+	async findPublishedVectorStoreProvidersPage(
+		afterId: string | null,
+		limit: number,
+	): Promise<PublishedAgentVectorStores[]> {
+		const query = this.createQueryBuilder('agent')
+			.innerJoin('agent.activeVersion', 'activeVersion')
+			.select(['agent.id', 'activeVersion.versionId', 'activeVersion.schema'])
+			.where(projectScopeSql)
+			.orderBy('agent.id', 'ASC')
+			.limit(limit);
+
+		if (afterId) {
+			query.andWhere('agent.id > :afterId', { afterId });
+		}
+
+		const agents = await query.getMany();
+
+		return agents.map((agent) => ({
+			agentId: agent.id,
+			vectorStoreProviders: (agent.activeVersion?.schema?.vectorStores ?? []).map(
+				(vectorStore) => vectorStore.provider,
+			),
+		}));
 	}
 }
 

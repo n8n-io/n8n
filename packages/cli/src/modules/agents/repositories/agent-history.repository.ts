@@ -25,29 +25,22 @@ export class AgentHistoryRepository extends BaseRepository<AgentHistory> {
 		super(AgentHistory, dataSource.manager, transactionRunner);
 	}
 
-	/**
-	 * Insert an immutable snapshot for the agent at `versionId`.
-	 *
-	 * `publishedBy` accepts either the publishing `User` (renders both the
-	 * `author` display string and the `publishedById` runtime pointer) or a
-	 * literal string for system actors (e.g. future `'system'` snapshots),
-	 * in which case `publishedById` is null. Mirrors
-	 * `WorkflowHistoryService.saveVersion`'s `user: User | string` shape.
-	 */
+	/** Save attribution stays separate from the optional legacy publishing identity. */
 	async saveVersion(
 		data: {
 			versionId: string;
 			agentId: string;
 			schema: StoredAgentConfig | null;
 			tools: Agent['tools'] | null;
-			skills?: Agent['skills'] | null;
-			publishedBy: User | string;
+			publishedBy?: User | string;
+			savedBy?: User | string;
 		},
 		ctx: OperationContext = {},
 	): Promise<AgentHistory> {
 		const { publishedBy } = data;
-		const author = typeof publishedBy === 'string' ? publishedBy : renderAuthor(publishedBy);
-		const publishedById = typeof publishedBy === 'string' ? null : publishedBy.id;
+		const saver = data.savedBy ?? publishedBy ?? 'Unknown';
+		const author = typeof saver === 'string' ? saver : renderAuthor(saver);
+		const publishedById = !publishedBy || typeof publishedBy === 'string' ? null : publishedBy.id;
 		const repo = this.managerFor(ctx).getRepository(AgentHistory);
 		// TypeORM's QueryDeepPartialEntity can't express our @JsonColumn shapes
 		// (Zod-inferred StoredAgentConfig, the tools `Record<string, …>`, etc.),
@@ -60,7 +53,6 @@ export class AgentHistoryRepository extends BaseRepository<AgentHistory> {
 			agentId: data.agentId,
 			schema: data.schema as InsertShape['schema'],
 			tools: data.tools as InsertShape['tools'],
-			skills: (data.skills ?? null) as InsertShape['skills'],
 			author,
 			publishedById,
 		});

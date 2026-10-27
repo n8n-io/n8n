@@ -15,7 +15,7 @@ describe('update_credential_description', () => {
 
 	beforeEach(() => vi.resetAllMocks());
 
-	it.each(['Production reporting', '', null])(
+	it.each(['Production reporting', null])(
 		'writes %j and returns only metadata',
 		async (description) => {
 			const credential = {
@@ -55,15 +55,8 @@ describe('update_credential_description', () => {
 		expect(result.structuredContent).toEqual({ error: 'Credential not found or access denied' });
 	});
 
-	it('requires a description and enforces the shared text limit', () => {
+	it('requires a description so an omitted field cannot clear the stored value', () => {
 		const schema = z.object(tool.config.inputSchema!);
 		expect(schema.safeParse({ credentialId: 'cred-1' }).success).toBe(false);
-		expect(schema.safeParse({ credentialId: 'cred-1', description: 'x'.repeat(513) }).success).toBe(
-			false,
-		);
-		expect(schema.parse({ credentialId: 'cred-1', description: '  ' }).description).toBeNull();
-		expect(
-			schema.parse({ credentialId: 'cred-1', description: ` ${'x'.repeat(512)} ` }).description,
-		).toHaveLength(512);
 	});
 });

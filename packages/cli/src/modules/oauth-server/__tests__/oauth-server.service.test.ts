@@ -14,6 +14,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import type { PostHogClient } from '@/posthog';
+import type { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
@@ -1965,6 +1966,7 @@ describe('OAuthServerService', () => {
 				mock<ModuleRegistry>(),
 				mock<LicenseState>(),
 				mock<PostHogClient>(),
+				mock<CredentialDescriptionsService>(),
 			);
 			expect(mcpResource.getResourceUrl()).toBe('https://n8n-mcp.example.com/mcp-server/http');
 

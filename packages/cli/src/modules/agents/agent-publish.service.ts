@@ -32,6 +32,7 @@ import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { AgentDefinition } from './utils/agent-definition';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
+import { builderTelemetrySessionProperties } from './builder/builder-telemetry-session';
 import {
 	diffAgentConfigParts,
 	diffAgentConfigSettings,
@@ -48,6 +49,11 @@ import { AgentTask } from './entities/agent-task.entity';
 import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { toAgentDocument } from './json-config/agent-document';
+import {
+	AgentFileRepository,
+	type AgentKnowledgeTotals,
+} from './repositories/agent-file.repository';
+import { AgentPublishHistoryRepository } from './repositories/agent-publish-history.repository';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
@@ -129,6 +135,8 @@ export class AgentPublishService {
 		private readonly definitionService: AgentDefinitionService,
 		private readonly agentPolicyService: AgentPolicyService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly agentFileRepository: AgentFileRepository,
+		private readonly publishHistory: AgentPublishHistoryRepository,
 	) {}
 
 	/** `pushRef`: push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
@@ -139,10 +147,14 @@ export class AgentPublishService {
 		emitter: AgentPublishEmitter,
 		versionId?: string,
 		pushRef?: string,
+		expectedRevision?: number,
 	): Promise<PublishAgentResult> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
-		const expectedRevision = agent.revision;
+		expectedRevision ??= agent.revision;
+		if (agent.revision !== expectedRevision) {
+			throw new ConflictError('Agent was modified concurrently while publishing; please retry');
+		}
 
 		if (!versionId && agent.versionId !== null && agent.versionId === agent.activeVersionId) {
 			return { agent };
@@ -174,13 +186,15 @@ export class AgentPublishService {
 			published,
 		);
 
+		const knowledgeTotals = await this.readKnowledgeTotalsForTelemetry(agent.id);
+
 		await this.commitPublication(agent, expectedRevision, user, tasks, targetHistory);
 		this.eventService.emit('agent-saved', { agentId });
 		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: emitter.by }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
-		this.trackPublished(agent, projectId, user, emitter, targetHistory, published);
+		this.trackPublished(agent, projectId, user, emitter, targetHistory, published, knowledgeTotals);
 		await emitSetupCompleted?.();
 
 		await this.startPublishedServices(agent);
@@ -271,15 +285,16 @@ export class AgentPublishService {
 		user: User,
 		by: AgentActor,
 		pushRef?: string,
+		expectedRevision?: number,
 	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
-		// Same optimistic revision fence as publish: a concurrent edit that bumped
-		// `revision` after this load makes the unpublish lose the fence and surface
-		// a user-retryable conflict instead of rolling back a newer active version.
-		const expectedRevision = agent.revision;
+		expectedRevision ??= agent.revision;
+		if (agent.revision !== expectedRevision) {
+			throw new ConflictError('Agent was modified concurrently while unpublishing; please retry');
+		}
 
-		await this.commitUnpublication(agent, expectedRevision);
+		await this.commitUnpublication(agent, expectedRevision, user);
 		this.eventService.emit('agent-saved', { agentId });
 		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: by }, pushRef);
 
@@ -305,6 +320,21 @@ export class AgentPublishService {
 		return agent;
 	}
 
+	/** Make sure a failed read for the publish event never stops the publication. */
+	private async readKnowledgeTotalsForTelemetry(
+		agentId: string,
+	): Promise<AgentKnowledgeTotals | undefined> {
+		try {
+			return await this.agentFileRepository.getKnowledgeTotals(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to read knowledge totals for the publish event', {
+				agentId,
+				error,
+			});
+			return undefined;
+		}
+	}
+
 	/**
 	 * One event per surface rather than one event with a `by` property, matching
 	 * the creation and modification events. Written as a switch because
@@ -318,6 +348,7 @@ export class AgentPublishService {
 		emitter: AgentPublishEmitter,
 		targetHistory: AgentHistory | undefined,
 		published: AgentJsonConfig | null,
+		knowledgeTotals: AgentKnowledgeTotals | undefined,
 	): void {
 		const properties = {
 			agent_id: agent.id,
@@ -330,6 +361,10 @@ export class AgentPublishService {
 			// agent.versionId, so it is never null on this path.
 			version_id: agent.activeVersionId!,
 			...buildAgentCapabilityTelemetryProperties(published, agent.integrations),
+			...(knowledgeTotals && {
+				knowledge_file_count: knowledgeTotals.fileCount,
+				knowledge_total_bytes: knowledgeTotals.totalBytes,
+			}),
 		} as const;
 
 		switch (emitter.by) {
@@ -342,6 +377,7 @@ export class AgentPublishService {
 			case 'builder':
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_PUBLISHED_AGENT, {
 					...properties,
+					...builderTelemetrySessionProperties(),
 					event_version: '1',
 				});
 				return;
@@ -366,6 +402,7 @@ export class AgentPublishService {
 			case 'builder':
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_UNPUBLISHED_AGENT, {
 					...properties,
+					...builderTelemetrySessionProperties(),
 					event_version: '1',
 				});
 				return;
@@ -441,10 +478,8 @@ export class AgentPublishService {
 	): Promise<void> {
 		await this.enforceRevertPolicy(agent, context.user, version.schema);
 
+		// The refs carry their pins, so comparing the refs is enough.
 		const previousSkillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
-		// With the hub on, the refs carry their pins. With it off, a revert can keep the ids
-		// and change the bodies, so compare the bodies too.
-		const previousSkills = structuredClone(agent.skills ?? {});
 		const previousSchema = agent.schema ? toAgentDocument(agent.schema, previousSkillRefs) : null;
 		const previousTools = agent.tools ?? {};
 		const { tasksChanged, nextSchema, nextSkillRefs } = await this.transactionRunner.run(
@@ -473,9 +508,7 @@ export class AgentPublishService {
 				by: context.modifiedBy,
 				changedParts: diffAgentConfigParts(previousSchema, nextSchema, integrations, integrations, {
 					tools: !isEqual(previousTools, agent.tools),
-					skills:
-						!isEqual(previousSkillRefs, nextSkillRefs) ||
-						(!this.agentSkillRefs.usesSkillsHub && !isEqual(previousSkills, agent.skills ?? {})),
+					skills: !isEqual(previousSkillRefs, nextSkillRefs),
 					tasks: tasksChanged,
 				}),
 				changedSettings: diffAgentConfigSettings(previousSchema, nextSchema),
@@ -561,6 +594,7 @@ export class AgentPublishService {
 				if (!body) {
 					throw new UserError(`Cannot publish agent with missing task body: ${ref.id}`);
 				}
+
 				return {
 					versionId,
 					taskId: ref.id,
@@ -587,6 +621,7 @@ export class AgentPublishService {
 					)
 				: null;
 		}
+
 		return agent.schema
 			? toAgentDocument(agent.schema, await this.agentSkillRefs.refsForDraft(agent, {}))
 			: null;
@@ -614,7 +649,11 @@ export class AgentPublishService {
 			);
 	}
 
-	private async commitUnpublication(agent: ProjectAgent, expectedRevision: number): Promise<void> {
+	private async commitUnpublication(
+		agent: ProjectAgent,
+		expectedRevision: number,
+		user: User,
+	): Promise<void> {
 		await this.transactionRunner.run({}, async (ctx) => {
 			const nextVersionId = uuid();
 
@@ -631,6 +670,7 @@ export class AgentPublishService {
 				throw new ConflictError('Agent was modified concurrently while unpublishing; please retry');
 			}
 
+			await this.publishHistory.record(agent.id, agent.activeVersionId, 'deactivated', user, ctx);
 			agent.activeVersionId = null;
 			agent.activeVersion = null;
 			agent.versionId = nextVersionId;
@@ -663,8 +703,12 @@ export class AgentPublishService {
 				{ activeVersionId: next.activeVersionId, versionId: next.versionId },
 				ctx,
 			);
-			if (!won)
+			if (!won) {
 				throw new ConflictError('Agent was modified concurrently while publishing; please retry');
+			}
+
+			await this.publishHistory.record(agent.id, next.activeVersionId, 'activated', user, ctx);
+
 			// Update the caller's entity only after the revision fence succeeds.
 			agent.activeVersionId = next.activeVersionId;
 			agent.activeVersion = next.activeVersion;
@@ -687,9 +731,14 @@ export class AgentPublishService {
 				versionId: uuid(),
 			};
 		}
-		const versionId = agent.versionId ?? uuid();
+
+		const saved = agent.versionId
+			? await this.agentHistoryRepository.findByVersionAndAgentId(agent.versionId, agent.id, ctx)
+			: null;
+		const versionId = saved ? uuid() : (agent.versionId ?? uuid());
 		const activeVersion = await this.saveDraftHistory(ctx, agent, user, versionId);
 		await this.snapshotConfiguredTasks(ctx, versionId, agent.schema, tasks);
+
 		return { activeVersionId: versionId, activeVersion, versionId };
 	}
 
@@ -700,34 +749,34 @@ export class AgentPublishService {
 		versionId: string,
 	) {
 		try {
-			const snapshot = await this.agentSkillRefs.versionSnapshot(agent, ctx);
-			const { schema, skills } = snapshot;
+			const pins = await this.agentSkillRefs.versionSnapshot(agent, ctx);
 			const history = await this.agentHistoryRepository.saveVersion(
 				{
 					versionId,
 					agentId: agent.id,
-					schema: schema
+					schema: agent.schema
 						? {
-								...schema,
+								...agent.schema,
 								integrations: (agent.integrations ?? []).filter(
 									(integration) => integration.type === N8N_CHAT_INTEGRATION_TYPE,
 								),
 							}
 						: null,
 					tools: this.customToolsService.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
-					skills,
 					publishedBy: user,
 				},
 				ctx,
 			);
+
 			// The skill pins need the `agent_history` row.
-			await this.agentSkillRefs.pinVersion(versionId, snapshot, ctx);
+			await this.agentSkillRefs.pinVersion(versionId, pins, ctx);
 			return history;
 		} catch (error) {
 			// Concurrent publishes of one draft can collide before they reach the revision fence.
 			if (isUniqueConstraintError(error)) {
 				throw new ConflictError('Agent was modified concurrently while publishing; please retry');
 			}
+
 			throw error;
 		}
 	}

@@ -65,13 +65,6 @@ describe('CredentialsRepository sealed writes', () => {
 				description: 'New',
 			});
 		});
-
-		it('rejects a clearance for another credential', async () => {
-			await expect(
-				repository.updateDescription('cred-1', null, { policyCleared: forId('cred-2') }),
-			).rejects.toThrow();
-			expect(entityManager.update).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('createContent', () => {

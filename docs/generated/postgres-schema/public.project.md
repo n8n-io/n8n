@@ -152,6 +152,7 @@ erDiagram
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer publicationRevision
   integer revision
   json schema
   varchar_16_ scope
@@ -260,13 +261,13 @@ erDiagram
 }
 "public.self_healing_investigation" {
   uuid backgroundUserId FK
-  json baseline
   integer configurationId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId
   timestamp_3__with_time_zone finishedAt
   varchar_36_ id
   varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
   varchar_36_ resultId FK
   uuid runId
   uuid threadId
@@ -308,6 +309,7 @@ erDiagram
 "public.skill" {
   varchar_36_ agentId FK
   boolean availableToAssistant
+  boolean availableToMCP
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id

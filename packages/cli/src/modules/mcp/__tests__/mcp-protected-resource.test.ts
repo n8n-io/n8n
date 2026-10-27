@@ -25,8 +25,9 @@ import type { UrlService } from '@n8n/backend-services';
 
 import { Container } from '@n8n/di';
 
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
+import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -49,6 +50,7 @@ describe('McpProtectedResource', () => {
 	const moduleRegistry = mock<ModuleRegistry>({ settings: mock<ModuleRegistry['settings']>() });
 	const licenseState = mock<LicenseState>();
 	const postHogClient = mock<PostHogClient>();
+	const credentialDescriptions = new CredentialDescriptionsService(postHogClient);
 	const resource = new McpProtectedResource(
 		urlService,
 		mcpSettingsService,
@@ -57,6 +59,7 @@ describe('McpProtectedResource', () => {
 		moduleRegistry,
 		licenseState,
 		postHogClient,
+		credentialDescriptions,
 	);
 
 	beforeEach(() => {
@@ -73,7 +76,7 @@ describe('McpProtectedResource', () => {
 			CommunityPackagesConfig,
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
-		Container.set(SkillsHubRollout, mock<SkillsHubRollout>({ isEnabled: true }));
+		Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>({ hasProvider: true }));
 	});
 
 	describe('getScopeTools', () => {
@@ -88,6 +91,11 @@ describe('McpProtectedResource', () => {
 					enabled === true ? ['list_credentials', 'update_credential_description'] : undefined,
 				);
 				expect(scopeTools['credential:read']).toContain('list_credentials');
+				expect(
+					(await resource.getGrantableScopes(Object.assign(new User(), { id: 'user-1' }))).includes(
+						'credential:write',
+					),
+				).toBe(enabled === true);
 			},
 		);
 
@@ -99,8 +107,8 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['agent:read']).toBeUndefined();
 		});
 
-		it('withholds skill scopes and tools when the skills hub is off', async () => {
-			Container.set(SkillsHubRollout, mock<SkillsHubRollout>({ isEnabled: false }));
+		it('withholds skill scopes and tools without an agents provider', async () => {
+			Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>({ hasProvider: false }));
 
 			expect(resource.scopes).toContain('agent:read');
 			expect(resource.scopes).not.toContain('skill:read');
@@ -191,6 +199,7 @@ describe('McpProtectedResource', () => {
 				moduleRegistry,
 				licenseState,
 				postHogClient,
+				credentialDescriptions,
 			);
 
 			const scopeTools = await limitedResource.getScopeTools();
@@ -248,6 +257,7 @@ describe('McpProtectedResource', () => {
 				moduleRegistry,
 				licenseState,
 				postHogClient,
+				credentialDescriptions,
 			);
 
 			expect((await withoutBuilder.getScopeTools())['aiPreference:read']).toEqual([
@@ -375,18 +385,6 @@ describe('McpProtectedResource', () => {
 	describe('getGrantableScopes', () => {
 		const user = Object.assign(new User(), { id: 'user-1' });
 
-		it.each([true, false, undefined])(
-			'offers credential:write only when descriptions are enabled (%s)',
-			async (enabled) => {
-				postHogClient.getFeatureFlagForInstance.mockImplementation(async (flag) =>
-					flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : true,
-				);
-				expect((await resource.getGrantableScopes(user)).includes('credential:write')).toBe(
-					enabled === true,
-				);
-			},
-		);
-
 		it('withholds credential:write when the flag cannot be read', async () => {
 			postHogClient.getFeatureFlagForInstance.mockRejectedValue(new Error('Unavailable'));
 			expect(await resource.getGrantableScopes(user)).not.toContain('credential:write');
@@ -450,6 +448,7 @@ describe('McpProtectedResource', () => {
 				moduleRegistry,
 				licenseState,
 				postHogClient,
+				credentialDescriptions,
 			);
 
 			expect(await envManaged.getGrantableScopes(user)).not.toContain('communityPackage:install');

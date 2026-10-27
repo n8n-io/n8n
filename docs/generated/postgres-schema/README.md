@@ -25,10 +25,11 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution_message_links](public.agent_execution_message_links.md) | 5 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 20 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
-| [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
+| [public.agent_history](public.agent_history.md) | 11 |  | BASE TABLE |
 | [public.agent_message_queue](public.agent_message_queue.md) | 10 |  | BASE TABLE |
 | [public.agent_plan](public.agent_plan.md) | 8 |  | BASE TABLE |
 | [public.agent_plan_history](public.agent_plan_history.md) | 6 |  | BASE TABLE |
+| [public.agent_publish_history](public.agent_publish_history.md) | 8 |  | BASE TABLE |
 | [public.agent_skill_dependency](public.agent_skill_dependency.md) | 4 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
@@ -36,7 +37,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_thread_grants](public.agent_thread_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) | 4 |  | BASE TABLE |
 | [public.agent_workflow_dependency](public.agent_workflow_dependency.md) | 3 |  | BASE TABLE |
-| [public.agents](public.agents.md) | 15 |  | BASE TABLE |
+| [public.agents](public.agents.md) | 16 |  | BASE TABLE |
 | [public.agents_memory_entries](public.agents_memory_entries.md) | 13 |  | BASE TABLE |
 | [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) | 6 |  | BASE TABLE |
@@ -141,7 +142,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
 | [public.shared_credentials](public.shared_credentials.md) | 5 |  | BASE TABLE |
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
-| [public.skill](public.skill.md) | 8 |  | BASE TABLE |
+| [public.skill](public.skill.md) | 9 |  | BASE TABLE |
 | [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
 | [public.skill_version](public.skill_version.md) | 11 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
@@ -239,6 +240,9 @@ erDiagram
 "public.agent_message_queue" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_plan" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_plan_history" }o--|| "public.agent_plan" : "FOREIGN KEY (#quot;planId#quot;) REFERENCES agent_plan(id) ON DELETE CASCADE"
+"public.agent_publish_history" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.agent_publish_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_publish_history" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.agent_skill_dependency" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_skill_dependency" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
 "public.agent_skill_dependency" }o--o| "public.skill_version" : "FOREIGN KEY (#quot;skillVersionId#quot;) REFERENCES skill_version(id)"
@@ -703,6 +707,8 @@ erDiagram
   varchar_36_ agentId FK
   varchar_255_ author
   timestamp_3__with_time_zone createdAt
+  text description
+  text name
   uuid publishedById FK
   json schema
   json skills
@@ -739,6 +745,16 @@ erDiagram
   integer formatVersion
   uuid planId FK
   integer revision
+}
+"public.agent_publish_history" {
+  varchar_36_ agentId FK
+  varchar_255_ author
+  timestamp_3__with_time_zone createdAt
+  varchar_16_ event
+  integer id
+  boolean isLegacy
+  uuid userId FK
+  varchar_36_ versionId FK
 }
 "public.agent_skill_dependency" {
   varchar_36_ agentId FK
@@ -800,6 +816,7 @@ erDiagram
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer publicationRevision
   integer revision
   json schema
   varchar_16_ scope
@@ -1758,13 +1775,13 @@ erDiagram
 }
 "public.self_healing_investigation" {
   uuid backgroundUserId FK
-  json baseline
   integer configurationId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId
   timestamp_3__with_time_zone finishedAt
   varchar_36_ id
   varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
   varchar_36_ resultId FK
   uuid runId
   uuid threadId
@@ -1811,6 +1828,7 @@ erDiagram
 "public.skill" {
   varchar_36_ agentId FK
   boolean availableToAssistant
+  boolean availableToMCP
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id

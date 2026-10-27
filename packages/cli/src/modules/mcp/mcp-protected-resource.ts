@@ -1,6 +1,5 @@
 import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
-	CREDENTIAL_DESCRIPTIONS_FLAG,
 	MCP_AGENT_SCOPES,
 	MCP_SKILL_SCOPES,
 	MCP_INSTANCE_SCOPES,
@@ -12,7 +11,8 @@ import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
 import { UrlService } from '@n8n/backend-services';
-import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
+import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
 import { PostHogClient } from '@/posthog';
 
 import {
@@ -25,7 +25,6 @@ import {
 import {
 	areAgentToolsAvailable,
 	arePreferenceToolsEnabled,
-	areSkillToolsAvailable,
 	isCommunityNodeInstallAvailable,
 } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
@@ -76,11 +75,12 @@ export class McpProtectedResource implements ProtectedResource {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly licenseState: LicenseState,
 		private readonly postHogClient: PostHogClient,
+		private readonly credentialDescriptions: CredentialDescriptionsService,
 	) {}
 
 	get scopes(): string[] {
 		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
-		const skillsAvailable = areSkillToolsAvailable(Container.get(SkillsHubRollout));
+		const skillsAvailable = Container.get(SkillAgentsProxy).hasProvider;
 		return SUPPORTED_SCOPES.filter(
 			(scope) =>
 				(agentsAvailable || !AGENT_SCOPES.has(scope)) &&
@@ -97,7 +97,9 @@ export class McpProtectedResource implements ProtectedResource {
 		const tagsDisabled = this.globalConfig.tags.disabled;
 		const foldersLicensed = this.licenseState.isFoldersLicensed();
 		const supportedScopes = new Set(this.scopes);
-		const credentialDescriptionsEnabled = await this.areCredentialDescriptionsEnabled();
+		const credentialDescriptionsEnabled = await this.credentialDescriptions
+			.isEnabled()
+			.catch(() => false);
 		// Consent and tool registration use the same instance activity gate.
 		const instanceContextAvailable = this.moduleRegistry.isActive('instance-ai');
 		let instanceContextEnabled = false;
@@ -194,7 +196,9 @@ export class McpProtectedResource implements ProtectedResource {
 			user,
 		);
 		const preferencesEnabled = await this.arePreferencesEnabledFor(user);
-		const credentialDescriptionsEnabled = await this.areCredentialDescriptionsEnabled();
+		const credentialDescriptionsEnabled = await this.credentialDescriptions
+			.isEnabled()
+			.catch(() => false);
 
 		return this.scopes.filter(
 			(scope) =>
@@ -202,16 +206,6 @@ export class McpProtectedResource implements ProtectedResource {
 				(credentialDescriptionsEnabled || scope !== 'credential:write') &&
 				(preferencesEnabled || !PREFERENCE_SCOPES.has(scope)),
 		);
-	}
-
-	private async areCredentialDescriptionsEnabled(): Promise<boolean> {
-		try {
-			return (
-				(await this.postHogClient.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)) === true
-			);
-		} catch {
-			return false;
-		}
 	}
 
 	private async arePreferencesEnabledFor(user: ResourceUser): Promise<boolean> {
