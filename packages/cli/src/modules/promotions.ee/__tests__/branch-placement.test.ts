@@ -4,7 +4,6 @@ import { containerMoves, remapPath, staleWorkflowTargets } from '../branch-place
 
 const baseMetadata = {
 	packageFormatVersion: '1' as const,
-	exportedAt: '2026-01-01T00:00:00.000Z',
 	sourceN8nVersion: '1.0.0',
 	sourceId: 'instance-1',
 };
