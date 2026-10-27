@@ -119,6 +119,19 @@ describe('requestResponse', () => {
 			httpStatusCode: 403,
 		});
 	});
+
+	it('keeps the top-level issues of an error body in meta', async () => {
+		const issues = [{ type: 'missing-node-type', nodeType: 'n8n-nodes-base.foo' }];
+		axiosRequest.mockRejectedValueOnce({
+			response: { status: 422, data: { message: 'Import blocked', meta: { a: 1 }, issues } },
+		});
+
+		await expect(requestResponse({ ...baseConfig, method: 'POST' })).rejects.toMatchObject({
+			message: 'Import blocked',
+			httpStatusCode: 422,
+			meta: { a: 1, issues },
+		});
+	});
 });
 
 describe('streamRequest', () => {

@@ -123,7 +123,14 @@ type ErrorResponseData = {
 	hint?: string;
 	mfaRequired?: boolean;
 	httpStatusCode?: number;
+	issues?: unknown;
 };
+
+/** Some endpoints send a top-level `issues` list, for example a blocked package import. Keep it in `meta`. */
+function getErrorMeta(data: ErrorResponseData): Record<string, unknown> | undefined {
+	if (data.issues === undefined) return data.meta;
+	return { ...data.meta, issues: data.issues };
+}
 
 /** An error body arrives as a Blob when the request asked for one. Read it as the JSON it is. */
 async function readErrorResponseData(
@@ -207,7 +214,7 @@ export async function requestResponse<T = unknown>(
 				errorCode: errorResponseData.code,
 				httpStatusCode: error.response.status,
 				stack: errorResponseData.stack,
-				meta: errorResponseData.meta,
+				meta: getErrorMeta(errorResponseData),
 				hint: errorResponseData.hint,
 			});
 		}
