@@ -131,6 +131,27 @@ describe('AgentSkillRefsService', () => {
 			expect(result.skillRefs).toEqual([{ type: 'skill', id: 'zeta' }]);
 			expect(Object.keys(result.skills)).toEqual(['zeta']);
 		});
+
+		it('keeps pin order for numeric skill ids', async () => {
+			agentSkillRepository.findPins.mockResolvedValue([
+				{ skillId: 'zeta', skillVersionId: 'zeta-v1' },
+				{ skillId: '42', skillVersionId: 'numeric-v1' },
+			]);
+			skillRuntime.resolveVersions.mockResolvedValue(
+				new Map([
+					['zeta-v1', { skillId: 'zeta', skill: skillBody('Zeta') }],
+					['numeric-v1', { skillId: '42', skill: skillBody('Numeric') }],
+				]),
+			);
+
+			const result = await service.readVersion({ versionId: 'version-1' }, ctx);
+
+			expect(result.skillRefs).toEqual([
+				{ type: 'skill', id: 'zeta' },
+				{ type: 'skill', id: '42' },
+			]);
+			expect(result.skills['42']?.name).toBe('Numeric');
+		});
 	});
 
 	describe('skillsForRefs', () => {

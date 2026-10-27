@@ -88,12 +88,15 @@ export class AgentSkillRefsService {
 			pins.map((pin) => pin.skillVersionId),
 			ctx,
 		);
-		const skills: Record<string, AgentSkill> = {};
-		for (const pin of pins) {
-			const version = versions.get(pin.skillVersionId);
-			if (version) skills[pin.skillId] = version.skill;
-		}
-		return { skillRefs: toSkillRefs(Object.keys(skills).map((id) => ({ id }))), skills };
+		// Keep pin order. Object key order would move numeric ids to the front.
+		const resolved = pins.flatMap((pin): Array<[string, AgentSkill]> => {
+			const pinnedVersion = versions.get(pin.skillVersionId);
+			return pinnedVersion ? [[pin.skillId, pinnedVersion.skill]] : [];
+		});
+		return {
+			skillRefs: toSkillRefs(resolved.map(([id]) => ({ id }))),
+			skills: Object.fromEntries(resolved),
+		};
 	}
 
 	/**
