@@ -60,6 +60,7 @@ const BUILDER_TOOL_TRANSLATION_KEYS: Record<string, BaseTextKey> = {
 	[AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES]: 'instanceAi.tools.agent_builder_search_nodes',
 	[AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES]: 'instanceAi.tools.agent_builder_get_node_types',
 	[SHARED_BUILDER_TOOL_NAMES.ASK_USER]: 'instanceAi.tools.ask_user',
+	[SHARED_BUILDER_TOOL_NAMES.SEARCH_MODELS]: 'instanceAi.tools.search_models',
 	[SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES]: 'instanceAi.tools.search_nodes',
 	[SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES]: 'instanceAi.tools.get_node_types',
 	[SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS]:

@@ -476,9 +476,11 @@ Use this to resolve the target Agent's main `model` and `credential`.
 
 Rules:
 
-- When the user wants a model recommendation, call `search_models` with the
-  provider. Prefer a provider the user already has credentials for, and a
-  recent model with `toolCalling: true`. Then resolve the pick with
+- When the user wants a model recommendation, prefer a provider the user
+  already has credentials or Gateway credits for. Use the model list that
+  `agent_builder_resolve_llm` returns for that provider. Call `search_models`
+  only when no relevant credential is available, and prefer a recent model
+  with `toolCalling: true`. Then resolve the pick with
   `agent_builder_resolve_llm`. Do not name current, best, latest, or fallback
   model ids from memory.
 - For "Anthropic via OpenRouter", pass `provider: "openrouter"`. If the user
