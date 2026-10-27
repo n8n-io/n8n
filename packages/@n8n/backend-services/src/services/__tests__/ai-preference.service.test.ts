@@ -1,12 +1,13 @@
 import type {
 	AiPreference,
 	AiPreferenceRepository,
+	Person,
+	PersonRepository,
 	Project,
 	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
 	User,
-	UserRepository,
 } from '@n8n/db';
 import { AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
@@ -51,12 +52,12 @@ describe('AiPreferenceService', () => {
 	const aiPreferenceRepository = mock<AiPreferenceRepository>();
 	const projectRepository = mock<ProjectRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
-	const userRepository = mock<UserRepository>();
+	const personRepository = mock<PersonRepository>();
 	const service = new AiPreferenceService(
 		aiPreferenceRepository,
 		projectRepository,
 		projectRelationRepository,
-		userRepository,
+		personRepository,
 	);
 
 	beforeEach(() => {
@@ -486,7 +487,7 @@ describe('AiPreferenceService', () => {
 			// The cap belongs to the scope. Counting the caller would let an admin with no
 			// preferences of their own push another user past the cap, and would stop a full
 			// admin from writing for anybody.
-			userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-2' }));
+			personRepository.findById.mockResolvedValue(mock<Person>({ id: 'user-2' }));
 
 			await service.create(owner, { content: 'Rule.', scope: 'user', userId: 'user-2' }, 'ui');
 
@@ -497,12 +498,22 @@ describe('AiPreferenceService', () => {
 		});
 
 		it("refuses an admin's write when the target user's scope is full", async () => {
-			userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-2' }));
+			personRepository.findById.mockResolvedValue(mock<Person>({ id: 'user-2' }));
 			aiPreferenceRepository.countForTarget.mockResolvedValue(AI_PREFERENCE_MAX_PER_SCOPE);
 
 			await expect(
 				service.create(owner, { content: 'Rule.', scope: 'user', userId: 'user-2' }, 'ui'),
 			).rejects.toThrow(`A user cannot hold more than ${AI_PREFERENCE_MAX_PER_SCOPE} preferences`);
+			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+		});
+
+		it("refuses an admin's write for a user who is not a person", async () => {
+			// The person lookup returns null for a service account.
+			personRepository.findById.mockResolvedValue(null);
+
+			await expect(
+				service.create(owner, { content: 'Rule.', scope: 'user', userId: 'service-1' }, 'ui'),
+			).rejects.toThrow('The user of the preference does not exist or is not a person');
 			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
 		});
 
