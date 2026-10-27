@@ -7,13 +7,9 @@ properties:
         type: string
       sourceId:
         type: string
-      exportedAt:
-        type: string
-        format: date-time
     required:
       - sourceN8nVersion
       - sourceId
-      - exportedAt
   workflows:
     type: array
     items:

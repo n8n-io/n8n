@@ -83,7 +83,6 @@ export function looseAgentsFixture(): AgentPackageFixture {
 	return {
 		manifest: {
 			packageFormatVersion: '1',
-			exportedAt: '2026-10-01T12:00:00.000Z',
 			sourceN8nVersion: '2.0.0',
 			sourceId: 'source-instance',
 			agents,

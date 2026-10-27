@@ -8,7 +8,6 @@ const ids = (entries: Array<{ id: string }> | undefined) => entries?.map(({ id }
 // The global entry comes last on purpose: a name-keyed map would keep it for every project.
 const manifest: PackageManifest = {
 	packageFormatVersion: FORMAT_VERSION,
-	exportedAt: '2026-09-17T00:00:00.000Z',
 	sourceN8nVersion: '2.0.0',
 	sourceId: 'source',
 	projects: [

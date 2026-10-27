@@ -388,7 +388,6 @@ export class N8nPackagesService {
 		const agentEntries = agentExportResult?.agentEntries ?? [];
 		const manifest = packageManifestSchema.parse({
 			packageFormatVersion: FORMAT_VERSION,
-			exportedAt: new Date().toISOString(),
 			sourceN8nVersion: N8N_VERSION,
 			sourceId: this.instanceSettings.instanceId,
 			...(agentEntries.length > 0 ? { agents: agentEntries } : {}),

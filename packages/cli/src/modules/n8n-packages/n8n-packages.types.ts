@@ -748,7 +748,6 @@ export function serializeBindings(bindings: PackageImportBindings): SerializedBi
 export interface ImportPackageSummary {
 	sourceN8nVersion: string;
 	sourceId: string;
-	exportedAt: string;
 }
 
 export interface ImportCredentialSummary {
