@@ -1,0 +1,25 @@
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_952e2dc69e6ab3::t_9c66594239a7eb 26
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_952e2dc69e6ab3::t_9c66594239a7eb 340-347
+packages/@n8n/cli/docs/commands/package.md
+  s_952e2dc69e6ab3::t_9c66594239a7eb 147-154
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  s_952e2dc69e6ab3::t_8b8606f4970b70 53,185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3278bfc46af48a19bd67b0046f42f15e0510c7be",
+  "prompts": {},
+  "sessions": {
+    "s_952e2dc69e6ab3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1a0aea3-1f8c-4dd8-8134-765698a7bfc4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

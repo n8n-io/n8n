@@ -1,0 +1,22 @@
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_176cbc3c096bf7::t_0b9c4e09b00d2d 15-24,28-29,31,37,43-45,59,65,68-74,88-89,91,136,143,147,160,215-224
+  s_176cbc3c096bf7::t_a6be621ac36581 379,407
+  s_176cbc3c096bf7::t_b21da74d7d5432 318-328,330,335-378,380-399,404-406,408-421,437-442,453-467,471-478,482-486,505-519,522,528-531,534,542-545,548,556-579,586-593,605-609,613-623
+  s_176cbc3c096bf7::t_acedd7b716bfcc 329,331-334,400-403,422-436,443-452,468-470,479-481,487-504,520-521,523-527,532-533,535-541,546-547,549-555,580-585,594-604,610-612
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d2aa1ffef5ab853ce6dd88e3d8713f2f19933fa6",
+  "prompts": {},
+  "sessions": {
+    "s_176cbc3c096bf7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a178b7-ae89-7ad2-b584-c9dc4f33347d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

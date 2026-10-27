@@ -2,16 +2,16 @@ docs/generated/sqlite-schema/README.md
   ai_agent 16,24,122,150,188,190-191,361,466,562,568,1489,1797-1801
 docs/generated/postgres-schema/public.agent_execution_threads.md
   ai_agent 7,13,31,34,37,56,69,75,81,153-167
-docs/generated/postgres-schema/README.md
-  ai_agent 16,24,122,150,169,206,378,480,576,582,1503,1809-1813
-docs/generated/sqlite-schema/agent_execution_threads.md
-  ai_agent 9,18,24,42-46,56,69,75,81,153-167
-packages/cli/src/modules/agents/agents.module.ts
-  s_14bbae78eb49a2::t_a2729b708834d8 100
 docs/generated/sqlite-schema/agent_plan.md
   ai_agent 72,78
+packages/cli/src/modules/agents/agents.module.ts
+  s_14bbae78eb49a2::t_a2729b708834d8 100
+docs/generated/sqlite-schema/agent_execution_threads.md
+  ai_agent 9,18,24,42-46,56,69,75,81,153-167
 docs/generated/postgres-schema/public.agent_plan.md
   ai_agent 67,73
+docs/generated/postgres-schema/README.md
+  ai_agent 16,24,122,150,169,206,378,480,576,582,1503,1809-1813
 ---
 {
   "schema_version": "authorship/3.0.0",
