@@ -1950,8 +1950,6 @@ export interface InstanceAiMemoryConfig {
 	titleGeneration?: {
 		/** Model for the title call. Defaults to the agent's model. */
 		model?: ModelConfig;
-		/** Replaces the default instructions of the title call. */
-		instructions?: string;
 		/** Saves the title before the run ends, instead of after it in the background. */
 		sync?: boolean;
 	};

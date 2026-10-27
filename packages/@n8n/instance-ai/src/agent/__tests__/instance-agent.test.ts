@@ -1041,14 +1041,13 @@ describe('createInstanceAgent', () => {
 			expect(mockMemoryBuilder.titleGeneration).not.toHaveBeenCalled();
 		});
 
-		it('passes the title model and instructions to the Memory builder', async () => {
+		it('passes the title model to the Memory builder', async () => {
 			await createWithMemoryConfig({
-				titleGeneration: { model: 'anthropic/claude-haiku-4-5', instructions: 'Name it.' },
+				titleGeneration: { model: 'anthropic/claude-haiku-4-5' },
 			});
 
 			expect(mockMemoryBuilder.titleGeneration).toHaveBeenCalledWith({
 				model: 'anthropic/claude-haiku-4-5',
-				instructions: 'Name it.',
 			});
 		});
 	});
