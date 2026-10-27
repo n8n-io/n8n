@@ -414,6 +414,18 @@ describe('McpConnectionDiscoveryService', () => {
 			await expect(
 				service.discover(useAnyUser, { slug: 'git hub', credentialId: 'credential-1' }),
 			).resolves.toMatchObject({ status: 'connected' });
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenNthCalledWith(
+				1,
+				'credential-1',
+				useAnyUser,
+				['credential:connect'],
+			);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenNthCalledWith(
+				2,
+				'credential-1',
+				useAnyUser,
+				['credential:read'],
+			);
 			expect(credentialsHelper.getDecrypted).toHaveBeenCalled();
 		});
 
