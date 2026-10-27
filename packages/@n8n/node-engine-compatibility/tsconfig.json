@@ -1,0 +1,14 @@
+{
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.go.json",
+		"@n8n/typescript-config/tsconfig.backend.go.json"
+	],
+	"compilerOptions": {
+		"target": "es2023",
+		"lib": ["es2023"],
+		"types": ["node"],
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true
+	},
+	"include": ["src/**/*.ts"]
+}

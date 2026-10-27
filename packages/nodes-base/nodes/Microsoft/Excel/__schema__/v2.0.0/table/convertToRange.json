@@ -1,0 +1,17 @@
+{
+	"properties": {
+		"address": {
+			"type": "string"
+		},
+		"values": {
+			"items": {
+				"items": {
+					"type": "string"
+				},
+				"type": "array"
+			},
+			"type": "array"
+		}
+	},
+	"type": "object"
+}

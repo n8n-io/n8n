@@ -1,0 +1,283 @@
+<script setup lang="ts">
+import { computed, ref, watch, onBeforeUnmount } from 'vue';
+import Modal from '@/app/components/Modal.vue';
+import VueJsonPretty from 'vue-json-pretty';
+import RunDataHtml from './RunDataHtml.vue';
+import RunDataMarkdown from './RunDataMarkdown.vue';
+import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
+import { useI18n } from '@n8n/i18n';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type { BinaryMetadata } from '@n8n/design-system';
+
+const i18n = useI18n();
+const workflowsStore = useWorkflowsStore();
+
+const props = defineProps<{
+	data: {
+		binaryData: BinaryMetadata;
+	};
+}>();
+
+const isLoading = ref(true);
+const embedSource = ref('');
+const error = ref(false);
+const displayData = ref('');
+
+let currentBlobUrl: string | null = null;
+
+const binaryData = computed(() => {
+	const { id, mimeType, fileName } = props.data.binaryData;
+
+	// The renderer choice always comes from mimeType. fileType is supplied by
+	// the item's producer and does not steer it. An unrecognised, empty or
+	// absent mimeType gives `other`, which has no renderer.
+	let fileType = 'other';
+
+	if (mimeType) {
+		// Match on the base type, so a parameter such as `; charset=utf-8` does not
+		// stop a type matching. Each single type is compared whole, so a longer name
+		// such as `application/pdfx` does not match a shorter one.
+		const baseType = mimeType.split(';')[0].trim();
+
+		if (baseType.startsWith('image/')) fileType = 'image';
+		else if (baseType.startsWith('audio/')) fileType = 'audio';
+		else if (baseType.startsWith('video/')) fileType = 'video';
+		else if (baseType === 'application/pdf') fileType = 'pdf';
+		else if (baseType === 'application/json' || baseType === 'text/json') fileType = 'json';
+		else if (baseType === 'text/html') fileType = 'html';
+		else if (baseType === 'text/markdown' || baseType.includes('markdown')) fileType = 'markdown';
+		else if (baseType.startsWith('text/')) fileType = 'text';
+	}
+
+	return {
+		id,
+		mimeType,
+		fileName,
+		fileType,
+	};
+});
+
+function revokeBlobUrl() {
+	if (currentBlobUrl) {
+		URL.revokeObjectURL(currentBlobUrl);
+		currentBlobUrl = null;
+	}
+}
+
+async function loadBinaryData() {
+	isLoading.value = true;
+	error.value = false;
+
+	revokeBlobUrl();
+	embedSource.value = '';
+	displayData.value = '';
+
+	const { id, fileName, fileType, mimeType } = binaryData.value;
+
+	try {
+		const action = ['html', 'pdf', 'text'].includes(fileType) ? 'download' : 'view';
+		const binaryUrl = workflowsStore.getBinaryUrl(id, action, fileName || '', mimeType || '');
+
+		switch (fileType) {
+			case 'json': {
+				const fetchedData = await fetch(binaryUrl, { credentials: 'include' });
+				displayData.value = await fetchedData.json();
+				break;
+			}
+
+			case 'html':
+			case 'markdown':
+			case 'text': {
+				const fetchedData = await fetch(binaryUrl, { credentials: 'include' });
+				displayData.value = await fetchedData.text();
+				break;
+			}
+
+			case 'pdf': {
+				const fetched = await fetch(binaryUrl, { credentials: 'include' });
+				// The blob type is fixed to application/pdf, not taken from the fetched
+				// response, so the iframe always renders it as a PDF.
+				const blob = new Blob([await fetched.blob()], { type: 'application/pdf' });
+
+				currentBlobUrl = URL.createObjectURL(blob);
+				embedSource.value = currentBlobUrl;
+				break;
+			}
+
+			default:
+				embedSource.value = binaryUrl;
+		}
+	} catch (e) {
+		console.error(e.message);
+		error.value = true;
+	}
+
+	isLoading.value = false;
+}
+
+watch(
+	() => props.data.binaryData,
+	() => {
+		loadBinaryData().catch(() => {}); //error handled in loadBinaryData
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => {
+	revokeBlobUrl();
+});
+</script>
+
+<template>
+	<Modal
+		width="60%"
+		height="90%"
+		:title="i18n.baseText('binaryDataDisplay.filePreview')"
+		:name="BINARY_DATA_VIEW_MODAL_KEY"
+		:center="true"
+	>
+		<template #content>
+			<div :class="['binary-data-modal-content', binaryData.fileType]">
+				<div v-if="isLoading" class="loading-message">
+					{{ i18n.baseText('binaryDataDisplay.loading') }}
+				</div>
+				<div v-else-if="error" class="error-message">
+					{{ i18n.baseText('binaryDataDisplay.errorLoading') }}
+				</div>
+
+				<div v-else class="content-wrapper">
+					<!-- VIDEO -->
+					<video v-if="binaryData.fileType === 'video'" controls autoplay>
+						<source :src="embedSource" :type="binaryData.mimeType" />
+						{{ i18n.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
+					</video>
+
+					<!-- AUDIO -->
+					<audio v-else-if="binaryData.fileType === 'audio'" controls autoplay>
+						<source :src="embedSource" :type="binaryData.mimeType" />
+						{{ i18n.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
+					</audio>
+
+					<!-- IMAGE -->
+					<img
+						v-else-if="binaryData.fileType === 'image'"
+						:src="embedSource"
+						:alt="binaryData.fileName || i18n.baseText('binaryDataDisplay.imagePreview')"
+					/>
+
+					<!-- JSON -->
+					<VueJsonPretty
+						v-else-if="binaryData.fileType === 'json'"
+						:data="displayData"
+						:deep="3"
+						:show-length="true"
+					/>
+
+					<!-- HTML -->
+					<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="displayData" />
+
+					<!-- Markdown -->
+					<RunDataMarkdown
+						v-else-if="binaryData.fileType === 'markdown'"
+						:input-markdown="displayData"
+					/>
+
+					<!-- TEXT -->
+					<pre v-else-if="binaryData.fileType === 'text'" class="text-content">
+						{{ displayData }}
+					</pre
+					>
+
+					<!-- PDF -->
+					<!-- An iframe, not an embed: an `object-src 'none'` CSP refuses embeds -->
+					<iframe
+						v-else-if="binaryData.fileType === 'pdf'"
+						:src="embedSource"
+						class="binary-data"
+						:title="binaryData.fileName || i18n.baseText('binaryDataDisplay.filePreview')"
+					/>
+
+					<!-- UNKNOWN -->
+					<div v-else class="error-message">
+						{{ i18n.baseText('binaryDataDisplay.previewNotAvailable') }}
+					</div>
+				</div>
+			</div>
+		</template>
+	</Modal>
+</template>
+
+<style lang="scss">
+.el-overlay:has([data-test-id='binaryDataView-modal']),
+.el-dialog__wrapper:has([data-test-id='binaryDataView-modal']) {
+	z-index: 10000000 !important;
+}
+</style>
+
+<style lang="scss" scoped>
+.binary-data-modal-content {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+
+	&.json,
+	&.markdown &.html,
+	&.text {
+		overflow: auto;
+		.content-wrapper {
+			align-items: flex-start;
+			justify-content: flex-start;
+		}
+	}
+
+	.content-wrapper {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: auto;
+	}
+
+	img,
+	video {
+		max-height: 100%;
+		max-width: 100%;
+		display: block;
+	}
+
+	.binary-data {
+		height: 100%;
+		width: 100%;
+		border: 0;
+	}
+
+	.text-content {
+		width: 100%;
+		margin: 0;
+		white-space: pre-wrap;
+		word-wrap: break-word;
+		color: var(--color--text);
+		font-family: var(--font-family);
+		font-size: var(--font-size--md);
+	}
+
+	&:not(.markdown):not(.html):not(.pdf) {
+		padding: var(--spacing--sm) var(--spacing--md);
+		border: var(--border);
+		border-radius: var(--radius);
+		background-color: var(--color--background--light-3);
+	}
+
+	.loading-message,
+	.error-message {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		color: var(--color--text--shade-1);
+	}
+}
+</style>

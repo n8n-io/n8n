@@ -1,7 +1,7 @@
 import type { Schema } from '@/Interface';
 import type { CompletionResult } from '@codemirror/autocomplete';
 import type { Diagnostic } from '@codemirror/lint';
-import type { CodeExecutionMode } from 'n8n-workflow';
+import type { CodeExecutionMode, WorkflowSettingsBinaryMode } from 'n8n-workflow';
 import type ts from 'typescript';
 import type * as Comlink from 'comlink';
 import type { ChangeSet } from '@codemirror/state';
@@ -20,6 +20,7 @@ export type WorkerInitOptions = {
 	inputNodeNames: string[];
 	variables: string[];
 	mode: CodeExecutionMode;
+	binaryMode?: WorkflowSettingsBinaryMode;
 };
 
 export type NodeData = { json: Schema | undefined; binary: string[]; params: Schema };

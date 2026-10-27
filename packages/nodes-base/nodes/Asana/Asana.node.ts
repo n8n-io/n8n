@@ -515,7 +515,7 @@ export class Asana implements INodeType {
 				},
 				typeOptions: {
 					minValue: 1,
-					maxValue: 500,
+					maxValue: 100,
 				},
 				default: 100,
 				description: 'Max number of results to return',
@@ -1552,7 +1552,7 @@ export class Asana implements INodeType {
 				},
 				typeOptions: {
 					minValue: 1,
-					maxValue: 500,
+					maxValue: 100,
 				},
 				default: 100,
 				description: 'Max number of results to return',
@@ -2467,8 +2467,15 @@ export class Asana implements INodeType {
 					),
 				);
 			} catch (error) {
+				if (error instanceof NodeApiError && error.description) {
+					error.message = error.description;
+				}
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;

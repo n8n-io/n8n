@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { type IconOrEmoji } from '@n8n/design-system';
 
 import { N8nIcon, N8nText } from '@n8n/design-system';
 type Props = {
@@ -29,7 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
 			v-if="icon.type === 'icon'"
 			:icon="icon.value"
 			:class="$style.icon"
-			:color="color"
+			:color="icon.color ?? color"
 		></N8nIcon>
 		<N8nText v-else-if="icon.type === 'emoji'" color="text-light" :class="$style.emoji">
 			{{ icon.value }}

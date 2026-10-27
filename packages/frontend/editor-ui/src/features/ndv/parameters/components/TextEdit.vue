@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick } from 'vue';
+import { ref, watch, onMounted, nextTick, computed, inject } from 'vue';
 import type { INodeProperties } from 'n8n-workflow';
 import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
+import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { storeToRefs } from 'pinia';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import { ElDialog } from 'element-plus';
 import { N8nInput, N8nInputLabel } from '@n8n/design-system';
@@ -24,10 +24,11 @@ const emit = defineEmits<{
 const inputField = ref<HTMLInputElement | null>(null);
 const tempValue = ref('');
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
+const parameterModalContext = inject(ParameterInputModalContextKey, undefined);
 const i18n = useI18n();
 
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => ndvStore.value.activeNode);
 
 watch(
 	() => props.dialogVisible,
@@ -71,7 +72,8 @@ const closeDialog = () => {
 	<div v-if="dialogVisible">
 		<ElDialog
 			:model-value="dialogVisible"
-			:append-to="`#${APP_MODALS_ELEMENT_ID}`"
+			:append-to="parameterModalContext?.appendTo ?? `#${APP_MODALS_ELEMENT_ID}`"
+			:append-to-body="parameterModalContext?.appendTo === 'body'"
 			width="80%"
 			:title="`${i18n.baseText('textEdit.edit')} ${i18n
 				.nodeText(activeNode?.type)

@@ -2,7 +2,7 @@ import { renderComponent } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
-import { useKeybindings } from './useKeybindings';
+import { useKeybindings, type KeyMap } from './useKeybindings';
 
 const renderTestComponent = async (...args: Parameters<typeof useKeybindings>) => {
 	return renderComponent(
@@ -44,6 +44,141 @@ describe('useKeybindings', () => {
 		expect(saveAllSpy).not.toHaveBeenCalled();
 	});
 
+	describe('allowInInputs', () => {
+		async function renderInputKeybindings(
+			keymap: KeyMap,
+			{
+				tag = 'input',
+				parentAttributes = {},
+				disabled = false,
+			}: {
+				tag?: string;
+				parentAttributes?: Record<string, string>;
+				disabled?: boolean;
+			} = {},
+		) {
+			const result = renderComponent(
+				defineComponent({
+					setup() {
+						useKeybindings(keymap, { disabled });
+						return () =>
+							h('div', parentAttributes, [
+								h(tag, {
+									role: 'textbox',
+									tabindex: 0,
+									contenteditable: tag === 'div' ? 'true' : undefined,
+								}),
+							]);
+					},
+				}),
+			);
+			await userEvent.click(result.getByRole('textbox'));
+			return result;
+		}
+
+		it.each(['input', 'textarea', 'div'])(
+			'should run an opted-in action when %s has focus',
+			async (tag) => {
+				const handler = vi.fn();
+				await renderInputKeybindings({ ctrl_j: { allowInInputs: true, run: handler } }, { tag });
+
+				await userEvent.keyboard('{Control>}j{/Control}');
+
+				expect(handler).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it.each(['input', 'textarea', 'div'])(
+			'should block actions without opt-in when %s has focus',
+			async (tag) => {
+				const omittedHandler = vi.fn();
+				const falseHandler = vi.fn();
+				const functionHandler = vi.fn();
+				await renderInputKeybindings(
+					{
+						ctrl_j: { run: omittedHandler },
+						ctrl_k: { allowInInputs: false, run: falseHandler },
+						ctrl_l: functionHandler,
+					},
+					{ tag },
+				);
+
+				await userEvent.keyboard('{Control>}jkl{/Control}');
+
+				expect(omittedHandler).not.toHaveBeenCalled();
+				expect(falseHandler).not.toHaveBeenCalled();
+				expect(functionHandler).not.toHaveBeenCalled();
+			},
+		);
+
+		it('should apply the opt-in only to its own action', async () => {
+			const allowedHandler = vi.fn();
+			const blockedHandler = vi.fn();
+			await renderInputKeybindings({
+				ctrl_j: { allowInInputs: true, run: allowedHandler },
+				ctrl_k: { run: blockedHandler },
+			});
+
+			await userEvent.keyboard('{Control>}jk{/Control}');
+
+			expect(allowedHandler).toHaveBeenCalledTimes(1);
+			expect(blockedHandler).not.toHaveBeenCalled();
+		});
+
+		it('should block an opted-in action when the action is disabled', async () => {
+			const handler = vi.fn();
+			await renderInputKeybindings({
+				ctrl_j: { allowInInputs: true, disabled: () => true, run: handler },
+			});
+
+			await userEvent.keyboard('{Control>}j{/Control}');
+
+			expect(handler).not.toHaveBeenCalled();
+		});
+
+		it('should block an opted-in action when the keymap is disabled', async () => {
+			const handler = vi.fn();
+			await renderInputKeybindings(
+				{ ctrl_j: { allowInInputs: true, run: handler } },
+				{ disabled: true },
+			);
+
+			await userEvent.keyboard('{Control>}j{/Control}');
+
+			expect(handler).not.toHaveBeenCalled();
+		});
+
+		it.each<{ name: string; parentAttributes: Record<string, string> }>([
+			{ name: 'dialog', parentAttributes: { role: 'dialog' } },
+			{
+				name: 'canvas ignore container',
+				parentAttributes: { class: 'ignore-key-press-canvas' },
+			},
+		])('should block an opted-in action inside a $name', async ({ parentAttributes }) => {
+			const handler = vi.fn();
+			await renderInputKeybindings(
+				{ ctrl_j: { allowInInputs: true, run: handler } },
+				{ parentAttributes },
+			);
+
+			await userEvent.keyboard('{Control>}j{/Control}');
+
+			expect(handler).not.toHaveBeenCalled();
+		});
+
+		it('should block an opted-in action on an input with a canvas ignore marker', async () => {
+			const handler = vi.fn();
+			const { getByRole } = await renderInputKeybindings({
+				ctrl_j: { allowInInputs: true, run: handler },
+			});
+			getByRole('textbox').classList.add('ignore-key-press-canvas');
+
+			await userEvent.keyboard('{Control>}j{/Control}');
+
+			expect(handler).not.toHaveBeenCalled();
+		});
+	});
+
 	it('should call the correct handler for a single key press', async () => {
 		const handler = vi.fn();
 		const keymap = ref({ a: handler });
@@ -83,6 +218,29 @@ describe('useKeybindings', () => {
 
 		expect(handler).not.toHaveBeenCalled();
 		document.body.removeChild(input);
+	});
+
+	it('should not call handler when focus is inside a dialog', async () => {
+		const handler = vi.fn();
+		const keymap = ref({ enter: handler });
+
+		useKeybindings(keymap);
+
+		// A modal dialog (e.g. N8nDialog) portals its content to the body and owns
+		// keyboard input while open, so a focused button inside it must not fire
+		// canvas shortcuts that also listen on `document`.
+		const dialog = document.createElement('div');
+		dialog.setAttribute('role', 'dialog');
+		const button = document.createElement('button');
+		dialog.appendChild(button);
+		document.body.appendChild(dialog);
+		button.focus();
+
+		const event = new KeyboardEvent('keydown', { key: 'Enter' });
+		document.dispatchEvent(event);
+
+		expect(handler).not.toHaveBeenCalled();
+		document.body.removeChild(dialog);
 	});
 
 	it('should not call handler if disabled', async () => {
@@ -153,7 +311,7 @@ describe('useKeybindings', () => {
 		expect(iHandler).not.toHaveBeenCalled();
 	});
 
-	it("should fallback to 'code' for non-ansi layouts", () => {
+	it("should fallback to 'code' for non-Latin layouts with Ctrl/Cmd shortcuts", () => {
 		const handler = vi.fn();
 		const keymap = ref({ 'ctrl+c': handler });
 
@@ -161,6 +319,92 @@ describe('useKeybindings', () => {
 
 		const event = new KeyboardEvent('keydown', { key: 'ב', code: 'KeyC', ctrlKey: true });
 		document.dispatchEvent(event);
+		expect(handler).toHaveBeenCalled();
+	});
+
+	it('should NOT fallback to code for non-Latin letters without Ctrl/Cmd', () => {
+		const cHandler = vi.fn();
+		const hebrewHandler = vi.fn();
+		const keymap = ref({
+			c: cHandler,
+			ב: hebrewHandler,
+		});
+
+		useKeybindings(keymap);
+
+		const event = new KeyboardEvent('keydown', { key: 'ב', code: 'KeyC' });
+		document.dispatchEvent(event);
+
+		expect(hebrewHandler).toHaveBeenCalled();
+		expect(cHandler).not.toHaveBeenCalled();
+	});
+
+	it('should resolve alt shortcuts via keyboard layout map for Colemak', async () => {
+		// Simulate the Keyboard Layout Map API (Colemak: physical KeyL → logical 'i')
+		const mockLayoutMap = new Map([['KeyL', 'i']]) as unknown as KeyboardLayoutMap;
+		Object.defineProperty(navigator, 'keyboard', {
+			value: {
+				getLayoutMap: vi.fn().mockResolvedValue(mockLayoutMap),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+			},
+			configurable: true,
+			writable: true,
+		});
+
+		const handler = vi.fn();
+		const keymap = ref({ alt_i: handler });
+
+		useKeybindings(keymap);
+
+		// Wait for the async getLayoutMap to resolve
+		await vi.waitFor(() => {
+			expect(navigator.keyboard!.getLayoutMap).toHaveBeenCalled();
+		});
+
+		// On macOS Colemak, Alt+I (physical KeyL) produces a dead key in event.key
+		// byKey = 'alt+dead' → no match, byCode = 'alt+l' → no match
+		// byLayout should resolve KeyL → 'i' via layout map → 'alt+i' → match
+		const event = new KeyboardEvent('keydown', {
+			key: 'Dead',
+			code: 'KeyL',
+			altKey: true,
+		});
+		document.dispatchEvent(event);
+		expect(handler).toHaveBeenCalled();
+
+		// Clean up
+		Object.defineProperty(navigator, 'keyboard', {
+			value: undefined,
+			configurable: true,
+			writable: true,
+		});
+	});
+
+	it('should NOT trigger ctrl+s when pressing ctrl+r on Colemak (letter key should not fallback to byCode)', () => {
+		const rHandler = vi.fn();
+		const sHandler = vi.fn();
+		const keymap = ref({ 'ctrl+s': sHandler, 'ctrl+r': rHandler });
+
+		useKeybindings(keymap);
+
+		// On Colemak: to type 'r', user presses the physical 'S' key (KeyS)
+		const event = new KeyboardEvent('keydown', { key: 'r', code: 'KeyS', ctrlKey: true });
+		document.dispatchEvent(event);
+
+		expect(rHandler).toHaveBeenCalled();
+		expect(sHandler).not.toHaveBeenCalled();
+	});
+
+	it('should fallback to byCode for non-letter keys (arrows, function keys)', () => {
+		const handler = vi.fn();
+		const keymap = ref({ ArrowUp: handler });
+
+		useKeybindings(keymap);
+
+		const event = new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' });
+		document.dispatchEvent(event);
+
 		expect(handler).toHaveBeenCalled();
 	});
 });

@@ -1,9 +1,17 @@
 import type { ICredentialContext } from 'n8n-workflow';
 
+import { CredentialResolutionError } from '../../errors/credential-resolution.error';
+
 /**
- * Error thrown when token identifier validation or resolution fails
+ * Error thrown when token identifier validation or resolution fails.
+ * Extends CredentialResolutionError so it propagates correctly through the resolution pipeline.
  */
-export class IdentifierValidationError extends Error {}
+export class IdentifierValidationError extends CredentialResolutionError {
+	constructor(message: string, options?: ErrorOptions) {
+		super(message, options);
+		this.name = 'IdentifierValidationError';
+	}
+}
 
 /**
  * Interface for resolving unique identifiers from credential contexts
@@ -14,10 +22,15 @@ export interface ITokenIdentifier {
 	 *
 	 * @param context - Credential context with execution details
 	 * @param identifierOptions - Implementation-specific options
+	 * @param executionId - Optional execution ID for context
 	 * @returns Unique identifier string
 	 * @throws {IdentifierValidationError} When validation or resolution fails
 	 */
-	resolve(context: ICredentialContext, identifierOptions: Record<string, unknown>): Promise<string>;
+	resolve(
+		context: ICredentialContext,
+		identifierOptions: Record<string, unknown>,
+		executionId?: string,
+	): Promise<string>;
 
 	/**
 	 * Validates identifier options before use

@@ -1,0 +1,88 @@
+{
+	"name": "onlineMeeting create minimal",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6666-9999-77777",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [880, 380]
+		},
+		{
+			"parameters": {
+				"resource": "onlineMeeting",
+				"operation": "create",
+				"subject": "Standup",
+				"startDateTime": "2026-09-11T09:00:00Z",
+				"endDateTime": "2026-09-11T09:15:00Z"
+			},
+			"id": "6666-5555-77777",
+			"name": "Microsoft Teams",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 2,
+			"position": [1100, 380],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "6isd5ytvA0qV78eK",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "9d1a2e59-c71c-486c-b3ac-dec6adbc26b3",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1400, 380]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": "MSpTdGFuZHVwLW1pbmltYWw",
+					"startDateTime": "2026-09-11T09:00:00Z",
+					"endDateTime": "2026-09-11T09:15:00Z",
+					"joinWebUrl": "https://teams.microsoft.com/l/meetup-join/19%3ameeting_c3RhbmR1cA%40thread.v2/0",
+					"subject": "Standup"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Teams",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Teams": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "ec0b4e3d-2fd7-4fac-90e5-f18ecd620a05",
+	"id": "onlineMeetingCreate02",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

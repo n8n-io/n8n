@@ -9,7 +9,6 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 	NodeExecutionHint,
-	INodeProperties,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -28,25 +27,10 @@ import {
 	googleApiRequest,
 	googleApiRequestAllItems,
 	googleApiRequestWithRetries,
+	parseAttendees,
 	type RecurrentEvent,
 } from './GenericFunctions';
 import { sortItemKeysByPriorityList } from '../../../utils/utilities';
-
-const preBuiltAgentsCallout: INodeProperties = {
-	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-	displayName: 'Interact with your Google Calendar using our pre-built',
-	name: 'preBuiltAgentsCalloutGoogleCalendar',
-	type: 'callout',
-	typeOptions: {
-		calloutAction: {
-			label: 'Calendar agent',
-			icon: 'bot',
-			type: 'openSampleWorkflowTemplate',
-			templateId: 'calendar_agent_with_gcal',
-		},
-	},
-	default: '',
-};
 
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
@@ -57,11 +41,20 @@ export class GoogleCalendar implements INodeType {
 		version: [1, 1.1, 1.2, 1.3],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Calendar API',
+		schemaPath: 'Google/Calendar',
 		defaults: {
 			name: 'Google Calendar',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.googleCalendarTool',
+					relationHint: 'Tool version for AI Agent use',
+				},
+			],
+		},
 		usableAsTool: true,
 		credentials: [
 			{
@@ -70,7 +63,6 @@ export class GoogleCalendar implements INodeType {
 			},
 		],
 		properties: [
-			preBuiltAgentsCallout,
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -250,16 +242,7 @@ export class GoogleCalendar implements INodeType {
 							},
 						};
 						if (additionalFields.attendees) {
-							body.attendees = [];
-							(additionalFields.attendees as string[]).forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
-									attendee
-										.split(',')
-										.map((a) => a.trim())
-										.map((email) => ({ email })),
-								);
-							});
+							body.attendees = parseAttendees.call(this, additionalFields.attendees, i);
 						}
 						if (additionalFields.color) {
 							body.colorId = additionalFields.color as string;
@@ -632,30 +615,26 @@ export class GoogleCalendar implements INodeType {
 							qs.sendUpdates = updateFields.sendUpdates as string;
 						}
 						const body: IEvent = {};
+						// PATCH merges nested objects, so an event that is currently all-day keeps
+						// its `date` unless we clear it, and Google rejects a start/end carrying
+						// both `date` and `dateTime`. Same in reverse for the all-day branch below.
 						if (updateFields.start) {
 							body.start = {
 								dateTime: moment.tz(updateFields.start, updateTimezone).utc().format(),
 								timeZone: updateTimezone,
+								date: null,
 							};
 						}
 						if (updateFields.end) {
 							body.end = {
 								dateTime: moment.tz(updateFields.end, updateTimezone).utc().format(),
 								timeZone: updateTimezone,
+								date: null,
 							};
 						}
 						// nodeVersion < 1.2
 						if (updateFields.attendees) {
-							body.attendees = [];
-							(updateFields.attendees as string[]).forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
-									attendee
-										.split(',')
-										.map((a) => a.trim())
-										.map((email) => ({ email })),
-								);
-							});
+							body.attendees = parseAttendees.call(this, updateFields.attendees, i);
 						}
 						// nodeVersion >= 1.2
 						if (updateFields.attendeesUi) {
@@ -667,6 +646,7 @@ export class GoogleCalendar implements INodeType {
 									};
 								}
 							).values;
+							const parsedAttendees = parseAttendees.call(this, attendees, i);
 							body.attendees = [];
 							if (mode === 'add') {
 								const event = await googleApiRequest.call(
@@ -678,15 +658,7 @@ export class GoogleCalendar implements INodeType {
 									body.attendees?.push(attendee);
 								});
 							}
-							attendees.forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
-									attendee
-										.split(',')
-										.map((a) => a.trim())
-										.map((email) => ({ email })),
-								);
-							});
+							body.attendees.push(...parsedAttendees);
 						}
 						if (updateFields.color) {
 							body.colorId = updateFields.color as string;
@@ -734,11 +706,13 @@ export class GoogleCalendar implements INodeType {
 								date: updateTimezone
 									? moment.tz(updateFields.start, updateTimezone).utc(true).format('YYYY-MM-DD')
 									: moment.tz(updateFields.start, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
+								dateTime: null,
 							};
 							body.end = {
 								date: updateTimezone
 									? moment.tz(updateFields.end, updateTimezone).utc(true).format('YYYY-MM-DD')
 									: moment.tz(updateFields.end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
+								dateTime: null,
 							};
 						}
 						//example: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z

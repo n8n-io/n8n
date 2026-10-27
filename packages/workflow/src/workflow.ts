@@ -15,9 +15,8 @@ import {
 	NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT,
 	STARTING_NODE_TYPES,
 } from './constants';
-import { UserError } from './errors';
-import { ApplicationError } from '@n8n/errors';
-import { Expression } from './expression';
+import { UnexpectedError, UserError } from './errors';
+import { WorkflowExpression } from './workflow-expression';
 import { getGlobalState } from './global-state';
 import type {
 	IConnections,
@@ -69,7 +68,7 @@ export class Workflow {
 
 	nodeTypes: INodeTypes;
 
-	expression: Expression;
+	expression: WorkflowExpression;
 
 	active: boolean;
 
@@ -131,7 +130,7 @@ export class Workflow {
 
 		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
 
-		this.expression = new Expression(this);
+		this.expression = new WorkflowExpression(this);
 	}
 
 	// Save nodes in workflow as object to be able to get the nodes easily by their name.
@@ -163,48 +162,7 @@ export class Workflow {
 	}
 
 	static getConnectionsByDestination(connections: IConnections): IConnections {
-		const returnConnection: IConnections = {};
-
-		let connectionInfo;
-		let maxIndex: number;
-		for (const sourceNode in connections) {
-			if (!connections.hasOwnProperty(sourceNode)) {
-				continue;
-			}
-
-			for (const type of Object.keys(connections[sourceNode]) as NodeConnectionType[]) {
-				if (!connections[sourceNode].hasOwnProperty(type)) {
-					continue;
-				}
-				for (const inputIndex in connections[sourceNode][type]) {
-					if (!connections[sourceNode][type].hasOwnProperty(inputIndex)) {
-						continue;
-					}
-
-					for (connectionInfo of connections[sourceNode][type][inputIndex] ?? []) {
-						if (!returnConnection.hasOwnProperty(connectionInfo.node)) {
-							returnConnection[connectionInfo.node] = {};
-						}
-						if (!returnConnection[connectionInfo.node].hasOwnProperty(connectionInfo.type)) {
-							returnConnection[connectionInfo.node][connectionInfo.type] = [];
-						}
-
-						maxIndex = returnConnection[connectionInfo.node][connectionInfo.type].length - 1;
-						for (let j = maxIndex; j < connectionInfo.index; j++) {
-							returnConnection[connectionInfo.node][connectionInfo.type].push([]);
-						}
-
-						returnConnection[connectionInfo.node][connectionInfo.type][connectionInfo.index]?.push({
-							node: sourceNode,
-							type,
-							index: parseInt(inputIndex, 10),
-						});
-					}
-				}
-			}
-		}
-
-		return returnConnection;
+		return mapConnectionsByDestination(connections);
 	}
 
 	/**
@@ -221,13 +179,13 @@ export class Workflow {
 			key = 'global';
 		} else if (type === 'node') {
 			if (node === undefined) {
-				throw new ApplicationError(
+				throw new UnexpectedError(
 					'The request data of context type "node" the node parameter has to be set!',
 				);
 			}
 			key = `node:${node.name}`;
 		} else {
-			throw new ApplicationError('Unknown context type. Only `global` and `node` are supported.', {
+			throw new UnexpectedError('Unknown context type. Only `global` and `node` are supported.', {
 				extra: { contextType: type },
 			});
 		}
@@ -355,13 +313,7 @@ export class Workflow {
 			const returnArray: any[] = [];
 
 			for (const currentValue of parameterValue) {
-				returnArray.push(
-					this.renameNodeInParameterValue(
-						currentValue as NodeParameterValueType,
-						currentName,
-						newName,
-					),
-				);
+				returnArray.push(this.renameNodeInParameterValue(currentValue, currentName, newName));
 			}
 
 			return returnArray;
@@ -495,6 +447,12 @@ export class Workflow {
 		checkedNodes?: string[],
 	): string[] {
 		const currentHighest: string[] = [];
+
+		if (!(nodeName in this.nodes)) {
+			// Node is not in the workflow
+			return currentHighest;
+		}
+
 		if (this.nodes[nodeName].disabled === false) {
 			// If the current node is not disabled itself is the highest
 			currentHighest.push(nodeName);
@@ -607,9 +565,8 @@ export class Workflow {
 		nodeName: string,
 		connectionType: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 		depth = -1,
-		checkedNodesIncoming?: string[],
 	): string[] {
-		return getConnectedNodes(connections, nodeName, connectionType, depth, checkedNodesIncoming);
+		return getConnectedNodes(connections, nodeName, connectionType, depth);
 	}
 
 	/**
@@ -725,7 +682,7 @@ export class Workflow {
 					nonMainNodesConnected.sort();
 					const returnNode = this.getNode(nonMainNodesConnected[0]);
 					if (!returnNode) {
-						throw new ApplicationError(`Node "${nonMainNodesConnected[0]}" not found`);
+						throw new UnexpectedError(`Node "${nonMainNodesConnected[0]}" not found`);
 					}
 					return this.getParentMainInputNode(returnNode);
 				}

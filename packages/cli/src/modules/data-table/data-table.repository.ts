@@ -5,10 +5,14 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { Project, withTransaction } from '@n8n/db';
+import { parseListQuerySortBy, Project, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { DataSource, EntityManager, In, Repository, SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	DATA_TABLE_SYSTEM_COLUMNS,
+	DATA_TABLE_SYSTEM_TESTING_COLUMN,
+	UnexpectedError,
+} from 'n8n-workflow';
 import type { DataTableInfo, DataTablesSizeData } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
@@ -16,6 +20,7 @@ import { DataTableDDLService } from './data-table-ddl.service';
 import { DataTable } from './data-table.entity';
 import { DataTableUserTableName } from './data-table.types';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
+import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { isValidColumnName, toTableId, toTableName } from './utils/sql-utils';
 
@@ -38,6 +43,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	 * update failures don't affect the primary data operations.
 	 */
 	async touchUpdatedAt(dataTableId: string, trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.manager, trx, async (em) => {
 			await em.update(DataTable, { id: dataTableId }, { updatedAt: new Date() });
 		}).catch((error) => {
@@ -50,13 +56,31 @@ export class DataTableRepository extends Repository<DataTable> {
 		name: string,
 		columns: DataTableCreateColumnSchema[],
 		trx?: EntityManager,
+		explicitId?: string,
+		explicitColumnIds?: Array<string | undefined>,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			if (columns.some((c) => !isValidColumnName(c.name))) {
 				throw new DataTableValidationError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
 			}
 
-			const dataTable = em.create(DataTable, { name, columns, projectId });
+			for (const col of columns) {
+				const lowerName = col.name.toLowerCase();
+				if (DATA_TABLE_SYSTEM_COLUMNS.some((sc) => sc.toLowerCase() === lowerName)) {
+					throw new DataTableSystemColumnNameConflictError(col.name);
+				}
+				if (lowerName === DATA_TABLE_SYSTEM_TESTING_COLUMN.toLowerCase()) {
+					throw new DataTableSystemColumnNameConflictError(col.name, 'testing');
+				}
+			}
+
+			const dataTable = em.create(DataTable, {
+				...(explicitId === undefined ? {} : { id: explicitId }),
+				name,
+				columns,
+				projectId,
+			});
 
 			await em.insert(DataTable, dataTable);
 			const dataTableId = dataTable.id;
@@ -64,6 +88,7 @@ export class DataTableRepository extends Repository<DataTable> {
 			// insert columns
 			const columnEntities = columns.map((col, index) =>
 				em.create(DataTableColumn, {
+					id: explicitColumnIds?.[index],
 					dataTableId,
 					name: col.name,
 					type: col.type,
@@ -92,6 +117,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	}
 
 	async deleteDataTable(dataTableId: string, trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			await em.delete(DataTable, { id: dataTableId });
 			await this.ddlService.dropTable(dataTableId, em);
@@ -106,6 +132,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	) {
 		if (fromProjectId === toProjectId) return false;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, { projectId: fromProjectId });
 
@@ -142,6 +169,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	}
 
 	async deleteDataTableByProjectId(projectId: string, trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, { projectId });
 
@@ -156,6 +184,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	}
 
 	async deleteDataTableAll(trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, {});
 
@@ -167,6 +196,17 @@ export class DataTableRepository extends Repository<DataTable> {
 			}
 
 			return changed;
+		});
+	}
+
+	async findSummariesByIds(
+		ids: string[],
+	): Promise<Array<Pick<DataTable, 'id' | 'name' | 'projectId'>>> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			select: ['id', 'name', 'projectId'],
+			where: { id: In(ids) },
 		});
 	}
 
@@ -230,13 +270,8 @@ export class DataTableRepository extends Repository<DataTable> {
 			return;
 		}
 
-		const [field, order] = this.parseSortingParams(sortBy);
-		this.applySortingByField(query, field, order);
-	}
-
-	private parseSortingParams(sortBy: string): [string, 'DESC' | 'ASC'] {
-		const [field, order] = sortBy.split(':');
-		return [field, order?.toLowerCase() === 'desc' ? 'DESC' : 'ASC'];
+		const { column, direction } = parseListQuerySortBy(sortBy);
+		this.applySortingByField(query, column, direction);
 	}
 
 	private applySortingByField(
@@ -250,6 +285,15 @@ export class DataTableRepository extends Repository<DataTable> {
 				.orderBy('datatable_name_lower', direction);
 		} else if (['createdAt', 'updatedAt'].includes(field)) {
 			query.orderBy(`dataTable.${field}`, direction);
+		} else if (field === 'size') {
+			query
+				.leftJoin(
+					`(${this.getDataTableSizeQuery()})`,
+					'size_data',
+					`size_data.table_name = '${toTableName('')}' || dataTable.id`,
+				)
+				.addSelect('size_data.table_bytes', 'size')
+				.orderBy('size', direction);
 		}
 	}
 
@@ -322,12 +366,11 @@ export class DataTableRepository extends Repository<DataTable> {
 		};
 	}
 
-	private async getAllDataTablesSizeMap(): Promise<Map<string, number>> {
+	private getDataTableSizeQuery() {
 		const dbType = this.globalConfig.database.type;
 		const tablePattern = toTableName('%');
 
 		let sql = '';
-
 		switch (dbType) {
 			case 'sqlite':
 				sql = `
@@ -343,8 +386,11 @@ export class DataTableRepository extends Repository<DataTable> {
 
 			case 'postgresdb': {
 				const schemaName = this.globalConfig.database.postgresdb?.schema;
+				// pg_total_relation_size includes the heap, indexes, and TOAST.
+				// pg_relation_size returns only the heap, so oversized column values
+				// stored in TOAST (where most user data ends up) would be missed.
 				sql = `
-        SELECT c.relname AS table_name, pg_relation_size(c.oid) AS table_bytes
+        SELECT c.relname AS table_name, pg_total_relation_size(c.oid) AS table_bytes
           FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace
          WHERE n.nspname = '${schemaName}'
@@ -353,42 +399,20 @@ export class DataTableRepository extends Repository<DataTable> {
       `;
 				break;
 			}
-
-			case 'mysqldb':
-			case 'mariadb': {
-				const databaseName = this.globalConfig.database.mysqldb.database;
-				const isMariaDb = dbType === 'mariadb';
-				const innodbTables = isMariaDb ? 'INNODB_SYS_TABLES' : 'INNODB_TABLES';
-				const innodbTablespaces = isMariaDb ? 'INNODB_SYS_TABLESPACES' : 'INNODB_TABLESPACES';
-				sql = `
-        SELECT t.TABLE_NAME AS table_name,
-            COALESCE(
-                (
-                  SELECT SUM(ists.ALLOCATED_SIZE)
-                    FROM information_schema.${innodbTables} ist
-                    JOIN information_schema.${innodbTablespaces} ists
-                      ON ists.SPACE = ist.SPACE
-                   WHERE ist.NAME = CONCAT(t.TABLE_SCHEMA, '/', t.TABLE_NAME)
-                ),
-                (t.DATA_LENGTH + t.INDEX_LENGTH)
-            ) AS table_bytes
-        FROM information_schema.TABLES t
-        WHERE t.TABLE_SCHEMA = '${databaseName}'
-          AND t.TABLE_NAME LIKE '${tablePattern}'
-    `;
-				break;
-			}
-
-			default:
-				return new Map<string, number>();
 		}
+
+		return sql;
+	}
+
+	private async getAllDataTablesSizeMap(): Promise<Map<string, number>> {
+		const sql = this.getDataTableSizeQuery();
+		const sizeMap = new Map<string, number>();
+		if (sql === '') return sizeMap;
 
 		const result = (await this.query(sql)) as Array<{
 			table_name: string;
 			table_bytes: number | string | null;
 		}>;
-
-		const sizeMap = new Map<string, number>();
 
 		for (const row of result) {
 			if (row.table_bytes !== null && row.table_name) {

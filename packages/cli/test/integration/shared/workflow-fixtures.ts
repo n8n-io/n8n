@@ -3,6 +3,7 @@
  * These fixtures create minimal workflow structures needed for testing.
  */
 
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 /**
@@ -88,7 +89,7 @@ export function createParentWorkflowFixture(childWorkflowId: string) {
 					[
 						{
 							node: 'Execute Workflow',
-							type: 'main',
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -161,7 +162,7 @@ export function createMiddleWorkflowFixture(childWorkflowId: string) {
 					[
 						{
 							node: 'Execute Workflow',
-							type: 'main',
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -189,118 +190,6 @@ export function createSimpleWorkflowFixture() {
 			},
 		],
 		connections: {},
-		pinData: {},
-	};
-}
-
-/**
- * Creates an error workflow with Error Trigger node.
- * This workflow gets executed when another workflow fails (if configured).
- */
-export function createErrorWorkflowFixture() {
-	return {
-		nodes: [
-			{
-				parameters: {},
-				type: 'n8n-nodes-base.errorTrigger',
-				typeVersion: 1,
-				position: [0, 0] as [number, number],
-				id: uuid(),
-				name: 'Trigger',
-			},
-		],
-		connections: {},
-		pinData: {},
-	};
-}
-
-/**
- * Creates a workflow that throws an error using DebugHelper node.
- * Useful for testing error workflow propagation.
- */
-export function createFailingWorkflowFixture() {
-	return {
-		nodes: [
-			{
-				parameters: {},
-				type: 'n8n-nodes-base.manualTrigger',
-				typeVersion: 1,
-				position: [0, 0] as [number, number],
-				id: uuid(),
-				name: 'Trigger',
-			},
-			{
-				parameters: {
-					throwErrorType: 'Error',
-					throwErrorMessage: 'Test error',
-				},
-				type: 'n8n-nodes-base.debugHelper',
-				typeVersion: 1,
-				position: [208, 0] as [number, number],
-				id: uuid(),
-				name: 'DebugHelper',
-			},
-		],
-		connections: {
-			Trigger: {
-				main: [
-					[
-						{
-							node: 'DebugHelper',
-							type: 'main',
-							index: 0,
-						},
-					],
-				],
-			},
-		},
-		pinData: {},
-	};
-}
-
-/**
- * Creates a workflow that fails and is configured to trigger an error workflow.
- * @param errorWorkflowId - The ID of the error workflow to trigger on failure
- */
-export function createWorkflowWithErrorHandlerFixture(errorWorkflowId: string) {
-	return {
-		nodes: [
-			{
-				parameters: {},
-				type: 'n8n-nodes-base.manualTrigger',
-				typeVersion: 1,
-				position: [0, 0] as [number, number],
-				id: uuid(),
-				name: 'Trigger',
-			},
-			{
-				parameters: {
-					throwErrorType: 'Error',
-					throwErrorMessage: 'Test error for error workflow',
-				},
-				type: 'n8n-nodes-base.debugHelper',
-				typeVersion: 1,
-				position: [208, 0] as [number, number],
-				id: uuid(),
-				name: 'DebugHelper',
-			},
-		],
-		connections: {
-			Trigger: {
-				main: [
-					[
-						{
-							node: 'DebugHelper',
-							type: 'main',
-							index: 0,
-						},
-					],
-				],
-			},
-		},
-		settings: {
-			errorWorkflow: errorWorkflowId,
-		},
 		pinData: {},
 	};
 }

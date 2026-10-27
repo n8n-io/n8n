@@ -1,18 +1,33 @@
 import { computed, ref } from 'vue';
-import { VIEWS } from '@/app/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
+import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
+import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
-import { useToast } from '@/app/composables/useToast';
+import { sortByProperty } from '@n8n/utils/sort/sort-by-property';
+import { useToast } from '@n8n/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { foldersEventBus } from '@/features/core/folders/folders.eventBus';
+import { useFolders } from '@/features/core/folders/composables/useFolders';
+import { useMessage } from '@/app/composables/useMessage';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
+import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
 import { getResourcePermissions } from '@n8n/permissions';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import type { Scope } from '@n8n/permissions';
 import type { RouteLocationRaw } from 'vue-router';
-import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { updatedIconSet, type IconName } from '@n8n/design-system';
 
 type ProjectIcon = IconName | { type: 'icon'; value: IconName } | { type: 'emoji'; value: string };
 
@@ -44,18 +59,34 @@ export const useGlobalEntityCreation = () => {
 	const CREATE_PROJECT_ID = 'create-project';
 	const WORKFLOWS_MENU_ID = 'workflow';
 	const CREDENTIALS_MENU_ID = 'credential';
+	const VARIABLE_MENU_ID = 'variable';
+	const DATA_TABLE_MENU_ID = 'data-table';
+	const AGENTS_MENU_ID = 'agent';
+	const INSTANCE_AI_THREAD_MENU_ID = 'instance-ai-thread';
+	const FOLDER_MENU_ID = 'folder';
 	const DEFAULT_ICON: IconName = 'layers';
 
 	const settingsStore = useSettingsStore();
 	const cloudPlanStore = useCloudPlanStore();
 	const projectsStore = useProjectsStore();
 	const sourceControlStore = useSourceControlStore();
+	const usersStore = useUsersStore();
+	const uiStore = useUIStore();
+	const foldersStore = useFoldersStore();
+	const folderHelpers = useFolders();
 
 	const router = useRouter();
 	const i18n = useI18n();
+	const message = useMessage();
 	const toast = useToast();
+	const telemetry = useTelemetry();
+	const { createAgent } = useCreateAgent();
 
 	const isCreatingProject = ref(false);
+
+	const folderProject = computed(
+		() => projectsStore.currentProject ?? projectsStore.personalProject,
+	);
 
 	const displayProjects = computed(() =>
 		sortByProperty(
@@ -72,13 +103,151 @@ export const useGlobalEntityCreation = () => {
 		sourceControlStore.preferences.branchReadOnly ||
 		!getResourcePermissions(scopes).credential.create;
 
+	const disabledAgent = (scopes: Scope[] = []): boolean =>
+		sourceControlStore.preferences.branchReadOnly || !getResourcePermissions(scopes).agent?.create;
+
+	const isAgentsModuleActive = computed(() => settingsStore.isModuleActive(AGENTS_MODULE_NAME));
+
+	const isInstanceAiAvailable = useInstanceAiAvailable();
+
+	const instanceAiThreadItem = computed<Item | null>(() =>
+		isInstanceAiAvailable.value
+			? {
+					id: INSTANCE_AI_THREAD_MENU_ID,
+					title: i18n.baseText('projects.menu.create.instanceAiThread'),
+					route: { name: INSTANCE_AI_VIEW },
+				}
+			: null,
+	);
+
+	const disabledDataTable = (scopes: Scope[] = []): boolean =>
+		sourceControlStore.preferences.branchReadOnly ||
+		!getResourcePermissions(scopes).dataTable?.create;
+
+	const variableScopeSubmenu = computed<BaseItem[]>(() => {
+		const readOnly = sourceControlStore.preferences.branchReadOnly;
+		return [
+			{ id: 'variable-title', title: i18n.baseText('projects.menu.create.in'), disabled: true },
+			{
+				id: 'variable-global',
+				title: i18n.baseText('variables.modal.scope.global'),
+				icon: 'database',
+				disabled:
+					readOnly ||
+					!getResourcePermissions(usersStore.currentUser?.globalScopes).variable?.create,
+			},
+			{
+				id: 'variable-personal',
+				title: i18n.baseText('projects.menu.personal'),
+				icon: 'user',
+				disabled:
+					readOnly ||
+					!getResourcePermissions(projectsStore.personalProject?.scopes).projectVariable?.create,
+			},
+			...displayProjects.value.map((project) => ({
+				id: `variable-${project.id}`,
+				title: project.name as string,
+				icon: isProjectIcon(project.icon) ? project.icon : DEFAULT_ICON,
+				disabled: readOnly || !getResourcePermissions(project.scopes).projectVariable?.create,
+			})),
+		];
+	});
+
+	const variableItem = computed<Item | null>(() => {
+		if (!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) return null;
+		const readOnly = sourceControlStore.preferences.branchReadOnly;
+		return {
+			id: VARIABLE_MENU_ID,
+			title: i18n.baseText('projects.menu.create.variable'),
+			disabled: readOnly,
+			...(!readOnly && { submenu: variableScopeSubmenu.value }),
+		};
+	});
+
+	const dataTableScopeSubmenu = computed<BaseItem[]>(() => [
+		{ id: 'data-table-title', title: i18n.baseText('projects.menu.create.in'), disabled: true },
+		{
+			id: 'data-table-personal',
+			title: i18n.baseText('projects.menu.personal'),
+			icon: 'user',
+			disabled: disabledDataTable(projectsStore.personalProject?.scopes),
+			route: {
+				name: PROJECT_DATA_TABLES,
+				params: { projectId: projectsStore.personalProject?.id, new: 'new' },
+			},
+		},
+		...displayProjects.value.map((project) => ({
+			id: `data-table-${project.id}`,
+			title: project.name as string,
+			icon: isProjectIcon(project.icon) ? project.icon : DEFAULT_ICON,
+			disabled: disabledDataTable(project.scopes),
+			route: {
+				name: PROJECT_DATA_TABLES,
+				params: { projectId: project.id, new: 'new' },
+			},
+		})),
+	]);
+
+	const dataTableItem = computed<Item | null>(() => {
+		if (!settingsStore.isDataTableFeatureEnabled) return null;
+		const readOnly = sourceControlStore.preferences.branchReadOnly;
+		if (displayProjects.value.length === 0) {
+			return {
+				id: DATA_TABLE_MENU_ID,
+				title: i18n.baseText('projects.menu.create.dataTable'),
+				disabled: disabledDataTable(projectsStore.personalProject?.scopes),
+				route: {
+					name: PROJECT_DATA_TABLES,
+					params: { projectId: projectsStore.personalProject?.id, new: 'new' },
+				},
+			};
+		}
+		return {
+			id: DATA_TABLE_MENU_ID,
+			title: i18n.baseText('projects.menu.create.dataTable'),
+			disabled: readOnly,
+			...(!readOnly && { submenu: dataTableScopeSubmenu.value }),
+		};
+	});
+
+	const folderItem = computed<Item | null>(() => {
+		const canUserRegisterCommunityPlus = getResourcePermissions(
+			usersStore.currentUser?.globalScopes,
+		).community.register;
+		const folderProjectPermissions = getResourcePermissions(folderProject.value?.scopes).folder;
+
+		if (
+			!settingsStore.isFoldersFeatureEnabled &&
+			(settingsStore.deploymentType !== 'default' || !canUserRegisterCommunityPlus)
+		) {
+			return null;
+		}
+
+		return {
+			id: FOLDER_MENU_ID,
+			title: i18n.baseText('projects.menu.create.folder'),
+			disabled:
+				settingsStore.isFoldersFeatureEnabled &&
+				(sourceControlStore.preferences.branchReadOnly || !folderProjectPermissions.create),
+		};
+	});
+
 	const menu = computed<Item[]>(() => {
+		const workflowTitle = i18n.baseText('projects.menu.create.workflow');
+		const credentialTitle = i18n.baseText('projects.menu.create.credential');
+		const agentTitle = i18n.baseText('projects.menu.create.agent');
+		const projectTitle = i18n.baseText('projects.menu.create.project');
+		const instanceAiTrailing = instanceAiThreadItem.value ? [instanceAiThreadItem.value] : [];
+		const variableTrailing = variableItem.value ? [variableItem.value] : [];
+		const dataTableTrailing = dataTableItem.value ? [dataTableItem.value] : [];
+		const folderTrailing = folderItem.value ? [folderItem.value] : [];
+
 		// Community
 		if (!projectsStore.isTeamProjectFeatureEnabled) {
 			return [
 				{
 					id: 'workflow',
-					title: 'Workflow',
+					title: workflowTitle,
 					route: {
 						name: VIEWS.NEW_WORKFLOW,
 						query: {
@@ -88,7 +257,7 @@ export const useGlobalEntityCreation = () => {
 				},
 				{
 					id: 'credential',
-					title: 'Credential',
+					title: credentialTitle,
 					route: {
 						name: VIEWS.CREDENTIALS,
 						params: {
@@ -97,26 +266,85 @@ export const useGlobalEntityCreation = () => {
 						},
 					},
 				},
+				...folderTrailing,
+				...variableTrailing,
+				...dataTableTrailing,
+				...(isAgentsModuleActive.value
+					? [
+							{
+								id: AGENTS_MENU_ID,
+								title: agentTitle,
+							},
+						]
+					: []),
 				{
 					id: CREATE_PROJECT_ID,
-					title: 'Project',
+					title: projectTitle,
 					disabled: true,
 				},
+				...instanceAiTrailing,
 			];
+		}
+
+		// Team feature enabled but no team projects: skip submenus
+		if (displayProjects.value.length === 0) {
+			return [
+				{
+					id: WORKFLOWS_MENU_ID,
+					title: workflowTitle,
+					disabled:
+						sourceControlStore.preferences.branchReadOnly ||
+						disabledWorkflow(projectsStore.personalProject?.scopes),
+					route: {
+						name: VIEWS.NEW_WORKFLOW,
+						query: { projectId: projectsStore.personalProject?.id },
+					},
+				},
+				{
+					id: CREDENTIALS_MENU_ID,
+					title: credentialTitle,
+					disabled:
+						sourceControlStore.preferences.branchReadOnly ||
+						disabledCredential(projectsStore.personalProject?.scopes),
+					route: {
+						name: VIEWS.PROJECTS_CREDENTIALS,
+						params: { projectId: projectsStore.personalProject?.id, credentialId: 'create' },
+					},
+				},
+				...folderTrailing,
+				...variableTrailing,
+				...dataTableTrailing,
+				...(isAgentsModuleActive.value
+					? [
+							{
+								id: AGENTS_MENU_ID,
+								title: agentTitle,
+								disabled: disabledAgent(projectsStore.personalProject?.scopes),
+							},
+						]
+					: []),
+				{
+					id: CREATE_PROJECT_ID,
+					title: projectTitle,
+					disabled:
+						!projectsStore.canCreateProjects || !projectsStore.hasPermissionToCreateProjects,
+				},
+				...instanceAiTrailing,
+			] satisfies Item[];
 		}
 
 		// global
 		return [
 			{
 				id: WORKFLOWS_MENU_ID,
-				title: 'Workflow',
+				title: workflowTitle,
 				disabled: sourceControlStore.preferences.branchReadOnly,
 
 				...(!sourceControlStore.preferences.branchReadOnly && {
 					submenu: [
 						{
 							id: 'workflow-title',
-							title: 'Create in',
+							title: i18n.baseText('projects.menu.create.in'),
 							disabled: true,
 						},
 						{
@@ -144,13 +372,13 @@ export const useGlobalEntityCreation = () => {
 			},
 			{
 				id: CREDENTIALS_MENU_ID,
-				title: 'Credential',
+				title: credentialTitle,
 				disabled: sourceControlStore.preferences.branchReadOnly,
 				...(!sourceControlStore.preferences.branchReadOnly && {
 					submenu: [
 						{
 							id: 'credential-title',
-							title: 'Create in',
+							title: i18n.baseText('projects.menu.create.in'),
 							disabled: true,
 						},
 						{
@@ -176,11 +404,45 @@ export const useGlobalEntityCreation = () => {
 					],
 				}),
 			},
+			...variableTrailing,
+			...folderTrailing,
+			...dataTableTrailing,
+			...(isAgentsModuleActive.value
+				? [
+						{
+							id: AGENTS_MENU_ID,
+							title: agentTitle,
+							disabled: sourceControlStore.preferences.branchReadOnly,
+							...(!sourceControlStore.preferences.branchReadOnly && {
+								submenu: [
+									{
+										id: 'agent-title',
+										title: i18n.baseText('projects.menu.create.in'),
+										disabled: true,
+									},
+									{
+										id: 'agent-personal',
+										title: i18n.baseText('projects.menu.personal'),
+										icon: 'user' as const,
+										disabled: disabledAgent(projectsStore.personalProject?.scopes),
+									},
+									...displayProjects.value.map((project) => ({
+										id: `agent-${project.id}`,
+										title: project.name as string,
+										icon: isProjectIcon(project.icon) ? project.icon : DEFAULT_ICON,
+										disabled: disabledAgent(project.scopes),
+									})),
+								],
+							}),
+						},
+					]
+				: []),
 			{
 				id: CREATE_PROJECT_ID,
-				title: 'Project',
+				title: projectTitle,
 				disabled: !projectsStore.canCreateProjects || !projectsStore.hasPermissionToCreateProjects,
 			},
+			...instanceAiTrailing,
 		] satisfies Item[];
 	});
 
@@ -207,7 +469,91 @@ export const useGlobalEntityCreation = () => {
 		}
 	};
 
+	const createFolder = async () => {
+		const project = folderProject.value;
+		if (!project) return;
+
+		const parentName =
+			project.type === 'personal'
+				? i18n.baseText('projects.menu.personal')
+				: (project.name ?? i18n.baseText('commandBar.projects.unnamed'));
+		const promptResponse = await message.prompt(
+			i18n.baseText('folders.add.to.parent.message', {
+				interpolate: { parent: parentName },
+			}),
+			{
+				confirmButtonText: i18n.baseText('generic.create'),
+				cancelButtonText: i18n.baseText('generic.cancel'),
+				inputValidator: folderHelpers.validateFolderName,
+				customClass: 'add-folder-modal',
+			},
+		);
+
+		if (promptResponse.action !== MODAL_CONFIRM || !promptResponse.value) return;
+
+		try {
+			const newFolder = await foldersStore.createFolder(promptResponse.value, project.id);
+			const newFolderURL = router.resolve({
+				name: VIEWS.PROJECTS_FOLDERS,
+				params: { projectId: project.id, folderId: newFolder.id },
+			}).href;
+			toast.showToast({
+				title: i18n.baseText('folders.add.success.title'),
+				message: i18n.baseText('folders.add.success.message', {
+					interpolate: { link: newFolderURL, folderName: newFolder.name },
+				}),
+				type: 'success',
+			});
+			foldersEventBus.emit('folder-created', { projectId: project.id });
+			telemetry.track('User created folder', { folder_id: newFolder.id });
+		} catch (error) {
+			toast.showError(error, i18n.baseText('folders.create.error.title'));
+		}
+	};
+
 	const handleSelect = (id: string) => {
+		if (id === FOLDER_MENU_ID) {
+			if (!settingsStore.isFoldersFeatureEnabled) {
+				uiStore.openModalWithData({
+					name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+					data: {
+						customHeading: i18n.baseText('folders.registeredCommunity.cta.heading'),
+					},
+				});
+			} else {
+				void createFolder();
+			}
+			return;
+		}
+
+		if (id.startsWith('variable-') && id !== 'variable-title') {
+			const projectId =
+				id === 'variable-global'
+					? ''
+					: id === 'variable-personal'
+						? (projectsStore.personalProject?.id ?? '')
+						: id.slice('variable-'.length);
+			uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new', projectId } });
+			telemetry.track('User clicked sidebar add variable button');
+			return;
+		}
+
+		if (id.startsWith(DATA_TABLE_MENU_ID) && id !== 'data-table-title') {
+			telemetry.track('User clicked sidebar add data table button');
+			return;
+		}
+
+		// Agent items carry no `route` — the id is minted here, at click time,
+		// instead of once when the (long-lived) menu computed re-evaluates.
+		if (id === AGENTS_MENU_ID || (id.startsWith('agent-') && id !== 'agent-title')) {
+			const projectId =
+				id === AGENTS_MENU_ID || id === 'agent-personal'
+					? (projectsStore.personalProject?.id ?? '')
+					: id.slice('agent-'.length);
+			createAgent('dropdown', projectId);
+			return;
+		}
+
 		if (id !== CREATE_PROJECT_ID) return;
 
 		if (projectsStore.canCreateProjects && projectsStore.hasPermissionToCreateProjects) {
@@ -219,6 +565,10 @@ export const useGlobalEntityCreation = () => {
 	};
 
 	const projectsLimitReachedMessage = computed(() => {
+		if (!projectsStore.hasPermissionToCreateProjects) {
+			return i18n.baseText('projects.create.permissionDenied');
+		}
+
 		if (settingsStore.isCloudDeployment) {
 			return i18n.baseText('projects.create.limitReached.cloud', {
 				interpolate: {
@@ -230,10 +580,6 @@ export const useGlobalEntityCreation = () => {
 
 		if (!projectsStore.isTeamProjectFeatureEnabled) {
 			return i18n.baseText('projects.create.limitReached.self');
-		}
-
-		if (!projectsStore.hasPermissionToCreateProjects) {
-			return i18n.baseText('projects.create.permissionDenied');
 		}
 
 		return i18n.baseText('projects.create.limitReached', {

@@ -19,6 +19,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 		version: 1,
 		description: 'Consume Google Cloud Natural Language API',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		schemaPath: 'Google/CloudNaturalLanguage',
 		defaults: {
 			name: 'Google Cloud Natural Language',
 		},

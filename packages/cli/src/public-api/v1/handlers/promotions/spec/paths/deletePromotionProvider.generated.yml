@@ -1,0 +1,26 @@
+operationId: deletePromotionProvider
+tags:
+  - Promotions
+summary: Delete a promotion provider
+description: A provider used by an environment cannot be deleted.
+x-required-scope: gitConnection:delete
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the promotion provider.
+    name: promotionProviderId
+    in: path
+responses:
+  '204':
+    description: Operation successful.
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

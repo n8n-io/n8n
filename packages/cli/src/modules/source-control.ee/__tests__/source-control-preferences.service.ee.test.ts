@@ -1,0 +1,556 @@
+import type { Logger } from '@n8n/backend-common';
+import type { SettingsRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { readFile, writeFile, access, mkdir } from 'fs/promises';
+import type { InstanceSettings, Cipher } from 'n8n-core';
+import os from 'os';
+import path from 'path';
+import { mock, mockReset } from 'vitest-mock-extended';
+
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { InstanceWriteAccessService } from '@n8n/backend-services';
+
+import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '../types/source-control-preferences';
+
+// Restore real fs modules for these tests since we need actual file operations
+vi.unmock('node:fs');
+vi.unmock('node:fs/promises');
+
+describe('SourceControlPreferencesService', () => {
+	const instanceSettings = mock<InstanceSettings>({ n8nFolder: '' });
+	const mockCipher = mock<Cipher>();
+	const mockLogger = mock<Logger>();
+	const mockSettingsRepository = mock<SettingsRepository>();
+	const service = new SourceControlPreferencesService(
+		instanceSettings,
+		mockLogger,
+		mockCipher,
+		mockSettingsRepository,
+		mock(),
+		mock(),
+	);
+
+	it('should class validate correct preferences', async () => {
+		const validPreferences: Partial<SourceControlPreferences> = {
+			branchName: 'main',
+			repositoryUrl: 'git@example.com:n8ntest/n8n_testrepo.git',
+			branchReadOnly: false,
+			branchColor: '#5296D6',
+		};
+		const validationResult = await service.validateSourceControlPreferences(validPreferences);
+		expect(validationResult).toBeTruthy();
+	});
+
+	describe('branchName validation', () => {
+		it.each(['main', 'develop', 'feature/my-branch', 'release-1.0', 'v2.3.4'])(
+			'should accept valid branch name: %s',
+			async (branchName) => {
+				await expect(
+					service.validateSourceControlPreferences({ branchName }),
+				).resolves.not.toThrow();
+			},
+		);
+
+		it.each(['--option-like-value', '-flag', '--receive-pack=cmd', '--upload-pack=cmd'])(
+			'should reject branch name that does not start with an alphanumeric character: %s',
+			async (branchName) => {
+				await expect(service.validateSourceControlPreferences({ branchName })).rejects.toThrow(
+					'Invalid source control preferences',
+				);
+			},
+		);
+	});
+
+	describe('line ending normalization', () => {
+		let tempDir: string;
+
+		beforeEach(async () => {
+			tempDir = path.join(os.tmpdir(), 'n8n-test-' + Date.now());
+			await mkdir(tempDir, { recursive: true });
+		});
+
+		it('should normalize CRLF line endings to LF when writing private key', async () => {
+			// Arrange
+			const keyWithCRLF =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\r\ntest\r\nkey\r\ndata\r\n-----END OPENSSH PRIVATE KEY-----\r\n';
+			const expectedNormalizedKey = keyWithCRLF.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+			const mockCipher = mock<Cipher>();
+			mockCipher.decryptV2.mockResolvedValue(keyWithCRLF);
+
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mockCipher,
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			// Mock the getKeyPairFromDatabase method to return a key pair
+			vi.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
+				encryptedPrivateKey: 'encrypted',
+				publicKey: 'public',
+			});
+
+			// Act
+			const tempFilePath = await service.getPrivateKeyPath();
+
+			// Assert - check the actual file content has normalized line endings
+			const fileContent = await readFile(tempFilePath, 'utf8');
+			expect(fileContent).not.toContain('\r');
+			expect(fileContent).toBe(expectedNormalizedKey);
+		});
+
+		it('should normalize mixed CR and CRLF line endings to LF when writing private key', async () => {
+			// Arrange
+			const keyWithMixedEndings =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\r\ntest\rkey\r\ndata\r-----END OPENSSH PRIVATE KEY-----\n';
+
+			const mockCipher = mock<Cipher>();
+			mockCipher.decryptV2.mockResolvedValue(keyWithMixedEndings);
+
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mockCipher,
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			// Mock the getKeyPairFromDatabase method
+			vi.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
+				encryptedPrivateKey: 'encrypted',
+				publicKey: 'public',
+			});
+
+			// Act
+			const tempFilePath = await service.getPrivateKeyPath();
+
+			// Assert - check the actual file content has normalized line endings
+			const fileContent = await readFile(tempFilePath, 'utf8');
+			expect(fileContent).not.toContain('\r');
+			expect(fileContent).toBe(
+				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\nkey\ndata\n-----END OPENSSH PRIVATE KEY-----\n',
+			);
+		});
+
+		it('should leave existing LF line endings unchanged when writing private key', async () => {
+			// Arrange
+			const keyWithLF =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\nkey\ndata\n-----END OPENSSH PRIVATE KEY-----\n';
+
+			const mockCipher = mock<Cipher>();
+			mockCipher.decryptV2.mockResolvedValue(keyWithLF);
+
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mockCipher,
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			// Mock the getKeyPairFromDatabase method
+			vi.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
+				encryptedPrivateKey: 'encrypted',
+				publicKey: 'public',
+			});
+
+			// Act
+			const tempFilePath = await service.getPrivateKeyPath();
+
+			// Assert - check the actual file content remains unchanged
+			const fileContent = await readFile(tempFilePath, 'utf8');
+			expect(fileContent).toBe(keyWithLF);
+		});
+	});
+
+	describe('file security and permissions', () => {
+		let tempDir: string;
+
+		beforeEach(async () => {
+			tempDir = path.join(os.tmpdir(), 'n8n-test-' + Date.now());
+			await mkdir(tempDir, { recursive: true });
+		});
+
+		it('should always use restrictive permissions for SSH private keys', async () => {
+			// Arrange
+			const testKey =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
+
+			const mockCipher = mock<Cipher>();
+			mockCipher.decryptV2.mockResolvedValue(testKey);
+
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mockCipher,
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			// Mock the getKeyPairFromDatabase method
+			vi.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
+				encryptedPrivateKey: 'encrypted',
+				publicKey: 'public',
+			});
+
+			// Act
+			const tempFilePath = await service.getPrivateKeyPath();
+
+			// Assert - check the actual file permissions
+			const fs = require('fs');
+			const stats = await fs.promises.stat(tempFilePath);
+			const permissions = (stats.mode & parseInt('777', 8)).toString(8);
+
+			expect(permissions).toBe('600'); // Owner read/write only
+			expect(stats.mode & 0o077).toBe(0); // Group and others have no permissions
+		});
+
+		it('should fail securely when file cannot be created', async () => {
+			// Arrange
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/nonexistent/path' });
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			const testKey =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
+			vi.spyOn(service as any, 'getPrivateKeyFromDatabase').mockResolvedValue(testKey);
+
+			// Act & Assert - should throw UnexpectedError when file creation fails
+			await expect(service.getPrivateKeyPath()).rejects.toThrow(
+				'Failed to create SSH private key file',
+			);
+		});
+
+		it('should remove existing file before creating new one with fsRm force option', async () => {
+			// Arrange
+			const testKey =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
+
+			const mockCipher = mock<Cipher>();
+			mockCipher.decryptV2.mockResolvedValue(testKey);
+
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mockCipher,
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			// Mock the getKeyPairFromDatabase method
+			vi.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
+				encryptedPrivateKey: 'encrypted',
+				publicKey: 'public',
+			});
+
+			// Create a test file first
+			const tempFilePath1 = await service.getPrivateKeyPath();
+			expect(await access(tempFilePath1)).toBeUndefined(); // File exists
+
+			// Act - call again to test file removal and recreation
+			const tempFilePath2 = await service.getPrivateKeyPath();
+
+			// Assert - should succeed without errors (fsRm with force: true handles existing file)
+			expect(tempFilePath2).toBe(tempFilePath1);
+			const fileContent = await readFile(tempFilePath2, 'utf8');
+			expect(fileContent).toBe(testKey);
+		});
+	});
+
+	describe('setPreferences', () => {
+		it('should not store https credentials in memory when provided in the new preferences', async () => {
+			const preferencesWithCredentials: Partial<SourceControlPreferences> = {
+				branchName: 'main',
+				repositoryUrl: 'https://github.com/example/repo.git',
+				connectionType: 'https',
+				httpsUsername: 'testuser',
+				httpsPassword: 'testpassword',
+			};
+
+			const saveHttpsCredentialsSpy = vi.spyOn(service as any, 'saveHttpsCredentials');
+
+			const result = await service.setPreferences(preferencesWithCredentials);
+
+			// credentials should not be present in the returned preferences
+			expect(result.httpsUsername).toBeUndefined();
+			expect(result.httpsPassword).toBeUndefined();
+
+			// credentials should not be present in the internal state
+			const internalPreferences = service.getPreferences();
+			expect(internalPreferences.httpsUsername).toBeUndefined();
+			expect(internalPreferences.httpsPassword).toBeUndefined();
+
+			expect(saveHttpsCredentialsSpy).toHaveBeenCalledWith(
+				preferencesWithCredentials.httpsUsername,
+				preferencesWithCredentials.httpsPassword,
+			);
+		});
+
+		describe('multi-main broadcasting', () => {
+			let multiMainInstanceSettings: InstanceSettings;
+			let singleMainInstanceSettings: InstanceSettings;
+			let mockPublisher: Publisher;
+			let multiMainService: SourceControlPreferencesService;
+			let singleMainService: SourceControlPreferencesService;
+
+			beforeEach(() => {
+				multiMainInstanceSettings = mock<InstanceSettings>({
+					n8nFolder: '',
+					isMultiMain: true,
+				});
+				singleMainInstanceSettings = mock<InstanceSettings>({
+					n8nFolder: '',
+					isMultiMain: false,
+				});
+				mockPublisher = mock<Publisher>();
+
+				vi.spyOn(Container, 'get').mockReturnValue(mockPublisher);
+
+				multiMainService = new SourceControlPreferencesService(
+					multiMainInstanceSettings,
+					mock(),
+					mock(),
+					mock(),
+					mock(),
+					mock(),
+				);
+
+				singleMainService = new SourceControlPreferencesService(
+					singleMainInstanceSettings,
+					mock(),
+					mock(),
+					mock(),
+					mock(),
+					mock(),
+				);
+
+				// Mock getKeyPairFromDatabase to prevent SSH key generation during tests
+				vi.spyOn(multiMainService as any, 'getKeyPairFromDatabase').mockResolvedValue({
+					publicKey: 'test',
+					encryptedPrivateKey: 'test',
+				});
+				vi.spyOn(singleMainService as any, 'getKeyPairFromDatabase').mockResolvedValue({
+					publicKey: 'test',
+					encryptedPrivateKey: 'test',
+				});
+			});
+
+			afterEach(() => {
+				vi.restoreAllMocks();
+			});
+
+			it('should broadcast reload event when saveToDb=true and broadcastReload=true in multi-main mode', async () => {
+				await multiMainService.setPreferences({ branchName: 'test' }, true, true);
+
+				expect(mockPublisher.publishCommand).toHaveBeenCalledWith({
+					command: 'reload-source-control-config',
+				});
+			});
+
+			it('should NOT broadcast reload event when broadcastReload=false', async () => {
+				await multiMainService.setPreferences({ branchName: 'test' }, true, false);
+
+				expect(mockPublisher.publishCommand).not.toHaveBeenCalled();
+			});
+
+			it('should NOT broadcast reload event when saveToDb=false', async () => {
+				await multiMainService.setPreferences({ branchName: 'test' }, false, true);
+
+				expect(mockPublisher.publishCommand).not.toHaveBeenCalled();
+			});
+
+			it('should NOT broadcast reload event in single-main mode', async () => {
+				await singleMainService.setPreferences({ branchName: 'test' }, true, true);
+
+				expect(mockPublisher.publishCommand).not.toHaveBeenCalled();
+			});
+
+			it('should broadcast reload event by default when only saveToDb is specified', async () => {
+				await multiMainService.setPreferences({ branchName: 'test' }, true);
+
+				expect(mockPublisher.publishCommand).toHaveBeenCalledWith({
+					command: 'reload-source-control-config',
+				});
+			});
+		});
+	});
+
+	describe('getDecryptedHttpsCredentials', () => {
+		it('should throw error when no https credentials in database', async () => {
+			mockSettingsRepository.findByKey.mockResolvedValue(null);
+
+			await expect(service.getDecryptedHttpsCredentials()).rejects.toThrow(
+				'No credentials found for https connection',
+			);
+		});
+
+		it('should return decrypted https credentials when present in database', async () => {
+			const encryptedCredentialsJsonString =
+				'{ "encryptedUsername": "encryptedUser", "encryptedPassword": "encryptedPass"}';
+			mockSettingsRepository.findByKey.mockResolvedValue({
+				key: 'features.sourceControl.httpsCredentials',
+				value: encryptedCredentialsJsonString,
+				column: 'testing',
+				loadOnStartup: false,
+			} as never);
+			mockCipher.decryptV2.mockImplementation(async (value) => `decrypted-${value}`);
+
+			const result = await service.getDecryptedHttpsCredentials();
+
+			expect(result).toEqual({
+				username: 'decrypted-encryptedUser',
+				password: 'decrypted-encryptedPass',
+			});
+		});
+	});
+
+	describe('resetKnownHosts', () => {
+		let tempDir: string;
+		let sshFolder: string;
+
+		beforeEach(async () => {
+			tempDir = path.join(os.tmpdir(), 'n8n-test-' + Date.now());
+			sshFolder = path.join(tempDir, 'ssh');
+			await mkdir(sshFolder, { recursive: true });
+		});
+
+		it('should delete the known_hosts file when it exists', async () => {
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
+			const testService = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			const knownHostsPath = path.join(sshFolder, 'known_hosts');
+			await writeFile(knownHostsPath, 'github.com ssh-rsa AAAA...\n');
+
+			await expect(access(knownHostsPath)).resolves.toBeUndefined();
+
+			await testService.resetKnownHosts();
+
+			await expect(access(knownHostsPath)).rejects.toThrow();
+		});
+
+		it('should complete successfully when known_hosts file does not exist', async () => {
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
+			const testService = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			await expect(testService.resetKnownHosts()).resolves.toBeUndefined();
+		});
+	});
+
+	describe('loadFromDbAndApplySourceControlPreferences', () => {
+		let loader: SourceControlPreferencesService;
+
+		beforeEach(() => {
+			mockReset(mockSettingsRepository);
+			loader = new SourceControlPreferencesService(
+				instanceSettings,
+				mockLogger,
+				mockCipher,
+				mockSettingsRepository,
+				mock(),
+				mock(),
+			);
+			vi.spyOn(loader as any, 'getKeyPairFromDatabase').mockResolvedValue({
+				publicKey: 'test',
+				encryptedPrivateKey: 'test',
+			});
+		});
+
+		const savedVersion = () => {
+			const [saved] = mockSettingsRepository.save.mock.calls[0] as [{ value: string }];
+			return JSON.parse(saved.value).environmentsVersion;
+		};
+
+		it.each([
+			[true, 'v1'],
+			[false, 'v2'],
+		])(
+			'writes the environments version once for a row without one (connected: %s -> %s)',
+			async (connected, version) => {
+				mockSettingsRepository.findOne.mockResolvedValue({
+					value: JSON.stringify({ connected, branchName: 'main' }),
+				} as never);
+
+				await loader.loadFromDbAndApplySourceControlPreferences();
+
+				expect(mockSettingsRepository.save).toHaveBeenCalledTimes(1);
+				expect(savedVersion()).toBe(version);
+				expect(loader.getPreferences().environmentsVersion).toBe(version);
+			},
+		);
+
+		it('keeps the stored environments version and does not write', async () => {
+			mockSettingsRepository.findOne.mockResolvedValue({
+				value: JSON.stringify({ connected: true, environmentsVersion: 'v2' }),
+			} as never);
+
+			await loader.loadFromDbAndApplySourceControlPreferences();
+
+			expect(mockSettingsRepository.save).not.toHaveBeenCalled();
+			expect(loader.getPreferences().environmentsVersion).toBe('v2');
+		});
+
+		it('starts a new instance on v2', async () => {
+			mockSettingsRepository.findOne.mockResolvedValue(null);
+
+			await loader.loadFromDbAndApplySourceControlPreferences();
+
+			expect(savedVersion()).toBe('v2');
+		});
+	});
+
+	describe('instance write access mirroring', () => {
+		it('mirrors branchReadOnly into InstanceWriteAccessService on preference updates', async () => {
+			const instanceWriteAccess = new InstanceWriteAccessService();
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				instanceWriteAccess,
+			);
+
+			expect(instanceWriteAccess.isReadOnly()).toBe(false);
+
+			// connectionType 'https' avoids SSH key generation in setPreferences
+			await service.setPreferences({ branchReadOnly: true, connectionType: 'https' }, false);
+			expect(instanceWriteAccess.isReadOnly()).toBe(true);
+
+			await service.setPreferences({ branchReadOnly: false, connectionType: 'https' }, false);
+			expect(instanceWriteAccess.isReadOnly()).toBe(false);
+		});
+	});
+});

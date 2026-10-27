@@ -1,5 +1,6 @@
 ---
 openapi: 3.0.0
+x-enable-proxy: false
 info:
   title: n8n Public API
   description: n8n Public API
@@ -15,93 +16,114 @@ externalDocs:
   url: https://docs.n8n.io/api/
 servers:
   - url: /api/v1
+    description: Current n8n instance (self-hosted built-in playground)
+  - url: '{url}/api/v1'
+    description: Self-hosted n8n instance
+    variables:
+      url:
+        default: https://example.com
 tags:
-  - name: User
-    description: Operations about users
   - name: Audit
+    x-displayName: Audit
     description: Operations about security audit
-  - name: Execution
-    description: Operations about executions
-  - name: Workflow
-    description: Operations about workflows
+  - name: CommunityPackage
+    x-displayName: Community Package
+    description: Operations about community packages
   - name: Credential
+    x-displayName: Credential
     description: Operations about credentials
-  - name: Tags
-    description: Operations about tags
-  - name: SourceControl
-    description: Operations about source control
-  - name: Variables
-    description: Operations about variables
+  - name: CredentialTypePolicy
+    x-displayName: Credential Type Policy
+    description: Preview — breaking changes may still occur without major version bump.
+  - name: DataTable
+    x-displayName: Data Table
+    description: Operations about data tables and their rows
+  - name: Discover
+    x-displayName: Discover
+    description: API capability discovery
+  - name: Evaluation
+    x-displayName: Evaluation
+    description: Operations about evaluation test runs
+  - name: Executions
+    x-displayName: Executions
+    description: Operations about executions
+  - name: Folders
+    x-displayName: Folders
+    description: Operations about folders
+  - name: Insights
+    x-displayName: Insights
+    description: Operations about insights
+  - name: LogStreaming
+    x-displayName: Log Streaming
+    description: Operations about log streaming destinations
+  - name: N8nPackage
+    x-displayName: n8n Package
+    description: Beta — breaking changes may still occur without major version bump.
+  - name: NodeTypePolicy
+    x-displayName: Node Type Policy
+    description: Preview — breaking changes may still occur without major version bump.
   - name: Projects
+    x-displayName: Projects
     description: Operations about projects
+  - name: Promotions
+    x-displayName: Promotions
+    description: Operations about promotion providers, environments, and package operations
+  - name: Role
+    x-displayName: Role
+    description: Operations about roles
+  - name: RoleMappingRule
+    x-displayName: Role Mapping Rule
+    description: Operations about identity-provider role-mapping rules
+  - name: SecurityPolicy
+    x-displayName: Security Policy
+    description: Operations about the instance security policy settings
+  - name: SettingsLdap
+    x-displayName: Settings LDAP
+    description: Operations about LDAP settings
+  - name: SettingsOtel
+    x-displayName: Settings OTel
+    description: Operations about OpenTelemetry settings
+  - name: SettingsSsoOidc
+    x-displayName: Settings SSO OIDC
+    description: Operations about OIDC SSO settings
+  - name: SettingsSsoSaml
+    x-displayName: Settings SSO SAML
+    description: Operations about SAML SSO settings
+  - name: SourceControl
+    x-displayName: Source Control
+    description: Operations about source control
+  - name: Tags
+    x-displayName: Tags
+    description: Operations about tags
+  - name: User
+    x-displayName: User
+    description: Operations about users
+  - name: Variables
+    x-displayName: Variables
+    description: Operations about variables
+  - name: Workflow
+    x-displayName: Workflow
+    description: Operations about workflows
 
-paths:
-  /audit:
-    $ref: './handlers/audit/spec/paths/audit.yml'
-  /credentials:
-    $ref: './handlers/credentials/spec/paths/credentials.yml'
-  /credentials/{id}:
-    $ref: './handlers/credentials/spec/paths/credentials.id.yml'
-  /credentials/schema/{credentialTypeName}:
-    $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
-  /credentials/{id}/transfer:
-    $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
-  /executions:
-    $ref: './handlers/executions/spec/paths/executions.yml'
-  /executions/{id}:
-    $ref: './handlers/executions/spec/paths/executions.id.yml'
-  /executions/{id}/retry:
-    $ref: './handlers/executions/spec/paths/executions.id.retry.yml'
-  /tags:
-    $ref: './handlers/tags/spec/paths/tags.yml'
-  /tags/{id}:
-    $ref: './handlers/tags/spec/paths/tags.id.yml'
-  /workflows:
-    $ref: './handlers/workflows/spec/paths/workflows.yml'
-  /workflows/{id}:
-    $ref: './handlers/workflows/spec/paths/workflows.id.yml'
-  /workflows/{id}/{versionId}:
-    $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
-  /workflows/{id}/activate:
-    $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
-  /workflows/{id}/deactivate:
-    $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
-  /workflows/{id}/transfer:
-    $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
-  /workflows/{id}/tags:
-    $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
-  /users:
-    $ref: './handlers/users/spec/paths/users.yml'
-  /users/{id}:
-    $ref: './handlers/users/spec/paths/users.id.yml'
-  /users/{id}/role:
-    $ref: './handlers/users/spec/paths/users.id.role.yml'
-  /source-control/pull:
-    $ref: './handlers/source-control/spec/paths/sourceControl.yml'
-  /variables:
-    $ref: './handlers/variables/spec/paths/variables.yml'
-  /variables/{id}:
-    $ref: './handlers/variables/spec/paths/variables.id.yml'
-  /projects:
-    $ref: './handlers/projects/spec/paths/projects.yml'
-  /projects/{projectId}:
-    $ref: './handlers/projects/spec/paths/projects.projectId.yml'
-  /projects/{projectId}/users:
-    $ref: './handlers/projects/spec/paths/projects.projectId.users.yml'
-  /projects/{projectId}/users/{userId}:
-    $ref: './handlers/projects/spec/paths/projects.projectId.users.userId.yml'
+# Paths and components are generated from @PublicApiController routes. See openapi-gen/generate.ts.
+paths: {}
 components:
-  schemas:
-    $ref: './shared/spec/schemas/_index.yml'
-  responses:
-    $ref: './shared/spec/responses/_index.yml'
-  parameters:
-    $ref: './shared/spec/parameters/_index.yml'
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
       in: header
       name: X-N8N-API-KEY
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      # Must match AUTH_COOKIE_NAME in packages/cli/src/constants.ts
+      name: n8n-auth
 
 security:
   - ApiKeyAuth: []
+  - BearerAuth: []
+  - CookieAuth: []

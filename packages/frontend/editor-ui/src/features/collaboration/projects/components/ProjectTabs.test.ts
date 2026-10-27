@@ -3,6 +3,7 @@ import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
 import ProjectTabs from './ProjectTabs.vue';
 import { createPinia, setActivePinia } from 'pinia';
+import { within } from '@testing-library/vue';
 import { useProjectsStore } from '../projects.store';
 import type { Project } from '../projects.types';
 
@@ -34,23 +35,34 @@ describe('ProjectTabs', () => {
 		vi.spyOn(projectsStore, 'currentProject', 'get').mockReturnValue(null);
 	});
 
-	it('should render home tabs', async () => {
+	it('should render home tabs, keeping variables while the project is still loading', async () => {
 		const { getByText, queryByText } = renderComponent();
 
 		expect(getByText('Workflows')).toBeInTheDocument();
 		expect(getByText('Credentials')).toBeInTheDocument();
 		expect(getByText('Executions')).toBeInTheDocument();
 		expect(queryByText('Project settings')).not.toBeInTheDocument();
-		expect(queryByText('Variables')).not.toBeInTheDocument();
+		expect(getByText('Variables')).toBeInTheDocument();
 	});
 
 	it('should render project tab Settings', () => {
-		const { getByText, queryByText } = renderComponent({ props: { showSettings: true } });
+		const { getByText } = renderComponent({ props: { showSettings: true } });
 
 		expect(getByText('Workflows')).toBeInTheDocument();
 		expect(getByText('Credentials')).toBeInTheDocument();
 		expect(getByText('Executions')).toBeInTheDocument();
 		expect(getByText('Project settings')).toBeInTheDocument();
+		expect(getByText('Variables')).toBeInTheDocument();
+	});
+
+	it('should not render variables on a public project', () => {
+		vi.spyOn(projectsStore, 'currentProject', 'get').mockReturnValue({
+			id: '1',
+			name: 'Public',
+			type: 'public',
+		} as Project);
+		const { queryByText } = renderComponent();
+
 		expect(queryByText('Variables')).not.toBeInTheDocument();
 	});
 
@@ -68,5 +80,65 @@ describe('ProjectTabs', () => {
 		const { getByText } = renderComponent();
 
 		expect(getByText('Variables')).toBeInTheDocument();
+	});
+
+	it('should render personal project tabs with variables', () => {
+		vi.spyOn(projectsStore, 'currentProject', 'get').mockReturnValue({
+			id: '1',
+			name: 'Personal',
+			type: 'personal',
+		} as Project);
+		const { getByText } = renderComponent();
+
+		expect(getByText('Variables')).toBeInTheDocument();
+	});
+
+	it('should render the preview badge only on preview tabs', () => {
+		const { getByTestId, getByText } = renderComponent({
+			props: {
+				additionalTabs: [{ label: 'Agents', value: 'agents', preview: true }],
+			},
+		});
+
+		expect(getByText('Agents')).toBeInTheDocument();
+		expect(within(getByTestId('tab-agents')).getByText('Preview')).toBeInTheDocument();
+		expect(within(getByTestId('tab-WorkflowsView')).queryByText('Preview')).not.toBeInTheDocument();
+	});
+
+	const getTabValuesInOrder = (container: ParentNode) =>
+		Array.from(container.querySelectorAll('[data-test-id^="tab-"]'))
+			.map((el) => el.getAttribute('data-test-id')?.replace(/^tab-/, ''))
+			.filter((v): v is string => !!v);
+
+	it('should insert an additional tab right after the matching base tab when insertAfter is set', () => {
+		const { container } = renderComponent({
+			props: {
+				pageType: 'overview',
+				additionalTabs: [
+					{ label: 'Agents', value: 'agents', preview: true, insertAfter: 'WorkflowsView' },
+					{ label: 'Data tables', value: 'dataTables' },
+				],
+			},
+		});
+
+		expect(getTabValuesInOrder(container)).toEqual([
+			'WorkflowsView',
+			'agents',
+			'CredentialsView',
+			'Executions',
+			'HomeVariables',
+			'dataTables',
+		]);
+	});
+
+	it('appends the additional tab when insertAfter does not match any base tab', () => {
+		const { container } = renderComponent({
+			props: {
+				additionalTabs: [{ label: 'Agents', value: 'agents', insertAfter: 'NonExistent' }],
+			},
+		});
+
+		const tabValues = getTabValuesInOrder(container);
+		expect(tabValues[tabValues.length - 1]).toBe('agents');
 	});
 });

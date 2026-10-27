@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -8,15 +8,16 @@ import {
 	OPEN_URL_PANEL_TRIGGER_NODE_TYPES,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 } from '@/app/constants';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import type { INodeUi } from '@/Interface';
 import { computed, ref, watch } from 'vue';
+import { computedAsync } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import { ElCol, ElCollapseTransition, ElRow } from 'element-plus';
-import { N8nIcon, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nSegmentControl, N8nTooltip } from '@n8n/design-system';
 const props = defineProps<{
 	node: INodeUi;
 	nodeTypeDescription: INodeTypeDescription | null;
@@ -49,16 +50,6 @@ const urlOptions = computed(() => [
 	},
 ]);
 
-const visibleWebhookUrls = computed(() => {
-	return webhooksNode.value.filter((webhook) => {
-		if (typeof webhook.ndvHideUrl === 'string') {
-			return !workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl');
-		}
-
-		return !webhook.ndvHideUrl;
-	});
-});
-
 const webhooksNode = computed(() => {
 	if (props.nodeTypeDescription?.webhooks === undefined) {
 		return [];
@@ -68,6 +59,67 @@ const webhooksNode = computed(() => {
 		(webhookData) => webhookData.restartWebhook !== true,
 	);
 });
+
+interface WebhookDisplayData {
+	webhook: IWebhookDescription;
+	url: string;
+	httpMethod: string;
+	isMethodVisible: boolean;
+}
+
+const visibleWebhookUrls = computedAsync(async () => {
+	const urlFor = showUrlFor.value;
+	const node = props.node;
+	const result: WebhookDisplayData[] = [];
+
+	for (const webhook of webhooksNode.value) {
+		// Check visibility
+		let isVisible = !webhook.ndvHideUrl;
+		if (typeof webhook.ndvHideUrl === 'string') {
+			isVisible = !(await workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl'));
+		}
+		if (!isVisible) continue;
+
+		// Get URL
+		let url = '';
+		if (node) {
+			url = await workflowHelpers.getWebhookUrl(
+				webhook,
+				node,
+				isProductionOnly.value ? 'production' : urlFor,
+			);
+		}
+
+		// Check method visibility
+		let isMethodVisible = !webhook.ndvHideMethod;
+		try {
+			const method = await workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
+			if (Array.isArray(method) && method.length !== 1) {
+				isMethodVisible = false;
+			} else if (typeof webhook.ndvHideMethod === 'string') {
+				isMethodVisible = !(await workflowHelpers.getWebhookExpressionValue(
+					webhook,
+					'ndvHideMethod',
+				));
+			}
+		} catch {
+			// Keep default
+		}
+
+		// Get HTTP method
+		let httpMethod = '';
+		try {
+			const method = await workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
+			httpMethod = Array.isArray(method) ? method[0] : (method as string);
+		} catch {
+			// Keep empty
+		}
+
+		result.push({ webhook, url, httpMethod, isMethodVisible });
+	}
+
+	return result;
+}, []);
 
 const baseText = computed(() => {
 	const nodeType = props.nodeTypeDescription?.name;
@@ -122,9 +174,8 @@ const baseText = computed(() => {
 	}
 });
 
-function copyWebhookUrl(webhookData: IWebhookDescription): void {
-	const webhookUrl = getWebhookUrlDisplay(webhookData);
-	void clipboard.copy(webhookUrl);
+function copyWebhookUrl(item: WebhookDisplayData): void {
+	void clipboard.copy(item.url);
 
 	toast.showMessage({
 		title: baseText.value.copyTitle,
@@ -136,40 +187,6 @@ function copyWebhookUrl(webhookData: IWebhookDescription): void {
 		pane: 'parameters',
 		type: `${showUrlFor.value} url`,
 	});
-}
-
-function getWebhookUrlDisplay(webhookData: IWebhookDescription): string {
-	if (props.node) {
-		return workflowHelpers.getWebhookUrl(
-			webhookData,
-			props.node,
-			isProductionOnly.value ? 'production' : showUrlFor.value,
-		);
-	}
-	return '';
-}
-
-function isWebhookMethodVisible(webhook: IWebhookDescription): boolean {
-	try {
-		const method = workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
-		if (Array.isArray(method) && method.length !== 1) {
-			return false;
-		}
-	} catch (error) {}
-
-	if (typeof webhook.ndvHideMethod === 'string') {
-		return !workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideMethod');
-	}
-
-	return !webhook.ndvHideMethod;
-}
-
-function getWebhookHttpMethod(webhook: IWebhookDescription): string {
-	const method = workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
-	if (Array.isArray(method)) {
-		return method[0];
-	}
-	return method;
 }
 
 watch(
@@ -198,32 +215,25 @@ watch(
 				<div v-if="!isProductionOnly" class="url-selection">
 					<ElRow>
 						<ElCol :span="24">
-							<N8nRadioButtons v-model="showUrlFor" :options="urlOptions" />
+							<N8nSegmentControl v-model="showUrlFor" :options="urlOptions" />
 						</ElCol>
 					</ElRow>
 				</div>
 
 				<N8nTooltip
-					v-for="(webhook, index) in visibleWebhookUrls"
+					v-for="(item, index) in visibleWebhookUrls"
 					:key="index"
 					class="item"
 					:content="baseText.clickToCopy"
 					placement="left"
 				>
-					<div v-if="isWebhookMethodVisible(webhook)" class="webhook-wrapper">
-						<div class="http-field">
-							<div class="http-method">{{ getWebhookHttpMethod(webhook) }}<br /></div>
+					<div class="webhook-wrapper">
+						<div v-if="item.isMethodVisible" class="http-field">
+							<div class="http-method">{{ item.httpMethod }}</div>
 						</div>
 						<div class="url-field">
-							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-								{{ getWebhookUrlDisplay(webhook) }}<br />
-							</div>
-						</div>
-					</div>
-					<div v-else class="webhook-wrapper">
-						<div class="url-field-full-width">
-							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-								{{ getWebhookUrlDisplay(webhook) }}<br />
+							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(item)">
+								{{ item.url }}
 							</div>
 						</div>
 					</div>
@@ -234,6 +244,8 @@ watch(
 </template>
 
 <style scoped lang="scss">
+@use '@/app/css/variables' as *;
+
 .webhooks {
 	padding-bottom: var(--spacing--xs);
 	margin: var(--spacing--xs) 0;
@@ -241,28 +253,23 @@ watch(
 
 	.headline {
 		color: $color-primary;
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		font-size: var(--font-size--2xs);
 	}
 }
 
 .http-field {
-	position: absolute;
-	width: 50px;
-	display: inline-block;
-	top: calc(50% - 8px);
+	flex: 0 0 var(--spacing--3xl);
 }
 
 .http-method {
 	background-color: var(--color--foreground--shade-2);
-	width: 40px;
-	height: 16px;
-	line-height: 16px;
-	margin-left: 5px;
+	padding: 0 var(--spacing--4xs);
+	line-height: var(--height--3xs);
 	text-align: center;
-	border-radius: 2px;
+	border-radius: var(--radius--4xs);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--foreground--tint-2);
 }
 
@@ -280,13 +287,8 @@ watch(
 }
 
 .url-field {
-	display: inline-block;
-	width: calc(100% - 60px);
-	margin-left: 55px;
-}
-.url-field-full-width {
-	display: inline-block;
-	margin: 5px 10px;
+	flex: 1;
+	min-width: 0;
 }
 
 .url-selection {
@@ -313,8 +315,6 @@ watch(
 }
 
 .webhook-url {
-	position: relative;
-	top: 0;
 	width: 100%;
 	font-size: var(--font-size--2xs);
 	white-space: normal;
@@ -327,10 +327,13 @@ watch(
 }
 
 .webhook-wrapper {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 	line-height: 1.5;
-	position: relative;
 	margin-top: var(--spacing--xs);
 	background-color: var(--color--foreground--tint-2);
-	border-radius: 3px;
+	border-radius: var(--radius--3xs);
 }
 </style>

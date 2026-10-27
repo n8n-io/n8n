@@ -3,15 +3,15 @@ import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import type { IExecutionUIData } from '../../composables/useExecutionHelpers';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import ExecutionsTime from '../ExecutionsTime.vue';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
-
+import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import {
 	N8nActionDropdown,
 	N8nIcon,
@@ -36,7 +36,6 @@ const route = useRoute();
 const locale = useI18n();
 
 const executionHelpers = useExecutionHelpers();
-const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 
 const isAdvancedExecutionFilterEnabled = computed(
@@ -44,15 +43,19 @@ const isAdvancedExecutionFilterEnabled = computed(
 );
 const isAnnotationEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
 
-const currentWorkflow = computed(() => (route.params.name as string) || workflowsStore.workflowId);
+const workflowId = useInjectWorkflowId();
+
+const hasPrivateCredentials = computed(() => props.execution.usedPrivateCredentials === true);
 const retryExecutionActions = computed(() => [
 	{
 		id: 'current-workflow',
-		label: locale.baseText('executionsList.retryWithCurrentlySavedWorkflow'),
+		label: locale.baseText('executionsList.retryWithCurrentVersion'),
+		description: locale.baseText('executionsList.retryWithCurrentVersionDescription'),
 	},
 	{
 		id: 'original-workflow',
-		label: locale.baseText('executionsList.retryWithOriginalWorkflow'),
+		label: locale.baseText('executionsList.retryWithOriginalVersion'),
+		description: locale.baseText('executionsList.retryWithOriginalVersionDescription'),
 	},
 ]);
 const executionUIDetails = computed<IExecutionUIData>(() =>
@@ -85,7 +88,7 @@ function onRetryMenuItemSelect(action: string): void {
 			:class="$style.executionLink"
 			:to="{
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: currentWorkflow, executionId: execution.id },
+				params: { workflowId: workflowId, executionId: execution.id },
 				query: route.query,
 			}"
 			:data-test-execution-status="executionUIDetails.name"
@@ -167,8 +170,22 @@ function onRetryMenuItemSelect(action: string): void {
 					:items="retryExecutionActions"
 					:disabled="!workflowPermissions.execute"
 					activator-icon="redo-2"
+					placement="bottom-end"
 					data-test-id="retry-execution-button"
 					@select="onRetryMenuItemSelect"
+				>
+					<template #menuItem="item">
+						<div :class="$style.retryMenuItem">
+							<N8nText size="small" color="text-dark" bold>{{ item.label }}</N8nText>
+							<N8nText size="xsmall" color="text-light">{{ item.description }}</N8nText>
+						</div>
+					</template>
+				</N8nActionDropdown>
+				<PrivateCredentialIcon
+					v-if="hasPrivateCredentials"
+					:class="$style.icon"
+					:tooltip-text="locale.baseText('executions.privateCredential.tooltip')"
+					data-test-id="execution-card-private-credential"
 				/>
 				<N8nTooltip v-if="execution.mode === 'manual'" placement="top">
 					<template #content>
@@ -320,15 +337,30 @@ function onRetryMenuItemSelect(action: string): void {
 	}
 }
 
+.description {
+	min-width: 0;
+}
+
 .icons {
 	display: flex;
 	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--2xs);
+	min-width: calc(2 * var(--font-size--sm) + var(--spacing--2xs));
+	flex-shrink: 0;
 }
 
 .icon {
 	font-size: var(--font-size--sm);
+	width: var(--font-size--sm);
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 
 	&.retry {
+		width: var(--height--md);
+
 		svg {
 			color: var(--color--primary);
 		}
@@ -338,10 +370,12 @@ function onRetryMenuItemSelect(action: string): void {
 		position: relative;
 		top: 1px;
 	}
+}
 
-	& + & {
-		margin-left: var(--spacing--2xs);
-	}
+.retryMenuItem {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 }
 
 .showGap {

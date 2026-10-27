@@ -14,7 +14,6 @@ import type {
 	IConnections,
 	INode,
 	INodeExecutionData,
-	INodes,
 	INodeTypeDescription,
 	NodeHint,
 } from 'n8n-workflow';
@@ -47,6 +46,13 @@ export const DEFAULT_START_POSITION_X = GRID_SIZE * 11;
 export const DEFAULT_START_POSITION_Y = GRID_SIZE * 15;
 export const HEADER_HEIGHT = 65;
 export const PUSH_NODES_OFFSET = DEFAULT_NODE_SIZE[0] * 2 + GRID_SIZE;
+// Horizontal gap the auto-layout leaves between adjacent nodes (dagre `ranksep`).
+// Shared so manual placement and cleanup stay in lockstep.
+export const NODE_X_SPACING = GRID_SIZE * 8;
+// Center-to-center horizontal step when placing a node directly after another
+// (plus button, connection drop, mid-flow insert). Must equal a node width plus
+// NODE_X_SPACING so a freshly placed node lands exactly where cleanup would put it.
+export const HORIZONTAL_NODE_STEP = DEFAULT_NODE_SIZE[0] + NODE_X_SPACING;
 export const DEFAULT_VIEWPORT_BOUNDARIES: ViewportBoundaries = {
 	xMin: -Infinity,
 	yMin: -Infinity,
@@ -181,6 +187,10 @@ export function snapPositionToGrid(position: XYPosition): XYPosition {
 		closestNumberDivisibleBy(position[0], GRID_SIZE),
 		closestNumberDivisibleBy(position[1], GRID_SIZE),
 	];
+}
+
+export function snapToGrid(value: number): number {
+	return Math.round(value / GRID_SIZE) * GRID_SIZE;
 }
 
 /**
@@ -388,7 +398,7 @@ export function getGenericHints({
 	nodeType,
 	nodeOutputData,
 	hasMultipleInputItems,
-	nodes,
+	getNodeByName,
 	connections,
 	hasNodeRun,
 }: {
@@ -397,7 +407,7 @@ export function getGenericHints({
 	nodeType: INodeTypeDescription;
 	nodeOutputData: INodeExecutionData[];
 	hasMultipleInputItems: boolean;
-	nodes: INodes;
+	getNodeByName: (name: string) => INode | null;
 	connections: IConnections;
 	hasNodeRun: boolean;
 }) {
@@ -436,7 +446,7 @@ export function getGenericHints({
 		hasMultipleInputItems &&
 		LIST_LIKE_NODE_OPERATIONS.includes((workflowNode.parameters.operation as string) || '')
 	) {
-		const executeOnce = workflowUtils.getNodeByName(nodes, node.name)?.executeOnce;
+		const executeOnce = getNodeByName(node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
 				message:
@@ -448,7 +458,7 @@ export function getGenericHints({
 
 	// add sendAndWait hint
 	if (hasMultipleInputItems && workflowNode.parameters.operation === SEND_AND_WAIT_OPERATION) {
-		const executeOnce = workflowUtils.getNodeByName(nodes, node.name)?.executeOnce;
+		const executeOnce = getNodeByName(node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
 				message: 'This action will run only once, for the first input item',
@@ -559,6 +569,10 @@ export const getNodeViewTab = (route: RouteLocation): string | null => {
 			.includes(String(route.name))
 	) {
 		return MAIN_HEADER_TABS.EXECUTIONS;
+	} else if (
+		[VIEWS.EVALUATION_EDIT, VIEWS.EVALUATION_RUNS_DETAIL].map(String).includes(String(route.name))
+	) {
+		return MAIN_HEADER_TABS.EVALUATION;
 	}
 	return null;
 };

@@ -1,10 +1,4 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
-export default defineConfig(baseConfig, {
-	rules: {
-		// TODO: Remove this
-		'@typescript-eslint/require-await': 'warn',
-		'@typescript-eslint/naming-convention': 'warn',
-	},
-});
+export default defineConfig(backendConfig);

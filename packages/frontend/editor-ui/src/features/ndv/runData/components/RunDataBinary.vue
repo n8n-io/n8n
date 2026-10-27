@@ -1,16 +1,38 @@
 <script setup lang="ts">
 import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
+import { getBinaryDataFileName } from '@/app/utils/fileUtils';
 import { ViewableMimeTypes } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import type { IBinaryKeyData } from 'n8n-workflow';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { BINARY_MODE_COMBINED } from 'n8n-workflow';
+import { N8nButton, N8nLink, N8nNotice, N8nText } from '@n8n/design-system';
+import { computed } from 'vue';
 const { binaryData } = defineProps<{ binaryData: IBinaryKeyData[] }>();
+import { usePostHog } from '@/app/stores/posthog.store';
+import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 
 const emit = defineEmits<{ preview: [index: number, key: string | number] }>();
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const uiStore = useUIStore();
+const posthogStore = usePostHog();
+
+const isV2Enabled = computed(() => {
+	return posthogStore.isVariantEnabled(
+		EXECUTION_LOGIC_V2_EXPERIMENT.name,
+		EXECUTION_LOGIC_V2_EXPERIMENT.variant,
+	);
+});
+
+const isLegacyBinaryMode = computed(
+	() => workflowDocumentStore?.value?.settings?.binaryMode !== BINARY_MODE_COMBINED,
+);
 
 function isViewable(index: number, key: string | number): boolean {
 	const { mimeType } = binaryData[index][key];
@@ -23,22 +45,32 @@ function isDownloadable(index: number, key: string | number): boolean {
 }
 
 async function downloadBinaryData(index: number, key: string | number) {
-	const { id, data, fileName, fileExtension, mimeType } = binaryData[index][key];
+	const entry = binaryData[index][key];
+	const { id, data, fileName, mimeType } = entry;
+	const name = getBinaryDataFileName(entry);
 
 	if (id) {
 		const url = workflowsStore.getBinaryUrl(id, 'download', fileName ?? '', mimeType);
-		saveAs(url, [fileName, fileExtension].join('.'));
+		saveAs(url, name);
 		return;
 	} else {
 		const bufferString = 'data:' + mimeType + ';base64,' + data;
 		const blob = await fetch(bufferString).then(async (d) => await d.blob());
-		saveAs(blob, fileName);
+		saveAs(blob, name);
 	}
+}
+
+function openWorkflowSettings() {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 }
 </script>
 
 <template>
 	<div :class="$style.component">
+		<N8nNotice v-if="isLegacyBinaryMode && isV2Enabled" :class="$style.info" theme="info">
+			{{ i18n.baseText('runData.legacyBinaryMode') }}
+			<N8nLink size="small" @click="openWorkflowSettings">settings</N8nLink>.
+		</N8nNotice>
 		<N8nText v-if="binaryData.length === 0" align="center" tag="div">
 			{{ i18n.baseText('runData.noBinaryDataFound') }}
 		</N8nText>
@@ -113,9 +145,9 @@ async function downloadBinaryData(index: number, key: string | number) {
 								@click="emit('preview', index, key)"
 							/>
 							<N8nButton
+								variant="outline"
 								v-if="isDownloadable(index, key)"
 								size="small"
-								type="secondary"
 								:label="i18n.baseText('runData.downloadBinaryData')"
 								data-test-id="ndv-download-binary-data"
 								@click="downloadBinaryData(index, key)"
@@ -129,6 +161,8 @@ async function downloadBinaryData(index: number, key: string | number) {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .component {
 	position: absolute;
 	top: 0;
@@ -154,7 +188,7 @@ async function downloadBinaryData(index: number, key: string | number) {
 		border-radius: var(--radius);
 		text-align: center;
 		background-color: var(--color--foreground--shade-2);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		color: var(--color--text--tint-3);
 	}
 }
@@ -178,7 +212,7 @@ async function downloadBinaryData(index: number, key: string | number) {
 
 .binaryHeader {
 	color: $color-primary;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: 1.2em;
 	padding-bottom: var(--spacing--2xs);
 	margin-bottom: var(--spacing--2xs);
@@ -200,5 +234,9 @@ async function downloadBinaryData(index: number, key: string | number) {
 .binaryValue {
 	white-space: initial;
 	word-wrap: break-word;
+}
+
+.info {
+	margin: var(--spacing--2xs) 0;
 }
 </style>

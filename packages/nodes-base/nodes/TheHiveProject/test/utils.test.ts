@@ -1,4 +1,10 @@
-import { splitAndTrim, fixFieldType, prepareInputItem, constructFilter } from '../helpers/utils';
+import {
+	splitAndTrim,
+	parseAnalyzers,
+	fixFieldType,
+	prepareInputItem,
+	constructFilter,
+} from '../helpers/utils';
 
 describe('Test TheHiveProject, splitAndTrim', () => {
 	it('should split and trim string, removing empty entries', () => {
@@ -15,6 +21,49 @@ describe('Test TheHiveProject, splitAndTrim', () => {
 		const result = splitAndTrim(data);
 
 		expect(result).toEqual(data);
+	});
+});
+
+describe('Test TheHiveProject, parseAnalyzers', () => {
+	it('should map an array of "analyzerId::cortexId" entries', () => {
+		const data = ['analyzer-1::cortex-1', 'analyzer-2::cortex-2'];
+
+		const result = parseAnalyzers(data);
+
+		expect(result).toEqual([
+			{ analyzerId: 'analyzer-1', cortexId: 'cortex-1' },
+			{ analyzerId: 'analyzer-2', cortexId: 'cortex-2' },
+		]);
+	});
+
+	it('should map a comma-joined string (expression coercion case)', () => {
+		const data = 'analyzer-1::cortex-1, analyzer-2::cortex-2';
+
+		const result = parseAnalyzers(data);
+
+		expect(result).toEqual([
+			{ analyzerId: 'analyzer-1', cortexId: 'cortex-1' },
+			{ analyzerId: 'analyzer-2', cortexId: 'cortex-2' },
+		]);
+	});
+
+	it('should handle a single analyzer provided as a string', () => {
+		const result = parseAnalyzers('analyzer-1::cortex-1');
+
+		expect(result).toEqual([{ analyzerId: 'analyzer-1', cortexId: 'cortex-1' }]);
+	});
+
+	it('should drop empty entries from a comma-joined string', () => {
+		const result = parseAnalyzers('analyzer-1::cortex-1,, analyzer-2::cortex-2,');
+
+		expect(result).toEqual([
+			{ analyzerId: 'analyzer-1', cortexId: 'cortex-1' },
+			{ analyzerId: 'analyzer-2', cortexId: 'cortex-2' },
+		]);
+	});
+
+	it('should return an empty array for an empty string', () => {
+		expect(parseAnalyzers('')).toEqual([]);
 	});
 });
 

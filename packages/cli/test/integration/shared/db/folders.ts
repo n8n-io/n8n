@@ -21,7 +21,7 @@ export const createFolder = async (
 			parentFolder: options.parentFolder ?? null,
 			tags: options.tags ?? [],
 			updatedAt: options.updatedAt ?? new Date(),
-			createdAt: options.updatedAt ?? new Date(),
+			createdAt: options.createdAt ?? options.updatedAt ?? new Date(),
 		}),
 	);
 

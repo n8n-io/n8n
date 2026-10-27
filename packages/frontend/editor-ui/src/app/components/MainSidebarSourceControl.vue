@@ -5,6 +5,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { useRoute, useRouter } from 'vue-router';
 
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -14,6 +15,7 @@ defineProps<{
 
 const sourceControlStore = useSourceControlStore();
 const projectStore = useProjectsStore();
+const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -41,6 +43,7 @@ const hasPullPermission = computed(() => {
 const sourceControlAvailable = computed(
 	() =>
 		sourceControlStore.isEnterpriseSourceControlEnabled &&
+		!isPromotionsEnabled.value &&
 		(hasPullPermission.value || hasPushPermission.value),
 );
 
@@ -99,13 +102,18 @@ function pullWorkfolder() {
 			:class="$style.connected"
 			data-test-id="main-sidebar-source-control-connected"
 		>
-			<N8nTooltip :disabled="!isCollapsed" :show-after="tooltipOpenDelay" placement="right">
+			<N8nTooltip
+				v-if="isCollapsed"
+				:show-after="tooltipOpenDelay"
+				placement="right"
+				:avoid-collisions="false"
+			>
 				<template #content>
 					<div>
 						{{ currentBranch }}
 					</div>
 				</template>
-				<span
+				<div
 					:class="$style.icon"
 					:style="{
 						color: accessibleTextColor,
@@ -113,12 +121,20 @@ function pullWorkfolder() {
 					}"
 				>
 					<N8nIcon icon="git-branch" size="small" />
-					<N8nText v-if="!isCollapsed" bold size="small" :class="$style.branchName">{{
-						currentBranch
-					}}</N8nText>
-				</span>
+				</div>
 			</N8nTooltip>
-			<div>
+			<div
+				v-else
+				:class="$style.icon"
+				:style="{
+					color: accessibleTextColor,
+					background: sourceControlStore.preferences.branchColor,
+				}"
+			>
+				<N8nIcon icon="git-branch" size="small" />
+				<N8nText bold size="small" :class="$style.branchName">{{ currentBranch }}</N8nText>
+			</div>
+			<div :class="$style.buttonContainer">
 				<N8nTooltip
 					:disabled="!isCollapsed && hasPullPermission"
 					:show-after="tooltipOpenDelay"
@@ -134,13 +150,11 @@ function pullWorkfolder() {
 						</div>
 					</template>
 					<N8nButton
-						:disabled="!hasPullPermission"
+						variant="ghost"
+						size="xsmall"
 						data-test-id="main-sidebar-source-control-pull"
 						icon="arrow-down"
-						type="tertiary"
-						:size="isCollapsed ? 'small' : 'mini'"
-						text
-						:square="isCollapsed"
+						:disabled="!hasPullPermission"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
 						@click="pullWorkfolder"
 					/>
@@ -162,14 +176,12 @@ function pullWorkfolder() {
 						</div>
 					</template>
 					<N8nButton
-						:square="isCollapsed"
-						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
-						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
+						variant="ghost"
+						size="xsmall"
 						data-test-id="main-sidebar-source-control-push"
 						icon="arrow-up"
-						type="tertiary"
-						text
-						:size="isCollapsed ? 'small' : 'mini'"
+						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
+						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
 						@click="pushWorkfolder"
 					/>
 				</N8nTooltip>
@@ -180,10 +192,11 @@ function pullWorkfolder() {
 
 <style lang="scss" module>
 .sync {
-	padding: 0 var(--spacing--5xs) 0 0;
+	display: flex;
 
 	button {
 		font-size: var(--font-size--2xs);
+		border-radius: 0;
 	}
 
 	&.collapsed {
@@ -197,14 +210,22 @@ function pullWorkfolder() {
 	align-items: center;
 	justify-content: center;
 	gap: var(--spacing--3xs);
+	width: 100%;
+	height: 100%;
+}
+
+.buttonContainer {
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .connected {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	justify-content: center;
 	border-top: var(--border);
-	padding-right: var(--spacing--4xs);
+	width: 100%;
 }
 
 .branchName {
@@ -220,14 +241,28 @@ function pullWorkfolder() {
 
 	.connected {
 		flex-direction: column-reverse;
-		gap: var(--spacing--3xs);
 		padding-right: 0;
+
+		span[data-grace-area-trigger] {
+			width: 100%;
+		}
+
+		button {
+			width: 100% !important;
+		}
 
 		.icon {
 			width: 100%;
 			padding: var(--spacing--3xs) 0;
 			justify-content: center;
 		}
+	}
+
+	.buttonContainer {
+		width: 100%;
+		justify-content: stretch;
+		align-items: center;
+		flex-flow: column;
 	}
 }
 </style>

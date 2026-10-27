@@ -13,7 +13,7 @@ export class ClearLicenseCommand extends BaseCommand {
 	async run() {
 		this.logger.info('Clearing license from database.');
 
-		// Attempt to invoke shutdown() to force any floating entitlements to be released
+		// clear() releases any floating entitlements before it deletes the cert
 		const license = Container.get(License);
 		await license.init({ isCli: true });
 		await license.clear();

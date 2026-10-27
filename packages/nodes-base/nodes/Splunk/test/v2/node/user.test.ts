@@ -1,17 +1,18 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { SPLUNK } from '../../../v1/types';
 import * as user from '../../../v2/actions/user';
 import * as transport from '../../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../v2/transport', () => ({
-	splunkApiJsonRequest: jest.fn(),
-	splunkApiRequest: jest.fn(),
+vi.mock('../../../v2/transport', () => ({
+	splunkApiJsonRequest: vi.fn(),
+	splunkApiRequest: vi.fn(),
 }));
 describe('Splunk, user resource', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	test('create operation', async () => {
@@ -21,7 +22,7 @@ describe('Splunk, user resource', () => {
 		executeFunctions.getNodeParameter.calledWith('password', 0).mockReturnValue('password');
 		executeFunctions.getNodeParameter.calledWith('additionalFields', 0).mockReturnValue({});
 
-		(transport.splunkApiRequest as jest.Mock).mockReturnValue({
+		(transport.splunkApiRequest as Mock).mockReturnValue({
 			feed: {
 				entry: [
 					{
@@ -51,7 +52,7 @@ describe('Splunk, user resource', () => {
 	test('deleteUser operation', async () => {
 		const executeFunctions = mock<IExecuteFunctions>();
 		executeFunctions.getNodeParameter.mockReturnValue('12345');
-		(transport.splunkApiRequest as jest.Mock).mockReturnValue({});
+		(transport.splunkApiRequest as Mock).mockReturnValue({});
 		const responseData = await user.deleteUser.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiRequest).toHaveBeenCalledWith(
 			'DELETE',
@@ -64,7 +65,7 @@ describe('Splunk, user resource', () => {
 		const executeFunctions = mock<IExecuteFunctions>();
 		executeFunctions.getNodeParameter.calledWith('userId', 0).mockReturnValue('12345');
 
-		(transport.splunkApiJsonRequest as jest.Mock).mockReturnValue([{ test: 'test' }]);
+		(transport.splunkApiJsonRequest as Mock).mockReturnValue([{ test: 'test' }]);
 		const responseData = await user.get.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',
@@ -77,7 +78,7 @@ describe('Splunk, user resource', () => {
 		const executeFunctions = mock<IExecuteFunctions>();
 		executeFunctions.getNodeParameter.calledWith('returnAll', 0).mockReturnValue(true);
 
-		(transport.splunkApiJsonRequest as jest.Mock).mockReturnValue([{ test: 'test' }]);
+		(transport.splunkApiJsonRequest as Mock).mockReturnValue([{ test: 'test' }]);
 		const responseData = await user.getAll.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',
@@ -95,7 +96,7 @@ describe('Splunk, user resource', () => {
 			.mockReturnValue({ roles: ['role1', 'role2'], email: 'testW@example.com' });
 		executeFunctions.getNodeParameter.calledWith('userId', 0).mockReturnValue('12345');
 
-		(transport.splunkApiRequest as jest.Mock).mockReturnValue(
+		(transport.splunkApiRequest as Mock).mockReturnValue(
 			Promise.resolve({
 				feed: {
 					entry: [

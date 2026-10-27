@@ -6,15 +6,15 @@ describe('Mistral OCR Generic Functions', () => {
 		const base64 = binaryBuffer.toString('base64');
 
 		const context = {
-			getNodeParameter: jest.fn(),
+			getNodeParameter: vi.fn(),
 			helpers: {
-				assertBinaryData: jest.fn(),
-				getBinaryDataBuffer: jest.fn(),
+				assertBinaryData: vi.fn(),
+				getBinaryDataBuffer: vi.fn(),
 			},
 		} as any;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should encode binary data to a data URL', async () => {

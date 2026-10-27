@@ -2,6 +2,7 @@ import type { User } from '@n8n/db';
 import { CredentialsRepository, UserRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import { z } from 'zod';
 
 import { BaseCommand } from '@/commands/base-command';
@@ -11,6 +12,7 @@ import { CommunityPackagesService } from './community-packages.service';
 import { InstalledNodes } from './installed-nodes.entity';
 import { InstalledNodesRepository } from './installed-nodes.repository';
 import { InstalledPackages } from './installed-packages.entity';
+import { executeNpmCommand } from './npm-utils';
 
 const flagsSchema = z.object({
 	uninstall: z.boolean().describe('Uninstalls the node').optional(),
@@ -93,9 +95,13 @@ export class CommunityNode extends BaseCommand<z.infer<typeof flagsSchema>> {
 			return;
 		}
 
-		credentials.forEach(async (credential) => {
-			await this.deleteCredential(user, credential.id);
-		});
+		const deletionResults = await Promise.allSettled(
+			credentials.map(async (credential) => await this.deleteCredential(user, credential.id)),
+		);
+		const failedDeletion = deletionResults.find((result) => result.status === 'rejected');
+		if (failedDeletion) {
+			throw failedDeletion.reason;
+		}
 
 		this.logger.info(`All credentials with type ${credentialType} successfully uninstalled`);
 	}
@@ -137,7 +143,8 @@ export class CommunityNode extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async pruneDependencies() {
-		await Container.get(CommunityPackagesService).executeNpmCommand(['prune']);
+		const instanceSettings = Container.get(InstanceSettings);
+		await executeNpmCommand(['prune'], { cwd: instanceSettings.nodesDownloadDir });
 	}
 
 	async deleteCommunityNode(node: InstalledNodes) {

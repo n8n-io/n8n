@@ -1,9 +1,10 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { AwsS3V2 } from '../../V2/AwsS3V2.node';
 import * as GenericFunctions from '../../V2/GenericFunctions';
+import type { MockInstance } from 'vitest';
 
 const mockLocationResponse = {
 	LocationConstraint: {
@@ -20,11 +21,12 @@ const mockFileResponse = {
 
 describe('AWS S3 V2 Node - File Download', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const awsApiRequestRESTSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
+	let awsApiRequestRESTSpy: MockInstance;
 	let node: AwsS3V2;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+		awsApiRequestRESTSpy = vi.spyOn(GenericFunctions, 'awsApiRequestREST');
 		node = new AwsS3V2({
 			displayName: 'AWS S3',
 			name: 'awsS3',
@@ -163,7 +165,7 @@ describe('AWS S3 V2 Node - File Download', () => {
 			];
 
 			for (const testCase of testCases) {
-				jest.clearAllMocks();
+				vi.clearAllMocks();
 				awsApiRequestRESTSpy
 					.mockResolvedValueOnce(mockLocationResponse)
 					.mockResolvedValueOnce(mockFileResponse);
@@ -350,5 +352,277 @@ describe('AWS S3 V2 Node - File Download', () => {
 			expect(result[0][0].binary).toHaveProperty('existingFile');
 			expect(result[0][0].binary).toHaveProperty('customData');
 		});
+	});
+});
+
+describe('AWS S3 V2 Node - Bucket Search', () => {
+	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
+	let awsApiRequestRESTSpy: MockInstance;
+	let awsApiRequestRESTAllItemsSpy: MockInstance;
+	let node: AwsS3V2;
+
+	const mockContents = [
+		{ Key: 'file1.txt', Size: '100' },
+		{ Key: 'file2.txt', Size: '200' },
+	];
+	const mockCommonPrefixes = [{ Prefix: 'folder1/' }, { Prefix: 'folder2/' }];
+	const mockSearchResponse = {
+		ListBucketResult: {
+			Contents: mockContents,
+			CommonPrefixes: mockCommonPrefixes,
+		},
+	};
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		awsApiRequestRESTSpy = vi.spyOn(GenericFunctions, 'awsApiRequestREST');
+		awsApiRequestRESTAllItemsSpy = vi.spyOn(GenericFunctions, 'awsApiRequestRESTAllItems');
+		node = new AwsS3V2({
+			displayName: 'AWS S3',
+			name: 'awsS3',
+			icon: 'file:s3.svg',
+			group: ['output'],
+			description: 'Sends data to AWS S3',
+		});
+
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			accessKeyId: 'test-key',
+			secretAccessKey: 'test-secret',
+			region: 'eu-central-1',
+		});
+
+		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 2 } as INode);
+		executeFunctionsMock.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctionsMock.continueOnFail.mockReturnValue(false);
+
+		executeFunctionsMock.helpers.returnJsonArray.mockImplementation((data) =>
+			Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }],
+		);
+		executeFunctionsMock.helpers.constructExecutionMetaData.mockImplementation(
+			(data) => data as any,
+		);
+	});
+
+	function setupSearchParams(overrides: {
+		returnAll?: boolean;
+		delimiter?: string;
+		includeCommonPrefixes?: boolean;
+		limit?: number;
+	}) {
+		const {
+			returnAll = false,
+			delimiter = '',
+			includeCommonPrefixes = false,
+			limit = 100,
+		} = overrides;
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName, _i, defaultVal?) => {
+			switch (paramName) {
+				case 'resource':
+					return 'bucket';
+				case 'operation':
+					return 'search';
+				case 'bucketName':
+					return 'test-bucket';
+				case 'returnAll':
+					return returnAll;
+				case 'limit':
+					return limit;
+				case 'additionalFields':
+					return { delimiter, includeCommonPrefixes };
+				default:
+					return defaultVal ?? undefined;
+			}
+		});
+	}
+
+	it('should return Contents when no delimiter is set', async () => {
+		setupSearchParams({});
+		awsApiRequestRESTSpy
+			.mockResolvedValueOnce(mockLocationResponse)
+			.mockResolvedValueOnce(mockSearchResponse);
+
+		const result = await node.execute.call(executeFunctionsMock);
+
+		expect(result[0]).toHaveLength(mockContents.length);
+		expect(result[0][0].json).toEqual(mockContents[0]);
+	});
+
+	it('should return Contents when delimiter is set but includeCommonPrefixes is false', async () => {
+		setupSearchParams({ delimiter: '/', includeCommonPrefixes: false });
+		awsApiRequestRESTSpy
+			.mockResolvedValueOnce(mockLocationResponse)
+			.mockResolvedValueOnce(mockSearchResponse);
+
+		const result = await node.execute.call(executeFunctionsMock);
+
+		expect(result[0]).toHaveLength(mockContents.length);
+		expect(result[0][0].json).toEqual(mockContents[0]);
+	});
+
+	it('should return CommonPrefixes when delimiter is set and includeCommonPrefixes is true', async () => {
+		setupSearchParams({ delimiter: '/', includeCommonPrefixes: true });
+		awsApiRequestRESTSpy
+			.mockResolvedValueOnce(mockLocationResponse)
+			.mockResolvedValueOnce(mockSearchResponse);
+
+		const result = await node.execute.call(executeFunctionsMock);
+
+		expect(result[0]).toHaveLength(mockCommonPrefixes.length);
+		expect(result[0][0].json).toEqual(mockCommonPrefixes[0]);
+	});
+
+	it('should call awsApiRequestRESTAllItems with CommonPrefixes path when returnAll and includeCommonPrefixes are true', async () => {
+		setupSearchParams({ returnAll: true, delimiter: '/', includeCommonPrefixes: true });
+		awsApiRequestRESTSpy.mockResolvedValueOnce(mockLocationResponse);
+		awsApiRequestRESTAllItemsSpy.mockResolvedValueOnce(mockCommonPrefixes);
+
+		await node.execute.call(executeFunctionsMock);
+
+		expect(awsApiRequestRESTAllItemsSpy).toHaveBeenCalledWith(
+			'ListBucketResult.CommonPrefixes',
+			expect.any(String),
+			'GET',
+			expect.any(String),
+			'',
+			expect.any(Object),
+			{},
+			{},
+			expect.any(String),
+		);
+	});
+
+	it('should call awsApiRequestRESTAllItems with Contents path when returnAll is true and includeCommonPrefixes is false', async () => {
+		setupSearchParams({ returnAll: true, delimiter: '/', includeCommonPrefixes: false });
+		awsApiRequestRESTSpy.mockResolvedValueOnce(mockLocationResponse);
+		awsApiRequestRESTAllItemsSpy.mockResolvedValueOnce(mockContents);
+
+		await node.execute.call(executeFunctionsMock);
+
+		expect(awsApiRequestRESTAllItemsSpy).toHaveBeenCalledWith(
+			'ListBucketResult.Contents',
+			expect.any(String),
+			'GET',
+			expect.any(String),
+			'',
+			expect.any(Object),
+			{},
+			{},
+			expect.any(String),
+		);
+	});
+
+	it('should normalize a single-object Contents response to an array', async () => {
+		setupSearchParams({});
+		const singleItem = { Key: 'only-file.txt', Size: '50' };
+		awsApiRequestRESTSpy.mockResolvedValueOnce(mockLocationResponse).mockResolvedValueOnce({
+			ListBucketResult: { Contents: singleItem },
+		});
+
+		const result = await node.execute.call(executeFunctionsMock);
+
+		expect(result[0]).toHaveLength(1);
+		expect(result[0][0].json).toEqual(singleItem);
+	});
+});
+
+describe('AWS S3 V2 Node - File Copy', () => {
+	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
+	let awsApiRequestRESTSpy: MockInstance;
+	let node: AwsS3V2;
+
+	const copyWithSource = (sourcePath: string) => {
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
+			switch (paramName) {
+				case 'resource':
+					return 'file';
+				case 'operation':
+					return 'copy';
+				case 'sourcePath':
+					return sourcePath;
+				case 'destinationPath':
+					return '/test-bucket/backup/index.txt';
+				case 'additionalFields':
+					return {};
+				default:
+					return undefined;
+			}
+		});
+	};
+
+	const copySourceHeader = () =>
+		awsApiRequestRESTSpy.mock.calls[1][5]['x-amz-copy-source'] as string;
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		awsApiRequestRESTSpy = vi.spyOn(GenericFunctions, 'awsApiRequestREST');
+		node = new AwsS3V2({
+			displayName: 'AWS S3',
+			name: 'awsS3',
+			icon: 'file:s3.svg',
+			group: ['output'],
+			description: 'Sends data to AWS S3',
+		});
+
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			accessKeyId: 'test-key',
+			secretAccessKey: 'test-secret',
+			region: 'eu-central-1',
+		});
+		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 2 } as INode);
+		executeFunctionsMock.getInputData.mockReturnValue([{ json: { test: 'data' } }]);
+		executeFunctionsMock.continueOnFail.mockReturnValue(false);
+		executeFunctionsMock.helpers.returnJsonArray.mockImplementation((data) =>
+			Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }],
+		);
+		executeFunctionsMock.helpers.constructExecutionMetaData.mockImplementation(
+			(data) => data as any,
+		);
+
+		awsApiRequestRESTSpy.mockResolvedValueOnce(mockLocationResponse).mockResolvedValueOnce({});
+	});
+
+	// An HTTP header cannot carry a non-ASCII byte. The signature is computed over
+	// the value we set, so if the client rewrites it on the way out, S3 sees a
+	// different path and answers SignatureDoesNotMatch.
+	it.each([
+		[
+			'Chinese characters',
+			'/test-bucket/workflow/\u540c\u7a0b\u5546\u65c5/index.txt',
+			'/test-bucket/workflow/%E5%90%8C%E7%A8%8B%E5%95%86%E6%97%85/index.txt',
+		],
+		['an accented name', '/test-bucket/r\u00e9sum\u00e9.pdf', '/test-bucket/r%C3%A9sum%C3%A9.pdf'],
+		['a space', '/test-bucket/my report.pdf', '/test-bucket/my%20report.pdf'],
+	])('percent-encodes the copy source for %s', async (_name, sourcePath, expected) => {
+		copyWithSource(sourcePath);
+
+		await node.execute.call(executeFunctionsMock);
+
+		expect(copySourceHeader()).toBe(expected);
+	});
+
+	it('leaves an all-ASCII source path byte-identical', async () => {
+		copyWithSource('/test-bucket/workflow/index.txt');
+
+		await node.execute.call(executeFunctionsMock);
+
+		expect(copySourceHeader()).toBe('/test-bucket/workflow/index.txt');
+	});
+
+	it('does not double-encode a source path the user already encoded', async () => {
+		copyWithSource('/test-bucket/my%20report.pdf');
+
+		await node.execute.call(executeFunctionsMock);
+
+		expect(copySourceHeader()).toBe('/test-bucket/my%20report.pdf');
+	});
+
+	// CopyObject reads an optional `?versionId=` selector after the key. Encoding
+	// the `?` would make S3 read the selector as the end of the key.
+	it('keeps the version selector readable while encoding the key', async () => {
+		copyWithSource('/test-bucket/r\u00e9sum\u00e9.pdf?versionId=3HL4kqt');
+
+		await node.execute.call(executeFunctionsMock);
+
+		expect(copySourceHeader()).toBe('/test-bucket/r%C3%A9sum%C3%A9.pdf?versionId=3HL4kqt');
 	});
 });

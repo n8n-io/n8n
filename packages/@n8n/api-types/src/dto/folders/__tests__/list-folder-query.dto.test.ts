@@ -198,12 +198,8 @@ describe('ListFolderQueryDto', () => {
 			const result = ListFolderQueryDto.safeParse(request);
 
 			expect(result.success).toBe(false);
-
-			if (expectedErrorPath && !result.success) {
-				if (Array.isArray(expectedErrorPath)) {
-					const errorPaths = result.error.issues[0].path;
-					expect(errorPaths).toContain(expectedErrorPath[0]);
-				}
+			if (!result.success) {
+				expect(result.error.issues[0].path).toEqual(expectedErrorPath);
 			}
 		});
 	});

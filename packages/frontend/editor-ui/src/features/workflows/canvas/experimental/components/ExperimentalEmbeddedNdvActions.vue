@@ -9,19 +9,17 @@ const emit = defineEmits<{ openNdv: []; toggleExpand: [] }>();
 <template>
 	<div :class="$style.actions">
 		<N8nIconButton
+			variant="ghost"
 			icon="expand"
-			type="secondary"
-			text
-			size="mini"
+			size="xsmall"
 			icon-size="small"
 			aria-label="Open..."
 			@click.stop="emit('openNdv')"
 		/>
 		<N8nIconButton
+			variant="ghost"
 			:icon="isExpanded ? 'chevron-down' : 'chevron-up'"
-			type="secondary"
-			text
-			size="mini"
+			size="xsmall"
 			icon-size="medium"
 			aria-label="Toggle expand"
 			@click.stop="emit('toggleExpand')"

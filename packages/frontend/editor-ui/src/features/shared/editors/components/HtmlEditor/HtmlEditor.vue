@@ -16,14 +16,10 @@ import {
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
-import { format } from 'prettier';
-import jsParser from 'prettier/plugins/babel';
-import * as estree from 'prettier/plugins/estree';
-import htmlParser from 'prettier/plugins/html';
-import cssParser from 'prettier/plugins/postcss';
 import { computed, onBeforeUnmount, onMounted, ref, toRaw, toValue } from 'vue';
 
 import { useExpressionEditor } from '../../composables/useExpressionEditor';
+import { loadPrettier } from '@/features/shared/editors/utils/loadPrettier';
 import { htmlEditorEventBus } from '@/app/event-bus';
 import { n8nCompletionSources } from '../../plugins/codemirror/completions/addCompletions';
 import { dropInExpressionEditor, mappingDropCursor } from '../../plugins/codemirror/dragAndDrop';
@@ -33,7 +29,7 @@ import {
 } from '../../plugins/codemirror/expressionCloseBrackets';
 import { editorKeymap } from '../../plugins/codemirror/keymap';
 import { n8nAutocompletion } from '../../plugins/codemirror/n8nLang';
-import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
+import { autoCloseTags, htmlLanguage } from '@n8n/codemirror-lang-html';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges, pasteHandler } from './utils';
@@ -171,6 +167,8 @@ async function formatHtml() {
 	const editor = toValue(editorRef);
 	if (!editor) return;
 
+	const { format, plugins } = await loadPrettier();
+
 	const sectionToFormat = sections.value;
 	if (sectionToFormat.length === 1 && isMissingHtmlTags()) {
 		const zerothSection = sectionToFormat.at(0) as Section;
@@ -178,7 +176,7 @@ async function formatHtml() {
 		const formatted = (
 			await format(zerothSection.content, {
 				parser: 'html',
-				plugins: [htmlParser],
+				plugins: [plugins.html],
 			})
 		).trim();
 
@@ -193,7 +191,7 @@ async function formatHtml() {
 		if (kind === 'style') {
 			const formattedStyle = await format(content, {
 				parser: 'css',
-				plugins: [cssParser],
+				plugins: [plugins.postcss],
 			});
 
 			formatted.push(`<style>\n${formattedStyle}</style>`);
@@ -202,7 +200,7 @@ async function formatHtml() {
 		if (kind === 'script') {
 			const formattedScript = await format(content, {
 				parser: 'babel',
-				plugins: [jsParser, estree],
+				plugins: [plugins.babel, plugins.estree],
 			});
 
 			formatted.push(`<script>\n${formattedScript}<` + '/script>');
@@ -220,7 +218,7 @@ async function formatHtml() {
 
 			const formattedRest = await format(rest, {
 				parser: 'html',
-				plugins: [htmlParser],
+				plugins: [plugins.html],
 			});
 
 			formatted.push(`${pre}\n${formattedRest}</html>`);
@@ -292,9 +290,9 @@ defineExpose({
 
 .droppable {
 	:global(.cm-editor) {
-		border-color: var(--ndv--droppable-parameter--color);
-		border-style: dashed;
-		border-width: 1.5px;
+		border-color: transparent;
+		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
+		outline-offset: -1.5px;
 	}
 }
 
@@ -304,6 +302,7 @@ defineExpose({
 		border-style: solid;
 		cursor: grabbing;
 		border-width: 1px;
+		outline: none;
 	}
 }
 </style>

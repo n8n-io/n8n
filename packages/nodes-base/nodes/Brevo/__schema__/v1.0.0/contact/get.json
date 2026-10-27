@@ -6,6 +6,9 @@
             "properties": {
                 "FIRSTNAME": {
                     "type": "string"
+                },
+                "LASTNAME": {
+                    "type": "string"
                 }
             }
         },
@@ -32,7 +35,10 @@
         },
         "smsBlacklisted": {
             "type": "boolean"
+        },
+        "whatsappBlacklisted": {
+            "type": "boolean"
         }
     },
-    "version": 2
+    "version": 3
 }

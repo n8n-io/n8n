@@ -1,0 +1,152 @@
+import type { AgentSseEvent } from '@n8n/api-types';
+
+import { ExecutionRecorder } from '../../execution-recorder';
+import {
+	MAX_HOST_EVENT_PAYLOAD_BYTES,
+	SystemAgentHostEventChannel,
+} from '../system-agent-host-events';
+
+describe('SystemAgentHostEventChannel', () => {
+	it('buffers events until the recorder is attached, then sends and records them in order', () => {
+		const send = vi.fn<(event: AgentSseEvent) => void>();
+		const channel = new SystemAgentHostEventChannel(send);
+		channel.emit('test.first', { n: 1 });
+		channel.emit('test.second');
+		expect(send).not.toHaveBeenCalled();
+
+		const recorder = new ExecutionRecorder();
+		channel.attach(recorder);
+		channel.emit('test.third', [3]);
+
+		expect(send.mock.calls.map(([event]) => event)).toEqual([
+			{ type: 'host-event', name: 'test.first', payload: { n: 1 } },
+			{ type: 'host-event', name: 'test.second', payload: null },
+			{ type: 'host-event', name: 'test.third', payload: [3] },
+		]);
+		expect(
+			recorder
+				.getMessageRecord()
+				.timeline.map((event) => (event.type === 'host-event' ? event.name : event.type)),
+		).toEqual(['test.first', 'test.second', 'test.third']);
+	});
+
+	it('keeps a buffered payload as it was when emitted', () => {
+		const send = vi.fn<(event: AgentSseEvent) => void>();
+		const channel = new SystemAgentHostEventChannel(send);
+		const payload = { step: 1 };
+		channel.emit('test.progress', payload);
+		payload.step = 2;
+
+		channel.attach(new ExecutionRecorder());
+
+		expect(send).toHaveBeenCalledWith({
+			type: 'host-event',
+			name: 'test.progress',
+			payload: { step: 1 },
+		});
+	});
+
+	it('sends the payload that it records', () => {
+		const send = vi.fn();
+		const recorder = new ExecutionRecorder();
+		const channel = new SystemAgentHostEventChannel(send);
+		channel.attach(recorder);
+
+		channel.emit('test.notice', { credentialType: 'slackApi', message: 'ok' });
+
+		const [recorded] = recorder.getMessageRecord().timeline;
+		expect(send).toHaveBeenCalledWith({
+			type: 'host-event',
+			name: 'test.notice',
+			payload: { credentialType: 'slackApi', message: 'ok' },
+		});
+		expect(recorded).toMatchObject({ payload: { credentialType: 'slackApi', message: 'ok' } });
+	});
+
+	it('drops events after close and reports them', () => {
+		const send = vi.fn();
+		const onDropped = vi.fn();
+		const channel = new SystemAgentHostEventChannel(send, onDropped);
+		channel.emit('test.buffered');
+		channel.close();
+		channel.attach(new ExecutionRecorder());
+		channel.emit('test.late');
+
+		expect(send).not.toHaveBeenCalled();
+		expect(onDropped).toHaveBeenCalledWith('test.late');
+	});
+
+	it('replaces a keyed event in its position and sends the update with its key', () => {
+		const send = vi.fn<(event: AgentSseEvent) => void>();
+		const channel = new SystemAgentHostEventChannel(send);
+		const recorder = new ExecutionRecorder();
+		channel.attach(recorder);
+
+		channel.emit('test.progress', { done: 0 }, { key: 'build' });
+		channel.emit('test.notice');
+		channel.emit('test.progress', { done: 1 }, { key: 'build' });
+
+		expect(send.mock.calls.at(-1)?.[0]).toEqual({
+			type: 'host-event',
+			name: 'test.progress',
+			key: 'build',
+			payload: { done: 1 },
+		});
+		expect(recorder.getMessageRecord().timeline).toEqual([
+			expect.objectContaining({ name: 'test.progress', key: 'build', payload: { done: 1 } }),
+			expect.objectContaining({ name: 'test.notice', payload: null }),
+		]);
+	});
+
+	it('keeps only the last buffered event for a name and key', () => {
+		const send = vi.fn<(event: AgentSseEvent) => void>();
+		const channel = new SystemAgentHostEventChannel(send);
+
+		channel.emit('test.progress', { done: 0 }, { key: 'build' });
+		channel.emit('test.notice');
+		channel.emit('test.progress', { done: 1 }, { key: 'build' });
+		channel.attach(new ExecutionRecorder());
+
+		expect(send.mock.calls.map(([event]) => event)).toEqual([
+			{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+			{ type: 'host-event', name: 'test.notice', payload: null },
+		]);
+	});
+
+	it('refuses an empty or too long key', () => {
+		const channel = new SystemAgentHostEventChannel(vi.fn());
+
+		expect(() => channel.emit('test.progress', null, { key: '' })).toThrow(
+			'A host event key must have 1 to 128 characters',
+		);
+		expect(() => channel.emit('test.progress', null, { key: 'k'.repeat(129) })).toThrow(
+			'A host event key must have 1 to 128 characters',
+		);
+		expect(() => channel.emit('test.progress', null, { key: 'k'.repeat(128) })).not.toThrow();
+	});
+
+	it('refuses a payload larger than 64 KiB of JSON', () => {
+		const send = vi.fn();
+		const channel = new SystemAgentHostEventChannel(send);
+		channel.attach(new ExecutionRecorder());
+		// The JSON string adds two quote characters.
+		const atLimit = 'x'.repeat(MAX_HOST_EVENT_PAYLOAD_BYTES - 2);
+
+		expect(() => channel.emit('test.blob', atLimit)).not.toThrow();
+		expect(() => channel.emit('test.blob', `${atLimit}x`)).toThrow(
+			'A host event payload must not be larger than 64 KiB',
+		);
+		// The cap counts UTF-8 bytes, not characters.
+		expect(() =>
+			channel.emit('test.blob', { text: 'é'.repeat(MAX_HOST_EVENT_PAYLOAD_BYTES / 2) }),
+		).toThrow('A host event payload must not be larger than 64 KiB');
+		expect(send).toHaveBeenCalledTimes(1);
+	});
+
+	it('refuses an empty or too long name', () => {
+		const channel = new SystemAgentHostEventChannel(vi.fn());
+
+		expect(() => channel.emit('')).toThrow('A host event needs a name');
+		expect(() => channel.emit('x'.repeat(129))).toThrow('A host event needs a name');
+	});
+});

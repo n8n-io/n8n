@@ -21,6 +21,12 @@
         "bodyPreview": {
             "type": "string"
         },
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "conversationId": {
             "type": "string"
         },
@@ -32,7 +38,26 @@
         },
         "subject": {
             "type": "string"
+        },
+        "toRecipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
-    "version": 1
+    "version": 3
 }

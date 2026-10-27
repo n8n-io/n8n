@@ -1,0 +1,52 @@
+{
+	"name": "CAT-2662 child",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": { "inputSource": "passthrough" },
+			"id": "child-trigger",
+			"name": "When Executed by Another Workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1.1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"jsCode": "await new Promise((resolve) => setTimeout(resolve, 5000));\nreturn $input.all();"
+			},
+			"id": "child-delay-1",
+			"name": "Delay 1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [220, 0]
+		},
+		{
+			"parameters": {
+				"jsCode": "await new Promise((resolve) => setTimeout(resolve, 5000));\nreturn $input.all();"
+			},
+			"id": "child-delay-2",
+			"name": "Delay 2",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [440, 0]
+		},
+		{
+			"parameters": {
+				"jsCode": "await new Promise((resolve) => setTimeout(resolve, 5000));\nreturn $input.all();"
+			},
+			"id": "child-delay-3",
+			"name": "Delay 3",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [660, 0]
+		}
+	],
+	"connections": {
+		"When Executed by Another Workflow": {
+			"main": [[{ "node": "Delay 1", "type": "main", "index": 0 }]]
+		},
+		"Delay 1": { "main": [[{ "node": "Delay 2", "type": "main", "index": 0 }]] },
+		"Delay 2": { "main": [[{ "node": "Delay 3", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}

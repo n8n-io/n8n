@@ -1,5 +1,24 @@
 export type DataTableColumnType = 'string' | 'number' | 'boolean' | 'date';
 
+/**
+ * Data Table row operations
+ * Used by the Data Table node (n8n-nodes-base.dataTable) for row-level CRUD operations
+ */
+export type DataTableRowOperation =
+	| 'insert'
+	| 'get'
+	| 'rowExists'
+	| 'rowNotExists'
+	| 'deleteRows'
+	| 'update'
+	| 'upsert';
+
+/**
+ * Data Table table operations
+ * Used by the Data Table node for table-level management operations
+ */
+export type DataTableTableOperation = 'create' | 'delete' | 'list' | 'update' | 'clear';
+
 export type DataTableColumn = {
 	id: string;
 	name: string;
@@ -26,7 +45,7 @@ export type CreateDataTableOptions = Pick<DataTable, 'name'> & {
 
 export type UpdateDataTableOptions = { name: string };
 
-export type ListDataTableOptionsSortByKey = 'name' | 'createdAt' | 'updatedAt' | 'sizeBytes';
+export type ListDataTableOptionsSortByKey = 'name' | 'createdAt' | 'updatedAt';
 
 export type ListDataTableOptions = {
 	filter?: Record<string, string | string[]>;
@@ -39,7 +58,17 @@ export type DataTableFilter = {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
-		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
+		condition:
+			| 'eq'
+			| 'neq'
+			| 'like'
+			| 'ilike'
+			| 'gt'
+			| 'gte'
+			| 'lt'
+			| 'lte'
+			| 'isEmpty'
+			| 'isNotEmpty';
 		value: DataTableColumnJsType;
 	}>;
 };
@@ -194,4 +223,6 @@ export interface IDataTableProjectService {
 	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[]>;
 
 	deleteRows(options: DeleteDataTableRowsOptions): Promise<DataTableRowReturn[]>;
+
+	clearRows(): Promise<{ deletedCount: number }>;
 }

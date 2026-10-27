@@ -2,10 +2,13 @@
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
-import { N8nRadioButtons } from '@n8n/design-system';
-defineProps<{
+import { N8nSegmentControl } from '@n8n/design-system';
+
+type Props = {
 	isBuildMode: boolean;
-}>();
+};
+
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	toggle: [value: boolean];
@@ -24,9 +27,9 @@ function toggle(value: boolean) {
 </script>
 
 <template>
-	<N8nRadioButtons
+	<N8nSegmentControl
 		size="small"
-		:model-value="isBuildMode"
+		:model-value="props.isBuildMode"
 		:options="options"
 		@update:model-value="toggle"
 	/>

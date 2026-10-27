@@ -16,9 +16,10 @@ export class ConvertToFile implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Convert to File',
 		name: 'convertToFile',
-		icon: { light: 'file:convertToFile.svg', dark: 'file:convertToFile.dark.svg' },
+		icon: 'node:convert-to-file',
+		iconColor: 'blue',
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Convert JSON data to binary data',
 		defaults: {
 			name: 'Convert to File',

@@ -1,4 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
+import { isZodSchema } from '@n8n/ai-utilities/json-schema';
 import { getConnectedTools } from '@utils/helpers';
 import get from 'lodash/get';
 import type {
@@ -7,7 +8,12 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import {
+	accumulateTokenUsage,
+	jsonParse,
+	NodeOperationError,
+	updateDisplayOptions,
+} from 'n8n-workflow';
 import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../../helpers/constants';
 import type { ChatResponse } from '../../../helpers/interfaces';
 import { formatToOpenAIResponsesTool } from '../../../helpers/utils';
@@ -578,6 +584,15 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const messages = this.getNodeParameter('responses.values', i, []) as IDataObject[];
+	const hasTextContent = messages.some(
+		(m) =>
+			(m.type === 'text' || !m.type) && typeof m.content === 'string' && m.content.trim() !== '',
+	);
+	if (!hasTextContent) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 	const options = this.getNodeParameter('options', i, {});
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const builtInTools = this.getNodeParameter('builtInTools', i, {}) as IDataObject;
@@ -630,8 +645,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (!response) return [];
 
+	if (response.usage) {
+		accumulateTokenUsage(this, response.usage.input_tokens, response.usage.output_tokens);
+	}
+
 	// reasoning models such as gpt5 include reasoning items that must be included in the request
-	const isToolRelatedCall: (item: { type: string }) => boolean = (item) =>
+	const isToolRelatedCall = <T extends { type: string }>(
+		item: T,
+	): item is Extract<T, { type: 'function_call' | 'reasoning' }> =>
 		item.type === 'function_call' || item.type === 'reasoning';
 
 	let toolCalls = response.output.filter(isToolRelatedCall);
@@ -661,7 +682,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				for (const tool of externalTools ?? []) {
 					if (tool.name === functionName) {
 						const parsedArgs: { input: string } = jsonParse(functionArgs);
-						const functionInput = parsedArgs.input ?? parsedArgs ?? functionArgs;
+						if (!isZodSchema(tool.schema)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`The connected tool "${tool.name}" has an unsupported input schema. Connect a tool with a Zod input schema.`,
+								{ itemIndex: i },
+							);
+						}
+						const validatedArgs = tool.schema.safeParse(parsedArgs);
+						const functionInput = validatedArgs.success
+							? validatedArgs.data
+							: (parsedArgs.input ?? parsedArgs);
 						functionResponse = await tool.invoke(functionInput);
 					}
 
@@ -681,6 +712,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		response = (await apiRequest.call(this, 'POST', '/responses', {
 			body,
 		})) as ChatResponse;
+
+		if (response.usage) {
+			accumulateTokenUsage(this, response.usage.input_tokens, response.usage.output_tokens);
+		}
+
 		toolCalls = response.output.filter(isToolRelatedCall);
 
 		currentIteration++;

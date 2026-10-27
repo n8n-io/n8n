@@ -7,15 +7,31 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import type { LogMetadata } from 'n8n-workflow';
 
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@n8n/backend-services';
 
 import { PubSubEventBus } from './pubsub.eventbus';
 import type { PubSub } from './pubsub.types';
-import { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '../constants';
+import {
+	COMMAND_PUBSUB_CHANNEL,
+	WORKER_RESPONSE_PUBSUB_CHANNEL,
+	MCP_RELAY_PUBSUB_CHANNEL,
+	SUBSCRIBER_LIVENESS_INTERVAL_MS,
+	SUBSCRIBER_LIVENESS_TIMEOUT_MS,
+} from '../constants';
 
 /**
  * Responsible for subscribing to the pubsub channels used by scaling mode.
  */
+/**
+ * MCP relay message format for multi-main queue mode.
+ * Used to relay MCP responses (like list tools) between main instances.
+ */
+export interface McpRelayMessage {
+	sessionId: string;
+	messageId: string;
+	response: unknown;
+}
+
 @Service()
 export class Subscriber {
 	private readonly client: SingleNodeClient | MultiNodeClient;
@@ -23,6 +39,19 @@ export class Subscriber {
 	private readonly commandChannel: string;
 
 	private readonly workerResponseChannel: string;
+
+	private readonly mcpRelayChannel: string;
+
+	/** Callback for MCP relay messages. Set by ScalingService. */
+	private mcpRelayHandler?: (msg: McpRelayMessage) => void;
+
+	private readonly debouncedHandlers = new Map<string, ReturnType<typeof debounce>>();
+
+	private readonly channels = new Set<string>();
+
+	private lostConnection = false;
+
+	private livenessTimer?: NodeJS.Timeout;
 
 	constructor(
 		private readonly logger: Logger,
@@ -41,22 +70,84 @@ export class Subscriber {
 		const prefix = this.globalConfig.redis.prefix;
 		this.commandChannel = `${prefix}:${COMMAND_PUBSUB_CHANNEL}`;
 		this.workerResponseChannel = `${prefix}:${WORKER_RESPONSE_PUBSUB_CHANNEL}`;
+		this.mcpRelayChannel = `${prefix}:${MCP_RELAY_PUBSUB_CHANNEL}`;
 
 		this.client = this.redisClientService.createClient({ type: 'subscriber(n8n)' });
 
+		// ioredis replays SUBSCRIBE on reconnect without awaiting it, so a failed replay leaves
+		// the connection ready with zero subscriptions. Re-issue our own on every recovery.
+		this.client.on('close', () => {
+			this.lostConnection = true;
+		});
+		this.client.on('ready', () => {
+			if (!this.lostConnection) return;
+			this.lostConnection = false;
+			void this.resubscribe();
+		});
+
+		this.livenessTimer = setInterval(async () => {
+			await this.checkLiveness();
+		}, SUBSCRIBER_LIVENESS_INTERVAL_MS).unref();
+
 		const handlerFn = (msg: PubSub.Command | PubSub.WorkerResponse) => {
-			const eventName = 'command' in msg ? msg.command : msg.response;
-			this.pubsubEventBus.emit(eventName, msg.payload);
+			this.pubsubEventBus.emit(this.eventNameFrom(msg), msg.payload);
 		};
 
-		const debouncedHandlerFn = debounce(handlerFn, 300);
-
 		this.client.on('message', (channel: string, str: string) => {
+			// Handle MCP relay messages separately
+			if (channel === this.mcpRelayChannel) {
+				this.handleMcpRelayMessage(str);
+				return;
+			}
+
 			const msg = this.parseMessage(str, channel);
 			if (!msg) return;
-			if (msg.debounce) debouncedHandlerFn(msg);
-			else handlerFn(msg);
+			if (!msg.debounce) return handlerFn(msg);
+
+			const debounceKey = this.debounceKeyFrom(msg);
+			let handler = this.debouncedHandlers.get(debounceKey);
+			if (!handler) {
+				// Evict once the trailing call fires, so long-lived processes don't
+				// accumulate one debounce entry per distinct community package forever.
+				const debouncedHandler = debounce((message: PubSub.Command | PubSub.WorkerResponse) => {
+					try {
+						handlerFn(message);
+					} finally {
+						if (this.debouncedHandlers.get(debounceKey) === debouncedHandler) {
+							this.debouncedHandlers.delete(debounceKey);
+						}
+					}
+				}, 300);
+				handler = debouncedHandler;
+				this.debouncedHandlers.set(debounceKey, handler);
+			}
+			handler(msg);
 		});
+	}
+
+	/**
+	 * Set the handler for MCP relay messages.
+	 * Called by ScalingService to route messages to handleMcpResponse.
+	 */
+	setMcpRelayHandler(handler: (msg: McpRelayMessage) => void): void {
+		this.mcpRelayHandler = handler;
+	}
+
+	private handleMcpRelayMessage(str: string): void {
+		const msg = jsonParse<McpRelayMessage | null>(str, { fallbackValue: null });
+		if (!msg?.sessionId || !msg.messageId) {
+			this.logger.error('Received malformed MCP relay message', { msg: str });
+			return;
+		}
+
+		this.logger.debug('Received MCP relay message', {
+			sessionId: msg.sessionId,
+			messageId: msg.messageId,
+		});
+
+		if (this.mcpRelayHandler) {
+			this.mcpRelayHandler(msg);
+		}
 	}
 
 	getClient() {
@@ -71,12 +162,19 @@ export class Subscriber {
 		return this.workerResponseChannel;
 	}
 
+	getMcpRelayChannel() {
+		return this.mcpRelayChannel;
+	}
+
 	// @TODO: Use `@OnShutdown()` decorator
 	shutdown() {
+		clearInterval(this.livenessTimer);
+		for (const handler of this.debouncedHandlers.values()) handler.cancel();
 		this.client.disconnect();
 	}
 
 	async subscribe(channel: string) {
+		this.channels.add(channel);
 		await this.client.subscribe(channel, (error) => {
 			if (error) {
 				this.logger.error(`Failed to subscribe to channel ${channel}`, { error });
@@ -85,6 +183,68 @@ export class Subscriber {
 
 			this.logger.debug(`Subscribed to channel ${channel}`);
 		});
+	}
+
+	private async resubscribe() {
+		if (this.channels.size === 0) return;
+		try {
+			for (const channel of this.channels) await this.subscribe(channel);
+			this.logger.info('Resubscribed to pubsub channels after Redis reconnect', {
+				channels: [...this.channels],
+			});
+		} catch (error) {
+			this.lostConnection = true;
+			this.logger.error('Failed to resubscribe to pubsub channels after Redis reconnect', {
+				error,
+			});
+			return;
+		}
+
+		this.pubsubEventBus.emit('pubsub-reconnected');
+	}
+
+	/**
+	 * A subscriber connection is idle by nature, so a half-open socket (peer gone, no RST
+	 * received) is never detected by ioredis. Re-issuing SUBSCRIBE is idempotent, travels over
+	 * the subscriber connection in both single-node and cluster mode (PING would not), and
+	 * confirms the subscriptions still exist. No reply in time drops the socket so ioredis
+	 * reconnects and `resubscribe` runs.
+	 */
+	private async checkLiveness() {
+		if (this.channels.size === 0) return;
+
+		const timeout = new Promise<never>((_, reject) => {
+			setTimeout(() => reject(new Error('timeout')), SUBSCRIBER_LIVENESS_TIMEOUT_MS).unref();
+		});
+
+		try {
+			await Promise.race([this.client.subscribe(...this.channels), timeout]);
+		} catch (error) {
+			this.logger.warn('Pubsub subscriber connection is unresponsive, reconnecting', { error });
+			this.client.disconnect(true);
+		}
+	}
+
+	private eventNameFrom(msg: PubSub.Command | PubSub.WorkerResponse) {
+		return 'command' in msg ? msg.command : msg.response;
+	}
+
+	/**
+	 * Debounce bucket key. Distinct from `eventNameFrom`: two different community packages
+	 * published within the debounce window must not collapse into one delivery, so their
+	 * events get separate buckets even though they share the same command name.
+	 */
+	private debounceKeyFrom(msg: PubSub.Command | PubSub.WorkerResponse) {
+		const eventName = this.eventNameFrom(msg);
+		if (
+			'command' in msg &&
+			(msg.command === 'community-package-install' ||
+				msg.command === 'community-package-update' ||
+				msg.command === 'community-package-uninstall')
+		) {
+			return `${eventName}:${msg.payload.packageName}`;
+		}
+		return eventName;
 	}
 
 	private parseMessage(str: string, channel: string) {
@@ -110,7 +270,7 @@ export class Subscriber {
 			return null;
 		}
 
-		let msgName = 'command' in msg ? msg.command : msg.response;
+		let msgName = this.eventNameFrom(msg);
 
 		const metadata: LogMetadata = { msg: msgName, channel };
 

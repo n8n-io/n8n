@@ -19,10 +19,9 @@ export async function figmaApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
-	const credentials = await this.getCredentials('figmaApi');
+	const authentication = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 
 	let options: IRequestOptions = {
-		headers: { 'X-FIGMA-TOKEN': credentials.accessToken },
 		method,
 		body,
 		uri: uri || `https://api.figma.com${resource}`,
@@ -32,7 +31,14 @@ export async function figmaApiRequest(
 	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
+
 	try {
+		if (authentication === 'oAuth2') {
+			return await this.helpers.requestWithAuthentication.call(this, 'figmaOAuth2Api', options);
+		}
+
+		const credentials = await this.getCredentials('figmaApi');
+		options.headers = { 'X-FIGMA-TOKEN': credentials.accessToken };
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

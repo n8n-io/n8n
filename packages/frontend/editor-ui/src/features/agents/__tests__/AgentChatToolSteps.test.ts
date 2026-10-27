@@ -1,0 +1,946 @@
+import { createTestingPinia } from '@pinia/testing';
+import { mount } from '@vue/test-utils';
+import { setActivePinia } from 'pinia';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import type { PolicyViolation } from '@n8n/api-types';
+import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
+import AgentChatToolSteps from '../components/AgentChatToolSteps.vue';
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
+import { TOOL_CALL_STATE } from '../constants';
+import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
+import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
+
+vi.mock('@n8n/design-system', () => ({
+	N8nAiActivityStep: {
+		props: ['label', 'hasContent', 'loading', 'error', 'hideErrorCallout', 'errorIcon'],
+		data: () => ({ isOpen: false }),
+		computed: {
+			labelParts(this: { label: string }): string[] {
+				return this.label.split(' · ');
+			},
+		},
+		template: `
+			<div>
+				<button v-if="hasContent" type="button" @click="isOpen = !isOpen">
+					{{ labelParts[0] }}
+				</button>
+				<span v-else>{{ labelParts[0] }}</span>
+				<template v-for="part in labelParts.slice(1)" :key="part">
+					<span> · </span>
+					<span data-testid="tool-step-summary">{{ part }}</span>
+				</template>
+				<span
+					v-if="error"
+					data-testid="tool-step-warning"
+					:title="error"
+					:data-error-icon="errorIcon"
+				>⚠</span>
+				<div v-if="error && !hideErrorCallout" data-test-id="tool-step-error">
+					<slot name="errorCallout">{{ error }}</slot>
+				</div>
+				<div v-if="isOpen"><slot /></div>
+			</div>
+		`,
+	},
+	N8nAiActivityStepGroup: {
+		props: ['label', 'size', 'loading'],
+		template:
+			'<div data-test-id="n8n-ai-activity-step-group" :data-loading="String(loading)"><slot /></div>',
+	},
+	N8nButton: {
+		props: ['size', 'variant'],
+		emits: ['click'],
+		template:
+			'<button type="button" @click.stop="$emit(\'click\')"><slot name="icon" /><slot /></button>',
+	},
+	N8nCallout: {
+		props: ['theme'],
+		template: '<div><slot /><slot name="trailingContent" /></div>',
+	},
+	N8nIcon: {
+		template: '<i :data-icon="icon" />',
+		props: ['icon', 'size', 'spin'],
+	},
+	N8nLink: {
+		props: ['underline', 'size'],
+		emits: ['click'],
+		template: '<a href="#" @click="$emit(\'click\', $event)"><slot /></a>',
+	},
+	N8nMarkdownEditor: {
+		template: '<div data-test-id="tool-step-details">{{ modelValue }}</div>',
+		props: ['modelValue', 'readonly', 'variant', 'showToolbar', 'maxHeight'],
+	},
+	N8nTooltip: { template: '<div><slot /></div>', props: ['content', 'placement'] },
+}));
+
+vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	ContactAdminModal: {
+		props: ['open', 'nodeTypeName', 'kind', 'audience'],
+		template:
+			'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience">{{ nodeTypeName }}</div>',
+	},
+}));
+
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		getNodeType: () => undefined,
+		loadNodeTypesIfNotLoaded: async () => {},
+	}),
+}));
+
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: () => ({
+		getCredentialTypeByName: () => undefined,
+		fetchCredentialTypes: async () => {},
+	}),
+}));
+
+vi.mock('@n8n/i18n', () => {
+	const i18n = {
+		translations: {
+			'agents.chat.plan.error.rejected':
+				'The plan change was rejected. Expand this step for details.',
+			'agents.chat.toolNames.webSearch': 'Web search',
+			'agents.chat.toolNames.flagMemory': 'Memory noted',
+			'instanceAi.tools.agent_builder_search_nodes': 'Search nodes',
+			'agents.chat.difficulty.low': 'Low',
+			'agents.chat.difficulty.medium': 'Medium',
+			'agents.chat.difficulty.high': 'High',
+			'agents.chat.writeTodos.status.inProgress': 'In progress',
+			'agents.chat.writeTodos.status.pending': 'Pending',
+			'agents.chat.writeTodos.status.completed': 'Completed',
+			'agents.chat.writeTodos.status.blocked': 'Blocked',
+			'agents.chat.writeTodos.status.cancelled': 'Cancelled',
+			'agents.chat.writeTodos.hint.difficulty': 'Difficulty',
+			'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
+			'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
+			'agents.chat.toolPolicyRefusal.reason': '{name} is restricted on this instance.',
+			'agents.chat.toolPolicyRefusal.reason.project': '{name} is restricted in this project.',
+			'typeAvailabilityPolicies.restrictedNode.scope.instance': 'Restricted on this instance',
+			'typeAvailabilityPolicies.restrictedNode.scope.project': 'Restricted in this project',
+			'typeAvailabilityPolicies.restrictedNode.contactAdmin': 'Contact instance admin',
+			'typeAvailabilityPolicies.restrictedNode.contactProjectAdmin': 'Contact project admin',
+		} as Record<string, string>,
+		baseText(key: string, opts?: { interpolate?: { name?: string; count?: string } }) {
+			if (key === 'agents.chat.delegate.label' && opts?.interpolate?.name) {
+				return `Sub-agent · ${opts.interpolate.name}`;
+			}
+			if (key === 'agents.chat.delegate.labelFallback') return 'Sub-agent';
+			if (key === 'agents.chat.writeTodos.label') return 'Task list';
+			if (key === 'agents.chat.writeTodos.summary.one' && opts?.interpolate?.count) {
+				return `${opts.interpolate.count} task`;
+			}
+			if (key === 'agents.chat.writeTodos.summary.other' && opts?.interpolate?.count) {
+				return `${opts.interpolate.count} tasks`;
+			}
+			if (key === 'agents.chat.writeTodos.summary.done') return 'done';
+			const template = this.translations[key];
+			if (template && opts?.interpolate?.name) {
+				return template.replace('{name}', opts.interpolate.name);
+			}
+			return template ?? key;
+		},
+	};
+
+	return { useI18n: () => i18n };
+});
+
+vi.mock('../composables/useSubAgentNames', () => ({
+	useSubAgentNames: () => ({ subAgentNameById: { value: new Map() } }),
+}));
+
+function mountSteps(
+	toolCalls: ToolCall[],
+	extra: {
+		canFixWithAssistant?: boolean;
+		executionId?: string;
+		dismissedToolCallIds?: string[];
+	} = {},
+) {
+	return mount(AgentChatToolSteps, {
+		props: { toolCalls, projectId: 'project-1', ...extra },
+	});
+}
+
+describe('AgentChatToolSteps', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
+	it.each([
+		{
+			tool: 'update_plan',
+			state: TOOL_CALL_STATE.ERROR,
+			output: {
+				error:
+					'AI_InvalidToolInputError: Invalid input for tool update_plan: Invalid uuid in dependsOn',
+			},
+		},
+		{
+			tool: 'create_plan',
+			state: TOOL_CALL_STATE.ERROR,
+			output: 'Error: AI_InvalidToolInputError: Invalid input for tool create_plan: Invalid uuid',
+		},
+		{
+			tool: 'update_plan',
+			state: TOOL_CALL_STATE.DONE,
+			output: { error: 'invalid_plan', message: 'New items must be Pending' },
+		},
+		{
+			tool: 'update_plan',
+			state: TOOL_CALL_STATE.ERROR,
+			output: { error: 'invalid_plan', message: 'Missing dependency' },
+		},
+		{
+			tool: 'close_plan',
+			state: TOOL_CALL_STATE.DONE,
+			output: { error: 'conflict', message: 'Read the current plan before another write' },
+		},
+		{
+			tool: 'update_plan',
+			state: TOOL_CALL_STATE.ERROR,
+			output: { error: 'conflict', message: 'Read the current plan before another write' },
+		},
+	])('keeps a recoverable $tool error compact in state $state', async (call) => {
+		for (const canFixWithAssistant of [false, true]) {
+			const toolCall = { ...call, toolCallId: 'tc-plan', input: { expectedRevision: 4 } };
+			const wrapper = mountSteps([toolCall], { canFixWithAssistant, executionId: 'exec-1' });
+			expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(
+				'The plan change was rejected. Expand this step for details.',
+			);
+			expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
+			expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+				false,
+			);
+			expect(wrapper.find('pre').exists()).toBe(false);
+			await wrapper.get('button').trigger('click');
+			const details = wrapper.findAll('pre');
+			expect(details[0].text()).toBe(JSON.stringify(toolCall.input, null, 2));
+			expect(details[1].text()).toBe(
+				typeof call.output === 'string' ? call.output : JSON.stringify(call.output, null, 2),
+			);
+			expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
+			wrapper.unmount();
+		}
+	});
+
+	it.each([
+		['update_plan', { error: 'Database connection failed' }],
+		['update_plan', { error: 'unavailable', message: 'Missing thread context' }],
+		['update_plan', 'Unexpected failure containing AI_InvalidToolInputError'],
+		['update_plan', 'AI_InvalidToolInputError: Invalid input for tool another_tool: Invalid uuid'],
+		['search_nodes', 'AI_InvalidToolInputError: Invalid input for tool search_nodes: Invalid name'],
+		['search_nodes', { error: 'conflict' }],
+	])('keeps existing failure handling for %s with %j', (tool, output) => {
+		const call: ToolCall = { tool, output, state: TOOL_CALL_STATE.ERROR, toolCallId: 'tc-error' };
+		const withoutFix = mountSteps([call]);
+		expect(withoutFix.find('[data-test-id="tool-step-error"]').exists()).toBe(true);
+		const withFix = mountSteps([call], { canFixWithAssistant: true, executionId: 'exec-1' });
+		expect(withFix.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
+	});
+
+	it('keeps a rejected call visible after a successful retry without adding it to fixable errors', async () => {
+		const rejected: ToolCall = {
+			tool: 'update_plan',
+			toolCallId: 'tc-rejected',
+			state: TOOL_CALL_STATE.ERROR,
+			output: { error: 'invalid_plan', message: 'Missing dependency' },
+		};
+		const wrapper = mountSteps([rejected], {
+			canFixWithAssistant: true,
+			executionId: 'exec-1',
+		});
+		await wrapper.setProps({
+			toolCalls: [
+				rejected,
+				{
+					tool: 'update_plan',
+					toolCallId: 'tc-retry',
+					state: TOOL_CALL_STATE.DONE,
+					output: { revision: 5 },
+				},
+			],
+		});
+		expect(wrapper.findAll('[data-testid="tool-step-warning"]')).toHaveLength(1);
+		expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+			false,
+		);
+		await wrapper.setProps({
+			toolCalls: [
+				rejected,
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-failed',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Connection failed',
+				},
+			],
+		});
+		const callout = wrapper.get('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]');
+		expect(callout.text()).toContain('Connection failed');
+		expect(callout.text()).not.toContain('Missing dependency');
+		await wrapper.get('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
+		expect(wrapper.emitted('fixWithAssistant')).toEqual([
+			[[expect.objectContaining({ toolCallId: 'tc-failed' })]],
+		]);
+	});
+
+	it.each([
+		[TOOL_CALL_STATE.PENDING, 'true'],
+		[TOOL_CALL_STATE.RUNNING, 'true'],
+		[TOOL_CALL_STATE.SUSPENDED, 'false'],
+		[TOOL_CALL_STATE.DONE, 'false'],
+	])('sets grouped tool-call loading for a %s child to %s', (state, expectedLoading) => {
+		const wrapper = mountSteps([
+			{
+				tool: 'search_nodes',
+				toolCallId: 'tc-active',
+				state,
+			},
+			{
+				tool: 'search_nodes',
+				toolCallId: 'tc-done',
+				state: TOOL_CALL_STATE.DONE,
+			},
+		]);
+
+		expect(
+			wrapper.find('[data-test-id="n8n-ai-activity-step-group"]').attributes('data-loading'),
+		).toBe(expectedLoading);
+	});
+
+	it('renders native web search tool calls as expandable', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'openai.web_search',
+				toolCallId: 'tc-web-search',
+				state: TOOL_CALL_STATE.DONE,
+				input: { query: 'n8n agents' },
+				output: { results: [{ title: 'Agents documentation' }] },
+			},
+		]);
+
+		expect(wrapper.text()).toContain('Web search');
+		expect(wrapper.find('button').exists()).toBe(true);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.text()).toContain('n8n agents');
+		expect(wrapper.text()).toContain('Agents documentation');
+	});
+
+	it('makes generic tool steps with output data expandable', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'agent_builder_search_nodes',
+				toolCallId: 'tc-1',
+				state: TOOL_CALL_STATE.DONE,
+				output: { nodes: ['Slack'] },
+			},
+		]);
+
+		expect(wrapper.text()).toContain('Search nodes');
+		expect(wrapper.find('[data-testid="tool-step-summary"]').exists()).toBe(false);
+		expect(wrapper.find('button').exists()).toBe(true);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.text()).toContain('Slack');
+	});
+
+	it('does not make generic tool steps without data expandable', () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'agent_builder_search_nodes',
+				toolCallId: 'tc-2',
+				state: TOOL_CALL_STATE.DONE,
+			},
+		]);
+
+		expect(wrapper.text()).toContain('Search nodes');
+		expect(wrapper.find('button').exists()).toBe(false);
+	});
+
+	it('labels a legacy builder tool name from persisted history', () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'search_nodes',
+				toolCallId: 'tc-legacy',
+				state: TOOL_CALL_STATE.DONE,
+			},
+		]);
+
+		expect(wrapper.text()).toContain('Search nodes');
+	});
+
+	it('shows a completed memory flag as a compact acknowledgement', () => {
+		const running = mountSteps([
+			{
+				tool: 'flag_memory',
+				toolCallId: 'tc-memory-running',
+				state: TOOL_CALL_STATE.RUNNING,
+				input: { content: 'Remember this.' },
+			},
+		]);
+		expect(running.text()).toContain('Flag memory');
+		expect(running.text()).not.toContain('Memory noted');
+
+		const missingResult = mountSteps([
+			{
+				tool: 'flag_memory',
+				toolCallId: 'tc-memory-no-result',
+				state: TOOL_CALL_STATE.DONE,
+				input: { content: 'Remember this.' },
+			},
+		]);
+		expect(missingResult.text()).toContain('Flag memory');
+		expect(missingResult.text()).not.toContain('Memory noted');
+
+		const completed = mountSteps([
+			{
+				tool: 'flag_memory',
+				toolCallId: 'tc-memory-done',
+				state: TOOL_CALL_STATE.DONE,
+				input: { content: 'Remember this.' },
+				output: { status: 'noted' },
+			},
+		]);
+		expect(completed.text()).toContain('Memory noted');
+		expect(completed.find('button').exists()).toBe(false);
+		expect(completed.find('[data-test-id="tool-step-details"]').exists()).toBe(false);
+	});
+
+	it('shows one Fix with Assistant callout with deduplicated failures', async () => {
+		const errored: ToolCall = {
+			tool: 'search_nodes',
+			toolCallId: 'tc-err',
+			state: TOOL_CALL_STATE.ERROR,
+			output: 'Repeated failure',
+			startTime: 1_000,
+			endTime: 1_250,
+		};
+
+		const withoutFix = mountSteps([errored]);
+		expect(withoutFix.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+			false,
+		);
+
+		const withoutExecutionId = mountSteps([errored], { canFixWithAssistant: true });
+		expect(
+			withoutExecutionId.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists(),
+		).toBe(false);
+
+		const doneTool = mountSteps(
+			[{ ...errored, state: TOOL_CALL_STATE.DONE, toolCallId: 'tc-ok' }],
+			{ canFixWithAssistant: true, executionId: 'exec-1' },
+		);
+		expect(doneTool.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+			false,
+		);
+
+		const withFix = mountSteps(
+			[
+				errored,
+				{
+					tool: 'list_credentials',
+					toolCallId: 'tc-err-2',
+					state: TOOL_CALL_STATE.ERROR,
+					output: '  Repeated failure  ',
+				},
+				{
+					tool: 'http_request',
+					toolCallId: 'tc-err-3',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Different failure',
+				},
+			],
+			{
+				canFixWithAssistant: true,
+				executionId: 'exec-1',
+			},
+		);
+		const callouts = withFix.findAll('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]');
+		expect(callouts).toHaveLength(1);
+		expect(callouts[0].findAll('li')).toHaveLength(2);
+		expect(callouts[0].text().match(/Repeated failure/g)).toHaveLength(1);
+		expect(callouts[0].text().match(/Different failure/g)).toHaveLength(1);
+		const fixButtons = withFix.findAll('[data-test-id="agent-chat-tool-fix-with-assistant"]');
+		expect(fixButtons).toHaveLength(1);
+		await fixButtons[0].trigger('click');
+		expect(withFix.emitted('fixWithAssistant')).toEqual([
+			[
+				[
+					{
+						toolCallId: 'tc-err',
+						toolName: 'search_nodes',
+						toolDisplayName: 'Search nodes',
+						error: 'Repeated failure',
+						startedAt: 1_000,
+						endedAt: 1_250,
+					},
+					{
+						toolCallId: 'tc-err-2',
+						toolName: 'list_credentials',
+						toolDisplayName: 'List credentials',
+						error: 'Repeated failure',
+					},
+					{
+						toolCallId: 'tc-err-3',
+						toolName: 'http_request',
+						toolDisplayName: 'Http request',
+						error: 'Different failure',
+					},
+				],
+			],
+		]);
+	});
+
+	it('hides dismissed tool errors and emits only the ones still shown', async () => {
+		const stillShown = mountSteps(
+			[
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-gone',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Old failure',
+				},
+				{
+					tool: 'http_request',
+					toolCallId: 'tc-stay',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Still broken',
+				},
+			],
+			{
+				canFixWithAssistant: true,
+				executionId: 'exec-1',
+				dismissedToolCallIds: ['tc-gone'],
+			},
+		);
+
+		const callout = stillShown.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain('Still broken');
+		expect(callout.text()).not.toContain('Old failure');
+
+		await stillShown.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
+		expect(stillShown.emitted('fixWithAssistant')).toEqual([
+			[
+				[
+					{
+						toolCallId: 'tc-stay',
+						toolName: 'http_request',
+						toolDisplayName: 'Http request',
+						error: 'Still broken',
+					},
+				],
+			],
+		]);
+
+		const allDismissed = mountSteps(
+			[
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-gone',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Old failure',
+				},
+			],
+			{
+				canFixWithAssistant: true,
+				executionId: 'exec-1',
+				dismissedToolCallIds: ['tc-gone'],
+			},
+		);
+		expect(
+			allDismissed.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists(),
+		).toBe(false);
+	});
+
+	it('shows a generic error when the failed tool output is empty', () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'search_nodes',
+				toolCallId: 'tc-err',
+				state: TOOL_CALL_STATE.ERROR,
+				output: {},
+			},
+		]);
+
+		expect(wrapper.find('[data-test-id="tool-step-error"]').text()).toBe(
+			'agents.chat.toolError.generic',
+		);
+		expect(wrapper.text()).not.toContain('{}');
+	});
+
+	it('shows Fix with Assistant outside the tool group when a multi-tool turn has an error', () => {
+		const wrapper = mountSteps(
+			[
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-ok',
+					state: TOOL_CALL_STATE.DONE,
+					output: { nodes: ['Slack'] },
+				},
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-err',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Tool failed',
+				},
+			],
+			{ canFixWithAssistant: true, executionId: 'exec-1' },
+		);
+
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
+		const callout = wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]');
+		expect(callout.find('ul').exists()).toBe(false);
+		expect(callout.text()).toContain('Tool failed');
+
+		const group = wrapper.find('[data-test-id="n8n-ai-activity-step-group"]');
+		expect(group.exists()).toBe(true);
+		expect(group.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists()).toBe(
+			false,
+		);
+		expect(
+			wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists(),
+		).toBe(true);
+	});
+
+	it('shows incomplete task count in write_todos summary', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: WRITE_TODOS_TOOL_NAME,
+				toolCallId: 'tc-todos',
+				state: TOOL_CALL_STATE.DONE,
+				output: {
+					status: 'ok',
+					todoCount: 3,
+					todos: [
+						{ id: 'a', content: 'Research APIs', status: 'in_progress', difficulty: 'high' },
+						{ id: 'b', content: 'Write summary', status: 'pending', difficulty: 'medium' },
+						{ id: 'c', content: 'Ship release', status: 'completed', difficulty: 'low' },
+					],
+				},
+			},
+		]);
+
+		expect(wrapper.text()).toContain('Task list');
+		expect(wrapper.text()).toContain('·');
+		expect(wrapper.find('[data-testid="tool-step-summary"]').text()).toContain('2 tasks');
+		expect(wrapper.find('[data-testid="tool-step-summary"]').text()).not.toContain('3 tasks');
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toContain('Research APIs');
+	});
+
+	it('shows done summary when all write_todos tasks are completed', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: WRITE_TODOS_TOOL_NAME,
+				toolCallId: 'tc-todos-done',
+				state: TOOL_CALL_STATE.DONE,
+				output: {
+					status: 'ok',
+					todoCount: 2,
+					todos: [
+						{ id: 'a', content: 'Research APIs', status: 'completed', difficulty: 'high' },
+						{ id: 'b', content: 'Write summary', status: 'completed', difficulty: 'medium' },
+					],
+				},
+			},
+		]);
+
+		expect(wrapper.text()).toContain('Task list');
+		expect(wrapper.text()).toContain('·');
+		expect(wrapper.find('[data-testid="tool-step-summary"]').text()).toContain('done');
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toContain('Research APIs');
+		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toContain('Write summary');
+	});
+
+	it('keeps delegate_subagent expandable behavior', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+				toolCallId: 'tc-delegate',
+				state: TOOL_CALL_STATE.DONE,
+				input: { subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+				output: {
+					status: 'completed',
+					answer: 'Child answer',
+					model: 'anthropic/claude-haiku-4-5',
+				},
+			},
+		]);
+
+		expect(wrapper.text()).toContain('Sub-agent');
+		expect(wrapper.text()).toContain('·');
+		const metadata = wrapper
+			.findAll('[data-testid="tool-step-summary"]')
+			.map((item) => item.text());
+		expect(metadata).toEqual(['Research api', 'High']);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toBe('Child answer');
+	});
+
+	it('renders live child progress instead of raw input while delegate_subagent is running', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+				toolCallId: 'tc-delegate',
+				state: TOOL_CALL_STATE.RUNNING,
+				input: { subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+				childProgress: {
+					text: 'Looking things up',
+					reasoningSegments: [],
+					steps: [
+						{ toolCallId: 'child-tc-1', toolName: 'web_search', running: true },
+						{ toolCallId: 'child-tc-2', toolName: 'search_nodes', running: false },
+					],
+				},
+			},
+		]);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.find('[data-test-id="agent-chat-delegate-child-progress"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('Looking things up');
+		expect(wrapper.text()).not.toContain('subAgentId');
+
+		// The child's steps render through this same component, so they get the
+		// parent chat's tool labels and its multi-step grouping.
+		expect(wrapper.find('[data-test-id="n8n-ai-activity-step-group"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('Web search');
+		expect(wrapper.text()).toContain('Search nodes');
+	});
+
+	it('renders the settled answer when child progress has been cleared', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+				toolCallId: 'tc-delegate',
+				state: TOOL_CALL_STATE.DONE,
+				input: { subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+				output: {
+					status: 'completed',
+					answer: 'Final child answer',
+				},
+			},
+		]);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toBe('Final child answer');
+		expect(wrapper.find('[data-test-id="agent-chat-delegate-child-progress"]').exists()).toBe(
+			false,
+		);
+	});
+
+	it('renders the answer once alongside the child trace on a settled delegate row', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+				toolCallId: 'tc-delegate',
+				state: TOOL_CALL_STATE.DONE,
+				input: { subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+				output: {
+					status: 'completed',
+					answer: 'Final child answer',
+				},
+				childProgress: {
+					text: 'Final child answer',
+					reasoningSegments: [],
+					steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
+				},
+			},
+		]);
+
+		await wrapper.find('button').trigger('click');
+		// The child's streamed text is what becomes the delegate answer, so a
+		// settled row renders it once — not again from the trace.
+		expect(wrapper.findAll('[data-test-id="tool-step-details"]')).toHaveLength(1);
+		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toBe('Final child answer');
+		expect(wrapper.find('[data-test-id="agent-chat-delegate-child-progress"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('Web search');
+		expect(wrapper.text()).not.toContain('subAgentId');
+	});
+
+	it('renders the child tool calls above the answer', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+				toolCallId: 'tc-delegate',
+				state: TOOL_CALL_STATE.DONE,
+				input: { subAgentId: 'inline', taskName: 'research_api' },
+				output: { status: 'completed', answer: 'Final child answer' },
+				childProgress: {
+					text: '',
+					reasoningSegments: [],
+					steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
+				},
+			},
+		]);
+
+		await wrapper.find('button').trigger('click');
+		const text = wrapper.text();
+		expect(text.indexOf('Web search')).toBeLessThan(text.indexOf('Final child answer'));
+	});
+
+	it('still renders the child text when a failed delegation has no answer', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+				toolCallId: 'tc-delegate',
+				state: TOOL_CALL_STATE.RUNNING,
+				input: { subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+				childProgress: {
+					text: 'Partial work before it died',
+					reasoningSegments: [],
+					steps: [],
+				},
+			},
+		]);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.text()).toContain('Partial work before it died');
+	});
+
+	it('skips reasoning segments whose content the provider never revealed', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+				toolCallId: 'tc-delegate',
+				state: TOOL_CALL_STATE.DONE,
+				input: { subAgentId: 'inline', taskName: 'research_api' },
+				output: { status: 'completed', answer: 'Final child answer' },
+				childProgress: {
+					text: '',
+					reasoningSegments: [
+						{ id: 'r-1', content: '' },
+						{ id: 'r-2', content: 'Weighing the sources.' },
+						{ id: 'r-3', content: '' },
+					],
+					steps: [],
+				},
+			},
+		]);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.text()).toContain('Weighing the sources.');
+		expect(wrapper.text()).not.toContain('Reasoning');
+	});
+
+	describe('policy-refused tool calls', () => {
+		function refusedCall(violation: Partial<PolicyViolation> = {}): ToolCall {
+			return {
+				tool: 'search_nodes',
+				toolCallId: 'tc-refused',
+				state: TOOL_CALL_STATE.ERROR,
+				output: {
+					isPolicyRefusal: true,
+					message: 'Blocked by policy',
+					violations: [
+						{
+							kind: 'node-type-unavailable',
+							checkId: 'check-1',
+							message: 'Not allowed',
+							subject: 'slack',
+							scope: 'instance',
+							...violation,
+						},
+					],
+					instruction: 'Ask the user to pick another tool.',
+				},
+			};
+		}
+
+		it('names the project scope and sends the user to the project admins', async () => {
+			useTypeAvailabilityPoliciesStore().policyProject = createTestProject({ id: 'project-1' });
+			const wrapper = mountSteps([refusedCall({ scope: 'project', projectId: 'project-1' })]);
+			const callout = wrapper.get('[data-test-id="tool-step-error"]');
+
+			expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(
+				'Restricted in this project',
+			);
+			expect(callout.text()).toContain('Search nodes is restricted in this project.');
+			const link = callout.get('[data-test-id="agent-chat-tool-policy-refusal-contact-admin"]');
+			expect(link.text()).toBe('Contact project admin');
+			await link.trigger('click');
+			expect(callout.get('[data-test-id="contact-admin-modal"]').attributes('data-audience')).toBe(
+				'project',
+			);
+		});
+
+		it('shows a lock with the scope line as tooltip', () => {
+			const icon = mountSteps([refusedCall()]).get('[data-testid="tool-step-warning"]');
+			expect(icon.attributes('data-error-icon')).toBe('lock');
+			expect(icon.attributes('title')).toBe('Restricted on this instance');
+		});
+
+		it('keeps the default error icon for a non-refusal error', () => {
+			const wrapper = mountSteps([
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-err',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Boom',
+				},
+			]);
+			expect(
+				wrapper.get('[data-testid="tool-step-warning"]').attributes('data-error-icon'),
+			).toBeUndefined();
+		});
+
+		it('shows the refusal reason and a contact-admin link in the callout', () => {
+			const wrapper = mountSteps([refusedCall()]);
+			const callout = wrapper.get('[data-test-id="tool-step-error"]');
+			// Node types are not loaded in this test, so the step label names the subject.
+			expect(callout.text()).toContain('Search nodes is restricted on this instance.');
+			expect(
+				callout.find('[data-test-id="agent-chat-tool-policy-refusal-contact-admin"]').exists(),
+			).toBe(true);
+		});
+
+		it('hides the raw Output section even when expanded, unlike a normal error', async () => {
+			const refusedWrapper = mountSteps([refusedCall()]);
+			await refusedWrapper.get('button').trigger('click');
+			expect(refusedWrapper.find('pre').exists()).toBe(false);
+
+			const normalErrorWrapper = mountSteps([
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-err',
+					state: TOOL_CALL_STATE.ERROR,
+					output: { foo: 'bar' },
+				},
+			]);
+			await normalErrorWrapper.get('button').trigger('click');
+			expect(normalErrorWrapper.find('pre').exists()).toBe(true);
+		});
+
+		it('excludes a refusal from fixable failures while a normal error stays fixable', async () => {
+			const normalError: ToolCall = {
+				tool: 'search_nodes',
+				toolCallId: 'tc-normal',
+				state: TOOL_CALL_STATE.ERROR,
+				output: 'Connection failed',
+			};
+			const wrapper = mountSteps([normalError, refusedCall()], {
+				canFixWithAssistant: true,
+				executionId: 'exec-1',
+			});
+
+			const fixCallout = wrapper.get('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]');
+			expect(fixCallout.text()).toContain('Connection failed');
+			expect(fixCallout.text()).not.toContain('is restricted on this instance');
+			expect(wrapper.find('[data-test-id="agent-chat-tool-policy-refusal"]').exists()).toBe(true);
+
+			await wrapper.get('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
+			expect(wrapper.emitted('fixWithAssistant')).toEqual([
+				[[expect.objectContaining({ toolCallId: 'tc-normal' })]],
+			]);
+		});
+	});
+});

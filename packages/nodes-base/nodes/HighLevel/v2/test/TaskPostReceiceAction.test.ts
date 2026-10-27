@@ -11,7 +11,7 @@ describe('taskPostReceiceAction', () => {
 
 	beforeEach(() => {
 		mockThis = {
-			getNodeParameter: jest.fn((parameterName: string) => {
+			getNodeParameter: vi.fn((parameterName: string) => {
 				if (parameterName === 'contactId') return '12345';
 				return undefined;
 			}),

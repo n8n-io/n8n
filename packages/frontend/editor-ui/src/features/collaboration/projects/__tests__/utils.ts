@@ -37,6 +37,7 @@ export function createTestProject(data: Partial<Project>): Project {
 		type: ProjectTypes.Team,
 		relations: [],
 		scopes: [],
+		rolesManaged: false,
 		...data,
 	};
 }

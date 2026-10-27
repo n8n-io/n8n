@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { ApplicationError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, UnexpectedError, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 import { assistantRLC, modelRLC } from '../descriptions';
@@ -24,7 +24,7 @@ const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to enable the code interpreter that allows the assistants to write and run Python code in a sandboxed execution environment, find more <a href="https://platform.openai.com/docs/assistants/tools/code-interpreter" target="_blank">here</a>',
+					'Whether to enable the code interpreter that allows the assistants to write and run Python code in a sandboxed execution environment, find more <a href="https://developers.openai.com/api/docs/guides/tools-code-interpreter" target="_blank">here</a>',
 			},
 			{
 				displayName: 'Description',
@@ -66,7 +66,7 @@ const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to augments the assistant with knowledge from outside its model, such as proprietary product information or documents, find more <a href="https://platform.openai.com/docs/assistants/tools/knowledge-retrieval" target="_blank">here</a>',
+					'Whether to augments the assistant with knowledge from outside its model, such as proprietary product information or documents, find more <a href="https://developers.openai.com/api/docs/guides/tools-file-search" target="_blank">here</a>',
 			},
 			{ ...modelRLC('modelSearch'), required: false },
 			{
@@ -126,7 +126,7 @@ function getFileIds(file_ids: unknown): string[] {
 		return file_ids.split(',').map((file_id) => file_id.trim());
 	}
 
-	throw new ApplicationError('Invalid file_ids type');
+	throw new UnexpectedError('Invalid file_ids type');
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {

@@ -2,10 +2,13 @@ import { CliParser, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { CommandMetadata, type CommandEntry } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
+import { access } from 'node:fs/promises';
+import path from 'node:path';
 import picocolors from 'picocolors';
 import { z, ZodError } from 'zod';
 
 import './zod-alias-support';
+import { packagedModules } from './modules/modules.manifest';
 
 /**
  * Registry that manages CLI commands, their execution, and metadata.
@@ -22,6 +25,7 @@ export class CommandRegistry {
 		private readonly cliParser: CliParser,
 	) {
 		this.commandName = process.argv[2] ?? 'start';
+		this.moduleRegistry.registerPackagedModules(packagedModules);
 	}
 
 	async execute() {
@@ -35,11 +39,23 @@ export class CommandRegistry {
 			this.commandName = 'execute-batch';
 		}
 
-		// Try to load regular commands
-		try {
-			await import(`./commands/${this.commandName.replaceAll(':', '/')}.js`);
-		} catch {
-			// Do nothing
+		// Load the command file if it exists. A missing file means this isn't a
+		// regular command (it may still be provided by a module below), so we let
+		// the "not found" handling take over. But if the file exists and fails to
+		// load, surface the real error instead of masking a broken dependency as
+		// a missing command.
+		const relativeCommandPath = `./commands/${this.commandName.replaceAll(':', '/')}.js`;
+		const commandFileExists = await access(path.resolve(__dirname, relativeCommandPath)).then(
+			() => true,
+			() => false,
+		);
+		if (commandFileExists) {
+			try {
+				await import(relativeCommandPath);
+			} catch (error) {
+				this.logger.error(picocolors.red(`Error: Failed to load command "${this.commandName}"`));
+				throw error;
+			}
 		}
 
 		// Load modules to ensure all module commands are registered

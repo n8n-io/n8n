@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useVersionsStore } from '@/app/stores/versions.store';
+import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { N8nMenuItem } from '@n8n/design-system';
 
 interface Props {
@@ -37,6 +37,7 @@ const onUpdateClick = async () => {
 			id: 'version-update-cta',
 			icon: { value: 'status-warning', type: 'icon', color: 'primary' },
 			disabled: props.disabled,
+			disabledReason: props.tooltipText,
 			label: i18n.baseText('whatsNew.versionsBehind', {
 				interpolate: {
 					count: versionsStore.nextVersions.length > 99 ? '99+' : versionsStore.nextVersions.length,

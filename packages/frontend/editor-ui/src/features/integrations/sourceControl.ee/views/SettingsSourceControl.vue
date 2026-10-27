@@ -4,26 +4,34 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLoadingService } from '@/app/composables/useLoadingService';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { useEnvironmentsVersionSwitch } from '@/features/shared/promotions/useEnvironmentsVersionSwitch';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { useSourceControlStore } from '../sourceControl.store';
+import {
+	SOURCE_CONTROL_HTTPS_REPO_URL_REGEX,
+	SOURCE_CONTROL_SSH_REPO_URL_REGEX,
+} from '../sourceControl.constants';
 import type { SshKeyTypes, SourceControlPreferences } from '../sourceControl.types';
 import type { TupleToUnion } from '@/app/utils/typeHelpers';
-import type { Rule, RuleGroup } from '@n8n/design-system/types';
+import type { Rule, RuleGroup } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { Validatable } from '@n8n/design-system';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nCallout,
 	N8nCheckbox,
 	N8nColorPicker,
+	N8nExternalLink,
 	N8nFormInput,
 	N8nHeading,
 	N8nNotice,
+	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 const locale = useI18n();
@@ -33,7 +41,17 @@ const toast = useToast();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
 const loadingService = useLoadingService();
+const { isAvailable: isPromotionsAvailable } = usePromotionsEnabled();
+const { busy: switchBusy, switchTo: switchEnvironmentsVersion } = useEnvironmentsVersionSwitch();
+const title = computed(() =>
+	locale.baseText(
+		isPromotionsAvailable.value
+			? 'settings.sourceControl.title.classic'
+			: 'settings.sourceControl.title',
+	),
+);
 
+const isInitializing = ref(true);
 const isConnected = ref(false);
 const connectionType = ref<'ssh' | 'https'>('ssh');
 const httpsUsername = ref('');
@@ -150,9 +168,17 @@ const initialize = async () => {
 };
 
 onMounted(async () => {
-	documentTitle.set(locale.baseText('settings.sourceControl.title'));
-	if (!sourceControlStore.isEnterpriseSourceControlEnabled) return;
-	await initialize();
+	documentTitle.set(title.value);
+	if (!sourceControlStore.isEnterpriseSourceControlEnabled) {
+		isInitializing.value = false;
+		return;
+	}
+
+	try {
+		await initialize();
+	} finally {
+		isInitializing.value = false;
+	}
 });
 
 const formValidationStatus = reactive<Record<string, boolean>>({
@@ -173,8 +199,7 @@ const repoUrlValidationRules = computed<Array<Rule | RuleGroup>>(() => {
 		baseRules.push({
 			name: 'MATCH_REGEX',
 			config: {
-				regex:
-					/^(?:git@|ssh:\/\/git@|[\w-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~.]+(?:\/[\w\-~.]+)*(?:\.git)?(?:\/.*)?$/,
+				regex: SOURCE_CONTROL_SSH_REPO_URL_REGEX,
 				message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
 			},
 		});
@@ -182,7 +207,7 @@ const repoUrlValidationRules = computed<Array<Rule | RuleGroup>>(() => {
 		baseRules.push({
 			name: 'MATCH_REGEX',
 			config: {
-				regex: /^https:\/\/.+$/,
+				regex: SOURCE_CONTROL_HTTPS_REPO_URL_REGEX,
 				message: locale.baseText('settings.sourceControl.enterValidHttpsUrl'),
 			},
 		});
@@ -264,22 +289,43 @@ watch(connectionType, () => {
 
 <template>
 	<div>
-		<N8nHeading size="2xlarge" tag="h1">{{
-			locale.baseText('settings.sourceControl.title')
-		}}</N8nHeading>
+		<N8nHeading size="2xlarge" tag="h1">{{ title }}</N8nHeading>
 		<div
 			v-if="sourceControlStore.isEnterpriseSourceControlEnabled"
 			data-test-id="source-control-content-licensed"
 		>
-			<N8nCallout theme="secondary" icon="info" class="mt-2xl mb-l">
-				<I18nT keypath="settings.sourceControl.description" tag="span" scope="global">
+			<N8nCallout v-if="isPromotionsAvailable" theme="info" iconless class="mt-l">
+				<I18nT keypath="settings.sourceControl.switch.callout" tag="span" scope="global">
 					<template #link>
-						<a :href="locale.baseText('settings.sourceControl.docs.url')" target="_blank">
-							{{ locale.baseText('settings.sourceControl.description.link') }}
-						</a>
+						<!-- FIXME: link to the environments docs page once it exists. -->
+						<N8nExternalLink inline size="small" href="#">{{
+							locale.baseText('settings.sourceControl.switch.link')
+						}}</N8nExternalLink>
 					</template>
 				</I18nT>
+				<template #trailingContent>
+					<N8nButton
+						variant="outline"
+						size="small"
+						:label="locale.baseText('settings.sourceControl.switch.button')"
+						:loading="switchBusy"
+						data-test-id="source-control-switch-to-v2"
+						@click="switchEnvironmentsVersion('v2')"
+					/>
+				</template>
 			</N8nCallout>
+			<N8nText tag="p" size="small" color="text-base" class="mt-l mb-l">
+				<I18nT keypath="settings.sourceControl.description" tag="span" scope="global">
+					<template #link>
+						<N8nExternalLink
+							inline
+							size="small"
+							:href="locale.baseText('settings.sourceControl.docs.url')"
+							>{{ locale.baseText('settings.sourceControl.description.link') }}</N8nExternalLink
+						>
+					</template>
+				</I18nT>
+			</N8nText>
 			<N8nHeading size="xlarge" tag="h2" class="mb-s">{{
 				locale.baseText('settings.sourceControl.gitConfig')
 			}}</N8nHeading>
@@ -317,7 +363,7 @@ watch(connectionType, () => {
 						name="repoUrl"
 						validate-on-blur
 						:validation-rules="repoUrlValidationRules"
-						:disabled="isConnected"
+						:disabled="isInitializing || isConnected"
 						:placeholder="
 							connectionType === 'ssh'
 								? locale.baseText('settings.sourceControl.sshRepoUrlPlaceholder')
@@ -326,9 +372,9 @@ watch(connectionType, () => {
 						@validate="(value: boolean) => onValidate('repoUrl', value)"
 					/>
 					<N8nButton
+						variant="outline"
 						v-if="isConnected"
 						:class="$style.disconnectButton"
-						type="tertiary"
 						size="large"
 						icon="trash-2"
 						data-test-id="source-control-disconnect-button"
@@ -413,6 +459,7 @@ watch(connectionType, () => {
 						:validation-rules="keyGeneratorTypeValidationRules"
 						:options="sourceControlStore.sshKeyTypesWithLabel"
 						:model-value="sourceControlStore.preferences.keyGeneratorType"
+						:disabled="isInitializing"
 						@validate="(value: boolean) => onValidate('keyGeneratorType', value)"
 						@update:model-value="onSelectSshKeyType"
 					/>
@@ -424,11 +471,12 @@ watch(connectionType, () => {
 						:copy-button-text="locale.baseText('generic.clickToCopy')"
 					/>
 					<N8nButton
+						variant="outline"
 						v-if="!isConnected"
 						size="large"
-						type="tertiary"
 						icon="refresh-cw"
 						data-test-id="source-control-refresh-ssh-key-button"
+						:disabled="isInitializing"
 						@click="refreshSshKey"
 					>
 						{{ locale.baseText('settings.sourceControl.refreshSshKey') }}
@@ -449,7 +497,7 @@ watch(connectionType, () => {
 			<N8nButton
 				v-if="!isConnected"
 				size="large"
-				:disabled="!validForConnection"
+				:disabled="isInitializing || !validForConnection"
 				:class="$style.connect"
 				data-test-id="source-control-connect-button"
 				@click="onConnect"
@@ -485,12 +533,13 @@ watch(connectionType, () => {
 								</span>
 							</template>
 							<N8nButton
-								size="small"
-								type="tertiary"
+								variant="outline"
+								iconOnly
+								size="xlarge"
 								icon="refresh-cw"
-								square
-								:class="$style.refreshBranches"
+								:aria-label="locale.baseText('generic.refresh')"
 								data-test-id="source-control-refresh-branches-button"
+								:class="$style.refreshBranches"
 								@click="refreshBranches"
 							/>
 						</N8nTooltip>
@@ -500,11 +549,13 @@ watch(connectionType, () => {
 						:class="$style.readOnly"
 						data-test-id="source-control-read-only-checkbox"
 					>
-						<I18nT keypath="settings.sourceControl.protected" tag="span" scope="global">
-							<template #bold>
-								<strong>{{ locale.baseText('settings.sourceControl.protected.bold') }}</strong>
-							</template>
-						</I18nT>
+						<template #label>
+							<I18nT keypath="settings.sourceControl.protected" tag="span" scope="global">
+								<template #bold>
+									<strong>{{ locale.baseText('settings.sourceControl.protected.bold') }}</strong>
+								</template>
+							</I18nT>
+						</template>
 					</N8nCheckbox>
 				</div>
 				<div :class="$style.group">
@@ -524,7 +575,7 @@ watch(connectionType, () => {
 				</div>
 			</div>
 		</div>
-		<N8nActionBox
+		<N8nEmptyState
 			v-else
 			data-test-id="source-control-content-unlicensed"
 			:class="$style.actionBox"
@@ -541,7 +592,7 @@ watch(connectionType, () => {
 					{{ locale.baseText('settings.sourceControl.actionBox.description.link') }}
 				</a>
 			</template>
-		</N8nActionBox>
+		</N8nEmptyState>
 	</div>
 </template>
 
@@ -556,7 +607,7 @@ watch(connectionType, () => {
 		border: 1px solid var(--color--foreground--tint-1);
 	}
 
-	label {
+	> label {
 		display: inline-block;
 		padding: 0 0 var(--spacing--2xs);
 		font-size: var(--font-size--sm);
@@ -644,9 +695,12 @@ watch(connectionType, () => {
 	}
 
 	button.refreshBranches {
-		height: 36px;
-		width: 36px;
 		margin-left: var(--spacing--xs);
+
+		svg {
+			width: 16px;
+			height: 16px;
+		}
 	}
 }
 </style>

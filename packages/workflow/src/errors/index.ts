@@ -1,18 +1,33 @@
-export { BaseError, type BaseErrorOptions } from './base/base.error';
-export { OperationalError, type OperationalErrorOptions } from './base/operational.error';
-export { UnexpectedError, type UnexpectedErrorOptions } from './base/unexpected.error';
-export { UserError, type UserErrorOptions } from './base/user.error';
-export { ApplicationError } from '@n8n/errors';
+export {
+	ApplicationError,
+	BaseError,
+	type BaseErrorOptions,
+	OperationalError,
+	type OperationalErrorOptions,
+	UnexpectedError,
+	type UnexpectedErrorOptions,
+	UserError,
+	type UserErrorOptions,
+} from '@n8n/errors';
+export { NodeVersionNotFoundError } from './node-version-not-found.error';
 export { ExpressionError } from './expression.error';
 export {
 	ExecutionCancelledError,
 	ManualExecutionCancelledError,
+	MemoryPressureExecutionCancelledError,
 	SystemShutdownExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	type CancellationReason,
 } from './execution-cancelled.error';
 export { NodeApiError } from './node-api.error';
 export { NodeOperationError } from './node-operation.error';
+export {
+	TIMED_CAUSES,
+	ACTIONABLE_CAUSES,
+	type Failure,
+	type TimedCause,
+	type ActionableCause,
+} from './failure';
 export { WorkflowConfigurationError } from './workflow-configuration.error';
 export { NodeSslError } from './node-ssl.error';
 export { WebhookPathTakenError } from './webhook-taken.error';
@@ -26,5 +41,11 @@ export { TriggerCloseError } from './trigger-close.error';
 export { NodeError } from './abstract/node.error';
 export { ExecutionBaseError } from './abstract/execution-base.error';
 export { ExpressionExtensionError } from './expression-extension.error';
+export { ExpressionDestructuringError } from './expression-destructuring.error';
+export { ExpressionComputedDestructuringError } from './expression-computed-destructuring.error';
+export { ExpressionClassExtensionError } from './expression-class-extension.error';
+export { ExpressionReservedVariableError } from './expression-reserved-variable.error';
+export { ExpressionWithStatementError } from './expression-with-statement.error';
 export { DbConnectionTimeoutError } from './db-connection-timeout-error';
-export { ensureError } from './ensure-error';
+export { hasPolicyRefusalMarker } from './policy-refusal';
+export { IsolateError } from '@n8n/errors';

@@ -1,0 +1,120 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a helpful assistant. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Explain quantum computing basics"
+						}
+					]
+				}
+			],
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013c557cd6edb4610bee729069b8b2d4881e4d448c05beda6409a1841e202455b17c2683922171ece32bb43d96c20a0c7f6de27cc93144b528ee4c4692eb674213433cb9d6f7ebee1d08a4433a828462c681e15833eca5131830f46db9a4c66769466bcf96fb20fa6f239b1c98c656c729a94e82e9bc97793e3c9d1f4e878369dceccd8b83cbd2316f3e9ecddb367bfd1e5bba767afaf4fbe5ffef4eaf9cfabe7bfbe32e35b3799b1099e930063745151d2b5d68b92a8c97eff636ca2fa7a1e08a3179349c33c8822bd6f482ced087352741c37b266e3bd93bad1b9fa4b9268b2a3a3b1b1684b9adb40a8cecb7cd760bad107c2fc2edde66c7a3fd525551490e7c7d5e7f69fb4b3f2b6763d36bed16dd16c6c228595b3345747c16426c525c790a710cb9242823d2fc89bcc88d739aed0312e98cc7a0ddbbff5a347d4677d88e87cc1de5e7e39f75f30e9eecbe9ba07bdad4f9887734ad7c9b07b64c6acb7afad9d14b7ee019384e62ed77262c5afbbd699ecb8d64b765dba311b1c7b6cd65f0bc9bddd0b6f1b146d2a38f555dda893024e303a1b2fe4421e3f8657d4c2a9174bb576a2d1e86db3701ae16073f0c4693c1c8d2e6402a79cdac4224332c9c0ac1f1ed0147c8059f2a6773483531458104cc7301b27e568e1b584e8aa8615857c13b935eb6fa8cb7bf3790407b1a929d43ebad4b2877da4cfb7657d8487e0d3b58b0a4e20617035134445a508a89092058da863a8086313284f275f486ac17803f4e12bad0ede528ca9c42a94166a1fa35b3876ea28263035066426eed1bf104529982a12dd01bf20eb2b02eb432046a5fce35ffff648d3abbd1038e9a89a5bc0e592ac46f05a5288bbddff40b893e72f25b171a408b66bb38e9891a1f6571480ae6b2f24ea90b94de64f8106f039bcef417ffce76fb3cb9e7bc8e073b03b1d0e7e094e963e541da03e6f2f45290c536093b79e29900b1f9c965504ac6a36df360dee0d8e5bb67d11590594784521024a0e16c512c355f07d39c584e18df027ebe8b9498081dd25710b5725c97e1964abd53bdafea56ce1a5c219aa52e8887b9384be001356ba4e3051b3846f34fa11adfaae85184341204db5a010472338b0a1add51701ebb23ddc2fd0ded737b5bacafdd9555de2950553d579cabe70519d8d63583a49893cec4f9c27bac76ebe559ec9364cdd813c3405e42e5abfa2d00ec667684b27044c18c449910ceb2e940281ac2fa4a7e93dcdec21c7af5de57a26e9127cc38f180896010bc7040739595ff6cd08cbe02b2809750c2bb7d8e4f1c1dd0f38ccb8099c36215047d4b14266881693d3b3e9b4e39681fb5611168e39010521ca29dfaac17dcc31b49a3890fb7af9c12d3bbad36d820bf4be718172d012658b36ede6336b48e21001384ff37b7fc3f942ced531a75144c1a5918bfc04ce7cd47e462d1b86d846a52a42892b82b2913c509ed2747b2eed21257da18c6189a1aff2e879957a3d10f2e4ca07ce6f68227d237575f6c4acefde407cfd7f0b88afb7fcdcc2bc5952bf88764769b6d0edac9186249f6b13c47cf332b9beb76df2d6faf7747abcf315f56927ff3c64db3ab3298dff00876a8c64e90f0000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:45Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:45Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:45Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:45Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a103715d9cf58f2b-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Tue, 23 Jun 2026 12:19:45 GMT",
+			"request-id": "req_011CcLBQNA4qSoqoeB66N67n",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=1rksK3sQURgBTN4HxnnZnwNSp_shDyitBRjEcr_GtWw-1782217184.895175-1.0.1.1-BBVIWlpRV5eze7OnwiR7gyKt0ENfGSYXKofCSuHE8kg; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-8c354c7a0da34e4d2f63b3e61d681ad3-7097c70314d5dc84-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Generate a short title and a single emoji for a conversation based on the user message.\nRespond with ONLY a JSON object: {\"title\": \"...\", \"emoji\": \"...\"}\nRules:\n- Title: 2 to 6 words, max 50 characters, sentence case\n- Title must not contain emoji, quotes, colons, or markdown formatting\n- Emoji: exactly one emoji that represents the topic\n- Respond with the JSON object only, no other text"
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "\nHere's the conversation:\n<conversation>\nExplain quantum computing basics\n</conversation>"
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01KLWRw2iQLy4pgFr9hbtGr6\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"```json\\n{\\\"title\\\": \\\"Quantum computing basics\\\", \\\"emoji\\\": \\\"⚛️\\\"}\\n```\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":132,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":26,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:50Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:50Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:50Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:50Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a103717efc158f2b-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:19:51 GMT",
+			"request-id": "req_011CcLBQm2EbBi1r1LKqyUm4",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=Dm0yJj3vbh6xOySuJpGt5L27fUi4wSszoUpMZURkCRc-1782217190.2401826-1.0.1.1-BAE_WuMtqUdxI5ywYnC9R7UPxHZPhbIscuPxNKBNB5c; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-1cefc157d0af6627015d2a9d746e6a69-1fa6a572e5856588-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

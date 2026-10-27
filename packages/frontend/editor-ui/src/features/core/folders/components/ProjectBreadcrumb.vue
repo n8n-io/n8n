@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { type Project, ProjectTypes } from '@/features/collaboration/projects/projects.types';
-import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
 
 import { N8nLink, N8nText } from '@n8n/design-system';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
@@ -10,12 +10,14 @@ type Props = {
 	currentProject?: Project;
 	isDragging?: boolean;
 	isShared?: boolean;
+	icon?: IconOrEmoji;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	currentProject: undefined,
 	isDragging: false,
 	isShared: false,
+	icon: undefined,
 });
 
 const emit = defineEmits<{
@@ -26,6 +28,10 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const projectIcon = computed((): IconOrEmoji => {
+	if (props.icon) {
+		return props.icon;
+	}
+
 	if (props.isShared) {
 		return { type: 'icon', value: 'share' };
 	}
@@ -80,12 +86,18 @@ const onProjectMouseUp = () => {
 	<div
 		:class="{ [$style['home-project']]: true, [$style.dragging]: isDragging }"
 		data-test-id="home-project"
+		data-droppable
 		@mouseenter="onHover"
 		@mouseup="isDragging ? onProjectMouseUp() : null"
 	>
-		<N8nLink :to="projectLink" :class="[$style['project-link']]">
+		<N8nLink :to="projectLink" :underline="false" :class="[$style['project-link']]">
 			<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" :title="projectName" />
-			<N8nText size="medium" color="text-base" :class="$style['project-label']">
+			<N8nText
+				size="medium"
+				color="text-base"
+				:class="$style['project-label']"
+				:title="projectName"
+			>
 				{{ projectName }}
 			</N8nText>
 		</N8nLink>
@@ -93,6 +105,8 @@ const onProjectMouseUp = () => {
 </template>
 
 <style module lang="scss">
+@use '@/app/css/variables' as *;
+
 .home-project {
 	display: flex;
 	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
@@ -120,6 +134,11 @@ const onProjectMouseUp = () => {
 }
 
 :global(.n8n-text).project-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 200px;
+
 	@media (max-width: $breakpoint-sm) {
 		display: none;
 	}

@@ -1,49 +1,223 @@
-import type { ModuleInterface, ModuleMetadata } from '@n8n/decorators';
+import type { ModuleInterface, ModuleMetadata, SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
+import { mock } from 'vitest-mock-extended';
 
 import type { LicenseState } from '../../license-state';
+import { Logger } from '../../logging/logger';
+import { MissingModuleError } from '../errors/missing-module.error';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
-import { ModuleRegistry } from '../module-registry';
-import { MODULE_NAMES } from '../modules.config';
+import { ModuleLoadError } from '../errors/module-load.error';
+import { getModuleEntryUrl, ModuleRegistry } from '../module-registry';
 
 beforeEach(() => {
-	jest.resetAllMocks();
+	vi.resetAllMocks();
 	process.env = {};
 	Container.reset();
 });
 
+describe('getModuleEntryUrl', () => {
+	it.each([
+		['community module', false, '/insights/insights.module.js'],
+		['enterprise module', true, '/insights.ee/insights.module.js'],
+	])('should return a file URL for a %s', (_, isEnterprise, expectedPathSuffix) => {
+		const url = new URL(
+			getModuleEntryUrl(path.join(process.cwd(), 'dist', 'modules'), 'insights', isEnterprise),
+		);
+
+		expect(url.protocol).toBe('file:');
+		expect(url.pathname.endsWith(expectedPathSuffix)).toBe(true);
+	});
+});
+
 describe('eligibleModules', () => {
-	it('should consider all default modules eligible', () => {
-		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(MODULE_NAMES);
+	it('should not include opt-in modules by default', () => {
+		const eligible = Container.get(ModuleRegistry).eligibleModules;
+		expect(eligible).not.toContain('engine-v2');
+	});
+
+	it('should include policy-infrastructure by default', () => {
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain('policy-infrastructure');
+	});
+
+	it('should list inbound-auth-core before the modules that inject its contracts', () => {
+		const eligible = Container.get(ModuleRegistry).eligibleModules;
+		const core = eligible.indexOf('inbound-auth-core');
+
+		expect(core).toBeGreaterThanOrEqual(0);
+		for (const consumer of ['oauth-server', 'mcp', 'token-exchange'] as const) {
+			expect(eligible).toContain(consumer);
+			expect(eligible.indexOf(consumer)).toBeGreaterThan(core);
+		}
+	});
+
+	it('should allow opting out of policy-infrastructure via env var', () => {
+		process.env.N8N_DISABLED_MODULES = 'policy-infrastructure';
+		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('policy-infrastructure');
+	});
+
+	it.each([
+		'skills',
+		'instance-ai',
+		'knowledge',
+		'agents',
+		'agent-evals',
+		'inbox',
+		'type-availability-policies',
+	])('should include %s by default', (moduleName) => {
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
+	});
+
+	it.each([
+		'instance-ai',
+		'knowledge',
+		'agents',
+		'agent-evals',
+		'inbox',
+		'type-availability-policies',
+	])('should allow opting out of the default %s module via env var', (moduleName) => {
+		process.env.N8N_DISABLED_MODULES = moduleName;
+		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain(moduleName);
+	});
+
+	describe('skills and agents', () => {
+		it('should keep skills eligible and warn once when skills is disabled but agents is not', () => {
+			process.env.N8N_DISABLED_MODULES = 'skills';
+			const warn = vi.spyOn(Container.get(Logger), 'warn').mockImplementation(() => {});
+			const registry = Container.get(ModuleRegistry);
+
+			const eligible = registry.eligibleModules;
+			// Read twice: the warning is logged only once.
+			expect(registry.eligibleModules).toEqual(eligible);
+
+			expect(eligible).toContain('skills');
+			expect(eligible.indexOf('skills')).toBeLessThan(eligible.indexOf('agents'));
+			expect(warn).toHaveBeenCalledTimes(1);
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining('"agents" module'));
+		});
+
+		it('should still apply the other disabled modules when it keeps skills', () => {
+			process.env.N8N_DISABLED_MODULES = 'skills,insights';
+			vi.spyOn(Container.get(Logger), 'warn').mockImplementation(() => {});
+
+			const eligible = Container.get(ModuleRegistry).eligibleModules;
+
+			expect(eligible).toContain('skills');
+			expect(eligible).not.toContain('insights');
+		});
+
+		it('should allow opting out of skills when agents is disabled too', () => {
+			process.env.N8N_DISABLED_MODULES = 'skills,agents';
+			const warn = vi.spyOn(Container.get(Logger), 'warn').mockImplementation(() => {});
+
+			const eligible = Container.get(ModuleRegistry).eligibleModules;
+
+			expect(eligible).not.toContain('skills');
+			expect(eligible).not.toContain('agents');
+			expect(warn).not.toHaveBeenCalled();
+		});
+	});
+
+	it('should initialize knowledge before agents', () => {
+		const eligible = Container.get(ModuleRegistry).eligibleModules;
+		expect(eligible.indexOf('knowledge')).toBeLessThan(eligible.indexOf('agents'));
 	});
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'policy-infrastructure',
+			'inbound-auth-core',
 			'external-secrets',
 			'community-packages',
 			'data-table',
+			'oauth-server',
 			'mcp',
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			'mcp-discovery',
+			// EOF Experiment cleanup
 			'provisioning',
 			'breaking-changes',
+			'source-control',
 			'dynamic-credentials',
 			'chat-hub',
+			'sso-oidc',
+			'sso-saml',
+			'log-streaming',
+			'ldap',
+			'quick-connect',
+			'workflow-builder',
+			'favorites',
+			'redaction',
+			'instance-registry',
+			'otel',
+			'token-exchange',
+			'instance-version-history',
+			'encryption-key-manager',
+			'oauth-jwe',
+			'n8n-packages',
+			'runtime-credentials',
+			'mcp-registry',
+			'workflow-reviews',
+			'inbox',
+			'skills',
+			'instance-ai',
+			'knowledge',
+			'agents',
+			'agent-evals',
+			'scim',
+			'type-availability-policies',
 		]);
 	});
 
 	it('should consider a module eligible if it was enabled via env var', () => {
-		process.env.N8N_ENABLED_MODULES = 'data-table';
+		process.env.N8N_ENABLED_MODULES = 'engine-v2';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'policy-infrastructure',
+			'inbound-auth-core',
 			'insights',
 			'external-secrets',
 			'community-packages',
 			'data-table',
+			'oauth-server',
 			'mcp',
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			'mcp-discovery',
+			// EOF Experiment cleanup
 			'provisioning',
 			'breaking-changes',
+			'source-control',
 			'dynamic-credentials',
 			'chat-hub',
+			'sso-oidc',
+			'sso-saml',
+			'log-streaming',
+			'ldap',
+			'quick-connect',
+			'workflow-builder',
+			'favorites',
+			'redaction',
+			'instance-registry',
+			'otel',
+			'token-exchange',
+			'instance-version-history',
+			'encryption-key-manager',
+			'oauth-jwe',
+			'n8n-packages',
+			'runtime-credentials',
+			'mcp-registry',
+			'workflow-reviews',
+			'inbox',
+			'skills',
+			'instance-ai',
+			'knowledge',
+			'agents',
+			'agent-evals',
+			'scim',
+			'type-availability-policies',
+			'engine-v2',
 		]);
 	});
 
@@ -60,14 +234,14 @@ describe('loadModules', () => {
 		const SecondEntity = class SecondEntityClass {};
 
 		const ModuleClass = {
-			entities: jest.fn().mockReturnValue([FirstEntity, SecondEntity]),
+			entities: vi.fn().mockReturnValue([FirstEntity, SecondEntity]),
 		};
 		const moduleMetadata = mock<ModuleMetadata>({
-			getClasses: jest.fn().mockReturnValue([ModuleClass]),
+			getClasses: vi.fn().mockReturnValue([ModuleClass]),
 		});
 
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.loadModules([]);
 
@@ -75,50 +249,251 @@ describe('loadModules', () => {
 	});
 
 	it('should load no entities if none are defined by modules', async () => {
-		const ModuleClass = { entities: jest.fn().mockReturnValue([]) };
+		const ModuleClass = { entities: vi.fn().mockReturnValue([]) };
 		const moduleMetadata = mock<ModuleMetadata>({
-			getClasses: jest.fn().mockReturnValue([ModuleClass]),
+			getClasses: vi.fn().mockReturnValue([ModuleClass]),
 		});
 
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.loadModules([]);
 
 		expect(moduleRegistry.entities).toEqual([]);
 	});
+
+	describe('packaged modules', () => {
+		const newRegistry = () => {
+			const ModuleClass = { entities: vi.fn().mockReturnValue([]) };
+			const moduleMetadata = mock<ModuleMetadata>({
+				getClasses: vi.fn().mockReturnValue([ModuleClass]),
+			});
+			Container.get = vi.fn().mockReturnValue(ModuleClass);
+
+			return new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+		};
+
+		it('should load a module from the manifest instead of the filesystem', async () => {
+			const importPackagedModule = vi.fn().mockResolvedValue({});
+			const moduleRegistry = newRegistry();
+			moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+			await moduleRegistry.loadModules(['insights']);
+
+			expect(importPackagedModule).toHaveBeenCalledTimes(1);
+		});
+
+		it('should wrap a packaged module import failure', async () => {
+			const importError = new Error('Package import failed');
+			const moduleRegistry = newRegistry();
+			moduleRegistry.registerPackagedModules({
+				insights: vi.fn().mockRejectedValue(importError),
+			});
+
+			const loading = moduleRegistry.loadModules(['insights']);
+
+			await expect(loading).rejects.toThrow(ModuleLoadError);
+			await expect(loading).rejects.toThrow(importError.message);
+		});
+
+		it('should use the filesystem route for a module that is not in the manifest', async () => {
+			const importPackagedModule = vi.fn().mockResolvedValue({});
+			const moduleRegistry = newRegistry();
+			moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+			await expect(moduleRegistry.loadModules(['otel'])).rejects.toThrow(MissingModuleError);
+			expect(importPackagedModule).not.toHaveBeenCalled();
+		});
+
+		it('should load an eligible packaged module', async () => {
+			const importPackagedModule = vi.fn().mockResolvedValue({});
+			const moduleRegistry = newRegistry();
+			vi.spyOn(moduleRegistry, 'eligibleModules', 'get').mockReturnValue(['insights']);
+			moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+			await moduleRegistry.loadModules();
+
+			expect(importPackagedModule).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not load an ineligible packaged module', async () => {
+			const importPackagedModule = vi.fn().mockResolvedValue({});
+			const moduleRegistry = newRegistry();
+			vi.spyOn(moduleRegistry, 'eligibleModules', 'get').mockReturnValue([]);
+			moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+			await moduleRegistry.loadModules();
+
+			expect(importPackagedModule).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('entrypoint resolution', () => {
+		const MISSING_DEPENDENCY = 'n8n-fixture-absent-dependency';
+
+		let tmpDir: string;
+		let originalArgv1: string;
+
+		/** Writes `<modulesDir>/<dirName>/<moduleName>.module.js`. */
+		const writeEntrypoint = async (
+			dirName: string,
+			moduleName: string,
+			contents: string,
+			packageJson?: string,
+		) => {
+			const moduleDir = path.join(tmpDir, 'dist', 'modules', dirName);
+			await fs.mkdir(moduleDir, { recursive: true });
+			await fs.writeFile(path.join(moduleDir, `${moduleName}.module.js`), contents);
+			if (packageJson) await fs.writeFile(path.join(moduleDir, 'package.json'), packageJson);
+		};
+
+		const loadModule = async (moduleName: string) => {
+			const moduleMetadata = mock<ModuleMetadata>({ getClasses: vi.fn().mockReturnValue([]) });
+			const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			return await moduleRegistry.loadModules([moduleName as any]);
+		};
+
+		beforeAll(async () => {
+			tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'n8n-module-registry-'));
+
+			// Mark the tree as CommonJS, so each entrypoint below is evaluated as CJS
+			// unless its own directory says otherwise.
+			await fs.writeFile(path.join(tmpDir, 'package.json'), '{ "type": "commonjs" }');
+
+			// Entrypoints that are present but cannot resolve a dependency. This is what
+			// an incomplete install produces. CommonJS reports `MODULE_NOT_FOUND`, ESM
+			// reports `ERR_MODULE_NOT_FOUND` with no `url`, so neither may be mistaken
+			// for an absent entrypoint.
+			await writeEntrypoint(
+				'cjs-module',
+				'cjs-module',
+				`require(${JSON.stringify(MISSING_DEPENDENCY)});\n`,
+			);
+			await writeEntrypoint(
+				'esm-module',
+				'esm-module',
+				`import ${JSON.stringify(MISSING_DEPENDENCY)};\n`,
+				'{ "type": "module" }',
+			);
+
+			// A module that lives only in the enterprise directory.
+			await writeEntrypoint('ee-module.ee', 'ee-module', 'module.exports = {};\n');
+			await writeEntrypoint(
+				'ee-broken-module.ee',
+				'ee-broken-module',
+				`require(${JSON.stringify(MISSING_DEPENDENCY)});\n`,
+			);
+		});
+
+		afterAll(async () => {
+			await fs.rm(tmpDir, { recursive: true, force: true });
+		});
+
+		beforeEach(() => {
+			originalArgv1 = process.argv[1];
+			// `n8n` is not a dependency of this package, so `loadModules` falls back to
+			// deriving `modulesDir` from the n8n binary path, two levels up.
+			process.argv[1] = path.join(tmpDir, 'bin', 'n8n');
+		});
+
+		afterEach(() => {
+			process.argv[1] = originalArgv1;
+		});
+
+		it.each(['cjs-module', 'esm-module'])(
+			'should report the missing dependency of a %s entrypoint, not the enterprise fallback path',
+			async (moduleName) => {
+				const loading = loadModule(moduleName);
+
+				// The user must see the dependency that could not be resolved. Retrying
+				// with the `.ee` path - a directory that never existed - would replace it
+				// with a "cannot find module" error and send the user looking for a
+				// naming mistake.
+				await expect(loading).rejects.toThrow(ModuleLoadError);
+				await expect(loading).rejects.toThrow(MISSING_DEPENDENCY);
+				await expect(loading).rejects.not.toThrow(`${moduleName}.ee`);
+			},
+		);
+
+		it('should fall back to the enterprise directory when only that entrypoint exists', async () => {
+			await expect(loadModule('ee-module')).resolves.not.toThrow();
+		});
+
+		it('should report a missing dependency of an enterprise entrypoint', async () => {
+			const loading = loadModule('ee-broken-module');
+
+			await expect(loading).rejects.toThrow(ModuleLoadError);
+			await expect(loading).rejects.toThrow(MISSING_DEPENDENCY);
+			await expect(loading).rejects.not.toThrow('ee-broken-module/ee-broken-module.module.js');
+		});
+
+		it('should throw `MissingModuleError` if neither entrypoint exists', async () => {
+			const loading = loadModule('absent-module');
+			await expect(loading).rejects.toThrow(MissingModuleError);
+			await expect(loading).rejects.toThrow('absent-module/absent-module.module.js');
+			await expect(loading).rejects.not.toThrow('absent-module.ee');
+		});
+	});
 });
 
 describe('initModules', () => {
 	it('should init module if it has no feature flag', async () => {
-		const ModuleClass = { init: jest.fn() };
+		const ModuleClass = { init: vi.fn() };
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest
+			getEntries: vi
 				.fn()
 				.mockReturnValue([['test-module', { licenseFlag: undefined, class: ModuleClass }]]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.initModules('main');
 
 		expect(ModuleClass.init).toHaveBeenCalled();
 	});
 
-	it('should init module if it is licensed', async () => {
-		const ModuleClass = { init: jest.fn() };
+	it('should register the system tasks returned by a module', async () => {
+		const TaskClass = class TestTask {};
+		const ModuleClass = { init: vi.fn(), systemTasks: vi.fn().mockReturnValue([TaskClass]) };
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest
+			getEntries: vi
+				.fn()
+				.mockReturnValue([['test-module', { licenseFlag: undefined, class: ModuleClass }]]),
+		});
+		const systemTaskMetadata = mock<SystemTaskMetadata>();
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(
+			moduleMetadata,
+			mock(),
+			mock(),
+			mock(),
+			systemTaskMetadata,
+		);
+
+		await moduleRegistry.initModules('main');
+
+		expect(ModuleClass.systemTasks).toHaveBeenCalled();
+		expect(systemTaskMetadata.register).toHaveBeenCalledTimes(1);
+		expect(systemTaskMetadata.register).toHaveBeenCalledWith(TaskClass);
+	});
+
+	it('should init module if it is licensed', async () => {
+		const ModuleClass = { init: vi.fn() };
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: vi
 				.fn()
 				.mockReturnValue([
 					['test-module', { licenseFlag: 'feat:testFeature', class: ModuleClass }],
 				]),
 		});
-		const licenseState = mock<LicenseState>({ isLicensed: jest.fn().mockReturnValue(true) });
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		const licenseState = mock<LicenseState>({ isLicensed: vi.fn().mockReturnValue(true) });
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock(), mock());
 
 		await moduleRegistry.initModules('main');
 
@@ -126,35 +501,55 @@ describe('initModules', () => {
 	});
 
 	it('should skip init for unlicensed module', async () => {
-		const ModuleClass = { init: jest.fn() };
+		const ModuleClass = { init: vi.fn() };
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest
+			getEntries: vi
 				.fn()
 				.mockReturnValue([
 					['test-module', { licenseFlag: 'feat:testFeature', class: ModuleClass }],
 				]),
 		});
-		const licenseState = mock<LicenseState>({ isLicensed: jest.fn().mockReturnValue(false) });
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		const licenseState = mock<LicenseState>({ isLicensed: vi.fn().mockReturnValue(false) });
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock(), mock());
 
 		await moduleRegistry.initModules('main');
 
 		expect(ModuleClass.init).not.toHaveBeenCalled();
 	});
 
+	it('should init only the listed modules when given a list', async () => {
+		const ListedModule = { init: vi.fn() };
+		const OtherModule = { init: vi.fn() };
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: vi.fn().mockReturnValue([
+				['insights', { class: ListedModule }],
+				['mcp', { class: OtherModule }],
+			]),
+		});
+		Container.get = vi.fn().mockImplementation((moduleClass: unknown) => moduleClass);
+
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+
+		await moduleRegistry.initModules('main', ['insights']);
+
+		expect(ListedModule.init).toHaveBeenCalled();
+		expect(OtherModule.init).not.toHaveBeenCalled();
+		expect(moduleRegistry.getActiveModules()).toEqual(['insights']);
+	});
+
 	it('should accept module without `init` method', async () => {
 		const ModuleClass = {};
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest
+			getEntries: vi
 				.fn()
 				.mockReturnValue([['test-module', { licenseFlag: undefined, class: ModuleClass }]]),
 		});
 
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.initModules('main');
 
@@ -166,15 +561,15 @@ describe('initModules', () => {
 		const moduleName = 'test-module';
 		const moduleSettings = { foo: 1 };
 		const ModuleClass: ModuleInterface = {
-			init: jest.fn(),
-			settings: jest.fn().mockReturnValue(moduleSettings),
+			init: vi.fn(),
+			settings: vi.fn().mockReturnValue(moduleSettings),
 		};
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+			getEntries: vi.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules('main');
@@ -190,15 +585,15 @@ describe('initModules', () => {
 		const moduleName = 'test-module';
 		const moduleSettings = { foo: 1 };
 		const ModuleClass: ModuleInterface = {
-			init: jest.fn(),
-			settings: jest.fn().mockReturnValue(moduleSettings),
+			init: vi.fn(),
+			settings: vi.fn().mockReturnValue(moduleSettings),
 		};
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+			getEntries: vi.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules('main');
@@ -213,14 +608,14 @@ describe('initModules', () => {
 		// ARRANGE
 		const moduleName = 'test-module';
 		const ModuleClass: ModuleInterface = {
-			init: jest.fn(),
+			init: vi.fn(),
 		};
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+			getEntries: vi.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules('main');
@@ -236,15 +631,15 @@ describe('initModules', () => {
 		const moduleName = 'test-module';
 		const moduleContext = { proxy: 'test-proxy', config: { enabled: true } };
 		const ModuleClass: ModuleInterface = {
-			init: jest.fn(),
-			context: jest.fn().mockReturnValue(moduleContext),
+			init: vi.fn(),
+			context: vi.fn().mockReturnValue(moduleContext),
 		};
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+			getEntries: vi.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules('main');
@@ -258,13 +653,13 @@ describe('initModules', () => {
 	it('does not register context for module without `context` method', async () => {
 		// ARRANGE
 		const moduleName = 'test-module';
-		const ModuleClass: ModuleInterface = { init: jest.fn() };
+		const ModuleClass: ModuleInterface = { init: vi.fn() };
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+			getEntries: vi.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules('main');
@@ -274,17 +669,17 @@ describe('initModules', () => {
 	});
 
 	it('should init module with matching instance type', async () => {
-		const ModuleClass = { init: jest.fn() };
+		const ModuleClass = { init: vi.fn() };
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest
+			getEntries: vi
 				.fn()
 				.mockReturnValue([
 					['test-module', { instanceTypes: ['main', 'worker'], class: ModuleClass }],
 				]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.initModules('main');
 
@@ -292,15 +687,15 @@ describe('initModules', () => {
 	});
 
 	it('should skip init for module with non-matching instance type', async () => {
-		const ModuleClass = { init: jest.fn() };
+		const ModuleClass = { init: vi.fn() };
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest
+			getEntries: vi
 				.fn()
 				.mockReturnValue([['test-module', { instanceTypes: ['worker'], class: ModuleClass }]]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.initModules('main');
 
@@ -308,21 +703,21 @@ describe('initModules', () => {
 	});
 });
 
-describe('loadDir', () => {
-	it('should load dirs defined by modules', async () => {
-		const TEST_LOAD_DIR = '/path/to/module/load/dir';
+describe('nodeLoaders', () => {
+	it('should collect node loaders defined by modules', async () => {
+		const TEST_LOADER = { packageName: 'test-loader' };
 		const ModuleClass = {
-			entities: jest.fn().mockReturnValue([]),
-			loadDir: jest.fn().mockReturnValue(TEST_LOAD_DIR),
+			entities: vi.fn().mockReturnValue([]),
+			nodeLoaders: vi.fn().mockResolvedValue([TEST_LOADER]),
 		};
 		const moduleMetadata = mock<ModuleMetadata>({
-			getClasses: jest.fn().mockReturnValue([ModuleClass]),
+			getClasses: vi.fn().mockReturnValue([ModuleClass]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.loadModules([]); // empty to skip dynamic imports
 
-		expect(moduleRegistry.loadDirs).toEqual([TEST_LOAD_DIR]);
+		expect(moduleRegistry.nodeLoaders).toEqual([TEST_LOADER]);
 	});
 });

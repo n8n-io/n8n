@@ -1,0 +1,1908 @@
+import type { LicenseState } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME, type LdapConfig } from '@n8n/constants';
+import type { Settings, User } from '@n8n/db';
+import { AuthIdentityRepository, SettingsRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { QueryFailedError } from '@n8n/typeorm';
+import { Client } from 'ldapts';
+import type { Cipher } from 'n8n-core';
+import { CREDENTIAL_BLANKING_VALUE, randomString } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import config from '@/config';
+
+import { BINARY_AD_ATTRIBUTES } from '../constants';
+import {
+	getLdapIds,
+	createFilter,
+	escapeFilter,
+	resolveBinaryAttributes,
+	processUsers,
+	mapLdapUserToDbUser,
+	saveLdapSynchronization,
+	resolveEntryBinaryAttributes,
+	getAuthIdentityByLdapId,
+	getUserByEmail,
+	createLdapUserOnLocalDb,
+} from '../helpers.ee';
+import { LdapService } from '../ldap.service.ee';
+
+// Mock ldapts client
+vi.mock('ldapts', async () => {
+	const ClientMock = vi.fn();
+
+	ClientMock.prototype.bind = vi.fn();
+	ClientMock.prototype.unbind = vi.fn();
+	ClientMock.prototype.startTLS = vi.fn();
+	ClientMock.prototype.search = vi.fn();
+
+	class ResultCodeError extends Error {}
+
+	return { Client: ClientMock, ResultCodeError };
+});
+
+vi.mock('../helpers.ee', async () => ({
+	...(await vi.importActual<typeof import('../helpers.ee')>('../helpers.ee')),
+	getLdapIds: vi.fn(),
+	saveLdapSynchronization: vi.fn(),
+	resolveBinaryAttributes: vi.fn(),
+	processUsers: vi.fn(),
+	resolveEntryBinaryAttributes: vi.fn(),
+	isLdapEnabled: vi.fn(() => true),
+	getAuthIdentityByLdapId: vi.fn(),
+	getUserByEmail: vi.fn(),
+	createLdapUserOnLocalDb: vi.fn(),
+}));
+
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),
+	randomString: vi.fn(),
+}));
+
+mockInstance(GlobalConfig, {
+	sso: {
+		ldap: {
+			loginEnabled: true,
+			loginLabel: 'fakeLoginLabel',
+		},
+	},
+});
+
+describe('LdapService', () => {
+	const ldapConfig: LdapConfig = {
+		loginEnabled: true,
+		loginLabel: 'fakeLoginLabel',
+		connectionUrl: 'connection.url',
+		allowUnauthorizedCerts: true,
+		connectionSecurity: 'none',
+		connectionPort: 1234,
+		baseDn: 'dc=example,dc=com',
+		bindingAdminDn: 'uid=jdoe,ou=users,dc=example,dc=com',
+		bindingAdminPassword: 'fakePassword',
+		firstNameAttribute: 'givenName',
+		lastNameAttribute: 'sn',
+		emailAttribute: 'mail',
+		loginIdAttribute: 'uid',
+		ldapIdAttribute: 'uid',
+		userFilter: '(uid=jdoe)',
+		synchronizationEnabled: true,
+		synchronizationInterval: 60,
+		searchPageSize: 1,
+		searchTimeout: 6,
+		enforceEmailUniqueness: true,
+	};
+
+	const settingsRepository = mockInstance(SettingsRepository);
+
+	beforeAll(() => {
+		// Need fake timers to avoid setInterval
+		// problems with the scheduled sync
+		vi.useFakeTimers();
+	});
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		vi.resetAllMocks();
+		Client.prototype.bind = vi.fn();
+		Client.prototype.unbind = vi.fn();
+		Client.prototype.startTLS = vi.fn();
+		Client.prototype.search = vi.fn();
+	});
+
+	const mockSettingsRespositoryFindOneByOrFail = (config: LdapConfig) => {
+		settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+			value: JSON.stringify(config),
+		} as Settings);
+	};
+
+	const createDefaultLdapService = (config: LdapConfig, eventService?: EventService) => {
+		mockSettingsRespositoryFindOneByOrFail(config);
+
+		const mockLicenseState = mock<LicenseState>();
+		mockLicenseState.isLdapLicensed.mockReturnValue(true);
+
+		return new LdapService(
+			mockLogger(),
+			settingsRepository,
+			mock(),
+			eventService ?? mock(),
+			mockLicenseState,
+		);
+	};
+
+	describe('init()', () => {
+		it('should load the LDAP configuration', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const loadConfigSpy = vi.spyOn(ldapService, 'loadConfig');
+
+			await ldapService.init();
+
+			expect(loadConfigSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should set expected configuration variables from LDAP config if LDAP is enabled', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const configSetSpy = vi.spyOn(config, 'set');
+
+			await ldapService.init();
+
+			expect(configSetSpy).toHaveBeenNthCalledWith(
+				1,
+				'userManagement.authenticationMethod',
+				'ldap',
+			);
+			expect(Container.get(GlobalConfig).sso.ldap.loginLabel).toBe(ldapConfig.loginLabel);
+		});
+
+		it('should set expected configuration variables from LDAP config if LDAP is disabled', async () => {
+			const givenConfig = { ...ldapConfig, loginEnabled: false };
+
+			const ldapService = createDefaultLdapService(givenConfig);
+
+			const configSetSpy = vi.spyOn(config, 'set');
+
+			await ldapService.init();
+
+			expect(configSetSpy).toHaveBeenNthCalledWith(
+				1,
+				'userManagement.authenticationMethod',
+				'email',
+			);
+			expect(Container.get(GlobalConfig).sso.ldap.loginLabel).toBe(ldapConfig.loginLabel);
+		});
+
+		it('should show logger warning if authentication method is not ldap or email', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			const logger = mockLogger();
+
+			const ldapService = new LdapService(
+				logger,
+				settingsRepository,
+				mock(),
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			config.set('userManagement.authenticationMethod', 'invalid');
+
+			await ldapService.init();
+
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Cannot set LDAP login enabled state when an authentication method other than email or ldap is active (current: invalid)',
+				expect.any(Error),
+			);
+		});
+
+		it('should schedule syncing if config has enabled synchronization', async () => {
+			const givenConfig = {
+				...ldapConfig,
+				synchronizationEnabled: true,
+				synchronizationInterval: 10,
+			};
+
+			const ldapService = createDefaultLdapService(givenConfig);
+
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
+
+			await ldapService.init();
+
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+			expect(setIntervalSpy).toHaveBeenCalledWith(
+				expect.any(Function),
+				givenConfig.synchronizationInterval * 60_000,
+			);
+		});
+
+		it('should throw an error if config has enabled synchronization but no synchronizationInterval is set', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				synchronizationEnabled: true,
+				synchronizationInterval: 0,
+			});
+
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
+
+			await expect(ldapService.init()).rejects.toThrowError('Interval variable has to be defined');
+			expect(setIntervalSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('loadConfig()', () => {
+		it('should retrieve the LDAP configuration from the settings repository', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			await ldapService.loadConfig();
+
+			expect(settingsRepository.findOneByOrFail).toHaveBeenCalledTimes(1);
+		});
+
+		it('should throw an expected error if the LDAP configuration is not found', async () => {
+			settingsRepository.findOneByOrFail.mockRejectedValue(
+				new Error('LDAP configuration not found'),
+			);
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				mock(),
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			await expect(ldapService.loadConfig()).rejects.toThrowError('LDAP configuration not found');
+		});
+
+		it('should decipher the LDAP configuration admin password', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			const cipherMock = mock<Cipher>({
+				decryptV2: vi.fn().mockResolvedValue(undefined),
+			});
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			await ldapService.loadConfig();
+
+			expect(cipherMock.decryptV2).toHaveBeenCalledTimes(1);
+			expect(cipherMock.decryptV2).toHaveBeenCalledWith(ldapConfig.bindingAdminPassword);
+		});
+
+		it('should return the expected LDAP configuration', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			const cipherMock = mock<Cipher>({
+				decryptV2: vi.fn().mockResolvedValue('decryptedPassword'),
+			});
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			const config = await ldapService.loadConfig();
+
+			expect(config).toEqual({ ...ldapConfig, bindingAdminPassword: 'decryptedPassword' });
+		});
+	});
+
+	describe('updateConfig()', () => {
+		it('should throw expected error if the LDAP configuration is invalid', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const invalidLdapConfig = { ...ldapConfig, loginEnabled: 'notABoolean' };
+
+			await expect(
+				ldapService.updateConfig(invalidLdapConfig as unknown as LdapConfig),
+			).rejects.toThrowError('request.body.loginEnabled is not of a type(s) boolean');
+		});
+
+		it('should throw expected error if login is enabled and the current authentication method is "saml"', async () => {
+			config.set('userManagement.authenticationMethod', 'saml');
+
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
+				'Cannot switch ldap login enabled state when an authentication method other than email or ldap is active (current: saml)',
+			);
+		});
+
+		it('should throw the same error if login is enabled and the current authentication method is neither saml/oidc nor email/ldap', async () => {
+			config.set('userManagement.authenticationMethod', 'token-exchange');
+
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
+				'Cannot switch ldap login enabled state when an authentication method other than email or ldap is active (current: token-exchange)',
+			);
+		});
+
+		it('should encrypt the binding admin password', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			const cipherMock = mock<Cipher>({
+				encryptV2: vi.fn().mockResolvedValue('encryptedPassword'),
+			});
+
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			const newConfig = { ...ldapConfig };
+			await ldapService.updateConfig(newConfig);
+
+			expect(cipherMock.encryptV2).toHaveBeenCalledTimes(1);
+			expect(cipherMock.encryptV2).toHaveBeenCalledWith(ldapConfig.bindingAdminPassword);
+			expect(newConfig.bindingAdminPassword).toEqual('encryptedPassword');
+		});
+
+		it('reuses the stored admin password when the redacted placeholder is submitted', async () => {
+			// loadConfig reads the stored (encrypted) password and deciphers it
+			mockSettingsRespositoryFindOneByOrFail({
+				...ldapConfig,
+				bindingAdminPassword: 'storedEncrypted',
+			});
+
+			const cipherMock = mock<Cipher>({
+				decryptV2: vi.fn().mockResolvedValue('realStoredPassword'),
+				encryptV2: vi.fn().mockResolvedValue('reEncrypted'),
+			});
+
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			const newConfig = { ...ldapConfig, bindingAdminPassword: CREDENTIAL_BLANKING_VALUE };
+			await ldapService.updateConfig(newConfig);
+
+			// The placeholder must never be encrypted and stored as the real password.
+			expect(cipherMock.encryptV2).toHaveBeenCalledWith('realStoredPassword');
+		});
+
+		it('should delete all ldap identities if login is disabled and ldap users exist', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			const authIdentityRepository = mockInstance(AuthIdentityRepository, {
+				find: vi.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
+				delete: vi.fn(),
+			});
+
+			const cipherMock = mock<Cipher>({
+				encryptV2: vi.fn().mockResolvedValue('encryptedPassword'),
+			});
+
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			const newConfig = { ...ldapConfig, loginEnabled: false, synchronizationEnabled: true };
+			await ldapService.updateConfig(newConfig);
+
+			expect(newConfig.synchronizationEnabled).toBeFalsy();
+			expect(authIdentityRepository.delete).toHaveBeenCalledTimes(1);
+			expect(authIdentityRepository.delete).toHaveBeenCalledWith({ providerType: 'ldap' });
+		});
+
+		it('should not delete ldap identities if login is disabled and there are no ldap identities', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			const authIdentityRepository = mockInstance(AuthIdentityRepository, {
+				find: vi.fn().mockResolvedValue([]),
+				delete: vi.fn(),
+			});
+
+			const cipherMock = mock<Cipher>({
+				encryptV2: vi.fn().mockResolvedValue('encryptedPassword'),
+			});
+
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			const newConfig = { ...ldapConfig, loginEnabled: false, synchronizationEnabled: true };
+			await ldapService.updateConfig(newConfig);
+
+			expect(newConfig.synchronizationEnabled).toBeFalsy();
+			expect(authIdentityRepository.delete).not.toHaveBeenCalled();
+			expect(authIdentityRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('should update the LDAP configuration in the settings repository', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			mockInstance(AuthIdentityRepository, {
+				find: vi.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
+				delete: vi.fn(),
+			});
+
+			const cipherMock = mock<Cipher>({
+				encryptV2: vi.fn().mockResolvedValue('encryptedPassword'),
+			});
+
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			const newConfig = { ...ldapConfig, loginEnabled: false, synchronizationEnabled: true };
+			await ldapService.updateConfig(newConfig);
+
+			expect(settingsRepository.update).toHaveBeenCalledTimes(1);
+			expect(settingsRepository.update).toHaveBeenCalledWith(
+				{ key: LDAP_FEATURE_NAME },
+				{ value: JSON.stringify(newConfig), loadOnStartup: true },
+			);
+		});
+
+		it('should update the LDAP login label in the config', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+			mockInstance(AuthIdentityRepository, {
+				find: vi.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
+				delete: vi.fn(),
+			});
+			const cipherMock = mock<Cipher>({
+				encryptV2: vi.fn().mockResolvedValue('encryptedPassword'),
+			});
+			const globalConfig = Container.get(GlobalConfig);
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			const newConfig = {
+				...ldapConfig,
+				loginEnabled: false,
+				synchronizationEnabled: true,
+				loginLabel: 'newLoginLabel',
+			};
+			await ldapService.updateConfig(newConfig);
+			expect(globalConfig.sso.ldap.loginLabel).toBe(newConfig.loginLabel);
+		});
+	});
+
+	describe('setConfig()', () => {
+		it('should stop synchronization if the timer is running and the config is disabled', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const updatedLdapConfig = { ...ldapConfig, synchronizationEnabled: false };
+
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+
+			await ldapService.init();
+			ldapService.setConfig(updatedLdapConfig);
+
+			expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should schedule synchronization if the timer is not running and the config is enabled', () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const updatedLdapConfig = {
+				...ldapConfig,
+				synchronizationEnabled: true,
+				synchronizationInterval: 999,
+			};
+
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
+
+			ldapService.setConfig(updatedLdapConfig);
+
+			expect(clearIntervalSpy).not.toHaveBeenCalled();
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+			expect(setIntervalSpy).toHaveBeenCalledWith(
+				expect.any(Function),
+				updatedLdapConfig.synchronizationInterval * 60_000,
+			);
+		});
+
+		it('should throw an error if the timer is not running and the config is enabled but the synchronizationInterval is not set', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const updatedLdapConfig = {
+				...ldapConfig,
+				synchronizationEnabled: true,
+				synchronizationInterval: 0,
+			};
+
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
+
+			const thrownSetConfig = () => ldapService.setConfig(updatedLdapConfig);
+
+			expect(thrownSetConfig).toThrowError('Interval variable has to be defined');
+			expect(setIntervalSpy).not.toHaveBeenCalled();
+			expect(clearIntervalSpy).not.toHaveBeenCalled();
+		});
+
+		it('should restart synchronization if the timer is running and the config is enabled', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const updatedLdapConfig = {
+				...ldapConfig,
+				synchronizationEnabled: true,
+				synchronizationInterval: 1234,
+			};
+
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
+
+			await ldapService.init();
+			ldapService.setConfig(updatedLdapConfig);
+
+			expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+			expect(setIntervalSpy).toHaveBeenCalledTimes(2);
+			expect(setIntervalSpy).toHaveBeenNthCalledWith(
+				1,
+				expect.any(Function),
+				ldapConfig.synchronizationInterval * 60_000,
+			);
+			expect(setIntervalSpy).toHaveBeenNthCalledWith(
+				2,
+				expect.any(Function),
+				updatedLdapConfig.synchronizationInterval * 60_000,
+			);
+		});
+	});
+
+	describe('searchWithAdminBinding()', () => {
+		it('should bind admin client', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			const cipherMock = mock<Cipher>({
+				decryptV2: vi.fn().mockResolvedValue('decryptedPassword'),
+			});
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
+
+			const filter = '';
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			await ldapService.init();
+			await ldapService.searchWithAdminBinding(filter);
+
+			expect(Client.prototype.bind).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.bind).toHaveBeenCalledWith(
+				ldapConfig.bindingAdminDn,
+				'decryptedPassword',
+			);
+		});
+
+		it('should call client search with expected parameters', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			const cipherMock = mock<Cipher>({
+				decryptV2: vi.fn().mockResolvedValue('decryptedPassword'),
+			});
+
+			const filter = '';
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			await ldapService.init();
+			await ldapService.searchWithAdminBinding(filter);
+
+			expect(Client.prototype.search).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.search).toHaveBeenLastCalledWith(ldapConfig.baseDn, {
+				attributes: [
+					ldapConfig.emailAttribute,
+					ldapConfig.ldapIdAttribute,
+					ldapConfig.firstNameAttribute,
+					ldapConfig.lastNameAttribute,
+					ldapConfig.emailAttribute,
+				],
+				explicitBufferAttributes: BINARY_AD_ATTRIBUTES,
+				filter,
+				timeLimit: ldapConfig.searchTimeout,
+				paged: { pageSize: ldapConfig.searchPageSize },
+			});
+		});
+
+		it('should call client search with expected parameters when searchPageSize is 0', async () => {
+			mockSettingsRespositoryFindOneByOrFail({ ...ldapConfig, searchPageSize: 0 });
+
+			const cipherMock = mock<Cipher>({
+				decryptV2: vi.fn().mockResolvedValue('decryptedPassword'),
+			});
+
+			const filter = '';
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			await ldapService.init();
+			await ldapService.searchWithAdminBinding(filter);
+
+			expect(Client.prototype.search).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.search).toHaveBeenLastCalledWith(ldapConfig.baseDn, {
+				attributes: [
+					ldapConfig.emailAttribute,
+					ldapConfig.ldapIdAttribute,
+					ldapConfig.firstNameAttribute,
+					ldapConfig.lastNameAttribute,
+					ldapConfig.emailAttribute,
+				],
+				explicitBufferAttributes: BINARY_AD_ATTRIBUTES,
+				filter,
+				timeLimit: ldapConfig.searchTimeout,
+				paged: true,
+			});
+		});
+
+		it.each([
+			[ldapConfig.searchTimeout, ldapConfig.searchTimeout],
+			[0, LDAP_DEFAULT_CONFIGURATION.searchTimeout],
+			[-1, LDAP_DEFAULT_CONFIGURATION.searchTimeout],
+		])(
+			'should use a positive timeout for the client and search when searchTimeout is %s',
+			async (searchTimeout, expectedTimeout) => {
+				const ldapService = createDefaultLdapService({ ...ldapConfig, searchTimeout });
+				Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
+				await ldapService.init();
+
+				await ldapService.searchWithAdminBinding('');
+
+				expect(Client).toHaveBeenCalledWith(
+					expect.objectContaining({
+						timeout: expectedTimeout * 1000,
+						connectTimeout: expectedTimeout * 1000,
+					}),
+				);
+				expect(Client.prototype.search).toHaveBeenCalledWith(
+					ldapConfig.baseDn,
+					expect.objectContaining({ timeLimit: expectedTimeout }),
+				);
+			},
+		);
+
+		it('should unbind client after search', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			const cipherMock = mock<Cipher>({
+				decryptV2: vi.fn().mockResolvedValue('decryptedPassword'),
+			});
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
+
+			const filter = '';
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			await ldapService.init();
+			await ldapService.searchWithAdminBinding(filter);
+
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
+		});
+
+		it('should unbind the client if search fails', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+			Client.prototype.search = vi.fn().mockRejectedValue(new Error('Search failed'));
+			await ldapService.init();
+
+			await expect(ldapService.searchWithAdminBinding('')).rejects.toThrow('Search failed');
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
+		});
+
+		it('should return expected search entries', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			const cipherMock = mock<Cipher>({
+				decryptV2: vi.fn().mockResolvedValue('decryptedPassword'),
+			});
+
+			const userList = [
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: 'Jo Doe',
+					sn: 'Doe',
+					mail: 'jdoe@example.com',
+					memberOf: 'cn=admins,ou=groups,dc=example,dc=com',
+				},
+				{
+					dn: 'uid=ghopper,ou=users,dc=example,dc=com',
+					cn: 'Grace Hopper',
+					sn: 'Hopper',
+					mail: 'ghopper@nasa.com',
+					memberOf: 'cn=admins,ou=groups,dc=example,dc=com',
+				},
+			];
+			Client.prototype.search = vi.fn().mockResolvedValue({
+				searchEntries: userList,
+			});
+
+			const filter = '';
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			await ldapService.init();
+			const results = await ldapService.searchWithAdminBinding(filter);
+
+			expect(results).toEqual(userList);
+		});
+	});
+
+	describe('client cleanup', () => {
+		it.each(['startTLS', 'bind', 'search'] as const)(
+			'should keep the %s error when unbind also fails',
+			async (stage) => {
+				const logger = mockLogger();
+				const ldapService = new LdapService(
+					logger,
+					settingsRepository,
+					mock(),
+					mock(),
+					mock<LicenseState>(),
+				);
+				ldapService.setConfig({
+					...ldapConfig,
+					connectionSecurity: 'startTls',
+					synchronizationEnabled: false,
+				});
+				const operationError = new Error(`${stage} failed`);
+				const cleanupError = new Error('Unbind failed');
+				vi.mocked(Client.prototype[stage]).mockRejectedValueOnce(operationError);
+				vi.mocked(Client.prototype.unbind).mockRejectedValueOnce(cleanupError);
+
+				await expect(ldapService.searchWithAdminBinding('')).rejects.toBe(operationError);
+				expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
+				expect(logger.debug).toHaveBeenCalledWith('LDAP - Failed to unbind client', {
+					error: cleanupError,
+				});
+			},
+		);
+
+		it('should return search entries when unbind fails after a successful search', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+			const searchEntries = [{ dn: 'uid=jdoe,ou=users,dc=example,dc=com' }];
+			vi.mocked(Client.prototype.search).mockResolvedValueOnce({
+				searchEntries,
+				searchReferences: [],
+			});
+			vi.mocked(Client.prototype.unbind).mockRejectedValueOnce(new Error('Unbind failed'));
+			await ldapService.init();
+
+			await expect(ldapService.searchWithAdminBinding('')).resolves.toEqual(searchEntries);
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('validUser()', () => {
+		it('should throw expected error if no configuration has been set', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			await expect(ldapService.validUser('dn', 'password')).rejects.toThrowError(
+				'Service cannot be used without setting the property config',
+			);
+		});
+
+		it('should bind the ldap client with the expected distinguished name and password', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const distinguishedName = 'uid=jdoe,ou=users,dc=example,dc=com';
+			const password = 'password';
+
+			await ldapService.init();
+			await ldapService.validUser(distinguishedName, password);
+
+			expect(Client.prototype.bind).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.bind).toHaveBeenCalledWith(distinguishedName, password);
+		});
+
+		it('should throw expected error if binding fails', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const distinguishedName = 'uid=jdoe,ou=users,dc=example,dc=com';
+			const password = 'password';
+
+			Client.prototype.bind = vi
+				.fn()
+				.mockRejectedValue(new Error('Error validating user against LDAP server'));
+
+			await ldapService.init();
+
+			await expect(ldapService.validUser(distinguishedName, password)).rejects.toThrowError(
+				'Error validating user against LDAP server',
+			);
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
+		});
+
+		it('should unbind the client binding', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const distinguishedName = 'uid=jdoe,ou=users,dc=example,dc=com';
+			const password = 'password';
+
+			await ldapService.init();
+			await ldapService.validUser(distinguishedName, password);
+
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('findAndAuthenticateLdapUser()', () => {
+		it('should search for expected admin login ID', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const searchWithAdminBindingSpy = vi.spyOn(ldapService, 'searchWithAdminBinding');
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			const expectedFilter = createFilter(
+				`(${ldapConfig.loginIdAttribute}=${escapeFilter('jdoe')})`,
+				ldapConfig.userFilter,
+			);
+
+			await ldapService.init();
+			await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(searchWithAdminBindingSpy).toHaveBeenCalledTimes(1);
+			expect(searchWithAdminBindingSpy).toHaveBeenCalledWith(expectedFilter);
+		});
+
+		it('should emit expected error if admin search fails', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			const eventServiceMock = mock<EventService>({
+				emit: vi.fn(),
+			});
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				mock(),
+				eventServiceMock,
+				mock<LicenseState>(),
+			);
+			Client.prototype.search = vi.fn().mockRejectedValue(new Error('Failed to find admin user'));
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			const result = await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(eventServiceMock.emit).toBeCalledTimes(1);
+			expect(eventServiceMock.emit).toHaveBeenCalledWith('ldap-login-sync-failed', {
+				error: 'Failed to find admin user',
+			});
+			expect(result).toBeUndefined();
+		});
+
+		it('should return undefined if no user is found', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			const result = await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should validate found user', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const foundUsers = [
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: ['John Doe'],
+					mail: ['jdoe@example.com'],
+					uid: ['jdoe'],
+				},
+			];
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+
+			const validUserSpy = vi.spyOn(ldapService, 'validUser');
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(validUserSpy).toBeCalledTimes(1);
+			expect(validUserSpy).toHaveBeenCalledWith(foundUsers[0].dn, 'fakePassword');
+		});
+
+		it('should validate last user if more than one is found', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const foundUsers = [
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: ['John Doe'],
+					mail: ['jdoe@example.com'],
+					uid: ['jdoe'],
+				},
+				{
+					dn: 'uid=janedoe,ou=users,dc=example,dc=com',
+					cn: ['Jane Doe'],
+					mail: ['jane.doe@example.com'],
+					uid: ['janedoe'],
+				},
+			];
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+
+			const validUserSpy = vi.spyOn(ldapService, 'validUser');
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(validUserSpy).toBeCalledTimes(1);
+			expect(validUserSpy).toHaveBeenCalledWith(foundUsers[1].dn, 'fakePassword');
+		});
+
+		it('should return undefined if invalid user is found', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const foundUsers = [
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: ['John Doe'],
+					mail: ['jdoe@example.com'],
+					uid: ['jdoe'],
+				},
+			];
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+
+			const validUserSpy = vi
+				.spyOn(ldapService, 'validUser')
+				.mockRejectedValue(new Error('Failed to validate user'));
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			const result = await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(validUserSpy).toHaveBeenCalledTimes(1);
+			expect(result).toBeUndefined();
+		});
+
+		it('should resolve binary attributes for found user', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const foundUsers = [
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: ['John Doe'],
+					mail: ['jdoe@example.com'],
+					uid: ['jdoe'],
+				},
+			];
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(resolveEntryBinaryAttributes).toHaveBeenCalledTimes(1);
+			expect(resolveEntryBinaryAttributes).toHaveBeenCalledWith(foundUsers[0]);
+		});
+
+		it('should return found user', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const foundUsers = [
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: ['John Doe'],
+					mail: ['jdoe@example.com'],
+					uid: ['jdoe'],
+				},
+			];
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			const result = await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(result).toEqual(foundUsers[0]);
+		});
+
+		describe('filter construction', () => {
+			const captureFilter = () => {
+				const search = vi.fn().mockResolvedValue({ searchEntries: [] });
+				Client.prototype.search = search;
+				return () => {
+					expect(search).toHaveBeenCalledTimes(1);
+					const [, options] = search.mock.calls[0];
+					return options.filter as string;
+				};
+			};
+
+			it.each([
+				{ input: 'alice', expectedSnippet: '(uid=alice)' },
+				{ input: 'alice*', expectedSnippet: '(uid=alice\\2a)' },
+				{ input: '*)(uid=*', expectedSnippet: '(uid=\\2a\\29\\28uid=\\2a)' },
+				{ input: 'alice\\)', expectedSnippet: '(uid=alice\\5c\\29)' },
+				{ input: 'alice\0admin', expectedSnippet: '(uid=alice\\00admin)' },
+			])(
+				'should escape special characters in the loginId search filter for input %p',
+				async ({ input, expectedSnippet }) => {
+					const ldapService = createDefaultLdapService({ ...ldapConfig, userFilter: '' });
+					const getCaptured = captureFilter();
+
+					(getLdapIds as Mock).mockResolvedValue([]);
+
+					await ldapService.init();
+					await ldapService.findAndAuthenticateLdapUser(
+						input,
+						'fakePassword',
+						ldapConfig.loginIdAttribute,
+						'',
+					);
+
+					expect(getCaptured()).toContain(expectedSnippet);
+				},
+			);
+
+			it('should preserve the configured userFilter when constructing the loginId filter', async () => {
+				const userFilter = '(objectClass=inetOrgPerson)';
+				const ldapService = createDefaultLdapService({ ...ldapConfig, userFilter });
+				const getCaptured = captureFilter();
+
+				(getLdapIds as Mock).mockResolvedValue([]);
+
+				await ldapService.init();
+				await ldapService.findAndAuthenticateLdapUser(
+					'alice',
+					'fakePassword',
+					ldapConfig.loginIdAttribute,
+					userFilter,
+				);
+
+				const filter = getCaptured();
+				expect(filter).toBe('(&(objectClass=inetOrgPerson)(uid=alice))');
+				const opens = (filter.match(/\(/g) ?? []).length;
+				const closes = (filter.match(/\)/g) ?? []).length;
+				expect(opens).toBe(closes);
+			});
+		});
+	});
+
+	describe('testConnection()', () => {
+		it('should throw expected error if init() is not called first', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			await expect(ldapService.testConnection()).rejects.toThrowError(
+				'Service cannot be used without setting the property config',
+			);
+		});
+
+		it('should create a new client without TLS if connectionSecurity is set to "none"', async () => {
+			const ldapService = createDefaultLdapService({ ...ldapConfig, connectionSecurity: 'none' });
+
+			await ldapService.init();
+			await ldapService.testConnection();
+
+			expect(Client).toHaveBeenCalledTimes(1);
+			expect(Client).toHaveBeenCalledWith({
+				url: `ldap://${ldapConfig.connectionUrl}:${ldapConfig.connectionPort}`,
+				timeout: ldapConfig.searchTimeout * 1000,
+				connectTimeout: ldapConfig.searchTimeout * 1000,
+			});
+		});
+
+		it('should create a new client with TLS enabled if connectionSecurity is set to "tls" and allowing unauthorized certificates', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				connectionSecurity: 'tls',
+				allowUnauthorizedCerts: true,
+			});
+
+			await ldapService.init();
+			await ldapService.testConnection();
+
+			expect(Client).toHaveBeenCalledTimes(1);
+			expect(Client).toHaveBeenCalledWith({
+				url: `ldaps://${ldapConfig.connectionUrl}:${ldapConfig.connectionPort}`,
+				timeout: ldapConfig.searchTimeout * 1000,
+				connectTimeout: ldapConfig.searchTimeout * 1000,
+				tlsOptions: {
+					rejectUnauthorized: false,
+				},
+			});
+		});
+
+		it('should create a new client with TLS enabled if connectionSecurity is set to "tls" and not allowing unauthorized certificates', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				connectionSecurity: 'tls',
+				allowUnauthorizedCerts: false,
+			});
+
+			await ldapService.init();
+			await ldapService.testConnection();
+
+			expect(Client).toHaveBeenCalledTimes(1);
+			expect(Client).toHaveBeenCalledWith({
+				url: `ldaps://${ldapConfig.connectionUrl}:${ldapConfig.connectionPort}`,
+				timeout: ldapConfig.searchTimeout * 1000,
+				connectTimeout: ldapConfig.searchTimeout * 1000,
+				tlsOptions: {
+					rejectUnauthorized: true,
+				},
+			});
+		});
+
+		it('should create a new client and start TLS if connectionSecurity is set to "startTls"', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				connectionSecurity: 'startTls',
+				allowUnauthorizedCerts: true,
+			});
+
+			await ldapService.init();
+			await ldapService.testConnection();
+
+			expect(Client).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.startTLS).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.startTLS).toHaveBeenCalledWith({
+				rejectUnauthorized: false,
+			});
+		});
+
+		it('should create and unbind a separate client for each connection test', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			await ldapService.init();
+			await ldapService.testConnection();
+
+			expect(Client).toHaveBeenCalledTimes(1);
+
+			await ldapService.testConnection();
+			expect(Client).toHaveBeenCalledTimes(2);
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(2);
+		});
+
+		it('should unbind the client if StartTLS fails', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				connectionSecurity: 'startTls',
+			});
+			Client.prototype.startTLS = vi.fn().mockRejectedValue(new Error('StartTLS failed'));
+			await ldapService.init();
+
+			await expect(ldapService.testConnection()).rejects.toThrow('StartTLS failed');
+			expect(Client.prototype.bind).not.toHaveBeenCalled();
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('runSync()', () => {
+		beforeEach(() => {
+			const mockedRandomString = randomString as Mock;
+			mockedRandomString.mockReturnValue('nonRandomPassword');
+		});
+
+		it('should search for users with expected parameters', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const searchWithAdminBindingSpy = vi.spyOn(ldapService, 'searchWithAdminBinding');
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			const expectedFilter = createFilter(
+				`(${ldapConfig.loginIdAttribute}=*)`,
+				ldapConfig.userFilter,
+			);
+
+			await ldapService.init();
+			await ldapService.runSync('dry');
+
+			expect(searchWithAdminBindingSpy).toHaveBeenCalledTimes(1);
+			expect(searchWithAdminBindingSpy).toHaveBeenCalledWith(expectedFilter);
+		});
+
+		it('should resolve binary attributes for users', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			const foundUsers = [
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: ['John Doe'],
+					mail: ['jdoe@example.com'],
+					uid: ['jdoe'],
+					jpegPhoto: [Buffer.from('89504E470D0A1A0A', 'hex')],
+				},
+			];
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: foundUsers });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.runSync('dry');
+
+			expect(resolveBinaryAttributes).toHaveBeenCalledTimes(1);
+			expect(resolveBinaryAttributes).toHaveBeenCalledWith(foundUsers);
+		});
+
+		it('should throw expected error if search fails', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			Client.prototype.search = vi.fn().mockRejectedValue(new Error('Error finding users'));
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await expect(ldapService.runSync('dry')).rejects.toThrowError('Error finding users');
+		});
+
+		it('should process expected users if mode is "live"', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			// Users that don't exist in memory
+			const newUsers = [
+				{
+					dn: 'uid=johndoe,ou=users,dc=example,dc=com',
+					cn: 'John Doe',
+					givenName: 'John',
+					sn: 'Doe',
+					mail: 'john.doe@example.com',
+					uid: 'johndoe',
+				},
+				{
+					dn: 'uid=janedoe,ou=users,dc=example,dc=com',
+					cn: 'Jane Doe',
+					givenName: 'Jane',
+					sn: 'Doe',
+					mail: 'jane.doe@example.com',
+					uid: 'janedoe',
+				},
+			];
+
+			// Users that exist in memory and in LDAP response
+			const updateUsers = [
+				{
+					dn: 'uid=emilyclark,ou=users,dc=example,dc=com',
+					cn: 'Emily Clark',
+					givenName: 'Emily',
+					sn: 'Clark',
+					mail: 'emily.clark@example.com',
+					uid: 'emilyclark',
+				},
+			];
+
+			// Users that only exist in memory
+			const deleteUsers = ['santaclaus', 'jackfrost'];
+
+			const foundUsers = [...newUsers, ...updateUsers];
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: foundUsers });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+
+			// Delete users that exist in memory but not in the LDAP response
+			mockedGetLdapIds.mockResolvedValue(['emilyclark', ...deleteUsers]);
+
+			const newDbUsers = newUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig, true));
+			const updateDbUsers = updateUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig));
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(processUsers).toHaveBeenCalledTimes(1);
+			expect(processUsers).toHaveBeenCalledWith(newDbUsers, updateDbUsers, deleteUsers);
+		});
+
+		it('should sync expected LDAP data when no errors', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			// Users that don't exist in memory
+			const newUsers = [
+				{
+					dn: 'uid=johndoe,ou=users,dc=example,dc=com',
+					cn: 'John Doe',
+					givenName: 'John',
+					sn: 'Doe',
+					mail: 'john.doe@example.com',
+					uid: 'johndoe',
+				},
+				{
+					dn: 'uid=janedoe,ou=users,dc=example,dc=com',
+					cn: 'Jane Doe',
+					givenName: 'Jane',
+					sn: 'Doe',
+					mail: 'jane.doe@example.com',
+					uid: 'janedoe',
+				},
+			];
+
+			// Users that exist in memory and in LDAP response
+			const updateUsers = [
+				{
+					dn: 'uid=emilyclark,ou=users,dc=example,dc=com',
+					cn: 'Emily Clark',
+					givenName: 'Emily',
+					sn: 'Clark',
+					mail: 'emily.clark@example.com',
+					uid: 'emilyclark',
+				},
+			];
+
+			// Users that only exist in memory
+			const deleteUsers = ['santaclaus', 'jackfrost'];
+
+			const foundUsers = [...newUsers, ...updateUsers];
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: foundUsers });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+
+			// Delete users that exist in memory but not in the LDAP response
+			mockedGetLdapIds.mockResolvedValue(['emilyclark', ...deleteUsers]);
+
+			const newDbUsers = newUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig, true));
+			const updateDbUsers = updateUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig));
+
+			vi.setSystemTime(new Date('2024-12-25'));
+			const expectedDate = new Date();
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(saveLdapSynchronization).toHaveBeenCalledTimes(1);
+			expect(saveLdapSynchronization).toHaveBeenCalledWith({
+				startedAt: expectedDate,
+				endedAt: expectedDate,
+				created: newDbUsers.length,
+				updated: updateDbUsers.length,
+				disabled: deleteUsers.length,
+				scanned: foundUsers.length,
+				runMode: 'live',
+				status: 'success',
+				error: '',
+			});
+		});
+
+		it('should sync expected LDAP data when users fail to process', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			// Users that don't exist in memory
+			const newUsers = [
+				{
+					dn: 'uid=johndoe,ou=users,dc=example,dc=com',
+					cn: 'John Doe',
+					givenName: 'John',
+					sn: 'Doe',
+					mail: 'john.doe@example.com',
+					uid: 'johndoe',
+				},
+				{
+					dn: 'uid=janedoe,ou=users,dc=example,dc=com',
+					cn: 'Jane Doe',
+					givenName: 'Jane',
+					sn: 'Doe',
+					mail: 'jane.doe@example.com',
+					uid: 'janedoe',
+				},
+			];
+
+			// Users that exist in memory and in LDAP response
+			const updateUsers = [
+				{
+					dn: 'uid=emilyclark,ou=users,dc=example,dc=com',
+					cn: 'Emily Clark',
+					givenName: 'Emily',
+					sn: 'Clark',
+					mail: 'emily.clark@example.com',
+					uid: 'emilyclark',
+				},
+			];
+
+			// Users that only exist in memory
+			const deleteUsers = ['santaclaus', 'jackfrost'];
+
+			const foundUsers = [...newUsers, ...updateUsers];
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: foundUsers });
+
+			const mockedProcessUsers = processUsers as Mock;
+			mockedProcessUsers.mockRejectedValue(
+				new QueryFailedError('Query', [], new Error('Error processing users')),
+			);
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+
+			// Delete users that exist in memory but not in the LDAP response
+			mockedGetLdapIds.mockResolvedValue(['emilyclark', ...deleteUsers]);
+
+			const newDbUsers = newUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig, true));
+			const updateDbUsers = updateUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig));
+
+			vi.setSystemTime(new Date('2024-12-25'));
+			const expectedDate = new Date();
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(saveLdapSynchronization).toHaveBeenCalledTimes(1);
+			expect(saveLdapSynchronization).toHaveBeenCalledWith({
+				startedAt: expectedDate,
+				endedAt: expectedDate,
+				created: newDbUsers.length,
+				updated: updateDbUsers.length,
+				disabled: deleteUsers.length,
+				scanned: foundUsers.length,
+				runMode: 'live',
+				status: 'error',
+				error: 'Error processing users',
+			});
+		});
+
+		it('should emit expected event if synchronization is enabled', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			const eventServiceMock = mock<EventService>({
+				emit: vi.fn(),
+			});
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				mock(),
+				eventServiceMock,
+				mock<LicenseState>(),
+			);
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.runSync('dry');
+
+			expect(eventServiceMock.emit).toHaveBeenCalledTimes(1);
+			expect(eventServiceMock.emit).toHaveBeenCalledWith('ldap-general-sync-finished', {
+				error: '',
+				succeeded: true,
+				type: 'manual_dry',
+				usersSynced: 0,
+			});
+		});
+
+		it('should emit expected event if synchronization is disabled', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			const eventServiceMock = mock<EventService>({
+				emit: vi.fn(),
+			});
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				mock(),
+				eventServiceMock,
+				mock<LicenseState>(),
+			);
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			ldapService.stopSync();
+			await ldapService.runSync('dry');
+
+			expect(eventServiceMock.emit).toHaveBeenCalledTimes(1);
+			expect(eventServiceMock.emit).toHaveBeenCalledWith('ldap-general-sync-finished', {
+				error: '',
+				succeeded: true,
+				type: 'scheduled',
+				usersSynced: 0,
+			});
+		});
+
+		it('should emit expected event with error message if processUsers fails', async () => {
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
+
+			const eventServiceMock = mock<EventService>({
+				emit: vi.fn(),
+			});
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				mock(),
+				eventServiceMock,
+				mock<LicenseState>(),
+			);
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			const mockedProcessUsers = processUsers as Mock;
+			mockedProcessUsers.mockRejectedValue(
+				new QueryFailedError('Query', [], new Error('Error processing users')),
+			);
+
+			await ldapService.init();
+			ldapService.stopSync();
+			await ldapService.runSync('live');
+
+			expect(mockedProcessUsers).toHaveBeenCalledTimes(1);
+			expect(eventServiceMock.emit).toHaveBeenCalledTimes(1);
+			expect(eventServiceMock.emit).toHaveBeenCalledWith('ldap-general-sync-finished', {
+				error: 'Error processing users',
+				succeeded: false,
+				type: 'scheduled',
+				usersSynced: 0,
+			});
+		});
+
+		it('should surface non-QueryFailedError on the sync history and emit failure', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			const mockedProcessUsers = processUsers as Mock;
+			mockedProcessUsers.mockRejectedValue(new Error('Unexpected failure'));
+
+			vi.setSystemTime(new Date('2024-12-25'));
+			const expectedDate = new Date();
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(saveLdapSynchronization).toHaveBeenCalledTimes(1);
+			expect(saveLdapSynchronization).toHaveBeenCalledWith({
+				startedAt: expectedDate,
+				endedAt: expectedDate,
+				created: 0,
+				updated: 0,
+				disabled: 0,
+				scanned: 0,
+				runMode: 'live',
+				status: 'error',
+				error: 'Unexpected failure',
+			});
+		});
+
+		it('should skip LDAP entries whose email duplicates within the batch when enforceEmailUniqueness is enabled', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				enforceEmailUniqueness: true,
+			});
+
+			const duplicateUsers = [
+				{
+					dn: 'uid=jdoe1,ou=users,dc=example,dc=com',
+					cn: 'John Doe',
+					givenName: 'John',
+					sn: 'Doe',
+					mail: 'shared@example.com',
+					uid: 'jdoe1',
+				},
+				{
+					dn: 'uid=jdoe2,ou=users,dc=example,dc=com',
+					cn: 'Jane Doe',
+					givenName: 'Jane',
+					sn: 'Doe',
+					mail: 'shared@example.com',
+					uid: 'jdoe2',
+				},
+			];
+
+			const uniqueUser = {
+				dn: 'uid=unique,ou=users,dc=example,dc=com',
+				cn: 'Unique User',
+				givenName: 'Unique',
+				sn: 'User',
+				mail: 'unique@example.com',
+				uid: 'unique',
+			};
+
+			Client.prototype.search = vi
+				.fn()
+				.mockResolvedValue({ searchEntries: [...duplicateUsers, uniqueUser] });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(processUsers).toHaveBeenCalledTimes(1);
+			const [createArg] = (processUsers as Mock).mock.calls[0];
+			expect(createArg).toHaveLength(1);
+			expect(createArg[0][0]).toBe('unique');
+		});
+
+		it('should not filter duplicates when enforceEmailUniqueness is disabled', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				enforceEmailUniqueness: false,
+			});
+
+			const duplicateUsers = [
+				{
+					dn: 'uid=jdoe1,ou=users,dc=example,dc=com',
+					cn: 'John Doe',
+					givenName: 'John',
+					sn: 'Doe',
+					mail: 'shared@example.com',
+					uid: 'jdoe1',
+				},
+				{
+					dn: 'uid=jdoe2,ou=users,dc=example,dc=com',
+					cn: 'Jane Doe',
+					givenName: 'Jane',
+					sn: 'Doe',
+					mail: 'shared@example.com',
+					uid: 'jdoe2',
+				},
+			];
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: duplicateUsers });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(processUsers).toHaveBeenCalledTimes(1);
+			const [createArg] = (processUsers as Mock).mock.calls[0];
+			expect(createArg).toHaveLength(2);
+		});
+	});
+
+	describe('stopSync()', () => {
+		it('should clear the scheduled timer', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				synchronizationEnabled: true,
+				synchronizationInterval: 10,
+			});
+
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+
+			await ldapService.init();
+			ldapService.stopSync();
+
+			expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('handleLogin()', () => {
+		describe('enforceEmailUniqueness', () => {
+			const mockUser: User = mock<User>({
+				email: 'jdoe@example.com',
+				firstName: 'John',
+				lastName: 'Doe',
+			});
+
+			beforeEach(() => {
+				Client.prototype.search = vi.fn().mockImplementation(async () => ({
+					searchEntries: [
+						{
+							dn: 'uid:duplicate,ou=users,dc=example,dc=com',
+							cn: 'Duplicate',
+							mail: 'jdoe@example.com', // same email as jdoe
+							uid: 'duplicate',
+						},
+						{
+							dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+							cn: 'John Doe',
+							mail: 'jdoe@example.com',
+							uid: 'jdoe',
+						},
+					],
+				}));
+
+				const mockedGetAuthIdentity = getAuthIdentityByLdapId as Mock;
+				mockedGetAuthIdentity.mockResolvedValue(null);
+
+				const mockedCreateLdapUserOnLocalDb = createLdapUserOnLocalDb as Mock;
+				mockedCreateLdapUserOnLocalDb.mockResolvedValue(mockUser);
+
+				const mockedGetUserByEmail = getUserByEmail as Mock;
+				mockedGetUserByEmail.mockResolvedValue(null);
+			});
+
+			it('should allow login when duplicates exist but enforcement is disabled', async () => {
+				const ldapService = createDefaultLdapService({
+					...ldapConfig,
+					enforceEmailUniqueness: false,
+				});
+
+				await ldapService.init();
+
+				const result = await ldapService.handleLogin('jdoe', 'password');
+				expect(result).toEqual(mockUser);
+			});
+
+			it('should not allow login when duplicates exist and enforcement is enabled', async () => {
+				const ldapService = createDefaultLdapService({
+					...ldapConfig,
+					enforceEmailUniqueness: true,
+				});
+
+				await ldapService.init();
+
+				const result = await ldapService.handleLogin('jdoe', 'password');
+				expect(result).toBeUndefined();
+			});
+		});
+
+		describe('filter construction', () => {
+			it('should escape special characters in the email duplicate-check filter', async () => {
+				const trickyEmail = 'eve*)(uid=admin@example.com';
+				const ldapService = createDefaultLdapService({
+					...ldapConfig,
+					enforceEmailUniqueness: true,
+				});
+
+				const search = vi
+					.fn()
+					.mockResolvedValueOnce({
+						searchEntries: [
+							{
+								dn: 'uid=eve,ou=users,dc=example,dc=com',
+								cn: 'Eve',
+								mail: trickyEmail,
+								uid: 'eve',
+							},
+						],
+					})
+					.mockResolvedValueOnce({ searchEntries: [] });
+				Client.prototype.search = search;
+
+				(getAuthIdentityByLdapId as Mock).mockResolvedValue(null);
+				(getUserByEmail as Mock).mockResolvedValue(null);
+				(createLdapUserOnLocalDb as Mock).mockResolvedValue(mock<User>());
+
+				await ldapService.init();
+				await ldapService.handleLogin('eve', 'password');
+
+				expect(search).toHaveBeenCalledTimes(2);
+				const [, secondCallOptions] = search.mock.calls[1];
+				const emailFilter = secondCallOptions.filter as string;
+
+				expect(emailFilter).toContain('eve\\2a\\29\\28uid=admin@example.com');
+				expect(emailFilter).not.toContain(trickyEmail);
+			});
+		});
+	});
+});

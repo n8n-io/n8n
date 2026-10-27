@@ -1,5 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { simplifyMemoryNotice, threadSimplifyOutputShapeHint } from '../utils/descriptions';
+
 export const threadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -240,7 +242,13 @@ export const threadFields: INodeProperties[] = [
 		},
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: {
+			propertyHint: threadSimplifyOutputShapeHint,
+		},
 	},
+	simplifyMemoryNotice({
+		displayOptions: { show: { operation: ['get'], resource: ['thread'], simple: [false] } },
+	}),
 	{
 		displayName: 'Options',
 		name: 'options',

@@ -1,0 +1,11 @@
+id,prompt
+email-summary,"Create a workflow that runs every Monday morning to analyze weekend emails and create a summary report."
+ai-news-digest,"Build a nightly workflow that fetches news from NewsAPI, uses OpenAI to summarize articles, and generates images for the top stories."
+daily-weather-report,"Create a workflow that sends a personalized morning weather report email using OpenWeather API data."
+invoice-pipeline,"Build an invoice processing workflow that extracts data from PDF/image invoices, validates the information, and generates weekly reports."
+lead-qualification,"Create a workflow that receives web form submissions, uses AI to qualify leads, and schedules calendar appointments for qualified prospects."
+slack-notification,"Build a workflow that monitors a database for new entries and sends Slack notifications with formatted summaries."
+github-issue-triage,"Create a workflow that automatically labels and assigns GitHub issues based on their content using AI classification."
+csv-data-processing,"Build a workflow that processes large CSV files, transforms the data, and uploads results to Google Sheets with rate limiting."
+webhook-order-processing,"Create a webhook-triggered workflow that processes e-commerce orders, updates inventory, and sends confirmation emails."
+content-moderation,"Build a workflow that reviews user-submitted content for moderation, flags inappropriate items, and notifies moderators."

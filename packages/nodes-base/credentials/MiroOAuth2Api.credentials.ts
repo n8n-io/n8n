@@ -41,9 +41,11 @@ export class MiroOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden',
-			default: '',
+			type: 'string',
+			default: 'boards:read boards:write',
 			required: true,
+			description:
+				'OAuth scopes to request. See <a href="https://developers.miro.com/reference/scopes">Miro scopes documentation</a>.',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',

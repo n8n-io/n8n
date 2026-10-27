@@ -1,10 +1,6 @@
-import type { Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
-import type {
-	CredentialStoreMetadata,
-	IDynamicCredentialStorageProvider,
-} from './dynamic-credential-storage.interface';
 import type {
 	ICredentialContext,
 	ICredentialDataDecryptedObject,
@@ -13,10 +9,16 @@ import type {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 import { toCredentialContext, UnexpectedError } from 'n8n-workflow';
+
 import type {
+	CredentialResolutionResult,
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
 } from './credential-resolution-provider.interface';
+import type {
+	CredentialStoreMetadata,
+	IDynamicCredentialStorageProvider,
+} from './dynamic-credential-storage.interface';
 
 @Service()
 export class DynamicCredentialsProxy
@@ -35,12 +37,37 @@ export class DynamicCredentialsProxy
 		this.resolvingProvider = provider;
 	}
 
+	/**
+	 * Returns the seeded system resolver id used to store private credentials
+	 * on the user's behalf (e.g. OAuth2 callback for `isResolvable` credentials).
+	 * Returns null when the system resolver has not been seeded or the dynamic
+	 * credentials provider is not registered.
+	 */
+	getSystemResolverId(): string | null {
+		if (!this.resolvingProvider) {
+			return null;
+		}
+		return this.resolvingProvider.getSystemResolverId();
+	}
+
+	/**
+	 * Returns the resolver id that should be used for a workflow: the explicit
+	 * `settings.credentialResolverId` override if present, otherwise the seeded
+	 * system resolver id (null when the system resolver isn't available).
+	 */
+	getEffectiveResolverId(
+		settings: Pick<IWorkflowSettings, 'credentialResolverId'> | undefined,
+	): string | null {
+		return settings?.credentialResolverId ?? this.getSystemResolverId();
+	}
+
 	async resolveIfNeeded(
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		staticData: ICredentialDataDecryptedObject,
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
-	): Promise<ICredentialDataDecryptedObject> {
+		executionId?: string,
+	): Promise<CredentialResolutionResult> {
 		if (!this.resolvingProvider) {
 			if (credentialsResolveMetadata.isResolvable) {
 				this.logger.warn(
@@ -48,13 +75,14 @@ export class DynamicCredentialsProxy
 				);
 				throw new Error('No dynamic credential resolving provider set');
 			}
-			return staticData;
+			return { data: staticData, isDynamic: false };
 		}
 		return await this.resolvingProvider.resolveIfNeeded(
 			credentialsResolveMetadata,
 			staticData,
 			executionContext,
 			workflowSettings,
+			executionId,
 		);
 	}
 
@@ -64,6 +92,7 @@ export class DynamicCredentialsProxy
 		credentialContext: ICredentialContext,
 		staticData?: ICredentialDataDecryptedObject,
 		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
 	): Promise<void> {
 		if (!this.storageProvider) {
 			if (credentialStoreMetadata.isResolvable) {
@@ -80,6 +109,7 @@ export class DynamicCredentialsProxy
 			credentialContext,
 			staticData,
 			workflowSettings,
+			executionId,
 		);
 	}
 
@@ -92,6 +122,7 @@ export class DynamicCredentialsProxy
 		executionContext: IExecutionContext | undefined,
 		staticData: ICredentialDataDecryptedObject,
 		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
 	): Promise<void> {
 		if (!credentialStoreMetadata.isResolvable || !credentialStoreMetadata.resolverId) {
 			return;
@@ -102,8 +133,8 @@ export class DynamicCredentialsProxy
 		let credentialContext: { version: 1; identity: string } | undefined;
 
 		if (executionContext?.credentials) {
-			const decrypted = cipher.decrypt(executionContext.credentials);
-			credentialContext = toCredentialContext(decrypted) as { version: 1; identity: string };
+			const decrypted = await cipher.decryptV2(executionContext.credentials);
+			credentialContext = toCredentialContext(decrypted);
 		}
 
 		if (!credentialContext) {
@@ -117,10 +148,11 @@ export class DynamicCredentialsProxy
 
 		await this.storeIfNeeded(
 			credentialStoreMetadata,
-			{ oauthTokenData } as ICredentialDataDecryptedObject,
+			{ oauthTokenData },
 			credentialContext,
 			staticData,
 			workflowSettings,
+			executionId,
 		);
 	}
 }

@@ -1,8 +1,13 @@
 <script lang="ts" setup>
 import {
 	N8nButton,
+	N8nExternalLink,
 	N8nIcon,
 	N8nLink,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
 	N8nTabs,
 	N8nText,
 	N8nTooltip,
@@ -13,51 +18,99 @@ import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAsyncState } from '@vueuse/core';
 import { computed, ref, useCssModule } from 'vue';
+import { I18nT } from 'vue-i18n';
+import { RouterLink } from 'vue-router';
 import orderBy from 'lodash/orderBy';
-import SeverityTag from './components/SeverityTag.vue';
+import ImpactTag from './components/ImpactTag.vue';
 import EmptyTab from './components/EmptyTab.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useI18n } from '@n8n/i18n';
+import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
+import type { BreakingChangeLightReportResult, BreakingChangeRuleImpact } from '@n8n/api-types';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useToast } from '@n8n/composables/useToast';
+import { saveAs } from 'file-saver';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
 const i18n = useI18n();
+const toast = useToast();
+
+useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
 const currentTab = ref('workflow-issues');
-const shouldShowRefreshButton = ref(false);
+
+// A user who can edit every workflow sees the whole instance and may refresh it.
+// Everyone else sees the workflows they can edit, and the instance issues are not theirs.
+const canManageReport = hasPermission(['rbac'], { rbac: { scope: 'workflow:update' } });
+
+const versionQuery = MIGRATION_REPORT_TARGET_VERSION
+	? { version: MIGRATION_REPORT_TARGET_VERSION }
+	: undefined;
+
+const targetVersionMajor = MIGRATION_REPORT_TARGET_VERSION?.slice(1) ?? '2';
+const targetVersionDisplay = `${targetVersionMajor}.0.0`;
+const documentationUrl = 'https://docs.n8n.io/changelog/v30-breaking-changes';
+
+type WorkflowRuleResult = BreakingChangeLightReportResult['report']['workflowResults'][number];
+
+// A rule with only won't fix findings has no open findings left, so it counts as resolved.
+function isOpenRule(rule: WorkflowRuleResult) {
+	return rule.nbAffectedWorkflows > 0;
+}
 
 const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = false) => {
 	if (refresh) {
-		const response = await breakingChangesApi.refreshReport(rootStore.restApiContext);
+		const response = await breakingChangesApi.refreshReport(rootStore.restApiContext, versionQuery);
 		// set tab based on available issues
 		if (
-			response.report.workflowResults.length === 0 &&
+			!response.report.workflowResults.some(isOpenRule) &&
 			response.report.instanceResults.length > 0
 		) {
 			currentTab.value = 'instance-issues';
 		}
-		shouldShowRefreshButton.value = response.shouldCache;
 
 		return response;
 	}
-	const response = await breakingChangesApi.getReport(rootStore.restApiContext);
-	shouldShowRefreshButton.value = response.shouldCache;
-
-	return response;
+	return await breakingChangesApi.getReport(rootStore.restApiContext, versionQuery);
 }, undefined);
+
+const openWorkflowRulesCount = computed(
+	() => state.value?.report.workflowResults.filter(isOpenRule).length ?? 0,
+);
 
 async function refreshReport() {
 	await execute(0, true);
 }
 
+const isExporting = ref(false);
+
+// The server builds and names the file, so an instance without telemetry can still share its counts.
+async function exportReport() {
+	isExporting.value = true;
+	try {
+		const { blob, filename } = await breakingChangesApi.exportReport(
+			rootStore.restApiContext,
+			versionQuery,
+		);
+		saveAs(blob, filename);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.migrationReport.export.error.title'));
+	} finally {
+		isExporting.value = false;
+	}
+}
+
 const tabs = computed(() => {
+	const workflowIssues = {
+		label: i18n.baseText('settings.migrationReport.tabs.workflowIssues'),
+		value: 'workflow-issues',
+		tag: openWorkflowRulesCount.value ? String(openWorkflowRulesCount.value) : undefined,
+	};
+	if (!canManageReport) return [workflowIssues];
 	return [
-		{
-			label: i18n.baseText('settings.migrationReport.tabs.workflowIssues'),
-			value: 'workflow-issues',
-			tag: state.value?.report.workflowResults.length
-				? String(state.value.report.workflowResults.length)
-				: undefined,
-		},
+		workflowIssues,
 		{
 			label: i18n.baseText('settings.migrationReport.tabs.instanceIssues'),
 			value: 'instance-issues',
@@ -68,39 +121,68 @@ const tabs = computed(() => {
 	];
 });
 
-const workflowTooltips = computed(() => {
-	return {
-		critical: i18n.baseText('settings.migrationReport.workflowTooltip.critical'),
-		medium: i18n.baseText('settings.migrationReport.workflowTooltip.medium'),
-		low: i18n.baseText('settings.migrationReport.workflowTooltip.low'),
-	} as const;
-});
+const workflowTooltips = computed<Record<BreakingChangeRuleImpact, string>>(() => ({
+	upgradeBlocked: i18n.baseText('settings.migrationReport.workflowTooltip.upgradeBlocked'),
+	executionsFail: i18n.baseText('settings.migrationReport.workflowTooltip.executionsFail'),
+	executionsMightFail: i18n.baseText(
+		'settings.migrationReport.workflowTooltip.executionsMightFail',
+	),
+	behaviorChanges: i18n.baseText('settings.migrationReport.workflowTooltip.behaviorChanges'),
+	capabilityRemoved: i18n.baseText('settings.migrationReport.workflowTooltip.capabilityRemoved'),
+}));
 
-const instanceTooltips = computed(() => {
-	return {
-		critical: i18n.baseText('settings.migrationReport.instanceTooltip.critical'),
-		medium: i18n.baseText('settings.migrationReport.instanceTooltip.medium'),
-		low: i18n.baseText('settings.migrationReport.instanceTooltip.low'),
-	} as const;
-});
+const instanceTooltips = computed<Record<BreakingChangeRuleImpact, string>>(() => ({
+	upgradeBlocked: i18n.baseText('settings.migrationReport.instanceTooltip.upgradeBlocked'),
+	executionsFail: i18n.baseText('settings.migrationReport.instanceTooltip.executionsFail'),
+	executionsMightFail: i18n.baseText(
+		'settings.migrationReport.instanceTooltip.executionsMightFail',
+	),
+	behaviorChanges: i18n.baseText('settings.migrationReport.instanceTooltip.behaviorChanges'),
+	capabilityRemoved: i18n.baseText('settings.migrationReport.instanceTooltip.capabilityRemoved'),
+}));
 
 const compatibleWorkflowsCount = computed(() => {
 	if (!state.value) return 0;
-	return (
-		state.value.totalWorkflows -
-		state.value.report.workflowResults.reduce((acc, issue) => acc + issue.nbAffectedWorkflows, 0)
-	);
+	return state.value.totalWorkflows - state.value.totalAffectedWorkflows;
 });
 
-// Severity order: critical (highest) -> medium -> low (lowest)
-const severityOrder = { critical: 0, medium: 1, low: 2 };
+const compatiblePercentage = computed(() => {
+	const total = state.value?.totalWorkflows ?? 0;
+	if (total === 0) return 0;
+	// Floor so the bar only fills once every workflow is compatible
+	return Math.floor((compatibleWorkflowsCount.value / total) * 100);
+});
 
+const progressLabel = computed(() =>
+	i18n.baseText('settings.migrationReport.progress.label', {
+		interpolate: {
+			compatibleCount: compatibleWorkflowsCount.value.toLocaleString(),
+			totalCount: (state.value?.totalWorkflows ?? 0).toLocaleString(),
+		},
+	}),
+);
+
+function ruleDetailRoute(ruleId: string) {
+	return { name: VIEWS.MIGRATION_RULE_REPORT, params: { migrationRuleId: ruleId } };
+}
+
+// Impact order: the impact that blocks the update comes first, the one with no
+// runtime effect comes last.
+const impactOrder: Record<BreakingChangeRuleImpact, number> = {
+	upgradeBlocked: 0,
+	executionsFail: 1,
+	executionsMightFail: 2,
+	behaviorChanges: 3,
+	capabilityRemoved: 4,
+};
+
+// Resolved rules come last. They stay listed so a user can open them and undo a won't fix.
 const sortedWorkflowResults = computed(() => {
 	if (!state.value?.report.workflowResults) return [];
 	return orderBy(
 		state.value.report.workflowResults,
-		[(issue) => severityOrder[issue.ruleSeverity]],
-		['asc'],
+		[(issue) => (isOpenRule(issue) ? 0 : 1), (issue) => impactOrder[issue.ruleImpact]],
+		['asc', 'asc'],
 	);
 });
 
@@ -108,196 +190,247 @@ const sortedInstanceResults = computed(() => {
 	if (!state.value?.report.instanceResults) return [];
 	return orderBy(
 		state.value.report.instanceResults,
-		[(issue) => severityOrder[issue.ruleSeverity]],
+		[(issue) => impactOrder[issue.ruleImpact]],
 		['asc'],
 	);
 });
 </script>
 
 <template>
-	<div style="max-width: 700px; margin: 0 auto; padding-bottom: 40px">
-		<N8nText tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
-			{{ i18n.baseText('settings.migrationReport.title') }}
-		</N8nText>
-		<N8nText tag="p" color="text-base" class="mb-2xl">
-			{{
+	<N8nSettingsLayout>
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.migrationReport')"
+			:description="
 				i18n.baseText('settings.migrationReport.description', {
 					interpolate: {
-						compatibleCount: String(compatibleWorkflowsCount),
-						totalCount: String(state?.totalWorkflows ?? 0),
+						compatibleCount: compatibleWorkflowsCount.toLocaleString(),
+						totalCount: (state?.totalWorkflows ?? 0).toLocaleString(),
+						version: targetVersionDisplay,
 					},
 				})
-			}}
-			<N8nLink
-				theme="text"
-				href="https://docs.n8n.io/2-0-breaking-changes/"
-				target="_blank"
-				rel="noopener noreferrer"
+			"
+			:docs-url="documentationUrl"
+			:docs-label="i18n.baseText('settings.migrationReport.documentationLink')"
+			docs-leading-text=""
+		/>
+		<div>
+			<N8nText
+				v-if="!canManageReport"
+				tag="p"
+				size="small"
+				color="text-light"
+				class="mb-s"
+				data-test-id="migration-report-scope-note"
 			>
-				<span :class="$style.UnderlinedText">{{
-					i18n.baseText('settings.migrationReport.documentationLink')
-				}}</span>
-				↗
-			</N8nLink>
-		</N8nText>
-
-		<div :class="$style.ActionBar">
-			<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
-			<N8nButton
-				v-if="shouldShowRefreshButton"
-				:label="i18n.baseText('settings.migrationReport.refreshButton')"
-				icon="refresh-cw"
-				type="secondary"
-				:loading="isLoading"
-				:disabled="isLoading"
-				@click="refreshReport"
-			/>
-		</div>
-
-		<div v-if="isLoading" :class="$style.CardContainer">
-			<div v-for="i in 4" :key="i" :class="$style.Card">
-				<div>
-					<N8nLoading variant="p" :rows="3" :class="$style.PLoading"></N8nLoading>
+				{{ i18n.baseText('settings.migrationReport.scopeNote') }}
+			</N8nText>
+			<div v-if="state" :class="$style.Progress">
+				<div
+					:class="$style.ProgressTrack"
+					role="progressbar"
+					:aria-valuenow="compatiblePercentage"
+					aria-valuemin="0"
+					aria-valuemax="100"
+					:aria-label="progressLabel"
+					data-test-id="migration-report-progress"
+				>
+					<div :class="$style.ProgressFill" :style="{ width: `${compatiblePercentage}%` }" />
 				</div>
-				<N8nLoading variant="button"></N8nLoading>
+				<N8nText size="medium" color="text-base" :class="$style.NoLineBreak">
+					{{ progressLabel }}
+				</N8nText>
 			</div>
-		</div>
-		<template v-else-if="currentTab === 'workflow-issues'">
-			<template v-if="state?.report.workflowResults.length === 0">
-				<EmptyTab>
-					<template #title>{{
-						i18n.baseText('settings.migrationReport.emptyWorkflowIssues.title')
-					}}</template>
-					<template #description>{{
-						i18n.baseText('settings.migrationReport.emptyWorkflowIssues.description')
-					}}</template>
-				</EmptyTab>
-			</template>
-			<div v-else :class="$style.CardContainer">
-				<div v-for="issue in sortedWorkflowResults" :key="issue.ruleId" :class="$style.Card">
-					<div>
-						<div :class="$style.CardTitleContainer">
-							<N8nText tag="h3" size="medium" color="text-dark">{{ issue.ruleTitle }}</N8nText>
-							<N8nTooltip
-								:content="workflowTooltips[issue.ruleSeverity]"
-								placement="top"
-								:enterable="false"
-							>
-								<SeverityTag :severity="issue.ruleSeverity" />
-							</N8nTooltip>
-						</div>
-						<N8nText tag="p" color="text-base">
-							{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
-							<N8nLink
-								v-if="issue.ruleDocumentationUrl"
-								theme="text"
-								:href="issue.ruleDocumentationUrl"
-								target="_blank"
-								rel="noopener noreferrer"
-								:class="$style.NoLineBreak"
-							>
-								<span :class="$style.UnderlinedText">{{
-									i18n.baseText('settings.migrationReport.documentation')
-								}}</span>
-								↗
-							</N8nLink>
-						</N8nText>
-					</div>
-					<N8nLink
+			<div :class="$style.ActionBar">
+				<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
+				<div :class="$style.RefreshGroup">
+					<N8nText
+						v-if="state?.report.generatedAt"
+						size="small"
+						color="text-light"
 						:class="$style.NoLineBreak"
-						theme="text"
-						:to="{ name: VIEWS.MIGRATION_RULE_REPORT, params: { migrationRuleId: issue.ruleId } }"
+						data-test-id="migration-report-last-updated"
 					>
-						<span :class="$style.NoLineBreak">
-							{{
-								i18n.baseText('settings.migrationReport.workflowsCount', {
-									interpolate: { count: issue.nbAffectedWorkflows },
-								})
-							}}
-							<N8nIcon icon="chevron-right" :size="24" />
-						</span>
-					</N8nLink>
+						<I18nT keypath="settings.migrationReport.lastUpdated" tag="span" scope="global">
+							<template #time>
+								<TimeAgo :date="state.report.generatedAt.toString()" />
+							</template>
+						</I18nT>
+					</N8nText>
+					<N8nText
+						v-else-if="state"
+						size="small"
+						color="text-light"
+						:class="$style.NoLineBreak"
+						data-test-id="migration-report-last-updated"
+					>
+						{{ i18n.baseText('settings.migrationReport.neverUpdated') }}
+					</N8nText>
+					<N8nButton
+						variant="outline"
+						:label="i18n.baseText('settings.migrationReport.exportButton')"
+						icon="download"
+						:loading="isExporting"
+						:disabled="isLoading || isExporting || !state"
+						data-test-id="migration-report-export"
+						@click="exportReport"
+					/>
+					<N8nButton
+						v-if="canManageReport"
+						variant="outline"
+						:label="i18n.baseText('settings.migrationReport.refreshButton')"
+						icon="refresh-cw"
+						:loading="isLoading"
+						:disabled="isLoading"
+						@click="refreshReport"
+					/>
 				</div>
 			</div>
-		</template>
-		<template v-else-if="currentTab === 'instance-issues'">
-			<template v-if="state?.report.instanceResults.length === 0">
-				<EmptyTab>
-					<template #title>{{
-						i18n.baseText('settings.migrationReport.emptyInstanceIssues.title')
-					}}</template>
-					<template #description>{{
-						i18n.baseText('settings.migrationReport.emptyInstanceIssues.description')
-					}}</template>
-				</EmptyTab>
-			</template>
-			<div v-else :class="$style.CardContainer">
-				<div v-for="issue in sortedInstanceResults" :key="issue.ruleId" :class="$style.Card">
-					<div>
-						<div :class="$style.CardTitleContainer">
-							<N8nText tag="h3">{{ issue.ruleTitle }}</N8nText>
-							<N8nTooltip
-								:content="instanceTooltips[issue.ruleSeverity]"
-								placement="top"
-								:enterable="false"
-							>
-								<SeverityTag :severity="issue.ruleSeverity" />
-							</N8nTooltip>
-						</div>
-						<N8nText tag="p" color="text-base">
-							{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
-							<N8nLink
-								v-if="issue.ruleDocumentationUrl"
-								theme="text"
-								:href="issue.ruleDocumentationUrl"
-								target="_blank"
-								rel="noopener noreferrer"
-								:class="$style.NoLineBreak"
-							>
-								<span :class="$style.UnderlinedText">{{
-									i18n.baseText('settings.migrationReport.documentation')
-								}}</span>
-								↗
+
+			<N8nSettingsRowGroup v-if="isLoading">
+				<N8nSettingsRow v-for="i in 4" :key="i">
+					<template #info>
+						<N8nLoading variant="p" :rows="3" :class="$style.PLoading"></N8nLoading>
+					</template>
+					<template #action>
+						<N8nLoading variant="button"></N8nLoading>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+			<template v-else-if="currentTab === 'workflow-issues'">
+				<template v-if="state && openWorkflowRulesCount === 0">
+					<EmptyTab>
+						<template #title>{{
+							i18n.baseText('settings.migrationReport.emptyWorkflowIssues.title')
+						}}</template>
+						<template #description>{{
+							i18n.baseText('settings.migrationReport.emptyWorkflowIssues.description', {
+								interpolate: { version: targetVersionDisplay },
+							})
+						}}</template>
+					</EmptyTab>
+				</template>
+				<N8nSettingsRowGroup v-if="sortedWorkflowResults.length > 0">
+					<N8nSettingsRow v-for="issue in sortedWorkflowResults" :key="issue.ruleId">
+						<template #info>
+							<div :class="$style.CardTitleContainer">
+								<N8nText tag="h3" size="medium" color="text-dark" bold>
+									<RouterLink
+										:to="ruleDetailRoute(issue.ruleId)"
+										:class="$style.TitleLink"
+										data-test-id="migration-rule-title-link"
+									>
+										{{ issue.ruleTitle }}
+									</RouterLink>
+								</N8nText>
+								<N8nTooltip
+									:content="workflowTooltips[issue.ruleImpact]"
+									placement="top"
+									:enterable="false"
+								>
+									<ImpactTag :impact="issue.ruleImpact" />
+								</N8nTooltip>
+							</div>
+							<N8nText tag="p" color="text-base">
+								{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
+								<N8nExternalLink
+									v-if="issue.ruleDocumentationUrl"
+									inline
+									size="small"
+									:href="issue.ruleDocumentationUrl"
+									>{{ i18n.baseText('settings.migrationReport.documentation') }}</N8nExternalLink
+								>
+							</N8nText>
+							<div :class="$style.FindingCounts" data-test-id="migration-rule-finding-counts">
+								<N8nText
+									v-if="issue.nbAffectedWorkflows > 0"
+									size="small"
+									color="text-light"
+									:class="$style.FindingCount"
+								>
+									<span :class="[$style.FindingCountDot, $style.open]" />
+									{{
+										i18n.baseText('settings.migrationReport.findingCount.open', {
+											interpolate: { count: issue.nbAffectedWorkflows },
+										})
+									}}
+								</N8nText>
+								<N8nText
+									v-if="issue.nbWontFixWorkflows > 0"
+									size="small"
+									color="text-light"
+									:class="$style.FindingCount"
+								>
+									<span :class="[$style.FindingCountDot, $style.wontFix]" />
+									{{
+										i18n.baseText('settings.migrationReport.findingCount.wontFix', {
+											interpolate: { count: issue.nbWontFixWorkflows },
+										})
+									}}
+								</N8nText>
+							</div>
+						</template>
+						<template #action>
+							<N8nLink :class="$style.NoLineBreak" theme="text" :to="ruleDetailRoute(issue.ruleId)">
+								<span :class="$style.NoLineBreak">
+									{{
+										isOpenRule(issue)
+											? i18n.baseText('settings.migrationReport.workflowsCount', {
+													interpolate: { count: issue.nbAffectedWorkflows },
+												})
+											: i18n.baseText('settings.migrationReport.resolved')
+									}}
+									<N8nIcon icon="chevron-right" :size="24" />
+								</span>
 							</N8nLink>
-						</N8nText>
-					</div>
-				</div>
-			</div>
-		</template>
-	</div>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+			</template>
+			<template v-else-if="currentTab === 'instance-issues'">
+				<template v-if="state?.report.instanceResults.length === 0">
+					<EmptyTab>
+						<template #title>{{
+							i18n.baseText('settings.migrationReport.emptyInstanceIssues.title')
+						}}</template>
+						<template #description>{{
+							i18n.baseText('settings.migrationReport.emptyInstanceIssues.description', {
+								interpolate: { version: targetVersionDisplay },
+							})
+						}}</template>
+					</EmptyTab>
+				</template>
+				<N8nSettingsRowGroup v-else>
+					<N8nSettingsRow v-for="issue in sortedInstanceResults" :key="issue.ruleId">
+						<template #info>
+							<div :class="$style.CardTitleContainer">
+								<N8nText tag="h3">{{ issue.ruleTitle }}</N8nText>
+								<N8nTooltip
+									:content="instanceTooltips[issue.ruleImpact]"
+									placement="top"
+									:enterable="false"
+								>
+									<ImpactTag :impact="issue.ruleImpact" />
+								</N8nTooltip>
+							</div>
+							<N8nText tag="p" color="text-base">
+								{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
+								<N8nExternalLink
+									v-if="issue.ruleDocumentationUrl"
+									inline
+									size="small"
+									:href="issue.ruleDocumentationUrl"
+									>{{ i18n.baseText('settings.migrationReport.documentation') }}</N8nExternalLink
+								>
+							</N8nText>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+			</template>
+		</div>
+	</N8nSettingsLayout>
 </template>
 
 <style module>
-.CardContainer {
-	border: var(--border);
-	border-radius: var(--radius);
-
-	.Card {
-		&:first-child {
-			border-top-left-radius: inherit;
-			border-top-right-radius: inherit;
-		}
-
-		&:last-child {
-			border-bottom-left-radius: inherit;
-			border-bottom-right-radius: inherit;
-		}
-
-		&:not(:last-child) {
-			border-bottom: var(--border);
-		}
-	}
-}
-
-.Card {
-	padding: var(--spacing--sm) var(--spacing--md);
-	display: grid;
-	grid-template-columns: 4fr 1fr;
-	align-items: center;
-	gap: var(--spacing--md);
-	background-color: var(--color--background--light-3);
-}
-
 .CardTitleContainer {
 	display: flex;
 	align-items: center;
@@ -312,6 +445,27 @@ const sortedInstanceResults = computed(() => {
 	gap: var(--spacing--4xs);
 }
 
+.Progress {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--lg);
+	margin-bottom: var(--spacing--xl);
+}
+
+.ProgressTrack {
+	flex: 1;
+	height: var(--height--5xs);
+	border-radius: var(--radius--3xs);
+	background-color: var(--color--foreground--tint-1);
+	overflow: hidden;
+}
+
+.ProgressFill {
+	height: 100%;
+	border-radius: inherit;
+	background-color: var(--color--primary);
+}
+
 .ActionBar {
 	display: flex;
 	justify-content: space-between;
@@ -319,13 +473,10 @@ const sortedInstanceResults = computed(() => {
 	margin-bottom: var(--spacing--sm);
 }
 
-.NoIssuesContainer {
+.RefreshGroup {
 	display: flex;
-	flex-direction: column;
 	align-items: center;
-	justify-content: center;
-	text-align: center;
-	padding: var(--spacing--4xl) 0;
+	gap: var(--spacing--xs);
 }
 
 .PLoading {
@@ -334,7 +485,38 @@ const sortedInstanceResults = computed(() => {
 	}
 }
 
-.UnderlinedText {
-	text-decoration: underline;
+.TitleLink {
+	color: inherit;
+	text-decoration: none;
+
+	&:hover {
+		color: var(--color--primary);
+	}
+}
+
+.FindingCounts {
+	display: flex;
+	gap: var(--spacing--sm);
+	margin-top: var(--spacing--2xs);
+}
+
+.FindingCount {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.FindingCountDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: var(--radius--full);
+
+	&.open {
+		background-color: var(--text-color--subtler);
+	}
+
+	&.wontFix {
+		background-color: var(--icon-color--warning);
+	}
 }
 </style>

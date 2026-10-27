@@ -1,4 +1,10 @@
-import type { IExecuteFunctions, INodeExecutionData, AllEntities } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	AllEntities,
+	DataTableRowOperation,
+	DataTableTableOperation,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import * as row from './row/Row.resource';
@@ -7,8 +13,8 @@ import { DATA_TABLE_ID_FIELD } from '../common/fields';
 import { getDataTableProxyExecute } from '../common/utils';
 
 type DataTableNodeType = AllEntities<{
-	row: 'insert' | 'get' | 'rowExists' | 'rowNotExists' | 'deleteRows' | 'update' | 'upsert';
-	table: 'create' | 'delete' | 'list' | 'update';
+	row: DataTableRowOperation;
+	table: DataTableTableOperation;
 }>;
 
 const BULK_OPERATIONS = ['insert'] as const;

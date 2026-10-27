@@ -1,9 +1,7 @@
-import { createTestNode, createTestWorkflow, createTestWorkflowObject } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import InputPanel, { type Props } from './InputPanel.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
 import {
 	createRunExecutionData,
 	NodeConnectionTypes,
@@ -12,13 +10,25 @@ import {
 	type IRunData,
 } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { mockedStore } from '@/__tests__/utils';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { computed, shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+	return { ...actual, injectWorkflowDocumentStore: vi.fn() };
+});
 
 vi.mock('vue-router', () => {
 	return {
 		useRouter: () => ({}),
-		useRoute: () => ({ meta: {} }),
+		useRoute: () => ({ meta: {}, params: {} }),
 		RouterLink: vi.fn(),
 	};
 });
@@ -55,17 +65,21 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	setActivePinia(pinia);
 
 	const workflow = createTestWorkflow({ nodes, connections });
-	const workflowStore = useWorkflowsStore();
-	const workflowState = useWorkflowState();
 
-	workflowStore.setWorkflow(workflow);
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.hydrate(workflow);
+
+	vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 
 	if (pinData) {
-		mockedStore(useWorkflowsStore).pinDataByNodeName.mockReturnValue(pinData);
+		workflowDocumentStore.setPinData(Object.fromEntries(nodes.map((n) => [n.name, pinData])));
 	}
 
 	if (runData) {
-		workflowState.setWorkflowExecutionData({
+		// The component reads run data via `injectWorkflowExecutionStateStore()`,
+		// which resolves through the execution-state store keyed by the injected
+		// workflow document's id.
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData({
 			id: '',
 			workflowData: {
 				id: '',
@@ -90,23 +104,21 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 		});
 	}
 
-	const workflowObject = createTestWorkflowObject({
-		nodes,
-		connections,
-	});
-
 	return createComponentRenderer(InputPanel, {
 		props: {
 			pushRef: 'pushRef',
 			runIndex: 0,
 			currentNodeName: nodes[0].name,
 			activeNodeName: nodes[1].name,
-			workflowObject,
 			displayMode: 'schema',
 			focusedMappableInput: '',
 			isMappingOnboarded: false,
 		},
 		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
+				[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocumentStore),
+			},
 			stubs: {
 				InputPanelPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },
 			},
@@ -115,18 +127,27 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 };
 
 describe('InputPanel', () => {
-	it('should render', async () => {
-		const { container, queryByTestId } = render({}, [{ json: { name: 'Test' } }]);
+	afterEach(async () => {
+		// Tab assertions can finish while the schema view still loads.
+		await vi.dynamicImportSettled();
+	});
 
-		await waitFor(() => expect(queryByTestId('ndv-data-size-warning')).not.toBeInTheDocument());
-		expect(container).toMatchSnapshot();
+	it('renders the schema view', async () => {
+		const { getByTestId, queryByTestId } = render({}, [{ json: { name: 'Test' } }]);
+
+		await vi.dynamicImportSettled();
+
+		expect(queryByTestId('ndv-data-size-warning')).not.toBeInTheDocument();
+		expect(getByTestId('ndv-input-panel')).toBeInTheDocument();
+		expect(getByTestId('run-data-schema-header')).toHaveTextContent('Variables and context');
+		expect(getByTestId('ndv-search')).toBeInTheDocument();
 	});
 
 	it("opens mapping tab by default if the node hasn't run yet", async () => {
 		const { findByTestId } = render({ activeNodeName: 'Tool' });
 
-		expect((await findByTestId('radio-button-mapping')).parentNode).toBeChecked();
-		expect((await findByTestId('radio-button-debugging')).parentNode).not.toBeChecked();
+		expect(await findByTestId('radio-button-mapping')).toBeChecked();
+		expect(await findByTestId('radio-button-debugging')).not.toBeChecked();
 	});
 
 	it('opens debugging tab by default if the node has already run', async () => {
@@ -142,7 +163,7 @@ describe('InputPanel', () => {
 			],
 		});
 
-		expect((await findByTestId('radio-button-mapping')).parentNode).not.toBeChecked();
-		expect((await findByTestId('radio-button-debugging')).parentNode).toBeChecked();
+		expect(await findByTestId('radio-button-mapping')).not.toBeChecked();
+		expect(await findByTestId('radio-button-debugging')).toBeChecked();
 	});
 });

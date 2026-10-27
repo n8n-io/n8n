@@ -38,7 +38,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/opportunities/{{$parameter.opportunityId}}',
+						url: '=/opportunities/{{toPathSegment($parameter.opportunityId)}}',
 					},
 					output: {
 						postReceive: [
@@ -59,7 +59,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/opportunities/{{$parameter.opportunityId}}',
+						url: '=/opportunities/{{toPathSegment($parameter.opportunityId)}}',
 					},
 				},
 				action: 'Get an opportunity',
@@ -85,7 +85,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/opportunities/{{$parameter.opportunityId}}',
+						url: '=/opportunities/{{toPathSegment($parameter.opportunityId)}}',
 					},
 				},
 				action: 'Update an opportunity',

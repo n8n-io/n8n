@@ -4,10 +4,11 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import type { ResponseInputImage } from 'openai/resources/responses/responses';
 import type { ChatContent, ChatResponse, ChatResponseRequest } from '../../../helpers/interfaces';
+import { accumulateImageTokenUsage } from '../../../helpers/token-usage';
 import { apiRequest } from '../../../transport';
 import { modelRLC } from '../descriptions';
 import { getBinaryDataFile } from '../../../helpers/binary-data';
@@ -134,6 +135,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const model = this.getNodeParameter('modelId', i, 'gpt-4o', { extractValue: true }) as string;
 
 	const text = this.getNodeParameter('text', i, '') as string;
+	if (!text.trim()) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 	const inputType = this.getNodeParameter('inputType', i) as string;
 	const options = this.getNodeParameter('options', i, {});
 
@@ -190,6 +196,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response = (await apiRequest.call(this, 'POST', '/responses', {
 		body,
 	})) as ChatResponse;
+
+	accumulateImageTokenUsage(this, response.usage);
 
 	const simplify = this.getNodeParameter('simplify', i) as boolean;
 

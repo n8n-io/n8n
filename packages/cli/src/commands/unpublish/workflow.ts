@@ -45,10 +45,6 @@ export class UnpublishWorkflowCommand extends BaseCommand<z.infer<typeof flagsSc
 	}
 
 	async catch(error: Error) {
-		this.logger.error('Error unpublishing workflow(s). See log messages for details.');
-		this.logger.error('\nGOT ERROR');
-		this.logger.error('====================================');
-		this.logger.error(error.message);
-		this.logger.error(error.stack!);
+		this.logError(error, 'Error unpublishing workflow(s). See log messages for details.');
 	}
 }

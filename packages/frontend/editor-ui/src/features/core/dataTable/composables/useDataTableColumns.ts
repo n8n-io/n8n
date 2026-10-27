@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
 import type {
 	AddColumnResponse,
@@ -10,6 +10,7 @@ import {
 	DATA_TABLE_ID_COLUMN_WIDTH,
 	DEFAULT_COLUMN_WIDTH,
 	DEFAULT_ID_COLUMN_NAME,
+	MIN_ADD_COLUMN_BUTTON_COLUMN_WIDTH,
 } from '@/features/core/dataTable/constants';
 import { useDataTableTypes } from '@/features/core/dataTable/composables/useDataTableTypes';
 import ColumnHeader from '@/features/core/dataTable/components/dataGrid/ColumnHeader.vue';
@@ -20,7 +21,7 @@ import AddColumnButton from '@/features/core/dataTable/components/dataGrid/AddCo
 import AddRowButton from '@/features/core/dataTable/components/dataGrid/AddRowButton.vue';
 import { reorderItem } from '@/features/core/dataTable/utils';
 import {
-	getCellClass,
+	createCellClass,
 	createValueGetter,
 	createCellRendererSelector,
 	createStringValueSetter,
@@ -31,6 +32,7 @@ import {
 	getDateColumnFilterOptions,
 	getNumberColumnFilterOptions,
 	getBooleanColumnFilterOptions,
+	isOversizedValue,
 } from '@/features/core/dataTable/utils/columnUtils';
 import { useI18n } from '@n8n/i18n';
 import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappings';
@@ -41,14 +43,23 @@ export const useDataTableColumns = ({
 	onAddRowClick,
 	onAddColumn,
 	isTextEditorOpen,
+	readOnly = computed(() => false),
+	schemaReadOnly = computed(() => false),
+	schemaReadOnlyTooltip = computed(() => undefined),
 }: {
 	onDeleteColumn: (columnId: string) => void;
 	onRenameColumn: (columnId: string, columnName: string) => void;
 	onAddRowClick: () => void;
 	onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
 	isTextEditorOpen: Ref<boolean>;
+	/** Locks the whole grid: rows and columns. */
+	readOnly?: Ref<boolean>;
+	/** Locks only the columns, for example on a protected instance. Rows stay editable. */
+	schemaReadOnly?: Ref<boolean>;
+	schemaReadOnlyTooltip?: Ref<string | undefined>;
 }) => {
 	const colDefs = ref<ColDef[]>([]);
+	const isSchemaReadOnly = () => readOnly.value || schemaReadOnly.value;
 	const { mapToAGCellType } = useDataTableTypes();
 	const i18n = useI18n();
 
@@ -59,7 +70,10 @@ export const useDataTableColumns = ({
 			filter: !GRID_FILTER_CONFIG.excludedColumns.includes(col.id),
 			headerName: col.name,
 			sortable: true,
-			editable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
+			editable: (params) =>
+				!readOnly.value &&
+				params.data?.id !== ADD_ROW_ROW_ID &&
+				!isOversizedValue(params.data?.[col.name]),
 			resizable: true,
 			lockPinned: true,
 			headerComponent: ColumnHeader,
@@ -67,10 +81,11 @@ export const useDataTableColumns = ({
 				onDelete: onDeleteColumn,
 				onRename: onRenameColumn,
 				allowMenuActions: true,
+				readOnly: isSchemaReadOnly,
 			},
 			cellEditorPopup: false,
 			cellDataType: mapToAGCellType(col.type),
-			cellClass: getCellClass,
+			cellClass: createCellClass(col),
 			valueGetter: createValueGetter(col),
 			cellRendererSelector: createCellRendererSelector(col),
 			width: DEFAULT_COLUMN_WIDTH,
@@ -154,7 +169,7 @@ export const useDataTableColumns = ({
 						if (params.value === ADD_ROW_ROW_ID) {
 							return {
 								component: AddRowButton,
-								params: { onClick: onAddRowClick },
+								params: { onClick: onAddRowClick, disabled: () => readOnly.value },
 							};
 						}
 						return undefined;
@@ -194,9 +209,15 @@ export const useDataTableColumns = ({
 					lockPinned: true,
 					lockPosition: 'right',
 					resizable: false,
+					minWidth: MIN_ADD_COLUMN_BUTTON_COLUMN_WIDTH,
 					flex: 1,
 					headerComponent: AddColumnButton,
-					headerComponentParams: { onAddColumn },
+					headerComponentParams: {
+						onAddColumn,
+						disabled: isSchemaReadOnly,
+						disabledTooltip: () =>
+							!readOnly.value && schemaReadOnly.value ? schemaReadOnlyTooltip.value : undefined,
+					},
 				},
 			),
 		];

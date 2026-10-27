@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "cmsLocaleId": {
+            "type": "string"
+        },
         "createdOn": {
             "type": "string"
         },
@@ -28,5 +31,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -1,7 +1,11 @@
-import type { TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
-import { createRule } from '../utils/index.js';
+import {
+	createRule,
+	isHelpersAccess,
+	isThisHelpersAccess,
+	EXECUTION_CONTEXT_TYPES,
+} from '../utils/index.js';
 
 const DEPRECATED_FUNCTIONS = {
 	request: 'httpRequest',
@@ -47,27 +51,40 @@ export const NoDeprecatedWorkflowFunctionsRule = createRule({
 	defaultOptions: [],
 	create(context) {
 		const n8nWorkflowTypes = new Set<string>();
+		let importsExecutionContext = false;
+
+		// Collect n8n-workflow imports up front. ESLint visits nodes in source order, so a
+		// `helpers` access above its import statement would otherwise be checked before the
+		// import is seen.
+		for (const statement of context.sourceCode.ast.body) {
+			if (
+				statement.type !== AST_NODE_TYPES.ImportDeclaration ||
+				statement.source.value !== 'n8n-workflow'
+			) {
+				continue;
+			}
+			for (const specifier of statement.specifiers) {
+				if (
+					specifier.type === AST_NODE_TYPES.ImportSpecifier &&
+					specifier.imported.type === AST_NODE_TYPES.Identifier
+				) {
+					n8nWorkflowTypes.add(specifier.local.name);
+					if (EXECUTION_CONTEXT_TYPES.has(specifier.imported.name)) {
+						importsExecutionContext = true;
+					}
+				}
+			}
+		}
 
 		return {
-			ImportDeclaration(node) {
-				if (node.source.value === 'n8n-workflow') {
-					node.specifiers.forEach((specifier) => {
-						if (
-							specifier.type === AST_NODE_TYPES.ImportSpecifier &&
-							specifier.imported.type === AST_NODE_TYPES.Identifier
-						) {
-							n8nWorkflowTypes.add(specifier.local.name);
-						}
-					});
-				}
-			},
-
 			MemberExpression(node) {
 				if (
 					node.property.type === AST_NODE_TYPES.Identifier &&
 					isDeprecatedFunctionName(node.property.name)
 				) {
-					if (!isThisHelpersAccess(node)) {
+					// `this.helpers` is unambiguous on its own; any other receiver only counts in a file
+					// that imports an execution context type, which is what makes its `helpers` n8n's.
+					if (!isThisHelpersAccess(node) && !(importsExecutionContext && isHelpersAccess(node))) {
 						return;
 					}
 
@@ -166,21 +183,6 @@ export const NoDeprecatedWorkflowFunctionsRule = createRule({
 		};
 	},
 });
-
-/**
- * Check if the MemberExpression follows the this.helpers.* pattern
- */
-function isThisHelpersAccess(node: TSESTree.MemberExpression): boolean {
-	if (node.object?.type === AST_NODE_TYPES.MemberExpression) {
-		const outerObject = node.object;
-		return (
-			outerObject.object?.type === AST_NODE_TYPES.ThisExpression &&
-			outerObject.property?.type === AST_NODE_TYPES.Identifier &&
-			outerObject.property.name === 'helpers'
-		);
-	}
-	return false;
-}
 
 function getDeprecationMessage(functionName: string): string {
 	switch (functionName) {

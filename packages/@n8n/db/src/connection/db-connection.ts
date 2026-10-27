@@ -1,16 +1,33 @@
-import { inTest, Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import { Memoized } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
-import { BinaryDataConfig, ErrorReporter } from 'n8n-core';
-import { DbConnectionTimeoutError, ensureError, OperationalError } from 'n8n-workflow';
+import { DataSource, MigrationExecutor } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { ErrorReporter } from 'n8n-core';
+import { DbConnectionTimeoutError } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 import { setTimeout as setTimeoutP } from 'timers/promises';
 
+import { computeBackoff } from './backoff';
+import { DbConnectionMetrics } from './db-connection-metrics';
+import { DbConnectionMonitor } from './db-connection-monitor';
 import { DbConnectionOptions } from './db-connection-options';
+import { readPoolStats, type DbPoolStats } from './db-pool-stats';
+import { getPostgresVersionWarning } from './postgres-version-policy';
 import { wrapMigration } from '../migrations/migration-helpers';
 import type { Migration } from '../migrations/migration-types';
+import { DbLock, DbLockService } from '../services/db-lock.service';
+import { TransactionRunner } from '../services/transaction';
+import { TypeOrmTransactionRunner } from '../services/typeorm-transaction';
+
+/** Which managed Postgres services the server says it is. */
+export type ManagedPostgresMarkers = {
+	aurora: boolean;
+	rds: boolean;
+	azure: boolean;
+	cloudSql: boolean;
+};
 
 type ConnectionState = {
 	connected: boolean;
@@ -21,7 +38,7 @@ type ConnectionState = {
 export class DbConnection {
 	private dataSource: DataSource;
 
-	private pingTimer: NodeJS.Timeout | undefined;
+	private monitor: DbConnectionMonitor | undefined;
 
 	readonly connectionState: ConnectionState = {
 		connected: false,
@@ -33,10 +50,13 @@ export class DbConnection {
 		private readonly connectionOptions: DbConnectionOptions,
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly logger: Logger,
-		private readonly binaryDataConfig: BinaryDataConfig,
+		private readonly dbConnectionMetrics: DbConnectionMetrics,
 	) {
 		this.dataSource = new DataSource(this.options);
 		Container.set(DataSource, this.dataSource);
+		// Bind the TransactionRunner port to its TypeORM implementation so business logic
+		// can inject the abstract port without knowing the adapter.
+		Container.set(TransactionRunner, Container.get(TypeOrmTransactionRunner));
 	}
 
 	@Memoized
@@ -44,56 +64,162 @@ export class DbConnection {
 		return this.connectionOptions.getOptions();
 	}
 
-	async init(): Promise<void> {
-		const { connectionState, options } = this;
-		if (connectionState.connected) return;
+	getPoolStats(): DbPoolStats | undefined {
+		return readPoolStats(this.dataSource);
+	}
+
+	/**
+	 * Version of the database backing this connection, as a dotted version
+	 * string: the Postgres server version (e.g. `17.6`, not the full
+	 * `version()` banner) or the SQLite library version (e.g. `3.44.2`).
+	 * `null` when it cannot be determined, e.g. the connection is not up.
+	 */
+	async getDbVersion(): Promise<string | null> {
+		if (!this.dataSource.isInitialized) return null;
+
 		try {
-			await this.dataSource.initialize();
-		} catch (e) {
-			let error = ensureError(e);
-			if (
-				options.type === 'postgres' &&
-				error.message === 'Connection terminated due to connection timeout'
-			) {
-				error = new DbConnectionTimeoutError({
-					cause: error,
-					configuredTimeoutInMs: options.connectTimeoutMS!,
-				});
+			switch (this.options.type) {
+				case 'postgres':
+					return this.dataSource.driver.version ?? null;
+				case 'sqlite':
+				case 'sqlite-pooled': {
+					const rows = await this.dataSource.query<Array<{ version: string }>>(
+						'SELECT sqlite_version() AS version',
+					);
+
+					return rows[0]?.version ?? null;
+				}
+				default:
+					return null;
 			}
-			throw error;
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.warn(`Could not determine database version: ${error.message}`);
+			return null;
+		}
+	}
+
+	/**
+	 * Settings and functions that only managed Postgres services have.
+	 * Reads the catalogs, so a missing marker never raises an error.
+	 * `null` when the database is not Postgres or the query fails.
+	 */
+	async getManagedPostgresMarkers(): Promise<ManagedPostgresMarkers | null> {
+		if (this.options.type !== 'postgres' || !this.dataSource.isInitialized) return null;
+
+		try {
+			const rows = await this.dataSource.query<ManagedPostgresMarkers[]>(
+				`SELECT
+					to_regproc('aurora_version') IS NOT NULL AS "aurora",
+					EXISTS (SELECT 1 FROM pg_settings WHERE name LIKE 'rds.%') AS "rds",
+					EXISTS (SELECT 1 FROM pg_settings WHERE name LIKE 'azure.%') AS "azure",
+					EXISTS (SELECT 1 FROM pg_settings WHERE name LIKE 'cloudsql.%') AS "cloudSql"`,
+			);
+			return rows[0] ?? null;
+		} catch (e) {
+			this.logger.warn(
+				`Could not determine the managed database service: ${ensureError(e).message}`,
+			);
+			return null;
+		}
+	}
+
+	async init(): Promise<void> {
+		const { connectionState } = this;
+		if (connectionState.connected) return;
+
+		// TODO(CAT-3314): Remove N8N_DB_PING_TIMEOUT fallback in v3.
+		if (process.env.N8N_DB_PING_TIMEOUT) {
+			this.logger.warn(
+				'N8N_DB_PING_TIMEOUT is deprecated, use DB_PING_TIMEOUT_MS instead. The legacy variable will be removed in a future release.',
+			);
 		}
 
-		if (
-			(options.type === 'mysql' || options.type === 'mariadb') &&
-			this.binaryDataConfig.availableModes.includes('database')
-		) {
-			const maxAllowedPacket = this.binaryDataConfig.dbMaxFileSize * 1024 * 1024;
-			try {
-				await this.dataSource.query(`SET GLOBAL max_allowed_packet = ${maxAllowedPacket}`);
-			} catch {
-				this.logger.warn(
-					`Failed to set \`max_allowed_packet\` to ${maxAllowedPacket} bytes on your MySQL server. ` +
-						`Please set \`max_allowed_packet\` to at least ${this.binaryDataConfig.dbMaxFileSize} MiB in your MySQL server configuration.`,
-				);
-			}
-		}
+		await this.connectWithRetry();
 
 		connectionState.connected = true;
-		if (!inTest) this.scheduleNextPing();
+		await this.warnOnUnsupportedPostgresVersion();
+		this.monitor = new DbConnectionMonitor(
+			this.dataSource,
+			(connected) => (this.connectionState.connected = connected),
+			this.databaseConfig,
+			this.logger,
+			this.errorReporter,
+			this.dbConnectionMetrics,
+			connectionState.connected,
+		);
+		this.monitor.start();
+	}
+
+	/**
+	 * Warns when the Postgres server is below the version policy range. Only
+	 * Postgres has a version policy: SQLite ships bundled with n8n, so users
+	 * never pick its version.
+	 */
+	private async warnOnUnsupportedPostgresVersion() {
+		if (this.options.type !== 'postgres') return;
+
+		try {
+			const version = await this.getDbVersion();
+			if (typeof version !== 'string') return;
+
+			const warning = getPostgresVersionWarning(version);
+			if (warning) this.logger.warn(warning);
+		} catch (e) {
+			this.logger.warn(`Could not check database version: ${ensureError(e).message}`);
+		}
 	}
 
 	async migrate() {
-		const { dataSource, connectionState } = this;
+		const { dataSource, connectionState, options } = this;
 		(dataSource.options.migrations as Migration[]).forEach(wrapMigration);
-		await dataSource.runMigrations({ transaction: 'each' });
+		if (options.type === 'postgres') {
+			await this.migrateWithAdvisoryLock(options);
+		} else {
+			// SQLite is single-instance, so concurrent migrations aren't possible.
+			await dataSource.runMigrations({ transaction: 'each' });
+		}
 		connectionState.migrated = true;
 	}
 
+	/**
+	 * Runs all pending migrations while holding a Postgres advisory lock, so
+	 * concurrently starting instances migrate one at a time. The migrations run
+	 * on the lock transaction's own connection, which keeps
+	 * `DB_POSTGRESDB_POOL_SIZE=1` working; the trade-off is that they commit or
+	 * roll back as one unit.
+	 */
+	private async migrateWithAdvisoryLock(options: {
+		schema?: string;
+		entityPrefix?: string;
+		statementTimeout?: number;
+	}) {
+		const { dataSource } = this;
+		// Scoped by schema+prefix so co-hosted tenants in one database don't block each other.
+		const subKey = createHash('sha256')
+			.update(`${options.schema ?? 'public'}:${options.entityPrefix ?? ''}`)
+			.digest()
+			.readInt32BE(0);
+		this.logger.info('Acquiring database migration lock...');
+		await Container.get(DbLockService).withLock(
+			DbLock.MIGRATIONS,
+			async (tx) => {
+				if (options.statementTimeout) {
+					// Restore the driver's per-statement cap for the migration statements
+					await tx.query(`SET LOCAL statement_timeout = ${Number(options.statementTimeout)}`);
+				}
+				const migrationExecutor = new MigrationExecutor(dataSource, tx.queryRunner);
+				// 'none': the executor manages no transactions and runs inside the lock's
+				migrationExecutor.transaction = 'none';
+				await migrationExecutor.executePendingMigrations();
+			},
+			{ subKey, waitIndefinitely: true },
+		);
+	}
+
 	async close() {
-		if (this.pingTimer) {
-			clearTimeout(this.pingTimer);
-			this.pingTimer = undefined;
-		}
+		await this.monitor?.stop();
+		this.monitor = undefined;
 
 		if (this.dataSource.isInitialized) {
 			await this.dataSource.destroy();
@@ -101,42 +227,38 @@ export class DbConnection {
 		}
 	}
 
-	/** Ping DB connection every `pingIntervalSeconds` seconds to check if it is still alive. */
-	private scheduleNextPing() {
-		this.pingTimer = setTimeout(
-			async () => await this.ping(),
-			this.databaseConfig.pingIntervalSeconds * Time.seconds.toMilliseconds,
-		);
-	}
+	/**
+	 * Opens the initial connection, retrying transient failures with exponential
+	 * backoff before giving up. Throws once `startupConnectMaxRetries` is exhausted.
+	 */
+	private async connectWithRetry(): Promise<void> {
+		const { options } = this;
+		const { minRecoveryBackoffMs, maxRecoveryBackoffMs, startupConnectMaxRetries } =
+			this.databaseConfig;
+		const maxAttempts = startupConnectMaxRetries + 1;
+		for (let attempt = 1; ; attempt++) {
+			try {
+				await this.dataSource.initialize();
+				return;
+			} catch (e) {
+				let error = ensureError(e);
+				if (
+					options.type === 'postgres' &&
+					error.message === 'Connection terminated due to connection timeout'
+				) {
+					error = new DbConnectionTimeoutError({
+						cause: error,
+						configuredTimeoutInMs: options.connectTimeoutMS!,
+					});
+				}
+				if (attempt >= maxAttempts) throw error;
 
-	private async ping() {
-		if (!this.dataSource.isInitialized) return;
-		const abortController = new AbortController();
-
-		try {
-			await Promise.race([
-				this.dataSource.query('SELECT 1'),
-				setTimeoutP(5000, undefined, { signal: abortController.signal }).then(() => {
-					throw new OperationalError('Database connection timed out');
-				}),
-			]);
-
-			if (!this.connectionState.connected) {
-				this.logger.info('Database connection recovered');
+				const backoff = computeBackoff(attempt, minRecoveryBackoffMs, maxRecoveryBackoffMs);
+				this.logger.warn(
+					`Initial database connection attempt ${attempt} failed: ${error.message}. Retrying in ${backoff}ms`,
+				);
+				await setTimeoutP(backoff);
 			}
-
-			this.connectionState.connected = true;
-			return;
-		} catch (error) {
-			this.connectionState.connected = false;
-			if (error instanceof OperationalError) {
-				this.logger.warn(error.message);
-			} else {
-				this.errorReporter.error(error);
-			}
-		} finally {
-			abortController.abort();
-			this.scheduleNextPing();
 		}
 	}
 }

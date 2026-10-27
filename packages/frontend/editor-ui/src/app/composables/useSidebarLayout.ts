@@ -1,20 +1,31 @@
 import { computed, ref } from 'vue';
-import { useLocalStorage } from '@vueuse/core';
 import { useUIStore } from '../stores/ui.store';
-import { LOCAL_STORAGE_SIDEBAR_WIDTH } from '../constants';
+
+// Matches `$sidebar-width` in `app/css/_variables.scss`.
+export const COLLAPSED_MAIN_SIDEBAR_WIDTH = 42;
+export const MIN_SIDEBAR_WIDTH = 200;
+export const MAX_SIDEBAR_WIDTH = 500;
 
 export function useSidebarLayout() {
 	const uiStore = useUIStore();
-	const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
-	const sidebarWidth = useLocalStorage(LOCAL_STORAGE_SIDEBAR_WIDTH, isCollapsed.value ? 42 : 300);
+	const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed ?? false);
+
+	// The persisted width can be stale or corrupted (e.g. written by an older
+	// version, or edited outside the app), and it is applied as an inline width
+	// on expand. Clamp it on read so the sidebar always expands to a usable width.
+	const sidebarWidth = computed<number>({
+		get: () => {
+			const width = uiStore.sidebarWidth;
+			if (!Number.isFinite(width)) return MIN_SIDEBAR_WIDTH;
+			return Math.min(Math.max(width, MIN_SIDEBAR_WIDTH), MAX_SIDEBAR_WIDTH);
+		},
+		set: (width) => {
+			uiStore.sidebarWidth = width;
+		},
+	});
 
 	const toggleCollapse = () => {
 		uiStore.toggleSidebarMenuCollapse();
-		if (!isCollapsed.value) {
-			sidebarWidth.value = 200;
-		} else {
-			sidebarWidth.value = 42;
-		}
 	};
 
 	const isResizing = ref(false);

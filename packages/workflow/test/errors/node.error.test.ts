@@ -2,7 +2,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { NodeApiError } from '../../src/errors/node-api.error';
 import { NodeOperationError } from '../../src/errors/node-operation.error';
-import type { INode } from '../../src/interfaces';
+import type { INode, JsonObject } from '../../src/interfaces';
 
 describe('NodeError', () => {
 	const node = mock<INode>();
@@ -20,5 +20,16 @@ describe('NodeError', () => {
 		expect(wrapped2).toEqual(opsError);
 
 		vi.useRealTimers();
+	});
+
+	it('should find an error message when the cause is circular', () => {
+		const errorResponse = Object.assign(new Error('', { cause: undefined }), {
+			response: { data: { message: 'Some error happened' } },
+		}) as unknown as Error & JsonObject;
+		errorResponse.cause = errorResponse;
+
+		const error = new NodeApiError(node, errorResponse);
+
+		expect(error.message).toBe('Some error happened');
 	});
 });

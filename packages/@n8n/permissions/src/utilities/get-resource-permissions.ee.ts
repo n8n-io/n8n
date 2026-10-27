@@ -11,7 +11,7 @@ export type PermissionsRecord = {
 	[K in keyof typeof RESOURCES]: ActionBooleans<(typeof RESOURCES)[K]>;
 };
 
-export const getResourcePermissions = (resourceScopes: Scope[] = []): PermissionsRecord =>
+export const getResourcePermissions = (resourceScopes: readonly Scope[] = []): PermissionsRecord =>
 	Object.keys(RESOURCES).reduce(
 		(permissions, key) => ({
 			...permissions,

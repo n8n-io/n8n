@@ -1,6 +1,21 @@
 import { type INode, NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 /**
+ * Checks if a node type string represents a trigger node.
+ * This is a heuristic based on the node type name.
+ * @param nodeType - The node type string (e.g., 'n8n-nodes-base.webhook')
+ * @returns true if the node is a trigger node
+ */
+export function isTriggerNodeType(nodeType: string): boolean {
+	const lower = nodeType.toLowerCase();
+	return (
+		lower.includes('trigger') ||
+		lower.includes('webhook') ||
+		nodeType === 'n8n-nodes-base.manualTrigger'
+	);
+}
+
+/**
  * Determines if a node is a sub-node (has no main input connections)
  * Sub-nodes are nodes that only have AI inputs or no inputs at all
  * @param nodeType - The node type description to check

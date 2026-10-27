@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, onBeforeMount, onMounted, ref } from 'vue';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useLogStreamingStore } from '../logStreaming.store';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
@@ -19,6 +20,8 @@ const DESTINATION_LIST_ITEM_ACTIONS = {
 };
 
 const { confirm } = useMessage();
+const { showError } = useToast();
+const isSaving = ref(false);
 const i18n = useI18n();
 const logStreamingStore = useLogStreamingStore();
 
@@ -97,14 +100,22 @@ async function onClick(event: Event) {
 	emit('edit', props.destination.id);
 }
 
-function onEnabledSwitched(state: string | number | boolean) {
-	const boolValue = typeof state === 'boolean' ? state : Boolean(state);
-	nodeParameters.value.enabled = boolValue;
-	void saveDestination();
-}
-
-async function saveDestination() {
-	await logStreamingStore.saveDestination(nodeParameters.value);
+async function onEnabledSwitched(state: string | number | boolean) {
+	if (isSaving.value) return;
+	const previousEnabled = nodeParameters.value.enabled;
+	isSaving.value = true;
+	try {
+		const saved = await logStreamingStore.saveDestination({
+			...nodeParameters.value,
+			enabled: Boolean(state),
+		});
+		if (saved) nodeParameters.value.enabled = Boolean(state);
+	} catch (error) {
+		nodeParameters.value.enabled = previousEnabled;
+		showError(error, i18n.baseText('settings.log-streaming.destinationSave.error'));
+	} finally {
+		isSaving.value = false;
+	}
 }
 
 async function onAction(action: string) {
@@ -163,7 +174,7 @@ async function onAction(action: string) {
 
 				<ElSwitch
 					class="mr-s"
-					:disabled="readonly"
+					:disabled="readonly || isSaving"
 					:model-value="nodeParameters.enabled"
 					:title="
 						nodeParameters.enabled
@@ -191,7 +202,7 @@ async function onAction(action: string) {
 	align-items: stretch;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
+		box-shadow: var(--shadow--card-hover);
 	}
 }
 

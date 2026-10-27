@@ -1,6 +1,9 @@
 import { ExpressionError } from 'n8n-workflow';
 import {
 	completeExpressionSyntax,
+	getExpressionErrorMessage,
+	getExternalSecretPreview,
+	isPairedItemNotOnBranchError,
 	shouldConvertToExpression,
 	removeExpressionPrefix,
 	stringifyExpressionResult,
@@ -9,39 +12,147 @@ import {
 import { executionRetryMessage } from '@/features/execution/executions/executions.utils';
 
 describe('Utils: Expressions', () => {
+	describe('isPairedItemNotOnBranchError()', () => {
+		it('should return true for a not-on-branch expression error', () => {
+			const error = new ExpressionError('error message', { type: 'paired_item_not_on_branch' });
+			expect(isPairedItemNotOnBranchError(error)).toBe(true);
+		});
+
+		it('should return false for other paired item errors', () => {
+			const error = new ExpressionError('error message', { type: 'paired_item_no_connection' });
+			expect(isPairedItemNotOnBranchError(error)).toBe(false);
+		});
+
+		it('should return false for errors that are not expression errors', () => {
+			expect(isPairedItemNotOnBranchError(new Error('error message'))).toBe(false);
+		});
+	});
+
+	describe('getExpressionErrorMessage()', () => {
+		it('should name the node that is on another branch', () => {
+			const error = new ExpressionError('error message', {
+				type: 'paired_item_not_on_branch',
+				functionality: 'pairedItem',
+				nodeCause: 'out3',
+			});
+			expect(getExpressionErrorMessage(error, {})).toBe('‘out3’ is on another branch');
+		});
+	});
+
+	describe('getExternalSecretPreview()', () => {
+		const secrets = {
+			vault: {
+				key: '*********',
+				'json/path': '*********',
+			},
+		};
+
+		it.each([
+			'={{ $secrets.vault.key }}',
+			"={{ JSON.parse($secrets.vault['json/path']).password }}",
+			'={{ JSON.parse($secrets . vault ["json/path"]).password }}',
+			'={{ $secrets.vault.key + $secrets.vault["json/path"] }}',
+			'={{ $secrets[\'vault\']["key"] }}',
+		])('should defer an existing secret in "%s"', (expression) => {
+			expect(getExternalSecretPreview(expression, secrets)).toEqual({
+				text: '[evaluated during execution]',
+				exists: true,
+			});
+		});
+
+		it.each([
+			'={{ $secrets.invalidVault.key }}',
+			'={{ $secrets.vault.nameWithTypo }}',
+			'={{ $secrets.vault.key + $secrets.vault.nameWithTypo }}',
+			'={{ $secrets.invalidVault[$vars.key] }}',
+		])('should report a secret that does not exist in "%s"', (expression) => {
+			expect(getExternalSecretPreview(expression, secrets)).toEqual({
+				text: '[secret not found]',
+				exists: false,
+			});
+		});
+
+		it.each([
+			'={{ $secrets.vault.key.nameWithTypo }}',
+			'={{ $secrets.vault.key?.nameWithTypo }}',
+			'={{ $secrets[provider].key }}',
+			'={{ $secrets.vault[$vars.secret] }}',
+		])('should not judge a secret path it cannot read in "%s"', (expression) => {
+			expect(getExternalSecretPreview(expression, secrets)).toBeUndefined();
+		});
+
+		it.each(['={{ $json.password }}', 'plain $secrets.vault.key'])(
+			'should ignore non-expression secret references in "%s"',
+			(expression) => {
+				expect(getExternalSecretPreview(expression, secrets)).toBeUndefined();
+			},
+		);
+
+		it.each([undefined, {}, { vault: {} }])(
+			'should not claim a missing secret when metadata is %s',
+			(unavailableSecrets) => {
+				expect(
+					getExternalSecretPreview('={{ $secrets.vault.key }}', unavailableSecrets),
+				).toBeUndefined();
+			},
+		);
+	});
+
 	describe('stringifyExpressionResult()', () => {
 		it('should return empty string for non-critical errors', () => {
 			expect(
-				stringifyExpressionResult({
-					ok: false,
-					error: new ExpressionError('error message', { type: 'no_execution_data' }),
-				}),
+				stringifyExpressionResult(
+					{
+						ok: false,
+						error: new ExpressionError('error message', { type: 'no_execution_data' }),
+					},
+					{},
+				),
 			).toEqual('');
 		});
 
 		it('should return an error message for critical errors', () => {
 			expect(
-				stringifyExpressionResult({
-					ok: false,
-					error: new ExpressionError('error message', { type: 'no_input_connection' }),
-				}),
+				stringifyExpressionResult(
+					{
+						ok: false,
+						error: new ExpressionError('error message', { type: 'no_input_connection' }),
+					},
+					{},
+				),
 			).toEqual('[ERROR: No input connected]');
 		});
 
+		it('should name the node when it is not on the item branch', () => {
+			expect(
+				stringifyExpressionResult(
+					{
+						ok: false,
+						error: new ExpressionError('error message', {
+							type: 'paired_item_not_on_branch',
+							functionality: 'pairedItem',
+							nodeCause: 'out2',
+						}),
+					},
+					{},
+				),
+			).toEqual('[ERROR: ‘out2’ is on another branch]');
+		});
+
 		it('should return empty string when result is null', () => {
-			expect(stringifyExpressionResult({ ok: true, result: null })).toEqual('');
+			expect(stringifyExpressionResult({ ok: true, result: null }, {})).toEqual('');
 		});
 
 		it('should return NaN when result is NaN', () => {
-			expect(stringifyExpressionResult({ ok: true, result: NaN })).toEqual('NaN');
+			expect(stringifyExpressionResult({ ok: true, result: NaN }, {})).toEqual('NaN');
 		});
 
 		it('should return [empty] message when result is empty string', () => {
-			expect(stringifyExpressionResult({ ok: true, result: '' })).toEqual('[empty]');
+			expect(stringifyExpressionResult({ ok: true, result: '' }, {})).toEqual('[empty]');
 		});
 
 		it('should return the result when it is a string', () => {
-			expect(stringifyExpressionResult({ ok: true, result: 'foo' })).toEqual('foo');
+			expect(stringifyExpressionResult({ ok: true, result: 'foo' }, {})).toEqual('foo');
 		});
 	});
 

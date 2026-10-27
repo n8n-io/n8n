@@ -39,11 +39,16 @@ import type {
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
 import { useThrottleFn } from '@vueuse/core';
-import { ElCheckbox, ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
-import get from 'lodash/get';
-import { computed, h, ref, shallowRef, useSlots, watch } from 'vue';
+import { ElSkeletonItem } from 'element-plus';
 
-import N8nPagination from '../N8nPagination';
+// `.js` on purpose, unlike the extensionless form used elsewhere in the repo:
+// `lodash` is CJS with no `exports` map, so Node cannot resolve the extensionless
+// subpath once a consumer loads our `dist` as native ESM. Bundlers accept both.
+import get from 'lodash/get.js';
+import { computed, h, shallowRef, useSlots, watch } from 'vue';
+
+import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
+import N8nPagination, { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 
 type VueClass = string | string[] | Record<string, boolean> | undefined;
 
@@ -65,12 +70,25 @@ const props = withDefaults(
 
 		itemSelectable?: boolean | DeepKeys<T> | ((row: T) => boolean);
 		pageSizes?: number[];
+		/**
+		 * Render the pager. Set this to false when the screen loads more rows itself.
+		 * @default true
+		 */
+		pagination?: boolean;
+		/**
+		 * Show an All option in the page size selector.
+		 * Selecting it sets items per page to `PAGINATION_ALL_ITEMS_PER_PAGE`.
+		 * @default false
+		 */
+		showAll?: boolean;
 		rowProps?: { class?: VueClass } | ((row: T, index: number) => { class?: VueClass });
 	}>(),
 	{
 		itemSelectable: undefined,
 		itemValue: 'id',
 		pageSizes: () => [10, 25, 50, 100],
+		pagination: true,
+		showAll: false,
 		rowProps: undefined,
 	},
 );
@@ -221,22 +239,36 @@ const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
 
 const itemsPerPage = defineModel<number>('items-per-page', { default: 10 });
-watch(itemsPerPage, () => table.setPageSize(itemsPerPage.value));
 
-const pagination = computed<PaginationState>({
-	get() {
-		return {
-			pageIndex: page.value,
-			pageSize: itemsPerPage.value,
-		};
-	},
-	set(newValue) {
-		page.value = newValue.pageIndex;
-		itemsPerPage.value = newValue.pageSize;
-	},
+const ALL_PAGE_SKELETON_ROWS = 10;
+
+const skeletonRowCount = computed(() =>
+	itemsPerPage.value === PAGINATION_ALL_ITEMS_PER_PAGE
+		? ALL_PAGE_SKELETON_ROWS
+		: itemsPerPage.value,
+);
+
+watch(itemsPerPage, (value) => {
+	if (value === PAGINATION_ALL_ITEMS_PER_PAGE) {
+		void emitUpdateOptions({
+			page: page.value,
+			itemsPerPage: value,
+			sortBy: sortBy.value,
+		});
+		return;
+	}
+
+	table.setPageSize(value);
 });
 
-const showPagination = computed(() => props.itemsLength > Math.min(...props.pageSizes));
+const paginationState = computed<PaginationState>(() => ({
+	pageIndex: page.value,
+	pageSize: itemsPerPage.value,
+}));
+
+const showPagination = computed(
+	() => props.pagination && props.itemsLength > Math.min(...props.pageSizes),
+);
 
 const sortBy = defineModel<SortingState>('sort-by', { default: [], required: false });
 
@@ -261,30 +293,20 @@ const selectColumn: ColumnDef<T> = {
 	size: 38,
 	enablePinning: true,
 	header: ({ table }) => {
-		const checkboxRef = ref<typeof ElCheckbox>();
-		return h(ElCheckbox, {
-			ref: checkboxRef,
+		return h(N8nCheckbox, {
 			modelValue: table.getIsAllRowsSelected(),
 			indeterminate: table.getIsSomeRowsSelected(),
-			onChange: () => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				const input = checkboxRef.value?.$el.getElementsByTagName('input')[0];
-				if (!input) return;
-				table.getToggleAllRowsSelectedHandler()?.({ target: input });
+			'onUpdate:modelValue': (value: boolean) => {
+				table.toggleAllRowsSelected(value);
 			},
 		});
 	},
 	cell: ({ row }) => {
-		const checkboxRef = ref<typeof ElCheckbox>();
-		return h(ElCheckbox, {
-			ref: checkboxRef,
+		return h(N8nCheckbox, {
 			modelValue: row.getIsSelected(),
 			disabled: !row.getCanSelect(),
-			onChange: () => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				const input = checkboxRef.value?.$el.getElementsByTagName('input')[0];
-				if (!input) return;
-				row.getToggleSelectedHandler()?.({ target: input });
+			'onUpdate:modelValue': (value: boolean) => {
+				row.toggleSelected(value);
 			},
 		});
 	},
@@ -304,21 +326,21 @@ function getRowId(originalRow: T, index: number, parent?: Row<T>): string {
 }
 
 function handleRowSelectionChange(updaterOrValue: Updater<RowSelectionState>) {
-	if (typeof updaterOrValue === 'function') {
-		rowSelection.value = updaterOrValue(rowSelection.value);
-	} else {
-		rowSelection.value = updaterOrValue;
-	}
+	const newValue =
+		typeof updaterOrValue === 'function' ? updaterOrValue(rowSelection.value) : updaterOrValue;
 
 	if (props.returnObject) {
-		selection.value = Object.keys(rowSelection.value).map((id) => table.getRow(id).original);
+		selection.value = Object.keys(newValue).map((id) => table.getRow(id).original);
 	} else {
-		selection.value = Object.keys(rowSelection.value);
+		selection.value = Object.keys(newValue);
 	}
 }
 
 const selection = defineModel<string[] | T[]>('selection');
-const rowSelection = ref(
+
+// Derived from the selection model so external writes (e.g. a parent
+// clearing it) reach the row checkboxes
+const rowSelection = computed(() =>
 	(selection.value ?? []).reduce<RowSelectionState>((acc, item, index) => {
 		const key = typeof item === 'string' ? item : getRowId(item, index);
 		acc[key] = true;
@@ -332,19 +354,14 @@ const emitUpdateOptions = useThrottleFn(
 	100,
 );
 
-function handlePageSizeChange(newPageSize: number) {
-	// Calculate the maximum available page (0-based indexing)
-	const maxPage = Math.max(0, Math.ceil(props.itemsLength / newPageSize) - 1);
-	const newPage = Math.min(page.value, maxPage);
-
-	page.value = newPage;
-	itemsPerPage.value = newPageSize;
-}
-
 const columnHelper = createColumnHelper<T>();
 const table = useVueTable({
 	data,
-	columns: columnsDefinition.value,
+	// A getter keeps the column set reactive, so tables can add/remove columns
+	// after mount (e.g. contextual columns that depend on the active tab).
+	get columns() {
+		return columnsDefinition.value;
+	},
 	get rowCount() {
 		return props.itemsLength;
 	},
@@ -353,7 +370,7 @@ const table = useVueTable({
 			return sortBy.value;
 		},
 		get pagination() {
-			return pagination.value;
+			return paginationState.value;
 		},
 		get rowSelection() {
 			return rowSelection.value;
@@ -363,7 +380,7 @@ const table = useVueTable({
 	onSortingChange: handleSortingChange,
 	onPaginationChange(updaterOrValue) {
 		const newValue =
-			typeof updaterOrValue === 'function' ? updaterOrValue(pagination.value) : updaterOrValue;
+			typeof updaterOrValue === 'function' ? updaterOrValue(paginationState.value) : updaterOrValue;
 
 		// prevent duplicate events from being fired
 		void emitUpdateOptions({
@@ -460,7 +477,7 @@ const table = useVueTable({
 							</tr>
 						</template>
 						<template v-if="loading && !table.getRowModel().rows.length">
-							<tr v-for="item in itemsPerPage" :key="item">
+							<tr v-for="item in skeletonRowCount" :key="item">
 								<td
 									v-for="coll in table.getVisibleFlatColumns()"
 									:key="coll.id"
@@ -499,28 +516,17 @@ const table = useVueTable({
 				</table>
 			</div>
 		</div>
-		<div v-if="showPagination" class="table-pagination" data-test-id="pagination">
+		<div v-if="showPagination" class="table-pagination">
 			<N8nPagination
-				:current-page="page + 1"
-				:page-size="itemsPerPage"
-				:page-sizes="pageSizes"
-				layout="prev, pager, next"
+				:page="page + 1"
+				:items-per-page="itemsPerPage"
 				:total="itemsLength"
-				@update:current-page="page = $event - 1"
-			>
-			</N8nPagination>
-			<div class="table-pagination__sizes">
-				<div class="table-pagination__sizes__label">Page size</div>
-				<ElSelect
-					v-model.number="itemsPerPage"
-					class="table-pagination__sizes__select"
-					size="small"
-					:teleported="false"
-					@update:model-value="handlePageSizeChange"
-				>
-					<ElOption v-for="item in pageSizes" :key="item" :label="item" :value="item" />
-				</ElSelect>
-			</div>
+				:page-sizes="pageSizes"
+				:show-all="showAll"
+				:show-total="false"
+				@update:page="page = $event - 1"
+				@update:items-per-page="itemsPerPage = $event"
+			/>
 		</div>
 	</div>
 </template>
@@ -546,7 +552,7 @@ const table = useVueTable({
 	th {
 		position: relative;
 		color: var(--color--text);
-		font-weight: 600;
+		font-weight: var(--font-weight--medium);
 		font-size: 12px;
 		padding: 0 8px;
 		height: 36px;
@@ -614,6 +620,8 @@ const table = useVueTable({
 
 .table-scroll {
 	max-height: 100%;
+	// No reserved scrollbar gutter: the header and the row dividers run the full width, and a
+	// scrollbar shows only while the rows overflow.
 	overflow: auto;
 	position: relative;
 }
@@ -661,33 +669,10 @@ th.loading-row {
 }
 
 .table-pagination {
-	margin-top: 10px;
+	margin-top: var(--spacing--xs);
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
-
-	&__sizes {
-		display: flex;
-
-		&__label {
-			color: var(--color--text);
-			background-color: var(--color--background--light-2);
-			border: 1px solid var(--color--foreground);
-			border-right: 0;
-			font-size: 12px;
-			display: flex;
-			align-items: center;
-			padding: 0 8px;
-			border-top-left-radius: var(--radius);
-			border-bottom-left-radius: var(--radius);
-		}
-
-		&__select {
-			--input--radius--top-left: 0;
-			--input--radius--bottom-left: 0;
-			width: 70px;
-		}
-	}
 }
 
 .resizer {

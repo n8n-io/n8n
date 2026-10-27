@@ -2,13 +2,20 @@ import { createComponentRenderer } from '@/__tests__/render';
 import DataTableDetailsView from '@/features/core/dataTable/DataTableDetailsView.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useRouter } from 'vue-router';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
+import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
-vi.mock('@/app/composables/useToast');
+vi.mock('@n8n/composables/useToast');
 vi.mock('vue-router');
+vi.mock('@/app/api/workflow-dependencies', () => ({
+	getResourceDependencyCounts: vi.fn().mockResolvedValue({}),
+	getResourceDependencies: vi.fn().mockResolvedValue({}),
+}));
 vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: vi.fn(() => ({
 		set: vi.fn(),
@@ -77,6 +84,18 @@ describe('DataTableDetailsView', () => {
 	});
 
 	describe('Loading states', () => {
+		it('shows the loading layout on the first render when opening a data table', () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const dataTableStore = useDataTableStore();
+			vi.spyOn(dataTableStore, 'fetchOrFindDataTable').mockImplementation(
+				async () => await new Promise(() => {}),
+			);
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			expect(getByTestId('data-table-details-loading')).toBeInTheDocument();
+		});
+
 		it('should show loading state initially', async () => {
 			const pinia = createTestingPinia({ stubActions: false });
 			const dataTableStore = useDataTableStore();
@@ -147,6 +166,99 @@ describe('DataTableDetailsView', () => {
 
 			expect(container.querySelector('data-table-breadcrumbs-stub')).not.toBeInTheDocument();
 			expect(container.querySelector('data-table-table-stub')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Protected instance', () => {
+		const lockStubs = {
+			DataTableBreadcrumbs: {
+				props: ['schemaReadOnly'],
+				template: '<div data-test-id="breadcrumbs-stub" :data-schema-read-only="schemaReadOnly" />',
+			},
+			DataTableTable: {
+				props: ['readOnly', 'schemaReadOnly'],
+				template:
+					'<div data-test-id="table-stub" :data-read-only="!!readOnly" :data-schema-read-only="schemaReadOnly" />',
+			},
+		};
+
+		it('should keep rows editable and lock the table structure', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const dataTableStore = useDataTableStore();
+			vi.spyOn(dataTableStore, 'fetchOrFindDataTable').mockResolvedValue(DEFAULT_DATA_TABLE);
+			useSourceControlStore().preferences.branchReadOnly = true;
+
+			const { findByTestId, getByTestId } = renderComponent({
+				pinia,
+				global: { stubs: lockStubs },
+			});
+
+			const table = await findByTestId('table-stub');
+			expect(table).toHaveAttribute('data-read-only', 'false');
+			expect(table).toHaveAttribute('data-schema-read-only', 'true');
+			expect(getByTestId('breadcrumbs-stub')).toHaveAttribute('data-schema-read-only', 'true');
+			expect(getByTestId('data-table-header-add-row-button')).toBeEnabled();
+			expect(getByTestId('data-table-add-column-trigger-button')).toBeDisabled();
+		});
+
+		it('should keep the table structure editable on a regular instance', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const dataTableStore = useDataTableStore();
+			vi.spyOn(dataTableStore, 'fetchOrFindDataTable').mockResolvedValue(DEFAULT_DATA_TABLE);
+
+			const { findByTestId, getByTestId } = renderComponent({
+				pinia,
+				global: { stubs: lockStubs },
+			});
+
+			const table = await findByTestId('table-stub');
+			expect(table).toHaveAttribute('data-schema-read-only', 'false');
+			expect(getByTestId('data-table-header-add-row-button')).toBeEnabled();
+			expect(getByTestId('data-table-add-column-trigger-button')).toBeEnabled();
+		});
+	});
+
+	describe('Source control pull', () => {
+		it('should re-fetch data table details when source control pull event fires', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const dataTableStore = useDataTableStore();
+			vi.spyOn(dataTableStore, 'fetchOrFindDataTable').mockResolvedValue(DEFAULT_DATA_TABLE);
+			vi.spyOn(dataTableStore, 'fetchDataTableDetails').mockResolvedValue({
+				...DEFAULT_DATA_TABLE,
+				name: 'Updated Name',
+			});
+
+			renderComponent({ pinia });
+
+			// Wait for onMounted to fully complete (including event handler registration)
+			await flushPromises();
+
+			sourceControlEventBus.emit('pull', undefined);
+
+			await waitFor(() => {
+				expect(dataTableStore.fetchDataTableDetails).toHaveBeenCalledWith('ds1', 'proj1');
+			});
+		});
+
+		it('should show error when source control pull re-fetch returns null', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const dataTableStore = useDataTableStore();
+			vi.spyOn(dataTableStore, 'fetchOrFindDataTable').mockResolvedValue(DEFAULT_DATA_TABLE);
+			vi.spyOn(dataTableStore, 'fetchDataTableDetails').mockResolvedValue(null);
+
+			renderComponent({ pinia });
+
+			// Wait for onMounted to fully complete (including event handler registration)
+			await flushPromises();
+
+			// Reset so we can track calls triggered only by the pull event
+			mockToast.showError.mockClear();
+
+			sourceControlEventBus.emit('pull', undefined);
+
+			await waitFor(() => {
+				expect(mockToast.showError).toHaveBeenCalled();
+			});
 		});
 	});
 

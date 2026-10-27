@@ -1,19 +1,31 @@
 import { mock } from 'vitest-mock-extended';
 
-import { type IConnections, type INode, type INodeParameters, type IWorkflowBase } from '../src';
+import {
+	type IConnections,
+	type INode,
+	type INodeParameters,
+	type IWorkflowBase,
+	type NodeParameterValue,
+} from '../src';
 import {
 	compareNodes,
 	compareWorkflowsNodes,
+	determineNodeSize,
 	groupWorkflows,
 	hasCredentialChanges,
 	hasNonPositionalChanges,
 	NodeDiffStatus,
+	parametersAreSuperset,
 	RULES,
+	SKIP_RULES,
+	stringContainsParts,
 	WorkflowChangeSet,
 	type DiffableNode,
+	type DiffableWorkflow,
+	type DiffMetaData,
 	type DiffRule,
+	type WorkflowDiffBase,
 } from '../src/workflow-diff';
-import { compareConnections } from '../src/connections-diff';
 
 describe('NodeDiffStatus', () => {
 	it('should have correct enum values', () => {
@@ -48,6 +60,15 @@ describe('compareNodes', () => {
 		parameters: INodeParameters;
 		position: [number, number];
 		disabled: boolean;
+		notes?: string;
+		notesInFlow?: boolean;
+		onError?: string;
+		continueOnFail?: boolean;
+		retryOnFail?: boolean;
+		maxTries?: number;
+		waitBetweenTries?: number;
+		alwaysOutputData?: boolean;
+		executeOnce?: boolean;
 	};
 
 	it('should return true for identical nodes', () => {
@@ -113,13 +134,33 @@ describe('compareNodes', () => {
 		expect(result).toBe(false);
 	});
 
-	it('should ignore properties not in comparison list', () => {
-		const node1 = createTestNode({ position: [100, 200], disabled: false });
-		const node2 = createTestNode({ position: [300, 400], disabled: true });
+	it('should ignore position changes', () => {
+		const node1 = createTestNode({ position: [100, 200] });
+		const node2 = createTestNode({ position: [300, 400] });
 
 		const result = compareNodes(node1, node2);
 
 		expect(result).toBe(true);
+	});
+
+	test.each([
+		['disabled', true],
+		['notes', 'handle rate limits here'],
+		['notesInFlow', true],
+		['onError', 'continueRegularOutput'],
+		['continueOnFail', true],
+		['retryOnFail', true],
+		['maxTries', 5],
+		['waitBetweenTries', 2000],
+		['alwaysOutputData', true],
+		['executeOnce', true],
+	])('should return false when nodes have different %s settings', (property, value) => {
+		const node1 = createTestNode();
+		const node2 = createTestNode({ [property]: value } as Partial<TestNode>);
+
+		const result = compareNodes(node1, node2);
+
+		expect(result).toBe(false);
 	});
 
 	it('should handle undefined base node', () => {
@@ -277,6 +318,96 @@ describe('compareWorkflowsNodes', () => {
 	});
 });
 
+describe('determineNodeSize', () => {
+	it('should return 1 for an empty parameters object', () => {
+		const parameters = {};
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(1);
+	});
+
+	it('should return 1 for an empty parameters array', () => {
+		const parameters: NodeParameterValue[] = [];
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(1);
+	});
+
+	it('should return the length of a single string parameter', () => {
+		const parameters = { param1: 'value1' };
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(7);
+	});
+
+	it('should return the sum of lengths of multiple string parameters', () => {
+		const parameters = { param1: 'value1', param2: 'value2' };
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(13);
+	});
+
+	it('should count non-string values as 1', () => {
+		const parameters = { param1: 42, param2: true, param3: null };
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(4);
+	});
+
+	it('should handle nested objects', () => {
+		const parameters = {
+			param1: {
+				nested1: 'value1',
+				nested2: 'value2',
+			},
+		};
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(14);
+	});
+
+	it('should handle arrays of strings', () => {
+		const parameters = { param1: ['value1', 'value2'] };
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(14);
+	});
+
+	it('should handle arrays of mixed types', () => {
+		const parameters = { param1: ['value1', 42, true] };
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(10);
+	});
+
+	it('should handle deeply nested structures', () => {
+		const parameters = {
+			param1: {
+				nested1: {
+					deepNested1: 'value1',
+					deepNested2: ['value2', { deeperNested: 'value3' }],
+				},
+			},
+		} as INodeParameters;
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(23);
+	});
+
+	it('should handle empty arrays and objects', () => {
+		const parameters = {
+			param1: [],
+			param2: {},
+		};
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(3);
+	});
+
+	it('should handle a mix of strings, objects, and arrays', () => {
+		const parameters = {
+			param1: 'value1',
+			param2: {
+				nested1: 'value2',
+				nested2: ['value3', 'value4'],
+			},
+			param3: [42, 'value5'],
+		};
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(35);
+	});
+});
+
 describe('groupWorkflows', () => {
 	const node1 = mock<DiffableNode>({ id: '1', parameters: { a: 1 } });
 	const node2 = mock<DiffableNode>({ id: '2', parameters: { a: 2 } });
@@ -288,165 +419,96 @@ describe('groupWorkflows', () => {
 		workflows = [];
 	});
 	describe('basic grouping', () => {
-		it('should group workflows with no changes', () => {
+		it('should not merge workflows without rule', () => {
 			workflows = mock<[IWorkflowBase, IWorkflowBase]>([
 				{ id: '1', nodes: [node1, node2] },
 				{ id: '1', nodes: [node1, node2] },
 			]);
-			const grouped = groupWorkflows(workflows, rules, []);
+			const { removed, remaining } = groupWorkflows(workflows, []);
 
-			expect(grouped.length).toBe(1);
-			expect(grouped[0].from).toEqual(workflows[0]);
-			expect(grouped[0].to).toEqual(workflows[1]);
-			expect(grouped[0].workflowChangeSet.nodes.size).toBe(2);
-			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
-			expect(grouped[0].workflowChangeSet.nodes.get(node2.id)?.status).toBe(NodeDiffStatus.Eq);
-			expect(grouped[0].groupedWorkflows).toEqual([]);
+			expect(remaining.length).toBe(2);
+			expect(removed.length).toBe(0);
 		});
 
-		it('should group workflows with added nodes', () => {
+		it('should group workflows with true rule', () => {
 			workflows = mock<[IWorkflowBase, IWorkflowBase]>([
 				{ id: '1', nodes: [node1] },
 				{ id: '1', nodes: [node1, node2] },
 			]);
 
-			const grouped = groupWorkflows(workflows, rules, []);
+			const { removed, remaining } = groupWorkflows(workflows, [() => true]);
 
-			expect(grouped.length).toBe(1);
-			expect(grouped[0].from).toEqual(workflows[0]);
-			expect(grouped[0].to).toEqual(workflows[1]);
-			expect(grouped[0].workflowChangeSet.nodes.size).toBe(2);
-			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
-			expect(grouped[0].workflowChangeSet.nodes.get(node2.id)?.status).toBe(NodeDiffStatus.Added);
-			expect(grouped[0].groupedWorkflows).toEqual([]);
+			expect(removed.length).toBe(1);
+			expect(remaining.length).toBe(1);
+			expect(removed[0]).toBe(workflows[0]);
+			expect(remaining[0]).toBe(workflows[1]);
 		});
 
-		it('should group workflows with deleted nodes', () => {
-			workflows = mock<[IWorkflowBase, IWorkflowBase]>([
-				{ id: '1', nodes: [node1, node2] },
-				{ id: '1', nodes: [node1] },
-			]);
-
-			const grouped = groupWorkflows(workflows, rules, []);
-
-			expect(grouped.length).toBe(1);
-			expect(grouped[0].from).toEqual(workflows[0]);
-			expect(grouped[0].to).toEqual(workflows[1]);
-			expect(grouped[0].workflowChangeSet.nodes.size).toBe(2);
-			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
-			expect(grouped[0].workflowChangeSet.nodes.get(node2.id)?.status).toBe(NodeDiffStatus.Deleted);
-
-			expect(grouped[0].groupedWorkflows).toEqual([]);
-		});
-
-		it('should group workflows with modified nodes', () => {
-			const modifiedNode2 = { id: '2', parameter: { a: 3 } };
-			workflows = mock<[IWorkflowBase, IWorkflowBase]>([
-				{ id: '1', nodes: [node1, node2] },
-				{ id: '1', nodes: [node1, modifiedNode2] },
-			]);
-
-			const grouped = groupWorkflows(workflows, rules, []);
-
-			expect(grouped.length).toBe(1);
-			expect(grouped[0].from).toEqual(workflows[0]);
-			expect(grouped[0].to).toEqual(workflows[1]);
-			expect(grouped[0].workflowChangeSet.nodes.size).toBe(2);
-			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
-			expect(grouped[0].workflowChangeSet.nodes.get(modifiedNode2.id)?.status).toBe(
-				NodeDiffStatus.Modified,
-			);
-			expect(grouped[0].groupedWorkflows).toEqual([]);
-		});
-
-		it('should handle multiple workflow groups', () => {
+		it('should handle multiple workflows when always merging', () => {
 			workflows = mock<IWorkflowBase[]>([
 				{ id: '1', nodes: [node1] },
 				{ id: '1', nodes: [node1, node2] },
 				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [] },
+				{ id: '1', nodes: [node1, node2] },
 			]);
 
-			const grouped = groupWorkflows(workflows, rules, []);
+			const { removed, remaining } = groupWorkflows(workflows, [() => true]);
 
-			expect(grouped.length).toBe(2);
-			expect(grouped[0].from).toEqual(workflows[0]);
-			expect(grouped[0].to).toEqual(workflows[1]);
-			expect(grouped[0].workflowChangeSet.nodes.size).toBe(2);
-			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
-			expect(grouped[0].workflowChangeSet.nodes.get(node2.id)?.status).toBe(NodeDiffStatus.Added);
+			expect(removed.length).toBe(4);
+			expect(remaining.length).toBe(1);
+		});
 
-			expect(grouped[1].from).toEqual(workflows[1]);
-			expect(grouped[1].to).toEqual(workflows[2]);
-			expect(grouped[1].workflowChangeSet.nodes.size).toBe(2);
-			expect(grouped[1].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
-			expect(grouped[1].workflowChangeSet.nodes.get(node2.id)?.status).toBe(NodeDiffStatus.Deleted);
+		it('should handle multiple workflows when sometimes merging', () => {
+			workflows = mock<IWorkflowBase[]>([
+				{ id: '1', versionId: '1', nodes: [node1] },
+				{ id: '1', versionId: '2', nodes: [node1, node2] },
+				{ id: '1', versionId: '3', nodes: [node1] },
+				{ id: '1', versionId: '4', nodes: [] },
+				{ id: '1', versionId: '5', nodes: [node1, node2] },
+			]);
+
+			const { removed, remaining } = groupWorkflows(
+				workflows,
+				[() => true],
+				[(prev, _next) => ['2', '4'].includes(prev.versionId ?? '')],
+			);
+
+			expect(removed.length).toBe(2);
+			expect(remaining.length).toBe(3);
+			expect(remaining).toEqual([workflows[1], workflows[3], workflows[4]]);
+			expect(removed).toEqual(expect.arrayContaining([workflows[2], workflows[0]]));
 		});
 
 		it('should handle empty workflows array', () => {
-			const grouped = groupWorkflows(workflows, rules, []);
+			const { remaining, removed } = groupWorkflows(workflows, rules, []);
 
-			expect(grouped.length).toBe(0);
+			expect(remaining.length).toBe(0);
+			expect(removed.length).toBe(0);
 		});
 
 		it('should handle single workflow', () => {
 			const workflows = mock<IWorkflowBase[]>([{ id: '1', nodes: [node1] }]);
 
-			const grouped = groupWorkflows(workflows, rules, []);
+			const { removed, remaining } = groupWorkflows(workflows, rules, []);
 
-			expect(grouped.length).toBe(1);
-			expect(grouped[0].from).toEqual(workflows[0]);
-			expect(grouped[0].to).toEqual(workflows[0]);
-			expect(grouped[0].workflowChangeSet.nodes.size).toEqual(1);
-			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toEqual(NodeDiffStatus.Eq);
-			expect(grouped[0].groupedWorkflows).toEqual([]);
+			expect(removed.length).toBe(0);
+			expect(remaining.length).toBe(1);
 		});
 	});
 	describe('rules', () => {
-		it('should not apply an inapplicable rule', () => {
-			workflows = mock<IWorkflowBase[]>([
-				{ id: '1', nodes: [node1] },
-				{ id: '1', nodes: [node1, node2] },
-				{ id: '1', nodes: [node1] },
-			]);
-
-			const alwaysMergeRule: DiffRule = (_l, _r) => false;
-			const rules = [alwaysMergeRule];
-
-			const grouped = groupWorkflows(workflows, rules, []);
-
-			expect(grouped.length).toBe(2);
-			expect(grouped[0].from).toEqual(workflows[0]);
-			expect(grouped[0].to).toEqual(workflows[1]);
-			expect(grouped[0].groupedWorkflows).toEqual([]);
-			expect(grouped[1].from).toEqual(workflows[1]);
-			expect(grouped[1].to).toEqual(workflows[2]);
-			expect(grouped[1].groupedWorkflows).toEqual([]);
-		});
-		it('should apply a given rule', () => {
-			workflows = mock<IWorkflowBase[]>([
-				{ id: '1', nodes: [node1] },
-				{ id: '1', nodes: [node1, node2] },
-				{ id: '1', nodes: [node1] },
-			]);
-
-			const alwaysMergeRule: DiffRule = (_l, _r) => true;
-			const rules = [alwaysMergeRule];
-
-			const grouped = groupWorkflows(workflows, rules, []);
-
-			expect(grouped.length).toBe(1);
-			expect(grouped[0].from).toEqual(workflows[0]);
-			expect(grouped[0].to).toEqual(workflows[2]);
-			expect(grouped[0].groupedWorkflows).toEqual([workflows[1]]);
-			expect(grouped[0].workflowChangeSet.nodes.size).toBe(1);
-			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toBe(NodeDiffStatus.Eq);
-		});
 		describe('mergeAdditiveChanges', () => {
-			const createWorkflow = (id: string, nodes: DiffableNode[]): IWorkflowBase => {
+			const createWorkflow = (
+				id: string,
+				nodes: DiffableNode[],
+				nodeGroups: IWorkflowBase['nodeGroups'] = [],
+			): IWorkflowBase => {
 				return {
 					id,
 					nodes,
 					connections: {},
+					createdAt: new Date(),
+					nodeGroups,
 				} as IWorkflowBase;
 			};
 
@@ -454,10 +516,24 @@ describe('groupWorkflows', () => {
 				{
 					description: 'should return true when all changes are additive',
 					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					nextWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					expected: true,
+				},
+				{
+					description: 'should return false if a new parameter is added',
+					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
 					nextWorkflow: createWorkflow('1', [
 						{ id: '1', parameters: { a: 'value1', b: 'value2' }, name: 'n1' },
 					]),
-					expected: true,
+					expected: false,
+				},
+				{
+					description: 'should return false when a node setting changes',
+					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					nextWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: { a: 'value1' }, name: 'n1', disabled: true } as DiffableNode,
+					]),
+					expected: false,
 				},
 				{
 					description: 'should return false when a node is deleted',
@@ -496,80 +572,534 @@ describe('groupWorkflows', () => {
 					nextWorkflow: createWorkflow('1', []),
 					expected: true,
 				},
+				{
+					description: 'should handle nested node',
+					baseWorkflow: createWorkflow('1', [
+						{
+							id: '1',
+							parameters: {
+								conditions: {
+									combinator: 'and',
+									conditions: [
+										{
+											id: 'a561e9ba-ec13-4280-813c-28439d2e57df',
+											leftValue: '={{ $json.da',
+											operator: {
+												name: 'filter.operator.equals',
+												operation: 'equals',
+												type: 'string',
+											},
+											rightValue: '',
+										},
+									],
+									options: {
+										caseSensitive: true,
+										leftValue: '',
+										typeValidation: 'strict',
+										version: 3,
+									},
+								},
+								options: {},
+							},
+							name: 'n1',
+						},
+					]),
+					nextWorkflow: createWorkflow('1', [
+						{
+							id: '1',
+							parameters: {
+								conditions: {
+									combinator: 'and',
+									conditions: [
+										{
+											id: 'a561e9ba-ec13-4280-813c-28439d2e57df',
+											leftValue: '={{ $json.dayOffset }}', // changed value
+											operator: {
+												name: 'filter.operator.equals',
+												operation: 'equals',
+												type: 'string',
+											},
+											rightValue: '',
+										},
+									],
+									options: {
+										caseSensitive: true,
+										leftValue: '',
+										typeValidation: 'strict',
+										version: 3,
+									},
+								},
+								options: {},
+							},
+							name: 'n1',
+						},
+					]),
+					expected: true,
+				},
+				{
+					description: 'should return true when next string contains parts of previous string',
+					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					nextWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: { a: 'val with some text ue1' }, name: 'n1' },
+					]),
+					expected: true,
+				},
+				{
+					description: 'should return false when prev string contains parts of next string',
+					baseWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: { a: 'val with some text ue1' }, name: 'n1' },
+					]),
+					nextWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					expected: false,
+				},
+				{
+					description: 'should return true when an unchanged group is present',
+					baseWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+					),
+					nextWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+					),
+					expected: true,
+				},
+				{
+					description: 'should return true when a group is added',
+					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: {}, name: 'n1' }]),
+					nextWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+					),
+					expected: true,
+				},
+				{
+					description: 'should return true when a node is added to an existing group',
+					baseWorkflow: createWorkflow(
+						'1',
+						[
+							{ id: '1', parameters: {}, name: 'n1' },
+							{ id: '2', parameters: {}, name: 'n2' },
+						],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+					),
+					nextWorkflow: createWorkflow(
+						'1',
+						[
+							{ id: '1', parameters: {}, name: 'n1' },
+							{ id: '2', parameters: {}, name: 'n2' },
+						],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1', '2'] }],
+					),
+					expected: true,
+				},
+				{
+					description: 'should return false when a group is removed',
+					baseWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+					),
+					nextWorkflow: createWorkflow('1', [{ id: '1', parameters: {}, name: 'n1' }]),
+					expected: false,
+				},
+				{
+					description: 'should return false when a group is renamed',
+					baseWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+					),
+					nextWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Renamed Group', nodeIds: ['1'] }],
+					),
+					expected: false,
+				},
+				{
+					description: 'should return false when a group description changes',
+					baseWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'], description: 'Before' }],
+					),
+					nextWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'], description: 'After' }],
+					),
+					expected: false,
+				},
+				{
+					description: 'should return false when a node is removed from a group',
+					baseWorkflow: createWorkflow(
+						'1',
+						[
+							{ id: '1', parameters: {}, name: 'n1' },
+							{ id: '2', parameters: {}, name: 'n2' },
+						],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1', '2'] }],
+					),
+					nextWorkflow: createWorkflow(
+						'1',
+						[
+							{ id: '1', parameters: {}, name: 'n1' },
+							{ id: '2', parameters: {}, name: 'n2' },
+						],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+					),
+					expected: false,
+				},
 			])('$description', ({ baseWorkflow, nextWorkflow, expected }) => {
 				const result = RULES.mergeAdditiveChanges(
-					{
-						from: baseWorkflow,
-						to: baseWorkflow,
-						groupedWorkflows: [],
-						workflowChangeSet: new WorkflowChangeSet(baseWorkflow, baseWorkflow),
-					},
-					{
-						from: nextWorkflow,
-						to: nextWorkflow,
-						groupedWorkflows: [],
-						workflowChangeSet: new WorkflowChangeSet(nextWorkflow, nextWorkflow),
-					},
+					baseWorkflow,
+					nextWorkflow,
 					new WorkflowChangeSet(baseWorkflow, nextWorkflow),
 				);
 
 				expect(result).toEqual(expected);
 			});
 		});
-	});
-	describe('groupWorkflows - skipRules', () => {
-		const node1 = mock<DiffableNode>({ id: '1', parameters: { a: 1 } });
-		const node2 = mock<DiffableNode>({ id: '2', parameters: { a: 2 } });
+		describe('skipTimeDifference', () => {
+			const createWorkflow = (createdAt: Date): DiffableWorkflow<DiffableNode> => ({
+				nodes: [],
+				connections: {},
+				createdAt,
+			});
 
-		let workflows: IWorkflowBase[];
-		beforeEach(() => {
-			workflows = [];
+			const skipTimeDifference = SKIP_RULES.makeSkipTimeDifference(30 * 60 * 1000);
+
+			it('should return false when time difference is within 30 minutes', () => {
+				const prev = createWorkflow(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflow(new Date('2023-01-01T12:29:59Z'));
+
+				const result = skipTimeDifference(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should return true when time difference exceeds 30 minutes', () => {
+				const prev = createWorkflow(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflow(new Date('2023-01-01T12:30:01Z'));
+
+				const result = skipTimeDifference(prev, next);
+
+				expect(result).toBe(true);
+			});
+
+			it('should return true when time difference is exactly 30 minutes and 1 millisecond', () => {
+				const prev = createWorkflow(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflow(new Date('2023-01-01T12:30:00.001Z'));
+
+				const result = skipTimeDifference(prev, next);
+
+				expect(result).toBe(true);
+			});
+
+			it('should return false when time difference is exactly 30 minutes', () => {
+				const prev = createWorkflow(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflow(new Date('2023-01-01T12:30:00Z'));
+
+				const result = skipTimeDifference(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should handle workflows with the same timestamp', () => {
+				const timestamp = new Date('2023-01-01T12:00:00Z');
+				const prev = createWorkflow(timestamp);
+				const next = createWorkflow(timestamp);
+
+				const result = skipTimeDifference(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should handle workflows with negative time difference', () => {
+				const prev = createWorkflow(new Date('2023-01-01T12:30:00Z'));
+				const next = createWorkflow(new Date('2023-01-01T12:00:00Z'));
+
+				const result = skipTimeDifference(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should correctly handle other time skip settings', () => {
+				const skipDifferentUsers10 = SKIP_RULES.makeSkipTimeDifference(10 * 60 * 1000);
+
+				const prev = createWorkflow(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflow(new Date('2023-01-01T12:29:59Z'));
+
+				const result = skipDifferentUsers10(prev, next);
+
+				expect(result).toBe(true);
+			});
+		});
+		describe('skipDifferentUsers', () => {
+			const createWorkflow = (authors?: string): DiffableWorkflow<DiffableNode> => ({
+				nodes: [],
+				connections: {},
+				createdAt: new Date(),
+				authors,
+			});
+
+			it('should return true when users are different', () => {
+				const prev = createWorkflow('user1');
+				const next = createWorkflow('user2');
+
+				const result = SKIP_RULES.skipDifferentUsers(prev, next);
+
+				expect(result).toBe(true);
+			});
+
+			it('should return false when users are the same', () => {
+				const prev = createWorkflow('user1');
+				const next = createWorkflow('user1');
+
+				const result = SKIP_RULES.skipDifferentUsers(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should return false when both users are undefined', () => {
+				const prev = createWorkflow(undefined);
+				const next = createWorkflow(undefined);
+
+				const result = SKIP_RULES.skipDifferentUsers(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should return true when one user is undefined and the other is defined', () => {
+				const prev = createWorkflow(undefined);
+				const next = createWorkflow('user1');
+
+				const result = SKIP_RULES.skipDifferentUsers(prev, next);
+
+				expect(result).toBe(true);
+			});
 		});
 
-		it('should skip merging workflows when skipRules apply', () => {
-			workflows = mock<IWorkflowBase[]>([
-				{ id: '1', nodes: [node1] },
-				{ id: '1', nodes: [node1, node2] },
-				{ id: '1', nodes: [node1] },
-				{ id: '1', nodes: [node1, node2] },
-			]);
+		describe('RULES.makeMergeDependingOnSizeRule', () => {
+			// Helper to create mock workflows
+			const createWorkflow = (createdAt: Date) =>
+				mock<IWorkflowBase>({
+					createdAt,
+				});
 
-			const trueRule: DiffRule = (_l, _r) => true;
-			const grouped = groupWorkflows(workflows, [trueRule], [trueRule]);
+			const createMetaData = (workflowSizeScore: number): DiffMetaData => ({
+				workflowSizeScore,
+			});
 
-			expect(grouped.length).toBe(3);
-			expect(grouped[0].from).toEqual(workflows[0]);
-			expect(grouped[0].to).toEqual(workflows[1]);
-			expect(grouped[0].groupedWorkflows).toEqual([]);
-			expect(grouped[1].from).toEqual(workflows[1]);
-			expect(grouped[1].to).toEqual(workflows[2]);
-			expect(grouped[1].groupedWorkflows).toEqual([]);
-			expect(grouped[2].from).toEqual(workflows[2]);
-			expect(grouped[2].to).toEqual(workflows[3]);
-			expect(grouped[2].groupedWorkflows).toEqual([]);
-		});
+			const wcs = mock<WorkflowChangeSet<INode>>({});
 
-		it('should not skip merging workflows when skipRules do not apply', () => {
-			workflows = mock<IWorkflowBase[]>([
-				{ id: '1', nodes: [node1] },
-				{ id: '1', nodes: [node1, node2] },
-				{ id: '1', nodes: [node1] },
-			]);
+			describe('basic functionality', () => {
+				it('should return false when workflow size is smaller than all thresholds', () => {
+					const mapping = new Map([
+						[1000, 60000], // 1000 chars -> 1 min
+						[5000, 300000], // 5000 chars -> 5 min
+					]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
 
-			const skipRule: DiffRule = (_l, _r) => false; // Never skip merging
-			const grouped = groupWorkflows(workflows, [], [skipRule]);
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:10:00Z'));
+					const metaData = createMetaData(500); // Smaller than smallest threshold
 
-			expect(grouped.length).toBe(2);
-			expect(grouped[0].from).toEqual(workflows[0]);
-			expect(grouped[0].to).toEqual(workflows[1]);
-			expect(grouped[0].groupedWorkflows).toEqual([]);
-			expect(grouped[1].from).toEqual(workflows[1]);
-			expect(grouped[1].to).toEqual(workflows[2]);
-			expect(grouped[1].groupedWorkflows).toEqual([]);
+					expect(rule(prev, next, wcs, metaData)).toBe(false);
+				});
+
+				it('should apply the smallest threshold to a workflow size of zero when that threshold is zero', () => {
+					const mapping = new Map([
+						[0, 60000],
+						[1000, 600000],
+					]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:00:30Z'));
+
+					expect(rule(prev, next, wcs, createMetaData(0))).toBe(true);
+				});
+
+				it('should apply the correct time threshold for workflow size', () => {
+					const mapping = new Map([
+						[1000, 60000], // 1000 chars -> 1 min
+						[5000, 300000], // 5000 chars -> 5 min
+					]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					// Time difference: 2 minutes (120000ms)
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:02:00Z'));
+
+					expect(rule(prev, next, wcs, createMetaData(300))).toBe(false);
+					expect(rule(prev, next, wcs, createMetaData(1300))).toBe(false);
+					expect(rule(prev, next, wcs, createMetaData(5300))).toBe(true);
+				});
+			});
+
+			describe('threshold boundary cases', () => {
+				it('should use exact threshold when workflow size matches', () => {
+					const mapping = new Map([
+						[1000, 60000],
+						[5000, 300000],
+					]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:02:00Z'));
+
+					// Should use 1000 char threshold since 5000 > 5000 is false
+					expect(rule(prev, next, wcs, createMetaData(5000))).toBe(false);
+					expect(rule(prev, next, wcs, createMetaData(5001))).toBe(true);
+				});
+			});
+
+			describe('multiple thresholds', () => {
+				it('should handle three or more thresholds correctly', () => {
+					const mapping = new Map([
+						[5000, 120000], // 5000 chars -> 2 min
+						[1000, 30000], // 1000 chars -> 30 sec
+						[10000, 300000], // 10000 chars -> 5 min
+					]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					// Test small workflow
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:01:00Z')); // 1 min
+					expect(rule(prev, next, wcs, createMetaData(2000))).toBe(false); // 1 min > 30 sec
+
+					// Test medium workflow
+					expect(rule(prev, next, wcs, createMetaData(7000))).toBe(true); // 1 min < 2 min
+
+					// Test large workflow
+					expect(rule(prev, next, wcs, createMetaData(12000))).toBe(true); // 1 min < 5 min
+				});
+			});
+
+			describe('edge cases', () => {
+				it('should handle empty mapping', () => {
+					const mapping = new Map<number, number>();
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const metaData = createMetaData(5000);
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:10:00Z'));
+
+					expect(rule(prev, next, wcs, metaData)).toBe(false);
+				});
+
+				it('should handle single threshold', () => {
+					const mapping = new Map([[1000, 60000]]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const metaData = createMetaData(2000);
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next1 = createWorkflow(new Date('2024-01-01T10:00:30Z'));
+					const next2 = createWorkflow(new Date('2024-01-01T10:02:00Z'));
+
+					expect(rule(prev, next1, wcs, metaData)).toBe(true);
+					expect(rule(prev, next2, wcs, metaData)).toBe(false);
+				});
+
+				it('should handle zero workflow size', () => {
+					const mapping = new Map([[1000, 60000]]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const metaData = createMetaData(0);
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:10:00Z'));
+
+					expect(rule(prev, next, wcs, metaData)).toBe(false);
+				});
+
+				it('should handle zero time difference', () => {
+					const mapping = new Map([[1000, 60000]]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const metaData = createMetaData(2000);
+					const sameTime = new Date('2024-01-01T10:00:00Z');
+					const prev = createWorkflow(sameTime);
+					const next = createWorkflow(sameTime);
+
+					expect(rule(prev, next, wcs, metaData)).toBe(true);
+				});
+
+				it('should handle very large time differences', () => {
+					const mapping = new Map([[1000, 60000]]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const metaData = createMetaData(2000);
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-02T10:00:00Z')); // 1 day later
+
+					expect(rule(prev, next, wcs, metaData)).toBe(false);
+				});
+			});
 		});
 	});
 });
-
+describe('stringContainsParts', () => {
+	test.each([
+		['abcde', 'abde', true],
+		['abcde', 'abced', false],
+		['abc', 'abcd', false],
+		['abcde', '', true],
+		['abcde', 'abcde', true],
+		['', 'a', false],
+		['abcde', 'c', true],
+		['abcde', 'z', false],
+		['abcde', 'abc', true],
+		['abcde', 'cde', true],
+		['abcde', 'abfz', false],
+		['abcde', 'ace', true],
+		['abcde', 'aec', false],
+		['value1', 'value2', false],
+	])('$[0]', (s, substr, expected) => {
+		const result = stringContainsParts(s, substr);
+		expect(result).toBe(expected);
+	});
+});
+describe('parametersAreSuperset', () => {
+	test.each([
+		[42, 42, true],
+		['test', 'test', true],
+		['test', 'test1', true],
+		[true, true, true],
+		[42, 43, false],
+		['test', 'different', false],
+		[true, false, false],
+		['abc', 'a with b and c', true],
+		['a with b and c', 'abc', false],
+		[{ a: 1, b: 'test' }, { a: 1, b: 'test' }, true],
+		[{ a: 1 }, { b: 1 }, false],
+		[{ a: 1 }, { a: 2 }, false],
+		[{ a: '1' }, { a: '12' }, true],
+		[[1, 2, 3], [1, 2, 3], true],
+		[[1, 2], [1, 2, 3], false],
+		[[1, 2, 3], [1, 2, 4], false],
+		[{ a: { b: 'test' } }, { a: { b: 'test with extra' } }, true],
+		[{ a: { b: 'test with extra' } }, { a: { b: 'test' } }, false],
+		[{ a: { b: { c: 'test' } }, d: 1 }, { a: { b: { c: 'test' } }, d: 1 }, true],
+		[{ a: { b: { c: 'test' } }, d: 1 }, { a: { b: { c: 'different' } }, d: 1 }, false],
+		[{ a: { b: { c: 'test' } }, d: 1 }, { a: { b: { c: 'test', e: 'extra' } }, d: 1 }, false],
+		[{ a: { b: { c: 'test' } }, d: 1 }, { a: { b: { e: 'extra' } }, d: 1 }, false],
+		[{ a: { b: { c: 'test', f: 'new' } }, d: 1 }, { a: { b: { c: 'test' } }, d: 1 }, false],
+		[{ a: { b: { c: 'test' } }, d: 1 }, { a: { b: { c: 'test', f: 'new' } }, d: 1 }, false],
+		[{ a: { b: { c: { g: 'nested' } } }, d: 1 }, { a: { b: { c: { g: 'nested1' } } }, d: 1 }, true],
+		[{ a: { b: { c: { g: 'nested' } } }, d: 1 }, { a: { b: { c: { h: 'new' } }, d: 1 } }, false],
+		[42, '42', false],
+		[{ a: 1 }, [1], false],
+		[null, {}, false],
+	])('parametersAreSuperset(%j, %j)', (prev, next, expected) => {
+		const result = parametersAreSuperset(prev, next);
+		expect(result).toBe(expected);
+	});
+});
 describe('hasNonPositionalChanges', () => {
 	const createNode = (id: string, overrides: Partial<INode> = {}): INode => ({
 		id,
@@ -620,6 +1150,15 @@ describe('hasNonPositionalChanges', () => {
 	it('should return true when node parameters change', () => {
 		const oldNodes = [createNode('1', { parameters: { param1: 'value1' } })];
 		const newNodes = [createNode('1', { parameters: { param1: 'value2' } })];
+
+		const result = hasNonPositionalChanges(oldNodes, newNodes, {}, {});
+
+		expect(result).toBe(true);
+	});
+
+	it('should return true when a node is disabled', () => {
+		const oldNodes = [createNode('1')];
+		const newNodes = [createNode('1', { disabled: true })];
 
 		const result = hasNonPositionalChanges(oldNodes, newNodes, {}, {});
 
@@ -863,5 +1402,111 @@ describe('hasCredentialChanges', () => {
 
 		// When a node is deleted, it's not considered a credential change
 		expect(result).toBe(false);
+	});
+});
+
+describe('groupWorkflows with the trim rule', () => {
+	const MINUTE_MS = 60 * 1_000;
+
+	// The rule exactly as the workflow history trim task configures it.
+	const trimRule = RULES.makeMergeDependingOnSizeRule(
+		new Map([
+			[0, MINUTE_MS],
+			[100, 10 * MINUTE_MS],
+			[1000, 120 * MINUTE_MS],
+			[5000, 300 * MINUTE_MS],
+			[10000, 600 * MINUTE_MS],
+		]),
+	);
+
+	type Version = WorkflowDiffBase & { versionId: string; authors: string };
+	type VersionOptions = { size?: 'small' | 'large'; authors?: string };
+
+	const version = (
+		versionId: string,
+		seconds: number,
+		{ size = 'small', authors = 'Test User' }: VersionOptions = {},
+	) =>
+		mock<Version>({
+			versionId,
+			createdAt: new Date(seconds * 1_000),
+			nodes: [{ id: 'n', name: 'n', parameters: { a: size === 'large' ? 'x'.repeat(200) : 'x' } }],
+			connections: {},
+			name: null,
+			authors,
+		});
+
+	const trim = (versions: Version[]) =>
+		groupWorkflows(versions, [trimRule], [SKIP_RULES.skipDifferentUsers], {
+			workflowSizeScore: true,
+		}).remaining.map((v) => v.versionId);
+
+	const survivorsOf = (versions: Version[]) => {
+		const kept = trim(versions);
+		return versions.filter((v) => kept.includes(v.versionId));
+	};
+
+	it('keeps a version whose gap to the kept neighbour equals the bucket, merges one a millisecond short', () => {
+		expect(trim([version('v0', 0), version('v1', 60)])).toEqual(['v0', 'v1']);
+		expect(trim([version('v0', 0.001), version('v1', 60)])).toEqual(['v1']);
+	});
+
+	it('measures the gap to the kept neighbour, not to a merged one', () => {
+		expect(trim([version('v0', 0), version('v1', 50), version('v2', 100)])).toEqual(['v0', 'v2']);
+	});
+
+	it('takes the size score from the newest version', () => {
+		// The middle version is large. The newest is small, so the bucket is one minute.
+		const versions = [
+			version('v0', 0, { size: 'large' }),
+			version('v1', 300, { size: 'large' }),
+			version('v2', 600),
+		];
+
+		expect(trim(versions)).toEqual(['v0', 'v1', 'v2']);
+	});
+
+	it('removes nothing from the survivors of a pass, mixed sizes', () => {
+		const versions = [
+			version('v0', 0),
+			version('v1', 100),
+			version('v2', 200, { size: 'large' }),
+			version('v3', 280),
+			version('v4', 300),
+			version('v5', 380),
+			version('v6', 400),
+		];
+		const once = trim(versions);
+
+		expect(once).toEqual(['v0', 'v1', 'v2', 'v4', 'v6']);
+		expect(trim(survivorsOf(versions))).toEqual(once);
+	});
+
+	it('widens the bucket when the newest version is large', () => {
+		// A score above 100 keeps one version per ten minutes.
+		const versions = [version('v0', 1), version('v1', 300), version('v2', 600, { size: 'large' })];
+
+		expect(trim(versions)).toEqual(['v2']);
+	});
+
+	it('trims a workflow whose newest version has no nodes', () => {
+		const versions = [version('v0', 0, { size: 'large' }), version('v1', 30), version('v2', 60)];
+		versions[2].nodes = [];
+
+		expect(trim(versions)).toEqual(['v0', 'v2']);
+	});
+
+	it('removes nothing from the survivors of a pass, two authors', () => {
+		const versions = [
+			version('v0', 0),
+			version('v1', 20),
+			version('v2', 40, { authors: 'other' }),
+			version('v3', 50, { authors: 'other' }),
+			version('v4', 70),
+		];
+		const once = trim(versions);
+
+		expect(once).toEqual(['v1', 'v3', 'v4']);
+		expect(trim(survivorsOf(versions))).toEqual(once);
 	});
 });

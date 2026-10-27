@@ -1,0 +1,93 @@
+{
+	"name": "Google Drive V2 File Download Error Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "70a8cc33-34b1-4eb4-bdb2-599d95fd399d",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "download",
+				"fileId": {
+					"__rl": true,
+					"value": "does-not-exist",
+					"mode": "id"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 3,
+			"position": [224, 0],
+			"id": "33ecce47-fbea-4a0f-ad96-ebed021bc772",
+			"name": "Download file",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "VvHF7vQTKjQY4Vt9",
+					"name": "Google Drive (throwaway)"
+				}
+			},
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [448, 0],
+			"id": "bce3ee97-c8bd-4b91-9d01-eec4046c60d1",
+			"name": "Output"
+		}
+	],
+	"pinData": {
+		"Output": [
+			{
+				"json": {
+					"error": "The resource you are requesting could not be found"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Download file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download file": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1",
+		"binaryMode": "combined",
+		"timeSavedMode": "fixed",
+		"callerPolicy": "workflowsFromSameOwner",
+		"availableInMCP": false
+	},
+	"versionId": "ccc5d498-03b3-46ba-b95e-b7ea75ea22f1",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "935ffbc4ed6068e5224bb41b3fac79658dd867ba2639d61c1773533283b0e647"
+	},
+	"id": "LkSrh0KQjoWVqTQM",
+	"tags": []
+}

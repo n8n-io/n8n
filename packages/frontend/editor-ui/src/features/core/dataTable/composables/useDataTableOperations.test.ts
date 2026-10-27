@@ -14,9 +14,10 @@ import { createTestingPinia } from '@pinia/testing';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { DataTableRow } from '@/features/core/dataTable/dataTable.types';
 
 vi.mock('@/features/core/dataTable/dataTable.store', () => ({
@@ -29,14 +30,14 @@ vi.mock('@/app/composables/useMessage', () => ({
 	})),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: vi.fn(),
 		showMessage: vi.fn(),
 	})),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({
 		track: vi.fn(),
 	})),
@@ -64,6 +65,7 @@ describe('useDataTableOperations', () => {
 	let dataTableStore: ReturnType<typeof useDataTableStore>;
 	let confirmMock: ReturnType<typeof vi.fn>;
 	let showErrorMock: ReturnType<typeof vi.fn>;
+	let showMessageMock: ReturnType<typeof vi.fn>;
 	let telemetryTrackMock: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
@@ -86,8 +88,10 @@ describe('useDataTableOperations', () => {
 		} as unknown as ReturnType<typeof useMessage>);
 
 		showErrorMock = vi.fn();
+		showMessageMock = vi.fn();
 		vi.mocked(useToast).mockReturnValue({
 			showError: showErrorMock,
+			showMessage: showMessageMock,
 		} as unknown as ReturnType<typeof useToast>);
 
 		telemetryTrackMock = vi.fn();
@@ -124,6 +128,44 @@ describe('useDataTableOperations', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('column editing lock', () => {
+		it('blocks column mutations after editing is locked', async () => {
+			const schemaReadOnly = ref(false);
+			params.colDefs.value = [{ colId: 'name-column', field: 'name', headerName: 'name' }];
+			const operations = useDataTableOperations({ ...params, schemaReadOnly });
+			schemaReadOnly.value = true;
+
+			expect(await operations.onAddColumn({ name: 'description', type: 'string' })).toEqual({
+				success: false,
+			});
+			await operations.onRenameColumn('name-column', 'title');
+			await operations.onDeleteColumn('name-column');
+
+			expect(dataTableStore.addDataTableColumn).not.toHaveBeenCalled();
+			expect(dataTableStore.renameDataTableColumn).not.toHaveBeenCalled();
+			expect(dataTableStore.deleteDataTableColumn).not.toHaveBeenCalled();
+			expect(confirmMock).not.toHaveBeenCalled();
+			expect(params.setGridData).not.toHaveBeenCalled();
+		});
+
+		it('blocks column deletion when editing is locked during confirmation', async () => {
+			const schemaReadOnly = ref(false);
+			params.colDefs.value = [{ colId: 'name-column', field: 'name', headerName: 'name' }];
+			const confirmation = createDeferredPromise<typeof MODAL_CONFIRM>();
+			confirmMock.mockReturnValue(confirmation.promise);
+			const operations = useDataTableOperations({ ...params, schemaReadOnly });
+
+			const deletion = operations.onDeleteColumn('name-column');
+			expect(confirmMock).toHaveBeenCalled();
+			schemaReadOnly.value = true;
+			confirmation.resolve(MODAL_CONFIRM);
+			await deletion;
+
+			expect(dataTableStore.deleteDataTableColumn).not.toHaveBeenCalled();
+			expect(params.deleteGridColumn).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('onAddColumn', () => {
@@ -296,6 +338,62 @@ describe('useDataTableOperations', () => {
 		const createMockColumn = (colId: string) => ({
 			getColId: () => colId,
 		});
+
+		it('ignores queued move events after editing is locked', async () => {
+			const schemaReadOnly = ref(false);
+			const { onColumnMoved } = useDataTableOperations({ ...params, schemaReadOnly });
+			schemaReadOnly.value = true;
+
+			await onColumnMoved({
+				finished: true,
+				source: 'uiColumnMoved',
+				toIndex: 4,
+				column: createMockColumn('col1'),
+			} as unknown as ColumnMovedEvent);
+
+			expect(dataTableStore.moveDataTableColumn).not.toHaveBeenCalled();
+			expect(params.moveGridColumn).not.toHaveBeenCalled();
+		});
+
+		it.each(['success', 'failure'])(
+			'reconciles a move started before editing was locked: %s',
+			async (result) => {
+				const schemaReadOnly = ref(false);
+				const response = createDeferredPromise<boolean>();
+				vi.mocked(dataTableStore.moveDataTableColumn).mockReturnValue(response.promise);
+				const moveColumnByIndex = vi.fn();
+				params.gridApi.value = { moveColumnByIndex } as unknown as GridApi;
+				params.colDefs.value = [{ colId: 'col1', field: 'name' }];
+				const { onColumnMoved } = useDataTableOperations({ ...params, schemaReadOnly });
+
+				const move = onColumnMoved({
+					finished: true,
+					source: 'uiColumnMoved',
+					toIndex: 4,
+					column: createMockColumn('col1'),
+				} as unknown as ColumnMovedEvent);
+				expect(dataTableStore.moveDataTableColumn).toHaveBeenCalled();
+				schemaReadOnly.value = true;
+				if (result === 'success') {
+					response.resolve(true);
+				} else {
+					response.reject(new Error('Move failed'));
+				}
+				await move;
+
+				if (result === 'success') {
+					expect(params.moveGridColumn).toHaveBeenCalledWith(0, 2);
+					expect(moveColumnByIndex).not.toHaveBeenCalled();
+				} else {
+					expect(params.moveGridColumn).not.toHaveBeenCalled();
+					expect(moveColumnByIndex).toHaveBeenCalledWith(4, 1);
+					expect(showErrorMock).toHaveBeenCalledWith(
+						expect.any(Error),
+						'dataTable.moveColumn.error',
+					);
+				}
+			},
+		);
 
 		it('should return early when event is not finished', async () => {
 			const { onColumnMoved } = useDataTableOperations(params);
@@ -600,6 +698,51 @@ describe('useDataTableOperations', () => {
 			expect(params.toggleSave).toHaveBeenCalledWith(false);
 		});
 
+		it('should show a precision warning when the new number exceeds MAX_SAFE_INTEGER', async () => {
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				updateRow: vi.fn().mockResolvedValue(undefined),
+			});
+
+			const { onCellValueChanged } = useDataTableOperations(params);
+			const unsafeValue = Number.MAX_SAFE_INTEGER + 10;
+			const event = {
+				data: { id: 1, amount: unsafeValue },
+				api: { applyTransaction: vi.fn() },
+				oldValue: 0,
+				colDef: { field: 'amount', cellDataType: 'number', colId: 'col1' },
+			} as unknown as CellValueChangedEvent<DataTableRow>;
+
+			await onCellValueChanged(event);
+
+			expect(showMessageMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'dataTable.updateRow.numberPrecisionWarning.title',
+					message: 'dataTable.updateRow.numberPrecisionWarning.message',
+					type: 'warning',
+				}),
+			);
+		});
+
+		it('should not show a precision warning for safe numbers', async () => {
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				updateRow: vi.fn().mockResolvedValue(undefined),
+			});
+
+			const { onCellValueChanged } = useDataTableOperations(params);
+			const event = {
+				data: { id: 1, amount: 42 },
+				api: { applyTransaction: vi.fn() },
+				oldValue: 0,
+				colDef: { field: 'amount', cellDataType: 'number', colId: 'col1' },
+			} as unknown as CellValueChangedEvent<DataTableRow>;
+
+			await onCellValueChanged(event);
+
+			expect(showMessageMock).not.toHaveBeenCalled();
+		});
+
 		it('should revert cell value to null when old value is invalid', async () => {
 			const isDataTableValue = await import('@/features/core/dataTable/typeGuards').then(
 				(m) => m.isDataTableValue,
@@ -663,7 +806,7 @@ describe('useDataTableOperations', () => {
 				currentFilterJSON,
 			});
 
-			await fetchDataTableRows();
+			expect(await fetchDataTableRows()).toBe(true);
 
 			expect(fetchDataTableContentMock).toHaveBeenCalledWith(
 				'test',
@@ -730,7 +873,7 @@ describe('useDataTableOperations', () => {
 
 			const { fetchDataTableRows } = useDataTableOperations({ ...params, rowData });
 
-			await fetchDataTableRows();
+			expect(await fetchDataTableRows()).toBe(false);
 
 			expect(showErrorMock).toHaveBeenCalledWith(fetchError, 'dataTable.fetchContent.error');
 			expect(rowData.value).toEqual([{ id: 1 }]);

@@ -7,6 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { stampItemIndexOnError } from '../../../../GenericFunctions';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 import { workbookRLC } from '../common.descriptions';
 
@@ -90,6 +91,7 @@ export async function execute(
 					`/drive/items/${workbookId}/workbook/worksheets`,
 					{},
 					qs,
+					i,
 				);
 			} else {
 				qs.$top = this.getNodeParameter('limit', i);
@@ -99,6 +101,9 @@ export async function execute(
 					`/drive/items/${workbookId}/workbook/worksheets`,
 					{},
 					qs,
+					undefined,
+					undefined,
+					i,
 				);
 				responseData = responseData.value;
 			}
@@ -117,7 +122,8 @@ export async function execute(
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 

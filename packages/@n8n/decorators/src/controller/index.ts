@@ -1,9 +1,51 @@
 export { Body, Query, Param } from './args';
 export { RestController } from './rest-controller';
 export { RootLevelController } from './root-level-controller';
+export { PublicApiController } from './public-api-controller';
+export { ApiKeyScope } from './api-key-scope';
+export { ApiResponse } from './api-response';
+export { ApiDescription } from './api-description';
+export { ApiSummary } from './api-summary';
+export { ApiTags } from './api-tags';
+export { ApiErrorResponse } from './api-error-response';
 export { Get, Post, Put, Patch, Delete, Head, Options } from './route';
 export { Middleware } from './middleware';
 export { ControllerRegistryMetadata } from './controller-registry-metadata';
 export { Licensed } from './licensed';
+export { RequiresUserQuota } from './requires-user-quota';
+export { RateLimitAccess } from './rate-limit-access';
+export { Deprecated } from './deprecated';
 export { GlobalScope, ProjectScope } from './scoped';
-export type { AccessScope, Controller, RateLimit, StaticRouterMetadata } from './types';
+export type {
+	AccessScope,
+	ApiKeyScopeRequirement,
+	Arg,
+	BinaryResponse,
+	BinaryResponseMediaType,
+	BinaryResult,
+	Controller,
+	CorsOptions,
+	DeprecationInfo,
+	ErrorResponse,
+	HandlerName,
+	Method,
+	RateLimitAccessName,
+	MultipartUploadLimits,
+	RequestBodyMedia,
+	RequestBodyMediaOptions,
+	RequestBodyMediaType,
+	ResponseDtoClass,
+	ResponseHeader,
+	RouteMetadata,
+	StaticRouterMetadata,
+	SuccessStatus,
+} from './types';
+export {
+	type RateLimiterLimits,
+	type BodyKeyedRateLimiterConfig,
+	type UserKeyedRateLimiterConfig,
+	type KeyedRateLimiterConfig,
+	createBodyKeyedRateLimiter,
+	createUserKeyedRateLimiter,
+	createIpRateLimit,
+} from './rate-limit';

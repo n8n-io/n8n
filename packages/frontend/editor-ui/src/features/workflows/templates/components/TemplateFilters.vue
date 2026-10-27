@@ -3,8 +3,7 @@ import { computed, ref, watch } from 'vue';
 import type { ITemplatesCategory } from '@n8n/rest-api-client/api/templates';
 import { useI18n } from '@n8n/i18n';
 
-import { ElCheckbox } from 'element-plus';
-import { N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nCheckbox, N8nLoading, N8nText } from '@n8n/design-system';
 interface Props {
 	categories?: ITemplatesCategory[];
 	sortOnPopulate?: boolean;
@@ -99,9 +98,11 @@ watch(
 		</div>
 		<ul v-if="!loading" :class="$style.categories">
 			<li :class="$style.item" data-test-id="template-filter-all-categories">
-				<ElCheckbox :model-value="allSelected" @update:model-value="() => resetCategories()">
-					{{ i18n.baseText('templates.allCategories') }}
-				</ElCheckbox>
+				<N8nCheckbox
+					:model-value="allSelected"
+					:label="i18n.baseText('templates.allCategories')"
+					@update:model-value="() => resetCategories()"
+				/>
 			</li>
 			<li
 				v-for="(category, index) in collapsed
@@ -111,15 +112,11 @@ watch(
 				:class="$style.item"
 				:data-test-id="`template-filter-${category.name.toLowerCase().replaceAll(' ', '-')}`"
 			>
-				<ElCheckbox
+				<N8nCheckbox
 					:model-value="isSelected(category)"
-					@update:model-value="
-						(value: string | number | boolean) =>
-							handleCheckboxChanged(typeof value === 'boolean' ? value : Boolean(value), category)
-					"
-				>
-					{{ category.name }}
-				</ElCheckbox>
+					:label="category.name"
+					@update:model-value="(value: boolean) => handleCheckboxChanged(value, category)"
+				/>
 			</li>
 		</ul>
 		<div

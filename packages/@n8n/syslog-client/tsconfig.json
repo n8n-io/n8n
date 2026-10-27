@@ -1,0 +1,11 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.go.json",
+	"compilerOptions": {
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"strictPropertyInitialization": false,
+		"types": ["node", "vitest/globals", "vite/client"]
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts"],
+	"references": [{ "path": "../di/tsconfig.build.json" }]
+}

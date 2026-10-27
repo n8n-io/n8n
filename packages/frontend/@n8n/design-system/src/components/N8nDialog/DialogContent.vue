@@ -1,0 +1,347 @@
+<script setup lang="ts">
+import { DialogContent, DialogTitle, DialogDescription, VisuallyHidden } from 'reka-ui';
+import { computed, provide, useCssModule } from 'vue';
+
+import N8nDialogClose from './DialogClose.vue';
+import { dialogCloseButtonKey } from './dialogContext';
+
+export type DialogContentSize =
+	| 'small'
+	| 'medium'
+	| 'large'
+	| 'xlarge'
+	| '2xlarge'
+	| 'fit'
+	| 'full'
+	| 'cover';
+
+export interface DialogContentProps {
+	/**
+	 * Dialog width preset
+	 * @default 'base'
+	 */
+	size?: DialogContentSize;
+	/**
+	 * Force mount for animation control
+	 */
+	forceMount?: boolean;
+	/**
+	 * Trap focus within dialog
+	 * @default true
+	 */
+	trapFocus?: boolean;
+	/**
+	 * Prevent clicks outside dialog
+	 * @default true
+	 */
+	disableOutsidePointerEvents?: boolean;
+	/**
+	 * Close the dialog when the user clicks outside it.
+	 * Escape and the close button still close the dialog.
+	 * @default true
+	 */
+	closeOnOverlayClick?: boolean;
+	/**
+	 * Close the dialog when the user presses Escape.
+	 * An overlay click and the close button still close the dialog.
+	 * @default true
+	 */
+	closeOnEscape?: boolean;
+	/**
+	 * Show the close button on the title row. The button is the last stop in the tab order.
+	 * @default true
+	 */
+	showCloseButton?: boolean;
+	/**
+	 * Accessible label for the dialog (used when DialogTitle is not provided)
+	 */
+	ariaLabel?: string;
+	/**
+	 * Accessible description for the dialog (used when DialogDescription is not provided)
+	 */
+	ariaDescription?: string;
+	/**
+	 * Render above another open dialog
+	 */
+	stacked?: boolean;
+}
+
+export interface DialogContentEmits {
+	escapeKeyDown: [event: KeyboardEvent];
+	interactOutside: [event: Event];
+	openAutoFocus: [event: Event];
+	closeAutoFocus: [event: Event];
+}
+
+const props = withDefaults(defineProps<DialogContentProps>(), {
+	size: 'medium',
+	trapFocus: true,
+	disableOutsidePointerEvents: true,
+	closeOnOverlayClick: true,
+	closeOnEscape: true,
+	showCloseButton: true,
+});
+
+const emit = defineEmits<DialogContentEmits>();
+
+const $style = useCssModule();
+
+const sizeClasses: Record<DialogContentSize, string> = {
+	small: $style.small,
+	medium: $style.medium,
+	large: $style.large,
+	xlarge: $style.xlarge,
+	'2xlarge': $style['2xlarge'],
+	fit: $style.fit,
+	full: $style.full,
+	cover: $style.cover,
+};
+
+const sizeClass = computed(() => sizeClasses[props.size]);
+
+provide(dialogCloseButtonKey, {
+	show: computed(() => props.showCloseButton),
+});
+
+/** ARIA Fallbacks: These are visually hidden but accessible to screen readers **/
+const needsFallbackTitle = computed(() => !!props.ariaLabel);
+const needsFallbackDescription = computed(() => !!props.ariaDescription);
+
+/**
+ * Handles outside interaction events to prevent Reka UI from closing the dialog
+ * when interacting with Element Plus teleported elements (dropdowns, selects, overlays).
+ * These elements are teleported to body as siblings of the dialog, so Reka UI's
+ * DismissableLayer detects clicks on them as "outside" clicks.
+ *
+ * TODO: Remove once Element Plus components are migrated to Reka UI, and replace with a simple emit.
+ */
+function handleInteractOutside(e: Event) {
+	const target = e.target as HTMLElement | null;
+	if (target?.closest('.el-popper, .el-select-dropdown, .el-overlay')) {
+		e.preventDefault();
+	}
+	if (!props.closeOnOverlayClick) {
+		e.preventDefault();
+	}
+	emit('interactOutside', e);
+}
+
+function handleEscapeKeyDown(event: KeyboardEvent) {
+	if (!props.closeOnEscape) {
+		event.preventDefault();
+	}
+	emit('escapeKeyDown', event);
+}
+</script>
+
+<template>
+	<DialogContent
+		:force-mount="forceMount"
+		:trap-focus="trapFocus"
+		:disable-outside-pointer-events="disableOutsidePointerEvents"
+		:class="[$style.content, sizeClass, stacked && $style.stacked]"
+		@escape-key-down="handleEscapeKeyDown"
+		@interact-outside="handleInteractOutside"
+		@open-auto-focus="emit('openAutoFocus', $event)"
+		@close-auto-focus="emit('closeAutoFocus', $event)"
+	>
+		<!-- Fallback accessible title for screen readers when DialogTitle is not provided -->
+		<VisuallyHidden v-if="needsFallbackTitle" as-child>
+			<DialogTitle>{{ ariaLabel }}</DialogTitle>
+		</VisuallyHidden>
+
+		<!-- Fallback accessible description for screen readers when DialogDescription is not provided -->
+		<VisuallyHidden v-if="needsFallbackDescription" as-child>
+			<DialogDescription>{{ ariaDescription }}</DialogDescription>
+		</VisuallyHidden>
+
+		<slot />
+
+		<N8nDialogClose v-if="showCloseButton" :class="$style.dismiss" />
+	</DialogContent>
+</template>
+
+<style module lang="scss">
+@use '../../css/mixins/motion';
+
+@keyframes dialogFadeIn {
+	from {
+		opacity: 0;
+		transform: translate(-50%, calc(-50% + var(--spacing--2xs))) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: translate(-50%, -50%);
+	}
+}
+
+@keyframes dialogFadeOut {
+	from {
+		opacity: 1;
+		transform: translate(-50%, -50%);
+	}
+	to {
+		opacity: 0;
+		transform: translate(-50%, calc(-50% + var(--spacing--2xs))) scale(0.98);
+	}
+}
+
+.content {
+	/* Include the focus outline so a focused control stays inside the dialog edge. */
+	--n8n-dialog-region--padding: calc(
+		var(--n8n-dialog-content--padding, var(--spacing--md)) + var(--focus--border-width)
+	);
+	--n8n-dialog-close--size: var(--spacing--lg);
+	--n8n-dialog-title--line: calc(var(--font-size--lg) * var(--line-height--xl));
+	--n8n-dialog-close--inset-block-start: calc(
+		var(--n8n-dialog-region--padding) +
+			(var(--n8n-dialog-title--line) - var(--n8n-dialog-close--size)) / 2
+	);
+	--n8n-dialog-close--inset-inline-end: var(--n8n-dialog-region--padding);
+
+	&:not(:has([data-slot='dialog-header'])) [data-slot='dialog-body'] {
+		padding-block-start: var(
+			--n8n-dialog-body--padding-block-start,
+			var(--n8n-dialog-region--padding)
+		);
+		margin-block-start: 0;
+	}
+
+	&:not(:has([data-slot='dialog-header'])):has(.dismiss) [data-slot='dialog-body'] {
+		padding-block-start: var(
+			--n8n-dialog-body--padding-block-start,
+			calc(var(--n8n-dialog-close--size) + var(--spacing--xs))
+		);
+	}
+
+	&:has([data-slot='dialog-footer']) [data-slot='dialog-body'] {
+		padding-block-end: var(--n8n-dialog-body--padding-block-end, var(--focus--border-width));
+		margin-block-end: calc(var(--focus--border-width) * -1);
+	}
+
+	&:not(:has([data-slot='dialog-header'])) .dismiss {
+		top: var(--spacing--sm);
+		inset-inline-end: var(--spacing--sm);
+	}
+
+	&:has([data-slot='dialog-header']) .dismiss {
+		top: var(--n8n-dialog-close--inset-block-start);
+		inset-inline-end: var(--n8n-dialog-close--inset-inline-end);
+	}
+
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	max-height: calc(100dvh - var(--spacing--lg));
+
+	border-radius: var(--radius--lg);
+	background-color: light-dark(var(--background--surface), var(--background--subtle));
+	outline: 1px solid var(--border-color);
+	box-shadow:
+		0 0 0 0.5px light-dark(transparent, var(--color--black-alpha-500)),
+		0 8px 8px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-300)),
+		0 32px 32px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
+		0 64px 64px light-dark(rgba(0, 0, 0, 0.06), var(--color--black-alpha-100));
+	z-index: 1950; // See APP_Z_INDEXES in useStyles.ts
+	max-width: var(--dialog--max-width);
+
+	&:focus {
+		outline: none;
+	}
+}
+
+.dismiss {
+	position: absolute;
+	z-index: 1;
+}
+
+.stacked {
+	z-index: 1952; // Higher than default .content z-index to ensure the dialog is always on top.
+}
+
+.content[data-state='open'] {
+	animation: dialogFadeIn var(--animation--duration--snappy) ease-out;
+
+	@include motion.reduced-motion;
+}
+
+.content[data-state='closed'] {
+	animation: dialogFadeOut var(--animation--duration--snappy) ease-out;
+
+	@include motion.reduced-motion;
+}
+
+.small {
+	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+
+	@media (min-width: 640px) {
+		--dialog--max-width: 360px;
+	}
+}
+
+.medium {
+	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+
+	@media (min-width: 640px) {
+		--dialog--max-width: 480px;
+	}
+}
+
+.large {
+	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+
+	@media (min-width: 640px) {
+		--dialog--max-width: 564px;
+	}
+}
+
+.xlarge {
+	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+
+	@media (min-width: 640px) {
+		--dialog--max-width: 640px;
+	}
+}
+
+.\32xlarge {
+	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+
+	@media (min-width: 640px) {
+		--dialog--max-width: 780px;
+	}
+}
+
+.fit {
+	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+	width: fit-content;
+}
+
+.full {
+	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+}
+
+.cover {
+	width: 100%;
+	height: 100%;
+	max-width: calc(100dvw - var(--spacing--lg));
+	max-height: calc(100dvh - var(--spacing--lg));
+
+	[data-slot='dialog-body'] {
+		flex: 1 1 auto;
+		overflow: auto;
+	}
+}
+</style>
+
+<style lang="scss">
+/* Workaround: reka-ui DismissableLayer sets pointer-events: none on body,
+   which breaks Element Plus poppers teleported to body.
+   TODO: Remove once Element Plus components are migrated to Reka UI. */
+.el-popper {
+	pointer-events: auto;
+}
+</style>

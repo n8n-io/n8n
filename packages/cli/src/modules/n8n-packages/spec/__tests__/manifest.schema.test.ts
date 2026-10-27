@@ -1,0 +1,216 @@
+import { manifestEntrySchema, packageManifestSchema } from '../manifest.schema';
+
+const validManifest = {
+	packageFormatVersion: '1',
+	exportedAt: '2026-05-18T12:00:00.000Z',
+	sourceN8nVersion: '1.0.0',
+	sourceId: 'instance-abc',
+	workflows: [{ id: 'wf-abc', name: 'My workflow', target: 'workflows/my-workflow-abc' }],
+};
+
+describe('packageManifestSchema', () => {
+	it('accepts a valid manifest', () => {
+		expect(() => packageManifestSchema.parse(validManifest)).not.toThrow();
+	});
+
+	it.each([
+		['projects/team/workflows/entry', true],
+		['folders/parent/folders/child/workflows/entry', true],
+		['agents/support', true],
+		['projects/team/agents/support', true],
+		['/workflows/entry', false],
+		['C:/workflows/entry', false],
+		['workflows\\entry', false],
+		['workflows//entry', false],
+		['./workflows/entry', false],
+		['../workflows/entry', false],
+		['workflows/./entry', false],
+		['workflows/../entry', false],
+		['workflows/entry/', false],
+		['workflows/entry/.', false],
+		['workflows/entry/..', false],
+	])('validates target "%s": %s', (target, valid) => {
+		const entry = { ...validManifest.workflows[0], target };
+		expect(manifestEntrySchema.safeParse(entry).success).toBe(valid);
+	});
+
+	it('rejects a manifest with an unsupported packageFormatVersion', () => {
+		const manifest = { ...validManifest, packageFormatVersion: '99' };
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow();
+	});
+
+	it('rejects a manifest containing duplicate workflow ids', () => {
+		const manifest = {
+			...validManifest,
+			workflows: [
+				{ id: 'wf-abc', name: 'First', target: 'workflows/first' },
+				{ id: 'wf-abc', name: 'Second', target: 'workflows/second' },
+			],
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate/i);
+	});
+
+	it('preserves Agent entries', () => {
+		const agents = [{ id: 'agent-1', name: 'Support', target: 'agents/support' }];
+		expect(packageManifestSchema.parse({ ...validManifest, agents }).agents).toEqual(agents);
+	});
+
+	it('rejects duplicate Agent ids across package locations', () => {
+		const manifest = {
+			...validManifest,
+			agents: [
+				{ id: 'agent-1', name: 'Support', target: 'agents/support' },
+				{ id: 'agent-1', name: 'Copy', target: 'projects/team/agents/copy' },
+			],
+		};
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/Duplicate Agent id/);
+	});
+
+	it('rejects duplicate credential ids in requirements.credentials', () => {
+		const manifest = {
+			...validManifest,
+			requirements: {
+				credentials: [
+					{
+						id: 'cred-1',
+						name: 'A',
+						type: 'githubApi',
+						usedBy: [{ kind: 'workflow', id: 'wf-abc' }],
+					},
+					{
+						id: 'cred-1',
+						name: 'B',
+						type: 'slackApi',
+						usedBy: [{ kind: 'workflow', id: 'wf-abc' }],
+					},
+				],
+			},
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate credential id/i);
+	});
+
+	it('rejects duplicate data table ids in requirements.dataTables', () => {
+		const manifest = {
+			...validManifest,
+			requirements: {
+				dataTables: [
+					{ id: 'dt-1', name: 'A', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+					{ id: 'dt-1', name: 'B', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+				],
+			},
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate data table id/i);
+	});
+
+	it('accepts workflow requirements', () => {
+		const manifest = {
+			...validManifest,
+			requirements: {
+				workflows: [
+					{ id: 'wf-child', name: 'Child workflow', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+				],
+			},
+		};
+
+		expect(packageManifestSchema.parse(manifest).requirements?.workflows).toEqual(
+			manifest.requirements.workflows,
+		);
+	});
+
+	it('rejects duplicate workflow ids in requirements.workflows', () => {
+		const manifest = {
+			...validManifest,
+			requirements: {
+				workflows: [
+					{ id: 'wf-child', name: 'Child A', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+					{ id: 'wf-child', name: 'Child B', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+				],
+			},
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate workflow id/i);
+	});
+
+	it('preserves a folders section', () => {
+		const manifest = {
+			...validManifest,
+			folders: [{ id: 'fld-1', name: 'to_production', target: 'folders/to_production' }],
+		};
+
+		expect(packageManifestSchema.parse(manifest).folders).toEqual(manifest.folders);
+	});
+
+	it('rejects a manifest containing duplicate folder ids', () => {
+		const manifest = {
+			...validManifest,
+			folders: [
+				{ id: 'fld-1', name: 'First', target: 'folders/first' },
+				{ id: 'fld-1', name: 'Second', target: 'folders/nested/second' },
+			],
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate folder id/i);
+	});
+
+	it('rejects a manifest containing duplicate variable ids', () => {
+		const manifest = {
+			...validManifest,
+			variables: [
+				{ id: 'var-1', name: 'API_URL', target: 'variables/api-url' },
+				{ id: 'var-1', name: 'API_URL', target: 'variables/api-url-2' },
+			],
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate variable id/i);
+	});
+
+	it('rejects duplicate variable names in requirements.variables', () => {
+		const manifest = {
+			...validManifest,
+			requirements: {
+				variables: [
+					{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+					{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+				],
+			},
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate variable name/i);
+	});
+
+	it('preserves a variables section', () => {
+		const manifest = {
+			...validManifest,
+			variables: [{ id: 'var-1', name: 'API_URL', target: 'variables/api-url' }],
+		};
+
+		expect(packageManifestSchema.parse(manifest).variables).toEqual(manifest.variables);
+	});
+
+	it('rejects a manifest containing duplicate tag ids', () => {
+		const manifest = {
+			...validManifest,
+			tags: [
+				{ id: 'tag-1', name: 'production', target: 'tags/production' },
+				{ id: 'tag-1', name: 'production', target: 'tags/production-2' },
+			],
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate tag id/i);
+	});
+
+	it('accepts manifests with unknown sections for forward compatibility', () => {
+		const manifest = {
+			...validManifest,
+			unknownSection: [{ id: 'future-1' }],
+			credentials: [{ id: 'cred-1', name: 'Slack', target: 'credentials/slack' }],
+			requirements: { credentials: [], variables: [] },
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).not.toThrow();
+	});
+});

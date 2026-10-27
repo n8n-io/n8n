@@ -1,6 +1,5 @@
-import { ProjectsClient } from '@google-cloud/resource-manager';
 import { VertexAIEmbeddings } from '@langchain/google-vertexai';
-import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	ILoadOptionsFunctions,
@@ -10,38 +9,30 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getVertexEndpoint, vertexLocationField } from '../../llms/gemini-common/vertex-location';
+
+import {
+	googleVertexAuthentication,
+	googleVertexCredentials,
+	googleVertexAiCredentialTest,
+	resolveGoogleVertexCredentials,
+	searchGoogleProjects,
+} from '@utils/google-vertex';
 
 export class EmbeddingsGoogleVertex implements INodeType {
 	methods = {
+		credentialTest: { googleVertexAiCredentialTest },
 		listSearch: {
-			async gcpProjectsList(this: ILoadOptionsFunctions) {
-				const results: Array<{ name: string; value: string }> = [];
-
-				const credentials = await this.getCredentials('googleApi');
-				const privateKey = formatPrivateKey(credentials.privateKey as string);
-				const email = (credentials.email as string).trim();
-
-				const client = new ProjectsClient({
-					credentials: {
-						client_email: email,
-						private_key: privateKey,
-					},
-				});
-
-				const [projects] = await client.searchProjects();
-
-				for (const project of projects) {
-					if (project.projectId) {
-						results.push({
-							name: project.displayName ?? project.projectId,
-							value: project.projectId,
-						});
-					}
-				}
-
-				return { results };
+			async gcpProjectsList(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			) {
+				return await searchGoogleProjects(
+					await this.getCredentials('googleApi'),
+					filter,
+					paginationToken,
+				);
 			},
 		},
 	};
@@ -60,12 +51,7 @@ export class EmbeddingsGoogleVertex implements INodeType {
 			ignoreHttpStatusErrors: true,
 			baseURL: '={{ $credentials.host }}',
 		},
-		credentials: [
-			{
-				name: 'googleApi',
-				required: true,
-			},
-		],
+		credentials: googleVertexCredentials,
 		codex: {
 			categories: ['AI'],
 			subcategories: {
@@ -86,6 +72,7 @@ export class EmbeddingsGoogleVertex implements INodeType {
 		outputNames: ['Embeddings'],
 
 		properties: [
+			googleVertexAuthentication,
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName:
@@ -97,6 +84,7 @@ export class EmbeddingsGoogleVertex implements INodeType {
 			{
 				displayName: 'Project ID',
 				name: 'projectId',
+				displayOptions: { show: { authentication: ['googleApi'] } },
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
@@ -125,30 +113,26 @@ export class EmbeddingsGoogleVertex implements INodeType {
 					'The model which will generate the embeddings. <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api">Learn more</a>.',
 				default: 'text-embedding-005',
 			},
+			vertexLocationField,
 		],
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('googleApi');
-		const privateKey = formatPrivateKey(credentials.privateKey as string);
-		const email = (credentials.email as string).trim();
-		const region = credentials.region as string;
+		const { projectId, credentials, location } = await resolveGoogleVertexCredentials(
+			this,
+			itemIndex,
+		);
+		const endpoint = getVertexEndpoint(location);
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
-
-		const projectId = this.getNodeParameter('projectId', itemIndex, '', {
-			extractValue: true,
-		}) as string;
 
 		const embeddings = new VertexAIEmbeddings({
 			authOptions: {
 				projectId,
-				credentials: {
-					client_email: email,
-					private_key: privateKey,
-				},
+				credentials,
 			},
-			location: region,
+			location,
+			...(endpoint ? { endpoint } : {}),
 			model: modelName,
 		});
 

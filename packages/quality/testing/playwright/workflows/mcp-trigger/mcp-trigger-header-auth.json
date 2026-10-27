@@ -1,0 +1,54 @@
+{
+	"name": "MCP Trigger Header Auth Test",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {
+				"authentication": "headerAuth",
+				"path": "mcp-header"
+			},
+			"id": "mcp-trigger-node",
+			"name": "MCP Server Trigger",
+			"type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+			"typeVersion": 2,
+			"position": [300, 300],
+			"credentials": {}
+		},
+		{
+			"parameters": {
+				"name": "add",
+				"description": "Adds two numbers together",
+				"specifyInputSchema": true,
+				"jsonSchemaExample": "{\n\t\"a\": 1,\n\t\"b\": 2\n}",
+				"jsCode": "return `Sum: ${query.a + query.b}`;"
+			},
+			"id": "add-tool-node",
+			"name": "Add Tool",
+			"type": "@n8n/n8n-nodes-langchain.toolCode",
+			"typeVersion": 1.1,
+			"position": [500, 300]
+		}
+	],
+	"connections": {
+		"Add Tool": {
+			"ai_tool": [
+				[
+					{
+						"node": "MCP Server Trigger",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": null,
+	"pinData": {},
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

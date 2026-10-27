@@ -1,6 +1,6 @@
 import { ListDataTableQueryDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Get, GlobalScope, Query, RestController } from '@n8n/decorators';
+import { Get, Query, RestController } from '@n8n/decorators';
 
 import { DataTableAggregateService } from './data-table-aggregate.service';
 import { DataTableService } from './data-table.service';
@@ -13,7 +13,6 @@ export class DataTableAggregateController {
 	) {}
 
 	@Get('/')
-	@GlobalScope('dataTable:list')
 	async listDataTables(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -23,7 +22,6 @@ export class DataTableAggregateController {
 	}
 
 	@Get('/limits')
-	@GlobalScope('dataTable:list')
 	async getDataTablesSize(req: AuthenticatedRequest) {
 		return await this.dataTableService.getDataTablesSize(req.user);
 	}

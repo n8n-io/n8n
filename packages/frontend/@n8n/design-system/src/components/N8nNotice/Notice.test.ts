@@ -1,9 +1,8 @@
 import { render } from '@testing-library/vue';
 
-import { N8nText } from '@n8n/design-system/components';
-import { n8nHtml } from '@n8n/design-system/directives';
-
+import N8nText from '../N8nText';
 import N8nNotice from './Notice.vue';
+import { n8nHtml } from '../../directives';
 
 describe('components', () => {
 	describe('N8nNotice', () => {

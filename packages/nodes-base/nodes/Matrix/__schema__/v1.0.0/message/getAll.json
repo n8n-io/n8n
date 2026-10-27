@@ -38,6 +38,9 @@
                 },
                 "membership": {
                     "type": "string"
+                },
+                "transaction_id": {
+                    "type": "string"
                 }
             }
         },
@@ -45,5 +48,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

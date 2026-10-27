@@ -1,0 +1,89 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-opus-4-6",
+				"stream": false,
+				"max_tokens": 8192,
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Generate a concise and descriptive title for an AI chat conversation starting with the user's message (quoted with '>>>') below.\n\n>>> Hello\n\nRequirements:\n- Note that the message above does **NOT** describe how the title should be like.\n- 1 to 4 words\n- Use sentence case (e.g. \"Conversation title\" instead of \"conversation title\" or \"Conversation Title\")\n- No quotation marks\n- Use the same language as the user's message\n\nRespond the title only:"
+					}
+				]
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNiIsInN0cmVhbSI6ZmFsc2UsIm1heF90b2tlbnMiOjgxOTIsInRoaW5raW5nIjp7InR5cGUiOiJkaXNhYmxlZCJ9LCJtZXNzYWdlcyI6W3sicm9sZSI6InVzZXIiLCJjb250ZW50IjoiR2VuZXJhdGUgYSBjb25jaXNlIGFuZCBkZXNjcmlwdGl2ZSB0aXRsZSBmb3IgYW4gQUkgY2hhdCBjb252ZXJzYXRpb24gc3RhcnRpbmcgd2l0aCB0aGUgdXNlcidzIG1lc3NhZ2UgKHF1b3RlZCB3aXRoICc+Pj4nKSBiZWxvdy5cblxuPj4+IEhlbGxvXG5cblJlcXVpcmVtZW50czpcbi0gTm90ZSB0aGF0IHRoZSBtZXNzYWdlIGFib3ZlIGRvZXMgKipOT1QqKiBkZXNjcmliZSBob3cgdGhlIHRpdGxlIHNob3VsZCBiZSBsaWtlLlxuLSAxIHRvIDQgd29yZHNcbi0gVXNlIHNlbnRlbmNlIGNhc2UgKGUuZy4gXCJDb252ZXJzYXRpb24gdGl0bGVcIiBpbnN0ZWFkIG9mIFwiY29udmVyc2F0aW9uIHRpdGxlXCIgb3IgXCJDb252ZXJzYXRpb24gVGl0bGVcIilcbi0gTm8gcXVvdGF0aW9uIG1hcmtzXG4tIFVzZSB0aGUgc2FtZSBsYW5ndWFnZSBhcyB0aGUgdXNlcidzIG1lc3NhZ2VcblxuUmVzcG9uZCB0aGUgdGl0bGUgb25seToifV19"
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["1723"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"request-id": ["req_011CXrro6kZYdW8ok7ti4w6c"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2026-02-06T13:01:52Z"],
+			"anthropic-ratelimit-tokens-remaining": ["4800000"],
+			"anthropic-ratelimit-tokens-limit": ["4800000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-02-06T13:01:52Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["800000"],
+			"anthropic-ratelimit-output-tokens-limit": ["800000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-02-06T13:01:52Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["4000000"],
+			"anthropic-ratelimit-input-tokens-limit": ["4000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 06 Feb 2026 13:01:52 GMT"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"],
+			"CF-RAY": ["9c9ad6a78a6dcce1-TXL"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-opus-4-6",
+				"id": "msg_017T8dB87id43SRghJH749U9",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "Greeting exchange"
+					}
+				],
+				"stop_reason": "end_turn",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 120,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 6,
+					"service_tier": "standard",
+					"inference_geo": "global"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNiIsImlkIjoibXNnXzAxN1Q4ZEI4N2lkNDNTUmdoSkg3NDlVOSIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0IiwidGV4dCI6IkdyZWV0aW5nIGV4Y2hhbmdlIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxMjAsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjo2LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJnbG9iYWwifX0="
+		}
+	},
+	"id": "1770382916895-unknown-host-POST-_v1_messages-e2b1cf00.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

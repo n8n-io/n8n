@@ -1,0 +1,69 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "b1a1c22e-6e1d-4a35-9c40-1af2f9f70401",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftOAuth2Api",
+				"resource": "worksheet",
+				"operation": "getAll",
+				"workbook": {
+					"__rl": true,
+					"mode": "url",
+					"value": "https://contoso.sharepoint.com/sites/site1/Shared Documents/book.xlsx"
+				},
+				"returnAll": false,
+				"limit": 10,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.microsoftExcelSharePoint",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "b1a1c22e-6e1d-4a35-9c40-1af2f9f70402",
+			"name": "Microsoft Excel (SharePoint)",
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "c1",
+					"name": "Microsoft account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Excel (SharePoint)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Microsoft Excel (SharePoint)": [
+			{
+				"json": {
+					"id": "{00000000-0000-0000-0000-000000000001}",
+					"name": "Sheet1",
+					"position": 0
+				}
+			},
+			{
+				"json": {
+					"id": "{00000000-0000-0000-0000-000000000002}",
+					"name": "Sheet2",
+					"position": 1
+				}
+			}
+		]
+	}
+}

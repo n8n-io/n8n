@@ -1,0 +1,1223 @@
+import type { SourceControlledFile } from '@n8n/api-types';
+import type {
+	Folder,
+	FolderRepository,
+	Project,
+	ProjectRelationRepository,
+	ProjectRepository,
+	SharedCredentials,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	TagEntity,
+	TagRepository,
+	WorkflowRepository,
+	WorkflowTagMapping,
+	WorkflowTagMappingRepository,
+	Variables,
+} from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, In, User, WorkflowEntity } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { Cipher, type InstanceSettings } from 'n8n-core';
+import fsp from 'node:fs/promises';
+
+vi.mock('node:fs/promises');
+import { captor, mock } from 'vitest-mock-extended';
+
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+
+import type { VariablesService } from '../../../environments.ee/variables/variables.service.ee';
+import { SourceControlExportService } from '../source-control-export.service.ee';
+import type { SourceControlScopedService } from '../source-control-scoped.service';
+import { SourceControlContext } from '../types/source-control-context';
+
+describe('SourceControlExportService', () => {
+	const cipher = Container.get(Cipher);
+	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const workflowRepository = mock<WorkflowRepository>();
+	const tagRepository = mock<TagRepository>();
+	const projectRepository = mock<ProjectRepository>();
+	const workflowTagMappingRepository = mock<WorkflowTagMappingRepository>();
+	const variablesService = mock<VariablesService>();
+	const folderRepository = mock<FolderRepository>();
+	const sourceControlScopedService = mock<SourceControlScopedService>();
+	const dataTableRepository = mock<DataTableRepository>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
+
+	const globalAdminContext = new SourceControlContext(
+		Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE }),
+		[],
+		[],
+	);
+
+	const service = new SourceControlExportService(
+		mock(),
+		variablesService,
+		tagRepository,
+		projectRepository,
+		sharedCredentialsRepository,
+		sharedWorkflowRepository,
+		workflowRepository,
+		workflowTagMappingRepository,
+		folderRepository,
+		sourceControlScopedService,
+		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
+		dataTableRepository,
+		projectRelationRepository,
+	);
+
+	const personalProject = mock<Project>({ type: 'personal', id: 'personal-1', name: 'Personal' });
+	const teamProject = mock<Project>({ type: 'team', id: 'team1', name: 'Test Team' });
+
+	const fsWriteFile = vi.spyOn(fsp, 'writeFile');
+	const fsReadFile = vi.spyOn(fsp, 'readFile');
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
+		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
+		sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(new Map());
+		projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(new Map());
+	});
+
+	describe('exportCredentialsToWorkFolder', () => {
+		const credentialData = {
+			authUrl: 'test',
+			accessTokenUrl: 'test',
+			clientId: 'test',
+			clientSecret: 'test',
+			oauthTokenData: {
+				access_token: 'test',
+				token_type: 'test',
+				expires_in: 123,
+				refresh_token: 'test',
+			},
+		};
+
+		const mockCredentials = mock({
+			id: 'cred1',
+			name: 'Test Credential',
+			type: 'oauth2',
+			data: cipher.encryptWithInstanceKey(credentialData),
+		});
+
+		it('should export credentials to work folder', async () => {
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentialsId: mockCredentials.id,
+					credentials: mockCredentials,
+				} as never) as SharedCredentials,
+			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+				new Map([[mockCredentials.id, personalProject]]),
+			);
+			projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(
+				new Map([[personalProject.id, 'user@example.com']]),
+			);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([mock()]);
+
+			// Assert
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/credential_stubs/cred1.json',
+				dataCaptor,
+			);
+			expect(JSON.parse(dataCaptor.value)).toEqual({
+				id: 'cred1',
+				name: 'Test Credential',
+				type: 'oauth2',
+				data: {
+					authUrl: '',
+					accessTokenUrl: '',
+					clientId: '',
+					clientSecret: '',
+				},
+				ownedBy: {
+					type: 'personal',
+					projectId: 'personal-1',
+					projectName: 'Personal',
+					personalEmail: 'user@example.com',
+				},
+			});
+		});
+
+		it('should handle team project credentials', async () => {
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentialsId: mockCredentials.id,
+					credentials: mockCredentials,
+				} as never) as SharedCredentials,
+			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+				new Map([[mockCredentials.id, teamProject]]),
+			);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'cred1' }),
+			]);
+
+			// Assert
+			expect(result.count).toBe(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/credential_stubs/cred1.json',
+				dataCaptor,
+			);
+			expect(JSON.parse(dataCaptor.value)).toEqual({
+				id: 'cred1',
+				name: 'Test Credential',
+				type: 'oauth2',
+				data: {
+					authUrl: '',
+					accessTokenUrl: '',
+					clientId: '',
+					clientSecret: '',
+				},
+				ownedBy: {
+					type: 'team',
+					teamId: 'team1',
+					teamName: 'Test Team',
+				},
+			});
+		});
+
+		it('should handle missing credentials', async () => {
+			// Arrange
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([]);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'cred1' }),
+			]);
+
+			// Assert
+			expect(result.missingIds).toHaveLength(1);
+			expect(result.missingIds?.[0]).toBe('cred1');
+		});
+
+		it('should export global credentials with isGlobal flag set to true', async () => {
+			// Arrange
+			const mockGlobalCredential = mock({
+				id: 'global-cred1',
+				name: 'Global Test Credential',
+				type: 'oauth2',
+				data: cipher.encryptWithInstanceKey(credentialData),
+				isGlobal: true,
+				isResolvable: false,
+				resolvableAllowFallback: false,
+			});
+
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentialsId: mockGlobalCredential.id,
+					credentials: mockGlobalCredential,
+				} as never) as SharedCredentials,
+			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+				new Map([[mockGlobalCredential.id, teamProject]]),
+			);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'global-cred1' }),
+			]);
+
+			// Assert
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/credential_stubs/global-cred1.json',
+				dataCaptor,
+			);
+
+			const exportedData = JSON.parse(dataCaptor.value);
+			expect(exportedData).toEqual({
+				id: 'global-cred1',
+				name: 'Global Test Credential',
+				type: 'oauth2',
+				data: {
+					authUrl: '',
+					accessTokenUrl: '',
+					clientId: '',
+					clientSecret: '',
+				},
+				ownedBy: {
+					type: 'team',
+					teamId: 'team1',
+					teamName: 'Test Team',
+				},
+				isGlobal: true,
+				isResolvable: false,
+				resolvableAllowFallback: false,
+			});
+		});
+
+		it('should export non-global credentials with isGlobal flag set to false', async () => {
+			// Arrange
+			const mockNonGlobalCredential = mock({
+				id: 'non-global-cred1',
+				name: 'Non-Global Test Credential',
+				type: 'oauth2',
+				data: cipher.encryptWithInstanceKey(credentialData),
+				isGlobal: false,
+				isResolvable: false,
+				resolvableAllowFallback: false,
+			});
+
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentialsId: mockNonGlobalCredential.id,
+					credentials: mockNonGlobalCredential,
+				} as never) as SharedCredentials,
+			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+				new Map([[mockNonGlobalCredential.id, personalProject]]),
+			);
+			projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(
+				new Map([[personalProject.id, 'user@example.com']]),
+			);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'non-global-cred1' }),
+			]);
+
+			// Assert
+			expect(result.count).toBe(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/credential_stubs/non-global-cred1.json',
+				dataCaptor,
+			);
+
+			const exportedData = JSON.parse(dataCaptor.value);
+			expect(exportedData).toEqual({
+				id: 'non-global-cred1',
+				name: 'Non-Global Test Credential',
+				type: 'oauth2',
+				data: {
+					authUrl: '',
+					accessTokenUrl: '',
+					clientId: '',
+					clientSecret: '',
+				},
+				ownedBy: {
+					type: 'personal',
+					projectId: 'personal-1',
+					projectName: 'Personal',
+					personalEmail: 'user@example.com',
+				},
+				isGlobal: false,
+				isResolvable: false,
+				resolvableAllowFallback: false,
+			});
+		});
+
+		it('should export isResolvable and resolvableAllowFallback for private credentials', async () => {
+			// Arrange
+			const mockResolvableCredential = mock({
+				id: 'resolvable-cred1',
+				name: 'Resolvable Credential',
+				type: 'oauth2',
+				data: cipher.encryptWithInstanceKey(credentialData),
+				isGlobal: false,
+				isResolvable: true,
+				resolvableAllowFallback: true,
+			});
+
+			// Ownership is not asserted here, so a minimal sharing mock is enough.
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentials: mockResolvableCredential,
+				}),
+			]);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'resolvable-cred1' }),
+			]);
+
+			// Assert
+			expect(result.count).toBe(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/credential_stubs/resolvable-cred1.json',
+				dataCaptor,
+			);
+
+			const exportedData = JSON.parse(dataCaptor.value);
+			expect(exportedData.isResolvable).toBe(true);
+			expect(exportedData.resolvableAllowFallback).toBe(true);
+		});
+
+		it('should default isGlobal to false when not specified', async () => {
+			// Arrange
+			const mockCredentialWithoutIsGlobal = mock({
+				id: 'cred-no-flag',
+				name: 'Credential Without Flag',
+				type: 'oauth2',
+				data: cipher.encryptWithInstanceKey(credentialData),
+				isGlobal: undefined, // explicitly undefined to test the default
+			});
+
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentialsId: mockCredentialWithoutIsGlobal.id,
+					credentials: mockCredentialWithoutIsGlobal,
+				} as never) as SharedCredentials,
+			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+				new Map([[mockCredentialWithoutIsGlobal.id, personalProject]]),
+			);
+			projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(
+				new Map([[personalProject.id, 'user@example.com']]),
+			);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'cred-no-flag' }),
+			]);
+
+			// Assert
+			expect(result.count).toBe(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/credential_stubs/cred-no-flag.json',
+				dataCaptor,
+			);
+
+			const exportedData = JSON.parse(dataCaptor.value);
+			// When isGlobal is undefined, the service defaults it to false via destructuring
+			expect(exportedData.isGlobal).toBe(false);
+		});
+	});
+
+	describe('exportCredentialsToWorkFolder batching', () => {
+		const toSharing = (credentialsId: string) =>
+			mock<SharedCredentials>({
+				credentialsId,
+				credentials: mock({
+					id: credentialsId,
+					name: `Credential ${credentialsId}`,
+					type: 'httpBasicAuth',
+					data: cipher.encryptWithInstanceKey({ user: 'u', password: 'p' }),
+				}),
+			} as never) as SharedCredentials;
+
+		it('should load and write credentials in batches', async () => {
+			const credentialIds = Array.from({ length: 45 }, (_, index) => `cred-${index}`);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+				new Map(credentialIds.map((id) => [id, teamProject])),
+			);
+			sharedCredentialsRepository.findByCredentialIds
+				.mockResolvedValueOnce(credentialIds.slice(0, 20).map(toSharing))
+				.mockResolvedValueOnce(credentialIds.slice(20, 40).map(toSharing))
+				.mockResolvedValueOnce(credentialIds.slice(40).map(toSharing));
+
+			const result = await service.exportCredentialsToWorkFolder(
+				credentialIds.map((id) => mock<SourceControlledFile>({ id })),
+			);
+
+			expect(sharedCredentialsRepository.findOwnerProjectsByCredentialIds).toHaveBeenCalledTimes(1);
+			expect(sharedCredentialsRepository.findOwnerProjectsByCredentialIds).toHaveBeenCalledWith(
+				credentialIds,
+			);
+			expect(projectRelationRepository.findPersonalOwnerEmails).toHaveBeenCalledTimes(1);
+			expect(sharedCredentialsRepository.findByCredentialIds).toHaveBeenCalledTimes(3);
+			expect(sharedCredentialsRepository.findByCredentialIds).toHaveBeenNthCalledWith(
+				1,
+				credentialIds.slice(0, 20),
+				'credential:owner',
+			);
+			expect(sharedCredentialsRepository.findByCredentialIds).toHaveBeenNthCalledWith(
+				2,
+				credentialIds.slice(20, 40),
+				'credential:owner',
+			);
+			expect(sharedCredentialsRepository.findByCredentialIds).toHaveBeenNthCalledWith(
+				3,
+				credentialIds.slice(40),
+				'credential:owner',
+			);
+
+			const findOrder = sharedCredentialsRepository.findByCredentialIds.mock.invocationCallOrder;
+			const writeOrder = fsWriteFile.mock.invocationCallOrder;
+			expect(writeOrder).toHaveLength(45);
+			expect(writeOrder[19]).toBeLessThan(findOrder[1]);
+			expect(writeOrder[39]).toBeLessThan(findOrder[2]);
+
+			expect(result.count).toBe(45);
+			expect(result.missingIds).toEqual([]);
+			expect(result.files.map((file) => file.id)).toEqual(credentialIds);
+		});
+
+		it('should report credentials missing from any batch', async () => {
+			const credentialIds = Array.from({ length: 25 }, (_, index) => `cred-${index}`);
+			sharedCredentialsRepository.findByCredentialIds
+				.mockResolvedValueOnce(credentialIds.slice(0, 19).map(toSharing))
+				.mockResolvedValueOnce(credentialIds.slice(21).map(toSharing));
+
+			const result = await service.exportCredentialsToWorkFolder(
+				credentialIds.map((id) => mock<SourceControlledFile>({ id })),
+			);
+
+			expect(result.count).toBe(23);
+			expect(result.missingIds).toEqual(['cred-19', 'cred-20']);
+		});
+	});
+
+	describe('exportTagsToWorkFolder', () => {
+		beforeEach(() => {
+			fsReadFile.mockResolvedValue(JSON.stringify({ tags: [], mappings: [] }));
+			workflowTagMappingRepository.find.mockResolvedValue([]);
+			workflowRepository.find.mockResolvedValue([]);
+		});
+
+		it('should export tags to work folder', async () => {
+			// Arrange
+			const mockTag = mock<TagEntity>({
+				id: 'tag1',
+				name: 'Tag 1',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			const mockWorkflow = mock<WorkflowTagMapping>({
+				tagId: 'tag1',
+				workflowId: 'workflow1',
+			});
+			tagRepository.find.mockResolvedValue([mockTag]);
+			workflowTagMappingRepository.find.mockResolvedValue([mockWorkflow]);
+			workflowRepository.find.mockResolvedValue([]);
+			const fileName = '/mock/n8n/git/tags.json';
+
+			// Act
+			const result = await service.exportTagsToWorkFolder(globalAdminContext);
+
+			// Assert
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				fileName,
+				JSON.stringify(
+					{
+						tags: [
+							{
+								id: mockTag.id,
+								name: mockTag.name,
+							},
+						],
+						mappings: [mockWorkflow],
+					},
+					null,
+					2,
+				),
+			);
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+			expect(result.files[0]).toMatchObject({ id: '', name: fileName });
+		});
+
+		it('should clear tags file and export it when there are no tags', async () => {
+			// Arrange
+			tagRepository.find.mockResolvedValue([]);
+			const fileName = '/mock/n8n/git/tags.json';
+
+			// Act
+			const result = await service.exportTagsToWorkFolder(globalAdminContext);
+
+			// Assert
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				fileName,
+				JSON.stringify({ tags: [], mappings: [] }, null, 2),
+			);
+			expect(result.count).toBe(0);
+			expect(result.files).toHaveLength(1);
+			expect(result.files[0]).toMatchObject({ id: '', name: fileName });
+		});
+
+		it('should load only workflow ids and replace mappings of accessible workflows', async () => {
+			const mockTag = mock<TagEntity>({
+				id: 'tag1',
+				name: 'Tag 1',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+			const accessibleMapping = { tagId: 'tag1', workflowId: 'workflow1' } as WorkflowTagMapping;
+			const inaccessibleMapping = { tagId: 'tag2', workflowId: 'workflow2' };
+			const remoteTag = { id: 'tag2', name: 'Tag 2' };
+			tagRepository.find.mockResolvedValue([mockTag]);
+			workflowTagMappingRepository.find.mockResolvedValue([accessibleMapping]);
+			workflowRepository.find.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), { id: 'workflow1' }),
+			]);
+			fsReadFile.mockResolvedValueOnce(
+				JSON.stringify({
+					tags: [remoteTag],
+					mappings: [{ tagId: 'stale', workflowId: 'workflow1' }, inaccessibleMapping],
+				}),
+			);
+
+			await service.exportTagsToWorkFolder(globalAdminContext);
+
+			expect(workflowRepository.find).toHaveBeenCalledTimes(1);
+			expect(workflowRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({ select: { id: true } }),
+			);
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/tags.json', dataCaptor);
+			expect(JSON.parse(dataCaptor.value)).toEqual({
+				tags: [{ id: mockTag.id, name: mockTag.name }, remoteTag],
+				mappings: [inaccessibleMapping, accessibleMapping],
+			});
+		});
+
+		it('should keep a remote tag and its mappings when there are no local tags', async () => {
+			const remoteTag = { id: 'remote-tag', name: 'Remote tag' };
+			const remoteMappings = [
+				{ tagId: remoteTag.id, workflowId: 'workflow1' },
+				{ tagId: remoteTag.id, workflowId: 'workflow2' },
+			];
+			tagRepository.find.mockResolvedValue([]);
+			fsReadFile.mockResolvedValueOnce(
+				JSON.stringify({
+					tags: [remoteTag, { id: 'unused-tag', name: 'Unused tag' }],
+					mappings: remoteMappings,
+				}),
+			);
+
+			const result = await service.exportTagsToWorkFolder(globalAdminContext);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/tags.json', dataCaptor);
+			expect(JSON.parse(dataCaptor.value)).toEqual({
+				tags: [remoteTag],
+				mappings: remoteMappings,
+			});
+			expect(result.count).toBe(1);
+		});
+
+		it('should skip remote mappings whose tags are missing locally and remotely', async () => {
+			const localTag = mock<TagEntity>({ id: 'local-tag', name: 'Local tag' });
+			const validMapping = { tagId: localTag.id, workflowId: 'workflow1' };
+			tagRepository.find.mockResolvedValue([localTag]);
+			fsReadFile.mockResolvedValueOnce(
+				JSON.stringify({
+					tags: [],
+					mappings: [validMapping, { tagId: 'missing-tag', workflowId: 'workflow2' }],
+				}),
+			);
+
+			await service.exportTagsToWorkFolder(globalAdminContext);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/tags.json', dataCaptor);
+			expect(JSON.parse(dataCaptor.value)).toEqual({
+				tags: [{ id: localTag.id, name: localTag.name }],
+				mappings: [validMapping],
+			});
+		});
+	});
+
+	describe('exportFoldersToWorkFolder', () => {
+		it('should export folders to work folder', async () => {
+			// Arrange
+			folderRepository.find.mockResolvedValue([
+				mock({ updatedAt: new Date(), createdAt: new Date() }),
+			]);
+			workflowRepository.find.mockResolvedValue([mock()]);
+
+			// Act
+			const result = await service.exportFoldersToWorkFolder(globalAdminContext);
+
+			// Assert
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+		});
+
+		it('should not export empty folders', async () => {
+			// Arrange
+			folderRepository.find.mockResolvedValue([]);
+
+			// Act
+			const result = await service.exportFoldersToWorkFolder(globalAdminContext);
+
+			// Assert
+			expect(result.count).toBe(0);
+			expect(result.files).toHaveLength(0);
+		});
+
+		it('should not duplicate folders on push', async () => {
+			// Arrange
+			const newFolders = [
+				{
+					id: 'folder-id',
+					name: 'Folder Name',
+					parentFolderId: null,
+					homeProject: { id: 'project-id' },
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				} as Folder,
+			];
+			folderRepository.find.mockResolvedValue(newFolders);
+			workflowRepository.find.mockResolvedValue([mock()]);
+			const existingFolders = [
+				{
+					id: 'folder-id',
+					name: 'Folder Name',
+					parentFolderId: null,
+					homeProjectId: 'project-id',
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+				},
+			];
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					folders: existingFolders,
+				}),
+			);
+
+			// Act
+			const result = await service.exportFoldersToWorkFolder(globalAdminContext);
+
+			// Assert
+			// new json file should contain only the new folders
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/folders.json',
+				JSON.stringify(
+					{
+						folders: newFolders.map((f) => ({
+							id: f.id,
+							name: f.name,
+							parentFolderId: f.parentFolderId,
+							homeProjectId: f.homeProject.id,
+							createdAt: f.createdAt.toISOString(),
+							updatedAt: f.updatedAt.toISOString(),
+						})),
+					},
+					null,
+					2,
+				),
+			);
+
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+		});
+	});
+
+	describe('exportVariablesToWorkFolder', () => {
+		it('should export variables to work folder', async () => {
+			// Arrange
+			variablesService.getAllCached.mockResolvedValue([mock()]);
+
+			// Act
+			const result = await service.exportGlobalVariablesToWorkFolder();
+
+			// Assert
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+		});
+
+		it('should not export empty variables', async () => {
+			// Arrange
+			variablesService.getAllCached.mockResolvedValue([]);
+
+			// Act
+			const result = await service.exportGlobalVariablesToWorkFolder();
+
+			// Assert
+			expect(result.count).toBe(0);
+			expect(result.files).toHaveLength(0);
+		});
+	});
+
+	describe('exportWorkflowsToWorkFolder', () => {
+		it('should export workflows with all required fields', async () => {
+			// Arrange
+			const workflowId = 'wf-1';
+			const nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }];
+			const nodes = [
+				{
+					id: 'node-1',
+					type: 'n8n-nodes-base.noOp',
+					name: 'NoOp',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+			];
+			workflowRepository.find.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: workflowId,
+					name: 'Test Workflow',
+					description: 'Test description',
+					nodes,
+					connections: {},
+					settings: {},
+					triggerCount: 1,
+					versionId: 'v1',
+					parentFolder: null,
+					isArchived: false,
+					nodeGroups,
+				}),
+			]);
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([[workflowId, personalProject]]),
+			);
+			projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(
+				new Map([[personalProject.id, 'user@test.com']]),
+			);
+
+			// Act
+			const result = await service.exportWorkflowsToWorkFolder([
+				mock<SourceControlledFile>({ id: workflowId }),
+			]);
+
+			// Assert
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(expect.stringContaining(workflowId), dataCaptor);
+			const exported = JSON.parse(dataCaptor.value);
+			expect(exported).toEqual({
+				id: workflowId,
+				name: 'Test Workflow',
+				description: 'Test description',
+				nodes,
+				connections: {},
+				settings: {},
+				triggerCount: 1,
+				versionId: 'v1',
+				parentFolderId: null,
+				isArchived: false,
+				nodeGroups,
+				owner: {
+					type: 'personal',
+					projectId: 'personal-1',
+					projectName: 'Personal',
+					personalEmail: 'user@test.com',
+				},
+			});
+		});
+
+		it('should export an explicit null description when the workflow has none', async () => {
+			const workflowId = 'wf-no-description';
+			workflowRepository.find.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: workflowId,
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					settings: {},
+					triggerCount: 0,
+					versionId: 'v1',
+					parentFolder: null,
+					isArchived: false,
+					nodeGroups: [],
+				}),
+			]);
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([[workflowId, personalProject]]),
+			);
+			projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(
+				new Map([[personalProject.id, 'user@test.com']]),
+			);
+
+			await service.exportWorkflowsToWorkFolder([mock<SourceControlledFile>({ id: workflowId })]);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(expect.stringContaining(workflowId), dataCaptor);
+			const exported = JSON.parse(dataCaptor.value);
+			expect('description' in exported).toBe(true);
+			expect(exported.description).toBeNull();
+		});
+
+		it('should load and write workflows in batches', async () => {
+			const workflowIds = Array.from({ length: 45 }, (_, index) => `wf-${index}`);
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map(workflowIds.map((id) => [id, teamProject])),
+			);
+			const toWorkflowEntity = (id: string) =>
+				Object.assign(new WorkflowEntity(), {
+					id,
+					name: `Workflow ${id}`,
+					nodes: [],
+					connections: {},
+					settings: {},
+					triggerCount: 0,
+					versionId: 'v1',
+					parentFolder: null,
+					isArchived: false,
+					nodeGroups: [],
+				});
+			workflowRepository.find
+				.mockResolvedValueOnce(workflowIds.slice(0, 20).map(toWorkflowEntity))
+				.mockResolvedValueOnce(workflowIds.slice(20, 40).map(toWorkflowEntity))
+				.mockResolvedValueOnce(workflowIds.slice(40).map(toWorkflowEntity));
+
+			const result = await service.exportWorkflowsToWorkFolder(
+				workflowIds.map((id) => mock<SourceControlledFile>({ id })),
+			);
+
+			expect(workflowRepository.find).toHaveBeenCalledTimes(3);
+			expect(workflowRepository.find).toHaveBeenNthCalledWith(1, {
+				where: { id: In(workflowIds.slice(0, 20)) },
+				relations: ['parentFolder'],
+			});
+			expect(workflowRepository.find).toHaveBeenNthCalledWith(2, {
+				where: { id: In(workflowIds.slice(20, 40)) },
+				relations: ['parentFolder'],
+			});
+			expect(workflowRepository.find).toHaveBeenNthCalledWith(3, {
+				where: { id: In(workflowIds.slice(40)) },
+				relations: ['parentFolder'],
+			});
+
+			const findOrder = workflowRepository.find.mock.invocationCallOrder;
+			const writeOrder = fsWriteFile.mock.invocationCallOrder;
+			expect(writeOrder).toHaveLength(45);
+			expect(writeOrder[19]).toBeLessThan(findOrder[1]);
+			expect(writeOrder[39]).toBeLessThan(findOrder[2]);
+
+			expect(result.count).toBe(45);
+			expect(result.files.map((file) => file.id)).toEqual(workflowIds);
+		});
+
+		it('should throw an error if workflow has no owner', async () => {
+			// Arrange
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([['test-workflow-id', personalProject]]),
+			);
+
+			// Act & Assert
+			await expect(service.exportWorkflowsToWorkFolder([mock()])).rejects.toThrow(
+				'Workflow test-workflow-id has no owner',
+			);
+		});
+	});
+
+	describe('exportTeamProjectsToWorkFolder', () => {
+		it('should export projects to work folder', async () => {
+			// Arrange
+			const candidates = [
+				mock<SourceControlledFile>({ id: 'project-id-1' }),
+				mock<SourceControlledFile>({ id: 'project-id-2' }),
+			];
+
+			const project1 = mock<Project>({
+				id: 'project-id-1',
+				name: 'Project 1',
+				icon: { type: 'icon', value: 'icon.png' },
+				description: 'Project 1',
+				type: 'team',
+				variables: [],
+			});
+			const project2 = mock<Project>({
+				id: 'project-id-2',
+				name: 'Team Project',
+				icon: null,
+				description: 'Team Project',
+				type: 'team',
+				variables: [mock<Variables>({ key: 'VAR1', value: 'value1' })],
+			});
+
+			const expectedProject1Json = JSON.stringify(
+				{
+					id: project1.id,
+					name: project1.name,
+					icon: project1.icon,
+					description: project1.description,
+					type: 'team',
+					owner: {
+						type: 'team',
+						teamId: project1.id,
+						teamName: project1.name,
+					},
+					variableStubs: [],
+				},
+				null,
+				2,
+			);
+			const expectedProject2Json = JSON.stringify(
+				{
+					id: project2.id,
+					name: project2.name,
+					icon: project2.icon,
+					description: project2.description,
+					type: 'team',
+					owner: {
+						type: 'team',
+						teamId: project2.id,
+						teamName: project2.name,
+					},
+					variableStubs: [
+						{
+							key: 'VAR1',
+							value: '',
+						},
+					],
+				},
+				null,
+				2,
+			);
+
+			projectRepository.find.mockResolvedValue([project1, project2]);
+
+			// Act
+			const result = await service.exportTeamProjectsToWorkFolder(candidates);
+
+			// Assert
+			expect(projectRepository.find).toHaveBeenCalledWith({
+				where: { id: In([project1.id, project2.id]), type: 'team' },
+				relations: ['variables'],
+			});
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/projects/project-id-1.json',
+				expectedProject1Json,
+			);
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/projects/project-id-2.json',
+				expectedProject2Json,
+			);
+			expect(result.count).toBe(2);
+			expect(result.files).toHaveLength(2);
+			expect(result.files).toEqual(
+				expect.arrayContaining([
+					{
+						id: 'project-id-1',
+						name: '/mock/n8n/git/projects/project-id-1.json',
+					},
+					{
+						id: 'project-id-2',
+						name: '/mock/n8n/git/projects/project-id-2.json',
+					},
+				]),
+			);
+		});
+	});
+
+	describe('exportDataTablesToWorkFolder', () => {
+		it('should export data tables as individual files', async () => {
+			// Arrange
+			const mockDataTables = [
+				{
+					id: 'dt1',
+					name: 'Test Table 1',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: new Date('2024-01-01'),
+					updatedAt: new Date('2024-01-02'),
+					project: {
+						id: 'project1',
+						name: 'Team Project 1',
+						type: 'team',
+						projectRelations: [],
+					},
+				},
+				{
+					id: 'dt2',
+					name: 'Test Table 2',
+					projectId: 'project2',
+					columns: [{ id: 'col3', name: 'Column 3', type: 'boolean', index: 0 }],
+					createdAt: new Date('2024-01-03'),
+					updatedAt: new Date('2024-01-04'),
+					project: {
+						id: 'project2',
+						name: 'Team Project 2',
+						type: 'team',
+						projectRelations: [],
+					},
+				},
+			];
+
+			const candidates = [
+				{
+					id: 'dt1',
+					name: 'Test Table 1',
+					type: 'datatable' as const,
+					status: 'created' as const,
+					file: '/mock/n8n/git/datatables/dt1.json',
+					location: 'local' as const,
+					conflict: false,
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				},
+				{
+					id: 'dt2',
+					name: 'Test Table 2',
+					type: 'datatable' as const,
+					status: 'created' as const,
+					file: '/mock/n8n/git/datatables/dt2.json',
+					location: 'local' as const,
+					conflict: false,
+					updatedAt: '2024-01-04T00:00:00.000Z',
+				},
+			];
+
+			dataTableRepository.find.mockResolvedValue(mockDataTables as any);
+
+			// Act
+			const result = await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
+
+			// Assert
+			expect(result.count).toBe(2);
+			expect(result.files).toHaveLength(2);
+			expect(result.files[0].name).toBe('/mock/n8n/git/datatables/dt1.json');
+			expect(result.files[1].name).toBe('/mock/n8n/git/datatables/dt2.json');
+
+			// Check first file
+			const dataCaptor1 = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/datatables/dt1.json', dataCaptor1);
+			const exportedData1 = JSON.parse(dataCaptor1.value);
+			expect(exportedData1).toEqual({
+				id: 'dt1',
+				name: 'Test Table 1',
+				ownedBy: {
+					type: 'team',
+					teamId: 'project1',
+					teamName: 'Team Project 1',
+				},
+				columns: [
+					{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+					{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+				],
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-02T00:00:00.000Z',
+			});
+
+			// Check second file
+			const dataCaptor2 = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/datatables/dt2.json', dataCaptor2);
+			const exportedData2 = JSON.parse(dataCaptor2.value);
+			expect(exportedData2).toEqual({
+				id: 'dt2',
+				name: 'Test Table 2',
+				ownedBy: {
+					type: 'team',
+					teamId: 'project2',
+					teamName: 'Team Project 2',
+				},
+				columns: [{ id: 'col3', name: 'Column 3', type: 'boolean', index: 0 }],
+				createdAt: '2024-01-03T00:00:00.000Z',
+				updatedAt: '2024-01-04T00:00:00.000Z',
+			});
+		});
+
+		it('should return empty result when no candidates provided', async () => {
+			// Arrange
+			const candidates: any[] = [];
+
+			// Act
+			const result = await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
+
+			// Assert
+			expect(result.count).toBe(0);
+			expect(result.files).toHaveLength(0);
+			expect(fsWriteFile).not.toHaveBeenCalled();
+		});
+
+		it('should scope exported data tables to projects the user can push to', async () => {
+			// Arrange
+			const candidates = [
+				{
+					id: 'dt1',
+					name: 'Test Table 1',
+					type: 'datatable' as const,
+					status: 'created' as const,
+					file: '/mock/n8n/git/datatables/dt1.json',
+					location: 'local' as const,
+					conflict: false,
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				},
+			];
+			const scopedFilter = { project: { id: 'authorized-project' } };
+			sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue(
+				scopedFilter as any,
+			);
+			dataTableRepository.find.mockResolvedValue([]);
+
+			// Act
+			await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
+
+			// Assert
+			expect(
+				sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter,
+			).toHaveBeenCalledWith(globalAdminContext);
+			expect(dataTableRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: expect.objectContaining(scopedFilter),
+					relations: ['columns', 'project'],
+				}),
+			);
+		});
+
+		it('should export the owner email of a personal project', async () => {
+			dataTableRepository.find.mockResolvedValue([
+				{
+					id: 'dt1',
+					name: 'Personal Table',
+					projectId: personalProject.id,
+					columns: [],
+					createdAt: new Date('2024-01-01'),
+					updatedAt: new Date('2024-01-02'),
+					project: personalProject,
+				},
+			] as never);
+			projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(
+				new Map([[personalProject.id, 'owner@example.com']]),
+			);
+
+			await service.exportDataTablesToWorkFolder(
+				[mock<SourceControlledFile>({ id: 'dt1' })],
+				globalAdminContext,
+			);
+
+			expect(projectRelationRepository.findPersonalOwnerEmails).toHaveBeenCalledWith([
+				personalProject.id,
+			]);
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/datatables/dt1.json', dataCaptor);
+			expect(JSON.parse(dataCaptor.value).ownedBy).toEqual({
+				type: 'personal',
+				projectId: 'personal-1',
+				projectName: 'Personal',
+				personalEmail: 'owner@example.com',
+			});
+		});
+
+		it('should handle export errors gracefully', async () => {
+			// Arrange
+			const candidates = [
+				{
+					id: 'dt1',
+					name: 'Test Table 1',
+					type: 'datatable' as const,
+					status: 'created' as const,
+					file: '/mock/n8n/git/datatables/dt1.json',
+					location: 'local' as const,
+					conflict: false,
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				},
+			];
+			dataTableRepository.find.mockRejectedValue(new Error('Database error'));
+
+			// Act & Assert
+			await expect(
+				service.exportDataTablesToWorkFolder(candidates, globalAdminContext),
+			).rejects.toThrow('Failed to export data tables to work folder');
+		});
+	});
+});

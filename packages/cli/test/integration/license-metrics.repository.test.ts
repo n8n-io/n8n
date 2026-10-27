@@ -1,6 +1,13 @@
 import { createManyActiveWorkflows, createManyWorkflows, testDb } from '@n8n/backend-test-utils';
-import { StatisticsNames, LicenseMetricsRepository, WorkflowStatisticsRepository } from '@n8n/db';
+import {
+	GLOBAL_MEMBER_ROLE,
+	StatisticsNames,
+	LicenseMetricsRepository,
+	ServiceAccount,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 
 import { createManyCredentials } from './shared/db/credentials';
 import { createAdmin, createMember, createOwner, createUser } from './shared/db/users';
@@ -62,10 +69,9 @@ describe('LicenseMetricsRepository', () => {
 					StatisticsNames.manualError,
 					secondWorkflow.id,
 				),
-				workflowStatisticsRepository.upsertWorkflowStatistics(
+				workflowStatisticsRepository.insertWorkflowStatistics(
 					StatisticsNames.productionSuccess,
 					secondWorkflow.id,
-					true,
 				),
 			]);
 
@@ -101,6 +107,17 @@ describe('LicenseMetricsRepository', () => {
 				manualExecutions: 0, // not NaN
 				evaluations: 0,
 			});
+		});
+
+		test('should not count service accounts as users', async () => {
+			await createMember();
+			const serviceAccounts = Container.get(DataSource).getRepository(ServiceAccount);
+			await serviceAccounts.save(serviceAccounts.create({ role: GLOBAL_MEMBER_ROLE }));
+
+			const metrics = await licenseMetricsRepository.getLicenseRenewalMetrics();
+
+			expect(metrics.enabledUsers).toBe(1);
+			expect(metrics.totalUsers).toBe(1);
 		});
 	});
 });

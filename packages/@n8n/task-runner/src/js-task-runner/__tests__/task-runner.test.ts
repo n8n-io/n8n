@@ -1,3 +1,4 @@
+import type { Mock, MockInstance } from 'vitest';
 import { WebSocket } from 'ws';
 
 import { newTaskState } from '@/js-task-runner/__tests__/test-data';
@@ -7,7 +8,7 @@ import type { TaskStatus } from '@/task-state';
 
 class TestRunner extends TaskRunner {}
 
-jest.mock('ws');
+vi.mock('ws');
 
 describe('TestRunner', () => {
 	let runner: TestRunner;
@@ -15,6 +16,7 @@ describe('TestRunner', () => {
 	const newTestRunner = (opts: Partial<TaskRunnerOpts> = {}) =>
 		new TestRunner({
 			taskType: 'test-task',
+			runnerId: '',
 			maxConcurrency: 5,
 			idleTimeout: 60,
 			grantToken: 'test-token',
@@ -22,6 +24,8 @@ describe('TestRunner', () => {
 			taskBrokerUri: 'http://localhost:8080',
 			timezone: 'America/New_York',
 			taskTimeout: 60,
+			gracefulShutdownTimeout: 30,
+			shutdownForceKillMargin: 10,
 			healthcheckServer: {
 				enabled: false,
 				host: 'localhost',
@@ -36,7 +40,7 @@ describe('TestRunner', () => {
 
 	describe('constructor', () => {
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should correctly construct WebSocket URI with provided taskBrokerUri', () => {
@@ -78,15 +82,39 @@ describe('TestRunner', () => {
 				}),
 			).toThrowError(/Invalid URL/);
 		});
+
+		it('should identify as the runner ID it was assigned', () => {
+			runner = newTestRunner({ runnerId: 'assigned-by-n8n' });
+
+			expect(runner.id).toBe('assigned-by-n8n');
+			expect(WebSocket).toHaveBeenCalledWith(
+				'ws://localhost:8080/runners/_ws?id=assigned-by-n8n',
+				expect.anything(),
+			);
+		});
+
+		it('should self-assign a unique runner ID when assigned none', () => {
+			// `afterEach` only clears `runner`, so these two must start no idle timer
+			const first = newTestRunner({ runnerId: '', idleTimeout: 0 });
+			const second = newTestRunner({ runnerId: '', idleTimeout: 0 });
+
+			expect(first.id).not.toBe('');
+			expect(second.id).not.toBe(first.id);
+			expect(WebSocket).toHaveBeenCalledWith(
+				`ws://localhost:8080/runners/_ws?id=${first.id}`,
+				expect.anything(),
+			);
+		});
 	});
 
 	describe('sendOffers', () => {
 		beforeEach(() => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 		});
 
 		afterEach(() => {
-			jest.clearAllTimers();
+			vi.clearAllTimers();
+			vi.useRealTimers();
 		});
 
 		it('should not send offers if canSendOffers is false', () => {
@@ -94,7 +122,7 @@ describe('TestRunner', () => {
 				taskType: 'test-task',
 				maxConcurrency: 2,
 			});
-			const sendSpy = jest.spyOn(runner, 'send');
+			const sendSpy = vi.spyOn(runner, 'send');
 			expect(runner.canSendOffers).toBe(false);
 
 			runner.sendOffers();
@@ -123,7 +151,7 @@ describe('TestRunner', () => {
 				type: 'broker:runnerregistered',
 			});
 
-			const sendSpy = jest.spyOn(runner, 'send');
+			const sendSpy = vi.spyOn(runner, 'send');
 
 			runner.sendOffers();
 			runner.sendOffers();
@@ -159,7 +187,7 @@ describe('TestRunner', () => {
 			});
 			const taskState = newTaskState('test-task');
 			runner.runningTasks.set('test-task', taskState);
-			const sendSpy = jest.spyOn(runner, 'send');
+			const sendSpy = vi.spyOn(runner, 'send');
 
 			runner.sendOffers();
 
@@ -186,15 +214,66 @@ describe('TestRunner', () => {
 				type: 'broker:runnerregistered',
 			});
 
-			const sendSpy = jest.spyOn(runner, 'send');
+			const sendSpy = vi.spyOn(runner, 'send');
 
 			runner.sendOffers();
 			expect(sendSpy).toHaveBeenCalledTimes(2);
 			sendSpy.mockClear();
 
-			jest.advanceTimersByTime(6000);
+			vi.advanceTimersByTime(6000);
 			runner.sendOffers();
 			expect(sendSpy).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('makeRpcCall', () => {
+		const bytes = Buffer.from([0, 255, 128, 10, 0xc3]);
+
+		/** Simulates the JSON transport between runner and broker. */
+		const throughJson = <T>(value: unknown): T => {
+			const json = JSON.stringify(value);
+			return JSON.parse(json) as T;
+		};
+
+		it('should send buffer params as base64 across JSON', async () => {
+			runner = newTestRunner();
+			const sendSpy = vi.spyOn(runner, 'send').mockImplementation((message) => {
+				const sent = throughJson<{ callId: string; params: unknown[] }>(message);
+				expect(sent.params).toEqual([{ type: 'Buffer', base64: bytes.toString('base64') }, 'file']);
+				runner.handleRpcResponse(sent.callId, 'success', undefined);
+			});
+
+			await runner.makeRpcCall('task-1', 'helpers.prepareBinaryData', [bytes, 'file']);
+
+			expect(sendSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			['base64', (buffer: Buffer) => ({ type: 'Buffer', base64: buffer.toString('base64') })],
+			['byte array', (buffer: Buffer) => buffer.toJSON()],
+		])('should decode a %s buffer return value across JSON', async (_, serialize) => {
+			runner = newTestRunner();
+			vi.spyOn(runner, 'send').mockImplementation((message) => {
+				const { callId } = throughJson<{ callId: string }>(message);
+				runner.handleRpcResponse(callId, 'success', throughJson(serialize(bytes)));
+			});
+
+			const result = await runner.makeRpcCall('task-1', 'helpers.getBinaryDataBuffer', [0, 'data']);
+
+			expect(Buffer.isBuffer(result)).toBe(true);
+			expect(result).toEqual(bytes);
+		});
+
+		it('should reject with the message of an RPC error', async () => {
+			runner = newTestRunner();
+			vi.spyOn(runner, 'send').mockImplementation((message) => {
+				const { callId } = throughJson<{ callId: string }>(message);
+				runner.handleRpcResponse(callId, 'error', 'Failed to send RPC response to task runner');
+			});
+
+			await expect(
+				runner.makeRpcCall('task-1', 'helpers.getBinaryDataBuffer', [0, 'data']),
+			).rejects.toThrow('Failed to send RPC response to task runner');
 		});
 	});
 
@@ -222,7 +301,7 @@ describe('TestRunner', () => {
 
 			const taskId = 'test-task';
 			const task = newTaskState(taskId);
-			const taskCleanupSpy = jest.spyOn(task, 'cleanup');
+			const taskCleanupSpy = vi.spyOn(task, 'cleanup');
 			runner.runningTasks.set(taskId, task);
 
 			await runner.taskCancelled(taskId, 'test-reason');
@@ -231,7 +310,7 @@ describe('TestRunner', () => {
 			expect(taskCleanupSpy).toHaveBeenCalled();
 		});
 
-		it('should reject pending requests when task is cancelled', async () => {
+		it('should reject only pending requests for the cancelled task', async () => {
 			runner = newTestRunner();
 
 			const taskId = 'test-task';
@@ -239,20 +318,104 @@ describe('TestRunner', () => {
 			task.status = 'running';
 			runner.runningTasks.set(taskId, task);
 
-			const dataRequestReject = jest.fn();
-			const nodeTypesRequestReject = jest.fn();
+			const dataRequestReject = vi.fn();
+			const nodeTypesRequestReject = vi.fn();
 
 			runner.dataRequests.set('data-req', {
 				taskId,
 				requestId: 'data-req',
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				reject: dataRequestReject,
 			});
 
 			runner.nodeTypesRequests.set('node-req', {
 				taskId,
 				requestId: 'node-req',
-				resolve: jest.fn(),
+				resolve: vi.fn(),
+				reject: nodeTypesRequestReject,
+			});
+			const otherDataRequest = {
+				taskId: 'other-task',
+				requestId: 'other-data-req',
+				resolve: vi.fn(),
+				reject: vi.fn(),
+			};
+			const otherNodeTypesRequest = {
+				taskId: 'other-task',
+				requestId: 'other-node-req',
+				resolve: vi.fn(),
+				reject: vi.fn(),
+			};
+			runner.dataRequests.set(otherDataRequest.requestId, otherDataRequest);
+			runner.nodeTypesRequests.set(otherNodeTypesRequest.requestId, otherNodeTypesRequest);
+
+			await runner.taskCancelled(taskId, 'test-reason');
+
+			expect(dataRequestReject).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Task cancelled: test-reason',
+				}),
+			);
+
+			expect(nodeTypesRequestReject).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Task cancelled: test-reason',
+				}),
+			);
+
+			expect(runner.dataRequests.size).toBe(1);
+			expect(runner.dataRequests.get(otherDataRequest.requestId)).toBe(otherDataRequest);
+			expect(otherDataRequest.reject).not.toHaveBeenCalled();
+			expect(runner.nodeTypesRequests.size).toBe(1);
+			expect(runner.nodeTypesRequests.get(otherNodeTypesRequest.requestId)).toBe(
+				otherNodeTypesRequest,
+			);
+			expect(otherNodeTypesRequest.reject).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('taskTimedOut', () => {
+		it('should error task if task is waiting for settings', async () => {
+			runner = newTestRunner();
+
+			const taskId = 'test-task';
+			const task = newTaskState(taskId);
+			task.status = 'waitingForSettings';
+			runner.runningTasks.set(taskId, task);
+			const sendSpy = vi.spyOn(runner, 'send');
+
+			await runner.taskTimedOut(taskId);
+
+			expect(runner.runningTasks.size).toBe(0);
+			expect(sendSpy).toHaveBeenCalledWith({
+				type: 'runner:taskerror',
+				taskId,
+				error: expect.any(TimeoutError),
+			});
+		});
+
+		it('should reject pending requests when task is running', async () => {
+			runner = newTestRunner();
+
+			const taskId = 'test-task';
+			const task = newTaskState(taskId);
+			task.status = 'running';
+			runner.runningTasks.set(taskId, task);
+
+			const dataRequestReject = vi.fn();
+			const nodeTypesRequestReject = vi.fn();
+
+			runner.dataRequests.set('data-req', {
+				taskId,
+				requestId: 'data-req',
+				resolve: vi.fn(),
+				reject: dataRequestReject,
+			});
+
+			runner.nodeTypesRequests.set('node-req', {
+				taskId,
+				requestId: 'node-req',
+				resolve: vi.fn(),
 				reject: nodeTypesRequestReject,
 			});
 
@@ -275,67 +438,263 @@ describe('TestRunner', () => {
 		});
 	});
 
-	describe('taskTimedOut', () => {
-		it('should error task if task is waiting for settings', async () => {
-			runner = newTestRunner();
+	describe('offerAccepted during shutdown', () => {
+		it('should reject task offer once the runner has committed to draining', () => {
+			runner = newTestRunner({ maxConcurrency: 2 });
+			runner.onMessage({ type: 'broker:runnerregistered' });
 
-			const taskId = 'test-task';
-			const task = newTaskState(taskId);
-			task.status = 'waitingForSettings';
-			runner.runningTasks.set(taskId, task);
-			const sendSpy = jest.spyOn(runner, 'send');
+			runner.sendOffers();
+			const offerId = [...runner.openOffers.keys()][0];
 
-			await runner.taskTimedOut(taskId);
+			void runner.stop();
+			// Broker signals it is draining -> the runner commits to draining.
+			runner.onMessage({ type: 'broker:drain' });
 
-			expect(runner.runningTasks.size).toBe(0);
+			const sendSpy = vi.spyOn(runner, 'send');
+
+			runner.offerAccepted(offerId, 'task-1');
+
 			expect(sendSpy).toHaveBeenCalledWith({
-				type: 'runner:taskerror',
-				taskId,
-				error: expect.any(TimeoutError),
+				type: 'runner:taskrejected',
+				taskId: 'task-1',
+				reason: 'Runner is shutting down',
 			});
+			expect(runner.runningTasks.size).toBe(0);
 		});
 
-		it('should reject pending requests when task is running', async () => {
+		it('should still accept a task during the grace period before the broker drains', () => {
+			runner = newTestRunner({ maxConcurrency: 2, gracefulShutdownTimeout: 30 });
+			runner.onMessage({ type: 'broker:runnerregistered' });
+
+			runner.sendOffers();
+			const offerId = [...runner.openOffers.keys()][0];
+
+			// During the grace window (shutdown begun, broker not yet draining) tasks are accepted.
+			void runner.stop();
+
+			const sendSpy = vi.spyOn(runner, 'send');
+
+			runner.offerAccepted(offerId, 'task-1');
+
+			expect(sendSpy).toHaveBeenCalledWith({ type: 'runner:taskaccepted', taskId: 'task-1' });
+			expect(runner.runningTasks.size).toBe(1);
+		});
+
+		it('should clear open offers promptly on stop when the grace period is disabled', async () => {
+			runner = newTestRunner({ maxConcurrency: 2, gracefulShutdownTimeout: 0 });
+			runner.onMessage({ type: 'broker:runnerregistered' });
+
+			runner.sendOffers();
+			expect(runner.openOffers.size).toBeGreaterThan(0);
+
+			void runner.stop();
+			await Promise.resolve();
+
+			expect(runner.openOffers.size).toBe(0);
+		});
+	});
+
+	describe('drain', () => {
+		it('should stop sending offers on drain message', () => {
+			runner = newTestRunner();
+			runner.onMessage({ type: 'broker:runnerregistered' });
+			expect(runner.canSendOffers).toBe(true);
+
+			runner.onMessage({ type: 'broker:drain' });
+
+			expect(runner.canSendOffers).toBe(false);
+		});
+
+		it('should keep offering after stop() until the broker drains', async () => {
+			vi.useRealTimers();
+			runner = newTestRunner({ maxConcurrency: 2, gracefulShutdownTimeout: 30 });
+			runner.onMessage({ type: 'broker:runnerregistered' });
+			runner.sendOffers();
+			expect(runner.openOffers.size).toBeGreaterThan(0);
+
+			void runner.stop();
+			await Promise.resolve();
+
+			// Still offering during the grace window, before the broker drains.
+			expect(runner.canSendOffers).toBe(true);
+			expect(runner.openOffers.size).toBeGreaterThan(0);
+
+			// Once the broker signals it is draining, the runner stops offering and
+			// clears its open offers.
+			runner.onMessage({ type: 'broker:drain' });
+			expect(runner.canSendOffers).toBe(false);
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(runner.openOffers.size).toBe(0);
+		});
+
+		it('should commit to draining once the grace period elapses without a broker:drain', async () => {
+			vi.useFakeTimers();
+			try {
+				runner = newTestRunner({ maxConcurrency: 2, gracefulShutdownTimeout: 30 });
+				runner.onMessage({ type: 'broker:runnerregistered' });
+				runner.sendOffers();
+				expect(runner.openOffers.size).toBeGreaterThan(0);
+
+				void runner.stop();
+				await Promise.resolve();
+
+				// During the grace period the runner keeps offering, even though no
+				// broker:drain ever arrives (e.g. only the runner is being restarted).
+				expect(runner.canSendOffers).toBe(true);
+
+				// When the grace period elapses the runner commits to draining anyway, so
+				// it can never hang waiting for a drain message that will not come.
+				await vi.advanceTimersByTimeAsync(30_000);
+				expect(runner.canSendOffers).toBe(false);
+				expect(runner.openOffers.size).toBe(0);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should wait for an in-flight task before closing the connection', async () => {
+			vi.useFakeTimers();
+			try {
+				runner = newTestRunner({ maxConcurrency: 2, gracefulShutdownTimeout: 30 });
+				runner.onMessage({ type: 'broker:runnerregistered' });
+				const closeSpy = vi.spyOn(runner.ws, 'close');
+
+				// A task is running when shutdown begins.
+				runner.runningTasks.set('task-1', newTaskState('task-1'));
+
+				void runner.stop();
+				runner.onMessage({ type: 'broker:drain' });
+				await vi.advanceTimersByTimeAsync(500);
+
+				// The runner must not close while the task is still running.
+				expect(closeSpy).not.toHaveBeenCalled();
+
+				// Once the task finishes, the runner closes the connection.
+				runner.runningTasks.delete('task-1');
+				await vi.advanceTimersByTimeAsync(200);
+				expect(closeSpy).toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should abandon an unfinished task after the grace period but still close the connection', async () => {
+			vi.useFakeTimers();
+			try {
+				runner = newTestRunner({ gracefulShutdownTimeout: 1 });
+				runner.onMessage({ type: 'broker:runnerregistered' });
+				const closeSpy = vi.spyOn(runner.ws, 'close');
+
+				// A task that never finishes.
+				runner.runningTasks.set('task-1', newTaskState('task-1'));
+
+				void runner.stop();
+				runner.onMessage({ type: 'broker:drain' }); // skip the keep-offering wait
+
+				// Once the grace period elapses the task is abandoned (the broker will fail
+				// it), but the runner still closes the connection cleanly rather than hang.
+				await vi.advanceTimersByTimeAsync(1500);
+				expect(closeSpy).toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should commit to draining immediately when deferToBrokerDrain is false', async () => {
+			runner = newTestRunner({ gracefulShutdownTimeout: 30 });
+			runner.onMessage({ type: 'broker:runnerregistered' });
+			runner.sendOffers();
+			expect(runner.openOffers.size).toBeGreaterThan(0);
+
+			// The idle-timeout exit drains immediately: no execution is waiting on this
+			// runner, so it should not keep offering for the grace period.
+			void runner.stop({ deferToBrokerDrain: false });
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(runner.canSendOffers).toBe(false);
+			expect(runner.openOffers.size).toBe(0);
+		});
+	});
+
+	describe('connection close', () => {
+		let processExitSpy: MockInstance;
+
+		beforeEach(() => {
+			processExitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+		});
+
+		afterEach(() => {
+			processExitSpy.mockRestore();
+		});
+
+		it('should exit cleanly when the connection closes after the broker drained it', () => {
+			runner = newTestRunner();
+			runner.onMessage({ type: 'broker:runnerregistered' });
+			// Broker signalled drain (broker:drain) but the runner never got its own
+			// SIGTERM (e.g. a runner launched to serve a task during instance shutdown).
+			runner.onMessage({ type: 'broker:drain' });
+
+			const closeHandler = (runner.ws.addEventListener as unknown as Mock).mock.calls.find(
+				([event]: unknown[]) => event === 'close',
+			)?.[1] as () => void;
+			closeHandler();
+
+			expect(processExitSpy).toHaveBeenCalledWith(0);
+		});
+
+		it('should exit process on unexpected close', () => {
 			runner = newTestRunner();
 
-			const taskId = 'test-task';
-			const task = newTaskState(taskId);
-			task.status = 'running';
-			runner.runningTasks.set(taskId, task);
+			// Get the close handler that was registered
+			const closeHandler = (runner.ws.addEventListener as unknown as Mock).mock.calls.find(
+				([event]: unknown[]) => event === 'close',
+			)?.[1] as () => void;
+			expect(closeHandler).toBeDefined();
 
-			const dataRequestReject = jest.fn();
-			const nodeTypesRequestReject = jest.fn();
+			closeHandler();
 
-			runner.dataRequests.set('data-req', {
-				taskId,
-				requestId: 'data-req',
-				resolve: jest.fn(),
-				reject: dataRequestReject,
-			});
+			expect(processExitSpy).toHaveBeenCalledWith(1);
+		});
 
-			runner.nodeTypesRequests.set('node-req', {
-				taskId,
-				requestId: 'node-req',
-				resolve: jest.fn(),
-				reject: nodeTypesRequestReject,
-			});
+		it('should not exit process during graceful stop', () => {
+			runner = newTestRunner();
 
-			await runner.taskCancelled(taskId, 'test-reason');
+			// Get the close handler registered via addEventListener in constructor
+			const closeHandler = (runner.ws.addEventListener as unknown as Mock).mock.calls.find(
+				([event]: unknown[]) => event === 'close',
+			)?.[1] as () => void;
+			expect(closeHandler).toBeDefined();
 
-			expect(dataRequestReject).toHaveBeenCalledWith(
-				expect.objectContaining({
-					message: 'Task cancelled: test-reason',
-				}),
-			);
+			// Calling stop() sets isShuttingDown = true. We call it but don't
+			// await because the mocked ws can't complete the close handshake.
+			void runner.stop();
 
-			expect(nodeTypesRequestReject).toHaveBeenCalledWith(
-				expect.objectContaining({
-					message: 'Task cancelled: test-reason',
-				}),
-			);
+			// Simulate the close event after stop() has set isShuttingDown
+			closeHandler();
 
-			expect(runner.dataRequests.size).toBe(0);
-			expect(runner.nodeTypesRequests.size).toBe(0);
+			expect(processExitSpy).not.toHaveBeenCalled();
+		});
+
+		it('should release the grace-period wait when the connection closes during shutdown', async () => {
+			runner = newTestRunner({ gracefulShutdownTimeout: 30 });
+			runner.onMessage({ type: 'broker:runnerregistered' });
+			runner.sendOffers();
+			expect(runner.openOffers.size).toBeGreaterThan(0);
+
+			const closeHandler = (runner.ws.addEventListener as unknown as Mock).mock.calls.find(
+				([event]: unknown[]) => event === 'close',
+			)?.[1] as () => void;
+
+			void runner.stop();
+			await Promise.resolve();
+			expect(runner.canSendOffers).toBe(true); // still in the grace wait
+
+			// The broker connection drops without sending broker:drain. The runner must
+			// not block for the full grace period waiting for a drain that cannot arrive.
+			closeHandler();
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(runner.canSendOffers).toBe(false);
+			expect(runner.openOffers.size).toBe(0);
 		});
 	});
 });

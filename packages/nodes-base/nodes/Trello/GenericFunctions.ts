@@ -32,6 +32,14 @@ export async function apiRequest(
 		delete options.body;
 	}
 
+	const authentication = this.getNodeParameter('authentication', 0, 'apiKey') as
+		| 'apiKey'
+		| 'oAuth1';
+
+	if (authentication === 'oAuth1') {
+		return await this.helpers.requestOAuth1.call(this, 'trelloOAuth1Api', options);
+	}
+
 	return await this.helpers.requestWithAuthentication.call(this, 'trelloApi', options);
 }
 

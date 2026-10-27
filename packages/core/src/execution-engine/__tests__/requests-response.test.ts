@@ -1,10 +1,10 @@
-import { mock } from 'jest-mock-extended';
 import type { IExecuteData, IRunData, EngineRequest, INodeExecutionData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { DirectedGraph } from '../partial-execution-utils';
+import { nodeTypes, types } from './mock-node-types';
 import { createNodeData } from '../partial-execution-utils/__tests__/helpers';
 import { handleRequest } from '../requests-response';
-import { nodeTypes, types } from './mock-node-types';
 
 describe('handleRequests', () => {
 	test('throws if an action mentions a node that does not exist in the workflow', () => {
@@ -286,5 +286,361 @@ describe('handleRequests', () => {
 		expect(mergedJson.id).toBe(2);
 		expect(mergedJson.value).toBe('second item');
 		expect(mergedJson.toolParam).toBe('for second item');
+	});
+
+	test('preserves sourceOverwrite metadata for tool execution', () => {
+		const toolNode = createNodeData({ name: 'Gmail Tool', type: types.passThrough });
+		const agentNode = createNodeData({ name: 'AI Agent', type: types.passThrough });
+
+		const workflow = new DirectedGraph()
+			.addNodes(toolNode, agentNode)
+			.toWorkflow({ name: '', active: false, nodeTypes });
+
+		const agentInputData: INodeExecutionData[] = [
+			{
+				json: { data: 'test' },
+			},
+		];
+
+		const executionData: IExecuteData = {
+			data: {
+				main: [agentInputData],
+			},
+			source: {
+				main: [
+					{
+						previousNode: 'Process Quotes',
+						previousNodeOutput: 0,
+						previousNodeRun: 0,
+					},
+				],
+			},
+			node: agentNode,
+		};
+
+		const request: EngineRequest = {
+			actions: [
+				{
+					actionType: 'ExecutionNodeAction',
+					nodeName: 'Gmail Tool',
+					input: { subject: 'Test' },
+					type: 'ai_tool',
+					id: 'tool_call_123',
+					metadata: { itemIndex: 0 },
+				},
+			],
+			metadata: {},
+		};
+
+		const runData: IRunData = {};
+
+		const result = handleRequest({
+			workflow,
+			currentNode: agentNode,
+			request,
+			runIndex: 0,
+			executionData,
+			runData,
+		});
+
+		const toolNodeToExecute = result.nodesToBeExecuted.find((n) => n.parentNode === 'AI Agent');
+		expect(toolNodeToExecute).toBeDefined();
+
+		expect(toolNodeToExecute!.metadata).toHaveProperty('preserveSourceOverwrite', true);
+		expect(toolNodeToExecute!.metadata).toHaveProperty('preservedSourceOverwrite');
+		expect(toolNodeToExecute!.metadata!.preservedSourceOverwrite).toEqual({
+			previousNode: 'Process Quotes',
+			previousNodeOutput: 0,
+			previousNodeRun: 0,
+		});
+
+		const pairedItem = toolNodeToExecute!.parentOutputData[0][0].pairedItem;
+		expect(pairedItem).toHaveProperty('sourceOverwrite');
+		if (typeof pairedItem === 'object' && 'sourceOverwrite' in pairedItem) {
+			expect(pairedItem.sourceOverwrite).toEqual({
+				previousNode: 'Process Quotes',
+				previousNodeOutput: 0,
+				previousNodeRun: 0,
+			});
+		}
+	});
+
+	test('preserves existing preservedSourceOverwrite from metadata', () => {
+		const toolNode = createNodeData({ name: 'Gmail Tool', type: types.passThrough });
+		const agentNode = createNodeData({ name: 'AI Agent', type: types.passThrough });
+
+		const workflow = new DirectedGraph()
+			.addNodes(toolNode, agentNode)
+			.toWorkflow({ name: '', active: false, nodeTypes });
+
+		const agentInputData: INodeExecutionData[] = [
+			{
+				json: { data: 'test' },
+			},
+		];
+
+		const existingPreservedSource = {
+			previousNode: 'Original Node',
+			previousNodeOutput: 1,
+			previousNodeRun: 2,
+		};
+
+		const executionData: IExecuteData = {
+			data: {
+				main: [agentInputData],
+			},
+			source: {
+				main: [
+					{
+						previousNode: 'Immediate Parent',
+						previousNodeOutput: 0,
+						previousNodeRun: 0,
+					},
+				],
+			},
+			node: agentNode,
+			metadata: {
+				preservedSourceOverwrite: existingPreservedSource,
+			},
+		};
+
+		const request: EngineRequest = {
+			actions: [
+				{
+					actionType: 'ExecutionNodeAction',
+					nodeName: 'Gmail Tool',
+					input: { subject: 'Test' },
+					type: 'ai_tool',
+					id: 'tool_call_456',
+					metadata: { itemIndex: 0 },
+				},
+			],
+			metadata: {},
+		};
+
+		const runData: IRunData = {};
+
+		const result = handleRequest({
+			workflow,
+			currentNode: agentNode,
+			request,
+			runIndex: 0,
+			executionData,
+			runData,
+		});
+
+		const toolNodeToExecute = result.nodesToBeExecuted.find((n) => n.parentNode === 'AI Agent');
+		expect(toolNodeToExecute).toBeDefined();
+		expect(toolNodeToExecute!.metadata!.preservedSourceOverwrite).toEqual(existingPreservedSource);
+	});
+
+	test('propagates preservedSourceOverwrite metadata when resuming agent', () => {
+		const agentNode = createNodeData({ name: 'AI Agent', type: types.passThrough });
+
+		const workflow = new DirectedGraph()
+			.addNodes(agentNode)
+			.toWorkflow({ name: '', active: false, nodeTypes });
+
+		const preservedSource = {
+			previousNode: 'Original Node',
+			previousNodeOutput: 1,
+			previousNodeRun: 2,
+		};
+
+		const executionData: IExecuteData = {
+			data: {
+				main: [
+					[
+						{
+							json: { result: 'tool result' },
+						},
+					],
+				],
+			},
+			source: {
+				main: [
+					{
+						previousNode: 'Parent Node',
+						previousNodeOutput: 0,
+						previousNodeRun: 0,
+					},
+				],
+			},
+			node: agentNode,
+			metadata: {
+				preserveSourceOverwrite: true,
+				preservedSourceOverwrite: preservedSource,
+			},
+		};
+
+		const request: EngineRequest = {
+			actions: [],
+			metadata: {},
+		};
+
+		const runData: IRunData = {};
+
+		const result = handleRequest({
+			workflow,
+			currentNode: agentNode,
+			request,
+			runIndex: 0,
+			executionData,
+			runData,
+		});
+
+		const resumingNode = result.nodesToBeExecuted[0];
+		expect(resumingNode).toBeDefined();
+		expect(resumingNode.metadata).toHaveProperty('nodeWasResumed', true);
+		expect(resumingNode.metadata).toHaveProperty('preserveSourceOverwrite', true);
+		expect(resumingNode.metadata).toHaveProperty('preservedSourceOverwrite', preservedSource);
+	});
+
+	test('enqueues actions in reverse so the LIFO stack runs them in request order', () => {
+		// ARRANGE
+		const toolA = createNodeData({ name: 'Tool A', type: types.passThrough });
+		const toolB = createNodeData({ name: 'Tool B', type: types.passThrough });
+		const toolC = createNodeData({ name: 'Tool C', type: types.passThrough });
+		const agentNode = createNodeData({ name: 'AI Agent', type: types.passThrough });
+
+		const workflow = new DirectedGraph()
+			.addNodes(toolA, toolB, toolC, agentNode)
+			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+		const executionData: IExecuteData = {
+			data: { main: [[{ json: {} }]] },
+			source: { main: [{ previousNode: 'Trigger', previousNodeOutput: 0, previousNodeRun: 0 }] },
+			node: agentNode,
+		};
+
+		const request: EngineRequest = {
+			actions: ['Tool A', 'Tool B', 'Tool C'].map((nodeName, index) => ({
+				actionType: 'ExecutionNodeAction',
+				nodeName,
+				input: {},
+				type: 'ai_tool',
+				id: `tool_call_${index}`,
+				metadata: { itemIndex: 0 },
+			})),
+			metadata: {},
+		};
+
+		// ACT
+		const result = handleRequest({
+			workflow,
+			currentNode: agentNode,
+			request,
+			runIndex: 0,
+			executionData,
+			runData: {},
+		});
+
+		// ASSERT
+		// The requesting node is enqueued first so it ends up at the bottom of the stack,
+		// then the tools in reverse — unshifting these in turn yields [A, B, C, AI Agent].
+		expect(result.nodesToBeExecuted.map((n) => n.inputConnectionData.node)).toEqual([
+			'AI Agent',
+			'Tool C',
+			'Tool B',
+			'Tool A',
+		]);
+	});
+
+	test('keeps request order for the legacy execution order, which enqueues with push', () => {
+		// ARRANGE
+		const toolA = createNodeData({ name: 'Tool A', type: types.passThrough });
+		const toolB = createNodeData({ name: 'Tool B', type: types.passThrough });
+		const agentNode = createNodeData({ name: 'AI Agent', type: types.passThrough });
+
+		const workflow = new DirectedGraph()
+			.addNodes(toolA, toolB, agentNode)
+			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v0' } });
+
+		const executionData: IExecuteData = {
+			data: { main: [[{ json: {} }]] },
+			source: { main: [{ previousNode: 'Trigger', previousNodeOutput: 0, previousNodeRun: 0 }] },
+			node: agentNode,
+		};
+
+		const request: EngineRequest = {
+			actions: ['Tool A', 'Tool B'].map((nodeName, index) => ({
+				actionType: 'ExecutionNodeAction',
+				nodeName,
+				input: {},
+				type: 'ai_tool',
+				id: `tool_call_${index}`,
+				metadata: { itemIndex: 0 },
+			})),
+			metadata: {},
+		};
+
+		// ACT
+		const result = handleRequest({
+			workflow,
+			currentNode: agentNode,
+			request,
+			runIndex: 0,
+			executionData,
+			runData: {},
+		});
+
+		// ASSERT
+		expect(result.nodesToBeExecuted.map((n) => n.inputConnectionData.node)).toEqual([
+			'AI Agent',
+			'Tool A',
+			'Tool B',
+		]);
+	});
+
+	test('does not add preserveSourceOverwrite metadata when not present', () => {
+		const agentNode = createNodeData({ name: 'AI Agent', type: types.passThrough });
+
+		const workflow = new DirectedGraph()
+			.addNodes(agentNode)
+			.toWorkflow({ name: '', active: false, nodeTypes });
+
+		const executionData: IExecuteData = {
+			data: {
+				main: [
+					[
+						{
+							json: { result: 'tool result' },
+						},
+					],
+				],
+			},
+			source: {
+				main: [
+					{
+						previousNode: 'Parent Node',
+						previousNodeOutput: 0,
+						previousNodeRun: 0,
+					},
+				],
+			},
+			node: agentNode,
+		};
+
+		const request: EngineRequest = {
+			actions: [],
+			metadata: {},
+		};
+
+		const runData: IRunData = {};
+
+		const result = handleRequest({
+			workflow,
+			currentNode: agentNode,
+			request,
+			runIndex: 0,
+			executionData,
+			runData,
+		});
+
+		const resumingNode = result.nodesToBeExecuted[0];
+		expect(resumingNode).toBeDefined();
+		expect(resumingNode.metadata).toHaveProperty('nodeWasResumed', true);
+		expect(resumingNode.metadata).not.toHaveProperty('preserveSourceOverwrite');
+		expect(resumingNode.metadata).not.toHaveProperty('preservedSourceOverwrite');
 	});
 });

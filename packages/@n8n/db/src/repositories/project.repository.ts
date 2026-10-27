@@ -1,13 +1,69 @@
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import type { EntityManager } from '@n8n/typeorm';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import type { EntityManager, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Not } from '@n8n/typeorm';
+import { UserError } from 'n8n-workflow';
 
-import { Project } from '../entities';
+import { BaseRepository } from './base-repository';
+import { Project, ProjectRelation } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
+import { chunkIds } from '../utils/chunk-ids';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
+
+export class ProjectIdConflictError extends UserError {
+	constructor() {
+		super('A project with this ID already exists');
+	}
+}
 
 @Service()
-export class ProjectRepository extends Repository<Project> {
-	constructor(dataSource: DataSource) {
-		super(Project, dataSource.manager);
+export class ProjectRepository extends BaseRepository<Project> {
+	constructor(
+		dataSource: DataSource,
+		private readonly txRunner: TransactionRunner,
+	) {
+		super(Project, dataSource.manager, txRunner);
+	}
+
+	/** Returns null when the team project quota is full. */
+	async insertTeamProjectWithAdmin(
+		data: Pick<Project, 'name'> &
+			Partial<Pick<Project, 'id' | 'icon' | 'description' | 'customTelemetryTags'>>,
+		creatorId: string,
+		limit: number,
+	): Promise<Project | null> {
+		// Keep the quota check and both inserts in one serializable transaction.
+		return await this.txRunner.run(
+			{},
+			async (ctx) => {
+				const manager = this.managerFor(ctx);
+				if (limit !== UNLIMITED_LICENSE_QUOTA) {
+					const count = await manager.count(Project, { where: { type: 'team' } });
+					if (count >= limit) {
+						if (data.id && (await manager.existsBy(Project, { id: data.id }))) {
+							throw new ProjectIdConflictError();
+						}
+						return null;
+					}
+				}
+
+				const project = this.create({ ...data, type: 'team', creatorId });
+				try {
+					await manager.insert(Project, project);
+				} catch (error) {
+					if (isUniqueConstraintError(error)) throw new ProjectIdConflictError();
+					throw error;
+				}
+				await manager.insert(ProjectRelation, {
+					projectId: project.id,
+					userId: creatorId,
+					role: { slug: 'project:admin' },
+				});
+				return await manager.findOneByOrFail(Project, { id: project.id });
+			},
+			{ isolationLevel: 'SERIALIZABLE' },
+		);
 	}
 
 	async getPersonalProjectForUser(userId: string, entityManager?: EntityManager) {
@@ -33,18 +89,304 @@ export class ProjectRepository extends Repository<Project> {
 		});
 	}
 
-	// This returns personal projects of ALL users OR shared projects of the user
+	/** IDs of every team project, ordered for a stable export. */
+	async findTeamProjectIds(): Promise<string[]> {
+		const rows = await this.find({
+			where: { type: 'team' },
+			select: { id: true },
+			order: { id: 'ASC' },
+		});
+		return rows.map(({ id }) => id);
+	}
+
+	/** Id and type of every project that exists with one of these ids. */
+	async findTypesByIds(ids: string[]): Promise<Array<Pick<Project, 'id' | 'type'>>> {
+		const rows: Array<Pick<Project, 'id' | 'type'>> = [];
+		for (const batch of chunkIds(ids)) {
+			rows.push(...(await this.find({ where: { id: In(batch) }, select: ['id', 'type'] })));
+		}
+		return rows;
+	}
+
+	/**
+	 * Id, name, type and description of the team projects among these ids.
+	 * Personal projects are excluded, because a rule must never grant access to one.
+	 */
+	async findTeamProjectInfoByIds(
+		ids: string[],
+		ctx: OperationContext = {},
+	): Promise<Array<Pick<Project, 'id' | 'name' | 'type' | 'description'>>> {
+		const manager = this.managerFor(ctx);
+		const rows: Array<Pick<Project, 'id' | 'name' | 'type' | 'description'>> = [];
+		for (const batch of chunkIds(ids)) {
+			rows.push(
+				...(await manager.find(Project, {
+					where: { id: In(batch), type: 'team' },
+					select: ['id', 'name', 'type', 'description'],
+				})),
+			);
+		}
+		return rows;
+	}
+
 	async getAccessibleProjects(userId: string) {
 		return await this.find({
-			where: [
-				{ type: 'personal' },
-				{
-					projectRelations: {
-						userId,
-					},
+			where: {
+				projectRelations: {
+					userId,
 				},
-			],
+			},
 		});
+	}
+
+	/** An undefined role list allows global access. An empty list matches no projects. */
+	async findOneWithUserRoles(
+		projectId: string,
+		userId: string,
+		roleSlugs: string[] | undefined,
+		ctx: OperationContext = {},
+	): Promise<Project | null> {
+		return await this.managerFor(ctx).findOne(Project, {
+			where: {
+				id: projectId,
+				...(roleSlugs !== undefined && {
+					projectRelations: { userId, role: { slug: In(roleSlugs) } },
+				}),
+			},
+		});
+	}
+
+	async findIdsWithUserRoles(
+		userId: string,
+		roleSlugs: string[] | undefined,
+		projectIds?: string[],
+	): Promise<string[]> {
+		const where: FindOptionsWhere<Project> = {};
+		if (projectIds) where.id = In(projectIds);
+		if (roleSlugs !== undefined) {
+			// Without explicit IDs, scoped users can list only team projects.
+			if (!projectIds) where.type = 'team';
+			where.projectRelations = { userId, role: { slug: In(roleSlugs) } };
+		}
+
+		const projects = await this.find({
+			where,
+			select: ['id'],
+		});
+		return projects.map(({ id }) => id);
+	}
+
+	async findExistingIds(ids: string[]): Promise<string[]> {
+		if (ids.length === 0) return [];
+
+		const projects = await this.find({ select: ['id'], where: { id: In(ids) } });
+		return projects.map(({ id }) => id);
+	}
+
+	async findByIdsWithUserRoles(
+		ids: string[],
+		userId: string,
+		roleSlugs: string[] | undefined,
+	): Promise<Project[]> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			where: {
+				id: In(ids),
+				...(roleSlugs !== undefined && {
+					projectRelations: { userId, role: { slug: In(roleSlugs) } },
+				}),
+			},
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
+	async findOwnedOrAdminByUser(userId: string): Promise<Project[]> {
+		return await this.find({
+			where: {
+				projectRelations: {
+					userId,
+					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]) },
+				},
+			},
+		});
+	}
+
+	async findTeamProjects(): Promise<Project[]> {
+		return await this.findBy({ type: 'team' });
+	}
+
+	async findTeamProjectsExcluding(excludedProjectIds: string[]): Promise<Project[]> {
+		return await this.findBy({ type: 'team', id: Not(In(excludedProjectIds)) });
+	}
+
+	async getAccessibleProjectsByExactName(
+		userId: string,
+		name: string,
+		type?: 'personal' | 'team',
+	): Promise<Project[]> {
+		const idsQuery = this.createQueryBuilder('p')
+			.select('p.id', 'id')
+			.innerJoin('p.projectRelations', 'pr')
+			.where('pr.userId = :userId', { userId })
+			.andWhere('LOWER(p.name) = LOWER(:name)', { name });
+
+		if (type) {
+			idsQuery.andWhere('p.type = :type', { type });
+		}
+
+		const query = this.createQueryBuilder('project')
+			.leftJoin('project.creator', 'creator')
+			.where(`project.id IN (${idsQuery.getQuery()})`)
+			.setParameters(idsQuery.getParameters());
+		this.applyActivationOrder(query);
+
+		return await query.getMany();
+	}
+
+	async findAllProjectsAndCount(options: ProjectListOptions): Promise<[Project[], number]> {
+		const query = this.createQueryBuilder('project').leftJoin('project.creator', 'creator');
+
+		this.applyFilters(query, options);
+		this.applyActivationOrder(query);
+		this.applyPagination(query, options);
+
+		return await query.getManyAndCount();
+	}
+
+	// Strict semantics: returns only projects the user has a relation to
+	// (their personal project + projects they are explicitly a member of).
+	// Do not broaden — peer-personal-project discovery for the share modal lives
+	// in `getShareableProjectsAndCount` below; conflating the two has regressed
+	// the share dropdown before (see IAM-591).
+	async getAccessibleProjectsAndCount(
+		userId: string,
+		options: ProjectListOptions,
+	): Promise<[Project[], number]> {
+		const idsQuery = this.createQueryBuilder('p')
+			.select('p.id', 'id')
+			.innerJoin('p.projectRelations', 'pr')
+			.where('pr.userId = :userId', { userId });
+
+		this.applyIdsQueryFilters(idsQuery, options);
+		return await this.runProjectListByIdsQuery(idsQuery, options);
+	}
+
+	// Wide semantics: returns peer personal projects in addition to projects
+	// the user has a relation to. Used only by the sharing-discovery endpoint
+	// (`GET /rest/projects/sharing-candidates`) so the workflow / credential
+	// share dropdowns can list other users as share targets.
+	async getShareableProjectsAndCount(
+		userId: string,
+		options: ProjectListOptions,
+	): Promise<[Project[], number]> {
+		// DISTINCT + LEFT JOIN avoids duplicate rows from the relation join
+		// while still allowing personal projects with no caller relation to match.
+		const idsQuery = this.createQueryBuilder('p')
+			.select('DISTINCT p.id', 'id')
+			.leftJoin('p.projectRelations', 'pr')
+			.where(
+				new Brackets((qb) => {
+					qb.where('p.type = :personalType', { personalType: 'personal' }).orWhere(
+						'pr.userId = :userId',
+						{ userId },
+					);
+				}),
+			);
+
+		this.applyIdsQueryFilters(idsQuery, options);
+		return await this.runProjectListByIdsQuery(idsQuery, options);
+	}
+
+	private applyIdsQueryFilters(
+		idsQuery: SelectQueryBuilder<Project>,
+		options: ProjectListOptions,
+	): void {
+		if (options.search) {
+			idsQuery.andWhere('LOWER(p.name) LIKE LOWER(:search)', {
+				search: `%${options.search}%`,
+			});
+		}
+
+		if (options.type) {
+			idsQuery.andWhere('p.type = :type', { type: options.type });
+		}
+
+		if (options.activated === true) {
+			idsQuery.leftJoin('p.creator', 'creator').andWhere(
+				new Brackets((qb) => {
+					qb.where('p.type != :personalTypeFilter', {
+						personalTypeFilter: 'personal',
+					}).orWhere('creator.password IS NOT NULL');
+				}),
+			);
+		}
+	}
+
+	private async runProjectListByIdsQuery(
+		idsQuery: SelectQueryBuilder<Project>,
+		options: ProjectListOptions,
+	): Promise<[Project[], number]> {
+		const query = this.createQueryBuilder('project')
+			.leftJoin('project.creator', 'creator')
+			.where(`project.id IN (${idsQuery.getQuery()})`);
+		query.setParameters(idsQuery.getParameters());
+
+		// Sort: team projects first, then activated personal projects, then pending ones
+		this.applyActivationOrder(query);
+		this.applyPagination(query, options);
+
+		return await query.getManyAndCount();
+	}
+
+	private applyFilters(query: SelectQueryBuilder<Project>, options: ProjectListOptions): void {
+		if (options.search) {
+			query.andWhere('LOWER(project.name) LIKE LOWER(:search)', {
+				search: `%${options.search}%`,
+			});
+		}
+
+		if (options.type) {
+			query.andWhere('project.type = :type', { type: options.type });
+		}
+
+		if (options.activated === true) {
+			query.andWhere(
+				new Brackets((qb) => {
+					qb.where('project.type != :personalTypeFilter', {
+						personalTypeFilter: 'personal',
+					}).orWhere('creator.password IS NOT NULL');
+				}),
+			);
+		}
+	}
+
+	/**
+	 * Sort: team projects first, then activated personal projects, then pending ones.
+	 * Uses addSelect + alias so TypeORM doesn't try to parse the CASE as a property path.
+	 * The `creator` relation must already be joined on the query.
+	 */
+	private applyActivationOrder(query: SelectQueryBuilder<Project>): void {
+		query
+			.addSelect(
+				"CASE WHEN project.type != 'personal' THEN 0 WHEN creator.password IS NOT NULL THEN 1 ELSE 2 END",
+				'activation_order',
+			)
+			.orderBy('activation_order', 'ASC')
+			.addOrderBy('project.name', 'ASC');
+	}
+
+	private applyPagination(query: SelectQueryBuilder<Project>, options: ProjectListOptions): void {
+		query.skip(options.skip ?? 0);
+		if (options.take !== undefined) {
+			query.take(options.take);
+		}
+	}
+
+	async deleteByIds(ids: string[]): Promise<void> {
+		if (ids.length === 0) return;
+
+		await this.delete({ id: In(ids) });
 	}
 
 	async getProjectCounts() {
@@ -53,4 +395,29 @@ export class ProjectRepository extends Repository<Project> {
 			team: await this.count({ where: { type: 'team' } }),
 		};
 	}
+
+	/**
+	 * Email of the user who created the project.
+	 * Returns null when the project or the creator is gone, or the creator has no email.
+	 */
+	async findCreatorContact(
+		projectId: string,
+	): Promise<{ email: string; firstName: string | null } | null> {
+		const row = await this.createQueryBuilder('project')
+			.innerJoin('project.creator', 'creator')
+			.select('creator.email', 'email')
+			.addSelect('creator.firstName', 'firstName')
+			.where('project.id = :projectId', { projectId })
+			.getRawOne<{ email: string | null; firstName: string | null }>();
+		if (!row?.email) return null;
+		return { email: row.email, firstName: row.firstName ?? null };
+	}
+}
+
+export interface ProjectListOptions {
+	skip?: number;
+	take?: number;
+	search?: string;
+	type?: 'personal' | 'team';
+	activated?: boolean;
 }

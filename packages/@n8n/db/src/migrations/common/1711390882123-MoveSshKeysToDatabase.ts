@@ -60,7 +60,7 @@ export class MoveSshKeysToDatabase1711390882123 implements ReversibleMigration {
 		}
 
 		const settingsValue = JSON.stringify({
-			encryptedPrivateKey: this.cipher.encrypt(privateKey),
+			encryptedPrivateKey: this.cipher.encryptWithInstanceKey(privateKey),
 			publicKey,
 		});
 
@@ -103,7 +103,7 @@ export class MoveSshKeysToDatabase1711390882123 implements ReversibleMigration {
 			return;
 		}
 
-		const privateKey = this.cipher.decrypt(dbKeyPair.encryptedPrivateKey);
+		const privateKey = this.cipher.decryptWithInstanceKey(dbKeyPair.encryptedPrivateKey);
 		const { publicKey } = dbKeyPair;
 
 		try {

@@ -1,38 +1,48 @@
 import { Logger } from '@n8n/backend-common';
-import { mockInstance } from '@n8n/backend-test-utils';
+import type { EventService } from '@n8n/backend-services';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
+import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
-import { captor, mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import type {
-	IDeferredPromise,
+	ExecutionStatus,
 	IExecuteResponsePromiseData,
 	IRun,
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
 import {
 	createEmptyRunExecutionData,
 	ManualExecutionCancelledError,
-	randomInt,
-	sleep,
 	SystemShutdownExecutionCancelledError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
+import type { Mock } from 'vitest';
+import { captor, mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
+import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { License } from '@/license';
+import { ProductionHold } from '@/memory-guard/production-hold';
+import type { Telemetry } from '@/telemetry';
 
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	sleep: jest.fn(),
+vi.mock('@n8n/utils/sleep', () => ({
+	sleep: vi.fn(),
 }));
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
 
+const logger = mock<Logger>();
 const executionRepository = mock<ExecutionRepository>();
+const executionPersistence = mock<ExecutionPersistence>();
 
 const concurrencyControl = mockInstance(ConcurrencyControlService, {
 	// @ts-expect-error Private property
@@ -54,6 +64,7 @@ describe('ActiveExecutions', () => {
 		mode: 'manual',
 		startedAt: new Date(),
 		status: 'new',
+		storedAt: 'db',
 	};
 
 	const executionData: IWorkflowExecutionDataProcess = {
@@ -74,23 +85,27 @@ describe('ActiveExecutions', () => {
 
 	beforeEach(() => {
 		activeExecutions = new ActiveExecutions(
-			mock(),
+			logger,
 			executionRepository,
+			executionPersistence,
 			concurrencyControl,
 			mock(),
 			executionsConfig,
+			mock(),
 		);
 
-		executionRepository.createNewExecution.mockResolvedValue(FAKE_EXECUTION_ID);
-		executionRepository.updateExistingExecution.mockResolvedValue(true);
+		executionRepository.cancelManyRunning.mockResolvedValue();
+		executionPersistence.create.mockResolvedValue(FAKE_EXECUTION_ID);
+		executionPersistence.updateExistingExecution.mockResolvedValue(true);
+		executionRepository.setRunning.mockResolvedValue(new Date());
 
 		workflowExecution = new PCancelable<IRun>((resolve) => resolve());
-		workflowExecution.cancel = jest.fn();
+		workflowExecution.cancel = vi.fn();
 		responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	test('Should initialize activeExecutions with empty list', () => {
@@ -102,29 +117,231 @@ describe('ActiveExecutions', () => {
 
 		expect(executionId).toBe(FAKE_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
-		expect(executionRepository.createNewExecution).toHaveBeenCalledTimes(1);
-		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(0);
+		expect(executionPersistence.create).toHaveBeenCalledTimes(1);
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(0);
+	});
+
+	test('should report execution and response mode counts until execution cleanup', async () => {
+		expect(activeExecutions.getDiagnosticCounts()).toEqual({ executions: 0, responseModes: 0 });
+
+		const executionId = await activeExecutions.add(executionData);
+		activeExecutions.setResponseMode(executionId, 'lastNode');
+		expect(activeExecutions.getDiagnosticCounts()).toEqual({ executions: 1, responseModes: 1 });
+
+		const completed = activeExecutions.getPostExecutePromise(executionId);
+		activeExecutions.finalizeExecution(executionId);
+		await completed;
+		expect(activeExecutions.getDiagnosticCounts()).toEqual({ executions: 0, responseModes: 0 });
 	});
 
 	test('Should update execution if add is called with execution ID', async () => {
-		const executionId = await activeExecutions.add(executionData, FAKE_SECOND_EXECUTION_ID);
+		const executionId = await activeExecutions.add(executionData, {
+			executionId: FAKE_SECOND_EXECUTION_ID,
+			expectedStatus: 'waiting',
+		});
 
 		expect(executionId).toBe(FAKE_SECOND_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
-		expect(executionRepository.createNewExecution).toHaveBeenCalledTimes(0);
-		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(1);
+		expect(executionPersistence.create).toHaveBeenCalledTimes(0);
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+	});
+
+	// CAT-3862: the claim used to be hardcoded to `waiting`, so an execution
+	// enqueued before a restart (status `new`) could never be claimed.
+	test.each(['waiting', 'new'] as const)(
+		'Should only claim an existing execution while it is still in status %s',
+		async (expectedStatus) => {
+			await activeExecutions.add(executionData, {
+				executionId: FAKE_SECOND_EXECUTION_ID,
+				expectedStatus,
+			});
+
+			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+				FAKE_SECOND_EXECUTION_ID,
+				expect.objectContaining({ id: FAKE_SECOND_EXECUTION_ID, status: 'running' }),
+				{ requireStatus: expectedStatus },
+			);
+		},
+	);
+
+	test('Should set startedAt without overwriting an existing value when claiming an enqueued execution', async () => {
+		await activeExecutions.add(executionData, {
+			executionId: FAKE_SECOND_EXECUTION_ID,
+			expectedStatus: 'new',
+		});
+
+		expect(executionRepository.setRunning).toHaveBeenCalledWith(FAKE_SECOND_EXECUTION_ID);
+		const update = executionPersistence.updateExistingExecution.mock.calls[0][1];
+		expect(update).not.toHaveProperty('startedAt');
+	});
+
+	test('Should preserve startedAt when resuming a waiting execution', async () => {
+		await activeExecutions.add(executionData, {
+			executionId: FAKE_SECOND_EXECUTION_ID,
+			expectedStatus: 'waiting',
+		});
+
+		expect(executionRepository.setRunning).not.toHaveBeenCalled();
+		const update = executionPersistence.updateExistingExecution.mock.calls[0][1];
+		expect(update).not.toHaveProperty('startedAt');
+	});
+
+	test('Should forward deduplicationKey to executionPersistence.create', async () => {
+		const executionDataWithKey: IWorkflowExecutionDataProcess = {
+			...executionData,
+			deduplicationKey: 'wf-1:node-1:1700000000000',
+		};
+
+		await activeExecutions.add(executionDataWithKey);
+
+		expect(executionPersistence.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				deduplicationKey: 'wf-1:node-1:1700000000000',
+			}),
+		);
 	});
 
 	test('Should throw ExecutionAlreadyResumingError when another process is resuming execution', async () => {
 		// Mock updateExistingExecution to return false (status check failed)
-		executionRepository.updateExistingExecution.mockResolvedValue(false);
+		executionPersistence.updateExistingExecution.mockResolvedValue(false);
 
-		await expect(activeExecutions.add(executionData, FAKE_SECOND_EXECUTION_ID)).rejects.toThrow(
-			'Execution is already being resumed by another process',
-		);
+		await expect(
+			activeExecutions.add(executionData, {
+				executionId: FAKE_SECOND_EXECUTION_ID,
+				expectedStatus: 'waiting',
+			}),
+		).rejects.toThrow('Execution is already being resumed by another process');
 
 		// Verify execution was NOT added to active executions
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+	});
+
+	describe('add capacity release on error', () => {
+		test('Should release capacity when updateExistingExecution returns false', async () => {
+			// Mock updateExistingExecution to return false (another process is resuming)
+			executionPersistence.updateExistingExecution.mockResolvedValue(false);
+
+			await expect(
+				activeExecutions.add(executionData, {
+					executionId: FAKE_SECOND_EXECUTION_ID,
+					expectedStatus: 'waiting',
+				}),
+			).rejects.toThrow('Execution is already being resumed by another process');
+
+			// Verify capacity was reserved and then released
+			expect(concurrencyControl.throttle).toHaveBeenCalledWith({
+				mode: 'manual',
+				executionId: FAKE_SECOND_EXECUTION_ID,
+			});
+			expect(concurrencyControl.release).toHaveBeenCalledWith({ mode: 'manual' });
+		});
+
+		test('Should release capacity when setRunning throws after reserve', async () => {
+			const dbError = new Error('Failed to set running status');
+			executionRepository.setRunning.mockRejectedValue(dbError);
+
+			await expect(activeExecutions.add(executionData)).rejects.toThrow(
+				'Failed to set running status',
+			);
+
+			// Verify capacity was reserved and then released
+			expect(concurrencyControl.throttle).toHaveBeenCalledWith({
+				mode: 'manual',
+				executionId: FAKE_EXECUTION_ID,
+			});
+			expect(concurrencyControl.release).toHaveBeenCalledWith({ mode: 'manual' });
+
+			// Verify execution was NOT added to active executions
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+		});
+	});
+
+	// TRUST-144: evaluation executions stayed in status 'new' (startedAt
+	// null) and never got picked up. The test-runner fan-out already throttles
+	// the shared evaluation concurrency queue before launching each case, so a
+	// second reservation here consumed a second slot from the same queue for
+	// the same case. Once the fan-out filled the queue up to its cap, this
+	// nested reservation blocked forever — before `setRunning` ran — leaving
+	// the execution stuck at status 'new'.
+	describe('evaluation executions do not double-reserve concurrency (TRUST-144)', () => {
+		// A real service whose evaluation queue has a single slot, already
+		// taken by the test-runner fan-out for this case.
+		const buildFullEvalConcurrencyControl = () => {
+			const service = new ConcurrencyControlService(
+				mockLogger(),
+				executionRepository,
+				mock<Telemetry>(),
+				mock<EventService>(),
+				mock<GlobalConfig>({
+					executions: {
+						mode: 'regular',
+						concurrency: { productionLimit: -1, evaluationLimit: 1 },
+					},
+					deployment: { type: 'default' },
+				}),
+				mock<License>(),
+				new ProductionHold(),
+			);
+			return service;
+		};
+
+		const evalExecutionData: IWorkflowExecutionDataProcess = {
+			...executionData,
+			executionMode: 'evaluation',
+		};
+
+		test('reaches setRunning even when the evaluation queue is full', async () => {
+			const realConcurrencyControl = buildFullEvalConcurrencyControl();
+
+			// The fan-out has taken the only evaluation slot for this case.
+			await realConcurrencyControl.throttle({
+				mode: 'evaluation',
+				executionId: 'run-1-case-0',
+			});
+
+			const evalActiveExecutions = new ActiveExecutions(
+				mock(),
+				executionRepository,
+				executionPersistence,
+				realConcurrencyControl,
+				mock(),
+				executionsConfig,
+				mock(),
+			);
+
+			let resolvedId: string | undefined;
+			const addPromise = evalActiveExecutions.add(evalExecutionData).then((id) => {
+				resolvedId = id;
+				return id;
+			});
+
+			// If `add` re-reserved a slot it would block here (queue is full).
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(resolvedId).toBe(FAKE_EXECUTION_ID);
+			expect(executionRepository.setRunning).toHaveBeenCalledWith(FAKE_EXECUTION_ID);
+
+			await addPromise;
+		});
+
+		test('does not throttle the evaluation queue', async () => {
+			const realConcurrencyControl = buildFullEvalConcurrencyControl();
+			const throttleSpy = vi.spyOn(realConcurrencyControl, 'throttle');
+
+			const evalActiveExecutions = new ActiveExecutions(
+				mock(),
+				executionRepository,
+				executionPersistence,
+				realConcurrencyControl,
+				mock(),
+				executionsConfig,
+				mock(),
+			);
+
+			await evalActiveExecutions.add(evalExecutionData);
+
+			expect(throttleSpy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('attachWorkflowExecution', () => {
@@ -135,7 +352,10 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('Should successfully attach execution to valid executionId', async () => {
-			await activeExecutions.add(executionData, FAKE_EXECUTION_ID);
+			await activeExecutions.add(executionData, {
+				executionId: FAKE_EXECUTION_ID,
+				expectedStatus: 'waiting',
+			});
 
 			expect(() =>
 				activeExecutions.attachWorkflowExecution(FAKE_EXECUTION_ID, workflowExecution),
@@ -144,7 +364,10 @@ describe('ActiveExecutions', () => {
 	});
 
 	test('Should attach and resolve response promise to existing execution', async () => {
-		await activeExecutions.add(executionData, FAKE_EXECUTION_ID);
+		await activeExecutions.add(executionData, {
+			executionId: FAKE_EXECUTION_ID,
+			expectedStatus: 'waiting',
+		});
 		activeExecutions.attachResponsePromise(FAKE_EXECUTION_ID, responsePromise);
 		const fakeResponse = { data: { resultData: { runData: {} } } };
 		activeExecutions.resolveResponsePromise(FAKE_EXECUTION_ID, fakeResponse);
@@ -161,14 +384,57 @@ describe('ActiveExecutions', () => {
 		expect(waitingExecution.responsePromise).toBeDefined();
 
 		// Resume the execution
-		await activeExecutions.add(executionData, executionId);
+		await activeExecutions.add(executionData, { executionId, expectedStatus: 'waiting' });
 
 		const resumedExecution = activeExecutions.getExecutionOrFail(executionId);
 		expect(resumedExecution.startedAt).toBe(waitingExecution.startedAt);
 		expect(resumedExecution.responsePromise).toBe(responsePromise);
 	});
 
+	describe('resolveExecutionResponsePromise', () => {
+		test('Should settle the response promise with the no-response sentinel', async () => {
+			const executionId = await activeExecutions.add(executionData);
+			activeExecutions.attachResponsePromise(executionId, responsePromise);
+
+			activeExecutions.resolveExecutionResponsePromise(executionId);
+
+			// Identity, not equality: `webhook-helpers` recognises the sentinel by reference,
+			// so any other empty object would be treated as a real, empty response.
+			expect(vi.mocked(responsePromise.resolve).mock.calls[0][0]).toBe(
+				EXECUTION_ENDED_WITHOUT_RESPONSE,
+			);
+		});
+
+		test('Should leave a waiting execution alone, so it can still respond on resume', async () => {
+			const executionId = await activeExecutions.add(executionData);
+			activeExecutions.attachResponsePromise(executionId, responsePromise);
+			activeExecutions.setStatus(executionId, 'waiting');
+
+			activeExecutions.resolveExecutionResponsePromise(executionId);
+
+			expect(responsePromise.resolve).not.toHaveBeenCalled();
+		});
+
+		test('Should do nothing for an unknown execution', () => {
+			expect(() =>
+				activeExecutions.resolveExecutionResponsePromise(FAKE_EXECUTION_ID),
+			).not.toThrow();
+		});
+	});
+
 	describe('finalizeExecution', () => {
+		test('old promise cleanup leaves a replacement entry intact', async () => {
+			const executionId = await activeExecutions.add(executionData);
+			const oldEntry = activeExecutions.getExecutionOrFail(executionId);
+			await activeExecutions.add(executionData, { executionId, expectedStatus: 'waiting' });
+			const resumedEntry = activeExecutions.getExecutionOrFail(executionId);
+
+			oldEntry.postExecutePromise.resolve(undefined);
+			await new Promise(setImmediate);
+
+			expect(activeExecutions.getExecutionOrFail(executionId)).toBe(resumedEntry);
+		});
+
 		test('Should not remove a waiting execution', async () => {
 			const executionId = await activeExecutions.add(executionData);
 			activeExecutions.setStatus(executionId, 'waiting');
@@ -192,7 +458,7 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('Should not try to resolve a post-execute promise for an inactive execution', async () => {
-			const getExecutionSpy = jest.spyOn(activeExecutions, 'getExecutionOrFail');
+			const getExecutionSpy = vi.spyOn(activeExecutions, 'getExecutionOrFail');
 
 			activeExecutions.finalizeExecution('inactive-execution-id', fullRunData);
 
@@ -221,13 +487,15 @@ describe('ActiveExecutions', () => {
 			activeExecutions = new ActiveExecutions(
 				logger,
 				executionRepository,
+				executionPersistence,
 				concurrencyControl,
 				mock(),
 				executionsConfig,
+				mock(),
 			);
 
 			executionData.httpResponse = mock<Response>();
-			jest.mocked(executionData.httpResponse.end).mockImplementation(() => {
+			vi.mocked(executionData.httpResponse.end).mockImplementation(() => {
 				throw new Error('Connection closed');
 			});
 
@@ -317,19 +585,235 @@ describe('ActiveExecutions', () => {
 		});
 	});
 
+	describe('getRunningExecutionIds and cancelRunningExecutions', () => {
+		const addExecutionWithStatus = async (status: ExecutionStatus) => {
+			const executionId = await activeExecutions.add(executionData);
+			activeExecutions.setStatus(executionId, status);
+			return executionId;
+		};
+
+		beforeEach(() => {
+			let i = 2000;
+			executionPersistence.create.mockImplementation(async () => `${i++}`);
+		});
+
+		test('Should list only the executions with a running status', async () => {
+			const runningExecutionId = await addExecutionWithStatus('running');
+			await addExecutionWithStatus('waiting');
+			await addExecutionWithStatus('new');
+
+			expect(activeExecutions.getRunningExecutionIds()).toEqual([runningExecutionId]);
+		});
+
+		test('Should not list a running execution attached as enqueued', async () => {
+			const inProcessExecutionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(inProcessExecutionId, workflowExecution);
+
+			const enqueuedExecutionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(enqueuedExecutionId, workflowExecution, {
+				isQueueJob: true,
+			});
+
+			expect(activeExecutions.getRunningExecutionIds()).toEqual([inProcessExecutionId]);
+		});
+
+		test('Should cancel only the in-process execution when one is enqueued', async () => {
+			const inProcessExecutionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(inProcessExecutionId, workflowExecution);
+			const inProcessPostExecutePromise =
+				activeExecutions.getPostExecutePromise(inProcessExecutionId);
+
+			const enqueuedExecutionId = await addExecutionWithStatus('running');
+			const enqueuedWorkflowExecution = new PCancelable<IRun>((resolve) => resolve());
+			enqueuedWorkflowExecution.cancel = vi.fn();
+			activeExecutions.attachWorkflowExecution(enqueuedExecutionId, enqueuedWorkflowExecution, {
+				isQueueJob: true,
+			});
+			const enqueuedPostExecutePromise =
+				activeExecutions.getPostExecutePromise(enqueuedExecutionId);
+
+			await expect(activeExecutions.cancelRunningExecutions()).resolves.toEqual([
+				inProcessExecutionId,
+			]);
+
+			await expect(inProcessPostExecutePromise).rejects.toThrow(
+				SystemShutdownExecutionCancelledError,
+			);
+			expect(workflowExecution.cancel).toHaveBeenCalled();
+			expect(enqueuedWorkflowExecution.cancel).not.toHaveBeenCalled();
+			expect(executionRepository.cancelManyRunning).toHaveBeenCalledWith([inProcessExecutionId]);
+			expect(activeExecutions.has(enqueuedExecutionId)).toBe(true);
+
+			const outcome = await Promise.race([
+				enqueuedPostExecutePromise.then(() => 'settled').catch(() => 'settled'),
+				new Promise((resolve) => setTimeout(() => resolve('pending'), 0)),
+			]);
+			expect(outcome).toBe('pending');
+		});
+
+		test('Should cancel only the executions with a running status', async () => {
+			const runningExecutionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(runningExecutionId, workflowExecution);
+			const runningPostExecutePromise = activeExecutions.getPostExecutePromise(runningExecutionId);
+
+			const waitingExecutionId = await addExecutionWithStatus('waiting');
+
+			await expect(activeExecutions.cancelRunningExecutions()).resolves.toEqual([
+				runningExecutionId,
+			]);
+
+			await expect(runningPostExecutePromise).rejects.toThrow(
+				SystemShutdownExecutionCancelledError,
+			);
+			expect(workflowExecution.cancel).toHaveBeenCalled();
+			expect(activeExecutions.has(waitingExecutionId)).toBe(true);
+		});
+
+		test('Should not cancel a running execution with no workflow execution attached yet', async () => {
+			const attachedExecutionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(attachedExecutionId, workflowExecution);
+			const attachedPostExecutePromise =
+				activeExecutions.getPostExecutePromise(attachedExecutionId);
+
+			const unattachedExecutionId = await addExecutionWithStatus('running');
+
+			await expect(activeExecutions.cancelRunningExecutions()).resolves.toEqual([
+				attachedExecutionId,
+			]);
+
+			await expect(attachedPostExecutePromise).rejects.toThrow(
+				SystemShutdownExecutionCancelledError,
+			);
+			expect(activeExecutions.has(unattachedExecutionId)).toBe(true);
+			expect(activeExecutions.getRunningExecutionIds()).toEqual([unattachedExecutionId]);
+		});
+
+		test('Should list and cancel nothing when no execution is running', async () => {
+			const waitingExecutionId = await addExecutionWithStatus('waiting');
+
+			expect(activeExecutions.getRunningExecutionIds()).toEqual([]);
+			await expect(activeExecutions.cancelRunningExecutions()).resolves.toEqual([]);
+			expect(activeExecutions.has(waitingExecutionId)).toBe(true);
+			expect(executionRepository.cancelManyRunning).not.toHaveBeenCalled();
+		});
+
+		test('Should record the executions as cancelled before returning', async () => {
+			const executionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+			const postExecute = activeExecutions.getPostExecutePromise(executionId);
+
+			let hasRecorded = false;
+			executionRepository.cancelManyRunning.mockImplementation(async () => {
+				hasRecorded = true;
+			});
+
+			await activeExecutions.cancelRunningExecutions();
+
+			expect(hasRecorded).toBe(true);
+			expect(executionRepository.cancelManyRunning).toHaveBeenCalledWith([executionId]);
+			await expect(postExecute).rejects.toThrow(SystemShutdownExecutionCancelledError);
+		});
+
+		test('Should still cancel and report the executions when the recording fails', async () => {
+			const executionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+			const postExecute = activeExecutions.getPostExecutePromise(executionId);
+
+			executionRepository.cancelManyRunning.mockRejectedValue(new Error('Connection terminated'));
+
+			await expect(activeExecutions.cancelRunningExecutions()).resolves.toEqual([executionId]);
+
+			await expect(postExecute).rejects.toThrow(SystemShutdownExecutionCancelledError);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to record 1 cancelled executions: Connection terminated',
+				{ executionIds: [executionId] },
+			);
+		});
+
+		test('Should give up on a recording that does not settle within its deadline', async () => {
+			vi.useFakeTimers();
+
+			const executionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+
+			executionRepository.cancelManyRunning.mockReturnValue(new Promise(() => {}));
+
+			let hasCancelled = false;
+			const cancelling = activeExecutions.cancelRunningExecutions().then((ids) => {
+				hasCancelled = true;
+				return ids;
+			});
+
+			await vi.advanceTimersByTimeAsync(2_999);
+
+			expect(hasCancelled).toBe(false);
+
+			await vi.advanceTimersByTimeAsync(1);
+
+			await expect(cancelling).resolves.toEqual([executionId]);
+			expect(workflowExecution.cancel).toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to record 1 cancelled executions: Timed out writing the cancelled status',
+				{ executionIds: [executionId] },
+			);
+
+			vi.useRealTimers();
+		});
+
+		test('Should give up on a recording that outlives the deadline the caller passed', async () => {
+			vi.useFakeTimers();
+
+			const executionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+
+			executionRepository.cancelManyRunning.mockReturnValue(new Promise(() => {}));
+
+			let hasCancelled = false;
+			const cancelling = activeExecutions.cancelRunningExecutions(1_000).then((ids) => {
+				hasCancelled = true;
+				return ids;
+			});
+
+			await vi.advanceTimersByTimeAsync(999);
+
+			expect(hasCancelled).toBe(false);
+
+			await vi.advanceTimersByTimeAsync(1);
+
+			await expect(cancelling).resolves.toEqual([executionId]);
+			expect(workflowExecution.cancel).toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to record 1 cancelled executions: Timed out writing the cancelled status',
+				{ executionIds: [executionId] },
+			);
+
+			vi.useRealTimers();
+		});
+	});
+
+	const raceShutdownAgainstTimeout = async (shutdown: Promise<void>) => {
+		return await Promise.race([
+			shutdown.then(() => 'shutdown'),
+			new Promise((resolve) => setTimeout(() => resolve('timeout'), 50)),
+		]);
+	};
+
+	/** Park an execution the way a Wait node does: set the status, then let the run settle. */
+	const parkExecution = async (instance: ActiveExecutions, executionId: string) => {
+		instance.setStatus(executionId, 'waiting');
+		instance.finalizeExecution(executionId, fullRunData);
+		await new Promise(setImmediate);
+	};
+
 	describe('shutdown', () => {
 		let newExecutionId1: string, newExecutionId2: string;
 		let waitingExecutionId1: string, waitingExecutionId2: string;
 
 		beforeEach(async () => {
-			executionRepository.createNewExecution.mockImplementation(async () =>
-				randomInt(1000, 2000).toString(),
-			);
+			let i = 1000;
+			executionPersistence.create.mockImplementation(async () => `${i++}`);
 
-			(sleep as jest.Mock).mockImplementation(() => {
-				// @ts-expect-error private property
-				activeExecutions.activeExecutions = {};
-			});
+			(sleep as Mock).mockImplementation(async () => await new Promise(setImmediate));
 
 			newExecutionId1 = await activeExecutions.add(executionData);
 			activeExecutions.setStatus(newExecutionId1, 'new');
@@ -339,15 +823,19 @@ describe('ActiveExecutions', () => {
 			activeExecutions.setStatus(newExecutionId2, 'new');
 
 			waitingExecutionId1 = await activeExecutions.add(executionData);
-			activeExecutions.setStatus(waitingExecutionId1, 'waiting');
 			activeExecutions.attachResponsePromise(waitingExecutionId1, responsePromise);
+			await parkExecution(activeExecutions, waitingExecutionId1);
 
 			waitingExecutionId2 = await activeExecutions.add(executionData);
-			activeExecutions.setStatus(waitingExecutionId2, 'waiting');
+			await parkExecution(activeExecutions, waitingExecutionId2);
 		});
 
-		test('Should cancel only executions with response-promises by default', async () => {
-			const stopExecutionSpy = jest.spyOn(activeExecutions, 'stopExecution');
+		afterEach(() => {
+			(sleep as Mock).mockReset();
+		});
+
+		test('Should wait for all running executions including those with response promises', async () => {
+			const stopExecutionSpy = vi.spyOn(activeExecutions, 'stopExecution');
 
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(4);
 
@@ -355,29 +843,15 @@ describe('ActiveExecutions', () => {
 
 			expect(concurrencyControl.disable).toHaveBeenCalled();
 
-			const removeAllCaptor = captor<string[]>();
-			expect(concurrencyControl.removeAll).toHaveBeenCalledWith(removeAllCaptor);
-			expect(removeAllCaptor.value.sort()).toEqual([newExecutionId1, waitingExecutionId1].sort());
+			expect(stopExecutionSpy).not.toHaveBeenCalled();
 
-			expect(stopExecutionSpy).toHaveBeenCalledTimes(2);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(
-				newExecutionId1,
-				expect.any(SystemShutdownExecutionCancelledError),
-			);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(
-				waitingExecutionId1,
-				expect.any(SystemShutdownExecutionCancelledError),
-			);
-			expect(stopExecutionSpy).not.toHaveBeenCalledWith(newExecutionId2);
-			expect(stopExecutionSpy).not.toHaveBeenCalledWith(waitingExecutionId2);
+			expect(concurrencyControl.removeAll).toHaveBeenCalledWith([]);
 
-			await new Promise(setImmediate);
-			// the other two executions aren't cancelled, but still removed from memory
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
 		});
 
 		test('Should cancel all executions when cancelAll is true', async () => {
-			const stopExecutionSpy = jest.spyOn(activeExecutions, 'stopExecution');
+			const stopExecutionSpy = vi.spyOn(activeExecutions, 'stopExecution');
 
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(4);
 
@@ -408,6 +882,136 @@ describe('ActiveExecutions', () => {
 				waitingExecutionId2,
 				expect.any(SystemShutdownExecutionCancelledError),
 			);
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+		});
+
+		test('keeps waiting while a running execution has not finished', async () => {
+			const runningExecutionId = await activeExecutions.add(executionData);
+			activeExecutions.attachWorkflowExecution(runningExecutionId, workflowExecution);
+
+			const shutdown = activeExecutions.shutdown();
+
+			expect(await raceShutdownAgainstTimeout(shutdown)).toBe('timeout');
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
+
+			// Let the drain end so it does not keep polling after the test
+			activeExecutions.finalizeExecution(runningExecutionId, fullRunData);
+			await shutdown;
+		});
+
+		test('resolves once a running execution finishes', async () => {
+			const runningExecutionId = await activeExecutions.add(executionData);
+			activeExecutions.attachWorkflowExecution(runningExecutionId, workflowExecution);
+
+			const shutdown = activeExecutions.shutdown();
+			activeExecutions.finalizeExecution(runningExecutionId, fullRunData);
+
+			expect(await raceShutdownAgainstTimeout(shutdown)).toBe('shutdown');
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+		});
+
+		test('resolves when a running execution parks while shutdown waits', async () => {
+			const runningExecutionId = await activeExecutions.add(executionData);
+			activeExecutions.attachWorkflowExecution(runningExecutionId, workflowExecution);
+			activeExecutions.attachResponsePromise(runningExecutionId, responsePromise);
+
+			const shutdown = activeExecutions.shutdown();
+			await parkExecution(activeExecutions, runningExecutionId);
+
+			expect(await raceShutdownAgainstTimeout(shutdown)).toBe('shutdown');
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+		});
+
+		test('keeps waiting for an execution whose status is waiting but whose run has not settled', async () => {
+			const parkingExecutionId = await activeExecutions.add(executionData);
+			activeExecutions.attachWorkflowExecution(parkingExecutionId, workflowExecution);
+			activeExecutions.setStatus(parkingExecutionId, 'waiting');
+
+			const shutdown = activeExecutions.shutdown();
+
+			expect(await raceShutdownAgainstTimeout(shutdown)).toBe('timeout');
+			expect(activeExecutions.has(parkingExecutionId)).toBe(true);
+
+			activeExecutions.finalizeExecution(parkingExecutionId, fullRunData);
+
+			expect(await raceShutdownAgainstTimeout(shutdown)).toBe('shutdown');
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+		});
+	});
+
+	describe('shutdown with an execution enqueued as a Bull job', () => {
+		const buildActiveExecutions = (instanceType: InstanceSettings['instanceType']) => {
+			const queueExecutionsConfig = mock<ExecutionsConfig>({ mode: 'queue' });
+			const instanceSettings = mock<InstanceSettings>({ instanceType });
+			return new ActiveExecutions(
+				logger,
+				executionRepository,
+				executionPersistence,
+				concurrencyControl,
+				mock(),
+				queueExecutionsConfig,
+				instanceSettings,
+			);
+		};
+
+		beforeEach(() => {
+			(sleep as Mock).mockImplementation(async () => await new Promise(() => {}));
+		});
+
+		afterEach(() => {
+			(sleep as Mock).mockReset();
+		});
+
+		test('resolves promptly on a worker instance', async () => {
+			const workerActiveExecutions = buildActiveExecutions('worker');
+			const executionId = await workerActiveExecutions.add(executionData);
+			workerActiveExecutions.attachWorkflowExecution(executionId, workflowExecution, {
+				isQueueJob: true,
+			});
+			const cancel = vi.spyOn(workflowExecution, 'cancel');
+
+			const outcome = await raceShutdownAgainstTimeout(workerActiveExecutions.shutdown());
+
+			expect(outcome).toBe('shutdown');
+			expect(workerActiveExecutions.getActiveExecutions()).toHaveLength(0);
+			expect(cancel).not.toHaveBeenCalled();
+		});
+
+		test('keeps waiting on a main instance', async () => {
+			const mainActiveExecutions = buildActiveExecutions('main');
+			const executionId = await mainActiveExecutions.add(executionData);
+			mainActiveExecutions.attachWorkflowExecution(executionId, workflowExecution, {
+				isQueueJob: true,
+			});
+
+			const outcome = await raceShutdownAgainstTimeout(mainActiveExecutions.shutdown());
+
+			expect(outcome).toBe('timeout');
+		});
+
+		test('resolves on a worker instance when an execution is enqueued while shutdown waits', async () => {
+			(sleep as Mock).mockImplementation(
+				async () => await new Promise((resolve) => setTimeout(resolve, 0)),
+			);
+			const workerActiveExecutions = buildActiveExecutions('worker');
+			const inProcessExecutionId = await workerActiveExecutions.add(executionData);
+			workerActiveExecutions.attachWorkflowExecution(inProcessExecutionId, workflowExecution);
+
+			const shutdown = workerActiveExecutions.shutdown();
+
+			executionPersistence.create.mockResolvedValueOnce(FAKE_SECOND_EXECUTION_ID);
+			const enqueuedExecutionId = await workerActiveExecutions.add(executionData);
+			workerActiveExecutions.attachWorkflowExecution(enqueuedExecutionId, workflowExecution, {
+				isQueueJob: true,
+			});
+			const cancel = vi.spyOn(workflowExecution, 'cancel');
+			workerActiveExecutions.finalizeExecution(inProcessExecutionId, fullRunData);
+
+			const outcome = await raceShutdownAgainstTimeout(shutdown);
+
+			expect(outcome).toBe('shutdown');
+			expect(workerActiveExecutions.getActiveExecutions()).toHaveLength(0);
+			expect(cancel).not.toHaveBeenCalled();
 		});
 	});
 });

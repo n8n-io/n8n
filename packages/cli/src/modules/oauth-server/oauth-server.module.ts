@@ -1,0 +1,85 @@
+import type { ModuleInterface } from '@n8n/decorators';
+import { BackendModule } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
+
+/**
+ * Shared OAuth 2.1 authorization server.
+ *
+ * Serves a single issuer (the instance origin) with shared
+ * `/authorize`/`/token`/`/register`/`/revoke` endpoints and discovery
+ * documents for the protected resources registered in the
+ * `ProtectedResourceRegistry` (e.g. the instance MCP server).
+ */
+// Loaded on workers too: in queue mode an MCP trigger tool call executes on a
+// worker, where resolving the caller's private credentials verifies the n8n
+// OAuth token through `OAuthTokenVerifierProxy`. Without the module the verifier
+// provider is unregistered and resolution fails with `verifier_not_registered`.
+@BackendModule({ name: 'oauth-server', instanceTypes: ['main', 'webhook', 'worker'] })
+export class OAuthServerModule implements ModuleInterface {
+	async init() {
+		const { instanceType } = Container.get(InstanceSettings);
+
+		// Only import controllers in the main process, since the webhook/worker processes don't run an HTTP server and don't need them.
+		if (instanceType === 'main') {
+			await import('./oauth.controller.js');
+			await import('./oauth-consent.controller.js');
+			await import('./oauth-clients.controller.js');
+		}
+
+		// Main and webhook processes mint access tokens (Form and Chat flows mint
+		// on webhook processes), so they load the private signing key. Workers only
+		// verify, and load the public keys on first use.
+		if (instanceType === 'main' || instanceType === 'webhook') {
+			const { OAuthSigningKeyService } = await import('./oauth-signing-key.service.js');
+			await Container.get(OAuthSigningKeyService).initialize();
+		}
+
+		// The JWKS endpoint is served by main only.
+		if (instanceType === 'main') {
+			const { JwksRegistry } = await import('@n8n/backend-services/auth');
+			const { OAuthSigningJwksProvider } = await import('./oauth-signing-jwks.provider.js');
+			Container.get(JwksRegistry).register(Container.get(OAuthSigningJwksProvider));
+		}
+
+		// Register the token service as the OAuth token verifier provider, so
+		// protected-resource modules verify bearer tokens through the core
+		// `OAuthTokenVerifierProxy` instead of importing this module.
+		const { OAuthTokenVerifierProxy } = await import('@n8n/backend-services/auth');
+		const { OAuthTokenService } = await import('./oauth-token.service.js');
+		Container.get(OAuthTokenVerifierProxy).registerProvider(Container.get(OAuthTokenService));
+
+		const { registerProtectedResourceResolvers } = await import(
+			'./protected-resource-resolvers/index.js'
+		);
+		registerProtectedResourceResolvers();
+
+		const { OAuth2FlowProxy } = await import('@n8n/backend-services/auth');
+		const { OAuth2FlowService } = await import('./oauth-flow.service.js');
+		Container.get(OAuth2FlowProxy).registerProvider(Container.get(OAuth2FlowService));
+
+		// Last: discovery reads this server's metadata in process as soon as it registers, and
+		// that metadata lists the scopes of the resolvers registered above.
+		const { LocalAuthorizationServerProxy } = await import(
+			'@/modules/inbound-auth-core/local-authorization-server.proxy.js'
+		);
+		const { OAuthServerLocalAuthorizationServer } = await import(
+			'./oauth-local-authorization-server.js'
+		);
+		await Container.get(LocalAuthorizationServerProxy).registerProvider(
+			Container.get(OAuthServerLocalAuthorizationServer),
+		);
+	}
+
+	async entities() {
+		const { OAuthClient } = await import('./database/entities/oauth-client.entity.js');
+		const { AuthorizationCode } = await import(
+			'./database/entities/oauth-authorization-code.entity.js'
+		);
+		const { AccessToken } = await import('./database/entities/oauth-access-token.entity.js');
+		const { RefreshToken } = await import('./database/entities/oauth-refresh-token.entity.js');
+		const { UserConsent } = await import('./database/entities/oauth-user-consent.entity.js');
+
+		return [OAuthClient, AuthorizationCode, AccessToken, RefreshToken, UserConsent] as never;
+	}
+}

@@ -1,116 +1,258 @@
-export const CANVAS_ZOOMED_VIEW_EXPERIMENT = {
-	name: 'canvas_zoomed_view',
-	control: 'control',
-	variant: 'variant',
-};
+import {
+	AGENTS_N8N_CHAT_FLAG,
+	ASSISTANT_SKILLS_FLAG,
+	AI_ASSISTANT_AT_MENTIONS_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
+	INSTANCE_AI_CONCISE_STYLE_FLAG,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+} from '@n8n/api-types';
 
-export const NDV_IN_FOCUS_PANEL_EXPERIMENT = {
-	name: 'ndv_in_focus_panel',
-	control: 'control',
-	variant: 'variant',
-};
+function createExperiment<
+	const TName extends string,
+	const TVariants extends Record<string, string>,
+>(name: TName, variants: TVariants): { name: TName } & TVariants;
+function createExperiment<const TName extends string>(
+	name: TName,
+): { name: TName; control: 'control'; variant: 'variant' };
+function createExperiment(name: string, variants?: Record<string, string>) {
+	return { name, ...(variants ?? { control: 'control', variant: 'variant' }) } as const;
+}
 
-export const COMMAND_BAR_EXPERIMENT = {
-	name: 'command_bar',
-	control: 'control',
-	variant: 'variant',
-};
+export const CANVAS_ZOOMED_VIEW_EXPERIMENT = createExperiment('canvas_zoomed_view');
+export const NDV_IN_FOCUS_PANEL_EXPERIMENT = createExperiment('ndv_in_focus_panel');
 
-export const EXTRA_TEMPLATE_LINKS_EXPERIMENT = {
-	name: '034_extra_template_links',
-	control: 'control',
-	variant: 'variant',
-};
+export const EXTRA_TEMPLATE_LINKS_EXPERIMENT = createExperiment('034_extra_template_links');
 
-export const TEMPLATE_ONBOARDING_EXPERIMENT = {
-	name: '035_template_onboarding',
+export const TEMPLATE_ONBOARDING_EXPERIMENT = createExperiment('035_template_onboarding', {
 	control: 'control',
 	variantStarterPack: 'variant-starter-pack',
 	variantSuggestedTemplates: 'variant-suggested-templates',
-};
+});
 
-export const BATCH_11AUG_EXPERIMENT = {
-	name: '37_onboarding_experiments_batch_aug11',
+export const BATCH_11AUG_EXPERIMENT = createExperiment('37_onboarding_experiments_batch_aug11', {
 	control: 'control',
 	variantReadyToRun: 'variant-ready-to-run-workflows',
 	variantReadyToRun2: 'variant-ready-to-run-workflows_v2',
 	variantReadyToRun3: 'variant-ready-to-run-workflows_v3',
-};
+});
 
-export const PRE_BUILT_AGENTS_EXPERIMENT = {
-	name: '038_pre_built_agents',
-	control: 'control',
-	variant: 'variant',
-};
+export const TEMPLATE_RECO_V2 = createExperiment('039_template_onboarding_v2');
 
-export const TEMPLATE_RECO_V2 = {
-	name: '039_template_onboarding_v2',
-	control: 'control',
-	variant: 'variant',
-};
-
-export const UPGRADE_PLAN_CTA_EXPERIMENT = {
-	name: '054_upgrade_plan_cta',
-	control: 'control',
-	variant: 'variant',
-};
-
-export const TEMPLATES_DATA_QUALITY_EXPERIMENT = {
-	name: '046_templates_data_quality',
-	control: 'control',
-	variant1: 'variant-batch-1',
-	variant2: 'variant-batch-2',
-	variant3: 'variant-batch-3',
-};
-
-export const READY_TO_RUN_V2_EXPERIMENT = {
-	name: '042_ready-to-run-worfklow_v2',
-	control: 'control',
-	variant1: 'variant-1-singlebox',
-	variant2: 'variant-2-twoboxes',
-};
-
-export const READY_TO_RUN_V2_P3_EXPERIMENT = {
-	name: '059_ready-to-run-worfklow_v2-3',
+export const READY_TO_RUN_V2_P3_EXPERIMENT = createExperiment('059_ready-to-run-worfklow_v2-3', {
 	control: 'control',
 	variant5: 'variant-5',
 	variant6: 'variant-6',
-};
+});
 
-export const PERSONALIZED_TEMPLATES_V3 = {
-	name: '044_template_reco_v3',
+export const PERSONALIZED_TEMPLATES_V3 = createExperiment('044_template_reco_v3');
+
+export const COLLECTION_OVERHAUL_EXPERIMENT = createExperiment('048_collection_overhaul');
+
+export const TEMPLATE_SETUP_EXPERIENCE = createExperiment('055_template_setup_experience');
+
+export const AI_BUILDER_REVIEW_CHANGES_EXPERIMENT = createExperiment(
+	'075_ai_builder_review_changes',
+);
+
+export const MERGE_ASK_BUILD_EXPERIMENT = createExperiment('076_merge_ask_build');
+
+export const EXECUTION_LOGIC_V2_EXPERIMENT = {
+	name: '062_execution_logic_v2',
 	control: 'control',
 	variant: 'variant',
 };
 
-export const TEMPLATE_SETUP_EXPERIENCE = {
-	name: '055_template_setup_experience',
-	control: 'control',
-	variant: 'variant',
-};
+export const CREDENTIALS_APP_SELECTION_EXPERIMENT = createExperiment(
+	'065_credentials_app_selection',
+);
 
-export const AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT = {
-	name: '056_ai_builder_template_examples',
-	control: 'control',
-	variant: 'variant',
-};
+export const FOCUSED_NODES_EXPERIMENT = createExperiment('064_focused_nodes');
 
-export const AI_BUILDER_MULTI_AGENT_EXPERIMENT = {
-	name: '057_ai_builder_multi_agent',
+export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_1');
+
+export const SIDEBAR_EXPANDED_EXPERIMENT = createExperiment('067_sidebar_expanded');
+
+export const SETUP_PANEL = createExperiment('069_setup_panel', {
 	control: 'control',
 	variant: 'variant',
-};
+});
+
+export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_workflow_builder', {
+	control: 'control',
+	codeNoPinData: 'code-no-pin-data',
+	codePinData: 'code-pin-data',
+});
+
+export const AI_BUILDER_SETUP_WIZARD_EXPERIMENT = createExperiment('079_ai_builder_setup_wizard');
+export const WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT = createExperiment('086_workflow_card_mcp_toggle');
+export const INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT = createExperiment(
+	'082_instance_ai_proactive_agent',
+);
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT = createExperiment(
+	'085_instance_ai_prompt_suggestions_v2',
+);
+export const AA_EXPERIMENT_CHECK = createExperiment('078_experiment_check_aa');
+
+export const CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT = createExperiment('077_chat_hub_semantic_search');
+
+export const FLOATING_CHAT_HUB_PANEL_EXPERIMENT = createExperiment('078_floating_chat_hub_panel');
+export const SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT = createExperiment(
+	'081_surface_mcp_to_new_cloud_users',
+	{
+		control: 'control',
+		variant1: 'variant-1',
+		variant2: 'variant-2',
+	},
+);
+
+export const EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT = createExperiment('088_config_evaluations');
+export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExperiment(
+	'093_instance_ai_personalized_prompt_suggestions',
+	{
+		control: 'control',
+		variantCards: 'variant-cards',
+		variantList: 'variant-list',
+	},
+);
+
+export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
+	'089_instance_ai_split_empty_state',
+);
+
+export const EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT = createExperiment(
+	'095_expose_all_workflows_to_mcp',
+);
+export const TRIAL_INTRO_MODAL_EXPERIMENT = createExperiment('101_trial_intro_modal');
+export const INLINE_AGENTS_EXPERIMENT = createExperiment('103_inline_agents');
+export const INSTANCE_AI_FREE_NUDGE_EXPERIMENT = createExperiment('105_instance_ai_free_nudge', {
+	control: 'control',
+	variant1: 'variant-1',
+	variant2: 'variant-2',
+});
+
+export const OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT = createExperiment(
+	'108_open_workflow_in_assistant',
+);
+
+// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+export const INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT = createExperiment(
+	'129_aia_inspiration_from_taxonomy_v2',
+	{
+		control: 'control',
+		variant: 'variant',
+		variantBis: 'variant-bis',
+	},
+);
+// EOF Experiment cleanup
+
+export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+);
+
+export const INSTANCE_AI_CONCISE_STYLE_EXPERIMENT = createExperiment(
+	INSTANCE_AI_CONCISE_STYLE_FLAG,
+);
+
+export const INSTANCE_AI_SETUP_PANEL_EXPERIMENT = createExperiment(INSTANCE_AI_SETUP_PANEL_FLAG);
+export const AI_ASSISTANT_AT_MENTIONS_EXPERIMENT = createExperiment(AI_ASSISTANT_AT_MENTIONS_FLAG);
+
+/**
+ * Multivariate: the enabled arm is the variant string `variant`, not a boolean,
+ * so the check goes through `isVariantEnabled` rather than `isFeatureEnabled`.
+ * The default `control` / `variant` arms match the PostHog flag.
+ */
+export const MCP_JSON_NUDGE_EXPERIMENT = createExperiment('113_mcp_nudge_modal_on_export_import');
+
+export const CREDENTIAL_DESCRIPTIONS_EXPERIMENT = createExperiment(CREDENTIAL_DESCRIPTIONS_FLAG);
+export const ASSISTANT_SKILLS_EXPERIMENT = createExperiment(ASSISTANT_SKILLS_FLAG);
+
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+export const MCP_DISCOVERY_EXPERIMENT = createExperiment('123_surface_mcp_to_claude_trial_users');
+// EOF Experiment cleanup
+export const SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT = createExperiment(
+	'119_surface_assistant_on_workflow_error',
+);
+
+export const WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT = createExperiment(
+	'124_workflow_previews_above_assistant',
+);
+
+export const AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT = createExperiment(
+	'120_agents_empty_state_templates',
+);
+
+export const AGENTS_N8N_CHAT_EXPERIMENT = createExperiment(AGENTS_N8N_CHAT_FLAG, {
+	control: 'control',
+	variantA: 'variant-a',
+	variantB: 'variant-b',
+});
+
+/**
+ * Boolean flag, matched by instance and Cloud only. Its payload can set
+ * `sampleRate` and `timeoutMs` for the shadow run.
+ */
+export const QUICKJS_EXPRESSION_SHADOW_EXPERIMENT = createExperiment(
+	'126_quickjs_expression_shadow',
+);
+
+export const PREFERENCES_EMPTY_STATE_EXPERIMENT = createExperiment('127_preferences_empty_state', {
+	control: 'control',
+	examples: 'examples',
+	assistant: 'assistant',
+});
 
 export const EXPERIMENTS_TO_TRACK = [
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	MCP_DISCOVERY_EXPERIMENT.name,
+	// EOF Experiment cleanup
+	INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name,
+	AI_ASSISTANT_AT_MENTIONS_EXPERIMENT.name,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT.name,
+	INSTANCE_AI_CONCISE_STYLE_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	BATCH_11AUG_EXPERIMENT.name,
-	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
-	TEMPLATES_DATA_QUALITY_EXPERIMENT.name,
 	READY_TO_RUN_V2_P3_EXPERIMENT.name,
-	UPGRADE_PLAN_CTA_EXPERIMENT.name,
-	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
-	AI_BUILDER_MULTI_AGENT_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
+	RESOURCE_CENTER_EXPERIMENT.name,
+	EXECUTION_LOGIC_V2_EXPERIMENT.name,
+	COLLECTION_OVERHAUL_EXPERIMENT.name,
+	CREDENTIALS_APP_SELECTION_EXPERIMENT.name,
+	SIDEBAR_EXPANDED_EXPERIMENT.name,
+	SETUP_PANEL.name,
+	CODE_WORKFLOW_BUILDER_EXPERIMENT.name,
+	FOCUSED_NODES_EXPERIMENT.name,
+	AI_BUILDER_REVIEW_CHANGES_EXPERIMENT.name,
+	MERGE_ASK_BUILD_EXPERIMENT.name,
+	AI_BUILDER_SETUP_WIZARD_EXPERIMENT.name,
+	WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT.name,
+	INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT.name,
+	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT.name,
+	AA_EXPERIMENT_CHECK.name,
+	CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
+	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,
+	SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name,
+	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
+	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT.name,
+	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
+	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
+	TRIAL_INTRO_MODAL_EXPERIMENT.name,
+	PREFERENCES_EMPTY_STATE_EXPERIMENT.name,
+	INLINE_AGENTS_EXPERIMENT.name,
+	INSTANCE_AI_FREE_NUDGE_EXPERIMENT.name,
+	OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name,
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name,
+	// EOF Experiment cleanup
+	MCP_JSON_NUDGE_EXPERIMENT.name,
+	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
+	ASSISTANT_SKILLS_EXPERIMENT.name,
+	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name,
+	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT.name,
+	AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT.name,
+	AGENTS_N8N_CHAT_EXPERIMENT.name,
+	QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name,
 ];

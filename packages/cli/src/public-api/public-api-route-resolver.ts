@@ -1,0 +1,286 @@
+import type { ZodClass } from '@n8n/api-types';
+import type {
+	ApiKeyScopeRequirement,
+	Arg,
+	BinaryResponse,
+	Controller,
+	DeprecationInfo,
+	ErrorResponse,
+	HandlerName,
+	Method,
+	RequestBodyMedia,
+	ResponseDtoClass,
+	SuccessStatus,
+} from '@n8n/decorators';
+import { ControllerRegistryMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+import type { ApiKeyScope } from '@n8n/permissions';
+import { UnexpectedError } from 'n8n-workflow';
+import type { ZodTypeAny } from 'zod';
+
+import type { RequestBodyHandler } from '@/public-api/media-types/request-body';
+import {
+	JSON_REQUEST_BODY_MEDIA,
+	REQUEST_BODY_HANDLERS,
+} from '@/public-api/media-types/request-body';
+
+export type ParamArg = { type: 'param'; key: string; schema?: ZodTypeAny };
+export type BodyArg = {
+	type: 'body';
+	dto: ZodClass;
+	required?: boolean;
+	/** Defaults to JSON when `@Body` declares no media type. */
+	media: RequestBodyMedia;
+	/** Resolved once here from `media`, so callers don't each look it up in `REQUEST_BODY_HANDLERS` themselves. */
+	handler: RequestBodyHandler;
+};
+type QueryArg = { type: 'query'; dto: ZodClass };
+
+/** A `ParamArg` whose `@Param` declared a schema, so its value is validated before the handler. */
+export type ValidatedParamArg = ParamArg & { schema: ZodTypeAny };
+
+export type ResolvedRouteArg = ParamArg | BodyArg | QueryArg;
+
+export function findBodyArg(args: ResolvedRouteArg[]): BodyArg | undefined {
+	return args.find((arg): arg is BodyArg => arg.type === 'body');
+}
+
+function findQueryArg(args: ResolvedRouteArg[]): QueryArg | undefined {
+	return args.find((arg): arg is QueryArg => arg.type === 'query');
+}
+
+export function findValidatedParamArgs(args: ResolvedRouteArg[]): ValidatedParamArg[] {
+	return args.filter(
+		(arg): arg is ValidatedParamArg => arg.type === 'param' && arg.schema !== undefined,
+	);
+}
+
+export interface ResolvedPublicApiRoute {
+	controllerClass: Controller;
+	controllerName: string;
+	handlerName: HandlerName;
+	method: Method;
+	/** Controller basePath + route path, e.g. `/tags/:id`. */
+	path: string;
+	args: ResolvedRouteArg[];
+	requestBodyDto?: ZodClass;
+	/** Explicit `@Body({ required })` override; falls back to `isRequestBodyRequired` when unset. */
+	requestBodyRequired?: boolean;
+	/** The request body's media type; defaults to JSON when `@Body` declares none. Set only when `requestBodyDto` is. */
+	requestBodyMedia?: RequestBodyMedia;
+	/** The request body's media-type handler, resolved from `requestBodyMedia`. Set only when `requestBodyDto` is. */
+	requestBodyHandler?: RequestBodyHandler;
+	requestQueryDto?: ZodClass;
+	responseDto?: ResponseDtoClass;
+	/** Mutually exclusive with `responseDto`. */
+	binaryResponse?: BinaryResponse;
+	/** Success status declared via `@ApiResponse` - always present, see `resolveSuccessStatus`. */
+	successStatus: SuccessStatus;
+	apiKeyScope?: ApiKeyScopeRequirement;
+	summary?: string;
+	description?: string;
+	tags?: string[];
+	errorResponses?: ErrorResponse[];
+	deprecated?: DeprecationInfo;
+}
+
+/**
+ * Iterates through every decorated (@Query/@Body/@Param) and non-decorated arguments of a route.
+ * For `@Query` and `@Body` arguments, attaches the Zod schema associated with the argument.
+ *
+ * Throws eagerly when a `@Body`/`@Query` arg has no resolvable Zod DTO or when a route includes an
+ * undecorated parameter after decorated parameters.
+ */
+export function resolveRouteArgs(
+	controllerClass: Controller,
+	handlerName: HandlerName,
+	args: Arg[],
+): ResolvedRouteArg[] {
+	const argTypes = Reflect.getMetadata(
+		'design:paramtypes',
+		controllerClass.prototype as object,
+		handlerName,
+	) as unknown[] | undefined;
+
+	const resolved: ResolvedRouteArg[] = [];
+	let sawDecoratedArg = false;
+
+	const paramCount = Math.max(args.length, argTypes?.length ?? 0);
+	for (let index = 0; index < paramCount; index++) {
+		const arg = args[index];
+
+		if (!arg) {
+			if (sawDecoratedArg) {
+				throw new UnexpectedError(
+					`Public API route ${controllerClass.name}.${handlerName} has an undecorated parameter ` +
+						`at index ${index}, after an already-decorated one. Every parameter after the first ` +
+						'@Param/@Body/@Query must also be decorated, or a later argument would silently bind ' +
+						'to the wrong parameter.',
+				);
+			}
+			continue;
+		}
+
+		sawDecoratedArg = true;
+
+		if (arg.type === 'param') {
+			resolved.push(arg);
+			continue;
+		}
+
+		const paramType = argTypes?.[index] as ZodClass | undefined;
+		if (!paramType || !('safeParse' in paramType)) {
+			throw new UnexpectedError(
+				`Public API route ${controllerClass.name}.${handlerName} is missing a Zod DTO for @${arg.type}`,
+			);
+		}
+
+		if (arg.type === 'body') {
+			const media = arg.media ?? JSON_REQUEST_BODY_MEDIA;
+			resolved.push({
+				type: 'body',
+				dto: paramType,
+				...(arg.required !== undefined && { required: arg.required }),
+				media,
+				handler: REQUEST_BODY_HANDLERS[media.mediaType],
+			});
+			continue;
+		}
+
+		resolved.push({ type: 'query', dto: paramType });
+	}
+
+	return resolved;
+}
+
+/**
+ * Whether a caller must send a body: an empty object being invalid means one is needed. Mirrors
+ * `requestBody.required` in the hand-written specs, without a second place to declare it.
+ */
+export function isRequestBodyRequired(dto: ZodClass): boolean {
+	return !dto.safeParse({}).success;
+}
+
+/** Every decorator route must state its success status via `@ApiResponse`. */
+export function resolveSuccessStatus(
+	controllerName: string,
+	handlerName: HandlerName,
+	successStatus: SuccessStatus | undefined,
+): SuccessStatus {
+	if (successStatus === undefined) {
+		throw new UnexpectedError(
+			`Public API route ${controllerName}.${handlerName} does not declare a success status. Add ` +
+				'`@ApiResponse(200, SomeDto)` if it returns a body, or `@ApiResponse(204)` if it does not.',
+		);
+	}
+
+	return successStatus;
+}
+
+/**
+ * Whether a set of granted API-key scopes satisfies a route's requirement. Single source of truth
+ * for any/all semantics, shared by `PublicApiControllerRegistry` (enforcement) and
+ * `discover.service` (visibility) so the two can't disagree about who may call a route.
+ */
+export function apiKeyScopesSatisfy(
+	granted: readonly string[] | undefined,
+	requirement: ApiKeyScopeRequirement,
+): boolean {
+	if (!granted) return false;
+
+	if (typeof requirement === 'string') {
+		return granted.includes(requirement);
+	}
+
+	if ('anyOf' in requirement) {
+		return requirement.anyOf.some((scope) => granted.includes(scope));
+	}
+
+	return requirement.allOf.every((scope) => granted.includes(scope));
+}
+
+/** Every individual scope named by a requirement, regardless of any/all semantics. */
+export function scopesInRequirement(requirement: ApiKeyScopeRequirement): readonly ApiKeyScope[] {
+	if (typeof requirement === 'string') return [requirement];
+	return 'anyOf' in requirement ? requirement.anyOf : requirement.allOf;
+}
+
+/**
+ * Renders an `ApiKeyScopeRequirement` as the flat, comma-joined string of the spec's
+ * `x-required-scope`. The string does not show if the scopes are `anyOf` or `allOf`.
+ */
+export function scopeRequirementToString(requirement: ApiKeyScopeRequirement): string {
+	if (typeof requirement === 'string') {
+		return requirement;
+	}
+
+	if ('anyOf' in requirement) {
+		return requirement.anyOf.join(',');
+	}
+
+	return requirement.allOf.join(',');
+}
+
+/**
+ * Renders an Express-style route path (`:param`) as the OpenAPI path template it documents (`{param}`)
+ */
+export function toOpenApiPathTemplate(path: string): string {
+	return path.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
+}
+
+/**
+ * Discovers every route registered on a `@PublicApiController` decorated class, resolving its
+ * request/response DTOs and API-key scope from decorator metadata. This is the single source of
+ * truth for "what does a decorator-routed public API endpoint look like".
+ */
+export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
+	const metadata = Container.get(ControllerRegistryMetadata);
+	const resolved: ResolvedPublicApiRoute[] = [];
+
+	for (const controllerClass of metadata.controllerClasses) {
+		const controllerMetadata = metadata.getControllerMetadata(controllerClass);
+		if (!controllerMetadata.isPublicApi) {
+			continue;
+		}
+
+		const prefix = controllerMetadata.basePath.replace(/\/+/g, '/').replace(/\/$/, '');
+
+		for (const [handlerName, route] of controllerMetadata.routes) {
+			const args = resolveRouteArgs(controllerClass, handlerName, route.args);
+			const requestBodyArg = findBodyArg(args);
+			const requestBodyDto = requestBodyArg?.dto;
+			const requestBodyRequired = requestBodyArg?.required;
+			const requestBodyMedia = requestBodyArg?.media;
+			const requestBodyHandler = requestBodyArg?.handler;
+			const requestQueryDto = findQueryArg(args)?.dto;
+
+			const joined = `${prefix}${route.path}`.replace(/\/+/g, '/');
+			const path = joined.length > 1 ? joined.replace(/\/$/, '') : joined || '/';
+
+			resolved.push({
+				controllerClass,
+				controllerName: controllerClass.name,
+				handlerName,
+				method: route.method,
+				path,
+				args,
+				requestBodyDto,
+				requestBodyRequired,
+				requestBodyMedia,
+				requestBodyHandler,
+				requestQueryDto,
+				responseDto: route.responseDto,
+				binaryResponse: route.binaryResponse,
+				successStatus: resolveSuccessStatus(controllerClass.name, handlerName, route.successStatus),
+				apiKeyScope: route.apiKeyScope,
+				summary: route.summary,
+				description: route.description,
+				tags: route.tags,
+				errorResponses: route.errorResponses,
+				deprecated: route.deprecated,
+			});
+		}
+	}
+
+	return resolved;
+}

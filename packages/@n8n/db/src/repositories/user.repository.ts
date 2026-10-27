@@ -1,26 +1,92 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
-import type { DeepPartial, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
+import type {
+	DeepPartial,
+	EntityManager,
+	FindOptionsWhere,
+	Repository,
+	SelectQueryBuilder,
+} from '@n8n/typeorm';
+import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
+import { GLOBAL_OWNER_ROLE } from '../constants';
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
+/**
+ * Loads accounts of both kinds. A full row comes back as the child entity that
+ * its `kind` names (`Person` or `ServiceAccount`). Use `PersonRepository` or
+ * `ServiceAccountRepository` when only one kind can appear.
+ *
+ * The query methods below predate service accounts. They stay here until their
+ * callers move to `PersonRepository`, so that a caller sees no change.
+ */
 @Service()
-export class UserRepository extends Repository<User> {
-	constructor(dataSource: DataSource) {
-		super(User, dataSource.manager);
+export class UserRepository extends BaseRepository<User> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(User, dataSource.manager, transactionRunner);
 	}
 
 	async findManyByIds(
 		userIds: string[],
 		options?: {
-			includeRole: boolean;
+			includeRole?: boolean;
+			includeAuthIdentities?: boolean;
+			offset?: number;
+			limit?: number;
 		},
 	) {
+		const relations = [
+			...(options?.includeRole ? ['role'] : []),
+			...(options?.includeAuthIdentities ? ['authIdentities'] : []),
+		];
 		return await this.find({
 			where: { id: In(userIds) },
+			skip: options?.offset,
+			take: options?.limit,
+			relations: relations.length > 0 ? relations : undefined,
+			order: { id: 'ASC' },
+		});
+	}
+
+	async findMany(options?: { includeRole?: boolean; offset?: number; limit?: number }) {
+		return await this.find({
+			skip: options?.offset,
+			take: options?.limit,
 			relations: options?.includeRole ? ['role'] : undefined,
+			order: { id: 'ASC' },
+		});
+	}
+
+	/**
+	 * Every user with the relations `isPending` needs: the role and the auth
+	 * identities. Without the identities, a user who signs in through SSO or LDAP
+	 * and so has no password would read as pending.
+	 */
+	async findAllWithRoleAndAuthIdentities(): Promise<User[]> {
+		return await this.find({ relations: ['role', 'authIdentities'], order: { id: 'ASC' } });
+	}
+
+	async findByIdWithRole(id: string, ctx: OperationContext = {}): Promise<User | null> {
+		return await this.managerFor(ctx).findOne(User, {
+			where: { id },
+			relations: ['role'],
+		});
+	}
+
+	async findByEmailWithRole(email: string): Promise<User | null> {
+		return await this.findOne({
+			where: { email },
+			relations: ['role'],
+		});
+	}
+
+	async findOneByProjectIdOrFail(projectId: string): Promise<User> {
+		return await this.findOneByOrFail({
+			projectRelations: { projectId },
 		});
 	}
 
@@ -50,6 +116,54 @@ export class UserRepository extends Repository<User> {
 	 */
 	async update(...args: Parameters<Repository<User>['update']>) {
 		return await super.update(...args);
+	}
+
+	/**
+	 * Change a user's email only if it still equals `oldEmail`. Returns `'stale'`
+	 * when the email changed concurrently and `'email-taken'` when another user
+	 * already owns `newEmail`, so the caller can reject the request.
+	 * Uses `save` (not `update`) so the personal-project rename subscriber fires.
+	 */
+	async changeEmail(
+		userId: string,
+		oldEmail: string,
+		newEmail: string,
+	): Promise<'changed' | 'stale' | 'email-taken'> {
+		return await this.manager.transaction(async (trx) => {
+			const user = await trx.findOne(User, {
+				where: { id: userId },
+				// Serialize concurrent changes on Postgres; SQLite serializes writes.
+				...(trx.connection.options.type === 'postgres'
+					? { lock: { mode: 'pessimistic_write' as const } }
+					: {}),
+			});
+			if (user?.email !== oldEmail) return 'stale';
+			user.email = newEmail;
+			try {
+				await trx.save(User, user);
+			} catch (error) {
+				// Another user took `newEmail` between the caller's check and this save.
+				if (isUniqueConstraintError(error)) return 'email-taken';
+				throw error;
+			}
+			return 'changed';
+		});
+	}
+
+	/**
+	 * True when a claimed instance owner exists. A claimed owner has logged in
+	 * (`lastActiveAt` is set) or has a password. Some setup paths set a password
+	 * before the first login, so the password check is required. The unclaimed
+	 * "shell" owner that first boot creates matches neither condition.
+	 */
+	async hasClaimedInstanceOwner(): Promise<boolean> {
+		return await this.exists({
+			where: [
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, password: Not(IsNull()) },
+			],
+			relations: ['role'],
+		});
 	}
 
 	async deleteAllExcept(user: User) {
@@ -151,6 +265,78 @@ export class UserRepository extends Repository<User> {
 	}
 
 	/**
+	 * Find enabled users whose global/project is in the given slug sets. Role slugs
+	 * are passed in so this package stays scope-agnostic.
+	 *
+	 * Loads `role` and `authIdentities` because the `@AfterLoad` hook needs
+	 * both to compute `isPending` (a raw `password IS NOT NULL` filter would
+	 * wrongly drop SSO/LDAP users).
+	 */
+	async findEligibleByProjectOrGlobalRoles({
+		projectId,
+		projectRoleSlugs,
+		globalRoleSlugs,
+		userIds,
+	}: {
+		projectId: string;
+		projectRoleSlugs: string[];
+		globalRoleSlugs: string[];
+		userIds?: string[];
+	}): Promise<User[]> {
+		if (userIds?.length === 0) return [];
+
+		const requestedUsers = userIds ? { id: In(userIds) } : {};
+		const where: Array<FindOptionsWhere<User>> = [];
+		if (globalRoleSlugs.length > 0) {
+			where.push({ ...requestedUsers, disabled: false, role: { slug: In(globalRoleSlugs) } });
+		}
+		if (projectRoleSlugs.length > 0) {
+			where.push({
+				...requestedUsers,
+				disabled: false,
+				projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
+			});
+		}
+		if (where.length === 0) {
+			return [];
+		}
+
+		return await this.find({
+			where,
+			relations: { role: true, authIdentities: true },
+		});
+	}
+
+	/**
+	 * IDs of enabled users who either hold one of `globalRoleSlugs` globally,
+	 * or hold one of `projectRoleSlugs` in one of `projectIds`.
+	 */
+	async findIdsWithGlobalOrProjectRoles({
+		projectIds,
+		projectRoleSlugs,
+		globalRoleSlugs,
+	}: {
+		projectIds: string[];
+		projectRoleSlugs: string[];
+		globalRoleSlugs: string[];
+	}): Promise<string[]> {
+		const where: Array<FindOptionsWhere<User>> = [];
+		if (globalRoleSlugs.length > 0) {
+			where.push({ disabled: false, role: { slug: In(globalRoleSlugs) } });
+		}
+		if (projectIds.length > 0 && projectRoleSlugs.length > 0) {
+			where.push({
+				disabled: false,
+				projectRelations: { projectId: In(projectIds), role: { slug: In(projectRoleSlugs) } },
+			});
+		}
+		if (where.length === 0) return [];
+
+		const users = await this.find({ where, select: ['id'] });
+		return [...new Set(users.map(({ id }) => id))];
+	}
+
+	/**
 	 * Find the user that owns the personal project that owns the workflow.
 	 *
 	 * Returns null if the workflow does not exist or is owned by a team project.
@@ -205,7 +391,16 @@ export class UserRepository extends Repository<User> {
 	private applyUserListFilter(
 		queryBuilder: SelectQueryBuilder<User>,
 		filter: UsersListFilterDto['filter'],
+		roleSlugs?: string[],
 	): SelectQueryBuilder<User> {
+		if (roleSlugs !== undefined) {
+			if (roleSlugs.length === 0) {
+				queryBuilder.andWhere('1 = 0');
+			} else {
+				queryBuilder.andWhere('user.role IN (:...roleSlugs)', { roleSlugs });
+			}
+		}
+
 		if (filter?.email !== undefined) {
 			queryBuilder.andWhere('user.email = :email', {
 				email: filter.email,
@@ -242,6 +437,22 @@ export class UserRepository extends Repository<User> {
 			}
 		}
 
+		if (filter?.ids !== undefined && filter.ids.length > 0) {
+			queryBuilder.andWhere('user.id IN (:...ids)', {
+				ids: filter.ids,
+			});
+		}
+
+		if (filter?.isPending !== undefined) {
+			if (filter.isPending) {
+				queryBuilder.andWhere('user.password IS NULL AND user.role <> :ownerRole', {
+					ownerRole: 'global:owner',
+				});
+			} else {
+				queryBuilder.andWhere('user.password IS NOT NULL');
+			}
+		}
+
 		if (filter?.fullText !== undefined) {
 			const fullTextFilter = `%${filter.fullText}%`;
 			queryBuilder.andWhere(
@@ -256,6 +467,15 @@ export class UserRepository extends Repository<User> {
 							email: fullTextFilter,
 						});
 				}),
+			);
+		}
+
+		if (filter?.projectId !== undefined) {
+			queryBuilder.innerJoin(
+				'user.projectRelations',
+				'userListProjectFilter',
+				'userListProjectFilter.projectId = :userListProjectId',
+				{ userListProjectId: filter.projectId },
 			);
 		}
 
@@ -314,7 +534,10 @@ export class UserRepository extends Repository<User> {
 		return queryBuilder;
 	}
 
-	buildUserQuery(listQueryOptions?: UsersListFilterDto): SelectQueryBuilder<User> {
+	buildUserQuery(
+		listQueryOptions?: UsersListFilterDto,
+		roleSlugs?: string[],
+	): SelectQueryBuilder<User> {
 		const queryBuilder = this.createQueryBuilder('user');
 
 		queryBuilder.leftJoinAndSelect('user.authIdentities', 'authIdentities');
@@ -324,13 +547,12 @@ export class UserRepository extends Repository<User> {
 		}
 		const { filter, select, take, skip, expand, sortBy } = listQueryOptions;
 
-		this.applyUserListSelect(queryBuilder, select as Array<keyof User>);
-		this.applyUserListFilter(queryBuilder, filter);
+		this.applyUserListSelect(queryBuilder, select);
+		this.applyUserListFilter(queryBuilder, filter, roleSlugs);
 		this.applyUserListExpand(queryBuilder, expand);
 		this.applyUserListPagination(queryBuilder, take, skip);
 		this.applyUserListSort(queryBuilder, sortBy);
 		queryBuilder.leftJoinAndSelect('user.role', 'role');
-		queryBuilder.leftJoinAndSelect('role.scopes', 'scopes');
 
 		return queryBuilder;
 	}

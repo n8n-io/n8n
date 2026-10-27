@@ -4,11 +4,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import type { IWorkflowDb } from '@/Interface';
 import type { Router } from 'vue-router';
+import type { Scope } from '@n8n/permissions';
 import { createTestingPinia } from '@pinia/testing';
 
 const useCanvasOperations = vi.hoisted(() => vi.fn());
@@ -17,7 +21,24 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations,
 }));
 
+const documentScopes = vi.hoisted(() => ({ value: [] as string[] }));
+
+// The document store exposes `scopes` as read-only, so the tests provide a stand-in.
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/stores/workflowDocument.store')>();
+	const { computed } = await import('vue');
+	return {
+		...actual,
+		injectWorkflowDocumentStore: () =>
+			computed(() => ({
+				documentId: actual.createWorkflowDocumentId(''),
+				scopes: documentScopes.value,
+			})),
+	};
+});
+
 describe('useWorkflowResourcesLocator', () => {
+	let workflowsListStoreMock: MockedStore<typeof useWorkflowsListStore>;
 	let workflowsStoreMock: MockedStore<typeof useWorkflowsStore>;
 	let ndvStoreMock: MockedStore<typeof useNDVStore>;
 
@@ -28,10 +49,12 @@ describe('useWorkflowResourcesLocator', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		documentScopes.value = [];
 
 		createTestingPinia();
+		workflowsListStoreMock = mockedStore(useWorkflowsListStore);
 		workflowsStoreMock = mockedStore(useWorkflowsStore);
-		ndvStoreMock = mockedStore(useNDVStore);
+		ndvStoreMock = mockedStore(useNDVStore, createWorkflowDocumentId(''));
 
 		useCanvasOperations.mockReturnValue({ renameNode: renameNodeMock });
 	});
@@ -41,21 +64,42 @@ describe('useWorkflowResourcesLocator', () => {
 			{
 				activeNodeName: 'Execute Workflow',
 				workflowId: 'workflow-id',
-				mockedWorkflow: { name: 'Test Workflow' },
+				mockedWorkflow: createTestWorkflow({ name: 'Test Workflow' }),
 				expectedRename: "Call 'Test Workflow'",
 				expectedCalledWith: 'Execute Workflow',
 			},
 			{
+				activeNodeName: 'Execute Workflow1',
+				workflowId: 'workflow-id',
+				mockedWorkflow: createTestWorkflow({ name: 'Test Workflow' }),
+				expectedRename: "Call 'Test Workflow'",
+				expectedCalledWith: 'Execute Workflow1',
+			},
+			{
+				activeNodeName: 'Execute Workflow2',
+				workflowId: 'workflow-id',
+				mockedWorkflow: createTestWorkflow({ name: 'Another Workflow' }),
+				expectedRename: "Call 'Another Workflow'",
+				expectedCalledWith: 'Execute Workflow2',
+			},
+			{
 				activeNodeName: 'Call n8n Workflow Tool',
 				workflowId: 'workflow-id',
-				mockedWorkflow: { name: 'Test Workflow' },
+				mockedWorkflow: createTestWorkflow({ name: 'Test Workflow' }),
 				expectedRename: "Call 'Test Workflow'",
 				expectedCalledWith: 'Call n8n Workflow Tool',
 			},
 			{
+				activeNodeName: 'Call n8n Workflow Tool1',
+				workflowId: 'workflow-id',
+				mockedWorkflow: createTestWorkflow({ name: 'Test Workflow' }),
+				expectedRename: "Call 'Test Workflow'",
+				expectedCalledWith: 'Call n8n Workflow Tool1',
+			},
+			{
 				activeNodeName: "Call 'Old Workflow'",
 				workflowId: 'workflow-id',
-				mockedWorkflow: { name: 'New Workflow' },
+				mockedWorkflow: createTestWorkflow({ name: 'New Workflow' }),
 				expectedRename: "Call 'New Workflow'",
 				expectedCalledWith: "Call 'Old Workflow'",
 			},
@@ -65,13 +109,11 @@ describe('useWorkflowResourcesLocator', () => {
 				const { applyDefaultExecuteWorkflowNodeName } = useWorkflowResourcesLocator(routerMock);
 
 				ndvStoreMock.activeNodeName = activeNodeName;
-				workflowsStoreMock.getWorkflowById.mockReturnValue(
-					mockedWorkflow as unknown as IWorkflowDb,
-				);
+				workflowsListStoreMock.getWorkflowById.mockReturnValue(mockedWorkflow);
 
 				applyDefaultExecuteWorkflowNodeName(workflowId);
 
-				expect(workflowsStoreMock.getWorkflowById).toHaveBeenCalledWith(workflowId);
+				expect(workflowsListStoreMock.getWorkflowById).toHaveBeenCalledWith(workflowId);
 				expect(renameNodeMock).toHaveBeenCalledWith(expectedCalledWith, expectedRename);
 			},
 		);
@@ -91,11 +133,11 @@ describe('useWorkflowResourcesLocator', () => {
 			const activeNodeName = 'Execute Workflow';
 
 			ndvStoreMock.activeNodeName = activeNodeName;
-			workflowsStoreMock.getWorkflowById.mockReturnValue(null as unknown as IWorkflowDb);
+			workflowsListStoreMock.getWorkflowById.mockReturnValue(null as unknown as IWorkflowDb);
 
 			applyDefaultExecuteWorkflowNodeName(workflowId);
 
-			expect(workflowsStoreMock.getWorkflowById).toHaveBeenCalledWith(workflowId);
+			expect(workflowsListStoreMock.getWorkflowById).toHaveBeenCalledWith(workflowId);
 			expect(renameNodeMock).not.toHaveBeenCalled();
 		});
 
@@ -103,14 +145,14 @@ describe('useWorkflowResourcesLocator', () => {
 			const { applyDefaultExecuteWorkflowNodeName } = useWorkflowResourcesLocator(routerMock);
 			const workflowId = 'workflow-id';
 			const activeNodeName = 'Some Other Node';
-			const mockedWorkflow = { name: 'Test Workflow' };
+			const mockedWorkflow = createTestWorkflow({ name: 'Test Workflow' });
 
 			ndvStoreMock.activeNodeName = activeNodeName;
-			workflowsStoreMock.getWorkflowById.mockReturnValue(mockedWorkflow as unknown as IWorkflowDb);
+			workflowsListStoreMock.getWorkflowById.mockReturnValue(mockedWorkflow);
 
 			applyDefaultExecuteWorkflowNodeName(workflowId);
 
-			expect(workflowsStoreMock.getWorkflowById).not.toHaveBeenCalled();
+			expect(workflowsListStoreMock.getWorkflowById).not.toHaveBeenCalled();
 			expect(renameNodeMock).not.toHaveBeenCalled();
 		});
 	});
@@ -130,15 +172,15 @@ describe('useWorkflowResourcesLocator', () => {
 				{ id: '2', name: 'Workflow 2' },
 			] as any;
 
-			workflowsStoreMock.fetchWorkflowsPage.mockResolvedValue(mockWorkflows);
-			workflowsStoreMock.totalWorkflowCount = 100;
+			workflowsListStoreMock.fetchWorkflowsPage.mockResolvedValue(mockWorkflows);
+			workflowsListStoreMock.totalWorkflowCount = 100;
 
 			const { populateNextWorkflowsPage, workflowsResources, hasMoreWorkflowsToLoad } =
 				useWorkflowResourcesLocator(routerMock);
 
 			await populateNextWorkflowsPage();
 
-			expect(workflowsStoreMock.fetchWorkflowsPage).toHaveBeenCalledWith(
+			expect(workflowsListStoreMock.fetchWorkflowsPage).toHaveBeenCalledWith(
 				undefined, // projectId
 				1, // page
 				40, // pageSize
@@ -169,7 +211,7 @@ describe('useWorkflowResourcesLocator', () => {
 		it('should handle search filtering with pagination reset', async () => {
 			const mockFilteredWorkflows = [{ id: '3', name: 'Filtered Workflow' }] as any;
 
-			workflowsStoreMock.fetchWorkflowsPage.mockResolvedValue(mockFilteredWorkflows);
+			workflowsListStoreMock.fetchWorkflowsPage.mockResolvedValue(mockFilteredWorkflows);
 
 			const { onSearchFilter, workflowsResources } = useWorkflowResourcesLocator(routerMock);
 
@@ -180,7 +222,7 @@ describe('useWorkflowResourcesLocator', () => {
 
 			await onSearchFilter('test search');
 
-			expect(workflowsStoreMock.fetchWorkflowsPage).toHaveBeenCalledWith(
+			expect(workflowsListStoreMock.fetchWorkflowsPage).toHaveBeenCalledWith(
 				undefined,
 				1,
 				40,
@@ -201,10 +243,10 @@ describe('useWorkflowResourcesLocator', () => {
 		});
 
 		it('should calculate hasMore correctly based on total count', async () => {
-			workflowsStoreMock.fetchWorkflowsPage.mockResolvedValue([
+			workflowsListStoreMock.fetchWorkflowsPage.mockResolvedValue([
 				{ id: '1', name: 'Workflow 1' },
 			] as any);
-			workflowsStoreMock.totalWorkflowCount = 1; // Only 1 total, so no more after first load
+			workflowsListStoreMock.totalWorkflowCount = 1; // Only 1 total, so no more after first load
 
 			const { populateNextWorkflowsPage, hasMoreWorkflowsToLoad } =
 				useWorkflowResourcesLocator(routerMock);
@@ -212,6 +254,88 @@ describe('useWorkflowResourcesLocator', () => {
 			await populateNextWorkflowsPage();
 
 			expect(hasMoreWorkflowsToLoad.value).toBe(false);
+		});
+
+		describe('callable sub-workflows', () => {
+			const setUpParentWorkflow = (scopes: Scope[]) => {
+				workflowsStoreMock.workflowId = 'parent-wf-id';
+				workflowsStoreMock.isNewWorkflow = false;
+				documentScopes.value = scopes;
+			};
+
+			it('should list callable sub-workflows when the user can update a saved parent', async () => {
+				setUpParentWorkflow(['workflow:read', 'workflow:update']);
+				workflowsListStoreMock.fetchCallableSubworkflowsPage.mockResolvedValue({
+					count: 3,
+					data: [
+						{ id: '1', name: 'Team Sub', active: true, isArchived: false, projectName: 'Team' },
+						{ id: '2', name: 'Personal Sub', active: false, isArchived: true },
+					],
+				});
+
+				const { onSearchFilter, workflowsResources, hasMoreWorkflowsToLoad, getWorkflowName } =
+					useWorkflowResourcesLocator(routerMock);
+				await onSearchFilter('sub');
+
+				expect(workflowsListStoreMock.fetchCallableSubworkflowsPage).toHaveBeenCalledWith(
+					'parent-wf-id',
+					1,
+					40,
+					'sub',
+				);
+				expect(workflowsListStoreMock.fetchWorkflowsPage).not.toHaveBeenCalled();
+				expect(workflowsResources.value).toEqual([
+					{
+						name: 'Team — Team Sub',
+						value: '1',
+						url: expect.any(String) as string,
+						isArchived: false,
+						active: true,
+					},
+					{
+						name: 'Personal Sub',
+						value: '2',
+						url: expect.any(String) as string,
+						isArchived: true,
+						active: false,
+					},
+				]);
+				expect(hasMoreWorkflowsToLoad.value).toBe(true);
+				expect(getWorkflowName('1')).toBe('Team — Team Sub');
+				// Callable rows can belong to workflows the user cannot read, so they
+				// must stay out of the workflows cache.
+				expect(workflowsListStoreMock.addWorkflow).not.toHaveBeenCalled();
+				expect(workflowsListStoreMock.setWorkflows).not.toHaveBeenCalled();
+			});
+
+			it('should list readable workflows when the user cannot update the parent', async () => {
+				setUpParentWorkflow(['workflow:read']);
+				workflowsListStoreMock.fetchWorkflowsPage.mockResolvedValue([]);
+
+				const { populateNextWorkflowsPage } = useWorkflowResourcesLocator(routerMock);
+				await populateNextWorkflowsPage();
+
+				expect(workflowsListStoreMock.fetchCallableSubworkflowsPage).not.toHaveBeenCalled();
+				expect(workflowsListStoreMock.fetchWorkflowsPage).toHaveBeenCalledWith(
+					undefined,
+					1,
+					40,
+					'updatedAt:desc',
+					{ triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'] },
+				);
+			});
+
+			it('should list readable workflows when the parent is not saved', async () => {
+				setUpParentWorkflow(['workflow:read', 'workflow:update']);
+				workflowsStoreMock.isNewWorkflow = true;
+				workflowsListStoreMock.fetchWorkflowsPage.mockResolvedValue([]);
+
+				const { populateNextWorkflowsPage } = useWorkflowResourcesLocator(routerMock);
+				await populateNextWorkflowsPage();
+
+				expect(workflowsListStoreMock.fetchCallableSubworkflowsPage).not.toHaveBeenCalled();
+				expect(workflowsListStoreMock.fetchWorkflowsPage).toHaveBeenCalled();
+			});
 		});
 
 		it('should handle multiple page loads correctly', async () => {
@@ -224,10 +348,10 @@ describe('useWorkflowResourcesLocator', () => {
 				{ id: '4', name: 'Workflow 4' },
 			] as any;
 
-			workflowsStoreMock.fetchWorkflowsPage
+			workflowsListStoreMock.fetchWorkflowsPage
 				.mockResolvedValueOnce(firstPageWorkflows)
 				.mockResolvedValueOnce(secondPageWorkflows);
-			workflowsStoreMock.totalWorkflowCount = 100;
+			workflowsListStoreMock.totalWorkflowCount = 100;
 
 			const { populateNextWorkflowsPage, workflowsResources } =
 				useWorkflowResourcesLocator(routerMock);
@@ -235,7 +359,7 @@ describe('useWorkflowResourcesLocator', () => {
 			// Load first page
 			await populateNextWorkflowsPage();
 			expect(workflowsResources.value).toHaveLength(2);
-			expect(workflowsStoreMock.fetchWorkflowsPage).toHaveBeenCalledWith(
+			expect(workflowsListStoreMock.fetchWorkflowsPage).toHaveBeenCalledWith(
 				undefined,
 				1,
 				40,
@@ -246,7 +370,7 @@ describe('useWorkflowResourcesLocator', () => {
 			// Load second page
 			await populateNextWorkflowsPage();
 			expect(workflowsResources.value).toHaveLength(4);
-			expect(workflowsStoreMock.fetchWorkflowsPage).toHaveBeenCalledWith(
+			expect(workflowsListStoreMock.fetchWorkflowsPage).toHaveBeenCalledWith(
 				undefined,
 				2,
 				40,
@@ -318,24 +442,24 @@ describe('useWorkflowResourcesLocator', () => {
 
 			expect(routerMock.resolve as any).toHaveBeenCalledWith({
 				name: 'NodeViewExisting',
-				params: { name: 'test-workflow-id' },
+				params: { workflowId: 'test-workflow-id' },
 			});
 			expect(url).toBe('/workflow/test-workflow-id');
 		});
 
 		it('should get workflow name from store', () => {
 			const mockWorkflow = { id: 'test-id', name: 'Test Name' } as IWorkflowDb;
-			workflowsStoreMock.getWorkflowById.mockReturnValue(mockWorkflow);
+			workflowsListStoreMock.getWorkflowById.mockReturnValue(mockWorkflow);
 
 			const { getWorkflowName } = useWorkflowResourcesLocator(routerMock);
 			const name = getWorkflowName('test-id');
 
 			expect(name).toBe('Test Name');
-			expect(workflowsStoreMock.getWorkflowById).toHaveBeenCalledWith('test-id');
+			expect(workflowsListStoreMock.getWorkflowById).toHaveBeenCalledWith('test-id');
 		});
 
 		it('should return workflow ID when workflow not found in store', () => {
-			workflowsStoreMock.getWorkflowById.mockReturnValue(null as any);
+			workflowsListStoreMock.getWorkflowById.mockReturnValue(null as any);
 
 			const { getWorkflowName } = useWorkflowResourcesLocator(routerMock);
 			const name = getWorkflowName('missing-id');

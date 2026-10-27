@@ -1,0 +1,94 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "f1c5b6a8-1f5b-4a92-9bb2-3e6e8a8a0001",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0d8c0f6d-fb43-4d62-9c3d-1c8e2e3f0001",
+							"name": "v",
+							"value": "1",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "b2e0f1a8-5b8f-4b2b-a0c2-9b3e2d2a0002",
+			"name": "Set A"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0d8c0f6d-fb43-4d62-9c3d-1c8e2e3f0002",
+							"name": "v",
+							"value": "2",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 0],
+			"id": "c3f1a2b8-6c9f-4c2c-b0d2-aa4f3e3b0003",
+			"name": "Set B"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0d8c0f6d-fb43-4d62-9c3d-1c8e2e3f0003",
+							"name": "v",
+							"value": "3",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [660, 0],
+			"id": "d4f1a2b8-7c9f-4c2c-b0d2-bb5f3e3b0004",
+			"name": "Set C"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Set A", "type": "main", "index": 0 }]]
+		},
+		"Set A": {
+			"main": [[{ "node": "Set B", "type": "main", "index": 0 }]]
+		},
+		"Set B": {
+			"main": [[{ "node": "Set C", "type": "main", "index": 0 }]]
+		}
+	},
+	"nodeGroups": [
+		{
+			"id": "e5f6a7b8-9c0d-4e1f-8a2b-3c4d5e6f7890",
+			"name": "Persisted group",
+			"nodeIds": ["b2e0f1a8-5b8f-4b2b-a0c2-9b3e2d2a0002", "c3f1a2b8-6c9f-4c2c-b0d2-aa4f3e3b0003"]
+		}
+	],
+	"pinData": {},
+	"meta": {
+		"instanceId": "canvas-node-groups-persisted-fixture"
+	}
+}

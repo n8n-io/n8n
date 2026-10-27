@@ -4,7 +4,6 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 	ListDataTableOptions,
-	ListDataTableOptionsSortByKey,
 } from 'n8n-workflow';
 
 import { ROWS_LIMIT_DEFAULT } from '../../common/constants';
@@ -29,7 +28,7 @@ export const description: INodeProperties[] = [
 		displayOptions,
 	},
 	{
-		displayName: 'Limit',
+		displayName: 'Limit Per Input Row',
 		name: 'limit',
 		type: 'number',
 		default: ROWS_LIMIT_DEFAULT,
@@ -67,9 +66,8 @@ export const description: INodeProperties[] = [
 				options: [
 					{ name: 'Created', value: 'createdAt' },
 					{ name: 'Name', value: 'name' },
-					{ name: 'Size', value: 'sizeBytes' },
 					{ name: 'Updated', value: 'updatedAt' },
-				] satisfies Array<{ name: string; value: ListDataTableOptionsSortByKey }>,
+				],
 				description: 'Field to sort by',
 			},
 			{
@@ -90,8 +88,8 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const limit = this.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT) as number;
+	const returnAll = this.getNodeParameter('returnAll', index);
+	const limit = this.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT);
 	const options = this.getNodeParameter('options', index, {}) as {
 		filterName?: string;
 		sortField?: string;

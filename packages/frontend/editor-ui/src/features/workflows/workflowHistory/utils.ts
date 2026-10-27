@@ -1,16 +1,20 @@
+import type { IWorkflowDb } from '@/Interface';
 import type {
 	WorkflowPublishHistory,
 	WorkflowHistory,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import dateformat from 'dateformat';
 
-export const getLastPublishedVersion = (workflowPublishHistory: WorkflowPublishHistory[]) => {
+export const getLastPublishedVersion = (
+	workflowPublishHistory: readonly WorkflowPublishHistory[],
+) => {
 	return workflowPublishHistory.findLast((history) => history.event === 'activated');
 };
 
-export const generateVersionName = (versionId: string) => {
-	return `Version ${versionId.substring(0, 8)}`;
-};
+export {
+	generateVersionLabelFromId,
+	getVersionLabel,
+} from '@n8n/composables/useWorkflowVersionLabel';
 
 export const formatTimestamp = (value: string) => {
 	const currentYear = new Date().getFullYear().toString();
@@ -87,4 +91,14 @@ export const computeTimelineEntries = (items: WorkflowHistory[]): TimelineEntry[
 	flushGroup();
 
 	return entries;
+};
+
+export const getPublishedVersionId = (
+	workflow: IWorkflowDb | null | undefined,
+): string | undefined => {
+	if (!workflow) {
+		return;
+	}
+
+	return workflow.activeVersionId ?? workflow.activeVersion?.versionId ?? undefined;
 };

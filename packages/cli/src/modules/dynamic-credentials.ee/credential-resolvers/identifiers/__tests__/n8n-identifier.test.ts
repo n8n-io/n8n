@@ -1,0 +1,865 @@
+import type { Mocked } from 'vitest';
+import type { Logger } from '@n8n/backend-common';
+import type { User, UserRepository } from '@n8n/db';
+import { CredentialResolverError } from '@n8n/decorators';
+import type { TrustedSourceGate } from '@n8n/inbound-auth';
+import { mock } from 'vitest-mock-extended';
+
+import type { AuthService } from '@/auth/auth.service';
+import { AuthError } from '@n8n/errors';
+import type { OAuthTokenVerifierProxy } from '@n8n/backend-services/auth';
+
+import {
+	carriesN8nIdentity,
+	N8N_IDENTITY_SOURCES,
+	N8NIdentifierMetadataSchema,
+	N8NIdentifier,
+} from '../n8n-identifier';
+
+describe('N8NIdentifier', () => {
+	let identifier: N8NIdentifier;
+	let mockLogger: Mocked<Logger>;
+	let mockAuthService: Mocked<AuthService>;
+	let mockOAuthVerifier: Mocked<OAuthTokenVerifierProxy>;
+	let mockTrustedSourceGate: Mocked<TrustedSourceGate>;
+	let mockUserRepository: Mocked<UserRepository>;
+
+	const mockUser = mock<User>({ id: 'user-123' });
+
+	beforeEach(() => {
+		mockLogger = mock<Logger>();
+		mockAuthService = mock<AuthService>();
+		mockOAuthVerifier = mock<OAuthTokenVerifierProxy>();
+		mockTrustedSourceGate = mock<TrustedSourceGate>();
+		mockTrustedSourceGate.authorizeSealed.mockResolvedValue(true);
+		mockUserRepository = mock<UserRepository>();
+		mockUserRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-123', disabled: false }));
+
+		identifier = new N8NIdentifier(
+			mockLogger,
+			mockAuthService,
+			mockOAuthVerifier,
+			mockTrustedSourceGate,
+			mockUserRepository,
+		);
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	describe('validateOptions', () => {
+		it('should always succeed as no validation is required', async () => {
+			await identifier.validateOptions({});
+			await identifier.validateOptions({ foo: 'bar' });
+		});
+	});
+
+	describe('resolve', () => {
+		describe('successful resolution', () => {
+			it('should resolve user ID with browserId string', async () => {
+				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+
+				const context = {
+					identity: 'valid-jwt-token',
+					version: 1 as const,
+					metadata: {
+						source: 'chat-hub-injected' as const,
+						method: 'GET',
+						endpoint: '/api/users',
+						browserId: 'browser-abc',
+					},
+				};
+
+				const result = await identifier.resolve(context, {});
+
+				expect(result).toBe('user-123');
+				expect(mockAuthService.authenticateUserBasedOnToken).toHaveBeenCalledWith(
+					'valid-jwt-token',
+					'GET',
+					'/api/users',
+					'browser-abc',
+				);
+			});
+
+			it('should resolve user ID with browserId undefined', async () => {
+				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+
+				const context = {
+					identity: 'valid-jwt-token',
+					version: 1 as const,
+					metadata: {
+						source: 'chat-hub-injected' as const,
+						method: 'POST',
+						endpoint: '/api/workflows',
+						browserId: undefined,
+					},
+				};
+
+				const result = await identifier.resolve(context, {});
+
+				expect(result).toBe('user-123');
+				expect(mockAuthService.authenticateUserBasedOnToken).toHaveBeenCalledWith(
+					'valid-jwt-token',
+					'POST',
+					'/api/workflows',
+					undefined,
+				);
+			});
+
+			it('should resolve user ID without browserId in metadata', async () => {
+				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+
+				const context = {
+					identity: 'valid-jwt-token',
+					version: 1 as const,
+					metadata: {
+						source: 'chat-hub-injected' as const,
+						method: 'DELETE',
+						endpoint: '/api/credentials',
+					},
+				};
+
+				const result = await identifier.resolve(context, {});
+
+				expect(result).toBe('user-123');
+				expect(mockAuthService.authenticateUserBasedOnToken).toHaveBeenCalledWith(
+					'valid-jwt-token',
+					'DELETE',
+					'/api/credentials',
+					undefined,
+				);
+			});
+		});
+
+		describe('metadata validation errors', () => {
+			it('should throw CredentialResolverError when metadata is missing', async () => {
+				const context = {
+					identity: 'valid-jwt-token',
+					version: 1 as const,
+					metadata: undefined,
+				};
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
+
+				// Verify auth service was never called
+				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
+			});
+
+			it('should throw CredentialResolverError when browserId has invalid type', async () => {
+				const context = {
+					identity: 'valid-jwt-token',
+					version: 1 as const,
+					metadata: {
+						source: 'chat-hub-injected' as const,
+						method: 'GET',
+						endpoint: '/api/users',
+						browserId: 123, // Number instead of string
+					},
+				};
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(
+					'Invalid context metadata: browserId: Invalid input: expected string, received number',
+				);
+
+				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('authentication errors', () => {
+			it('should propagate AuthError when token is invalid', async () => {
+				const authError = new AuthError('Unauthorized');
+				mockAuthService.authenticateUserBasedOnToken.mockRejectedValue(authError);
+
+				const context = {
+					identity: 'invalid-token',
+					version: 1 as const,
+					metadata: {
+						source: 'chat-hub-injected' as const,
+						method: 'GET',
+						endpoint: '/api/users',
+						browserId: 'browser-abc',
+					},
+				};
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow('Unauthorized');
+			});
+
+			it('should propagate error when authentication fails', async () => {
+				const genericError = new Error('Database connection failed');
+				mockAuthService.authenticateUserBasedOnToken.mockRejectedValue(genericError);
+
+				const context = {
+					identity: 'valid-token',
+					version: 1 as const,
+					metadata: {
+						source: 'chat-hub-injected' as const,
+						method: 'POST',
+						endpoint: '/api/workflows',
+					},
+				};
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow('Database connection failed');
+			});
+		});
+
+		describe('chat-hub branch with explicit source', () => {
+			it('should call authenticateUserBasedOnToken when source is chat-hub-injected', async () => {
+				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+
+				const context = {
+					identity: 'cookie-jwt',
+					version: 1 as const,
+					metadata: {
+						source: 'chat-hub-injected' as const,
+						method: 'POST',
+						endpoint: '/chat',
+						browserId: 'browser-abc',
+					},
+				};
+
+				const result = await identifier.resolve(context, {});
+
+				expect(result).toBe('user-123');
+				expect(mockAuthService.authenticateUserBasedOnToken).toHaveBeenCalledWith(
+					'cookie-jwt',
+					'POST',
+					'/chat',
+					'browser-abc',
+				);
+				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('cookie-source branch', () => {
+			it('should call authenticateUserBasedOnToken when source is cookie-source', async () => {
+				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+
+				const context = {
+					identity: 'cookie-jwt',
+					version: 1 as const,
+					metadata: {
+						source: 'cookie-source' as const,
+						method: 'GET',
+						endpoint: '/api/data',
+						browserId: 'browser-xyz',
+					},
+				};
+
+				const result = await identifier.resolve(context, {});
+
+				expect(result).toBe('user-123');
+				expect(mockAuthService.authenticateUserBasedOnToken).toHaveBeenCalledWith(
+					'cookie-jwt',
+					'GET',
+					'/api/data',
+					'browser-xyz',
+				);
+				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('discriminator validation', () => {
+			it('should reject metadata without a source field', async () => {
+				const context = {
+					identity: 'valid-jwt-token',
+					version: 1 as const,
+					metadata: {
+						method: 'GET',
+						endpoint: '/api/users',
+						browserId: 'browser-abc',
+					},
+				};
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
+				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
+				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
+			});
+
+			it('should reject metadata with an unknown source value', async () => {
+				const context = {
+					identity: 'valid-jwt-token',
+					version: 1 as const,
+					metadata: {
+						source: 'unknown-source',
+						method: 'GET',
+						endpoint: '/api/users',
+					},
+				};
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
+				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
+				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('manual-execution branch', () => {
+			it('should resolve user via authenticateUserByCookie and skip the request-bound path', async () => {
+				mockAuthService.authenticateUserByCookie.mockResolvedValue(mockUser);
+
+				const context = {
+					identity: 'n8n-auth-cookie-jwt',
+					version: 1 as const,
+					metadata: { source: 'manual-execution' as const },
+				};
+
+				const result = await identifier.resolve(context, {});
+
+				expect(result).toBe('user-123');
+				expect(mockAuthService.authenticateUserByCookie).toHaveBeenCalledWith(
+					'n8n-auth-cookie-jwt',
+				);
+				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
+			});
+
+			it('should propagate AuthError from authenticateUserByCookie', async () => {
+				mockAuthService.authenticateUserByCookie.mockRejectedValue(new AuthError('Unauthorized'));
+
+				const context = {
+					identity: 'expired-cookie',
+					version: 1 as const,
+					metadata: { source: 'manual-execution' as const },
+				};
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow('Unauthorized');
+			});
+
+			it('should propagate generic errors from authenticateUserByCookie', async () => {
+				mockAuthService.authenticateUserByCookie.mockRejectedValue(
+					new Error('Database connection failed'),
+				);
+
+				const context = {
+					identity: 'cookie-jwt',
+					version: 1 as const,
+					metadata: { source: 'manual-execution' as const },
+				};
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow('Database connection failed');
+			});
+		});
+
+		describe('n8n-oauth branch', () => {
+			it('should verify the token for the resource audience and resolve the user', async () => {
+				mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: mockUser });
+
+				const context = {
+					identity: 'oauth-access-token',
+					version: 1 as const,
+					metadata: {
+						source: 'n8n-oauth' as const,
+						resource: 'https://host/mcp/workflow-a',
+					},
+				};
+
+				const result = await identifier.resolve(context, {});
+
+				expect(result).toBe('user-123');
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).toHaveBeenCalledWith(
+					'oauth-access-token',
+					'https://host/mcp/workflow-a',
+					undefined,
+				);
+				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
+				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
+			});
+
+			it('should pass the sealed grant through, for a run that outlived its trigger', async () => {
+				mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: mockUser });
+
+				const grant = {
+					audiences: ['https://host/mcp/workflow-a'],
+					executeAccessWorkflowId: 'workflow-a',
+				};
+
+				const result = await identifier.resolve(
+					{
+						identity: 'oauth-access-token',
+						version: 1 as const,
+						metadata: {
+							source: 'n8n-oauth' as const,
+							resource: 'https://host/mcp/workflow-a',
+							grant,
+						},
+					},
+					{},
+				);
+
+				expect(result).toBe('user-123');
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).toHaveBeenCalledWith(
+					'oauth-access-token',
+					'https://host/mcp/workflow-a',
+					grant,
+				);
+			});
+
+			it('should reject a grant that names no audience', async () => {
+				await expect(
+					identifier.resolve(
+						{
+							identity: 'oauth-access-token',
+							version: 1 as const,
+							metadata: {
+								source: 'n8n-oauth' as const,
+								resource: 'https://host/mcp/workflow-a',
+								grant: { audiences: [] },
+							},
+						},
+						{},
+					),
+				).rejects.toThrow(CredentialResolverError);
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			});
+
+			it('rejects a version 2 carrier without a grant, before verifying the token', async () => {
+				await expect(
+					identifier.resolve(
+						{
+							identity: 'oauth-access-token',
+							version: 1 as const,
+							metadata: {
+								source: 'n8n-oauth' as const,
+								version: 2,
+								resource: 'https://host/mcp/workflow-a',
+							},
+						},
+						{},
+					),
+				).rejects.toThrow(
+					'Invalid context metadata: grant: Invalid input: expected object, received undefined',
+				);
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+				expect(mockLogger.warn).toHaveBeenCalledWith('Identity metadata is invalid', {
+					error: 'grant: Invalid input: expected object, received undefined',
+				});
+			});
+
+			it('rejects a carrier with an unknown version', async () => {
+				await expect(
+					identifier.resolve(
+						{
+							identity: 'oauth-access-token',
+							version: 1 as const,
+							metadata: {
+								source: 'n8n-oauth' as const,
+								version: 3,
+								resource: 'https://host/mcp/workflow-a',
+								grant: { audiences: ['https://host/mcp/workflow-a'] },
+							},
+						},
+						{},
+					),
+				).rejects.toThrow(/Invalid context metadata/);
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			});
+
+			it('should throw CredentialResolverError when the token resolves to no user', async () => {
+				mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({
+					user: null,
+					context: { reason: 'invalid_token', auth_type: 'oauth' },
+				});
+
+				const context = {
+					identity: 'wrong-audience-token',
+					version: 1 as const,
+					metadata: {
+						source: 'n8n-oauth' as const,
+						resource: 'https://host/mcp/workflow-b',
+					},
+				};
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
+			});
+		});
+
+		describe('n8n-oauth branch — sealed (subject present)', () => {
+			const grant = { audiences: ['https://host/mcp/wf'], executeAccessWorkflowId: 'wf' };
+			const sealedContext = (metaOverrides: Record<string, unknown> = {}) => ({
+				identity: 'oauth-access-token',
+				version: 1 as const,
+				metadata: {
+					source: 'n8n-oauth' as const,
+					version: 2,
+					resource: 'https://host/mcp/wf',
+					subject: 'user-123',
+					establishedAt: 1,
+					executionPath: ['exec-root'],
+					grant,
+					...metaOverrides,
+				},
+			});
+
+			it('returns the subject when the execution is in the path, without verifying the token', async () => {
+				const result = await identifier.resolve(sealedContext(), {}, 'exec-root');
+
+				expect(result).toBe('user-123');
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			});
+
+			it('accepts a sub-workflow execution present in the inherited path', async () => {
+				const result = await identifier.resolve(
+					sealedContext({ executionPath: ['exec-root', 'exec-child'] }),
+					{},
+					'exec-child',
+				);
+
+				expect(result).toBe('user-123');
+			});
+
+			it('rejects a seal used in a different execution of the same workflow', async () => {
+				await expect(identifier.resolve(sealedContext(), {}, 'exec-other')).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('fails closed when a bound seal reaches resolution with no execution id', async () => {
+				await expect(identifier.resolve(sealedContext(), {}, undefined)).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('resolves however long after establishment (no token, no TTL)', async () => {
+				const result = await identifier.resolve(
+					sealedContext({ establishedAt: 0 }),
+					{},
+					'exec-root',
+				);
+
+				expect(result).toBe('user-123');
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			});
+
+			it('returns the subject ungated for an unbound seal (empty path, pre-execution probe)', async () => {
+				const result = await identifier.resolve(
+					sealedContext({ executionPath: [] }),
+					{},
+					undefined,
+				);
+
+				expect(result).toBe('user-123');
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			});
+
+			it('rejects an unbound seal (empty path) when resolving inside an execution', async () => {
+				await expect(
+					identifier.resolve(sealedContext({ executionPath: [] }), {}, 'exec-root'),
+				).rejects.toThrow(CredentialResolverError);
+			});
+
+			it('re-takes the sealed grant through the gate and returns the subject when still authorized', async () => {
+				const result = await identifier.resolve(sealedContext(), {}, 'exec-root');
+
+				expect(result).toBe('user-123');
+				expect(mockTrustedSourceGate.authorizeSealed).toHaveBeenCalledWith({
+					userId: 'user-123',
+					grant,
+					binding: undefined,
+				});
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			});
+
+			it('passes the sealed binding to the gate', async () => {
+				const binding = { sourceId: 'source-1', subject: 'idp-alice' };
+
+				await identifier.resolve(sealedContext({ binding }), {}, 'exec-root');
+
+				expect(mockTrustedSourceGate.authorizeSealed).toHaveBeenCalledWith({
+					userId: 'user-123',
+					grant,
+					binding,
+				});
+			});
+
+			it('rejects when the gate denies the sealed identity', async () => {
+				mockTrustedSourceGate.authorizeSealed.mockResolvedValue(false);
+
+				await expect(identifier.resolve(sealedContext(), {}, 'exec-root')).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('rejects a version 2 seal without a grant, without asking the gate or loading the user', async () => {
+				await expect(
+					identifier.resolve(sealedContext({ grant: undefined }), {}, 'exec-root'),
+				).rejects.toThrow(
+					'Invalid context metadata: grant: Invalid input: expected object, received undefined',
+				);
+				expect(mockTrustedSourceGate.authorizeSealed).not.toHaveBeenCalled();
+				expect(mockUserRepository.findOneBy).not.toHaveBeenCalled();
+				expect(mockLogger.warn).toHaveBeenCalled();
+			});
+
+			describe('legacy seal (no version)', () => {
+				const legacyContext = (metaOverrides: Record<string, unknown> = {}) =>
+					sealedContext({ version: undefined, ...metaOverrides });
+
+				it('re-takes the sealed grant through the gate when the seal has one', async () => {
+					const result = await identifier.resolve(legacyContext(), {}, 'exec-root');
+
+					expect(result).toBe('user-123');
+					expect(mockTrustedSourceGate.authorizeSealed).toHaveBeenCalledWith({
+						userId: 'user-123',
+						grant,
+						binding: undefined,
+					});
+					expect(mockUserRepository.findOneBy).not.toHaveBeenCalled();
+				});
+
+				it('checks the principal locally when the seal has no grant', async () => {
+					const result = await identifier.resolve(
+						legacyContext({ grant: undefined }),
+						{},
+						'exec-root',
+					);
+
+					expect(result).toBe('user-123');
+					expect(mockTrustedSourceGate.authorizeSealed).not.toHaveBeenCalled();
+					expect(mockUserRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-123' });
+				});
+
+				it('rejects when the sealed principal is disabled', async () => {
+					mockUserRepository.findOneBy.mockResolvedValue(
+						mock<User>({ id: 'user-123', disabled: true }),
+					);
+
+					await expect(
+						identifier.resolve(legacyContext({ grant: undefined }), {}, 'exec-root'),
+					).rejects.toThrow(CredentialResolverError);
+				});
+
+				it('rejects when the sealed principal no longer exists', async () => {
+					mockUserRepository.findOneBy.mockResolvedValue(null);
+
+					await expect(
+						identifier.resolve(legacyContext({ grant: undefined }), {}, 'exec-root'),
+					).rejects.toThrow(CredentialResolverError);
+				});
+
+				it('still binds the seal to its execution', async () => {
+					await expect(
+						identifier.resolve(legacyContext({ grant: undefined }), {}, 'exec-other'),
+					).rejects.toThrow(CredentialResolverError);
+					expect(mockUserRepository.findOneBy).not.toHaveBeenCalled();
+				});
+			});
+		});
+	});
+
+	describe('identify', () => {
+		it('validates the cookie for a manual-execution carrier', async () => {
+			mockAuthService.authenticateUserByCookie.mockResolvedValue(mockUser);
+
+			const userId = await identifier.identify({
+				identity: 'cookie-jwt',
+				version: 1,
+				metadata: { source: 'manual-execution' },
+			});
+
+			expect(mockAuthService.authenticateUserByCookie).toHaveBeenCalledWith('cookie-jwt');
+			expect(userId).toBe('user-123');
+		});
+
+		it('returns the sealed subject for an n8n-oauth carrier the gate allows, without verifying the token', async () => {
+			const grant = { audiences: ['r'], executeAccessWorkflowId: 'wf' };
+			const binding = { sourceId: 'source-1', subject: 'idp-alice' };
+
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: {
+					source: 'n8n-oauth',
+					version: 2,
+					resource: 'r',
+					subject: 'user-123',
+					grant,
+					binding,
+				},
+			});
+
+			expect(userId).toBe('user-123');
+			expect(mockTrustedSourceGate.authorizeSealed).toHaveBeenCalledWith({
+				userId: 'user-123',
+				grant,
+				binding,
+			});
+			expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+		});
+
+		it('returns undefined for a sealed subject the gate denies', async () => {
+			mockTrustedSourceGate.authorizeSealed.mockResolvedValue(false);
+
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: {
+					source: 'n8n-oauth',
+					version: 2,
+					resource: 'r',
+					subject: 'user-123',
+					grant: { audiences: ['r'] },
+				},
+			});
+
+			expect(userId).toBeUndefined();
+		});
+
+		it('returns undefined for a version 2 seal without a grant', async () => {
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: { source: 'n8n-oauth', version: 2, resource: 'r', subject: 'user-123' },
+			});
+
+			expect(userId).toBeUndefined();
+			expect(mockTrustedSourceGate.authorizeSealed).not.toHaveBeenCalled();
+			expect(mockUserRepository.findOneBy).not.toHaveBeenCalled();
+		});
+
+		it('returns undefined for a version 2 carrier without a subject or a grant, without verifying the token', async () => {
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: { source: 'n8n-oauth', version: 2, resource: 'r' },
+			});
+
+			expect(userId).toBeUndefined();
+			expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+		});
+
+		it('asks the gate for a legacy seal with a grant', async () => {
+			const grant = { audiences: ['r'], executeAccessWorkflowId: 'wf' };
+
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: { source: 'n8n-oauth', resource: 'r', subject: 'user-123', grant },
+			});
+
+			expect(userId).toBe('user-123');
+			expect(mockTrustedSourceGate.authorizeSealed).toHaveBeenCalledWith({
+				userId: 'user-123',
+				grant,
+				binding: undefined,
+			});
+			expect(mockUserRepository.findOneBy).not.toHaveBeenCalled();
+		});
+
+		it('returns the subject of a legacy seal without a grant when the principal is enabled', async () => {
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: { source: 'n8n-oauth', resource: 'r', subject: 'user-123' },
+			});
+
+			expect(userId).toBe('user-123');
+			expect(mockTrustedSourceGate.authorizeSealed).not.toHaveBeenCalled();
+			expect(mockUserRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-123' });
+		});
+
+		it.each([
+			['disabled', mock<User>({ id: 'user-123', disabled: true })],
+			['missing', null],
+		])(
+			'returns undefined for a legacy seal without a grant when the principal is %s',
+			async (_label, user) => {
+				mockUserRepository.findOneBy.mockResolvedValue(user);
+
+				const userId = await identifier.identify({
+					identity: 'token',
+					version: 1,
+					metadata: { source: 'n8n-oauth', resource: 'r', subject: 'user-123' },
+				});
+
+				expect(userId).toBeUndefined();
+			},
+		);
+
+		it('verifies the token for an n8n-oauth carrier without a subject', async () => {
+			mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: mockUser } as never);
+
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: { source: 'n8n-oauth', resource: 'r' },
+			});
+
+			expect(mockOAuthVerifier.verifyOAuthAccessToken).toHaveBeenCalledWith(
+				'token',
+				'r',
+				undefined,
+			);
+			expect(userId).toBe('user-123');
+		});
+
+		it('validates the request-bound JWT for a chat-hub carrier', async () => {
+			mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: {
+					source: 'chat-hub-injected',
+					method: 'POST',
+					endpoint: '/e',
+					browserId: 'b',
+				},
+			});
+
+			expect(userId).toBe('user-123');
+		});
+
+		it('returns undefined for metadata that is not an n8n identity', async () => {
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: { source: 'http-header', headerName: 'authorization' },
+			});
+
+			expect(userId).toBeUndefined();
+		});
+
+		it('returns undefined instead of throwing when validation fails', async () => {
+			mockAuthService.authenticateUserByCookie.mockRejectedValue(new AuthError('nope'));
+
+			const userId = await identifier.identify({
+				identity: 'bad-cookie',
+				version: 1,
+				metadata: { source: 'manual-execution' },
+			});
+
+			expect(userId).toBeUndefined();
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ source: 'manual-execution' }),
+			);
+		});
+	});
+});
+
+describe('carriesN8nIdentity', () => {
+	it.each(N8N_IDENTITY_SOURCES)('recognises the %s source', (source) => {
+		expect(carriesN8nIdentity({ identity: 'token', version: 1, metadata: { source } })).toBe(true);
+	});
+
+	it('recognises an n8n source even when the rest of the metadata is missing', () => {
+		// Fail-safe: an incomplete `cookie-source` context still carries an n8n token, and
+		// must not be waved through to a resolver that would treat it as an external one.
+		expect(
+			carriesN8nIdentity({ identity: 'token', version: 1, metadata: { source: 'cookie-source' } }),
+		).toBe(true);
+	});
+
+	it.each([
+		['slack-signature', { source: 'slack-signature' }],
+		['http-header', { source: 'http-header', headerName: 'authorization' }],
+		['no source at all', {}],
+	])('does not claim %s', (_label, metadata) => {
+		expect(carriesN8nIdentity({ identity: 'token', version: 1, metadata })).toBe(false);
+	});
+
+	it('covers every source the identifier accepts', () => {
+		// Guards against a source being added to the schema but not to the list, which
+		// would silently hand an n8n token to an external-subject resolver.
+		expect(N8NIdentifierMetadataSchema.options).toHaveLength(3);
+	});
+});

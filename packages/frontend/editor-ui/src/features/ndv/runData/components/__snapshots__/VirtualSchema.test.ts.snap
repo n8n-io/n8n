@@ -167,6 +167,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
           >
             <span />
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -201,7 +202,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="type"
+              icon="text-aa"
               size="small"
               spin="false"
             />
@@ -230,21 +231,36 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
         
         
         
-        <n8n-icon-stub
-          class="icon el-tooltip__trigger el-tooltip__trigger"
-          data-v-414a3fc7=""
-          icon="ellipsis"
-          size="small"
-          spin="false"
-        />
+        
+        
+        <span
+          class=""
+          data-grace-area-trigger=""
+          data-state="closed"
+        >
+          
+          
+          <n8n-icon-stub
+            class="icon"
+            data-v-414a3fc7=""
+            icon="ellipsis"
+            size="small"
+            spin="false"
+          />
+          
+          
+        </span>
         <!--teleport start-->
         <!--teleport end-->
+        
+        
         
         
         
@@ -483,6 +499,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -551,6 +568,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -619,6 +637,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -687,6 +706,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -755,6 +775,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -823,6 +844,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -925,7 +947,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="type"
+              icon="text-aa"
               size="small"
               spin="false"
             />
@@ -954,6 +976,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -1015,6 +1038,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -1081,6 +1105,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -1113,7 +1138,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="type"
+              icon="text-aa"
               size="small"
               spin="false"
             />
@@ -1142,6 +1167,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -1174,7 +1200,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="type"
+              icon="text-aa"
               size="small"
               spin="false"
             />
@@ -1203,6 +1229,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -1358,6 +1385,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -1426,6 +1454,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -1494,6 +1523,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -1557,6 +1587,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -1591,7 +1622,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="type"
+              icon="text-aa"
               size="small"
               spin="false"
             />
@@ -1620,6 +1651,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -1861,7 +1893,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="type"
+              icon="text-aa"
               size="small"
               spin="false"
             />
@@ -1890,6 +1922,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -1922,7 +1955,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="type"
+              icon="text-aa"
               size="small"
               spin="false"
             />
@@ -1951,6 +1984,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -2000,15 +2034,29 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
           </div>
           
-          <n8n-icon-stub
-            class="locked-icon el-tooltip__trigger el-tooltip__trigger"
-            data-v-a135e02d=""
-            icon="lock"
-            size="small"
-            spin="false"
-          />
+          
+          
+          <span
+            class=""
+            data-grace-area-trigger=""
+            data-state="closed"
+          >
+            
+            
+            <n8n-icon-stub
+              class="locked-icon"
+              data-v-a135e02d=""
+              icon="lock"
+              size="small"
+              spin="false"
+            />
+            
+            
+          </span>
           <!--teleport start-->
           <!--teleport end-->
+          
+          
           
           <span
             class="content text"
@@ -2017,6 +2065,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -2083,6 +2132,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -2115,7 +2165,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="type"
+              icon="text-aa"
               size="small"
               spin="false"
             />
@@ -2144,6 +2194,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -2176,7 +2227,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="type"
+              icon="text-aa"
               size="small"
               spin="false"
             />
@@ -2205,6 +2256,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -2237,7 +2289,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="type"
+              icon="text-aa"
               size="small"
               spin="false"
             />
@@ -2266,6 +2318,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -2332,6 +2385,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -2364,7 +2418,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="type"
+              icon="text-aa"
               size="small"
               spin="false"
             />
@@ -2393,6 +2447,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -2425,7 +2480,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="type"
+              icon="text-aa"
               size="small"
               spin="false"
             />
@@ -2454,6 +2509,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -2486,7 +2542,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="square-check"
+              icon="toggles"
               size="small"
               spin="false"
             />
@@ -2515,6 +2571,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -2636,7 +2693,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="type"
+              icon="text-aa"
               size="small"
               spin="false"
             />
@@ -2667,6 +2724,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             
             
           </span>
+          <!--v-if-->
         </div>
         
         
@@ -2753,7 +2811,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             <n8n-icon-stub
               class="type-icon"
               data-v-a135e02d=""
-              icon="type"
+              icon="text-aa"
               size="small"
               spin="false"
             />
@@ -2784,6 +2842,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             
             
           </span>
+          <!--v-if-->
         </div>
         
         

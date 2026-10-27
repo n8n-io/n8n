@@ -6,7 +6,7 @@ describe('FileAccessRule', () => {
 	let rule: FileAccessRule;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		rule = new FileAccessRule();
 	});
 
@@ -19,7 +19,7 @@ describe('FileAccessRule', () => {
 				title: 'File Access Restrictions',
 				description: 'File access is now restricted to a default directory for security purposes',
 				category: BreakingChangeCategory.workflow,
-				severity: 'medium',
+				impact: 'executionsFail',
 			});
 		});
 	});

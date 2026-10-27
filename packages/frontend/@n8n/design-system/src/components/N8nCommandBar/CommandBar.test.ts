@@ -1,309 +1,414 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/vue';
-import { nextTick } from 'vue';
+import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/vue';
 
 import N8nCommandBar from './CommandBar.vue';
+import type { CommandBarItem, CommandBarSection, CommandBarTab } from './types';
 
-const createSampleItems = () => [
-	{ id: 'recent-1', title: 'Recent: Customer Sync', icon: { html: '📋' } },
-	{ id: 'recent-2', title: 'Recent: Email Campaign', icon: { html: '✉️' } },
+const workflowItem: CommandBarItem = {
+	id: 'workflow-1',
+	title: 'Sync leads',
+	description: 'Sales',
+	href: '/workflow/1',
+};
 
+const sections: CommandBarSection[] = [
 	{
-		id: 'create',
-		title: 'Create new workflow',
-		icon: { html: '⚡' },
-		section: 'Actions',
+		id: 'recent',
+		title: 'Recent',
+		items: [workflowItem, { id: 'workflow-2', title: 'Archive invoices' }],
 	},
 	{
-		id: 'import',
-		title: 'Import workflow',
-		icon: { html: '📥' },
-		section: 'Actions',
-		keywords: ['upload', 'file'],
-	},
-
-	{ id: 'workflows', title: 'All Workflows', icon: { html: '📁' }, section: 'Navigation' },
-	{ id: 'executions', title: 'Executions', icon: { html: '🏃' }, section: 'Navigation' },
-
-	{
-		id: 'search-nodes',
-		title: 'Search nodes',
-		icon: { html: '🔍' },
-		section: 'Tools',
-		placeholder: 'Search nodes…',
-		children: [
-			{ id: 'node-http-request', title: 'HTTP Request' },
-			{ id: 'node-set', title: 'Set' },
+		id: 'actions',
+		title: 'Actions',
+		items: [
+			{ id: 'locked', title: 'Locked node', disabled: true },
+			{ id: 'settings', title: 'Settings' },
 		],
-		hasMoreChildren: true,
 	},
 ];
 
-async function openCommandBar() {
-	const ev = new KeyboardEvent('keydown', { key: 'k', metaKey: true });
-	document.dispatchEvent(ev);
-	await waitFor(() => expect(screen.getByPlaceholderText('Type a command...')).toBeInTheDocument());
+const tabs: CommandBarTab[] = [
+	{ id: 'all', label: 'All' },
+	{ id: 'workflows', label: 'Workflows' },
+	{ id: 'actions', label: 'Actions' },
+];
+
+async function renderCommandBar(props: Record<string, unknown> = {}) {
+	const wrapper = render(N8nCommandBar, {
+		props: { open: true, sections, tabs, activeTab: 'all', ...props },
+	});
+	await screen.findByTestId('command-bar');
+	return wrapper;
 }
 
-describe('components', () => {
-	describe('N8nCommandBar', () => {
-		it('opens with Cmd/Ctrl+K and closes with Escape', async () => {
-			const wrapper = render(N8nCommandBar, {
-				props: { items: createSampleItems() },
-			});
+const getInput = () => screen.getByRole('combobox');
 
-			await openCommandBar();
+const getSelectedTitle = () =>
+	screen
+		.getAllByRole('option')
+		.find((option) => option.getAttribute('aria-selected') === 'true')
+		?.textContent?.trim();
 
-			const esc = new KeyboardEvent('keydown', { key: 'Escape' });
-			document.dispatchEvent(esc);
+describe('N8nCommandBar', () => {
+	it('opens with Cmd+K', async () => {
+		const wrapper = render(N8nCommandBar, { props: { sections } });
 
-			await waitFor(() =>
-				expect(screen.queryByPlaceholderText('Type a command...')).not.toBeInTheDocument(),
-			);
-			// sanity: no leaks
-			expect(wrapper.emitted()).toBeDefined();
+		document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+
+		await waitFor(() => expect(screen.getByTestId('command-bar')).toBeInTheDocument());
+		expect(wrapper.emitted('update:open')).toEqual([[true]]);
+	});
+
+	it('requests to close on Escape', async () => {
+		const wrapper = await renderCommandBar();
+
+		await fireEvent.keyDown(getInput(), { key: 'Escape' });
+
+		expect(wrapper.emitted('update:open')).toEqual([[false]]);
+	});
+
+	it('renders section headers before their items', async () => {
+		await renderCommandBar();
+
+		const header = screen.getByText('Actions', { selector: '[role="presentation"]' });
+		const item = screen.getByText('Settings');
+
+		expect(header.compareDocumentPosition(item)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		expect(screen.getByText('Recent')).toBeInTheDocument();
+	});
+
+	it('shows skeleton rows for a loading section without items', async () => {
+		await renderCommandBar({
+			sections: [{ id: 'workflows', title: 'Workflows', items: [], isLoading: true }],
 		});
 
-		it('emits inputChange and filters results as user types', async () => {
-			const wrapper = render(N8nCommandBar, {
-				props: { items: createSampleItems() },
+		expect(
+			screen.getByText('Workflows', { selector: '[role="presentation"]' }),
+		).toBeInTheDocument();
+		expect(screen.getAllByTestId('command-bar-skeleton')).toHaveLength(2);
+		expect(screen.queryByTestId('command-bar-empty')).not.toBeInTheDocument();
+	});
+
+	it('moves the selection with the arrow keys and selects with Enter', async () => {
+		const wrapper = await renderCommandBar();
+		const input = getInput();
+
+		expect(getSelectedTitle()).toContain('Sync leads');
+
+		await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		expect(getSelectedTitle()).toContain('Archive invoices');
+
+		await fireEvent.keyDown(input, { key: 'ArrowUp' });
+		await fireEvent.keyDown(input, { key: 'ArrowUp' });
+		expect(getSelectedTitle()).toContain('Sync leads');
+
+		await fireEvent.keyDown(input, { key: 'Enter' });
+		expect(wrapper.emitted('select')).toEqual([[workflowItem, { newTab: false }]]);
+	});
+
+	it('updates the query when typing in the focused search input', async () => {
+		const user = userEvent.setup();
+		const wrapper = await renderCommandBar();
+		const input = getInput();
+		await waitFor(() => expect(input).toHaveFocus());
+
+		await user.keyboard('s');
+
+		expect(input).toHaveValue('s');
+		expect(wrapper.emitted('update:query')).toEqual([['s']]);
+	});
+
+	// AI-2833: Clicking inside the open command bar must not stop keyboard input.
+	it.each(['s', '?'])(
+		'recovers focus and keeps the printable character %s after blur',
+		async (key) => {
+			const user = userEvent.setup();
+			const wrapper = await renderCommandBar();
+			const input = getInput();
+			await waitFor(() => expect(input).toHaveFocus());
+
+			await user.click(screen.getByText('Recent'));
+			expect(screen.getByTestId('command-bar')).toBeInTheDocument();
+			expect(input).not.toHaveFocus();
+
+			await user.keyboard(key);
+
+			expect(input).toHaveFocus();
+			expect(input).toHaveValue(key);
+			expect(wrapper.emitted('update:query')).toEqual([[key]]);
+			expect(wrapper.emitted('update:open')).toBeUndefined();
+		},
+	);
+
+	it.each(['@', 'k'])(
+		'recovers focus and inserts AltGraph character %s when Ctrl and Alt are also set',
+		async (key) => {
+			const user = userEvent.setup();
+			const wrapper = await renderCommandBar();
+			const input = getInput();
+			await waitFor(() => expect(input).toHaveFocus());
+			const header = screen.getByText('Recent');
+			await user.click(header);
+			expect(input).not.toHaveFocus();
+
+			await fireEvent.keyDown(header, {
+				key,
+				ctrlKey: true,
+				altKey: true,
+				modifierAltGraph: true,
 			});
 
-			await openCommandBar();
-			const input = screen.getByPlaceholderText('Type a command...');
+			expect(input).toHaveFocus();
+			expect(input).toHaveValue(key);
+			expect(wrapper.emitted('update:query')).toEqual([[key]]);
+			expect(wrapper.emitted('update:open')).toBeUndefined();
+		},
+	);
 
-			await fireEvent.update(input, 'import');
-			await nextTick();
+	it.each([{ ctrlKey: true }, { altKey: true }, { metaKey: true }])(
+		'keeps modified shortcuts outside the search input: %o',
+		async (modifiers) => {
+			const user = userEvent.setup();
+			const wrapper = await renderCommandBar();
+			const input = getInput();
+			await waitFor(() => expect(input).toHaveFocus());
+			const header = screen.getByText('Recent');
+			await user.click(header);
 
-			expect(screen.getByText('Import workflow')).toBeInTheDocument();
-			expect(screen.queryByText('Create new workflow')).not.toBeInTheDocument();
+			await fireEvent.keyDown(header, { key: 's', ...modifiers });
 
-			const events = wrapper.emitted('inputChange') ?? [];
-			expect(events.length).toBeGreaterThan(0);
-			expect(events[events.length - 1]).toEqual(['import']);
+			expect(input).not.toHaveFocus();
+			expect(input).toHaveValue('');
+			expect(wrapper.emitted('update:query')).toBeUndefined();
+		},
+	);
+
+	it.each([
+		{ key: 'ArrowDown', initialKeys: '', selectedTitle: 'Archive invoices' },
+		{ key: 'ArrowUp', initialKeys: '{ArrowDown}{ArrowDown}', selectedTitle: 'Archive invoices' },
+	])(
+		'recovers focus and moves the selection once with $key after blur',
+		async ({ key, initialKeys, selectedTitle }) => {
+			const user = userEvent.setup();
+			const wrapper = await renderCommandBar();
+			const input = getInput();
+			await waitFor(() => expect(input).toHaveFocus());
+			if (initialKeys) await user.keyboard(initialKeys);
+
+			await user.click(screen.getByText('Recent'));
+			expect(screen.getByTestId('command-bar')).toBeInTheDocument();
+			expect(input).not.toHaveFocus();
+
+			await user.keyboard(`{${key}}`);
+
+			expect(input).toHaveFocus();
+			expect(getSelectedTitle()).toContain(selectedTitle);
+			expect(wrapper.emitted('select')).toBeUndefined();
+			expect(wrapper.emitted('update:open')).toBeUndefined();
+		},
+	);
+
+	it.each([
+		{ key: 'ArrowLeft', activeTab: 'actions' },
+		{ key: 'ArrowRight', activeTab: 'workflows' },
+	])('recovers focus and switches tabs once with $key after blur', async ({ key, activeTab }) => {
+		const user = userEvent.setup();
+		const wrapper = await renderCommandBar();
+		const input = getInput();
+		await waitFor(() => expect(input).toHaveFocus());
+
+		await user.click(screen.getByText('Recent'));
+		expect(screen.getByTestId('command-bar')).toBeInTheDocument();
+		expect(input).not.toHaveFocus();
+
+		await user.keyboard(`{${key}}`);
+
+		expect(input).toHaveFocus();
+		expect(wrapper.emitted('update:activeTab')).toEqual([[activeTab]]);
+		expect(wrapper.emitted('update:open')).toBeUndefined();
+	});
+
+	it.each([
+		{ key: 'ArrowLeft', start: 2, end: 2, expectedStart: 1, expectedEnd: 1 },
+		{ key: 'ArrowRight', start: 2, end: 2, expectedStart: 3, expectedEnd: 3 },
+		{ key: 'ArrowLeft', start: 1, end: 4, expectedStart: 1, expectedEnd: 1 },
+		{ key: 'ArrowRight', start: 1, end: 4, expectedStart: 4, expectedEnd: 4 },
+		{ key: 'ArrowLeft', start: 0, end: 0, expectedStart: 0, expectedEnd: 0, tabs: [] },
+		{ key: 'ArrowRight', start: 5, end: 5, expectedStart: 5, expectedEnd: 5, tabs: [] },
+		{ key: 'ArrowLeft', query: 'a😀b', start: 3, end: 3, expectedStart: 1, expectedEnd: 1 },
+		{ key: 'ArrowRight', query: 'ae\u0301b', start: 1, end: 1, expectedStart: 3, expectedEnd: 3 },
+		{
+			key: 'ArrowLeft',
+			start: 2,
+			end: 2,
+			shiftKey: true,
+			expectedStart: 1,
+			expectedEnd: 2,
+			expectedDirection: 'backward',
+		},
+		{
+			key: 'ArrowRight',
+			start: 2,
+			end: 2,
+			shiftKey: true,
+			expectedStart: 2,
+			expectedEnd: 3,
+			expectedDirection: 'forward',
+		},
+		{
+			key: 'ArrowLeft',
+			start: 1,
+			end: 4,
+			shiftKey: true,
+			expectedStart: 1,
+			expectedEnd: 3,
+			expectedDirection: 'forward',
+		},
+		{
+			key: 'ArrowRight',
+			start: 1,
+			end: 4,
+			direction: 'backward' as const,
+			shiftKey: true,
+			expectedStart: 2,
+			expectedEnd: 4,
+			expectedDirection: 'backward',
+		},
+	])('recovers focus and moves the query caret: %o', async (testCase) => {
+		const user = userEvent.setup();
+		const query = testCase.query ?? 'leads';
+		const wrapper = await renderCommandBar({ query, tabs: testCase.tabs ?? tabs });
+		const input = getInput() as HTMLInputElement;
+		await waitFor(() => expect(input).toHaveFocus());
+		input.setSelectionRange(testCase.start, testCase.end, testCase.direction);
+		const header = screen.getByText('Recent');
+		await user.click(header);
+		expect(input).not.toHaveFocus();
+
+		// Dispatch on the old target without a simulated input default action.
+		await fireEvent.keyDown(header, { key: testCase.key, shiftKey: testCase.shiftKey });
+
+		expect(input).toHaveFocus();
+		expect(input.selectionStart).toBe(testCase.expectedStart);
+		expect(input.selectionEnd).toBe(testCase.expectedEnd);
+		if (testCase.expectedDirection) {
+			expect(input.selectionDirection).toBe(testCase.expectedDirection);
+		}
+		expect(input).toHaveValue(query);
+		expect(wrapper.emitted('update:query')).toBeUndefined();
+		expect(wrapper.emitted('update:activeTab')).toBeUndefined();
+		expect(wrapper.emitted('update:open')).toBeUndefined();
+	});
+
+	it('selects with a new tab on Cmd+Enter', async () => {
+		const wrapper = await renderCommandBar();
+
+		await fireEvent.keyDown(getInput(), { key: 'Enter', metaKey: true });
+
+		expect(wrapper.emitted('select')).toEqual([[workflowItem, { newTab: true }]]);
+	});
+
+	it('does not select disabled items', async () => {
+		const wrapper = await renderCommandBar();
+
+		await fireEvent.click(screen.getByText('Locked node'));
+
+		expect(wrapper.emitted('select')).toBeUndefined();
+	});
+
+	it('does not open disabled links in a new tab on Cmd+click', async () => {
+		await renderCommandBar({
+			sections: [
+				{
+					id: 'links',
+					items: [{ id: 'locked-link', title: 'Locked link', href: '/locked', disabled: true }],
+				},
+			],
 		});
 
-		it('renders ungrouped items before section headers and items', async () => {
-			render(N8nCommandBar, { props: { items: createSampleItems() } });
-			await openCommandBar();
+		const preventDefault = vi.spyOn(MouseEvent.prototype, 'preventDefault');
 
-			const recent = screen.getByText('Recent: Customer Sync');
-			const actionsHeader = screen.getByText('Actions');
+		await fireEvent.click(screen.getByText('Locked link'), { metaKey: true });
 
-			expect(recent.compareDocumentPosition(actionsHeader)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-		});
+		expect(preventDefault).toHaveBeenCalled();
+		preventDefault.mockRestore();
+	});
 
-		it('navigates into children on click and back with ArrowLeft', async () => {
-			render(N8nCommandBar, { props: { items: createSampleItems() } });
-			await openCommandBar();
+	it('selects an item on click', async () => {
+		const wrapper = await renderCommandBar();
 
-			await fireEvent.click(screen.getByText('Search nodes'));
+		await fireEvent.click(screen.getByText('Settings'));
 
-			await waitFor(() => expect(screen.getByPlaceholderText('Search nodes…')).toBeInTheDocument());
+		expect(wrapper.emitted('select')).toEqual([
+			[{ id: 'settings', title: 'Settings' }, { newTab: false }],
+		]);
+	});
 
-			expect(screen.getByText('HTTP Request')).toBeInTheDocument();
+	it('highlights the query in item titles', async () => {
+		await renderCommandBar({ query: 'lead' });
 
-			const left = new KeyboardEvent('keydown', { key: 'ArrowLeft' });
-			document.dispatchEvent(left);
+		expect(screen.getByText('lead', { selector: 'mark' })).toBeInTheDocument();
+	});
 
-			await waitFor(() =>
-				expect(screen.getByPlaceholderText('Type a command...')).toBeInTheDocument(),
-			);
+	it('switches tabs on click, Tab and the arrow keys at the caret edges', async () => {
+		const wrapper = await renderCommandBar();
+		const input = getInput();
 
-			expect(screen.getByText('Search nodes')).toBeInTheDocument();
-		});
+		await fireEvent.click(screen.getByTestId('command-bar-tab-workflows'));
+		await fireEvent.keyDown(input, { key: 'Tab' });
+		await fireEvent.keyDown(input, { key: 'Tab', shiftKey: true });
+		await fireEvent.keyDown(input, { key: 'ArrowRight' });
+		await fireEvent.keyDown(input, { key: 'ArrowLeft' });
 
-		it('invokes item handler on selection and closes the command bar', async () => {
-			const onCreate = vi.fn();
-			const items = createSampleItems().map((it) =>
-				it.id === 'create' ? { ...it, handler: onCreate } : it,
-			);
+		expect(wrapper.emitted('update:activeTab')).toEqual([
+			['workflows'],
+			['actions'],
+			['workflows'],
+			['actions'],
+			['workflows'],
+		]);
+	});
 
-			render(N8nCommandBar, { props: { items } });
-			await openCommandBar();
+	it('shows a breadcrumb and goes back with Backspace, Escape and the breadcrumb button', async () => {
+		const wrapper = await renderCommandBar({ breadcrumb: 'Sync leads' });
+		const input = getInput();
 
-			await fireEvent.click(screen.getByText('Create new workflow'));
+		expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
 
-			expect(onCreate).toHaveBeenCalledTimes(1);
-			await waitFor(() =>
-				expect(screen.queryByPlaceholderText('Type a command...')).not.toBeInTheDocument(),
-			);
-		});
+		await fireEvent.keyDown(input, { key: 'Backspace' });
+		await fireEvent.keyDown(input, { key: 'Escape' });
+		await fireEvent.click(screen.getByTestId('command-bar-breadcrumb'));
 
-		it('closes when clicking outside the command bar', async () => {
-			render(N8nCommandBar, { props: { items: createSampleItems() } });
-			await openCommandBar();
+		expect(wrapper.emitted('back')).toHaveLength(3);
+		expect(wrapper.emitted('update:open')).toBeUndefined();
+	});
 
-			await fireEvent.click(document.body);
+	it('offers to search all types when a type tab has no results', async () => {
+		const wrapper = await renderCommandBar({ sections: [], activeTab: 'workflows' });
 
-			await waitFor(() =>
-				expect(screen.queryByPlaceholderText('Type a command...')).not.toBeInTheDocument(),
-			);
-		});
+		const empty = screen.getByTestId('command-bar-empty');
+		expect(within(empty).getByText('No results in Workflows')).toBeInTheDocument();
 
-		describe('matchAnySearchTerm', () => {
-			it('should match entire query string when matchAnySearchTerm is false', async () => {
-				const items = [
-					{
-						id: 'workflow-1',
-						title: 'Customer Data Sync',
-						matchAnySearchTerm: false,
-					},
-					{
-						id: 'workflow-2',
-						title: 'Email Marketing Campaign',
-						matchAnySearchTerm: false,
-					},
-				];
+		await fireEvent.click(screen.getByTestId('command-bar-search-all'));
 
-				render(N8nCommandBar, { props: { items } });
-				await openCommandBar();
+		expect(wrapper.emitted('update:activeTab')).toEqual([['all']]);
+	});
 
-				const input = screen.getByPlaceholderText('Type a command...');
+	it('shows the new tab hint only for items with a link', async () => {
+		await renderCommandBar();
 
-				await fireEvent.update(input, 'customer data');
-				await nextTick();
+		expect(screen.getByText('Open in new tab')).toBeInTheDocument();
 
-				expect(screen.getByText('Customer Data Sync')).toBeInTheDocument();
-				expect(screen.queryByText('Email Marketing Campaign')).not.toBeInTheDocument();
-			});
+		await fireEvent.keyDown(getInput(), { key: 'ArrowDown' });
 
-			it('should match any word when matchAnySearchTerm is true', async () => {
-				const items = [
-					{
-						id: 'workflow-1',
-						title: 'Customer Data Sync',
-						matchAnySearchTerm: true,
-					},
-					{
-						id: 'workflow-2',
-						title: 'Email Marketing Campaign',
-						matchAnySearchTerm: true,
-					},
-					{
-						id: 'workflow-3',
-						title: 'Sales Report Generator',
-						matchAnySearchTerm: true,
-					},
-				];
+		expect(screen.queryByText('Open in new tab')).not.toBeInTheDocument();
+	});
 
-				render(N8nCommandBar, { props: { items } });
-				await openCommandBar();
+	it('requests more results when the list end is visible', async () => {
+		const wrapper = await renderCommandBar({ hasMore: true });
 
-				const input = screen.getByPlaceholderText('Type a command...');
+		await fireEvent.scroll(screen.getByTestId('command-bar-items-list'));
 
-				await fireEvent.update(input, 'customer email');
-				await nextTick();
-
-				expect(screen.getByText('Customer Data Sync')).toBeInTheDocument();
-				expect(screen.getByText('Email Marketing Campaign')).toBeInTheDocument();
-				expect(screen.queryByText('Sales Report Generator')).not.toBeInTheDocument();
-			});
-
-			it('should match keywords with matchAnySearchTerm', async () => {
-				const items = [
-					{
-						id: 'workflow-1',
-						title: 'Data Processor',
-						keywords: ['excel', 'spreadsheet', 'csv'],
-						matchAnySearchTerm: true,
-					},
-					{
-						id: 'workflow-2',
-						title: 'Email Handler',
-						keywords: ['gmail', 'outlook', 'mail'],
-						matchAnySearchTerm: true,
-					},
-				];
-
-				render(N8nCommandBar, { props: { items } });
-				await openCommandBar();
-
-				const input = screen.getByPlaceholderText('Type a command...');
-
-				await fireEvent.update(input, 'excel gmail');
-				await nextTick();
-
-				expect(screen.getByText('Data Processor')).toBeInTheDocument();
-				expect(screen.getByText('Email Handler')).toBeInTheDocument();
-			});
-
-			it('should handle multiple spaces in search query', async () => {
-				const items = [
-					{
-						id: 'workflow-1',
-						title: 'Customer Sync',
-						matchAnySearchTerm: true,
-					},
-					{
-						id: 'workflow-2',
-						title: 'Email Campaign',
-						matchAnySearchTerm: true,
-					},
-				];
-
-				render(N8nCommandBar, { props: { items } });
-				await openCommandBar();
-
-				const input = screen.getByPlaceholderText('Type a command...');
-
-				await fireEvent.update(input, 'customer  email   ');
-				await nextTick();
-
-				expect(screen.getByText('Customer Sync')).toBeInTheDocument();
-				expect(screen.getByText('Email Campaign')).toBeInTheDocument();
-			});
-
-			it('should match single word with matchAnySearchTerm', async () => {
-				const items = [
-					{
-						id: 'workflow-1',
-						title: 'Customer Data Sync',
-						matchAnySearchTerm: true,
-					},
-					{
-						id: 'workflow-2',
-						title: 'Email Marketing',
-						matchAnySearchTerm: true,
-					},
-				];
-
-				render(N8nCommandBar, { props: { items } });
-				await openCommandBar();
-
-				const input = screen.getByPlaceholderText('Type a command...');
-
-				await fireEvent.update(input, 'customer');
-				await nextTick();
-
-				expect(screen.getByText('Customer Data Sync')).toBeInTheDocument();
-				expect(screen.queryByText('Email Marketing')).not.toBeInTheDocument();
-			});
-
-			it('should work with mixed matchAnySearchTerm settings', async () => {
-				const items = [
-					{
-						id: 'workflow-1',
-						title: 'Customer Data Sync',
-						matchAnySearchTerm: true,
-					},
-					{
-						id: 'workflow-2',
-						title: 'Customer Email Setup',
-						matchAnySearchTerm: false,
-					},
-				];
-
-				render(N8nCommandBar, { props: { items } });
-				await openCommandBar();
-
-				const input = screen.getByPlaceholderText('Type a command...');
-
-				await fireEvent.update(input, 'data email');
-				await nextTick();
-
-				expect(screen.getByText('Customer Data Sync')).toBeInTheDocument();
-				expect(screen.queryByText('Customer Email Setup')).not.toBeInTheDocument();
-			});
-		});
+		expect(wrapper.emitted('loadMore')).toHaveLength(1);
 	});
 });

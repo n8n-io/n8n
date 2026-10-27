@@ -241,6 +241,7 @@ export async function autoMapInputData(
 	sheet: GoogleSheet,
 	items: INodeExecutionData[],
 	options: IDataObject,
+	prefetchedColumnNames?: string[],
 ) {
 	const returnData: IDataObject[] = [];
 	const [sheetName, _sheetRange] = sheetNameWithRange.split('!');
@@ -254,9 +255,15 @@ export async function autoMapInputData(
 	}
 
 	let columnNames: string[] = [];
-	const response = await sheet.getData(`${sheetName}!${headerRow}:${headerRow}`, 'FORMATTED_VALUE');
-
-	columnNames = response ? response[0] : [];
+	if (prefetchedColumnNames !== undefined) {
+		columnNames = prefetchedColumnNames;
+	} else {
+		const response = await sheet.getData(
+			`${sheetName}!${headerRow}:${headerRow}`,
+			'FORMATTED_VALUE',
+		);
+		columnNames = response ? response[0] : [];
+	}
 
 	if (handlingExtraData === 'insertInNewColumn') {
 		if (!columnNames.length) {
@@ -285,9 +292,10 @@ export async function autoMapInputData(
 			returnData.push(item.json);
 		});
 		if (newColumns.size) {
+			columnNames = columnNames.concat([...newColumns]);
 			await sheet.updateRows(
 				sheetName,
-				[columnNames.concat([...newColumns])],
+				[columnNames],
 				(options.cellFormat as ValueInputOption) || 'RAW',
 				headerRow,
 			);
@@ -310,6 +318,14 @@ export async function autoMapInputData(
 			});
 			returnData.push(item.json);
 		});
+	}
+
+	// Store the final resolved column names so convertObjectArrayToSheetDataArray
+	// can reuse them without an extra API call. Filter out ROW_NUMBER since it
+	// is a virtual field and is never written as a sheet column header.
+	const columnNamesForHint = columnNames.filter((name) => name !== ROW_NUMBER);
+	if (columnNamesForHint.length > 0) {
+		sheet.setColumnNamesHint(columnNamesForHint);
 	}
 
 	return returnData;
@@ -344,26 +360,19 @@ export function checkForSchemaChanges(
 	columnNames: string[],
 	schema: ResourceMapperField[],
 ) {
-	const updatedColumnNames: Array<{ oldName: string; newName: string }> = [];
 	// RMC filters out empty columns so do the same here
-	columnNames = columnNames.filter((col) => col !== '');
+	const liveColumns = new Set(columnNames.filter((col) => col !== ''));
 
 	// if sheet does not contain ROW_NUMBER ignore it as data come from read rows operation
-	const schemaColumns = columnNames.includes(ROW_NUMBER)
+	const schemaColumns = liveColumns.has(ROW_NUMBER)
 		? schema.map((s) => s.id)
 		: schema.filter((s) => s.id !== ROW_NUMBER).map((s) => s.id);
 
-	for (const [columnIndex, columnName] of columnNames.entries()) {
-		const schemaEntry = schemaColumns[columnIndex];
-		if (schemaEntry === undefined) break;
-		if (columnName !== schemaEntry) {
-			updatedColumnNames.push({ oldName: schemaEntry, newName: columnName });
-		}
-	}
+	const missingColumns = schemaColumns.filter((col) => !liveColumns.has(col));
 
-	if (updatedColumnNames.length) {
+	if (missingColumns.length) {
 		throw new NodeOperationError(node, "Column names were updated after the node's setup", {
-			description: `Refresh the columns list in the 'Column to Match On' parameter. Updated columns: ${updatedColumnNames.map((c) => `${c.oldName} -> ${c.newName}`).join(', ')}`,
+			description: `Refresh the columns list in the 'Column to Match On' parameter. Missing columns: ${missingColumns.join(', ')}`,
 		});
 	}
 }

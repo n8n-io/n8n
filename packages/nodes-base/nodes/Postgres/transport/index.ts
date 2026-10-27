@@ -1,3 +1,4 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import type {
 	IExecuteFunctions,
 	ICredentialTestFunctions,
@@ -10,7 +11,7 @@ import pgPromise from 'pg-promise';
 
 import { ConnectionPoolManager } from '@utils/connection-pool-manager';
 import { LOCALHOST } from '@utils/constants';
-import { formatPrivateKey } from '@utils/utilities';
+import { getDateAsStringTypeParsers, getLegacyDateTypeParsers } from '@utils/postgres';
 
 import type {
 	ConnectionsData,
@@ -18,6 +19,39 @@ import type {
 	PostgresNodeCredentials,
 	PostgresNodeOptions,
 } from '../v2/helpers/interfaces';
+
+// dataTypeIDs for bigint (int8) and numeric types in PostgreSQL
+const BIGINT_TYPE_ID = 20;
+const NUMERIC_TYPE_ID = 1700;
+
+export function applyLargeNumbersReceive(e: {
+	data: Array<Record<string, unknown>>;
+	result?: { fields: Array<{ name: string; dataTypeID: number }> };
+}) {
+	if (!e.result) return;
+	for (const field of e.result.fields) {
+		if (field.dataTypeID !== BIGINT_TYPE_ID && field.dataTypeID !== NUMERIC_TYPE_ID) continue;
+		const isInt = field.dataTypeID === BIGINT_TYPE_ID;
+		for (const row of e.data) {
+			if (typeof row[field.name] === 'string') {
+				row[field.name] = isInt
+					? parseInt(row[field.name] as string, 10)
+					: parseFloat(row[field.name] as string);
+			}
+		}
+	}
+}
+
+// Must stay at module scope. Pools outlive the execution in pg-promise's global
+// registry, so an inline handler would pin the whole execution context via `this`.
+export function createReceiveHandler(
+	largeNumbersOutput: PostgresNodeOptions['largeNumbersOutput'],
+) {
+	return (e: unknown) => {
+		if (largeNumbersOutput !== 'numbers') return;
+		applyLargeNumbersReceive(e as Parameters<typeof applyLargeNumbersReceive>[0]);
+	};
+}
 
 const getPostgresConfig = (
 	credentials: PostgresNodeCredentials,
@@ -89,33 +123,20 @@ export async function configurePostgres(
 			// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
 			// duplicate connections created when auto loading parameters, they are closed immediately after, but several could be open at the same time
 			noWarnings: true,
+			// Use per-instance receive event instead of pgp.pg.types.setTypeParser, which mutates
+			// global pg state and would affect all pools regardless of their largeNumbersOutput setting
+			receive: createReceiveHandler(options.largeNumbersOutput),
 		});
 
-		if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
-			// Always return dates as ISO strings
-			[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
-				pgp.pg.types.setTypeParser(type, (value: string) => {
-					const parsedDate = new Date(value);
-
-					if (isNaN(parsedDate.getTime())) {
-						return value;
-					}
-
-					return parsedDate.toISOString();
-				});
-			});
-		}
-
-		if (options.largeNumbersOutput === 'numbers') {
-			pgp.pg.types.setTypeParser(20, (value: string) => {
-				return parseInt(value, 10);
-			});
-			pgp.pg.types.setTypeParser(1700, (value: string) => {
-				return parseFloat(value);
-			});
-		}
-
 		const dbConfig = getPostgresConfig(credentials, options);
+
+		if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.7) {
+			// Also return DATE and date/timestamp array columns as strings
+			dbConfig.types = getDateAsStringTypeParsers(pgp);
+		} else if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
+			// DATE columns still return Date objects on these versions
+			dbConfig.types = getLegacyDateTypeParsers(pgp);
+		}
 
 		if (!credentials.sshTunnel) {
 			const db = pgp(dbConfig);
@@ -123,7 +144,7 @@ export async function configurePostgres(
 			return { db, pgp };
 		} else {
 			if (credentials.sshAuthenticateWith === 'privateKey' && credentials.privateKey) {
-				credentials.privateKey = formatPrivateKey(credentials.privateKey);
+				credentials.privateKey = formatPemBlock(credentials.privateKey);
 			}
 			const sshClient = await this.helpers.getSSHClient(credentials, abortController);
 
@@ -137,21 +158,34 @@ export async function configurePostgres(
 			});
 
 			proxy.on('connection', (localSocket) => {
-				sshClient.forwardOut(
-					LOCALHOST,
-					localSocket.remotePort!,
-					credentials.host,
-					credentials.port,
-					(error, clientChannel) => {
-						if (error) {
-							this.logger.error('SSH Client: Port forwarding encountered an error', { error });
-							abortController.abort();
-						} else {
-							localSocket.pipe(clientChannel);
-							clientChannel.pipe(localSocket);
-						}
-					},
-				);
+				// Closing the proxy server does not close sockets it already accepted, so
+				// destroy this one too. Otherwise pg waits on it forever.
+				const onForwardError = (error: unknown) => {
+					this.logger.error('SSH Client: Port forwarding encountered an error', { error });
+					localSocket.destroy();
+					abortController.abort();
+				};
+
+				try {
+					sshClient.forwardOut(
+						LOCALHOST,
+						localSocket.remotePort!,
+						credentials.host,
+						credentials.port,
+						(error, clientChannel) => {
+							if (error) {
+								onForwardError(error);
+							} else {
+								localSocket.pipe(clientChannel);
+								clientChannel.pipe(localSocket);
+							}
+						},
+					);
+				} catch (error) {
+					// `forwardOut` throws synchronously once the SSH client has been closed,
+					// e.g. when another pool sharing it was cleaned up.
+					onForwardError(error);
+				}
 			});
 
 			const db = pgp({
@@ -180,6 +214,7 @@ export async function configurePostgres(
 		credentials,
 		nodeType: 'postgres',
 		nodeVersion: options.nodeVersion as unknown as string,
+		poolKeyExtras: { largeNumbersOutput: options.largeNumbersOutput ?? 'text' },
 		fallBackHandler,
 		wasUsed: ({ sshClient }) => {
 			if (sshClient) {

@@ -1,26 +1,27 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import moment from 'moment-timezone';
 import type { IPollFunctions, INode } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { GoogleCalendarTrigger } from '../GoogleCalendarTrigger.node';
+import type { Mock, Mocked } from 'vitest';
 
-jest.mock('../GenericFunctions', () => ({
-	googleApiRequest: jest.fn(),
-	googleApiRequestAllItems: jest.fn(),
-	encodeURIComponentOnce: jest.fn(),
-	getCalendars: jest.fn(),
+vi.mock('../GenericFunctions', () => ({
+	googleApiRequest: vi.fn(),
+	googleApiRequestAllItems: vi.fn(),
+	encodeURIComponentOnce: vi.fn(),
+	getCalendars: vi.fn(),
 }));
 
 describe('GoogleCalendarTrigger', () => {
 	let trigger: GoogleCalendarTrigger;
-	let mockPollFunctions: jest.Mocked<IPollFunctions>;
+	let mockPollFunctions: Mocked<IPollFunctions>;
 	let mockNode: INode;
 
-	const googleApiRequestSpy = jest.spyOn(GenericFunctions, 'googleApiRequest');
-	const googleApiRequestAllItemsSpy = jest.spyOn(GenericFunctions, 'googleApiRequestAllItems');
-	const encodeURIComponentOnceSpy = jest.spyOn(GenericFunctions, 'encodeURIComponentOnce');
+	const googleApiRequestSpy = vi.spyOn(GenericFunctions, 'googleApiRequest');
+	const googleApiRequestAllItemsSpy = vi.spyOn(GenericFunctions, 'googleApiRequestAllItems');
+	const encodeURIComponentOnceSpy = vi.spyOn(GenericFunctions, 'encodeURIComponentOnce');
 
 	beforeEach(() => {
 		trigger = new GoogleCalendarTrigger();
@@ -34,18 +35,19 @@ describe('GoogleCalendarTrigger', () => {
 			parameters: {},
 		};
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockPollFunctions.getNode.mockReturnValue(mockNode);
 		mockPollFunctions.getWorkflowStaticData.mockReturnValue({});
-		(mockPollFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data: any[]) =>
+		(mockPollFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any[]) =>
 			data.map((item: any, index: number) => ({ json: item, pairedItem: { item: index } })),
 		);
 		encodeURIComponentOnceSpy.mockImplementation((uri) => encodeURIComponent(uri));
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+		vi.useRealTimers();
 	});
 
 	describe('Node Description', () => {
@@ -388,6 +390,45 @@ describe('GoogleCalendarTrigger', () => {
 			expect(result?.[0][0].json.id).toBe('1');
 		});
 
+		it('should include all-day events using date fields for eventStarted', async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-09-29T12:00:00Z'));
+			const now = moment.utc();
+			const webhookData = { lastTimeChecked: now.clone().subtract(1, 'day').format() };
+			mockPollFunctions.getWorkflowStaticData.mockReturnValue(webhookData);
+
+			mockPollFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, string | any[]> = {
+					'pollTimes.item': [{ hour: 9 }],
+					triggerOn: 'eventStarted',
+					calendarId: 'test@example.com',
+					'options.matchTerm': '',
+				};
+				return params[paramName] ?? '';
+			});
+
+			googleApiRequestAllItemsSpy.mockResolvedValue([
+				{
+					id: '1',
+					summary: 'All-day event',
+					start: { date: now.format('YYYY-MM-DD'), timeZone: 'UTC' },
+					end: { date: now.clone().add(1, 'day').format('YYYY-MM-DD'), timeZone: 'UTC' },
+				},
+				{
+					id: '2',
+					summary: 'Future all-day event',
+					start: { date: now.clone().add(1, 'day').format('YYYY-MM-DD') },
+					end: { date: now.clone().add(2, 'days').format('YYYY-MM-DD') },
+				},
+			]);
+			googleApiRequestSpy.mockResolvedValue({ timeZone: 'UTC' });
+
+			const result = await trigger.poll.call(mockPollFunctions);
+
+			expect(result?.[0]).toHaveLength(1);
+			expect(result?.[0][0].json.id).toBe('1');
+		});
+
 		it('should handle eventEnded trigger with time-based filtering', async () => {
 			const now = moment();
 			const webhookData = { lastTimeChecked: now.clone().subtract(1, 'hour').format() };
@@ -425,6 +466,91 @@ describe('GoogleCalendarTrigger', () => {
 			expect(result).toBeDefined();
 			expect(result?.[0]).toHaveLength(1);
 			expect(result?.[0][0].json.id).toBe('1');
+		});
+
+		it('should include all-day events using the exclusive end date for eventEnded', async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-09-29T12:00:00Z'));
+			const now = moment.utc();
+			const webhookData = { lastTimeChecked: now.clone().startOf('day').format() };
+			mockPollFunctions.getWorkflowStaticData.mockReturnValue(webhookData);
+
+			mockPollFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, string | any[]> = {
+					'pollTimes.item': [{ hour: 9 }],
+					triggerOn: 'eventEnded',
+					calendarId: 'test@example.com',
+					'options.matchTerm': '',
+				};
+				return params[paramName] ?? '';
+			});
+
+			googleApiRequestAllItemsSpy.mockResolvedValue([
+				{
+					id: '1',
+					summary: 'Ended all-day event',
+					start: { date: now.clone().subtract(1, 'day').format('YYYY-MM-DD') },
+					end: { date: now.format('YYYY-MM-DD'), timeZone: 'UTC' },
+				},
+				{
+					id: '2',
+					summary: 'Ongoing all-day event',
+					start: { date: now.clone().subtract(1, 'day').format('YYYY-MM-DD') },
+					end: { date: now.clone().add(1, 'day').format('YYYY-MM-DD') },
+				},
+			]);
+			googleApiRequestSpy.mockResolvedValue({ timeZone: 'UTC' });
+
+			const result = await trigger.poll.call(mockPollFunctions);
+
+			expect(googleApiRequestAllItemsSpy).toHaveBeenCalledWith(
+				'items',
+				'GET',
+				'/calendar/v3/calendars/test%40example.com/events',
+				{},
+				expect.objectContaining({ timeMin: '2026-09-28T23:59:59Z' }),
+			);
+			expect(result?.[0]).toHaveLength(1);
+			expect(result?.[0][0].json.id).toBe('1');
+		});
+
+		it('should use the calendar timezone when an all-day event has no timezone', async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-09-29T04:30:00Z'));
+			const webhookData = {
+				lastTimeChecked: '2026-09-29T03:30:00Z',
+			};
+			mockPollFunctions.getWorkflowStaticData.mockReturnValue(webhookData);
+			mockPollFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, string | any[]> = {
+					'pollTimes.item': [{ hour: 9 }],
+					triggerOn: 'eventStarted',
+					calendarId: 'test@example.com',
+					'options.matchTerm': '',
+				};
+				return params[paramName] ?? '';
+			});
+			googleApiRequestAllItemsSpy.mockResolvedValue([
+				{
+					id: '1',
+					start: { date: '2026-09-29' },
+					end: { date: '2026-09-30' },
+				},
+			]);
+			googleApiRequestSpy.mockResolvedValue({ timeZone: 'America/New_York' });
+
+			const result = await trigger.poll.call(mockPollFunctions);
+
+			expect(googleApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/calendar/v3/calendars/test%40example.com',
+			);
+			expect(result?.[0][0].json.id).toBe('1');
+
+			webhookData.lastTimeChecked = '2026-09-29T03:30:00Z';
+			const cachedResult = await trigger.poll.call(mockPollFunctions);
+			expect(googleApiRequestSpy).toHaveBeenCalledTimes(1);
+			expect(cachedResult?.[0][0].json.id).toBe('1');
 		});
 	});
 

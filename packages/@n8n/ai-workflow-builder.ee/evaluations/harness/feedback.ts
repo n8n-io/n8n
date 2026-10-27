@@ -1,0 +1,72 @@
+import type { Feedback } from './harness-types';
+
+export interface LangsmithEvaluationResultLike {
+	key: string;
+	score: number;
+	comment?: string;
+}
+
+export function feedbackKey(feedback: Feedback): string {
+	return `${feedback.evaluator}.${feedback.metric}`;
+}
+
+function isPairwiseV1Metric(metric: string): boolean {
+	return metric.startsWith('pairwise_');
+}
+
+/**
+ * Metric key mapping for LangSmith.
+ *
+ * Goal: keep keys comparable with historical runs.
+ * - Programmatic: keep evaluator prefix (e.g. `programmatic.trigger`)
+ * - LLM-judge: keep metrics unprefixed (e.g. `overallScore`, `connections`, `maintainability.nodeNamingQuality`)
+ * - Pairwise: keep v1 metrics unprefixed (e.g. `pairwise_primary`), but namespace non-v1 details.
+ * - Metrics: keep evaluator prefix (e.g. `metrics.discovery_latency_s`, `metrics.node_count`)
+ */
+export function langsmithMetricKey(feedback: Feedback): string {
+	if (feedback.evaluator === 'pairwise') {
+		return isPairwiseV1Metric(feedback.metric) ? feedback.metric : feedbackKey(feedback);
+	}
+
+	if (feedback.evaluator === 'programmatic') {
+		return feedbackKey(feedback);
+	}
+
+	if (feedback.evaluator === 'llm-judge') {
+		return feedback.metric;
+	}
+
+	if (feedback.evaluator === 'metrics') {
+		return feedbackKey(feedback);
+	}
+
+	if (feedback.evaluator === 'responder-judge') {
+		// Dimension & overall metrics unprefixed (like llm-judge), judge details prefixed.
+		return feedback.kind === 'detail' ? feedbackKey(feedback) : feedback.metric;
+	}
+
+	// Default: prefix unknown evaluators to avoid collisions with unprefixed `llm-judge` metrics.
+	return feedbackKey(feedback);
+}
+
+/**
+ * LangSmith score limits.
+ */
+const LANGSMITH_SCORE_MIN = -99999.9999;
+const LANGSMITH_SCORE_MAX = 99999.9999;
+
+/**
+ * Clamp a score to LangSmith's valid range.
+ * LangSmith rejects scores outside [-99999.9999, 99999.9999].
+ */
+function clampScoreForLangsmith(score: number): number {
+	return Math.max(LANGSMITH_SCORE_MIN, Math.min(LANGSMITH_SCORE_MAX, score));
+}
+
+export function toLangsmithEvaluationResult(feedback: Feedback): LangsmithEvaluationResultLike {
+	return {
+		key: langsmithMetricKey(feedback),
+		score: clampScoreForLangsmith(feedback.score),
+		...(feedback.comment ? { comment: feedback.comment } : {}),
+	};
+}

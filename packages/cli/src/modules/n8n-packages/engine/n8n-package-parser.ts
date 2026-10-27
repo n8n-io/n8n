@@ -1,0 +1,512 @@
+import {
+	type SerializedCredential,
+	serializedCredentialSchema,
+	type SerializedDataTable,
+	serializedDataTableSchema,
+	type SerializedFolder,
+	serializedFolderSchema,
+	type SerializedProject,
+	serializedProjectSchema,
+	type SerializedVariable,
+	serializedVariableSchema,
+	type SerializedWorkflow,
+	type SerializedWorkflowMetadata,
+	serializedWorkflowMetadataSchema,
+} from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { WorkflowEntity } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { jsonParse, UserError } from 'n8n-workflow';
+import { ZodError, type ZodType, type ZodTypeDef } from 'zod';
+
+import { BadRequestError } from '@n8n/errors';
+import { NodeTypes } from '@/node-types';
+import * as WorkflowHelpers from '@/workflow-helpers';
+
+import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
+import type { PreparedAgent } from '../entities/agent/agent-import.types';
+import type { PreparedFolder } from '../entities/folder/folder-import.types';
+import type { PreparedProject } from '../entities/project/project-import.types';
+import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
+import { derivePublishedState } from '../entities/workflow/workflow-published-state';
+import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
+import { assertUnseen } from '../io/directory/package-directory-inventory-reader';
+import {
+	agentMetadataFilePath,
+	entityFilePath,
+	workflowMetadataFilePath,
+} from '../io/manifest-entry';
+import type { PackageReader } from '../io/package-reader';
+import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
+import { packageManifestSchema } from '../spec/manifest.schema';
+import {
+	serializedAgentSchema,
+	serializedAgentMetadataSchema,
+	type SerializedAgent,
+} from '../spec/serialized/agent.schema';
+
+/**
+ * Parses the typed entities out of a `.n8np` package — the read-side counterpart
+ * to the exporters. It reads through the {@link PackageReader} io interface (so
+ * the tar format is just one implementation), knows the package layout, and
+ * validates as it goes.
+ */
+@Service()
+export class N8nPackageParser {
+	constructor(
+		private readonly logger: Logger,
+		private readonly nodeTypes: NodeTypes,
+		private readonly workflowSerializer: WorkflowSerializer,
+	) {}
+
+	async getManifest(reader: PackageReader): Promise<PackageManifest> {
+		try {
+			return packageManifestSchema.parse(await reader.readManifest());
+		} catch (error) {
+			if (error instanceof BadRequestError) throw error;
+			if (error instanceof ZodError)
+				throw new BadRequestError('Package manifest failed validation');
+			throw new BadRequestError('Failed to read package manifest');
+		}
+	}
+
+	async getWorkflows(reader: PackageReader, basePrefix = ''): Promise<PreparedWorkflow[]> {
+		const manifest = await this.getManifest(reader);
+		const folderTargetToId = new Map((manifest.folders ?? []).map((f) => [f.target, f.id]));
+
+		const workflows: PreparedWorkflow[] = [];
+		for (const entry of workflowsInScope(manifest.workflows, basePrefix)) {
+			const parentFolderId = deriveParentFolderId(entry.target, folderTargetToId);
+			workflows.push(await this.readWorkflow(reader, entry, parentFolderId));
+		}
+		return workflows;
+	}
+
+	async getAgents(reader: PackageReader, basePrefix = ''): Promise<PreparedAgent[]> {
+		const manifest = await this.getManifest(reader);
+		const agents: PreparedAgent[] = [];
+		for (const entry of manifest.agents ?? []) {
+			if (!entry.target.startsWith(`${basePrefix}agents/`)) continue;
+			agents.push(await this.readAgent(reader, entry));
+		}
+		return agents;
+	}
+
+	async getFolders(reader: PackageReader, basePrefix = ''): Promise<PreparedFolder[]> {
+		const manifest = await this.getManifest(reader);
+
+		const folders: PreparedFolder[] = [];
+		for (const entry of foldersInScope(manifest.folders, basePrefix)) {
+			folders.push(await this.readFolder(reader, entry));
+		}
+		return folders;
+	}
+
+	/** Reads the package's data table schemas. */
+	async getDataTables(reader: PackageReader): Promise<SerializedDataTable[]> {
+		const manifest = await this.getManifest(reader);
+
+		const dataTables: SerializedDataTable[] = [];
+		const seenColumnIds = new Set<string>();
+		for (const entry of manifest.dataTables ?? []) {
+			const dataTable = await this.readDataTable(reader, entry);
+			for (const { id } of dataTable.columns) {
+				if (id) assertUnseen(seenColumnIds, id, 'data table column id');
+			}
+			dataTables.push(dataTable);
+		}
+		return dataTables;
+	}
+
+	/** Reads the package's project shells. */
+	async getProjects(reader: PackageReader): Promise<PreparedProject[]> {
+		const manifest = await this.getManifest(reader);
+
+		const projects: PreparedProject[] = [];
+		for (const entry of manifest.projects ?? []) {
+			projects.push(await this.readProject(reader, entry));
+		}
+		return projects;
+	}
+
+	/** Bundled variable files, keyed by manifest target. */
+	async getVariables(reader: PackageReader): Promise<Map<string, SerializedVariable>> {
+		const manifest = await this.getManifest(reader);
+		const variables = new Map<string, SerializedVariable>();
+
+		for (const entry of manifest.variables ?? []) {
+			variables.set(entry.target, await this.readVariable(reader, entry));
+		}
+
+		return variables;
+	}
+
+	/**
+	 * Bundled credential files, keyed by credential id. A credential requirement
+	 * without a file is valid: the exporting user could not read the credential.
+	 */
+	async getCredentials(
+		reader: PackageReader,
+		sourceIds?: ReadonlySet<string>,
+	): Promise<Map<string, SerializedCredential>> {
+		const manifest = await this.getManifest(reader);
+		const credentials = new Map<string, SerializedCredential>();
+		const requiredTypes = new Map(
+			(manifest.requirements?.credentials ?? []).map(({ id, type }) => [id, type]),
+		);
+
+		// The manifest target already points into the owner project folder or the
+		// top-level `credentials/` folder, so the import scope does not matter here.
+		for (const entry of manifest.credentials ?? []) {
+			if (sourceIds && !sourceIds.has(entry.id)) continue;
+			credentials.set(
+				entry.id,
+				await this.readCredential(reader, entry, requiredTypes.get(entry.id)),
+			);
+		}
+
+		return credentials;
+	}
+
+	private async readAgent(reader: PackageReader, entry: ManifestEntry): Promise<PreparedAgent> {
+		const path = entityFilePath('agents', entry.target);
+		const agent = await this.readAgentFile(reader, path, serializedAgentSchema);
+		if (agent.id !== entry.id) {
+			throw new UserError(
+				`Package Agent at ${path} declares id "${agent.id}" but the manifest lists "${entry.id}".`,
+			);
+		}
+		this.assertAgentBodiesPresent(agent, path);
+
+		const metadata = await this.readAgentFile(
+			reader,
+			agentMetadataFilePath(entry.target),
+			serializedAgentMetadataSchema,
+		);
+		await this.validateAgentTaskCrons(agent.id, agent.tasks);
+
+		return {
+			sourceAgentId: agent.id,
+			name: agent.name,
+			config: agent.config,
+			availableInMCP: agent.availableInMCP,
+			metadata,
+			skills: agent.skills,
+			tools: agent.tools,
+			tasks: agent.tasks,
+		};
+	}
+
+	private async validateAgentTaskCrons(
+		agentId: string,
+		tasks: SerializedAgent['tasks'],
+	): Promise<void> {
+		if (Object.keys(tasks).length === 0) return;
+		const { isValidCronExpression } = await import(
+			'@/modules/agents/integrations/cron-validation.js'
+		);
+		for (const [taskId, task] of Object.entries(tasks)) {
+			if (!isValidCronExpression(task.cronExpression)) {
+				throw new UserError(
+					`Package Agent "${agentId}" task "${taskId}" has an invalid cron expression.`,
+				);
+			}
+		}
+	}
+
+	private assertAgentBodiesPresent(agent: SerializedAgent, path: string): void {
+		const references = {
+			skills: agent.config?.skills ?? [],
+			tools: agent.config?.tools?.filter((tool) => tool.type === 'custom') ?? [],
+			tasks: agent.config?.tasks ?? [],
+		};
+		for (const collection of ['skills', 'tools', 'tasks'] as const) {
+			const missing = references[collection].find(
+				({ id }) => !Object.hasOwn(agent[collection], id),
+			);
+			if (missing) {
+				throw new UserError(
+					`Package Agent at ${path} references ${collection} asset "${missing.id}" without a body.`,
+				);
+			}
+		}
+	}
+
+	private async readAgentFile<T>(
+		reader: PackageReader,
+		path: string,
+		schema: ZodType<T, ZodTypeDef, unknown>,
+	): Promise<T> {
+		const wire = await this.readJson(reader, path, 'Agent');
+		const result = schema.safeParse(wire);
+		if (!result.success) {
+			throw new UserError(`Package Agent file at ${path} failed schema validation.`, {
+				cause: result.error,
+			});
+		}
+		return result.data;
+	}
+
+	private async readWorkflow(
+		reader: PackageReader,
+		entry: ManifestEntry,
+		parentFolderId: string | null,
+	): Promise<PreparedWorkflow> {
+		const path = entityFilePath('workflows', entry.target);
+		const wire = await this.readJson<SerializedWorkflow>(reader, path, 'workflow');
+		const metadata = await this.readWorkflowMetadata(reader, entry);
+
+		let entity: WorkflowEntity;
+		try {
+			entity = Object.assign(new WorkflowEntity(), this.workflowSerializer.deserialize(wire));
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package workflow file at ${path} failed schema validation.`, {
+					cause,
+				});
+			}
+			throw cause;
+		}
+
+		WorkflowHelpers.validateWorkflowStructure(entity);
+		this.normalizeNodeGroups(entity, path);
+
+		const sourcePublished = derivePublishedState(metadata);
+
+		return {
+			entity,
+			sourceWorkflowId: entry.id,
+			parentFolderId,
+			sourceArchived: entity.isArchived,
+			...(sourcePublished !== undefined ? { sourcePublished } : {}),
+			// Read from `wire` only past `deserialize`, which is what validates it.
+			...(wire.tagIds !== undefined ? { tagIds: wire.tagIds } : {}),
+		};
+	}
+
+	private async readWorkflowMetadata(
+		reader: PackageReader,
+		entry: ManifestEntry,
+	): Promise<SerializedWorkflowMetadata> {
+		const path = workflowMetadataFilePath(entry.target);
+		const wire = await this.readJson(
+			reader,
+			path,
+			'workflow metadata',
+			`Package workflow metadata file is missing at ${path}. Export the package again from an instance that runs this version.`,
+		);
+
+		try {
+			return serializedWorkflowMetadataSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package workflow metadata file at ${path} failed schema validation.`, {
+					cause,
+				});
+			}
+			throw cause;
+		}
+	}
+
+	/** Drops groups that wouldn't survive the save path, so they can't fail the whole import. */
+	private normalizeNodeGroups(entity: WorkflowEntity, path: string): void {
+		const dropped = WorkflowHelpers.dropInvalidWorkflowGroups(
+			entity,
+			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+		);
+		for (const { groupName, message } of dropped) {
+			this.logger.warn(`Package workflow file at ${path} dropped group "${groupName}": ${message}`);
+		}
+
+		for (const warning of WorkflowHelpers.sanitizeNodeGroupDescriptions(entity)) {
+			this.logger.warn(`Package workflow file at ${path}: ${warning}`);
+		}
+	}
+
+	private async readFolder(reader: PackageReader, entry: ManifestEntry): Promise<PreparedFolder> {
+		const path = entityFilePath('folders', entry.target);
+		const wire = await this.readJson(reader, path, 'folder');
+
+		let folder: SerializedFolder;
+		try {
+			folder = serializedFolderSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package folder file at ${path} failed schema validation.`, { cause });
+			}
+			throw cause;
+		}
+
+		// Nested workflows route to folders by manifest id, but folders are created
+		// under folder.json's id — a mismatch would place a workflow in the wrong folder.
+		if (folder.id !== entry.id) {
+			throw new UserError(
+				`Package folder at ${path} declares id "${folder.id}" but the manifest lists it as "${entry.id}".`,
+			);
+		}
+
+		return {
+			sourceFolderId: folder.id,
+			name: folder.name,
+			parentFolderId: folder.parentFolderId,
+		};
+	}
+
+	private async readDataTable(
+		reader: PackageReader,
+		entry: ManifestEntry,
+	): Promise<SerializedDataTable> {
+		const path = entityFilePath('dataTables', entry.target);
+		const wire = await this.readJson(reader, path, 'data table');
+
+		let dataTable: SerializedDataTable;
+		try {
+			dataTable = serializedDataTableSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package data table file at ${path} failed schema validation.`, {
+					cause,
+				});
+			}
+			throw cause;
+		}
+
+		// Requirements and workflow references key off the manifest id, but tables
+		// are created under data-table.json's id — a mismatch would import a table
+		// under an identity the manifest never declared.
+		if (dataTable.id !== entry.id) {
+			throw new UserError(
+				`Package data table at ${path} declares id "${dataTable.id}" but the manifest lists it as "${entry.id}".`,
+			);
+		}
+
+		return dataTable;
+	}
+
+	private async readProject(reader: PackageReader, entry: ManifestEntry): Promise<PreparedProject> {
+		const path = entityFilePath('projects', entry.target);
+		const wire = await this.readJson(reader, path, 'project');
+
+		let project: SerializedProject;
+		try {
+			project = serializedProjectSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package project file at ${path} failed schema validation.`, { cause });
+			}
+			throw cause;
+		}
+
+		// Project contents scope by manifest id, but the project is created/matched under project.json's
+		// id — a mismatch would import folders and workflows into the wrong project.
+		if (project.id !== entry.id) {
+			throw new UserError(
+				`Package project at ${path} declares id "${project.id}" but the manifest lists it as "${entry.id}".`,
+			);
+		}
+
+		return {
+			sourceProjectId: project.id,
+			name: project.name,
+			...(project.description !== undefined ? { description: project.description } : {}),
+			...(project.icon !== undefined ? { icon: project.icon } : {}),
+			...(project.customTelemetryTags !== undefined
+				? { customTelemetryTags: project.customTelemetryTags }
+				: {}),
+		};
+	}
+
+	private async readVariable(
+		reader: PackageReader,
+		entry: ManifestEntry,
+	): Promise<SerializedVariable> {
+		const path = entityFilePath('variables', entry.target);
+		const wire = await this.readJson(reader, path, 'variable');
+
+		let variable: SerializedVariable;
+		try {
+			variable = serializedVariableSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package variable file at ${path} failed schema validation.`, {
+					cause,
+				});
+			}
+			throw cause;
+		}
+
+		if (variable.name !== entry.name) {
+			throw new UserError(
+				`Package variable at ${path} declares name "${variable.name}" but the manifest lists it as "${entry.name}".`,
+			);
+		}
+
+		return variable;
+	}
+
+	private async readCredential(
+		reader: PackageReader,
+		entry: ManifestEntry,
+		requiredType: string | undefined,
+	): Promise<SerializedCredential> {
+		const path = entityFilePath('credentials', entry.target);
+		const wire = await this.readJson(reader, path, 'credential');
+
+		let credential: SerializedCredential;
+		try {
+			credential = serializedCredentialSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package credential file at ${path} failed schema validation.`, {
+					cause,
+				});
+			}
+			throw cause;
+		}
+
+		// Requirements and bindings key off the manifest id, so a file with another
+		// identity would apply its data to the wrong credential.
+		if (credential.id !== entry.id) {
+			throw new UserError(
+				`Package credential at ${path} declares id "${credential.id}" but the manifest lists it as "${entry.id}".`,
+			);
+		}
+
+		if (credential.name !== entry.name) {
+			throw new UserError(
+				`Package credential at ${path} declares name "${credential.name}" but the manifest lists it as "${entry.name}".`,
+			);
+		}
+
+		// Matching binds a destination credential of the requirement type, so data of
+		// another type would merge into a credential with a different schema.
+		if (requiredType !== undefined && credential.type !== requiredType) {
+			throw new UserError(
+				`Package credential at ${path} declares type "${credential.type}" but the requirement lists it as "${requiredType}".`,
+			);
+		}
+
+		return credential;
+	}
+
+	private async readJson<T = unknown>(
+		reader: PackageReader,
+		path: string,
+		label: string,
+		missingFileMessage?: string,
+	): Promise<T> {
+		let content: Buffer;
+		try {
+			content = await reader.readFile(path);
+		} catch (cause) {
+			throw new UserError(
+				missingFileMessage ?? `Package manifest references a missing ${label} file at ${path}.`,
+				{ cause },
+			);
+		}
+
+		return jsonParse<T>(content.toString('utf-8'), {
+			errorMessage: `Package ${label} file at ${path} is not valid JSON.`,
+		});
+	}
+}

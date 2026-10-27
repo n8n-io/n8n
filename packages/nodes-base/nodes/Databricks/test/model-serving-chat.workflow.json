@@ -1,0 +1,82 @@
+{
+	"name": "Databricks Model Serving Chat Detection Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "modelServing",
+				"operation": "queryEndpoint",
+				"endpointName": {
+					"mode": "name",
+					"value": "my-chat-endpoint"
+				},
+				"requestBody": "{\"messages\":[{\"role\":\"user\",\"content\":\"Hello!\"}]}"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "model-query-002",
+			"name": "Query Chat Endpoint With Schema",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Query Chat Endpoint With Schema": [
+			{
+				"json": {
+					"id": "chatcmpl-456",
+					"choices": [
+						{
+							"message": {
+								"role": "assistant",
+								"content": "Hi there! How can I assist you?"
+							},
+							"finish_reason": "stop",
+							"index": 0
+						}
+					],
+					"model": "my-chat-endpoint",
+					"usage": {
+						"prompt_tokens": 8,
+						"completion_tokens": 12,
+						"total_tokens": 20
+					},
+					"_metadata": {
+						"endpoint": "my-chat-endpoint",
+						"detectedFormat": "chat",
+						"invocationUrl": "https://adb-1234567890.1.azuredatabricks.net/serving-endpoints/my-chat-endpoint/invocations"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Query Chat Endpoint With Schema",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

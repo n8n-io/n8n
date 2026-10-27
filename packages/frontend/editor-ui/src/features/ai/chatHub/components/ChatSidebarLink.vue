@@ -1,7 +1,6 @@
 <script setup lang="ts" generic="T extends string">
 import { N8nActionDropdown, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
+import type { ActionDropdownItem, IconName } from '@n8n/design-system';
 import { type RouteLocationRaw } from 'vue-router';
 
 const {
@@ -44,7 +43,7 @@ defineSlots<{
 				@click="emit('click', $event)"
 			>
 				<slot name="icon">
-					<N8nIcon v-if="icon" size="large" :icon="icon" :class="$style.menuItemIcon" />
+					<N8nIcon v-if="icon" size="large" :icon="icon" />
 				</slot>
 				<div v-if="!compact" :class="$style.textContainer">
 					<N8nText :class="$style.label" size="small" color="text-light">{{ label }}</N8nText>
@@ -60,12 +59,7 @@ defineSlots<{
 				@click.stop
 			>
 				<template #activator>
-					<N8nIconButton
-						icon="ellipsis-vertical"
-						type="tertiary"
-						text
-						:class="$style.actionDropdownTrigger"
-					/>
+					<N8nIconButton variant="ghost" icon="ellipsis" :class="$style.actionDropdownTrigger" />
 				</template>
 			</N8nActionDropdown>
 		</template>

@@ -15,7 +15,8 @@ const getRenderedOptions = async () => {
 
 const filterInput = async (filterText: string) => {
 	const input = screen.getByRole('combobox');
-	await userEvent.type(input, filterText);
+	// Avoid a timer wait for each character on busy CI workers.
+	await userEvent.type(input, filterText, { delay: null });
 };
 
 const sampleUsers: IUser[] = [
@@ -169,6 +170,56 @@ describe('UserSelect', () => {
 			const options = await getRenderedOptions();
 			expect(options.length).toBe(sampleUsers.length);
 		});
+	});
+
+	it.each([0, 100])('finishes email checks with %i ms timer latency', async (latency) => {
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+		const scheduleTimeout = globalThis.setTimeout;
+		// DEVP-1283: Model a busy CI worker without a wall-clock delay.
+		vi.stubGlobal(
+			'setTimeout',
+			(handler: (...args: unknown[]) => void, delay?: number, ...args: unknown[]) =>
+				scheduleTimeout(handler, Math.max(delay ?? 0, latency), ...args),
+		);
+		const { unmount } = renderComponent({ props: { users: sampleUsers } });
+		const runInteraction = async (interaction: Promise<unknown>) => {
+			let settled = false;
+			const completion = interaction.finally(() => {
+				settled = true;
+			});
+			while (!settled) {
+				await vi.advanceTimersToNextTimerAsync();
+			}
+			await completion;
+		};
+
+		try {
+			const startedAt = Date.now();
+
+			await runInteraction(filterInput('alice@example.com'));
+			const aliceOptions = await getRenderedOptions();
+			expect(aliceOptions).toHaveLength(1);
+			expect(aliceOptions[0]).toHaveAttribute('id', 'user-select-option-id-u1');
+
+			await runInteraction(userEvent.click(document.body));
+			await runInteraction(filterInput('Example.com'));
+			expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+			await runInteraction(userEvent.click(document.body));
+			await runInteraction(filterInput('example.com'));
+			expect(await getRenderedOptions()).toHaveLength(sampleUsers.length);
+
+			// All three searches share the default Vitest test timeout.
+			expect(Date.now() - startedAt).toBeLessThan(5000);
+		} finally {
+			try {
+				unmount();
+				await vi.runAllTimersAsync();
+			} finally {
+				vi.unstubAllGlobals();
+				vi.useRealTimers();
+			}
+		}
 	});
 
 	it('filters by full name and email and sorts by last name', async () => {
@@ -361,5 +412,121 @@ describe('UserSelect', () => {
 			'user-select-option-id-b',
 			'user-select-option-id-f',
 		]);
+	});
+
+	it('should not apply client-side filtering in remote mode', async () => {
+		// In remote mode, the component should display all provided users
+		// without filtering them locally, even if they don't match the filter term
+		const { getByRole, rerender } = renderComponent({
+			props: {
+				users: sampleUsers, // All users
+				remote: true,
+			},
+		});
+
+		const selectInput = getByRole('combobox');
+		await userEvent.click(selectInput);
+
+		// All users should be visible initially
+		const initialOptions = await getRenderedOptions();
+		expect(initialOptions.length).toBe(sampleUsers.length);
+
+		// Re-render with filtered users (simulating what the parent would do after remote search)
+		await rerender({
+			users: [sampleUsers[0]], // Only Alice after "remote" filtering
+			remote: true,
+		});
+
+		// Should now only show the filtered user provided by parent
+		await waitFor(async () => {
+			const options = await getRenderedOptions();
+			expect(options.length).toBe(1);
+			expect(options[0]).toHaveAttribute('id', 'user-select-option-id-u1');
+		});
+	});
+
+	it('should respect ignoreIds in remote mode', async () => {
+		const remoteMethodMock = vi.fn();
+		const { getByRole } = renderComponent({
+			props: {
+				users: sampleUsers.slice(0, 3), // Alice, Bob, Charlie
+				remote: true,
+				remoteMethod: remoteMethodMock,
+				ignoreIds: ['u1'], // Exclude Alice
+			},
+		});
+
+		const selectInput = getByRole('combobox');
+		await userEvent.click(selectInput);
+
+		// Should exclude ignored user even in remote mode
+		await waitFor(async () => {
+			const options = await getRenderedOptions();
+			expect(options.length).toBe(2); // Bob and Charlie only
+			const optionIds = Array.from(options).map((o) => o.getAttribute('id'));
+			expect(optionIds).not.toContain('user-select-option-id-u1');
+		});
+	});
+
+	it('should show the name and the email of the selected user', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1' },
+		});
+
+		await waitFor(() =>
+			expect(getByRole('combobox')).toHaveValue('Alice Smith (alice@example.com)'),
+		);
+	});
+
+	it('should show only the name of the selected user when hideEmailInLabel is set', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1', hideEmailInLabel: true },
+		});
+
+		await waitFor(() => expect(getByRole('combobox')).toHaveValue('Alice Smith'));
+	});
+
+	it('should show the email of a selected user without a name when hideEmailInLabel is set', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u5', hideEmailInLabel: true },
+		});
+
+		await waitFor(() => expect(getByRole('combobox')).toHaveValue('eve@example.com'));
+	});
+
+	it('should show the avatar of the selected user when showAvatar is set', async () => {
+		const { getByTestId } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1', showAvatar: true },
+		});
+
+		await waitFor(() => expect(getByTestId('user-select-avatar')).toHaveTextContent('AS'));
+	});
+
+	it('should take the avatar initials from the full name when the user has no first or last name', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				users: [{ id: 'u9', email: 'nina@example.com', fullName: 'Nina Park' }],
+				modelValue: 'u9',
+				showAvatar: true,
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('user-select-avatar')).toHaveTextContent('NP'));
+	});
+
+	it('should not show an avatar by default', () => {
+		const { queryByTestId } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1' },
+		});
+
+		expect(queryByTestId('user-select-avatar')).not.toBeInTheDocument();
+	});
+
+	it('should mark the select as borderless when borderless is set', () => {
+		const { getByTestId } = renderComponent({
+			props: { users: sampleUsers, borderless: true },
+		});
+
+		expect(getByTestId('user-select-trigger')).toHaveClass('borderless');
 	});
 });

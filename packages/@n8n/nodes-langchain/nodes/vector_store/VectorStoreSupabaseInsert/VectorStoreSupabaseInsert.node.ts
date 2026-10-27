@@ -1,7 +1,6 @@
 import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
-import { createClient } from '@supabase/supabase-js';
 import {
 	type IExecuteFunctions,
 	type INodeType,
@@ -10,11 +9,11 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { processDocuments, type N8nJsonLoader } from '@n8n/ai-utilities';
 
-import { supabaseTableNameSearch } from '../shared/createVectorStoreNode/methods/listSearch';
+import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
-import { processDocuments } from '../shared/processDocuments';
+import { createSupabaseClient } from '../shared/supabase';
 
 // This node is deprecated. Use VectorStoreSupabase instead.
 export class VectorStoreSupabaseInsert implements INodeType {
@@ -110,7 +109,7 @@ export class VectorStoreSupabaseInsert implements INodeType {
 			NodeConnectionTypes.AiEmbedding,
 			0,
 		)) as Embeddings;
-		const client = createClient(credentials.host as string, credentials.serviceRole as string);
+		const client = createSupabaseClient(credentials);
 
 		const { processedDocuments, serializedDocuments } = await processDocuments(
 			documentInput,

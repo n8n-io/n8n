@@ -1,0 +1,448 @@
+# n8n OWNERS
+#
+# Format: <pattern> <@org/team> [required]
+#
+# Examples:
+#   packages/foo/        @n8n-io/team-a            advisory reviewer recommendation
+#   packages/foo/bar.ts  @n8n-io/team-b required   team approval blocks merge
+#
+# Last-match-wins: specific rules MUST come AFTER general rules.
+#
+# The `required` option makes team approval mandatory for non-test files: a
+# member of the team must approve the PR before merge. This is enforced by the
+# "Required Reviews" commit status (ci-owners-required-reviews.yml).
+# All other entries are advisory (reviewer recommendations and opt-in
+# reviewer auto-assignment).
+#
+# Validated by ci-owners-validation.yml (`node .github/scripts/owners/owners.mjs --check`).
+
+# Default catch-all (ensures every file gets at least one reviewer).
+# Developer Platform finds the right owner for unassigned files.
+*                                                       @n8n-io/qa-dx
+
+# Core Execution
+
+packages/core/                                          @n8n-io/core-execution
+packages/workflow/                                      @n8n-io/core-execution
+packages/workflow/stryker.config.mjs                    @n8n-io/qa-dx
+packages/@n8n/db/                                       @n8n-io/core-execution
+packages/@n8n/typeorm/                                  @n8n-io/core-execution
+packages/@n8n/blob-storage/                             @n8n-io/core-execution
+packages/@n8n/engine/                                   @n8n-io/core-execution
+packages/@n8n/task-runner/                              @n8n-io/core-execution
+packages/@n8n/task-runner-python/                       @n8n-io/core-execution
+packages/@n8n/expression-runtime/                       @n8n-io/core-execution
+packages/@n8n/tournament/                               @n8n-io/core-execution
+
+# Core Application
+
+packages/@n8n/scheduler/                                @n8n-io/core-application
+packages/@n8n/config/                                   @n8n-io/core-application
+packages/@n8n/backend-common/                           @n8n-io/core-application
+packages/@n8n/backend-network/                          @n8n-io/core-application
+packages/@n8n/backend-services/                         @n8n-io/core-application
+packages/@n8n/backend-services/src/services/role.service.ts       @n8n-io/iam
+packages/@n8n/backend-services/src/services/role-cache.service.ts @n8n-io/iam
+packages/@n8n/backend-services/src/services/jwt.service.ts @n8n-io/iam
+packages/@n8n/backend-test-utils/                       @n8n-io/core-application
+packages/@n8n/di/                                       @n8n-io/core-application
+packages/@n8n/errors/                                   @n8n-io/core-application
+packages/@n8n/constants/                                @n8n-io/core-application
+packages/@n8n/utils/                                    @n8n-io/core-application
+packages/@n8n/api-types/                                @n8n-io/core-application
+packages/@n8n/decorators/                               @n8n-io/core-application
+packages/@n8n/json-schema-to-zod/                       @n8n-io/core-application
+packages/@n8n/crdt/                                     @n8n-io/core-application
+packages/@n8n/extension-sdk/                            @n8n-io/core-application
+
+# Other @n8n packages
+packages/@n8n/workflow-sdk/                             @n8n-io/ai-assistant
+packages/@n8n/eslint-config/                            @n8n-io/qa-dx required
+packages/@n8n/typescript-config/                        @n8n-io/qa-dx
+
+packages/@n8n/db/src/migrations/                        @n8n-io/migrations-review required
+
+# Top-level paths
+scripts/                                                @n8n-io/qa-dx
+patches/                                                @n8n-io/qa-dx
+security/                                               @n8n-io/qa-dx
+.code-health-baseline.json                              @n8n-io/qa-dx required
+OWNERS                                                  @n8n-io/qa-dx required
+
+# @n8n/cli
+packages/@n8n/cli/                                      @n8n-io/context
+packages/@n8n/cli/src/commands/credential/              @n8n-io/iam
+packages/@n8n/cli/src/commands/user/                    @n8n-io/iam
+packages/@n8n/cli/src/commands/data-table/              @n8n-io/knowledge
+packages/@n8n/cli/src/commands/tag/                     @n8n-io/context
+packages/@n8n/cli/src/commands/project/                 @n8n-io/ligo
+packages/@n8n/cli/src/commands/source-control/          @n8n-io/ligo
+packages/@n8n/cli/src/commands/variable/                @n8n-io/ligo
+packages/@n8n/cli/src/commands/skill/                   @n8n-io/context
+
+# packages/cli
+packages/cli/                                           @n8n-io/core-application
+packages/cli/src/webhooks/                              @n8n-io/core-application
+packages/cli/src/push/                                  @n8n-io/core-application
+packages/cli/src/collaboration/                         @n8n-io/core-application
+packages/cli/src/commands/                              @n8n-io/core-application
+packages/cli/src/config/                                @n8n-io/core-application
+packages/cli/src/security-audit/                        @n8n-io/core-application
+packages/cli/src/modules/workflow-index/                @n8n-io/core-application
+packages/cli/src/modules/breaking-changes/              @n8n-io/core-application
+packages/cli/src/workflows/publication/                 @n8n-io/core-application required
+
+packages/cli/src/scaling/                               @n8n-io/core-execution
+packages/cli/src/concurrency/                           @n8n-io/core-execution
+packages/cli/src/execution-lifecycle/                   @n8n-io/core-execution
+packages/cli/src/executions/                            @n8n-io/core-execution
+packages/cli/src/task-runners/                          @n8n-io/core-execution
+packages/cli/src/binary-data/                           @n8n-io/core-execution
+packages/cli/src/eventbus/                              @n8n-io/core-execution
+packages/cli/src/events/                                @n8n-io/core-execution
+packages/cli/src/modules/engine-v2/                     @n8n-io/core-execution
+packages/cli/src/workflow-runner.ts                     @n8n-io/core-execution
+packages/cli/src/wait-tracker.ts                        @n8n-io/core-execution
+packages/cli/src/active-executions.ts                   @n8n-io/core-execution
+
+packages/cli/src/auth/                                  @n8n-io/iam
+packages/cli/src/credentials/                           @n8n-io/iam
+packages/cli/src/credentials/credential-field-mapping.ts                 @n8n-io/ai-agents
+packages/cli/src/credentials/__tests__/credential-field-mapping.test.ts  @n8n-io/ai-agents
+packages/cli/src/mfa/                                   @n8n-io/iam
+packages/cli/src/oauth/                                 @n8n-io/iam
+packages/cli/src/permissions.ee/                        @n8n-io/iam
+packages/cli/src/sso.ee/                                @n8n-io/iam
+packages/cli/src/user-management/                       @n8n-io/iam
+packages/cli/src/license/                               @n8n-io/iam
+packages/cli/src/modules/ldap.ee/                       @n8n-io/iam
+packages/cli/src/modules/log-streaming.ee/              @n8n-io/iam
+packages/cli/src/modules/sso-oidc/                      @n8n-io/iam
+packages/cli/src/modules/sso-saml/                      @n8n-io/iam
+packages/cli/src/modules/provisioning.ee/               @n8n-io/iam
+packages/cli/src/modules/dynamic-credentials.ee/        @n8n-io/iam
+packages/cli/src/modules/redaction/                     @n8n-io/iam
+packages/cli/src/modules/instance-registry/             @n8n-io/iam
+packages/cli/src/modules/token-exchange/                @n8n-io/iam
+
+packages/cli/src/environments.ee/                       @n8n-io/ligo
+packages/cli/src/public-api/                            @n8n-io/ligo
+packages/cli/src/modules/source-control.ee/             @n8n-io/ligo
+packages/cli/src/modules/external-secrets.ee/           @n8n-io/ligo
+packages/modules/insights/                              @n8n-io/ligo
+
+packages/cli/src/posthog/                              @n8n-io/growth
+packages/cli/src/modules/data-table/                    @n8n-io/knowledge
+packages/cli/src/modules/knowledge/                     @n8n-io/knowledge
+
+packages/cli/src/evaluation.ee/                         @n8n-io/ai-trust
+packages/cli/src/chat/                                  @n8n-io/ai-agents
+packages/cli/src/modules/agents/                        @n8n-io/ai-agents
+packages/cli/src/tool-generation/                       @n8n-io/ai
+packages/modules/workflow-builder/                     @n8n-io/ai-assistant
+packages/cli/src/modules/mcp/                           @n8n-io/context
+packages/cli/src/modules/skills/                        @n8n-io/context
+packages/cli/test/integration/skills/                   @n8n-io/context
+packages/cli/src/modules/chat-hub/                      @n8n-io/ai-assistant
+packages/cli/src/modules/instance-ai/                   @n8n-io/ai-assistant
+packages/modules/self-healing/                         @n8n-io/ai-assistant
+packages/modules/inbox/                                @n8n-io/ligo
+
+# CLI controllers
+packages/cli/src/controllers/auth.controller.ts         						@n8n-io/iam
+packages/cli/src/controllers/invitation.controller.ts   						@n8n-io/iam
+packages/cli/src/controllers/me.controller.ts           						@n8n-io/iam
+packages/cli/src/controllers/mfa.controller.ts          						@n8n-io/iam
+packages/cli/src/controllers/owner.controller.ts        						@n8n-io/iam
+packages/cli/src/controllers/password-reset.controller.ts 					@n8n-io/iam
+packages/cli/src/controllers/role.controller.ts         						@n8n-io/iam
+packages/cli/src/controllers/users.controller.ts        						@n8n-io/iam
+packages/cli/src/controllers/user-settings.controller.ts 						@n8n-io/iam
+packages/cli/src/controllers/api-keys.controller.ts     						@n8n-io/iam
+packages/cli/src/controllers/security-settings.controller.ts 				@n8n-io/iam
+packages/cli/src/controllers/oauth/                     						@n8n-io/iam
+packages/cli/src/controllers/ai.controller.ts           						@n8n-io/ai-assistant
+packages/cli/src/controllers/annotation-tags.controller.ee.ts 			@n8n-io/ai
+packages/cli/src/controllers/cta.controller.ts         							@n8n-io/knowledge
+packages/cli/src/controllers/folder.controller.ts       						@n8n-io/context
+packages/cli/src/controllers/tags.controller.ts         						@n8n-io/context
+packages/cli/src/controllers/binary-data.controller.ts  						@n8n-io/knowledge
+packages/cli/src/controllers/posthog.controller.ts      						@n8n-io/context
+packages/cli/src/controllers/translation.controller.ts  						@n8n-io/core-application
+packages/cli/src/controllers/project.controller.ts      						@n8n-io/ligo
+packages/cli/src/controllers/workflow-statistics.controller.ts 			@n8n-io/ligo
+packages/cli/src/controllers/node-types.controller.ts   						@n8n-io/nodes
+packages/cli/src/controllers/dynamic-node-parameters.controller.ts 	@n8n-io/nodes
+packages/cli/src/controllers/e2e.controller.ts          						@n8n-io/qa-dx
+
+# CLI services
+packages/cli/src/services/user.service.ts               @n8n-io/iam
+packages/cli/src/services/password.utility.ts           @n8n-io/iam
+packages/cli/src/services/public-api-key.service.ts     @n8n-io/iam
+packages/cli/src/services/security-settings.service.ts  @n8n-io/iam
+packages/cli/src/services/static-auth-service.ts        @n8n-io/iam
+packages/cli/src/services/access.service.ts             @n8n-io/iam
+packages/cli/src/services/ai.service.ts                 @n8n-io/ai-assistant
+packages/cli/src/services/ai-usage.service.ts           @n8n-io/ai-assistant
+packages/cli/src/services/__tests__/ai-usage.service.test.ts @n8n-io/ai-assistant
+packages/cli/src/controllers/__tests__/ai.controller.test.ts @n8n-io/ai-assistant
+packages/cli/src/services/ai-workflow-builder.service.ts @n8n-io/ai-assistant
+packages/cli/src/services/annotation-tag.service.ee.ts  @n8n-io/context
+packages/cli/src/services/folder.service.ts             @n8n-io/context
+packages/cli/src/services/tag.service.ts                @n8n-io/context
+packages/cli/src/services/cta.service.ts                @n8n-io/knowledge
+packages/cli/src/services/frontend.service.ts           @n8n-io/core-application
+packages/cli/src/services/banner.service.ts             @n8n-io/context
+packages/cli/src/services/project.service.ee.ts         @n8n-io/ligo
+packages/cli/src/services/workflow-statistics.service.ts @n8n-io/ligo
+packages/cli/src/services/export.service.ts             @n8n-io/ligo
+packages/cli/src/services/import.service.ts             @n8n-io/ligo
+packages/cli/src/services/ownership.service.ts          @n8n-io/ligo
+packages/cli/src/services/dynamic-node-parameters.service.ts @n8n-io/nodes
+
+packages/frontend/editor-ui/                            @n8n-io/frontend
+packages/frontend/editor-ui/src/features/ai/            @n8n-io/ai
+packages/frontend/editor-ui/src/features/ai/assistant/  @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/ai/chatHub/    @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/ai/instanceAi/ @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/credentials/   @n8n-io/iam
+packages/frontend/editor-ui/src/features/execution/     @n8n-io/ligo
+packages/frontend/editor-ui/src/features/integrations/  @n8n-io/ligo
+
+packages/frontend/@n8n/design-system/                   @n8n-io/design-engineering
+packages/frontend/@n8n/stores/                          @n8n-io/frontend
+packages/frontend/@n8n/composables/                     @n8n-io/frontend
+packages/frontend/@n8n/rest-api-client/                 @n8n-io/frontend
+packages/frontend/@n8n/storybook/                       @n8n-io/design-engineering
+packages/frontend/@n8n/i18n/                            @n8n-io/frontend
+packages/@n8n/stylelint-config/                         @n8n-io/qa-dx
+
+packages/frontend/editor-ui/src/features/ai/gateway/    @n8n-io/relay
+packages/frontend/editor-ui/src/app/composables/useAiGatewayTopUp.ts @n8n-io/relay
+packages/frontend/editor-ui/src/app/composables/useFreeAiCredits.ts @n8n-io/relay
+
+packages/frontend/editor-ui/src/features/settings/communityNodes/ @n8n-io/nodes
+packages/frontend/editor-ui/src/features/credentials/quickConnect/ @n8n-io/nodes required
+packages/frontend/editor-ui/src/features/ndv/runData/schemaPreview.api.ts @n8n-io/nodes
+packages/frontend/editor-ui/src/features/ndv/runData/schemaPreview.store.ts @n8n-io/nodes
+packages/frontend/editor-ui/src/features/agents/channels/ @n8n-io/nodes
+
+# AI
+
+packages/@n8n/instance-ai/                              @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/                          @n8n-io/ai
+packages/@n8n/nodes-langchain/nodes/agents/             @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/chains/             @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/code/               @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/output_parser/      @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/llms/               @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/vendors/            @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/ModelSelector/      @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/embeddings/        @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/vector_store/       @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/document_loaders/   @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/text_splitters/     @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/retrievers/         @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/rerankers/          @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/memory/             @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/tools/              @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/ToolExecutor/       @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/trigger/            @n8n-io/ai-agents
+packages/@n8n/ai-utilities/                             @n8n-io/ai-agents
+packages/@n8n/ai-workflow-builder.ee/                   @n8n-io/ai-assistant
+packages/@n8n/agents/                                   @n8n-io/ai-agents
+packages/frontend/@n8n/chat/                            @n8n-io/ai-agents
+packages/frontend/editor-ui/src/features/agents/        @n8n-io/ai-agents
+
+# Chat Hub
+
+packages/@n8n/chat-hub/                                 @n8n-io/ai-assistant
+packages/@n8n/api-types/src/chat-hub.ts                 @n8n-io/ai-assistant
+packages/@n8n/api-types/src/push/chat-hub.ts            @n8n-io/ai-assistant
+packages/@n8n/config/src/configs/chat-hub.config.ts     @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/nodes/vector_store/ChatHubVectorStorePGVector/ @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/nodes/vector_store/ChatHubVectorStorePinecone/ @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/nodes/vector_store/ChatHubVectorStoreQdrant/ @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/chatHub.ts @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/credentials/ChatHubVectorStorePGVectorApi.credentials.ts @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/credentials/ChatHubVectorStorePineconeApi.credentials.ts @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/credentials/ChatHubVectorStoreQdrantApi.credentials.ts @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/nodes/mcp/                @n8n-io/nodes required
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useChatHubCommands.ts @n8n-io/ai-assistant
+packages/cli/src/modules/breaking-changes/rules/v3/chat-hub-deprecated.rule.ts @n8n-io/ai-assistant
+
+# Nodes
+
+packages/@n8n/codemirror-lang/                          @n8n-io/nodes
+packages/@n8n/codemirror-lang-html/                     @n8n-io/nodes
+packages/@n8n/codemirror-lang-sql/                      @n8n-io/nodes
+packages/nodes-base/                                    @n8n-io/nodes
+packages/nodes-base/nodes/Code/                         @n8n-io/nodes required
+packages/nodes-base/nodes/ExecuteCommand/               @n8n-io/nodes required
+packages/nodes-base/nodes/Ssh/                          @n8n-io/nodes required
+packages/nodes-base/nodes/HttpRequest/                  @n8n-io/nodes required
+packages/nodes-base/nodes/Webhook/                      @n8n-io/nodes required
+packages/nodes-base/nodes/RespondToWebhook/             @n8n-io/nodes required
+packages/nodes-base/nodes/Form/                         @n8n-io/nodes required
+packages/nodes-base/nodes/Wait/                         @n8n-io/nodes required
+packages/nodes-base/utils/sendAndWait/                  @n8n-io/nodes required
+packages/nodes-base/nodes/Git/                          @n8n-io/nodes required
+packages/node-dev/                                      @n8n-io/nodes
+packages/@n8n/imap/                                     @n8n-io/nodes
+packages/@n8n/mcp-browser/                              @n8n-io/nodes required
+packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes required
+packages/modules/quick-connect/                         @n8n-io/nodes required
+packages/@n8n/api-types/src/dto/quick-connect/          @n8n-io/nodes required
+packages/@n8n/api-types/src/quick-connect.ts            @n8n-io/nodes required
+packages/cli/src/modules/community-packages/            @n8n-io/nodes
+packages/cli/src/modules/mcp-registry/                  @n8n-io/nodes required
+packages/cli/src/modules/agents/integrations/           @n8n-io/nodes
+packages/@n8n/api-types/src/schemas/mcp-registry.schema.ts @n8n-io/nodes required
+packages/cli/templates/send-and-wait-no-action-required.handlebars @n8n-io/nodes required
+packages/@n8n/ai-node-sdk/                              @n8n-io/nodes required
+
+# Relay (AI gateway & credits)
+packages/cli/src/services/ai-gateway.service.ts         @n8n-io/relay required
+packages/cli/src/services/ai-gateway-eligibility.ts     @n8n-io/relay required
+packages/cli/src/services/free-ai-credits.service.ts    @n8n-io/relay required
+packages/@n8n/config/src/configs/ai-gateway.config.ts   @n8n-io/relay
+packages/@n8n/api-types/src/dto/ai/ai-gateway-config-response.dto.ts @n8n-io/relay
+packages/@n8n/api-types/src/dto/ai/ai-gateway-usage-response.dto.ts @n8n-io/relay
+packages/@n8n/api-types/src/dto/ai/ai-gateway-wallet-response.dto.ts @n8n-io/relay
+packages/cli/src/modules/mcp/mcp-ai-gateway.helper.ts   @n8n-io/relay
+packages/cli/src/modules/agents/json-config/node-tool-ai-gateway.service.ts @n8n-io/relay
+packages/frontend/editor-ui/src/app/stores/aiGateway.store.ts @n8n-io/relay
+packages/frontend/editor-ui/src/app/composables/useAiGateway.ts @n8n-io/relay
+packages/frontend/editor-ui/src/features/credentials/gatewayCreditsPromotion/ @n8n-io/relay
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/SectionHeaderCreditsTag.vue @n8n-io/relay
+
+# Enterprise Nodes & Partnerships
+
+packages/nodes-base/nodes/Databricks/                                    @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Kafka/                                         @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Confluence/                                    @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Jira/                                          @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Salesforce/                                    @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/ServiceNow/                                    @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Snowflake/                                     @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Okta/                                          @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Dynamics/                            @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Excel/                               @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/                     @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/OneDrive/                            @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Outlook/                             @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/SharePoint/                          @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Teams/                               @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Sql/                                 @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Storage/                             @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/ToDo/                                @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Dataverse/                           @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Oracle/                                        @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/S3/                                        @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/S3/                                            @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/                  @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/               @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsDatabricks/     @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreDatabricks/  @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/                   @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/               @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/     @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/              @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAzureOpenAi/    @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/             @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/   @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreOracleDB/    @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatNvidia/                   @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsNvidia/         @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Entra/                               @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/GraphSecurity/                       @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/AzureCosmosDb/                       @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/GenericFunctions.ts                  @n8n-io/enterprise-nodes
+packages/nodes-base/utils/microsoft/                                     @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/DynamoDB/                                  @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/SQS/                                       @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/IAM/                                       @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/Cognito/                                   @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/AwsSns.node.ts                             @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/AwsSnsTrigger.node.ts                      @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/AwsSnsTriggerHelpers.ts                    @n8n-io/enterprise-nodes
+
+# Community engineering
+.agents/skills/create-community-node-lint-rule/         @n8n-io/community-engineering
+.agents/skills/community-pr-readiness-check/            @n8n-io/community-engineering
+packages/@n8n/scan-community-package/                   @n8n-io/community-engineering
+packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/community-engineering
+packages/@n8n/node-cli/                                 @n8n-io/community-engineering
+packages/@n8n/create-node/                              @n8n-io/community-engineering
+
+# IAM
+
+packages/@n8n/permissions/                              @n8n-io/iam
+packages/@n8n/client-oauth2/                            @n8n-io/iam
+packages/@n8n/inbound-auth/                             @n8n-io/iam
+packages/@n8n/syslog-client/                            @n8n-io/iam
+
+# Governance & Observability
+
+packages/modules/type-availability-policies/            @n8n-io/governance-and-observability
+packages/cli/src/modules/type-availability-policies/    @n8n-io/governance-and-observability
+packages/modules/otel/                                  @n8n-io/governance-and-observability
+packages/cli/src/modules/otel/                          @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/controllers/otel.public.controller.ts @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/shared/otel.mapper.ts @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/controllers/node-type-policies.public.controller.ts @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/controllers/credential-type-policies.public.controller.ts @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/handlers/node-type-policies/ @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/handlers/credential-type-policies/ @n8n-io/governance-and-observability
+packages/cli/src/modules/policy-infrastructure/         @n8n-io/governance-and-observability
+packages/cli/src/policy/                                @n8n-io/governance-and-observability
+packages/@n8n/decorators/src/policy-check/              @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/dto/otel/                   @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/dto/type-availability-policies/ @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/node-type-availability.ts   @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/credential-type-availability.ts @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/schemas/policy-check-failure.schema.ts @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/schemas/policy-violation.schema.ts @n8n-io/governance-and-observability
+packages/@n8n/telemetry/src/events/policies.ts          @n8n-io/governance-and-observability
+packages/@n8n/telemetry/src/events/type-availability-policies.ts @n8n-io/governance-and-observability
+packages/workflow/src/errors/policy-refusal.ts          @n8n-io/governance-and-observability
+packages/frontend/editor-ui/src/app/composables/usePolicyViolationToast.ts @n8n-io/governance-and-observability
+
+# CI/CD
+
+.github/                                       					@n8n-io/qa-dx
+.github/workflows/                                      @n8n-io/qa-dx required
+.github/workflows/community-pr-close-stale.yml          @n8n-io/community-engineering
+.github/scripts/                                        @n8n-io/qa-dx required
+.github/actions/                                        @n8n-io/qa-dx required
+.github/poutine-rules/                                  @n8n-io/qa-dx required
+docker/                                                 @n8n-io/qa-dx
+docker/get-n8n.sh                                       @n8n-io/qa-dx required
+
+# QA
+
+packages/quality/                                       @n8n-io/qa-dx
+packages/@n8n/vitest-config/                            @n8n-io/qa-dx
+
+# Encryption boundary (IAM) — the encryption area and its guardrail rules.
+# Widening a constraint (allowed paths, banned methods) needs security review;
+# see packages/@n8n/eslint-config/src/configs/encryption-boundary.ts.
+
+packages/core/src/encryption/                           @n8n-io/iam required
+packages/cli/src/modules/encryption-key-manager/        @n8n-io/iam required
+packages/@n8n/db/src/entities/deployment-key.ts         @n8n-io/iam required
+packages/@n8n/db/src/repositories/deployment-key.repository.ts @n8n-io/iam required
+packages/@n8n/eslint-config/src/configs/encryption-boundary.ts @n8n-io/iam required
+packages/@n8n/eslint-config/src/rules/no-encryption-guardrail-disable.ts @n8n-io/iam required
+
+# AI Trust (evaluations)
+# Placed last so these rules override the broader package rules above.
+
+packages/@n8n/instance-ai/evaluations/                   @n8n-io/ai-trust
+packages/cli/src/modules/instance-ai/eval/               @n8n-io/ai-trust
+packages/quality/testing/playwright/tests/evals/instance-ai/ @n8n-io/ai-trust
+.agents/skills/create-instance-ai-eval/                  @n8n-io/ai-trust
+.agents/skills/create-agent-builder-eval/                 @n8n-io/ai-trust
+packages/cli/src/modules/agent-evals/                    @n8n-io/ai-trust
+packages/@n8n/agents/src/evals/                          @n8n-io/ai-trust
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/ @n8n-io/ai-trust

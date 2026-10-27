@@ -11,7 +11,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { createUser } from '@test-integration/db/users';
 
@@ -79,7 +79,7 @@ describe('dataTableAggregate', () => {
 					project: project1,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 				{
 					userId: user.id,
@@ -89,7 +89,7 @@ describe('dataTableAggregate', () => {
 					project: project2,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 			]);
 
@@ -123,7 +123,7 @@ describe('dataTableAggregate', () => {
 				name: 'dataTable1',
 				columns: [],
 			});
-			projectRelationRepository.find.mockResolvedValueOnce([]);
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValueOnce([]);
 
 			// ACT
 			const result = await dataTableAggregateService.getManyAndCount(currentUser, {
@@ -178,7 +178,7 @@ describe('dataTableAggregate', () => {
 					project: project1,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 				{
 					userId: user.id,
@@ -188,7 +188,7 @@ describe('dataTableAggregate', () => {
 					project: project2,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 			]);
 
@@ -227,7 +227,7 @@ describe('dataTableAggregate', () => {
 					project: project1,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 			]);
 
@@ -242,6 +242,25 @@ describe('dataTableAggregate', () => {
 			expect(result.data.length).toBe(1);
 			expect([ds1.id, ds2.id, ds3.id]).toContain(result.data[0].id);
 			expect(result.count).toBe(3);
+		});
+		it('should return an empty array when the projectId filter targets a project the user cannot access', async () => {
+			const currentUser = await createUser({ role: GLOBAL_MEMBER_ROLE });
+
+			await dataTableService.createDataTable(project1.id, {
+				name: 'secret-table',
+				columns: [],
+			});
+
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValueOnce([]);
+
+			const result = await dataTableAggregateService.getManyAndCount(currentUser, {
+				filter: { projectId: project1.id },
+				skip: 0,
+				take: 10,
+			});
+
+			expect(result.data).toEqual([]);
+			expect(result.count).toBe(0);
 		});
 	});
 });

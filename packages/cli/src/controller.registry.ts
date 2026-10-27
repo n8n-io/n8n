@@ -1,25 +1,35 @@
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import type { ZodClass } from '@n8n/api-types';
 import { inProduction } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
-import type { AuthenticatedRequest } from '@n8n/db';
+import { isAuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
-import type { AccessScope, Controller, RateLimit, StaticRouterMetadata } from '@n8n/decorators';
+import type {
+	AccessScope,
+	Controller,
+	RateLimiterLimits,
+	StaticRouterMetadata,
+	KeyedRateLimiterConfig,
+} from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { NotFoundError, UnauthenticatedError } from '@n8n/errors';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
-import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import { UnexpectedError } from 'n8n-workflow';
-import type { ZodClass } from 'zod-class';
-
-import { NotFoundError } from './errors/response-errors/not-found.error';
-import { LastActiveAtService } from './services/last-active-at.service';
+import assert from 'node:assert';
 
 import { AuthService } from '@/auth/auth.service';
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { send } from '@/response-helper';
+import { reportError, send, sendErrorResponse } from '@/response-helper';
+
+import { AbstractServer } from './abstract-server';
+import { CorsService } from './services/cors-service';
+import { LastActiveAtService } from './services/last-active-at.service';
+import { RateLimitService } from './services/rate-limit.service';
+import type { BodyArg } from './public-api/public-api-route-resolver';
 
 @Service()
 export class ControllerRegistry {
@@ -29,10 +39,13 @@ export class ControllerRegistry {
 		private readonly globalConfig: GlobalConfig,
 		private readonly metadata: ControllerRegistryMetadata,
 		private readonly lastActiveAtService: LastActiveAtService,
+		private readonly rateLimitService: RateLimitService,
 	) {}
 
 	activate(app: Application) {
 		for (const controllerClass of this.metadata.controllerClasses) {
+			const metadata = this.metadata.getControllerMetadata(controllerClass);
+			if (metadata.isPublicApi) continue;
 			this.activateController(app, controllerClass);
 		}
 	}
@@ -68,6 +81,22 @@ export class ControllerRegistry {
 
 		// Register regular routes
 		for (const [handlerName, route] of metadata.routes) {
+			// Guard against internal API using non-JSON body media types.
+			// We may support non-JSON media types in the future, but for now they are only supported
+			// on `@PublicApiController` routes.
+			const nonJsonBodyArg = route.args.find(
+				(arg): arg is BodyArg =>
+					arg?.type === 'body' &&
+					arg.media !== undefined &&
+					arg.media.mediaType !== 'application/json',
+			);
+			if (nonJsonBodyArg) {
+				throw new UnexpectedError(
+					`${controllerClass.name}.${handlerName} declares @Body({ mediaType: ` +
+						`'${nonJsonBodyArg.media?.mediaType}' }), which only @PublicApiController routes support.`,
+				);
+			}
+
 			// Original handler logic for non-router routes
 			const argTypes = Reflect.getMetadata(
 				'design:paramtypes',
@@ -76,6 +105,12 @@ export class ControllerRegistry {
 			) as unknown[];
 
 			const handler = async (req: Request, res: Response) => {
+				if (route.cors) {
+					const corsService = Container.get(CorsService);
+					const corsOptions = route.cors === true ? {} : route.cors;
+					corsService.applyCorsHeaders(req, res, corsOptions);
+				}
+
 				const args: unknown[] = [req, res];
 				for (let index = 0; index < route.args.length; index++) {
 					const arg = route.args[index];
@@ -95,14 +130,38 @@ export class ControllerRegistry {
 				return await controller[handlerName](...args);
 			};
 
-			const middlewares = this.buildMiddlewares(route, controllerMiddlewares);
+			const bodyArgIdx = route.args.findIndex((arg) => arg?.type === 'body');
+			const bodyArgType = bodyArgIdx !== -1 ? (argTypes[bodyArgIdx] as ZodClass) : undefined;
+
+			const middlewares = this.buildMiddlewares(route, controllerMiddlewares, bodyArgType);
 			const finalHandler = route.usesTemplates
 				? async (req: Request, res: Response) => {
-						await handler(req, res);
+						try {
+							await handler(req, res);
+						} catch (e) {
+							// Template routes skip `send()`, so without this a thrown error
+							// reaches Express's default handler, which cannot read
+							// `httpStatusCode` off a ResponseError and answers 500 — and in
+							// production with a body of just "Internal Server Error".
+							const error = ensureError(e);
+							reportError(error, { extra: { method: req.method, path: req.path } });
+							if (res.headersSent) throw error;
+							sendErrorResponse(res, error);
+						}
 					}
 				: send(handler);
 
 			router[route.method](route.path, ...middlewares, finalHandler);
+
+			// Register bot-allowed routes so the global bot filter can exempt them.
+			// Store the full path pattern (prefix + route path) as a regex so the
+			// global middleware can match against the actual resolved request path.
+			if (route.allowBots) {
+				const fullPattern = (prefix + route.path).replace(/\/+/g, '/');
+				// Convert Express params (:name) to regex wildcards
+				const regexStr = fullPattern.replace(/:[^/]+/g, '[^/]+');
+				AbstractServer.botAllowedPaths.push(regexStr);
+			}
 		}
 	}
 
@@ -115,17 +174,36 @@ export class ControllerRegistry {
 			skipAuth?: boolean;
 			allowSkipMFA?: boolean;
 			allowSkipPreviewAuth?: boolean;
-			rateLimit?: boolean | RateLimit;
+			allowUnauthenticated?: boolean;
+			ipRateLimit?: boolean | RateLimiterLimits;
+			keyedRateLimit?: KeyedRateLimiterConfig;
 			licenseFeature?: BooleanLicenseFeature;
 			accessScope?: AccessScope;
 			middlewares?: RequestHandler[];
 		},
 		controllerMiddlewares: RequestHandler[],
+		bodyDtoClass?: ZodClass,
 	): RequestHandler[] {
 		const middlewares: RequestHandler[] = [];
 
-		if (inProduction && route.rateLimit) {
-			middlewares.push(this.createRateLimitMiddleware(route.rateLimit));
+		// LAYER 1: IP-based rate limiting (always before auth)
+		if (inProduction && route.ipRateLimit) {
+			middlewares.push(this.rateLimitService.createIpRateLimitMiddleware(route.ipRateLimit));
+		}
+
+		// LAYER 2a: Keyed rate limiting with body source (BEFORE auth)
+		if (inProduction && route.keyedRateLimit?.source === 'body') {
+			assert(
+				bodyDtoClass,
+				'Body argument type (@Body decorator) is required for body-based rate limiting',
+			);
+
+			middlewares.push(
+				this.rateLimitService.createBodyKeyedRateLimitMiddleware(
+					bodyDtoClass,
+					route.keyedRateLimit,
+				),
+			);
 		}
 
 		if (!route.skipAuth) {
@@ -133,9 +211,25 @@ export class ControllerRegistry {
 				this.authService.createAuthMiddleware({
 					allowSkipMFA: route.allowSkipMFA ?? false,
 					allowSkipPreviewAuth: route.allowSkipPreviewAuth ?? false,
+					allowUnauthenticated: route.allowUnauthenticated ?? false,
 				}),
-				this.lastActiveAtService.middleware.bind(this.lastActiveAtService) as RequestHandler,
+				this.lastActiveAtService.middleware.bind(this.lastActiveAtService),
 			);
+		}
+
+		// LAYER 2b: User-based rate limiting with user source (AFTER auth)
+		if (route.keyedRateLimit?.source === 'user') {
+			assert(
+				!route.skipAuth,
+				`User-based rate limiting is only supported for authenticated endpoints. Route: ${JSON.stringify(route)}`,
+			);
+
+			// Separate ifs intentionally to prevent configuration errors in development
+			if (inProduction) {
+				middlewares.push(
+					this.rateLimitService.createUserKeyedRateLimitMiddleware(route.keyedRateLimit),
+				);
+			}
 		}
 
 		if (route.licenseFeature) {
@@ -155,15 +249,6 @@ export class ControllerRegistry {
 		return middlewares;
 	}
 
-	private createRateLimitMiddleware(rateLimit: true | RateLimit): RequestHandler {
-		if (typeof rateLimit === 'boolean') rateLimit = {};
-		return expressRateLimit({
-			windowMs: rateLimit.windowMs,
-			limit: rateLimit.limit,
-			message: { message: 'Too many requests' },
-		});
-	}
-
 	private createLicenseMiddleware(feature: BooleanLicenseFeature): RequestHandler {
 		return (_req, res, next) => {
 			if (!this.license.isLicensed(feature)) {
@@ -175,11 +260,8 @@ export class ControllerRegistry {
 	}
 
 	private createScopedMiddleware(accessScope: AccessScope): RequestHandler {
-		return async (
-			req: AuthenticatedRequest<{ credentialId?: string; workflowId?: string; projectId?: string }>,
-			res,
-			next,
-		) => {
+		return async (req, res, next) => {
+			if (!isAuthenticatedRequest(req)) throw new UnauthenticatedError();
 			if (!req.user) throw new UnauthenticatedError();
 
 			const { scope, globalOnly } = accessScope;

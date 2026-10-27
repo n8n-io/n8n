@@ -5,16 +5,16 @@
             "type": "string"
         },
         "CreateDate": {
-            "type": "string"
+            "type": "integer"
         },
         "Path": {
             "type": "string"
         },
         "PermissionsBoundary": {
-            "type": ["array", "null"]
+            "type": "null"
         },
         "Tags": {
-            "type": ["array", "null"]
+            "type": "null"
         },
         "UserId": {
             "type": "string"
@@ -23,5 +23,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

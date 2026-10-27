@@ -1,9 +1,10 @@
 import { ShutdownMetadata } from '@n8n/decorators';
 import type { ShutdownServiceClass } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ShutdownService } from '../shutdown.service';
 
@@ -14,7 +15,7 @@ class MockComponent {
 describe('ShutdownService', () => {
 	let shutdownService: ShutdownService;
 	let mockComponent: MockComponent;
-	let onShutdownSpy: jest.SpyInstance;
+	let onShutdownSpy: MockInstance;
 	const errorReporter = mock<ErrorReporter>();
 	const shutdownMetadata = Container.get(ShutdownMetadata);
 
@@ -23,7 +24,7 @@ describe('ShutdownService', () => {
 		shutdownService = new ShutdownService(mock(), errorReporter, shutdownMetadata);
 		mockComponent = new MockComponent();
 		Container.set(MockComponent, mockComponent);
-		onShutdownSpy = jest.spyOn(mockComponent, 'onShutdown');
+		onShutdownSpy = vi.spyOn(mockComponent, 'onShutdown');
 	});
 
 	describe('shutdown', () => {
@@ -47,8 +48,8 @@ describe('ShutdownService', () => {
 			const mockService = new MockService();
 			Container.set(MockService, mockService);
 
-			jest.spyOn(mockService, 'onShutdownHighPrio').mockImplementation(() => order.push('high'));
-			jest.spyOn(mockService, 'onShutdownLowPrio').mockImplementation(() => order.push('low'));
+			vi.spyOn(mockService, 'onShutdownHighPrio').mockImplementation(() => order.push('high'));
+			vi.spyOn(mockService, 'onShutdownLowPrio').mockImplementation(() => order.push('low'));
 
 			shutdownService.register(100, {
 				serviceClass: MockService as unknown as ShutdownServiceClass,

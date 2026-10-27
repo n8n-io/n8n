@@ -1,0 +1,52 @@
+{
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"url": {
+			"type": "string"
+		}
+	},
+	"additionalProperties": {
+		"anyOf": [
+			{
+				"type": "string"
+			},
+			{
+				"type": "number"
+			},
+			{
+				"type": "boolean"
+			},
+			{
+				"type": "null"
+			},
+			{
+				"type": "array",
+				"items": {
+					"type": ["string", "number", "boolean", "object"]
+				}
+			},
+			{
+				"type": "object",
+				"properties": {
+					"start": {
+						"type": "string"
+					},
+					"end": {
+						"type": ["string", "null"]
+					},
+					"time_zone": {
+						"type": ["string", "null"]
+					}
+				},
+				"required": ["start"]
+			}
+		]
+	},
+	"version": 1
+}

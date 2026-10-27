@@ -1,0 +1,74 @@
+{
+	"name": "Chat sendAndWait",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"public": true,
+				"mode": "hostedChat",
+				"authentication": "none",
+				"initialMessages": "",
+				"options": {
+					"responseMode": "responseNodes"
+				}
+			},
+			"id": "d3a7f2b1-5c4e-4b8a-9f01-2e6d8c7a1b23",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.4,
+			"position": [0, 0],
+			"webhookId": "chat-send-and-wait-trigger"
+		},
+		{
+			"parameters": {
+				"operation": "sendAndWait",
+				"message": "What is your name?",
+				"responseType": "freeTextChat",
+				"options": {}
+			},
+			"id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+			"name": "Ask question",
+			"type": "@n8n/n8n-nodes-langchain.chat",
+			"typeVersion": 1.3,
+			"position": [220, 0],
+			"webhookId": "f0e9d8c7-b6a5-4433-9211-0f1e2d3c4b5a"
+		},
+		{
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "={ \"reply\": \"{{ $json.chatInput }}\" }",
+				"options": {}
+			},
+			"id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+			"name": "Capture Result",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 0]
+		}
+	],
+	"connections": {
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "Ask question",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Ask question": {
+			"main": [
+				[
+					{
+						"node": "Capture Result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {}
+}

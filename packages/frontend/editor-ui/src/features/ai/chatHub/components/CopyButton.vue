@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
@@ -25,12 +25,13 @@ async function handleCopy() {
 <template>
 	<N8nTooltip placement="bottom" :show-after="300">
 		<N8nIconButton
+			variant="ghost"
 			:icon="justCopied ? 'check' : 'copy'"
-			type="tertiary"
-			size="medium"
-			text
+			size="small"
+			icon-size="medium"
 			:class="$style.button"
 			tabindex="0"
+			:aria-label="copyTooltip"
 			@click="handleCopy"
 		/>
 		<template #content>{{ copyTooltip }}</template>

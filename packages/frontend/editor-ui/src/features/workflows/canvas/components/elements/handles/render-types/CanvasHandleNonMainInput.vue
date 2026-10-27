@@ -28,6 +28,8 @@ const isHandlePlusAvailable = computed(
 	() => !isConnected.value || !maxConnections.value || maxConnections.value > 1,
 );
 
+const isHovered = ref(false);
+
 const isHandlePlusVisible = computed(
 	() => !isConnecting.value || isHovered.value || !maxConnections.value || maxConnections.value > 1,
 );
@@ -38,8 +40,6 @@ const handleStyles = computed(() => ({
 	'--handle--border--lightness--light': handleLightness.value.light,
 	'--handle--border--lightness--dark': handleLightness.value.dark,
 }));
-
-const isHovered = ref(false);
 
 function onMouseEnter() {
 	isHovered.value = true;
@@ -82,7 +82,7 @@ function onClickAdd() {
 
 .label {
 	position: absolute;
-	top: 20px;
+	top: var(--spacing--lg);
 	left: 50%;
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	transform: translate(-50%, 0) scale(var(--canvas-zoom-compensation-factor, 1));

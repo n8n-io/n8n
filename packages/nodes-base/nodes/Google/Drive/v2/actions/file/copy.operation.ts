@@ -82,13 +82,28 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const file = this.getNodeParameter('fileId', i) as INodeParameterResourceLocator;
-
-	const fileId = file.value;
+	const fileId = this.getNodeParameter('fileId', i, undefined, {
+		extractValue: true,
+	}) as string;
 
 	const options = this.getNodeParameter('options', i, {});
 
 	let name = this.getNodeParameter('name', i) as string;
-	name = name ? name : `Copy of ${file.cachedResultName}`;
+	if (!name) {
+		const cachedName = typeof file.cachedResultName === 'string' ? file.cachedResultName : '';
+		let originalName = cachedName;
+		if (!originalName) {
+			const meta = (await googleApiRequest.call(
+				this,
+				'GET',
+				`/drive/v3/files/${fileId}`,
+				{},
+				{ fields: 'name', supportsAllDrives: true },
+			)) as { name?: string };
+			originalName = meta?.name ?? '';
+		}
+		name = originalName ? `Copy of ${originalName}` : '';
+	}
 
 	const copyRequiresWriterPermission = options.copyRequiresWriterPermission || false;
 
@@ -114,7 +129,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		parents.push(setParentFolder(folderId, driveId));
 	}
 
-	const body: IDataObject = { copyRequiresWriterPermission, parents, name };
+	const body: IDataObject = { copyRequiresWriterPermission, parents };
+
+	if (name) {
+		body.name = name;
+	}
 
 	if (options.description) {
 		body.description = options.description;

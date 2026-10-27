@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils';
 import { defineComponent, h, nextTick } from 'vue';
 import { mock } from 'vitest-mock-extended';
 import { useTelemetryInitializer } from './useTelemetryInitializer';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 
 const mockRouteMeta: Record<string, unknown> = {};
@@ -18,7 +18,7 @@ vi.mock('vue-router', () => ({
 	},
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const init = vi.fn();
 	return {
 		useTelemetry: () => ({

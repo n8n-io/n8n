@@ -3,15 +3,15 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import { apiRequest } from '../index';
 
 const mockedExecutionContext = {
-	getCredentials: jest.fn(),
+	getCredentials: vi.fn(),
 	helpers: {
-		requestWithAuthentication: jest.fn(),
+		requestWithAuthentication: vi.fn(),
 	},
 };
 
 describe('apiRequest', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should call requestWithAuthentication with credentials URL if one is provided', async () => {
@@ -58,5 +58,24 @@ describe('apiRequest', () => {
 				json: true,
 			},
 		);
+	});
+
+	it('should normalize error: null to error: undefined', async () => {
+		// Arrange
+		mockedExecutionContext.getCredentials.mockResolvedValue({});
+		mockedExecutionContext.helpers.requestWithAuthentication.mockResolvedValue({
+			id: 'test',
+			error: null,
+		});
+
+		// Act
+		const response = await apiRequest.call(
+			mockedExecutionContext as unknown as IExecuteFunctions,
+			'GET',
+			'/test',
+		);
+
+		// Assert
+		expect(response.error).toBeUndefined();
 	});
 });

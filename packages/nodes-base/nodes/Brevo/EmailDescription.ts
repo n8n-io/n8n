@@ -126,20 +126,40 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Receipients',
+		displayName: 'Recipients',
 		name: 'receipients',
 		type: 'string',
 		displayOptions: {
 			show: {
 				resource: ['email'],
 				operation: ['send'],
+				'@version': [1],
 			},
 		},
 		default: '',
 		required: true,
 		routing: {
 			send: {
-				preSend: [BrevoNode.Validators.validateAndCompileReceipientEmails],
+				preSend: [BrevoNode.Validators.validateAndCompileRecipientEmails],
+			},
+		},
+	},
+	{
+		displayName: 'Recipients',
+		name: 'recipients',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['email'],
+				operation: ['send'],
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+		default: '',
+		required: true,
+		routing: {
+			send: {
+				preSend: [BrevoNode.Validators.validateAndCompileRecipientEmails],
 			},
 		},
 	},
@@ -186,18 +206,23 @@ const sendHtmlEmailFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Receipients BCC',
+				displayName: 'Recipients BCC',
 				name: 'receipientsBCC',
 				placeholder: 'Add BCC',
 				type: 'fixedCollection',
 				default: {},
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
 				options: [
 					{
 						name: 'receipientBcc',
-						displayName: 'Receipient',
+						displayName: 'Recipient',
 						values: [
 							{
-								displayName: 'Receipient',
+								displayName: 'Recipient',
 								name: 'bcc',
 								type: 'string',
 								default: '',
@@ -212,18 +237,85 @@ const sendHtmlEmailFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Receipients CC',
+				displayName: 'Recipients BCC',
+				name: 'recipientsBCC',
+				placeholder: 'Add BCC',
+				type: 'fixedCollection',
+				default: {},
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+				options: [
+					{
+						name: 'recipientBcc',
+						displayName: 'Recipient',
+						values: [
+							{
+								displayName: 'Recipient',
+								name: 'bcc',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+				routing: {
+					send: {
+						preSend: [BrevoNode.Validators.validateAndCompileBCCEmails],
+					},
+				},
+			},
+			{
+				displayName: 'Recipients CC',
 				name: 'receipientsCC',
 				placeholder: 'Add CC',
 				type: 'fixedCollection',
 				default: {},
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
 				options: [
 					{
 						name: 'receipientCc',
-						displayName: 'Receipient',
+						displayName: 'Recipient',
 						values: [
 							{
-								displayName: 'Receipient',
+								displayName: 'Recipient',
+								name: 'cc',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+				routing: {
+					send: {
+						preSend: [BrevoNode.Validators.validateAndCompileCCEmails],
+					},
+				},
+			},
+			{
+				displayName: 'Recipients CC',
+				name: 'recipientsCC',
+				placeholder: 'Add CC',
+				type: 'fixedCollection',
+				default: {},
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+				options: [
+					{
+						name: 'recipientCc',
+						displayName: 'Recipient',
+						values: [
+							{
+								displayName: 'Recipient',
 								name: 'cc',
 								type: 'string',
 								default: '',
@@ -327,20 +419,40 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Receipients',
+		displayName: 'Recipients',
 		name: 'receipients',
 		type: 'string',
 		displayOptions: {
 			show: {
 				resource: ['email'],
 				operation: ['sendTemplate'],
+				'@version': [1],
 			},
 		},
 		default: '',
 		required: true,
 		routing: {
 			send: {
-				preSend: [BrevoNode.Validators.validateAndCompileReceipientEmails],
+				preSend: [BrevoNode.Validators.validateAndCompileRecipientEmails],
+			},
+		},
+	},
+	{
+		displayName: 'Recipients',
+		name: 'recipients',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['email'],
+				operation: ['sendTemplate'],
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+		default: '',
+		required: true,
+		routing: {
+			send: {
+				preSend: [BrevoNode.Validators.validateAndCompileRecipientEmails],
 			},
 		},
 	},

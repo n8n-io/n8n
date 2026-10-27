@@ -2,7 +2,7 @@ import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-
 import type { Project, Variables } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 import {
 	createProjectVariable,
 	createVariable,
@@ -10,6 +10,7 @@ import {
 	getVariableByKey,
 } from '@test-integration/db/variables';
 
+import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { createOwner, createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
@@ -57,7 +58,7 @@ describe('GET /variables', () => {
 
 	test('should return an empty array if there is nothing in the cache', async () => {
 		const cacheService = Container.get(CacheService);
-		const spy = jest.spyOn(cacheService, 'get').mockResolvedValueOnce(undefined);
+		const spy = vi.spyOn(cacheService, 'get').mockResolvedValueOnce(undefined);
 		const response = await authOwnerAgent.get('/variables');
 		expect(spy).toHaveBeenCalledTimes(1);
 		expect(response.statusCode).toBe(200);
@@ -116,6 +117,78 @@ describe('GET /variables/:id', () => {
 		const response2 = await authMemberAgent.get(`/variables/${var2.id}`);
 		expect(response2.statusCode).toBe(200);
 		expect(response2.body.data.key).toBe('test2');
+	});
+});
+
+// ----------------------------------------
+// Custom instance roles - global variables
+// ----------------------------------------
+describe('GET /variables - custom instance roles', () => {
+	// A custom instance role only sees global variables when it holds `variable:list`.
+	// `variable:list` is now its own permission option, so a role can read global
+	// variables without also holding every instance settings scope.
+	let authNoVariableScopesAgent: SuperAgentTest;
+	let authVariableViewAgent: SuperAgentTest;
+	let globalVariable: Variables;
+	let projectVariable: Variables;
+
+	beforeAll(async () => {
+		const roleWithoutVariableScopes = await createCustomRoleWithScopeSlugs(['user:list'], {
+			roleType: 'global',
+		});
+		const roleWithVariableView = await createCustomRoleWithScopeSlugs(
+			['user:list', 'variable:list', 'variable:read'],
+			{ roleType: 'global' },
+		);
+
+		const userWithoutVariableScopes = await createUser({ role: roleWithoutVariableScopes });
+		const userWithVariableView = await createUser({ role: roleWithVariableView });
+		await Promise.all([
+			linkUserToProject(userWithoutVariableScopes, project, 'project:admin'),
+			linkUserToProject(userWithVariableView, project, 'project:admin'),
+		]);
+
+		authNoVariableScopesAgent = testServer.authAgentFor(userWithoutVariableScopes);
+		authVariableViewAgent = testServer.authAgentFor(userWithVariableView);
+	});
+
+	beforeEach(async () => {
+		[globalVariable, projectVariable] = await Promise.all([
+			createVariable('globalVar', 'globalValue'),
+			createProjectVariable('projectVar', 'projectValue', project),
+		]);
+	});
+
+	test('should filter out global variables for a role without variable:list', async () => {
+		const response = await authNoVariableScopesAgent.get('/variables');
+
+		// Filtered out silently, not a 403 - the list still returns the project variables.
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.map((variable: Variables) => variable.key)).toEqual([
+			projectVariable.key,
+		]);
+	});
+
+	test('should return global variables for a role with variable:list', async () => {
+		const response = await authVariableViewAgent.get('/variables');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.map((variable: Variables) => variable.key).sort()).toEqual(
+			[globalVariable.key, projectVariable.key].sort(),
+		);
+	});
+
+	test('should return a single global variable for a role with variable:read', async () => {
+		const response = await authVariableViewAgent.get(`/variables/${globalVariable.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.key).toBe(globalVariable.key);
+	});
+
+	test('should deny a single global variable to a role without variable:read', async () => {
+		const response = await authNoVariableScopesAgent.get(`/variables/${globalVariable.id}`);
+
+		expect(response.statusCode).toBe(403);
 	});
 });
 
@@ -324,6 +397,18 @@ describe('PATCH /variables/:id', () => {
 		expect(byId!.key).toBe(var1.key);
 		expect(byId!.value).toBe(var1.value);
 	});
+
+	test("should not modify a variable if the instance doesn't have a license", async () => {
+		const variable = await createVariable('test1', 'value1');
+		license.disable('feat:variables');
+		const response = await authOwnerAgent.patch(`/variables/${variable.id}`).send(toModify);
+		expect(response.statusCode).toBe(403);
+
+		const byId = await getVariableById(variable.id);
+		expect(byId).not.toBeNull();
+		expect(byId!.key).toBe('test1');
+		expect(byId!.value).toBe('value1');
+	});
 });
 
 // ----------------------------------------
@@ -362,5 +447,15 @@ describe('DELETE /variables/:id', () => {
 
 		const getResponse = await authMemberAgent.get('/variables');
 		expect(getResponse.body.data.length).toBe(3);
+	});
+
+	test("should not delete a variable if the instance doesn't have a license", async () => {
+		const variable = await createVariable('test1', 'value1');
+		license.disable('feat:variables');
+		const response = await authOwnerAgent.delete(`/variables/${variable.id}`);
+		expect(response.statusCode).toBe(403);
+
+		const byId = await getVariableById(variable.id);
+		expect(byId).not.toBeNull();
 	});
 });

@@ -3,44 +3,55 @@ import { useI18n } from '@n8n/i18n';
 import { FIELDS_SECTION } from '../../plugins/codemirror/completions/constants';
 import { datatypeCompletions } from '../../plugins/codemirror/completions/datatype.completions';
 import { isCompletionSection } from '../../plugins/codemirror/completions/utils';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { type Completion, CompletionContext } from '@codemirror/autocomplete';
 import { EditorSelection, EditorState, type SelectionRange } from '@codemirror/state';
 import { watchDebounced } from '@vueuse/core';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { N8nText } from '@n8n/design-system';
-type TipId = 'executePrevious' | 'drag' | 'default' | 'dotObject' | 'dotPrimitive';
+type TipId =
+	| 'executePrevious'
+	| 'drag'
+	| 'default'
+	| 'dotObject'
+	| 'dotPrimitive'
+	| 'pairedItemNotOnBranch';
 
 type Props = {
 	editorState?: EditorState;
 	unresolvedExpression?: string;
 	selection?: SelectionRange;
+	pairedItemNotOnBranch?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	editorState: undefined,
 	unresolvedExpression: '',
 	selection: () => EditorSelection.cursor(0),
+	pairedItemNotOnBranch: false,
 });
 
 const i18n = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const canAddDotToExpression = ref(false);
 const resolvedExpressionHasFields = ref(false);
 
 const canDragToFocusedInput = computed(
-	() => !ndvStore.isInputPanelEmpty && ndvStore.focusedMappableInput,
+	() => !ndvStore.value.isInputPanelEmpty && ndvStore.value.focusedMappableInput,
 );
 
 const emptyExpression = computed(() => props.unresolvedExpression.trim().length === 0);
 
 const tip = computed<TipId>(() => {
+	// The expression already fails, so the fix is more useful than a general tip.
+	if (props.pairedItemNotOnBranch) return 'pairedItemNotOnBranch';
+
 	if (
-		!ndvStore.hasInputData &&
-		ndvStore.isInputParentOfActiveNode &&
-		ndvStore.focusedMappableInput
+		!ndvStore.value.hasInputData &&
+		ndvStore.value.isInputParentOfActiveNode &&
+		ndvStore.value.focusedMappableInput
 	) {
 		return 'executePrevious';
 	}
@@ -54,7 +65,7 @@ const tip = computed<TipId>(() => {
 	return 'default';
 });
 
-function getCompletionsWithDot(): readonly Completion[] {
+async function getCompletionsWithDot(): Promise<readonly Completion[]> {
 	if (!props.editorState || !props.selection || !props.unresolvedExpression) {
 		return [];
 	}
@@ -76,26 +87,26 @@ function getCompletionsWithDot(): readonly Completion[] {
 	});
 
 	const context = new CompletionContext(stateWithDot, cursorAfterDot, true);
-	const completionResult = datatypeCompletions(context);
+	const completionResult = await datatypeCompletions(context);
 	return completionResult?.options ?? [];
 }
 
 onBeforeUnmount(() => {
-	ndvStore.setHighlightDraggables(false);
+	ndvStore.value.setHighlightDraggables(false);
 });
 
 watch(
 	tip,
 	(newTip) => {
-		ndvStore.setHighlightDraggables(!ndvStore.isMappingOnboarded && newTip === 'drag');
+		ndvStore.value.setHighlightDraggables(!ndvStore.value.isMappingOnboarded && newTip === 'drag');
 	},
 	{ immediate: true },
 );
 
 watchDebounced(
 	[() => props.selection, () => props.unresolvedExpression],
-	() => {
-		const completions = getCompletionsWithDot();
+	async () => {
+		const completions = await getCompletionsWithDot();
 		canAddDotToExpression.value = completions.length > 0;
 		resolvedExpressionHasFields.value = completions.some(
 			({ section }) => isCompletionSection(section) && section.name === FIELDS_SECTION.name,
@@ -123,6 +134,10 @@ watchDebounced(
 
 		<div v-else-if="tip === 'executePrevious'" :class="$style.content">
 			<span> {{ i18n.baseText('expressionTip.noExecutionData') }} </span>
+		</div>
+
+		<div v-else-if="tip === 'pairedItemNotOnBranch'" :class="$style.content">
+			<span v-n8n-html="i18n.baseText('expressionTip.pairedItemNotOnBranch')" />
 		</div>
 
 		<div v-else-if="tip === 'dotPrimitive'" :class="$style.content">
@@ -163,7 +178,7 @@ watchDebounced(
 
 .tipText {
 	color: var(--color--text--shade-1);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	white-space: nowrap;
 	align-self: flex-start;
 }

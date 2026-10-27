@@ -4,7 +4,7 @@ import { getAgentRoute } from '@/features/ai/chatHub/chat.utils';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import type { ChatModelDto } from '@n8n/api-types';
 import { N8nActionDropdown, N8nIconButton, N8nText } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { RouterLink } from 'vue-router';
 
@@ -59,9 +59,9 @@ function handleSelectMenu(action: MenuAction) {
 
 		<div :class="$style.actions">
 			<N8nIconButton
+				variant="outline"
 				v-if="canEdit"
 				icon="pen"
-				type="tertiary"
 				size="medium"
 				:title="i18n.baseText('chatHub.agent.card.button.edit')"
 				@click.prevent="emit('edit')"
@@ -75,11 +75,10 @@ function handleSelectMenu(action: MenuAction) {
 			>
 				<template #activator>
 					<N8nIconButton
-						icon="ellipsis-vertical"
-						type="tertiary"
+						variant="ghost"
+						icon="ellipsis"
 						size="medium"
 						:title="i18n.baseText('chatHub.agent.card.button.moreOptions')"
-						text
 						:class="$style.actionDropdownTrigger"
 					/>
 				</template>
@@ -102,7 +101,7 @@ function handleSelectMenu(action: MenuAction) {
 	transition: box-shadow 0.3s ease;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
+		box-shadow: var(--shadow--card-hover);
 	}
 }
 

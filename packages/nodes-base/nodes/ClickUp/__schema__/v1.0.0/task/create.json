@@ -9,6 +9,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "color": {
+                        "type": "string"
+                    },
                     "email": {
                         "type": "string"
                     },
@@ -16,6 +19,9 @@
                         "type": "integer"
                     },
                     "initials": {
+                        "type": "string"
+                    },
+                    "username": {
                         "type": "string"
                     }
                 }
@@ -51,6 +57,9 @@
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "required": {
+                        "type": "boolean"
                     },
                     "type": {
                         "type": "string"
@@ -91,6 +100,9 @@
         },
         "custom_item_id": {
             "type": "integer"
+        },
+        "date_closed": {
+            "type": "null"
         },
         "date_created": {
             "type": "string"
@@ -260,10 +272,13 @@
                     },
                     "initials": {
                         "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
                     }
                 }
             }
         }
     },
-    "version": 2
+    "version": 6
 }

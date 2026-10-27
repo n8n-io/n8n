@@ -9,20 +9,17 @@ import {
 	findObjectProperty,
 	getStringLiteralValue,
 	validateIconPath,
-	findSimilarSvgFiles,
+	findSimilarIconFiles,
 	isFileType,
 	createRule,
 } from '../utils/index.js';
 
 const messages = {
 	iconFileNotFound: 'Icon file "{{ iconPath }}" does not exist',
-	iconNotSvg: 'Icon file "{{ iconPath }}" must be an SVG file (end with .svg)',
-	lightDarkSame: 'Light and dark icons cannot be the same file. Both point to "{{ iconPath }}"',
 	invalidIconPath: 'Icon path "{{ iconPath }}" must use file: protocol and be a string',
 	missingIcon: 'Node/Credential class must have an icon property defined',
 	addPlaceholder: 'Add icon property with placeholder',
 	addFileProtocol: "Add 'file:' protocol to icon path",
-	changeExtension: "Change icon extension to '.svg'",
 	similarIcon: "Use existing icon '{{ suggestedName }}'",
 } as const;
 
@@ -31,8 +28,7 @@ export const IconValidationRule = createRule({
 	meta: {
 		type: 'problem',
 		docs: {
-			description:
-				'Validate node and credential icon files exist, are SVG format, and light/dark icons are different',
+			description: 'Validate node and credential icon files exist and use the file: protocol',
 		},
 		messages,
 		schema: [],
@@ -80,34 +76,12 @@ export const IconValidationRule = createRule({
 				return false;
 			}
 
-			if (!validation.isSvg) {
-				const relativePath = iconPath.replace(/^file:/, '');
-				const suggestions: ReportSuggestionArray<keyof typeof messages> = [];
-
-				const pathWithoutExt = relativePath.replace(/\.[^/.]+$/, '');
-				const svgPath = `${pathWithoutExt}.svg`;
-				suggestions.push({
-					messageId: 'changeExtension',
-					fix(fixer) {
-						return fixer.replaceText(node, `"file:${svgPath}"`);
-					},
-				});
-
-				context.report({
-					node,
-					messageId: 'iconNotSvg',
-					data: { iconPath: relativePath },
-					suggest: suggestions,
-				});
-				return false;
-			}
-
 			if (!validation.exists) {
 				const relativePath = iconPath.replace(/^file:/, '');
 				const suggestions: ReportSuggestionArray<keyof typeof messages> = [];
 
-				// Find similar SVG files in the same directory
-				const similarFiles = findSimilarSvgFiles(relativePath, currentDir);
+				// Find similar icon files in the same directory
+				const similarFiles = findSimilarIconFiles(relativePath, currentDir);
 				for (const similarFile of similarFiles) {
 					suggestions.push({
 						messageId: 'similarIcon',
@@ -138,22 +112,12 @@ export const IconValidationRule = createRule({
 				const lightProperty = findObjectProperty(iconValue, 'light');
 				const darkProperty = findObjectProperty(iconValue, 'dark');
 
-				const lightPath = lightProperty ? getStringLiteralValue(lightProperty.value) : null;
-				const darkPath = darkProperty ? getStringLiteralValue(darkProperty.value) : null;
-
+				// A theme-agnostic file can fill both slots, so only each path is checked
 				if (lightProperty) {
-					validateIcon(lightPath, lightProperty.value);
+					validateIcon(getStringLiteralValue(lightProperty.value), lightProperty.value);
 				}
 				if (darkProperty) {
-					validateIcon(darkPath, darkProperty.value);
-				}
-
-				if (lightPath && darkPath && lightPath === darkPath && lightProperty) {
-					context.report({
-						node: lightProperty.value,
-						messageId: 'lightDarkSame',
-						data: { iconPath: lightPath.replace(/^file:/, '') },
-					});
+					validateIcon(getStringLiteralValue(darkProperty.value), darkProperty.value);
 				}
 			}
 		};
@@ -169,10 +133,7 @@ export const IconValidationRule = createRule({
 
 				if (isNodeClass) {
 					const descriptionProperty = findClassProperty(node, 'description');
-					if (
-						!descriptionProperty?.value ||
-						descriptionProperty.value.type !== TSESTree.AST_NODE_TYPES.ObjectExpression
-					) {
+					if (descriptionProperty?.value?.type !== TSESTree.AST_NODE_TYPES.ObjectExpression) {
 						context.report({
 							node,
 							messageId: 'missingIcon',

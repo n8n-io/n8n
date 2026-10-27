@@ -1,0 +1,319 @@
+import type { AgentBackgroundJobSignal } from '@n8n/api-types';
+
+import { CHAT_MESSAGE_ROLE } from './constants';
+import { appendHostEventSources, type AgentsChatHostEventSource } from './interactionRegistry';
+import { summariseToolCall } from './interactiveSummary';
+import { getMessageInteractives } from './messageMappers';
+import { getMessageThinkingSegments } from './thinking';
+import type { AgentsChatMessage, InteractivePayload, ThinkingSegment, ToolCall } from './types';
+
+/** Values of the `kind` tag that tells the `DisplayGroup` variants apart. */
+export const DISPLAY_GROUP_KIND = {
+	/** A notice about background jobs of the agent that came to an end. */
+	BACKGROUND_JOB_SIGNAL: 'backgroundJobSignal',
+	/** One user or assistant message that the list does not fold. */
+	MESSAGE: 'message',
+	/** Consecutive tool-only assistant messages folded into one block. */
+	TOOL_RUN: 'toolRun',
+} as const;
+
+/**
+ * Presentation group for the message list. The builder persists one assistant
+ * message per tool-use turn, so a single conversation fragments into many robot
+ * avatars on reload. We fold consecutive tool-only assistant messages into a
+ * single `toolRun` block to match the live-stream look.
+ *
+ * Interactive messages are still grouped: their tool calls join the rest of
+ * the run (so the suspended/done icon shows in the step list), and any
+ * interactive payloads — both still-open and already-resolved cards — are
+ * collected into `interactives` so the group can render the corresponding
+ * cards beside the step list.
+ */
+export type DisplayGroup =
+	| {
+			kind: typeof DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL;
+			id: string;
+			signal: AgentBackgroundJobSignal;
+	  }
+	| {
+			kind: typeof DISPLAY_GROUP_KIND.MESSAGE;
+			id: string;
+			message: AgentsChatMessage;
+			thinkingSegments: ThinkingSegment[];
+	  }
+	| {
+			kind: typeof DISPLAY_GROUP_KIND.TOOL_RUN;
+			id: string;
+			thinkingSegments: ThinkingSegment[];
+			active: boolean;
+			awaitingInput: boolean;
+			toolCalls: ToolCall[];
+			/** Interactive cards belonging to messages folded into this group. */
+			interactives: InteractivePayload[];
+			/**
+			 * Budget cards from every folded message, deduped by code. A stop
+			 * lands on the current message, which can be tool-only; without this
+			 * the card would fold away while Send stays blocked.
+			 */
+			budgetNotices: NonNullable<AgentsChatMessage['budgetNotices']>;
+			/**
+			 * Trailing assistant message in the turn that carries text content.
+			 * Folding it into the same group keeps a single bubble per turn
+			 * (thinking → tools → interactives → final text).
+			 */
+			finalMessage?: AgentsChatMessage;
+			/**
+			 * Turn execution id from the first folded message that has one.
+			 * Messages with a different defined executionId are never folded in
+			 * (HITL resume history must not inherit the suspended turn's id).
+			 */
+			executionId?: string;
+			/**
+			 * Host events of every folded message, in arrival order, with the
+			 * message that carries each one. Set only when there are events.
+			 */
+			hostEvents?: AgentsChatHostEventSource[];
+	  };
+
+export type TurnDisplayGroup = Exclude<
+	DisplayGroup,
+	{ kind: typeof DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL }
+>;
+
+export function isGroupable(message: AgentsChatMessage): boolean {
+	return (
+		message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
+		!!message.toolCalls?.length &&
+		!message.content.trim()
+	);
+}
+
+type ToolRunGroup = Extract<DisplayGroup, { kind: typeof DISPLAY_GROUP_KIND.TOOL_RUN }>;
+
+export function isAssistantGroup(group: DisplayGroup): group is TurnDisplayGroup {
+	return (
+		group.kind === DISPLAY_GROUP_KIND.TOOL_RUN ||
+		(group.kind === DISPLAY_GROUP_KIND.MESSAGE &&
+			group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT)
+	);
+}
+
+function executionIdForGroup(group: TurnDisplayGroup): string | undefined {
+	return group.kind === DISPLAY_GROUP_KIND.TOOL_RUN ? group.executionId : group.message.executionId;
+}
+
+/** Keep one reasoning block at the tail of each assistant run, below its final output. */
+function moveThinkingToRunTail(groups: DisplayGroup[]): void {
+	let run: TurnDisplayGroup[] = [];
+	let executionId: string | undefined;
+
+	const flush = () => {
+		if (run.length === 0) return;
+		const segments = run.flatMap((group) => group.thinkingSegments);
+		for (const group of run) group.thinkingSegments = [];
+		run[run.length - 1].thinkingSegments = segments;
+		run = [];
+		executionId = undefined;
+	};
+
+	for (const group of groups) {
+		if (!isAssistantGroup(group)) {
+			flush();
+			continue;
+		}
+
+		const groupExecutionId = executionIdForGroup(group);
+		if (
+			executionId !== undefined &&
+			groupExecutionId !== undefined &&
+			executionId !== groupExecutionId
+		) {
+			flush();
+		}
+		run.push(group);
+		executionId ??= groupExecutionId;
+	}
+	flush();
+}
+
+/**
+ * Whether `message` may join an open toolRun. Same-turn live streams often
+ * lack executionId until `done`; those still fold. Distinct defined ids
+ * (suspended vs resumed HITL executions) must stay separate so Fix CTA
+ * handoff uses the turn that owns the errored tool.
+ */
+function canAppendToToolRun(last: ToolRunGroup, message: AgentsChatMessage): boolean {
+	if (last.finalMessage) return false;
+	if (
+		last.executionId !== undefined &&
+		message.executionId !== undefined &&
+		last.executionId !== message.executionId
+	) {
+		return false;
+	}
+	return true;
+}
+
+/**
+ * Merge two records of the same tool call: messages are now stored both when a
+ * stream suspends and again on completion, so history can carry the same
+ * toolCallId twice (open, then resolved). Ported from master's undrained-stream
+ * fix (#32119).
+ */
+function mergeToolCall(previous: ToolCall, next: ToolCall): ToolCall {
+	const merged: ToolCall = {
+		...previous,
+		...next,
+		input: next.input ?? previous.input,
+		startTime: previous.startTime ?? next.startTime,
+		endTime: next.endTime ?? previous.endTime,
+		canceled: next.canceled ?? previous.canceled,
+	};
+	return {
+		...merged,
+		displaySummary: summariseToolCall(merged.tool, merged.output, merged.input),
+	};
+}
+
+function appendToolCalls(existing: ToolCall[], next: ToolCall[]): ToolCall[] {
+	const merged = [...existing];
+	const indexByToolCallId = new Map<string, number>();
+	for (const [index, toolCall] of merged.entries()) {
+		if (toolCall.toolCallId) indexByToolCallId.set(toolCall.toolCallId, index);
+	}
+
+	for (const toolCall of next) {
+		if (!toolCall.toolCallId) {
+			merged.push(toolCall);
+			continue;
+		}
+		const index = indexByToolCallId.get(toolCall.toolCallId);
+		if (index === undefined) {
+			indexByToolCallId.set(toolCall.toolCallId, merged.length);
+			merged.push(toolCall);
+			continue;
+		}
+		merged[index] = mergeToolCall(merged[index], toolCall);
+	}
+	return merged;
+}
+
+function appendBudgetNotices(
+	existing: NonNullable<AgentsChatMessage['budgetNotices']>,
+	next: AgentsChatMessage['budgetNotices'],
+): NonNullable<AgentsChatMessage['budgetNotices']> {
+	if (!next?.length) return existing;
+	const merged = [...existing];
+	for (const notice of next) {
+		if (!merged.some((item) => item.code === notice.code)) merged.push(notice);
+	}
+	return merged;
+}
+
+function appendHostEvents(group: ToolRunGroup, message: AgentsChatMessage): void {
+	if (!message.hostEvents?.length) return;
+	group.hostEvents = appendHostEventSources(group.hostEvents ?? [], message);
+}
+
+function appendInteractivePayloads(
+	existing: InteractivePayload[],
+	next: InteractivePayload[],
+): InteractivePayload[] {
+	let merged = existing;
+	for (const payload of next) {
+		const index = merged.findIndex(
+			(existingPayload) => existingPayload.toolCallId === payload.toolCallId,
+		);
+		if (index === -1) {
+			merged = [...merged, payload];
+		} else {
+			merged = merged.map((existingPayload, i) => (i === index ? payload : existingPayload));
+		}
+	}
+	return merged;
+}
+
+export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[] {
+	const groups: DisplayGroup[] = [];
+	for (const message of messages) {
+		if (message.role === CHAT_MESSAGE_ROLE.ASSISTANT && message.backgroundJobSignal) {
+			// Keep the signal key stable when the same turn gains text or tool calls.
+			groups.push({
+				kind: DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL,
+				id: `${message.executionId ?? message.id}:background-job-signal`,
+				signal: message.backgroundJobSignal,
+			});
+			if (
+				!message.content &&
+				!message.toolCalls?.length &&
+				!getMessageThinkingSegments(message).length &&
+				!getMessageInteractives(message).length &&
+				!message.attachments?.length &&
+				!message.hostEvents?.length
+			)
+				continue;
+		}
+		if (isGroupable(message)) {
+			const last = groups[groups.length - 1];
+			if (last?.kind === DISPLAY_GROUP_KIND.TOOL_RUN && canAppendToToolRun(last, message)) {
+				last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls ?? []);
+				last.thinkingSegments.push(...getMessageThinkingSegments(message));
+				last.active ||= message.status === 'streaming';
+				last.interactives = appendInteractivePayloads(
+					last.interactives,
+					getMessageInteractives(message),
+				);
+				last.budgetNotices = appendBudgetNotices(last.budgetNotices, message.budgetNotices);
+				last.awaitingInput = last.interactives.some((payload) => payload.resolvedAt === undefined);
+				last.executionId ??= message.executionId;
+				appendHostEvents(last, message);
+				continue;
+			}
+			const group: ToolRunGroup = {
+				kind: DISPLAY_GROUP_KIND.TOOL_RUN,
+				id: message.id,
+				thinkingSegments: getMessageThinkingSegments(message),
+				active: message.status === 'streaming',
+				awaitingInput: message.status === 'awaitingUser',
+				toolCalls: [...(message.toolCalls ?? [])],
+				interactives: getMessageInteractives(message),
+				budgetNotices: appendBudgetNotices([], message.budgetNotices),
+				...(message.executionId ? { executionId: message.executionId } : {}),
+			};
+			appendHostEvents(group, message);
+			groups.push(group);
+			continue;
+		}
+
+		if (message.role === CHAT_MESSAGE_ROLE.ASSISTANT) {
+			const last = groups[groups.length - 1];
+			if (last?.kind === DISPLAY_GROUP_KIND.TOOL_RUN && canAppendToToolRun(last, message)) {
+				last.finalMessage = message;
+				last.executionId ??= message.executionId;
+				last.thinkingSegments.push(...getMessageThinkingSegments(message));
+				last.active ||= message.status === 'streaming';
+				if (message.toolCalls?.length) {
+					last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls);
+				}
+				last.interactives = appendInteractivePayloads(
+					last.interactives,
+					getMessageInteractives(message),
+				);
+				last.budgetNotices = appendBudgetNotices(last.budgetNotices, message.budgetNotices);
+				last.awaitingInput = last.interactives.some((payload) => payload.resolvedAt === undefined);
+				appendHostEvents(last, message);
+				continue;
+			}
+		}
+
+		groups.push({
+			kind: DISPLAY_GROUP_KIND.MESSAGE,
+			id: message.id,
+			message,
+			thinkingSegments:
+				message.role === CHAT_MESSAGE_ROLE.ASSISTANT ? getMessageThinkingSegments(message) : [],
+		});
+	}
+	moveThinkingToRunTail(groups);
+	return groups;
+}

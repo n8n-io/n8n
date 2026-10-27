@@ -1,9 +1,118 @@
 {
     "type": "object",
     "properties": {
+        "answer": {
+            "type": "string"
+        },
+        "createdDate": {
+            "type": "string"
+        },
+        "documentType": {
+            "type": "string"
+        },
+        "eTag": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
+        },
+        "isActive": {
+            "type": "boolean"
+        },
+        "lastModifiedDate": {
+            "type": "string"
+        },
+        "metadados": {
+            "type": "object",
+            "properties": {
+                "Cnpj": {
+                    "type": "string"
+                },
+                "Email": {
+                    "type": "string"
+                },
+                "EmailResponsavel": {
+                    "type": "string"
+                },
+                "EnvioEmail": {
+                    "type": "string"
+                },
+                "FollowUp": {
+                    "type": "string"
+                },
+                "Funcao": {
+                    "type": "string"
+                },
+                "Historico": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            },
+                            "createdAt": {
+                                "type": "string"
+                            },
+                            "role": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "IdLead": {
+                    "type": "string"
+                },
+                "MensagemTimestamp": {
+                    "type": "string"
+                },
+                "Ncolaboladores": {
+                    "type": "string"
+                },
+                "Nome": {
+                    "type": "string"
+                },
+                "NomeEmpresa": {
+                    "type": "string"
+                },
+                "Origem_ultima_conversao": {
+                    "type": "string"
+                },
+                "RespostaAgenteTimestamp": {
+                    "type": "string"
+                },
+                "sessionId": {
+                    "type": "string"
+                },
+                "Status": {
+                    "type": "string"
+                },
+                "Telefone": {
+                    "type": "string"
+                }
+            }
+        },
+        "partitionKey": {
+            "type": "string"
+        },
+        "query": {
+            "type": "string"
+        },
+        "resourceId": {
+            "type": "string"
+        },
+        "selfLink": {
+            "type": "string"
+        },
+        "timestamp": {
+            "type": "string"
+        },
+        "timeStamp": {
+            "type": "integer"
+        },
+        "version": {
+            "type": "integer"
         }
     },
-    "version": 1
+    "version": 4
 }

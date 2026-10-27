@@ -1,46 +1,43 @@
+import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
+import {
+	classifyExpressionError,
+	MemoryLimitError,
+	SecurityViolationError,
+	TimeoutError,
+} from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { ApplicationError } from '@n8n/errors';
+import { UnexpectedError, UserError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
-import { sanitizer, sanitizerName } from './expression-sandboxing';
+import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
+import { evaluateNatively } from './expressions/native-evaluation';
+import {
+	canVerifyNatively,
+	NativeVerifier,
+	type NativeVerifyMismatch,
+} from './expressions/native-evaluation/verify';
+import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
-import { getGlobalState } from './global-state';
-import { createEmptyRunExecutionData } from './run-execution-data-factory';
 import type {
 	IDataObject,
-	IExecuteData,
-	INode,
-	INodeExecutionData,
-	INodeParameterResourceLocator,
 	INodeParameters,
-	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	NodeParameterValue,
-	NodeParameterValueType,
-	WorkflowExecuteMode,
 } from './interfaces';
-import type { Workflow } from './workflow';
-import { WorkflowDataProxy } from './workflow-data-proxy';
-import type { IRunExecutionData } from './run-execution-data/run-execution-data';
-
-const IS_FRONTEND_IN_DEV_MODE =
-	typeof process === 'object' &&
-	Object.keys(process).length === 1 &&
-	'env' in process &&
-	Object.keys(process.env).length === 0;
-
-const IS_FRONTEND = typeof process === 'undefined' || IS_FRONTEND_IN_DEV_MODE;
+import { IS_FRONTEND } from './runtime-environment';
 
 const isSyntaxError = (error: unknown): error is SyntaxError =>
 	error instanceof SyntaxError || (error instanceof Error && error.name === 'SyntaxError');
 
 const isExpressionError = (error: unknown): error is ExpressionError =>
 	error instanceof ExpressionError || error instanceof ExpressionExtensionError;
+
+export type { NativeVerifyMismatch } from './expressions/native-evaluation/verify';
 
 const isTypeError = (error: unknown): error is TypeError =>
 	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
@@ -50,8 +47,546 @@ setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
 });
 
+/** What one engine did with one expression. `errorClass` names the failure without its message. */
+export type ExpressionEvaluationOutcome =
+	| { ok: true; value: unknown }
+	| { ok: false; error: unknown; errorClass: string };
+
+export interface ExpressionShadowContext {
+	/** The expression after `extendSyntax`, as the engines receive it. */
+	expression: string;
+	/** The expression as the user wrote it, without the leading `=`. */
+	source: string;
+	data: IWorkflowDataProxyData;
+	timezone: string;
+}
+
+/**
+ * Runs a second engine next to the legacy engine to compare the two. The
+ * legacy engine still gives the result: the runner only observes it.
+ */
+export interface ExpressionShadowRunner {
+	/**
+	 * Called before the legacy engine evaluates an expression. Returns a callback
+	 * for the legacy outcome, or `undefined` to skip this expression.
+	 */
+	beforeLegacy(
+		context: ExpressionShadowContext,
+	): ((legacy: ExpressionEvaluationOutcome) => void) | undefined;
+}
+
+export interface ShadowEvaluator {
+	evaluate(
+		expression: string,
+		data: IWorkflowDataProxyData,
+		timezone: string,
+	): ExpressionEvaluationOutcome;
+	dispose(): Promise<void>;
+}
+
+// Expression code can set `name` to any text, so only these names leave the engine.
+const KNOWN_ERROR_CLASSES = new Set(
+	[
+		'Error AggregateError EvalError InternalError RangeError ReferenceError SyntaxError',
+		'TypeError URIError ExpressionError ExpressionExtensionError UserError',
+	]
+		.join(' ')
+		.split(' '),
+);
+
+function errorClassOf(error: unknown): string {
+	// Timeout and memory errors share the name `ExpressionError`, so classify them first.
+	// `mapVmError` wraps them in an ExpressionError and keeps them as `cause`.
+	const runtimeClass = classifyExpressionError(
+		error instanceof ExpressionError && error.cause ? error.cause : error,
+	);
+	if (runtimeClass !== 'unknown') return runtimeClass;
+	// A minified build renames classes, and n8n errors take their `name` from the
+	// constructor, so check the class before the name. The subclass comes first.
+	if (error instanceof ExpressionExtensionError) return 'ExpressionExtensionError';
+	if (error instanceof ExpressionError) return 'ExpressionError';
+	if (error instanceof UserError) return 'UserError';
+	if (!(error instanceof Error)) return typeof error;
+	return KNOWN_ERROR_CLASSES.has(error.name) ? error.name : 'other';
+}
+
+/**
+ * Map errors from the VM expression evaluator to host-side error types.
+ *
+ * The VM bridge can only reconstruct plain Error objects with .name set,
+ * because it can't import ExpressionError/ExpressionExtensionError from
+ * packages/workflow without creating a circular dependency.
+ *
+ * TODO: Move this reconstruction into the bridge once expression-runtime
+ * can depend on workflow error classes (or a shared error package exists).
+ */
+function mapVmError(error: unknown): Error {
+	if (isExpressionError(error)) return error;
+
+	// Runtime error types (TimeoutError, MemoryLimitError, etc.) must be
+	// checked before the name-based reconstruction below, because they
+	// extend the runtime's ExpressionError and share .name === 'ExpressionError'.
+	if (error instanceof TimeoutError) {
+		const wrapped = new ExpressionError('Expression timed out');
+		wrapped.cause = error;
+		return wrapped;
+	}
+	if (error instanceof MemoryLimitError) {
+		const wrapped = new ExpressionError('Expression exceeded memory limit');
+		wrapped.cause = error;
+		return wrapped;
+	}
+	if (error instanceof SecurityViolationError) {
+		const wrapped = new ExpressionError(error.message);
+		wrapped.cause = error;
+		return wrapped;
+	}
+
+	// Name-based reconstruction for errors that crossed the isolate boundary
+	if (error instanceof Error && error.name === 'ExpressionExtensionError') {
+		const reconstructed = new ExpressionExtensionError(error.message);
+		Object.assign(reconstructed, error);
+		return reconstructed;
+	}
+	if (error instanceof Error && error.name === 'ExpressionError') {
+		const reconstructed = new ExpressionError(error.message);
+		Object.assign(reconstructed, error);
+		return reconstructed;
+	}
+
+	if (isSyntaxError(error)) return new ExpressionError('invalid syntax');
+
+	if (error instanceof Error) return error;
+	return new Error(String(error));
+}
+
+/**
+ * Creates a safe Object wrapper that removes dangerous static methods
+ * that could be used to bypass property access sanitization.
+ *
+ * Blocked methods:
+ * - defineProperty/defineProperties: Can set properties bypassing access checks
+ * - setPrototypeOf/getPrototypeOf: Can manipulate prototype chains
+ * - getOwnPropertyDescriptor(s): Can introspect sensitive properties
+ * - __defineGetter__/__defineSetter__: Legacy methods that can bypass set traps
+ * - __lookupGetter__/__lookupSetter__: Can introspect getters/setters
+ *
+ * Object.create is wrapped to prevent passing property descriptors (2nd argument)
+ */
+const createSafeObject = (): typeof Object => {
+	const safeCreate = (proto: object | null): object => {
+		// Only allow single-argument create (no property descriptors)
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return Object.create(proto);
+	};
+
+	// Block dangerous static and prototype methods
+	const blockedMethods = new Set([
+		// Static methods that can bypass property access checks
+		'defineProperty',
+		'defineProperties',
+		'setPrototypeOf',
+		'getPrototypeOf',
+		'getOwnPropertyDescriptor',
+		'getOwnPropertyDescriptors',
+		// Legacy methods that can bypass Proxy set traps
+		'__defineGetter__',
+		'__defineSetter__',
+		'__lookupGetter__',
+		'__lookupSetter__',
+	]);
+
+	// Create a proxy that blocks dangerous methods
+	return new Proxy(Object, {
+		get(target, prop, receiver) {
+			if (blockedMethods.has(prop as string)) {
+				return undefined;
+			}
+
+			// Wrap Object.create to prevent property descriptor argument
+			if (prop === 'create') {
+				return safeCreate;
+			}
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return Reflect.get(target, prop, receiver);
+		},
+		// Block defineProperty trap to prevent __defineGetter__ from working
+		defineProperty() {
+			return false;
+		},
+	});
+};
+
+/**
+ * List of properties that are blocked on Error and all Error subclasses.
+ * These properties can be exploited for sandbox escape via V8's stack trace API.
+ */
+const blockedErrorProperties = new Set([
+	// V8 stack trace manipulation
+	'captureStackTrace',
+	'prepareStackTrace',
+	'stackTraceLimit',
+	// Legacy methods that can bypass Proxy set traps
+	'__defineGetter__',
+	'__defineSetter__',
+	'__lookupGetter__',
+	'__lookupSetter__',
+]);
+
+/**
+ * Creates a safe Error constructor that removes dangerous static methods
+ * like captureStackTrace and prepareStackTrace which can be exploited for RCE.
+ *
+ * The V8 prepareStackTrace attack works by:
+ * 1. Setting Error.prepareStackTrace to a malicious function
+ * 2. Creating a new Error and accessing its .stack property
+ * 3. V8 calls the prepareStackTrace function with CallSite objects
+ * 4. CallSite.getThis() returns the real global object, escaping the sandbox
+ */
+const createSafeError = (): typeof Error => {
+	return new Proxy(Error, {
+		get(target, prop, receiver) {
+			if (blockedErrorProperties.has(prop as string)) {
+				return undefined;
+			}
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return Reflect.get(target, prop, receiver);
+		},
+		set() {
+			// Prevent setting any properties on Error (like prepareStackTrace)
+			return false;
+		},
+		defineProperty() {
+			// Prevent defineProperty (blocks __defineGetter__ internally)
+			return false;
+		},
+	});
+};
+
+/**
+ * Creates a safe wrapper for Error subclasses (TypeError, SyntaxError, etc.)
+ * While prepareStackTrace is only on Error in V8, we wrap subclasses for defense in depth.
+ */
+const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T => {
+	return new Proxy(ErrorClass, {
+		get(target, prop, receiver) {
+			if (blockedErrorProperties.has(prop as string)) {
+				return undefined;
+			}
+
+			return Reflect.get(target, prop, receiver);
+		},
+		set() {
+			return false;
+		},
+		defineProperty() {
+			return false;
+		},
+	});
+};
+
 export class Expression {
-	constructor(private readonly workflow: Workflow) {}
+	private static expressionEngine: 'legacy' | 'vm' | 'quickjs' = 'legacy';
+
+	private static vmEvaluator?: IExpressionEvaluator;
+
+	private static readonly BROWSER_CALLER = {};
+
+	private static useSharedCaller = false;
+
+	private static nativeEvaluation = false;
+
+	private static nativeVerifier?: NativeVerifier;
+
+	private static shadowRunner?: ExpressionShadowRunner;
+
+	constructor(private readonly timezone: string) {}
+
+	/**
+	 * Check if VM evaluator should be used for evaluation.
+	 * @private
+	 */
+	private static shouldUseVm(): boolean {
+		return !!this.vmEvaluator && this.isVmEngineSelected();
+	}
+
+	/**
+	 * Whether an engine other than legacy is selected for this runtime, whether or
+	 * not one started. `vm` is Node-only, because isolated-vm is a native module,
+	 * so the browser can only select quickjs.
+	 * @private
+	 */
+	private static isVmEngineSelected(): boolean {
+		if (this.expressionEngine === 'quickjs') return true;
+		return this.expressionEngine === 'vm' && !IS_FRONTEND;
+	}
+
+	/**
+	 * Initialize the VM evaluator (no-op when the legacy engine is selected).
+	 * Should be called once during application startup.
+	 * Only available in Node.js environments (not in browser).
+	 */
+	static async initExpressionEngine(options: {
+		engine: 'legacy' | 'vm' | 'quickjs';
+		bridgeTimeout: number;
+		bridgeMemoryLimit: number;
+		poolSize: number;
+		maxCodeCacheSize: number;
+		observability?: ObservabilityProvider;
+		idleTimeoutMs?: number;
+		runtimeBundle?: string;
+		/**
+		 * Evaluate every expression through one shared bridge rather than one per
+		 * caller. The browser needs this: its synchronous `evaluate()` requires a
+		 * caller that already holds a scope, and the editor creates a new
+		 * Expression for every workflow it builds. Node leaves this off, so the
+		 * pool hands each execution its own bridge and disposes it on release.
+		 */
+		sharedCaller?: boolean;
+		lazyAcquire?: boolean;
+		compileCache?: boolean;
+		/** Experimental: interpret expressions that fit the native subset in-process. Applies to every engine. */
+		nativeEvaluation?: boolean;
+		/**
+		 * Experimental: share of native-subset expressions, from 0 to 1, to also evaluate
+		 * natively and compare with the vm or quickjs engine, returning the engine's result.
+		 * Only while native evaluation is off.
+		 */
+		nativeEvaluationVerifySample?: number;
+		reportNativeVerifyMismatch?: (mismatch: NativeVerifyMismatch) => void;
+		/** Whether reports can be sent now. `verify` compares nothing while this is false. */
+		canReportNativeVerifyMismatch?: () => boolean;
+	}): Promise<void> {
+		this.nativeEvaluation = options.nativeEvaluation ?? false;
+		const verifySample = options.nativeEvaluationVerifySample ?? 0;
+		this.nativeVerifier = options.reportNativeVerifyMismatch
+			? new NativeVerifier(
+					verifySample,
+					options.reportNativeVerifyMismatch,
+					options.canReportNativeVerifyMismatch,
+				)
+			: undefined;
+		if (verifySample > 0 && this.nativeEvaluation) {
+			LoggerProxy.warn(
+				'Native evaluation verify sample is ignored because native evaluation is on',
+			);
+		}
+		if (options.engine === 'legacy') {
+			// Legacy differs from the isolates on purpose in places, so its
+			// differences would read as native bugs.
+			if (verifySample > 0 && !this.nativeEvaluation) {
+				LoggerProxy.warn(
+					'Native evaluation verify sample is ignored because it only applies to the vm or quickjs expression engine',
+				);
+			}
+			return;
+		}
+		if (options.engine === 'vm' && IS_FRONTEND) return;
+		this.expressionEngine = options.engine;
+
+		if (!this.vmEvaluator) {
+			const evaluator = await this.buildEvaluator({ ...options, engine: options.engine });
+
+			// Publish the evaluator only once it is usable. A half-started one
+			// would leave `shouldUseVm` reporting the engine as active while no
+			// bridge is acquired, so callers could neither retry the start nor
+			// fall back to the legacy evaluator.
+			try {
+				await evaluator.initialize();
+				// Requested explicitly rather than inferred from `runtimeBundle`.
+				// That option only means "the bundle is already loaded, skip the disk
+				// read"; a backend that pre-loaded it to save an fs call per pooled
+				// bridge would otherwise be switched to one shared caller and lose
+				// per-execution isolation without asking for it. IS_FRONTEND is not
+				// usable as the signal either: vite-plugin-node-polyfills shims
+				// `process` with extra keys, which defeats its detection.
+				if (options.sharedCaller) {
+					// Under `lazyAcquire` this only opens the scope. The pool has already
+					// seeded its bridges in initialize(), so this does not decide when a
+					// runtime is built — only which caller owns one.
+					await evaluator.acquire(Expression.BROWSER_CALLER);
+					this.useSharedCaller = true;
+				}
+				this.vmEvaluator = evaluator;
+			} catch (error) {
+				// Tear down what the start already built. The pool replenishes in
+				// the background, so an orphaned one keeps creating bridges that
+				// nobody owns, and a retried start would add another.
+				await evaluator.dispose().catch(() => {});
+				this.useSharedCaller = false;
+				throw error;
+			}
+		}
+	}
+
+	private static async buildEvaluator(
+		options: Omit<Parameters<typeof Expression.initExpressionEngine>[0], 'engine'> & {
+			engine: 'vm' | 'quickjs';
+		},
+	): Promise<IExpressionEvaluator> {
+		// Dynamic import to avoid loading expression-runtime in browser environments
+		const runtime = await import('@n8n/expression-runtime');
+		const createBridge =
+			options.engine === 'quickjs'
+				? () =>
+						new runtime.QuickJsBridge({
+							timeout: options.bridgeTimeout,
+							memoryLimit: options.bridgeMemoryLimit,
+							logger: LoggerProxy,
+							runtimeBundle: options.runtimeBundle,
+						})
+				: () =>
+						new runtime.IsolatedVmBridge({
+							timeout: options.bridgeTimeout,
+							memoryLimit: options.bridgeMemoryLimit,
+							logger: LoggerProxy,
+							compileCache: options.compileCache,
+						});
+		return new runtime.ExpressionEvaluator({
+			createBridge,
+			maxCodeCacheSize: options.maxCodeCacheSize,
+			poolSize: options.poolSize,
+			idleTimeoutMs: options.idleTimeoutMs,
+			lazyAcquire: options.lazyAcquire,
+			hooks: expressionSandboxHooks,
+			logger: LoggerProxy,
+			observability: options.observability,
+		});
+	}
+
+	/**
+	 * Start a QuickJS evaluator for a shadow run, next to whatever engine is
+	 * active. It has its own bridge and caller, so it never changes what the main
+	 * engine does, and it uses the same sandbox hooks, so the comparison is fair.
+	 */
+	static async createQuickJsShadowEvaluator(options: {
+		bridgeTimeout: number;
+		bridgeMemoryLimit: number;
+		maxCodeCacheSize: number;
+		runtimeBundle?: string;
+	}): Promise<ShadowEvaluator> {
+		const evaluator = await this.buildEvaluator({
+			...options,
+			engine: 'quickjs',
+			poolSize: 1,
+			lazyAcquire: true,
+		});
+		const caller = {};
+		try {
+			await evaluator.initialize();
+			await evaluator.acquire(caller);
+		} catch (error) {
+			await evaluator.dispose().catch(() => {});
+			throw error;
+		}
+
+		return {
+			evaluate: (expression, data, timezone) => {
+				try {
+					return { ok: true, value: evaluator.evaluate(expression, data, caller, { timezone }) };
+				} catch (error) {
+					return { ok: false, error: mapVmError(error), errorClass: errorClassOf(error) };
+				}
+			},
+			dispose: async () => {
+				await evaluator.release(caller);
+				await evaluator.dispose();
+			},
+		};
+	}
+
+	/** Install the runner that compares a second engine with legacy, or remove it with `undefined`. */
+	static setShadowRunner(runner: ExpressionShadowRunner | undefined): void {
+		this.shadowRunner = runner;
+	}
+
+	/** Returns whether an isolate was newly acquired; `false` means this caller already held one and must not release it. */
+	async acquireIsolate(): Promise<boolean> {
+		if (Expression.vmEvaluator) return await Expression.vmEvaluator.acquire(this);
+		return false;
+	}
+
+	async releaseIsolate(): Promise<void> {
+		if (Expression.vmEvaluator) await Expression.vmEvaluator.release(this);
+	}
+
+	async withIsolate<T>(fn: () => Promise<T>): Promise<T> {
+		const acquired = await this.acquireIsolate();
+		try {
+			return await fn();
+		} finally {
+			if (acquired) {
+				try {
+					await this.releaseIsolate();
+				} catch (error) {
+					LoggerProxy.error('Failed to release expression isolate', { error });
+				}
+			}
+		}
+	}
+
+	/**
+	 * Dispose the VM evaluator and release resources.
+	 * Should be called during application shutdown or test teardown.
+	 */
+	static async disposeExpressionEngine(): Promise<void> {
+		if (this.vmEvaluator) {
+			// The browser holds one shared scope, and an acquired bridge leaves the
+			// pool, so disposing the pool alone would leave that runtime alive.
+			if (this.useSharedCaller) await this.vmEvaluator.release(Expression.BROWSER_CALLER);
+			await this.vmEvaluator.dispose();
+			this.vmEvaluator = undefined;
+		}
+		this.useSharedCaller = false;
+	}
+
+	/**
+	 * Get the active expression evaluation implementation.
+	 * Used for testing and verification.
+	 */
+	static getActiveImplementation(): 'legacy' | 'vm' | 'quickjs' {
+		if (!this.shouldUseVm()) return 'legacy';
+		return this.expressionEngine === 'quickjs' ? 'quickjs' : 'vm';
+	}
+
+	/**
+	 * Set the expression engine programmatically.
+	 *
+	 * WARNING: This is a global setting — switching engines mid-execution could
+	 * cause a workflow to evaluate some expressions with one engine and some with
+	 * another. Only call this during process startup (or in benchmarks and tests),
+	 * never mid-execution. In production, set `N8N_EXPRESSION_ENGINE` before
+	 * process startup instead.
+	 */
+	static setExpressionEngine(engine: 'legacy' | 'vm' | 'quickjs'): void {
+		this.expressionEngine = engine;
+	}
+
+	/** Toggle native evaluation without restarting the engine. For tests and benchmarks; production sets `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION`. */
+	static setNativeEvaluation(enabled: boolean): void {
+		this.nativeEvaluation = enabled;
+	}
+
+	/** For tests; production sets `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE`. */
+	static setNativeEvaluationVerify(
+		sample: number,
+		reportMismatch?: (mismatch: NativeVerifyMismatch) => void,
+		canReportMismatch?: () => boolean,
+	): void {
+		this.nativeVerifier = reportMismatch
+			? new NativeVerifier(sample, reportMismatch, canReportMismatch)
+			: undefined;
+	}
+	private static shouldVerifyNative(expression: string): boolean {
+		return (
+			!this.nativeEvaluation &&
+			this.shouldUseVm() &&
+			this.nativeVerifier?.isSampled() === true &&
+			canVerifyNatively(expression)
+		);
+	}
 
 	static initializeGlobalContext(data: IDataObject) {
 		/**
@@ -76,7 +611,17 @@ export class Expression {
 		data.uneval = {};
 		data.setTimeout = {};
 		data.setInterval = {};
+		data.setImmediate = {};
+		data.clearImmediate = {};
+		data.queueMicrotask = {};
 		data.Function = {};
+
+		// Prevent Node.js module access
+		data.require = {};
+		data.module = {};
+		data.Buffer = {};
+		data.__dirname = {};
+		data.__filename = {};
 
 		// Prevent requests
 		data.fetch = {};
@@ -97,6 +642,24 @@ export class Expression {
 		data.Reflect = {};
 		data.Proxy = {};
 
+		// These four names are inherited from `Object.prototype`. In the secure-mode
+		// task-runner sandbox `Object.prototype` is frozen, so plain assignment walks
+		// the prototype chain to the now read-only inherited property and throws in
+		// strict mode. Define them as own properties to overwrite them safely.
+		for (const key of [
+			'__lookupGetter__',
+			'__lookupSetter__',
+			'__defineGetter__',
+			'__defineSetter__',
+		]) {
+			Object.defineProperty(data, key, {
+				value: undefined,
+				writable: true,
+				enumerable: true,
+				configurable: true,
+			});
+		}
+
 		// Deprecated
 		data.escape = {};
 		data.unescape = {};
@@ -111,8 +674,8 @@ export class Expression {
 		data.Interval = Interval;
 		data.Duration = Duration;
 
-		// Objects
-		data.Object = Object;
+		// Objects - use safe wrapper to block dangerous methods like defineProperty
+		data.Object = createSafeObject();
 
 		// Arrays
 		data.Array = Array;
@@ -134,14 +697,15 @@ export class Expression {
 		data.Set = typeof Set !== 'undefined' ? Set : {};
 		data.WeakSet = typeof WeakSet !== 'undefined' ? WeakSet : {};
 
-		// Errors
-		data.Error = Error;
-		data.TypeError = TypeError;
-		data.SyntaxError = SyntaxError;
-		data.EvalError = EvalError;
-		data.RangeError = RangeError;
-		data.ReferenceError = ReferenceError;
-		data.URIError = URIError;
+		// Errors - use safe wrappers to block prepareStackTrace, captureStackTrace,
+		// and other dangerous properties that could enable sandbox escape
+		data.Error = createSafeError();
+		data.TypeError = createSafeErrorSubclass(TypeError);
+		data.SyntaxError = createSafeErrorSubclass(SyntaxError);
+		data.EvalError = createSafeErrorSubclass(EvalError);
+		data.RangeError = createSafeErrorSubclass(RangeError);
+		data.ReferenceError = createSafeErrorSubclass(ReferenceError);
+		data.URIError = createSafeErrorSubclass(URIError);
 
 		// Internationalization
 		data.Intl = typeof Intl !== 'undefined' ? Intl : {};
@@ -191,8 +755,11 @@ export class Expression {
 	 *
 	 */
 	convertObjectValueToString(value: object): string {
-		if (value instanceof DateTime && value.invalidReason !== null) {
-			throw new ApplicationError('invalid DateTime');
+		// `isDateTime` only checks the `isLuxonDateTime` field, so a plain object can
+		// pass it. Only a real invalid DateTime has a string `invalidReason`: a valid
+		// one gives `null`, and a plain object gives `undefined`.
+		if (DateTime.isDateTime(value) && typeof value.invalidReason === 'string') {
+			throw new UserError('invalid DateTime');
 		}
 
 		if (value === null) {
@@ -208,7 +775,7 @@ export class Expression {
 		if (value instanceof Date) {
 			// We don't want to use JSON.stringify for dates since it disregards workflow timezone
 			result = DateTime.fromJSDate(value, {
-				zone: this.workflow.settings?.timezone ?? getGlobalState().defaultTimezone,
+				zone: this.timezone,
 			}).toISO();
 		} else if (DateTime.isDateTime(value)) {
 			result = value.toString();
@@ -227,25 +794,14 @@ export class Expression {
 	 * Resolves the parameter value.  If it is an expression it will execute it and
 	 * return the result. For everything simply the supplied value will be returned.
 	 *
-	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {boolean} [returnObjectAsString=false]
+	 * @param {NodeParameterValue} parameterValue - The parameter value to resolve
+	 * @param {IWorkflowDataProxyData} data - The workflow data proxy data
+	 * @param {boolean} [returnObjectAsString=false] - Whether to convert objects to strings
 	 */
-	// TODO: Clean that up at some point and move all the options into an options object
-	// eslint-disable-next-line complexity
 	resolveSimpleParameterValue(
 		parameterValue: NodeParameterValue,
-		siblingParameters: INodeParameters,
-		runExecutionData: IRunExecutionData | null,
-		runIndex: number,
-		itemIndex: number,
-		activeNodeName: string,
-		connectionInputData: INodeExecutionData[],
-		mode: WorkflowExecuteMode,
-		additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		executeData?: IExecuteData,
+		data: IWorkflowDataProxyData,
 		returnObjectAsString = false,
-		selfData = {},
-		contextNodeName?: string,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		// Check if it is an expression
 		if (!isExpression(parameterValue)) {
@@ -256,26 +812,24 @@ export class Expression {
 		// Is an expression
 
 		// Remove the equal sign
-
 		parameterValue = parameterValue.substr(1);
 
-		// Generate a data proxy which allows to query workflow data
-		const dataProxy = new WorkflowDataProxy(
-			this.workflow,
-			runExecutionData,
-			runIndex,
-			itemIndex,
-			activeNodeName,
-			connectionInputData,
-			siblingParameters,
-			mode,
-			additionalKeys,
-			executeData,
-			-1,
-			selfData,
-			contextNodeName,
-		);
-		const data = dataProxy.getDataProxy();
+		// An expression that fits the native subset grammar is interpreted
+		// in-process, skipping the global-context setup, extendSyntax, and the
+		// engine (isolate). Everything else takes the regular pipeline below.
+		// Verify mode evaluates natively here, then returns the engine's result.
+		let nativeResult: ExpressionEvaluationOutcome | undefined;
+		if (Expression.shouldVerifyNative(parameterValue)) {
+			try {
+				const native = evaluateNatively(parameterValue, data);
+				if (native.handled) nativeResult = { ok: true, value: native.value };
+			} catch (error) {
+				nativeResult = { ok: false, error, errorClass: errorClassOf(error) };
+			}
+		} else if (Expression.nativeEvaluation) {
+			const native = evaluateNatively(parameterValue, data);
+			if (native.handled) return this.finalizeResolvedValue(native.value, returnObjectAsString);
+		}
 
 		// Support only a subset of process properties
 		data.process =
@@ -287,18 +841,46 @@ export class Expression {
 						pid: process.pid,
 						ppid: process.ppid,
 						release: process.release,
-						version: process.pid,
+						version: process.version,
 						versions: process.versions,
 					}
 				: {};
 
 		Expression.initializeGlobalContext(data);
 
-		// expression extensions
-		data.extend = extend;
-		data.extendOptional = extendOptional;
+		const usingVm = Expression.shouldUseVm();
 
-		data[sanitizerName] = sanitizer;
+		// Expression extensions — only attached for the legacy engine.
+		//
+		// In the VM engine, function-typed bindings on `data` are
+		// structurally unreachable: the bridge's `getValueAtPath` returns
+		// `undefined` for any function-typed value, and the in-isolate
+		// runtime resolves helpers itself via Tournament's polyfill
+		// (see packages/@n8n/expression-runtime/src/runtime/context.ts,
+		// where bare `extend(...)` calls bind to the in-isolate copy on
+		// `target.extend`). Setting them on `data` in VM mode would be
+		// dead code.
+		if (!usingVm) {
+			data.extend = extend;
+			data.extendOptional = extendOptional;
+		}
+
+		// In VM mode, strip `$jmesPath` / `$jmespath` from the data proxy.
+		// WorkflowDataProxy adds them, but the in-isolate `target.$jmespath`
+		// shadows them via Tournament's polyfill (see
+		// packages/@n8n/expression-runtime/src/runtime/context.ts). The delete
+		// makes them unreachable via direct path lookup through the bridge
+		// too, so the bridge can never invoke the host-side copies.
+		if (usingVm) {
+			delete data.$jmesPath;
+			delete data.$jmespath;
+		}
+
+		Object.defineProperty(data, sanitizerName, {
+			value: sanitizer,
+			writable: false,
+			configurable: false,
+		});
 
 		Object.assign(data, extendedFunctions);
 
@@ -306,142 +888,146 @@ export class Expression {
 		if (parameterValue.match(constructorValidation)) {
 			throw new ExpressionError('Expression contains invalid constructor function call', {
 				causeDetailed: 'Constructor override attempt is not allowed due to security concerns',
-				runIndex,
-				itemIndex,
+				runIndex: data.$thisRunIndex,
+				itemIndex: data.$thisItemIndex,
 			});
 		}
 
 		// Execute the expression
 		const extendedExpression = extendSyntax(parameterValue);
-		const returnValue = this.renderExpression(extendedExpression, data);
+		const returnValue =
+			nativeResult === undefined
+				? this.renderExpression(extendedExpression, data, parameterValue)
+				: this.renderAndVerify(extendedExpression, data, parameterValue, nativeResult);
+		return this.finalizeResolvedValue(returnValue, returnObjectAsString);
+	}
+
+	/** Returns or throws the engine's result, after comparing it with `native`. */
+	private renderAndVerify(
+		expression: string,
+		data: IWorkflowDataProxyData,
+		source: string,
+		native: ExpressionEvaluationOutcome,
+	) {
+		let engine: ExpressionEvaluationOutcome;
+		try {
+			engine = { ok: true, value: this.renderExpression(expression, data, source) };
+		} catch (error) {
+			engine = { ok: false, error, errorClass: errorClassOf(error) };
+		}
+		Expression.nativeVerifier?.compare(source, Expression.expressionEngine, native, engine, data);
+
+		if (!engine.ok) throw engine.error;
+		return engine.value;
+	}
+
+	private finalizeResolvedValue(
+		returnValue: unknown,
+		returnObjectAsString: boolean,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === 'DateTime')
-				throw new ApplicationError('this is a DateTime, please access its methods');
+				throw new UserError('this is a DateTime, please access its methods');
 
-			throw new ApplicationError('this is a function, please add ()');
-		} else if (typeof returnValue === 'string') {
-			return returnValue;
-		} else if (returnValue !== null && typeof returnValue === 'object') {
-			if (returnObjectAsString) {
-				return this.convertObjectValueToString(returnValue);
+			throw new UserError('this is a function, please add ()');
+		} else if (returnValue !== null && typeof returnValue === 'object' && returnObjectAsString) {
+			return this.convertObjectValueToString(returnValue);
+		}
+
+		// The engines return arbitrary JSON-ish values; mirror the loose typing
+		// the previous inline code relied on.
+		return returnValue as NodeParameterValue;
+	}
+
+	private renderExpression(expression: string, data: IWorkflowDataProxyData, source: string) {
+		const evaluator = Expression.vmEvaluator;
+
+		if (evaluator && Expression.isVmEngineSelected()) {
+			const caller = Expression.useSharedCaller ? Expression.BROWSER_CALLER : this;
+			try {
+				const result = evaluator.evaluate(expression, data, caller, {
+					timezone: this.timezone,
+				});
+				return result as string | null | (() => unknown);
+			} catch (error) {
+				throw mapVmError(error);
 			}
 		}
 
-		return returnValue;
+		// A host that recorded an engine but started none must not evaluate through
+		// `new Function` without saying so: the backend does this on purpose for
+		// commands that should never evaluate an expression. The editor is the
+		// exception — it falls back to legacy below, so a policy that blocks WASM
+		// leaves expression previews working instead of breaking the editor.
+		if (!evaluator && Expression.isVmEngineSelected() && !IS_FRONTEND) {
+			throw new UnexpectedError(
+				`The ${Expression.expressionEngine} expression engine has not been initialized. Call Expression.initExpressionEngine() during application startup.`,
+			);
+		}
+
+		// Fall back to current implementation
+		const finishShadow = Expression.startShadow({
+			expression,
+			source,
+			data,
+			timezone: this.timezone,
+		});
+		const legacy = this.evaluateLegacy(expression, data);
+		if (finishShadow) {
+			try {
+				finishShadow(
+					legacy.ok
+						? { ok: true, value: legacy.value }
+						: { ok: false, error: legacy.error, errorClass: errorClassOf(legacy.error) },
+				);
+			} catch {
+				// A shadow run only observes: its failure must not reach the user.
+			}
+		}
+
+		if (legacy.ok) return legacy.value;
+		if (legacy.thrown) throw legacy.thrown;
+		return null;
 	}
 
-	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
+	private static startShadow(context: ExpressionShadowContext) {
+		if (!this.shadowRunner) return undefined;
 		try {
-			return evaluateExpression(expression, data);
-		} catch (error) {
-			if (isExpressionError(error)) throw error;
+			return this.shadowRunner.beforeLegacy(context);
+		} catch {
+			return undefined;
+		}
+	}
 
-			if (isSyntaxError(error)) throw new ApplicationError('invalid syntax');
+	/**
+	 * Evaluate with the legacy engine. A failure without `thrown` is one the
+	 * editor shows as `null`; a shadow run still counts it as an error.
+	 */
+	private evaluateLegacy(
+		expression: string,
+		data: IWorkflowDataProxyData,
+	):
+		| { ok: true; value: string | null | (() => unknown) }
+		| { ok: false; error: unknown; thrown?: Error } {
+		try {
+			return { ok: true, value: evaluateExpression(expression, data) };
+		} catch (error) {
+			if (isExpressionError(error)) return { ok: false, error, thrown: error };
+
+			if (isSyntaxError(error)) {
+				return { ok: false, error, thrown: new UserError('invalid syntax') };
+			}
 
 			if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
 				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
 
-				if (!match?.groups?.msg) return null;
+				if (!match?.groups?.msg) return { ok: false, error };
 
-				throw new ApplicationError(match.groups.msg);
+				return { ok: false, error, thrown: new UserError(match.groups.msg) };
 			}
+
+			return { ok: false, error };
 		}
-
-		return null;
-	}
-
-	/**
-	 * Resolves value of parameter. But does not work for workflow-data.
-	 *
-	 * @param {(string | undefined)} parameterValue
-	 */
-	getSimpleParameterValue(
-		node: INode,
-		parameterValue: string | boolean | undefined,
-		mode: WorkflowExecuteMode,
-		additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		executeData?: IExecuteData,
-		defaultValue?: boolean | number | string | unknown[],
-	): boolean | number | string | undefined | unknown[] {
-		if (parameterValue === undefined) {
-			// Value is not set so return the default
-			return defaultValue;
-		}
-
-		// Get the value of the node (can be an expression)
-		const runIndex = 0;
-		const itemIndex = 0;
-		const connectionInputData: INodeExecutionData[] = [];
-		const runData = createEmptyRunExecutionData();
-
-		return this.getParameterValue(
-			parameterValue,
-			runData,
-			runIndex,
-			itemIndex,
-			node.name,
-			connectionInputData,
-			mode,
-			additionalKeys,
-			executeData,
-		) as boolean | number | string | undefined;
-	}
-
-	/**
-	 * Resolves value of complex parameter. But does not work for workflow-data.
-	 *
-	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
-	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)} [defaultValue]
-	 */
-	getComplexParameterValue(
-		node: INode,
-		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-		mode: WorkflowExecuteMode,
-		additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		executeData?: IExecuteData,
-		defaultValue: NodeParameterValueType | undefined = undefined,
-		selfData = {},
-	): NodeParameterValueType | undefined {
-		if (parameterValue === undefined) {
-			// Value is not set so return the default
-			return defaultValue;
-		}
-
-		// Get the value of the node (can be an expression)
-		const runIndex = 0;
-		const itemIndex = 0;
-		const connectionInputData: INodeExecutionData[] = [];
-		const runData = createEmptyRunExecutionData();
-
-		// Resolve the "outer" main values
-		const returnData = this.getParameterValue(
-			parameterValue,
-			runData,
-			runIndex,
-			itemIndex,
-			node.name,
-			connectionInputData,
-			mode,
-			additionalKeys,
-			executeData,
-			false,
-			selfData,
-		);
-
-		// Resolve the "inner" values
-		return this.getParameterValue(
-			returnData,
-			runData,
-			runIndex,
-			itemIndex,
-			node.name,
-			connectionInputData,
-			mode,
-			additionalKeys,
-			executeData,
-			false,
-			selfData,
-		);
 	}
 
 	/**
@@ -449,119 +1035,8 @@ export class Expression {
 	 * return the result. If the value to resolve is an array or object it will do the same
 	 * for all of the items and values.
 	 *
-	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
-	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {boolean} [returnObjectAsString=false]
+	 * @param {NodeParameterValueType | INodeParameterResourceLocator} parameterValue - The parameter value to resolve
+	 * @param {IWorkflowDataProxyData} data - The workflow data proxy data
+	 * @param {boolean} [returnObjectAsString=false] - Whether to convert objects to strings
 	 */
-	// TODO: Clean that up at some point and move all the options into an options object
-	getParameterValue(
-		parameterValue: NodeParameterValueType | INodeParameterResourceLocator,
-		runExecutionData: IRunExecutionData | null,
-		runIndex: number,
-		itemIndex: number,
-		activeNodeName: string,
-		connectionInputData: INodeExecutionData[],
-		mode: WorkflowExecuteMode,
-		additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		executeData?: IExecuteData,
-		returnObjectAsString = false,
-		selfData = {},
-		contextNodeName?: string,
-	): NodeParameterValueType {
-		// Helper function which returns true when the parameter is a complex one or array
-		const isComplexParameter = (value: NodeParameterValueType) => {
-			return typeof value === 'object';
-		};
-
-		// Helper function which resolves a parameter value depending on if it is simply or not
-		const resolveParameterValue = (
-			value: NodeParameterValueType,
-			siblingParameters: INodeParameters,
-		) => {
-			if (isComplexParameter(value)) {
-				return this.getParameterValue(
-					value,
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					activeNodeName,
-					connectionInputData,
-					mode,
-					additionalKeys,
-					executeData,
-					returnObjectAsString,
-					selfData,
-					contextNodeName,
-				);
-			}
-
-			return this.resolveSimpleParameterValue(
-				value as NodeParameterValue,
-				siblingParameters,
-				runExecutionData,
-				runIndex,
-				itemIndex,
-				activeNodeName,
-				connectionInputData,
-				mode,
-				additionalKeys,
-				executeData,
-				returnObjectAsString,
-				selfData,
-				contextNodeName,
-			);
-		};
-
-		// Check if it value is a simple one that we can get it resolved directly
-		if (!isComplexParameter(parameterValue)) {
-			return this.resolveSimpleParameterValue(
-				parameterValue as NodeParameterValue,
-				{},
-				runExecutionData,
-				runIndex,
-				itemIndex,
-				activeNodeName,
-				connectionInputData,
-				mode,
-				additionalKeys,
-				executeData,
-				returnObjectAsString,
-				selfData,
-				contextNodeName,
-			);
-		}
-
-		// The parameter value is complex so resolve depending on type
-		if (Array.isArray(parameterValue)) {
-			// Data is an array
-			const returnData = parameterValue.map((item) =>
-				resolveParameterValue(item as NodeParameterValueType, {}),
-			);
-			return returnData as NodeParameterValue[] | INodeParameters[];
-		}
-
-		if (parameterValue === null || parameterValue === undefined) {
-			return parameterValue;
-		}
-
-		if (typeof parameterValue !== 'object') {
-			return {};
-		}
-
-		// Data is an object
-		const returnData: INodeParameters = {};
-
-		for (const [key, value] of Object.entries(parameterValue)) {
-			returnData[key] = resolveParameterValue(
-				value as NodeParameterValueType,
-				parameterValue as INodeParameters,
-			);
-		}
-
-		if (returnObjectAsString && typeof returnData === 'object') {
-			return this.convertObjectValueToString(returnData);
-		}
-
-		return returnData;
-	}
 }

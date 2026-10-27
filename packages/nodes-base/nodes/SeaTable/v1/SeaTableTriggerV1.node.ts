@@ -10,7 +10,13 @@ import {
 	type INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
-import { getColumns, rowFormatColumns, seaTableApiRequest, simplify } from './GenericFunctions';
+import {
+	escapeSqlIdentifier,
+	getColumns,
+	rowFormatColumns,
+	seaTableApiRequest,
+	simplify,
+} from './GenericFunctions';
 import type { ICtx, IRow, IRowResponse } from './Interfaces';
 
 export class SeaTableTriggerV1 implements INodeType {
@@ -121,13 +127,17 @@ export class SeaTableTriggerV1 implements INodeType {
 
 		if (this.getMode() === 'manual') {
 			rows = (await seaTableApiRequest.call(this, ctx, 'POST', endpoint, {
-				sql: `SELECT * FROM ${tableName} LIMIT 1`,
+				sql: `SELECT * FROM \`${escapeSqlIdentifier(tableName)}\` LIMIT 1`,
 			})) as IRowResponse;
 		} else {
 			rows = (await seaTableApiRequest.call(this, ctx, 'POST', endpoint, {
-				sql: `SELECT * FROM ${tableName}
+				// Both bounds are this trigger's own poll cursor, formatted to
+				// `YYYY-MM-D HH:mm:ss`, so neither can carry a quote.
+				/* eslint-disable n8n-local-rules/require-escaped-query-values */
+				sql: `SELECT * FROM \`${escapeSqlIdentifier(tableName)}\`
 					WHERE ${filterField} BETWEEN "${moment(startDate).tz(timezone).format('YYYY-MM-D HH:mm:ss')}"
 					AND "${moment(endDate).tz(timezone).format('YYYY-MM-D HH:mm:ss')}"`,
+				/* eslint-enable n8n-local-rules/require-escaped-query-values */
 			})) as IRowResponse;
 		}
 

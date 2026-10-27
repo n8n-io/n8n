@@ -18,10 +18,16 @@ const OPEN_BRACKET = /(?<escape>\\|)(?<brackets>\{\{)/;
 const CLOSE_BRACKET = /(?<escape>\\|)(?<brackets>\}\})/;
 
 export const escapeCode = (text: string): string => {
-	return text.replace('\\}}', '}}');
+	return text.replace(/\\\}\}/g, '}}');
 };
 
 export const splitExpression = (expression: string): ExpressionChunk[] => {
+	// Mirror @n8n/tournament's splitExpression: always emit an initial text
+	// chunk so downstream consumers can rely on chunks[0] being defined.
+	if (expression === '') {
+		return [{ type: 'text', text: '' }];
+	}
+
 	const chunks: ExpressionChunk[] = [];
 	let searchingFor: 'open' | 'close' = 'open';
 	let activeRegex = OPEN_BRACKET;
@@ -85,7 +91,7 @@ export const splitExpression = (expression: string): ExpressionChunk[] => {
 
 // Expressions only have closing brackets escaped
 const escapeTmplExpression = (part: string) => {
-	return part.replace('}}', '\\}}');
+	return part.replace(/\}\}/g, '\\}}');
 };
 
 export const joinExpression = (parts: ExpressionChunk[]): string => {

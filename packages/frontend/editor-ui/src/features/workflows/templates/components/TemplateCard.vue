@@ -88,9 +88,9 @@ function onCardClick(e: MouseEvent) {
 		</div>
 		<div v-if="useWorkflowButton" :class="$style.buttonContainer">
 			<N8nButton
+				variant="outline"
 				v-if="useWorkflowButton"
-				outline
-				label="Use workflow"
+				:label="i18n.baseText('template.buttons.useWorkflowButton')"
 				data-test-id="use-workflow-button"
 				@click.stop="onUseWorkflowClick"
 			/>

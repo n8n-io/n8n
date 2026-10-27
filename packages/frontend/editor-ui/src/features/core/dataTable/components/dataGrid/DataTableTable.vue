@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import type {
 	DataTable,
 	DataTableColumnCreatePayload,
@@ -9,14 +9,16 @@ import { AgGridVue } from 'ag-grid-vue3';
 import type { GetRowIdParams, GridReadyEvent, SortChangedEvent } from 'ag-grid-community';
 import { n8nTheme } from '@/features/core/dataTable/components/dataGrid/n8nTheme';
 import { registerAgGridModulesOnce } from '@/features/core/dataTable/components/dataGrid/registerAgGridModulesOnce';
-import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import {
 	DATA_TABLE_HEADER_HEIGHT,
 	DATA_TABLE_ROW_HEIGHT,
 	DEFAULT_ID_COLUMN_NAME,
 	ADD_ROW_ROW_ID,
 } from '@/features/core/dataTable/constants';
-import { useDataTablePagination } from '@/features/core/dataTable/composables/useDataTablePagination';
+import {
+	useDataTablePagination,
+	type PageSize,
+} from '@/features/core/dataTable/composables/useDataTablePagination';
 import { useAgGrid } from '@/features/core/dataTable/composables/useAgGrid';
 import { useDataTableColumns } from '@/features/core/dataTable/composables/useDataTableColumns';
 import { useDataTableSelection } from '@/features/core/dataTable/composables/useDataTableSelection';
@@ -24,20 +26,30 @@ import { useDataTableOperations } from '@/features/core/dataTable/composables/us
 import { useDataTableColumnFilters } from '@/features/core/dataTable/composables/useDataTableColumnFilters';
 import { useI18n } from '@n8n/i18n';
 import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappings';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
+import DataTableLoadingIndicator from './DataTableLoadingIndicator.vue';
 
-import { ElPagination } from 'element-plus';
+import { N8nPagination, N8nSelectedItemsInfo } from '@n8n/design-system';
 registerAgGridModulesOnce();
 
 type Props = {
 	dataTable: DataTable;
 	search?: string;
+	/** Locks the whole grid: rows and columns. */
+	readOnly?: boolean;
+	/** Locks only the columns, for example on a protected instance. Rows stay editable. */
+	schemaReadOnly?: boolean;
+	schemaReadOnlyTooltip?: string;
 };
 
 const props = defineProps<Props>();
 
+const isSchemaReadOnly = computed(() => !!props.readOnly || !!props.schemaReadOnly);
+
 const emit = defineEmits<{
 	toggleSave: [value: boolean];
+	ready: [];
+	loadError: [];
 }>();
 
 const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
@@ -46,12 +58,18 @@ const i18n = useI18n();
 const { debounce } = useDebounce();
 const rowData = ref<DataTableRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
+let isGridReady = false;
+
+const defaultColDef = computed(() => ({
+	...GRID_FILTER_CONFIG.defaultColDef,
+	editable: !props.readOnly,
+}));
 
 const agGrid = useAgGrid<DataTableRow>({
 	gridContainerRef,
 	defaultSortColumn: DEFAULT_ID_COLUMN_NAME,
 	pinnedBottomRowId: ADD_ROW_ROW_ID,
-	defaultColDef: GRID_FILTER_CONFIG.defaultColDef,
+	defaultColDef: defaultColDef.value,
 });
 
 const dataTableColumns = useDataTableColumns({
@@ -60,6 +78,9 @@ const dataTableColumns = useDataTableColumns({
 	onAddRowClick: onAddRowClickFunction,
 	onAddColumn: onAddColumnFunction,
 	isTextEditorOpen: agGrid.isTextEditorOpen,
+	readOnly: computed(() => props.readOnly ?? false),
+	schemaReadOnly: computed(() => props.schemaReadOnly ?? false),
+	schemaReadOnlyTooltip: computed(() => props.schemaReadOnlyTooltip),
 });
 
 const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
@@ -80,6 +101,7 @@ const {
 
 const selection = useDataTableSelection({
 	gridApi: agGrid.gridApi,
+	readOnly: computed(() => props.readOnly ?? false),
 });
 
 const dataTableOperations = useDataTableOperations({
@@ -97,7 +119,7 @@ const dataTableOperations = useDataTableOperations({
 	setTotalItems,
 	ensureItemOnPage,
 	focusFirstEditableCell: agGrid.focusFirstEditableCell,
-	toggleSave: emit.bind(null, 'toggleSave'),
+	toggleSave: (value) => emit('toggleSave', value),
 	currentPage,
 	pageSize,
 	currentSortBy: agGrid.currentSortBy,
@@ -107,6 +129,7 @@ const dataTableOperations = useDataTableOperations({
 	handleCopyFocusedCell: agGrid.handleCopyFocusedCell,
 	currentFilterJSON,
 	searchQuery: computed(() => props.search),
+	schemaReadOnly: isSchemaReadOnly,
 });
 
 async function onDeleteColumnFunction(columnId: string) {
@@ -131,12 +154,39 @@ async function fetchDataTableRowsFunction() {
 
 const initialize = async (params: GridReadyEvent) => {
 	agGrid.onGridReady(params);
+	isGridReady = true;
 	dataTableColumns.loadColumns(props.dataTable.columns);
 	agGrid.setGridData({ colDefs: dataTableColumns.colDefs.value });
-	await dataTableOperations.fetchDataTableRows();
+	const loaded = await dataTableOperations.fetchDataTableRows();
+	if (!loaded) {
+		emit('loadError');
+		return;
+	}
+
+	// Empty tables do not emit AG Grid's first-data-rendered event.
+	if (!hasRecords.value) {
+		await nextTick();
+		emit('ready');
+	}
 };
 
 const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-table-no-rows-overlay">${i18n.baseText('dataTable.noRows')}</div>`;
+
+// Keep the loading state to suppress "No rows", without showing a loading pill.
+const customLoadingOverlay = '<span aria-hidden="true"></span>';
+
+watch(
+	() => props.readOnly,
+	(readOnly) => {
+		if (!isGridReady) return;
+		if (readOnly) {
+			agGrid.gridApi.value.stopEditing(true);
+			selection.handleClearSelection();
+		}
+		// Checkbox renderers cache whether their cells are editable.
+		agGrid.gridApi.value.refreshCells({ force: true });
+	},
+);
 
 watch([agGrid.currentSortBy, agGrid.currentSortOrder], async () => {
 	await setCurrentPage(1);
@@ -161,6 +211,7 @@ watch(
 defineExpose({
 	addRow: dataTableOperations.onAddRowClick,
 	addColumn: dataTableOperations.onAddColumn,
+	fetchDataTableRows: dataTableOperations.fetchDataTableRows,
 });
 </script>
 
@@ -169,6 +220,7 @@ defineExpose({
 		<div
 			ref="gridContainerRef"
 			:class="[$style['grid-container'], { [$style['has-records']]: hasRecords }]"
+			:aria-busy="dataTableOperations.contentLoading.value"
 			data-test-id="data-table-grid"
 		>
 			<AgGridVue
@@ -179,14 +231,17 @@ defineExpose({
 				:animate-rows="false"
 				:theme="n8nTheme"
 				:suppress-drag-leave-hides-columns="true"
+				:suppress-movable-columns="isSchemaReadOnly"
 				:loading="dataTableOperations.contentLoading.value"
-				:row-selection="selection.rowSelection"
+				:row-selection="selection.rowSelection.value"
 				:get-row-id="(params: GetRowIdParams) => String(params.data.id)"
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"
 				:suppress-multi-sort="true"
+				:overlay-loading-template="customLoadingOverlay"
 				:overlay-no-rows-template="customNoRowsOverlay"
 				@grid-ready="initialize"
+				@first-data-rendered="emit('ready')"
 				@cell-value-changed="dataTableOperations.onCellValueChanged"
 				@column-moved="dataTableOperations.onColumnMoved"
 				@cell-clicked="agGrid.onCellClicked"
@@ -200,21 +255,20 @@ defineExpose({
 				@cell-key-down="dataTableOperations.onCellKeyDown"
 				@filter-changed="onFilterChanged"
 			/>
+			<DataTableLoadingIndicator v-if="dataTableOperations.contentLoading.value" />
 			<div :class="$style.footer">
-				<ElPagination
-					v-model:current-page="currentPage"
-					v-model:page-size="pageSize"
+				<N8nPagination
+					:page="currentPage"
+					:items-per-page="pageSize"
 					data-test-id="data-table-content-pagination"
-					background
 					:total="totalItems"
 					:page-sizes="pageSizeOptions"
-					layout="total, prev, pager, next, sizes"
-					@update:current-page="setCurrentPage"
-					@size-change="(val: number) => setPageSize(val as 10 | 20 | 50)"
+					@update:page="setCurrentPage"
+					@update:items-per-page="(val: number) => setPageSize(val as PageSize)"
 				/>
 			</div>
 		</div>
-		<SelectedItemsInfo
+		<N8nSelectedItemsInfo
 			:selected-count="selection.selectedCount.value"
 			@delete-selected="dataTableOperations.handleDeleteSelected"
 			@clear-selection="selection.handleClearSelection"
@@ -248,6 +302,28 @@ defineExpose({
 	--ag-input-padding-start: var(--spacing--2xs);
 	--ag-input-background-color: var(--color--background--light-2);
 	--ag-focus-shadow: none;
+
+	// Theme-aware scrollbar styling (dark mode support)
+	:global(.ag-body-horizontal-scroll-viewport),
+	:global(.ag-body-vertical-scroll-viewport) {
+		scrollbar-color: var(--color--foreground--shade-1) transparent;
+
+		@supports selector(::-webkit-scrollbar) {
+			&::-webkit-scrollbar {
+				height: var(--spacing--2xs);
+				width: var(--spacing--2xs);
+			}
+
+			&::-webkit-scrollbar-track {
+				background: transparent;
+			}
+
+			&::-webkit-scrollbar-thumb {
+				border-radius: var(--radius);
+				background: var(--color--foreground--shade-1);
+			}
+		}
+	}
 
 	:global(.ag-cell) {
 		display: flex;
@@ -287,6 +363,10 @@ defineExpose({
 	:global(.system-column),
 	:global(.system-cell) {
 		color: var(--color--text--tint-1);
+	}
+
+	:global(.oversized-cell) {
+		cursor: not-allowed;
 	}
 
 	:global(.ag-header-cell[col-id='id']) {
@@ -424,28 +504,5 @@ defineExpose({
 	justify-content: flex-end;
 	margin-bottom: var(--spacing--lg);
 	padding-right: var(--spacing--xl);
-
-	:global(.el-pagination__sizes) {
-		height: 100%;
-		position: relative;
-		top: -1px;
-
-		input {
-			height: 100%;
-			min-height: 28px;
-		}
-
-		:global(.el-input__suffix) {
-			width: var(--spacing--md);
-		}
-	}
-
-	// A hacky solution for element ui bug where clicking svg inside .more button does not work
-	:global(.el-pager .more) {
-		background: transparent !important;
-		svg {
-			z-index: -1;
-		}
-	}
 }
 </style>

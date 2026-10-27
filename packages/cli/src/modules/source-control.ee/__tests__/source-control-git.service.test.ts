@@ -1,0 +1,912 @@
+import type { User } from '@n8n/db';
+import { simpleGit } from 'simple-git';
+import type { SimpleGit } from 'simple-git';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import { SOURCE_CONTROL_MANAGED_DIRECTORIES, SOURCE_CONTROL_MANAGED_PATHS } from '../constants';
+import { SourceControlGitService } from '../source-control-git.service.ee';
+import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '../types/source-control-preferences';
+
+const MOCK_BRANCHES = {
+	all: ['origin/master', 'origin/feature/branch'],
+	branches: {
+		'origin/master': {},
+		'origin/feature/branch': {},
+	},
+	current: 'master',
+};
+
+const mockGitInstance = {
+	branch: vi.fn().mockResolvedValue(MOCK_BRANCHES),
+	env: vi.fn().mockReturnThis(),
+};
+
+vi.mock('simple-git', () => {
+	return {
+		simpleGit: vi.fn().mockImplementation(() => mockGitInstance),
+	};
+});
+
+describe('SourceControlGitService', () => {
+	const mockSourceControlPreferencesService = mock<SourceControlPreferencesService>();
+	const sourceControlGitService = new SourceControlGitService(
+		mock(),
+		mock(),
+		mockSourceControlPreferencesService,
+	);
+
+	beforeEach(() => {
+		sourceControlGitService.git = simpleGit();
+	});
+
+	describe('getBranches', () => {
+		it('should support branch names containing slashes', async () => {
+			const branches = await sourceControlGitService.getBranches();
+			expect(branches.branches).toEqual(['master', 'feature/branch']);
+		});
+	});
+
+	const createSynchronizationService = (
+		outputs: { shape?: string; contents?: string },
+		logger = mock<ConstructorParameters<typeof SourceControlGitService>[0]>(),
+	) => {
+		const gitService = new SourceControlGitService(logger, mock(), mock());
+		const git = mock<SimpleGit>();
+		git.branch.mockResolvedValue(MOCK_BRANCHES as never);
+		git.raw
+			.mockResolvedValueOnce('abc123\n') // rev-parse
+			.mockResolvedValueOnce(outputs.shape ?? '') // ls-tree (direct entry shapes)
+			.mockResolvedValueOnce(outputs.contents ?? '') // ls-tree -r (directory contents)
+			.mockResolvedValue('updated');
+		git.merge.mockResolvedValue(mock());
+		gitService.git = git;
+		vi.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
+		return { gitService, git };
+	};
+
+	describe('managed tree validation', () => {
+		it.each(['100644', '100755'])('should accept a regular file with mode %s', async (mode) => {
+			const { gitService, git } = createSynchronizationService({
+				shape: '040000 tree abc123\tworkflows\0',
+				contents: `${mode} blob abc123\tworkflows/example.json\0`,
+			});
+
+			await expect(gitService.pull()).resolves.toBeDefined();
+			expect(git.raw).toHaveBeenNthCalledWith(2, [
+				'ls-tree',
+				'-z',
+				'--full-tree',
+				'abc123',
+				'--',
+				...SOURCE_CONTROL_MANAGED_PATHS,
+			]);
+			expect(git.raw).toHaveBeenNthCalledWith(3, [
+				'ls-tree',
+				'-r',
+				'-z',
+				'--full-tree',
+				'abc123',
+				'--',
+				...SOURCE_CONTROL_MANAGED_DIRECTORIES,
+			]);
+		});
+
+		it.each([
+			// Direct-entry violations, caught by the non-recursive shape scan (2 raw calls).
+			{
+				outputs: { shape: '120000 blob abc123\ttags.json\0' },
+				reason: 'Git file mode 120000 is not supported',
+				rawCalls: 2,
+			},
+			{
+				outputs: { shape: '040000 tree abc123\ttags.json\0' },
+				reason: 'Git object type tree is not supported',
+				rawCalls: 2,
+			},
+			{
+				outputs: { shape: '100644 blob abc123\tworkflows\0' },
+				reason: 'Managed path workflows must be a directory',
+				rawCalls: 2,
+			},
+			// Directory-content violations, caught by the recursive scan (3 raw calls).
+			{
+				outputs: {
+					shape: '040000 tree abc123\tprojects\0',
+					contents: '160000 commit abc123\tprojects/module\0',
+				},
+				reason: 'Git object type commit is not supported',
+				rawCalls: 3,
+			},
+			{
+				outputs: {
+					shape: '040000 tree abc123\tworkflows\0',
+					contents: '100664 blob abc123\tworkflows/example.json\0',
+				},
+				reason: 'Git file mode 100664 is not supported',
+				rawCalls: 3,
+			},
+		])(
+			'should reject an unsupported managed entry ($reason)',
+			async ({ outputs, reason, rawCalls }) => {
+				const logger = mock<ConstructorParameters<typeof SourceControlGitService>[0]>();
+				const { gitService, git } = createSynchronizationService(outputs, logger);
+
+				await expect(gitService.pull()).rejects.toThrow(
+					'The remote repository contains an unsupported source control entry. Update the repository and try again.',
+				);
+				expect(git.raw).toHaveBeenCalledTimes(rawCalls);
+				expect(git.merge).not.toHaveBeenCalled();
+				expect(logger.error).toHaveBeenCalledWith(
+					'Remote source control tree contains an unsupported managed entry',
+					{
+						filePath: expect.any(String),
+						reason,
+					},
+				);
+			},
+		);
+
+		it('should parse managed paths that contain whitespace', async () => {
+			const { gitService } = createSynchronizationService({
+				shape: '040000 tree abc123\tworkflows\0' + '040000 tree def456\tprojects\0',
+				contents:
+					'100644 blob abc123\tworkflows/space tab\tline\nbreak.json\0' +
+					'100755 blob def456\tprojects/project name.json\0',
+			});
+
+			await expect(gitService.pull()).resolves.toBeDefined();
+		});
+
+		it('should ignore entries outside managed paths', async () => {
+			const { gitService, git } = createSynchronizationService({});
+
+			await expect(gitService.pull()).resolves.toBeDefined();
+			expect(git.raw).toHaveBeenNthCalledWith(2, expect.not.arrayContaining(['docs']));
+			expect(git.raw).toHaveBeenNthCalledWith(3, expect.not.arrayContaining(['docs']));
+		});
+	});
+
+	describe('remote updates', () => {
+		it('should validate before merging the current branch', async () => {
+			const { gitService, git } = createSynchronizationService({
+				shape: '100644 blob abc123\ttags.json\0',
+			});
+
+			await gitService.pull();
+
+			expect(git.raw).toHaveBeenNthCalledWith(1, [
+				'rev-parse',
+				'--verify',
+				'refs/remotes/origin/master^{commit}',
+			]);
+			expect(git.raw).toHaveBeenCalledTimes(3);
+			expect(git.merge).toHaveBeenCalledWith(['--ff-only', 'abc123']);
+		});
+
+		it('should validate before checking out a branch', async () => {
+			const { gitService, git } = createSynchronizationService({
+				shape: '100644 blob abc123\ttags.json\0',
+			});
+
+			await gitService.setBranch('main');
+
+			expect(git.raw).toHaveBeenNthCalledWith(4, ['checkout', '-B', 'main', 'abc123']);
+			expect(git.branch).toHaveBeenCalledWith(['--set-upstream-to=origin/main', 'main']);
+		});
+
+		it('should not check out a branch when validation fails', async () => {
+			const { gitService, git } = createSynchronizationService({
+				shape: '120000 blob abc123\ttags.json\0',
+			});
+
+			await expect(gitService.setBranch('main')).rejects.toThrow(
+				'The remote repository contains an unsupported source control entry.',
+			);
+			expect(git.raw).toHaveBeenCalledTimes(2);
+			expect(git.branch).not.toHaveBeenCalled();
+		});
+
+		it('should validate before resetting to a remote branch', async () => {
+			const { gitService, git } = createSynchronizationService({
+				shape: '100644 blob abc123\ttags.json\0',
+			});
+
+			await gitService.resetBranch({ hard: true, target: 'origin/main' });
+
+			expect(git.raw).toHaveBeenNthCalledWith(4, ['reset', '--hard', 'abc123']);
+		});
+
+		it('should preserve local hard and soft reset behavior', async () => {
+			const gitService = new SourceControlGitService(mock(), mock(), mock());
+			const git = mock<SimpleGit>();
+			git.raw.mockResolvedValue('reset');
+			gitService.git = git;
+			const fetchSpy = vi.spyOn(gitService, 'fetch');
+
+			await gitService.resetBranch();
+			await gitService.resetBranch({ hard: false, target: 'HEAD~1' });
+
+			expect(fetchSpy).not.toHaveBeenCalled();
+			expect(git.raw).toHaveBeenNthCalledWith(1, ['reset', '--hard', 'HEAD']);
+			expect(git.raw).toHaveBeenNthCalledWith(2, ['reset', 'HEAD~1']);
+		});
+	});
+
+	describe('initRepository', () => {
+		describe('when local repo is set up after remote is ready', () => {
+			it('should track remote', async () => {
+				/**
+				 * Arrange
+				 */
+				const gitService = new SourceControlGitService(mock(), mock(), mock());
+				const prefs = mock<SourceControlPreferences>({ branchName: 'main' });
+				const user = mock<User>();
+				const git = mock<SimpleGit>();
+				gitService.git = git;
+				vi.spyOn(gitService, 'setGitCommand').mockResolvedValue();
+				vi.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: '',
+					branches: ['main'],
+				});
+				const setBranchSpy = vi.spyOn(gitService, 'setBranch').mockResolvedValue({
+					currentBranch: 'main',
+					branches: ['main'],
+				});
+
+				/**
+				 * Act
+				 */
+				await gitService.initRepository(prefs, user);
+
+				/**
+				 * Assert
+				 */
+				expect(setBranchSpy).toHaveBeenCalledWith('main');
+			});
+		});
+
+		describe('when fetch fails during remote tracking setup', () => {
+			it('should log warning and not throw when tracking fetch failures are tolerated', async () => {
+				const mockLogger = mock<any>();
+				const gitService = new SourceControlGitService(mockLogger, mock(), mock());
+				const prefs = mock<SourceControlPreferences>({ branchName: 'main' });
+				const user = mock<User>();
+				const git = mock<SimpleGit>();
+				gitService.git = git;
+				vi.spyOn(gitService, 'setGitCommand').mockResolvedValue();
+
+				const fetchError = new Error('Authentication failed for HTTPS remote');
+				vi.spyOn(gitService, 'fetch').mockRejectedValue(fetchError);
+
+				await gitService.initRepository(prefs, user, {
+					tolerateTrackingFetchFailure: true,
+				});
+
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					'Failed to fetch during remote tracking setup',
+					{ error: fetchError },
+				);
+			});
+
+			it('should throw when tracking fetch failures are NOT tolerated', async () => {
+				const gitService = new SourceControlGitService(mock(), mock(), mock());
+				const prefs = mock<SourceControlPreferences>({ branchName: 'main' });
+				const user = mock<User>();
+				const git = mock<SimpleGit>();
+				gitService.git = git;
+				vi.spyOn(gitService, 'setGitCommand').mockResolvedValue();
+
+				const fetchError = new Error('Authentication failed for HTTPS remote');
+				vi.spyOn(gitService, 'fetch').mockRejectedValue(fetchError);
+
+				await expect(
+					gitService.initRepository(prefs, user, {
+						tolerateTrackingFetchFailure: false,
+					}),
+				).rejects.toThrow(fetchError);
+			});
+		});
+
+		describe('repository URL authorization', () => {
+			it('should set repositoryUrl URL for SSH connection type', async () => {
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
+				const originUrl = 'git@github.com:user/repo.git';
+				const prefs = mock<SourceControlPreferences>({
+					repositoryUrl: originUrl,
+					connectionType: 'ssh',
+					branchName: 'main',
+				});
+				const user = mock<User>();
+				const git = mock<SimpleGit>();
+				const addRemoteSpy = git.addRemote;
+				vi.spyOn(gitService, 'setGitUserDetails').mockResolvedValue();
+				// Mock getBranches and fetch to avoid remote tracking logic
+				vi.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: 'main',
+					branches: [],
+				});
+				vi.spyOn(gitService, 'fetch').mockResolvedValue({} as any);
+				gitService.git = git;
+
+				await gitService.initRepository(prefs, user);
+
+				expect(addRemoteSpy).toHaveBeenCalledWith('origin', originUrl);
+				expect(mockPreferencesService.getDecryptedHttpsCredentials).not.toHaveBeenCalled();
+			});
+
+			it('should set repositoryUrl URL for HTTPS connection type', async () => {
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
+				const credentials = { username: 'testuser', password: 'test:pass#word' };
+				mockPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(credentials);
+
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
+				const originUrl = 'https://github.com/user/repo.git';
+				const prefs = mock<SourceControlPreferences>({
+					repositoryUrl: originUrl,
+					connectionType: 'https',
+					branchName: 'main',
+				});
+				const user = mock<User>();
+				const git = mock<SimpleGit>();
+				const addRemoteSpy = git.addRemote;
+				vi.spyOn(gitService, 'setGitUserDetails').mockResolvedValue();
+				// Mock getBranches and fetch to avoid remote tracking logic
+				vi.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: 'main',
+					branches: [],
+				});
+				vi.spyOn(gitService, 'fetch').mockResolvedValue({} as any);
+				gitService.git = git;
+
+				await gitService.initRepository(prefs, user);
+
+				expect(addRemoteSpy).toHaveBeenCalledWith('origin', originUrl);
+			});
+
+			it('should throw error when HTTPS connection type is specified but no credentials found', async () => {
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
+				const errorMessage = 'Error';
+				mockPreferencesService.getDecryptedHttpsCredentials.mockRejectedValue(
+					new Error(errorMessage),
+				);
+				mockPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'https',
+					repositoryUrl: 'https://github.com/user/repo.git',
+				} as never);
+
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
+				const prefs = mock<SourceControlPreferences>({
+					repositoryUrl: 'https://github.com/user/repo.git',
+					connectionType: 'https',
+					branchName: 'main',
+				});
+				const user = mock<User>();
+				const git = mock<SimpleGit>();
+				gitService.git = git;
+
+				await expect(gitService.initRepository(prefs, user)).rejects.toThrow(errorMessage);
+				expect(mockPreferencesService.getDecryptedHttpsCredentials).toHaveBeenCalled();
+			});
+		});
+	});
+
+	describe('ensureBranchSetup', () => {
+		describe('when current branch matches target branch', () => {
+			it('should not modify anything', async () => {
+				const gitService = new SourceControlGitService(mock(), mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'main' } as never);
+				gitService.git = git;
+
+				const fetchSpy = vi.spyOn(gitService, 'fetch');
+				const checkoutSpy = git.checkout;
+
+				// Call private method using type assertion
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(fetchSpy).not.toHaveBeenCalled();
+				expect(checkoutSpy).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('when current branch does not match target branch', () => {
+			it('should checkout and track the target branch from remote', async () => {
+				const gitService = new SourceControlGitService(mock(), mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'master' } as never);
+				gitService.git = git;
+
+				vi.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
+				vi.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: 'master',
+					branches: ['main', 'develop'],
+				});
+				const setBranchSpy = vi.spyOn(gitService, 'setBranch').mockResolvedValue({
+					currentBranch: 'main',
+					branches: ['main', 'develop'],
+				});
+
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(setBranchSpy).toHaveBeenCalledWith('main');
+			});
+
+			it('should not checkout if target branch does not exist on remote', async () => {
+				const gitService = new SourceControlGitService(mock(), mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'master' } as never);
+				gitService.git = git;
+
+				vi.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
+				vi.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: 'master',
+					branches: ['develop', 'feature'],
+				});
+
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(git.checkout).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('when fetch fails', () => {
+			it('should log warning and return without failing', async () => {
+				const mockLogger = mock<any>();
+				const gitService = new SourceControlGitService(mockLogger, mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'master' } as never);
+				gitService.git = git;
+
+				const fetchError = new Error('Network error');
+				vi.spyOn(gitService, 'fetch').mockRejectedValue(fetchError);
+
+				// Should not throw
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					'Failed to fetch during branch setup recovery',
+					{ error: fetchError },
+				);
+				expect(git.checkout).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('when checkout fails', () => {
+			it('should log warning and not throw', async () => {
+				const mockLogger = mock<any>();
+				const gitService = new SourceControlGitService(mockLogger, mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'master' } as never);
+				gitService.git = git;
+
+				vi.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
+				vi.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: 'master',
+					branches: ['main'],
+				});
+				vi.spyOn(gitService, 'setBranch').mockRejectedValue(new Error('Checkout failed'));
+
+				// Should not throw
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					'Failed to checkout branch during recovery',
+					expect.objectContaining({ targetBranch: 'main' }),
+				);
+			});
+		});
+	});
+
+	describe('setGitCommand', () => {
+		it('should setup git client for https connection', async () => {
+			const credentials = { username: 'testuser', password: 'testpass' };
+			mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+				connectionType: 'https',
+				repositoryUrl: 'https://github.com/user/repo.git',
+			} as never);
+			mockSourceControlPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(
+				credentials,
+			);
+
+			// Clear previous calls to simpleGit
+			(simpleGit as Mock).mockClear();
+
+			await sourceControlGitService.setGitCommand();
+
+			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
+			expect(mockGitInstance.env).toHaveBeenCalledWith('N8N_GIT_USERNAME', credentials.username);
+			expect(mockGitInstance.env).toHaveBeenCalledWith('N8N_GIT_PASSWORD', credentials.password);
+			const expectedCredentialScript =
+				'!f() { printf \'%s\\n\' "username=$N8N_GIT_USERNAME" "password=$N8N_GIT_PASSWORD"; }; f';
+			expect(simpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					binary: 'git',
+					maxConcurrentProcesses: 6,
+					trimmed: false,
+					config: [
+						'core.symlinks=false',
+						`credential.helper=${expectedCredentialScript}`,
+						'credential.useHttpPath=true',
+						'http.lowSpeedLimit=1000',
+						'http.lowSpeedTime=30',
+					],
+					unsafe: { allowUnsafeCredentialHelper: true },
+					allowEnvironment: ['GIT_TERMINAL_PROMPT'],
+				}),
+			);
+		});
+
+		it('passes literal HTTPS credentials through the Git environment', async () => {
+			const credentials = { username: "user's name", password: 'pass\'"$word' };
+
+			mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+				connectionType: 'https',
+				repositoryUrl: 'https://github.com/user/repo.git',
+			} as never);
+			mockSourceControlPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(
+				credentials,
+			);
+			// Clear previous calls to simpleGit
+			(simpleGit as Mock).mockClear();
+
+			await sourceControlGitService.setGitCommand();
+
+			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
+			expect(mockGitInstance.env).toHaveBeenCalledWith('N8N_GIT_USERNAME', credentials.username);
+			expect(mockGitInstance.env).toHaveBeenCalledWith('N8N_GIT_PASSWORD', credentials.password);
+			const options = JSON.stringify((simpleGit as Mock).mock.calls);
+			expect(options).not.toContain(credentials.username);
+			expect(options).not.toContain(credentials.password);
+		});
+
+		it('should setup git client for ssh connection', async () => {
+			// @ts-expect-error required for testing
+			mockSourceControlPreferencesService['sshFolder'] = '.ssh';
+			mockSourceControlPreferencesService.getPrivateKeyPath.mockResolvedValue('private-key');
+			mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+				connectionType: 'ssh',
+			} as never);
+			(simpleGit as Mock).mockClear();
+
+			await sourceControlGitService.setGitCommand();
+
+			expect(simpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: ['core.symlinks=false'],
+					unsafe: { allowUnsafeSshCommand: true },
+					allowEnvironment: ['GIT_SSH_COMMAND', 'GIT_TERMINAL_PROMPT'],
+				}),
+			);
+			expect(mockGitInstance.env).toHaveBeenCalledWith(
+				'GIT_SSH_COMMAND',
+				"ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o UserKnownHostsFile='.ssh/known_hosts' -o StrictHostKeyChecking=accept-new -i 'private-key'",
+			);
+			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
+		});
+
+		describe('proxy configuration', () => {
+			const originalEnv = process.env;
+
+			beforeEach(() => {
+				process.env = { ...originalEnv };
+				delete process.env.HTTP_PROXY;
+				delete process.env.HTTPS_PROXY;
+				delete process.env.http_proxy;
+				delete process.env.https_proxy;
+				delete process.env.NO_PROXY;
+				delete process.env.no_proxy;
+				delete process.env.ALL_PROXY;
+				delete process.env.all_proxy;
+				(simpleGit as Mock).mockClear();
+			});
+
+			afterEach(() => {
+				process.env = originalEnv;
+			});
+
+			it('should add http.proxy config when HTTPS_PROXY is set for https repository', async () => {
+				const credentials = { username: 'testuser', password: 'testpass' };
+				const repositoryUrl = 'https://github.com/user/repo.git';
+				const proxyUrl = 'http://proxy.company.com:8080';
+
+				process.env.HTTPS_PROXY = proxyUrl;
+
+				mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'https',
+					repositoryUrl,
+				} as never);
+				mockSourceControlPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(
+					credentials,
+				);
+
+				await sourceControlGitService.setGitCommand();
+
+				// Git uses http.proxy for both HTTP and HTTPS URLs
+				const simpleGitCalls = (simpleGit as Mock).mock.calls;
+				expect(simpleGitCalls.length).toBeGreaterThan(0);
+				const lastCallConfig = simpleGitCalls[simpleGitCalls.length - 1][0].config;
+				expect(lastCallConfig).toContain(`http.proxy=${proxyUrl}`);
+			});
+
+			it('should add http.proxy config when HTTP_PROXY is set for http repository', async () => {
+				const credentials = { username: 'testuser', password: 'testpass' };
+				const repositoryUrl = 'http://internal-git.company.com/repo.git';
+				const proxyUrl = 'http://proxy.company.com:8080';
+
+				process.env.HTTP_PROXY = proxyUrl;
+
+				mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'https',
+					repositoryUrl,
+				} as never);
+				mockSourceControlPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(
+					credentials,
+				);
+
+				await sourceControlGitService.setGitCommand();
+
+				const simpleGitCalls = (simpleGit as Mock).mock.calls;
+				expect(simpleGitCalls.length).toBeGreaterThan(0);
+				const lastCallConfig = simpleGitCalls[simpleGitCalls.length - 1][0].config;
+				expect(lastCallConfig).toContain(`http.proxy=${proxyUrl}`);
+			});
+
+			it('should not add proxy config when no proxy environment variables are set', async () => {
+				const credentials = { username: 'testuser', password: 'testpass' };
+				const repositoryUrl = 'https://github.com/user/repo.git';
+
+				mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'https',
+					repositoryUrl,
+				} as never);
+				mockSourceControlPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(
+					credentials,
+				);
+
+				await sourceControlGitService.setGitCommand();
+
+				const simpleGitCalls = (simpleGit as Mock).mock.calls;
+				expect(simpleGitCalls.length).toBeGreaterThan(0);
+				const lastCallConfig = simpleGitCalls[simpleGitCalls.length - 1][0].config as string[];
+				const hasProxyConfig = lastCallConfig.some((c: string) => c.includes('proxy='));
+				expect(hasProxyConfig).toBe(false);
+			});
+
+			it('should respect NO_PROXY and not add proxy config when repository matches', async () => {
+				const credentials = { username: 'testuser', password: 'testpass' };
+				const repositoryUrl = 'https://github.com/user/repo.git';
+				const proxyUrl = 'http://proxy.company.com:8080';
+
+				process.env.HTTPS_PROXY = proxyUrl;
+				process.env.NO_PROXY = 'github.com';
+
+				mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'https',
+					repositoryUrl,
+				} as never);
+				mockSourceControlPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(
+					credentials,
+				);
+
+				await sourceControlGitService.setGitCommand();
+
+				const simpleGitCalls = (simpleGit as Mock).mock.calls;
+				expect(simpleGitCalls.length).toBeGreaterThan(0);
+				const lastCallConfig = simpleGitCalls[simpleGitCalls.length - 1][0].config as string[];
+				const hasProxyConfig = lastCallConfig.some((c: string) => c.includes('proxy='));
+				expect(hasProxyConfig).toBe(false);
+			});
+		});
+	});
+
+	describe('getFileContent', () => {
+		it('should return file content at HEAD version', async () => {
+			// Arrange
+			const filePath = 'workflows/12345.json';
+			const expectedContent = '{"id":"12345","name":"Test Workflow"}';
+			const git = mock<SimpleGit>();
+			const showSpy = git.show;
+			showSpy.mockResolvedValue(expectedContent);
+			sourceControlGitService.git = git;
+
+			// Act
+			const content = await sourceControlGitService.getFileContent(filePath);
+
+			// Assert
+			expect(showSpy).toHaveBeenCalledWith([`HEAD:${filePath}`]);
+			expect(content).toBe(expectedContent);
+		});
+
+		it('should return file content at specific commit', async () => {
+			// Arrange
+			const filePath = 'workflows/12345.json';
+			const commitHash = 'abc123';
+			const expectedContent = '{"id":"12345","name":"Test Workflow"}';
+			const git = mock<SimpleGit>();
+			const showSpy = git.show;
+			showSpy.mockResolvedValue(expectedContent);
+			sourceControlGitService.git = git;
+
+			// Act
+			const content = await sourceControlGitService.getFileContent(filePath, commitHash);
+
+			// Assert
+			expect(showSpy).toHaveBeenCalledWith([`${commitHash}:${filePath}`]);
+			expect(content).toBe(expectedContent);
+		});
+	});
+
+	describe('path normalization', () => {
+		describe('cross-platform path handling', () => {
+			beforeEach(() => {
+				vi.clearAllMocks();
+			});
+
+			it('should normalize Windows paths to POSIX format for SSH command', async () => {
+				// Arrange
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
+				const windowsPath = 'C:\\Users\\Test\\.n8n\\ssh_private_key_temp';
+				const sshFolder = 'C:\\Users\\Test\\.n8n\\.ssh';
+
+				// Mock the getPrivateKeyPath to return a Windows path
+				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(windowsPath);
+				// Mock getPreferences to return SSH connection type (required for new functionality)
+				mockPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'ssh',
+					connected: true,
+					repositoryUrl: 'git@github.com:user/repo.git',
+					branchName: 'main',
+					branchReadOnly: false,
+					branchColor: '#5296D6',
+					initRepo: false,
+					keyGeneratorType: 'ed25519',
+				});
+
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
+
+				// Act
+				await gitService.setGitCommand('/git/folder', sshFolder);
+
+				// Assert - verify Windows paths are normalized to POSIX format
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining('C:/Users/Test/.n8n/ssh_private_key_temp'), // Forward slashes
+				);
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining('C:/Users/Test/.n8n/.ssh/known_hosts'), // Forward slashes
+				);
+				// Ensure no backslashes remain in the SSH command
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.not.stringContaining('\\'),
+				);
+			});
+
+			it('should create properly quoted SSH command', async () => {
+				// Arrange
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
+				const privateKeyPath = 'C:/Users/Test User/.n8n/ssh_private_key_temp';
+				const sshFolder = 'C:/Users/Test User/.n8n/.ssh';
+
+				// Mock the getPrivateKeyPath to return a path with spaces
+				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(privateKeyPath);
+				// Mock getPreferences to return SSH connection type
+				mockPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'ssh',
+					connected: true,
+					repositoryUrl: 'git@github.com:user/repo.git',
+					branchName: 'main',
+					branchReadOnly: false,
+					branchColor: '#5296D6',
+					initRepo: false,
+					keyGeneratorType: 'ed25519',
+				});
+
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
+
+				// Act
+				await gitService.setGitCommand('/git/folder', sshFolder);
+
+				// Assert - verify paths with spaces are properly quoted
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining("'C:/Users/Test User/.n8n/ssh_private_key_temp'"), // Quoted path with spaces
+				);
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining("'C:/Users/Test User/.n8n/.ssh/known_hosts'"), // Quoted known_hosts path
+				);
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining('UserKnownHostsFile='),
+				);
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining('StrictHostKeyChecking=accept-new'),
+				);
+			});
+
+			it('should single-quote paths to prevent command injection', async () => {
+				// Arrange
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
+				const pathWithQuotes = 'C:/Users/Test"User/.n8n/ssh_private_key_temp';
+				const sshFolder = 'C:/Users/Test"User/.n8n/.ssh';
+
+				// Mock the getPrivateKeyPath to return a path with quotes
+				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(pathWithQuotes);
+				// Mock getPreferences to return SSH connection type
+				mockPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'ssh',
+					connected: true,
+					repositoryUrl: 'git@github.com:user/repo.git',
+					branchName: 'main',
+					branchReadOnly: false,
+					branchColor: '#5296D6',
+					initRepo: false,
+					keyGeneratorType: 'ed25519',
+				});
+
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
+
+				// Act
+				await gitService.setGitCommand('/git/folder', sshFolder);
+
+				// Assert - the double quote is kept literal inside single quotes, so it
+				// cannot terminate the argument and inject a command.
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining("-i 'C:/Users/Test\"User/.n8n/ssh_private_key_temp'"),
+				);
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining(
+						"-o UserKnownHostsFile='C:/Users/Test\"User/.n8n/.ssh/known_hosts'",
+					),
+				);
+			});
+
+			it('should escape single quotes in paths to prevent command injection', async () => {
+				// Arrange - a path containing a single quote (e.g. a Windows user
+				// folder like "John's") would otherwise terminate the quoted argument.
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
+				const pathWithSingleQuote = "C:/Users/John's/.n8n/ssh_private_key_temp";
+				const sshFolder = "C:/Users/John's/.n8n/.ssh";
+
+				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(pathWithSingleQuote);
+				mockPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'ssh',
+					connected: true,
+					repositoryUrl: 'git@github.com:user/repo.git',
+					branchName: 'main',
+					branchReadOnly: false,
+					branchColor: '#5296D6',
+					initRepo: false,
+					keyGeneratorType: 'ed25519',
+				});
+
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
+
+				// Act
+				await gitService.setGitCommand('/git/folder', sshFolder);
+
+				// Assert - the single quote is emitted as the POSIX '\'' sequence
+				// (close-quote, escaped quote, reopen-quote), keeping it literal so
+				// it cannot break out of the argument and inject a command.
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining("-i 'C:/Users/John'\"'\"'s/.n8n/ssh_private_key_temp'"),
+				);
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining(
+						"-o UserKnownHostsFile='C:/Users/John'\"'\"'s/.n8n/.ssh/known_hosts'",
+					),
+				);
+			});
+		});
+	});
+});

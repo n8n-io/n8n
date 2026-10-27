@@ -5,6 +5,7 @@ export namespace ChatUI {
 		type: 'text';
 		content: string;
 		codeSnippet?: string;
+		focusedNodeNames?: string[];
 		revertVersion?: {
 			id: string;
 			createdAt: string;
@@ -32,6 +33,8 @@ export namespace ChatUI {
 		replaced?: boolean;
 		error?: boolean;
 		suggestionId: string;
+		sdkSessionId?: string;
+		nodeName?: string;
 	}
 
 	export interface EndSessionMessage {

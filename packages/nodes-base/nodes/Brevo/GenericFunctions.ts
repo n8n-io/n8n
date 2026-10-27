@@ -6,7 +6,7 @@ import type {
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, jsonParse, NodeOperationError } from 'n8n-workflow';
 import MailComposer from 'nodemailer/lib/mail-composer';
 export namespace BrevoNode {
 	type ValidEmailFields = { to: string } | { sender: string } | { cc: string } | { bcc: string };
@@ -54,19 +54,18 @@ export namespace BrevoNode {
 		function getFileName(
 			itemIndex: number,
 			mimeType: string,
-			fileExt: string,
-			fileName: string,
+			fileExt: string | undefined,
+			fileName: string | undefined,
 		): string {
-			let ext = fileExt;
-			if (fileExt === undefined) {
-				ext = mimeType.split('/')[1];
+			const ext = fileExt ?? mimeType.split('/')[1];
+
+			if (!fileName) {
+				return `file-${itemIndex}.${ext}`;
 			}
 
-			let name = `${fileName}.${ext}`;
-			if (fileName === undefined) {
-				name = `file-${itemIndex}.${ext}`;
-			}
-			return name;
+			return fileName.toLowerCase().endsWith(`.${ext.toLowerCase()}`)
+				? fileName
+				: `${fileName}.${ext}`;
 		}
 
 		export async function validateAndCompileAttachmentsData(
@@ -84,22 +83,15 @@ export namespace BrevoNode {
 				const { binaryPropertyName } = dataPropertyList;
 				const dataMappingList = (binaryPropertyName as string).split(',');
 				for (const attachmentDataName of dataMappingList) {
-					const binaryData = this.helpers.assertBinaryData(attachmentDataName);
-					const bufferFromIncomingData = await this.helpers.getBinaryDataBuffer(attachmentDataName);
+					const binaryData = this.helpers.assertBinaryData(attachmentDataName.trim());
+					const buffer = await this.helpers.getBinaryDataBuffer(attachmentDataName.trim());
 
-					const {
-						data: content,
-						mimeType,
-						fileName,
-						fileExtension,
-					} = await this.helpers.prepareBinaryData(bufferFromIncomingData);
-
-					const itemIndex = this.getItemIndex();
+					const content = buffer.toString(BINARY_ENCODING);
 					const name = getFileName(
-						itemIndex,
-						mimeType,
-						fileExtension!,
-						fileName ?? binaryData.fileName!,
+						this.getItemIndex(),
+						binaryData.mimeType,
+						binaryData.fileExtension,
+						binaryData.fileName,
 					);
 
 					attachment.push({ content, name });
@@ -139,7 +131,11 @@ export namespace BrevoNode {
 		}
 
 		function validateEmailStrings(input: ValidEmailFields): ValidatedEmail {
-			const composer = new MailComposer({ ...input });
+			const composer = new MailComposer({
+				...input,
+				disableFileAccess: true,
+				disableUrlAccess: true,
+			});
 			const addressFields = composer.compile().getAddresses();
 
 			const fieldFetcher = new Map<string, () => Email[] | Email>([
@@ -192,13 +188,20 @@ export namespace BrevoNode {
 			return result as ValidatedEmail;
 		}
 
+		// v1 stored recipients under a misspelled key. v1.1 (NODE-5367) corrects
+		// the spelling; this picks which key each version actually reads.
+		function isLegacyVersion(this: IExecuteSingleFunctions): boolean {
+			return this.getNode().typeVersion < 1.1;
+		}
+
 		export async function validateAndCompileCCEmails(
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
-			const ccData = this.getNodeParameter(
-				'additionalFields.receipientsCC.receipientCc',
-			) as JsonObject;
+			const path = isLegacyVersion.call(this)
+				? 'additionalFields.receipientsCC.receipientCc'
+				: 'additionalFields.recipientsCC.recipientCc';
+			const ccData = this.getNodeParameter(path) as JsonObject;
 			const { cc } = ccData;
 			const { body } = requestOptions;
 			const data = validateEmailStrings({ cc: cc as string });
@@ -211,9 +214,10 @@ export namespace BrevoNode {
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
-			const bccData = this.getNodeParameter(
-				'additionalFields.receipientsBCC.receipientBcc',
-			) as JsonObject;
+			const path = isLegacyVersion.call(this)
+				? 'additionalFields.receipientsBCC.receipientBcc'
+				: 'additionalFields.recipientsBCC.recipientBcc';
+			const bccData = this.getNodeParameter(path) as JsonObject;
 			const { bcc } = bccData;
 			const { body } = requestOptions;
 			const data = validateEmailStrings({ bcc: bcc as string });
@@ -222,11 +226,13 @@ export namespace BrevoNode {
 			return requestOptions;
 		}
 
-		export async function validateAndCompileReceipientEmails(
+		export async function validateAndCompileRecipientEmails(
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
-			const to = this.getNodeParameter('receipients') as string;
+			const to = this.getNodeParameter(
+				isLegacyVersion.call(this) ? 'receipients' : 'recipients',
+			) as string;
 			const { body } = requestOptions;
 			const data = validateEmailStrings({ to });
 			Object.assign(body!, data);

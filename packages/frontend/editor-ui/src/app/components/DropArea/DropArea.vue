@@ -41,13 +41,16 @@ const onDrop = (value: string) => {
 }
 
 .droppable {
-	border-color: var(--ndv--droppable-parameter--color);
-	border-width: 1.5px;
+	border-color: transparent;
+	outline: 1.5px dashed var(--ndv--droppable-parameter--color);
+	outline-offset: -1.5px;
 	background: var(--ndv--droppable-parameter--color--background);
 }
 
 .active {
 	border-color: var(--color--success);
+	border-width: 1px;
 	background: var(--ndv--droppable-parameter--color--background--active);
+	outline: none;
 }
 </style>

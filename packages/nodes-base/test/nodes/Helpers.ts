@@ -1,3 +1,4 @@
+import { passthroughEgressFilter } from '@n8n/backend-network/egress';
 import get from 'lodash/get';
 import { constructExecutionMetaData } from 'n8n-core';
 import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
@@ -20,10 +21,14 @@ export const createMockExecuteFunction = <T = IExecuteFunctions>(
 		getNode() {
 			return nodeMock;
 		},
+		getWorkflow() {
+			return { id: 'test-workflow-id', name: 'Test Workflow', active: false };
+		},
 		continueOnFail() {
 			return continueBool;
 		},
 		helpers: {
 			constructExecutionMetaData,
+			getSecureEgressFilter: () => passthroughEgressFilter,
 		},
 	}) as unknown as T;

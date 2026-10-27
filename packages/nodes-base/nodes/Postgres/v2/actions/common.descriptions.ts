@@ -1,4 +1,43 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+
+export const operatorOptions: INodePropertyOptions[] = [
+	{
+		name: 'Equal',
+		value: 'equal',
+	},
+	{
+		name: 'Not Equal',
+		value: '!=',
+	},
+	{
+		name: 'Like',
+		value: 'LIKE',
+	},
+	{
+		name: 'Greater Than',
+		value: '>',
+	},
+	{
+		name: 'Less Than',
+		value: '<',
+	},
+	{
+		name: 'Greater Than Or Equal',
+		value: '>=',
+	},
+	{
+		name: 'Less Than Or Equal',
+		value: '<=',
+	},
+	{
+		name: 'Is Null',
+		value: 'IS NULL',
+	},
+	{
+		name: 'Is Not Null',
+		value: 'IS NOT NULL',
+	},
+];
 
 export const optionsCollection: INodeProperties = {
 	displayName: 'Options',
@@ -76,7 +115,20 @@ export const optionsCollection: INodeProperties = {
 			hint: 'Comma-separated list of values: reference them in your query as $1, $2, $3…',
 			placeholder: 'e.g. value1,value2,value3',
 			displayOptions: {
-				show: { '/operation': ['executeQuery'] },
+				show: { '/operation': ['executeQuery'], '@version': [{ _cnd: { lt: 2.8 } }] },
+			},
+		},
+		{
+			displayName: 'Query Parameters',
+			name: 'queryReplacement',
+			type: 'string',
+			default: '',
+			description:
+				'Comma-separated list of the values you want to use as query parameters. Each expression gives one value, also when the value contains commas. To give more than one value from an expression, return an array. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/#use-query-parameters" target="_blank">More info</a>.',
+			hint: 'Comma-separated list of values: reference them in your query as $1, $2, $3… An expression always gives one value.',
+			placeholder: 'e.g. value1,value2,value3',
+			displayOptions: {
+				show: { '/operation': ['executeQuery'], '@version': [{ _cnd: { gte: 2.8 } }] },
 			},
 		},
 		{
@@ -241,44 +293,7 @@ export const whereFixedCollection: INodeProperties = {
 					description:
 						"The operator to check the column against. When using 'LIKE' operator percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character.",
 					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-					options: [
-						{
-							name: 'Equal',
-							value: 'equal',
-						},
-						{
-							name: 'Not Equal',
-							value: '!=',
-						},
-						{
-							name: 'Like',
-							value: 'LIKE',
-						},
-						{
-							name: 'Greater Than',
-							value: '>',
-						},
-						{
-							name: 'Less Than',
-							value: '<',
-						},
-						{
-							name: 'Greater Than Or Equal',
-							value: '>=',
-						},
-						{
-							name: 'Less Than Or Equal',
-							value: '<=',
-						},
-						{
-							name: 'Is Null',
-							value: 'IS NULL',
-						},
-						{
-							name: 'Is Not Null',
-							value: 'IS NOT NULL',
-						},
-					],
+					options: operatorOptions,
 					default: 'equal',
 				},
 				{

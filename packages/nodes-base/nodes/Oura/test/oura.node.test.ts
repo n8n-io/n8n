@@ -25,14 +25,14 @@ const node: INode = {
 
 const mockThis = {
 	helpers: {
-		httpRequestWithAuthentication: jest
+		httpRequestWithAuthentication: vi
 			.fn()
 			.mockResolvedValue({ statusCode: 200, data: profileResponse }),
 	},
 	getNode() {
 		return node;
 	},
-	getNodeParameter: jest.fn(),
+	getNodeParameter: vi.fn(),
 } as unknown as IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
 
 describe('Oura', () => {

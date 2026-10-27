@@ -1,0 +1,62 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-80, -680],
+			"id": "trigger-1",
+			"name": "When clicking 'Test workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "search",
+				"operation": "search",
+				"query": "latest AI developments",
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.perplexity",
+			"typeVersion": 2,
+			"position": [-40, -380],
+			"id": "search-node-1",
+			"name": "Search",
+			"credentials": {
+				"perplexityApi": {
+					"id": "test",
+					"name": "Perplexity account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Test workflow'": {
+			"main": [
+				[
+					{
+						"node": "Search",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Search": [
+			{
+				"json": {
+					"id": "search-test123",
+					"results": [
+						{
+							"title": "AI Developments 2024",
+							"url": "https://example.com/ai",
+							"snippet": "Latest AI news...",
+							"date": "2024-12-15",
+							"last_updated": "2024-12-20"
+						}
+					]
+				}
+			}
+		]
+	}
+}

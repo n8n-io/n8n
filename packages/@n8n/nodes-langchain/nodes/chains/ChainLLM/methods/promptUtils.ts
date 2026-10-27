@@ -11,7 +11,7 @@ import {
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
 
-import { isChatInstance } from '@utils/helpers';
+import { isChatInstance } from '@n8n/ai-utilities';
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 import { createImageMessage } from './imageUtils';
@@ -147,7 +147,7 @@ export async function createPromptTemplate({
 }
 
 const isMessage = (message: unknown): message is BaseMessage => {
-	return message instanceof BaseMessage;
+	return BaseMessage.isInstance(message);
 };
 
 const isAgentFinish = (value: unknown): value is AgentFinish => {

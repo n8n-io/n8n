@@ -1,6 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage, RemoveMessage } from '@langchain/core/messages';
+import type { RunnableConfig } from '@langchain/core/runnables';
 import type { Logger } from '@n8n/backend-common';
 
 import { cleanupDanglingToolCallMessages } from './cleanup-dangling-tool-call-messages';
@@ -14,7 +15,6 @@ import type { SimpleWorkflow } from '../types/workflow';
 export type StateModificationAction =
 	| 'compact_messages'
 	| 'delete_messages'
-	| 'create_workflow_name'
 	| 'auto_compact_messages'
 	| 'cleanup_dangling'
 	| 'clear_error_state'
@@ -73,7 +73,7 @@ export function determineStateAction(
 	input: StateModifierInput,
 	autoCompactThresholdTokens: number,
 ): StateModificationAction {
-	const { messages, workflowJSON, coordinationLog } = input;
+	const { messages, coordinationLog } = input;
 
 	// First check for dangling tool calls (from interrupted sessions)
 	const danglingMessages = cleanupDanglingToolCallMessages(messages);
@@ -100,14 +100,6 @@ export function determineStateAction(
 	// Manual /clear command
 	if (lastHumanMessage.content === '/clear') {
 		return 'delete_messages';
-	}
-
-	// Auto-generate workflow name on first message with empty workflow
-	const workflowName = workflowJSON?.name;
-	const nodesLength = workflowJSON?.nodes?.length ?? 0;
-	const isDefaultName = !workflowName || /^My workflow( \d+)?$/.test(workflowName);
-	if (isDefaultName && nodesLength === 0 && messages.length === 1) {
-		return 'create_workflow_name';
 	}
 
 	// Auto-compact when token threshold exceeded
@@ -142,12 +134,19 @@ export function handleCleanupDangling(
  *
  * For manual /compact: Removes all messages, routes to responder for acknowledgment.
  * For auto-compact: Removes old messages, preserves last user message to continue processing.
+ *
+ * @param messages - Conversation messages to compact
+ * @param previousSummary - Previous conversation summary
+ * @param llm - Language model for summarization
+ * @param isAutoCompact - Whether this is auto-compaction (preserve last message) or manual
+ * @param config - Optional RunnableConfig for tracing callbacks
  */
 export async function handleCompactMessages(
 	messages: BaseMessage[],
 	previousSummary: string,
 	llm: BaseChatModel,
 	isAutoCompact: boolean,
+	config?: RunnableConfig,
 ): Promise<{
 	previousSummary: string;
 	messages: BaseMessage[];
@@ -158,7 +157,7 @@ export async function handleCompactMessages(
 		throw new Error('Cannot compact messages: no HumanMessage found');
 	}
 
-	const compactedMessages = await conversationCompactChain(llm, messages, previousSummary);
+	const compactedMessages = await conversationCompactChain(llm, messages, previousSummary, config);
 
 	// For manual /compact: just remove messages, responder will generate acknowledgment
 	// For auto-compact: remove messages but preserve the last user message to continue processing
@@ -252,26 +251,36 @@ export function handleClearErrorState(
 
 /**
  * Generates a workflow name from the initial user message.
+ *
+ * @param messages - Conversation messages
+ * @param workflowJSON - Current workflow state
+ * @param llm - Language model for name generation
+ * @param logger - Optional logger
+ * @param config - Optional RunnableConfig for tracing callbacks
  */
 export async function handleCreateWorkflowName(
 	messages: BaseMessage[],
 	workflowJSON: SimpleWorkflow,
 	llm: BaseChatModel,
 	logger?: Logger,
+	config?: RunnableConfig,
 ): Promise<{ workflowJSON: SimpleWorkflow }> {
-	if (messages.length === 1 && messages[0] instanceof HumanMessage) {
-		const initialMessage = messages[0];
-		if (typeof initialMessage.content !== 'string') {
-			logger?.debug('Initial message content is not a string, skipping workflow name generation');
-			return { workflowJSON };
-		}
-
-		logger?.debug('Generating workflow name');
-		const { name } = await workflowNameChain(llm, initialMessage.content);
-
-		return {
-			workflowJSON: { ...workflowJSON, name },
-		};
+	const workflowName = workflowJSON?.name;
+	const isDefaultName = !workflowName || /^My workflow( \d+)?$/.test(workflowName);
+	if (!isDefaultName || (workflowJSON?.nodes?.length ?? 0) > 0) {
+		return { workflowJSON };
 	}
-	return { workflowJSON };
+
+	const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage);
+	if (!lastHumanMessage || typeof lastHumanMessage.content !== 'string') {
+		logger?.debug('No suitable human message found, skipping workflow name generation');
+		return { workflowJSON };
+	}
+
+	logger?.debug('Generating workflow name');
+	const { name } = await workflowNameChain(llm, lastHumanMessage.content, config);
+
+	return {
+		workflowJSON: { ...workflowJSON, name },
+	};
 }

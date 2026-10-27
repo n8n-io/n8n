@@ -5,10 +5,11 @@ import type {
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
+import { sendAndWaitWebhook } from '@utils/sendAndWait/utils';
+
 import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
 import { listSearch } from './methods';
-import { sendAndWaitWebhook } from '../../../../utils/sendAndWait/utils';
 
 export class MicrosoftTeamsV2 implements INodeType {
 	description: INodeTypeDescription;

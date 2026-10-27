@@ -5,6 +5,23 @@ export const ALPHABET = [DIGITS, UPPERCASE_LETTERS, LOWERCASE_LETTERS].join('');
 
 export const BINARY_ENCODING = 'base64';
 export const WAIT_INDEFINITELY = new Date('3000-01-01T00:00:00.000Z');
+// A parent parked on a sub-execution gets its own sentinel so the waiting-executions sweep can select those rows by equality.
+export const WAIT_FOR_SUB_EXECUTION = new Date('2999-12-31T00:00:00.000Z');
+
+/**
+ * The longest wait that sleeps in the process instead of suspending the execution.
+ * `WaitTracker` polls every 60 seconds, so it can need a full minute to see a new row.
+ * A suspended wait shorter than that resumes late. The 5 extra seconds cover the delay
+ * until the row is written. `ExecutionRepository.getWaitingExecutions` must keep
+ * selecting rows further out than one poll interval. Change this number only with
+ * those two.
+ */
+export const MAX_IN_PROCESS_WAIT_MS = 65_000;
+
+export function isIndefiniteWait(waitTill: Date): boolean {
+	const time = waitTill.getTime();
+	return time === WAIT_INDEFINITELY.getTime() || time === WAIT_FOR_SUB_EXECUTION.getTime();
+}
 
 export const LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug'] as const;
 
@@ -13,6 +30,9 @@ export const CODE_EXECUTION_MODES = ['runOnceForAllItems', 'runOnceForEachItem']
 
 // Arbitrary value to represent an empty credential value
 export const CREDENTIAL_EMPTY_VALUE = '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da';
+
+// Value used when redacting sensitive credential data for the client (never sent decrypted)
+export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';
 
 export const FORM_TRIGGER_PATH_IDENTIFIER = 'n8n-form';
 
@@ -25,9 +45,21 @@ export const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
+/**
+ * Package prefix of the node types the editor generates from credential types that declare
+ * `httpRequestNode`. No package registers them; see `credential-only-nodes.ts`.
+ */
+export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
+// Fields the Evaluation Trigger adds to its output alongside dataset columns,
+// regardless of source (Data table or Google Sheets). `row_id` and the Data
+// table system columns (id/createdAt/updatedAt) are NOT here — those are only
+// added by the Data table source, so callers needing that distinction should
+// combine this with `DATA_TABLE_SYSTEM_COLUMNS` (from './data-table.types')
+// and `row_id` themselves, only when they know the trigger's source.
+export const EVALUATION_TRIGGER_METADATA_FIELDS = ['row_number', '_rowsLeft'] as const;
 export const EVALUATION_NODE_TYPE = 'n8n-nodes-base.evaluation';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
@@ -45,11 +77,12 @@ export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
 export const MAILGUN_NODE_TYPE = 'n8n-nodes-base.mailgun';
 export const POSTGRES_NODE_TYPE = 'n8n-nodes-base.postgres';
 export const MYSQL_NODE_TYPE = 'n8n-nodes-base.mySql';
+export const MICROSOFT_AGENT365_TRIGGER_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.microsoftAgent365Trigger';
+export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const SCHEDULE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.scheduleTrigger';
-
-// Chat hub (search) tools
-export const JINA_AI_TOOL_NODE_TYPE = 'n8n-nodes-base.jinaAiTool';
-export const SERP_API_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolSerpApi';
+export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
+export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
 
 export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -64,6 +97,13 @@ export const SCRIPTING_NODE_TYPES = [
 	FUNCTION_ITEM_NODE_TYPE,
 	CODE_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
+];
+
+export const DATA_TABLE_NODE_TYPES = [
+	DATA_TABLE_NODE_TYPE,
+	DATA_TABLE_TOOL_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	EVALUATION_NODE_TYPE,
 ];
 
 export const ADD_FORM_NOTICE = 'addFormPage';
@@ -95,12 +135,55 @@ export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
 export const AGENT_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.agentTool';
 export const CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
 export const WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
+export const RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.retrieverWorkflow';
 export const HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
-export const RESPOND_TO_CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
+/** Trailing segment of the path a Chat trigger registers its webhooks under: `{webhookId}/chat`. */
+export const CHAT_TRIGGER_PATH_SUFFIX = 'chat';
+export const CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
+export const CHAT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTool';
 export const MEMORY_MANAGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryManager';
 export const MEMORY_BUFFER_WINDOW_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBufferWindow';
 export const GUARDRAILS_NODE_TYPE = '@n8n/n8n-nodes-langchain.guardrails';
+export const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
+export const MCP_CLIENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClient';
+export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
+export const ANTHROPIC_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.anthropic';
+export const OLLAMA_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.ollama';
+export const GOOGLE_GEMINI_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.googleGemini';
+export const ALIBABA_CLOUD_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.alibabaCloud';
+export const MOONSHOT_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.moonshot';
+export const MINIMAX_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.minimax';
+
+// Trigger types that always run with the manually-executing n8n user's identity.
+// Chat and MCP triggers are deliberately not listed: they only establish an
+// identity in specific configurations (Chat Hub availability, n8n OAuth2), which
+// `classifyTriggerIdentity` checks parameter-by-parameter (IAM-1238).
+export const MANUAL_TRIGGER_NODE_TYPES: readonly string[] = [
+	MANUAL_TRIGGER_NODE_TYPE,
+	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
+];
+
+export const AI_VENDOR_NODE_TYPES = [
+	OPENAI_LANGCHAIN_NODE_TYPE,
+	ANTHROPIC_LANGCHAIN_NODE_TYPE,
+	OLLAMA_LANGCHAIN_NODE_TYPE,
+	GOOGLE_GEMINI_LANGCHAIN_NODE_TYPE,
+	ALIBABA_CLOUD_LANGCHAIN_NODE_TYPE,
+	MOONSHOT_LANGCHAIN_NODE_TYPE,
+	MINIMAX_LANGCHAIN_NODE_TYPE,
+];
+
+export const LANGCHAIN_LM_NODE_TYPE_PREFIX = '@n8n/n8n-nodes-langchain.lm';
+
+export const CHAT_HUB_VECTOR_STORE_PG_VECTOR_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector';
+export const CHAT_HUB_VECTOR_STORE_QDRANT_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStoreQdrant';
+export const CHAT_HUB_VECTOR_STORE_PINECONE_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStorePinecone';
+export const DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
 
 export const LANGCHAIN_CUSTOM_TOOLS = [
 	CODE_TOOL_LANGCHAIN_NODE_TYPE,
@@ -130,3 +213,9 @@ export const PROJECT_ROOT = '0';
 export const WAITING_FORMS_EXECUTION_STATUS = 'n8n-execution-status';
 
 export const CHAT_WAIT_USER_REPLY = 'waitUserReply';
+export const FREE_TEXT_CHAT_RESPONSE_TYPE = 'freeTextChat';
+
+export const BINARY_IN_JSON_PROPERTY = '_files';
+
+export const BINARY_MODE_SEPARATE = 'separate';
+export const BINARY_MODE_COMBINED = 'combined';

@@ -5,11 +5,11 @@ import type { FunctionTool } from 'openai/resources/responses/responses';
 import { getBinaryDataFile } from '../../../../helpers/binary-data';
 import { formatInputMessages, createRequest } from '../../../../v2/actions/text/helpers/responses';
 
-jest.mock('../../../../helpers/binary-data', () => ({
-	getBinaryDataFile: jest.fn(),
+vi.mock('../../../../helpers/binary-data', () => ({
+	getBinaryDataFile: vi.fn(),
 }));
 
-const mockGetBinaryDataFile = jest.mocked(getBinaryDataFile);
+const mockGetBinaryDataFile = vi.mocked(getBinaryDataFile);
 
 const createExecuteFunctionsMock = (parameters: IDataObject): IExecuteFunctions => {
 	const nodeParameters = parameters;
@@ -34,25 +34,25 @@ const createExecuteFunctionsMock = (parameters: IDataObject): IExecuteFunctions 
 			return undefined;
 		},
 		helpers: {
-			prepareBinaryData: jest.fn().mockResolvedValue({
+			prepareBinaryData: vi.fn().mockResolvedValue({
 				data: 'base64data',
 				mimeType: 'text/plain',
 				fileName: 'test.txt',
 			}),
-			assertBinaryData: jest.fn().mockReturnValue({
+			assertBinaryData: vi.fn().mockReturnValue({
 				filename: 'test.txt',
 				contentType: 'text/plain',
 			}),
-			getBinaryDataBuffer: jest.fn().mockReturnValue(Buffer.from('test data')),
-			binaryToBuffer: jest.fn().mockResolvedValue(Buffer.from('test data')),
-			getBinaryStream: jest.fn().mockResolvedValue(Buffer.from('test data')),
+			getBinaryDataBuffer: vi.fn().mockReturnValue(Buffer.from('test data')),
+			binaryToBuffer: vi.fn().mockResolvedValue(Buffer.from('test data')),
+			getBinaryStream: vi.fn().mockResolvedValue(Buffer.from('test data')),
 		},
 	} as unknown as IExecuteFunctions;
 };
 
 describe('OpenAI Responses Helper Functions', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockGetBinaryDataFile.mockResolvedValue({
 			filename: 'test.png',
 			contentType: 'image/png',
@@ -95,7 +95,48 @@ describe('OpenAI Responses Helper Functions', () => {
 			expect(result).toEqual([
 				{
 					role: 'assistant',
-					content: [{ type: 'input_text', text: 'I am doing well, thank you!' }],
+					content: [{ type: 'output_text', text: 'I am doing well, thank you!', annotations: [] }],
+				},
+			]);
+		});
+
+		it('should format assistant text messages as output_text', async () => {
+			const executeFunctions = createExecuteFunctionsMock({});
+			const messages = [
+				{
+					role: 'assistant',
+					type: 'text',
+					content: 'Sure, here is one:',
+				},
+			];
+
+			const result = await formatInputMessages.call(executeFunctions, 0, messages);
+
+			expect(result).toEqual([
+				{
+					role: 'assistant',
+					content: [{ type: 'output_text', text: 'Sure, here is one:', annotations: [] }],
+				},
+			]);
+		});
+
+		it('should format user and system text messages as input_text', async () => {
+			const executeFunctions = createExecuteFunctionsMock({});
+			const messages = [
+				{ role: 'system', type: 'text', content: 'You are a helpful assistant.' },
+				{ role: 'user', type: 'text', content: 'Hello' },
+			];
+
+			const result = await formatInputMessages.call(executeFunctions, 0, messages);
+
+			expect(result).toEqual([
+				{
+					role: 'system',
+					content: [{ type: 'input_text', text: 'You are a helpful assistant.' }],
+				},
+				{
+					role: 'user',
+					content: [{ type: 'input_text', text: 'Hello' }],
 				},
 			]);
 		});
@@ -364,7 +405,9 @@ describe('OpenAI Responses Helper Functions', () => {
 				},
 				{
 					role: 'assistant',
-					content: [{ type: 'input_text', text: 'I can see the image you shared.' }],
+					content: [
+						{ type: 'output_text', text: 'I can see the image you shared.', annotations: [] },
+					],
 				},
 			]);
 		});

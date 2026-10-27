@@ -1,54 +1,311 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { backendConfig } from '@n8n/eslint-config/backend';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+// Single source of truth for project-owned entity transfer decisions
+const ownershipTransferManifest = require('./src/services/ownership-transfer/ownership-transfer.manifest.json');
+const acknowledgedProjectOwnedEntities = [
+	...ownershipTransferManifest.transferred,
+	...ownershipTransferManifest.notTransferred,
+].map(({ name, path }) => ({ name, path }));
+
+const INSTANCE_AI_LAZY_IMPORT_MESSAGE =
+	'Use an existing lazy loader, or add one near first use. Static runtime imports of this dependency undo the Instance AI idle-memory guardrail.';
+
+const POLICY_INTERNAL_RESTRICTION = {
+	name: '@n8n/decorators/policy-internal',
+	message:
+		'Only PolicyEnforcementService may mint a policy clearance. Call enforce*/evaluate* instead.',
+};
+
+const instanceAiLazyRuntimeImports = [
+	'@joplin/turndown-plugin-gfm',
+	'@mozilla/readability',
+	'linkedom',
+	'pdf-parse',
+	'turndown',
+].map((name) => ({
+	name,
+	allowTypeImports: true,
+	message: INSTANCE_AI_LAZY_IMPORT_MESSAGE,
+}));
+
+// Only JwtService may reach the raw signing API: it derives the `aud` claim from
+// the token's purpose, which is what keeps a token for one purpose from being
+// presented for another. The error classes and types stay importable.
+const jsonwebtokenSigningRestriction = {
+	name: 'jsonwebtoken',
+	// An allowlist, not a denylist: the module's whole runtime surface is off
+	// limits except the error classes, so a member added upstream is restricted
+	// from the start. `allowTypeImports` keeps `Secret`, `Algorithm` and friends
+	// importable. A namespace import is restricted too — the linter cannot see
+	// which members it reaches for.
+	allowImportNames: ['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'],
+	allowTypeImports: true,
+	message:
+		'Sign and verify through JwtService, so the token is bound to a purpose in token-purposes.ts.',
+};
+
+// `jsonwebtoken` declares no `exports`, so `jsonwebtoken/sign` and its siblings
+// resolve straight to the same functions and would slip past a name-only rule.
+const jsonwebtokenSubpathRestriction = {
+	group: ['jsonwebtoken/*'],
+	message:
+		'Sign and verify through JwtService, so the token is bound to a purpose in token-purposes.ts.',
+};
+
+// Verifying a token signed by a foreign key is the one thing JwtService cannot do.
+// This widens the allowlist to `decode` and `verify` only; `sign` stays restricted.
+const jsonwebtokenVerifyOnlyRestriction = {
+	...jsonwebtokenSigningRestriction,
+	allowImportNames: [...jsonwebtokenSigningRestriction.allowImportNames, 'decode', 'verify'],
+	message: 'Sign through JwtService, so the token is bound to a purpose in token-purposes.ts.',
+};
+
+const engineV2ModuleOnlyImport = {
+	name: '@n8n/engine',
+	allowTypeImports: true,
+	message:
+		'Only src/modules/engine-v2/** may import @n8n/engine at runtime. Use a type import, or reach the engine through EngineDataPlaneProxyService.',
+};
+
+// The skills module serves agents, MCP and n8n Assistant, so it does not depend on them.
+// The agents module registers what the skills module needs on `SkillAgentsProxy`.
+const skillsModuleBoundary = {
+	group: [
+		'@/modules/agents/**',
+		'@/modules/instance-ai/**',
+		'@/modules/mcp/**',
+		// Any depth, so files in subfolders of the skills module are covered too.
+		'../**/agents/**',
+		'../**/instance-ai/**',
+		'../**/mcp/**',
+	],
+	message:
+		'The skills module must not import the modules that use skills. Ask for what you need through SkillAgentsProxy.',
+};
+
+// `no-restricted-imports` does not check `import()` in ESLint (oxlint's rule does), so this
+// selector applies the same boundary to dynamic imports.
+const skillsModuleDynamicImportBoundary = {
+	selector:
+		'ImportExpression[source.value=/^(@\\/modules\\/|\\.\\.\\/(.*\\/)?)(agents|instance-ai|mcp)\\//]',
+	message: skillsModuleBoundary.message,
+};
+
+const METRICS_DATABASE_IMPORT_MESSAGE =
+	'Use DatabaseMetricQueryService for metrics database reads.';
+const METRICS_CLI_IMPORT_MESSAGE =
+	'Metrics collectors import only reviewed cli modules. Use DatabaseMetricQueryService for metrics database reads.';
 
 export default defineConfig(
-	globalIgnores(['scripts/**/*.mjs', 'jest.config*.js']),
-	nodeConfig,
+	globalIgnores(['scripts/**/*.mjs', 'vitest.*.ts', 'coverage/**']),
+	backendConfig,
 	{
 		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-
 			'n8n-local-rules/no-dynamic-import-template': 'error',
-			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
+			// Ratchets: the allowlists below only shrink, so an inline disable is the one way to add a violation.
+			'n8n-local-rules/no-guardrail-disable': [
+				'error',
+				{
+					guarded: [
+						{
+							rule: 'no-repository-in-public-api-handler',
+							message: 'Call a service instead of reaching the repository.',
+						},
+						{
+							rule: 'no-unsealed-workflow-entity-write',
+							message: 'Route the write through a token-gated `WorkflowRepository` method.',
+						},
+						{
+							rule: 'no-unsealed-credentials-entity-write',
+							message: 'Route the write through a token-gated `CredentialsRepository` method.',
+						},
+					],
+				},
+			],
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
-			// Disabled until we have a plan on how to fix these issues long term
-			'n8n-local-rules/no-import-enterprise-edition': 'off',
+			// Periodic leader-only work must be a @SystemTask() class; hand-rolled
+			// @OnLeaderTakeover timers are reserved for the allowlisted services below.
+			'n8n-local-rules/no-on-leader-takeover': 'error',
+			// The clearance minter lives on the `policy-internal` subpath, off the public barrel.
+			// Only PolicyEnforcementService may reach it; callers use enforce*/evaluate*.
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION] },
+			],
+			'n8n-local-rules/project-owned-entity-transfer': [
+				'error',
+				{ acknowledged: acknowledgedProjectOwnedEntities },
+			],
 
 			// TODO: Remove this
-			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
+			'@typescript-eslint/ban-ts-comment': 'off',
 			'import-x/no-cycle': 'warn',
-			'import-x/extensions': 'warn',
-			'import-x/order': 'warn',
+			'import-x/extensions': 'off',
 			'no-ex-assign': 'warn',
 			'no-case-declarations': 'warn',
 			'no-fallthrough': 'warn',
 			'no-unsafe-optional-chaining': 'warn',
-			'no-empty': 'warn',
 			'no-async-promise-executor': 'warn',
-			complexity: 'warn',
-			'@typescript-eslint/require-await': 'warn',
-			'@typescript-eslint/no-empty-object-type': 'warn',
+			complexity: 'off',
 			'@typescript-eslint/prefer-promise-reject-errors': 'warn',
-			'@typescript-eslint/no-unsafe-function-type': 'warn',
-			'@typescript-eslint/naming-convention': 'warn',
 			'@typescript-eslint/no-explicit-any': 'warn',
 			'@typescript-eslint/no-base-to-string': 'warn',
-			'@typescript-eslint/prefer-nullish-coalescing': 'warn',
 			'@typescript-eslint/no-redundant-type-constituents': 'warn',
 			'@typescript-eslint/no-restricted-types': 'warn',
 			'@typescript-eslint/no-unsafe-enum-comparison': 'warn',
 			'@typescript-eslint/no-unsafe-declaration-merging': 'warn',
 			'@typescript-eslint/only-throw-error': 'warn',
 			'@typescript-eslint/no-require-imports': 'warn',
-			'@typescript-eslint/no-unsafe-call': 'warn',
-			'@typescript-eslint/no-unsafe-member-access': 'warn',
 			'@typescript-eslint/array-type': 'warn',
-			'@typescript-eslint/unbound-method': 'warn',
-			'@typescript-eslint/no-unsafe-assignment': 'warn',
 			'no-useless-escape': 'warn',
 			'@typescript-eslint/prefer-optional-chain': 'warn',
 			'@typescript-eslint/no-duplicate-type-constituents': 'warn',
 		},
+	},
+	{
+		// Public API guardrail: handlers/controllers must go through a service, never a repository.
+		files: ['./src/public-api/v1/handlers/**/*.ts', './src/public-api/v1/controllers/**/*.ts'],
+		ignores: ['./src/public-api/**/__tests__/**/*.ts'],
+		rules: {
+			'n8n-local-rules/no-repository-in-public-api-handler': 'error',
+		},
+	},
+	{
+		files: ['./src/**/*.ts'],
+		ignores: ['./src/modules/engine-v2/**/*.ts'],
+		rules: {
+			// Repeats the policy restriction: a later block replaces the rule's options
+			// wholesale rather than merging them.
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						POLICY_INTERNAL_RESTRICTION,
+						engineV2ModuleOnlyImport,
+						jsonwebtokenSigningRestriction,
+					],
+					patterns: [jsonwebtokenSubpathRestriction],
+				},
+			],
+		},
+	},
+	{
+		files: ['./src/modules/instance-ai/**/*.ts'],
+		ignores: ['./src/modules/instance-ai/**/__tests__/**/*.ts'],
+		rules: {
+			// Repeats the engine restriction: a later block replaces the rule's options
+			// wholesale rather than merging them.
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						POLICY_INTERNAL_RESTRICTION,
+						...instanceAiLazyRuntimeImports,
+						engineV2ModuleOnlyImport,
+						jsonwebtokenSigningRestriction,
+					],
+					patterns: [jsonwebtokenSubpathRestriction],
+				},
+			],
+		},
+	},
+	{
+		files: ['./src/modules/skills/**/*.ts'],
+		ignores: ['./src/modules/skills/**/__tests__/**/*.ts'],
+		rules: {
+			// Repeats the package restrictions: a later block replaces the rule's options
+			// wholesale rather than merging them.
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						POLICY_INTERNAL_RESTRICTION,
+						engineV2ModuleOnlyImport,
+						jsonwebtokenSigningRestriction,
+					],
+					patterns: [jsonwebtokenSubpathRestriction, skillsModuleBoundary],
+				},
+			],
+			'no-restricted-syntax': ['error', skillsModuleDynamicImportBoundary],
+		},
+	},
+	{
+		// engine-v2 owns `@n8n/engine`, so the block above skips it wholesale — which
+		// would drop the JWT restriction too. Reinstate it here, without the engine
+		// restriction these files are exempt from.
+		files: ['./src/modules/engine-v2/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [POLICY_INTERNAL_RESTRICTION, jsonwebtokenSigningRestriction],
+					patterns: [jsonwebtokenSubpathRestriction],
+				},
+			],
+		},
+	},
+	{
+		// The places that hold the raw signing API. The one admitted reason to be here besides
+		// JwtService itself: verifying tokens signed by a foreign key, which JwtService cannot
+		// verify. Do NOT add a file for any other reason.
+		files: [
+			// Verifies subject tokens with a foreign key from the trusted-key store,
+			// against the audience that key is registered for.
+			'./src/modules/token-exchange/services/token-exchange.service.ts',
+		],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+			],
+		},
+	},
+	{
+		// Verifies bearer tokens with the JWKS discovered for a trusted source. Only
+		// `decode` and `verify` are admitted; signing stays with JwtService.
+		files: ['./src/modules/inbound-auth-core/oauth2-bearer.driver.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						POLICY_INTERNAL_RESTRICTION,
+						engineV2ModuleOnlyImport,
+						jsonwebtokenVerifyOnlyRestriction,
+					],
+					patterns: [jsonwebtokenSubpathRestriction],
+				},
+			],
+		},
+	},
+	{
+		// Tests mint tokens as fixtures, including malformed ones a purpose cannot express.
+		files: ['./src/**/__tests__/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+			],
+		},
+	},
+	{
+		// engine-v2 tests reach for `@n8n/engine` the same way the module does, and
+		// the tests block above would reinstate the restriction they are exempt from.
+		files: ['./src/modules/engine-v2/**/__tests__/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION] },
+			],
+		},
+	},
+	{
+		// Only the PEP may import the clearance minter.
+		files: ['./src/policy/policy-enforcement.service.ts'],
+		rules: { '@typescript-eslint/no-restricted-imports': 'off' },
 	},
 	{
 		files: ['./src/databases/migrations/**/*.ts'],
@@ -57,38 +314,46 @@ export default defineConfig(
 		},
 	},
 	{
+		// Sanctioned `@OnLeaderTakeover` users. Permanent, but additions need review:
+		// the system task runner itself, services that hold live resources on the
+		// leader (webhooks, pollers, sockets, queue consumers), and services that
+		// run a documented one-shot catch-up pass on takeover.
 		files: [
-			'./src/databases/**/*.ts',
-			'./src/modules/**/*.ts',
-			'./test/**/*.ts',
-			'./src/**/__tests__/**/*.ts',
+			'./src/scheduling/system-tasks/system-task-runner.ts',
+			'./src/active-workflow-manager.ts',
+			'./src/metrics/prometheus/instance-role-metrics.service.ts',
+			'./src/scaling/scaling.service.ts',
+			'./src/wait-tracker.ts',
+			'./src/workflows/publication/workflow-publication-outbox-consumer.ts',
+			'./src/workflows/publication/workflow-publication-reconciler.service.ts',
+			'./src/modules/agents/agent-task.service.ts',
+			'./src/modules/agents/integrations/agent-channel-reconciler.service.ts',
+			'./src/modules/agents/integrations/leader-channel-relay.service.ts',
+			'./src/modules/agents/integrations/platforms/discord/discord-integration.ts',
+			'./src/modules/token-exchange/services/trusted-key.service.ts',
+			'./src/services/pruning/workflow-history-compaction.service.ts',
 		],
-		rules: {
-			'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
-		},
+		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 	},
 	{
 		files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
 		rules: {
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'off',
+			'n8n-local-rules/no-on-leader-takeover': 'off',
 		},
 	},
 	{
 		files: ['./src/decorators/**/*.ts'],
 		rules: {
-			'@typescript-eslint/no-restricted-types': [
-				'warn',
-				{
-					types: {
-						Function: false,
-					},
-				},
-			],
+			'@typescript-eslint/no-restricted-types': 'warn',
 		},
 	},
 	{
 		files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
 		rules: {
+			// Allow inline `typeof import('x')` type annotations — the idiomatic shape for
+			// `vi.importActual<typeof import('x')>('x')` in mock factories.
+			'@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
 			'id-denylist': 'warn',
 			'prefer-const': 'warn',
 			'n8n-local-rules/no-dynamic-import-template': 'off',
@@ -107,6 +372,93 @@ export default defineConfig(
 		rules: {
 			'n8n-local-rules/no-top-level-relative-imports-in-backend-module': 'error',
 			'n8n-local-rules/no-constructor-in-backend-module': 'error',
+		},
+	},
+	{
+		files: ['./src/metrics/prometheus/**/*.ts'],
+		ignores: [
+			'./src/metrics/prometheus/**/__tests__/**/*.ts',
+			'./src/metrics/prometheus/**/*.test.ts',
+			'./src/metrics/prometheus/**/*.spec.ts',
+			// These files own queries or read connection state. Review their database access directly.
+			'./src/metrics/prometheus/database-metric-query.service.ts',
+			'./src/metrics/prometheus/cached-metric-query.ts',
+			'./src/metrics/prometheus/db-pool-metrics.service.ts',
+		],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						// Keep the package restrictions: rule options replace earlier options.
+						POLICY_INTERNAL_RESTRICTION,
+						engineV2ModuleOnlyImport,
+						jsonwebtokenSigningRestriction,
+						{
+							name: '@n8n/db',
+							allowImportNames: ['DbConnectionMetrics', 'WorkflowPublicationOutboxStatus'],
+							allowTypeImports: true,
+							message: METRICS_DATABASE_IMPORT_MESSAGE,
+						},
+						{
+							name: '@n8n/di',
+							importNames: ['Container'],
+							message: METRICS_DATABASE_IMPORT_MESSAGE,
+						},
+					],
+					patterns: [
+						jsonwebtokenSubpathRestriction,
+						{
+							group: [
+								'@n8n/db/**',
+								'@n8n/typeorm',
+								'@n8n/typeorm/**',
+								'@n8n/di/**',
+								'pg',
+								'pg/**',
+								'sqlite3',
+								'sqlite3/**',
+								'node:sqlite',
+							],
+							allowTypeImports: true,
+							message: METRICS_DATABASE_IMPORT_MESSAGE,
+						},
+						{
+							group: ['**/cached-metric-query', '**/cached-metric-query.*'],
+							allowImportNames: ['toGaugeValue'],
+							allowTypeImports: true,
+							message: METRICS_DATABASE_IMPORT_MESSAGE,
+						},
+						{
+							group: ['**/*.repository', '**/*.repository.*'],
+							allowTypeImports: true,
+							message: METRICS_DATABASE_IMPORT_MESSAGE,
+						},
+						{
+							group: [
+								'@/**',
+								'../**',
+								'./../**',
+								// gitignore cannot re-include a file under an excluded folder, so re-include each folder first.
+								'!@/constants',
+								'!@/eventbus/',
+								'!@/eventbus/message-event-bus/',
+								'!@/eventbus/message-event-bus/message-event-bus',
+								'!@/events/',
+								'!@/events/maps/',
+								'!@/events/maps/system-task-metrics.event-map',
+								'!@/modules/',
+								'!@/modules/instance-ai/',
+								'!@/modules/instance-ai/instance-ai-run-probe',
+								'!@/services/',
+								'!@/services/database-independent-routes.service',
+							],
+							allowTypeImports: true,
+							message: METRICS_CLI_IMPORT_MESSAGE,
+						},
+					],
+				},
+			],
 		},
 	},
 );

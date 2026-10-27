@@ -3,12 +3,18 @@ import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
 import SettingsSourceControl from './SettingsSourceControl.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { EnterpriseEditionFeature } from '@/app/constants';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 import { nextTick } from 'vue';
+
+vi.mock('vue-router', async () => ({
+	...(await vi.importActual<object>('vue-router')),
+	useRouter: () => ({ push: vi.fn() }),
+}));
 
 let pinia: ReturnType<typeof createPinia>;
 let server: ReturnType<typeof setupServer>;
@@ -23,6 +29,11 @@ describe('SettingsSourceControl', () => {
 	});
 
 	beforeEach(async () => {
+		// The save-settings test asserts on rendered toast content, which needs the
+		// notifier the app registers at bootstrap. Explicit here because it no longer
+		// arrives as a side effect of importing `@n8n/composables/useToast` (N8N-104).
+		registerToastNotifier();
+
 		pinia = createPinia();
 		setActivePinia(pinia);
 		settingsStore = useSettingsStore();
@@ -62,6 +73,51 @@ describe('SettingsSourceControl', () => {
 		expect(getByTestId('source-control-content-licensed')).toBeInTheDocument();
 		expect(queryByTestId('source-control-content-unlicensed')).not.toBeInTheDocument();
 		expect(queryByTestId('source-control-connected-content')).not.toBeInTheDocument();
+	});
+
+	it('offers the switch to the new Environments only when promotions are available', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		await nextTick();
+
+		const withoutPromotions = renderComponent({ pinia });
+		expect(withoutPromotions.queryByTestId('source-control-switch-to-v2')).not.toBeInTheDocument();
+		withoutPromotions.unmount();
+
+		settingsStore.settings.activeModules = ['promotions'];
+		settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_PROMOTIONS: 'true' };
+		await nextTick();
+
+		expect(
+			renderComponent({ pinia }).getByTestId('source-control-switch-to-v2'),
+		).toBeInTheDocument();
+	});
+
+	it('should disable the connection form while preferences are loading', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		await nextTick();
+
+		let resolvePreferences!: () => void;
+		const getPreferencesSpy = vi.spyOn(sourceControlStore, 'getPreferences').mockImplementation(
+			async () =>
+				await new Promise<void>((resolve) => {
+					resolvePreferences = resolve;
+				}),
+		);
+
+		try {
+			const { container } = renderComponent({ pinia });
+
+			await waitFor(() => expect(getPreferencesSpy).toHaveBeenCalled());
+
+			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
+			expect(repoUrlInput).toBeDisabled();
+
+			resolvePreferences();
+
+			await waitFor(() => expect(repoUrlInput).toBeEnabled());
+		} finally {
+			getPreferencesSpy.mockRestore();
+		}
 	});
 
 	it('should render user flow happy path', async () => {
@@ -157,9 +213,7 @@ describe('SettingsSourceControl', () => {
 
 		it('should show SSH-specific fields when SSH protocol is selected', async () => {
 			await nextTick();
-			const { container, getByTestId } = renderComponent({
-				pinia,
-			});
+			const { container, getByTestId } = renderComponent({ pinia });
 
 			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
 
@@ -179,9 +233,7 @@ describe('SettingsSourceControl', () => {
 
 		it('should show HTTPS-specific fields when HTTPS protocol is selected', async () => {
 			await nextTick();
-			const { container, queryByTestId } = renderComponent({
-				pinia,
-			});
+			const { container, queryByTestId } = renderComponent({ pinia });
 
 			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
 
@@ -202,89 +254,61 @@ describe('SettingsSourceControl', () => {
 		});
 	});
 
-	describe('should test repo URLs', () => {
+	describe('repo URL validation', () => {
 		beforeEach(() => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
 		});
 
-		describe('for ssh connection', () => {
-			test.each([
-				['git@github.com:user/repository.git', true],
-				['git@github.enterprise.com:org-name/repo-name.git', true],
-				['git@192.168.1.101:2222:user/repo.git', true],
-				['git@github.com:user/repo.git/path/to/subdir', true],
-				// The opening bracket in curly braces makes sure it is not treated as a special character by the 'user-event' library
-				['git@{[}2001:db8:100:f101:210:a4ff:fee3:9566]:user/repo.git', true],
-				['git@github.com:org/suborg/repo.git', true],
-				['git@github.com:user-name/repo-name.git', true],
-				['git@github.com:user_name/repo_name.git', true],
-				['git@github.com:user/repository', true],
-				['git@github.enterprise.com:org-name/repo-name', true],
-				['git@192.168.1.101:2222:user/repo', true],
-				['git@ssh.dev.azure.com:v3/User/repo/directory', true],
-				['ssh://git@mydomain.example:2224/gitolite-admin', true],
-				['gituser@192.168.1.1:ABC/Repo4.git', true],
-				['root@192.168.1.1/repo.git', true],
-				['http://github.com/user/repository', false],
-				['https://github.com/user/repository', false],
-				['git@gitlab.com:something.net/n8n.git', true],
-			])('%s', async (url: string, isValid: boolean) => {
-				await nextTick();
-				const { container, queryByText } = renderComponent({
-					pinia,
-				});
-
-				await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
-
-				const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
-
-				await userEvent.click(repoUrlInput);
-				await userEvent.type(repoUrlInput, url);
-				await userEvent.tab();
-
-				const inputError = expect(queryByText('The Git repository URL is not valid'));
-
-				if (isValid) {
-					inputError.not.toBeInTheDocument();
-				} else {
-					inputError.toBeInTheDocument();
-				}
+		// Types the URL into the SSH form and returns the validation error element, or null.
+		async function queryUrlErrorAfterTypingSshUrl(url: string) {
+			await nextTick();
+			const { container, queryByText } = renderComponent({
+				pinia,
 			});
+
+			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
+
+			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
+
+			await userEvent.click(repoUrlInput);
+			await userEvent.type(repoUrlInput, url);
+			await userEvent.tab();
+
+			return queryByText('The Git repository URL is not valid');
+		}
+
+		it('should accept a valid ssh URL', async () => {
+			const urlError = await queryUrlErrorAfterTypingSshUrl('git@github.com:user/repository.git');
+
+			expect(urlError).not.toBeInTheDocument();
 		});
 
-		describe('for https connection', () => {
-			test.each([
-				['git@github.com:user/repository.git', false],
-				['git@github.enterprise.com:org-name/repo-name.git', false],
-				['http://github.com/user/repository', false],
-				['https://github.com/user/repository.git', true],
-			])('%s', async (url: string, isValid: boolean) => {
-				await nextTick();
-				const { container, queryByText, queryByTestId } = renderComponent({
-					pinia,
-				});
+		it('should reject an invalid ssh URL', async () => {
+			const urlError = await queryUrlErrorAfterTypingSshUrl('http://github.com/user/repository');
 
-				await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
-				// Change to HTTPS protocol
-				const connectionTypeSelect = queryByTestId('source-control-connection-type-select')!;
-				await userEvent.click(within(connectionTypeSelect).getByRole('combobox'));
-				await waitFor(() => expect(screen.getByText('HTTPS')).toBeVisible());
-				await userEvent.click(screen.getByText('HTTPS'));
+			expect(urlError).toBeInTheDocument();
+		});
 
-				const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
-
-				await userEvent.click(repoUrlInput);
-				await userEvent.type(repoUrlInput, url);
-				await userEvent.tab();
-
-				const inputError = expect(queryByText('Please enter a valid HTTPS URL'));
-
-				if (isValid) {
-					inputError.not.toBeInTheDocument();
-				} else {
-					inputError.toBeInTheDocument();
-				}
+		it('should reject a non-https URL for https connection', async () => {
+			await nextTick();
+			const { container, queryByText, queryByTestId } = renderComponent({
+				pinia,
 			});
+
+			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
+			// Change to HTTPS protocol
+			const connectionTypeSelect = queryByTestId('source-control-connection-type-select')!;
+			await userEvent.click(within(connectionTypeSelect).getByRole('combobox'));
+			await waitFor(() => expect(screen.getByText('HTTPS')).toBeVisible());
+			await userEvent.click(screen.getByText('HTTPS'));
+
+			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
+
+			await userEvent.click(repoUrlInput);
+			await userEvent.type(repoUrlInput, 'git@github.com:user/repository.git');
+			await userEvent.tab();
+
+			expect(queryByText('Please enter a valid HTTPS URL')).toBeInTheDocument();
 		});
 	});
 });

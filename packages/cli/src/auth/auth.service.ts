@@ -1,21 +1,27 @@
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'crypto';
-import type { NextFunction, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import escapeRegExp from 'lodash/escapeRegExp';
 import type { StringValue as TimeUnitValue } from 'ms';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { AuthError, ForbiddenError } from '@n8n/errors';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
-import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
+import {
+	JwtService,
+	UrlService,
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	EventService,
+	// EOF Experiment cleanup
+} from '@n8n/backend-services';
 
 interface AuthJwtPayload {
 	/** User Id */
@@ -26,10 +32,35 @@ interface AuthJwtPayload {
 	browserId?: string;
 	/** This indicates if mfa was used during the creation of this token */
 	usedMfa?: boolean;
+	/** This indicates if the session originated from an embed login (cross-site cookie required) */
+	isEmbed?: boolean;
 }
 
 interface IssuedJWT extends AuthJwtPayload {
 	exp: number;
+}
+
+/**
+ * A valid signature proves only that this instance signed the token, not that
+ * it signed it as a session token. Narrowing to `IssuedJWT` promises the type
+ * of every field, and the callers act on those types rather than re-check them:
+ * `exp` bounds the session (`jwt.verify` treats a token without one as
+ * unbounded), `usedMfa` decides the MFA gate, `isEmbed` relaxes the cookie to
+ * `SameSite=None`, and `browserId` binds the session to one browser. So check
+ * each one, and require a present optional claim to hold its declared type.
+ */
+function isIssuedJWT(payload: unknown): payload is IssuedJWT {
+	if (!isRecord(payload)) return false;
+	const { id, hash, exp, browserId, usedMfa, isEmbed } = payload;
+	return (
+		typeof id === 'string' &&
+		id.length > 0 &&
+		typeof hash === 'string' &&
+		Number.isFinite(exp) &&
+		(browserId === undefined || typeof browserId === 'string') &&
+		(usedMfa === undefined || typeof usedMfa === 'boolean') &&
+		(isEmbed === undefined || typeof isEmbed === 'boolean')
+	);
 }
 
 interface PasswordResetToken {
@@ -54,12 +85,26 @@ interface CreateAuthMiddlewareOptions {
 	allowUnauthenticated?: boolean;
 }
 
+interface EmailChangeToken {
+	sub: string;
+	newEmail: string;
+	hash: string;
+}
+
 @Service()
 export class AuthService {
-	// The browser-id check needs to be skipped on these endpoints
-	private skipBrowserIdCheckEndpoints: string[];
+	/**
+	 * Endpoints exempt from the browser-id check on GET requests. Strings are
+	 * matched exactly against `baseUrl + route path`; RegExps cover routes
+	 * whose controller prefix carries resolved params (e.g. a `:projectId`
+	 * that express substitutes into `req.baseUrl`).
+	 */
+	private skipBrowserIdCheckEndpoints: Array<string | RegExp>;
 
 	constructor(
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		private readonly eventService: EventService,
+		// EOF Experiment cleanup
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly license: License,
@@ -82,13 +127,30 @@ export class AuthService {
 			`/${restEndpoint}/oauth1-credential/callback`,
 			`/${restEndpoint}/oauth2-credential/callback`,
 
+			// The dynamic-credential authorize link is a top-level browser navigation
+			// (link click / redirect), so it can't carry the browser-id header. The
+			// GET method guard below keeps this GET-only; POST authorize is unaffected.
+			`/${restEndpoint}/credentials/:id/authorize`,
+
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',
+			'/types/node-versions.json',
 			'/mcp-oauth/authorize/',
 
 			// Skip browser ID check for chat hub attachments
 			`/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
+
+			// Skip browser ID check for Instance AI SSE endpoint — EventSource can't send custom headers
+			`/${restEndpoint}/instance-ai/events/:threadId`,
+
+			// Agent chat attachments render via <img> tags, which can't send the
+			// browser-id header. The controller prefix carries a resolved
+			// :projectId in req.baseUrl, so this one needs a pattern. It covers
+			// both the agent preview chat and n8n Chat routes.
+			new RegExp(
+				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/(?:n8n-)?chat/attachments/:attachmentId$`,
+			),
 		];
 	}
 
@@ -106,7 +168,7 @@ export class AuthService {
 					if (isInvalid) throw new AuthError('Unauthorized');
 
 					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
-					const mfaEnforced = this.mfaService.isMFAEnforced();
+					const mfaEnforced = await this.mfaService.isMFAEnforced();
 
 					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
 						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
@@ -114,7 +176,16 @@ export class AuthService {
 							// If the user has MFA enforced, but did not use it during authentication, we need to throw an error
 							throw new AuthError('MFA not used during authentication');
 						} else {
+							// User doesn't have MFA enabled, but MFA is enforced
+							// They need to set up MFA before accessing most endpoints
 							if (allowUnauthenticated) {
+								// Don't set req.user to avoid giving full access to semi-authenticated users
+								// Instead, set a flag in authInfo to indicate MFA enrollment is required
+								// This allows endpoints to handle this state appropriately (e.g., return public settings)
+								req.authInfo = {
+									usedMfa,
+									mfaEnrollmentRequired: true,
+								};
 								return next();
 							}
 
@@ -140,21 +211,88 @@ export class AuthService {
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
 			const shouldSkipAuth = (allowSkipPreviewAuth && isPreviewMode) || allowUnauthenticated;
 
-			if (req.user) next();
+			if (Object.hasOwn(req, 'user') && req.user) next();
 			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
 	}
 
+	/**
+	 * Gates a route on the auth cookie's signature and expiry, without the revocation
+	 * or user lookups, so a request costs no database query.
+	 */
+	createAssetAuthMiddleware() {
+		return (req: Request, res: Response, next: NextFunction) => {
+			const token = this.getCookieToken(req);
+
+			if (token) {
+				try {
+					const payload = this.jwtService.verify<unknown>('session', token, {
+						algorithms: ['HS256'],
+					});
+					if (this.isAuthJwtPayload(payload)) {
+						next();
+						return;
+					}
+				} catch {}
+			}
+
+			if (process.env.N8N_PREVIEW_MODE === 'true') {
+				next();
+				return;
+			}
+
+			res.sendStatus(404);
+		};
+	}
+
+	/**
+	 * Every JWT this instance signs shares one secret, so a valid signature alone does
+	 * not make a token an auth cookie. Only that cookie carries both `id` and `hash`.
+	 */
+	private isAuthJwtPayload(payload: unknown): payload is AuthJwtPayload {
+		return isRecord(payload) && typeof payload.id === 'string' && typeof payload.hash === 'string';
+	}
+
+	getCookieToken(req: Request) {
+		// This models the behavior of an AuthenticatedRequest type having an optional cookies property of type Record<string, string>
+		if (typeof req.cookies === 'object' && req.cookies !== null) {
+			const cookies = req.cookies as Record<string, string | undefined>;
+			return cookies[AUTH_COOKIE_NAME];
+		}
+		return undefined;
+	}
+
+	getBrowserId(req: Request) {
+		// This models the behavior of APIRequest type having an optional browserId property of type string
+		if ('browserId' in req && typeof req.browserId === 'string') {
+			return req.browserId;
+		}
+		return undefined;
+	}
+
+	getMethod(req: Request) {
+		return req.method;
+	}
+
+	getEndpoint(req: Request) {
+		return req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
+	}
+
 	clearCookie(res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
+		// The form page auth cookies (`n8n-form-auth-*`) are NOT cleared here: their
+		// names embed the workflow/execution they were minted for, and this response
+		// can neither read them (they're scoped to the form-waiting path) nor clear a
+		// cookie without naming it exactly. They are httpOnly, expire within an hour,
+		// and a session for a different user overrides them on the form pages.
 	}
 
 	async invalidateToken(req: AuthenticatedRequest) {
 		const token = req.cookies[AUTH_COOKIE_NAME];
 		if (!token) return;
 		try {
-			const { exp } = this.jwtService.decode(token);
+			const { exp } = this.jwtService.decodeUnverified(token);
 			if (exp) {
 				await this.invalidAuthTokenRepository.insert({
 					token,
@@ -166,44 +304,159 @@ export class AuthService {
 		}
 	}
 
-	issueCookie(res: Response, user: User, usedMfa: boolean, browserId?: string) {
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	issueCookie(
+		res: Response,
+		user: User,
+		usedMfa: boolean,
+		browserId?: string,
+		isEmbed?: boolean,
+		cookieOverrides?: { sameSite?: 'strict' | 'lax' | 'none'; secure?: boolean },
+	) {
+		this.setAuthCookie(res, user, usedMfa, browserId, isEmbed, cookieOverrides);
+		this.eventService.emit('experiment-user-first-login', { userId: user.id, at: Date.now() });
+	}
+	// EOF Experiment cleanup
+
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users): rename setAuthCookie to public issueCookie; keep the method body.
+	private setAuthCookie(
+		res: Response,
+		user: User,
+		usedMfa: boolean,
+		browserId?: string,
+		isEmbed?: boolean,
+		cookieOverrides?: { sameSite?: 'strict' | 'lax' | 'none'; secure?: boolean },
+	) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !isWithinUsersLimit) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		const token = this.issueJWT(user, usedMfa, browserId);
+		const token = this.issueJWT(user, usedMfa, browserId, isEmbed);
 		const { samesite, secure } = this.globalConfig.auth.cookie;
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
-			sameSite: samesite,
-			secure,
+			sameSite: cookieOverrides?.sameSite ?? samesite,
+			secure: cookieOverrides?.secure ?? secure,
 		});
 	}
 
-	issueJWT(user: User, usedMfa: boolean = false, browserId?: string) {
+	issueJWT(user: User, usedMfa: boolean = false, browserId?: string, isEmbed?: boolean) {
 		const payload: AuthJwtPayload = {
 			id: user.id,
 			hash: this.createJWTHash(user),
 			browserId: browserId && this.hash(browserId),
 			usedMfa,
+			...(isEmbed && { isEmbed }),
 		};
-		return this.jwtService.sign(payload, {
+		return this.jwtService.sign('session', payload, {
 			expiresIn: this.jwtExpiration,
 		});
 	}
 
-	async resolveJwt(
+	/**
+	 * Validate a cookie auth token: checks revocation, JWT signature/expiry,
+	 * user existence, and hash consistency. Skips browser-id and MFA checks
+	 * since those are not applicable to webhook cookie validation.
+	 *
+	 * @returns the authenticated `User` on success
+	 * @throws `AuthError('Unauthorized')` if the token is revoked or invalid
+	 */
+	async validateCookieToken(token: string): Promise<User> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+		if (isInvalid) throw new AuthError('Unauthorized');
+		const { user } = await this.validateToken(token);
+		return user;
+	}
+
+	async authenticateUserBasedOnToken(
 		token: string,
-		req: AuthenticatedRequest,
-		res: Response,
-	): Promise<[User, { usedMfa: boolean }]> {
-		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
+		method: string,
+		endpoint: string,
+		browserId: string | undefined,
+	): Promise<User> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+		if (isInvalid) throw new AuthError('Unauthorized');
+
+		const { user, jwtPayload } = await this.validateToken(token);
+
+		this.validateBrowserId(jwtPayload, browserId, endpoint, method);
+
+		await this.checkMfaGate(user, jwtPayload);
+
+		return user;
+	}
+
+	/**
+	 * Validates an n8n auth cookie (JWT) without request-bound checks (browserId / endpoint / method).
+	 *
+	 * Use when the cookie was captured at the controller boundary and must be re-validated
+	 * later in the execution lifecycle, after the original HTTP request is no longer available.
+	 *
+	 * @param cookie - The JWT string extracted from the `n8n-auth` browser cookie.
+	 */
+	async authenticateUserByCookie(cookie: string): Promise<User> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token: cookie });
+		if (isInvalid) throw new AuthError('Unauthorized');
+
+		const { user, jwtPayload } = await this.validateToken(cookie);
+
+		await this.checkMfaGate(user, jwtPayload);
+		return user;
+	}
+
+	private async checkMfaGate(user: User, jwtPayload: IssuedJWT): Promise<void> {
+		if (jwtPayload.usedMfa ?? false) {
+			return;
+		}
+
+		const mfaEnforced = await this.mfaService.isMFAEnforced();
+		if (!mfaEnforced && !user.mfaEnabled) {
+			// MFA is not enforced and the user has MFA not enabled
+			// we are good
+			return;
+		}
+
+		// either MFA is enforced or user has MFA enabled
+		throw new AuthError('Unauthorized');
+	}
+
+	private endpointSkipsBrowserIdCheck(endpoint: string): boolean {
+		return this.skipBrowserIdCheckEndpoints.some((entry) =>
+			typeof entry === 'string' ? entry === endpoint : entry.test(endpoint),
+		);
+	}
+
+	private validateBrowserId(
+		jwtPayload: IssuedJWT,
+		browserId: string | undefined,
+		endpoint: string,
+		method: string,
+	) {
+		if (method === 'GET' && this.endpointSkipsBrowserIdCheck(endpoint)) {
+			this.logger.debug(`Skipped browserId check on ${endpoint}`);
+		} else if (
+			jwtPayload.browserId &&
+			(!browserId || jwtPayload.browserId !== this.hash(browserId))
+		) {
+			this.logger.warn(`browserId check failed on ${endpoint}`);
+			throw new AuthError('Unauthorized');
+		}
+	}
+
+	private async validateToken(token: string): Promise<{
+		user: User;
+		jwtPayload: IssuedJWT;
+	}> {
+		const jwtPayload = this.jwtService.verify<unknown>('session', token, {
 			algorithms: ['HS256'],
 		});
+
+		if (!isIssuedJWT(jwtPayload)) throw new AuthError('Unauthorized');
 
 		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
 		const user = await this.userRepository.findOne({
@@ -222,29 +475,76 @@ export class AuthService {
 			throw new AuthError('Unauthorized');
 		}
 
-		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
-		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
-		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
-			this.logger.debug(`Skipped browserId check on ${endpoint}`);
-		} else if (
-			jwtPayload.browserId &&
-			(!req.browserId || jwtPayload.browserId !== this.hash(req.browserId))
-		) {
-			this.logger.warn(`browserId check failed on ${endpoint}`);
-			throw new AuthError('Unauthorized');
-		}
+		return {
+			user,
+			jwtPayload,
+		};
+	}
+
+	async resolveJwt(
+		token: string,
+		req: AuthenticatedRequest,
+		res: Response,
+	): Promise<[User, { usedMfa: boolean }]> {
+		const { user, jwtPayload } = await this.validateToken(token);
+
+		const browserId = this.getBrowserId(req);
+		const endpoint = this.getEndpoint(req);
+		const method = this.getMethod(req);
+		this.validateBrowserId(jwtPayload, browserId, endpoint, method);
 
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
-			this.issueCookie(res, user, jwtPayload.usedMfa ?? false, req.browserId);
+			const embedCookieOverrides = jwtPayload.isEmbed
+				? ({ sameSite: 'none' as const, secure: true } as const)
+				: undefined;
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): call issueCookie instead of setAuthCookie; keep the call and its arguments.
+			this.setAuthCookie(
+				res,
+				user,
+				jwtPayload.usedMfa ?? false,
+				browserId,
+				jwtPayload.isEmbed,
+				embedCookieOverrides,
+			);
 		}
 
 		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];
 	}
 
+	generateEmailChangeUrl(user: User, newEmail: string) {
+		const payload: EmailChangeToken = {
+			sub: user.id,
+			newEmail,
+			hash: this.createJWTHash(user),
+		};
+		const token = this.jwtService.sign('emailChange', payload, { expiresIn: '20m' });
+		const url = new URL(`${this.urlService.getInstanceBaseUrl()}/confirm-email-change`);
+		url.searchParams.append('token', token);
+		return url.toString();
+	}
+
+	async resolveEmailChangeToken(
+		token: string,
+	): Promise<{ user: User; newEmail: string } | undefined> {
+		let decoded: EmailChangeToken;
+		try {
+			decoded = this.jwtService.verify('emailChange', token);
+		} catch {
+			return;
+		}
+		const user = await this.userRepository.findOne({
+			where: { id: decoded.sub },
+			relations: ['authIdentities', 'role'],
+		});
+		if (!user) return;
+		if (decoded.hash !== this.createJWTHash(user)) return; // password/email changed since issue
+		return { user, newEmail: decoded.newEmail };
+	}
+
 	generatePasswordResetToken(user: User, expiresIn: TimeUnitValue = '20m') {
 		const payload: PasswordResetToken = { sub: user.id, hash: this.createJWTHash(user) };
-		return this.jwtService.sign(payload, { expiresIn });
+		return this.jwtService.sign('passwordReset', payload, { expiresIn });
 	}
 
 	generatePasswordResetUrl(user: User) {
@@ -260,12 +560,12 @@ export class AuthService {
 	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
 		let decodedToken: PasswordResetToken;
 		try {
-			decodedToken = this.jwtService.verify(token);
+			decodedToken = this.jwtService.verify('passwordReset', token);
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
-				this.logger.debug('Reset password token expired', { token });
+				this.logger.debug('Reset password token expired');
 			} else {
-				this.logger.debug('Error verifying token', { token });
+				this.logger.debug('Error verifying token');
 			}
 			return;
 		}
@@ -278,7 +578,7 @@ export class AuthService {
 		if (!user) {
 			this.logger.debug(
 				'Request to resolve password token failed because no user was found for the provided user ID',
-				{ userId: decodedToken.sub, token },
+				{ userId: decodedToken.sub },
 			);
 			return;
 		}

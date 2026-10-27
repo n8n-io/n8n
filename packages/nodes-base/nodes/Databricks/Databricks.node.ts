@@ -1,0 +1,135 @@
+import {
+	NodeConnectionTypes,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
+
+import {
+	filesOperations,
+	filesParameters,
+	genieOperations,
+	genieParameters,
+	unityCatalogOperations,
+	unityCatalogParameters,
+	databricksSqlOperations,
+	databricksSqlParameters,
+	modelServingOperations,
+	modelServingParameters,
+	vectorSearchOperations,
+	vectorSearchParameters,
+	jobOperations,
+	jobParameters,
+	lakebaseOperations,
+	lakebaseParameters,
+} from './resources';
+
+import { router } from './actions/router';
+import { authenticationProperty, databricksCredentials } from './authentication';
+import { DATABRICKS_NODE_VERSION } from './constants';
+import * as loadOptions from './methods/loadOptions';
+import * as resourceMapping from './methods/resourceMapping';
+import * as listSearch from './methods/listSearch';
+
+export class Databricks implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Databricks',
+		name: 'databricks',
+		icon: 'file:databricks.svg',
+		group: ['transform'],
+		version: DATABRICKS_NODE_VERSION,
+		usableAsTool: true,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		description: 'Interact with Databricks API',
+		documentationUrl: 'https://docs.databricks.com/aws/en',
+		defaults: {
+			name: 'Databricks',
+		},
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: databricksCredentials,
+		properties: [
+			authenticationProperty,
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Databricks SQL',
+						value: 'databricksSql',
+						description:
+							'Execute SQL queries on data warehouses. <a href="https://docs.databricks.com/sql/index.html" target="_blank">Learn more</a>.',
+					},
+					{
+						name: 'File',
+						value: 'files',
+						description:
+							'Manage files in Unity Catalog volumes. <a href="https://docs.databricks.com/api/workspace/files" target="_blank">Learn more</a>.',
+					},
+					{
+						name: 'Genie Agent',
+						value: 'genie',
+						description:
+							'Ask a Genie agent questions about your data. <a href="https://docs.databricks.com/genie/index.html" target="_blank">Learn more</a>.',
+					},
+					{
+						name: 'Job',
+						value: 'job',
+						description:
+							'Run and inspect Databricks jobs. <a href="https://docs.databricks.com/jobs/index.html" target="_blank">Learn more</a>.',
+					},
+					{
+						name: 'Lakebase',
+						value: 'lakebase',
+						description:
+							'Read and write rows in a Lakebase Postgres database. <a href="https://docs.databricks.com/aws/en/oltp/" target="_blank">Learn more</a>.',
+					},
+					{
+						name: 'Model Serving',
+						value: 'modelServing',
+						description:
+							'Deploy and query ML models. <a href="https://docs.databricks.com/machine-learning/model-serving/index.html" target="_blank">Learn more</a>.',
+					},
+					{
+						name: 'Unity Catalog',
+						value: 'unityCatalog',
+						description:
+							'Unified governance for data and AI. <a href="https://docs.databricks.com/data-governance/unity-catalog/index.html" target="_blank">Learn more</a>.',
+					},
+					{
+						name: 'Vector Search',
+						value: 'vectorSearch',
+						description:
+							'Semantic search with vector embeddings. <a href="https://docs.databricks.com/generative-ai/vector-search.html" target="_blank">Learn more</a>.',
+					},
+				],
+				default: 'databricksSql',
+			},
+			filesOperations,
+			genieOperations,
+			unityCatalogOperations,
+			databricksSqlOperations,
+			modelServingOperations,
+			vectorSearchOperations,
+			jobOperations,
+			lakebaseOperations,
+			...filesParameters,
+			...genieParameters,
+			...unityCatalogParameters,
+			...databricksSqlParameters,
+			...modelServingParameters,
+			...vectorSearchParameters,
+			...jobParameters,
+			...lakebaseParameters,
+		],
+	};
+
+	methods = { listSearch, loadOptions, resourceMapping };
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return await router.call(this);
+	}
+}

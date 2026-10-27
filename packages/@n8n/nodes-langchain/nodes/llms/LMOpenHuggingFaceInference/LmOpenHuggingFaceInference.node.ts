@@ -1,5 +1,6 @@
 import { HuggingFaceInference } from '@langchain/community/llms/hf';
 import {
+	assertCredentialAllowsUrl,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -7,10 +8,11 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 
 export class LmOpenHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
@@ -137,13 +139,20 @@ export class LmOpenHuggingFaceInference implements INodeType {
 		const credentials = await this.getCredentials('huggingFaceApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as object;
+		const options = this.getNodeParameter('options', itemIndex, {}) as { endpointUrl?: string };
+
+		if (options.endpointUrl) {
+			assertCredentialAllowsUrl({
+				node: this.getNode(),
+				credentialData: credentials,
+				url: options.endpointUrl,
+			});
+		}
 
 		// LangChain does not yet support specifying Provider
 		// That's why mistral's model is the default value
 		// It is one of the few models that seem to work out of the box
 		// Other models are returning "Model x/y is not supported for task text-generation and provider z. Supported task: conversational."
-		// https://github.com/langchain-ai/langchainjs/discussions/8434#discussioncomment-13603787
 		const model = new HuggingFaceInference({
 			model: modelName,
 			apiKey: credentials.apiKey as string,

@@ -1,19 +1,48 @@
-import type { ICredentialsDecryptedResponse, ICredentialsResponse } from './credentials.types';
+import type {
+	CreateCredentialPublicDto,
+	CredentialPublicDto,
+	CredentialOptionsRequestDto,
+} from '@n8n/api-types';
+import { request, type PublicApiContext } from '@n8n/rest-api-client';
+import type {
+	CredentialFetchScope,
+	CredentialPayload,
+	ICredentialsDecryptedResponse,
+	ICredentialsResponse,
+} from './credentials.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { sleep } from '@n8n/utils/sleep';
 import type {
-	ICredentialsDecrypted,
 	ICredentialType,
 	IDataObject,
 	INodeCredentialTestRequest,
 	INodeCredentialTestResult,
+	INodeListSearchResult,
 } from 'n8n-workflow';
 import axios from 'axios';
 import type { CreateCredentialDto } from '@n8n/api-types';
 
+async function fetchCredentialTypesJsonWithRetry(url: string, retries = 5, delay = 500) {
+	for (let attempt = 0; attempt < retries; attempt++) {
+		const response = await axios.get(url, { withCredentials: true });
+
+		if (
+			typeof response.data === 'object' &&
+			response.data !== null &&
+			Array.isArray(response.data)
+		) {
+			return response.data;
+		}
+
+		await sleep(delay * attempt);
+	}
+
+	throw new Error('Could not fetch credential types');
+}
+
 export async function getCredentialTypes(baseUrl: string): Promise<ICredentialType[]> {
-	const { data } = await axios.get(baseUrl + 'types/credentials.json', { withCredentials: true });
-	return data;
+	return await fetchCredentialTypesJsonWithRetry(baseUrl + 'types/credentials.json');
 }
 
 export async function getCredentialsNewName(
@@ -23,25 +52,55 @@ export async function getCredentialsNewName(
 	return await makeRestApiRequest(context, 'GET', '/credentials/new', name ? { name } : {});
 }
 
+export interface GetAllCredentialsOptions {
+	filter?: object;
+	includeScopes?: boolean;
+	onlySharedWithMe?: boolean;
+	includeGlobal?: boolean;
+	/**
+	 * The implementation of the externalSecretsStore filter option is not optimized for performance.
+	 * Don't expose it via the filter selection component. It shall only be provided when clicking on
+	 * the link to jump to this overview from the "Delete secret provider connection" modal.
+	 *
+	 * See RFC to improve its performance in the future:
+	 * https://www.notion.so/n8n/Querying-credential-dependencies-e-g-External-Secret-Store-stored-in-expressions-3035b6e0c94f80e78448ff08e5528c2a
+	 */
+	externalSecretsStore?: string;
+}
+
 export async function getAllCredentials(
 	context: IRestApiContext,
-	filter?: object,
-	includeScopes?: boolean,
-	onlySharedWithMe?: boolean,
-	includeGlobal?: boolean,
+	options: GetAllCredentialsOptions = {},
 ): Promise<ICredentialsResponse[]> {
+	const { filter, includeScopes, onlySharedWithMe, includeGlobal, externalSecretsStore } = options;
+
 	return await makeRestApiRequest(context, 'GET', '/credentials', {
 		...(includeScopes ? { includeScopes } : {}),
 		includeData: true,
 		...(filter ? { filter } : {}),
 		...(onlySharedWithMe ? { onlySharedWithMe } : {}),
 		...(typeof includeGlobal === 'boolean' ? { includeGlobal } : {}),
+		...(externalSecretsStore ? { externalSecretsStore } : {}),
 	});
 }
 
-export async function getAllCredentialsForWorkflow(
+export async function searchCredentials(
 	context: IRestApiContext,
-	options: { workflowId: string } | { projectId: string },
+	options: { name: string; skip: number; take: number },
+): Promise<ICredentialsResponse[]> {
+	const { name, skip, take } = options;
+
+	return await makeRestApiRequest(context, 'GET', '/credentials', {
+		...(name ? { filter: { name } } : {}),
+		skip,
+		take,
+		includeGlobal: true,
+	});
+}
+
+export async function getUsableCredentials(
+	context: IRestApiContext,
+	options: CredentialFetchScope,
 ): Promise<ICredentialsResponse[]> {
 	return await makeRestApiRequest(context, 'GET', '/credentials/for-workflow', {
 		...options,
@@ -59,10 +118,18 @@ export async function deleteCredential(context: IRestApiContext, id: string): Pr
 	return await makeRestApiRequest(context, 'DELETE', `/credentials/${id}`);
 }
 
+export async function disconnectMyConnection(context: IRestApiContext, id: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `/credentials/${id}/my-connection`);
+}
+
+export async function disconnectOauthToken(context: IRestApiContext, id: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `/credentials/${id}/oauth-token`);
+}
+
 export async function updateCredential(
 	context: IRestApiContext,
 	id: string,
-	data: ICredentialsDecrypted,
+	data: CredentialPayload,
 ): Promise<ICredentialsResponse> {
 	return await makeRestApiRequest(
 		context,
@@ -86,12 +153,10 @@ export async function oAuth1CredentialAuthorize(
 	context: IRestApiContext,
 	data: ICredentialsResponse,
 ): Promise<string> {
-	return await makeRestApiRequest(
-		context,
-		'GET',
-		'/oauth1-credential/auth',
-		data as unknown as IDataObject,
-	);
+	// Only the credential id is needed: the backend re-fetches the stored credential by id.
+	// Sending the full object inflates the GET query string (homeProject, scopes, etc.) and
+	// can push the request past proxy header size limits (HTTP 431).
+	return await makeRestApiRequest(context, 'GET', '/oauth1-credential/auth', { id: data.id });
 }
 
 // Get OAuth2 Authorization URL using the stored credentials
@@ -99,12 +164,10 @@ export async function oAuth2CredentialAuthorize(
 	context: IRestApiContext,
 	data: ICredentialsResponse,
 ): Promise<string> {
-	return await makeRestApiRequest(
-		context,
-		'GET',
-		'/oauth2-credential/auth',
-		data as unknown as IDataObject,
-	);
+	// Only the credential id is needed: the backend re-fetches the stored credential by id.
+	// Sending the full object inflates the GET query string (homeProject, scopes, etc.) and
+	// can push the request past proxy header size limits (HTTP 431).
+	return await makeRestApiRequest(context, 'GET', '/oauth2-credential/auth', { id: data.id });
 }
 
 export async function testCredential(
@@ -117,4 +180,51 @@ export async function testCredential(
 		'/credentials/test',
 		data as unknown as IDataObject,
 	);
+}
+
+export type CredentialOptionsDestination =
+	| { kind: 'stored'; credentialId: string }
+	| { kind: 'project'; projectId: string }
+	| { kind: 'instance' };
+
+export async function getCredentialOptions(
+	context: IRestApiContext,
+	destination: CredentialOptionsDestination,
+	data: CredentialOptionsRequestDto,
+): Promise<INodeListSearchResult> {
+	let path = '/credentials/options/instance';
+	if (destination.kind === 'stored') {
+		path = `/credentials/${destination.credentialId}/options`;
+	} else if (destination.kind === 'project') {
+		path = `/credentials/options/projects/${destination.projectId}`;
+	}
+	const requestData = { ...data, data: { ...data.data } };
+	if (requestData.data.oauthTokenData === null) {
+		delete requestData.data.oauthTokenData;
+	}
+	return await makeRestApiRequest(context, 'POST', path, requestData);
+}
+
+/**
+ * Auth-probe a stored credential against the test URL persisted in the
+ * credential itself (Templated Custom Auth) — for types `/credentials/test`
+ * can't cover because they declare no test. Only the id travels.
+ */
+export async function probeCredential(
+	context: IRestApiContext,
+	credentialId: string,
+): Promise<INodeCredentialTestResult> {
+	return await makeRestApiRequest(context, 'POST', `/credentials/${credentialId}/probe`);
+}
+
+export async function createPublicCredential(
+	context: PublicApiContext,
+	data: CreateCredentialPublicDto,
+): Promise<CredentialPublicDto> {
+	return await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: '/credentials',
+		data,
+	});
 }

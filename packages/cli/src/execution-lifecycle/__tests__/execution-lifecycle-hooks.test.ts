@@ -1,8 +1,15 @@
+import type { PushMessage } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { Project } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { ExecutionsConfig } from '@n8n/config';
+import type { Project, User } from '@n8n/db';
+import { ExecutionRepository, UserRepository } from '@n8n/db';
+import { LifecycleMetadata } from '@n8n/decorators';
+import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { stringify } from 'flatted';
 import {
 	BinaryDataService,
 	ErrorReporter,
@@ -10,7 +17,12 @@ import {
 	ExecutionLifecycleHooks,
 	BinaryDataConfig,
 } from 'n8n-core';
-import { createRunExecutionData, ExpressionError } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	ExpressionError,
+	UnexpectedError,
+	WorkflowOperationError,
+} from 'n8n-workflow';
 import type {
 	IRunExecutionData,
 	ITaskData,
@@ -19,17 +31,11 @@ import type {
 	IRun,
 	INode,
 	IWorkflowBase,
+	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 	ITaskStartedData,
 } from 'n8n-workflow';
-
-import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/external-hooks';
-import { Push } from '@/push';
-import { OwnershipService } from '@/services/ownership.service';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	getLifecycleHooksForSubExecutions,
@@ -38,12 +44,29 @@ import {
 	getLifecycleHooksForScalingMain,
 } from '../execution-lifecycle-hooks';
 
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+
+import { ExternalHooks } from '@/external-hooks';
+import { MemoryStoppedExecutions } from '@/memory-guard/memory-stopped-executions';
+import { Push } from '@/push';
+import { ExecutionMetadataService } from '@/services/execution-metadata.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
 describe('Execution Lifecycle Hooks', () => {
 	mockInstance(Logger);
 	mockInstance(InstanceSettings);
+	const executionsConfig = mockInstance(ExecutionsConfig, {
+		preExecuteErrorCreatesExecution: false,
+	});
 	const errorReporter = mockInstance(ErrorReporter);
 	const eventService = mockInstance(EventService);
 	const executionRepository = mockInstance(ExecutionRepository);
+	const executionPersistence = mockInstance(ExecutionPersistence);
+	const executionMetadataService = mockInstance(ExecutionMetadataService);
 	const externalHooks = mockInstance(ExternalHooks);
 	const push = mockInstance(Push);
 	const workflowStaticDataService = mockInstance(WorkflowStaticDataService);
@@ -51,6 +74,17 @@ describe('Execution Lifecycle Hooks', () => {
 	const binaryDataService = mockInstance(BinaryDataService);
 	const ownershipService = mockInstance(OwnershipService);
 	const workflowExecutionService = mockInstance(WorkflowExecutionService);
+	const userRepository = mockInstance(UserRepository);
+	const redactionProxy = mockInstance(ExecutionRedactionServiceProxy);
+	const workflowHookContext = mockInstance(WorkflowHookContextService);
+
+	/**
+	 * The error-workflow dispatch is deliberately fire-and-forget: the hook does
+	 * not await it, and it resolves `WorkflowExecutionService` through a lazy
+	 * import. Drain the microtask queue (this suite fakes timers, so `nextTick`
+	 * rather than `setImmediate`) before asserting on it.
+	 */
+	const flushErrorWorkflowDispatch = async () => await new Promise(process.nextTick);
 
 	const nodeName = 'Test Node';
 	const nodeType = 'n8n-nodes-base.testNode';
@@ -58,6 +92,7 @@ describe('Execution Lifecycle Hooks', () => {
 	const node = mock<INode>();
 	const workflowId = 'test-workflow-id';
 	const executionId = 'test-execution-id';
+	const stoppedAt = new Date('2025-01-13T18:25:51.267Z');
 	const workflowData: IWorkflowBase = {
 		id: workflowId,
 		name: 'Test Workflow',
@@ -89,21 +124,91 @@ describe('Execution Lifecycle Hooks', () => {
 		status: 'success',
 		finished: true,
 		waitTill: undefined,
+		storedAt: 'db',
 	});
 	const successfulRun = mock<IRun>({
 		status: 'success',
 		finished: true,
 		waitTill: undefined,
+		stoppedAt,
+		storedAt: 'db',
 	});
 	const failedRun = mock<IRun>({
 		status: 'error',
-		finished: true,
+		finished: false,
 		waitTill: undefined,
+		stoppedAt,
+		storedAt: 'db',
 	});
 	const waitingRun = mock<IRun>({
 		finished: true,
 		status: 'waiting',
 		waitTill: new Date(),
+		storedAt: 'db',
+		data: {
+			resultData: {
+				lastNodeExecuted: undefined,
+				runData: {},
+			},
+		},
+	});
+	const successfulRunWithMetadata = mock<IRun>({
+		status: 'success',
+		finished: true,
+		waitTill: undefined,
+		stoppedAt,
+		storedAt: 'db',
+		data: {
+			resultData: {
+				metadata: {
+					testKey1: 'testValue1',
+					testKey2: 'testValue2',
+				},
+			},
+		},
+	});
+	const failedRunWithMetadata = mock<IRun>({
+		status: 'error',
+		finished: false,
+		waitTill: undefined,
+		stoppedAt,
+		storedAt: 'db',
+		data: {
+			resultData: {
+				metadata: {
+					testKey1: 'testValue1',
+					testKey2: 'testValue2',
+				},
+			},
+		},
+	});
+	const crashedRunWithMetadata = mock<IRun>({
+		status: 'crashed',
+		finished: false,
+		waitTill: undefined,
+		storedAt: 'db',
+		data: {
+			resultData: {
+				metadata: {
+					testKey1: 'testValue1',
+					testKey2: 'testValue2',
+				},
+			},
+		},
+	});
+	const canceledRunWithMetadata = mock<IRun>({
+		status: 'canceled',
+		finished: false,
+		waitTill: undefined,
+		storedAt: 'db',
+		data: {
+			resultData: {
+				metadata: {
+					testKey1: 'testValue1',
+					testKey2: 'testValue2',
+				},
+			},
+		},
 	});
 	const expressionError = new ExpressionError('Error');
 	const pushRef = 'test-push-ref';
@@ -111,12 +216,15 @@ describe('Execution Lifecycle Hooks', () => {
 	const userId = 'test-user-id';
 
 	const now = new Date('2025-01-13T18:25:50.267Z');
-	jest.useFakeTimers({ now });
+	vi.useFakeTimers({ now });
 
 	let lifecycleHooks: ExecutionLifecycleHooks;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		executionsConfig.preExecuteErrorCreatesExecution = false;
+		userRepository.findOne.mockResolvedValue(mock<User>());
+		redactionProxy.processExecution.mockImplementation(async (execution) => execution);
 		workflowData.settings = {};
 		successfulRun.data = createRunExecutionData({
 			resultData: {
@@ -138,6 +246,43 @@ describe('Execution Lifecycle Hooks', () => {
 				runData: {},
 			},
 		});
+		successfulRunWithMetadata.data = createRunExecutionData({
+			resultData: {
+				runData: {},
+				metadata: {
+					testKey1: 'testValue1',
+					testKey2: 'testValue2',
+				},
+			},
+		});
+		failedRunWithMetadata.data = createRunExecutionData({
+			resultData: {
+				runData: {},
+				error: expressionError,
+				metadata: {
+					testKey1: 'testValue1',
+					testKey2: 'testValue2',
+				},
+			},
+		});
+		crashedRunWithMetadata.data = createRunExecutionData({
+			resultData: {
+				runData: {},
+				metadata: {
+					testKey1: 'testValue1',
+					testKey2: 'testValue2',
+				},
+			},
+		});
+		canceledRunWithMetadata.data = createRunExecutionData({
+			resultData: {
+				runData: {},
+				metadata: {
+					testKey1: 'testValue1',
+					testKey2: 'testValue2',
+				},
+			},
+		});
 	});
 
 	const workflowEventTests = (expectedUserId?: string) => {
@@ -147,7 +292,9 @@ describe('Execution Lifecycle Hooks', () => {
 
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-pre-execute', {
 					executionId,
+					userId: expectedUserId,
 					data: workflowData,
+					mode: 'manual',
 				});
 			});
 		});
@@ -168,6 +315,96 @@ describe('Execution Lifecycle Hooks', () => {
 				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
 
 				expect(eventService.emit).not.toHaveBeenCalledWith('workflow-post-execute');
+			});
+
+			describe('execution-waiting audit event', () => {
+				it('should emit execution-waiting when the last node is waiting for a webhook', async () => {
+					const webhookWaitingRun = mock<IRun>({
+						finished: true,
+						status: 'waiting',
+						waitTill: new Date(),
+						storedAt: 'db',
+					});
+					// Assigning `data` outside the `mock()` call to avoid vitest-mock-extended wrapping it in a DeepMockProxy
+					webhookWaitingRun.data = createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'wait',
+							runData: {
+								wait: [
+									{ metadata: { resumeUrl: 'https://example.test/webhook/abc' } },
+								] as ITaskData[],
+							},
+						},
+					});
+					await lifecycleHooks.runHook('workflowExecuteAfter', [webhookWaitingRun, {}]);
+
+					expect(eventService.emit).toHaveBeenCalledWith('execution-waiting', {
+						executionId,
+						workflowId,
+					});
+					expect(eventService.emit).not.toHaveBeenCalledWith(
+						'workflow-post-execute',
+						expect.anything(),
+					);
+				});
+
+				it('should not emit execution-waiting when no node was executed', async () => {
+					await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
+
+					expect(eventService.emit).not.toHaveBeenCalledWith(
+						'execution-waiting',
+						expect.anything(),
+					);
+				});
+
+				it('should not emit execution-waiting when the last node is not waiting for a webhook', async () => {
+					const nonWebhookWaitingRun = mock<IRun>({
+						finished: true,
+						status: 'waiting',
+						waitTill: new Date(),
+						storedAt: 'db',
+					});
+					nonWebhookWaitingRun.data = createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'sendAndWait',
+							runData: {
+								sendAndWait: [{ metadata: {} }] as ITaskData[],
+							},
+						},
+					});
+					await lifecycleHooks.runHook('workflowExecuteAfter', [nonWebhookWaitingRun, {}]);
+
+					expect(eventService.emit).not.toHaveBeenCalledWith(
+						'execution-waiting',
+						expect.anything(),
+					);
+				});
+
+				it('should use the latest task run to determine webhook wait status', async () => {
+					const latestTaskWebhookWaitingRun = mock<IRun>({
+						finished: true,
+						status: 'waiting',
+						waitTill: new Date(),
+						storedAt: 'db',
+					});
+					latestTaskWebhookWaitingRun.data = createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'wait',
+							runData: {
+								wait: [
+									{ metadata: {} },
+									{ metadata: { resumeUrl: 'https://example.test/webhook/xyz' } },
+								] as ITaskData[],
+							},
+						},
+					});
+					await lifecycleHooks.runHook('workflowExecuteAfter', [latestTaskWebhookWaitingRun, {}]);
+
+					expect(eventService.emit).toHaveBeenCalledWith('execution-waiting', {
+						executionId,
+						workflowId,
+					});
+				});
 			});
 
 			it('should reset destination node to original destination', async () => {
@@ -226,10 +463,10 @@ describe('Execution Lifecycle Hooks', () => {
 
 	const externalHooksTests = () => {
 		describe('workflowExecuteBefore', () => {
-			it('should run workflow.preExecute hook', async () => {
+			it('should not run workflow.preExecute hook', async () => {
 				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
 
-				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [workflow, 'manual']);
+				expect(externalHooks.run).not.toHaveBeenCalled();
 			});
 		});
 
@@ -241,6 +478,7 @@ describe('Execution Lifecycle Hooks', () => {
 					successfulRun,
 					workflowData,
 					executionId,
+					workflowHookContext,
 				]);
 			});
 		});
@@ -249,6 +487,8 @@ describe('Execution Lifecycle Hooks', () => {
 	const statisticsTests = () => {
 		describe('statistics events', () => {
 			it('workflowExecuteAfter should emit workflowExecutionCompleted statistics event', async () => {
+				executionPersistence.updateExistingExecution.mockResolvedValueOnce(true);
+
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
 				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('workflowExecutionCompleted', {
@@ -268,10 +508,187 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 	};
 
+	describe('module lifecycle handlers', () => {
+		const vetoed = new UnexpectedError('vetoed by a module');
+
+		type HandlerClass = Parameters<LifecycleMetadata['register']>[0]['handlerClass'];
+
+		class ThrowingHandler {
+			async onWorkflowExecuteBefore() {
+				throw vetoed;
+			}
+		}
+
+		let registered: LifecycleMetadata;
+
+		beforeEach(() => {
+			// A fresh registry, so this handler is not visible to the handler-count assertions
+			// in the other suites.
+			registered = new LifecycleMetadata();
+			registered.register({
+				handlerClass: ThrowingHandler as unknown as HandlerClass,
+				methodName: 'onWorkflowExecuteBefore',
+				eventName: 'workflowExecuteBefore',
+			});
+			Container.set(ThrowingHandler, new ThrowingHandler());
+		});
+
+		it('lets a throw abort the hook run instead of swallowing it', async () => {
+			const original = Container.get(LifecycleMetadata);
+			Container.set(LifecycleMetadata, registered);
+
+			try {
+				const hooks = getLifecycleHooksForRegularMain(
+					{ executionMode: 'manual', workflowData },
+					executionId,
+				);
+
+				await expect(
+					hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]),
+				).rejects.toThrow(vetoed);
+			} finally {
+				Container.set(LifecycleMetadata, original);
+			}
+		});
+
+		describe('executedInThisProcess', () => {
+			class RecordingHandler {
+				contexts: WorkflowExecuteAfterContext[] = [];
+
+				async onWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext) {
+					this.contexts.push(ctx);
+				}
+			}
+
+			const recorder = new RecordingHandler();
+
+			const runModuleHandler = async (hooks: ExecutionLifecycleHooks) => {
+				await hooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+				return recorder.contexts.at(-1);
+			};
+
+			let original: LifecycleMetadata;
+
+			beforeEach(() => {
+				recorder.contexts = [];
+				const recording = new LifecycleMetadata();
+				recording.register({
+					handlerClass: RecordingHandler as unknown as HandlerClass,
+					methodName: 'onWorkflowExecuteAfter',
+					eventName: 'workflowExecuteAfter',
+				});
+				Container.set(RecordingHandler, recorder);
+				original = Container.get(LifecycleMetadata);
+				Container.set(LifecycleMetadata, recording);
+			});
+
+			afterEach(() => {
+				Container.set(LifecycleMetadata, original);
+			});
+
+			it.each([
+				['regular', getLifecycleHooksForRegularMain],
+				['worker', getLifecycleHooksForScalingWorker],
+			] as const)(
+				'runs module completion handlers after the %s save finishes',
+				async (_mode, createHooks) => {
+					workflowData.settings = { saveDataErrorExecution: 'all' };
+					const saveStarted = createDeferredPromise();
+					const saveFinished = createDeferredPromise<boolean>();
+					executionPersistence.updateExistingExecution.mockImplementationOnce(async () => {
+						saveStarted.resolve();
+						return await saveFinished.promise;
+					});
+					const hooks = createHooks({ executionMode: 'trigger', workflowData }, executionId);
+
+					const completion = hooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+					await saveStarted.promise;
+
+					expect(recorder.contexts).toHaveLength(0);
+
+					saveFinished.resolve(true);
+					await completion;
+
+					expect(recorder.contexts).toHaveLength(1);
+					expect(recorder.contexts[0]).toMatchObject({
+						executionId,
+						mode: 'trigger',
+						runData: { status: 'error' },
+					});
+				},
+			);
+
+			it.each([
+				['regular', getLifecycleHooksForRegularMain],
+				['worker', getLifecycleHooksForScalingWorker],
+				['queue main', getLifecycleHooksForScalingMain],
+			] as const)(
+				'preserves the saved source in %s callbacks with no run-data source',
+				async (_mode, createHooks) => {
+					const hooks = createHooks(
+						{
+							executionMode: 'trigger',
+							workflowData,
+							executionData: createRunExecutionData({ manualData: { source: 'instance_ai' } }),
+						},
+						executionId,
+					);
+
+					expect(await runModuleHandler(hooks)).toMatchObject({ source: 'instance_ai' });
+				},
+			);
+
+			it('should be false for the hooks of a process that only enqueued the run', async () => {
+				const hooks = getLifecycleHooksForScalingMain(
+					{ executionMode: 'manual', workflowData },
+					executionId,
+				);
+
+				expect(await runModuleHandler(hooks)).toMatchObject({ executedInThisProcess: false });
+			});
+
+			it('should be true for the hooks of a process that runs the execution', async () => {
+				const workerHooks = getLifecycleHooksForScalingWorker(
+					{ executionMode: 'manual', workflowData },
+					executionId,
+				);
+				const regularHooks = getLifecycleHooksForRegularMain(
+					{ executionMode: 'manual', workflowData },
+					executionId,
+				);
+
+				expect(await runModuleHandler(workerHooks)).toMatchObject({ executedInThisProcess: true });
+				expect(await runModuleHandler(regularHooks)).toMatchObject({
+					executedInThisProcess: true,
+				});
+			});
+		});
+	});
+
 	describe('getLifecycleHooksForRegularMain', () => {
-		const createHooks = (executionMode: WorkflowExecuteMode = 'manual') =>
+		const createHooks = (
+			executionMode: WorkflowExecuteMode = 'manual',
+			suppressErrorWorkflow?: boolean,
+		) =>
 			getLifecycleHooksForRegularMain(
-				{ executionMode, workflowData, pushRef, retryOf, userId },
+				{ executionMode, workflowData, pushRef, retryOf, userId, suppressErrorWorkflow },
+				executionId,
+			);
+
+		/** Mirrors wait resume / crash recovery: run data rebuilt from the persisted execution. */
+		const createHooksFromPersistedExecution = (
+			executionMode: WorkflowExecuteMode,
+			suppressErrorWorkflow?: boolean,
+		) =>
+			getLifecycleHooksForRegularMain(
+				{
+					executionMode,
+					workflowData,
+					executionData: createRunExecutionData({
+						resultData: { runData: {} },
+						manualData: { suppressErrorWorkflow },
+					}),
+				},
 				executionId,
 			);
 
@@ -284,6 +701,175 @@ describe('Execution Lifecycle Hooks', () => {
 		externalHooksTests();
 		statisticsTests();
 
+		describe('memory guard stops', () => {
+			const memoryStoppedExecutions = Container.get(MemoryStoppedExecutions);
+			const stopError = new WorkflowOperationError(
+				'Execution stopped because the instance was running out of memory.',
+			);
+			const stoppedRun = () =>
+				mock<IRun>({
+					status: 'canceled',
+					finished: false,
+					waitTill: undefined,
+					storedAt: 'db',
+					data: createRunExecutionData({
+						resultData: { runData: { [nodeName]: [taskData] }, lastNodeExecuted: 'Earlier Node' },
+					}),
+				});
+
+			beforeEach(() => {
+				memoryStoppedExecutions.enabled = true;
+				memoryStoppedExecutions.markStopped(executionId, {
+					error: stopError,
+					runningNode: nodeName,
+				});
+			});
+
+			afterEach(() => {
+				memoryStoppedExecutions.forget(executionId);
+				memoryStoppedExecutions.enabled = false;
+			});
+
+			it('should save a stopped execution as failed, without run data', async () => {
+				lifecycleHooks = createHooks('trigger');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [stoppedRun(), {}]);
+
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					expect.objectContaining({
+						status: 'error',
+						data: expect.objectContaining({
+							resultData: expect.objectContaining({
+								runData: {},
+								lastNodeExecuted: nodeName,
+								error: stopError,
+							}),
+						}),
+					}),
+					{ requireNotCanceled: true },
+				);
+			});
+
+			it('should report a stopped execution as failed to later handlers', async () => {
+				lifecycleHooks = createHooks('trigger');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [stoppedRun(), {}]);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'workflow-post-execute',
+					expect.objectContaining({ runData: expect.objectContaining({ status: 'error' }) }),
+				);
+			});
+
+			it('should not save progress of a node that returns after the stop', async () => {
+				workflowData.settings = { saveExecutionProgress: true };
+				lifecycleHooks = createHooks();
+
+				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+
+				expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+				workflowData.settings = {};
+			});
+
+			it('should push nothing for a node that returns after the stop', async () => {
+				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+
+				expect(push.send).not.toHaveBeenCalled();
+			});
+
+			it('should leave a run that was not stopped unchanged', async () => {
+				memoryStoppedExecutions.forget(executionId);
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					expect.objectContaining({ status: 'success' }),
+					{ requireNotCanceled: true },
+				);
+				expect(memoryStoppedExecutions.isFinishing(executionId)).toBe(true);
+			});
+
+			it('should not push the output when the stop comes while the push is prepared', async () => {
+				memoryStoppedExecutions.forget(executionId);
+				redactionProxy.processExecution.mockImplementation(async (execution) => {
+					memoryStoppedExecutions.markStopped(executionId, {
+						error: stopError,
+						runningNode: nodeName,
+					});
+					return execution;
+				});
+
+				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfterData' }),
+					pushRef,
+					true,
+				);
+			});
+
+			it('should save progress only while the execution is running', async () => {
+				memoryStoppedExecutions.forget(executionId);
+				workflowData.settings = { saveExecutionProgress: true };
+				lifecycleHooks = createHooks();
+
+				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					expect.objectContaining({ status: 'running' }),
+					{ requireNotFinished: true, requireStatus: 'running' },
+				);
+				workflowData.settings = {};
+			});
+
+			it.each(['workflowExecuteBefore', 'workflowExecuteResume'] as const)(
+				'should clear the finishing mark when the execution starts again with %s',
+				async (hookName) => {
+					memoryStoppedExecutions.forget(executionId);
+					lifecycleHooks = createHooks('trigger');
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+					expect(memoryStoppedExecutions.isFinishing(executionId)).toBe(true);
+
+					lifecycleHooks = createHooks('trigger');
+					await lifecycleHooks.runHook(hookName, [workflow, runExecutionData]);
+
+					expect(memoryStoppedExecutions.isFinishing(executionId)).toBe(false);
+				},
+			);
+		});
+
+		it('should include execution source and telemetry metadata in workflow-post-execute events', async () => {
+			const telemetryMetadata = {
+				mockDataSources: ['trigger_input' as const],
+			};
+			const lifecycleHooks = getLifecycleHooksForRegularMain(
+				{
+					executionMode: 'manual',
+					workflowData,
+					pushRef,
+					retryOf,
+					userId,
+					source: 'instance_ai',
+					telemetryMetadata,
+				},
+				executionId,
+			);
+
+			await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+			expect(eventService.emit).toHaveBeenCalledWith('workflow-post-execute', {
+				executionId,
+				runData: successfulRun,
+				workflow: workflowData,
+				userId,
+				source: 'instance_ai',
+				telemetryMetadata,
+			});
+		});
+
 		it('should setup the correct set of hooks', () => {
 			expect(lifecycleHooks).toBeInstanceOf(ExecutionLifecycleHooks);
 			expect(lifecycleHooks.mode).toBe('manual');
@@ -294,7 +880,8 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeExecuteBefore).toHaveLength(2);
 			expect(handlers.nodeExecuteAfter).toHaveLength(2);
 			expect(handlers.workflowExecuteBefore).toHaveLength(3);
-			expect(handlers.workflowExecuteAfter).toHaveLength(5);
+			expect(handlers.workflowExecuteAfter).toHaveLength(6);
+			expect(handlers.workflowExecuteResume).toHaveLength(1);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
@@ -305,9 +892,38 @@ describe('Execution Lifecycle Hooks', () => {
 				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
 
 				expect(push.send).toHaveBeenCalledWith(
-					{ type: 'nodeExecuteBefore', data: { executionId, nodeName, data: taskStartedData } },
+					{
+						type: 'nodeExecuteBefore',
+						data: { executionId, nodeName, sequenceNumber: 0, data: taskStartedData },
+					},
 					pushRef,
 				);
+			});
+		});
+
+		describe('node event sequencing', () => {
+			it('assigns a strictly increasing sequence number across the whole execution', async () => {
+				const secondNode = 'Second Node';
+
+				// Two nodes run start-to-finish on a single execution's hooks.
+				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+				await lifecycleHooks.runHook('nodeExecuteBefore', [secondNode, taskStartedData]);
+				await lifecycleHooks.runHook('nodeExecuteAfter', [secondNode, taskData, runExecutionData]);
+
+				const isNodeEvent = (
+					message: PushMessage,
+				): message is Extract<PushMessage, { type: 'nodeExecuteBefore' | 'nodeExecuteAfter' }> =>
+					message.type === 'nodeExecuteBefore' || message.type === 'nodeExecuteAfter';
+
+				const sequenceNumbers = push.send.mock.calls
+					.map(([message]) => message)
+					.filter(isNodeEvent)
+					.map((message) => message.data.sequenceNumber);
+
+				// One counter for the whole execution, spanning both node boundaries
+				// and both event kinds: before(A) < after(A) < before(B) < after(B).
+				expect(sequenceNumbers).toEqual([0, 1, 2, 3]);
 			});
 		});
 
@@ -351,6 +967,7 @@ describe('Execution Lifecycle Hooks', () => {
 						data: {
 							executionId,
 							nodeName,
+							sequenceNumber: 0,
 							itemCountByConnectionType: {
 								main: [1],
 							},
@@ -386,10 +1003,12 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
 
-				expect(executionRepository.findSingleExecution).toHaveBeenCalledWith(executionId, {
-					includeData: true,
-					unflattenData: true,
-				});
+				expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					{ data: runExecutionData, status: 'running' },
+					{ requireNotFinished: true, requireNotCanceled: true },
+				);
 			});
 
 			it('should not save execution progress when disabled', async () => {
@@ -401,6 +1020,151 @@ describe('Execution Lifecycle Hooks', () => {
 				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
 
 				expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
+			});
+
+			it('should send redacted data in nodeExecuteAfterData when redaction modifies it', async () => {
+				const mockTaskData: ITaskData = {
+					startTime: 1,
+					executionTime: 1,
+					executionIndex: 0,
+					source: [],
+					data: {
+						main: [[{ json: { secret: 'original-value' } }]],
+					},
+				};
+
+				const redactedTaskData: ITaskData = {
+					...mockTaskData,
+					data: { main: [[{ json: { secret: 'REDACTED' } }]] },
+				};
+
+				redactionProxy.processExecution.mockImplementation(async (execution) => ({
+					...execution,
+					data: {
+						...execution.data,
+						resultData: { runData: { [nodeName]: [redactedTaskData] } },
+					},
+				}));
+
+				await lifecycleHooks.runHook('nodeExecuteAfter', [
+					nodeName,
+					mockTaskData,
+					runExecutionData,
+				]);
+
+				expect(redactionProxy.processExecution).toHaveBeenCalledTimes(1);
+				const [redactableExec, options] = redactionProxy.processExecution.mock.calls[0];
+				expect(redactableExec).toHaveProperty('workflowId', workflowId);
+				expect(options.keepOriginal).toBe(true);
+				expect(options.user).toBeDefined();
+
+				// nodeExecuteAfter (metadata-only) is unaffected
+				expect(push.send).toHaveBeenNthCalledWith(
+					1,
+					expect.objectContaining({ type: 'nodeExecuteAfter' }),
+					pushRef,
+				);
+
+				// nodeExecuteAfterData contains redacted data
+				expect(push.send).toHaveBeenNthCalledWith(
+					2,
+					{
+						type: 'nodeExecuteAfterData',
+						data: {
+							executionId,
+							nodeName,
+							itemCountByConnectionType: { main: [1] },
+							data: redactedTaskData,
+						},
+					},
+					pushRef,
+					true,
+				);
+			});
+
+			it('should invoke processExecution for nodeExecuteAfterData', async () => {
+				const mockTaskData: ITaskData = {
+					startTime: 1,
+					executionTime: 1,
+					executionIndex: 0,
+					source: [],
+					data: { main: [[{ json: { key: 'value' } }]] },
+				};
+
+				await lifecycleHooks.runHook('nodeExecuteAfter', [
+					nodeName,
+					mockTaskData,
+					runExecutionData,
+				]);
+
+				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(redactionProxy.processExecution).toHaveBeenCalledTimes(1);
+			});
+
+			it('should skip nodeExecuteAfterData push when userId is not provided (e.g. webhook execution missing userId)', async () => {
+				lifecycleHooks = getLifecycleHooksForRegularMain(
+					{ executionMode: 'manual', workflowData, pushRef, retryOf, userId: undefined },
+					executionId,
+				);
+
+				const mockTaskData: ITaskData = {
+					startTime: 1,
+					executionTime: 1,
+					executionIndex: 0,
+					source: [],
+					data: { main: [[{ json: { key: 'value' } }]] },
+				};
+
+				await lifecycleHooks.runHook('nodeExecuteAfter', [
+					nodeName,
+					mockTaskData,
+					runExecutionData,
+				]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfter' }),
+					pushRef,
+				);
+
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfterData' }),
+					pushRef,
+					true,
+				);
+			});
+
+			it('should skip nodeExecuteAfterData push when user cannot be resolved (fail-closed)', async () => {
+				userRepository.findOne.mockResolvedValue(null);
+				lifecycleHooks = createHooks();
+
+				const mockTaskData: ITaskData = {
+					startTime: 1,
+					executionTime: 1,
+					executionIndex: 0,
+					source: [],
+					data: { main: [[{ json: { key: 'value' } }]] },
+				};
+
+				await lifecycleHooks.runHook('nodeExecuteAfter', [
+					nodeName,
+					mockTaskData,
+					runExecutionData,
+				]);
+
+				// nodeExecuteAfter (metadata-only) is still sent
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfter' }),
+					pushRef,
+				);
+
+				// nodeExecuteAfterData is NOT sent
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfterData' }),
+					pushRef,
+					true,
+				);
+
+				expect(redactionProxy.processExecution).not.toHaveBeenCalled();
 			});
 		});
 
@@ -425,10 +1189,115 @@ describe('Execution Lifecycle Hooks', () => {
 				);
 			});
 
-			it('should run workflow.preExecute external hook', async () => {
+			it('should not run workflow.preExecute on workflowExecuteBefore', async () => {
 				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
 
-				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [workflow, 'manual']);
+				expect(externalHooks.run).not.toHaveBeenCalled();
+			});
+
+			it('should run workflow.preExecute on workflowExecuteBefore when legacy flag is on', async () => {
+				executionsConfig.preExecuteErrorCreatesExecution = true;
+				lifecycleHooks = getLifecycleHooksForRegularMain(
+					{ executionMode: 'manual', workflowData, pushRef, retryOf, userId },
+					executionId,
+				);
+
+				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
+					workflow,
+					'manual',
+					workflowHookContext,
+					undefined,
+				]);
+			});
+
+			it('should send redacted flattedRunData when redaction modifies it', async () => {
+				const originalRunData = {
+					[nodeName]: [
+						{
+							startTime: 1,
+							executionTime: 1,
+							executionIndex: 0,
+							source: [],
+							data: { main: [[{ json: { secret: 'original' } }]] },
+						} as ITaskData,
+					],
+				};
+				const redactedRunData = {
+					[nodeName]: [
+						{
+							startTime: 1,
+							executionTime: 1,
+							executionIndex: 0,
+							source: [],
+							data: { main: [[{ json: { secret: 'REDACTED' } }]] },
+						} as ITaskData,
+					],
+				};
+
+				const execData = createRunExecutionData({
+					resultData: { runData: originalRunData },
+				});
+
+				redactionProxy.processExecution.mockImplementation(async (execution) => ({
+					...execution,
+					data: {
+						...execution.data,
+						resultData: { runData: redactedRunData },
+					},
+				}));
+
+				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, execData]);
+
+				expect(redactionProxy.processExecution).toHaveBeenCalledTimes(1);
+				const [redactableExec, options] = redactionProxy.processExecution.mock.calls[0];
+				expect(redactableExec).toHaveProperty('workflowId', workflowId);
+				expect(options.keepOriginal).toBe(true);
+				expect(options.user).toBeDefined();
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'executionStarted',
+						data: expect.objectContaining({
+							flattedRunData: stringify(redactedRunData),
+						}),
+					}),
+					pushRef,
+				);
+			});
+
+			it('should send executionStarted with empty runData when user cannot be resolved (fail-closed)', async () => {
+				userRepository.findOne.mockResolvedValue(null);
+				lifecycleHooks = createHooks();
+
+				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'executionStarted',
+						data: expect.objectContaining({
+							flattedRunData: '[{}]',
+						}),
+					}),
+					pushRef,
+				);
+				expect(redactionProxy.processExecution).not.toHaveBeenCalled();
+			});
+
+			it('should not call processExecution when runData is empty', async () => {
+				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+				expect(redactionProxy.processExecution).not.toHaveBeenCalled();
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'executionStarted',
+						data: expect.objectContaining({
+							flattedRunData: '[{}]',
+						}),
+					}),
+					pushRef,
+				);
 			});
 		});
 
@@ -494,27 +1363,47 @@ describe('Execution Lifecycle Hooks', () => {
 				it('should update execution with proper data', async () => {
 					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-					expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 						executionId,
 						expect.objectContaining({
 							finished: true,
 							status: 'success',
 						}),
+						{ requireNotCanceled: true },
 					);
 				});
+
+				it.each([
+					{ settings: { saveDataSuccessExecution: 'none' as const }, run: successfulRun },
+					{ settings: { saveDataErrorExecution: 'none' as const }, run: failedRun },
+				])(
+					'should pass the final $run.status state when deleting an unsaved execution',
+					async ({ settings, run }) => {
+						workflowData.settings = settings;
+						lifecycleHooks = createHooks('trigger');
+
+						await lifecycleHooks.runHook('workflowExecuteAfter', [run, {}]);
+
+						expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith(
+							{ workflowId, executionId, storedAt: 'db' },
+							{ status: run.status, finished: run.finished, stoppedAt: run.stoppedAt },
+						);
+						expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+					},
+				);
 
 				it('should not delete unfinished executions', async () => {
 					const unfinishedRun = mock<IRun>({ finished: false, status: 'running' });
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [unfinishedRun, {}]);
 
-					expect(executionRepository.hardDelete).not.toHaveBeenCalled();
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
 				});
 
 				it('should not delete waiting executions', async () => {
 					await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
 
-					expect(executionRepository.hardDelete).not.toHaveBeenCalled();
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
 				});
 
 				it('should soft delete manual executions when manual saving is disabled', async () => {
@@ -533,6 +1422,38 @@ describe('Execution Lifecycle Hooks', () => {
 					await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
 
 					expect(executionRepository.softDelete).not.toHaveBeenCalled();
+				});
+			});
+
+			describe('saving metadata', () => {
+				it('should save metadata in regular main mode', async () => {
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
+
+					expect(executionMetadataService.save).toHaveBeenCalledWith(executionId, {
+						testKey1: 'testValue1',
+						testKey2: 'testValue2',
+					});
+				});
+
+				it('should not save metadata if execution has none', async () => {
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+					expect(executionMetadataService.save).not.toHaveBeenCalled();
+				});
+
+				it('should save metadata even if execution will be kept (not deleted)', async () => {
+					lifecycleHooks = createHooks('trigger');
+					workflowData.settings = {
+						saveDataSuccessExecution: 'all',
+					};
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
+
+					expect(executionMetadataService.save).toHaveBeenCalledWith(executionId, {
+						testKey1: 'testValue1',
+						testKey2: 'testValue2',
+					});
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
 				});
 			});
 
@@ -555,6 +1476,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
 
+					await flushErrorWorkflowDispatch();
 					expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalledWith(
 						errorWorkflow,
 						{
@@ -572,6 +1494,51 @@ describe('Execution Lifecycle Hooks', () => {
 							},
 						},
 						project,
+					);
+				});
+
+				it('should not execute error workflow when the run opts out of it', async () => {
+					lifecycleHooks = createHooks('trigger', true);
+
+					workflowData.settings = { errorWorkflow: 'error-workflow-id' };
+					ownershipService.getWorkflowProjectCached
+						.calledWith(workflowId)
+						.mockResolvedValue(mock<Project>());
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+
+					expect(workflowExecutionService.executeErrorWorkflow).not.toHaveBeenCalled();
+				});
+
+				it('should honour the opt-out when run data is rebuilt from a persisted execution', async () => {
+					lifecycleHooks = createHooksFromPersistedExecution('trigger', true);
+
+					workflowData.settings = { errorWorkflow: 'error-workflow-id' };
+					ownershipService.getWorkflowProjectCached
+						.calledWith(workflowId)
+						.mockResolvedValue(mock<Project>());
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+
+					expect(workflowExecutionService.executeErrorWorkflow).not.toHaveBeenCalled();
+				});
+
+				it('should still execute error workflow when a persisted execution did not opt out', async () => {
+					lifecycleHooks = createHooksFromPersistedExecution('trigger');
+
+					const errorWorkflow = 'error-workflow-id';
+					workflowData.settings = { errorWorkflow };
+					ownershipService.getWorkflowProjectCached
+						.calledWith(workflowId)
+						.mockResolvedValue(mock<Project>());
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+
+					await flushErrorWorkflowDispatch();
+					expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalledWith(
+						errorWorkflow,
+						expect.objectContaining({ workflow: { id: workflowId, name: workflowData.name } }),
+						expect.anything(),
 					);
 				});
 			});
@@ -628,7 +1595,7 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(handlers.nodeExecuteBefore).toHaveLength(1);
 				expect(handlers.nodeExecuteAfter).toHaveLength(1);
 				expect(handlers.workflowExecuteBefore).toHaveLength(2);
-				expect(handlers.workflowExecuteAfter).toHaveLength(4);
+				expect(handlers.workflowExecuteAfter).toHaveLength(5);
 
 				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
 				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
@@ -666,28 +1633,52 @@ describe('Execution Lifecycle Hooks', () => {
 			const { handlers } = lifecycleHooks;
 			expect(handlers.nodeExecuteBefore).toHaveLength(0);
 			expect(handlers.nodeExecuteAfter).toHaveLength(0);
-			expect(handlers.workflowExecuteBefore).toHaveLength(2);
+			expect(handlers.workflowExecuteBefore).toHaveLength(1);
 			expect(handlers.workflowExecuteAfter).toHaveLength(4);
+			expect(handlers.workflowExecuteResume).toHaveLength(0);
 			expect(handlers.nodeFetchedData).toHaveLength(0);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
 		});
 
 		describe('workflowExecuteBefore', () => {
-			it('should run the workflow.preExecute external hook', async () => {
+			it('should not run the workflow.preExecute external hook', async () => {
 				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
 
-				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [workflow, 'manual']);
+				expect(externalHooks.run).not.toHaveBeenCalled();
+			});
+
+			it('should run workflow.preExecute when legacy flag is on', async () => {
+				executionsConfig.preExecuteErrorCreatesExecution = true;
+				lifecycleHooks = getLifecycleHooksForScalingMain(
+					{
+						executionMode: 'manual',
+						workflowData,
+						pushRef,
+						retryOf,
+						userId,
+					},
+					executionId,
+				);
+
+				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
+					workflow,
+					'manual',
+					workflowHookContext,
+					undefined,
+				]);
 			});
 		});
 
 		describe('workflowExecuteAfter', () => {
-			it('should delete successful executions when success saving is disabled', async () => {
+			it('should delete unsaved successful executions when success saving is disabled', async () => {
 				workflowData.settings = {
 					saveDataSuccessExecution: 'none',
 					saveDataErrorExecution: 'all',
 				};
-				const lifecycleHooks = getLifecycleHooksForScalingMain(
+				const testHooks = getLifecycleHooksForScalingMain(
 					{
 						executionMode: 'webhook',
 						workflowData,
@@ -697,20 +1688,20 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 				);
 
-				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+				await testHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-				expect(executionRepository.hardDelete).toHaveBeenCalledWith({
-					workflowId,
-					executionId,
-				});
+				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith(
+					{ workflowId, executionId, storedAt: 'db' },
+					{ status: 'success', finished: true, stoppedAt: successfulRun.stoppedAt },
+				);
 			});
 
-			it('should delete failed executions when error saving is disabled', async () => {
+			it('should delete unsaved failed executions when error saving is disabled', async () => {
 				workflowData.settings = {
 					saveDataSuccessExecution: 'all',
 					saveDataErrorExecution: 'none',
 				};
-				const lifecycleHooks = getLifecycleHooksForScalingMain(
+				const testHooks = getLifecycleHooksForScalingMain(
 					{
 						executionMode: 'webhook',
 						workflowData,
@@ -720,20 +1711,135 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 				);
 
-				await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+				await testHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
 
-				expect(executionRepository.hardDelete).toHaveBeenCalledWith({
-					workflowId,
-					executionId,
+				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith(
+					{ workflowId, executionId, storedAt: 'db' },
+					{ status: 'error', finished: false, stoppedAt: failedRun.stoppedAt },
+				);
+			});
+
+			describe('metadata handling', () => {
+				it('should save metadata in scaling main mode when execution is kept', async () => {
+					// Test that scaling main saves metadata when execution is not deleted
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
+
+					expect(executionMetadataService.save).toHaveBeenCalledWith(executionId, {
+						testKey1: 'testValue1',
+						testKey2: 'testValue2',
+					});
+				});
+
+				it('should NOT save metadata in scaling main mode when execution is deleted', async () => {
+					workflowData.settings = {
+						saveDataSuccessExecution: 'none' as const,
+						saveDataErrorExecution: 'all' as const,
+					};
+					const testLifecycleHooks = getLifecycleHooksForScalingMain(
+						{
+							executionMode: 'webhook',
+							workflowData,
+							pushRef,
+							retryOf,
+						},
+						executionId,
+					);
+
+					await testLifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
+
+					// Metadata should not be saved before deletion
+					expect(executionMetadataService.save).not.toHaveBeenCalled();
+					// Execution should be deleted
+					expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith(
+						{ workflowId, executionId, storedAt: 'db' },
+						{ status: 'success', finished: true, stoppedAt: successfulRunWithMetadata.stoppedAt },
+					);
+				});
+
+				it('should NOT save metadata when execution has none', async () => {
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+					expect(executionMetadataService.save).not.toHaveBeenCalled();
+				});
+
+				it('should save metadata for failed executions when error saving is enabled', async () => {
+					await lifecycleHooks.runHook('workflowExecuteAfter', [failedRunWithMetadata, {}]);
+
+					expect(executionMetadataService.save).toHaveBeenCalledWith(executionId, {
+						testKey1: 'testValue1',
+						testKey2: 'testValue2',
+					});
+				});
+
+				it('should NOT save metadata for failed executions when error saving is disabled', async () => {
+					workflowData.settings = {
+						saveDataSuccessExecution: 'all' as const,
+						saveDataErrorExecution: 'none' as const,
+					};
+					const testLifecycleHooks = getLifecycleHooksForScalingMain(
+						{
+							executionMode: 'webhook',
+							workflowData,
+							pushRef,
+							retryOf,
+						},
+						executionId,
+					);
+
+					await testLifecycleHooks.runHook('workflowExecuteAfter', [failedRunWithMetadata, {}]);
+
+					expect(executionMetadataService.save).not.toHaveBeenCalled();
+					expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith(
+						{ workflowId, executionId, storedAt: 'db' },
+						{ status: 'error', finished: false, stoppedAt: failedRunWithMetadata.stoppedAt },
+					);
+				});
+
+				it('should save metadata for crashed executions when error saving is enabled', async () => {
+					await lifecycleHooks.runHook('workflowExecuteAfter', [crashedRunWithMetadata, {}]);
+
+					expect(executionMetadataService.save).toHaveBeenCalledWith(executionId, {
+						testKey1: 'testValue1',
+						testKey2: 'testValue2',
+					});
+				});
+
+				it('should save metadata for canceled executions when error saving is enabled', async () => {
+					await lifecycleHooks.runHook('workflowExecuteAfter', [canceledRunWithMetadata, {}]);
+
+					expect(executionMetadataService.save).toHaveBeenCalledWith(executionId, {
+						testKey1: 'testValue1',
+						testKey2: 'testValue2',
+					});
 				});
 			});
 		});
 	});
 
 	describe('getLifecycleHooksForScalingWorker', () => {
-		const createHooks = (executionMode: WorkflowExecuteMode = 'manual') =>
+		const createHooks = (
+			executionMode: WorkflowExecuteMode = 'manual',
+			suppressErrorWorkflow?: boolean,
+		) =>
 			getLifecycleHooksForScalingWorker(
-				{ executionMode, workflowData, pushRef, retryOf },
+				{ executionMode, workflowData, pushRef, retryOf, suppressErrorWorkflow },
+				executionId,
+			);
+
+		/** Mirrors the main-process cancel / stalled-job paths in queue mode. */
+		const createHooksFromPersistedExecution = (
+			executionMode: WorkflowExecuteMode,
+			suppressErrorWorkflow?: boolean,
+		) =>
+			getLifecycleHooksForScalingWorker(
+				{
+					executionMode,
+					workflowData,
+					executionData: createRunExecutionData({
+						resultData: { runData: {} },
+						manualData: { suppressErrorWorkflow },
+					}),
+				},
 				executionId,
 			);
 
@@ -754,11 +1860,26 @@ describe('Execution Lifecycle Hooks', () => {
 			const { handlers } = lifecycleHooks;
 			expect(handlers.nodeExecuteBefore).toHaveLength(2);
 			expect(handlers.nodeExecuteAfter).toHaveLength(2);
-			expect(handlers.workflowExecuteBefore).toHaveLength(2);
+			expect(handlers.workflowExecuteBefore).toHaveLength(1);
 			expect(handlers.workflowExecuteAfter).toHaveLength(4);
+			expect(handlers.workflowExecuteResume).toHaveLength(0);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
+		});
+
+		it('should run workflow.preExecute when legacy flag is on', async () => {
+			executionsConfig.preExecuteErrorCreatesExecution = true;
+			lifecycleHooks = createHooks();
+
+			await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+			expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
+				workflow,
+				'manual',
+				workflowHookContext,
+				undefined,
+			]);
 		});
 
 		describe('saving static data', () => {
@@ -806,6 +1927,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
 
+				await flushErrorWorkflowDispatch();
 				expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalledWith(
 					errorWorkflow,
 					{
@@ -824,6 +1946,219 @@ describe('Execution Lifecycle Hooks', () => {
 					},
 					project,
 				);
+			});
+
+			it('should not execute error workflow when the run opts out of it', async () => {
+				lifecycleHooks = createHooks('trigger', true);
+				workflowData.settings = { errorWorkflow: 'error-workflow-id' };
+				ownershipService.getWorkflowProjectCached
+					.calledWith(workflowId)
+					.mockResolvedValue(mock<Project>());
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+
+				expect(workflowExecutionService.executeErrorWorkflow).not.toHaveBeenCalled();
+			});
+
+			it('should honour the opt-out when run data is rebuilt from a persisted execution', async () => {
+				lifecycleHooks = createHooksFromPersistedExecution('trigger', true);
+				workflowData.settings = { errorWorkflow: 'error-workflow-id' };
+				ownershipService.getWorkflowProjectCached
+					.calledWith(workflowId)
+					.mockResolvedValue(mock<Project>());
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+
+				expect(workflowExecutionService.executeErrorWorkflow).not.toHaveBeenCalled();
+			});
+
+			it('should still execute error workflow when a persisted execution did not opt out', async () => {
+				lifecycleHooks = createHooksFromPersistedExecution('trigger');
+				const errorWorkflow = 'error-workflow-id';
+				workflowData.settings = { errorWorkflow };
+				ownershipService.getWorkflowProjectCached
+					.calledWith(workflowId)
+					.mockResolvedValue(mock<Project>());
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+
+				await flushErrorWorkflowDispatch();
+				expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalledWith(
+					errorWorkflow,
+					expect.objectContaining({ workflow: { id: workflowId, name: workflowData.name } }),
+					expect.anything(),
+				);
+			});
+		});
+
+		describe('metadata handling', () => {
+			it('should NOT save metadata in scaling worker mode', async () => {
+				const lifecycleHooks = createHooks('trigger');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
+
+				// Worker should never save metadata - that's main's responsibility
+				expect(executionMetadataService.save).not.toHaveBeenCalled();
+			});
+
+			it('should still update execution data in scaling worker mode, guarded against overwriting a canceled execution', async () => {
+				const lifecycleHooks = createHooks('trigger');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
+
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					expect.objectContaining({
+						finished: true,
+						status: 'success',
+					}),
+					{ requireNotCanceled: true },
+				);
+			});
+
+			it('should update execution data without a guard condition when the worker itself reports canceled', async () => {
+				const lifecycleHooks = createHooks('trigger');
+				executionPersistence.updateExistingExecution.mockResolvedValueOnce(true);
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [canceledRunWithMetadata, {}]);
+
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					expect.objectContaining({
+						finished: false,
+						status: 'canceled',
+					}),
+					undefined,
+				);
+				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('workflowExecutionCompleted', {
+					workflowData,
+					fullRunData: canceledRunWithMetadata,
+				});
+			});
+
+			it('should not emit workflowExecutionCompleted when the guarded update is blocked', async () => {
+				const lifecycleHooks = createHooks('trigger');
+				executionPersistence.updateExistingExecution.mockResolvedValueOnce(false);
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
+
+				expect(workflowStatisticsService.emit).not.toHaveBeenCalledWith(
+					'workflowExecutionCompleted',
+					expect.anything(),
+				);
+			});
+
+			it('should still emit workflowExecutionCompleted when the update succeeds', async () => {
+				const lifecycleHooks = createHooks('trigger');
+				executionPersistence.updateExistingExecution.mockResolvedValueOnce(true);
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
+
+				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('workflowExecutionCompleted', {
+					workflowData,
+					fullRunData: successfulRunWithMetadata,
+				});
+			});
+		});
+
+		describe('discarding run data for unsaved successful executions', () => {
+			const getUpdatePayload = () => {
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+				return executionPersistence.updateExistingExecution.mock.calls[0][1];
+			};
+
+			afterEach(() => {
+				workflowData.settings = {};
+			});
+
+			it('should skip writing run data when a successful execution will be discarded', async () => {
+				workflowData.settings = { saveDataSuccessExecution: 'none' };
+				const lifecycleHooks = createHooks('trigger');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				const payload = getUpdatePayload();
+				expect(payload.data).toBeUndefined();
+				expect(payload.workflowData).toBeUndefined();
+				expect(payload.status).toBe('success');
+			});
+
+			it('should write run data when successful executions are saved', async () => {
+				workflowData.settings = { saveDataSuccessExecution: 'all' };
+				const lifecycleHooks = createHooks('trigger');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				const payload = getUpdatePayload();
+				expect(payload.data).toBeDefined();
+				expect(payload.workflowData).toBeDefined();
+			});
+
+			it('should write run data for failed executions even when successes are discarded', async () => {
+				workflowData.settings = { saveDataSuccessExecution: 'none' };
+				const lifecycleHooks = createHooks('trigger');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+
+				const payload = getUpdatePayload();
+				expect(payload.data).toBeDefined();
+				expect(payload.workflowData).toBeDefined();
+			});
+
+			it('should write run data for waiting executions', async () => {
+				workflowData.settings = { saveDataSuccessExecution: 'none' };
+				const lifecycleHooks = createHooks('trigger');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
+
+				const payload = getUpdatePayload();
+				expect(payload.data).toBeDefined();
+				expect(payload.workflowData).toBeDefined();
+			});
+
+			it('should write run data for webhook executions', async () => {
+				workflowData.settings = { saveDataSuccessExecution: 'none' };
+				const lifecycleHooks = createHooks('webhook');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				const payload = getUpdatePayload();
+				expect(payload.data).toBeDefined();
+				expect(payload.workflowData).toBeDefined();
+			});
+
+			it('should write run data for integrated executions so the parent workflow can read it', async () => {
+				workflowData.settings = { saveDataSuccessExecution: 'none' };
+				const lifecycleHooks = createHooks('integrated');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				const payload = getUpdatePayload();
+				expect(payload.data).toBeDefined();
+				expect(payload.workflowData).toBeDefined();
+			});
+
+			it('should write run data for manual executions so the editor can read it back', async () => {
+				workflowData.settings = { saveDataSuccessExecution: 'none' };
+				const lifecycleHooks = createHooks('manual');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				const payload = getUpdatePayload();
+				expect(payload.data).toBeDefined();
+				expect(payload.workflowData).toBeDefined();
+			});
+
+			it('should write run data when a workflow.postExecute external hook is registered', async () => {
+				workflowData.settings = { saveDataSuccessExecution: 'none' };
+				externalHooks.hasHook.mockReturnValueOnce(true);
+				const lifecycleHooks = createHooks('trigger');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				const payload = getUpdatePayload();
+				expect(payload.data).toBeDefined();
+				expect(payload.workflowData).toBeDefined();
 			});
 		});
 	});
@@ -853,7 +2188,8 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeExecuteBefore).toHaveLength(1);
 			expect(handlers.nodeExecuteAfter).toHaveLength(1);
 			expect(handlers.workflowExecuteBefore).toHaveLength(2);
-			expect(handlers.workflowExecuteAfter).toHaveLength(4);
+			expect(handlers.workflowExecuteAfter).toHaveLength(5);
+			expect(handlers.workflowExecuteResume).toHaveLength(1);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
@@ -933,6 +2269,78 @@ describe('Execution Lifecycle Hooks', () => {
 					mainOutputData,
 				);
 			});
+
+			it.each(
+				[false, true, undefined].flatMap((lastRunOnly) =>
+					['subexecution', 'regular', 'worker'].map((hookType) => ({ lastRunOnly, hookType })),
+				),
+			)(
+				'copies returned binaries for $hookType hooks when lastRunOnly is $lastRunOnly',
+				async ({ lastRunOnly, hookType }) => {
+					const childBinaryId = (index: number) =>
+						`filesystem:workflows/${workflowId}/executions/${executionId}/binary_data/${index}`;
+					const parentBinaryId = (index: number) =>
+						`filesystem:workflows/${parentWorkflowId}/executions/${parentExecutionId}/binary_data/${index}`;
+					const runs = [0, 1].map((executionIndex) => ({
+						startTime: 0,
+						executionTime: 0,
+						executionIndex,
+						source: [],
+						data: {
+							main: [
+								[],
+								[
+									{
+										json: { index: executionIndex },
+										binary: {
+											file: { id: childBinaryId(executionIndex), data: '', mimeType: 'text/plain' },
+										},
+									},
+								],
+							],
+						},
+					}));
+					successfulRun.data.resultData.runData = { [nodeName]: runs };
+					successfulRun.data.resultData.lastNodeExecuted = nodeName;
+					successfulRun.data.parentExecution = parentExecution;
+					if (lastRunOnly !== undefined) successfulRun.data.subWorkflowOutput = { lastRunOnly };
+					if (hookType !== 'subexecution') {
+						workflowData.settings = { saveDataSuccessExecution: 'all' };
+						const createHooks =
+							hookType === 'worker'
+								? getLifecycleHooksForScalingWorker
+								: getLifecycleHooksForRegularMain;
+						lifecycleHooks = createHooks(
+							mock<IWorkflowExecutionDataProcess>({ executionMode: 'integrated', workflowData }),
+							executionId,
+						);
+					}
+					binaryDataService.duplicateBinaryData.mockImplementation(async (_location, outputs) =>
+						outputs.map(
+							(branch) =>
+								branch?.map((item) => ({
+									...item,
+									binary: {
+										file: { ...item.binary!.file, id: parentBinaryId(Number(item.json.index)) },
+									},
+								})) ?? [],
+						),
+					);
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+					expect(runs.map((run) => run.data.main[1][0].binary.file.id)).toEqual([
+						lastRunOnly === false ? parentBinaryId(0) : childBinaryId(0),
+						parentBinaryId(1),
+					]);
+					expect(binaryDataService.duplicateBinaryData).toHaveBeenCalledTimes(
+						lastRunOnly === false ? 2 : 1,
+					);
+					expect(
+						binaryDataService.duplicateBinaryData.mock.invocationCallOrder.at(-1),
+					).toBeLessThan(executionPersistence.updateExistingExecution.mock.invocationCallOrder[0]);
+				},
+			);
 
 			it('should not duplicate binary data when there is no output data', async () => {
 				successfulRun.data.resultData.runData = {};

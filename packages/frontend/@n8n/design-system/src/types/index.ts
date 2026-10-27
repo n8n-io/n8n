@@ -1,6 +1,5 @@
 export type * from './action-dropdown';
 export * from './assistant';
-export type * from './badge';
 export type * from './button';
 export type * from './callout';
 export type * from './datatable';
@@ -17,3 +16,4 @@ export type * from './select';
 export type * from './tabs';
 export type * from './text';
 export type * from './user';
+export * from './binary';

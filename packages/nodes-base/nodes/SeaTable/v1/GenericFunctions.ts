@@ -33,6 +33,10 @@ const userBaseUri = (uri?: string) => {
 	return uri;
 };
 
+export function escapeSqlIdentifier(value: string): string {
+	return value.replace(/`/g, '``');
+}
+
 export function resolveBaseUri(ctx: ICtx) {
 	return ctx?.credentials?.environment === 'cloudHosted'
 		? 'https://cloud.seatable.io'
@@ -55,7 +59,11 @@ export async function getBaseAccessToken(
 		json: true,
 	};
 
-	ctx.base = await this.helpers.request(options);
+	try {
+		ctx.base = await this.helpers.request(options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
 }
 
 function endpointCtxExpr(ctx: ICtx, endpoint: string): string {

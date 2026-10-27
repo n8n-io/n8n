@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch, reactive, toRefs, computed, onBeforeUnmount } from 'vue';
+import { watch, reactive, toRefs, computed, onBeforeUnmount, onMounted, inject, ref } from 'vue';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -13,15 +13,20 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/app/constants';
+import { EmbeddedCanvasElementKey } from '@/app/constants/injectionKeys';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useAiGateway } from '@/app/composables/useAiGateway';
 import type { NodeTypeSelectedPayload } from '@/Interface';
-import { onClickOutside } from '@vueuse/core';
+import { onClickOutside, useElementBounding } from '@vueuse/core';
 
-import { N8nIconButton } from '@n8n/design-system';
+import { N8nIconButton, OVERLAY_LAYER_SELECTOR } from '@n8n/design-system';
 // elements that should not trigger onClickOutside
 const OUTSIDE_CLICK_WHITELIST = [
 	// different modals
 	'.el-overlay-dialog',
+	// reka-ui overlays (N8nPopover, N8nDialog) teleport to body
+	OVERLAY_LAYER_SELECTOR,
 ];
 
 export interface Props {
@@ -35,12 +40,14 @@ const { registerKeyHook } = useKeyboardNavigation();
 const emit = defineEmits<{
 	closeNodeCreator: [];
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
+	emptyGroupSelected: [];
 }>();
 const uiStore = useUIStore();
 const bannersStore = useBannersStore();
 const chatPanelStore = useChatPanelStore();
+const settingsStore = useSettingsStore();
 
-const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
+const { setActions, setMergeNodes, consumePendingInitialViewStack } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
 
 const state = reactive({
@@ -48,17 +55,28 @@ const state = reactive({
 	mousedownInsideEvent: null as MouseEvent | null,
 });
 
-const showScrim = computed(() => useNodeCreatorStore().showScrim);
-
 const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
+
+// An embedded editor (e.g. the Instance AI split view) renders its own header
+// below the page top, so the panel aligns to that editor's canvas instead.
+const embeddedCanvas = inject(EmbeddedCanvasElementKey, ref(null));
+const { top: embeddedCanvasTop } = useElementBounding(embeddedCanvas);
 
 const nodeCreatorInlineStyle = computed(() => {
 	const rightPosition = getRightOffset();
 	return {
-		top: `${bannersStore.bannersHeight + uiStore.headerHeight}px`,
+		top: `${getTopOffset()}px`,
 		right: `${rightPosition}px`,
 	};
 });
+
+function getTopOffset() {
+	if (embeddedCanvas.value) {
+		return embeddedCanvasTop.value;
+	}
+
+	return settingsStore.isCanvasOnly ? 0 : bannersStore.bannersHeight + uiStore.headerHeight;
+}
 
 function getRightOffset() {
 	if (chatPanelStore.isOpen) {
@@ -113,12 +131,18 @@ function onDrop(event: DragEvent) {
 	}
 }
 
+const { fetchConfig: fetchAiGatewayConfig } = useAiGateway();
+
+onMounted(() => {
+	void fetchAiGatewayConfig();
+});
+
 watch(
 	() => props.active,
 	(isActive) => {
 		if (!isActive) {
-			setShowScrim(false);
 			resetViewStacks();
+			consumePendingInitialViewStack();
 		}
 	},
 );
@@ -127,16 +151,11 @@ watch(
 watch(viewStacksLength, (value) => {
 	if (value === 0) {
 		emit('closeNodeCreator');
-		setShowScrim(false);
 	}
 });
 
 registerKeyHook('NodeCreatorCloseEscape', {
 	keyboardKeys: ['Escape'],
-	handler: () => emit('closeNodeCreator'),
-});
-registerKeyHook('NodeCreatorCloseTab', {
-	keyboardKeys: ['Tab'],
 	handler: () => emit('closeNodeCreator'),
 });
 
@@ -170,16 +189,11 @@ onClickOutside(
 
 <template>
 	<div>
-		<aside
-			:class="{
-				[$style.nodeCreatorScrim]: true,
-				[$style.active]: showScrim,
-			}"
-		/>
+		<aside :class="$style.nodeCreatorScrim" />
 		<N8nIconButton
+			variant="outline"
 			v-if="active"
 			:class="$style.close"
-			type="secondary"
 			icon="x"
 			aria-label="Close Node Creator"
 			@click="emit('closeNodeCreator')"
@@ -196,15 +210,20 @@ onClickOutside(
 				@mousedown="onMouseDown"
 				@mouseup="onMouseUp"
 			>
-				<NodesListPanel @node-type-selected="onNodeTypeSelected" />
+				<NodesListPanel
+					@node-type-selected="onNodeTypeSelected"
+					@empty-group-selected="emit('emptyGroupSelected')"
+				/>
 			</div>
 		</SlideTransition>
 	</div>
 </template>
 
 <style module lang="scss">
+@use '@/app/css/variables' as *;
+
 :global(strong) {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 .nodeCreator {
 	--node-creator--width: #{$node-creator-width};

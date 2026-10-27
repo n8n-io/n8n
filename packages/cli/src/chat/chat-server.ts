@@ -1,5 +1,5 @@
-import { Service } from '@n8n/di';
 import { OnShutdown } from '@n8n/decorators';
+import { Service } from '@n8n/di';
 import type { Application } from 'express';
 import type { Server as HttpServer } from 'http';
 import { ServerResponse } from 'http';
@@ -22,6 +22,7 @@ export class ChatServer {
 
 	setup(server: HttpServer, app: Application) {
 		server.on('upgrade', (req: ChatRequest, socket, head) => {
+			// oxlint-disable-next-line typescript/no-deprecated
 			const parsedUrl = parseUrl(req.url ?? '');
 
 			if (parsedUrl.pathname?.startsWith('/chat')) {

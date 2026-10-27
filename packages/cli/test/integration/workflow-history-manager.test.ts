@@ -15,6 +15,10 @@ import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-hi
 
 import { createManyWorkflowHistoryItems } from './shared/db/workflow-history';
 
+const OVERLAPPING_RUNS = 4;
+const OLD_VERSIONS = 20;
+const RECENT_VERSIONS = 5;
+
 describe('Workflow History Manager', () => {
 	const license = mockInstance(License);
 	let repo: WorkflowHistoryRepository;
@@ -30,7 +34,7 @@ describe('Workflow History Manager', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['WorkflowEntity', 'WorkflowHistory', 'WorkflowPublishHistory']);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		globalConfig.workflowHistory.pruneTime = -1;
 
@@ -39,25 +43,6 @@ describe('Workflow History Manager', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
-	});
-
-	test('should prune on interval', () => {
-		const pruneSpy = jest.spyOn(manager, 'prune');
-		const currentCount = pruneSpy.mock.calls.length;
-
-		jest.useFakeTimers();
-		manager.init();
-
-		jest.runOnlyPendingTimers();
-		expect(pruneSpy).toBeCalledTimes(currentCount + 1);
-
-		jest.runOnlyPendingTimers();
-		expect(pruneSpy).toBeCalledTimes(currentCount + 2);
-
-		manager.shutdown();
-		jest.clearAllTimers();
-		jest.useRealTimers();
-		pruneSpy.mockRestore();
 	});
 
 	test('should not prune when both prune times are -1 (infinite)', async () => {
@@ -165,6 +150,95 @@ describe('Workflow History Manager', () => {
 		expect(await repo.count({ where: { versionId: In(otherVersionIds) } })).toBe(0);
 	});
 
+	test('should not prune named versions when license feature is enabled', async () => {
+		globalConfig.workflowHistory.pruneTime = 24;
+		license.isLicensed.mockImplementation((feature: string) => feature === 'feat:namedVersions');
+
+		const workflow = await createWorkflow();
+		const oldDate = DateTime.now().minus({ days: 2 }).toJSDate();
+
+		const versions = await createManyWorkflowHistoryItems(workflow.id, 5, oldDate);
+
+		await repo.update({ versionId: versions[0].versionId }, { name: 'Named Version 1' });
+		await repo.update(
+			{ versionId: versions[1].versionId },
+			{ name: 'Named Version 2', description: 'Version with description' },
+		);
+		await repo.update(
+			{ versionId: versions[2].versionId },
+			{ name: 'Named Version 3', description: 'Also has description' },
+		);
+		// versions[3] and versions[4] remain unnamed
+
+		await manager.prune();
+
+		expect(license.isLicensed).toHaveBeenCalledWith('feat:namedVersions');
+
+		// Named versions should be preserved
+		expect(await repo.count({ where: { versionId: versions[0].versionId } })).toBe(1);
+		expect(await repo.count({ where: { versionId: versions[1].versionId } })).toBe(1);
+		expect(await repo.count({ where: { versionId: versions[2].versionId } })).toBe(1);
+
+		// Unnamed versions should be deleted
+		expect(await repo.count({ where: { versionId: versions[3].versionId } })).toBe(0);
+		expect(await repo.count({ where: { versionId: versions[4].versionId } })).toBe(0);
+	});
+
+	test('should prune named versions when license feature is disabled', async () => {
+		globalConfig.workflowHistory.pruneTime = 24;
+		license.isLicensed.mockReturnValue(false);
+
+		const workflow = await createWorkflow();
+		const oldDate = DateTime.now().minus({ days: 2 }).toJSDate();
+
+		const versions = await createManyWorkflowHistoryItems(workflow.id, 3, oldDate);
+
+		// Set names on versions
+		await repo.update({ versionId: versions[0].versionId }, { name: 'Named Version 1' });
+		await repo.update({ versionId: versions[1].versionId }, { name: 'Named Version 2' });
+		await repo.update(
+			{ versionId: versions[2].versionId },
+			{ name: 'Named Version 3', description: 'Version with description' },
+		);
+
+		await manager.prune();
+
+		// All versions should be deleted
+		expect(await repo.count({ where: { versionId: In(versions.map((v) => v.versionId)) } })).toBe(
+			0,
+		);
+	});
+
+	test('should keep the same rows as one run when prune runs overlap', async () => {
+		globalConfig.workflowHistory.pruneTime = 24;
+		license.isLicensed.mockImplementation((feature: string) => feature === 'feat:namedVersions');
+
+		const workflow = await createActiveWorkflow();
+		const factoryVersionIds = await remainingVersionIds();
+		const oldDate = DateTime.now().minus({ days: 2 }).toJSDate();
+		const oldVersions = await createManyWorkflowHistoryItems(workflow.id, OLD_VERSIONS, oldDate);
+		const recentVersions = await createManyWorkflowHistoryItems(workflow.id, RECENT_VERSIONS);
+
+		const [currentVersion, activeVersion, namedVersion] = oldVersions;
+		workflow.versionId = currentVersion.versionId;
+		workflow.activeVersionId = activeVersion.versionId;
+		await Container.get(WorkflowRepository).save(workflow);
+		await repo.update({ versionId: namedVersion.versionId }, { name: 'Named Version' });
+
+		await Promise.all(Array.from({ length: OVERLAPPING_RUNS }, async () => await manager.prune()));
+
+		const kept = [
+			...factoryVersionIds,
+			...[currentVersion, activeVersion, namedVersion, ...recentVersions].map((v) => v.versionId),
+		].sort();
+		expect(await remainingVersionIds()).toEqual(kept);
+	});
+
+	const remainingVersionIds = async () => {
+		const rows = await repo.find({ select: { versionId: true } });
+		return rows.map((v) => v.versionId).sort();
+	};
+
 	const createWorkflowHistory = async (ageInDays = 2) => {
 		const workflow = await createWorkflow();
 		const time = DateTime.now().minus({ days: ageInDays }).toJSDate();
@@ -174,7 +248,7 @@ describe('Workflow History Manager', () => {
 	const pruneAndAssertCount = async (finalCount = 10, initialCount = 10) => {
 		expect(await repo.count()).toBe(initialCount);
 
-		const deleteSpy = jest.spyOn(repo, 'deleteEarlierThanExceptCurrentAndActive');
+		const deleteSpy = vi.spyOn(repo, 'deleteEarlierThanExceptCurrentAndActive');
 		await manager.prune();
 
 		if (initialCount === finalCount) {

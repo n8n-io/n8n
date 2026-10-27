@@ -13,6 +13,7 @@ let mockCompletionResult: Partial<CompletionResult>;
 vi.mock('@/features/ndv/shared/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
+		injectNDVStore: vi.fn(() => ({ value: mockNdvState })),
 	};
 });
 
@@ -37,6 +38,16 @@ describe('InlineExpressionTip.vue', () => {
 			pinia: createTestingPinia(),
 		});
 		expect(container).toHaveTextContent('Tip: Anything inside {{ }} is JavaScript. Learn more');
+	});
+
+	test('should suggest alternatives to .item when a referenced node is on another branch', async () => {
+		const { container } = renderComponent(InlineExpressionTip, {
+			pinia: createTestingPinia(),
+			props: { pairedItemNotOnBranch: true },
+		});
+		expect(container).toHaveTextContent(
+			'Tip: Use .first(), .last() or .all()[index] to read from a node on another branch. Learn more',
+		);
 	});
 
 	describe('When the NDV input is not empty and a mappable input is focused', () => {

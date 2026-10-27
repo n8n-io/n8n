@@ -8,6 +8,7 @@ from src.constants import (
     BROKER_TASK_OFFER_ACCEPT,
     BROKER_TASK_SETTINGS,
     BROKER_RPC_RESPONSE,
+    BROKER_DRAIN,
 )
 
 
@@ -70,6 +71,11 @@ class BrokerRpcResponse:
     type: Literal["broker:rpcresponse"] = BROKER_RPC_RESPONSE
 
 
+@dataclass
+class BrokerDrain:
+    type: Literal["broker:drain"] = BROKER_DRAIN
+
+
 BrokerMessage = (
     BrokerInfoRequest
     | BrokerRunnerRegistered
@@ -77,4 +83,5 @@ BrokerMessage = (
     | BrokerTaskSettings
     | BrokerTaskCancel
     | BrokerRpcResponse
+    | BrokerDrain
 )

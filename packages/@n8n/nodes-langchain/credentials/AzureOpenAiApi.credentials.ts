@@ -3,11 +3,23 @@ import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n
 export class AzureOpenAiApi implements ICredentialType {
 	name = 'azureOpenAiApi';
 
-	displayName = 'Azure Open AI';
+	displayName = 'Microsoft Foundry (API Key)';
 
 	documentationUrl = 'azureopenai';
 
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Endpoint Type',
+			name: 'endpointType',
+			type: 'options',
+			options: [
+				{ name: 'Classic', value: 'classic' },
+				{ name: 'Microsoft Foundry', value: 'foundry' },
+			],
+			default: 'classic',
+			description:
+				'Classic targets *.openai.azure.com (resource name + deployment-based URLs). Microsoft Foundry targets *.services.ai.azure.com/openai/v1 (full endpoint URL).',
+		},
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
@@ -22,6 +34,7 @@ export class AzureOpenAiApi implements ICredentialType {
 			type: 'string',
 			required: true,
 			default: '',
+			displayOptions: { show: { endpointType: ['classic'] } },
 		},
 		{
 			displayName: 'API Version',
@@ -29,13 +42,35 @@ export class AzureOpenAiApi implements ICredentialType {
 			type: 'string',
 			required: true,
 			default: '2025-03-01-preview',
+			displayOptions: { show: { endpointType: ['classic'] } },
+		},
+		{
+			displayName: 'Endpoint',
+			name: 'foundryEndpoint',
+			type: 'string',
+			required: true,
+			default: '',
+			placeholder: 'https://<resource>.services.ai.azure.com/openai/v1',
+			displayOptions: { show: { endpointType: ['foundry'] } },
+			hint: 'The full Microsoft Foundry OpenAI-compatible base URL.',
+		},
+		{
+			displayName: 'Project',
+			name: 'project',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { endpointType: ['foundry'] } },
+			description:
+				'Optional. The Microsoft Foundry project that owns your deployments. n8n uses it to list the deployments. The project overview page in the Foundry portal shows the name.',
 		},
 		{
 			displayName: 'Endpoint',
 			name: 'endpoint',
 			type: 'string',
 			default: undefined,
-			placeholder: 'https://westeurope.api.cognitive.microsoft.com',
+			placeholder: 'https://<resource>.openai.azure.com',
+			displayOptions: { show: { endpointType: ['classic'] } },
+			hint: 'Optional. Defaults to https://<resourceName>.openai.azure.com.',
 		},
 	];
 

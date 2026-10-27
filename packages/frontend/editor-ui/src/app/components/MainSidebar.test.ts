@@ -1,26 +1,35 @@
 import { reactive } from 'vue';
+import { within } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import MainSidebar from '@/app/components/MainSidebar.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useVersionsStore } from '@/app/stores/versions.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useVersionsStore } from '@n8n/stores/versions.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
-import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import { ABOUT_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/app/constants';
+
+const openTopUpMock = vi.hoisted(() => vi.fn());
+const routerPushMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		resolve: vi.fn(() => ({ meta: {} })),
+		push: routerPushMock,
 	}),
-	useRoute: () => reactive({}),
+	useRoute: () => reactive({ params: {} }),
 	RouterLink: vi.fn(),
+}));
+
+vi.mock('@/app/composables/useAiGatewayTopUp', () => ({
+	useAiGatewayTopUp: () => ({ openTopUp: openTopUpMock }),
 }));
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
@@ -31,7 +40,6 @@ let usersStore: MockedStore<typeof useUsersStore>;
 let templatesStore: MockedStore<typeof useTemplatesStore>;
 let personalizedTemplatesV2Store: MockedStore<typeof usePersonalizedTemplatesV2Store>;
 let personalizedTemplatesV3Store: MockedStore<typeof usePersonalizedTemplatesV3Store>;
-let templatesDataQualityStore: MockedStore<typeof useTemplatesDataQualityStore>;
 
 const mockVersion: Version = {
 	name: '1.2.0',
@@ -47,6 +55,8 @@ const mockVersion: Version = {
 
 describe('MainSidebar', () => {
 	beforeEach(() => {
+		openTopUpMock.mockReset();
+		routerPushMock.mockReset();
 		renderComponent = createComponentRenderer(MainSidebar, {
 			pinia: createTestingPinia(),
 		});
@@ -57,7 +67,6 @@ describe('MainSidebar', () => {
 		templatesStore = mockedStore(useTemplatesStore);
 		personalizedTemplatesV2Store = mockedStore(usePersonalizedTemplatesV2Store);
 		personalizedTemplatesV3Store = mockedStore(usePersonalizedTemplatesV3Store);
-		templatesDataQualityStore = mockedStore(useTemplatesDataQualityStore);
 
 		settingsStore.settings = defaultSettings;
 
@@ -73,7 +82,6 @@ describe('MainSidebar', () => {
 		// Default experiment store values
 		personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
 		personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => false);
-		templatesDataQualityStore.isFeatureEnabled = vi.fn(() => false);
 	});
 
 	it('renders the sidebar without error', () => {
@@ -123,7 +131,6 @@ describe('MainSidebar', () => {
 			templatesStore.hasCustomTemplatesHost = false;
 			personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
 			personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => false);
-			templatesDataQualityStore.isFeatureEnabled = vi.fn(() => false);
 
 			const { getAllByTestId } = renderComponent();
 
@@ -136,7 +143,6 @@ describe('MainSidebar', () => {
 			settingsStore.isTemplatesEnabled = true;
 			personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => true);
 			personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
-			templatesDataQualityStore.isFeatureEnabled = vi.fn(() => false);
 
 			const { getAllByTestId } = renderComponent();
 
@@ -165,6 +171,28 @@ describe('MainSidebar', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('main-sidebar-settings')).toBeInTheDocument();
+		});
+
+		it('should show contact support item in help menu when on cloud deployment', async () => {
+			settingsStore.isCloudDeployment = true;
+
+			const { getByText, findByText } = renderComponent();
+
+			getByText('Help').click();
+
+			expect(await findByText('Contact Support')).toBeInTheDocument();
+		});
+
+		it('should not show contact support item in help menu when not on cloud deployment', async () => {
+			settingsStore.isCloudDeployment = false;
+
+			const { getByText, findByRole, queryByText } = renderComponent();
+
+			getByText('Help').click();
+			// Wait for the popover to mount before checking
+			await findByRole('dialog');
+
+			expect(queryByText('Contact Support')).not.toBeInTheDocument();
 		});
 	});
 
@@ -210,6 +238,90 @@ describe('MainSidebar', () => {
 					articleId: 123,
 				},
 			});
+		});
+
+		it('should open the top-up flow when n8n credits is selected', async () => {
+			settingsStore.settings = {
+				...defaultSettings,
+				aiGateway: {
+					enabled: true,
+					budget: 0,
+					cloudUbbEnabled: true,
+				},
+			};
+
+			const { getByText, findByText } = renderComponent();
+
+			await userEvent.click(getByText('Settings'));
+			await userEvent.click(await findByText('Gateway credits'));
+
+			expect(openTopUpMock).toHaveBeenCalledWith({ source: 'settings_page' });
+			expect(routerPushMock).not.toHaveBeenCalled();
+		});
+
+		it('should list the settings links under their section headings', async () => {
+			settingsStore.settings = {
+				...defaultSettings,
+				aiGateway: {
+					enabled: true,
+					budget: 0,
+					cloudUbbEnabled: true,
+				},
+			};
+
+			const { getByText, findByTestId } = renderComponent();
+
+			await userEvent.click(getByText('Settings'));
+			const list = await findByTestId('main-sidebar-settings-list');
+
+			const personalHeading = within(list).getByText('Personal');
+			const billingHeading = within(list).getByText('Billing');
+			expect(within(list).getByText('Gateway credits')).toBeInTheDocument();
+			expect(within(list).queryByText('General')).not.toBeInTheDocument();
+			// Headings keep the section order.
+			expect(
+				personalHeading.compareDocumentPosition(billingHeading) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		});
+
+		it('should follow the route of a selected settings link', async () => {
+			const { getByText, findByTestId } = renderComponent();
+
+			await userEvent.click(getByText('Settings'));
+			await userEvent.click(await findByTestId('settings-personal'));
+
+			expect(routerPushMock).toHaveBeenCalledWith({ name: 'PersonalSettings' });
+		});
+
+		it('should open the settings menu from the keyboard and give focus back on close', async () => {
+			const { getByTestId, findByTestId, queryByTestId } = renderComponent();
+			const trigger = getByTestId('main-sidebar-settings');
+
+			expect(trigger).toHaveAttribute('role', 'button');
+			expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+
+			trigger.focus();
+			await userEvent.keyboard('{Enter}');
+
+			expect(await findByTestId('main-sidebar-settings-list')).toBeInTheDocument();
+			expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+			await userEvent.keyboard('{Escape}');
+
+			expect(queryByTestId('main-sidebar-settings-list')).not.toBeInTheDocument();
+			expect(trigger).toHaveFocus();
+		});
+
+		it('should keep sign out in a footer below the settings list', async () => {
+			const { getByText, findByTestId, getByTestId } = renderComponent();
+
+			await userEvent.click(getByText('Settings'));
+			const signOut = await findByTestId('main-sidebar-log-out');
+
+			expect(getByTestId('main-sidebar-settings-footer')).toContainElement(signOut);
+			expect(
+				getByTestId('main-sidebar-settings-list').querySelector('[data-menu-items]'),
+			).not.toContainElement(signOut);
 		});
 	});
 });

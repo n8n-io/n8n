@@ -1,0 +1,457 @@
+import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import {
+	isAzureFoundryAnthropicModel,
+	isOpenRouterAnthropicModel,
+	splitModelId,
+} from '@n8n/ai-utilities/agent-config';
+import type { LanguageModel, Output } from 'ai';
+
+import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
+import { UNTRUSTED_OUTPUT_DOCTRINE } from '../../sdk/untrusted-content';
+import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
+import type { AgentPersistenceOptions, ExecutionOptions } from '../../types/sdk/agent';
+import { lockAdditionalProperties } from '../../utils/json-schema';
+import { getCatalogModelId, getModelIdString } from '../../utils/model';
+import { isZodSchema } from '../../utils/zod';
+import {
+	createRecallMemoryTool,
+	getEpisodicMemoryScope,
+	hasEpisodicMemoryStore,
+	isEpisodicMemoryEnabled,
+	RECALL_MEMORY_TOOL_NAME,
+} from '../memory/episodic-memory';
+import {
+	createFlagMemoryTool,
+	FLAG_MEMORY_TOOL_NAME,
+	resolveEpisodicMemoryCapture,
+} from '../memory/episodic-memory-capture';
+import { getGoogleVertexQuirksProvider } from '../model/google-vertex';
+import { loadAi } from '../model/lazy-ai';
+import type { AgentMessageList } from '../model/message-list';
+import {
+	createModel,
+	resolveNativeToolDeferral,
+	supportsSplitSystemMessages,
+} from '../model/model-factory';
+import { applyNativeToolDeferral, type NativeToolDeferral } from '../model/native-tool-deferral';
+import { applyOpenRouterPromptCache } from '../model/openrouter-prompt-cache';
+import {
+	applyRuntimeCacheBreakpoints,
+	isAnthropicToolDeferred,
+	buildCallPromptCacheOptions,
+	buildInstructionPromptCacheOptions,
+	buildSkillInstructionCacheOptions,
+	mergeProviderOptions,
+} from '../model/prompt-cache';
+import {
+	getProviderQuirks,
+	PROVIDER_QUIRKS,
+	resolveDefaultMaxOutputTokens,
+} from '../model/provider-quirks';
+import type { ActiveSkills } from '../skills/active-skills';
+import type { DeferredToolManager } from '../tools/deferred-tool-manager';
+import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
+
+/** Wrap tool-instruction fragments in a `<built_in_rules>` block, or `undefined` when there are none. */
+function wrapBuiltInRules(fragments: string[]): string | undefined {
+	if (fragments.length === 0) return undefined;
+	return `<built_in_rules>\n${fragments.map((f) => `- ${f}`).join('\n')}\n</built_in_rules>`;
+}
+
+function prependBuiltInRules(fragments: string[], instructions: string): string {
+	const rules = wrapBuiltInRules(fragments);
+	if (!rules) return instructions;
+	if (!instructions) return rules;
+	return `${rules}\n\n${instructions}`;
+}
+
+export interface StaticLoopContext {
+	model: LanguageModel;
+	aiProviderTools: ReturnType<typeof toAiSdkProviderTools>;
+	reasoning: AgentRuntimeConfig['reasoning'];
+	providerOptions?: Record<string, JSONObject>;
+	outputSpec?: ReturnType<typeof Output.object>;
+	maxOutputTokens?: number;
+}
+
+/**
+ * Builds the per-run and per-iteration dependencies the agentic loop hands to
+ * the LLM call: the model instance, reasoning, provider options, structured
+ * output spec, and the effective tool surface (base + deferred + recall tools,
+ * mapped to AI SDK shapes). Keeps tool/model assembly out of the loop body.
+ */
+export class RuntimeContextBuilder {
+	private nativeToolDeferral?: NativeToolDeferral;
+
+	constructor(
+		private readonly config: AgentRuntimeConfig,
+		private readonly deferredToolManager: DeferredToolManager | undefined,
+	) {}
+
+	get modelId(): string {
+		return getModelIdString(this.config.model);
+	}
+
+	/** Build run-stable LLM call dependencies shared by all iterations. */
+	buildStaticLoopContext(
+		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
+	): StaticLoopContext {
+		const ai = loadAi();
+		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
+		const model = createModel(
+			this.config.model,
+			this.config.modelFetch,
+			this.config.telemetry ?? execOptions?.telemetry,
+		);
+		this.nativeToolDeferral = this.config.nativeToolDeferral
+			? resolveNativeToolDeferral(this.config.model)
+			: undefined;
+		const outputSchema = this.config.structuredOutput;
+		const isRawJsonSchemaOutput = outputSchema !== undefined && !isZodSchema(outputSchema);
+		const providerOptions = this.relaxStrictJsonSchemaIfNeeded(
+			this.buildCallProviderOptions(execOptions?.providerOptions),
+			isRawJsonSchemaOutput,
+		);
+
+		const outputSpec = this.buildOutputSpec(outputSchema, ai);
+
+		return {
+			model,
+			aiProviderTools,
+			reasoning: this.resolveReasoning(),
+			providerOptions: providerOptions as Record<string, JSONObject> | undefined,
+			outputSpec,
+			maxOutputTokens: execOptions?.maxOutputTokens ?? resolveDefaultMaxOutputTokens(this.modelId),
+		};
+	}
+
+	/**
+	 * A Foundry deployment name does not say which Claude model it serves, and the
+	 * Anthropic SDK picks the thinking shape from the model id. Without the served
+	 * model (a failed lookup) a wrong shape would fail the request, so Foundry
+	 * Claude then runs without reasoning.
+	 */
+	private resolveReasoning(): AgentRuntimeConfig['reasoning'] {
+		const servedModelUnknown = getCatalogModelId(this.config.model) === this.modelId;
+		if (isAzureFoundryAnthropicModel(this.modelId) && servedModelUnknown) return undefined;
+		return this.config.reasoning;
+	}
+
+	private buildOutputSpec(
+		outputSchema: AgentRuntimeConfig['structuredOutput'],
+		{ Output, jsonSchema }: ReturnType<typeof loadAi>,
+	): StaticLoopContext['outputSpec'] {
+		if (!outputSchema) return undefined;
+		// Anthropic requires additionalProperties: false on each raw schema object.
+		const schema = isZodSchema(outputSchema)
+			? outputSchema
+			: jsonSchema(lockAdditionalProperties(outputSchema));
+		return Output.object({ schema });
+	}
+
+	buildInstructionProviderOptions(): ProviderOptions | undefined {
+		// Explicit instruction options take precedence over cache defaults.
+		return mergeProviderOptions(
+			buildInstructionPromptCacheOptions(this.config.promptCaching, this.modelId),
+			this.config.instructionProviderOptions,
+		);
+	}
+
+	/** Build the current local tool view; deferred loads can change this between iterations. */
+	async buildToolLoopContext(
+		aiProviderTools: ReturnType<typeof toAiSdkProviderTools>,
+		persistence?: AgentPersistenceOptions,
+		executionCounter?: AgentExecutionCounter,
+		list?: AgentMessageList,
+	) {
+		const allUserTools = this.getCurrentTools(persistence, executionCounter, list);
+		const aiTools = toAiSdkTools(allUserTools);
+		const catalog = { ...aiTools, ...aiProviderTools };
+		const { tools: allTools, searchToolName } = this.config.nativeToolDeferral
+			? await applyNativeToolDeferral(
+					catalog,
+					this.nativeToolDeferral,
+					this.config.nativeToolDeferral,
+				)
+			: { tools: catalog, searchToolName: undefined };
+		const aiToolCount = Object.keys(allTools).length;
+		const toolMap = buildToolMap(allUserTools);
+		const { instructions: effectiveInstructions, volatileInstructions } =
+			this.composeEffectiveInstructions(allUserTools);
+
+		return {
+			toolMap,
+			aiTools: allTools,
+			searchToolName,
+			hasTools: aiToolCount > 0,
+			effectiveInstructions,
+			volatileInstructions,
+			staticToolCacheName: this.getStaticToolCacheName(allTools),
+		};
+	}
+
+	buildModelPrompt({
+		list,
+		tools,
+		instructionProviderOptions,
+		providerOptions,
+		hostVolatileInstructions,
+		activeSkills,
+	}: {
+		list: AgentMessageList;
+		tools: Awaited<ReturnType<RuntimeContextBuilder['buildToolLoopContext']>>;
+		instructionProviderOptions: ProviderOptions | undefined;
+		providerOptions?: ProviderOptions;
+		hostVolatileInstructions: string | undefined;
+		activeSkills: ActiveSkills | undefined;
+	}) {
+		const combinedVolatileInstructions = [tools.volatileInstructions, hostVolatileInstructions]
+			.map((value) => value?.trim())
+			.filter((value): value is string => Boolean(value))
+			.join('\n\n');
+		const skillContent = activeSkills?.instructions();
+		const { system, messages } = list.forLlm(
+			tools.effectiveInstructions,
+			instructionProviderOptions,
+			combinedVolatileInstructions || undefined,
+			supportsSplitSystemMessages(this.config.model),
+			skillContent
+				? {
+						content: skillContent,
+						cacheOptions: (messages) => {
+							if (isOpenRouterAnthropicModel(this.modelId)) return undefined;
+							return buildSkillInstructionCacheOptions(
+								instructionProviderOptions,
+								tools.aiTools,
+								messages,
+							);
+						},
+					}
+				: undefined,
+			splitModelId(this.modelId).provider,
+		);
+		const preparedMessages =
+			this.nativeToolDeferral?.prepareMessages?.(messages, tools.aiTools, tools.searchToolName) ??
+			messages;
+		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
+		const cached = applyRuntimeCacheBreakpoints({
+			system,
+			messages: activeSkills?.modelMessages(preparedMessages, list) ?? preparedMessages,
+			aiTools: tools.aiTools,
+			promptCaching: this.config.promptCaching,
+			modelId: this.modelId,
+			staticToolCacheName: tools.staticToolCacheName,
+		});
+		const openRouterCache = applyOpenRouterPromptCache({
+			system,
+			messages: cached.messages,
+			providerOptions,
+			promptCaching: this.config.promptCaching,
+			modelId: this.modelId,
+		});
+		return { ...cached, ...openRouterCache };
+	}
+
+	/** Legacy loading changes the tool prefix. Native search keeps this prefix fixed. */
+	private getStaticToolCacheName(aiTools: ReturnType<typeof toAiSdkTools>): string | undefined {
+		if (this.deferredToolManager?.hasTools) return undefined;
+		return Object.entries(aiTools)
+			.filter(([, tool]) => tool.type !== 'provider' && !isAnthropicToolDeferred(tool))
+			.at(-1)?.[0];
+	}
+
+	getCurrentTools(
+		persistence?: AgentPersistenceOptions,
+		executionCounter?: AgentExecutionCounter,
+		list?: AgentMessageList,
+	): BuiltTool[] {
+		const baseTools = this.config.tools ?? [];
+		const tools = [
+			...baseTools,
+			...(this.config.nativeToolDeferral ? (this.config.deferredTools ?? []) : []),
+			...(this.deferredToolManager?.hasTools
+				? [
+						...this.deferredToolManager.getControllerTools(),
+						...this.deferredToolManager.getLoadedTools(),
+					]
+				: []),
+		];
+
+		const recallTool = this.createRecallMemoryToolForRun(persistence, tools, executionCounter);
+		const toolsWithRecall = recallTool ? [...tools, recallTool] : tools;
+		const flagTool = this.createFlagMemoryToolForRun(persistence, toolsWithRecall, list);
+		return flagTool ? [...toolsWithRecall, flagTool] : toolsWithRecall;
+	}
+
+	hydrateDeferredToolsFromList(list: AgentMessageList): void {
+		if (!this.deferredToolManager?.hasTools) return;
+		this.deferredToolManager.hydrateLoadedToolsFromMessages(list.serialize().messages);
+	}
+
+	/**
+	 * When structured output is driven by a raw JSON Schema (e.g. one a user
+	 * typed into a workflow node), opt out of strict JSON Schema validation for
+	 * the providers that default to it (OpenAI, Groq). Their strict mode rejects
+	 * schemas whose objects don't list every property in `required` or that use
+	 * keywords it doesn't allow — common in hand-written schemas. With strict off
+	 * the provider still steers generation toward the schema, and the runtime
+	 * validates the model's output against it afterwards.
+	 *
+	 * Zod-defined output keeps strict mode (zod-to-json-schema already produces a
+	 * strict-compliant schema). Providers that hardcode strict (e.g. xAI) or use
+	 * a different namespace (e.g. Azure) are unaffected and remain strict.
+	 */
+	private relaxStrictJsonSchemaIfNeeded(
+		providerOptions: Record<string, Record<string, unknown>> | undefined,
+		isRawJsonSchemaOutput: boolean,
+	): Record<string, Record<string, unknown>> | undefined {
+		if (!isRawJsonSchemaOutput) return providerOptions;
+
+		const result: Record<string, Record<string, unknown>> = { ...providerOptions };
+		for (const [provider, quirks] of Object.entries(PROVIDER_QUIRKS)) {
+			if (!quirks.relaxStrictJsonSchemaForRawOutput) continue;
+			// Keep any caller-provided value (spread last so it wins).
+			result[provider] = { strictJsonSchema: false, ...result[provider] };
+		}
+		return result;
+	}
+
+	private createRecallMemoryToolForRun(
+		persistence: AgentPersistenceOptions | undefined,
+		existingTools: BuiltTool[],
+		executionCounter?: AgentExecutionCounter,
+	): BuiltTool | undefined {
+		const { memory, episodicMemory } = this.config;
+		if (
+			!memory ||
+			!episodicMemory ||
+			!isEpisodicMemoryEnabled(episodicMemory) ||
+			!hasEpisodicMemoryStore(memory)
+		) {
+			return undefined;
+		}
+		const scope = getEpisodicMemoryScope(persistence);
+		if (!scope) return undefined;
+		if (existingTools.some((tool) => tool.name === RECALL_MEMORY_TOOL_NAME)) {
+			throw new Error(
+				`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved while episodic memory is enabled.`,
+			);
+		}
+		return createRecallMemoryTool({
+			memory,
+			config: episodicMemory,
+			scope,
+			executionCounter,
+			agentName: this.config.name,
+		});
+	}
+
+	private createFlagMemoryToolForRun(
+		persistence: AgentPersistenceOptions | undefined,
+		existingTools: BuiltTool[],
+		list?: AgentMessageList,
+	): BuiltTool | undefined {
+		if (!persistence || !list) return undefined;
+		const capture = resolveEpisodicMemoryCapture(this.config, persistence);
+		if (!capture) return undefined;
+		if (existingTools.some((tool) => tool.name === FLAG_MEMORY_TOOL_NAME)) {
+			throw new Error(
+				`Tool name "${FLAG_MEMORY_TOOL_NAME}" is reserved while episodic memory is enabled.`,
+			);
+		}
+		return createFlagMemoryTool({
+			memory: capture.memory,
+			scope: capture.scope,
+			persistence,
+			list,
+		});
+	}
+
+	/**
+	 * Merge tool-attached `systemInstruction` fragments into the agent's
+	 * configured instructions, split by stability:
+	 *
+	 * - `instructions`: fragments from tools present for the life of the run
+	 *   (base tools, deferred-tool controllers, the recall tool) plus the
+	 *   user's instructions. Sent as the cached system message.
+	 * - `volatileInstructions`: fragments from deferred tools loaded mid-
+	 *   conversation via `load_tool`. Kept out of the cached message —
+	 *   growing it the moment a tool loads would invalidate the whole
+	 *   prefix (OpenAI's automatic cache, and the Anthropic breakpoint) for
+	 *   the rest of the conversation. Sent as the uncached system message
+	 *   instead (see `buildSystemMessages`).
+	 */
+	private composeEffectiveInstructions(tools: BuiltTool[]): {
+		instructions: string;
+		volatileInstructions: string | undefined;
+	} {
+		const { stableFragments, volatileFragments } = this.collectInstructionFragments(tools);
+		return {
+			instructions: prependBuiltInRules(stableFragments, this.config.instructions),
+			volatileInstructions: wrapBuiltInRules(volatileFragments),
+		};
+	}
+
+	private collectInstructionFragments(tools: BuiltTool[]) {
+		const loadedToolNames = new Set(
+			this.deferredToolManager?.getLoadedTools().map((t) => t.name) ?? [],
+		);
+		const stableFragments: string[] = [];
+		const volatileFragments: string[] = [];
+		for (const tool of tools) {
+			if (
+				typeof tool.systemInstruction !== 'string' ||
+				tool.systemInstruction.trim().length === 0
+			) {
+				continue;
+			}
+			const fragments = loadedToolNames.has(tool.name) ? volatileFragments : stableFragments;
+			fragments.push(tool.systemInstruction);
+		}
+
+		// Define the untrusted-data boundary ahead of the first wrapped result.
+		// Goes in the cached block unless the only untrusted tools were loaded
+		// mid-conversation, mirroring the fragment split above.
+		const untrustedTools = tools.filter((tool) => tool.outputTrust === 'untrusted');
+		if (untrustedTools.length > 0) {
+			const target = untrustedTools.some((tool) => !loadedToolNames.has(tool.name))
+				? stableFragments
+				: volatileFragments;
+			target.unshift(UNTRUSTED_OUTPUT_DOCTRINE);
+		}
+
+		return { stableFragments, volatileFragments };
+	}
+
+	/** Build the providerOptions object for provider-specific thinking config. */
+	private buildThinkingProviderOptions(): Record<string, Record<string, unknown>> | undefined {
+		if (!this.config.thinking) return undefined;
+
+		const { provider, model } = splitModelId(this.modelId);
+		const modelConfig = this.config.model;
+		const sdk =
+			typeof modelConfig === 'object' && 'sdk' in modelConfig && typeof modelConfig.sdk === 'string'
+				? modelConfig.sdk
+				: undefined;
+		const quirksProvider =
+			provider === 'google-vertex' ? getGoogleVertexQuirksProvider(model, sdk) : provider;
+		const quirks = getProviderQuirks(quirksProvider);
+		return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
+	}
+
+	/**
+	 * Merge thinking providerOptions, generated OpenAI cache options, and
+	 * caller-supplied providerOptions. Per-provider keys are merged shallowly
+	 * (later wins) so `.thinking()` + prompt caching + caller overrides coexist.
+	 */
+	private buildCallProviderOptions(
+		runProviderOptions?: ProviderOptions,
+	): Record<string, Record<string, unknown>> | undefined {
+		const thinkingOpts = this.buildThinkingProviderOptions() as ProviderOptions | undefined;
+		const cacheOpts = buildCallPromptCacheOptions(this.config.promptCaching, this.modelId, {
+			agentName: this.config.name,
+			instructions: this.config.instructions,
+		});
+		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions);
+	}
+}

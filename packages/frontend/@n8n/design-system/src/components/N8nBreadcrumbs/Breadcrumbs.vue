@@ -1,8 +1,11 @@
-<script lang="ts" setup generic="UserType extends IUser">
+<script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 
-import type { IUser, UserAction } from '../../types';
+import { useI18n } from '../../composables/useI18n';
 import N8nActionToggle from '../N8nActionToggle';
+import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
+import N8nIcon from '../N8nIcon';
+import type { IconOrEmoji } from '../N8nIconPicker/types';
 import N8nLink from '../N8nLink';
 import N8nLoading from '../N8nLoading';
 import N8nText from '../N8nText';
@@ -12,6 +15,8 @@ export type PathItem = {
 	id: string;
 	label: string;
 	href?: string;
+	/** Decorative icon or emoji shown next to the item label. */
+	icon?: IconOrEmoji;
 };
 
 type Props = {
@@ -50,6 +55,7 @@ const props = withDefaults(defineProps<Props>(), {
 	hiddenItemsTrigger: 'click',
 	dragActive: false,
 });
+const { t } = useI18n();
 
 const loadedHiddenItems = ref<PathItem[]>([]);
 const isLoadingHiddenItems = ref(false);
@@ -69,10 +75,11 @@ const dropdownDisabled = computed(() => {
 	return props.pathTruncated && !hasHiddenItems.value;
 });
 
-const hiddenItemActions = computed((): Array<UserAction<UserType>> => {
+const hiddenItemActions = computed((): Array<DropdownMenuItemProps<string>> => {
 	return loadedHiddenItems.value.map((item) => ({
-		value: item.id,
+		id: item.id,
 		label: item.label,
+		icon: item.icon,
 		disabled: false,
 	}));
 });
@@ -119,11 +126,22 @@ const onHiddenMenuVisibleChange = async (visible: boolean) => {
 	}
 };
 
-const emitItemSelected = (id: string) => {
+const emitItemSelected = (id: string, event?: MouseEvent) => {
 	const item = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === id);
 	if (!item) {
 		return;
 	}
+
+	// Allow default browser behavior for modifier keys (ctrl/cmd/shift + click) or middle mouse button
+	if (event && (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1)) {
+		return;
+	}
+
+	// Prevent default navigation and emit event for custom handling
+	if (event && item.href) {
+		event.preventDefault();
+	}
+
 	emit('itemSelected', item);
 };
 
@@ -135,8 +153,8 @@ const emitItemHover = (id: string) => {
 	emit('itemHover', item);
 };
 
-const onHiddenItemMouseUp = (item: UserAction<UserType>) => {
-	const pathItem = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === item.value);
+const onHiddenItemMouseUp = (item: DropdownMenuItemProps<string, unknown>) => {
+	const pathItem = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === item.id);
 	if (!pathItem || !props.dragActive) {
 		return;
 	}
@@ -191,13 +209,20 @@ const handleTooltipClose = () => {
 						theme="dark"
 						placement="bottom"
 						size="small"
-						icon-orientation="horizontal"
 						data-test-id="hidden-items-menu"
 						@visible-change="onHiddenMenuVisibleChange"
 						@action="emitItemSelected"
 						@item-mouseup="onHiddenItemMouseUp"
 					>
-						<N8nText :bold="true" :class="$style.dots">...</N8nText>
+						<N8nText
+							tag="button"
+							type="button"
+							:aria-label="t('breadcrumbs.showMoreItems')"
+							:bold="true"
+							:class="$style.dots"
+						>
+							...
+						</N8nText>
 					</N8nActionToggle>
 				</div>
 				<!-- Just a tooltip for smaller versions -->
@@ -234,19 +259,44 @@ const handleTooltipClose = () => {
 				<li
 					:class="{
 						[$style.item]: true,
-						[$style.current]: props.highlightLastItem && index === items.length - 1,
+						[$style.current]:
+							props.highlightLastItem && items.length > 1 && index === items.length - 1,
 						[$style.dragging]: props.dragActive,
 					}"
 					:title="item.label"
 					:data-resourceid="item.id"
 					data-test-id="breadcrumbs-item"
 					data-target="folder-breadcrumb-item"
-					@click.prevent="emitItemSelected(item.id)"
+					@click="(event: MouseEvent) => emitItemSelected(item.id, event)"
 					@mouseenter="emitItemHover(item.id)"
 					@mouseup="onItemMouseUp(item)"
 				>
-					<N8nLink v-if="item.href" :href="item.href" theme="text">{{ item.label }}</N8nLink>
-					<N8nText v-else>{{ item.label }}</N8nText>
+					<N8nLink v-if="item.href" :to="item.href" :underline="false" theme="text">
+						<span v-if="item.icon" :class="$style.itemContent">
+							<N8nIcon
+								v-if="item.icon.type === 'icon'"
+								:icon="item.icon.value"
+								:color="item.icon.color"
+								:class="$style.itemIcon"
+							/>
+							<span v-else :class="$style.itemIcon" aria-hidden="true">{{ item.icon.value }}</span>
+							<span :class="$style.itemLabel">{{ item.label }}</span>
+						</span>
+						<template v-else>{{ item.label }}</template>
+					</N8nLink>
+					<N8nText v-else>
+						<span v-if="item.icon" :class="$style.itemContent">
+							<N8nIcon
+								v-if="item.icon.type === 'icon'"
+								:icon="item.icon.value"
+								:color="item.icon.color"
+								:class="$style.itemIcon"
+							/>
+							<span v-else :class="$style.itemIcon" aria-hidden="true">{{ item.icon.value }}</span>
+							<span :class="$style.itemLabel">{{ item.label }}</span>
+						</span>
+						<template v-else>{{ item.label }}</template>
+					</N8nText>
 				</li>
 				<li v-if="index !== items.length - 1" :class="$style.separator">
 					{{ separator }}
@@ -280,6 +330,7 @@ const handleTooltipClose = () => {
 
 .item {
 	border: var(--border-width) var(--border-style) transparent;
+	color: var(--color--text--tint-1);
 }
 
 .item.dragging:hover {
@@ -297,6 +348,20 @@ const handleTooltipClose = () => {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.item .itemContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.item .itemIcon {
+	flex-shrink: 0;
+}
+
+.item .itemLabel {
+	min-width: 0;
 }
 
 .item.current span {
@@ -382,7 +447,12 @@ const handleTooltipClose = () => {
 }
 
 .dots {
+	appearance: none;
 	padding: 0 var(--spacing--4xs);
+	border: none;
+	background: none;
+	font: inherit;
+	cursor: pointer;
 	color: var(--color--text--tint-1);
 	border-radius: var(--radius);
 
@@ -430,7 +500,6 @@ const handleTooltipClose = () => {
 	.item * {
 		color: var(--color--text);
 		font-size: var(--font-size--sm);
-		line-height: var(--line-height--xs);
 	}
 
 	.item {

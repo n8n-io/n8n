@@ -79,7 +79,7 @@ function handleConfirm() {
 				{{ t('aiAssistant.versionCard.restoreModal.showVersion') }}
 				<N8nIcon icon="arrow-up-right" size="xlarge" />
 			</button>
-			<N8nButton type="primary" size="large" @click="handleConfirm">
+			<N8nButton variant="solid" size="large" @click="handleConfirm">
 				{{ t('aiAssistant.versionCard.restoreModal.restore') }}
 			</N8nButton>
 		</div>
@@ -109,7 +109,7 @@ function handleConfirm() {
 .title {
 	margin: 0;
 	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--shade-1);
 }
 
@@ -137,7 +137,7 @@ function handleConfirm() {
 	padding: 0;
 	color: var(--color--text--shade-1);
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	cursor: pointer;
 	padding: var(--spacing--3xs) var(--spacing--sm);
 

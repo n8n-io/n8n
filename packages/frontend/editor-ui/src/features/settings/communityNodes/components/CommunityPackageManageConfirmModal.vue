@@ -4,18 +4,19 @@ import {
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
 } from '../communityNodes.constants';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useCommunityNodesStore } from '../communityNodes.store';
+import { findVettedCommunityNodeAttributes, isNodesApiVersionError } from '../communityNodes.utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { computed, onMounted, ref } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { CommunityNodeType } from '@n8n/api-types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import semver from 'semver';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { WorkflowResource } from '@/Interface';
 
 import { N8nButton, N8nNotice, N8nText } from '@n8n/design-system';
@@ -34,7 +35,7 @@ const props = defineProps<Props>();
 const communityNodesStore = useCommunityNodesStore();
 const nodeTypesStore = useNodeTypesStore();
 const settingsStore = useSettingsStore();
-const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 
 const modalBus = createEventBus();
 
@@ -128,7 +129,10 @@ const onUninstall = async () => {
 		});
 		loading.value = true;
 		await communityNodesStore.uninstallPackage(props.activePackageName);
-		await useNodeTypesStore().getNodeTypes();
+		await Promise.all([
+			useNodeTypesStore().getNodeTypes(),
+			useNodeTypesStore().fetchCommunityNodePreviews(),
+		]);
 		toast.showMessage({
 			title: i18n.baseText('settings.communityNodes.messages.uninstall.success.title'),
 			type: 'success',
@@ -156,11 +160,7 @@ const onUpdate = async () => {
 		if (settingsStore.isUnverifiedPackagesEnabled) {
 			await communityNodesStore.updatePackage(props.activePackageName);
 		} else if (settingsStore.isCommunityNodesFeatureEnabled) {
-			await communityNodesStore.updatePackage(
-				props.activePackageName,
-				updateVersion.value,
-				nodeTypeStorePackage.value?.checksum,
-			);
+			await communityNodesStore.updatePackage(props.activePackageName, updateVersion.value);
 		} else {
 			throw new Error('Community nodes feature is not correctly enabled.');
 		}
@@ -177,24 +177,27 @@ const onUpdate = async () => {
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.communityNodes.messages.update.error.title'));
+		toast.showError(
+			error,
+			i18n.baseText(
+				isNodesApiVersionError(error)
+					? 'settings.communityNodes.messages.update.error.incompatible.title'
+					: 'settings.communityNodes.messages.update.error.title',
+			),
+		);
 	} finally {
 		loading.value = false;
 		modalBus.emit('close');
 	}
 };
 
-async function fetchPackageInfo(packageName: string) {
-	await nodeTypesStore.loadNodeTypesIfNotLoaded();
-	const nodeType = nodeTypesStore.visibleNodeTypes.find((nodeType) =>
-		nodeType.name.includes(packageName),
+async function fetchPackageInfo() {
+	const nodeTypes = communityStorePackage.value?.installedNodes.map((node) => node.type) ?? [];
+	const communityNodeAttributes = await findVettedCommunityNodeAttributes(
+		nodeTypes,
+		nodeTypesStore.getCommunityNodeAttributes,
 	);
-
-	if (nodeType) {
-		const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(nodeType?.name);
-
-		nodeTypeStorePackage.value = communityNodeAttributes ?? undefined;
-	}
+	nodeTypeStorePackage.value = communityNodeAttributes ?? undefined;
 }
 
 function setIsVerifiedLatestPackage() {
@@ -222,12 +225,12 @@ const onClick = async () => {
 
 onMounted(async () => {
 	if (props.activePackageName) {
-		await fetchPackageInfo(props.activePackageName);
+		await fetchPackageInfo();
 	}
 
 	if (communityStorePackage.value?.installedNodes.length) {
 		const nodeTypes = communityStorePackage.value.installedNodes.map((node) => node.type);
-		const response = await workflowsStore.fetchWorkflowsWithNodesIncluded(nodeTypes);
+		const response = await workflowsListStore.fetchWorkflowsWithNodesIncluded(nodeTypes);
 		workflowsWithPackageNodes.value = response?.data ?? [];
 	}
 
@@ -249,7 +252,7 @@ onMounted(async () => {
 		<template #content>
 			<N8nText color="text-dark" :bold="true">{{ getModalContent.message }}</N8nText>
 			<N8nNotice
-				v-if="!isLatestPackageVerified"
+				v-if="!isLatestPackageVerified && getModalContent.warning"
 				data-test-id="communityPackageManageConfirmModal-warning"
 				:content="getModalContent.warning"
 			/>
@@ -265,22 +268,22 @@ onMounted(async () => {
 			/>
 		</template>
 		<template #footer>
-			<N8nButton
-				:label="i18n.baseText('settings.communityNodes.confirmModal.cancel')"
-				size="large"
-				float="left"
-				type="secondary"
-				data-test-id="close-button"
-				@click="onClick"
-			/>
-			<N8nButton
-				:loading="loading"
-				:disabled="loading"
-				:label="loading ? getModalContent.buttonLoadingLabel : getModalContent.buttonLabel"
-				size="large"
-				float="right"
-				@click="onConfirmButtonClick"
-			/>
+			<div :class="$style.footerContainer">
+				<N8nButton
+					variant="outline"
+					:label="i18n.baseText('settings.communityNodes.confirmModal.cancel')"
+					size="large"
+					data-test-id="close-button"
+					@click="onClick"
+				/>
+				<N8nButton
+					:loading="loading"
+					:disabled="loading"
+					:label="loading ? getModalContent.buttonLoadingLabel : getModalContent.buttonLabel"
+					size="large"
+					@click="onConfirmButtonClick"
+				/>
+			</div>
 		</template>
 	</Modal>
 </template>
@@ -290,6 +293,12 @@ onMounted(async () => {
 	display: flex;
 	margin: var(--spacing--sm) 0;
 	flex-direction: column;
+}
+
+.footerContainer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 }
 
 .descriptionIcon {

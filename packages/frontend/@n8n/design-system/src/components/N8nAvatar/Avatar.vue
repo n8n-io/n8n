@@ -2,12 +2,13 @@
 import { computed } from 'vue';
 import Avatar from 'vue-boring-avatars';
 
+import { AVATAR_SIZES, type AvatarSize } from './avatarSizes';
 import { getInitials } from '../../utils/labelUtil';
 
 interface AvatarProps {
 	firstName?: string | null;
 	lastName?: string | null;
-	size?: 'xxsmall' | 'xsmall' | 'small' | 'medium' | 'large';
+	size?: AvatarSize;
 	colors?: string[];
 }
 
@@ -33,14 +34,7 @@ const getColors = (colors: string[]): string[] => {
 	return colors.map((color: string) => style.getPropertyValue(color));
 };
 
-const sizes: { [size: string]: number } = {
-	xxsmall: 16,
-	xsmall: 20,
-	small: 28,
-	large: 48,
-	medium: 40,
-};
-const getSize = (size: string): number => sizes[size];
+const getSize = (size: AvatarSize): number => AVATAR_SIZES[size];
 </script>
 
 <template>
@@ -81,7 +75,7 @@ const getSize = (size: string): number => sizes[size];
 .initials {
 	position: absolute;
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--avatar--color--text);
 	text-shadow: 0 1px 6px rgba(25, 11, 9, 0.3);
 	text-transform: uppercase;

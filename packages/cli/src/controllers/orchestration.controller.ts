@@ -1,3 +1,4 @@
+import type { AuthenticatedRequest } from '@n8n/db';
 import { Post, RestController, GlobalScope } from '@n8n/decorators';
 
 import { License } from '@/license';
@@ -16,9 +17,10 @@ export class OrchestrationController {
 	 */
 	@GlobalScope('orchestration:read')
 	@Post('/worker/status')
-	async getWorkersStatusAll() {
+	async getWorkersStatusAll(req: AuthenticatedRequest) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (!this.licenseService.isWorkerViewLicensed()) return;
 
-		return await this.workerStatusService.requestWorkerStatus();
+		return await this.workerStatusService.requestWorkerStatus(req.user.id);
 	}
 }

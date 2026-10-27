@@ -515,9 +515,29 @@ export const syslogModalDescription = [
 				name: 'UDP',
 				value: 'udp',
 			},
+			{
+				name: 'TLS',
+				value: 'tls',
+			},
 		],
 		default: 'udp',
 		description: 'The protocol to use for the connection',
+	},
+	{
+		displayName: 'TLS CA',
+		name: 'tlsCa',
+		type: 'string',
+		typeOptions: {
+			rows: 4,
+		},
+		displayOptions: {
+			show: {
+				protocol: ['tls'],
+			},
+		},
+		required: true,
+		default: '',
+		description: 'The CA certificate to use for TLS connections',
 	},
 	{
 		displayName: 'Facility',

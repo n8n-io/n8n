@@ -1,0 +1,378 @@
+# project
+
+## Description
+
+<details>
+<summary><strong>Table Definition</strong></summary>
+
+```sql
+CREATE TABLE "project" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(255) NOT NULL, "type" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "icon" text, "description" varchar(512), "creatorId" varchar, "customTelemetryTags" text NOT NULL DEFAULT ('[]'), CONSTRAINT "projects_creatorId_foreign" FOREIGN KEY ("creatorId") REFERENCES "user" ("id") ON DELETE SET NULL ON UPDATE NO ACTION)
+```
+
+</details>
+
+## Columns
+
+| Name | Type | Default | Nullable | Children | Parents | Comment |
+| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| creatorId | varchar |  | true |  | [user](user.md) |  |
+| customTelemetryTags | TEXT | '[]' | false |  |  |  |
+| description | varchar(512) |  | true |  |  |  |
+| icon | TEXT |  | true |  |  |  |
+| id | varchar(36) |  | false | [activity_event](activity_event.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_execution_threads](agent_execution_threads.md) [agents](agents.md) [ai_preference](ai_preference.md) [app](app.md) [data_table](data_table.md) [folder](folder.md) [insights_metadata](insights_metadata.md) [instance_ai_threads](instance_ai_threads.md) [project_pool_settings](project_pool_settings.md) [project_relation](project_relation.md) [project_secrets_provider_access](project_secrets_provider_access.md) [promotion_environment_project](promotion_environment_project.md) [role_mapping_rule_project](role_mapping_rule_project.md) [self_healing_configuration](self_healing_configuration.md) [self_healing_configuration_workflow](self_healing_configuration_workflow.md) [self_healing_investigation](self_healing_investigation.md) [self_healing_result](self_healing_result.md) [shared_credentials](shared_credentials.md) [shared_workflow](shared_workflow.md) [skill](skill.md) [type_availability_policy_scope](type_availability_policy_scope.md) [variables](variables.md) [workflow_review_request](workflow_review_request.md) [workflow_suggestion](workflow_suggestion.md) |  |  |
+| name | varchar(255) |  | false |  |  |  |
+| type | varchar(36) |  | false |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+
+## Constraints
+
+| Name | Type | Definition |
+| ---- | ---- | ---------- |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (creatorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
+| sqlite_autoindex_project_1 | PRIMARY KEY | PRIMARY KEY (id) |
+
+## Indexes
+
+| Name | Definition |
+| ---- | ---------- |
+| sqlite_autoindex_project_1 | PRIMARY KEY (id) |
+
+## Relations
+
+```mermaid
+erDiagram
+
+"project" }o--o| "user" : "FOREIGN KEY (creatorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"activity_event" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_chat_attachments" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_execution_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"data_table" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"folder" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"insights_metadata" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"project_pool_settings" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"project_relation" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"project_secrets_provider_access" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"promotion_environment_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"role_mapping_rule_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_configuration" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_configuration_workflow" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_investigation" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_result" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"shared_credentials" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"shared_workflow" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"skill" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"type_availability_policy_scope" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"variables" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_suggestion" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+
+"project" {
+  datetime_3_ createdAt
+  varchar creatorId FK
+  TEXT customTelemetryTags
+  varchar_512_ description
+  TEXT icon
+  varchar_36_ id PK
+  varchar_255_ name
+  varchar_36_ type
+  datetime_3_ updatedAt
+}
+"user" {
+  datetime_3_ createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  varchar id PK
+  VARCHAR_16_ kind
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
+  varchar password
+  TEXT personalizationAnswers
+  varchar_128_ roleSlug FK
+  TEXT settings
+  datetime_3_ updatedAt
+}
+"activity_event" {
+  varchar_64_ action
+  varchar_32_ category
+  datetime_3_ createdAt
+  TEXT data
+  INTEGER id
+  varchar_36_ projectId FK
+  varchar_36_ resourceId
+  TEXT resourceName
+  varchar_32_ resourceType
+  INTEGER typeVersion
+  varchar userId FK
+}
+"agent_chat_attachments" {
+  varchar_36_ agentId FK
+  TEXT binaryDataId
+  datetime_3_ createdAt
+  varchar_255_ fileName
+  INTEGER fileSizeBytes
+  varchar_16_ id PK
+  varchar_255_ mimeType
+  varchar_36_ projectId FK
+  varchar_255_ resourceId
+  varchar_32_ source
+  varchar_128_ threadId
+  datetime_3_ updatedAt
+}
+"agent_execution_threads" {
+  varchar_16_ accessScope
+  varchar_36_ agentId FK
+  varchar_255_ agentName
+  datetime_3_ createdAt
+  varchar_8_ emoji
+  varchar_128_ id PK
+  varchar ownerId FK
+  varchar_36_ parentAgentId
+  varchar_128_ parentThreadId
+  varchar_255_ projectId FK
+  INTEGER sessionNumber
+  varchar_32_ taskId
+  TEXT taskStop
+  varchar_36_ taskVersionId FK
+  varchar_255_ title
+  INTEGER totalCompletionTokens
+  REAL totalCost
+  INTEGER totalDuration
+  INTEGER totalPromptTokens
+  datetime_3_ updatedAt
+}
+"agents" {
+  varchar_36_ activeVersionId FK
+  boolean availableInMCP
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  TEXT integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  INTEGER revision
+  TEXT schema
+  varchar_16_ scope
+  datetime_3_ setupCompletedAt
+  TEXT skills
+  TEXT tools
+  datetime_3_ updatedAt
+  varchar_36_ versionId
+}
+"ai_preference" {
+  TEXT content
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar id PK
+  varchar_36_ projectId FK
+  varchar_16_ source
+  datetime_3_ updatedAt
+  varchar userId FK
+}
+"app" {
+  datetime_3_ createdAt
+  varchar draftVersionId FK
+  varchar id PK
+  varchar_128_ name
+  varchar_128_ namespace
+  varchar_36_ projectId FK
+  varchar publishedVersionId FK
+  datetime_3_ updatedAt
+  varchar_16_ visibility
+}
+"data_table" {
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_128_ name
+  varchar_36_ projectId FK
+  datetime_3_ updatedAt
+}
+"folder" {
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_128_ name
+  varchar_36_ parentFolderId FK
+  varchar_36_ projectId FK
+  datetime_3_ updatedAt
+}
+"insights_metadata" {
+  INTEGER metaId
+  varchar_36_ projectId FK
+  varchar_255_ projectName
+  varchar_16_ workflowId FK
+  varchar_128_ workflowName
+}
+"instance_ai_threads" {
+  datetime_3_ createdAt
+  varchar id PK
+  TEXT metadata
+  varchar_36_ projectId FK
+  varchar_255_ resourceId
+  TEXT title
+  datetime_3_ updatedAt
+}
+"project_pool_settings" {
+  datetime_3_ createdAt
+  varchar_63_ defaultPool
+  varchar_36_ projectId PK
+  datetime_3_ updatedAt
+}
+"project_relation" {
+  datetime_3_ createdAt
+  varchar_36_ projectId PK
+  varchar role FK
+  datetime_3_ updatedAt
+  varchar userId PK
+}
+"project_secrets_provider_access" {
+  datetime_3_ createdAt
+  varchar_36_ projectId PK
+  varchar_128_ role
+  INTEGER secretsProviderConnectionId PK
+  datetime_3_ updatedAt
+}
+"promotion_environment_project" {
+  datetime_3_ createdAt
+  varchar_16_ direction PK
+  varchar environmentId FK
+  varchar_36_ projectId PK
+  datetime_3_ updatedAt
+}
+"role_mapping_rule_project" {
+  varchar_36_ projectId PK
+  varchar_16_ roleMappingRuleId PK
+}
+"self_healing_configuration" {
+  datetime_3_ createdAt
+  boolean enabled
+  varchar enabledById FK
+  INTEGER id
+  varchar_36_ projectId FK
+  varchar_16_ scope
+  datetime_3_ updatedAt
+}
+"self_healing_configuration_workflow" {
+  INTEGER configurationId PK
+  varchar_36_ projectId FK
+  varchar_36_ workflowId PK
+}
+"self_healing_investigation" {
+  varchar backgroundUserId FK
+  INTEGER configurationId FK
+  datetime_3_ createdAt
+  varchar_36_ executionId
+  datetime_3_ finishedAt
+  varchar_36_ id PK
+  varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
+  varchar_36_ resultId FK
+  varchar runId
+  varchar threadId
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
+}
+"self_healing_result" {
+  varchar backgroundUserId FK
+  datetime_3_ completedAt
+  INTEGER configurationId FK
+  datetime_3_ createdAt
+  datetime_3_ dismissedAt
+  varchar dismissedById FK
+  varchar_36_ executionId
+  varchar_36_ id PK
+  varchar_16_ outcome
+  varchar_36_ projectId FK
+  TEXT report
+  varchar_36_ suggestionId FK
+  TEXT summary
+  datetime_3_ updatedAt
+  TEXT usage
+  varchar_36_ workflowId FK
+}
+"shared_credentials" {
+  datetime_3_ createdAt
+  varchar_36_ credentialsId PK
+  varchar_36_ projectId PK
+  TEXT role
+  datetime_3_ updatedAt
+}
+"shared_workflow" {
+  datetime_3_ createdAt
+  varchar_36_ projectId PK
+  TEXT role
+  datetime_3_ updatedAt
+  varchar_36_ workflowId PK
+}
+"skill" {
+  varchar_36_ agentId FK
+  boolean availableToAssistant
+  boolean availableToMCP
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_36_ id PK
+  varchar_36_ projectId FK
+  varchar_16_ source
+  datetime_3_ updatedAt
+}
+"type_availability_policy_scope" {
+  datetime_3_ createdAt
+  varchar_16_ defaultAction
+  varchar_36_ id PK
+  varchar_64_ kind
+  varchar_36_ projectId FK
+  datetime_3_ updatedAt
+  varchar_36_ updatedBy
+  INTEGER version
+}
+"variables" {
+  varchar_36_ id PK
+  TEXT key
+  varchar_36_ projectId FK
+  TEXT type
+  TEXT value
+}
+"workflow_review_request" {
+  datetime_3_ approvedAt
+  varchar closedById FK
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_50_ decision
+  TEXT description
+  varchar_36_ id PK
+  varchar_36_ projectId FK
+  varchar_16_ state
+  varchar_255_ title
+  datetime_3_ updatedAt
+  varchar updatedById FK
+}
+"workflow_suggestion" {
+  varchar_32_ appliedAction
+  varchar appliedActorId
+  varchar_64_ appliedChecksum
+  varchar_36_ appliedVersionId
+  varchar backgroundUserId FK
+  datetime_3_ closedAt
+  varchar_16_ closedReason
+  datetime_3_ createdAt
+  TEXT expectedBaseline
+  varchar_36_ id PK
+  TEXT payload
+  varchar_36_ projectId FK
+  varchar_16_ resultKind
+  varchar_16_ state
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
+}
+```
+
+---
+
+> Generated by [tbls](https://github.com/k1LoW/tbls)

@@ -1,0 +1,377 @@
+import type { SerializedDataTable, SerializedDataTableColumn } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
+import { Service } from '@n8n/di';
+import { UserError } from 'n8n-workflow';
+
+import { ForbiddenError } from '@n8n/errors';
+import type { DataTable } from '@/modules/data-table/data-table.entity';
+import { DataTableService } from '@/modules/data-table/data-table.service';
+import { orderColumnRenames, pairDataTableColumns } from '@/modules/data-table/utils/pair-columns';
+import { userHasScopes } from '@/permissions.ee/check-access';
+
+import { diffDataTableSchema } from './data-table-compat';
+import { matchTargetTable } from './data-table-matching-mode';
+import { decideAbsentTable } from './data-table-missing-mode';
+import type { TableEffect } from './data-table-missing-mode';
+import { findSchemaConflict } from './data-table-schema-conflict-policy';
+import { createFailure } from './data-table.types';
+import type {
+	DataTableImportPlan,
+	DataTableImportRequest,
+	DataTableResolutionFailure,
+	DataTableSchemaOperation,
+	DataTableUpdate,
+} from './data-table.types';
+import { DataTableMatchingMode, DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
+import type { DataTableMissingMode, ImportContext } from '../../n8n-packages.types';
+import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
+
+interface PlannedCreation {
+	table: SerializedDataTable;
+	requirement: PackageDataTableRequirement;
+}
+
+interface PlannedUpdate extends DataTableUpdate {
+	requirement: PackageDataTableRequirement;
+}
+
+type PlannedAlignment = PlannedCreation;
+
+type RequirementEffect =
+	| TableEffect
+	| { action: 'update'; operations: DataTableSchemaOperation[] }
+	// Same visible schema; only column ids or stored positions differ. Users never see these, so the import adopts the package values silently.
+	| { action: 'align-columns' };
+
+@Service()
+export class DataTableImporter {
+	constructor(
+		private readonly dataTableService: DataTableService,
+		private readonly moduleRegistry: ModuleRegistry,
+	) {}
+
+	/**
+	 * Resolves the package's data table references against the target project.
+	 * Read-only: matched tables are compat-checked, then planned as updates under
+	 * `overwrite` or `overwrite-non-destructive` or used as-is otherwise; absent
+	 * tables become planned creations, failures, or skips per missing mode.
+	 * Mirrors the credential side's `plan`.
+	 */
+	async plan(
+		context: ImportContext,
+		request: DataTableImportRequest,
+	): Promise<DataTableImportPlan> {
+		const requirements = request.requirements ?? [];
+		if (requirements.length === 0) {
+			return { creations: [], updates: [], columnAlignments: [], failures: [], matchedCount: 0 };
+		}
+
+		if (!this.moduleRegistry.isActive('data-table')) {
+			return {
+				creations: [],
+				updates: [],
+				columnAlignments: [],
+				failures: [{ kind: 'module-disabled' }],
+				matchedCount: 0,
+			};
+		}
+
+		const packageTablesById = new Map(
+			request.packageDataTables.map((table) => [table.id, normalizeColumnIndexes(table)]),
+		);
+		const targets = await this.dataTableService.findDataTablesByIds(
+			requirements.map(({ id }) => id),
+		);
+		const targetsById = new Map(targets.map((table) => [table.id, table]));
+		const candidates = { projectId: context.projectId, targetsById };
+
+		const creations: PlannedCreation[] = [];
+		const updates: PlannedUpdate[] = [];
+		const columnAlignments: PlannedAlignment[] = [];
+		const failures: DataTableResolutionFailure[] = [];
+		let matchedCount = 0;
+
+		for (const requirement of requirements) {
+			const packageTable = packageTablesById.get(requirement.id);
+			if (!packageTable) {
+				throw new UserError(
+					`Package is missing the data table schema for "${requirement.name}" (${requirement.id}).`,
+				);
+			}
+
+			const matchedTargetTable = matchTargetTable(request.matchingMode, requirement, candidates);
+
+			const effect = resolveRequirement(
+				requirement,
+				packageTable,
+				matchedTargetTable,
+				targetsById.get(requirement.id),
+				request.missingMode,
+				request.schemaConflictPolicy,
+			);
+			if (effect.action === 'create') creations.push({ table: packageTable, requirement });
+			else if (effect.action === 'update') {
+				updates.push({ table: packageTable, operations: effect.operations, requirement });
+			} else if (effect.action === 'align-columns') {
+				columnAlignments.push({ table: packageTable, requirement });
+				matchedCount++;
+			} else if (effect.action === 'fail') failures.push(effect.failure);
+			else if (matchedTargetTable) matchedCount++;
+		}
+
+		failures.push(...(await this.writeFailures(context, creations, updates, columnAlignments)));
+
+		await this.assertColumnIdsAvailable(
+			[...creations, ...updates, ...columnAlignments].map(({ table }) => table),
+		);
+
+		return {
+			creations: creations.map(({ table }) => table),
+			updates: updates.map(({ table, operations }) => ({ table, operations })),
+			columnAlignments: columnAlignments.map(({ table }) => table),
+			failures,
+			matchedCount,
+		};
+	}
+
+	/**
+	 * Matched tables that `overwrite-non-destructive` blocks, with every change
+	 * `overwrite` would make. A table has one project, so each id yields at most
+	 * one result.
+	 */
+	async findDestructiveChanges<T extends { id: string; projectId: string }>(
+		references: T[],
+		packageDataTables: SerializedDataTable[],
+	): Promise<Array<DataTableUpdate & { reference: T }>> {
+		if (!this.moduleRegistry.isActive('data-table')) return [];
+
+		const packageTablesById = new Map(
+			packageDataTables.map((table) => [table.id, normalizeColumnIndexes(table)]),
+		);
+		const targets = await this.dataTableService.findDataTablesByIds(references.map(({ id }) => id));
+		const targetsById = new Map(targets.map((table) => [table.id, table]));
+
+		return references.flatMap((reference) => {
+			const packageTable = packageTablesById.get(reference.id);
+			const target = matchTargetTable(DataTableMatchingMode.ById, reference, {
+				projectId: reference.projectId,
+				targetsById,
+			});
+			if (!packageTable || !target) return [];
+			const operations = diffDataTableSchema(packageTable, target);
+			if (!operations.some(({ destructive }) => destructive)) return [];
+			return [{ table: packageTable, operations, reference }];
+		});
+	}
+
+	/**
+	 * Creates the planned tables with their package (source) ids, and changes
+	 * the planned updates to the package schema. Ids are preserved, so node
+	 * references already resolve.
+	 */
+	async apply(context: ImportContext, plan: DataTableImportPlan): Promise<void> {
+		// Defense in depth: the plan phase already reports a missing scope as a
+		// blocking issue, but apply re-checks before writing anything.
+		if (plan.creations.length > 0 && !(await hasProjectScope(context, 'dataTable:create'))) {
+			throw new ForbiddenError('User is missing a scope required to create a data table');
+		}
+		if (
+			plan.updates.length + plan.columnAlignments.length > 0 &&
+			!(await hasProjectScope(context, 'dataTable:update'))
+		) {
+			throw new ForbiddenError('User is missing a scope required to update a data table');
+		}
+
+		for (const table of plan.creations) {
+			await this.dataTableService.createDataTable(
+				context.projectId,
+				{ name: table.name, columns: table.columns },
+				table.id,
+				table.columns.map(({ id }) => id),
+			);
+		}
+
+		for (const table of [...plan.updates.map(({ table }) => table), ...plan.columnAlignments]) {
+			await this.dataTableService.replaceSchema(table.id, context.projectId, {
+				name: table.name,
+				columns: table.columns,
+			});
+		}
+	}
+
+	/** Column ids are globally unique, so a package column id must not belong to another table. */
+	private async assertColumnIdsAvailable(tables: SerializedDataTable[]): Promise<void> {
+		const packageColumnsById = new Map<
+			string,
+			{ table: SerializedDataTable; column: SerializedDataTableColumn }
+		>();
+		for (const table of tables) {
+			for (const column of table.columns) {
+				if (column.id) packageColumnsById.set(column.id, { table, column });
+			}
+		}
+		if (packageColumnsById.size === 0) return;
+
+		const existing = await this.dataTableService.findTableIdsByColumnIds([
+			...packageColumnsById.keys(),
+		]);
+		for (const { id, dataTableId } of existing) {
+			const packageColumn = packageColumnsById.get(id);
+			if (packageColumn && packageColumn.table.id !== dataTableId) {
+				throw new UserError(
+					`Data table "${packageColumn.table.name}": column "${packageColumn.column.name}" has id "${id}", but a column in another data table already uses this id.`,
+				);
+			}
+		}
+	}
+
+	/** Guards that only apply to tables about to be written: permission, and name uniqueness inside the target project. */
+	private async writeFailures(
+		context: ImportContext,
+		creations: PlannedCreation[],
+		updates: PlannedUpdate[],
+		alignments: PlannedAlignment[],
+	): Promise<DataTableResolutionFailure[]> {
+		const failures: DataTableResolutionFailure[] = [];
+
+		if (creations.length > 0 && !(await hasProjectScope(context, 'dataTable:create'))) {
+			failures.push({
+				kind: 'permission-denied',
+				missingScope: 'dataTable:create',
+			});
+		}
+
+		const changedTables = [...updates, ...alignments];
+		if (changedTables.length > 0 && !(await hasProjectScope(context, 'dataTable:update'))) {
+			failures.push({
+				kind: 'permission-denied',
+				missingScope: 'dataTable:update',
+			});
+		}
+
+		const nameClaims: Array<PlannedCreation & { currentName?: string }> = [
+			...creations,
+			...updates.flatMap(({ table, requirement, operations }) => {
+				const rename = operations.find((operation) => operation.kind === 'rename-table');
+				return rename ? [{ table, requirement, currentName: rename.from }] : [];
+			}),
+		];
+		if (nameClaims.length === 0) return failures;
+
+		const existingByName = new Map(
+			(
+				await this.dataTableService.findDataTablesByNamesInProject(
+					context.projectId,
+					nameClaims.map(({ table }) => table.name),
+				)
+			).map((table) => [table.name, table]),
+		);
+
+		for (const claim of nameClaims) {
+			// A same-named target table here is never the match candidate (matching is
+			// by id), and two package tables of one name cannot both land in one project.
+			const conflictingTableId =
+				existingByName.get(claim.table.name)?.id ??
+				nameClaims.find((other) => other !== claim && other.table.name === claim.table.name)?.table
+					.id;
+			if (conflictingTableId) {
+				failures.push(
+					createFailure(claim.requirement, 'name-conflict', {
+						name: claim.table.name,
+						conflictingTableId,
+						currentName: claim.currentName,
+					}),
+				);
+			}
+		}
+
+		return failures;
+	}
+}
+
+/**
+ * Decides the fate of one package table reference, independent of how the
+ * target was matched: matched tables are compat-checked, then diffed against
+ * the package under `overwrite` or `overwrite-non-destructive` or used as-is
+ * otherwise; absent tables follow the missing mode, with globally unique ids
+ * guarding planned creations.
+ * `existingWithSameId` is the instance-wide (any project) occupant of the
+ * requirement's id, only consulted for creations.
+ */
+function resolveRequirement(
+	requirement: PackageDataTableRequirement,
+	packageTable: SerializedDataTable,
+	matchedTargetTable: DataTable | undefined,
+	existingTableWithSameId: DataTable | undefined,
+	missingMode: DataTableMissingMode,
+	schemaConflictPolicy: DataTableSchemaConflictPolicy,
+): RequirementEffect {
+	if (matchedTargetTable) {
+		const incompatibility = findSchemaConflict(
+			schemaConflictPolicy,
+			packageTable.columns,
+			matchedTargetTable.columns,
+		);
+		if (incompatibility) {
+			return {
+				action: 'fail',
+				failure: createFailure(requirement, 'schema-incompatible', {
+					...incompatibility,
+					overwriteChanges: diffDataTableSchema(packageTable, matchedTargetTable),
+				}),
+			};
+		}
+		if (
+			schemaConflictPolicy === DataTableSchemaConflictPolicy.Overwrite ||
+			schemaConflictPolicy === DataTableSchemaConflictPolicy.OverwriteNonDestructive
+		) {
+			const { pairs } = pairDataTableColumns(packageTable.columns, matchedTargetTable.columns);
+			const operations = diffDataTableSchema(packageTable, matchedTargetTable);
+			if (operations.length > 0) {
+				const [blocked] = orderColumnRenames(pairs).blocked;
+				if (blocked) {
+					throw new UserError(
+						`Data table "${packageTable.name}": cannot rename column "${blocked.target.name}" to "${blocked.source.name}". Another column has this name. Column name swaps and cycles are not supported.`,
+					);
+				}
+				return { action: 'update', operations };
+			}
+			const isAligned = pairs.every(
+				({ source, target }) =>
+					(source.id === undefined || source.id === target.id) && source.index === target.index,
+			);
+			if (!isAligned) return { action: 'align-columns' };
+		}
+		// Matched: used as-is. Ids are preserved on import, so the workflow
+		// node references already point at the matched table.
+		return { action: 'skip' };
+	}
+
+	const effect = decideAbsentTable(missingMode, requirement);
+	if (effect.action !== 'create') return effect;
+
+	// Ids are globally unique, so a same-id table in another project blocks creation.
+	if (existingTableWithSameId) {
+		return {
+			action: 'fail',
+			failure: createFailure(requirement, 'id-conflict', {
+				existingProjectId: existingTableWithSameId.projectId,
+			}),
+		};
+	}
+	return effect;
+}
+
+function normalizeColumnIndexes(table: SerializedDataTable): SerializedDataTable {
+	const columns = [...table.columns]
+		.sort((a, b) => a.index - b.index || (a.name < b.name ? -1 : 1))
+		.map((column, index) => ({ ...column, index }));
+	return { ...table, columns };
+}
+
+async function hasProjectScope(
+	context: ImportContext,
+	scope: 'dataTable:create' | 'dataTable:update',
+): Promise<boolean> {
+	return await userHasScopes(context.user, [scope], false, { projectId: context.projectId });
+}

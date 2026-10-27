@@ -49,9 +49,9 @@ describe('Owner shell', () => {
 				response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe(validPayload.email.toLowerCase());
-			expect(firstName).toBe(validPayload.firstName);
-			expect(lastName).toBe(validPayload.lastName);
+			expect(email).toBeNull();
+			if (validPayload.firstName !== undefined) expect(firstName).toBe(validPayload.firstName);
+			if (validPayload.lastName !== undefined) expect(lastName).toBe(validPayload.lastName);
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
@@ -59,15 +59,13 @@ describe('Owner shell', () => {
 
 			const storedOwnerShell = await Container.get(UserRepository).findOneByOrFail({ id });
 
-			expect(storedOwnerShell.email).toBe(validPayload.email.toLowerCase());
-			expect(storedOwnerShell.firstName).toBe(validPayload.firstName);
-			expect(storedOwnerShell.lastName).toBe(validPayload.lastName);
-
-			const storedPersonalProject = await Container.get(
-				ProjectRepository,
-			).getPersonalProjectForUserOrFail(storedOwnerShell.id);
-
-			expect(storedPersonalProject.name).toBe(storedOwnerShell.createPersonalProjectName());
+			expect(storedOwnerShell.email).toBeNull();
+			if (validPayload.firstName !== undefined) {
+				expect(storedOwnerShell.firstName).toBe(validPayload.firstName);
+			}
+			if (validPayload.lastName !== undefined) {
+				expect(storedOwnerShell.lastName).toBe(validPayload.lastName);
+			}
 		}
 	});
 
@@ -147,16 +145,16 @@ describe('Member', () => {
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		for (const validPayload of getValidPatchMePayloads('member')) {
+		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 			const response = await authMemberAgent.patch('/me').send(validPayload).expect(200);
 
 			const { id, email, firstName, lastName, personalizationAnswers, role, password, isPending } =
 				response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe(validPayload.email.toLowerCase());
-			expect(firstName).toBe(validPayload.firstName);
-			expect(lastName).toBe(validPayload.lastName);
+			expect(email).toBe(member.email);
+			if (validPayload.firstName !== undefined) expect(firstName).toBe(validPayload.firstName);
+			if (validPayload.lastName !== undefined) expect(lastName).toBe(validPayload.lastName);
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
@@ -164,19 +162,30 @@ describe('Member', () => {
 
 			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id });
 
-			expect(storedMember.email).toBe(validPayload.email.toLowerCase());
-			expect(storedMember.firstName).toBe(validPayload.firstName);
-			expect(storedMember.lastName).toBe(validPayload.lastName);
-
-			const storedPersonalProject =
-				await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(id);
-
-			expect(storedPersonalProject.name).toBe(storedMember.createPersonalProjectName());
+			expect(storedMember.email).toBe(member.email);
+			if (validPayload.firstName !== undefined) {
+				expect(storedMember.firstName).toBe(validPayload.firstName);
+			}
+			if (validPayload.lastName !== undefined) {
+				expect(storedMember.lastName).toBe(validPayload.lastName);
+			}
 		}
 	});
 
+	test('PATCH /me should not change the email when an email field is sent', async () => {
+		const response = await authMemberAgent
+			.patch('/me')
+			.send({ email: randomEmail(), firstName: randomName(), lastName: randomName() });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.email).toBe(member.email);
+
+		const storedMember = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
+		expect(storedMember.email).toBe(member.email);
+	});
+
 	test('PATCH /me should fail with invalid inputs', async () => {
-		for (const invalidPayload of getInvalidPatchMePayloads('member')) {
+		for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
 			const response = await authMemberAgent.patch('/me').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
@@ -191,39 +200,6 @@ describe('Member', () => {
 
 			expect(storedPersonalProject.name).toBe(storedMember.createPersonalProjectName());
 		}
-	});
-
-	test('PATCH /me should fail when changing email without currentPassword', async () => {
-		const payloadWithoutPassword = {
-			email: randomEmail(),
-			firstName: randomName(),
-			lastName: randomName(),
-		};
-
-		const response = await authMemberAgent.patch('/me').send(payloadWithoutPassword);
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain('Current password is required to change email');
-
-		const storedMember = await Container.get(UserRepository).findOneByOrFail({});
-		expect(storedMember.email).toBe(member.email);
-	});
-
-	test('PATCH /me should fail when changing email with wrong currentPassword', async () => {
-		const payloadWithWrongPassword = {
-			email: randomEmail(),
-			firstName: randomName(),
-			lastName: randomName(),
-			currentPassword: 'WrongPassword123',
-		};
-
-		const response = await authMemberAgent.patch('/me').send(payloadWithWrongPassword);
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain(
-			'Unable to update profile. Please check your credentials and try again.',
-		);
-
-		const storedMember = await Container.get(UserRepository).findOneByOrFail({});
-		expect(storedMember.email).toBe(member.email);
 	});
 
 	test('PATCH /me/password should succeed with valid inputs', async () => {
@@ -273,6 +249,61 @@ describe('Member', () => {
 			expect(storedAnswers).toEqual(validPayload);
 		}
 	});
+
+	describe('PATCH /me/settings', () => {
+		test('should succeed with valid inputs', async () => {
+			const validPayload = {
+				easyAIWorkflowOnboarded: true,
+				dismissedCallouts: { 'test-callout': true },
+			};
+
+			const response = await authMemberAgent.patch('/me/settings').send(validPayload);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.easyAIWorkflowOnboarded).toBe(true);
+			expect(response.body.data.dismissedCallouts).toEqual({ 'test-callout': true });
+
+			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
+			expect(storedMember.settings?.easyAIWorkflowOnboarded).toBe(true);
+			expect(storedMember.settings?.dismissedCallouts).toEqual({ 'test-callout': true });
+		});
+
+		test('should strip allowSSOManualLogin from payload (security)', async () => {
+			const maliciousPayload = {
+				easyAIWorkflowOnboarded: true,
+				allowSSOManualLogin: true, // This should be stripped - admin only field
+			};
+
+			const response = await authMemberAgent.patch('/me/settings').send(maliciousPayload);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.easyAIWorkflowOnboarded).toBe(true);
+			// allowSSOManualLogin should NOT be set
+			expect(response.body.data.allowSSOManualLogin).toBeUndefined();
+
+			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
+			expect(storedMember.settings?.easyAIWorkflowOnboarded).toBe(true);
+			expect(storedMember.settings?.allowSSOManualLogin).toBeUndefined();
+		});
+
+		test('should strip userActivated from payload (backend-only field)', async () => {
+			const payload = {
+				easyAIWorkflowOnboarded: true,
+				userActivated: true, // This should be stripped - backend only field
+			};
+
+			const response = await authMemberAgent.patch('/me/settings').send(payload);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.easyAIWorkflowOnboarded).toBe(true);
+			// userActivated should NOT be set via this endpoint
+			expect(response.body.data.userActivated).toBeUndefined();
+
+			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
+			expect(storedMember.settings?.easyAIWorkflowOnboarded).toBe(true);
+			expect(storedMember.settings?.userActivated).toBeUndefined();
+		});
+	});
 });
 
 describe('Chat User', () => {
@@ -288,16 +319,16 @@ describe('Chat User', () => {
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		for (const validPayload of getValidPatchMePayloads('chatUser')) {
+		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 			const response = await authMemberAgent.patch('/me').send(validPayload).expect(200);
 
 			const { id, email, firstName, lastName, personalizationAnswers, role, password, isPending } =
 				response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe(validPayload.email.toLowerCase());
-			expect(firstName).toBe(validPayload.firstName);
-			expect(lastName).toBe(validPayload.lastName);
+			expect(email).toBe(member.email);
+			if (validPayload.firstName !== undefined) expect(firstName).toBe(validPayload.firstName);
+			if (validPayload.lastName !== undefined) expect(lastName).toBe(validPayload.lastName);
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
@@ -305,19 +336,18 @@ describe('Chat User', () => {
 
 			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id });
 
-			expect(storedMember.email).toBe(validPayload.email.toLowerCase());
-			expect(storedMember.firstName).toBe(validPayload.firstName);
-			expect(storedMember.lastName).toBe(validPayload.lastName);
-
-			const storedPersonalProject =
-				await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(id);
-
-			expect(storedPersonalProject.name).toBe(storedMember.createPersonalProjectName());
+			expect(storedMember.email).toBe(member.email);
+			if (validPayload.firstName !== undefined) {
+				expect(storedMember.firstName).toBe(validPayload.firstName);
+			}
+			if (validPayload.lastName !== undefined) {
+				expect(storedMember.lastName).toBe(validPayload.lastName);
+			}
 		}
 	});
 
 	test('PATCH /me should fail with invalid inputs', async () => {
-		for (const invalidPayload of getInvalidPatchMePayloads('chatUser')) {
+		for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
 			const response = await authMemberAgent.patch('/me').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
@@ -332,39 +362,6 @@ describe('Chat User', () => {
 
 			expect(storedPersonalProject.name).toBe(storedMember.createPersonalProjectName());
 		}
-	});
-
-	test('PATCH /me should fail when changing email without currentPassword', async () => {
-		const payloadWithoutPassword = {
-			email: randomEmail(),
-			firstName: randomName(),
-			lastName: randomName(),
-		};
-
-		const response = await authMemberAgent.patch('/me').send(payloadWithoutPassword);
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain('Current password is required to change email');
-
-		const storedMember = await Container.get(UserRepository).findOneByOrFail({});
-		expect(storedMember.email).toBe(member.email);
-	});
-
-	test('PATCH /me should fail when changing email with wrong currentPassword', async () => {
-		const payloadWithWrongPassword = {
-			email: randomEmail(),
-			firstName: randomName(),
-			lastName: randomName(),
-			currentPassword: 'WrongPassword123',
-		};
-
-		const response = await authMemberAgent.patch('/me').send(payloadWithWrongPassword);
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain(
-			'Unable to update profile. Please check your credentials and try again.',
-		);
-
-		const storedMember = await Container.get(UserRepository).findOneByOrFail({});
-		expect(storedMember.email).toBe(member.email);
 	});
 
 	test('PATCH /me/password should succeed with valid inputs', async () => {
@@ -424,7 +421,7 @@ describe('Owner', () => {
 		});
 		const authOwnerAgent = testServer.authAgentFor(owner);
 
-		for (const validPayload of getValidPatchMePayloads('owner')) {
+		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 			const response = await authOwnerAgent.patch('/me').send(validPayload);
 
 			expect(response.statusCode).toBe(200);
@@ -442,9 +439,9 @@ describe('Owner', () => {
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe(validPayload.email.toLowerCase());
-			expect(firstName).toBe(validPayload.firstName);
-			expect(lastName).toBe(validPayload.lastName);
+			expect(email).toBe(owner.email);
+			if (validPayload.firstName !== undefined) expect(firstName).toBe(validPayload.firstName);
+			if (validPayload.lastName !== undefined) expect(lastName).toBe(validPayload.lastName);
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
@@ -453,15 +450,13 @@ describe('Owner', () => {
 
 			const storedOwner = await Container.get(UserRepository).findOneByOrFail({ id });
 
-			expect(storedOwner.email).toBe(validPayload.email.toLowerCase());
-			expect(storedOwner.firstName).toBe(validPayload.firstName);
-			expect(storedOwner.lastName).toBe(validPayload.lastName);
-
-			const storedPersonalProject = await Container.get(
-				ProjectRepository,
-			).getPersonalProjectForUserOrFail(storedOwner.id);
-
-			expect(storedPersonalProject.name).toBe(storedOwner.createPersonalProjectName());
+			expect(storedOwner.email).toBe(owner.email);
+			if (validPayload.firstName !== undefined) {
+				expect(storedOwner.firstName).toBe(validPayload.firstName);
+			}
+			if (validPayload.lastName !== undefined) {
+				expect(storedOwner.lastName).toBe(validPayload.lastName);
+			}
 		}
 	});
 });
@@ -492,75 +487,37 @@ const EMPTY_SURVEY: IPersonalizationSurveyAnswersV4 = {
 	personalization_survey_n8n_version: '1.0.0',
 };
 
-function getValidPatchMePayloads(userType: 'owner' | 'member' | 'chatUser') {
-	return VALID_PATCH_ME_PAYLOADS.map((payload) => {
-		if (userType === 'owner') {
-			return { ...payload, currentPassword: ownerPassword };
-		}
-		return { ...payload, currentPassword: memberPassword };
-	});
-}
-
-function getInvalidPatchMePayloads(userType: 'owner' | 'member' | 'chatUser') {
-	return INVALID_PATCH_ME_PAYLOADS.map((payload) => {
-		if (userType === 'owner') {
-			return { ...payload, currentPassword: ownerPassword };
-		}
-		return { ...payload, currentPassword: memberPassword };
-	});
-}
-
 const VALID_PATCH_ME_PAYLOADS = [
 	{
-		email: randomEmail(),
 		firstName: randomName(),
 		lastName: randomName(),
 	},
-	// {
-	// 	email: randomEmail().toUpperCase(),
-	// 	firstName: randomName(),
-	// 	lastName: randomName(),
-	// },
+	{
+		firstName: randomName(),
+	},
+	{
+		lastName: randomName(),
+	},
 ];
 
 const INVALID_PATCH_ME_PAYLOADS = [
 	{
-		email: 'invalid',
-		firstName: randomName(),
-		lastName: randomName(),
-	},
-	{
-		email: randomEmail(),
 		firstName: '',
 		lastName: randomName(),
 	},
 	{
-		email: randomEmail(),
 		firstName: randomName(),
 		lastName: '',
 	},
 	{
-		email: randomEmail(),
 		firstName: 123,
 		lastName: randomName(),
 	},
 	{
-		firstName: randomName(),
-		lastName: randomName(),
-	},
-	{
-		firstName: randomName(),
-	},
-	{
-		lastName: randomName(),
-	},
-	{
-		email: randomEmail(),
 		firstName: 'John <script',
 		lastName: randomName(),
 	},
 	{
-		email: randomEmail(),
 		firstName: 'John <a',
 		lastName: randomName(),
 	},

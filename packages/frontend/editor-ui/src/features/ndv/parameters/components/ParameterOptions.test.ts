@@ -37,8 +37,36 @@ describe('ParameterOptions', () => {
 		expect(getByTestId('radio-button-expression')).toBeInTheDocument();
 	});
 
+	it('renders compact controls in the parameter options row', () => {
+		const { container, getByTestId } = renderComponent(ParameterOptions, {
+			props: {
+				parameter: DEFAULT_PARAMETER,
+				value: 'manual',
+				isReadOnly: false,
+				showDelete: true,
+				onDelete: vi.fn(),
+			},
+			global: {
+				stubs: {
+					N8nActionToggle: {
+						props: ['size'],
+						template: '<div data-test-id="action-toggle" :data-size="size" />',
+					},
+					N8nIconButton: {
+						props: ['size'],
+						template: '<button v-bind="$attrs" :data-size="size" />',
+					},
+				},
+			},
+		});
+
+		expect(container.querySelector('.n8n-segment-control')).toHaveClass('mini');
+		expect(getByTestId('action-toggle')).toHaveAttribute('data-size', 'xsmall');
+		expect(getByTestId('parameter-delete-button')).toHaveAttribute('data-size', 'xsmall');
+	});
+
 	it("doesn't render expression with showExpression set to false", () => {
-		const { getByTestId, queryByTestId, container } = renderComponent(ParameterOptions, {
+		const { getByTestId, queryByTestId } = renderComponent(ParameterOptions, {
 			props: {
 				parameter: DEFAULT_PARAMETER,
 				isReadOnly: false,
@@ -50,7 +78,6 @@ describe('ParameterOptions', () => {
 		expect(getByTestId('action-toggle')).toBeInTheDocument();
 		expect(queryByTestId('radio-button-fixed')).not.toBeInTheDocument();
 		expect(queryByTestId('radio-button-expression')).not.toBeInTheDocument();
-		expect(container.querySelector('.noExpressionSelector')).toBeInTheDocument();
 	});
 
 	it('should render loading state', () => {
@@ -75,10 +102,9 @@ describe('ParameterOptions', () => {
 				parameter: DEFAULT_PARAMETER,
 				value: 'manual',
 				isReadOnly: false,
-				iconOrientation: 'horizontal',
 			},
 		});
-		expect(container.querySelector('[data-icon="ellipsis"]')).toBeInTheDocument();
+		expect(container.querySelector('[data-icon="ellipsis-12"]')).toBeInTheDocument();
 	});
 
 	it('should render custom actions', async () => {
@@ -97,7 +123,7 @@ describe('ParameterOptions', () => {
 		const actionToggle = getByTestId('action-toggle');
 		const actionToggleButton = within(actionToggle).getByRole('button');
 		expect(actionToggleButton).toBeVisible();
-		await userEvent.click(actionToggle);
+		await userEvent.click(actionToggleButton);
 		const actionToggleId = actionToggleButton.getAttribute('aria-controls');
 		const actionDropdown = document.getElementById(actionToggleId as string) as HTMLElement;
 		expect(actionDropdown).toBeInTheDocument();

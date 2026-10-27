@@ -12,7 +12,6 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
 
 import { facebookApiRequest, getAllFields, getFields } from './GenericFunctions';
 import type { FacebookWebhookSubscription } from './types';
@@ -31,10 +30,28 @@ export class FacebookTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			searchHint:
+				'Webhook verification is automatic — there is NO user-settable "verify token". On activation n8n registers the Facebook webhook subscription and verifies Facebook\'s challenge against this node\'s own auto-generated id. Never tell the user to invent a verify-token string or look for a verify-token credential field; if Facebook\'s "Verify token" box must be filled in manually it has to be this node\'s id, not an arbitrary value.',
+		},
 		credentials: [
 			{
 				name: 'facebookGraphAppApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authType: ['accessToken'],
+					},
+				},
+			},
+			{
+				name: 'facebookGraphAppOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authType: ['oAuth2'],
+					},
+				},
 			},
 		],
 		webhooks: [
@@ -52,6 +69,23 @@ export class FacebookTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authType',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The authentication method to use',
+			},
 			{
 				displayName: 'APP ID',
 				name: 'appId',
@@ -210,7 +244,6 @@ export class FacebookTrigger implements INodeType {
 				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const object = this.getNodeParameter('object') as string;
 				const appId = this.getNodeParameter('appId') as string;
@@ -220,7 +253,7 @@ export class FacebookTrigger implements INodeType {
 				const body = {
 					object: snakeCase(object),
 					callback_url: webhookUrl,
-					verify_token: uuid(),
+					verify_token: this.getNode().id,
 					fields: fields.includes('*') ? getAllFields(object) : fields,
 				} as IDataObject;
 
@@ -234,8 +267,6 @@ export class FacebookTrigger implements INodeType {
 					`/${appId}/subscriptions`,
 					body,
 				);
-
-				webhookData.verifyToken = body.verify_token;
 
 				if (responseData.success !== true) {
 					// Facebook did not return success, so something went wrong
@@ -267,17 +298,18 @@ export class FacebookTrigger implements INodeType {
 		const res = this.getResponseObject();
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData() as IDataObject;
-		const credentials = await this.getCredentials('facebookGraphAppApi');
+		const authType = this.getNodeParameter('authType', 0) as string;
+		const credentials = await this.getCredentials(
+			authType === 'oAuth2' ? 'facebookGraphAppOAuth2Api' : 'facebookGraphAppApi',
+		);
 		// Check if we're getting facebook's challenge request (https://developers.facebook.com/docs/graph-api/webhooks/getting-started)
 		if (this.getWebhookName() === 'setup') {
 			if (query['hub.challenge']) {
-				//TODO
-				//compare hub.verify_token with the saved token
-				//const webhookData = this.getWorkflowStaticData('node');
-				// if (webhookData.verifyToken !== query['hub.verify_token']) {
-				// 	return {};
-				// }
-				res.status(200).send(query['hub.challenge']).end();
+				if (this.getNode().id !== query['hub.verify_token']) {
+					return {};
+				}
+
+				res.status(200).type('text/plain').send(query['hub.challenge']).end();
 				return {
 					noWebhookResponse: true,
 				};

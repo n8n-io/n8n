@@ -1,16 +1,17 @@
-import type { AuthPrincipal } from '@n8n/permissions';
+import type { AuthPrincipal, PrincipalType } from '@n8n/permissions';
 import {
 	AfterLoad,
 	AfterUpdate,
+	BeforeInsert,
 	BeforeUpdate,
 	Column,
 	Entity,
 	Index,
-	OneToMany,
-	PrimaryGeneratedColumn,
-	BeforeInsert,
 	JoinColumn,
 	ManyToOne,
+	OneToMany,
+	PrimaryGeneratedColumn,
+	TableInheritance,
 } from '@n8n/typeorm';
 import type { IUser, IUserSettings } from 'n8n-workflow';
 
@@ -26,10 +27,35 @@ import { GLOBAL_OWNER_ROLE } from '../constants';
 import { isValidEmail } from '../utils/is-valid-email';
 import { lowerCaser, objectRetriever } from '../utils/transformers';
 
+/** The same values a `Principal` carries, so a `User` maps to a `Principal` without translation. */
+export type UserKind = PrincipalType;
+
+/**
+ * An account: a person or a service account. Both live in the `user` table,
+ * and the `kind` column tells them apart. TypeORM maps each row to its child
+ * entity, `Person` or `ServiceAccount`.
+ *
+ * A query through `User` returns both kinds. Use `PersonRepository` when only
+ * a person may appear.
+ *
+ * A `new User()` is a person: `kind` defaults to `'person'`, and TypeORM
+ * saves a value under the child that its `kind` names. Build a service
+ * account with `new ServiceAccount()`.
+ */
 @Entity()
+@TableInheritance({ column: 'kind' })
 export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
+
+	/**
+	 * TypeORM picks the child entity from this value on save, and sets it from
+	 * the row on load. The initializer makes a bare `User` a person. The column
+	 * default makes TypeORM read the value back after an insert. `update: false`
+	 * keeps an update from moving an account to the other kind.
+	 */
+	@Column({ type: 'varchar', length: 16, default: 'person', update: false })
+	readonly kind: UserKind = 'person';
 
 	@Column({
 		length: 254,
@@ -113,7 +139,12 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@AfterLoad()
 	@AfterUpdate()
 	computeIsPending(): void {
-		this.isPending = this.password === null && this.role?.slug !== GLOBAL_OWNER_ROLE.slug;
+		const hasExternalAuthIdentity =
+			this.authIdentities?.some((identity) => identity.providerType !== 'email') ?? false;
+		this.isPending =
+			this.password === null &&
+			!hasExternalAuthIdentity &&
+			this.role?.slug !== GLOBAL_OWNER_ROLE.slug;
 	}
 
 	toJSON() {

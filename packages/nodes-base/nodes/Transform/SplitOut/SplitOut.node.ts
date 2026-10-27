@@ -1,6 +1,14 @@
 import get from 'lodash/get';
+import set from 'lodash/set';
+import toPath from 'lodash/toPath';
 import unset from 'lodash/unset';
-import { NodeOperationError, deepCopy, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	deepCopy,
+	isSafeObjectProperty,
+	NodeConnectionTypes,
+	setSafeObjectProperty,
+} from 'n8n-workflow';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -17,16 +25,25 @@ export class SplitOut implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Split Out',
 		name: 'splitOut',
-		icon: 'file:splitOut.svg',
+		icon: 'node:split-out',
+		iconColor: 'violet',
 		group: ['transform'],
 		subtitle: '',
-		version: 1,
+		version: [1, 1.1],
 		description: 'Turn a list inside item(s) into separate items',
 		defaults: {
 			name: 'Split Out',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.aggregate',
+					relationHint: 'Reverse operation - combine items back',
+				},
+			],
+		},
 		properties: [
 			{
 				displayName: 'Fields To Split Out',
@@ -39,6 +56,10 @@ export class SplitOut implements INodeType {
 					'The name of the input fields to break out into separate items. Separate multiple field names by commas. For binary data, use $binary.',
 				requiresDataPath: 'multiple',
 				hint: 'Use $binary to split out the input item by binary data',
+				builderHint: {
+					propertyHint:
+						'Must be a field name (or comma-separated list of field names) as it appears inside $json. Examples: "issues" when $json is { issues: [...] }; "user.addresses" for nested arrays (dot notation supported — disable via Options > Disable Dot Notation if keys contain literal dots); "fieldA,fieldB" to split multiple arrays. Write the key/path directly — do NOT prefix with "$json." or pass "$json" (that is the whole item, not a field name). Use "$binary" only when splitting binary data. If the upstream item is an array at $json root (no wrapping key), restructure it first (Set/Code) so the array lives under a named key.',
+				},
 			},
 			{
 				displayName: 'Include',
@@ -114,11 +135,13 @@ export class SplitOut implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const items = this.getInputData();
 		const fieldsTracker = new FieldsTracker();
+		const nodeVersion = this.getNode().typeVersion;
 
 		for (let i = 0; i < items.length; i++) {
-			const fieldsToSplitOut = (this.getNodeParameter('fieldToSplitOut', i) as string)
-				.split(',')
-				.map((field) => field.trim().replace(/^\$json\./, ''));
+			const fieldsToSplitOut = prepareFieldsArray(
+				this.getNodeParameter('fieldToSplitOut', i) as string | string[],
+				'Fields To Split Out',
+			).map((field) => String(field).replace(/^\$json\./, ''));
 
 			const options = this.getNodeParameter('options', i, {});
 
@@ -128,6 +151,8 @@ export class SplitOut implements INodeType {
 				.split(',')
 				.filter((field) => field.trim() !== '')
 				.map((field) => field.trim());
+			const supportsDestinationPaths =
+				nodeVersion >= 1.1 && !disableDotNotation && destinationFields.length > 0;
 
 			if (destinationFields.length && destinationFields.length !== fieldsToSplitOut.length) {
 				throw new NodeOperationError(
@@ -145,8 +170,37 @@ export class SplitOut implements INodeType {
 
 			const item = { ...items[i].json };
 			const splited: INodeExecutionData[] = [];
+			const pendingDestinationWrites: Array<Array<[field: string, value: IDataObject[string]]>> =
+				[];
+			const setOutputField = (
+				target: IDataObject,
+				elementIndex: number,
+				field: string,
+				value: IDataObject[string],
+			) => {
+				if (supportsDestinationPaths) {
+					pendingDestinationWrites[elementIndex] ??= [];
+					pendingDestinationWrites[elementIndex].push([field, deepCopy(value)]);
+				} else {
+					setSafeObjectProperty(target, field, value);
+				}
+			};
+			const assertSafeOutputField = (field: string) => {
+				const path = supportsDestinationPaths ? toPath(field) : [field];
+				const reservedProperty = path.find((segment) => !isSafeObjectProperty(segment));
+				if (reservedProperty !== undefined) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The output field "${field}" contains the reserved property "${reservedProperty}"`,
+						{ description: 'Change the field name and try again.' },
+					);
+				}
+			};
+
 			for (const [entryIndex, fieldToSplitOut] of fieldsToSplitOut.entries()) {
 				const destinationFieldName = destinationFields[entryIndex] || '';
+				const fieldName = destinationFieldName || fieldToSplitOut;
+				if (fieldToSplitOut !== '$binary') assertSafeOutputField(fieldName);
 
 				let entityToSplit: IDataObject[] = [];
 
@@ -185,8 +239,6 @@ export class SplitOut implements INodeType {
 						splited[elementIndex] = { json: {}, pairedItem: { item: i } };
 					}
 
-					const fieldName = destinationFieldName || fieldToSplitOut;
-
 					if (fieldToSplitOut === '$binary') {
 						if (splited[elementIndex].binary === undefined) {
 							splited[elementIndex].binary = {};
@@ -205,15 +257,15 @@ export class SplitOut implements INodeType {
 								pairedItem: { item: i },
 							};
 						} else {
-							splited[elementIndex].json[fieldName] = element;
+							setOutputField(splited[elementIndex].json, elementIndex, fieldName, element);
 						}
 					} else {
-						splited[elementIndex].json[fieldName] = element;
+						setOutputField(splited[elementIndex].json, elementIndex, fieldName, element);
 					}
 				}
 			}
 
-			for (const splitEntry of splited) {
+			for (const [elementIndex, splitEntry] of splited.entries()) {
 				let newItem: INodeExecutionData = splitEntry;
 
 				if (include === 'allOtherFields') {
@@ -249,6 +301,14 @@ export class SplitOut implements INodeType {
 					}
 
 					newItem = splitEntry;
+				}
+
+				const destinationWrites = pendingDestinationWrites[elementIndex] ?? [];
+				if (destinationWrites.length > 0) {
+					newItem.json = deepCopy(newItem.json);
+				}
+				for (const [field, value] of destinationWrites) {
+					set(newItem.json, field, value);
 				}
 
 				const includeBinary = options.includeBinary as boolean;

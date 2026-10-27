@@ -1,0 +1,92 @@
+import { PrometheusMetricsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import { Service } from '@n8n/di';
+import promClient from 'prom-client';
+
+import type { PrometheusMetricsCollector } from './base';
+import type { CachedMetricQuery } from './cached-metric-query';
+import { toGaugeValue } from './cached-metric-query';
+import {
+	DatabaseMetricQueryService,
+	type WorkflowStatistics as LicenseMetrics,
+} from './database-metric-query.service';
+
+/**
+ * Tracks workflow and instance statistics as Gauges (executions, users, workflows, credentials).
+ * Values are cached to avoid repeated DB hits per scrape cycle, and concurrent gauge collects
+ * within a scrape are coalesced to a single query. Cache TTL is controlled by
+ * `endpoints.metrics.workflowStatisticsInterval`.
+ */
+@Service()
+export class PrometheusWorkflowStatisticsMetricsService implements PrometheusMetricsCollector {
+	constructor(
+		private readonly config: PrometheusMetricsConfig,
+		private readonly databaseQueries: DatabaseMetricQueryService,
+	) {}
+
+	get enabled(): boolean {
+		return this.config.includeWorkflowStatistics;
+	}
+
+	init() {
+		const cacheTtl = this.config.workflowStatisticsInterval * Time.seconds.toMilliseconds;
+		const query = this.databaseQueries.workflowStatistics(cacheTtl);
+
+		const metricsConfig = [
+			{
+				name: 'production_executions',
+				help: 'Total number of production workflow executions (success + error).',
+				getValue: (metrics: LicenseMetrics) => Number(metrics.productionExecutions) || 0,
+			},
+			{
+				name: 'production_root_executions',
+				help: 'Total number of production root workflow executions (excludes sub-workflows).',
+				getValue: (metrics: LicenseMetrics) => Number(metrics.productionRootExecutions) || 0,
+			},
+			{
+				name: 'manual_executions',
+				help: 'Total number of manual workflow executions (success + error).',
+				getValue: (metrics: LicenseMetrics) => Number(metrics.manualExecutions) || 0,
+			},
+			{
+				name: 'enabled_users',
+				help: 'Total number of enabled users.',
+				getValue: (metrics: LicenseMetrics) => Number(metrics.enabledUsers) || 0,
+			},
+			{
+				name: 'users',
+				help: 'Total number of users.',
+				getValue: (metrics: LicenseMetrics) => Number(metrics.totalUsers) || 0,
+			},
+			{
+				name: 'workflows',
+				help: 'Total number of workflows.',
+				getValue: (metrics: LicenseMetrics) => Number(metrics.totalWorkflows) || 0,
+			},
+			{
+				name: 'credentials',
+				help: 'Total number of credentials.',
+				getValue: (metrics: LicenseMetrics) => Number(metrics.totalCredentials) || 0,
+			},
+		];
+
+		metricsConfig.forEach((config) => {
+			this.createWorkflowStatisticsGauge(config.name, config.help, config.getValue, query);
+		});
+	}
+
+	private createWorkflowStatisticsGauge(
+		metricName: string,
+		help: string,
+		getMetricValue: (metrics: LicenseMetrics) => number,
+		query: CachedMetricQuery<LicenseMetrics>,
+	): promClient.Gauge {
+		return new promClient.Gauge({
+			name: `${this.config.prefix}${metricName}`,
+			help,
+			async collect() {
+				this.set(toGaugeValue(await query.get(), getMetricValue));
+			},
+		});
+	}
+}

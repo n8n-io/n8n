@@ -1,0 +1,30 @@
+{
+	"id": "lint-python-network",
+	"name": "Lint: Python Code node network import",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger-1",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"language": "pythonNative",
+				"pythonCode": "import requests\nreturn [{ \"json\": { \"ok\": True } }]"
+			},
+			"id": "code-1",
+			"name": "Python Fetch",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [220, 0]
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [[{ "node": "Python Fetch", "type": "main", "index": 0 }]]
+		}
+	}
+}

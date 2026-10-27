@@ -6,13 +6,13 @@ import { useUsageStore } from '../usage.store';
 import SettingsUsageAndPlan from './SettingsUsageAndPlan.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { waitFor } from '@testing-library/vue';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(),
 }));
 
@@ -117,22 +117,43 @@ describe('SettingsUsageAndPlan', () => {
 	it('should show community registered badge', async () => {
 		usageStore.isLoading = false;
 		usageStore.planName = 'Registered Community';
-		const { getByRole, container } = renderComponent();
-		expect(getByRole('heading', { level: 3 })).toHaveTextContent('Community Edition');
-		expect(getByRole('heading', { level: 3 })).toContain(container.querySelector('.n8n-badge'));
-		expect(container.querySelector('.n8n-badge')).toHaveTextContent('Registered');
+		const { getByRole, getByText } = renderComponent();
+		const heading = getByRole('heading', { level: 3 });
+		const badgeLabel = getByText('Registered');
+		expect(heading).toHaveTextContent('Community Edition');
+		expect(heading).toContainElement(badgeLabel);
 	});
 
-	it('should correctly call activateLicense on non-eula acceptance', async () => {
+	it('should render the community registered badge as a direct child of the centering container', async () => {
 		usageStore.isLoading = false;
-		usageStore.planName = 'Community';
+		usageStore.planName = 'Registered Community';
+		const { container } = renderComponent();
+
+		const badge = container.querySelector('.n8n-badge');
+		// The element that centers the badge against the heading text
+		// (`display: flex; align-items: center`).
+		const centeringContainer = container.querySelector('.titleTooltip');
+
+		expect(badge).not.toBeNull();
+		expect(centeringContainer).not.toBeNull();
+
+		// Only a direct child is a flex item. A tooltip trigger wrapper in between
+		// would take the centering instead, and the inline-flex badge would sit on
+		// the wrapper's line box baseline rather than on the optical center.
+		expect(badge?.parentElement).toBe(centeringContainer);
+	});
+
+	it('should prompt for a restart after license activation', async () => {
+		usageStore.isLoading = false;
+		usageStore.planName = 'Business';
+		usageStore.planId = 'business-2024';
 		usersStore.currentUser = {
 			globalScopes: ['license:manage'],
 		} as IUser;
 		rbacStore.setGlobalScopes(['license:manage']);
 		usageStore.activateLicense.mockImplementation(async () => {});
 
-		const { getByRole } = renderComponent();
+		const { findByRole, findByTestId, getByRole, queryByRole } = renderComponent();
 
 		await userEvent.click(getByRole('button', { name: /activation/i }));
 		const input = document.querySelector('input') as HTMLInputElement;
@@ -144,11 +165,11 @@ describe('SettingsUsageAndPlan', () => {
 			expect(usageStore.activateLicense).toHaveBeenLastCalledWith('test-key-123', undefined);
 		});
 
-		expect(mockToast.showMessage).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: 'success',
-			}),
-		);
+		const successDialog = await findByRole('dialog', { name: 'License activated' });
+		expect(successDialog).toHaveTextContent('Restart n8n to make all licensed features available.');
+
+		await userEvent.click(await findByTestId('license-activation-success-close-button'));
+		await waitFor(() => expect(queryByRole('dialog', { name: 'License activated' })).toBeNull());
 	});
 
 	describe('License activation with EULA', () => {
@@ -184,7 +205,7 @@ describe('SettingsUsageAndPlan', () => {
 
 		it('should handle EULA acceptance and retry license activation', async () => {
 			usageStore.isLoading = false;
-			usageStore.planName = 'Community';
+			usageStore.planName = 'Enterprise';
 			usersStore.currentUser = {
 				globalScopes: ['license:manage'],
 			} as IUser;
@@ -206,9 +227,7 @@ describe('SettingsUsageAndPlan', () => {
 			const eulaModal = await findByTestId('eula-acceptance-modal');
 			expect(eulaModal).toBeInTheDocument();
 
-			const checkbox = (await findByTestId('eula-checkbox')).querySelector(
-				'input[type="checkbox"]',
-			) as HTMLInputElement;
+			const checkbox = await findByTestId('eula-checkbox');
 			await userEvent.click(checkbox);
 
 			const acceptButton = await findByTestId('eula-accept-button');
@@ -222,10 +241,8 @@ describe('SettingsUsageAndPlan', () => {
 				);
 			});
 
-			expect(mockToast.showMessage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: 'success',
-				}),
+			expect(await findByTestId('license-activation-success-dialog')).toHaveTextContent(
+				'Restart n8n to make all licensed features available.',
 			);
 		});
 
@@ -286,9 +303,7 @@ describe('SettingsUsageAndPlan', () => {
 			expect(eulaModal).toBeInTheDocument();
 
 			// Accept EULA
-			const checkbox = (await findByTestId('eula-checkbox')).querySelector(
-				'input[type="checkbox"]',
-			) as HTMLInputElement;
+			const checkbox = await findByTestId('eula-checkbox');
 			await userEvent.click(checkbox);
 
 			const acceptButton = await findByTestId('eula-accept-button');
@@ -306,12 +321,6 @@ describe('SettingsUsageAndPlan', () => {
 					'https://example.com/eula.pdf',
 				);
 			});
-
-			expect(mockToast.showMessage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: 'success',
-				}),
-			);
 		});
 
 		it('should show error when activation fails without EULA requirement', async () => {
@@ -344,17 +353,17 @@ describe('SettingsUsageAndPlan', () => {
 			Object.assign(mockRouteQuery, { key: 'query-param-key' });
 			usageStore.activateLicense.mockResolvedValueOnce(undefined);
 
-			renderComponent();
+			const { findByTestId } = renderComponent();
 
 			await waitFor(
 				() => {
 					expect(usageStore.activateLicense).toHaveBeenCalledWith('query-param-key');
 					expect(mockReplace).toHaveBeenCalledWith({ query: {} });
-					expect(mockToast.showMessage).toHaveBeenCalledWith(
-						expect.objectContaining({ type: 'success' }),
-					);
 				},
 				{ timeout: 2000 },
+			);
+			expect(await findByTestId('license-activation-success-dialog')).toHaveTextContent(
+				'Restart n8n to make all licensed features available.',
 			);
 		});
 
@@ -371,6 +380,79 @@ describe('SettingsUsageAndPlan', () => {
 				},
 				{ timeout: 2000 },
 			);
+		});
+
+		describe('when the license from the query param requires EULA acceptance', () => {
+			const eulaRequiredError = {
+				httpStatusCode: 400,
+				meta: { eulaUrl: 'https://example.com/eula.pdf' },
+			};
+
+			beforeEach(() => {
+				Object.assign(mockRouteQuery, { key: 'query-param-key' });
+				usersStore.currentUser = {
+					globalScopes: ['license:manage'],
+				} as IUser;
+				rbacStore.setGlobalScopes(['license:manage']);
+			});
+
+			it('should open the EULA modal and show no error toast', async () => {
+				usageStore.activateLicense.mockRejectedValueOnce(eulaRequiredError);
+
+				const { findByTestId } = renderComponent();
+
+				expect(await findByTestId('eula-acceptance-modal')).toBeInTheDocument();
+				expect(await findByTestId('eula-link')).toHaveAttribute(
+					'href',
+					'https://example.com/eula.pdf',
+				);
+				expect(mockToast.showError).not.toHaveBeenCalled();
+			});
+
+			it('should resend the activation with the EULA URL and clear the query param on accept', async () => {
+				usageStore.activateLicense
+					.mockRejectedValueOnce(eulaRequiredError)
+					.mockResolvedValueOnce(undefined);
+
+				const { findByTestId } = renderComponent();
+
+				await userEvent.click(await findByTestId('eula-checkbox'));
+				await userEvent.click(await findByTestId('eula-accept-button'));
+
+				await waitFor(
+					() => {
+						expect(usageStore.activateLicense).toHaveBeenCalledTimes(2);
+						expect(usageStore.activateLicense).toHaveBeenLastCalledWith(
+							'query-param-key',
+							'https://example.com/eula.pdf',
+						);
+					},
+					{ timeout: 2000 },
+				);
+
+				expect(mockReplace).toHaveBeenCalledWith({ query: {} });
+				expect(await findByTestId('license-activation-success-dialog')).toHaveTextContent(
+					'Restart n8n to make all licensed features available.',
+				);
+			});
+
+			it('should not activate and should clear the query param on cancel', async () => {
+				usageStore.activateLicense.mockRejectedValueOnce(eulaRequiredError);
+
+				const { findByTestId } = renderComponent();
+
+				await userEvent.click(await findByTestId('eula-cancel-button'));
+
+				await waitFor(
+					() => {
+						expect(mockReplace).toHaveBeenCalledWith({ query: {} });
+					},
+					{ timeout: 2000 },
+				);
+
+				expect(usageStore.activateLicense).toHaveBeenCalledTimes(1);
+				expect(mockToast.showError).not.toHaveBeenCalled();
+			});
 		});
 	});
 

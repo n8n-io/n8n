@@ -5,23 +5,21 @@ import { useExecutionsStore } from '../executions.store';
 import { useI18n } from '@n8n/i18n';
 import type { ExecutionFilterType } from '../executions.types';
 import type { IWorkflowDb } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useRoute, useRouter } from 'vue-router';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { useDebounce } from '@/app/composables/useDebounce';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useDebounce } from '@n8n/composables/useDebounce';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { executionRetryMessage } from '../executions.utils';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const executionsStore = useExecutionsStore();
-const workflowsStore = useWorkflowsStore();
-const nodeTypesStore = useNodeTypesStore();
-const projectsStore = useProjectsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowsListStore = useWorkflowsListStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const route = useRoute();
@@ -29,17 +27,15 @@ const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
 
-const { initializeWorkspace } = useCanvasOperations();
-
 const loading = ref(false);
 const loadingMore = ref(false);
 
 const workflow = ref<IWorkflowDb | undefined>();
 
-const workflowId = computed(() => {
-	const name = route.params.name;
-	return typeof name === 'string' ? name : undefined;
-});
+const workflowId = useInjectWorkflowId();
+const filtersKey = computed(() => `workflow:${workflowId.value}`);
+// Restore before the filter component is set up, so it shows the same filters.
+executionsStore.restoreFilters(filtersKey.value);
 
 const executionId = computed(() => {
 	const id = route.params.executionId;
@@ -56,7 +52,19 @@ const executions = computed(() =>
 );
 
 const execution = computed(() => {
-	return executions.value.find((e) => e.id === executionId.value) ?? currentExecution.value;
+	const fromList = executions.value.find((e) => e.id === executionId.value);
+	const current = currentExecution.value;
+
+	if (!fromList) {
+		return current;
+	}
+
+	// Keep workflowVersionId from execution details if available
+	if (current?.id === fromList.id && current.workflowVersionId) {
+		return { ...fromList, workflowVersionId: current.workflowVersionId };
+	}
+
+	return fromList;
 });
 
 const currentExecution = ref<ExecutionSummary | undefined>();
@@ -68,8 +76,8 @@ const isNewWorkflowRoute = computed(() => {
 
 watch(
 	() => workflowId.value,
-	async () => {
-		await fetchWorkflow();
+	() => {
+		fetchWorkflow();
 	},
 );
 
@@ -81,7 +89,7 @@ watch(
 );
 
 onMounted(async () => {
-	await Promise.all([nodeTypesStore.loadNodeTypesIfNotLoaded(), fetchWorkflow()]);
+	fetchWorkflow();
 
 	if (workflowId.value) {
 		await Promise.all([executionsStore.initialize(workflowId.value), fetchExecution()]);
@@ -108,6 +116,7 @@ async function fetchExecution() {
 		executionsStore.activeExecution = currentExecution.value;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
+		return;
 	}
 
 	if (!currentExecution.value) {
@@ -134,39 +143,23 @@ async function initializeRoute() {
 		await router
 			.replace({
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: workflow.value.id, executionId: executions.value[0].id },
+				params: { workflowId: workflow.value.id, executionId: executions.value[0].id },
 				query: route.query,
 			})
 			.catch(() => {});
 	}
 }
 
-async function fetchWorkflow() {
+function fetchWorkflow() {
 	// Skip fetching if it's a new workflow that hasn't been saved yet
-	if (isNewWorkflowRoute.value) {
-		workflow.value = workflowsStore.workflow;
+	if (isNewWorkflowRoute.value || !workflowId.value) {
+		workflow.value = workflowDocumentStore.value.getSnapshot();
 		return;
 	}
 
-	// Check if we are loading the Executions tab directly, without having loaded the workflow
-	if (workflowId.value) {
-		if (!workflowsStore.workflowsById[workflowId.value]) {
-			try {
-				await workflowsStore.fetchActiveWorkflows();
-				const data = await workflowsStore.fetchWorkflow(workflowId.value);
-				await initializeWorkspace(data);
-			} catch (error) {
-				toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
-			}
-
-			workflow.value = workflowsStore.getWorkflowById(workflowId.value);
-			const workflowData = await workflowsStore.fetchWorkflow(workflow.value.id);
-
-			await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
-		} else {
-			workflow.value = workflowsStore.workflowsById[workflowId.value];
-		}
-	}
+	// Use the workflow from the list store (already loaded by WorkflowLayout)
+	workflow.value =
+		workflowsListStore.workflowsById[workflowId.value] ?? workflowDocumentStore.value.getSnapshot();
 }
 
 async function onAutoRefreshToggle(value: boolean) {
@@ -183,7 +176,7 @@ async function onRefreshData() {
 	}
 
 	try {
-		await executionsStore.fetchExecutions({
+		await executionsStore.refreshExecutions({
 			...executionsStore.executionsFilters,
 			workflowId: workflowId.value,
 		});
@@ -207,6 +200,7 @@ async function onRefreshData() {
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
 	executionsStore.reset();
 	executionsStore.setFilters(newFilters);
+	executionsStore.saveFilters(filtersKey.value);
 	await executionsStore.initialize(workflowId.value);
 }
 
@@ -253,14 +247,14 @@ async function onExecutionDelete(id?: string) {
 				await router
 					.replace({
 						name: VIEWS.EXECUTION_PREVIEW,
-						params: { name: workflow.value.id, executionId: nextExecution.id },
+						params: { workflowId: workflow.value.id, executionId: nextExecution.id },
 					})
 					.catch(() => {});
 			} else {
 				// If there are no executions left, show empty state
 				await router.replace({
 					name: VIEWS.EXECUTION_HOME,
-					params: { name: workflow.value.id },
+					params: { workflowId: workflow.value.id },
 				});
 			}
 		}
@@ -314,24 +308,21 @@ async function onLoadMore(): Promise<void> {
 	}
 }
 
+const hasMore = computed(
+	() =>
+		!executionsStore.executionsFilters.status?.includes('running') &&
+		executionsStore.hasMoreExecutions,
+);
+
 async function loadMore(): Promise<void> {
-	if (
-		!!executionsStore.executionsFilters.status?.includes('running') ||
-		executions.value.length >= executionsStore.executionsCount
-	) {
+	if (!hasMore.value) {
 		return;
 	}
 
 	loadingMore.value = true;
 
-	let lastId: string | undefined;
-	if (executions.value.length !== 0) {
-		const lastItem = executions.value.slice(-1)[0];
-		lastId = lastItem.id;
-	}
-
 	try {
-		await executionsStore.fetchExecutions(executionsStore.executionsFilters, lastId);
+		await executionsStore.loadMoreExecutions();
 	} catch (error) {
 		loadingMore.value = false;
 		toast.showError(error, i18n.baseText('executionsList.showError.loadMore.title'));
@@ -349,6 +340,7 @@ async function loadMore(): Promise<void> {
 		:workflow="workflow"
 		:loading="loading"
 		:loading-more="loadingMore"
+		:has-more="hasMore"
 		@execution:stop="onExecutionStop"
 		@execution:delete="onExecutionDelete"
 		@execution:retry="onExecutionRetry"

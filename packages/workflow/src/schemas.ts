@@ -1,6 +1,7 @@
 import type {
 	AssignmentCollectionValue,
 	FilterValue,
+	IconOrEmoji,
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeParameterResourceLocator,
@@ -315,6 +316,7 @@ export const IDisplayOptionsSchema: z.ZodType<IDisplayOptions> = z.object({
 		z.string(),
 		z.union([z.array(z.union([NodeParameterValueSchema, DisplayConditionSchema])), z.undefined()]),
 	),
+	showOnDeployment: z.enum(['cloud', 'hosted']).optional(),
 	hideOnCloud: z.boolean().optional(),
 });
 
@@ -372,7 +374,7 @@ export const FilterOptionsValueSchema: z.ZodType<FilterOptionsValue> = z.object(
 	caseSensitive: z.boolean(),
 	leftValue: z.string(),
 	typeValidation: z.enum(['strict', 'loose']),
-	version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+	version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
 });
 
 export const FilterOperatorTypeSchema: z.ZodType<FilterOperatorType> = z.enum([
@@ -421,6 +423,11 @@ export const AssignmentCollectionValueSchema: z.ZodType<AssignmentCollectionValu
 	assignments: z.array(AssignmentValueSchema),
 });
 
+export const IconOrEmojiSchema: z.ZodType<IconOrEmoji> = z.discriminatedUnion('type', [
+	z.object({ type: z.literal('icon'), value: z.string() }),
+	z.object({ type: z.literal('emoji'), value: z.string() }),
+]);
+
 export const NodeParameterValueTypeSchema: z.ZodType<NodeParameterValueType> = z.lazy(() =>
 	z.union([
 		NodeParameterValueSchema,
@@ -428,6 +435,7 @@ export const NodeParameterValueTypeSchema: z.ZodType<NodeParameterValueType> = z
 		ResourceMapperValueSchema,
 		FilterValueSchema,
 		AssignmentCollectionValueSchema,
+		IconOrEmojiSchema,
 
 		INodeParametersSchema,
 
@@ -453,6 +461,7 @@ export const OnErrorSchema: z.ZodType<OnError> = z.enum([
 export const INodeCredentialsDetailsSchema: z.ZodType<INodeCredentialsDetails> = z.object({
 	id: z.string().nullable(),
 	name: z.string(),
+	__aiGatewayManaged: z.boolean().optional(),
 });
 
 export const INodeCredentialsSchema: z.ZodType<INodeCredentials> = z.record(
@@ -460,7 +469,7 @@ export const INodeCredentialsSchema: z.ZodType<INodeCredentials> = z.record(
 	INodeCredentialsDetailsSchema,
 );
 
-export const INodeSchema: z.ZodType<INode> = z.object({
+const iNodeSchemaObject = z.object({
 	id: z.string(),
 	name: z.string(),
 	typeVersion: z.number(),
@@ -476,6 +485,9 @@ export const INodeSchema: z.ZodType<INode> = z.object({
 	executeOnce: z.boolean().optional(),
 	onError: OnErrorSchema.optional(),
 	continueOnFail: z.boolean().optional(),
+	customTelemetryTags: z
+		.object({ tag: z.array(z.object({ key: z.string(), value: z.string() })).optional() })
+		.optional(),
 	webhookId: z.string().optional(),
 	extendsCredential: z.string().optional(),
 	rewireOutputLogTo: NodeConnectionTypeSchema.optional(),
@@ -489,4 +501,46 @@ export const INodeSchema: z.ZodType<INode> = z.object({
 		.optional(),
 });
 
+export const INodeSchema: z.ZodType<INode> = iNodeSchemaObject;
+
 export const INodesSchema: z.ZodType<INode[]> = z.array(INodeSchema);
+
+/** Top-level keys that are `.optional()` but not `.nullable()` — `null` must be omitted. */
+const optionalNonNullableINodeKeys: ReadonlySet<string> = new Set(
+	Object.entries(iNodeSchemaObject.shape)
+		.filter(([, field]) => field.isOptional() && !field.isNullable())
+		.map(([key]) => key),
+);
+
+/**
+ * Normalize a node to the {@link INodeSchema} persistence shape.
+ *
+ * - `undefined` top-level values are always omitted (JSON has no undefined; e.g. sticky
+ *   notes may intentionally leave `name` unset).
+ * - `null` is omitted only for keys marked `.optional()` and not `.nullable()` on
+ *   INodeSchema. Adding a `.nullable()` field preserves `null` for that key.
+ * - `parameters` is required and always coerced to an object.
+ * - Nested nulls (e.g. credential ids) are left intact.
+ */
+export function normalizeNodeShape<T extends object>(node: T): T {
+	const cleaned: Record<string, unknown> = { ...(node as Record<string, unknown>) };
+
+	for (const key of Object.keys(cleaned)) {
+		const value = cleaned[key];
+		if (value === undefined) {
+			delete cleaned[key];
+			continue;
+		}
+		if (value === null && optionalNonNullableINodeKeys.has(key)) {
+			delete cleaned[key];
+		}
+	}
+
+	const parameters = cleaned.parameters;
+	cleaned.parameters =
+		parameters !== null && typeof parameters === 'object' && !Array.isArray(parameters)
+			? parameters
+			: {};
+
+	return cleaned as T;
+}

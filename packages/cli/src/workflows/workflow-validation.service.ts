@@ -1,10 +1,39 @@
-import { WorkflowRepository } from '@n8n/db';
+import { NODE_ID_MAX_LENGTH, isNodeIdTooLong } from '@n8n/constants';
+import type { User } from '@n8n/db';
+import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { validateWorkflowHasTriggerLikeNode } from 'n8n-workflow';
-import type { INode, INodes } from 'n8n-workflow';
+import { In } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
+import {
+	validateWorkflowHasTriggerLikeNode,
+	NodeHelpers,
+	Workflow,
+	mapConnectionsByDestination,
+	validateNodeCredentials,
+	getUnconnectedRequiredInputs,
+	getReachableNodeNames,
+	onlySuppliesDisabledNodes,
+	isTriggerLikeNode,
+	isTriggerNode,
+	classifyTriggerIdentity,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
+import type {
+	INode,
+	INodes,
+	IConnections,
+	INodeType,
+	IWorkflowSettings,
+	ICredentialType,
+} from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
+import { CredentialTypes } from '@/credential-types';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { NodeTypes } from '@/node-types';
+import { withExpressionIsolate } from '@/utils';
 
 export interface WorkflowValidationResult {
 	isValid: boolean;
@@ -25,11 +54,310 @@ export interface WorkflowStatus {
 	name?: string;
 }
 
+/** Formats credential names as a quoted, comma-separated list for error messages. */
+function formatCredentialNames(credentials: Array<{ name: string }>): string {
+	return credentials.map((c) => `"${c.name}"`).join(', ');
+}
+
 @Service()
 export class WorkflowValidationService {
-	constructor(private readonly workflowRepository: WorkflowRepository) {}
+	constructor(
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly credentialsRepository: CredentialsRepository,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly credentialTypes: CredentialTypes,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+	) {}
 
-	validateForActivation(nodes: INodes, nodeTypes: NodeTypes): WorkflowValidationResult {
+	/**
+	 * Names of every node a run can reach. Publishing must not fail over a node
+	 * that never executes, and an edge alone does not make a node reachable: an
+	 * island of wired-up nodes with no path from a trigger never runs.
+	 *
+	 * Every enabled trigger is a start node, a disconnected one included, since
+	 * it still starts the workflow.
+	 */
+	private executableNodeNames(
+		nodes: INode[],
+		connections: IConnections,
+		nodeTypes: NodeTypes,
+	): Set<string> {
+		return getReachableNodeNames(
+			nodes,
+			connections,
+			mapConnectionsByDestination(connections),
+			(node) => {
+				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				return !!nodeType && isTriggerLikeNode(nodeType);
+			},
+		);
+	}
+
+	/**
+	 * Validates node configuration (credentials, parameters) for every node a run
+	 * can reach. Enabled nodes only.
+	 */
+	private validateNodeConfiguration(
+		nodes: INode[],
+		connections: IConnections,
+		nodeTypes: NodeTypes,
+	): WorkflowValidationResult {
+		try {
+			const executable = this.executableNodeNames(nodes, connections, nodeTypes);
+			const issuesFound: Array<{ nodeName: string; issues: string[] }> = [];
+
+			for (const node of nodes) {
+				try {
+					if (node.disabled) continue;
+
+					const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+
+					if (!nodeType) {
+						issuesFound.push({
+							nodeName: node.name,
+							issues: ['Node type not found'],
+						});
+						continue;
+					}
+
+					// A node no run can reach cannot fail one, so it must not block
+					// publishing. Being wired to something is not enough: an island of
+					// connected nodes with no path from a trigger never executes.
+					if (!executable.has(node.name)) continue;
+
+					const nodeIssues: string[] = [];
+					const credentialIssues = validateNodeCredentials(node, nodeType);
+
+					// Convert credential issues to error messages
+					for (const issue of credentialIssues) {
+						if (issue.type === 'missing') {
+							nodeIssues.push(`Missing required credential: ${issue.displayName}`);
+						} else if (issue.type === 'not-configured') {
+							nodeIssues.push(`Credential not configured: ${issue.displayName}`);
+						}
+					}
+
+					const parameterIssues = this.validateNodeParameters(node, nodeType);
+					nodeIssues.push(...parameterIssues);
+
+					if (nodeIssues.length > 0) {
+						issuesFound.push({
+							nodeName: node.name,
+							issues: nodeIssues,
+						});
+					}
+				} catch (nodeError) {
+					issuesFound.push({
+						nodeName: node.name,
+						issues: [`Error validating node: ${ensureError(nodeError).message}`],
+					});
+				}
+			}
+
+			if (issuesFound.length === 0) {
+				return { isValid: true };
+			}
+
+			const errorLines = issuesFound.map((item) => {
+				const issuesList = item.issues.map((issue) => `  - ${issue}`).join('\n');
+				return `Node "${item.nodeName}":\n${issuesList}`;
+			});
+
+			const nodeCount = issuesFound.length;
+			const pluralSuffix = nodeCount === 1 ? '' : 's';
+			const error = `Cannot publish workflow: ${nodeCount} node${pluralSuffix} have configuration issues:\n\n${errorLines.join('\n\n')}`;
+
+			return {
+				isValid: false,
+				error,
+			};
+		} catch (error) {
+			return {
+				isValid: false,
+				error: `Workflow validation failed: ${ensureError(error).message}`,
+			};
+		}
+	}
+
+	/**
+	 * Validates node parameters using NodeHelpers.
+	 */
+	private validateNodeParameters(node: INode, nodeType: INodeType): string[] {
+		const issues: string[] = [];
+
+		try {
+			if (!nodeType.description?.properties) {
+				return issues;
+			}
+
+			const nodeIssues = NodeHelpers.getNodeParametersIssues(
+				nodeType.description.properties,
+				node,
+				nodeType.description,
+			);
+
+			if (nodeIssues?.parameters) {
+				const paramNames = Object.keys(nodeIssues.parameters);
+				if (paramNames.length > 0) {
+					issues.push(`Missing or invalid required parameters: ${paramNames.join(', ')}`);
+				}
+			}
+		} catch (error) {
+			issues.push('Error validating node parameters');
+		}
+
+		return issues;
+	}
+
+	/**
+	 * Rejects workflows that bind a credential whose type sets
+	 * `restrictToSupportedNodes: true` to a node not listed in its `supportedNodes`.
+	 * Runs on every save — illegal bindings should never be persisted.
+	 */
+	validateCredentialNodeRestrictions(nodes: INode[]): WorkflowValidationResult {
+		const violations: string[] = [];
+
+		for (const node of nodes) {
+			// Validate disabled nodes too — illegal bindings must never be persisted.
+			// A disabled node can be re-enabled later (separate save, direct DB write,
+			// workflow import), and the DB state should remain consistent regardless.
+			if (!node.credentials) continue;
+
+			const activeCredentialTypes = this.getActiveCredentialTypes(node);
+
+			for (const credentialType of activeCredentialTypes) {
+				if (!node.credentials[credentialType]) continue;
+
+				let typeDef: ICredentialType | undefined;
+				try {
+					typeDef = this.credentialTypes.getByName(credentialType);
+				} catch {
+					continue; // unknown type — let other validators surface it
+				}
+
+				if (!typeDef?.restrictToSupportedNodes) continue;
+
+				// `typeDef.supportedNodes` from the loader holds short node names
+				// (e.g. "mattermost"), but `node.type` is fully qualified
+				// (e.g. "n8n-nodes-base.mattermost"). `getSupportedNodes` returns
+				// the post-processed FQ list so the comparison can match.
+				const supportedNodes = this.credentialTypes.getSupportedNodes(credentialType);
+				if (supportedNodes.includes(node.type)) continue;
+
+				violations.push(
+					`Node "${node.name}" (${node.type}) cannot use credential type "${credentialType}" — it is restricted to: ${
+						supportedNodes.length > 0 ? supportedNodes.join(', ') : '(no nodes)'
+					}.`,
+				);
+			}
+		}
+
+		if (violations.length === 0) return { isValid: true };
+
+		return {
+			isValid: false,
+			error: `Cannot save workflow: ${violations.join(' ')}`,
+		};
+	}
+
+	/**
+	 * Rejects trigger nodes whose ids do not uniquely identify them.
+	 *
+	 * Publication records one `workflow_publication_trigger_status` row per
+	 * enabled trigger node, keyed by the composite primary key
+	 * `(workflowId, nodeId)`. A shared or absent id therefore collapses two
+	 * triggers onto one key: the diff in `computeTriggerDiff` loses one of them,
+	 * and the row insert fails on the constraint. Catching it here turns a
+	 * constraint violation raised mid-publication into a message naming the
+	 * offending nodes.
+	 *
+	 * An absent id is the same defect as a shared one — `undefined` is just an id
+	 * that every id-less node has in common — so both are reported together.
+	 *
+	 * An id longer than `NODE_ID_MAX_LENGTH` does not fit the columns keyed on it.
+	 * External clients can supply such ids, so they are rejected here at publish time.
+	 */
+	validateTriggerNodeIds(triggerNodes: INode[]): WorkflowValidationResult {
+		const violations: string[] = [];
+		const namesById = new Map<string, string[]>();
+
+		for (const node of triggerNodes) {
+			if (!node.id) {
+				violations.push(`trigger "${node.name}" has no node ID`);
+				continue;
+			}
+
+			if (isNodeIdTooLong(node.id)) {
+				violations.push(
+					`trigger "${node.name}" has a node ID longer than ${NODE_ID_MAX_LENGTH} characters`,
+				);
+			}
+
+			const names = namesById.get(node.id);
+			if (names) {
+				names.push(node.name);
+			} else {
+				namesById.set(node.id, [node.name]);
+			}
+		}
+
+		for (const [nodeId, names] of namesById) {
+			if (names.length < 2) continue;
+
+			const nameList = names.map((name) => `"${name}"`).join(', ');
+			violations.push(`triggers ${nameList} share the node ID "${nodeId}"`);
+		}
+
+		if (violations.length === 0) return { isValid: true };
+
+		return {
+			isValid: false,
+			error: `Cannot publish workflow: ${violations.join('; ')}. Remove and re-add the affected nodes to give them new IDs.`,
+		};
+	}
+
+	/**
+	 * Returns the credential types that are actively in use on a node — the
+	 * subset of `node.credentials` keys we should validate against.
+	 *
+	 * For "full-access" nodes (HTTP Request + its tool variants), the editor
+	 * spreads `node.credentials` instead of replacing it when the user switches
+	 * credential type, leaving inactive keys behind. Only the credential
+	 * pointed at by the active `authentication` parameter is in use, so we
+	 * limit the check to that one — otherwise the validator would reject a
+	 * save based on an entry the user can't even see in the UI.
+	 *
+	 * For all other nodes, every entry in `node.credentials` corresponds to a
+	 * declared credential the node may use (gated by `displayOptions` at
+	 * runtime), so all keys remain candidates.
+	 */
+	private getActiveCredentialTypes(node: INode): string[] {
+		if (!node.credentials) return [];
+
+		if (!FULL_ACCESS_NODE_TYPES.has(node.type)) {
+			return Object.keys(node.credentials);
+		}
+
+		const params = (node.parameters ?? {}) as Record<string, unknown>;
+		const auth = typeof params.authentication === 'string' ? params.authentication : null;
+
+		if (auth === 'predefinedCredentialType') {
+			const cred = params.nodeCredentialType;
+			return typeof cred === 'string' && cred.length > 0 ? [cred] : [];
+		}
+		if (auth === 'genericCredentialType') {
+			const cred = params.genericAuthType;
+			return typeof cred === 'string' && cred.length > 0 ? [cred] : [];
+		}
+		return [];
+	}
+
+	async validateForActivation(
+		nodes: INodes,
+		connections: IConnections,
+		nodeTypes: NodeTypes,
+	): Promise<WorkflowValidationResult> {
+		// Validate workflow entry points: active, poll, webhook, or schedule triggers.
 		const triggerValidation = validateWorkflowHasTriggerLikeNode(nodes, nodeTypes, STARTING_NODES);
 
 		if (!triggerValidation.isValid) {
@@ -37,11 +365,305 @@ export class WorkflowValidationService {
 				isValid: false,
 				error:
 					triggerValidation.error ??
-					'Workflow cannot be activated because it has no trigger node. At least one trigger, webhook, or polling node is required.',
+					'Workflow cannot be activated because it has no trigger node. At least one active trigger, poll trigger, webhook trigger, or schedule trigger node is required.',
+			};
+		}
+
+		// Validate node configuration (credentials, parameters)
+		const nodesArray = Object.values(nodes);
+		const configValidation = this.validateNodeConfiguration(nodesArray, connections, nodeTypes);
+
+		if (!configValidation.isValid) {
+			return configValidation;
+		}
+
+		return await this.validateRequiredInputsConnected(nodesArray, connections, nodeTypes);
+	}
+
+	/**
+	 * Refuses activation when a required input has nothing connected. The editor
+	 * draws this warning already but nothing enforced it, so such a workflow could
+	 * publish and then throw on every execution.
+	 *
+	 * Called by `validateForActivation`; public so it can be exercised directly.
+	 */
+	async validateRequiredInputsConnected(
+		nodes: INode[],
+		connections: IConnections,
+		nodeTypes: NodeTypes,
+	): Promise<WorkflowValidationResult> {
+		// Transient, so dynamic `inputs` expressions can be evaluated. Built over
+		// shallow node copies because the constructor reassigns `node.parameters`
+		// with defaults filled in, and these nodes are the version about to be saved.
+		const workflow = new Workflow({
+			nodes: nodes.map((node) => ({ ...node })),
+			connections,
+			active: false,
+			nodeTypes,
+		});
+		const executable = this.executableNodeNames(nodes, connections, nodeTypes);
+		const issues: string[] = [];
+
+		// Memoized because the consumer walk revisits nodes, and resolving outputs
+		// can mean evaluating an expression.
+		const canOutputMainByName = new Map<string, boolean>();
+		const canOutputMain = (candidate: INode): boolean => {
+			const cached = canOutputMainByName.get(candidate.name);
+			if (cached !== undefined) return cached;
+
+			const candidateType = nodeTypes.getByNameAndVersion(candidate.type, candidate.typeVersion);
+			// Unknown type: assume it belongs to the flow, so nothing opts out quietly.
+			const result = candidateType?.description
+				? NodeHelpers.getNodeOutputs(workflow, candidate, candidateType.description).some(
+						(output) =>
+							(typeof output === 'string' ? output : output.type) === NodeConnectionTypes.Main,
+					)
+				: true;
+
+			canOutputMainByName.set(candidate.name, result);
+			return result;
+		};
+
+		// Those expressions need an isolate under the VM engine, or they throw.
+		await withExpressionIsolate(workflow, async () => {
+			for (const node of nodes) {
+				if (node.disabled) continue;
+
+				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				if (!nodeType?.description) continue;
+
+				// Same rule as validateNodeConfiguration: only nodes a run can reach.
+				if (!executable.has(node.name)) continue;
+
+				// Same reasoning further out: a subnode is only ever resolved by the
+				// node it supplies, so if every chain of consumers out of it is
+				// disabled it cannot break a run either. Scoped to nodes with no main
+				// output, since a node on the main path runs whatever its consumers do.
+				if (
+					!isTriggerLikeNode(nodeType) &&
+					onlySuppliesDisabledNodes(node, connections, nodes, canOutputMain)
+				) {
+					continue;
+				}
+
+				// Strictly: a swallowed expression error would read as "requires nothing".
+				let required: ReturnType<typeof getUnconnectedRequiredInputs>;
+				try {
+					required = getUnconnectedRequiredInputs(workflow, node, nodeType.description, {
+						throwOnExpressionError: true,
+					});
+				} catch (error) {
+					issues.push(
+						`the inputs of '${node.name}' could not be determined (${ensureError(error).message})`,
+					);
+					continue;
+				}
+
+				for (const input of required) {
+					issues.push(
+						`'${node.name}' has no node connected to its required '${input.displayName ?? input.type}' input`,
+					);
+				}
+			}
+		});
+
+		if (issues.length > 0) {
+			return {
+				isValid: false,
+				error: `Workflow cannot be activated because required inputs are not connected: ${issues.join('; ')}.`,
 			};
 		}
 
 		return { isValid: true };
+	}
+
+	/**
+	 * Validates that a workflow using dynamic (resolvable) credentials has a
+	 * resolver configured and a trigger that provides the identity it needs.
+	 *
+	 * The resolver is workflow-level (`settings.credentialResolverId` override or
+	 * the seeded system resolver):
+	 * - A custom resolver (OAuth, Slack, …) keys on an external identity extracted
+	 *   from trigger data, so it needs a trigger with a context establishment hook.
+	 * - The default/system resolver keys on the n8n user identity, so it needs a
+	 *   trigger that establishes it (manual, sub-workflow, Chat Hub chat, MCP, form, or webhook with n8n user auth).
+	 */
+	async validateDynamicCredentials(
+		nodes: INode[],
+		nodeTypes: NodeTypes,
+		workflowSettings?: IWorkflowSettings,
+	): Promise<WorkflowValidationResult> {
+		const credentialIds = this.collectCredentialIds(nodes);
+		if (credentialIds.size === 0) {
+			return { isValid: true };
+		}
+
+		const resolvableCredentials = await this.credentialsRepository.find({
+			where: { id: In([...credentialIds]), isResolvable: true, usageScope: 'project' },
+			select: ['id', 'name'],
+		});
+
+		if (resolvableCredentials.length === 0) {
+			return { isValid: true };
+		}
+
+		const credNames = formatCredentialNames(resolvableCredentials);
+
+		// Workflow override if present, otherwise the seeded system resolver (null when neither).
+		const workflowResolverId =
+			this.dynamicCredentialsProxy.getEffectiveResolverId(workflowSettings);
+		const triggers = this.classifyTriggerIdentities(nodes, nodeTypes);
+
+		const error = this.getDynamicCredentialsError(workflowResolverId, credNames, triggers);
+
+		return error
+			? { isValid: false, error: `Cannot publish workflow: ${error}` }
+			: { isValid: true };
+	}
+
+	/** A published workflow runs as its publisher, so the publisher must be able to use every credential it references. */
+	async validatePublisherCredentialAccess(
+		user: User,
+		nodes: INode[],
+		workflowId: string,
+	): Promise<WorkflowValidationResult> {
+		const inaccessible = await this.credentialsPermissionChecker.findInaccessibleForUser(
+			user.id,
+			nodes,
+			workflowId,
+		);
+		if (inaccessible.length === 0) return { isValid: true };
+
+		const unshared = inaccessible.filter((c) => c.exists);
+		const missing = inaccessible.filter((c) => !c.exists);
+		const sentences: string[] = [];
+
+		if (unshared.length > 0) {
+			const plural = unshared.length > 1;
+			const credNames = formatCredentialNames(unshared);
+			sentences.push(
+				`You do not have access to credential${plural ? 's' : ''} ${credNames}. Ask ${plural ? 'their owners' : 'its owner'} to share ${plural ? 'them' : 'it'} with you.`,
+			);
+		}
+
+		if (missing.length > 0) {
+			const plural = missing.length > 1;
+			const credNames = formatCredentialNames(missing);
+			sentences.push(
+				`Credential${plural ? 's' : ''} ${credNames} no longer exist${plural ? '' : 's'}. Update the node to use a different credential.`,
+			);
+		}
+
+		return { isValid: false, error: `Cannot publish workflow: ${sentences.join(' ')}` };
+	}
+
+	/**
+	 * Returns the publish error for the workflow's resolvable credentials, or
+	 * `undefined` when they are valid.
+	 */
+	private getDynamicCredentialsError(
+		workflowResolverId: string | null,
+		credNames: string,
+		triggers: {
+			allTriggersProvideExternalIdentity: boolean;
+			allTriggersProvideN8nIdentity: boolean;
+		},
+	): string | undefined {
+		if (!workflowResolverId) {
+			return `end-user credentials (${credNames}) require a resolver to be configured.`;
+		}
+
+		const { allTriggersProvideExternalIdentity, allTriggersProvideN8nIdentity } = triggers;
+
+		if (workflowResolverId === this.dynamicCredentialsProxy.getSystemResolverId()) {
+			// System resolver: every trigger must establish the n8n user identity. Chat and MCP only
+			// qualify in their identity-carrying configurations.
+			if (allTriggersProvideN8nIdentity) return undefined;
+
+			const triggersList = this.getN8nUserAuthTriggersList();
+			return `end-user credentials (${credNames}) are only supported with ${triggersList}. To use another trigger, switch the credential to Fixed.`;
+		}
+
+		// Custom resolver: every trigger must provide an external identity.
+		if (allTriggersProvideExternalIdentity) return undefined;
+		return `end-user credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`;
+	}
+
+	/**
+	 * Describes which trigger configurations the system resolver currently accepts,
+	 * for the publish-error copy. Chat qualifies when available in Chat Hub, or with
+	 * `n8nUserAuth` in hosted-chat mode specifically — embedded/webhook-mode chat has
+	 * no page to run the OAuth2 handshake on, so it establishes no identity there; MCP
+	 * only with n8n user auth (OAuth2). Mirrors `classifyTriggerIdentity`.
+	 */
+	private getN8nUserAuthTriggersList(): string {
+		return 'manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication';
+	}
+
+	/** Collects the ids of all credentials referenced by enabled nodes. */
+	private collectCredentialIds(nodes: INode[]): Set<string> {
+		const credentialIds = new Set<string>();
+		for (const node of nodes) {
+			if (node.disabled) continue;
+			for (const credName of Object.keys(node.credentials ?? {})) {
+				const credId = node.credentials?.[credName]?.id;
+				if (credId) {
+					credentialIds.add(credId);
+				}
+			}
+		}
+		return credentialIds;
+	}
+
+	/**
+	 * Classifies a workflow's triggers by the identity every one of them can provide:
+	 * - `allTriggersProvideExternalIdentity`: every enabled trigger provides an external
+	 *   identity (context hook, Chat Hub, sub-workflow).
+	 * - `allTriggersProvideN8nIdentity`: every enabled trigger provides the n8n user
+	 *   identity (manual, Chat Hub, MCP with n8n OAuth2, sub-workflow).
+	 *
+	 * A single unsupported trigger disqualifies the whole workflow, so a manual trigger
+	 * cannot mask another trigger that can't establish identity. A workflow with no
+	 * triggers provides neither.
+	 *
+	 * The per-trigger classification lives in `classifyTriggerIdentity` (n8n-workflow)
+	 * so the editor's trigger-compatibility warning can reuse the exact same rules.
+	 */
+	private classifyTriggerIdentities(
+		nodes: INode[],
+		nodeTypes: NodeTypes,
+	): {
+		allTriggersProvideExternalIdentity: boolean;
+		allTriggersProvideN8nIdentity: boolean;
+	} {
+		let allTriggersProvideExternalIdentity = true;
+		let allTriggersProvideN8nIdentity = true;
+		let hasTrigger = false;
+
+		for (const node of nodes) {
+			if (node.disabled) continue;
+			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			// Only real workflow entry-points count. `isTriggerLikeNode` keys on a `webhook`/
+			// `poll`/`trigger` method, which also matches "Send and Wait for Response" action
+			// nodes (and their AI-tool variants) — those carry a HITL webhook but are not
+			// triggers, and would wrongly poison the identity check. `isTriggerNode` keys on
+			// the node group, which only true triggers declare.
+			if (!nodeType?.description || !isTriggerNode(nodeType.description)) continue;
+
+			hasTrigger = true;
+			const { providesExternalIdentity, providesN8nIdentity } = classifyTriggerIdentity(
+				node.type,
+				node.parameters,
+			);
+			allTriggersProvideExternalIdentity &&= providesExternalIdentity;
+			allTriggersProvideN8nIdentity &&= providesN8nIdentity;
+		}
+
+		if (!hasTrigger) {
+			return { allTriggersProvideExternalIdentity: false, allTriggersProvideN8nIdentity: false };
+		}
+
+		return { allTriggersProvideExternalIdentity, allTriggersProvideN8nIdentity };
 	}
 
 	/**

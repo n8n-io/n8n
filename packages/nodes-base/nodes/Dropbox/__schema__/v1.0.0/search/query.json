@@ -37,13 +37,22 @@
         "sharing_info": {
             "type": "object",
             "properties": {
+                "is_parent_shared_folder_read_only": {
+                    "type": "boolean"
+                },
                 "modified_by": {
                     "type": "string"
+                },
+                "no_access": {
+                    "type": "boolean"
                 },
                 "parent_shared_folder_id": {
                     "type": "string"
                 },
                 "read_only": {
+                    "type": "boolean"
+                },
+                "traverse_only": {
                     "type": "boolean"
                 }
             }
@@ -52,5 +61,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }

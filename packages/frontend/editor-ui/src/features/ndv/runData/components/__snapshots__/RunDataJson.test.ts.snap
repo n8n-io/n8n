@@ -5,7 +5,52 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
   <div
     class="jsonDisplay"
   >
-    <!---->
+    <div
+      class="actionsGroup"
+      data-test-id="ndv-json-actions"
+    >
+      <button
+        aria-live="polite"
+        circle="false"
+        class="button button outline medium iconOnly"
+        data-icon-only="true"
+        title="Copy to Clipboard"
+        type="button"
+      >
+        <transition-stub
+          appear="false"
+          css="true"
+          name="n8n-button-fade"
+          persisted="false"
+        >
+          <!--v-if-->
+        </transition-stub>
+        <div
+          class="button-inner"
+        >
+          
+          <svg
+            aria-hidden="true"
+            class="n8n-icon"
+            data-icon="files"
+            fill="currentColor"
+            focusable="false"
+            height="14px"
+            role="img"
+            viewBox="0 0 16 16"
+            width="14px"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M14.75 11.75h-4v3.75h-9.5V4.25h4V.5h9.5zm-12-6V14h6.5v-2.25h-4v-6zm4 4.5h6.5V2h-6.5z"
+            />
+          </svg>
+          
+          
+          
+        </div>
+      </button>
+    </div>
     <div
       class=""
       data-test-id="draggable"

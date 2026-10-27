@@ -1,3 +1,6 @@
+/**
+* @depreacted - Use motion.scss mixin or <Transition/ > instead
+**/
 .executions-list-move,
 .executions-list-enter-active {
 	transition: all 1.5s cubic-bezier(0.19, 1, 0.22, 1);

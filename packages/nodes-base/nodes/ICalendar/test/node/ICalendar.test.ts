@@ -1,19 +1,21 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import * as ics from 'ics';
 import type { WorkflowTestData } from 'n8n-workflow';
 
-jest.mock('ics', () => {
-	const ics = jest.requireActual('ics');
-	return {
-		...ics,
-		createEvent(attributes: any, cb: () => {}) {
-			attributes.uid = 'test-uid';
-			attributes.timestamp = '20250424T135100Z';
-			return ics.createEvent(attributes, cb);
-		},
-	};
-});
+// The harness loads the node from dist via require(), so vi.mock cannot intercept its `ics`
+// import. `ics` is externalized, so the test and the node share the same instance — spy on it
+// to pin the otherwise-random uid and timestamp.
+const realCreateEvent = ics.createEvent;
 
 describe('iCalendar Node', () => {
+	beforeEach(() => {
+		vi.spyOn(ics, 'createEvent').mockImplementation(((attributes: any, cb: any) => {
+			attributes.uid = 'test-uid';
+			attributes.timestamp = '20250424T135100Z';
+			return realCreateEvent(attributes, cb);
+		}) as typeof ics.createEvent);
+	});
+
 	const testHarness = new NodeTestHarness();
 	const tests: WorkflowTestData[] = [
 		{

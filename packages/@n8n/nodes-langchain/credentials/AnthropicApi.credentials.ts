@@ -39,6 +39,9 @@ export class AnthropicApi implements ICredentialType {
 			displayName: 'Header Name',
 			name: 'headerName',
 			type: 'string',
+			typeOptions: {
+				ignoreCredentialExpressionResolveError: true,
+			},
 			displayOptions: {
 				show: {
 					header: [true],
@@ -51,6 +54,7 @@ export class AnthropicApi implements ICredentialType {
 			name: 'headerValue',
 			type: 'string',
 			typeOptions: {
+				ignoreCredentialExpressionResolveError: true,
 				password: true,
 			},
 			displayOptions: {
@@ -65,15 +69,10 @@ export class AnthropicApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.url}}',
-			url: '/v1/messages',
-			method: 'POST',
+			url: '/v1/models',
+			method: 'GET',
 			headers: {
 				'anthropic-version': '2023-06-01',
-			},
-			body: {
-				model: 'claude-3-haiku-20240307',
-				messages: [{ role: 'user', content: 'Hey' }],
-				max_tokens: 1,
 			},
 		},
 	};

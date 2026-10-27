@@ -1,8 +1,8 @@
+import type { Sheet2JSONOpts, ParsingOptions } from '@e965/xlsx';
+import { read as xlsxRead, utils as xlsxUtils } from '@e965/xlsx';
 import { parse as createCSVParser, type Options as CSVOptions } from 'csv-parse';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-import type { Sheet2JSONOpts, ParsingOptions } from 'xlsx';
-import { read as xlsxRead, utils as xlsxUtils } from 'xlsx';
 
 import { binaryProperty, fromFileOptions } from '../description';
 
@@ -80,13 +80,14 @@ export const description: INodeProperties[] = [
 
 export interface FromFileOptions {
 	failOnCsvBufferError?: boolean;
+	formatSpreadsheetDates?: boolean;
 }
 
 export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 	fileFormatProperty = 'fileFormat',
-	{ failOnCsvBufferError = false }: FromFileOptions = {},
+	{ failOnCsvBufferError = false, formatSpreadsheetDates = false }: FromFileOptions = {},
 ) {
 	const returnData: INodeExecutionData[] = [];
 	let fileExtension;
@@ -120,15 +121,14 @@ export async function execute(
 					bom: options.enableBOM,
 					to: maxRowCount > -1 ? maxRowCount : undefined,
 					skip_records_with_error: skipRecordsWithErrors,
+					skip_empty_lines: true,
 					columns: options.headerRow !== false,
 					relax_quotes: options.relaxQuotes,
 					onRecord: (record) => {
-						if (!options.includeEmptyCells) {
-							record = Object.fromEntries(
-								Object.entries(record).filter(([_key, value]) => value !== ''),
-							);
-						}
-						rows.push(record);
+						const filtered = options.includeEmptyCells
+							? record
+							: Object.fromEntries(Object.entries(record).filter(([_key, value]) => value !== ''));
+						rows.push(filtered);
 					},
 				};
 				const parser = createCSVParser(csvOptions);
@@ -138,15 +138,14 @@ export async function execute(
 					skippedRecords += 1;
 				});
 
+				parser.resume();
+
 				if (binaryData.id) {
 					const stream = await this.helpers.getBinaryStream(binaryData.id);
 					await new Promise<void>((resolve, reject) => {
+						stream.on('error', reject);
 						parser.on('error', reject);
-						parser.on('readable', () => {
-							stream.unpipe(parser);
-							stream.destroy();
-							resolve();
-						});
+						parser.on('end', resolve);
 						stream.pipe(parser);
 					});
 				} else {
@@ -155,9 +154,7 @@ export async function execute(
 					if (failOnCsvBufferError) {
 						await new Promise<void>((resolve, reject) => {
 							parser.on('error', reject);
-							parser.on('readable', () => {
-								resolve();
-							});
+							parser.on('end', resolve);
 							parser.end();
 						});
 					} else {
@@ -174,6 +171,14 @@ export async function execute(
 				}
 			} else {
 				const xlsxOptions: ParsingOptions = { raw: options.rawData as boolean };
+				const formatDates =
+					formatSpreadsheetDates &&
+					(fileFormat === 'xlsx' || fileFormat === 'xls' || fileFormat === 'ods') &&
+					options.rawData !== true;
+				if (formatDates) {
+					xlsxOptions.cellDates = true;
+					xlsxOptions.UTC = true;
+				}
 
 				let buffer: Buffer;
 				if (binaryData.id) {
@@ -211,8 +216,31 @@ export async function execute(
 					sheetName = options.sheetName as string;
 				}
 
+				const sheet = workbook.Sheets[sheetName];
+				if (formatDates) {
+					for (const value of Object.values(sheet)) {
+						const cell: unknown = value;
+						if (
+							typeof cell === 'object' &&
+							cell !== null &&
+							't' in cell &&
+							cell.t === 'd' &&
+							'v' in cell &&
+							cell.v instanceof Date
+						) {
+							cell.t = 's';
+							cell.v = cell.v.toISOString();
+							// ODS can parse formatted text as a date if the cell keeps its date format.
+							if ('z' in cell) delete cell.z;
+						}
+					}
+				}
+
 				// Convert it to json
 				const sheetToJsonOptions: Sheet2JSONOpts = {};
+				if (formatDates) {
+					sheetToJsonOptions.UTC = true;
+				}
 				if (options.range) {
 					if (isNaN(options.range as number)) {
 						sheetToJsonOptions.range = options.range;
@@ -229,7 +257,7 @@ export async function execute(
 					sheetToJsonOptions.header = 1; // Consider the first row as a data row
 				}
 
-				rows = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName], sheetToJsonOptions);
+				rows = xlsxUtils.sheet_to_json(sheet, sheetToJsonOptions);
 
 				// Check if data could be found in file
 				if (rows.length === 0) {

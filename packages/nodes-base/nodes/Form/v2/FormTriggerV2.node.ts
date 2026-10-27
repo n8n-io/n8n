@@ -17,9 +17,14 @@ import {
 	formRespondMode,
 	formTitle,
 	formTriggerPanel,
+	ipAllowlist,
 	respondWithOptions,
 	webhookPath,
 } from '../common.descriptions';
+import {
+	DEFAULT_TRUSTED_SOURCE_ID,
+	listRedirectLoginTrustedSources,
+} from '../../../utils/trusted-source';
 import { cssVariables } from '../cssVariables';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import { formWebhook } from '../utils/utils';
@@ -35,14 +40,23 @@ const useWorkflowTimezone: INodeProperties = {
 const descriptionV2: INodeTypeDescription = {
 	displayName: 'n8n Form Trigger',
 	name: 'formTrigger',
-	icon: 'file:form.svg',
+	icon: 'node:form-trigger',
+	iconColor: 'teal',
 	group: ['trigger'],
 	// since trigger and node are sharing descriptions and logic we need to sync the versions
 	// and keep them aligned in both nodes
-	version: [2, 2.1, 2.2, 2.3, 2.4, 2.5],
+	version: [2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6],
 	description: 'Generate webforms in n8n and pass their responses to the workflow',
 	defaults: {
 		name: 'On form submission',
+	},
+	builderHint: {
+		relatedNodes: [
+			{
+				nodeType: 'n8n-nodes-base.form',
+				relationHint: 'Add pages and final page to the form',
+			},
+		],
 	},
 
 	inputs: [],
@@ -83,6 +97,7 @@ const descriptionV2: INodeTypeDescription = {
 			},
 		},
 	],
+	sensitiveOutputFields: ['headers.authorization', 'headers.cookie', 'headers.x-auth-token'],
 	properties: [
 		{
 			displayName: 'Authentication',
@@ -99,6 +114,63 @@ const descriptionV2: INodeTypeDescription = {
 				},
 			],
 			default: 'none',
+			displayOptions: { show: { '@version': [{ _cnd: { lte: 2.5 } }] } },
+			builderHint: {
+				propertyHint:
+					"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+			},
+		},
+		{
+			displayName: 'Authentication',
+			name: FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+			type: 'options',
+			options: [
+				{
+					name: 'Basic Auth',
+					value: 'basicAuth',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'n8n User Auth',
+					value: 'n8nUserAuth',
+					description: 'Require user to be logged in with their n8n account',
+				},
+				{
+					name: 'None',
+					value: 'none',
+				},
+			],
+			default: 'none',
+			displayOptions: { show: { '@version': [{ _cnd: { gte: 2.6 } }] } },
+			builderHint: {
+				propertyHint:
+					"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+			},
+		},
+		{
+			displayName: 'Require Workflow Execute Permission',
+			name: 'requireExecuteAccess',
+			type: 'boolean',
+			default: false,
+			displayOptions: {
+				show: { authentication: ['n8nUserAuth'], '@version': [{ _cnd: { gte: 2.6 } }] },
+			},
+			description:
+				'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
+		},
+		{
+			displayName: 'Trusted Source Name or ID',
+			name: 'trustedSource',
+			type: 'options',
+			typeOptions: { loadOptionsMethod: 'listTrustedSources' },
+			default: DEFAULT_TRUSTED_SOURCE_ID,
+			displayOptions: {
+				show: { authentication: ['n8nUserAuth'], '@version': [{ _cnd: { gte: 2.6 } }] },
+			},
+			// The resolvers read the raw value without an execution context, so it must be static.
+			noDataExpression: true,
+			// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+			description: 'The identity provider the user signs in with',
 		},
 		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,
@@ -138,6 +210,7 @@ const descriptionV2: INodeTypeDescription = {
 			default: {},
 			options: [
 				appendAttributionToForm,
+				ipAllowlist,
 				{
 					displayName: 'Button Label',
 					description: 'The label of the submit button in the form',
@@ -164,6 +237,20 @@ const descriptionV2: INodeTypeDescription = {
 					type: 'boolean',
 					default: false,
 					description: 'Whether to ignore requests from bots like link previewers and web crawlers',
+				},
+				{
+					displayName: 'Include User in Output',
+					name: 'includeUserInOutput',
+					type: 'boolean',
+					default: true,
+					description:
+						"Whether to include the logged-in user's ID, email and name in the trigger output",
+					displayOptions: {
+						show: {
+							'/authentication': ['n8nUserAuth'],
+							'@version': [{ _cnd: { gte: 2.6 } }],
+						},
+					},
 				},
 				{
 					...useWorkflowTimezone,
@@ -201,6 +288,13 @@ const descriptionV2: INodeTypeDescription = {
 					default: cssVariables.trim(),
 					description: 'Override default styling of the public form interface with CSS',
 				},
+				{
+					displayName: 'Show Headers',
+					name: 'showHeaders',
+					type: 'boolean',
+					default: false,
+					description: 'Whether the form submit request headers are shown',
+				},
 			],
 		},
 	],
@@ -208,6 +302,12 @@ const descriptionV2: INodeTypeDescription = {
 
 export class FormTriggerV2 implements INodeType {
 	description: INodeTypeDescription;
+
+	methods = {
+		loadOptions: {
+			listTrustedSources: listRedirectLoginTrustedSources,
+		},
+	};
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {

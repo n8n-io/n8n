@@ -27,6 +27,7 @@ export default defineComponent({
 	width: 100%;
 	height: 100%;
 	overflow: auto;
+	overflow-wrap: anywhere;
 	padding: var(--spacing--sm) var(--spacing--md);
 	border: var(--border);
 	border-radius: var(--radius);
@@ -43,7 +44,7 @@ export default defineComponent({
 	h6 {
 		margin-top: var(--spacing--lg);
 		margin-bottom: var(--spacing--sm);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		line-height: var(--line-height--lg);
 		border-bottom: var(--border-width) solid var(--border-color--light);
 
@@ -87,7 +88,7 @@ export default defineComponent({
 	}
 
 	strong {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 
 	em {

@@ -20,9 +20,6 @@ export class AddConstraintToExecutionMetadata1720101653148 implements Reversible
 			.withColumns(
 				column('id').int.notNull.primary.autoGenerate,
 				column('executionId').int.notNull,
-				// NOTE: This is a varchar(255) instead of text, because a unique index
-				// on text is not supported on mysql, also why should we support
-				// arbitrary length keys?
 				column('key').varchar(255).notNull,
 				column('value').text.notNull,
 			)
@@ -30,25 +27,11 @@ export class AddConstraintToExecutionMetadata1720101653148 implements Reversible
 				tableName: 'execution_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-				// In MySQL foreignKey names must be unique across all tables and
-				// TypeORM creates predictable names based on the columnName.
-				// So the temp table's foreignKey clashes with the current table's.
-				name: context.isMysql ? nanoid() : undefined,
+				name: undefined,
 			})
 			.withIndexOn(['executionId', 'key'], true);
 
-		if (context.isMysql) {
-			await context.runQuery(`
-				INSERT INTO ${executionMetadataTableTemp} (${id}, ${executionId}, ${key}, ${value})
-				SELECT MAX(${id}) as ${id}, ${executionId}, ${key}, MAX(${value})
-				FROM ${executionMetadataTable}
-				GROUP BY ${executionId}, ${key}
-				ON DUPLICATE KEY UPDATE
-						id = IF(VALUES(${id}) > ${executionMetadataTableTemp}.${id}, VALUES(${id}), ${executionMetadataTableTemp}.${id}),
-						value = IF(VALUES(${id}) > ${executionMetadataTableTemp}.${id}, VALUES(${value}), ${executionMetadataTableTemp}.${value});
-				`);
-		} else {
-			await context.runQuery(`
+		await context.runQuery(`
 			INSERT INTO ${executionMetadataTableTemp} (${id}, ${executionId}, ${key}, ${value})
 			SELECT MAX(${id}) as ${id}, ${executionId}, ${key}, MAX(${value})
 			FROM ${executionMetadataTable}
@@ -58,7 +41,6 @@ export class AddConstraintToExecutionMetadata1720101653148 implements Reversible
 					value = EXCLUDED.value
 			WHERE EXCLUDED.id > ${executionMetadataTableTemp}.id;
 		`);
-		}
 
 		await dropTable(executionMetadataTableRaw);
 		await context.runQuery(
@@ -94,10 +76,7 @@ export class AddConstraintToExecutionMetadata1720101653148 implements Reversible
 				tableName: 'execution_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-				// In MySQL foreignKey names must be unique across all tables and
-				// TypeORM creates predictable names based on the columnName.
-				// So the temp table's foreignKey clashes with the current table's.
-				name: context.isMysql ? nanoid() : undefined,
+				name: undefined,
 			});
 
 		await context.runQuery(`

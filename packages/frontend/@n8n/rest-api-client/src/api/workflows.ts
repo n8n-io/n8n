@@ -1,4 +1,10 @@
-import type { IWorkflowSettings, IConnections, INode, IPinData } from 'n8n-workflow';
+import type {
+	IWorkflowSettings,
+	IConnections,
+	INode,
+	IPinData,
+	IWorkflowGroup,
+} from 'n8n-workflow';
 
 import type { ITag } from './tags';
 
@@ -22,6 +28,7 @@ export interface WorkflowData {
 	versionId?: string;
 	activeVersionId?: string | null;
 	meta?: WorkflowMetadata;
+	nodeGroups?: IWorkflowGroup[];
 }
 
 export interface WorkflowDataUpdate {
@@ -36,12 +43,15 @@ export interface WorkflowDataUpdate {
 	pinData?: IPinData;
 	versionId?: string;
 	meta?: WorkflowMetadata;
+	nodeGroups?: IWorkflowGroup[];
 	parentFolderId?: string;
 	uiContext?: string;
 	// checksum of workflow snapshot for conflict detection
 	expectedChecksum?: string;
 	aiBuilderAssisted?: boolean;
 	autosaved?: boolean;
+	/** The history version this update restores. Its nodes keep their credentials. */
+	restoredFromVersionId?: string;
 }
 
 export interface WorkflowDataCreate extends WorkflowDataUpdate {

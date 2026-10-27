@@ -1,12 +1,66 @@
 import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/error';
 import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
-import type { INodeTypeDescription, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
-import { NodeConnectionTypes, Node, nodeNameToToolName } from 'n8n-workflow';
+import {
+	DEFAULT_TRUSTED_SOURCE_ID,
+	listBearerTrustedSources,
+} from 'n8n-nodes-base/dist/utils/trusted-source';
+import type {
+	CredentialCheckResult,
+	IDataObject,
+	INodeTypeDescription,
+	IUser,
+	IWebhookFunctions,
+	IWebhookResponseData,
+} from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	Node,
+	nodeNameToToolName,
+	n8nOAuth2Auth,
+	redactedHeaders,
+} from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
 
-import type { CompressionResponse } from './FlushingTransport';
-import { McpServerManager } from './McpServer';
+import { createCredentialGateTool } from './CredentialGateTool';
+import { McpServer, MCP_LIST_TOOLS_REQUEST_MARKER } from './McpServer';
+import { MessageParser } from './protocol/MessageParser';
+import type { CompressionResponse } from './transport';
+
+/**
+ * Builds the trigger's tool list, checking the triggering user's private-credential
+ * status first. Building eagerly connects MCP Client sub-nodes, which fails while
+ * the caller's end-user credentials are unconnected; in that case a placeholder
+ * connect-credentials tool is returned instead of failing the whole request, so
+ * session setup and tools/list keep working and the credential gate can hand out
+ * the personal connection links on the subsequent tool call.
+ */
+async function getConnectedToolsRespectingCredentialGate(
+	context: IWebhookFunctions,
+	toolInput: IDataObject | undefined,
+) {
+	// Undefined unless an OAuth2 identity was established and the
+	// dynamic-credentials module is enabled.
+	const gateResult = await context.checkTriggerCredentialStatus();
+
+	try {
+		return {
+			tools: await getConnectedTools(context, true, undefined, undefined, {
+				inputData: toolInput,
+			}),
+			gateResult,
+		};
+	} catch (error) {
+		if (!gateResult || gateResult.readyToExecute) throw error;
+
+		context.logger.warn(
+			`MCP Trigger: could not build the tool list while the caller has unconnected credentials, exposing the connect-credentials tool instead: ${
+				error instanceof Error ? error.message : String(error)
+			}`,
+		);
+		return { tools: [createCredentialGateTool(gateResult)], gateResult };
+	}
+}
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
@@ -20,7 +74,7 @@ export class McpTrigger extends Node {
 			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['trigger'],
-		version: [1, 1.1, 2],
+		version: [1, 1.1, 2, 2.1],
 		description: 'Expose n8n tools as an MCP Server endpoint',
 		activationMessage:
 			'You can now connect your MCP Clients to the URL, using SSE or Streamable HTTP transports.',
@@ -51,7 +105,7 @@ export class McpTrigger extends Node {
 					"This trigger has two modes: test and production.<br /><br /><b>Use test mode while you build your workflow</b>. Click the 'execute step' button, then make an MCP request to the test URL. The executions will show up in the editor.<br /><br /><b>Use production mode to run your workflow automatically</b>. Since your workflow is activated, you can make requests to the production URL. These executions will show up in the <a data-key='executions'>executions list</a>, but not the editor.",
 			},
 			activationHint:
-				'Once you’ve finished building your workflow, run it without having to click this button by using the production URL.',
+				"Once you've finished building your workflow, run it without having to click this button by using the production URL.",
 		},
 		inputs: [
 			{
@@ -60,6 +114,7 @@ export class McpTrigger extends Node {
 			},
 		],
 		outputs: [],
+		sensitiveOutputFields: ['headers.authorization', 'headers.cookie'],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -88,11 +143,58 @@ export class McpTrigger extends Node {
 				type: 'options',
 				options: [
 					{ name: 'None', value: 'none' },
+					{
+						// n8n is a brand name and should be lowercase
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'n8n User Auth (OAuth2)',
+						value: 'n8nOAuth2',
+						description: 'Require user to give consent to use their n8n account',
+						displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } },
+					},
 					{ name: 'Bearer Auth', value: 'bearerAuth' },
 					{ name: 'Header Auth', value: 'headerAuth' },
 				],
 				default: 'none',
 				description: 'The way to authenticate',
+				builderHint: {
+					propertyHint:
+						"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+				},
+			},
+			{
+				displayName: 'Require Workflow Execute Permission',
+				name: 'requireExecuteAccess',
+				type: 'boolean',
+				default: true,
+				displayOptions: { show: { authentication: ['n8nOAuth2'] } }, // n8nOAuth2 is v2+ only
+				description:
+					'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
+			},
+			{
+				displayName: 'Trusted Source Name or ID',
+				name: 'trustedSource',
+				type: 'options',
+				typeOptions: { loadOptionsMethod: 'listTrustedSources' },
+				default: DEFAULT_TRUSTED_SOURCE_ID,
+				displayOptions: { show: { authentication: ['n8nOAuth2'] } }, // n8nOAuth2 is v2+ only
+				// The resolvers read the raw value without an execution context, so it must be static.
+				noDataExpression: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+				description: 'The identity provider whose access tokens can call this MCP server',
+			},
+			{
+				displayName: 'Include User in Output',
+				name: 'includeUserInOutput',
+				type: 'boolean',
+				default: true,
+				displayOptions: {
+					show: {
+						authentication: ['n8nOAuth2'],
+						'@version': [{ _cnd: { gte: 2.1 } }],
+					},
+				},
+				description:
+					"Whether to include the calling user's ID, email and name in the trigger output and in the request the connected tools receive",
 			},
 			{
 				displayName: 'Path',
@@ -102,6 +204,15 @@ export class McpTrigger extends Node {
 				placeholder: 'webhook',
 				required: true,
 				description: 'The base path for this MCP server',
+			},
+			{
+				displayName: 'Instructions',
+				name: 'instructions',
+				type: 'string',
+				typeOptions: { rows: 4 },
+				default: '',
+				description:
+					"Sent to MCP clients when they connect. Clients that support server instructions typically add them to the model's system prompt — use for guidance that spans multiple tools, such as tool-choice rules or multi-step workflows.",
 			},
 		],
 		webhooks: [
@@ -138,61 +249,162 @@ export class McpTrigger extends Node {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			listTrustedSources: listBearerTrustedSources,
+		},
+	};
+
 	async webhook(context: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = context.getWebhookName();
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject() as unknown as CompressionResponse;
 
-		try {
-			await validateWebhookAuthentication(context, 'authentication');
-		} catch (error) {
-			if (error instanceof WebhookAuthorizationError) {
-				resp.writeHead(error.responseCode);
-				resp.end(error.message);
+		let authedUser: IUser | undefined;
+
+		if (context.getNodeParameter('authentication') === 'n8nOAuth2') {
+			if (context.getNode().typeVersion < 2) {
+				resp.writeHead(401);
+				resp.end('OAuth2 authentication requires mcp trigger node v2.0 or higher');
 				return { noWebhookResponse: true };
 			}
-			throw error;
+			const authResult = await n8nOAuth2Auth(context, { realm: 'n8n MCP Server' });
+			if (authResult === 'handled') {
+				return { noWebhookResponse: true };
+			}
+			await context.establishTriggerIdentity(
+				authResult.token,
+				authResult.resource,
+				authResult.user.id,
+			);
+			authedUser = authResult.user;
+		} else {
+			try {
+				await validateWebhookAuthentication(context, 'authentication');
+			} catch (error) {
+				if (error instanceof WebhookAuthorizationError) {
+					resp.writeHead(error.responseCode);
+					resp.end(error.message);
+					return { noWebhookResponse: true };
+				}
+				throw error;
+			}
 		}
-		const node = context.getNode();
-		// Get a url/tool friendly name for the server, based on the node name
-		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
 
-		const mcpServerManager: McpServerManager = McpServerManager.instance(context.logger);
+		const node = context.getNode();
+
+		// n8n's own auth credential must never reach the tools — not here, and not on the
+		// worker, which rebuilds their input from `toolInput`. The caller's identity is
+		// surfaced as `user` instead, so tools never need the token to know who called.
+		const headers = redactedHeaders(req);
+		const user =
+			authedUser && context.getNodeParameter('includeUserInOutput', true) !== false
+				? {
+						id: authedUser.id,
+						email: authedUser.email,
+						firstName: authedUser.firstName,
+						lastName: authedUser.lastName,
+					}
+				: undefined;
+		const exposesRequest = node.typeVersion >= 2.1;
+		const toolInput: IDataObject | undefined = exposesRequest
+			? { body: context.getBodyData(), headers, ...(user && { user }) }
+			: undefined;
+
+		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
+		// Coerce, since an expression can resolve this to a non-string (e.g. `{{ 123 }}`),
+		// which the MCP client would reject when validating the initialize result
+		const instructions = String(context.getNodeParameter('instructions', '') ?? '') || undefined;
+		const mcpServer = McpServer.instance(context.logger);
 
 		if (webhookName === 'setup') {
-			// Sets up the transport and opens the long-lived connection. This resp
-			// will stay streaming, and is the channel that sends the events
-
-			// Prior to version 2.0, we use different paths for the setup and messages.
 			const postUrl =
 				node.typeVersion < 2
 					? req.path.replace(new RegExp(`/${MCP_SSE_SETUP_PATH}$`), `/${MCP_SSE_MESSAGES_PATH}`)
 					: req.path;
-			await mcpServerManager.createServerWithSSETransport(serverName, postUrl, resp);
+
+			const { tools: connectedTools } = await getConnectedToolsRespectingCredentialGate(
+				context,
+				toolInput,
+			);
+			await mcpServer.handleSetupRequest(
+				req,
+				resp,
+				serverName,
+				postUrl,
+				connectedTools,
+				instructions,
+			);
 
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
-			// Here we handle POST and DELETE requests.
-			// POST can be either:
-			// 1) Client calls in an established session using the SSE transport, or
-			// 2) Client calls in an established session using the StreamableHTTPServerTransport
-			// 3) Session setup requests using the StreamableHTTPServerTransport
-			// DELETE is used to terminate the session using the StreamableHTTPServerTransport
-
 			if (req.method === 'DELETE') {
-				await mcpServerManager.handleDeleteRequest(req, resp);
+				await mcpServer.handleDeleteRequest(req, resp);
 			} else {
-				// Check if there is a session and a transport is already established
-				const sessionId = mcpServerManager.getSessionId(req);
+				const sessionId = mcpServer.getSessionId(req);
 
-				if (sessionId && mcpServerManager.getTransport(sessionId)) {
-					const connectedTools = await getConnectedTools(context, true);
-					const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
-					if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
+				context.logger.debug('MCP POST request received for existing session');
+
+				if (sessionId) {
+					const { tools: connectedTools, gateResult: credentialStatus } =
+						await getConnectedToolsRespectingCredentialGate(context, toolInput);
+
+					// For a tool call, gate on the triggering user's private-credential status
+					// before executing: a not-ready gate makes the CallTool handler return the
+					// connection links instead of running the workflow.
+					let gateResult: CredentialCheckResult | undefined;
+					if (MessageParser.isToolCall(req.rawBody.toString())) {
+						gateResult = credentialStatus;
+					}
+
+					const { wasToolCall, toolCallInfo, messageId, relaySessionId, needsListToolsRelay } =
+						await mcpServer.handlePostMessage(
+							req,
+							resp,
+							connectedTools,
+							serverName,
+							gateResult,
+							instructions,
+						);
+
+					if (wasToolCall) {
+						const workflowData = {
+							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
+							...(messageId && { mcpMessageId: messageId }),
+							...(exposesRequest && { headers, ...(user && { user }) }),
+						};
+						return {
+							noWebhookResponse: true,
+							workflowData: [[{ json: workflowData }]],
+							toolInput,
+						};
+					}
+
+					if (needsListToolsRelay && relaySessionId && messageId) {
+						const workflowData = {
+							mcpListToolsRelay: {
+								sessionId: relaySessionId,
+								messageId,
+								marker: MCP_LIST_TOOLS_REQUEST_MARKER,
+							},
+						};
+						return {
+							noWebhookResponse: true,
+							workflowData: [[{ json: workflowData }]],
+						};
+					}
 				} else {
-					// If no session is established, this is a setup request
-					// for the StreamableHTTPServerTransport, so we create a new transport
-					await mcpServerManager.createServerWithStreamableHTTPTransport(serverName, resp, req);
+					const { tools: connectedTools } = await getConnectedToolsRespectingCredentialGate(
+						context,
+						toolInput,
+					);
+					await mcpServer.handleStreamableHttpSetup(
+						req,
+						resp,
+						serverName,
+						connectedTools,
+						instructions,
+					);
 				}
 			}
 

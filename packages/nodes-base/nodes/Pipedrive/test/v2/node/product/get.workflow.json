@@ -1,0 +1,100 @@
+{
+	"name": "Pipedrive v2 product get test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "c1000003-0001-4000-8000-000000000001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "product",
+				"operation": "get",
+				"productId": 3
+			},
+			"id": "c1000003-0001-4000-8000-000000000002",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "c1000003-0001-4000-8000-000000000003",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": 3,
+					"name": "Test Widget",
+					"tax": 20,
+					"add_time": "2026-04-01T22:03:26Z",
+					"update_time": "2026-04-01T22:03:26Z",
+					"description": "",
+					"code": "TW-001",
+					"unit": "piece",
+					"owner_id": 25455458,
+					"category": null,
+					"is_deleted": false,
+					"is_linkable": true,
+					"prices": [
+						{
+							"product_id": 3,
+							"price": 0,
+							"currency": "BGN",
+							"cost": 0,
+							"direct_cost": 0,
+							"notes": ""
+						}
+					],
+					"custom_fields": {
+						"test_string": null
+					},
+					"visible_to": 3,
+					"billing_frequency": "one-time",
+					"billing_frequency_cycles": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Pipedrive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pipedrive": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

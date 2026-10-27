@@ -1,0 +1,71 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "d3c3e440-8930-4c57-be62-3cf3fa801601",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftEntraServicePrincipalApi",
+				"resource": "table",
+				"operation": "getAll",
+				"workbook": {
+					"__rl": true,
+					"mode": "id",
+					"value": "ITEM123"
+				},
+				"site": {
+					"__rl": true,
+					"mode": "id",
+					"value": "contoso.sharepoint.com,g1,g2"
+				},
+				"library": {
+					"__rl": true,
+					"mode": "id",
+					"value": "b!drive1"
+				},
+				"returnAll": false,
+				"limit": 10,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.microsoftExcelSharePoint",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "d3c3e440-8930-4c57-be62-3cf3fa801602",
+			"name": "Microsoft Excel (SharePoint)",
+			"credentials": {
+				"microsoftEntraServicePrincipalApi": {
+					"id": "sp1",
+					"name": "Microsoft Entra Service Principal account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Excel (SharePoint)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Microsoft Excel (SharePoint)": [
+			{
+				"json": {
+					"id": "{00000000-0000-0000-0000-000000000011}",
+					"name": "Table1"
+				}
+			}
+		]
+	}
+}

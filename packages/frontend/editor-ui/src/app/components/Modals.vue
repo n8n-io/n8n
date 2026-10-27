@@ -1,39 +1,41 @@
 <script setup lang="ts">
+import type { VariableModalOptions } from '@/features/settings/environments.ee/environments.types';
 import {
 	ABOUT_MODAL_KEY,
-	CHANGE_PASSWORD_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
-	CONTACT_PROMPT_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
+	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+	DELETE_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
-	LOG_STREAM_MODAL_KEY,
-	MFA_SETUP_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	NPS_SURVEY_MODAL_KEY,
-	PROMPT_MFA_CODE_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	WHATS_NEW_MODAL_KEY,
-	PRE_BUILT_AGENTS_MODAL_KEY,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_DIFF_MODAL_KEY,
 	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
-	WORKFLOW_HISTORY_VERSION_RESTORE,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
-	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
-	CONFIRM_PASSWORD_MODAL_KEY,
+	BINARY_DATA_VIEW_MODAL_KEY,
+	STOP_MANY_EXECUTIONS_MODAL_KEY,
+	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
+	MIGRATE_WORKFLOW_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+	AI_BUILDER_DIFF_MODAL_KEY,
+	AI_GATEWAY_TOP_UP_MODAL_KEY,
+	TRIAL_INTRO_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -57,6 +59,7 @@ import {
 } from '@/features/core/folders/folders.constants';
 import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
+	SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 } from '@/features/integrations/sourceControl.ee/sourceControl.constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
@@ -65,71 +68,73 @@ import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 } from '@/features/settings/communityNodes/communityNodes.constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
+import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import AboutModal from '@/app/components/AboutModal.vue';
-import ActivationModal from '@/app/components/ActivationModal.vue';
+import ActivationModal from '@/features/workflows/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue';
 import NewAssistantSessionModal from '@/features/ai/assistant/components/Chat/NewAssistantSessionModal.vue';
-import ChangePasswordModal from '@/features/core/auth/components/ChangePasswordModal.vue';
-import ConfirmPasswordModal from '@/features/core/auth/components/ConfirmPasswordModal.vue';
 import ChatEmbedModal from '@/app/components/ChatEmbedModal.vue';
 import CommunityPackageInstallModal from '@/features/settings/communityNodes/components/CommunityPackageInstallModal.vue';
 import CommunityPackageManageConfirmModal from '@/features/settings/communityNodes/components/CommunityPackageManageConfirmModal.vue';
 import CommunityPlusEnrollmentModal from '@/features/settings/usage/components/CommunityPlusEnrollmentModal.vue';
-import ContactPromptModal from '@/app/components/ContactPromptModal.vue';
 import CredentialEdit from '@/features/credentials/components/CredentialEdit/CredentialEdit.vue';
 import CredentialsSelectModal from '@/features/credentials/components/CredentialsSelectModal.vue';
 import DebugPaywallModal from '@/features/execution/executions/components/DebugPaywallModal.vue';
 import DeleteFolderModal from '@/features/core/folders/components/DeleteFolderModal.vue';
 import MoveToFolderModal from '@/features/core/folders/components/MoveToFolderModal.vue';
 import DeleteUserModal from '@/features/settings/users/components/DeleteUserModal.vue';
-import DuplicateWorkflowDialog from '@/app/components/DuplicateWorkflowDialog.vue';
+import DuplicateWorkflowDialog from '@/features/workflows/components/DuplicateWorkflowDialog.vue';
 import ExternalSecretsProviderModal from '@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue';
-import FromAiParametersModal from '@/app/components/FromAiParametersModal.vue';
+import SecretsProviderConnectionModal from '@/features/integrations/secretsProviders.ee/components/SecretsProviderConnectionModal.ee.vue';
+import DeleteSecretsProviderModal from '@/features/integrations/secretsProviders.ee/components/DeleteSecretsProviderModal.ee.vue';
+import FromAiParametersModal from '@/features/ndv/parameters/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModal.vue';
-import ImportWorkflowUrlModal from '@/app/components/ImportWorkflowUrlModal.vue';
+import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
+import ImportWorkflowUrlModal from '@/features/workflows/components/ImportWorkflowUrlModal.vue';
 import InviteUsersModal from '@/features/settings/users/components/InviteUsersModal.vue';
-import MfaSetupModal from '@/features/core/auth/components/MfaSetupModal.vue';
 import ModalRoot from '@/app/components/ModalRoot.vue';
 import NpsSurvey from '@/app/components/NpsSurvey.vue';
 import PersonalizationModal from '@/features/settings/users/components/PersonalizationModal.vue';
-import PreBuiltAgentsModal from '@/app/components/PreBuiltAgentsModal.vue';
 import ProjectMoveResourceModal from '@/features/collaboration/projects/components/ProjectMoveResourceModal.vue';
-import EventDestinationSettingsModal from '@/features/integrations/logStreaming.ee/components/EventDestinationSettingsModal.vue';
 import SetupWorkflowCredentialsModal from '@/features/workflows/templates/components/SetupWorkflowCredentialsModal.vue';
 import SourceControlPullModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullModal.vue';
+import SourceControlPullResultModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullResultModal.vue';
 import SourceControlPushModal from '@/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue';
 import AnnotationTagsManager from '@/features/shared/tags/components/TagsManager/AnnotationTagsManager.ee.vue';
 import WorkflowTagsManager from '@/features/shared/tags/components/TagsManager/WorkflowTagsManager.vue';
 import WhatsNewModal from '@/app/components/WhatsNewModal.vue';
-import WorkflowActivationConflictingWebhookModal from '@/app/components/WorkflowActivationConflictingWebhookModal.vue';
-import WorkflowExtractionNameModal from '@/app/components/WorkflowExtractionNameModal.vue';
-import WorkflowHistoryVersionRestoreModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionRestoreModal.vue';
+import WorkflowActivationConflictingWebhookModal from '@/features/workflows/components/WorkflowActivationConflictingWebhookModal.vue';
+import WorkflowExtractionNameModal from '@/features/workflows/components/WorkflowExtractionNameModal.vue';
 import WorkflowHistoryVersionUnpublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue';
-import WorkflowSettings from '@/app/components/WorkflowSettings.vue';
-import WorkflowShareModal from '@/app/components/WorkflowShareModal.ee.vue';
+import WorkflowVersionFormModal, {
+	type WorkflowVersionFormModalData,
+} from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
+import WorkflowSettings from '@/features/workflows/components/WorkflowSettings/WorkflowSettings.vue';
+import WorkflowShareModal from '@/features/workflows/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflows/workflowDiff/WorkflowDiffModal.vue';
-import type { EventBus } from '@n8n/utils/event-bus';
-import PromptMfaCodeModal from '@/features/core/auth/components/PromptMfaCodeModal.vue';
 import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
-import NodeRecommendationModalTDQ from '@/experiments/templatesDataQuality/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
-import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
-import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
-import WorkflowHistoryPublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryPublishModal.vue';
+import StopManyExecutionsModal from '@/features/execution/executions/components/StopManyExecutionsModal.vue';
+import AddExecutionToDatasetModal from '@/features/ai/evaluation.ee/components/AddExecutionToDataset/AddExecutionToDatasetModal.vue';
+import WorkflowDescriptionModal from '@/features/workflows/components/WorkflowDescriptionModal.vue';
+import WorkflowPublishModal from '@/features/workflows/components/WorkflowPublishModal.vue';
+import MigrateWorkflowModal from '@/features/settings/migrationReport/MigrateWorkflowModal.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
-import CredentialResolverEditModal from '@/app/components/CredentialResolverEditModal.vue';
+import CredentialResolverEditModal from '@/features/resolvers/components/CredentialResolverEditModal.vue';
+import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuilderDiffModal.vue';
+import AiGatewayTopUpModal from '@/features/ai/gateway/components/AiGatewayTopUpModal.vue';
+import type { AiGatewayTopUpVariant } from '@/app/composables/useAiGatewayTopUp';
+import { defineAsyncComponent } from 'vue';
+
+const TrialIntroModal = defineAsyncComponent(
+	async () => await import('@/experiments/trialIntroModal/components/TrialIntroModal.vue'),
+);
 </script>
 
 <template>
 	<div>
-		<ModalRoot :name="CONTACT_PROMPT_MODAL_KEY">
-			<template #default="{ modalName }">
-				<ContactPromptModal :modal-name="modalName" />
-			</template>
-		</ModalRoot>
-
 		<ModalRoot :name="CREDENTIAL_EDIT_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CredentialEdit :modal-name="modalName" :mode="mode" :active-id="activeId" />
@@ -140,13 +145,22 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			<template
 				#default="{
 					modalName,
-					data: { mode, activeId },
+					data: { mode, activeId, rotatedApiKey },
 				}: {
 					modalName: string;
-					data: { mode: 'new' | 'edit'; activeId: string };
+					data: {
+						mode: 'new' | 'edit';
+						activeId: string;
+						rotatedApiKey?: ApiKeyWithRawValue | null;
+					};
 				}"
 			>
-				<ApiKeyCreateOrEditModal :modal-name="modalName" :mode="mode" :active-id="activeId" />
+				<ApiKeyCreateOrEditModal
+					:modal-name="modalName"
+					:mode="mode"
+					:active-id="activeId"
+					:rotated-api-key="rotatedApiKey"
+				/>
 			</template>
 		</ModalRoot>
 
@@ -198,14 +212,6 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			<WorkflowSettings />
 		</ModalRoot>
 
-		<ModalRoot :name="CHANGE_PASSWORD_MODAL_KEY">
-			<ChangePasswordModal />
-		</ModalRoot>
-
-		<ModalRoot :name="CONFIRM_PASSWORD_MODAL_KEY">
-			<ConfirmPasswordModal />
-		</ModalRoot>
-
 		<ModalRoot :name="INVITE_USER_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<InviteUsersModal :modal-name="modalName" :data="data" />
@@ -220,14 +226,6 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 
 		<ModalRoot :name="WORKFLOW_ACTIVE_MODAL_KEY">
 			<ActivationModal />
-		</ModalRoot>
-
-		<ModalRoot :name="MFA_SETUP_MODAL_KEY">
-			<MfaSetupModal />
-		</ModalRoot>
-
-		<ModalRoot :name="PROMPT_MFA_CODE_MODAL_KEY">
-			<PromptMfaCodeModal />
 		</ModalRoot>
 
 		<ModalRoot :name="WORKFLOW_SHARE_MODAL_KEY">
@@ -254,25 +252,6 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="LOG_STREAM_MODAL_KEY">
-			<template
-				#default="{
-					modalName,
-					data,
-				}: {
-					modalName: string;
-					data: { destination: Object; isNew: boolean; eventBus: EventBus };
-				}"
-			>
-				<EventDestinationSettingsModal
-					:modal-name="modalName"
-					:destination="data.destination"
-					:is-new="data.isNew"
-					:event-bus="data.eventBus"
-				/>
-			</template>
-		</ModalRoot>
-
 		<ModalRoot :name="SOURCE_CONTROL_PUSH_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<SourceControlPushModal :modal-name="modalName" :data="data" />
@@ -285,15 +264,39 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="SOURCE_CONTROL_PULL_RESULT_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SourceControlPullResultModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="WORKFLOW_DIFF_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<WorkflowDiffModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="AI_BUILDER_DIFF_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<AIBuilderDiffModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="EXTERNAL_SECRETS_PROVIDER_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<ExternalSecretsProviderModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="SECRETS_PROVIDER_CONNECTION_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SecretsProviderConnectionModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="DELETE_SECRETS_PROVIDER_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<DeleteSecretsProviderModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
@@ -307,22 +310,22 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="WORKFLOW_HISTORY_VERSION_RESTORE">
-			<template #default="{ modalName, data }">
-				<WorkflowHistoryVersionRestoreModal
-					data-test-id="workflow-history-version-restore-modal"
-					:modal-name="modalName"
-					:data="data"
-				/>
-			</template>
-		</ModalRoot>
-
 		<ModalRoot :name="WORKFLOW_HISTORY_VERSION_UNPUBLISH">
 			<template #default="{ modalName, data }">
 				<WorkflowHistoryVersionUnpublishModal
 					data-test-id="workflow-history-version-unpublish-modal"
 					:modal-name="modalName"
 					:data="data"
+				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<WorkflowVersionFormModal
+					data-test-id="workflow-history-name-version-modal"
+					:modal-name="modalName"
+					:data="data as WorkflowVersionFormModalData"
 				/>
 			</template>
 		</ModalRoot>
@@ -381,6 +384,18 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="STOP_MANY_EXECUTIONS_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<StopManyExecutionsModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="ADD_EXECUTION_TO_DATASET_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<AddExecutionToDatasetModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="WORKFLOW_EXTRACTION_NAME_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<WorkflowExtractionNameModal :modal-name="modalName" :data="data" />
@@ -405,21 +420,15 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY">
-			<template #default="{ modalName, data }">
-				<NodeRecommendationModalTDQ :modal-name="modalName" :data="data" />
-			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="PRE_BUILT_AGENTS_MODAL_KEY">
-			<template #default="{ modalName, data }">
-				<PreBuiltAgentsModal :modal-name="modalName" :data="data" />
-			</template>
-		</ModalRoot>
-
 		<ModalRoot :name="VARIABLE_MODAL_KEY">
-			<template #default="{ data }: { data: { mode: 'new' | 'edit'; variable?: any } }">
-				<VariableModal :mode="data?.mode ?? 'new'" :variable="data?.variable" />
+			<template #default="{ data }: { data: VariableModalOptions }">
+				<VariableModal v-bind="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="BINARY_DATA_VIEW_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<BinaryDataViewModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
@@ -435,9 +444,18 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="MIGRATE_WORKFLOW_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<MigrateWorkflowModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="WORKFLOW_HISTORY_PUBLISH_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<WorkflowHistoryPublishModal :modal-name="modalName" :data="data" />
+				<WorkflowVersionFormModal
+					:modal-name="modalName"
+					:data="data as WorkflowVersionFormModalData"
+				/>
 			</template>
 		</ModalRoot>
 
@@ -446,6 +464,19 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 				<CredentialResolverEditModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
+
+		<ModalRoot :name="AI_GATEWAY_TOP_UP_MODAL_KEY">
+			<template #default="{ data }: { data: { variant: AiGatewayTopUpVariant } }">
+				<AiGatewayTopUpModal :variant="data.variant" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="TRIAL_INTRO_MODAL_KEY">
+			<template #default="{ modalName }">
+				<TrialIntroModal :modal-name="modalName" />
+			</template>
+		</ModalRoot>
+
 		<!-- Dynamic modals from modules -->
 		<DynamicModalLoader />
 	</div>

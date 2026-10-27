@@ -14,6 +14,11 @@ export type Message = {
 
 export type ListMessage = Pick<Message, 'id' | 'threadId'>;
 
+export type MessageBookkeeping = {
+	id: string;
+	date: number;
+};
+
 export type MessageListResponse = {
 	messages?: ListMessage[];
 	nextPageToken?: string;
@@ -51,6 +56,16 @@ export type Label = {
 export type GmailWorkflowStaticData = {
 	lastTimeChecked?: number;
 	possibleDuplicates?: string[];
+	/** v1.4+: Message IDs remaining from a previous poll that exceeded maxResults */
+	pendingMessageIds?: string[];
+	/** v1.4+: IDs whose fetch failed, with how many attempts each has had so far */
+	failedFetches?: Array<[string, number]>;
+	/**
+	 * Consecutive polls whose scan stopped short and reached nothing new. Any
+	 * fetched message clears it, delivered or filtered out. A scan that exhausted
+	 * the page token clears it too. Only v1.4+ reads it.
+	 */
+	noProgressTicks?: number;
 };
 export type GmailWorkflowStaticDataDictionary = Record<string, GmailWorkflowStaticData>;
 

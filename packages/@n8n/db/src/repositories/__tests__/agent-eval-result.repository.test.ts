@@ -1,0 +1,294 @@
+import { Container } from '@n8n/di';
+import type { Mock } from 'vitest';
+
+import { AgentEvalResult } from '../../entities/agent-eval-result.ee';
+import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
+import { AgentEvalResultRepository } from '../agent-eval-result.repository.ee';
+
+describe('AgentEvalResultRepository', () => {
+	const entityManager = mockEntityManager(AgentEvalResult);
+	const repo = Container.get(AgentEvalResultRepository);
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+	});
+
+	describe('seedResults', () => {
+		it('creates one pending result per case, preserving order index', async () => {
+			(entityManager.create as Mock).mockImplementation(
+				(_target: unknown, entityLike: unknown) => entityLike as AgentEvalResult,
+			);
+			entityManager.save.mockImplementationOnce(async (_target, entities) => entities);
+
+			await repo.seedResults([
+				{ runId: 'run-1', sourceRowId: 'row-a', runIndex: 0, input: { q: '1' } },
+				{ runId: 'run-1', sourceRowId: 'row-b', runIndex: 1, input: { q: '2' } },
+			]);
+
+			const saved = entityManager.save.mock.calls[0]?.[1] as AgentEvalResult[];
+			expect(saved).toHaveLength(2);
+			expect(saved[0]).toMatchObject({
+				status: 'new',
+				runId: 'run-1',
+				sourceRowId: 'row-a',
+				runIndex: 0,
+				input: { q: '1' },
+			});
+			expect(saved[1]).toMatchObject({ runIndex: 1, sourceRowId: 'row-b' });
+		});
+
+		it('defaults sourceRowId/input to null and runIndex to the seed position', async () => {
+			(entityManager.create as Mock).mockImplementation(
+				(_target: unknown, entityLike: unknown) => entityLike as AgentEvalResult,
+			);
+			entityManager.save.mockImplementationOnce(async (_target, entities) => entities);
+
+			await repo.seedResults([{ runId: 'run-1' }, { runId: 'run-1' }]);
+
+			const saved = entityManager.save.mock.calls[0]?.[1] as AgentEvalResult[];
+			expect(saved[0]).toMatchObject({
+				status: 'new',
+				sourceRowId: null,
+				runIndex: 0,
+				input: null,
+			});
+			// runIndex falls back to the array position, so order is stable cross-DB.
+			expect(saved[1]).toMatchObject({ runIndex: 1 });
+		});
+	});
+
+	describe('markAsCompleted', () => {
+		it('stores the agent output and defaults toolCalls/metrics to null', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsCompleted('res-1', { output: { answer: '42' } });
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[1]).toBe('res-1');
+			expect(callArgs?.[2]).toMatchObject({
+				status: 'success',
+				output: { answer: '42' },
+				toolCalls: null,
+				metrics: null,
+			});
+		});
+	});
+
+	describe('markAsCompleted with a verdict', () => {
+		// Completion and verdict land in one write, so a finished case never reads as
+		// a pass while its verdict is still on the way.
+		it('writes the verdict together with the completion', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+			const verdict = { status: 'completed', outcome: 'fail', reasoning: 'Broke the rule.' };
+
+			await repo.markAsCompleted('res-1', { output: { answer: '42' }, verdict });
+
+			expect(entityManager.update.mock.calls[0]?.[2]).toMatchObject({
+				status: 'success',
+				verdict,
+			});
+		});
+
+		it('defaults the verdict to null when none was graded', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsCompleted('res-1', { output: { answer: '42' } });
+
+			expect(entityManager.update.mock.calls[0]?.[2]).toMatchObject({ verdict: null });
+		});
+	});
+
+	describe('markAsError', () => {
+		it('stores the error code and details', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsError('res-1', 'AGENT_THREW', { message: 'boom' });
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[2]).toMatchObject({
+				status: 'error',
+				errorCode: 'AGENT_THREW',
+				errorDetails: { message: 'boom' },
+			});
+		});
+	});
+
+	describe('updateVerdict', () => {
+		it('stores the judge verdict without touching status', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.updateVerdict('res-1', {
+				status: 'completed',
+				outcome: 'fail',
+				reasoning: 'Off-task.',
+			});
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[1]).toBe('res-1');
+			expect(callArgs?.[2]).toEqual({
+				verdict: { status: 'completed', outcome: 'fail', reasoning: 'Off-task.' },
+			});
+		});
+
+		it('accepts null to record that judging never ran', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.updateVerdict('res-1', null);
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[2]).toEqual({ verdict: null });
+		});
+	});
+
+	describe('markAsRunning', () => {
+		it('marks the case running and stamps runAt', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsRunning('res-1');
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[1]).toBe('res-1');
+			expect(callArgs?.[2]).toMatchObject({ status: 'running', runAt: expect.any(Date) });
+		});
+
+		// A rerun reuses the row, so a failed attempt's error must not survive into a
+		// successful one, nor a successful attempt's answer into a failed one.
+		it('clears every field a previous attempt left behind', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsRunning('res-1');
+
+			expect(entityManager.update.mock.calls[0]?.[2]).toEqual({
+				status: 'running',
+				runAt: expect.any(Date),
+				completedAt: null,
+				output: null,
+				toolCalls: null,
+				metrics: null,
+				verdict: null,
+				errorCode: null,
+				errorDetails: null,
+			});
+		});
+	});
+
+	describe('claimForRerun', () => {
+		it('claims only a settled row, clearing the previous attempt', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await expect(repo.claimForRerun('res-1')).resolves.toBe(true);
+
+			const [, where, patch] = entityManager.update.mock.calls[0] ?? [];
+			expect(where).toMatchObject({ id: 'res-1' });
+			expect(patch).toMatchObject({ status: 'running', output: null, errorCode: null });
+		});
+
+		it('reports false when no row matched, because it was already running or claimed', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: [] });
+
+			await expect(repo.claimForRerun('res-1')).resolves.toBe(false);
+		});
+	});
+
+	describe('markAsCancelled', () => {
+		it('marks the case cancelled and stamps completedAt', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsCancelled('res-1');
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[1]).toBe('res-1');
+			expect(callArgs?.[2]).toMatchObject({ status: 'cancelled', completedAt: expect.any(Date) });
+		});
+	});
+
+	describe('updateInput', () => {
+		it('overwrites the persisted snapshot', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.updateInput('res-1', { input: 'Q', criteria: 'Mentions the refund window.' });
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[1]).toBe('res-1');
+			expect(callArgs?.[2]).toEqual({
+				input: { input: 'Q', criteria: 'Mentions the refund window.' },
+			});
+		});
+	});
+
+	describe('deleteById', () => {
+		it('scopes the delete to the id and its own run, reporting whether a row was removed', async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 1, raw: [] });
+
+			await expect(repo.deleteById('res-1', 'run-1')).resolves.toBe(true);
+
+			expect(entityManager.delete).toHaveBeenCalledWith(AgentEvalResult, {
+				id: 'res-1',
+				runId: 'run-1',
+			});
+		});
+
+		it('reports false when nothing matched', async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 0, raw: [] });
+
+			await expect(repo.deleteById('res-1', 'run-1')).resolves.toBe(false);
+		});
+	});
+
+	describe('findAndCountByRunId', () => {
+		it('scopes to runId ordered by runIndex ascending', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repo.findAndCountByRunId('run-1');
+
+			expect(entityManager.findAndCount.mock.calls[0]?.[1]).toMatchObject({
+				where: { runId: 'run-1' },
+				order: { runIndex: 'ASC' },
+			});
+		});
+
+		// Must reach the query: slicing in memory would load the full
+		// input/output/toolCalls JSON that pagination exists to avoid.
+		it('pushes the page window into the query rather than slicing in memory', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repo.findAndCountByRunId('run-1', { take: 25, skip: 50 });
+
+			expect(entityManager.findAndCount.mock.calls[0]?.[1]).toMatchObject({
+				take: 25,
+				skip: 50,
+			});
+		});
+
+		it('returns the unpaginated total alongside the page', async () => {
+			const page = [{ id: 'res-1' }] as AgentEvalResult[];
+			entityManager.findAndCount.mockResolvedValueOnce([page, 500]);
+
+			const [results, count] = await repo.findAndCountByRunId('run-1', { take: 1, skip: 0 });
+
+			expect(results).toEqual(page);
+			expect(count).toBe(500);
+		});
+	});
+
+	describe('countByStatus', () => {
+		it('groups counts by status in the DB and zero-fills missing statuses', async () => {
+			const qb = {
+				select: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				groupBy: vi.fn().mockReturnThis(),
+				getRawMany: vi.fn().mockResolvedValue([
+					{ status: 'success', count: '3' },
+					{ status: 'error', count: 1 },
+				]),
+			};
+			(entityManager.createQueryBuilder as Mock).mockReturnValue(qb);
+
+			const result = await repo.countByStatus('run-1');
+
+			expect(qb.where).toHaveBeenCalledWith('result.runId = :runId', { runId: 'run-1' });
+			expect(result).toEqual({ new: 0, running: 0, success: 3, error: 1, cancelled: 0 });
+		});
+	});
+});

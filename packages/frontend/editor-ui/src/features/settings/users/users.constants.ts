@@ -1,6 +1,7 @@
 export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
-export const PERSONALIZATION_MODAL_KEY = 'personalization';
+
+export { PERSONALIZATION_MODAL_KEY } from '@n8n/frontend-constants/users';
 
 /** PERSONALIZATION SURVEY */
 export const EMAIL_KEY = 'email';
@@ -76,6 +77,7 @@ export const REPORTED_SOURCE_TWITTER = 'twitter';
 export const REPORTED_SOURCE_LINKEDIN = 'linkedin';
 export const REPORTED_SOURCE_YOUTUBE = 'youtube';
 export const REPORTED_SOURCE_FRIEND = 'friend';
+export const REPORTED_SOURCE_LLM = 'llm';
 export const REPORTED_SOURCE_PODCAST = 'podcast';
 export const REPORTED_SOURCE_EVENT = 'event';
 export const REPORTED_SOURCE_OTHER = 'other';

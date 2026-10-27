@@ -55,7 +55,10 @@
         },
         "size": {
             "type": "integer"
+        },
+        "thumbnail": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

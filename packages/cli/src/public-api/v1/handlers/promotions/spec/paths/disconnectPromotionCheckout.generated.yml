@@ -1,0 +1,29 @@
+operationId: disconnectPromotionCheckout
+tags:
+  - Promotions
+summary: Remove an environment's local checkout
+description: Removes the local checkout and keeps the environment, its credentials, and the trusted SSH host keys.
+x-required-scope: gitConnection:clone
+parameters:
+  - schema:
+      type: string
+      format: uuid
+    required: true
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/promotionCheckoutPublicDto.generated.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

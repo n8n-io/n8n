@@ -372,6 +372,125 @@ describe('Type Validation', () => {
 			const fields = tryToParseJsonToFormFields(json);
 			expect(fields).toEqual([{ fieldType: 'html', html: '<div>test</div>' }]);
 		});
+
+		it('should include the parse error detail for invalid JSON', () => {
+			const json = '[{"fieldLabel": }]';
+			expect(() => tryToParseJsonToFormFields(json)).toThrowError(/^Value is not valid JSON: .+/);
+		});
+
+		it('should reject valid JSON that is not an array', () => {
+			const json = '{"fieldLabel": "Name"}';
+			expect(() => tryToParseJsonToFormFields(json)).toThrowError(
+				'Form fields must be an array of objects, but we got object',
+			);
+		});
+
+		it('should reject array entries that are not objects', () => {
+			const json = '[null]';
+			expect(() => tryToParseJsonToFormFields(json)).toThrowError(
+				"Field 0 must be an object, but we got 'null'",
+			);
+		});
+
+		it('should reject fieldOptions without a values array', () => {
+			const json =
+				'[{"fieldLabel": "Choice", "fieldType": "dropdown", "fieldOptions": {"values": "not an array"}}]';
+			expect(() => tryToParseJsonToFormFields(json)).toThrowError(
+				"Field dropdown in field 0 has no 'values' property that contains an array of options",
+			);
+		});
+
+		it('should reject dropdown options that are not objects', () => {
+			const json =
+				'[{"fieldLabel": "Choice", "fieldType": "dropdown", "fieldOptions": {"values": [null]}}]';
+			expect(() => tryToParseJsonToFormFields(json)).toThrowError(
+				'Field dropdown in field 0 has an invalid option 0',
+			);
+		});
+	});
+
+	describe('binary', () => {
+		it('should validate valid binary data objects with data property', () => {
+			const validBinaryWithData = {
+				mimeType: 'image/png',
+				data: 'base64encodeddata',
+				fileName: 'test.png',
+			};
+			expect(validateFieldType('binary', validBinaryWithData, 'binary')).toEqual({
+				valid: true,
+				newValue: validBinaryWithData,
+			});
+		});
+
+		it('should validate valid binary data objects with id property', () => {
+			const validBinaryWithId = {
+				mimeType: 'application/pdf',
+				id: 'binary-id-123',
+				fileName: 'document.pdf',
+			};
+			expect(validateFieldType('binary', validBinaryWithId, 'binary')).toEqual({
+				valid: true,
+				newValue: validBinaryWithId,
+			});
+		});
+
+		it('should validate binary data objects with both data and id', () => {
+			const validBinaryBoth = {
+				mimeType: 'text/plain',
+				data: 'some text content',
+				id: 'text-id-456',
+			};
+			expect(validateFieldType('binary', validBinaryBoth, 'binary')).toEqual({
+				valid: true,
+				newValue: validBinaryBoth,
+			});
+		});
+
+		it('should return valid for null or undefined', () => {
+			// null and undefined are handled by the early return in validateFieldType
+			expect(validateFieldType('binary', null, 'binary').valid).toBe(true);
+			expect(validateFieldType('binary', undefined, 'binary').valid).toBe(true);
+		});
+
+		it('should not validate arrays', () => {
+			const arrayValue = [{ mimeType: 'image/png', data: 'test' }];
+			expect(validateFieldType('binary', arrayValue, 'binary').valid).toBe(false);
+		});
+
+		it('should not validate non-object values', () => {
+			expect(validateFieldType('binary', 'string value', 'binary').valid).toBe(false);
+			expect(validateFieldType('binary', 123, 'binary').valid).toBe(false);
+			expect(validateFieldType('binary', true, 'binary').valid).toBe(false);
+		});
+
+		it('should not validate objects without mimeType', () => {
+			const invalidBinary = {
+				data: 'base64encodeddata',
+				fileName: 'test.png',
+			};
+			expect(validateFieldType('binary', invalidBinary, 'binary').valid).toBe(false);
+		});
+
+		it('should not validate objects without data or id', () => {
+			const invalidBinary = {
+				mimeType: 'image/png',
+				fileName: 'test.png',
+			};
+			expect(validateFieldType('binary', invalidBinary, 'binary').valid).toBe(false);
+		});
+
+		it('should not validate empty objects', () => {
+			expect(validateFieldType('binary', {}, 'binary').valid).toBe(false);
+		});
+
+		it('should provide proper error message for invalid binary data', () => {
+			const result = validateFieldType('binary', 'not a binary object', 'binary');
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.errorMessage).toContain('Make sure the value is a valid binary data object');
+				expect(result.errorMessage).toContain("'mimeType' and 'data' or 'id' property");
+			}
+		});
 	});
 
 	describe('tryToParseUrl', () => {

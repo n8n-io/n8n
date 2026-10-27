@@ -1,19 +1,17 @@
 import { Tournament } from '@n8n/tournament';
 
-import {
-	DollarSignValidator,
-	FunctionThisSanitizer,
-	PrototypeSanitizer,
-} from './expression-sandboxing';
+import { expressionSandboxHooks } from './expression-sandboxing';
 
 type Evaluator = (expr: string, data: unknown) => string | null | (() => unknown);
 type ErrorHandler = (error: Error) => void;
 
 const errorHandler: ErrorHandler = () => {};
-const tournamentEvaluator = new Tournament(errorHandler, undefined, undefined, {
-	before: [FunctionThisSanitizer],
-	after: [PrototypeSanitizer, DollarSignValidator],
-});
+const tournamentEvaluator = new Tournament(
+	errorHandler,
+	undefined,
+	undefined,
+	expressionSandboxHooks,
+);
 const evaluator: Evaluator = tournamentEvaluator.execute.bind(tournamentEvaluator);
 
 export const setErrorHandler = (handler: ErrorHandler) => {

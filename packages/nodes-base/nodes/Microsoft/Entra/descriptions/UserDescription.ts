@@ -10,7 +10,13 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { handleErrorPostReceive, microsoftApiRequest } from '../GenericFunctions';
+import { ignoreHttpStatusErrorsConfig } from './common';
+import {
+	handleErrorPostReceive,
+	microsoftApiRequest,
+	validateGroupPreSend,
+	validateUserPreSend,
+} from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -31,8 +37,8 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/groups/{{ $parameter["group"] }}/members/$ref',
-						ignoreHttpStatusErrors: true,
+						url: '=/groups/{{ encodeURIComponent($parameter["group"]) }}/members/$ref',
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
 						postReceive: [
@@ -56,7 +62,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '/users',
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -71,8 +77,8 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/users/{{ $parameter["user"] }}',
-						ignoreHttpStatusErrors: true,
+						url: '=/users/{{ encodeURIComponent($parameter["user"]) }}',
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
 						postReceive: [
@@ -95,8 +101,8 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/users/{{ $parameter["user"] }}',
-						ignoreHttpStatusErrors: true,
+						url: '=/users/{{ encodeURIComponent($parameter["user"]) }}',
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -112,7 +118,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'GET',
 						url: '/users',
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
 						postReceive: [
@@ -136,8 +142,8 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/groups/{{ $parameter["group"] }}/members/{{ $parameter["user"] }}/$ref',
-						ignoreHttpStatusErrors: true,
+						url: '=/groups/{{ encodeURIComponent($parameter["group"]) }}/members/{{ encodeURIComponent($parameter["user"]) }}/$ref',
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
 						postReceive: [
@@ -160,8 +166,8 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PATCH',
-						url: '=/users/{{ $parameter["user"] }}',
-						ignoreHttpStatusErrors: true,
+						url: '=/users/{{ encodeURIComponent($parameter["user"]) }}',
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
 						postReceive: [
@@ -214,6 +220,11 @@ const addGroupFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateGroupPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 	{
@@ -249,10 +260,12 @@ const addGroupFields: INodeProperties[] = [
 		required: true,
 		routing: {
 			send: {
+				preSend: [validateUserPreSend],
 				property: '@odata.id',
 				propertyInDotNotation: false,
 				type: 'body',
-				value: '=https://graph.microsoft.com/v1.0/directoryObjects/{{ $value }}',
+				value:
+					'={{ ($credentials.graphApiBaseUrl || "https://graph.microsoft.com").replace(/\\/+$/, "") }}/v1.0/directoryObjects/{{ encodeURIComponent($value) }}',
 			},
 		},
 		type: 'resourceLocator',
@@ -901,16 +914,30 @@ const createFields: INodeProperties[] = [
 
 								try {
 									if (Object.keys(separateBody).length) {
-										await microsoftApiRequest.call(this, 'PATCH', `/users/${userId}`, separateBody);
+										await microsoftApiRequest.call(
+											this,
+											'PATCH',
+											`/users/${encodeURIComponent(userId)}`,
+											separateBody,
+										);
 										merge(item.json, separateBody);
 									}
 									if (Object.keys(body).length) {
-										await microsoftApiRequest.call(this, 'PATCH', `/users/${userId}`, body);
+										await microsoftApiRequest.call(
+											this,
+											'PATCH',
+											`/users/${encodeURIComponent(userId)}`,
+											body,
+										);
 										merge(item.json, body);
 									}
 								} catch (error) {
 									try {
-										await microsoftApiRequest.call(this, 'DELETE', `/users/${userId}`);
+										await microsoftApiRequest.call(
+											this,
+											'DELETE',
+											`/users/${encodeURIComponent(userId)}`,
+										);
 									} catch {}
 									throw error;
 								}
@@ -957,6 +984,11 @@ const deleteFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateUserPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 ];
@@ -993,6 +1025,11 @@ const getFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateUserPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 	{
@@ -1251,6 +1288,11 @@ const removeGroupFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateGroupPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 	{
@@ -1284,6 +1326,11 @@ const removeGroupFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateUserPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 ];
@@ -1320,6 +1367,11 @@ const updateFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateUserPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 	{
@@ -2086,7 +2138,12 @@ const updateFields: INodeProperties[] = [
 								if (body.birthday) {
 									body.birthday = (body.birthday as DateTime).toUTC().toISO();
 								}
-								await microsoftApiRequest.call(this, 'PATCH', `/users/${userId}`, body);
+								await microsoftApiRequest.call(
+									this,
+									'PATCH',
+									`/users/${encodeURIComponent(userId)}`,
+									body,
+								);
 							}
 						}
 						return items;

@@ -1,0 +1,754 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createComponentRenderer } from '@/__tests__/render';
+import { createTestingPinia } from '@pinia/testing';
+import { flushPromises } from '@vue/test-utils';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import { mockedStore } from '@/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import ToolsManagerModal from './ToolsManagerModal.vue';
+import { NodeConnectionTypes, type INode, type INodeTypeDescription } from 'n8n-workflow';
+import { fireEvent, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
+import { MODAL_CONFIRM } from '@/app/constants';
+import type { ChatHubToolDto } from '@n8n/api-types';
+import { createToolSettingsStub } from '../__tests__/toolSettingsStub';
+import { hasRole } from '@/app/utils/rbac/checks/hasRole';
+import { useUsersStore } from '@n8n/stores/users.store';
+
+vi.mock('virtual:node-popularity-data', () => ({
+	default: [
+		{ id: 'n8n-nodes-base.toolA', popularity: 100 },
+		{ id: 'n8n-nodes-base.toolB', popularity: 50 },
+	],
+}));
+
+vi.mock('@n8n/i18n', () => {
+	const i18n = {
+		baseText: (key: string, opts?: { interpolate?: Record<string, unknown> }) => {
+			if (opts?.interpolate) {
+				return `${key} ${JSON.stringify(opts.interpolate)}`;
+			}
+			return key;
+		},
+		nodeText: () => ({
+			topParameterPanel: () => '',
+			inputLabelDisplayName: (parameter: { displayName: string }) => parameter.displayName,
+			inputLabelDescription: (parameter: { description?: string }) => parameter.description,
+			placeholder: (parameter: { placeholder?: string }) => parameter.placeholder,
+			hint: (parameter: { hint?: string }) => parameter.hint,
+			optionsOptionName: (parameter: { name: string }) => parameter.name,
+			optionsOptionDescription: (parameter: { description?: string }) => parameter.description,
+			collectionOptionName: (parameter: { displayName: string }) => parameter.displayName,
+			credentialsSelectAuthDisplayName: (parameter: { displayName: string }) =>
+				parameter.displayName,
+			credentialsSelectAuthDescription: (parameter: { description?: string }) =>
+				parameter.description,
+		}),
+	};
+	return {
+		useI18n: () => i18n,
+		i18n,
+		i18nInstance: { install: vi.fn() },
+	};
+});
+
+vi.mock('vue-router', () => ({
+	useRouter: () => ({ push: vi.fn(), resolve: vi.fn(() => ({ href: '' })) }),
+	useRoute: () => ({ params: {}, query: {} }),
+	RouterLink: { template: '<a><slot /></a>' },
+}));
+
+const mockConfirm = vi.fn();
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm: mockConfirm }),
+}));
+
+const mockShowError = vi.fn();
+const mockShowMessage = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError: mockShowError, showMessage: mockShowMessage }),
+}));
+
+vi.mock('@/app/utils/rbac/checks/hasRole', () => ({
+	hasRole: vi.fn().mockReturnValue(false),
+}));
+
+const mockInstallNode = vi.fn();
+vi.mock('@/features/settings/communityNodes/composables/useInstallNode', () => ({
+	useInstallNode: () => ({ installNode: mockInstallNode, loading: { value: false } }),
+}));
+
+vi.mock('uuid', () => ({
+	v4: () => 'mock-uuid-1234',
+}));
+
+const TOOL_NODE_TYPE_A: INodeTypeDescription = {
+	displayName: 'Tool A',
+	name: 'n8n-nodes-base.toolA',
+	group: ['transform'],
+	version: 1,
+	description: 'A tool for testing',
+	defaults: { name: 'Tool A' },
+	inputs: [],
+	outputs: [{ type: NodeConnectionTypes.AiTool }],
+	properties: [],
+};
+
+const TOOL_NODE_TYPE_B: INodeTypeDescription = {
+	displayName: 'Tool B',
+	name: 'n8n-nodes-base.toolB',
+	group: ['transform'],
+	version: 1,
+	description: 'Another tool for testing',
+	defaults: { name: 'Tool B' },
+	inputs: [],
+	outputs: [{ type: NodeConnectionTypes.AiTool }],
+	properties: [],
+};
+
+const TOOL_NODE_TYPE_WITH_INPUTS: INodeTypeDescription = {
+	...TOOL_NODE_TYPE_A,
+	name: 'n8n-nodes-base.toolWithInputs',
+	displayName: 'Tool With Inputs',
+	inputs: ['main'],
+};
+
+function createMockToolDto(overrides: Partial<INode> = {}, enabled = true): ChatHubToolDto {
+	return {
+		definition: {
+			id: 'tool-1',
+			name: 'Configured Tool A',
+			type: 'n8n-nodes-base.toolA',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			...overrides,
+		},
+		enabled,
+	};
+}
+
+const ElDialogStub = {
+	template: `
+		<div role="dialog">
+			<slot name="header" />
+			<slot />
+			<slot name="footer" />
+		</div>
+	`,
+	props: [
+		'modelValue',
+		'beforeClose',
+		'class',
+		'center',
+		'width',
+		'showClose',
+		'closeOnClickModal',
+		'closeOnPressEscape',
+		'style',
+		'appendTo',
+		'lockScroll',
+		'appendToBody',
+		'dataTestId',
+		'modalClass',
+		'zIndex',
+	],
+};
+
+const MODAL_NAME = 'ToolsManagerModal';
+const onConfirmMock = vi.fn();
+
+const renderComponent = createComponentRenderer(ToolsManagerModal, {
+	global: {
+		stubs: {
+			ElDialog: ElDialogStub,
+			NodeToolSettingsContent: createToolSettingsStub(true),
+			NodeIcon: { template: '<div />' },
+		},
+	},
+});
+
+function getConfiguredItems(container: Element) {
+	return Array.from(container.querySelectorAll('.item.configured'));
+}
+
+function getAvailableItems(container: Element) {
+	return Array.from(container.querySelectorAll('.item:not(.configured)'));
+}
+
+function getActionButtons(item: Element) {
+	return Array.from(item.querySelectorAll('.actions button'));
+}
+
+function getToggle(item: Element) {
+	return item.querySelector('[role="switch"]') as HTMLElement;
+}
+
+describe('ToolsManagerModal', () => {
+	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+	let chatStore: ReturnType<typeof mockedStore<typeof useChatStore>>;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+
+		createTestingPinia({ stubActions: false });
+
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		uiStore = mockedStore(useUIStore);
+		chatStore = mockedStore(useChatStore);
+
+		nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
+			if (name === 'n8n-nodes-base.toolA') return TOOL_NODE_TYPE_A;
+			if (name === 'n8n-nodes-base.toolB') return TOOL_NODE_TYPE_B;
+			if (name === 'n8n-nodes-base.toolWithInputs') return TOOL_NODE_TYPE_WITH_INPUTS;
+			return null;
+		});
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: ['n8n-nodes-base.toolA', 'n8n-nodes-base.toolB'],
+		};
+
+		chatStore.configuredTools = [];
+		chatStore.customAgents = {};
+		chatStore.addConfiguredTool = vi.fn().mockResolvedValue(undefined);
+		chatStore.updateConfiguredTool = vi.fn().mockResolvedValue(undefined);
+		chatStore.removeConfiguredTool = vi.fn().mockResolvedValue(undefined);
+		chatStore.toggleToolEnabled = vi.fn().mockResolvedValue(undefined);
+		chatStore.toggleCustomAgentTool = vi.fn().mockResolvedValue(undefined);
+
+		uiStore.openModal(MODAL_NAME);
+		uiStore.closeModal = vi.fn();
+	});
+
+	function defaultProps() {
+		return {
+			modalName: MODAL_NAME,
+			data: {
+				tools: [],
+				onConfirm: onConfirmMock,
+			},
+		};
+	}
+
+	it('should render the modal title', () => {
+		const { getByText } = renderComponent({ props: defaultProps() });
+
+		expect(getByText('chatHub.toolsManager.title')).toBeTruthy();
+	});
+
+	it('should render search input', () => {
+		const { container } = renderComponent({ props: defaultProps() });
+
+		const input = container.querySelector('input');
+		expect(input).toBeTruthy();
+	});
+
+	it('should render available tools from node types store', () => {
+		const { getByText, container } = renderComponent({ props: defaultProps() });
+
+		expect(getByText('Tool A')).toBeTruthy();
+		expect(getByText('Tool B')).toBeTruthy();
+		expect(getAvailableItems(container)).toHaveLength(2);
+	});
+
+	it('should render configured tools section when tools exist', () => {
+		chatStore.configuredTools = [createMockToolDto()];
+
+		const { getByText, container } = renderComponent({ props: defaultProps() });
+
+		expect(getByText('Configured Tool A')).toBeTruthy();
+		expect(getConfiguredItems(container)).toHaveLength(1);
+	});
+
+	it('should show empty state when no tools are available', () => {
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {};
+
+		const { getByText } = renderComponent({ props: defaultProps() });
+
+		expect(getByText('chatHub.toolsManager.noResults')).toBeTruthy();
+	});
+
+	it('should sort available tools by popularity', () => {
+		const { container } = renderComponent({ props: defaultProps() });
+
+		const availableItems = getAvailableItems(container);
+		expect(availableItems).toHaveLength(2);
+		// Tool A (popularity 100) should come before Tool B (popularity 50)
+		expect(availableItems[0].textContent).toContain('Tool A');
+		expect(availableItems[1].textContent).toContain('Tool B');
+	});
+
+	it('should filter out tools with inputs', () => {
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: ['n8n-nodes-base.toolA', 'n8n-nodes-base.toolWithInputs'],
+		};
+
+		const { container, getByText, queryByText } = renderComponent({ props: defaultProps() });
+
+		const availableItems = getAvailableItems(container);
+		// Only toolA should appear (toolWithInputs has inputs and is excluded)
+		expect(availableItems).toHaveLength(1);
+		expect(getByText('Tool A')).toBeTruthy();
+		expect(queryByText('Tool With Inputs')).toBeNull();
+	});
+
+	describe('role restrictions', () => {
+		const toolType = (name: string, displayName: string): INodeTypeDescription => ({
+			...TOOL_NODE_TYPE_A,
+			name,
+			displayName,
+		});
+
+		const CHAT_USER_BLOCKED_TOOLS = [
+			toolType('n8n-nodes-base.executeCommandTool', 'Execute Command Tool'),
+			toolType('n8n-nodes-base.gitTool', 'Git Tool'),
+			toolType('@n8n/n8n-nodes-langchain.toolCode', 'Code Tool'),
+			toolType('n8n-nodes-base.messageAnAgentTool', 'Message an Agent Tool'),
+		];
+		const CHAT_TOOL = toolType('@n8n/n8n-nodes-langchain.chatTool', 'Chat Tool');
+		const ROLE_TEST_TOOLS = [...CHAT_USER_BLOCKED_TOOLS, CHAT_TOOL];
+
+		beforeEach(() => {
+			const getDefaultNodeType = nodeTypesStore.getNodeType;
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockImplementation(
+					(name: string) =>
+						ROLE_TEST_TOOLS.find((tool) => tool.name === name) ?? getDefaultNodeType(name),
+				);
+			nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+				[NodeConnectionTypes.AiTool]: [
+					'n8n-nodes-base.toolA',
+					...ROLE_TEST_TOOLS.map((tool) => tool.name),
+				],
+			};
+		});
+
+		afterEach(() => {
+			vi.mocked(hasRole).mockReturnValue(false);
+		});
+
+		it('should hide tools that chat users are not allowed to add', () => {
+			vi.mocked(hasRole).mockReturnValue(true);
+
+			const { container, getByText } = renderComponent({ props: defaultProps() });
+
+			expect(getByText('Tool A')).toBeTruthy();
+			expect(getAvailableItems(container)).toHaveLength(1);
+		});
+
+		it('should show those tools to users who can build workflows', () => {
+			vi.mocked(hasRole).mockReturnValue(false);
+
+			const { getByText } = renderComponent({ props: defaultProps() });
+
+			for (const tool of CHAT_USER_BLOCKED_TOOLS) {
+				expect(getByText(tool.displayName)).toBeTruthy();
+			}
+		});
+
+		it('should hide the Chat tool for users who can build workflows', () => {
+			vi.mocked(hasRole).mockReturnValue(false);
+
+			const { queryByText } = renderComponent({ props: defaultProps() });
+
+			expect(queryByText('Chat Tool')).toBeNull();
+		});
+
+		describe('configured tool that the role blocks', () => {
+			beforeEach(() => {
+				chatStore.configuredTools = [
+					createMockToolDto({
+						name: 'Shell',
+						type: 'n8n-nodes-base.executeCommandTool',
+					}),
+				];
+			});
+
+			it('should mark the tool and keep only the remove action for a chat user', () => {
+				vi.mocked(hasRole).mockReturnValue(true);
+
+				const { container } = renderComponent({ props: defaultProps() });
+
+				const [configured] = getConfiguredItems(container);
+				expect(
+					configured.querySelector('[data-test-id="chat-tool-role-blocked-icon"]'),
+				).toBeTruthy();
+				expect(getActionButtons(configured)).toHaveLength(1);
+				expect(getToggle(configured)).toBeNull();
+			});
+
+			it('should remove the tool after confirmation for a chat user', async () => {
+				vi.mocked(hasRole).mockReturnValue(true);
+				mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+
+				const { container } = renderComponent({ props: defaultProps() });
+
+				const [removeBtn] = getActionButtons(getConfiguredItems(container)[0]);
+				await userEvent.click(removeBtn);
+
+				await waitFor(() => {
+					expect(chatStore.removeConfiguredTool).toHaveBeenCalledWith('tool-1');
+				});
+			});
+
+			it('should show the tool as usual for users who can build workflows', () => {
+				vi.mocked(hasRole).mockReturnValue(false);
+
+				const { container } = renderComponent({ props: defaultProps() });
+
+				const [configured] = getConfiguredItems(container);
+				expect(configured.querySelector('[data-test-id="chat-tool-role-blocked-icon"]')).toBeNull();
+				expect(getActionButtons(configured)).toHaveLength(2);
+				expect(getToggle(configured)).toBeTruthy();
+			});
+		});
+	});
+
+	describe('tool actions', () => {
+		it('should switch to settings view when adding a tool', async () => {
+			const { getAllByText, getByTestId } = renderComponent({ props: defaultProps() });
+
+			const addButtons = getAllByText('chatHub.toolsManager.add');
+			await userEvent.click(addButtons[0]);
+
+			await waitFor(() => {
+				expect(getByTestId('tool-settings-content')).toBeTruthy();
+			});
+		});
+
+		it('should switch to settings view when configuring a tool', async () => {
+			chatStore.configuredTools = [createMockToolDto()];
+
+			const { container, getByTestId } = renderComponent({ props: defaultProps() });
+
+			const configuredItem = getConfiguredItems(container)[0];
+			const [configureBtn] = getActionButtons(configuredItem);
+			await userEvent.click(configureBtn);
+
+			await waitFor(() => {
+				expect(getByTestId('tool-settings-content')).toBeTruthy();
+			});
+		});
+
+		it('should call removeConfiguredTool after confirmation', async () => {
+			const tool = createMockToolDto({ id: 'tool-to-remove' });
+			chatStore.configuredTools = [tool];
+			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const configuredItem = getConfiguredItems(container)[0];
+			const [, removeBtn] = getActionButtons(configuredItem);
+			await userEvent.click(removeBtn);
+
+			await waitFor(() => {
+				expect(mockConfirm).toHaveBeenCalled();
+				expect(chatStore.removeConfiguredTool).toHaveBeenCalledWith('tool-to-remove');
+			});
+		});
+
+		it('should not remove tool if confirmation is cancelled', async () => {
+			const tool = createMockToolDto({ id: 'tool-keep' });
+			chatStore.configuredTools = [tool];
+			mockConfirm.mockResolvedValue('cancel');
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const configuredItem = getConfiguredItems(container)[0];
+			const [, removeBtn] = getActionButtons(configuredItem);
+			await userEvent.click(removeBtn);
+
+			await waitFor(() => {
+				expect(mockConfirm).toHaveBeenCalled();
+			});
+			expect(chatStore.removeConfiguredTool).not.toHaveBeenCalled();
+		});
+
+		it('should call toggleToolEnabled when toggling a tool', async () => {
+			const tool = createMockToolDto({ id: 'tool-toggle' }, false);
+			chatStore.configuredTools = [tool];
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const configuredItem = getConfiguredItems(container)[0];
+			const toggle = getToggle(configuredItem);
+			await fireEvent.click(toggle);
+
+			await waitFor(() => {
+				expect(chatStore.toggleToolEnabled).toHaveBeenCalledWith('tool-toggle', true);
+			});
+		});
+
+		it('should call toggleCustomAgentTool when toggling in agent context', async () => {
+			const tool = createMockToolDto({ id: 'tool-agent-toggle' });
+			chatStore.configuredTools = [tool];
+			chatStore.customAgents = {
+				'agent-1': { name: 'Test Agent', toolIds: ['tool-agent-toggle'] } as never,
+			};
+
+			const { container } = renderComponent({
+				props: {
+					...defaultProps(),
+					data: { ...defaultProps().data, customAgentId: 'agent-1' },
+				},
+			});
+
+			const configuredItem = getConfiguredItems(container)[0];
+			const toggle = getToggle(configuredItem);
+			await fireEvent.click(toggle);
+
+			await waitFor(() => {
+				expect(chatStore.toggleCustomAgentTool).toHaveBeenCalledWith(
+					'agent-1',
+					'tool-agent-toggle',
+				);
+			});
+		});
+	});
+
+	describe('settings view', () => {
+		it('should show back button in settings view', async () => {
+			const { getAllByText, container } = renderComponent({ props: defaultProps() });
+
+			const addButtons = getAllByText('chatHub.toolsManager.add');
+			await userEvent.click(addButtons[0]);
+
+			await waitFor(() => {
+				const backButton = container.querySelector('.backButton');
+				expect(backButton).toBeTruthy();
+			});
+		});
+
+		it('should return to list view when back button is clicked', async () => {
+			const { getAllByText, queryByTestId, container } = renderComponent({
+				props: defaultProps(),
+			});
+
+			const addButtons = getAllByText('chatHub.toolsManager.add');
+			await userEvent.click(addButtons[0]);
+
+			await waitFor(() => {
+				expect(queryByTestId('tool-settings-content')).toBeTruthy();
+			});
+
+			// Click back - use fireEvent to bypass pointer-events check on body
+			const backButton = container.querySelector('.backButton') as HTMLElement;
+			await fireEvent.click(backButton);
+
+			await waitFor(() => {
+				expect(queryByTestId('tool-settings-content')).toBeNull();
+			});
+		});
+	});
+
+	describe('custom agent context', () => {
+		it('should show agent name in title', () => {
+			chatStore.customAgents = {
+				'agent-1': { name: 'My Agent', toolIds: [] } as never,
+			};
+
+			const { getByText } = renderComponent({
+				props: {
+					...defaultProps(),
+					data: { ...defaultProps().data, customAgentId: 'agent-1' },
+				},
+			});
+
+			expect(getByText('chatHub.toolsManager.title (My Agent)')).toBeTruthy();
+		});
+	});
+
+	describe('error handling', () => {
+		it('should show error toast when remove fails', async () => {
+			const tool = createMockToolDto({ id: 'fail-remove' });
+			chatStore.configuredTools = [tool];
+			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+			const error = new Error('Remove failed');
+			chatStore.removeConfiguredTool = vi.fn().mockRejectedValue(error);
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const configuredItem = getConfiguredItems(container)[0];
+			const [, removeBtn] = getActionButtons(configuredItem);
+			await userEvent.click(removeBtn);
+
+			await waitFor(() => {
+				expect(mockShowError).toHaveBeenCalledWith(error, 'chatHub.error.updateToolsFailed');
+			});
+		});
+
+		it('should show error toast when toggle fails', async () => {
+			const tool = createMockToolDto({ id: 'fail-toggle' }, false);
+			chatStore.configuredTools = [tool];
+			const error = new Error('Toggle failed');
+			chatStore.toggleToolEnabled = vi.fn().mockRejectedValue(error);
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const configuredItem = getConfiguredItems(container)[0];
+			const toggle = getToggle(configuredItem);
+			await fireEvent.click(toggle);
+
+			await waitFor(() => {
+				expect(mockShowError).toHaveBeenCalledWith(error, 'chatHub.error.updateToolsFailed');
+			});
+		});
+	});
+
+	describe('restricted node types', () => {
+		const PERSONAL_PROJECT_ID = 'personal-project-1';
+
+		beforeEach(() => {
+			mockedStore(useProjectsStore).personalProject = { id: PERSONAL_PROJECT_ID } as never;
+		});
+
+		it('loads the policy for the personal project', async () => {
+			const fetchForProject = vi
+				.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+				.mockResolvedValue(undefined);
+
+			renderComponent({ props: defaultProps() });
+			await flushPromises();
+
+			expect(fetchForProject).toHaveBeenCalledWith(PERSONAL_PROJECT_ID);
+		});
+
+		it('lists a restricted tool last with a lock and no add action', () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const availableItems = getAvailableItems(container);
+			// Tool A outranks Tool B by popularity, so only the restriction moves it last.
+			expect(availableItems[0].textContent).toContain('Tool B');
+			expect(availableItems[1].textContent).toContain('Tool A');
+			expect(availableItems[1].querySelector('[data-test-id="node-restricted-icon"]')).toBeTruthy();
+			expect(availableItems[1].querySelector('[data-test-id="chat-tool-add-button"]')).toBeNull();
+			expect(availableItems[0].querySelector('[data-test-id="node-restricted-icon"]')).toBeNull();
+		});
+
+		it('does not open the settings view for a restricted tool', async () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
+
+			const { container, queryByTestId } = renderComponent({ props: defaultProps() });
+
+			const restrictedItem = getAvailableItems(container)[1];
+			await userEvent.click(restrictedItem);
+			await userEvent.click(restrictedItem.querySelector('[data-test-id="node-restricted-icon"]')!);
+
+			expect(queryByTestId('tool-settings-content')).toBeNull();
+			expect(chatStore.addConfiguredTool).not.toHaveBeenCalled();
+		});
+
+		it('warns and adds nothing when the tool becomes restricted while the settings view is open', async () => {
+			mockRestrictedNodeTypes();
+
+			const { getAllByText, getByText, queryByTestId } = renderComponent({
+				props: defaultProps(),
+			});
+
+			await userEvent.click(getAllByText('chatHub.toolsManager.add')[0]);
+			await waitFor(() => {
+				expect(queryByTestId('tool-settings-content')).toBeTruthy();
+			});
+
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
+			await userEvent.click(getByText('chatHub.toolSettings.confirm'));
+
+			expect(chatStore.addConfiguredTool).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'warning', message: expect.stringContaining('Tool A') }),
+			);
+			expect(queryByTestId('tool-settings-content')).toBeNull();
+		});
+
+		it('marks a configured tool that a policy restricts and keeps its actions', () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
+			chatStore.configuredTools = [createMockToolDto()];
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const [configured] = getConfiguredItems(container);
+			expect(configured.querySelector('[data-test-id="node-restricted-icon"]')).toBeTruthy();
+			expect(getActionButtons(configured)).toHaveLength(2);
+			expect(getToggle(configured)).toBeTruthy();
+		});
+
+		it('keeps the list as it is when nothing is restricted', () => {
+			mockRestrictedNodeTypes();
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const availableItems = getAvailableItems(container);
+			expect(availableItems[0].textContent).toContain('Tool A');
+			expect(availableItems[1].textContent).toContain('Tool B');
+			expect(container.querySelector('[data-test-id="node-restricted-icon"]')).toBeNull();
+		});
+	});
+
+	describe('community tool install', () => {
+		const PREVIEW_TOOL: INodeTypeDescription = {
+			...TOOL_NODE_TYPE_A,
+			displayName: 'Firecrawl',
+			name: 'n8n-nodes-firecrawl-preview.firecrawlTool',
+		};
+		const INSTALLED_TOOL: INodeTypeDescription = {
+			...PREVIEW_TOOL,
+			name: 'n8n-nodes-firecrawl.firecrawlTool',
+		};
+
+		beforeEach(() => {
+			mockRestrictedNodeTypes();
+			mockedStore(useUsersStore).isAdminOrOwner = true;
+			nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+				[NodeConnectionTypes.AiTool]: [PREVIEW_TOOL.name],
+			};
+			nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
+				if (name === PREVIEW_TOOL.name) return PREVIEW_TOOL;
+				if (name === INSTALLED_TOOL.name) return INSTALLED_TOOL;
+				return null;
+			});
+			nodeTypesStore.communityNodeType = vi
+				.fn()
+				.mockReturnValue({ packageName: 'n8n-nodes-firecrawl' } as never);
+			nodeTypesStore.fetchCommunityNodePreviews = vi.fn().mockResolvedValue(undefined);
+		});
+
+		async function installPreviewTool() {
+			const { getByTestId, queryByTestId } = renderComponent({ props: defaultProps() });
+			await userEvent.click(getByTestId('chat-tool-install-button'));
+			await flushPromises();
+			return { queryByTestId };
+		}
+
+		it('opens the settings view for an installed tool that no policy restricts', async () => {
+			mockInstallNode.mockResolvedValue({ success: true, restricted: false });
+
+			const { queryByTestId } = await installPreviewTool();
+
+			expect(mockInstallNode).toHaveBeenCalledWith(
+				expect.objectContaining({
+					packageName: 'n8n-nodes-firecrawl',
+					selectedNodeType: PREVIEW_TOOL.name,
+				}),
+			);
+			await waitFor(() => {
+				expect(queryByTestId('tool-settings-content')).toBeTruthy();
+			});
+		});
+
+		it('adds nothing and shows no second warning when the install reports the tool as restricted', async () => {
+			mockInstallNode.mockResolvedValue({ success: true, restricted: true });
+
+			const { queryByTestId } = await installPreviewTool();
+
+			expect(queryByTestId('tool-settings-content')).toBeNull();
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+	});
+});

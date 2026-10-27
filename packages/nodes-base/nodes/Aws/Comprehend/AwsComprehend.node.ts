@@ -19,6 +19,7 @@ export class AwsComprehend implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends data to Amazon Comprehend',
+		schemaPath: 'Aws/Comprehend',
 		defaults: {
 			name: 'AWS Comprehend',
 		},

@@ -1,3 +1,5 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
+import { LOCALHOST } from '@utils/constants';
 import mysql2 from 'mysql2/promise';
 import type {
 	ICredentialTestFunctions,
@@ -6,9 +8,6 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 import { createServer, type AddressInfo } from 'node:net';
-
-import { LOCALHOST } from '@utils/constants';
-import { formatPrivateKey } from '@utils/utilities';
 
 import type { Mysql2Pool, MysqlNodeCredentials } from '../helpers/interfaces';
 
@@ -32,12 +31,12 @@ export async function createPool(
 		connectionOptions.ssl = {};
 
 		if (credentials.caCertificate) {
-			connectionOptions.ssl.ca = formatPrivateKey(credentials.caCertificate);
+			connectionOptions.ssl.ca = formatPemBlock(credentials.caCertificate);
 		}
 
 		if (credentials.clientCertificate || credentials.clientPrivateKey) {
-			connectionOptions.ssl.cert = formatPrivateKey(credentials.clientCertificate);
-			connectionOptions.ssl.key = formatPrivateKey(credentials.clientPrivateKey);
+			connectionOptions.ssl.cert = formatPemBlock(credentials.clientCertificate);
+			connectionOptions.ssl.key = formatPemBlock(credentials.clientPrivateKey);
 		}
 	}
 
@@ -65,9 +64,11 @@ export async function createPool(
 		return mysql2.createPool(connectionOptions);
 	} else {
 		if (credentials.sshAuthenticateWith === 'privateKey' && credentials.privateKey) {
-			credentials.privateKey = formatPrivateKey(credentials.privateKey);
+			credentials.privateKey = formatPemBlock(credentials.privateKey);
 		}
-		const sshClient = await this.helpers.getSSHClient(credentials);
+
+		const abortController = new AbortController();
+		const sshClient = await this.helpers.getSSHClient(credentials, abortController);
 
 		// Find a free TCP port
 		const localPort = await new Promise<number>((resolve) => {
@@ -86,9 +87,13 @@ export async function createPool(
 				credentials.port,
 				(err, clientChannel) => {
 					if (err) return reject(err);
+					clientChannel.on('close', () => abortController.abort());
 					resolve(clientChannel);
 				},
 			);
+		}).catch((error) => {
+			abortController.abort();
+			throw error;
 		});
 
 		return mysql2.createPool({

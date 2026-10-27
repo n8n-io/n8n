@@ -5,10 +5,11 @@ import { createTestingPinia } from '@pinia/testing';
 import merge from 'lodash/merge';
 import { reactive } from 'vue';
 import { STORES } from '@n8n/stores';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { SETTINGS_STORE_DEFAULT_STATE, mockedStore } from '@/__tests__/utils';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
@@ -62,6 +63,27 @@ describe('MainSidebarSourceControl', () => {
 	it('should render nothing when not instance owner', async () => {
 		vi.spyOn(rbacStore, 'hasScope').mockReturnValue(false);
 		const { container } = renderComponent({ pinia, props: { isCollapsed: false } });
+		expect(container).toBeEmptyDOMElement();
+	});
+
+	it('renders nothing while the instance uses Environments v2', async () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isModuleActive.mockReturnValue(true);
+		settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_PROMOTIONS: 'true' };
+		vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
+			branchName: 'main',
+			branches: [],
+			repositoryUrl: '',
+			branchReadOnly: false,
+			branchColor: '#5296D6',
+			connected: true,
+			publicKey: '',
+			keyGeneratorType: 'ed25519',
+			environmentsVersion: 'v2',
+		});
+
+		const { container } = renderComponent({ pinia, props: { isCollapsed: false } });
+
 		expect(container).toBeEmptyDOMElement();
 	});
 

@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import type { Placement } from 'element-plus';
 import { computed } from 'vue';
 
 import N8nTooltip from '../N8nTooltip';
 import IconContent from './IconContent.vue';
+import type { Placement } from '../N8nTooltip/Tooltip.types';
 
 type IconType = 'file' | 'icon' | 'unknown';
 
@@ -18,7 +18,7 @@ interface NodeIconProps {
 	color?: string;
 	showTooltip?: boolean;
 	tooltipPosition?: Placement;
-	badge?: { src: string; type: IconType };
+	badge?: { src?: string; name?: string; type: IconType; tooltip?: string };
 }
 
 const props = withDefaults(defineProps<NodeIconProps>(), {
@@ -88,7 +88,7 @@ const iconStyleData = computed((): Record<string, string> => {
 	line-height: var(--node--icon--size, 26px);
 	font-size: 1.1em;
 	text-align: center;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: 20px;
 }
 

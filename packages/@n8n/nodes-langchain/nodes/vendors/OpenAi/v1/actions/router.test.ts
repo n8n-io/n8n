@@ -1,16 +1,18 @@
-import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as audio from './audio';
 import { router } from './router';
 
 describe('OpenAI router', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-	const mockAudio = jest.spyOn(audio.transcribe, 'execute');
+	let mockAudio: MockInstance;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		mockAudio = vi.spyOn(audio.transcribe, 'execute');
 	});
 
 	it('should handle NodeApiError undefined error chaining', async () => {

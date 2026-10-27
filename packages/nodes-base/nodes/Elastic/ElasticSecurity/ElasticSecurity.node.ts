@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { toPathSegment, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	caseCommentFields,
@@ -20,6 +20,7 @@ import {
 	connectorOperations,
 } from './descriptions';
 import {
+	buildDeleteCasesEndpoint,
 	elasticSecurityApiRequest,
 	getConnector,
 	getVersion,
@@ -37,6 +38,7 @@ export class ElasticSecurity implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Elastic Security API',
+		schemaPath: 'Elastic/ElasticSecurity',
 		defaults: {
 			name: 'Elastic Security',
 		},
@@ -126,7 +128,7 @@ export class ElasticSecurity implements INodeType {
 						//               case: create
 						// ----------------------------------------
 
-						// https://www.elastic.co/guide/en/security/current/cases-api-create.html
+						// https://www.elastic.co/docs/api/doc/kibana/operation/operation-createcasedefaultspace
 
 						const body = {
 							title: this.getNodeParameter('title', i),
@@ -207,26 +209,30 @@ export class ElasticSecurity implements INodeType {
 						//               case: delete
 						// ----------------------------------------
 
-						// https://www.elastic.co/guide/en/security/current/cases-api-delete-case.html
+						// https://www.elastic.co/docs/api/doc/kibana/operation/operation-deletecasedefaultspace
 
 						const caseId = this.getNodeParameter('caseId', i);
-						await elasticSecurityApiRequest.call(this, 'DELETE', `/cases?ids=["${caseId}"]`);
+						await elasticSecurityApiRequest.call(this, 'DELETE', buildDeleteCasesEndpoint(caseId));
 						responseData = { success: true };
 					} else if (operation === 'get') {
 						// ----------------------------------------
 						//                case: get
 						// ----------------------------------------
 
-						// https://www.elastic.co/guide/en/security/current/cases-api-get-case.html
+						// https://www.elastic.co/docs/api/doc/kibana/operation/operation-getcasedefaultspace
 
 						const caseId = this.getNodeParameter('caseId', i);
-						responseData = await elasticSecurityApiRequest.call(this, 'GET', `/cases/${caseId}`);
+						responseData = await elasticSecurityApiRequest.call(
+							this,
+							'GET',
+							`/cases/${toPathSegment(caseId)}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//               case: getAll
 						// ----------------------------------------
 
-						// https://www.elastic.co/guide/en/security/current/cases-api-find-cases.html
+						// https://www.elastic.co/docs/api/doc/kibana/operation/operation-findcasesdefaultspace
 
 						const qs = {} as IDataObject;
 						const { tags, status } = this.getNodeParameter('filters', i) as IDataObject & {
@@ -252,7 +258,7 @@ export class ElasticSecurity implements INodeType {
 						//             case: getStatus
 						// ----------------------------------------
 
-						// https://www.elastic.co/guide/en/security/current/cases-api-get-status.html
+						// https://www.elastic.co/docs/api/doc/kibana/group/endpoint-cases
 
 						responseData = await elasticSecurityApiRequest.call(this, 'GET', '/cases/status');
 					} else if (operation === 'update') {
@@ -260,7 +266,7 @@ export class ElasticSecurity implements INodeType {
 						//               case: update
 						// ----------------------------------------
 
-						// https://www.elastic.co/guide/en/security/current/cases-api-update.html
+						// https://www.elastic.co/docs/api/doc/kibana/operation/operation-updatecasedefaultspace
 
 						const caseId = this.getNodeParameter('caseId', i);
 
@@ -277,7 +283,7 @@ export class ElasticSecurity implements INodeType {
 							cases: [
 								{
 									id: caseId,
-									version: await getVersion.call(this, `/cases/${caseId}`),
+									version: await getVersion.call(this, `/cases/${toPathSegment(caseId)}`),
 									...(syncAlerts && { settings: { syncAlerts } }),
 									...rest,
 								},
@@ -296,12 +302,12 @@ export class ElasticSecurity implements INodeType {
 						//              caseTag: add
 						// ----------------------------------------
 
-						// https://www.elastic.co/guide/en/security/current/cases-api-create.html
+						// https://www.elastic.co/docs/api/doc/kibana/operation/operation-updatecasedefaultspace
 
 						const caseId = this.getNodeParameter('caseId', i);
 
 						const { title, connector, owner, description, settings, tags } =
-							await elasticSecurityApiRequest.call(this, 'GET', `/cases/${caseId}`);
+							await elasticSecurityApiRequest.call(this, 'GET', `/cases/${toPathSegment(caseId)}`);
 
 						const tagToAdd = this.getNodeParameter('tag', i);
 
@@ -324,7 +330,7 @@ export class ElasticSecurity implements INodeType {
 									owner,
 									description,
 									settings,
-									version: await getVersion.call(this, `/cases/${caseId}`),
+									version: await getVersion.call(this, `/cases/${toPathSegment(caseId)}`),
 									tags: [...tags, tagToAdd],
 								},
 							],
@@ -332,7 +338,7 @@ export class ElasticSecurity implements INodeType {
 
 						responseData = await elasticSecurityApiRequest.call(this, 'PATCH', '/cases', body);
 					} else if (operation === 'remove') {
-						// https://www.elastic.co/guide/en/security/current/cases-api-update.html
+						// https://www.elastic.co/docs/api/doc/kibana/operation/operation-updatecasedefaultspace
 
 						const caseId = this.getNodeParameter('caseId', i);
 						const tagToRemove = this.getNodeParameter('tag', i) as string;
@@ -341,7 +347,7 @@ export class ElasticSecurity implements INodeType {
 							(await elasticSecurityApiRequest.call(
 								this,
 								'GET',
-								`/cases/${caseId}`,
+								`/cases/${toPathSegment(caseId)}`,
 							)) as IDataObject & { tags: string[] };
 
 						if (!tags.includes(tagToRemove)) {
@@ -363,7 +369,7 @@ export class ElasticSecurity implements INodeType {
 									owner,
 									description,
 									settings,
-									version: await getVersion.call(this, `/cases/${caseId}`),
+									version: await getVersion.call(this, `/cases/${toPathSegment(caseId)}`),
 									tags: tags.filter((tag) => tag !== tagToRemove),
 								},
 							],
@@ -381,7 +387,7 @@ export class ElasticSecurity implements INodeType {
 						//             caseComment: add
 						// ----------------------------------------
 
-						// https://www.elastic.co/guide/en/security/current/cases-api-add-comment.html
+						// https://www.elastic.co/docs/api/doc/kibana/operation/operation-addcasecommentdefaultspace
 
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
@@ -394,7 +400,7 @@ export class ElasticSecurity implements INodeType {
 						} as IDataObject;
 
 						const caseId = this.getNodeParameter('caseId', i);
-						const endpoint = `/cases/${caseId}/comments`;
+						const endpoint = `/cases/${toPathSegment(caseId)}/comments`;
 						responseData = await elasticSecurityApiRequest.call(this, 'POST', endpoint, body);
 
 						if (simple) {
@@ -406,35 +412,35 @@ export class ElasticSecurity implements INodeType {
 						//             caseComment: get
 						// ----------------------------------------
 
-						// https://www.elastic.co/guide/en/security/current/cases-api-get-comment.html
+						// https://www.elastic.co/docs/api/doc/kibana/operation/operation-getcasecommentdefaultspace
 
 						const caseId = this.getNodeParameter('caseId', i);
 						const commentId = this.getNodeParameter('commentId', i);
 
-						const endpoint = `/cases/${caseId}/comments/${commentId}`;
+						const endpoint = `/cases/${toPathSegment(caseId)}/comments/${toPathSegment(commentId)}`;
 						responseData = await elasticSecurityApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//           caseComment: getAll
 						// ----------------------------------------
 
-						// https://www.elastic.co/guide/en/security/current/cases-api-get-all-case-comments.html
+						// https://www.elastic.co/docs/api/doc/kibana/group/endpoint-cases
 
 						const caseId = this.getNodeParameter('caseId', i);
 
-						const endpoint = `/cases/${caseId}/comments`;
+						const endpoint = `/cases/${toPathSegment(caseId)}/comments`;
 						responseData = await handleListing.call(this, 'GET', endpoint);
 					} else if (operation === 'remove') {
 						// ----------------------------------------
 						//           caseComment: remove
 						// ----------------------------------------
 
-						// https://www.elastic.co/guide/en/security/current/cases-api-delete-comment.html
+						// https://www.elastic.co/docs/api/doc/kibana/operation/operation-deletecasecommentdefaultspace
 
 						const caseId = this.getNodeParameter('caseId', i);
 						const commentId = this.getNodeParameter('commentId', i);
 
-						const endpoint = `/cases/${caseId}/comments/${commentId}`;
+						const endpoint = `/cases/${toPathSegment(caseId)}/comments/${toPathSegment(commentId)}`;
 						await elasticSecurityApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
 					} else if (operation === 'update') {
@@ -442,7 +448,7 @@ export class ElasticSecurity implements INodeType {
 						//           caseComment: update
 						// ----------------------------------------
 
-						// https://www.elastic.co/guide/en/security/current/cases-api-update-comment.html
+						// https://www.elastic.co/docs/api/doc/kibana/operation/operation-updatecasecommentdefaultspace
 
 						const simple = this.getNodeParameter('simple', i) as boolean;
 						const caseId = this.getNodeParameter('caseId', i);
@@ -453,10 +459,13 @@ export class ElasticSecurity implements INodeType {
 							id: commentId,
 							type: 'user',
 							owner: 'securitySolution',
-							version: await getVersion.call(this, `/cases/${caseId}/comments/${commentId}`),
+							version: await getVersion.call(
+								this,
+								`/cases/${toPathSegment(caseId)}/comments/${toPathSegment(commentId)}`,
+							),
 						} as IDataObject;
 
-						const patchEndpoint = `/cases/${caseId}/comments`;
+						const patchEndpoint = `/cases/${toPathSegment(caseId)}/comments`;
 						responseData = await elasticSecurityApiRequest.call(this, 'PATCH', patchEndpoint, body);
 
 						if (simple) {
@@ -470,7 +479,7 @@ export class ElasticSecurity implements INodeType {
 						//           connector: create
 						// ----------------------------------------
 
-						// https://www.elastic.co/guide/en/security/current/register-connector.html
+						// https://www.elastic.co/docs/api/doc/kibana/operation/operation-post-actions-connector-id
 
 						const connectorType = this.getNodeParameter('connectorType', i) as ConnectorType;
 

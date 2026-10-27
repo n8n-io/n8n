@@ -1,0 +1,795 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createComponentRenderer } from '@/__tests__/render';
+import { createTestingPinia } from '@pinia/testing';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import { mockedStore } from '@/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { fireEvent, waitFor } from '@testing-library/vue';
+import { defineComponent, onMounted, nextTick, shallowRef, type MaybeRefOrGetter } from 'vue';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import { AgentModalTestStub } from './utils/AgentModalTestStub';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+
+import AgentToolConfigModal from '../components/AgentToolConfigModal.vue';
+import type { AgentJsonToolRef, CustomToolEntry } from '../types';
+
+vi.mock('@n8n/i18n', () => {
+	const i18n = {
+		baseText: (key: string) => key,
+	};
+	return { useI18n: () => i18n, i18n, i18nInstance: { install: vi.fn() } };
+});
+
+vi.mock('vue-router', () => ({
+	useRouter: () => ({ push: vi.fn(), resolve: vi.fn(() => ({ href: '' })) }),
+	useRoute: () => ({ params: {}, query: {} }),
+	RouterLink: { template: '<a><slot /></a>' },
+}));
+
+vi.mock('uuid', () => ({ v4: () => 'mocked-uuid' }));
+
+// N8nDialog teleports out of the tree via Reka UI's DialogPortal, so its
+// content is unreachable from the render container. Swap it for an inline
+// pass-through; the header and footer wrappers render fine as-is.
+vi.mock('@n8n/design-system', async () => {
+	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
+	const N8nDialog = {
+		name: 'N8nDialog',
+		props: {
+			open: Boolean,
+			size: String,
+			showCloseButton: Boolean,
+			trapFocus: { type: Boolean, default: true },
+			disableOutsidePointerEvents: { type: Boolean, default: true },
+		},
+		emits: ['update:open', 'interactOutside'],
+		template: `
+			<div
+				v-if="open"
+				role="dialog"
+				:data-trap-focus="trapFocus"
+				:data-disable-outside-pointer-events="disableOutsidePointerEvents"
+			>
+				<slot />
+			</div>
+		`,
+	};
+	return { ...actual, N8nDialog };
+});
+
+function createToolSettingsStub(emitValid: boolean) {
+	return defineComponent({
+		props: [
+			'initialNode',
+			'existingToolNames',
+			'projectId',
+			'parameterIssues',
+			'fromAiDisabledParameters',
+			'readOnly',
+		],
+		emits: ['update:valid', 'update:node-name', 'update:node'],
+		setup(props, { emit, expose }) {
+			// Expose what the modal reads from ref(...). The stub carries through
+			// the initialNode's credentials so we can assert the round-trip keeps them.
+			const node = {
+				id: 'mocked-uuid',
+				name: props.initialNode?.name ?? '',
+				type: props.initialNode?.type ?? '',
+				typeVersion: props.initialNode?.typeVersion ?? 1,
+				parameters: { ...props.initialNode?.parameters, edited: true },
+				credentials: props.initialNode?.credentials,
+				position: [0, 0],
+			};
+			expose({
+				getNode: () => node,
+				handleChangeName: vi.fn(),
+				getNodeTypeDescription: () => ({ name: 'n8n-nodes-base.slack', displayName: 'Slack' }),
+			});
+			onMounted(() => {
+				emit('update:valid', emitValid);
+				emit('update:node-name', props.initialNode?.name ?? '');
+				emit('update:node', node);
+			});
+			return {};
+		},
+		template: `
+			<div
+				data-test-id="node-tool-settings-content"
+				:data-project-id="projectId"
+				:data-read-only="readOnly"
+			>
+				<button
+					v-if="!fromAiDisabledParameters?.includes('url')"
+					data-test-id="from-ai-override-button"
+				/>
+				<div v-if="parameterIssues?.url?.length" data-test-id="agent-tool-http-url-error">
+					{{ parameterIssues.url[0] }}
+				</div>
+			</div>
+		`,
+	});
+}
+
+function createWorkflowToolConfigStub(emitValid: boolean) {
+	return defineComponent({
+		props: ['initialRef', 'projectId', 'showApprovalSetting', 'approvalRequired'],
+		emits: ['update:valid', 'update:node-name', 'update:approvalRequired'],
+		setup(props, { emit, expose }) {
+			expose({
+				getName: () => props.initialRef?.name ?? '',
+				getDescription: () => props.initialRef?.description ?? '',
+				getAllOutputs: () => props.initialRef?.allOutputs ?? false,
+				getWorkflow: () => props.initialRef?.workflow ?? '',
+				getWorkflowId: () => props.initialRef?.workflowId,
+				getInputs: () => props.initialRef?.inputs,
+				handleChangeName: vi.fn(),
+			});
+			onMounted(() => {
+				emit('update:valid', emitValid);
+				emit('update:node-name', props.initialRef?.name ?? '');
+			});
+			return {};
+		},
+		template: `
+			<div data-test-id="workflow-tool-config-content">
+				<button
+					v-if="showApprovalSetting"
+					data-test-id="agent-tool-approval-toggle"
+					:data-checked="approvalRequired"
+					@click="$emit('update:approvalRequired', !approvalRequired)"
+				/>
+			</div>
+		`,
+	});
+}
+
+const MODAL_NAME = 'AgentToolConfigModal';
+
+function getNativeTestId(container: ParentNode, id: string): HTMLElement {
+	const element = container.querySelector(`[data-testid="${id}"]`);
+	if (!(element instanceof HTMLElement)) throw new Error(`Missing data-testid: ${id}`);
+	return element;
+}
+
+function queryNativeTestId(container: ParentNode, id: string): HTMLElement | null {
+	const element = container.querySelector(`[data-testid="${id}"]`);
+	return element instanceof HTMLElement ? element : null;
+}
+
+function toolRef(
+	overrides: Partial<Extract<AgentJsonToolRef, { type: 'node' }>['node']> = {},
+): Extract<AgentJsonToolRef, { type: 'node' }> {
+	return {
+		type: 'node',
+		name: 'Slack',
+		description: 'Send messages to Slack',
+		node: {
+			nodeType: 'n8n-nodes-base.slack',
+			nodeTypeVersion: 1,
+			nodeParameters: { channel: 'general' },
+			credentials: { slackApi: { id: 'cred-1', name: 'Prod Slack' } },
+			...overrides,
+		},
+	};
+}
+
+function renderModal({
+	valid = false,
+	onConfirm = vi.fn(),
+	onRemove,
+	ref = toolRef(),
+	customTool,
+	projectId,
+	agentId,
+	validationIssues,
+}: {
+	valid?: boolean;
+	onConfirm?: (updated: AgentJsonToolRef) => void;
+	onRemove?: () => void;
+	ref?: AgentJsonToolRef;
+	customTool?: CustomToolEntry;
+	projectId?: string;
+	agentId?: string;
+	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
+} = {}) {
+	const renderComponent = createComponentRenderer(AgentToolConfigModal, {
+		global: {
+			stubs: {
+				AgentModal: AgentModalTestStub,
+				NodeIcon: { template: '<div data-test-id="header-node-icon" />' },
+				FocusScope: {
+					template: '<div data-test-id="nested-credential-focus-scope"><slot /></div>',
+				},
+				AgentToolConfigNodeContent: createToolSettingsStub(valid),
+				AgentToolConfigWorkflowContent: createWorkflowToolConfigStub(valid),
+				N8nSwitch2: {
+					props: ['modelValue', 'disabled'],
+					emits: ['update:modelValue'],
+					template:
+						'<button data-test-id="agent-tool-approval-toggle" :data-checked="modelValue" :disabled="disabled" @click="$emit(\'update:modelValue\', !modelValue)" />',
+				},
+				AgentToolConfigCustomContent: {
+					props: ['code'],
+					template: '<pre data-test-id="agent-custom-tool-viewer">{{ code }}</pre>',
+				},
+				ContactAdminModal: {
+					props: ['open', 'nodeTypeName'],
+					template: '<div v-if="open" data-test-id="contact-admin-modal" />',
+				},
+			},
+		},
+	});
+	return renderComponent({
+		props: {
+			modalName: MODAL_NAME,
+			data: {
+				toolRef: ref,
+				customTool,
+				existingToolNames: [],
+				projectId,
+				agentId,
+				validationIssues,
+				onConfirm,
+				onRemove,
+			},
+		},
+	});
+}
+
+describe('AgentToolConfigModal', () => {
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		createTestingPinia({ stubActions: false });
+		vi.spyOn(useNodeTypesStore(), 'loadNodeTypesIfNotLoaded').mockResolvedValue(undefined);
+		uiStore = mockedStore(useUIStore);
+		uiStore.openModal(MODAL_NAME);
+		uiStore.closeModal = vi.fn();
+	});
+
+	it('renders the shared node-tool settings content', () => {
+		const { getByTestId } = renderModal();
+		expect(getByTestId('node-tool-settings-content')).toBeTruthy();
+	});
+
+	it('shows the tool icon beside the modal title', () => {
+		const { container } = renderModal({
+			ref: {
+				type: 'workflow',
+				workflowId: 'workflow-1',
+				workflow: 'Workflow',
+				name: 'Workflow tool',
+			},
+		});
+
+		expect(container.querySelector('[data-icon="workflow"]')).toBeVisible();
+	});
+
+	it('loads the node types so the tool shows its display name and parameters', () => {
+		renderModal();
+
+		expect(useNodeTypesStore().loadNodeTypesIfNotLoaded).toHaveBeenCalledOnce();
+	});
+
+	it('does not open for a persisted node tool without node data', () => {
+		const invalidRef = {
+			type: 'node',
+			name: 'Unavailable tool',
+			description: 'Node data is missing',
+		} as AgentJsonToolRef;
+
+		const { queryByRole } = renderModal({ ref: invalidRef });
+
+		expect(queryByRole('dialog')).toBeNull();
+	});
+
+	it('releases dialog focus handling while the credential modal is open', async () => {
+		const { container, getByRole } = renderModal();
+		const dialog = getByRole('dialog');
+
+		expect(dialog).toHaveAttribute('data-trap-focus', 'true');
+		expect(dialog).toHaveAttribute('data-disable-outside-pointer-events', 'true');
+		expect(queryNativeTestId(container, 'nested-credential-focus-scope')).toBeNull();
+
+		uiStore.openModal(CREDENTIAL_EDIT_MODAL_KEY);
+		await nextTick();
+
+		expect(dialog).toHaveAttribute('data-trap-focus', 'false');
+		expect(dialog).toHaveAttribute('data-disable-outside-pointer-events', 'false');
+		expect(getNativeTestId(container, 'nested-credential-focus-scope')).toBeInTheDocument();
+	});
+
+	it('passes agent project context to the node-tool settings content', () => {
+		const { getByTestId } = renderModal({ projectId: 'project-1', agentId: 'agent-1' });
+
+		const settings = getByTestId('node-tool-settings-content');
+		expect(settings.getAttribute('data-project-id')).toBe('project-1');
+	});
+
+	it('does not render the removed Configure / Permissions outer tabs', () => {
+		// The stubbed Permissions tab (and its sibling "Configure" tab label) were
+		// dropped — the modal renders the content form directly now.
+		const { queryByText, queryByTestId } = renderModal();
+		expect(queryByText('agents.toolConfig.tabs.configure')).toBeNull();
+		expect(queryByText('agents.toolConfig.tabs.permissions')).toBeNull();
+		expect(queryByTestId('agent-tool-config-permissions-tab')).toBeNull();
+	});
+
+	it('keeps Save available and does not confirm invalid content', async () => {
+		const onConfirm = vi.fn();
+		const { container } = renderModal({ valid: false, onConfirm });
+		await nextTick();
+		const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
+		expect(saveBtn.disabled).toBe(false);
+
+		await fireEvent.click(saveBtn);
+
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(getNativeTestId(container, 'agent-tool-config-validation-error')).toBeInTheDocument();
+	});
+
+	it('uses the registry metadata icon and forwards the content save state', () => {
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+			displayName: 'GitHub MCP',
+			name: '@n8n/mcp-registry.github',
+		});
+		const AgentToolConfigContent = defineComponent({
+			setup(_, { expose }) {
+				expose({
+					headerItem: null,
+					saveDisabled: true,
+					titleError: '',
+				});
+				return {};
+			},
+			template: '<div />',
+		});
+		const renderRegistryModal = createComponentRenderer(AgentToolConfigModal, {
+			global: {
+				stubs: {
+					AgentModal: AgentModalTestStub,
+					AgentToolConfigContent,
+				},
+			},
+		});
+		const { container } = renderRegistryModal({
+			props: {
+				modalName: MODAL_NAME,
+				data: {
+					kind: 'registryMcpServer',
+					projectId: 'project-1',
+					mcpServer: {
+						name: 'github',
+						authentication: 'githubMcpOAuth2Api',
+						credential: 'credential-1',
+						metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+					},
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+
+		expect(nodeTypesStore.getNodeType).toHaveBeenCalledWith('@n8n/mcp-registry.github');
+		expect(getNativeTestId(container, 'agent-tool-config-save')).toBeDisabled();
+	});
+
+	it('delegates registry credential events and closes after deletion or removal', async () => {
+		const selectCredential = vi.fn();
+		const openCredentialPicker = vi.fn();
+		const remove = vi.fn().mockResolvedValue(true);
+		const AgentToolConfigContent = defineComponent({
+			emits: ['credential-deleted', 'request-credential-picker'],
+			setup(_, { expose }) {
+				expose({
+					headerItem: {
+						id: 'registry-config:github',
+						kind: 'mcp-server',
+						title: 'GitHub',
+						status: 'connected',
+						availableTools: [],
+						credentials: [{ authType: 'githubOAuth2Api', credentialId: 'credential-1' }],
+					},
+					credentialAdapter: {},
+					saveDisabled: false,
+					titleError: '',
+					selectCredential,
+					remove,
+				});
+				return {};
+			},
+			template: `
+				<button data-testid="request-credential-picker" @click="$emit('request-credential-picker')" />
+				<button data-testid="credential-deleted" @click="$emit('credential-deleted')" />
+			`,
+		});
+		const AgentToolConfigCredentialPicker = defineComponent({
+			emits: ['select-credential'],
+			setup(_, { expose }) {
+				expose({ open: openCredentialPicker });
+				return {};
+			},
+			template:
+				"<button data-testid=\"select-credential\" @click=\"$emit('select-credential', 'githubOAuth2Api', 'credential-2')\" />",
+		});
+		const renderRegistryModal = createComponentRenderer(AgentToolConfigModal, {
+			global: {
+				stubs: {
+					AgentModal: AgentModalTestStub,
+					AgentToolConfigContent,
+					AgentToolConfigCredentialPicker,
+					AgentToolConfigTitleIcon: true,
+				},
+			},
+		});
+		const { container } = renderRegistryModal({
+			props: {
+				modalName: MODAL_NAME,
+				data: {
+					kind: 'registryMcpServer',
+					projectId: 'project-1',
+					mcpServer: {
+						name: 'github',
+						authentication: 'githubOAuth2Api',
+						credential: 'credential-1',
+						metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+					},
+					onConfirm: vi.fn(),
+					onRemove: vi.fn(),
+				},
+			},
+		});
+		await nextTick();
+
+		await fireEvent.click(getNativeTestId(container, 'request-credential-picker'));
+		expect(openCredentialPicker).toHaveBeenCalledOnce();
+
+		await fireEvent.click(getNativeTestId(container, 'select-credential'));
+		expect(selectCredential).toHaveBeenCalledWith('githubOAuth2Api', 'credential-2');
+
+		await fireEvent.click(getNativeTestId(container, 'credential-deleted'));
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		uiStore.closeModal.mockClear();
+
+		await fireEvent.click(getNativeTestId(container, 'agent-tool-config-remove'));
+		await waitFor(() => expect(remove).toHaveBeenCalledOnce());
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('enables Save once valid and round-trips the node back into the toolRef on confirm', async () => {
+		const onConfirm = vi.fn();
+		const initial = toolRef();
+		const { container } = renderModal({ valid: true, onConfirm, ref: initial });
+
+		await waitFor(() => {
+			const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
+			expect(saveBtn.disabled).toBe(false);
+		});
+
+		await fireEvent.click(getNativeTestId(container, 'agent-tool-config-save'));
+
+		expect(onConfirm).toHaveBeenCalledTimes(1);
+		const [updated] = onConfirm.mock.calls[0];
+		// Preserved fields from the original ref
+		expect(updated.type).toBe('node');
+		expect(updated.description).toBe(initial.description);
+		expect(updated).not.toHaveProperty('inputSchema');
+		// Fields merged from the edited INode
+		expect(updated.node.nodeParameters).toEqual({ channel: 'general', edited: true });
+		expect(updated.node.credentials).toEqual({ slackApi: { id: 'cred-1', name: 'Prod Slack' } });
+	});
+
+	it('shows the HTTP Request URL error and blocks Save for a model override', async () => {
+		const { container, getByTestId, queryByTestId } = renderModal({
+			valid: true,
+			ref: toolRef({
+				nodeType: 'n8n-nodes-base.httpRequestTool',
+				nodeParameters: {
+					url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', ``, 'string') }}",
+				},
+			}),
+			validationIssues: [
+				{
+					code: 'invalid_value',
+					path: 'tools.0.node.nodeParameters.url',
+					capability: { kind: 'tool', id: 'HTTP Request', index: 0, toolType: 'node' },
+				},
+			],
+		});
+		await nextTick();
+
+		expect(getByTestId('agent-tool-http-url-error')).toHaveTextContent(
+			'agents.builder.validation.issue.httpRequestUrlFromAi',
+		);
+		expect(queryByTestId('from-ai-override-button')).not.toBeInTheDocument();
+		expect(getNativeTestId(container, 'agent-tool-config-save')).not.toBeDisabled();
+		await fireEvent.click(getNativeTestId(container, 'agent-tool-config-save'));
+		expect(getNativeTestId(container, 'agent-tool-config-validation-error')).toBeInTheDocument();
+	});
+
+	it('saves the approval requirement on node tool refs', async () => {
+		const onConfirm = vi.fn();
+		const { container, getByTestId } = renderModal({ valid: true, onConfirm, ref: toolRef() });
+
+		await fireEvent.click(getByTestId('agent-tool-approval-toggle'));
+		await fireEvent.click(getNativeTestId(container, 'agent-tool-config-save'));
+
+		expect(onConfirm).toHaveBeenCalledTimes(1);
+		const [updated] = onConfirm.mock.calls[0];
+		expect(updated).toMatchObject({ type: 'node', requireApproval: true });
+	});
+
+	it('renders the approval setting after the tool configuration content', () => {
+		const { getByTestId } = renderModal();
+
+		const settings = getByTestId('node-tool-settings-content');
+		const approvalToggle = getByTestId('agent-tool-approval-toggle');
+
+		expect(settings.contains(approvalToggle)).toBe(false);
+		expect(
+			settings.compareDocumentPosition(approvalToggle) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+	});
+
+	it('closes the modal from the header without calling onConfirm', async () => {
+		const onConfirm = vi.fn();
+		const { container } = renderModal({ valid: true, onConfirm });
+
+		await fireEvent.click(getNativeTestId(container, 'dialog-close-button'));
+
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('renders the custom tool TypeScript viewer for custom refs', () => {
+		const customTool: CustomToolEntry = {
+			code: 'export async function run() {\n\treturn "ok";\n}',
+			descriptor: {
+				name: 'Lookup customer',
+				description: 'Finds a customer',
+				systemInstruction: null,
+				inputSchema: null,
+				outputSchema: null,
+				hasSuspend: false,
+				hasResume: false,
+				hasToMessage: false,
+				requireApproval: false,
+				providerOptions: null,
+			},
+		};
+
+		const { container, getByTestId, queryByTestId } = renderModal({
+			ref: { type: 'custom', id: 'custom-tool-1' },
+			customTool,
+		});
+		expect(getByTestId('agent-custom-tool-viewer').textContent).toContain(customTool.code);
+		expect(queryByTestId('node-tool-settings-content')).toBeNull();
+		expect(queryByTestId('workflow-tool-config-content')).toBeNull();
+		expect(queryNativeTestId(container, 'agent-tool-config-save')).not.toBeNull();
+	});
+
+	it('saves the approval requirement on custom tool refs', async () => {
+		const onConfirm = vi.fn();
+		const customTool: CustomToolEntry = {
+			code: 'export default new Tool("lookup")',
+			descriptor: {
+				name: 'Lookup customer',
+				description: 'Finds a customer',
+				systemInstruction: null,
+				inputSchema: null,
+				outputSchema: null,
+				hasSuspend: false,
+				hasResume: false,
+				hasToMessage: false,
+				requireApproval: false,
+				providerOptions: null,
+			},
+		};
+		const { container, getByTestId } = renderModal({
+			valid: true,
+			onConfirm,
+			ref: { type: 'custom', id: 'custom-tool-1' },
+			customTool,
+		});
+
+		await fireEvent.click(getByTestId('agent-tool-approval-toggle'));
+		await fireEvent.click(getNativeTestId(container, 'agent-tool-config-save'));
+
+		expect(onConfirm).toHaveBeenCalledTimes(1);
+		const [updated] = onConfirm.mock.calls[0];
+		expect(updated).toEqual({ type: 'custom', id: 'custom-tool-1', requireApproval: true });
+	});
+
+	it('preserves the stable workflow id when saving a workflow tool', async () => {
+		const onConfirm = vi.fn();
+		const { container, getByTestId, queryByTestId } = renderModal({
+			valid: true,
+			onConfirm,
+			ref: {
+				type: 'workflow',
+				workflowId: 'wf-1',
+				workflow: 'My Workflow',
+				name: 'My Workflow Tool',
+				description: 'Does something',
+			},
+		});
+
+		expect(getByTestId('workflow-tool-config-content')).toBeTruthy();
+		expect(queryByTestId('node-tool-settings-content')).toBeNull();
+
+		await waitFor(() => {
+			expect(getNativeTestId(container, 'agent-tool-config-save')).not.toBeDisabled();
+		});
+		await fireEvent.click(getNativeTestId(container, 'agent-tool-config-save'));
+
+		expect(onConfirm).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'workflow',
+				workflowId: 'wf-1',
+				workflow: 'My Workflow',
+			}),
+		);
+	});
+
+	it('uses the shared Remove action', async () => {
+		const onRemove = vi.fn();
+		const { container, getByText } = renderModal({
+			onRemove,
+			ref: {
+				type: 'workflow',
+				workflowId: 'wf-1',
+				workflow: 'My Workflow',
+				name: 'My Workflow Tool',
+				description: 'Does something',
+			},
+		});
+
+		expect(getByText('agents.builder.tools.remove')).toBeInTheDocument();
+		await fireEvent.click(getNativeTestId(container, 'agent-tool-config-remove'));
+
+		expect(onRemove).toHaveBeenCalledOnce();
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	describe('restricted node types', () => {
+		beforeEach(() => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.slack': 'instance' });
+		});
+
+		it('loads the policy for the agent project', () => {
+			const fetchForProject = vi
+				.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+				.mockResolvedValue(undefined);
+
+			renderModal({ projectId: 'project-1' });
+
+			expect(fetchForProject).toHaveBeenCalledWith('project-1');
+		});
+
+		it('explains the restriction, locks the form and disables Save', async () => {
+			const { container, getByTestId } = renderModal({ valid: true });
+			await nextTick();
+
+			expect(getByTestId('restricted-tool-callout').textContent).toContain(
+				'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
+			);
+			expect(getByTestId('node-tool-settings-content')).toHaveAttribute('data-read-only', 'true');
+			expect(getByTestId('agent-tool-approval-toggle')).toBeDisabled();
+			expect(queryNativeTestId(container, 'agent-modal-title-input')).toBeNull();
+
+			const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
+			expect(saveBtn.disabled).toBe(true);
+		});
+
+		it('opens the contact admin dialog from the callout', async () => {
+			const { getByTestId, queryByTestId } = renderModal();
+			await nextTick();
+
+			expect(queryByTestId('contact-admin-modal')).toBeNull();
+			await fireEvent.click(getByTestId('restricted-tool-contact-admin'));
+
+			expect(getByTestId('contact-admin-modal')).toBeInTheDocument();
+		});
+
+		it('keeps Remove so the agent can be repaired', async () => {
+			const onRemove = vi.fn();
+			const { container } = renderModal({ onRemove });
+			await nextTick();
+
+			await fireEvent.click(getNativeTestId(container, 'agent-tool-config-remove'));
+
+			expect(onRemove).toHaveBeenCalledOnce();
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('explains an inline restriction but keeps the tool editable, so it can be repaired', async () => {
+			// The tool's own type is allowed; the backend reports that the agent it embeds is not.
+			mockRestrictedNodeTypes();
+			const { container, getByTestId, queryByTestId } = renderModal({
+				valid: true,
+				validationIssues: [
+					{
+						code: 'restricted_node_type',
+						reason: 'restricted_by_inline_tool',
+						path: 'tools.0.node.nodeType',
+						capability: { kind: 'tool', id: 'ask_billing_agent', index: 0, toolType: 'node' },
+						restriction: { nodeType: 'n8n-nodes-base.mySql', scope: 'instance' },
+					},
+				],
+				ref: toolRef({
+					nodeType: 'n8n-nodes-base.messageAnAgentTool',
+					credentials: {},
+					nodeParameters: {
+						agentSource: 'inline',
+						inlineAgent: {
+							config: {
+								tools: [
+									{
+										type: 'node',
+										name: 'inline_query',
+										node: { nodeType: 'n8n-nodes-base.mySql', nodeParameters: {} },
+									},
+								],
+							},
+						},
+					},
+				}),
+			});
+			await nextTick();
+
+			expect(getByTestId('inline-restricted-tool-callout').textContent).toContain(
+				'agents.toolConfig.restrictedInlineTool',
+			);
+			expect(queryByTestId('restricted-tool-callout')).toBeNull();
+			expect(getByTestId('node-tool-settings-content')).toHaveAttribute('data-read-only', 'false');
+			const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
+			expect(saveBtn.disabled).toBe(false);
+		});
+
+		it('shows the inline callout once the builder validates again while the modal is open', async () => {
+			mockRestrictedNodeTypes();
+			// Opened while an autosave was pending, so the builder had no result yet.
+			const issues = shallowRef<AgentConfigValidationIssue[]>([]);
+			const { queryByTestId } = renderModal({ valid: true, validationIssues: issues });
+			await nextTick();
+			expect(queryByTestId('inline-restricted-tool-callout')).toBeNull();
+
+			issues.value = [
+				{
+					code: 'restricted_node_type',
+					reason: 'restricted_by_inline_tool',
+					path: 'tools.0.node.nodeType',
+					capability: { kind: 'tool', id: 'ask_billing_agent', index: 0, toolType: 'node' },
+					restriction: { nodeType: 'n8n-nodes-base.mySql', scope: 'instance' },
+				},
+			];
+			await nextTick();
+
+			expect(queryByTestId('inline-restricted-tool-callout')).not.toBeNull();
+		});
+
+		it('shows no inline callout when nothing is restricted', async () => {
+			mockRestrictedNodeTypes();
+			const { queryByTestId } = renderModal({ valid: true });
+			await nextTick();
+
+			expect(queryByTestId('inline-restricted-tool-callout')).toBeNull();
+		});
+
+		it('leaves an unrestricted tool editable', async () => {
+			mockRestrictedNodeTypes();
+			const { container, getByTestId, queryByTestId } = renderModal({ valid: true });
+			await nextTick();
+
+			expect(queryByTestId('restricted-tool-callout')).toBeNull();
+			expect(getByTestId('node-tool-settings-content')).toHaveAttribute('data-read-only', 'false');
+			expect(getByTestId('agent-tool-approval-toggle')).not.toBeDisabled();
+			expect(getNativeTestId(container, 'agent-modal-title-input')).toBeInTheDocument();
+			const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
+			expect(saveBtn.disabled).toBe(false);
+		});
+	});
+});

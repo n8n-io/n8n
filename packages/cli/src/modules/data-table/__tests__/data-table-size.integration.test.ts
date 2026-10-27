@@ -64,7 +64,7 @@ describe('Data Table Size Tests', () => {
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const mockFindDataTablesSize = jest
+			const mockFindDataTablesSize = vi
 				.spyOn(dataTableRepository, 'findDataTablesSize')
 				.mockResolvedValue({ totalBytes: maxSize + 1, dataTables: {} });
 
@@ -90,7 +90,7 @@ describe('Data Table Size Tests', () => {
 			});
 
 			// Now mock the size check to be over limit
-			const mockFindDataTablesSize = jest
+			const mockFindDataTablesSize = vi
 				.spyOn(dataTableRepository, 'findDataTablesSize')
 				.mockResolvedValue({ totalBytes: maxSize + 1, dataTables: {} });
 
@@ -119,7 +119,7 @@ describe('Data Table Size Tests', () => {
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const mockFindDataTablesSize = jest
+			const mockFindDataTablesSize = vi
 				.spyOn(dataTableRepository, 'findDataTablesSize')
 				.mockResolvedValue({ totalBytes: maxSize + 1, dataTables: {} });
 
@@ -239,6 +239,28 @@ describe('Data Table Size Tests', () => {
 			expect(result.dataTables[dataTable1.id].projectId).toBe(project1.id);
 		});
 
+		it('should not return data tables for a project:chatUser member of that project', async () => {
+			// ARRANGE
+			// project:chatUser grants no dataTable:listProject scope, so membership
+			// alone must not surface the project's data tables here.
+			await linkUserToProject(regularUser, project1, 'project:chatUser');
+
+			const dataTable1 = await dataTableService.createDataTable(project1.id, {
+				name: 'chat-project-dataTable',
+				columns: [{ name: 'data', type: 'string' }],
+			});
+
+			await dataTableService.insertRows(dataTable1.id, project1.id, [{ data: 'test' }]);
+
+			// ACT
+			const result = await dataTableService.getDataTablesSize(regularUser);
+
+			// ASSERT
+			// totalBytes/quotaStatus stay instance-wide regardless of project access
+			// (see the test below); what must stay scoped is the dataTables map.
+			expect(Object.keys(result.dataTables)).toHaveLength(0);
+		});
+
 		it('should return empty dataTables but full totalBytes when user has no project access', async () => {
 			// ARRANGE
 			const dataTable1 = await dataTableService.createDataTable(project1.id, {
@@ -318,7 +340,7 @@ describe('Data Table Size Tests', () => {
 
 			await dataTableService.insertRows(dataTable.id, project1.id, [{ data: 'test' }]);
 
-			const mockFindDataTablesSize = jest.spyOn(dataTableRepository, 'findDataTablesSize');
+			const mockFindDataTablesSize = vi.spyOn(dataTableRepository, 'findDataTablesSize');
 
 			// ACT & ASSERT
 			// First call - regular user sees no data tables (filtered from global cache)
@@ -348,8 +370,8 @@ describe('Data Table Size Tests', () => {
 
 			await dataTableService.insertRows(dataTable.id, project1.id, [{ data: 'test' }]);
 
-			const mockGetCachedSizeData = jest.spyOn(dataTableSizeValidator, 'getCachedSizeData');
-			const mockFindDataTablesSize = jest.spyOn(dataTableRepository, 'findDataTablesSize');
+			const mockGetCachedSizeData = vi.spyOn(dataTableSizeValidator, 'getCachedSizeData');
+			const mockFindDataTablesSize = vi.spyOn(dataTableRepository, 'findDataTablesSize');
 
 			// ACT
 			// Fetch data (uses global cache)
@@ -380,8 +402,8 @@ describe('Data Table Size Tests', () => {
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const mockReset = jest.spyOn(dataTableSizeValidator, 'reset');
-			const mockFindDataTablesSize = jest.spyOn(dataTableRepository, 'findDataTablesSize');
+			const mockReset = vi.spyOn(dataTableSizeValidator, 'reset');
+			const mockFindDataTablesSize = vi.spyOn(dataTableRepository, 'findDataTablesSize');
 
 			// ACT & ASSERT
 			const result1 = await dataTableService.getDataTablesSize(owner);

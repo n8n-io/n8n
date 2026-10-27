@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
-import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader } from '@n8n/design-system';
 import type { RouteLocationRaw } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import type { WorkflowResource } from '@/Interface';
@@ -59,7 +59,7 @@ const sortedItems = computed(() => {
 const getWorkflowLink = (workflowId: string): RouteLocationRaw => ({
 	name: VIEWS.WORKFLOW,
 	params: {
-		name: workflowId,
+		workflowId,
 	},
 });
 </script>

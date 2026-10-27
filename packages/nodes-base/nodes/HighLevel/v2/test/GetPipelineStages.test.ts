@@ -1,9 +1,9 @@
 import { getPipelineStages } from '../GenericFunctions';
 
-const mockHighLevelApiRequest = jest.fn();
-const mockGetNodeParameter = jest.fn();
-const mockGetCurrentNodeParameter = jest.fn();
-const mockGetCredentials = jest.fn();
+const mockHighLevelApiRequest = vi.fn();
+const mockGetNodeParameter = vi.fn();
+const mockGetCurrentNodeParameter = vi.fn();
+const mockGetCredentials = vi.fn();
 
 const mockContext: any = {
 	getNodeParameter: mockGetNodeParameter,
@@ -16,7 +16,7 @@ const mockContext: any = {
 
 describe('getPipelineStages', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return pipeline stages for create operation', async () => {

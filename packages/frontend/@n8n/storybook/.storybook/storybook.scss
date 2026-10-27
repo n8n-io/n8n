@@ -1,0 +1,32 @@
+@use '../../design-system/src/css/base.scss';
+@use '../../design-system/src/css/reset.scss';
+@use '../../design-system/src/css/index.scss';
+
+.sbdocs.sbdocs-content {
+	:is(h1, h2, h3, h4, h5, h6):not(:where(.sb-unstyled, .sb-unstyled *)) {
+		border-bottom: none;
+		padding-bottom: 0;
+		font-weight: var(--font-weight--bold);
+		color: var(--text-color);
+
+		&:first-child {
+			margin-top: 0;
+		}
+	}
+
+	:is(strong, b):not(:where(.sb-unstyled, .sb-unstyled *)) {
+		color: var(--text-color);
+		font-weight: var(--font-weight--bold);
+	}
+
+	:not(pre) > code {
+		color: var(--text-color);
+	}
+}
+
+.sbdocs .sbdocs-content table:not(.sbdocs-preview table, .docs-story table) {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-size--2xs);
+	margin-block: var(--spacing--2xl);
+}

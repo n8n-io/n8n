@@ -1,0 +1,40 @@
+import { AGENT_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+
+/**
+ * Tool names used by the agent builder. Centralised so tool implementations,
+ * prompts, and tests can't drift on string typos.
+ *
+ * The values come from `AGENT_BUILDER_TOOL_NAMES` in `@n8n/api-types`. When you
+ * rename a tool, add the former name to `LEGACY_BUILDER_TOOL_NAMES` there so
+ * persisted checkpoints still resolve.
+ *
+ * The interactive tools (`ASK_CREDENTIAL_TOOL_NAME`, `ASK_QUESTIONS_TOOL_NAME`,
+ * `CONFIGURE_CHANNEL_TOOL_NAME`) are NOT listed here — they live in
+ * `@n8n/api-types` (`agent-builder-interactive.ts` / `agents/agent-interaction.schema.ts`)
+ * alongside the suspend/resume schemas they share with instance AI's FE cards.
+ */
+export const BUILDER_TOOLS = {
+	WRITE_CONFIG: AGENT_BUILDER_TOOL_NAMES.WRITE_CONFIG,
+	PATCH_CONFIG: AGENT_BUILDER_TOOL_NAMES.PATCH_CONFIG,
+	BUILD_CUSTOM_TOOL: AGENT_BUILDER_TOOL_NAMES.BUILD_CUSTOM_TOOL,
+	CREATE_SKILLS: AGENT_BUILDER_TOOL_NAMES.CREATE_SKILLS,
+	UPDATE_SKILL: AGENT_BUILDER_TOOL_NAMES.UPDATE_SKILL,
+	CREATE_TASKS: AGENT_BUILDER_TOOL_NAMES.CREATE_TASKS,
+	UPDATE_TASK: AGENT_BUILDER_TOOL_NAMES.UPDATE_TASK,
+	FINISH_SETUP: AGENT_BUILDER_TOOL_NAMES.FINISH_SETUP,
+	GET_RESOURCE_LOCATOR_OPTIONS: AGENT_BUILDER_TOOL_NAMES.GET_RESOURCE_LOCATOR_OPTIONS,
+	CALL_AGENT: AGENT_BUILDER_TOOL_NAMES.CALL_AGENT,
+	PUBLISH_AGENT: AGENT_BUILDER_TOOL_NAMES.PUBLISH_AGENT,
+	UNPUBLISH_AGENT: AGENT_BUILDER_TOOL_NAMES.UNPUBLISH_AGENT,
+	RESOLVE_LLM: AGENT_BUILDER_TOOL_NAMES.RESOLVE_LLM,
+	VERIFY_MCP_SERVER: AGENT_BUILDER_TOOL_NAMES.VERIFY_MCP_SERVER,
+	SEARCH_NODES: AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES,
+	GET_NODE_TYPES: AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES,
+} as const;
+
+export type BuilderToolName = (typeof BUILDER_TOOLS)[keyof typeof BUILDER_TOOLS];
+
+/** Thread-id prefix scoping the test-chat surface of an agent. */
+export const AGENT_THREAD_PREFIX = {
+	TEST: 'test-',
+} as const;

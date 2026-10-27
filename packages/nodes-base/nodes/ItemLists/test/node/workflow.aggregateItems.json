@@ -11,11 +11,32 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {id: 1, char: 'a'},\n  {id: 2, char: 'b'},\n  {id: 3, char: 'c'},\n  {id: 4, char: 'd'},\n  {id: 5, char: 'e'},\n];"
+				"data": [
+					{
+						"id": 1,
+						"char": "a"
+					},
+					{
+						"id": 2,
+						"char": "b"
+					},
+					{
+						"id": 3,
+						"char": "c"
+					},
+					{
+						"id": 4,
+						"char": "d"
+					},
+					{
+						"id": 5,
+						"char": "e"
+					}
+				]
 			},
 			"id": "2e0011d5-c6a0-4a40-ab8c-9d011cde40d5",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [-180, 260]
 		},

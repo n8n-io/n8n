@@ -27,13 +27,36 @@ export class RundeckApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 		},
+		{
+			displayName: 'SSL Certificate Validation',
+			name: 'sslCertificateValidation',
+			type: 'options',
+			options: [
+				{
+					name: 'Default',
+					value: 'default',
+					description:
+						'Validate certificates for Rundeck nodes of version 1.1 and newer, skip validation for older nodes',
+				},
+				{
+					name: 'Enabled',
+					value: 'enabled',
+					description: 'Always validate SSL certificates',
+				},
+				{
+					name: 'Disabled',
+					value: 'disabled',
+					description: 'Connect even if SSL certificate validation is not possible',
+				},
+			],
+			default: 'default',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
 			headers: {
-				'user-agent': 'n8n',
 				'X-Rundeck-Auth-Token': '={{$credentials?.token}}',
 			},
 		},
@@ -44,6 +67,7 @@ export class RundeckApi implements ICredentialType {
 			baseURL: '={{$credentials.url}}',
 			url: '/api/14/system/info',
 			method: 'GET',
+			skipSslCertificateValidation: '={{$credentials.sslCertificateValidation === "disabled"}}',
 		},
 	};
 }

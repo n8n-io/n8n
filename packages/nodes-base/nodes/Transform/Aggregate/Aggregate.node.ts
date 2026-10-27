@@ -14,13 +14,14 @@ import {
 } from 'n8n-workflow';
 
 import { addBinariesToItem } from './utils';
-import { prepareFieldsArray } from '../utils/utils';
+import { fieldNotFoundHint, prepareFieldsArray } from '../utils/utils';
 
 export class Aggregate implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Aggregate',
 		name: 'aggregate',
-		icon: 'file:aggregate.svg',
+		icon: 'node:aggregate',
+		iconColor: 'orange-red',
 		group: ['transform'],
 		subtitle: '',
 		version: 1,
@@ -30,6 +31,20 @@ export class Aggregate implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			searchHint:
+				'Need to combine items from multiple branches? Use merge node. This nodes combines all items from one branch into one item.',
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.merge',
+					relationHint: 'For multiple branches',
+				},
+				{
+					nodeType: 'n8n-nodes-base.splitOut',
+					relationHint: 'Reverse operation',
+				},
+			],
+		},
 		properties: [
 			{
 				displayName: 'Aggregate',
@@ -424,10 +439,7 @@ export class Aggregate implements INodeType {
 
 			for (const [field, values] of Object.entries(notFoundedFields)) {
 				if (values.every((value) => !value)) {
-					hints.push({
-						message: `The field '${field}' wasn't found in any input item`,
-						location: 'outputPane',
-					});
+					hints.push(fieldNotFoundHint(field));
 				}
 			}
 

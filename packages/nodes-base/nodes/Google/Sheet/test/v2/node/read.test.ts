@@ -9,9 +9,9 @@ describe('Google Sheet - Read', () => {
 
 	beforeEach(() => {
 		mockExecuteFunctions = {
-			getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-			getNode: jest.fn().mockReturnValue({ typeVersion: 4.5 }),
-			getNodeParameter: jest.fn((param) => {
+			getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+			getNode: vi.fn().mockReturnValue({ typeVersion: 4.5 }),
+			getNodeParameter: vi.fn((param) => {
 				const mockParams: { [key: string]: unknown } = {
 					options: {},
 					'filtersUI.values': [],
@@ -22,12 +22,12 @@ describe('Google Sheet - Read', () => {
 		} as Partial<IExecuteFunctions>;
 
 		mockSheet = {
-			getData: jest.fn().mockResolvedValue([
+			getData: vi.fn().mockResolvedValue([
 				['Header1', 'Header2'],
 				['Value1', 'Value2'],
 			]),
-			lookupValues: jest.fn().mockResolvedValue([{ Header1: 'Value1', Header2: 'Value2' }]),
-			structureArrayDataByColumn: jest
+			lookupValues: vi.fn().mockResolvedValue([{ Header1: 'Value1', Header2: 'Value2' }]),
+			structureArrayDataByColumn: vi
 				.fn()
 				.mockReturnValue([{ Header1: 'Value1', Header2: 'Value2' }]),
 		};
@@ -50,7 +50,7 @@ describe('Google Sheet - Read', () => {
 	});
 
 	test('should call lookupValues when filters are provided', async () => {
-		mockExecuteFunctions.getNodeParameter = jest.fn((param) => {
+		mockExecuteFunctions.getNodeParameter = vi.fn((param) => {
 			if (param === 'filtersUI.values') return [{ lookupColumn: 'Header1', lookupValue: 'Value1' }];
 			return '';
 		}) as unknown as IExecuteFunctions['getNodeParameter'];
@@ -70,7 +70,7 @@ describe('Google Sheet - Read', () => {
 	});
 
 	test('should return an empty array when sheet data is empty', async () => {
-		mockSheet.getData = jest.fn().mockResolvedValue([]);
+		mockSheet.getData = vi.fn().mockResolvedValue([]);
 		const result = await execute.call(
 			mockExecuteFunctions as IExecuteFunctions,
 			mockSheet as GoogleSheet,

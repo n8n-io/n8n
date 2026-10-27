@@ -1,0 +1,239 @@
+import userEvent from '@testing-library/user-event';
+import { fireEvent, render, waitFor } from '@testing-library/vue';
+import { nextTick, ref } from 'vue';
+
+import SetupPanel from './SetupPanel.vue';
+
+describe('SetupPanel', () => {
+	it('replaces the service icon on completion without showing a progress count', async () => {
+		const items = [
+			{ id: 'slack', title: 'Slack', completed: false },
+			{ id: 'gmail', title: 'Gmail', completed: true },
+		];
+		const { getByRole, queryByText, rerender } = render(SetupPanel, {
+			props: { items, activeItemId: 'slack' },
+			slots: { icon: '<span data-test-id="service-icon" />' },
+		});
+		const detail = getByRole('dialog', { name: 'Slack' });
+		expect(detail.querySelector('[data-test-id="service-icon"]')).toBeVisible();
+		await rerender({ items: items.map((item) => ({ ...item, completed: true })) });
+		expect(detail.querySelector('[data-test-id="service-icon"]')).toBeNull();
+		expect(detail.querySelector('[data-icon="status-completed"]')).toBeVisible();
+		await rerender({ activeItemId: undefined, status: 'complete' });
+		expect(getByRole('button', { name: 'Setup complete' })).toBeVisible();
+		expect(getByRole('button', { name: 'Execute' })).toBeVisible();
+		expect(queryByText(/\d+\s*(?:of|\/)\s*\d+/i)).toBeNull();
+	});
+
+	it('retains outgoing content while making the closing detail inaccessible', async () => {
+		const activeItemId = ref<string | undefined>('slack');
+		const { getByRole, getByTestId, queryByRole, unmount } = render(
+			{
+				components: { SetupPanel },
+				setup: () => ({ activeItemId, items: [{ id: 'slack', title: 'Slack', completed: false }] }),
+				template: `<SetupPanel :items="items" v-model:active-item-id="activeItemId">
+				<template #detail><span v-if="activeItemId">Connection form</span></template>
+			</SetupPanel>`,
+			},
+			{ global: { stubs: { transition: false } } },
+		);
+		const overlay = getByTestId('setup-panel-overlay');
+		overlay.style.transitionDuration = '1s';
+		overlay.style.transitionDelay = '0s';
+		await fireEvent.click(getByRole('button', { name: 'Back to setup checklist' }));
+		await nextTick();
+		expect(overlay).toBeInTheDocument();
+		expect(overlay).toHaveTextContent('Connection form');
+		expect(overlay).toHaveAttribute('inert');
+		expect(overlay).toHaveAttribute('aria-hidden', 'true');
+		expect(queryByRole('dialog')).toBeNull();
+		unmount();
+	});
+
+	it('shows a compact completion bar and lets users review completed items', async () => {
+		const { getByRole, queryByRole, emitted } = render(SetupPanel, {
+			props: { items: [{ id: 'slack', title: 'Slack', completed: true }], status: 'complete' },
+		});
+		expect(queryByRole('button', { name: 'Slack Complete' })).toBeNull();
+		await userEvent.click(getByRole('button', { name: 'Setup complete' }));
+		expect(getByRole('button', { name: 'Slack Complete' })).toBeVisible();
+		await userEvent.click(getByRole('button', { name: 'Execute' }));
+		expect(emitted('execute')).toHaveLength(1);
+	});
+
+	it.each(['validating', 'executing'] as const)('shows %s without an Execute action', (status) => {
+		const { getByRole, queryByRole } = render(SetupPanel, {
+			props: { items: [{ id: 'slack', title: 'Slack', completed: true }], status },
+		});
+		expect(getByRole('status')).toHaveTextContent(
+			status === 'validating' ? 'Validating…' : 'Executing…',
+		);
+		expect(queryByRole('button', { name: 'Execute' })).toBeNull();
+	});
+
+	it('opens the overlay by keyboard and returns focus to the selected row', async () => {
+		const activeItemId = ref<string>();
+		const { getByRole, getByText } = render({
+			components: { SetupPanel },
+			setup: () => ({ activeItemId, items: [{ id: 'slack', title: 'Slack', completed: false }] }),
+			template: `<SetupPanel :items="items" v-model:active-item-id="activeItemId">
+				<template #detail>Connection form</template>
+			</SetupPanel>`,
+		});
+		getByRole('button', { name: 'Slack' }).focus();
+		await userEvent.keyboard('{Enter}');
+		expect(getByText('Connection form')).toBeVisible();
+		const back = getByRole('button', { name: 'Back to setup checklist' });
+		await waitFor(() => expect(back).toHaveFocus());
+		await userEvent.keyboard('{Enter}');
+		await waitFor(() => expect(getByRole('button', { name: 'Slack' })).toHaveFocus());
+	});
+
+	it('keeps the checklist mounted but inaccessible while the overlay is open', async () => {
+		const activeItemId = ref<string>();
+		const { getByRole, getByTestId, queryByRole } = render({
+			components: { SetupPanel },
+			setup: () => ({ activeItemId, items: [{ id: 'slack', title: 'Slack', completed: false }] }),
+			template: `<SetupPanel :items="items" v-model:active-item-id="activeItemId">
+				<template #detail><input aria-label="Channel" /></template>
+			</SetupPanel><input aria-label="Chat" />`,
+		});
+		await userEvent.click(getByRole('button', { name: 'Slack' }));
+		expect(getByRole('dialog', { name: 'Slack' })).toBeVisible();
+		expect(getByTestId('setup-panel-row').closest('ul')).toHaveAttribute('inert');
+		expect(queryByRole('button', { name: 'Slack' })).toBeNull();
+		await userEvent.type(getByRole('textbox', { name: 'Channel' }), '#team');
+		await userEvent.click(getByRole('textbox', { name: 'Chat' }));
+		expect(getByRole('textbox', { name: 'Channel' })).toHaveValue('#team');
+		await userEvent.click(getByRole('textbox', { name: 'Channel' }));
+		await userEvent.keyboard('{Escape}');
+		expect(queryByRole('dialog')).toBeNull();
+		await waitFor(() => expect(getByRole('button', { name: 'Slack' })).toHaveFocus());
+	});
+
+	it('renders a direct connection action without opening the overlay', async () => {
+		const connect = vi.fn();
+		const { getByRole, queryByRole, emitted } = render(SetupPanel, {
+			props: { items: [{ id: 'slack', title: 'Slack', completed: false, hasAction: true }] },
+			slots: {
+				action: {
+					template: '<button @click="connect">Connect</button>',
+					setup: () => ({ connect }),
+				},
+			},
+		});
+		expect(getByRole('group', { name: 'Slack' })).toBeVisible();
+		await userEvent.click(getByRole('button', { name: 'Connect' }));
+		expect(connect).toHaveBeenCalledOnce();
+		expect(queryByRole('dialog')).toBeNull();
+		expect(emitted('update:activeItemId')).toBeUndefined();
+	});
+
+	it('exposes completion and prevents unavailable rows from opening', async () => {
+		const { getByRole, emitted } = render(SetupPanel, {
+			props: {
+				items: [
+					{ id: 'slack', title: 'Slack', completed: true },
+					{ id: 'details', title: 'Details', completed: false, disabled: true },
+				],
+			},
+		});
+		expect(getByRole('button', { name: 'Slack Complete' })).toBeEnabled();
+		expect(
+			getByRole('button', { name: 'Slack Complete' }).querySelector(
+				'[data-icon="status-completed"]',
+			),
+		).toBeVisible();
+		const details = getByRole('button', { name: 'Details' });
+		expect(details).toBeDisabled();
+		await userEvent.click(details);
+		expect(emitted('update:activeItemId')).toBeUndefined();
+	});
+
+	it('returns to the remaining checklist when the active requirement disappears', async () => {
+		const { rerender, queryByText, getByRole, emitted } = render(SetupPanel, {
+			props: { items: [{ id: 'slack', title: 'Slack', completed: false }], activeItemId: 'slack' },
+			slots: { detail: 'Connection form' },
+		});
+		await rerender({ items: [{ id: 'details', title: 'Details', completed: false }] });
+		expect(queryByText('Connection form')).toBeNull();
+		expect(getByRole('button', { name: 'Details' })).toBeVisible();
+		await waitFor(() => expect(getByRole('button', { name: 'Details' })).toHaveFocus());
+		expect(emitted('update:activeItemId')).toContainEqual([undefined]);
+		await rerender({ items: [] });
+		expect(queryByText('Details')).toBeNull();
+	});
+
+	it.each(['removed', 'disabled', 'empty'])(
+		'emits one close event when the active item becomes %s',
+		async (change) => {
+			const items = [
+				{ id: 'slack', title: 'Slack', completed: false },
+				{ id: 'details', title: 'Details', completed: false },
+			];
+			const { getByTestId, rerender, emitted } = render(SetupPanel, {
+				props: { items, activeItemId: 'slack' },
+				global: { stubs: { transition: false } },
+			});
+			const overlay = getByTestId('setup-panel-overlay');
+			overlay.style.transitionDuration = '0.05s';
+			overlay.style.transitionDelay = '0s';
+			await rerender({
+				items:
+					change === 'empty'
+						? []
+						: change === 'removed'
+							? items.slice(1)
+							: items.map((item) => ({ ...item, disabled: item.id === 'slack' })),
+			});
+			const closeEventsBeforeLeave = emitted('detailClosed')?.length ?? 0;
+			await waitFor(() => expect(overlay).not.toBeInTheDocument());
+			expect(emitted('detailClosed')).toEqual([[]]);
+			if (change !== 'empty') expect(closeEventsBeforeLeave).toBe(0);
+		},
+	);
+
+	it.each(['missing', 'disabled', 'empty'])(
+		'clears the %s initial selection without opening it after the items change',
+		async (initialState) => {
+			const activeItemId = ref<string | undefined>('slack');
+			const items = ref(
+				initialState === 'empty'
+					? []
+					: [
+							{
+								id: initialState === 'missing' ? 'details' : 'slack',
+								title: 'Slack',
+								completed: false,
+								disabled: initialState === 'disabled',
+							},
+						],
+			);
+			const onDetailClosed = vi.fn();
+			const { queryByRole } = render({
+				components: { SetupPanel },
+				setup: () => ({ activeItemId, items, onDetailClosed }),
+				template:
+					'<SetupPanel :items="items" v-model:active-item-id="activeItemId" @detail-closed="onDetailClosed" />',
+			});
+			expect(activeItemId.value).toBeUndefined();
+			items.value = [{ id: 'slack', title: 'Slack', completed: false, disabled: false }];
+			await nextTick();
+			expect(queryByRole('dialog')).toBeNull();
+			expect(onDetailClosed).not.toHaveBeenCalled();
+		},
+	);
+
+	it('does not open a selected detail when mounted during execution', () => {
+		const { queryByRole, getByRole, emitted } = render(SetupPanel, {
+			props: {
+				items: [{ id: 'slack', title: 'Slack', completed: true }],
+				activeItemId: 'slack',
+				status: 'executing',
+			},
+		});
+		expect(queryByRole('dialog')).toBeNull();
+		expect(getByRole('status')).toHaveTextContent('Executing');
+		expect(emitted('update:activeItemId')).toEqual([[undefined]]);
+	});
+});

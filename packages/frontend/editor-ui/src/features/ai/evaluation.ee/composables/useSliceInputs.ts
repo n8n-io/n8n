@@ -1,0 +1,196 @@
+import { computed, toValue, type ComputedRef, type MaybeRefOrGetter } from 'vue';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	DATA_TABLE_SYSTEM_COLUMNS,
+	EVALUATION_TRIGGER_METADATA_FIELDS,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
+	getParentNodes,
+	mapConnectionsByDestination,
+} from 'n8n-workflow';
+
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	injectWorkflowExecutionStateStore,
+	type useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useEvaluationsWizardSidepanelStore } from '../wizardSidepanel.store';
+import { stringifyValue } from '../evaluation.utils';
+import { resolveSingleUpstream } from './resolveSingleUpstream';
+
+export type SliceInputs = {
+	fieldNames: string[];
+	values: Record<string, string>;
+	hasExecution: boolean;
+};
+
+type ExecutionLike = NonNullable<
+	ReturnType<typeof useWorkflowExecutionStateStore>['lastSuccessfulExecution']
+>;
+
+export type UseSliceInputsOptions = {
+	fallbackExecution?: MaybeRefOrGetter<ExecutionLike | null | undefined>;
+};
+
+// Resolves the input shape feeding the slice from the most recent
+// non-evaluation execution. Uses graph-based parent lookup rather than
+// `task.source` — langchain AI nodes have an unreliable source array.
+export function useSliceInputs(options?: UseSliceInputsOptions): ComputedRef<SliceInputs> {
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const nodeTypesStore = useNodeTypesStore();
+	const wizardStore = useEvaluationsWizardSidepanelStore();
+
+	return computed<SliceInputs>(() => {
+		const allNodes = workflowDocumentStore.value?.allNodes ?? [];
+		const triggers = allNodes.filter((node) => nodeTypesStore.isTriggerNode(node.type));
+		const evaluationTriggers = buildEvaluationTriggerSources(allNodes);
+		const connections = workflowDocumentStore.value?.connectionsBySourceNode ?? {};
+
+		const probeNode = wizardStore.isSliceMode ? wizardStore.startNodeName : wizardStore.aiNodeName;
+		const fallback = (result: SliceInputs) =>
+			withFallback(result, allNodes, connections, probeNode);
+
+		const exec = pickUserExecution([
+			// A user-chosen seed execution (from the Tests list) wins so the detail
+			// form prefills from exactly the execution they picked.
+			wizardStore.seedExecution,
+			workflowExecutionStateStore.value.activeExecution,
+			workflowExecutionStateStore.value.lastSuccessfulExecution,
+			toValue(options?.fallbackExecution),
+		]);
+		const runData = exec?.data?.resultData?.runData;
+		const hasExecution = Boolean(runData && Object.keys(runData).length > 0);
+		if (!hasExecution || !runData) {
+			return fallback({ fieldNames: [], values: {}, hasExecution: false });
+		}
+
+		if (!probeNode) return fallback({ fieldNames: [], values: {}, hasExecution: true });
+
+		const isTrigger = triggers.some((n) => n.name === probeNode);
+		const firstItem = isTrigger
+			? readFirstOutputItem(runData, probeNode, evaluationTriggers)
+			: readFirstInputItemViaGraph(runData, connections, probeNode, evaluationTriggers);
+		if (!firstItem) return fallback({ fieldNames: [], values: {}, hasExecution: true });
+
+		const fieldNames = Object.keys(firstItem);
+		const values: Record<string, string> = {};
+		for (const name of fieldNames) {
+			values[name] = stringifyValue(firstItem[name]);
+		}
+		return fallback({ fieldNames, values, hasExecution: true });
+	});
+}
+
+// Chat-triggered workflows get `chatInput` to match the trigger's natural
+// output column; otherwise `input` keeps `helpfulness.userQuery` lookups working.
+export const FALLBACK_INPUT_FIELD_NAME = 'input';
+const CHAT_TRIGGER_FALLBACK_FIELD_NAME = 'chatInput';
+const CHAT_TRIGGER_NODE_TYPES = new Set<string>([
+	CHAT_TRIGGER_NODE_TYPE,
+	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
+]);
+
+function withFallback(
+	result: SliceInputs,
+	allNodes: Array<{ name: string; type: string }>,
+	connections: Connections,
+	probeNode: string,
+): SliceInputs {
+	if (result.fieldNames.length > 0) return result;
+	const fieldName = pickFallbackFieldName(allNodes, connections, probeNode);
+	return {
+		...result,
+		fieldNames: [fieldName],
+		values: { ...result.values, [fieldName]: '' },
+	};
+}
+
+function pickFallbackFieldName(
+	allNodes: Array<{ name: string; type: string }>,
+	connections: Connections,
+	probeNode: string,
+): string {
+	if (!probeNode) return FALLBACK_INPUT_FIELD_NAME;
+	const byDest = mapConnectionsByDestination(connections);
+	const chain = [probeNode, ...getParentNodes(byDest, probeNode, 'main')];
+	const byName = new Map(allNodes.map((n) => [n.name, n]));
+	for (const name of chain) {
+		const node = byName.get(name);
+		if (node && CHAT_TRIGGER_NODE_TYPES.has(node.type)) {
+			return CHAT_TRIGGER_FALLBACK_FIELD_NAME;
+		}
+	}
+	return FALLBACK_INPUT_FIELD_NAME;
+}
+
+type Execution = ExecutionLike;
+type RunData = NonNullable<NonNullable<Execution['data']>['resultData']>['runData'];
+type Connections = NonNullable<
+	NonNullable<ReturnType<typeof injectWorkflowDocumentStore>['value']>['connectionsBySourceNode']
+>;
+
+// Skip evaluation-mode runs — their compiled runData doesn't match the user's graph.
+function pickUserExecution(
+	candidates: Array<Execution | null | undefined>,
+): Execution | null | undefined {
+	for (const candidate of candidates) {
+		if (candidate && candidate.mode !== 'evaluation') return candidate;
+	}
+	return undefined;
+}
+
+// Evaluation Trigger node name -> whether its `source` param is 'dataTable'.
+// The Data table bookkeeping columns (id/createdAt/updatedAt) only apply to
+// that source; a Google Sheets-sourced trigger can have a genuine user column
+// with one of those names, so callers must know the source before stripping.
+export type EvaluationTriggerSources = Map<string, boolean>;
+
+export function buildEvaluationTriggerSources(
+	allNodes: Array<{ name: string; type: string; parameters?: Record<string, unknown> }>,
+): EvaluationTriggerSources {
+	return new Map(
+		allNodes
+			.filter((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE)
+			.map((node) => [node.name, node.parameters?.source === 'dataTable']),
+	);
+}
+
+// Data table row bookkeeping columns spread into the trigger's output as-is —
+// only present when the trigger's source is Data table (row_id, plus the Data
+// table's own id/createdAt/updatedAt system columns).
+const DATA_TABLE_TRIGGER_METADATA_FIELDS = ['row_id', ...DATA_TABLE_SYSTEM_COLUMNS] as const;
+
+export function readFirstOutputItem(
+	runData: RunData,
+	nodeName: string,
+	evaluationTriggers: EvaluationTriggerSources = new Map(),
+) {
+	const task = runData[nodeName]?.[0];
+	const json = task?.data?.main?.[0]?.[0]?.json;
+	if (!json || !evaluationTriggers.has(nodeName)) return json;
+	// The Evaluation Trigger's own output carries metadata fields (e.g. `_rowsLeft`)
+	// alongside the dataset columns; strip them when it's read as an input source.
+	const isDataTableSource = evaluationTriggers.get(nodeName) === true;
+	const metadataFields: readonly string[] = isDataTableSource
+		? [...EVALUATION_TRIGGER_METADATA_FIELDS, ...DATA_TABLE_TRIGGER_METADATA_FIELDS]
+		: EVALUATION_TRIGGER_METADATA_FIELDS;
+	return Object.fromEntries(Object.entries(json).filter(([key]) => !metadataFields.includes(key)));
+}
+
+export function readFirstInputItemViaGraph(
+	runData: RunData,
+	connections: Connections,
+	nodeName: string,
+	evaluationTriggers: EvaluationTriggerSources = new Map(),
+) {
+	const byDest = mapConnectionsByDestination(connections);
+	const parents = getParentNodes(byDest, nodeName, 'main', 1);
+	// A pre-existing Evaluation Trigger can converge on the same node as the
+	// workflow's real trigger; a normal (non-evaluation) execution never ran it,
+	// so picking it over the real trigger would read no input at all.
+	const parent = resolveSingleUpstream(parents, evaluationTriggers) ?? parents[0];
+	if (!parent) return undefined;
+	return readFirstOutputItem(runData, parent, evaluationTriggers);
+}

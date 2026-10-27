@@ -1,0 +1,25 @@
+{
+  "_comment": "Frozen fixture config, paired with sample.cdx.json. It holds only what the behaviour suites (pipeline.test.mjs, properties.test.mjs) exercise and must NOT be kept in sync with the shipped scripts/licenses/license-overrides.json — that coupling is what made a dependency removal break these tests. The shipped file is validated by render-licenses-md.test.mjs instead.",
+  "overrides": {
+    "pkg:npm/binascii@0.0.2": {
+      "license": "MIT",
+      "source": "Fixture only. A PURL-pinned override for a component the fixture SBOM declares with no license at all."
+    }
+  },
+  "byName": {
+    "wa-sqlite": {
+      "license": "MIT",
+      "source": "Fixture only. The second license-less component in sample.cdx.json, resolved version-agnostically."
+    },
+    "ssh2": {
+      "license": "MIT",
+      "source": "Fixture only. The byName version-drift case in properties.test.mjs (SBOM version differs from any pin)."
+    }
+  },
+  "elections": {
+    "pkg:npm/jszip@3.10.1": {
+      "elected": "MIT",
+      "source": "Fixture only. The dual-license (MIT OR GPL-3.0-or-later) election case."
+    }
+  }
+}

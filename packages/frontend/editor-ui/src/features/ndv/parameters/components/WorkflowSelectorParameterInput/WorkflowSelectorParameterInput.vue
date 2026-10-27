@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import type { ComponentInstance } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { isPlaceholderValue } from '@n8n/utils/placeholder';
 import type {
 	INodeParameterResourceLocator,
 	INodeProperties,
@@ -17,11 +19,11 @@ import ResourceLocatorDropdown from '../ResourceLocator/ResourceLocatorDropdown.
 import ParameterIssues from '../ParameterIssues.vue';
 import { onClickOutside } from '@vueuse/core';
 import { useRouter } from 'vue-router';
-import { useWorkflowResourceLocatorDropdown } from '../../composables/useWorkflowResourceLocatorDropdown';
-import { useWorkflowResourceLocatorModes } from '../../composables/useWorkflowResourceLocatorModes';
+import { useResourceLocatorDropdown } from '../../composables/useResourceLocatorDropdown';
+import { useResourceLocatorModes } from '../../composables/useResourceLocatorModes';
 import { useWorkflowResourcesLocator } from '../../composables/useWorkflowResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { VIEWS } from '@/app/constants';
 import {
 	SAMPLE_SUBWORKFLOW_TRIGGER_ID,
@@ -29,7 +31,7 @@ import {
 } from '@/app/constants/samples';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import {
 	N8nIcon,
@@ -77,29 +79,18 @@ const emit = defineEmits<{
 }>();
 
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const projectStore = useProjectsStore();
 
 const router = useRouter();
 const i18n = useI18n();
 const container = ref<HTMLDivElement>();
-const dropdown = ref<ComponentInstance<typeof ResourceLocatorDropdown>>();
+const dropdown = ref<ComponentPublicInstance<typeof ResourceLocatorDropdown>>();
 const telemetry = useTelemetry();
 const toast = useToast();
 
 const width = ref(0);
 const inputRef = ref<HTMLInputElement | undefined>();
-
-const { isListMode, getUpdatedModePayload, selectedMode, supportedModes, getModeLabel } =
-	useWorkflowResourceLocatorModes(
-		computed(() => props.modelValue),
-		router,
-	);
-const { hideDropdown, isDropdownVisible, showDropdown } = useWorkflowResourceLocatorDropdown(
-	isListMode,
-	inputRef,
-);
-
-const { onDocumentVisible } = useDocumentVisibility();
 
 const {
 	hasMoreWorkflowsToLoad,
@@ -107,6 +98,7 @@ const {
 	searchFilter,
 	onSearchFilter,
 	getWorkflowName,
+	getWorkflowBaseName,
 	applyDefaultExecuteWorkflowNodeName,
 	populateNextWorkflowsPage,
 	setWorkflowsResources,
@@ -114,6 +106,19 @@ const {
 	getWorkflowUrl,
 	workflowsResources,
 } = useWorkflowResourcesLocator(router);
+
+const { isListMode, getUpdatedModePayload, selectedMode, supportedModes, getModeLabel } =
+	useResourceLocatorModes(
+		computed(() => props.modelValue),
+		getWorkflowName,
+	);
+
+const { hideDropdown, isDropdownVisible, showDropdown } = useResourceLocatorDropdown(
+	isListMode,
+	inputRef,
+);
+
+const { onDocumentVisible } = useDocumentVisibility();
 
 const currentProjectName = computed(() => {
 	if (!projectStore.isTeamProjectFeatureEnabled) return '';
@@ -140,15 +145,11 @@ const getCreateResourceLabel = computed(() => {
 });
 
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
-	if (typeof props.modelValue !== 'object') {
-		return props.modelValue ?? '';
-	}
-
-	if (isListMode.value) {
-		return props.modelValue ? (props.modelValue.cachedResultName ?? props.modelValue.value) : '';
-	}
-
-	return props.modelValue ? props.modelValue.value : '';
+	const value = typeof props.modelValue === 'object' ? props.modelValue?.value : props.modelValue;
+	const fallback = isPlaceholderValue(value) ? '' : (value ?? '');
+	return isListMode.value && typeof props.modelValue === 'object'
+		? (props.modelValue?.cachedResultName ?? fallback)
+		: fallback;
 });
 
 const placeholder = computed(() => {
@@ -160,7 +161,11 @@ const placeholder = computed(() => {
 });
 
 const showOpenResourceLink = computed(() => {
-	return !props.isValueExpression && props.modelValue.value;
+	return (
+		!props.isValueExpression &&
+		props.modelValue.value &&
+		!isPlaceholderValue(props.modelValue.value)
+	);
 });
 
 function setWidth() {
@@ -180,8 +185,7 @@ function onInputChange(workflowId: NodeParameterValue): void {
 		cachedResultUrl: getWorkflowUrl(workflowId),
 	};
 	if (isListMode.value) {
-		const resource = workflowsStore.getWorkflowById(workflowId);
-		if (resource?.name) {
+		if (getWorkflowBaseName(workflowId)) {
 			params.cachedResultName = getWorkflowName(workflowId);
 		}
 	}
@@ -225,13 +229,18 @@ function openWorkflow() {
 }
 
 async function refreshCachedWorkflow() {
-	if (!props.modelValue || props.modelValue.mode !== 'list' || !props.modelValue.value) {
+	if (
+		!props.modelValue ||
+		props.modelValue.mode !== 'list' ||
+		!props.modelValue.value ||
+		isPlaceholderValue(props.modelValue.value)
+	) {
 		return;
 	}
 
 	const workflowId = props.modelValue.value;
 	try {
-		await workflowsStore.fetchWorkflow(`${workflowId}`);
+		await workflowsListStore.fetchWorkflow(`${workflowId}`);
 		onInputChange(workflowId);
 	} catch (e) {
 		// keep old cached value
@@ -268,13 +277,16 @@ watch(
 		// Because eagerly renaming the node when the target sub-workflow
 		// changed name means the workflow becomes unsaved and changed just by
 		// opening the ExecuteWorkflow node referencing the renamed workflow
-		if (old.value !== val.value) {
+		if (old.value !== val.value && !isPlaceholderValue(val.value)) {
 			applyDefaultExecuteWorkflowNodeName(val.value);
 		}
 	},
 );
 
-onClickOutside(dropdown, () => {
+onClickOutside(dropdown, (event) => {
+	if (event.target instanceof HTMLElement && dropdown.value?.isWithinDropdown(event.target)) {
+		return;
+	}
 	isDropdownVisible.value = false;
 });
 
@@ -283,7 +295,7 @@ const onAddResourceClicked = async () => {
 		const projectId = projectStore.currentProjectId;
 		const sampleWorkflow = props.sampleWorkflow;
 		const workflowName = sampleWorkflow.name ?? 'My Sub-Workflow';
-		const sampleSubWorkflows = workflowsStore.allWorkflows.filter(
+		const sampleSubWorkflows = workflowsListStore.allWorkflows.filter(
 			(w) => w.name && new RegExp(workflowName).test(w.name),
 		);
 
@@ -299,7 +311,7 @@ const onAddResourceClicked = async () => {
 		const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
 		const { href } = router.resolve({
 			name: VIEWS.WORKFLOW,
-			params: { name: newWorkflow.id, nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID },
+			params: { workflowId: newWorkflow.id, nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID },
 		});
 		workflowsResources.value.push(workflowDbToResourceMapper(newWorkflow));
 		emit('update:modelValue', {
@@ -343,6 +355,7 @@ const onAddResourceClicked = async () => {
 			:model-value="modelValue"
 			:disable-inactive-items="false"
 			@update:model-value="onListItemSelected"
+			@update:show="!$event && hideDropdown()"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"
 			@add-resource-click="onAddResourceClicked"
@@ -372,13 +385,6 @@ const onAddResourceClicked = async () => {
 					[$style.multipleModes]: true,
 				}"
 			>
-				<div
-					:class="{
-						[$style.background]: true,
-						[$style.backgroundWithIssuesAndShowResourceLink]:
-							showOpenResourceLink && parameterIssues?.length,
-					}"
-				/>
 				<div :class="$style.modeSelector">
 					<N8nSelect
 						:model-value="selectedMode"
@@ -448,10 +454,9 @@ const onAddResourceClicked = async () => {
 									@blur="onInputBlur"
 								>
 									<template v-if="isListMode" #suffix>
-										<i
+										<N8nIcon
+											icon="chevron-down"
 											:class="{
-												['el-input__icon']: true,
-												['el-icon-arrow-down']: true,
 												[$style.selectIcon]: true,
 												[$style.isReverse]: isDropdownVisible,
 											}"

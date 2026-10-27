@@ -1,5 +1,5 @@
 import type { CredentialsEntity, User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { CommunityNode } from '@/modules/community-packages/community-node.command';
 import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
@@ -10,13 +10,13 @@ describe('uninstallCredential', () => {
 	const communityNode = new CommunityNode();
 
 	beforeEach(() => {
-		communityNode.deleteCredential = jest.fn();
-		communityNode.findCredentialsByType = jest.fn();
-		communityNode.findUserById = jest.fn();
+		communityNode.deleteCredential = vi.fn();
+		communityNode.findCredentialsByType = vi.fn();
+		communityNode.findUserById = vi.fn();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should delete a credential', async () => {
@@ -30,12 +30,12 @@ describe('uninstallCredential', () => {
 
 		// @ts-expect-error Protected property
 		communityNode.flags = { credential: credentialType, uninstall: true, userId };
-		communityNode.findCredentialsByType = jest.fn().mockReturnValue(credentials);
-		communityNode.findUserById = jest.fn().mockReturnValue(user);
+		communityNode.findCredentialsByType = vi.fn().mockReturnValue(credentials);
+		communityNode.findUserById = vi.fn().mockReturnValue(user);
 
-		const deleteCredential = jest.spyOn(communityNode, 'deleteCredential');
-		const findCredentialsByType = jest.spyOn(communityNode, 'findCredentialsByType');
-		const findUserById = jest.spyOn(communityNode, 'findUserById');
+		const deleteCredential = vi.spyOn(communityNode, 'deleteCredential');
+		const findCredentialsByType = vi.spyOn(communityNode, 'findCredentialsByType');
+		const findUserById = vi.spyOn(communityNode, 'findUserById');
 
 		await communityNode.run();
 
@@ -57,11 +57,11 @@ describe('uninstallCredential', () => {
 
 		// @ts-expect-error Protected property
 		communityNode.flags = { credential: credentialType, uninstall: true, userId };
-		communityNode.findUserById = jest.fn().mockReturnValue(null);
+		communityNode.findUserById = vi.fn().mockReturnValue(null);
 
-		const deleteCredential = jest.spyOn(communityNode, 'deleteCredential');
-		const findCredentialsByType = jest.spyOn(communityNode, 'findCredentialsByType');
-		const findUserById = jest.spyOn(communityNode, 'findUserById');
+		const deleteCredential = vi.spyOn(communityNode, 'deleteCredential');
+		const findCredentialsByType = vi.spyOn(communityNode, 'findCredentialsByType');
+		const findUserById = vi.spyOn(communityNode, 'findUserById');
 
 		await communityNode.run();
 
@@ -80,12 +80,12 @@ describe('uninstallCredential', () => {
 
 		// @ts-expect-error Protected property
 		communityNode.flags = { credential: credentialType, uninstall: true, userId };
-		communityNode.findUserById = jest.fn().mockReturnValue(mock<User>());
-		communityNode.findCredentialsByType = jest.fn().mockReturnValue(null);
+		communityNode.findUserById = vi.fn().mockReturnValue(mock<User>());
+		communityNode.findCredentialsByType = vi.fn().mockReturnValue(null);
 
-		const deleteCredential = jest.spyOn(communityNode, 'deleteCredential');
-		const findCredentialsByType = jest.spyOn(communityNode, 'findCredentialsByType');
-		const findUserById = jest.spyOn(communityNode, 'findUserById');
+		const deleteCredential = vi.spyOn(communityNode, 'deleteCredential');
+		const findCredentialsByType = vi.spyOn(communityNode, 'findCredentialsByType');
+		const findUserById = vi.spyOn(communityNode, 'findUserById');
 
 		await communityNode.run();
 
@@ -98,7 +98,7 @@ describe('uninstallCredential', () => {
 		expect(deleteCredential).toHaveBeenCalledTimes(0);
 	});
 
-	it('should delete multiple credentials', async () => {
+	it('should wait for all credentials to be deleted', async () => {
 		const credentialType = 'evolutionApi';
 
 		const credential1 = mock<CredentialsEntity>();
@@ -112,14 +112,29 @@ describe('uninstallCredential', () => {
 
 		// @ts-expect-error Protected property
 		communityNode.flags = { credential: credentialType, uninstall: true, userId };
-		communityNode.findCredentialsByType = jest.fn().mockReturnValue(credentials);
-		communityNode.findUserById = jest.fn().mockReturnValue(user);
+		communityNode.findCredentialsByType = vi.fn().mockReturnValue(credentials);
+		communityNode.findUserById = vi.fn().mockReturnValue(user);
 
-		const deleteCredential = jest.spyOn(communityNode, 'deleteCredential');
-		const findCredentialsByType = jest.spyOn(communityNode, 'findCredentialsByType');
-		const findUserById = jest.spyOn(communityNode, 'findUserById');
+		let resolveDelete = () => {};
+		const deletePromise = new Promise<void>((resolve) => {
+			resolveDelete = resolve;
+		});
+		communityNode.deleteCredential = vi.fn().mockReturnValue(deletePromise);
 
-		await communityNode.run();
+		const deleteCredential = vi.spyOn(communityNode, 'deleteCredential');
+		const findCredentialsByType = vi.spyOn(communityNode, 'findCredentialsByType');
+		const findUserById = vi.spyOn(communityNode, 'findUserById');
+
+		let runCompleted = false;
+		const runPromise = communityNode.run().then(() => {
+			runCompleted = true;
+		});
+
+		await vi.waitFor(() => expect(deleteCredential).toHaveBeenCalledTimes(2));
+		expect(runCompleted).toBe(false);
+
+		resolveDelete();
+		await runPromise;
 
 		expect(findCredentialsByType).toHaveBeenCalledTimes(1);
 		expect(findCredentialsByType).toHaveBeenCalledWith(credentialType);
@@ -127,9 +142,50 @@ describe('uninstallCredential', () => {
 		expect(findUserById).toHaveBeenCalledTimes(1);
 		expect(findUserById).toHaveBeenCalledWith(userId);
 
-		expect(deleteCredential).toHaveBeenCalledTimes(2);
 		expect(deleteCredential).toHaveBeenCalledWith(user, credential1.id);
 		expect(deleteCredential).toHaveBeenCalledWith(user, credential2.id);
+	});
+
+	it('should wait for remaining deletions before reporting a failure', async () => {
+		const credentialType = 'evolutionApi';
+		const credential1 = mock<CredentialsEntity>({ id: '666' });
+		const credential2 = mock<CredentialsEntity>({ id: '777' });
+		const user = mock<User>();
+		const deletionError = new Error('Failed to delete credential');
+
+		// @ts-expect-error Protected property
+		communityNode.flags = { credential: credentialType, uninstall: true, userId };
+		communityNode.findCredentialsByType = vi.fn().mockReturnValue([credential1, credential2]);
+		communityNode.findUserById = vi.fn().mockReturnValue(user);
+
+		let resolveDelete = () => {};
+		const pendingDeletion = new Promise<void>((resolve) => {
+			resolveDelete = resolve;
+		});
+		communityNode.deleteCredential = vi
+			.fn()
+			.mockRejectedValueOnce(deletionError)
+			.mockReturnValueOnce(pendingDeletion);
+		const deleteCredential = vi.spyOn(communityNode, 'deleteCredential');
+
+		let runResult: 'pending' | 'resolved' | 'rejected' = 'pending';
+		const runPromise = communityNode.run().then(
+			() => {
+				runResult = 'resolved';
+			},
+			(error: unknown) => {
+				runResult = 'rejected';
+				return error;
+			},
+		);
+
+		await vi.waitFor(() => expect(deleteCredential).toHaveBeenCalledTimes(2));
+		await Promise.resolve();
+		expect(runResult).toBe('pending');
+
+		resolveDelete();
+		expect(await runPromise).toBe(deletionError);
+		expect(runResult).toBe('rejected');
 	});
 });
 
@@ -137,14 +193,14 @@ describe('uninstallPackage', () => {
 	const communityNode = new CommunityNode();
 
 	beforeEach(() => {
-		communityNode.removeCommunityPackage = jest.fn();
-		communityNode.deleteCommunityNode = jest.fn();
-		communityNode.pruneDependencies = jest.fn();
-		communityNode.findCommunityPackage = jest.fn();
+		communityNode.removeCommunityPackage = vi.fn();
+		communityNode.deleteCommunityNode = vi.fn();
+		communityNode.pruneDependencies = vi.fn();
+		communityNode.findCommunityPackage = vi.fn();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should uninstall the package', async () => {
@@ -155,11 +211,11 @@ describe('uninstallPackage', () => {
 
 		// @ts-expect-error Protected property
 		communityNode.flags = { package: 'n8n-nodes-evolution-api', uninstall: true };
-		communityNode.findCommunityPackage = jest.fn().mockReturnValue(communityPackage);
+		communityNode.findCommunityPackage = vi.fn().mockReturnValue(communityPackage);
 
-		const deleteCommunityNode = jest.spyOn(communityNode, 'deleteCommunityNode');
-		const removeCommunityPackageSpy = jest.spyOn(communityNode, 'removeCommunityPackage');
-		const findCommunityPackage = jest.spyOn(communityNode, 'findCommunityPackage');
+		const deleteCommunityNode = vi.spyOn(communityNode, 'deleteCommunityNode');
+		const removeCommunityPackageSpy = vi.spyOn(communityNode, 'removeCommunityPackage');
+		const findCommunityPackage = vi.spyOn(communityNode, 'findCommunityPackage');
 
 		await communityNode.run();
 
@@ -186,11 +242,11 @@ describe('uninstallPackage', () => {
 
 		// @ts-expect-error Protected property
 		communityNode.flags = { package: 'n8n-nodes-evolution-api', uninstall: true };
-		communityNode.findCommunityPackage = jest.fn().mockReturnValue(communityPackage);
+		communityNode.findCommunityPackage = vi.fn().mockReturnValue(communityPackage);
 
-		const deleteCommunityNode = jest.spyOn(communityNode, 'deleteCommunityNode');
-		const removeCommunityPackageSpy = jest.spyOn(communityNode, 'removeCommunityPackage');
-		const findCommunityPackage = jest.spyOn(communityNode, 'findCommunityPackage');
+		const deleteCommunityNode = vi.spyOn(communityNode, 'deleteCommunityNode');
+		const removeCommunityPackageSpy = vi.spyOn(communityNode, 'removeCommunityPackage');
+		const findCommunityPackage = vi.spyOn(communityNode, 'findCommunityPackage');
 
 		await communityNode.run();
 
@@ -211,11 +267,11 @@ describe('uninstallPackage', () => {
 	it('should return if a package is not found', async () => {
 		// @ts-expect-error Protected property
 		communityNode.flags = { package: 'n8n-nodes-evolution-api', uninstall: true };
-		communityNode.findCommunityPackage = jest.fn().mockReturnValue(null);
+		communityNode.findCommunityPackage = vi.fn().mockReturnValue(null);
 
-		const deleteCommunityNode = jest.spyOn(communityNode, 'deleteCommunityNode');
-		const removeCommunityPackageSpy = jest.spyOn(communityNode, 'removeCommunityPackage');
-		const findCommunityPackage = jest.spyOn(communityNode, 'findCommunityPackage');
+		const deleteCommunityNode = vi.spyOn(communityNode, 'deleteCommunityNode');
+		const removeCommunityPackageSpy = vi.spyOn(communityNode, 'removeCommunityPackage');
+		const findCommunityPackage = vi.spyOn(communityNode, 'findCommunityPackage');
 
 		await communityNode.run();
 
@@ -234,11 +290,11 @@ describe('uninstallPackage', () => {
 
 		// @ts-expect-error Protected property
 		communityNode.flags = { package: 'n8n-nodes-evolution-api', uninstall: true };
-		communityNode.findCommunityPackage = jest.fn().mockReturnValue(communityPackage);
+		communityNode.findCommunityPackage = vi.fn().mockReturnValue(communityPackage);
 
-		const deleteCommunityNode = jest.spyOn(communityNode, 'deleteCommunityNode');
-		const removeCommunityPackageSpy = jest.spyOn(communityNode, 'removeCommunityPackage');
-		const findCommunityPackage = jest.spyOn(communityNode, 'findCommunityPackage');
+		const deleteCommunityNode = vi.spyOn(communityNode, 'deleteCommunityNode');
+		const removeCommunityPackageSpy = vi.spyOn(communityNode, 'removeCommunityPackage');
+		const findCommunityPackage = vi.spyOn(communityNode, 'findCommunityPackage');
 
 		await communityNode.run();
 

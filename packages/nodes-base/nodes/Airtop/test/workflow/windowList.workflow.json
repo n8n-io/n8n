@@ -1,0 +1,85 @@
+{
+	"name": "Airtop window list",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "9c9a3f6e-3d7e-4a6d-8f51-4d5e6f708192",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "window",
+				"operation": "list",
+				"sessionId": "test-session-123"
+			},
+			"id": "adab4a7f-4e8f-4b7e-9062-5e6f70819203",
+			"name": "Airtop",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "bebc5b80-5f90-4c8f-a173-6f7081920314",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"sessionId": "test-session-123",
+					"data": {
+						"windows": [
+							{
+								"windowId": "test-window-123"
+							}
+						]
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Airtop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Airtop": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "c3d4e5f6-0718-4930-cb2d-3e4f50617283",
+	"id": "d4e5f607-1829-4a41-dc3e-4f5061728394",
+	"meta": {},
+	"tags": []
+}

@@ -8,6 +8,7 @@ export interface ChatRequest extends IncomingMessage {
 		sessionId: string;
 		executionId: string;
 		isPublic?: boolean;
+		token?: string;
 	};
 	ws: WebSocket;
 }

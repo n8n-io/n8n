@@ -27,7 +27,10 @@
         },
         "unreadItemCount": {
             "type": "integer"
+        },
+        "wellKnownName": {
+            "type": "null"
         }
     },
-    "version": 1
+    "version": 2
 }

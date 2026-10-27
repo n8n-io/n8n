@@ -5,7 +5,9 @@ import {
 	createActiveWorkflow,
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { Telemetry } from '@/telemetry';
 
 import { createUser } from '../shared/db/users';
@@ -33,6 +35,12 @@ beforeEach(async () => {
 		'WorkflowHistory',
 		'WorkflowPublishHistory',
 	]);
+});
+
+afterEach(async () => {
+	// This suite drives the real ActiveWorkflowManager, so anything it registers
+	// (cron jobs, webhooks) would otherwise stay live for the rest of the worker.
+	await Container.get(ActiveWorkflowManager).removeAll();
 });
 
 describe('PUT /:workflowId/transfer', () => {

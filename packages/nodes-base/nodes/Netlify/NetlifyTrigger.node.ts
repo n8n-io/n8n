@@ -1,4 +1,5 @@
 import { snakeCase } from 'change-case';
+import { randomBytes } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -12,6 +13,7 @@ import type {
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { netlifyApiRequest } from './GenericFunctions';
+import { verifySignature } from './NetlifyTriggerHelpers';
 
 export class NetlifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -137,10 +139,12 @@ export class NetlifyTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;
+				const webhookSecret = randomBytes(32).toString('hex');
 				const body: IDataObject = {
 					event: snakeCase(event),
 					data: {
 						url: webhookUrl,
+						signature_secret: webhookSecret,
 					},
 					site_id: this.getNodeParameter('siteId') as string,
 				};
@@ -150,6 +154,7 @@ export class NetlifyTrigger implements INodeType {
 				}
 				const webhook = await netlifyApiRequest.call(this, 'POST', '/hooks', body);
 				webhookData.webhookId = webhook.id;
+				webhookData.webhookSecret = webhookSecret;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
@@ -160,6 +165,7 @@ export class NetlifyTrigger implements INodeType {
 					return false;
 				}
 				delete webhookData.webhookId;
+				delete webhookData.webhookSecret;
 				return true;
 			},
 		},
@@ -196,6 +202,14 @@ export class NetlifyTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const req = this.getRequestObject();
 		const simple = this.getNodeParameter('simple', false) as boolean;
 		const event = this.getNodeParameter('event') as string;

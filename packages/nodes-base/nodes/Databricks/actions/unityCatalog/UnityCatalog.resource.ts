@@ -1,0 +1,17 @@
+export * as createVolume from './createVolume.operation';
+export * as deleteVolume from './deleteVolume.operation';
+export * as getVolume from './getVolume.operation';
+export * as listVolumes from './listVolumes.operation';
+export * as getTable from './getTable.operation';
+export * as listTables from './listTables.operation';
+export * as createTable from './createTable.operation';
+export * as deleteTable from './deleteTable.operation';
+export * as createFunction from './createFunction.operation';
+export * as deleteFunction from './deleteFunction.operation';
+export * as getFunction from './getFunction.operation';
+export * as listFunctions from './listFunctions.operation';
+export * as createCatalog from './createCatalog.operation';
+export * as getCatalog from './getCatalog.operation';
+export * as updateCatalog from './updateCatalog.operation';
+export * as deleteCatalog from './deleteCatalog.operation';
+export * as listCatalogs from './listCatalogs.operation';

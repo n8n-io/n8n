@@ -32,5 +32,5 @@ export function inferResourceTypeFromRoute(to: RouteLocationNormalized): Resourc
 }
 
 export function inferResourceIdFromRoute(to: RouteLocationNormalized): string | undefined {
-	return (to.params.id as string | undefined) ?? (to.params.name as string | undefined);
+	return (to.params.id as string | undefined) ?? (to.params.workflowId as string | undefined);
 }

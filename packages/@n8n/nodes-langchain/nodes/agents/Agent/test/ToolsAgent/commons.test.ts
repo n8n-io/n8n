@@ -1,15 +1,16 @@
+import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
+import type { ToolsAgentAction } from '@langchain/classic/agents/openai/output_parser';
+import type { Tool } from '@langchain/classic/tools';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { HumanMessage } from '@langchain/core/messages';
+import { HumanMessage, isDataContentBlock } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
 import { Buffer } from 'buffer';
-import { mock } from 'jest-mock-extended';
-import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
-import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
-import type { Tool } from '@langchain/classic/tools';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, NodeTypeAndVersion } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import type { ZodType } from 'zod';
 import { z } from 'zod';
 
@@ -31,13 +32,13 @@ import {
 
 function getFakeOutputParser(returnSchema?: ZodType): N8nOutputParser {
 	const fakeOutputParser = mock<N8nOutputParser>();
-	(fakeOutputParser.getSchema as jest.Mock).mockReturnValue(returnSchema);
+	(fakeOutputParser.getSchema as Mock).mockReturnValue(returnSchema);
 	return fakeOutputParser;
 }
 
 function createMockOutputParser(parseReturnValue?: Record<string, unknown>): N8nOutputParser {
 	const mockParser = mock<N8nOutputParser>();
-	(mockParser.parse as jest.Mock).mockResolvedValue(parseReturnValue);
+	(mockParser.parse as Mock).mockResolvedValue(parseReturnValue);
 
 	return mockParser;
 }
@@ -45,7 +46,7 @@ function createMockOutputParser(parseReturnValue?: Record<string, unknown>): N8n
 const mockHelpers = mock<IExecuteFunctions['helpers']>();
 const mockContext = mock<IExecuteFunctions>({ helpers: mockHelpers });
 
-beforeEach(() => jest.resetAllMocks());
+beforeEach(() => vi.resetAllMocks());
 
 describe('getOutputParserSchema', () => {
 	it('should return a default schema if getSchema returns undefined', () => {
@@ -78,7 +79,10 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 		// Expect the HumanMessage's content to be an array containing one binary message.
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content[0]).toEqual({
@@ -103,7 +107,10 @@ describe('extractBinaryMessages', () => {
 		mockHelpers.binaryToBuffer.mockResolvedValue(Buffer.from('fakebufferdata'));
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		expect(mockHelpers.getBinaryStream).toHaveBeenCalledWith('1234');
 		// eslint-disable-next-line @typescript-eslint/unbound-method
@@ -137,7 +144,10 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content).toHaveLength(2);
@@ -168,7 +178,10 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content).toHaveLength(2);
@@ -181,6 +194,231 @@ describe('extractBinaryMessages', () => {
 				{ type: 'text', text: `File: test.txt\nContent:\n${textContent}` },
 			]),
 		);
+	});
+
+	it('should extract a PDF binary message', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					data: 'data:application/pdf;base64,samplePdfData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'file',
+			source_type: 'base64',
+			mime_type: 'application/pdf',
+			data: 'samplePdfData',
+			metadata: { filename: 'attachment.pdf' },
+		});
+	});
+
+	it('should produce a valid LangChain standard data content block for PDFs', async () => {
+		// Contract check: the standard `file` block must satisfy isDataContentBlock so
+		// provider converters (Gemini, Anthropic, OpenAI Completions) translate it
+		// instead of rejecting it. The original `file_url` shape failed this check.
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					fileName: 'report.pdf',
+					data: 'data:application/pdf;base64,samplePdfData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
+		expect(isDataContentBlock(humanMsg.content[0] as object)).toBe(true);
+	});
+
+	it('should emit an OpenAI input_file block for PDFs when content format is openai-responses', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					fileName: 'report.pdf',
+					data: 'data:application/pdf;base64,samplePdfData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(
+			mockContext,
+			0,
+			{ passthroughBinaryImages: true, passthroughBinaryPdfs: true },
+			'openai-responses',
+		);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'input_file',
+			file_data: 'data:application/pdf;base64,samplePdfData',
+			filename: 'report.pdf',
+		});
+	});
+
+	it('should keep images as image_url even for openai-responses format', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				img1: {
+					mimeType: 'image/png',
+					data: 'data:image/png;base64,imageData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(
+			mockContext,
+			0,
+			{ passthroughBinaryImages: true, passthroughBinaryPdfs: true },
+			'openai-responses',
+		);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'image_url',
+			image_url: { url: 'data:image/png;base64,imageData' },
+		});
+	});
+
+	it('should extract both images and PDFs together', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				image: {
+					mimeType: 'image/png',
+					fileName: 'test.png',
+					data: 'imageData123',
+				},
+				document: {
+					mimeType: 'application/pdf',
+					fileName: 'test.pdf',
+					data: 'pdfData456',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content).toHaveLength(2);
+		expect(humanMsg.content).toEqual(
+			expect.arrayContaining([
+				{
+					type: 'image_url',
+					image_url: { url: 'data:image/png;base64,imageData123' },
+				},
+				{
+					type: 'file',
+					source_type: 'base64',
+					mime_type: 'application/pdf',
+					data: 'pdfData456',
+					metadata: { filename: 'test.pdf' },
+				},
+			]),
+		);
+	});
+
+	it('should extract PDF using binary stream when id is provided', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					id: 'pdf-123',
+					data: 'nonsense',
+				},
+			},
+		};
+
+		mockHelpers.getBinaryStream.mockResolvedValue(mock());
+		mockHelpers.binaryToBuffer.mockResolvedValue(Buffer.from('fakepdfdata'));
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
+		expect(mockHelpers.getBinaryStream).toHaveBeenCalledWith('pdf-123');
+		expect(mockHelpers.binaryToBuffer).toHaveBeenCalled();
+		expect(humanMsg.content[0]).toEqual({
+			type: 'file',
+			source_type: 'base64',
+			mime_type: 'application/pdf',
+			data: Buffer.from('fakepdfdata').toString(BINARY_ENCODING),
+			metadata: { filename: 'attachment.pdf' },
+		});
+	});
+
+	it('should skip binary whose passthrough option is disabled', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				image: {
+					mimeType: 'image/png',
+					fileName: 'test.png',
+					data: 'imageData123',
+				},
+				doc: {
+					mimeType: 'application/pdf',
+					fileName: 'test.pdf',
+					data: 'pdfData456',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		// Only PDFs enabled: the image must not be processed or attached.
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: false,
+			passthroughBinaryPdfs: true,
+		});
+
+		expect(humanMsg.content).toHaveLength(1);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'file',
+			source_type: 'base64',
+			mime_type: 'application/pdf',
+			data: 'pdfData456',
+			metadata: { filename: 'test.pdf' },
+		});
+	});
+
+	it('should throw when a binary attachment exceeds the size limit', async () => {
+		// 68 MB of base64 decodes to ~51 MB, above the 50 MB guard.
+		const oversizedBase64 = 'A'.repeat(68 * 1024 * 1024);
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					fileName: 'huge.pdf',
+					data: oversizedBase64,
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		await expect(
+			extractBinaryMessages(mockContext, 0, { passthroughBinaryPdfs: true }),
+		).rejects.toThrow(/exceeds the 50.0 MB limit/);
 	});
 
 	it('should decode base64-encoded text files without prefix', async () => {
@@ -198,7 +436,10 @@ describe('extractBinaryMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
 
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content).toHaveLength(1);
@@ -252,7 +493,7 @@ describe('getChatModel', () => {
 	it('should return the model if it is a valid chat model', async () => {
 		// Cast fakeChatModel as any
 		const fakeChatModel = mock<BaseChatModel>();
-		fakeChatModel.bindTools = jest.fn();
+		fakeChatModel.bindTools = vi.fn();
 		fakeChatModel.lc_namespace = ['chat_models'];
 		mockContext.getInputConnectionData.mockResolvedValue(fakeChatModel);
 
@@ -301,7 +542,7 @@ describe('getChatModel', () => {
 
 	it('should return undefined when requested index is out of bounds', async () => {
 		const fakeChatModel1 = mock<BaseChatModel>();
-		fakeChatModel1.bindTools = jest.fn();
+		fakeChatModel1.bindTools = vi.fn();
 		fakeChatModel1.lc_namespace = ['chat_models'];
 
 		mockContext.getInputConnectionData.mockResolvedValue([fakeChatModel1]);
@@ -367,6 +608,90 @@ describe('getTools', () => {
 		const dynamicTool = tools.find((t) => t.name === 'format_final_json_response');
 		expect(dynamicTool).toBeDefined();
 	});
+
+	describe('source node metadata', () => {
+		/**
+		 * A context with its own getParentNodes, so the metadata assignment step in
+		 * getConnectedTools sees real source nodes instead of an empty parent list.
+		 */
+		function createToolContext(
+			connectedTools: unknown[],
+			parentNodes: Array<Partial<NodeTypeAndVersion> & { id: string; name: string }>,
+		) {
+			const ctx = mock<IExecuteFunctions>({ helpers: mock<IExecuteFunctions['helpers']>() });
+			ctx.getNode.mockReturnValue(mock<INode>({ name: 'AI Agent' }));
+			ctx.getInputConnectionData
+				.calledWith(NodeConnectionTypes.AiTool, 0)
+				.mockResolvedValue(connectedTools);
+			ctx.getParentNodes.mockReturnValue(parentNodes as NodeTypeAndVersion[]);
+			return ctx;
+		}
+
+		it('should record the source node ID alongside the source node name', async () => {
+			const ctx = createToolContext(
+				[{ name: 'get_weather', description: 'Get the weather' }],
+				[{ id: 'b0f2e1d0-0000-4000-8000-000000000001', name: 'Weather Tool' }],
+			);
+
+			const tools = await getTools(ctx);
+
+			expect(tools).toHaveLength(1);
+			expect(tools[0].metadata).toMatchObject({
+				sourceNodeName: 'Weather Tool',
+				sourceNodeId: 'b0f2e1d0-0000-4000-8000-000000000001',
+			});
+		});
+
+		it('should keep the source node ID stable when the source node is renamed', async () => {
+			const sourceNodeId = 'b0f2e1d0-0000-4000-8000-000000000001';
+
+			const before = await getTools(
+				createToolContext(
+					[{ name: 'get_weather', description: 'Get the weather' }],
+					[{ id: sourceNodeId, name: 'Weather Tool' }],
+				),
+			);
+			const after = await getTools(
+				createToolContext(
+					[{ name: 'get_weather', description: 'Get the weather' }],
+					[{ id: sourceNodeId, name: 'Forecast Tool' }],
+				),
+			);
+
+			expect(before[0].metadata?.sourceNodeName).toBe('Weather Tool');
+			expect(after[0].metadata?.sourceNodeName).toBe('Forecast Tool');
+			expect(after[0].metadata?.sourceNodeId).toBe(before[0].metadata?.sourceNodeId);
+			expect(after[0].metadata?.sourceNodeId).toBe(sourceNodeId);
+		});
+
+		it('should not corrupt the source node metadata when a source node is disabled', async () => {
+			// The disabled node produces no tool, so its parent entry must be skipped
+			// rather than shifting the metadata of the tools that follow it.
+			const ctx = createToolContext(
+				[
+					{ name: 'get_weather', description: 'Get the weather' },
+					{ name: 'send_email', description: 'Send an email' },
+				],
+				[
+					{ id: 'node-weather', name: 'Weather Tool', disabled: false },
+					{ id: 'node-calendar', name: 'Calendar Tool', disabled: true },
+					{ id: 'node-email', name: 'Email Tool', disabled: false },
+				],
+			);
+
+			const tools = await getTools(ctx);
+
+			expect(tools).toHaveLength(2);
+			expect(tools[0].metadata).toMatchObject({
+				sourceNodeName: 'Weather Tool',
+				sourceNodeId: 'node-weather',
+			});
+			expect(tools[1].metadata).toMatchObject({
+				sourceNodeName: 'Email Tool',
+				sourceNodeId: 'node-email',
+			});
+		});
+	});
 });
 
 describe('prepareMessages', () => {
@@ -403,11 +728,32 @@ describe('prepareMessages', () => {
 		expect(hasHumanMessage).toBe(false);
 	});
 
-	it('should not include a binary message if no image data is present', async () => {
+	it('should not include a binary message if both passthrough options are off', async () => {
 		const fakeItem = {
 			json: {},
 			binary: {
-				img1: {
+				doc1: {
+					mimeType: 'application/pdf',
+					data: 'data:application/pdf;base64,sampledata',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const messages = await prepareMessages(mockContext, 0, {
+			systemMessage: 'Test system',
+			passthroughBinaryImages: false,
+			passthroughBinaryPdfs: false,
+		});
+		const hasHumanMessage = messages.some((m) => m instanceof HumanMessage);
+		expect(hasHumanMessage).toBe(false);
+	});
+
+	it('should not include PDF when only passthroughBinaryImages is true', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
 					mimeType: 'application/pdf',
 					data: 'data:application/pdf;base64,sampledata',
 				},
@@ -415,19 +761,76 @@ describe('prepareMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 		mockContext.logger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		};
 
 		const messages = await prepareMessages(mockContext, 0, {
 			systemMessage: 'Test system',
 			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: false,
 		});
 		const hasHumanMessage = messages.some((m) => m instanceof HumanMessage);
 		expect(hasHumanMessage).toBe(false);
 		expect(mockContext.logger.debug).toHaveBeenCalledTimes(1);
+	});
+
+	it('should include a binary message for PDF when passthroughBinaryPdfs is true', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					data: 'data:application/pdf;base64,samplePdfData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const messages = await prepareMessages(mockContext, 0, {
+			systemMessage: 'Test system',
+			passthroughBinaryImages: false,
+			passthroughBinaryPdfs: true,
+		});
+		const hasBinaryMessage = messages.some(
+			(m) => typeof m === 'object' && m instanceof HumanMessage,
+		);
+		expect(hasBinaryMessage).toBe(true);
+	});
+
+	it('should emit input_file for PDFs when the connected model uses the OpenAI Responses API', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					fileName: 'report.pdf',
+					data: 'data:application/pdf;base64,samplePdfData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		// Stand-in for a ChatOpenAI configured against the Responses API.
+		const responsesApiModel = mock<BaseChatModel>();
+		(responsesApiModel as unknown as { _useResponsesApi: () => boolean })._useResponsesApi = () =>
+			true;
+
+		const messages = await prepareMessages(mockContext, 0, {
+			systemMessage: 'Test system',
+			passthroughBinaryImages: false,
+			passthroughBinaryPdfs: true,
+			model: responsesApiModel,
+		});
+		const binaryMessage = messages.find((m) => m instanceof HumanMessage) as HumanMessage;
+		expect(binaryMessage).toBeDefined();
+		expect(binaryMessage.content[0]).toEqual({
+			type: 'input_file',
+			file_data: 'data:application/pdf;base64,samplePdfData',
+			filename: 'report.pdf',
+		});
 	});
 
 	it('should not include system_message in prompt templates if not provided after version 1.9', async () => {
@@ -731,6 +1134,49 @@ describe('getAgentStepsParser', () => {
 				returnValues: { city: 'Berlin', temperature: 15 },
 				log: 'Final response formatted',
 			});
+		});
+
+		it('should hand the parser the text block when the model returns content blocks', async () => {
+			// Anthropic with thinking on: a (display-omitted) thinking block precedes the answer
+			const steps: AgentFinish = {
+				returnValues: {
+					output: [
+						{ type: 'thinking', thinking: '', signature: 'sig', index: 0 },
+						{ type: 'text', text: '{"city":"Berlin","temperature":15}', index: 1 },
+					],
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({ city: 'Berlin', temperature: 15 });
+
+			const parser = getAgentStepsParser(mockOutputParser, undefined);
+			const result = await parser(steps);
+
+			expect(mockOutputParser.parse).toHaveBeenCalledWith(
+				'{"output":{"city":"Berlin","temperature":15}}',
+			);
+			expect(result).toEqual({
+				returnValues: { city: 'Berlin', temperature: 15 },
+				log: 'Final response formatted',
+			});
+		});
+
+		it('should hand the parser an empty string when the model returns only thinking blocks', async () => {
+			// Token budget spent on thinking: no text block exists, so there is no answer to parse
+			const steps: AgentFinish = {
+				returnValues: {
+					output: [{ type: 'thinking', thinking: 'Let me work out the temperature…', index: 0 }],
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({});
+
+			const parser = getAgentStepsParser(mockOutputParser, undefined);
+			await parser(steps);
+
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('');
 		});
 	});
 

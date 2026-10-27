@@ -7,7 +7,16 @@
         "properties": {
             "type": "object",
             "properties": {
+                "accessTier": {
+                    "type": "string"
+                },
+                "accessTierInferred": {
+                    "type": "string"
+                },
                 "blobType": {
+                    "type": "string"
+                },
+                "contentDisposition": {
                     "type": "string"
                 },
                 "contentLength": {
@@ -25,6 +34,9 @@
                 "etag": {
                     "type": "string"
                 },
+                "group": {
+                    "type": "string"
+                },
                 "lastModified": {
                     "type": "string"
                 },
@@ -34,11 +46,20 @@
                 "leaseStatus": {
                     "type": "string"
                 },
+                "owner": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "string"
+                },
+                "resourceType": {
+                    "type": "string"
+                },
                 "serverEncrypted": {
                     "type": "boolean"
                 }
             }
         }
     },
-    "version": 1
+    "version": 4
 }

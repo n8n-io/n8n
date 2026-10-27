@@ -1,15 +1,19 @@
 import type {
+	ChangeEmailRequestDto,
+	ChangeEmailResponse,
+	ConfirmEmailChangeRequestDto,
 	LoginRequestDto,
 	PasswordUpdateRequestDto,
 	SettingsUpdateRequestDto,
+	UserSelfSettingsUpdateRequestDto,
 	UsersListFilterDto,
 	UserUpdateRequestDto,
-	Role,
 	UsersList,
 	User,
 } from '@n8n/api-types';
-import type { Scope } from '@n8n/permissions';
+import type { AssignableGlobalRole, Scope } from '@n8n/permissions';
 import type {
+	FeatureFlagPayloads,
 	FeatureFlags,
 	IDataObject,
 	IPersonalizationSurveyAnswersV4,
@@ -72,6 +76,7 @@ export interface IUserResponse extends User {
 
 export interface CurrentUserResponse extends IUserResponse {
 	featureFlags?: FeatureFlags;
+	featureFlagPayloads?: FeatureFlagPayloads;
 }
 
 export interface IUser extends IUserResponse {
@@ -115,28 +120,9 @@ export async function setupOwner(
 
 export async function validateSignupToken(
 	context: IRestApiContext,
-	params: { inviterId: string; inviteeId: string },
+	params: { token: string },
 ): Promise<{ inviter: { firstName: string; lastName: string } }> {
 	return await makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
-}
-
-export async function signup(
-	context: IRestApiContext,
-	params: {
-		inviterId: string;
-		inviteeId: string;
-		firstName: string;
-		lastName: string;
-		password: string;
-	},
-): Promise<CurrentUserResponse> {
-	const { inviteeId, ...props } = params;
-	return await makeRestApiRequest(
-		context,
-		'POST',
-		`/users/${params.inviteeId}`,
-		props as unknown as IDataObject,
-	);
 }
 
 export async function sendForgotPasswordEmail(
@@ -167,9 +153,30 @@ export async function updateCurrentUser(
 	return await makeRestApiRequest(context, 'PATCH', '/me', params);
 }
 
+export async function requestEmailChange(
+	context: IRestApiContext,
+	params: ChangeEmailRequestDto,
+): Promise<ChangeEmailResponse> {
+	return await makeRestApiRequest(context, 'POST', '/change-email', params);
+}
+
+export async function resolveEmailChangeToken(
+	context: IRestApiContext,
+	params: { token: string },
+): Promise<{ email: string }> {
+	return await makeRestApiRequest(context, 'GET', '/resolve-change-email-token', params);
+}
+
+export async function confirmEmailChange(
+	context: IRestApiContext,
+	params: ConfirmEmailChangeRequestDto,
+): Promise<{ success: true }> {
+	return await makeRestApiRequest(context, 'POST', '/confirm-email-change', params);
+}
+
 export async function updateCurrentUserSettings(
 	context: IRestApiContext,
-	settings: SettingsUpdateRequestDto,
+	settings: UserSelfSettingsUpdateRequestDto,
 ): Promise<IUserSettings> {
 	return await makeRestApiRequest(context, 'PATCH', '/me/settings', settings);
 }
@@ -210,6 +217,13 @@ export async function getInviteLink(
 	return await makeRestApiRequest(context, 'GET', `/users/${id}/invite-link`);
 }
 
+export async function generateInviteLink(
+	context: IRestApiContext,
+	{ id }: { id: string },
+): Promise<{ link: string }> {
+	return await makeRestApiRequest(context, 'POST', `/users/${id}/invite-link`);
+}
+
 export async function getPasswordResetLink(
 	context: IRestApiContext,
 	{ id }: { id: string },
@@ -226,7 +240,8 @@ export async function submitPersonalizationSurvey(
 
 export interface UpdateGlobalRolePayload {
 	id: string;
-	newRoleName: Role;
+	// Allows custom global role slugs in addition to built-in roles (assignable = any non-owner global role).
+	newRoleName: AssignableGlobalRole;
 }
 
 export async function updateGlobalRole(

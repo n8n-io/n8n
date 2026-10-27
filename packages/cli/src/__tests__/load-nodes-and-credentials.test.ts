@@ -1,39 +1,139 @@
-import { Service } from '@n8n/di';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { Module } from 'node:module';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { Logger } from '@n8n/backend-common';
+import { Container, Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
-import { mock } from 'jest-mock-extended';
-import type { DirectoryLoader } from 'n8n-core';
-import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import {
+	CUSTOM_NODES_PACKAGE_NAME,
+	CustomDirectoryLoader,
+	DirectoryLoader,
+	UnrecognizedNodeTypeError,
+} from 'n8n-core';
+import type {
+	ICredentialType,
+	INodeProperties,
+	INodeType,
+	INodeTypeDescription,
+	KnownNodesAndCredentials,
+	NodeLoader,
+} from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME } from '@/constants';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 
-jest.mock('lodash/debounce', () => (fn: () => void) => fn);
+vi.mock('lodash/debounce', () => ({ default: (fn: () => void) => fn }));
 
-jest.mock('@parcel/watcher', () => ({
-	subscribe: jest.fn().mockResolvedValue(undefined),
-}));
+vi.mock('@parcel/watcher', () => {
+	const subscribe = vi.fn().mockResolvedValue(undefined);
+	return { default: { subscribe }, subscribe };
+});
 
-jest.mock('fs/promises');
+vi.mock('fs/promises');
 
-jest.mock('@/push', () => {
+vi.mock('@/push', () => {
 	@Service()
 	class Push {
-		broadcast = jest.fn();
+		broadcast = vi.fn();
 	}
 
 	return { Push };
 });
 
+vi.mock('@/tool-generation', () => ({
+	createAiTools: vi.fn(),
+	createHitlTools: vi.fn(),
+}));
+
+/**
+ * Regression test for https://github.com/n8n-io/n8n/issues/24191
+ *
+ * LoadNodesAndCredentials.init() sets process.env.NODE_PATH to module.paths
+ * for node/credential resolution. It must PRESERVE any existing NODE_PATH
+ * (e.g. set by Docker ENV for global npm packages) so the task runner
+ * subprocess can resolve externally installed modules.
+ *
+ * The init() method cannot be called directly in tests (guarded by inTest),
+ * so this test validates the NODE_PATH preservation logic directly.
+ */
+describe('NODE_PATH preservation (issue #24191)', () => {
+	const originalNodePath = process.env.NODE_PATH;
+	// `module` (the CJS wrapper) is not available under Vitest's ESM runtime, so
+	// derive the equivalent node_modules resolution paths the same way Node does.
+	const modulePaths = (
+		Module as unknown as { _nodeModulePaths: (p: string) => string[] }
+	)._nodeModulePaths(process.cwd());
+
+	afterEach(() => {
+		if (originalNodePath === undefined) {
+			delete process.env.NODE_PATH;
+		} else {
+			process.env.NODE_PATH = originalNodePath;
+		}
+	});
+
+	it('should preserve existing NODE_PATH when setting module paths', () => {
+		const existingPath = '/opt/nodejs/node-v24.14.1/lib/node_modules';
+		process.env.NODE_PATH = existingPath;
+
+		// This is the exact logic from LoadNodesAndCredentials.init()
+		const delimiter = process.platform === 'win32' ? ';' : ':';
+		process.env.NODE_PATH = [modulePaths.join(delimiter), process.env.NODE_PATH]
+			.filter(Boolean)
+			.join(delimiter);
+
+		expect(process.env.NODE_PATH).toContain(existingPath);
+		expect(process.env.NODE_PATH?.endsWith(existingPath)).toBe(true);
+	});
+
+	it('should work when no existing NODE_PATH is set', () => {
+		delete process.env.NODE_PATH;
+
+		const delimiter = process.platform === 'win32' ? ';' : ':';
+		process.env.NODE_PATH = [modulePaths.join(delimiter), process.env.NODE_PATH]
+			.filter(Boolean)
+			.join(delimiter);
+
+		expect(process.env.NODE_PATH).toBe(modulePaths.join(delimiter));
+		expect(process.env.NODE_PATH).not.toContain('undefined');
+	});
+});
+
 describe('LoadNodesAndCredentials', () => {
 	describe('resolveIcon', () => {
 		let instance: LoadNodesAndCredentials;
+		let instanceCustom: LoadNodesAndCredentials;
+		let instanceCustomWin: LoadNodesAndCredentials;
+
+		const packageName = 'package1';
+		const packageNameCustom = CUSTOM_NODES_PACKAGE_NAME;
+
+		const dir = '/home/user/.n8n/nodes';
+		const dirCustom = '/home/user/.n8n-custom-nodes';
+		const dirCustomWin = 'C:/Users/name/.n8n-custom-nodes';
+
+		const pathPrefix = `/icons/${packageName}`;
+		const pathPrefixCustom = `/icons/${packageNameCustom}`;
+		const pathPrefixAbsolute = `${pathPrefixCustom}/${dirCustom}`;
+		const pathPrefixAbsoluteWin = `${pathPrefixCustom}/${dirCustomWin}`;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
-			instance.loaders.package1 = mock<DirectoryLoader>({
-				directory: '/icons/package1',
-			});
+			const mockInstance = (pkg: string, directory: string) => {
+				const mi = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+				const mockLoader = mock<DirectoryLoader>({ directory } as never);
+				Object.setPrototypeOf(mockLoader, DirectoryLoader.prototype);
+				mi.loaders[pkg] = mockLoader;
+				return mi;
+			};
+			instance = mockInstance(packageName, dir);
+			instanceCustom = mockInstance(packageNameCustom, dirCustom);
+			instanceCustomWin = mockInstance(packageNameCustom, dirCustomWin);
 		});
 
 		it('should return undefined if the loader for the package is not found', () => {
@@ -47,243 +147,108 @@ describe('LoadNodesAndCredentials', () => {
 		});
 
 		it('should return the file path if the file is within the loader directory', () => {
-			const result = instance.resolveIcon('package1', '/icons/package1/icon.png');
-			expect(result).toBe('/icons/package1/icon.png');
+			const result = instance.resolveIcon('package1', `${pathPrefix}/icon.png`);
+			expect(result).toBe(`${dir}/icon.png`);
 		});
 
 		it('should return undefined if the URL is outside the package directory', () => {
-			const result = instance.resolveIcon('package1', '/icons/package1/../../../etc/passwd');
+			const result = instance.resolveIcon('package1', `${pathPrefix}/../../../etc/passwd`);
 			expect(result).toBeUndefined();
+		});
+
+		describe('N8N_CUSTOM_EXTENSIONS', () => {
+			it('should return file path if url contains a relative custom file path', () => {
+				const result = instanceCustom.resolveIcon(
+					packageNameCustom,
+					`${pathPrefixCustom}/node_modules/custom-node/icon.png`,
+				);
+				expect(result).toBe(`${dirCustom}/node_modules/custom-node/icon.png`);
+			});
+
+			it('should return file path if url contains "//" with absolute custom file path', () => {
+				const result = instanceCustom.resolveIcon(
+					packageNameCustom,
+					`${pathPrefixAbsolute}/icon.png`,
+				);
+				expect(result).toBe(`${dirCustom}/icon.png`);
+			});
+
+			it('should return file path if url contains "C:" with absolute custom windows file path', () => {
+				const winIconPath = `${dirCustomWin}/icon.png`;
+				const result = instanceCustomWin.resolveIcon(
+					packageNameCustom,
+					`${pathPrefixAbsoluteWin}/icon.png`,
+				);
+				expect(result).toBe(winIconPath);
+			});
 		});
 	});
 
-	describe('convertNodeToAiTool', () => {
-		const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
-
-		let fullNodeWrapper: { description: INodeTypeDescription };
+	describe('resolveNodeSourcePath', () => {
+		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			fullNodeWrapper = {
-				description: {
-					displayName: 'Test Node',
-					name: 'testNode',
-					group: ['input'],
-					description: 'A test node',
-					version: 1,
-					defaults: {},
-					inputs: [NodeConnectionTypes.Main],
-					outputs: [NodeConnectionTypes.Main],
-					properties: [],
-				},
-			};
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			const loader = mock<DirectoryLoader>({ directory: '/nodes/package1' } as never);
+			Object.setPrototypeOf(loader, DirectoryLoader.prototype);
+			instance.loaders.package1 = loader;
 		});
 
-		it('should modify the name and displayName correctly', () => {
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.name).toBe('testNodeTool');
-			expect(result.description.displayName).toBe('Test Node Tool');
-		});
-
-		it('should update inputs and outputs', () => {
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.inputs).toEqual([]);
-			expect(result.description.outputs).toEqual([NodeConnectionTypes.AiTool]);
-		});
-
-		it('should remove the usableAsTool property', () => {
-			fullNodeWrapper.description.usableAsTool = true;
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.usableAsTool).toBeUndefined();
-		});
-
-		it("should add toolDescription property if it doesn't exist", () => {
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			const toolDescriptionProp = result.description.properties.find(
-				(prop) => prop.name === 'toolDescription',
+		it('should resolve a package-relative source path against the loader directory', () => {
+			const result = instance.resolveNodeSourcePath(
+				'package1.test',
+				'dist/nodes/Test/Test.node.js',
 			);
-			expect(toolDescriptionProp).toBeDefined();
-			expect(toolDescriptionProp?.type).toBe('string');
-			expect(toolDescriptionProp?.default).toBe(fullNodeWrapper.description.description);
+			expect(result).toBe('/nodes/package1/dist/nodes/Test/Test.node.js');
 		});
 
-		it('should add toolDescription property after callout property', () => {
-			fullNodeWrapper.description.properties = [
-				{
-					displayName: 'Callout 1',
-					name: 'callout1',
-					type: 'callout',
-					default: '',
-				},
-				{
-					displayName: 'Callout 2',
-					name: 'callout2',
-					type: 'callout',
-					default: '',
-				},
-				{
-					displayName: 'Another',
-					name: 'another',
-					type: 'boolean',
-					default: true,
-				},
-			] satisfies INodeProperties[];
-
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			const toolDescriptionPropIndex = result.description.properties.findIndex(
-				(prop) => prop.name === 'toolDescription',
+		it('should return the source path unchanged if the loader for the package is not found', () => {
+			const result = instance.resolveNodeSourcePath(
+				'unknownPackage.test',
+				'dist/nodes/Test/Test.node.js',
 			);
-			expect(toolDescriptionPropIndex).toBe(2);
-			expect(result.description.properties).toHaveLength(4);
+			expect(result).toBe('dist/nodes/Test/Test.node.js');
 		});
+	});
 
-		it('should set codex categories correctly', () => {
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.codex).toEqual({
-				categories: ['AI'],
-				subcategories: {
-					AI: ['Tools'],
-					Tools: ['Other Tools'],
+	describe('recognizesNode and getNode', () => {
+		let instance: LoadNodesAndCredentials;
+		const loadedNode = { sourcePath: 'Test.node.js', type: mock<INodeType>() };
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.loaders.package1 = mock<DirectoryLoader>({
+				known: {
+					nodes: { testNode: { className: 'TestNode', sourcePath: 'Test.node.js' } },
+					credentials: {},
 				},
-				resources: {},
+				getNode: vi.fn((nodeType: string) => {
+					if (nodeType === 'testNode') return loadedNode;
+					throw new UnrecognizedNodeTypeError('package1', nodeType);
+				}),
 			});
 		});
 
-		it('should preserve existing properties', () => {
-			const existingProp: INodeProperties = {
-				displayName: 'Existing Prop',
-				name: 'existingProp',
-				type: 'string',
-				default: 'test',
-			};
-			fullNodeWrapper.description.properties = [existingProp];
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties).toHaveLength(2); // Existing prop + toolDescription
-			expect(result.description.properties).toContainEqual(existingProp);
+		it('should resolve a node type made of a package name and a node name', () => {
+			expect(instance.recognizesNode('package1.testNode')).toBe(true);
+			expect(instance.getNode('package1.testNode')).toBe(loadedNode);
 		});
 
-		it('should handle nodes with resource property', () => {
-			const resourceProp: INodeProperties = {
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				options: [{ name: 'User', value: 'user' }],
-				default: 'user',
-			};
-			fullNodeWrapper.description.properties = [resourceProp];
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[0].name).toBe('descriptionType');
-			expect(result.description.properties[1].name).toBe('toolDescription');
-			expect(result.description.properties[2]).toEqual(resourceProp);
-		});
+		it.each(['package1', 'package1.', 'package1.unknownNode', 'unknownPackage.testNode'])(
+			'should not resolve the unknown node type %s',
+			(type) => {
+				expect(instance.recognizesNode(type)).toBe(false);
+				expect(() => instance.getNode(type)).toThrow(UnrecognizedNodeTypeError);
+			},
+		);
 
-		it('should handle nodes with operation property', () => {
-			const operationProp: INodeProperties = {
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				options: [{ name: 'Create', value: 'create' }],
-				default: 'create',
-			};
-			fullNodeWrapper.description.properties = [operationProp];
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[0].name).toBe('descriptionType');
-			expect(result.description.properties[1].name).toBe('toolDescription');
-			expect(result.description.properties[2]).toEqual(operationProp);
-		});
-
-		it('should handle nodes with both resource and operation properties', () => {
-			const resourceProp: INodeProperties = {
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				options: [{ name: 'User', value: 'user' }],
-				default: 'user',
-			};
-			const operationProp: INodeProperties = {
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				options: [{ name: 'Create', value: 'create' }],
-				default: 'create',
-			};
-			fullNodeWrapper.description.properties = [resourceProp, operationProp];
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[0].name).toBe('descriptionType');
-			expect(result.description.properties[1].name).toBe('toolDescription');
-			expect(result.description.properties[2]).toEqual(resourceProp);
-			expect(result.description.properties[3]).toEqual(operationProp);
-		});
-
-		it('should handle nodes with empty properties', () => {
-			fullNodeWrapper.description.properties = [];
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties).toHaveLength(1);
-			expect(result.description.properties[0].name).toBe('toolDescription');
-		});
-
-		it('should handle nodes with existing codex property', () => {
-			fullNodeWrapper.description.codex = {
-				categories: ['Existing'],
-				subcategories: {
-					Existing: ['Category'],
-				},
-				resources: {
-					primaryDocumentation: [{ url: 'https://example.com' }],
-				},
-			};
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.codex).toEqual({
-				categories: ['AI'],
-				subcategories: {
-					AI: ['Tools'],
-					Tools: ['Other Tools'],
-				},
-				resources: {
-					primaryDocumentation: [{ url: 'https://example.com' }],
-				},
-			});
-		});
-
-		it('should handle nodes with existing codex with tool subcategory overwrite', () => {
-			fullNodeWrapper.description.codex = {
-				categories: ['AI'],
-				subcategories: {
-					AI: ['Tools'],
-					Tools: ['Recommended'],
-				},
-				resources: {
-					primaryDocumentation: [{ url: 'https://example.com' }],
-				},
-			};
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.codex).toEqual({
-				categories: ['AI'],
-				subcategories: {
-					AI: ['Tools'],
-					Tools: ['Recommended'],
-				},
-				resources: {
-					primaryDocumentation: [{ url: 'https://example.com' }],
-				},
-			});
-		});
-
-		it('should handle nodes with very long names', () => {
-			fullNodeWrapper.description.name = 'veryLongNodeNameThatExceedsNormalLimits'.repeat(10);
-			fullNodeWrapper.description.displayName =
-				'Very Long Node Name That Exceeds Normal Limits'.repeat(10);
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.name.endsWith('Tool')).toBe(true);
-			expect(result.description.displayName.endsWith('Tool')).toBe(true);
-		});
-
-		it('should handle nodes with special characters in name and displayName', () => {
-			fullNodeWrapper.description.name = 'special@#$%Node';
-			fullNodeWrapper.description.displayName = 'Special @#$% Node';
-			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.name).toBe('special@#$%NodeTool');
-			expect(result.description.displayName).toBe('Special @#$% Node Tool');
-		});
+		it.each(['package1.testNode.v2', 'package1.testNode.Tool', 'package1.testNode.'])(
+			'should treat every segment after the package name as the node name in %s',
+			(type) => {
+				expect(instance.recognizesNode(type)).toBe(false);
+				expect(() => instance.getNode(type)).toThrow(UnrecognizedNodeTypeError);
+			},
+		);
 	});
 
 	describe('resolveSchema', () => {
@@ -326,266 +291,155 @@ describe('LoadNodesAndCredentials', () => {
 		});
 	});
 
-	describe('createAiTools', () => {
+	describe('createOutputSchemaLookup', () => {
 		let instance: LoadNodesAndCredentials;
+		let nodesDir: string;
 
 		beforeEach(() => {
+			nodesDir = mkdtempSync(join(tmpdir(), 'n8n-lookup-'));
+			const schemaDir = join(nodesDir, 'Test', '__schema__', 'v1.0.0', 'account');
+			mkdirSync(schemaDir, { recursive: true });
+			writeFileSync(join(schemaDir, 'get.json'), JSON.stringify({ type: 'object' }));
+
 			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
-			instance.types.nodes = [
-				{
-					name: 'testNode',
-					displayName: 'Test Node',
-					group: ['input'],
-					description: 'A test node',
-					usableAsTool: true,
-					properties: [], // need properties to test this
-				},
-			] as unknown as INodeTypeDescription[];
-			// private field
-
-			instance['known'].nodes.testNode = { className: 'TestNode', sourcePath: '/path/to/testNode' };
-
-			instance['known'].credentials['testCredential'] = {
-				className: 'TestCredential',
-				sourcePath: '/path/to/testCredential',
-				supportedNodes: ['testNode'],
+			instance.knownNodes['n8n-nodes-base.test'] = {
+				className: 'Test',
+				sourcePath: join(nodesDir, 'Test', 'Test.node.js'),
 			};
 		});
 
-		it('should create AI tools for nodes marked as usableAsTool', () => {
-			instance.createAiTools();
+		afterEach(() => {
+			rmSync(nodesDir, { recursive: true, force: true });
+		});
 
-			expect(instance.types.nodes).toHaveLength(2); // Original node + AI tool
-			expect(instance.types.nodes[1]).toEqual({
-				codex: {
-					categories: ['AI'],
-					resources: {},
-					subcategories: { AI: ['Tools'], Tools: ['Other Tools'] },
-				},
-				description: 'A test node',
-				name: 'testNodeTool',
-				displayName: 'Test Node Tool',
-				group: ['input'],
-				inputs: [],
-				outputs: ['ai_tool'],
-				properties: [
-					{
-						default: 'A test node',
-						description:
-							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-						displayName: 'Description',
-						name: 'toolDescription',
-						required: true,
-						type: 'string',
-						typeOptions: {
-							rows: 2,
-						},
-					},
-				],
+		it('should load the schema for a known node', () => {
+			const lookup = instance.createOutputSchemaLookup();
+			expect(
+				lookup({
+					type: 'n8n-nodes-base.test',
+					typeVersion: 1,
+					resource: 'account',
+					operation: 'get',
+				}),
+			).toEqual({ type: 'object' });
+		});
+
+		it('should fall back to an available older version', () => {
+			const lookup = instance.createOutputSchemaLookup();
+			expect(
+				lookup({
+					type: 'n8n-nodes-base.test',
+					typeVersion: 3,
+					resource: 'account',
+					operation: 'get',
+				}),
+			).toEqual({ type: 'object' });
+		});
+
+		describe('parameter variants', () => {
+			const rawSchema = { type: 'object', title: 'raw' };
+			const plainSchema = { type: 'object' };
+			const lookupRef = {
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				resource: 'account',
+				operation: 'get',
+			};
+
+			const provideNode = (nodeType: Partial<INodeType>) => {
+				const type = { description: { properties: [] }, ...nodeType } as INodeType;
+				vi.spyOn(instance, 'getNode').mockReturnValue({ sourcePath: 'Test.node.js', type });
+			};
+
+			beforeEach(() => {
+				const accountDir = join(nodesDir, 'Test', '__schema__', 'v1.0.0', 'account');
+				writeFileSync(join(accountDir, 'get.simple-false.json'), JSON.stringify(rawSchema));
+				writeFileSync(
+					join(accountDir, 'get.custom.json'),
+					JSON.stringify({ type: 'object', title: 'custom' }),
+				);
+			});
+
+			it('should pick the variant file that matches the node parameters', () => {
+				provideNode({});
+
+				expect(
+					instance.createOutputSchemaLookup()({ ...lookupRef, parameters: { simple: false } }),
+				).toEqual(rawSchema);
+			});
+
+			it('should use the property default when the parameter is absent', () => {
+				provideNode({
+					description: {
+						properties: [
+							{
+								name: 'simple',
+								type: 'boolean',
+								default: false,
+								displayOptions: { show: { resource: ['account'], operation: ['get'] } },
+							},
+						],
+					} as unknown as INodeTypeDescription,
+				});
+
+				expect(instance.createOutputSchemaLookup()({ ...lookupRef, parameters: {} })).toEqual(
+					rawSchema,
+				);
+			});
+
+			it('should use the plain file when the parameter keeps its default', () => {
+				provideNode({
+					description: {
+						properties: [{ name: 'simple', type: 'boolean', default: true }],
+					} as unknown as INodeTypeDescription,
+				});
+
+				expect(instance.createOutputSchemaLookup()({ ...lookupRef, parameters: {} })).toEqual(
+					plainSchema,
+				);
+			});
+
+			it('should still resolve the plain schema when the node cannot be loaded', () => {
+				vi.spyOn(instance, 'getNode').mockImplementation(() => {
+					throw new Error('not loadable');
+				});
+
+				expect(
+					instance.createOutputSchemaLookup()({ ...lookupRef, parameters: { simple: true } }),
+				).toEqual(plainSchema);
 			});
 		});
 
-		it('should duplicate supportedNodes for AI tools', () => {
-			instance.createAiTools();
-
-			expect(instance.types.nodes).toHaveLength(2);
-			// accesses private property
-
-			expect(instance['known'].credentials.testCredential.supportedNodes).toEqual([
-				'testNode',
-				'testNodeTool',
-			]);
-		});
-
-		it('should not modify nodes without usableAsTool property', () => {
-			instance.types.nodes[0].usableAsTool = undefined;
-			instance.createAiTools();
-
-			expect(instance.types.nodes).toHaveLength(1); // No AI tool created
-			expect(instance.types.nodes[0].name).toBe('testNode');
-		});
-
-		it('should handle nodes with usableAsTool as an object with replacements', () => {
-			instance.types.nodes[0].usableAsTool = {
-				replacements: {
-					displayName: 'Custom Tool Name',
-				},
-			};
-			instance.createAiTools();
-			expect(instance.types.nodes[1]).toEqual({
-				name: 'testNodeTool',
-				displayName: 'Custom Tool Name Tool',
-				group: ['input'],
-				inputs: [],
-				outputs: ['ai_tool'],
-				description: 'A test node',
-				properties: [
-					{
-						displayName: 'Description',
-						name: 'toolDescription',
-						type: 'string',
-						default: 'A test node',
-						required: true,
-						typeOptions: { rows: 2 },
-						description:
-							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-					},
-				],
-				codex: {
-					categories: ['AI'],
-					subcategories: {
-						AI: ['Tools'],
-						Tools: ['Other Tools'],
-					},
-					resources: {},
-				},
-			});
-		});
-	});
-
-	describe('shouldAddDomainRestrictions', () => {
-		let instance: LoadNodesAndCredentials;
-
-		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
-		});
-		it('should return true for credentials with authenticate property', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				authenticate: {},
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(true);
-		});
-
-		it('should return true for credentials with genericAuth set to true', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				genericAuth: true,
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(true);
-		});
-
-		it('should return true for credentials extending oAuth2Api', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				extends: ['oAuth2Api'],
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(true);
-		});
-
-		it('should return true for credentials extending oAuth1Api', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				extends: ['oAuth1Api'],
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(true);
-		});
-
-		it('should return true for credentials extending googleOAuth2Api', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				extends: ['googleOAuth2Api'],
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(true);
-		});
-
-		it('should return true when extending multiple APIs including OAuth', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				extends: ['someOtherApi', 'oAuth2Api', 'anotherApi'],
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(true);
-		});
-
-		it('should return false for credentials without authenticate, genericAuth, or OAuth extensions', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(false);
-		});
-
-		it('should return false for credentials with extends that does not include OAuth types', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				extends: ['someOtherApi', 'anotherApi'],
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(false);
-		});
-
-		it('should handle LoadedClass credential objects with type property', () => {
-			const credential = {
-				type: {
-					name: 'testCredential',
-					displayName: 'Test Credential',
-					authenticate: {},
-					properties: [],
-				},
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(true);
-		});
-
-		it('should return false for LoadedClass credential objects without auth-related properties', () => {
-			const credential = {
-				type: {
-					name: 'testCredential',
-					displayName: 'Test Credential',
-					properties: [],
-				},
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(false);
+		it('should return undefined for unknown nodes or missing schemas', () => {
+			const lookup = instance.createOutputSchemaLookup();
+			expect(
+				lookup({ type: 'n8n-nodes-base.unknown', typeVersion: 1, operation: 'get' }),
+			).toBeUndefined();
+			expect(
+				lookup({
+					type: 'n8n-nodes-base.test',
+					typeVersion: 1,
+					resource: 'account',
+					operation: 'delete',
+				}),
+			).toBeUndefined();
 		});
 	});
 
 	describe('injectContextEstablishmentHooks', () => {
 		let instance: LoadNodesAndCredentials;
-		let mockLogger: { debug: jest.Mock };
-		let mockExecutionContextHookRegistry: { getHookForTriggerType: jest.Mock };
+		let mockLogger: { debug: Mock };
+		let mockExecutionContextHookRegistry: { getHookForTriggerType: Mock };
 
 		beforeEach(() => {
 			// Enable the feature flag for tests
 			process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
 
 			mockLogger = {
-				debug: jest.fn(),
+				debug: vi.fn(),
 			};
 			mockExecutionContextHookRegistry = {
-				getHookForTriggerType: jest.fn(),
+				getHookForTriggerType: vi.fn(),
 			};
 			instance = new LoadNodesAndCredentials(
 				mockLogger as never,
@@ -693,7 +547,7 @@ describe('LoadNodesAndCredentials', () => {
 						},
 					],
 				},
-				isApplicableToTriggerNode: jest.fn((nodeType: string) => {
+				isApplicableToTriggerNode: vi.fn((nodeType: string) => {
 					// Only applicable to webhook trigger
 					return nodeType === 'webhookTrigger';
 				}),
@@ -787,8 +641,8 @@ describe('LoadNodesAndCredentials', () => {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const hookValues = (hookProperty as any).options?.[0]?.values as INodeProperties[];
 
-			// Should have: hookName selector + isAllowedToFail + 2 options from first hook = 4 values
-			expect(hookValues).toHaveLength(4);
+			// Should have: hookName selector + 2 options from first hook = 3 values
+			expect(hookValues).toHaveLength(3);
 
 			// Verify hookName selector with both hook options
 			expect(hookValues[0].name).toBe('hookName');
@@ -799,22 +653,17 @@ describe('LoadNodesAndCredentials', () => {
 			expect(hookNameOptions[0].value).toBe('credentials.bearerToken');
 			expect(hookNameOptions[1].value).toBe('credentials.apiKey');
 
-			// Verify isAllowedToFail field
-			expect(hookValues[1].name).toBe('isAllowedToFail');
-			expect(hookValues[1].type).toBe('boolean');
-			expect(hookValues[1].default).toBe(false);
-
 			// Verify first option has display condition
-			expect(hookValues[2].name).toBe('removeFromItem');
-			expect(hookValues[2].displayOptions).toEqual({
+			expect(hookValues[1].name).toBe('removeFromItem');
+			expect(hookValues[1].displayOptions).toEqual({
 				show: {
 					hookName: ['credentials.bearerToken'],
 				},
 			});
 
 			// Verify second option merges existing displayOptions with hookName
-			expect(hookValues[3].name).toBe('advancedOption');
-			expect(hookValues[3].displayOptions).toEqual({
+			expect(hookValues[2].name).toBe('advancedOption');
+			expect(hookValues[2].displayOptions).toEqual({
 				show: {
 					someOtherField: ['value'],
 					hookName: ['credentials.bearerToken'],
@@ -823,46 +672,135 @@ describe('LoadNodesAndCredentials', () => {
 		});
 	});
 
+	describe('injectCustomApiCallOptions', () => {
+		let instance: LoadNodesAndCredentials;
+
+		const makeNode = (credentialName: string): INodeTypeDescription => ({
+			name: 'n8n-nodes-base.test',
+			displayName: 'Test',
+			group: ['transform'],
+			description: 'Test node',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: ['main'],
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					options: [{ name: 'Page', value: 'page' }],
+					default: 'page',
+				},
+			],
+			credentials: [{ name: credentialName }],
+		});
+
+		const makeCredential = (name: string, extendsTypes?: string[]): ICredentialType => ({
+			name,
+			displayName: name,
+			properties: [],
+			...(extendsTypes ? { extends: extendsTypes } : {}),
+		});
+
+		const injectedOption = { name: CUSTOM_API_CALL_NAME, value: CUSTOM_API_CALL_KEY };
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+		});
+
+		it('should inject the option when a credential extends a base OAuth type directly', () => {
+			const node = makeNode('slackOAuth2Api');
+			instance.types.nodes = [node];
+			instance.types.credentials = [makeCredential('slackOAuth2Api', ['oAuth2Api'])];
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(instance as any).injectCustomApiCallOptions();
+
+			expect(node.properties[0].options).toEqual([{ name: 'Page', value: 'page' }, injectedOption]);
+		});
+
+		it('should inject the option when a credential reaches a base OAuth type through an intermediate', () => {
+			const node = makeNode('confluenceCloudOAuth2Api');
+			instance.types.nodes = [node];
+			instance.types.credentials = [
+				makeCredential('confluenceCloudOAuth2Api', ['atlassianOAuth2Api']),
+				makeCredential('atlassianOAuth2Api', ['oAuth2Api']),
+			];
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(instance as any).injectCustomApiCallOptions();
+
+			expect(node.properties[0].options).toEqual([{ name: 'Page', value: 'page' }, injectedOption]);
+		});
+
+		it('should not inject the option when the extends chain never reaches a base OAuth type', () => {
+			const node = makeNode('someApi');
+			instance.types.nodes = [node];
+			instance.types.credentials = [
+				makeCredential('someApi', ['intermediateApi']),
+				makeCredential('intermediateApi'),
+			];
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(instance as any).injectCustomApiCallOptions();
+
+			expect(node.properties[0].options).toEqual([{ name: 'Page', value: 'page' }]);
+		});
+
+		it('should not loop on a cyclic extends chain', () => {
+			const node = makeNode('cyclicApi');
+			instance.types.nodes = [node];
+			instance.types.credentials = [
+				makeCredential('cyclicApi', ['otherCyclicApi']),
+				makeCredential('otherCyclicApi', ['cyclicApi']),
+			];
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(instance as any).injectCustomApiCallOptions();
+
+			expect(node.properties[0].options).toEqual([{ name: 'Page', value: 'page' }]);
+		});
+	});
+
 	describe('setupHotReload', () => {
 		let instance: LoadNodesAndCredentials;
 
 		const mockLoader = mock<DirectoryLoader>({
-			packageName: 'CUSTOM',
+			packageName: CUSTOM_NODES_PACKAGE_NAME,
 			directory: '/some/custom/path',
 			isLazyLoaded: false,
-			reset: jest.fn(),
-			loadAll: jest.fn(),
-		});
+			reset: vi.fn(),
+			loadAll: vi.fn(),
+		} as never);
+		Object.setPrototypeOf(mockLoader, DirectoryLoader.prototype);
 
 		beforeEach(() => {
 			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
 			instance.loaders = { CUSTOM: mockLoader };
 
 			// Allow access to directory
-			(fs.access as jest.Mock).mockResolvedValue(undefined);
+			(fs.access as Mock).mockResolvedValue(undefined);
 
 			// Simulate custom node dir structure
-			(fs.readdir as jest.Mock).mockResolvedValue([
+			(fs.readdir as Mock).mockResolvedValue([
 				{ name: 'test-node', isDirectory: () => true, isSymbolicLink: () => false },
 			]);
 
 			// Simulate symlink resolution
-			(fs.realpath as jest.Mock).mockResolvedValue('/resolved/test-node');
+			(fs.realpath as Mock).mockResolvedValue('/resolved/test-node');
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should subscribe to file changes and reload on changes', async () => {
-			const postProcessSpy = jest
-				.spyOn(instance, 'postProcessLoaders')
-				.mockResolvedValue(undefined);
-			const subscribe = jest.mocked(watcher.subscribe);
+			const postProcessSpy = vi.spyOn(instance, 'postProcessLoaders').mockResolvedValue(undefined);
+			const subscribe = vi.mocked(watcher.subscribe);
 
 			await instance.setupHotReload();
 
-			console.log(subscribe);
 			expect(subscribe).toHaveBeenCalledTimes(2);
 			expect(subscribe).toHaveBeenCalledWith('/some/custom/path', expect.any(Function), {
 				ignore: ['**/node_modules/**/node_modules/**'],
@@ -884,6 +822,442 @@ describe('LoadNodesAndCredentials', () => {
 			expect(mockLoader.reset).toHaveBeenCalled();
 			expect(mockLoader.loadAll).toHaveBeenCalled();
 			expect(postProcessSpy).toHaveBeenCalled();
+		});
+
+		it('should serialize a watcher reload against a concurrent endpoint reload', async () => {
+			vi.spyOn(instance, 'postProcessLoaders').mockResolvedValue(undefined);
+
+			let active = 0;
+			let maxActive = 0;
+			const customLoader = mock<CustomDirectoryLoader>({
+				packageName: CUSTOM_NODES_PACKAGE_NAME,
+				directory: '/some/custom/path',
+				isLazyLoaded: false,
+				reset: vi.fn(),
+				loadAll: vi.fn(async () => {
+					active++;
+					maxActive = Math.max(maxActive, active);
+					await new Promise((resolve) => setTimeout(resolve, 5));
+					active--;
+				}),
+			} as never);
+			Object.setPrototypeOf(customLoader, CustomDirectoryLoader.prototype);
+			instance.loaders = { CUSTOM: customLoader };
+
+			await instance.setupHotReload();
+			const [, onFileUpdate] = vi.mocked(watcher.subscribe).mock.calls[0];
+
+			// Both fire on the same save with `pnpm dev:be` + `n8n-node dev`.
+			await Promise.all([
+				onFileUpdate(null, [{ type: 'update', path: '/some/custom/path/X.node.js' }]),
+				instance.reloadCustomNodes(),
+			]);
+
+			expect(customLoader.loadAll).toHaveBeenCalledTimes(2);
+			expect(maxActive).toBe(1);
+		});
+
+		it('should not reject into the watcher callback when a reload fails', async () => {
+			vi.spyOn(instance, 'postProcessLoaders').mockResolvedValue(undefined);
+
+			const customLoader = mock<CustomDirectoryLoader>({
+				packageName: CUSTOM_NODES_PACKAGE_NAME,
+				directory: '/some/custom/path',
+				isLazyLoaded: false,
+				reset: vi.fn(),
+				loadAll: vi.fn().mockRejectedValue(new Error('broken node constructor')),
+			} as never);
+			Object.setPrototypeOf(customLoader, CustomDirectoryLoader.prototype);
+			instance.loaders = { CUSTOM: customLoader };
+
+			await instance.setupHotReload();
+			const [, onFileUpdate] = vi.mocked(watcher.subscribe).mock.calls[0];
+
+			await expect(
+				onFileUpdate(null, [{ type: 'update', path: '/some/custom/path/X.node.js' }]),
+			).resolves.not.toThrow();
+		});
+	});
+
+	describe('reloadCustomNodes', () => {
+		it('should reload only custom-directory loaders', async () => {
+			const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			const postProcessSpy = vi.spyOn(instance, 'postProcessLoaders').mockResolvedValue(undefined);
+
+			const customLoader = mock<CustomDirectoryLoader>({
+				packageName: CUSTOM_NODES_PACKAGE_NAME,
+				directory: '/home/node/.n8n/custom',
+				reset: vi.fn(),
+				loadAll: vi.fn(),
+			} as never);
+			Object.setPrototypeOf(customLoader, CustomDirectoryLoader.prototype);
+
+			const baseLoader = mock<DirectoryLoader>({
+				packageName: 'n8n-nodes-base',
+				directory: '/app/nodes-base',
+				reset: vi.fn(),
+				loadAll: vi.fn(),
+			} as never);
+			Object.setPrototypeOf(baseLoader, DirectoryLoader.prototype);
+
+			instance.loaders = { CUSTOM: customLoader, 'n8n-nodes-base': baseLoader };
+
+			await expect(instance.reloadCustomNodes()).resolves.toEqual([CUSTOM_NODES_PACKAGE_NAME]);
+
+			// reset() drops the require cache for the loader's own files — covered by
+			// DirectoryLoader's own tests, since `reset` is mocked out here.
+			expect(customLoader.reset).toHaveBeenCalled();
+			expect(customLoader.loadAll).toHaveBeenCalled();
+			expect(baseLoader.reset).not.toHaveBeenCalled();
+			expect(postProcessSpy).toHaveBeenCalled();
+		});
+
+		it('should throw a UserError when a loader fails, so the endpoint reports failure', async () => {
+			const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			vi.spyOn(instance, 'postProcessLoaders').mockResolvedValue(undefined);
+
+			const customLoader = mock<CustomDirectoryLoader>({
+				packageName: CUSTOM_NODES_PACKAGE_NAME,
+				directory: '/home/node/.n8n/custom',
+				reset: vi.fn(),
+				loadAll: vi.fn().mockRejectedValue(new Error('broken node constructor')),
+			} as never);
+			Object.setPrototypeOf(customLoader, CustomDirectoryLoader.prototype);
+			instance.loaders = { CUSTOM: customLoader };
+
+			await expect(instance.reloadCustomNodes()).rejects.toThrow(UserError);
+			await expect(instance.reloadCustomNodes()).rejects.toThrow(
+				`Hot reload failed for ${CUSTOM_NODES_PACKAGE_NAME}`,
+			);
+		});
+
+		it('should keep serializing after a failed reload', async () => {
+			const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			vi.spyOn(instance, 'postProcessLoaders').mockResolvedValue(undefined);
+
+			const customLoader = mock<CustomDirectoryLoader>({
+				packageName: CUSTOM_NODES_PACKAGE_NAME,
+				directory: '/home/node/.n8n/custom',
+				reset: vi.fn(),
+				loadAll: vi.fn().mockRejectedValueOnce(new Error('broken')).mockResolvedValue(undefined),
+			} as never);
+			Object.setPrototypeOf(customLoader, CustomDirectoryLoader.prototype);
+			instance.loaders = { CUSTOM: customLoader };
+
+			await expect(instance.reloadCustomNodes()).rejects.toThrow(UserError);
+			await expect(instance.reloadCustomNodes()).resolves.toEqual([CUSTOM_NODES_PACKAGE_NAME]);
+		});
+
+		it('should serialize concurrent reloads instead of interleaving them', async () => {
+			const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			vi.spyOn(instance, 'postProcessLoaders').mockResolvedValue(undefined);
+
+			let active = 0;
+			let maxActive = 0;
+			const customLoader = mock<CustomDirectoryLoader>({
+				packageName: CUSTOM_NODES_PACKAGE_NAME,
+				directory: '/home/node/.n8n/custom',
+				reset: vi.fn(),
+				loadAll: vi.fn(async () => {
+					active++;
+					maxActive = Math.max(maxActive, active);
+					await new Promise((resolve) => setTimeout(resolve, 5));
+					active--;
+				}),
+			} as never);
+			Object.setPrototypeOf(customLoader, CustomDirectoryLoader.prototype);
+			instance.loaders = { CUSTOM: customLoader };
+
+			await Promise.all([
+				instance.reloadCustomNodes(),
+				instance.reloadCustomNodes(),
+				instance.reloadCustomNodes(),
+			]);
+
+			expect(customLoader.loadAll).toHaveBeenCalledTimes(3);
+			expect(maxActive).toBe(1);
+		});
+	});
+
+	describe('postProcessLoaders', () => {
+		let instance: LoadNodesAndCredentials;
+		let createAiTools: Mock;
+		let createHitlTools: Mock;
+
+		beforeEach(async () => {
+			// Import the mocked functions
+			const toolGeneration = await import('@/tool-generation/index.js');
+			createAiTools = toolGeneration.createAiTools as Mock;
+			createHitlTools = toolGeneration.createHitlTools as Mock;
+
+			// Clear mock calls before each test
+			createAiTools.mockClear();
+			createHitlTools.mockClear();
+
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.excludeNodes = [];
+		});
+
+		it('should keep types in memory after post-processing for post-processors to read', async () => {
+			const mockLoader = mock<DirectoryLoader>({
+				packageName: 'test-package',
+				directory: '/test/dir',
+				known: { nodes: {}, credentials: {} },
+				types: {
+					nodes: [{ name: 'TestNode', displayName: 'Test' } as never],
+					credentials: [],
+				},
+				credentialTypes: {},
+				isLazyLoaded: false,
+				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+			} as never);
+
+			instance.loaders = { 'test-package': mockLoader };
+
+			await instance.postProcessLoaders();
+
+			expect(instance.types.nodes).toHaveLength(1);
+			expect(instance.types.nodes[0].name).toBe('test-package.TestNode');
+		});
+
+		it('should call createAiTools and createHitlTools', async () => {
+			// Setup a mock loader
+			const mockLoader = mock<DirectoryLoader>({
+				packageName: 'test-package',
+				directory: '/test/dir',
+				known: { nodes: {}, credentials: {} },
+				types: { nodes: [], credentials: [] },
+				credentialTypes: {},
+				isLazyLoaded: false,
+				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+			} as never);
+
+			instance.loaders = { 'test-package': mockLoader };
+
+			await instance.postProcessLoaders();
+
+			// Verify both are called
+			expect(createAiTools).toHaveBeenCalledTimes(1);
+			expect(createHitlTools).toHaveBeenCalledTimes(1);
+
+			// Verify they are called with the same arguments structure
+			const expectedKnown = expect.objectContaining({
+				nodes: expect.any(Object),
+				credentials: expect.any(Object),
+			});
+			expect(createAiTools).toHaveBeenCalledWith(instance.types, expectedKnown);
+			expect(createHitlTools).toHaveBeenCalledWith(instance.types, expectedKnown);
+		});
+
+		it('should drop generated tool types that NODES_EXCLUDE lists', async () => {
+			createAiTools.mockImplementationOnce(
+				(types: { nodes: INodeTypeDescription[] }, known: KnownNodesAndCredentials) => {
+					for (const name of ['test-package.testNodeTool', 'test-package.otherNodeTool']) {
+						types.nodes.push({ name } as INodeTypeDescription);
+						known.nodes[name] = { className: 'TestNode', sourcePath: 'Test.node.js' };
+					}
+					known.credentials.testApi = {
+						className: 'TestApi',
+						sourcePath: 'TestApi.credentials.js',
+						supportedNodes: [
+							'test-package.testNode',
+							'test-package.testNodeTool',
+							'test-package.otherNodeTool',
+						],
+					};
+				},
+			);
+			instance.excludeNodes = ['test-package.testNodeTool'];
+			instance.loaders = {
+				'test-package': mock<NodeLoader>({
+					packageName: 'test-package',
+					known: {
+						nodes: { testNode: { className: 'TestNode', sourcePath: 'Test.node.js' } },
+						credentials: {},
+					},
+					types: { nodes: [{ name: 'testNode' }], credentials: [] },
+					ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+				}),
+			};
+
+			await instance.postProcessLoaders();
+
+			expect(instance.types.nodes.map(({ name }) => name)).toEqual([
+				'test-package.testNode',
+				'test-package.otherNodeTool',
+			]);
+			expect(Object.keys(instance.knownNodes)).toEqual([
+				'test-package.testNode',
+				'test-package.otherNodeTool',
+			]);
+			expect(instance.knownCredentials.testApi.supportedNodes).toEqual([
+				'test-package.testNode',
+				'test-package.otherNodeTool',
+			]);
+		});
+
+		describe('atomic registry swap (known, loaded, types)', () => {
+			const createLoader = () =>
+				mock<NodeLoader>({
+					packageName: 'testPackage',
+					known: {
+						nodes: { TestNode: { className: 'TestNode', sourcePath: 'Test.node.js' } },
+						credentials: {},
+					},
+					types: { nodes: [{ name: 'TestNode' }], credentials: [] },
+					ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+				});
+
+			it('should keep serving the previous registry while a loader reloads its types', async () => {
+				const loader = createLoader();
+				instance.loaders = { testPackage: loader };
+				await instance.postProcessLoaders();
+
+				// ensureTypesLoaded reloads from disk, so the registry is observed from inside it
+				let isKnownDuringReload: boolean | undefined;
+				// eslint-disable-next-line @typescript-eslint/require-await
+				(loader.ensureTypesLoaded as Mock).mockImplementation(async () => {
+					isKnownDuringReload = instance.isKnownNode('testPackage.TestNode');
+				});
+
+				await instance.postProcessLoaders();
+
+				expect(isKnownDuringReload).toBe(true);
+				expect(instance.types.nodes).toHaveLength(1);
+			});
+
+			it('should leave the previous registry intact when a loader fails to reload', async () => {
+				const loader = createLoader();
+				instance.loaders = { testPackage: loader };
+				await instance.postProcessLoaders();
+
+				(loader.ensureTypesLoaded as Mock).mockRejectedValue(new Error('reload failed'));
+
+				await expect(instance.postProcessLoaders()).rejects.toThrow('reload failed');
+				expect(instance.isKnownNode('testPackage.TestNode')).toBe(true);
+				expect(instance.types.nodes).toHaveLength(1);
+			});
+		});
+	});
+
+	describe('collectTypes', () => {
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.excludeNodes = [];
+		});
+
+		it('should return a snapshot of types with package-namespaced node names', async () => {
+			const mockLoader = mock<DirectoryLoader>({
+				packageName: 'n8n-nodes-base',
+				directory: '/test/dir',
+				known: { nodes: {}, credentials: {} },
+				types: {
+					nodes: [{ name: 'httpRequest', displayName: 'HTTP Request' } as never],
+					credentials: [{ name: 'httpBasicAuth', displayName: 'HTTP Basic Auth' }],
+				},
+				credentialTypes: {},
+				isLazyLoaded: false,
+				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+			} as never);
+
+			instance.loaders = { 'n8n-nodes-base': mockLoader };
+
+			const types = await instance.collectTypes();
+
+			expect(types.nodes).toHaveLength(1);
+			expect(types.nodes[0].name).toBe('n8n-nodes-base.httpRequest');
+			expect(types.nodes[0].displayName).toBe('HTTP Request');
+			expect(types.credentials).toHaveLength(1);
+		});
+
+		it('should release loader types after collecting', async () => {
+			const mockLoader = mock<DirectoryLoader>({
+				packageName: 'test-package',
+				directory: '/test/dir',
+				known: { nodes: {}, credentials: {} },
+				types: {
+					nodes: [{ name: 'TestNode', displayName: 'Test' } as never],
+					credentials: [],
+				},
+				credentialTypes: {},
+				isLazyLoaded: false,
+				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+			} as never);
+
+			instance.loaders = { 'test-package': mockLoader };
+
+			await instance.collectTypes();
+
+			expect(mockLoader.releaseTypes).toHaveBeenCalled();
+		});
+	});
+
+	describe('concurrent rebuilds', () => {
+		class TwoStepLoader extends DirectoryLoader {
+			packageName = 'testPackage';
+
+			betweenSteps = async () => await new Promise<void>((resolve) => setImmediate(resolve));
+
+			override async loadAll() {
+				this.types.nodes = [
+					{ name: 'testNode', properties: [] } as unknown as INodeTypeDescription,
+				];
+				await this.betweenSteps();
+				this.types.credentials = [
+					{ name: 'testApi', properties: [] } as unknown as ICredentialType,
+				];
+			}
+		}
+
+		let instance: LoadNodesAndCredentials;
+		let loader: TwoStepLoader;
+		let snapshots: Array<{ nodes: number; credentials: number }>;
+
+		const fullSnapshot = { nodes: 1, credentials: 1 };
+
+		beforeEach(() => {
+			Container.set(Logger, mock<Logger>());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.excludeNodes = [];
+			loader = new TwoStepLoader('/test/two-step');
+			instance.loaders = { testPackage: loader };
+
+			snapshots = [];
+			instance.addPostProcessor(async () => {
+				snapshots.push({
+					nodes: instance.types.nodes.length,
+					credentials: instance.types.credentials.length,
+				});
+			});
+
+			instance.releaseTypes();
+		});
+
+		it('should give each concurrent rebuild the full set of types', async () => {
+			await Promise.all([instance.postProcessLoaders(), instance.postProcessLoaders()]);
+
+			expect(snapshots).toEqual([fullSnapshot, fullSnapshot]);
+		});
+
+		it('should keep the full set of types when types are released during a rebuild', async () => {
+			loader.betweenSteps = async () => instance.releaseTypes();
+
+			await instance.postProcessLoaders();
+
+			expect(snapshots).toEqual([fullSnapshot]);
+		});
+
+		it('should not deadlock when a post-processor calls collectTypes() during a rebuild', async () => {
+			instance.addPostProcessor(async () => {
+				await instance.collectTypes();
+			});
+
+			const types = await instance.collectTypes();
+
+			expect(types.nodes).toHaveLength(1);
+			expect(types.credentials).toHaveLength(1);
 		});
 	});
 });

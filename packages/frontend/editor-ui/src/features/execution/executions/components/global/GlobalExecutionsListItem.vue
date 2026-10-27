@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import AnimatedSpinner from '@/app/components/AnimatedSpinner.vue';
 import ExecutionsTime from '../ExecutionsTime.vue';
 import GlobalExecutionsListItemQueuedTooltip from './GlobalExecutionsListItemQueuedTooltip.vue';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
@@ -7,21 +6,22 @@ import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
-import type { IconColor } from '@n8n/design-system/types/icon';
+import { checkExhaustive } from '@/app/utils/typeGuards';
+import type { DropdownMenuItemProps, IconColor } from '@n8n/design-system';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
-import { WAIT_INDEFINITELY } from 'n8n-workflow';
+import { isIndefiniteWait } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 
-import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import {
 	N8nButton,
 	N8nCheckbox,
+	N8nDropdownMenu,
 	N8nIcon,
 	N8nIconButton,
-	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
 const emit = defineEmits<{
@@ -39,12 +39,14 @@ const props = withDefaults(
 		selected?: boolean;
 		workflowName?: string;
 		workflowPermissions: PermissionsRecord['workflow'];
+		executionPermissions?: PermissionsRecord['execution'];
 		concurrencyCap: number;
 		isCloudDeployment?: boolean;
 	}>(),
 	{
 		selected: false,
 		workflowName: '',
+		executionPermissions: () => ({}),
 	},
 );
 
@@ -61,10 +63,41 @@ const isWaitTillIndefinite = computed(() => {
 		return false;
 	}
 
-	return new Date(props.execution.waitTill).getTime() === WAIT_INDEFINITELY.getTime();
+	return isIndefiniteWait(new Date(props.execution.waitTill));
 });
 
 const isRetriable = computed(() => executionHelpers.isExecutionRetriable(props.execution));
+
+const actionItems = computed((): Array<DropdownMenuItemProps<Command>> => {
+	const items: Array<DropdownMenuItemProps<Command>> = [];
+
+	if (isRetriable.value) {
+		items.push(
+			{
+				id: 'retrySaved',
+				label: locale.baseText('executionsList.retryWithCurrentlySavedWorkflow'),
+				disabled: !props.workflowPermissions.execute,
+				testId: 'execution-retry-saved-dropdown-item',
+			},
+			{
+				id: 'retryOriginal',
+				label: locale.baseText('executionsList.retryWithOriginalWorkflow'),
+				disabled: !props.workflowPermissions.execute,
+				testId: 'execution-retry-original-dropdown-item',
+			},
+		);
+	}
+
+	items.push({
+		id: 'delete',
+		label: locale.baseText('generic.delete'),
+		disabled: !props.executionPermissions.delete,
+		testId: 'execution-delete-dropdown-item',
+		destructive: true,
+	});
+
+	return items;
+});
 
 const EXECUTION_STATUS = {
 	CRASHED: 'crashed',
@@ -80,35 +113,35 @@ const EXECUTION_STATUS = {
 const executionIconStatusDictionary: Record<ExecutionStatus, { icon: IconName; color: IconColor }> =
 	{
 		[EXECUTION_STATUS.CRASHED]: {
-			icon: 'status-error',
+			icon: 'x-circle-filled',
 			color: 'danger',
 		},
 		[EXECUTION_STATUS.ERROR]: {
-			icon: 'status-error',
+			icon: 'x-circle-filled',
 			color: 'danger',
 		},
 		[EXECUTION_STATUS.WAITING]: {
-			icon: 'status-waiting',
+			icon: 'hourglass-filled',
 			color: 'secondary',
 		},
 		[EXECUTION_STATUS.SUCCESS]: {
-			icon: 'status-completed',
+			icon: 'check-circle-filled',
 			color: 'success',
 		},
 		[EXECUTION_STATUS.NEW]: {
-			icon: 'status-new',
+			icon: 'circle-dashed-filled',
 			color: 'foreground-xdark',
 		},
 		[EXECUTION_STATUS.RUNNING]: {
-			icon: 'spinner',
+			icon: 'spinner-filled',
 			color: 'secondary',
 		},
 		[EXECUTION_STATUS.UNKNOWN]: {
-			icon: 'status-unknown',
+			icon: 'question-circle-filled',
 			color: 'foreground-xdark',
 		},
 		[EXECUTION_STATUS.CANCELED]: {
-			icon: 'status-canceled',
+			icon: 'slash-circle-filled',
 			color: 'foreground-xdark',
 		},
 	};
@@ -169,8 +202,19 @@ function onSelect() {
 }
 
 async function handleActionItemClick(commandData: Command) {
-	//@ts-ignore todo: fix this type
-	emit(commandData, props.execution);
+	switch (commandData) {
+		case 'retrySaved':
+			emit('retrySaved', props.execution);
+			break;
+		case 'retryOriginal':
+			emit('retryOriginal', props.execution);
+			break;
+		case 'delete':
+			emit('delete', props.execution);
+			break;
+		default:
+			checkExhaustive(commandData);
+	}
 }
 </script>
 <template>
@@ -190,7 +234,7 @@ async function handleActionItemClick(commandData: Command) {
 				<RouterLink
 					:to="{
 						name: VIEWS.EXECUTION_PREVIEW,
-						params: { name: execution.workflowId, executionId: execution.id },
+						params: { workflowId: execution.workflowId, executionId: execution.id },
 					}"
 					:class="$style.workflowName"
 					target="_blank"
@@ -207,8 +251,8 @@ async function handleActionItemClick(commandData: Command) {
 				:is-cloud-deployment="props.isCloudDeployment"
 				@go-to-upgrade="emit('goToUpgrade')"
 			>
-				<div>
-					<N8nIcon :icon="statusRender.icon" :color="statusRender.color" class="mr-2xs" />
+				<div :class="$style.status">
+					<N8nIcon size="medium" :icon="statusRender.icon" :color="statusRender.color" />
 					{{ statusRender.label }}
 				</div>
 			</GlobalExecutionsListItemQueuedTooltip>
@@ -221,20 +265,12 @@ async function handleActionItemClick(commandData: Command) {
 					})
 				"
 			>
-				<div>
-					<N8nText
-						v-if="execution.status === EXECUTION_STATUS.RUNNING"
-						color="secondary"
-						class="mr-2xs"
-					>
-						<AnimatedSpinner />
-					</N8nText>
+				<div :class="$style.status">
 					<N8nIcon
-						v-else
 						size="medium"
 						:icon="statusRender.icon"
 						:color="statusRender.color"
-						class="mr-2xs"
+						:spin="isRunning"
 					/>
 					{{ statusRender.label }}
 				</div>
@@ -262,19 +298,32 @@ async function handleActionItemClick(commandData: Command) {
 				</small>
 			</span>
 		</td>
-		<td>
-			<N8nTooltip v-if="execution.mode === 'manual'" content="Manual Execution" placement="top">
+		<td :class="$style.modeCell">
+			<N8nTooltip
+				v-if="execution.mode === 'manual'"
+				:content="locale.baseText('executionsList.manualExecution')"
+				placement="top"
+			>
 				<N8nIcon icon="flask-conical" />
 			</N8nTooltip>
-			<N8nTooltip v-else-if="execution.mode === 'chat'" content="Chat Execution" placement="top">
+			<N8nTooltip
+				v-else-if="execution.mode === 'chat'"
+				:content="locale.baseText('executionsList.chatExecution')"
+				placement="top"
+			>
 				<N8nIcon icon="messages-square" />
 			</N8nTooltip>
+			<PrivateCredentialIcon
+				v-if="execution.usedPrivateCredentials"
+				data-test-id="global-execution-private-credential"
+				:tooltip-text="locale.baseText('executions.privateCredential.tooltip')"
+			/>
 		</td>
 		<td>
 			<N8nButton
+				variant="ghost"
 				v-if="!execution.stoppedAt || execution.waitTill"
 				data-test-id="stop-execution-button"
-				type="secondary"
 				:loading="isStopping"
 				:disabled="isStopping"
 				@click.stop="onStopExecution"
@@ -283,49 +332,45 @@ async function handleActionItemClick(commandData: Command) {
 			</N8nButton>
 		</td>
 		<td>
-			<ElDropdown v-if="!isRunning" trigger="click" @command="handleActionItemClick">
-				<N8nIconButton text type="tertiary" icon="ellipsis-vertical" />
-				<template #dropdown>
-					<ElDropdownMenu
-						:class="{
-							[$style.actions]: true,
-							[$style.deleteOnly]: !isRetriable,
-						}"
-					>
-						<ElDropdownItem
-							v-if="isRetriable"
-							data-test-id="execution-retry-saved-dropdown-item"
-							:class="$style.retryAction"
-							command="retrySaved"
-							:disabled="!workflowPermissions.execute"
-						>
-							{{ locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
-						</ElDropdownItem>
-						<ElDropdownItem
-							v-if="isRetriable"
-							data-test-id="execution-retry-original-dropdown-item"
-							:class="$style.retryAction"
-							command="retryOriginal"
-							:disabled="!workflowPermissions.execute"
-						>
-							{{ locale.baseText('executionsList.retryWithOriginalWorkflow') }}
-						</ElDropdownItem>
-						<ElDropdownItem
-							data-test-id="execution-delete-dropdown-item"
-							:class="$style.deleteAction"
-							command="delete"
-							:disabled="!workflowPermissions.update"
-						>
-							{{ locale.baseText('generic.delete') }}
-						</ElDropdownItem>
-					</ElDropdownMenu>
+			<N8nDropdownMenu
+				v-if="!isRunning"
+				:items="actionItems"
+				placement="bottom-end"
+				@select="handleActionItemClick"
+			>
+				<template #trigger>
+					<N8nIconButton
+						variant="outline"
+						icon="ellipsis"
+						data-test-id="execution-actions-menu"
+						@click.stop
+					/>
 				</template>
-			</ElDropdown>
+			</N8nDropdownMenu>
 		</td>
 	</tr>
 </template>
 
 <style lang="scss" module>
+.modeCell {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+
+	/* Normalize icon wrappers so SVG baseline doesn't shift relative to tooltip spans */
+	:deep(svg),
+	:deep(span) {
+		display: inline-flex;
+		align-items: center;
+	}
+}
+
+.status {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
 tr.dangerBg {
 	background-color: rgba(215, 56, 58, 0.1);
 }

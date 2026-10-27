@@ -12,6 +12,15 @@ Prevents importing external dependencies that are not allowed on n8n Cloud. Comm
 
 Relative imports (starting with `./` or `../`) are always allowed.
 
+**Dev dependencies are permitted.** Modules listed in the package's
+`devDependencies` (e.g. `vitest`, or type-only imports from a types
+package) are never installed at runtime on n8n Cloud — only the built
+`dist/` is shipped — so they are not runtime dependencies and are exempt
+from this rule. (Runtime `dependencies` are separately forced to be
+empty by `no-runtime-dependencies`.) This rule targets runtime
+dependencies only: anything in `dependencies`, or any import not on the
+allowlist and not relative, is restricted — including in test files.
+
 ## Examples
 
 ### ❌ Incorrect

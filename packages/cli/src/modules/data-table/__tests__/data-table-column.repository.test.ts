@@ -1,6 +1,8 @@
 import { testModules } from '@n8n/backend-test-utils';
+import type { TransactionRunner } from '@n8n/db';
 import type { DataSource, EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { DataTableColumn } from '../data-table-column.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
@@ -12,8 +14,8 @@ import { DataTableSystemColumnNameConflictError } from '../errors/data-table-sys
 describe('DataTableColumnRepository', () => {
 	let repository: DataTableColumnRepository;
 	let mockDataSource: DataSource;
-	let mockDDLService: jest.Mocked<DataTableDDLService>;
-	let mockEntityManager: jest.Mocked<EntityManager>;
+	let mockDDLService: Mocked<DataTableDDLService>;
+	let mockEntityManager: Mocked<EntityManager>;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -28,7 +30,7 @@ describe('DataTableColumnRepository', () => {
 		});
 
 		// Mock the transaction method to execute the callback immediately
-		(mockEntityManager.transaction as jest.Mock) = jest.fn(
+		(mockEntityManager.transaction as Mock) = vi.fn(
 			async (callback: (em: EntityManager) => Promise<any>) => {
 				return await callback(mockEntityManager);
 			},
@@ -38,7 +40,11 @@ describe('DataTableColumnRepository', () => {
 			manager: mockEntityManager,
 		});
 
-		repository = new DataTableColumnRepository(mockDataSource, mockDDLService);
+		repository = new DataTableColumnRepository(
+			mockDataSource,
+			mockDDLService,
+			mock<TransactionRunner>(),
+		);
 	});
 
 	describe('renameColumn', () => {
@@ -182,7 +188,7 @@ describe('DataTableColumnRepository', () => {
 			it('should call DDL service with correct database type', async () => {
 				// Arrange
 				const newName = 'new_valid_name';
-				const dbTypes = ['postgres', 'mysql', 'sqlite'] as const;
+				const dbTypes = ['postgres', 'sqlite'] as const;
 
 				for (const dbType of dbTypes) {
 					mockEntityManager.existsBy.mockResolvedValue(false);

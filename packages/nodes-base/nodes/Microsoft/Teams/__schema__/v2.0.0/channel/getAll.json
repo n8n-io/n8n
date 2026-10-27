@@ -13,12 +13,18 @@
         "isArchived": {
             "type": "boolean"
         },
+        "layoutType": {
+            "type": "null"
+        },
         "membershipType": {
             "type": "string"
         },
         "tenantId": {
             "type": "string"
+        },
+        "webUrl": {
+            "type": "string"
         }
     },
-    "version": 2
+    "version": 4
 }

@@ -42,6 +42,7 @@ export namespace PubSub {
 		export type ReloadLicense = ToCommand<'reload-license'>;
 		export type ReloadOIDCConfiguration = ToCommand<'reload-oidc-config'>;
 		export type ReloadSamlConfiguration = ToCommand<'reload-saml-config'>;
+		export type ReloadOAuthSigningKeys = ToCommand<'reload-oauth-signing-keys'>;
 		export type ReloadCredentialsOverwrites = ToCommand<'reload-overwrite-credentials'>;
 		export type RestartEventBus = ToCommand<'restart-event-bus'>;
 		export type ReloadExternalSecretsProviders = ToCommand<'reload-external-secrets-providers'>;
@@ -50,15 +51,49 @@ export namespace PubSub {
 		export type CommunityPackageUninstall = ToCommand<'community-package-uninstall'>;
 		export type GetWorkerId = ToCommand<'get-worker-id'>;
 		export type GetWorkerStatus = ToCommand<'get-worker-status'>;
+		export type StopExecution = ToCommand<'stop-execution'>;
 		export type AddWebhooksTriggersAndPollers = ToCommand<'add-webhooks-triggers-and-pollers'>;
 		export type RemoveTriggersAndPollers = ToCommand<'remove-triggers-and-pollers'>;
 		export type DisplayWorkflowActivation = ToCommand<'display-workflow-activation'>;
 		export type DisplayWorkflowDeactivation = ToCommand<'display-workflow-deactivation'>;
 		export type DisplayWorkflowActivationError = ToCommand<'display-workflow-activation-error'>;
+		export type DisplayWorkflowPublicationStatus = ToCommand<'display-workflow-publication-status'>;
+		export type WorkflowPublishWakeUp = ToCommand<'workflow-publish-wake-up'>;
 		export type RelayExecutionLifecycleEvent = ToCommand<'relay-execution-lifecycle-event'>;
+		export type RelayAgentExecutionUpdate = ToCommand<'relay-agent-execution-update'>;
+		export type RelayAgentQueuedChat = ToCommand<'relay-agent-queued-chat'>;
+		export type CancelAgentChatExecution = ToCommand<'cancel-agent-chat-execution'>;
+		export type CancelAgentChatForeground = ToCommand<'cancel-agent-chat-foreground'>;
+		export type RelayAgentMessageQueueUpdate = ToCommand<'relay-agent-message-queue-update'>;
+		export type RelayAgentBackgroundJobsUpdate = ToCommand<'relay-agent-background-tasks-update'>;
+		export type RelayAgentUpdate = ToCommand<'relay-agent-update'>;
+		export type ResumeAgentWorkflowTool = ToCommand<'resume-agent-workflow-tool'>;
+		export type CancelAgentBackgroundJob = ToCommand<'cancel-agent-background-job'>;
+		export type WakeAgentBackgroundJob = ToCommand<'wake-agent-background-job'>;
+		export type RelayChatStreamEvent = ToCommand<'relay-chat-stream-event'>;
+		export type RelayInstanceAiEvent = ToCommand<'relay-instance-ai-event'>;
+		export type RelayInstanceAiTaskControl = ToCommand<'relay-instance-ai-task-control'>;
+		export type RelayChatHumanMessage = ToCommand<'relay-chat-human-message'>;
+		export type RelayChatMessageEdit = ToCommand<'relay-chat-message-edit'>;
 		export type ClearTestWebhooks = ToCommand<'clear-test-webhooks'>;
 		export type ReloadSsoProvisioningConfiguration =
 			ToCommand<'reload-sso-provisioning-configuration'>;
+		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
+		export type ReloadMcpRegistry = ToCommand<'reload-mcp-registry'>;
+		export type ReloadOtelConfig = ToCommand<'reload-otel-config'>;
+		export type ReloadInstanceAiSettings = ToCommand<'reload-instance-ai-settings'>;
+		export type SelfHealingFailure = ToCommand<'self-healing-failure'>;
+		export type ReloadAgentsSettings = ToCommand<'reload-agents-settings'>;
+		export type CancelTestRun = ToCommand<'cancel-test-run'>;
+		export type CancelCollection = ToCommand<'cancel-collection'>;
+		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
+		export type AgentChatSubscriptionChanged = ToCommand<'agent-chat-subscription-changed'>;
+		export type AgentChatLeaderChannelRequest = ToCommand<'agent-chat-leader-channel-request'>;
+		export type AgentChatLeaderChannelResult = ToCommand<'agent-chat-leader-channel-result'>;
+		export type AgentConfigChanged = ToCommand<'agent-config-changed'>;
+		export type AgentTasksChanged = ToCommand<'agent-tasks-changed'>;
+		export type RedactionFloorChanged = ToCommand<'redaction-floor-changed'>;
+		export type ReloadTypeAvailabilityPolicies = ToCommand<'reload-type-availability-policies'>;
 	}
 
 	/** Command sent via the `n8n.commands` pubsub channel. */
@@ -71,17 +106,52 @@ export namespace PubSub {
 		| Commands.CommunityPackageUninstall
 		| Commands.GetWorkerId
 		| Commands.GetWorkerStatus
+		| Commands.StopExecution
 		| Commands.AddWebhooksTriggersAndPollers
 		| Commands.RemoveTriggersAndPollers
 		| Commands.DisplayWorkflowActivation
 		| Commands.DisplayWorkflowDeactivation
 		| Commands.DisplayWorkflowActivationError
+		| Commands.DisplayWorkflowPublicationStatus
+		| Commands.WorkflowPublishWakeUp
 		| Commands.RelayExecutionLifecycleEvent
+		| Commands.RelayAgentExecutionUpdate
+		| Commands.RelayAgentQueuedChat
+		| Commands.CancelAgentChatExecution
+		| Commands.CancelAgentChatForeground
+		| Commands.RelayAgentMessageQueueUpdate
+		| Commands.RelayAgentBackgroundJobsUpdate
+		| Commands.RelayAgentUpdate
+		| Commands.ResumeAgentWorkflowTool
+		| Commands.CancelAgentBackgroundJob
+		| Commands.WakeAgentBackgroundJob
+		| Commands.RelayChatStreamEvent
+		| Commands.RelayInstanceAiEvent
+		| Commands.RelayInstanceAiTaskControl
+		| Commands.RelayChatHumanMessage
+		| Commands.RelayChatMessageEdit
 		| Commands.ClearTestWebhooks
 		| Commands.ReloadOIDCConfiguration
 		| Commands.ReloadSamlConfiguration
+		| Commands.ReloadOAuthSigningKeys
 		| Commands.ReloadCredentialsOverwrites
-		| Commands.ReloadSsoProvisioningConfiguration;
+		| Commands.ReloadSsoProvisioningConfiguration
+		| Commands.ReloadSourceControlConfiguration
+		| Commands.ReloadMcpRegistry
+		| Commands.ReloadOtelConfig
+		| Commands.ReloadInstanceAiSettings
+		| Commands.SelfHealingFailure
+		| Commands.ReloadAgentsSettings
+		| Commands.CancelTestRun
+		| Commands.CancelCollection
+		| Commands.AgentChatIntegrationChanged
+		| Commands.AgentChatSubscriptionChanged
+		| Commands.AgentChatLeaderChannelRequest
+		| Commands.AgentChatLeaderChannelResult
+		| Commands.AgentConfigChanged
+		| Commands.AgentTasksChanged
+		| Commands.RedactionFloorChanged
+		| Commands.ReloadTypeAvailabilityPolicies;
 
 	// ----------------------------------
 	//         worker responses

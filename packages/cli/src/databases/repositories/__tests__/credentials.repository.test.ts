@@ -1,6 +1,6 @@
 import { CredentialsEntity, CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
 
@@ -9,56 +9,19 @@ const repository = Container.get(CredentialsRepository);
 
 describe('CredentialsRepository', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
-	describe('findMany', () => {
-		const credentialsId = 'cred_123';
-		const credential = mock<CredentialsEntity>({ id: credentialsId });
+	describe('findStartingWith', () => {
+		it('only searches project credential names', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
 
-		test('return `data` property if `includeData:true` and select is using the record syntax', async () => {
-			// ARRANGE
-			entityManager.find.mockResolvedValueOnce([credential]);
+			await repository.findStartingWith('API key');
 
-			// ACT
-			const credentials = await repository.findMany({ includeData: true, select: { id: true } });
-
-			// ASSERT
-			expect(credentials).toHaveLength(1);
-			expect(credentials[0]).toHaveProperty('data');
-		});
-
-		test('return `data` property if `includeData:true` and select is using the array syntax', async () => {
-			// ARRANGE
-			entityManager.find.mockResolvedValueOnce([credential]);
-
-			// ACT
-			const credentials = await repository.findMany({
-				includeData: true,
-				//TODO: fix this
-				// The function's type does not support this but this is what it
-				// actually gets from the service because the middlewares are typed
-				// loosely.
-				select: ['id'] as never,
-			});
-
-			// ASSERT
-			expect(credentials).toHaveLength(1);
-			expect(credentials[0]).toHaveProperty('data');
-		});
-
-		test('should include isGlobal in default select', async () => {
-			// ARRANGE
-			entityManager.find.mockResolvedValueOnce([credential]);
-
-			// ACT
-			await repository.findMany();
-
-			// ASSERT
 			expect(entityManager.find).toHaveBeenCalledWith(
 				CredentialsEntity,
 				expect.objectContaining({
-					select: expect.arrayContaining(['isGlobal']),
+					where: expect.objectContaining({ usageScope: 'project' }),
 				}),
 			);
 		});
@@ -88,7 +51,7 @@ describe('CredentialsRepository', () => {
 						'updatedAt',
 						'isGlobal',
 					]),
-					relations: ['shared', 'shared.project', 'shared.project.projectRelations'],
+					relations: ['shared', 'shared.project'],
 				}),
 			);
 			expect(entityManager.find).toHaveBeenCalledWith(
@@ -128,7 +91,7 @@ describe('CredentialsRepository', () => {
 			expect(entityManager.find).toHaveBeenCalledWith(
 				CredentialsEntity,
 				expect.objectContaining({
-					relations: ['shared', 'shared.project', 'shared.project.projectRelations'],
+					relations: ['shared', 'shared.project'],
 				}),
 			);
 			expect(credentials[0].shared).toBeDefined();
@@ -144,7 +107,7 @@ describe('CredentialsRepository', () => {
 			entityManager.find.mockResolvedValueOnce([globalCred]);
 
 			// ACT
-			const credentials = await repository.findAllGlobalCredentials(true);
+			const credentials = await repository.findAllGlobalCredentials({ includeData: true });
 
 			// ASSERT
 			expect(entityManager.find).toHaveBeenCalledWith(
@@ -176,7 +139,7 @@ describe('CredentialsRepository', () => {
 			entityManager.find.mockResolvedValueOnce([globalCred]);
 
 			// ACT
-			const credentials = await repository.findAllGlobalCredentials(false);
+			const credentials = await repository.findAllGlobalCredentials({ includeData: false });
 
 			// ASSERT
 			expect(entityManager.find).toHaveBeenCalledWith(
@@ -201,6 +164,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { project: { type: 'personal' } },
 			});
 			expect(credentials).toHaveLength(2);
@@ -232,6 +196,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { project: { sharedWorkflows: { workflowId } } },
 			});
 			expect(credentials).toHaveLength(2);
@@ -264,6 +229,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { projectId },
 			});
 			expect(credentials).toHaveLength(2);

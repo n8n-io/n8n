@@ -30,6 +30,14 @@ describe('JsonEditor', () => {
 		expect(lines).toEqual(['{', '\t"testing": [true, 5]', '}']);
 	});
 
+	it('updates editor content when modelValue changes to a value of the same length', async () => {
+		const { getByRole, rerender } = renderEditor('{"key": "old"}');
+
+		await rerender({ modelValue: '{"key": "***"}' });
+
+		await waitFor(() => expect(getByRole('textbox').textContent).toEqual('{"key": "***"}'));
+	});
+
 	it('emits update:model-value events', async () => {
 		const modelValue = '{ "test": 1 }';
 

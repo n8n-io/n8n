@@ -1,3 +1,4 @@
+import { CredentialResolverHandle } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
 import { ICredentialEntriesStorage } from './storage-interface';
@@ -60,5 +61,9 @@ export class DynamicCredentialEntryStorage implements ICredentialEntriesStorage 
 			subjectId,
 			resolverId,
 		});
+	}
+
+	async deleteAllCredentialData(handle: CredentialResolverHandle): Promise<void> {
+		await this.dynamicCredentialEntryRepository.delete({ resolverId: handle.resolverId });
 	}
 }

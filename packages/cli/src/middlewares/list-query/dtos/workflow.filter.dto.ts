@@ -1,9 +1,26 @@
+import { WORKFLOW_EXECUTION_BLOCK_CAUSES, type WorkflowExecutionBlockCause } from '@n8n/api-types';
 import { Expose } from 'class-transformer';
-import { IsOptional, IsString, IsBoolean, IsArray } from 'class-validator';
+import {
+	ArrayMaxSize,
+	ArrayUnique,
+	IsOptional,
+	IsString,
+	IsBoolean,
+	IsArray,
+	IsIn,
+} from 'class-validator';
 
 import { BaseFilter } from './base.filter.dto';
 
 export class WorkflowFilter extends BaseFilter {
+	@IsArray()
+	@ArrayMaxSize(50)
+	@ArrayUnique()
+	@IsString({ each: true })
+	@IsOptional()
+	@Expose()
+	ids?: string[];
+
 	@IsString()
 	@IsOptional()
 	@Expose()
@@ -51,6 +68,13 @@ export class WorkflowFilter extends BaseFilter {
 	@IsOptional()
 	@Expose()
 	triggerNodeTypes?: string[];
+
+	@IsArray()
+	@ArrayUnique()
+	@IsIn(WORKFLOW_EXECUTION_BLOCK_CAUSES, { each: true })
+	@IsOptional()
+	@Expose()
+	executionBlockedBy?: WorkflowExecutionBlockCause[];
 
 	static async fromString(rawFilter: string) {
 		return await this.toFilter(rawFilter, WorkflowFilter);

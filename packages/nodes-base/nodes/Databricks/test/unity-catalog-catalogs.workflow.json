@@ -1,0 +1,183 @@
+{
+	"name": "Databricks Unity Catalog - Catalogs Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "listCatalogs"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, -300],
+			"id": "uc-list-catalogs-001",
+			"name": "List Catalogs",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "getCatalog",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, -100],
+			"id": "uc-get-catalog-001",
+			"name": "Get Catalog",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "createCatalog",
+				"catalogName": {
+					"mode": "string",
+					"value": "new-catalog"
+				},
+				"comment": "Test catalog"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 100],
+			"id": "uc-create-catalog-001",
+			"name": "Create Catalog",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "updateCatalog",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"comment": "Updated catalog description"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 300],
+			"id": "uc-update-catalog-001",
+			"name": "Update Catalog",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "deleteCatalog",
+				"catalogName": {
+					"mode": "string",
+					"value": "old-catalog"
+				}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 500],
+			"id": "uc-delete-catalog-001",
+			"name": "Delete Catalog",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"List Catalogs": [
+			{
+				"json": {
+					"catalogs": [
+						{ "name": "main", "comment": "Main catalog" },
+						{ "name": "sandbox", "comment": "Sandbox catalog" }
+					]
+				}
+			}
+		],
+		"Get Catalog": [
+			{
+				"json": {
+					"name": "main",
+					"comment": "Main catalog",
+					"created_at": 1704067200000,
+					"owner": "admin@example.com"
+				}
+			}
+		],
+		"Create Catalog": [
+			{
+				"json": {
+					"name": "new-catalog",
+					"comment": "Test catalog",
+					"created_at": 1704067200000
+				}
+			}
+		],
+		"Update Catalog": [
+			{
+				"json": {
+					"name": "main",
+					"comment": "Updated catalog description",
+					"updated_at": 1704067200000,
+					"owner": "admin@example.com"
+				}
+			}
+		],
+		"Delete Catalog": [
+			{
+				"json": {
+					"success": true,
+					"message": "Catalog deleted successfully",
+					"catalogName": "old-catalog"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "List Catalogs", "type": "main", "index": 0 },
+					{ "node": "Get Catalog", "type": "main", "index": 0 },
+					{ "node": "Create Catalog", "type": "main", "index": 0 },
+					{ "node": "Update Catalog", "type": "main", "index": 0 },
+					{ "node": "Delete Catalog", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

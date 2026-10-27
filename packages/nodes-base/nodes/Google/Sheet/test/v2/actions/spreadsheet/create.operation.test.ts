@@ -2,10 +2,11 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/spreadsheet/create.operation';
 import { apiRequest } from '../../../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../../v2/transport', () => ({
+vi.mock('../../../../v2/transport', () => ({
 	apiRequest: {
-		call: jest.fn(),
+		call: vi.fn(),
 	},
 }));
 
@@ -14,14 +15,14 @@ describe('Spreadsheet Create Operation', () => {
 
 	beforeEach(() => {
 		mockExecuteFunctions = {
-			getInputData: jest.fn().mockReturnValue([{}]),
-			getNodeParameter: jest.fn(),
+			getInputData: vi.fn().mockReturnValue([{}]),
+			getNodeParameter: vi.fn(),
 			helpers: {
-				constructExecutionMetaData: jest.fn().mockImplementation((data) => data),
+				constructExecutionMetaData: vi.fn().mockImplementation((data) => data),
 			},
 		} as unknown as IExecuteFunctions;
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('execute', () => {
@@ -29,13 +30,13 @@ describe('Spreadsheet Create Operation', () => {
 			const mockTitle = 'Test Spreadsheet';
 			const mockResponse = { spreadsheetId: '1234', title: mockTitle };
 
-			mockExecuteFunctions.getNodeParameter = jest
+			mockExecuteFunctions.getNodeParameter = vi
 				.fn()
 				.mockReturnValueOnce(mockTitle)
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce({});
 
-			(apiRequest.call as jest.Mock).mockResolvedValueOnce(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValueOnce(mockResponse);
 
 			const result = await execute.call(mockExecuteFunctions);
 
@@ -65,14 +66,14 @@ describe('Spreadsheet Create Operation', () => {
 				],
 			};
 
-			mockExecuteFunctions.getNodeParameter = jest
+			mockExecuteFunctions.getNodeParameter = vi
 				.fn()
 				.mockReturnValueOnce('Test Spreadsheet')
 				.mockReturnValueOnce(mockSheets)
 				.mockReturnValueOnce({});
 
 			const mockResponse = { spreadsheetId: '1234' };
-			(apiRequest.call as jest.Mock).mockResolvedValueOnce(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValueOnce(mockResponse);
 
 			await execute.call(mockExecuteFunctions);
 
@@ -100,14 +101,14 @@ describe('Spreadsheet Create Operation', () => {
 				autoRecalc: 'ON_CHANGE',
 			};
 
-			mockExecuteFunctions.getNodeParameter = jest
+			mockExecuteFunctions.getNodeParameter = vi
 				.fn()
 				.mockReturnValueOnce('Test Spreadsheet')
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce(mockOptions);
 
 			const mockResponse = { spreadsheetId: '1234' };
-			(apiRequest.call as jest.Mock).mockResolvedValueOnce(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValueOnce(mockResponse);
 
 			await execute.call(mockExecuteFunctions);
 
@@ -127,12 +128,12 @@ describe('Spreadsheet Create Operation', () => {
 		});
 
 		it('should handle multiple input items', async () => {
-			mockExecuteFunctions.getInputData = jest.fn().mockReturnValue([{}, {}]);
+			mockExecuteFunctions.getInputData = vi.fn().mockReturnValue([{}, {}]);
 
 			const mockResponse1 = { spreadsheetId: '1234' };
 			const mockResponse2 = { spreadsheetId: '5678' };
 
-			mockExecuteFunctions.getNodeParameter = jest
+			mockExecuteFunctions.getNodeParameter = vi
 				.fn()
 				.mockReturnValueOnce('Spreadsheet 1')
 				.mockReturnValueOnce({})
@@ -141,7 +142,7 @@ describe('Spreadsheet Create Operation', () => {
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce({});
 
-			(apiRequest.call as jest.Mock)
+			(apiRequest.call as Mock)
 				.mockResolvedValueOnce(mockResponse1)
 				.mockResolvedValueOnce(mockResponse2);
 
@@ -154,14 +155,14 @@ describe('Spreadsheet Create Operation', () => {
 		});
 
 		it('should handle empty sheet properties', async () => {
-			mockExecuteFunctions.getNodeParameter = jest
+			mockExecuteFunctions.getNodeParameter = vi
 				.fn()
 				.mockReturnValueOnce('Test Spreadsheet')
 				.mockReturnValueOnce({ sheetValues: [] })
 				.mockReturnValueOnce({});
 
 			const mockResponse = { spreadsheetId: '1234' };
-			(apiRequest.call as jest.Mock).mockResolvedValueOnce(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValueOnce(mockResponse);
 
 			await execute.call(mockExecuteFunctions);
 
@@ -176,14 +177,14 @@ describe('Spreadsheet Create Operation', () => {
 		});
 
 		it('should preserve undefined values for optional properties', async () => {
-			mockExecuteFunctions.getNodeParameter = jest
+			mockExecuteFunctions.getNodeParameter = vi
 				.fn()
 				.mockReturnValueOnce('Test Spreadsheet')
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce({});
 
 			const mockResponse = { spreadsheetId: '1234' };
-			(apiRequest.call as jest.Mock).mockResolvedValueOnce(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValueOnce(mockResponse);
 
 			await execute.call(mockExecuteFunctions);
 

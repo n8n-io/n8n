@@ -1,6 +1,13 @@
+import type {
+	FolderTransferPreview,
+	FolderTransferResult,
+	PolicyViolation,
+	UnpublishedWorkflow,
+	WorkflowTransferPreview,
+	WorkflowTransferResult,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type {
-	CredentialsEntity,
 	CredentialUsedByWorkflow,
 	User,
 	WorkflowEntity,
@@ -15,27 +22,108 @@ import {
 	FolderRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
+import type { PolicyDecision } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { hasGlobalScope } from '@n8n/permissions';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { isRecord } from '@n8n/utils/is-record';
 import { In, type EntityManager } from '@n8n/typeorm';
+import isEqual from 'lodash/isEqual';
 import omit from 'lodash/omit';
-import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
-import { NodeOperationError, PROJECT_ROOT, UserError, WorkflowActivationError } from 'n8n-workflow';
+import pLimit from 'p-limit';
+import type { INode, INodeTypeDescription, IWorkflowBase, WorkflowId } from 'n8n-workflow';
+import {
+	isNodeWithWorkflowSelector,
+	jsonParse,
+	NodeHelpers,
+	NodeOperationError,
+	PROJECT_ROOT,
+	UserError,
+	WorkflowActivationError,
+} from 'n8n-workflow';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CredentialsFinderService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
+import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
+import { extractAgentCredentialIds } from '@/modules/agents/utils/extract-agent-credential-ids';
+import { NodeTypes } from '@/node-types';
+import {
+	emptyDecision,
+	hasCheckErrors,
+	PolicyEnforcementService,
+} from '@/policy/policy-enforcement.service';
+import { findPolicyViolations } from '@/policy/policy-violation.error';
+import { OwnershipService } from '@/services/ownership.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { stripToolSuffix } from '@/utils';
 
 import { WorkflowFinderService } from './workflow-finder.service';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
-import { FolderService } from '@/services/folder.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service.ee';
+/**
+ * Database workflows use their own project permissions at runtime.
+ * Parameter workflows contain JSON we can inspect before saving.
+ */
+const INSPECTABLE_SUBWORKFLOW_SOURCES = new Set(['database', 'parameter']);
+
+/** Exclude allowed edits and temporary editor state from the definition comparison. */
+const FREELY_EDITABLE_NODE_FIELDS = ['name', 'position', 'disabled', 'color', 'issues', 'status'];
+
+/** Tool and HITL tool variants use the same source rules as their base node. */
+function isWorkflowSelectorNode(node: INode): boolean {
+	if (typeof node.type !== 'string') return false;
+	return isNodeWithWorkflowSelector({ ...node, type: stripToolSuffix(node.type) });
+}
+
+type CredentialReferences = {
+	/** Resolvable credential ids. */
+	ids: string[];
+	/** A non-managed credential carrying no id, i.e. only a name. */
+	hasUnresolved: boolean;
+	/** A sub-workflow source whose content is not available at save time. */
+	hasUninspectableSource: boolean;
+};
+
+export type CredentialGuardOptions = {
+	/** Allow content loaded at runtime only for users who can use every credential. */
+	allowUninspectableSource?: boolean;
+};
+
+const EDITABLE_NODE_FIELDS = ['name', 'position', 'disabled'] as const;
+
+const HISTORY_LOOKBACK_LIMIT = 20;
+
+/** Bounded so a large folder does not flood the policy backend when the move dialog opens. */
+const TRANSFER_PREVIEW_CONCURRENCY = 5;
+
+/** One entry per restricted type, however many workflows in a folder use it. */
+function restrictedTypeKey({ kind, subjectType, subject, message }: PolicyViolation): string {
+	return JSON.stringify([kind, subjectType, subject ?? message]);
+}
+
+/** A project move refuses workflows the destination already owns. The preview refuses them too. */
+function assertNoneOwnedBy(workflows: WorkflowEntity[], destinationProject: Project) {
+	for (const workflow of workflows) {
+		const ownerSharing = workflow.shared.find((s) => s.role === 'workflow:owner');
+		NotFoundError.isDefinedAndNotNull(
+			ownerSharing,
+			`Could not find owner for workflow "${workflow.id}"`,
+		);
+		if (ownerSharing.project.id === destinationProject.id) {
+			throw new TransferWorkflowError(
+				"You can't transfer a workflow into the project that's already owning it.",
+			);
+		}
+	}
+}
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -51,9 +139,13 @@ export class EnterpriseWorkflowService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly folderService: FolderService,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
+		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly nodeTypes: NodeTypes,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 	) {}
 
 	async shareWithProjects(
@@ -106,10 +198,6 @@ export class EnterpriseWorkflowService {
 		currentUser: User,
 	): Promise<void> {
 		workflow.usedCredentials = [];
-		const userCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
-			currentUser,
-			{ workflowId: workflow.id },
-		);
 		const credentialIdsUsedByWorkflow = new Set<string>();
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {
@@ -123,11 +211,15 @@ export class EnterpriseWorkflowService {
 				credentialIdsUsedByWorkflow.add(credential.id);
 			});
 		});
-		const workflowCredentials = await this.credentialsRepository.getManyByIds(
-			Array.from(credentialIdsUsedByWorkflow),
-			{ withSharings: true },
+		const credentialIds = Array.from(credentialIdsUsedByWorkflow);
+		const workflowCredentials = await this.credentialsRepository.getManyByIds(credentialIds, {
+			withSharings: true,
+		});
+		const usableCredentialIds = await this.findUsableCredentialIds(
+			currentUser,
+			credentialIds,
+			workflow.id,
 		);
-		const userCredentialIds = userCredentials.map((credential) => credential.id);
 		workflowCredentials.forEach((credential) => {
 			const credentialId = credential.id;
 			const filledCred = this.ownershipService.addOwnedByAndSharedWith(credential);
@@ -135,33 +227,66 @@ export class EnterpriseWorkflowService {
 				id: credentialId,
 				name: credential.name,
 				type: credential.type,
-				currentUserHasAccess: userCredentialIds.includes(credentialId),
+				currentUserCanUse: usableCredentialIds.has(credentialId),
 				homeProject: filledCred.homeProject,
 				sharedWithProjects: filledCred.sharedWithProjects,
 			});
 		});
 	}
 
-	validateCredentialPermissionsToUser(
-		workflow: IWorkflowBase,
-		allowedCredentials: CredentialsEntity[],
-	) {
-		workflow.nodes.forEach((node) => {
-			if (!node.credentials) {
-				return;
-			}
-			Object.keys(node.credentials).forEach((credentialType) => {
-				const credentialId = node.credentials?.[credentialType].id;
-				if (credentialId === undefined) return;
-				const matchedCredential = allowedCredentials.find(({ id }) => id === credentialId);
-				if (!matchedCredential) {
-					throw new UserError('The workflow contains credentials that you do not have access to');
-				}
-			});
-		});
+	private async findUsableCredentialIds(
+		user: User,
+		credentialIds: string[],
+		workflowId: WorkflowId,
+	): Promise<ReadonlySet<string>> {
+		if (credentialIds.length === 0) return new Set();
+
+		// The rule a run acting as this user follows, so the editor blocks exactly
+		// what the server refuses: what the project carries, plus the user's own
+		// access without an Owner's or Admin's instance-wide grant.
+		const unusable = await this.credentialsPermissionChecker.findUnusableInWorkflow(
+			workflowId,
+			credentialIds,
+			user.id,
+		);
+		const unusableIds = new Set(unusable.map((c) => c.id));
+		return new Set(credentialIds.filter((id) => !unusableIds.has(id)));
 	}
 
-	async preventTampering<T extends IWorkflowBase>(workflow: T, workflowId: string, user: User) {
+	validateCredentialPermissionsToUser(
+		workflow: IWorkflowBase,
+		allowedCredentials: Array<{ id: string }> | ReadonlySet<string>,
+		options: CredentialGuardOptions = {},
+	) {
+		// Reuse the shared collector so inline sub-workflow credentials (Execute
+		// Sub-workflow, Workflow Tool, Workflow Retriever) and unresolved name-only
+		// references are inspected too, keeping this check aligned with the update path.
+		const allowedCredentialIds: ReadonlySet<string> = Array.isArray(allowedCredentials)
+			? new Set(allowedCredentials.map(({ id }) => id))
+			: allowedCredentials;
+		const inaccessibleNodes = this.getNodesWithInaccessibleCreds(
+			workflow,
+			allowedCredentialIds,
+			options,
+		);
+		if (inaccessibleNodes.length > 0) {
+			const uninspectableNode = inaccessibleNodes.find((node) =>
+				this.isBlockedByUninspectableSource(node, options),
+			);
+			if (uninspectableNode) throw new UninspectableSubworkflowSourceError(uninspectableNode);
+			throw new UserError('The workflow contains credentials that you do not have access to');
+		}
+	}
+
+	/**
+	 * @param restoredNodes the nodes of the history version this update restores, if any.
+	 */
+	async preventTampering<T extends Pick<IWorkflowBase, 'nodes'>>(
+		workflow: T,
+		workflowId: string,
+		user: User,
+		restoredNodes: INode[] = [],
+	) {
 		const previousVersion = await this.workflowRepository.get({ id: workflowId });
 
 		if (!previousVersion) {
@@ -173,8 +298,30 @@ export class EnterpriseWorkflowService {
 			{ workflowId },
 		);
 
+		const options = { allowUninspectableSource: this.canUseEveryCredential(user) };
+
+		// A node switched back to a credential the user cannot use is saved as the
+		// version that last stored it did, the same as a restore of that version.
+		const historyNodes = [
+			...restoredNodes,
+			...(await this.findNodesAsHistoryStoredThem(
+				workflow,
+				previousVersion,
+				allCredentials,
+				restoredNodes,
+				options,
+				workflowId,
+			)),
+		];
+
 		try {
-			return this.validateWorkflowCredentialUsage(workflow, previousVersion, allCredentials);
+			return this.validateWorkflowCredentialUsage(
+				workflow,
+				previousVersion,
+				allCredentials,
+				historyNodes,
+				options,
+			);
 		} catch (error) {
 			if (error instanceof NodeOperationError) {
 				throw new BadRequestError(error.message);
@@ -185,90 +332,434 @@ export class EnterpriseWorkflowService {
 		}
 	}
 
-	validateWorkflowCredentialUsage<T extends IWorkflowBase>(
+	private async findNodesAsHistoryStoredThem(
+		workflow: Pick<IWorkflowBase, 'nodes'>,
+		previousVersion: IWorkflowBase,
+		credentialsUserHasAccessTo: Array<{ id: string }>,
+		restoredNodes: INode[],
+		options: CredentialGuardOptions,
+		workflowId: string,
+	): Promise<INode[]> {
+		const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id);
+		// Read-only and restored nodes are settled by the other rules; a node without
+		// an id is new. None of them needs the history.
+		const settledNodeIds = new Set([
+			...this.getNodesWithInaccessibleCreds(previousVersion, allowedCredentialIds, options).map(
+				(node) => node.id,
+			),
+			...restoredNodes.map((node) => node.id),
+		]);
+		const allowed = new Set(allowedCredentialIds);
+		const candidates = this.getNodesWithInaccessibleCreds(
+			workflow,
+			allowedCredentialIds,
+			options,
+		).filter((node) => {
+			if (!node.id || settledNodeIds.has(node.id)) return false;
+			const { ids, hasUnresolved } = this.getNodeCredentialRefs(node);
+			return hasUnresolved || ids.some((id) => !allowed.has(id));
+		});
+		if (candidates.length === 0) return [];
+
+		const versions = await this.workflowHistoryRepository.findNewestVersionNodes(
+			workflowId,
+			HISTORY_LOOKBACK_LIMIT,
+		);
+		const storedNodes = versions.flatMap((version) => version.nodes);
+		return candidates.flatMap((candidate) => {
+			const stored = storedNodes.find(
+				(node) =>
+					node.id === candidate.id && this.isSameNodeApartFromEditableFields(node, candidate),
+			);
+			return stored ? [stored] : [];
+		});
+	}
+
+	private isSameNodeApartFromEditableFields(a: INode, b: INode): boolean {
+		return isEqual(this.toComparableNode(a), this.toComparableNode(b));
+	}
+
+	private toComparableNode(node: INode) {
+		const { credentials, ...rest } = omit(node, EDITABLE_NODE_FIELDS);
+		if (!credentials) return rest;
+		const credentialIdentities = Object.fromEntries(
+			Object.entries(credentials).map(([type, credential]) => [
+				type,
+				credential?.id ?? credential?.name ?? null,
+			]),
+		);
+		return { ...rest, credentials: credentialIdentities };
+	}
+
+	validateWorkflowCredentialUsage<T extends Pick<IWorkflowBase, 'nodes'>>(
 		newWorkflowVersion: T,
 		previousWorkflowVersion: IWorkflowBase,
 		credentialsUserHasAccessTo: Array<{ id: string }>,
+		historyNodes: INode[] = [],
+		options: CredentialGuardOptions = {},
 	) {
-		/**
-		 * We only need to check nodes that use credentials the current user cannot access,
-		 * since these can be 2 possibilities:
-		 * - Same ID already exist: it's a read only node and therefore cannot be changed
-		 * - It's a new node which indicates tampering and therefore must fail saving
-		 */
-
 		const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id);
 
-		const nodesWithCredentialsUserDoesNotHaveAccessTo = this.getNodesWithInaccessibleCreds(
-			newWorkflowVersion,
-			allowedCredentialIds,
+		const nodesWithCredentialsUserDoesNotHaveAccessTo = new Set(
+			this.getNodesWithInaccessibleCreds(newWorkflowVersion, allowedCredentialIds, options),
 		);
 
 		// If there are no nodes with credentials the user does not have access to we can skip the rest
-		if (nodesWithCredentialsUserDoesNotHaveAccessTo.length === 0) {
+		if (nodesWithCredentialsUserDoesNotHaveAccessTo.size === 0) {
 			return newWorkflowVersion;
 		}
 
-		const previouslyExistingNodeIds = previousWorkflowVersion.nodes.map((node) => node.id);
+		// A node the user could not use before stays read only and is restored. A node
+		// the user could edit that now carries a credential they cannot use fails the
+		// save like a new node does; restoring it would drop the other edits silently.
+		const readOnlyNodeIds = new Set(
+			this.getNodesWithInaccessibleCreds(
+				previousWorkflowVersion,
+				allowedCredentialIds,
+				options,
+			).map((node) => node.id),
+		);
 
-		// If it's a new node we can't allow it to be saved
-		// since it uses creds the node doesn't have access
-		const isTamperingAttempt = (inaccessibleCredNodeId: string) =>
-			!previouslyExistingNodeIds.includes(inaccessibleCredNodeId);
+		// Node ids are meant to be unique. Edge case: where stored data still repeats one, match the
+		// first node.
+		const previousNodesById = new Map<string, INode>();
+		for (const node of previousWorkflowVersion.nodes) {
+			if (!previousNodesById.has(node.id)) previousNodesById.set(node.id, node);
+		}
 
-		nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node) => {
-			if (isTamperingAttempt(node.id)) {
+		const submittedIdCounts = new Map<string, number>();
+		for (const node of newWorkflowVersion.nodes) {
+			submittedIdCounts.set(node.id, (submittedIdCounts.get(node.id) ?? 0) + 1);
+		}
+
+		const historyNodesById = new Map<string, INode>();
+		for (const node of historyNodes) {
+			if (!historyNodesById.has(node.id)) historyNodesById.set(node.id, node);
+		}
+
+		newWorkflowVersion.nodes = newWorkflowVersion.nodes.map((node) => {
+			if (!nodesWithCredentialsUserDoesNotHaveAccessTo.has(node)) return node;
+
+			// Only a node we can prove is the stored one may keep credentials the user cannot
+			// access. A missing id means the node is new; a repeated id makes the match
+			// ambiguous, and an ambiguous match is not a proof, so no claimant is trusted.
+			const previousNode = previousNodesById.get(node.id);
+			const idClaimedOnce = submittedIdCounts.get(node.id) === 1;
+			const blockedBySource = this.isBlockedByUninspectableSource(node, options);
+
+			const historyNode = historyNodesById.get(node.id);
+			if (
+				idClaimedOnce &&
+				historyNode &&
+				this.isSameNodeApartFromEditableFields(historyNode, node)
+			) {
+				return node;
+			}
+
+			if (!previousNode || !idClaimedOnce || !readOnlyNodeIds.has(node.id)) {
 				this.logger.warn('Blocked workflow update due to tampering attempt', {
 					nodeType: node.type,
 					nodeName: node.name,
 					nodeId: node.id,
 					nodeCredentials: node.credentials,
 				});
-				// Node is new, so this is probably a tampering attempt. Throw an error
+				if (blockedBySource) throw new UninspectableSubworkflowSourceError(node);
 				throw new NodeOperationError(
 					node,
 					`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share them with you.`,
 				);
 			}
-			// Replace the node with the previous version of the node
-			// Since it cannot be modified (read only node)
-			const nodeIdx = newWorkflowVersion.nodes.findIndex(
-				(newWorkflowNode) => newWorkflowNode.id === node.id,
-			);
+
+			// The editor allows these source settings to be edited. Reject changes
+			// instead of silently discarding them when we restore the stored node.
+			if (
+				blockedBySource &&
+				!isEqual(this.getNodeDefinition(node), this.getNodeDefinition(previousNode))
+			) {
+				throw new UninspectableSubworkflowSourceError(node);
+			}
 
 			this.logger.debug('Replacing node with previous version when saving updated workflow', {
 				nodeType: node.type,
 				nodeName: node.name,
 				nodeId: node.id,
 			});
-			const previousNodeVersion = previousWorkflowVersion.nodes.find(
-				(previousNode) => previousNode.id === node.id,
-			);
+
+			// Replace the whole node. Patching the previous fields over the submitted node
+			// would keep every field the previous node does not have.
 			// Allow changing only name, position and disabled status for read-only nodes
-			Object.assign(
-				newWorkflowVersion.nodes[nodeIdx],
-				omit(previousNodeVersion, ['name', 'position', 'disabled']),
-			);
+			const restoredNode = { ...previousNode };
+			if ('name' in node) restoredNode.name = node.name;
+			if ('position' in node) restoredNode.position = node.position;
+			if ('disabled' in node) restoredNode.disabled = node.disabled;
+			else delete restoredNode.disabled;
+			return restoredNode;
 		});
 
 		return newWorkflowVersion;
 	}
 
-	/** Get all nodes in a workflow where the node credential is not accessible to the user. */
-	getNodesWithInaccessibleCreds(workflow: IWorkflowBase, userCredIds: string[]) {
+	/**
+	 * Find nodes with inaccessible credentials, unresolved references, or blocked sources.
+	 * Include credentials and sources in nested workflows and agents.
+	 */
+	getNodesWithInaccessibleCreds(
+		workflow: Pick<IWorkflowBase, 'nodes'>,
+		userCredIds: Iterable<string>,
+		options: CredentialGuardOptions = {},
+	) {
 		if (!workflow.nodes) {
 			return [];
 		}
+		const allowedCredentialIds = userCredIds instanceof Set ? userCredIds : new Set(userCredIds);
 		return workflow.nodes.filter((node) => {
-			if (!node.credentials) return false;
-
-			const allUsedCredentials = Object.values(node.credentials);
-
-			const allUsedCredentialIds = allUsedCredentials.map((nodeCred) => nodeCred.id?.toString());
-			return allUsedCredentialIds.some(
-				(nodeCredId) => nodeCredId && !userCredIds.includes(nodeCredId),
+			const { ids, hasUnresolved, hasUninspectableSource } = this.getNodeCredentialRefs(node);
+			return (
+				hasUnresolved ||
+				(hasUninspectableSource && !options.allowUninspectableSource) ||
+				ids.some((credId) => !allowedCredentialIds.has(credId))
 			);
 		});
+	}
+
+	collectCredentialReferences(workflow: IWorkflowBase): {
+		ids: Set<string>;
+		hasUnresolved: boolean;
+		hasUninspectableSource: boolean;
+	} {
+		const ids = new Set<string>();
+		let hasUnresolved = false;
+		let hasUninspectableSource = false;
+
+		for (const node of workflow.nodes ?? []) {
+			const references = this.getNodeCredentialRefs(node);
+			for (const id of references.ids) ids.add(id);
+			hasUnresolved ||= references.hasUnresolved;
+			hasUninspectableSource ||= references.hasUninspectableSource;
+		}
+
+		return { ids, hasUnresolved, hasUninspectableSource };
+	}
+
+	canUseEveryCredential(user: User): boolean {
+		return hasGlobalScope(user, 'credential:use');
+	}
+
+	private isBlockedByUninspectableSource(node: INode, options: CredentialGuardOptions): boolean {
+		if (options.allowUninspectableSource) return false;
+		return this.getNodeCredentialRefs(node).hasUninspectableSource;
+	}
+
+	/**
+	 * Compare node behavior without treating editor formatting or allowed edits as changes.
+	 */
+	private getNodeDefinition(node: INode): Record<string, unknown> {
+		const definition: Record<string, unknown> = omit(node, FREELY_EDITABLE_NODE_FIELDS);
+		definition.parameters = this.getDisplayedParameters(node);
+
+		const credentials = node.credentials ?? {};
+		if (Object.keys(credentials).length === 0) delete definition.credentials;
+		// The editor persists these only when they differ from their default.
+		if (!node.continueOnFail) delete definition.continueOnFail;
+		if (!node.onError || node.onError === 'stopWorkflow') delete definition.onError;
+		if (!node.notes) delete definition.notes;
+
+		return definition;
+	}
+
+	/**
+	 * The editor omits default values and hidden parameters on save.
+	 * Compare displayed parameters with defaults filled in so an unchanged node still matches.
+	 */
+	private getDisplayedParameters(node: INode) {
+		const parameters = node.parameters ?? {};
+		const description = this.getNodeTypeDescription(node);
+		if (!description) return parameters;
+		return (
+			NodeHelpers.getNodeParameters(
+				description.properties,
+				parameters,
+				true,
+				false,
+				node,
+				description,
+			) ?? {}
+		);
+	}
+
+	private getNodeTypeDescription(node: INode): INodeTypeDescription | null {
+		try {
+			return this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion)?.description ?? null;
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * A missing source defaults to Database. Expressions are not resolved until runtime.
+	 */
+	private hasUninspectableSubworkflowSource(node: INode): boolean {
+		const source = node.parameters?.source;
+		if (source === undefined) return false;
+		return !(typeof source === 'string' && INSPECTABLE_SUBWORKFLOW_SOURCES.has(source));
+	}
+
+	/**
+	 * Inspect the node and its embedded workflows and agents at every nesting level.
+	 * Report name-only credentials and runtime-loaded sources separately from known IDs;
+	 * neither means the node uses no credentials. Managed Gateway credentials are exempt.
+	 * Use a stack to avoid a call-stack limit. Serialized input bounds the nesting depth.
+	 */
+	private getNodeCredentialRefs(node: INode): CredentialReferences {
+		const ids: string[] = [];
+		let hasUnresolved = false;
+		let hasUninspectableSource = false;
+		const stack: INode[] = [node];
+
+		while (stack.length > 0) {
+			const current = stack.pop()!;
+
+			if (current.credentials) {
+				for (const nodeCred of Object.values(current.credentials)) {
+					const id = nodeCred.id?.toString();
+					if (id) {
+						ids.push(id);
+					} else if (nodeCred.__aiGatewayManaged && nodeCred.id === null) {
+						// Managed credential, resolved at execution — exempt.
+					} else if (nodeCred.id === null || nodeCred.id === '') {
+						hasUnresolved = true;
+					}
+				}
+			}
+
+			if (isWorkflowSelectorNode(current)) {
+				hasUninspectableSource ||= this.hasUninspectableSubworkflowSource(current);
+				stack.push(...this.getInlineWorkflowNodes(current.parameters?.workflowJson));
+			}
+
+			const inlineAgent = this.parseInlineAgent(current.parameters?.inlineAgent);
+			if (isRecord(inlineAgent)) {
+				ids.push(...extractAgentCredentialIds(inlineAgent.config));
+				stack.push(...this.getAgentToolNodes(inlineAgent));
+			}
+		}
+
+		return { ids, hasUnresolved, hasUninspectableSource };
+	}
+
+	/**
+	 * Read the agent config a node carries in its `inlineAgent` parameter instead
+	 * of in `node.credentials`. Execution resolves the credential ids in the
+	 * config in the workflow owner's project, so the guard must see them.
+	 *
+	 * The parameter name is the key, not the node type, so the agent node, its
+	 * tool variant and any later node that embeds an agent config are covered.
+	 * The value holds an object or JSON text, depending on the client.
+	 * Unparseable text references nothing: the node fails at run time.
+	 */
+	private parseInlineAgent(inlineAgent: unknown): unknown {
+		return typeof inlineAgent === 'string'
+			? jsonParse<unknown>(inlineAgent, { fallbackValue: null })
+			: inlineAgent;
+	}
+
+	/**
+	 * An agent config embeds the node tools it runs as node definitions, which
+	 * keep their own parameters — an inline sub-workflow, or another agent
+	 * config. Those definitions use `nodeType`/`nodeParameters`, so map them to
+	 * node shape and let the walk inspect them like any other node.
+	 */
+	private getAgentToolNodes(config: unknown): INode[] {
+		if (Array.isArray(config)) return config.flatMap((entry) => this.getAgentToolNodes(entry));
+		if (!isRecord(config)) return [];
+
+		const nested = Object.values(config).flatMap((value) => this.getAgentToolNodes(value));
+		if (typeof config.nodeType !== 'string') return nested;
+
+		// Tool variants keep the base node's parameters.
+		const type = stripToolSuffix(config.nodeType);
+		const parameters = isRecord(config.nodeParameters) ? config.nodeParameters : {};
+
+		return [...nested, { type, parameters } as INode];
+	}
+
+	/**
+	 * Parse the nodes of an inline sub-workflow passed as the `workflowJson`
+	 * parameter of a workflow-selector node. Non-string or unparseable values
+	 * reference no resolvable credentials and yield no nodes (the node would fail
+	 * at run time).
+	 */
+	private getInlineWorkflowNodes(workflowJson: unknown): INode[] {
+		if (typeof workflowJson !== 'string') return [];
+
+		let parsed: Partial<IWorkflowBase>;
+		try {
+			parsed = jsonParse<Partial<IWorkflowBase>>(workflowJson);
+		} catch {
+			return [];
+		}
+		if (!parsed || !Array.isArray(parsed.nodes)) return [];
+
+		return parsed.nodes.filter((subNode): subNode is INode => Boolean(subNode));
+	}
+
+	/**
+	 * Get workflow IDs that use at least one resolvable credential.
+	 * Used to populate `hasResolvableCredentials` in workflow list responses.
+	 */
+	async getWorkflowIdsWithResolvableCredentials(workflowIds: string[]): Promise<Set<string>> {
+		if (workflowIds.length === 0) {
+			return new Set();
+		}
+
+		// Fetch workflows with just the nodes field
+		const workflows = await this.workflowRepository.findByIds(workflowIds, {
+			fields: ['id', 'nodes'],
+		});
+
+		// Extract all credential IDs from all workflows
+		const credentialIdToWorkflowIds = new Map<string, string[]>();
+		for (const workflow of workflows) {
+			if (!workflow.nodes) continue;
+			for (const node of workflow.nodes) {
+				if (!node.credentials) continue;
+				for (const credentialType of Object.keys(node.credentials)) {
+					const credentialId = node.credentials[credentialType]?.id;
+					if (credentialId) {
+						const workflowIdsList = credentialIdToWorkflowIds.get(credentialId) ?? [];
+						workflowIdsList.push(workflow.id);
+						credentialIdToWorkflowIds.set(credentialId, workflowIdsList);
+					}
+				}
+			}
+		}
+
+		if (credentialIdToWorkflowIds.size === 0) {
+			return new Set();
+		}
+
+		// Query credentials that are resolvable
+		const resolvableCredentials = await this.credentialsRepository.find({
+			where: {
+				id: In(Array.from(credentialIdToWorkflowIds.keys())),
+				isResolvable: true,
+				usageScope: 'project',
+			},
+			select: ['id'],
+		});
+
+		// Build set of workflow IDs that have resolvable credentials
+		const workflowIdsWithResolvableCredentials = new Set<string>();
+		for (const credential of resolvableCredentials) {
+			const workflowIdsList = credentialIdToWorkflowIds.get(credential.id);
+			if (workflowIdsList) {
+				for (const workflowId of workflowIdsList) {
+					workflowIdsWithResolvableCredentials.add(workflowId);
+				}
+			}
+		}
+
+		return workflowIdsWithResolvableCredentials;
 	}
 
 	async transferWorkflow(
@@ -277,7 +768,7 @@ export class EnterpriseWorkflowService {
 		destinationProjectId: string,
 		shareCredentials: string[] = [],
 		destinationParentFolderId?: string,
-	) {
+	): Promise<WorkflowTransferResult | undefined> {
 		// 1. get workflow
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
@@ -327,7 +818,7 @@ export class EnterpriseWorkflowService {
 
 		if (destinationParentFolderId) {
 			try {
-				parentFolder = await this.folderService.findFolderInProjectOrFail(
+				parentFolder = await this.folderRepository.findOneOrFailFolderInProject(
 					destinationParentFolderId,
 					destinationProjectId,
 				);
@@ -346,7 +837,7 @@ export class EnterpriseWorkflowService {
 		}
 
 		// 7. transfer the workflow
-		await this.transferWorkflowOwnership([workflow], destinationProject.id);
+		await this.transferWorkflowOwnership(user, [workflow], destinationProject);
 
 		// 8. share credentials into the destination project
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
@@ -354,10 +845,8 @@ export class EnterpriseWorkflowService {
 		// 9. Move workflow to the right folder if any
 		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
 
-		// 10. Update potential cached project association
-		await this.ownershipService.setWorkflowProjectCacheEntry(workflow.id, destinationProject);
-
-		// 11. try to activate it again if it was active
+		// 10. try to activate it again if it was active. The destination's policy can refuse
+		// the republish, and then the move unpublishes the workflow.
 		if (wasActive) {
 			return await this.attemptWorkflowReactivation(workflowId, workflow.activeVersionId, user.id);
 		}
@@ -365,20 +854,155 @@ export class EnterpriseWorkflowService {
 		return;
 	}
 
-	async getFolderUsedCredentials(user: User, folderId: string, projectId: string) {
-		await this.folderService.findFolderInProjectOrFail(folderId, projectId);
+	/**
+	 * What a move into `destinationProjectId` would restrict. Refuses what the move refuses for
+	 * other reasons, so it never warns about a move that cannot happen.
+	 */
+	async previewWorkflowTransfer(
+		user: User,
+		workflowId: string,
+		destinationProjectId: string,
+	): Promise<WorkflowTransferPreview> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			user,
+			['workflow:move'],
+			{ includeActiveVersion: true },
+		);
+		NotFoundError.isDefinedAndNotNull(
+			workflow,
+			`Could not find workflow with the id "${workflowId}". Make sure you have the permission to move it.`,
+		);
 
-		const workflows = await this.workflowFinderService.findAllWorkflowsForUser(
+		const destinationProject = await this.getTransferDestination(user, destinationProjectId);
+		assertNoneOwnedBy([workflow], destinationProject);
+
+		const { transfer, publish } = await this.evaluateTransferInto(workflow, destinationProject.id);
+
+		return {
+			restricted: transfer.violations,
+			unpublishReasons: publish.violations,
+			checkFailed: hasCheckErrors(transfer) || hasCheckErrors(publish),
+		};
+	}
+
+	/**
+	 * What moving a folder tree into `destinationProjectId` would restrict. Refuses what the
+	 * move refuses for other reasons, so it never warns about a move that cannot happen.
+	 */
+	async previewFolderTransfer(
+		user: User,
+		sourceProjectId: string,
+		sourceFolderId: string,
+		destinationProjectId: string,
+	): Promise<FolderTransferPreview> {
+		try {
+			await this.folderRepository.findOneOrFailFolderInProject(sourceFolderId, sourceProjectId);
+		} catch {
+			throw new FolderNotFoundError(sourceFolderId);
+		}
+
+		const destinationProject = await this.getTransferDestination(user, destinationProjectId);
+
+		const preview: FolderTransferPreview = {
+			restricted: [],
+			workflowsToUnpublish: [],
+			checkFailed: false,
+		};
+
+		const checksAnything =
+			this.policyEnforcementService.hasChecksFor('workflowTransfer') ||
+			this.policyEnforcementService.hasChecksFor('workflowPublish');
+
+		const childrenFolderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
+			sourceFolderId,
+			sourceProjectId,
+		);
+		const workflows = await this.workflowRepository.findInFoldersForTransfer(
+			[sourceFolderId, ...childrenFolderIds],
+			{ withNodes: checksAnything },
+		);
+
+		assertNoneOwnedBy(workflows, destinationProject);
+		if (!checksAnything) return preview;
+
+		const limit = pLimit(TRANSFER_PREVIEW_CONCURRENCY);
+		const decisions = await Promise.all(
+			workflows.map(
+				async (workflow) =>
+					await limit(async () => await this.evaluateTransferInto(workflow, destinationProject.id)),
+			),
+		);
+
+		const restricted = new Map<string, PolicyViolation>();
+		for (const [index, { transfer, publish }] of decisions.entries()) {
+			const workflow = workflows[index];
+
+			for (const violation of transfer.violations) {
+				const key = restrictedTypeKey(violation);
+				if (!restricted.has(key)) restricted.set(key, violation);
+			}
+			if (publish.violations.length > 0) {
+				preview.workflowsToUnpublish.push({ id: workflow.id, name: workflow.name });
+			}
+			preview.checkFailed ||= hasCheckErrors(transfer) || hasCheckErrors(publish);
+		}
+
+		preview.restricted = [...restricted.values()];
+		return preview;
+	}
+
+	/** A move republishes the published version, so that version is judged at the publish point. */
+	private async evaluateTransferInto(
+		workflow: WorkflowEntity,
+		targetProjectId: string,
+	): Promise<{ transfer: PolicyDecision; publish: PolicyDecision }> {
+		const { activeVersion } = workflow;
+
+		const [transfer, publish] = await Promise.all([
+			this.policyEnforcementService.evaluateWorkflowTransfer({ workflow, targetProjectId }),
+			activeVersion
+				? this.policyEnforcementService.evaluateWorkflowPublish({
+						workflow: { id: workflow.id, name: workflow.name, nodes: activeVersion.nodes },
+						projectId: targetProjectId,
+					})
+				: emptyDecision(),
+		]);
+
+		return { transfer, publish };
+	}
+
+	private async getTransferDestination(user: User, destinationProjectId: string) {
+		const destinationProject = await this.projectService.getProjectWithScope(
+			user,
+			destinationProjectId,
+			['workflow:create'],
+		);
+		NotFoundError.isDefinedAndNotNull(
+			destinationProject,
+			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create workflows in it.`,
+		);
+
+		return destinationProject;
+	}
+
+	async getFolderUsedCredentials(user: User, folderId: string, projectId: string) {
+		try {
+			await this.folderRepository.findOneOrFailFolderInProject(folderId, projectId);
+		} catch {
+			throw new FolderNotFoundError(folderId);
+		}
+
+		const { workflows } = await this.workflowFinderService.findWorkflowsForUser(
 			user,
 			['workflow:read'],
-			folderId,
-			projectId,
+			{ filters: { folderId, projectId }, includeProjects: true },
 		);
 
 		const usedCredentials = new Map<string, CredentialUsedByWorkflow>();
 
 		for (const workflow of workflows) {
-			const workflowWithMetaData = this.addOwnerAndSharings(workflow as unknown as WorkflowEntity);
+			const workflowWithMetaData = this.addOwnerAndSharings(workflow);
 			await this.addCredentialsToWorkflow(workflowWithMetaData, user);
 			for (const credential of workflowWithMetaData?.usedCredentials ?? []) {
 				usedCredentials.set(credential.id, credential);
@@ -395,7 +1019,7 @@ export class EnterpriseWorkflowService {
 		destinationProjectId: string,
 		destinationParentFolderId: string,
 		shareCredentials: string[] = [],
-	) {
+	): Promise<FolderTransferResult> {
 		// 1. Get all children folders
 
 		const childrenFolderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
@@ -405,13 +1029,10 @@ export class EnterpriseWorkflowService {
 
 		// 2. Get all workflows in the nested folders
 
-		const workflows = await this.workflowRepository.find({
-			select: ['id', 'activeVersionId', 'shared'],
-			relations: ['shared', 'shared.project'],
-			where: {
-				parentFolder: { id: In([...childrenFolderIds, sourceFolderId]) },
-			},
-		});
+		const workflows = await this.workflowRepository.findInFoldersForTransfer(
+			[...childrenFolderIds, sourceFolderId],
+			{ withNodes: false },
+		);
 
 		const activeWorkflows = workflows.filter((x) => this.isActiveWorkflow(x));
 
@@ -437,19 +1058,7 @@ export class EnterpriseWorkflowService {
 
 		await this.folderRepository.findOneOrFailFolderInProject(sourceFolderId, sourceProjectId);
 
-		for (const workflow of workflows) {
-			const ownerSharing = workflow.shared.find((s) => s.role === 'workflow:owner')!;
-			NotFoundError.isDefinedAndNotNull(
-				ownerSharing,
-				`Could not find owner for workflow "${workflow.id}"`,
-			);
-			const sourceProject = ownerSharing.project;
-			if (sourceProject.id === destinationProject.id) {
-				throw new TransferWorkflowError(
-					"You can't transfer a workflow into the project that's already owning it.",
-				);
-			}
-		}
+		assertNoneOwnedBy(workflows, destinationProject);
 
 		// 5. deactivate all workflows if necessary
 		const deactivateWorkflowsPromises = activeWorkflows.map(
@@ -459,7 +1068,7 @@ export class EnterpriseWorkflowService {
 		await Promise.all(deactivateWorkflowsPromises);
 
 		// 6. transfer the workflows
-		await this.transferWorkflowOwnership(workflows, destinationProject.id);
+		await this.transferWorkflowOwnership(user, workflows, destinationProject);
 
 		// 7. share credentials into the destination project
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
@@ -474,50 +1083,92 @@ export class EnterpriseWorkflowService {
 
 		// 9. try to activate workflows again if they were active
 
+		const unpublishedWorkflows: UnpublishedWorkflow[] = [];
 		for (const workflow of activeWorkflows) {
-			await this.attemptWorkflowReactivation(workflow.id, workflow.activeVersionId, user.id);
+			const result = await this.attemptWorkflowReactivation(
+				workflow.id,
+				workflow.activeVersionId,
+				user.id,
+			);
+			if (result) unpublishedWorkflows.push({ id: workflow.id, name: workflow.name, ...result });
 		}
+
+		return { unpublishedWorkflows };
 	}
 
-	private formatActivationError(error: WorkflowActivationError) {
-		return {
-			error: error.toJSON
-				? error.toJSON()
-				: {
-						name: error.name,
-						message: error.message,
-					},
-		};
-	}
-
-	private async attemptWorkflowReactivation(workflowId: string, versionId: string, userId: string) {
+	/** Returns a failed republish instead of throwing it, so one failure cannot stop a folder move. */
+	private async attemptWorkflowReactivation(
+		workflowId: string,
+		versionId: string,
+		userId: string,
+	): Promise<WorkflowTransferResult | undefined> {
 		try {
-			await this.activeWorkflowManager.add(workflowId, 'update');
+			await this.activeWorkflowManager.add(workflowId, 'update', undefined, {
+				actor: { kind: 'user', user: { id: userId } },
+			});
 
 			return;
 		} catch (error) {
-			await this.workflowRepository.updateActiveState(workflowId, false);
-
-			// If reactivation failed we track deactivation of the workflow
-			await this.workflowPublishHistoryRepository.addRecord({
-				workflowId,
-				versionId,
-				event: 'deactivated',
-				userId,
-			});
-
-			if (error instanceof WorkflowActivationError) {
-				return this.formatActivationError(error);
+			// Reactivation may have failed partway with triggers already registered,
+			// in memory and as durable schedule jobs. Tear them down before the
+			// rollback below so the active version is still resolvable, or they
+			// keep firing a workflow marked inactive.
+			try {
+				await this.activeWorkflowManager.remove(workflowId);
+			} catch (cleanupError) {
+				this.logger.error(`Failed to roll back partial reactivation of workflow "${workflowId}"`, {
+					workflowId,
+					error: cleanupError,
+				});
 			}
 
-			throw error;
+			try {
+				await this.workflowRepository.updateActiveState(workflowId, false);
+
+				// If reactivation failed we track deactivation of the workflow
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId,
+					versionId,
+					event: 'deactivated',
+					userId,
+				});
+			} catch (rollbackError) {
+				this.logger.error(`Failed to mark workflow "${workflowId}" as unpublished after a move`, {
+					workflowId,
+					error: rollbackError,
+				});
+			}
+
+			const unpublishReasons = findPolicyViolations(error);
+			if (unpublishReasons) return { unpublishReasons };
+
+			const { name, message } = ensureError(error);
+			if (!(error instanceof WorkflowActivationError)) {
+				this.logger.error(`Failed to republish workflow "${workflowId}" after a move`, {
+					workflowId,
+					error,
+				});
+			}
+
+			return { error: { name, message } };
 		}
 	}
 
 	private async transferWorkflowOwnership(
+		user: User,
 		workflows: WorkflowEntity[],
-		destinationProjectId: string,
+		destinationProject: Project,
 	) {
+		// Resolved before the transaction rewrites the sharings. Workflows already
+		// owned by the destination are folder moves, not project transfers.
+		const movedWorkflowIds = workflows
+			.filter(
+				(workflow) =>
+					workflow.shared.find((s) => s.role === 'workflow:owner')?.project.id !==
+					destinationProject.id,
+			)
+			.map((workflow) => workflow.id);
+
 		await this.workflowRepository.manager.transaction(async (trx) => {
 			for (const workflow of workflows) {
 				// Remove all sharings
@@ -527,12 +1178,21 @@ export class EnterpriseWorkflowService {
 				await trx.save(
 					trx.create(SharedWorkflow, {
 						workflowId: workflow.id,
-						projectId: destinationProjectId,
+						projectId: destinationProject.id,
 						role: 'workflow:owner',
 					}),
 				);
 			}
 		});
+
+		// Update workflow project cache entries
+		for (const workflow of workflows) {
+			await this.ownershipService.setWorkflowProjectCacheEntry(workflow.id, destinationProject);
+		}
+
+		if (movedWorkflowIds.length > 0) {
+			await this.workflowMutationHooks.afterWorkflowsTransferred(movedWorkflowIds, user.id);
+		}
 	}
 
 	private async shareCredentialsWithProject(
@@ -540,19 +1200,26 @@ export class EnterpriseWorkflowService {
 		credentialIds: string[],
 		projectId: string,
 	) {
-		await this.workflowRepository.manager.transaction(async (trx) => {
-			const allCredentials = await this.credentialsFinderService.findAllCredentialsForUser(
-				user,
-				['credential:share'],
-				trx,
-			);
+		await this.workflowRepository.runInTransaction({}, async (trx, ctx) => {
+			let credentialIdsToShare: string[];
 
-			const credentialsToShare = allCredentials.filter((c) => credentialIds.includes(c.id));
+			if (hasGlobalScope(user, ['credential:share'], { mode: 'allOf' })) {
+				credentialIdsToShare = credentialIds;
+			} else {
+				const accessibleIds = new Set(
+					await this.credentialsFinderService.getCredentialIdsByUserAndRole(
+						[user.id],
+						{ scopes: ['credential:share'] },
+						ctx,
+					),
+				);
+				credentialIdsToShare = credentialIds.filter((id) => accessibleIds.has(id));
+			}
 
-			for (const credential of credentialsToShare) {
+			for (const credentialId of credentialIdsToShare) {
 				await this.enterpriseCredentialsService.shareWithProjects(
 					user,
-					credential.id,
+					credentialId,
 					[projectId],
 					trx,
 				);
