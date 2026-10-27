@@ -503,6 +503,12 @@ Load `agent-builder-memory` for Episodic, long-term, or cross-session memory,
 worker models, threshold or budget tuning, or to disable memory. Do not load it
 for ordinary fresh-Agent creation.
 
+Verify:
+
+<!-- applyFreshAgentMemoryDefault in agents-builder-tools.service.ts adds memory to an Agent without instructions. -->
+- A starter draft without `memory` got the default memory in your first config
+  write, unless the user disabled memory.
+
 ## Tools
 
 Use this before you add, change, or remove entries in `tools[]`,
