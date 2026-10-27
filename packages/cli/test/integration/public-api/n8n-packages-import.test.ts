@@ -163,7 +163,7 @@ describe('POST /n8n-packages/import', () => {
 		const response = await testServer
 			.publicApiAgentFor(limitedOwner)
 			.post('/n8n-packages/import')
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(403);
@@ -180,7 +180,7 @@ describe('POST /n8n-packages/import', () => {
 			.publicApiAgentFor(outsider)
 			.post('/n8n-packages/import')
 			.field('projectId', project.id)
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(403);
@@ -197,7 +197,7 @@ describe('POST /n8n-packages/import', () => {
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
 			.field('projectId', 'does-not-exist')
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(404);
@@ -212,7 +212,7 @@ describe('POST /n8n-packages/import', () => {
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			// "credential" (no trailing s) is a plausible typo that must error, not silently no-op.
 			.field('bindings', '{"credential":{"source":"target"}}')
 			.attach('package', tarBuffer, 'import.n8np');
@@ -227,12 +227,14 @@ describe('POST /n8n-packages/import', () => {
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
-			.field('workflowConflictPolicy', 'fail')
-			.field('workflowIdPolicy', 'new')
+			.field('conflictPolicy', 'fail')
+			.field('idPolicy', 'source')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({
+			agents: [],
+			counts: { agents: { created: 0, updated: 0, skipped: 0 } },
 			package: {
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'http-integration-source',
@@ -255,6 +257,7 @@ describe('POST /n8n-packages/import', () => {
 			folders: [],
 			projects: [],
 			bindings: {
+				agents: {},
 				workflows: { 'wf-http-source': expect.any(String) },
 				credentials: {},
 			},
@@ -286,7 +289,7 @@ describe('POST /n8n-packages/import', () => {
 			},
 		});
 
-		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+		expect(response.body.workflows[0].localId).toBe('wf-http-source');
 	});
 
 	test('creates a missing variable with the package value when variableMissingMode is omitted', async () => {
@@ -297,7 +300,7 @@ describe('POST /n8n-packages/import', () => {
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
@@ -323,8 +326,12 @@ describe('POST /n8n-packages/import', () => {
 			.field('credentialMissingMode', 'must-preexist')
 			.field('credentialConflictPolicy', 'fail')
 			.field('bindings', '{}')
-			.field('workflowConflictPolicy', 'fail')
-			.field('workflowIdPolicy', 'new')
+			.field('conflictPolicy', 'fail')
+			.field('idPolicy', 'source')
+			.field('publishingPolicy', 'preserve-published-state')
+			.field('projectConflictPolicy', 'merge')
+			.field('folderConflictPolicy', 'merge')
+			.field('overwriteDeletionPolicy', 'archive')
 			.field('missingNodeTypeMode', 'fail')
 			.field('dataTableMatchingMode', 'by-id')
 			.field('dataTableMissingMode', 'must-preexist')
@@ -337,7 +344,7 @@ describe('POST /n8n-packages/import', () => {
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+		expect(response.body.workflows[0].localId).toBe('wf-http-source');
 	});
 
 	test('accepts overwrite-non-destructive as the data table schema conflict policy', async () => {
@@ -346,7 +353,7 @@ describe('POST /n8n-packages/import', () => {
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
 			.field('projectId', ownerPersonalProject.id)
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.field('dataTableSchemaConflictPolicy', 'overwrite-non-destructive')
 			.attach('package', tarBuffer, 'import.n8np');
 
@@ -358,7 +365,7 @@ describe('POST /n8n-packages/import', () => {
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
 			.field('projectId', ownerPersonalProject.id)
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.field('credentialMissingMode', 'create-with-values')
 			.attach('package', tarBuffer, 'import.n8np');
 
@@ -371,7 +378,7 @@ describe('POST /n8n-packages/import', () => {
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.field('dataTableMissingMode', 'recreate')
 			.attach('package', tarBuffer, 'import.n8np');
 
@@ -385,7 +392,7 @@ describe('POST /n8n-packages/import', () => {
 			.post('/n8n-packages/import')
 			.field('credentialMatchingMode', 'id-only')
 			.field('credentialMissingMode', 'must-preexist')
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.attach('package', firstBuffer, 'import.n8np');
 		expect(first.statusCode).toBe(200);
 		const existingWorkflowId = first.body.workflows[0].localId;
@@ -396,7 +403,7 @@ describe('POST /n8n-packages/import', () => {
 			.post('/n8n-packages/import')
 			.field('credentialMatchingMode', 'id-only')
 			.field('credentialMissingMode', 'must-preexist')
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.attach('package', secondBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(409);
@@ -432,7 +439,7 @@ describe('POST /n8n-packages/import', () => {
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.field('credentialMissingMode', 'must-preexist')
 			.attach('package', tarBuffer, 'import.n8np');
 
@@ -477,7 +484,7 @@ describe('POST /n8n-packages/import', () => {
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(422);
@@ -499,9 +506,9 @@ describe('POST /n8n-packages/import', () => {
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.field('missingNodeTypeMode', 'import-anyway')
-			.field('workflowPublishingPolicy', 'match-source')
+			.field('publishingPolicy', 'match-source')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
@@ -529,7 +536,7 @@ describe('POST /n8n-packages/import', () => {
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
@@ -590,7 +597,7 @@ describe('POST /n8n-packages/import', () => {
 			const tarBuffer = await differingPackage();
 			const response = await authOwnerAgent
 				.post('/n8n-packages/import')
-				.field('workflowConflictPolicy', 'fail')
+				.field('conflictPolicy', 'fail')
 				.attach('package', tarBuffer, 'import.n8np');
 
 			expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
@@ -602,7 +609,7 @@ describe('POST /n8n-packages/import', () => {
 			const tarBuffer = await differingPackage();
 			const response = await authOwnerAgent
 				.post('/n8n-packages/import')
-				.field('workflowConflictPolicy', 'fail')
+				.field('conflictPolicy', 'fail')
 				.field('credentialConflictPolicy', 'overwrite')
 				.attach('package', tarBuffer, 'import.n8np');
 
@@ -618,7 +625,7 @@ describe('POST /n8n-packages/import', () => {
 			const tarBuffer = await differingPackage();
 			const response = await authOwnerAgent
 				.post('/n8n-packages/import')
-				.field('workflowConflictPolicy', 'fail')
+				.field('conflictPolicy', 'fail')
 				.field('credentialConflictPolicy', 'fail')
 				.attach('package', tarBuffer, 'import.n8np');
 
@@ -644,7 +651,7 @@ describe('POST /n8n-packages/import', () => {
 			const response = await testServer
 				.publicApiAgentFor(limitedOwner)
 				.post('/n8n-packages/import')
-				.field('workflowConflictPolicy', 'fail')
+				.field('conflictPolicy', 'fail')
 				.field('credentialConflictPolicy', 'overwrite')
 				.attach('package', tarBuffer, 'import.n8np');
 
@@ -656,7 +663,7 @@ describe('POST /n8n-packages/import', () => {
 			const tarBuffer = await differingPackage();
 			const response = await authOwnerAgent
 				.post('/n8n-packages/import')
-				.field('workflowConflictPolicy', 'fail')
+				.field('conflictPolicy', 'fail')
 				.field('credentialConflictPolicy', 'merge')
 				.attach('package', tarBuffer, 'import.n8np');
 

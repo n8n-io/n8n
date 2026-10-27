@@ -5,7 +5,6 @@ import type { PackageCredentialRequirement } from '../../spec/requirements.schem
 import {
 	deriveParentFolderId,
 	foldersInScope,
-	needsBundledCredentialData,
 	placeByLayout,
 	placeCredentialData,
 	workflowsInScope,
@@ -94,17 +93,6 @@ describe('package-layout', () => {
 
 			expect(noData).toEqual([requirement]);
 			expect(noFile).toEqual([requirement]);
-		});
-
-		it('needsBundledCredentialData only under create-with-values with requirements present', () => {
-			const request = (credentialMissingMode: 'create-stub' | 'create-with-values') => ({
-				credentialMatchingMode: 'id-only' as const,
-				credentialMissingMode,
-			});
-
-			expect(needsBundledCredentialData(request('create-with-values'), true)).toBe(true);
-			expect(needsBundledCredentialData(request('create-with-values'), false)).toBe(false);
-			expect(needsBundledCredentialData(request('create-stub'), true)).toBe(false);
 		});
 	});
 

@@ -71,7 +71,7 @@ beforeAll(async () => await testModules.loadModules(['agents']));
 const server = setupTestServer({
 	endpointGroups: ['promotions'],
 	modules: ['promotions', 'n8n-packages', 'data-table'],
-	enabledFeatures: ['feat:gitConnections', 'feat:projectRole:admin'],
+	enabledFeatures: ['feat:promotions', 'feat:projectRole:admin'],
 });
 
 let remoteFolder: string;
@@ -833,25 +833,25 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
 	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
-	// A project admin manages the project, but lacks the global git connection scopes.
+	// A project admin manages the project, but lacks the global promotion scopes.
 	await linkUserToProject(member, project, 'project:admin');
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
 	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
 	await server.authAgentFor(owner).get(`/promotions/${project.id}/changes/sideways`).expect(404);
-	server.license.disable('feat:gitConnections');
+	server.license.disable('feat:promotions');
 	await server.authAgentFor(owner).get(endpoint).expect(403);
 	await server.authAgentFor(owner).get(blockersEndpoint).expect(403);
 });
 
-// No built-in role has the read scope without the pull scope, so the requests above cannot tell them apart.
-it('requires the global pull scope of Apply for the Apply check', () => {
+// No built-in role has the read scope without the apply scope, so the requests above cannot tell them apart.
+it('requires the global apply scope for the Apply check', () => {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 		PromotionChangesController as Controller,
 	);
 
 	expect(metadata.routes.get('getApplyBlockers')?.accessScope).toEqual({
-		scope: 'gitConnection:pull',
+		scope: 'promotions:apply',
 		globalOnly: true,
 	});
 });

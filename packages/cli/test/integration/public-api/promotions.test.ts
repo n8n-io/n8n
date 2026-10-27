@@ -33,7 +33,7 @@ import { setupTestServer } from '@test-integration/utils';
 describe('Promotions in Public API', () => {
 	const testServer = setupTestServer({
 		endpointGroups: ['publicApi'],
-		enabledFeatures: ['feat:gitConnections'],
+		enabledFeatures: ['feat:promotions'],
 		modules: ['promotions'],
 	});
 	let owner: User;
@@ -1385,9 +1385,9 @@ describe('Promotions in Public API', () => {
 			'requires the API-key discovery scope and user permission for %s',
 			async (route) => {
 				const id = await savedProvider();
-				const readOnlyOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:read'] });
-				const listOnlyOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:list'] });
-				const member = await createMemberWithApiKey({ scopes: ['gitConnection:discover'] });
+				const readOnlyOwner = await createOwnerWithApiKey({ scopes: ['promotions:read'] });
+				const listOnlyOwner = await createOwnerWithApiKey({ scopes: ['promotions:list'] });
+				const member = await createMemberWithApiKey({ scopes: ['promotions:discover'] });
 				for (const user of [readOnlyOwner, listOnlyOwner, member]) {
 					const response = await testServer
 						.publicApiAgentFor(user)
@@ -1398,7 +1398,7 @@ describe('Promotions in Public API', () => {
 					(await testServer.publicApiAgentFor(readOnlyOwner).get(`/promotions/providers/${id}`))
 						.status,
 				).toBe(200);
-				const discoveryOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:discover'] });
+				const discoveryOwner = await createOwnerWithApiKey({ scopes: ['promotions:discover'] });
 				const admin = await createAdminWithApiKey();
 				for (const user of [discoveryOwner, admin]) {
 					const api = (
@@ -1425,7 +1425,7 @@ describe('Promotions in Public API', () => {
 
 		it.each(routes)('requires an active, licensed promotions module for %s', async (route) => {
 			const agent = testServer.publicApiAgentFor(owner);
-			testServer.license.disable('feat:gitConnections');
+			testServer.license.disable('feat:promotions');
 			expect((await agent.get(`/promotions/providers/not-needed/${route}`)).status).toBe(403);
 			testServer.license.reset();
 			const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
@@ -1742,7 +1742,7 @@ describe('Promotions in Public API', () => {
 	});
 
 	it('rejects every request when the feature is not licensed', async () => {
-		testServer.license.disable('feat:gitConnections');
+		testServer.license.disable('feat:promotions');
 		const response = await testServer.publicApiAgentFor(owner).get('/promotions/environments');
 		expect(response.status).toBe(403);
 	});
@@ -1852,8 +1852,8 @@ describe('Promotions in Public API', () => {
 		async (canExportVariableValues) => {
 			const scopedOwner = await createOwnerWithApiKey({
 				scopes: canExportVariableValues
-					? ['gitConnection:push', 'variable:list']
-					: ['gitConnection:push'],
+					? ['promotions:promote', 'variable:list']
+					: ['promotions:promote'],
 			});
 			const environmentId = randomUUID();
 			const promote = vi
@@ -2280,10 +2280,10 @@ describe('Promotions in Public API', () => {
 				.mockResolvedValue({ commitSha: 'a'.repeat(40), source, changes: [] });
 			try {
 				const pushOnly = testServer.publicApiAgentFor(
-					await createOwnerWithApiKey({ scopes: ['gitConnection:push'] }),
+					await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
 				);
 				const pullOnly = testServer.publicApiAgentFor(
-					await createOwnerWithApiKey({ scopes: ['gitConnection:pull'] }),
+					await createOwnerWithApiKey({ scopes: ['promotions:apply'] }),
 				);
 
 				const promote = await pushOnly.get('/promotions/projects/proj1/changes/promote');
@@ -2336,7 +2336,7 @@ describe('Promotions in Public API', () => {
 			git: { commitSha: 'a'.repeat(40), branchName: 'main' },
 		};
 
-		it('requires the push API-key scope', async () => {
+		it('requires the promote API-key scope', async () => {
 			const restrictedOwner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
 			const response = await testServer
 				.publicApiAgentFor(restrictedOwner)
@@ -2345,9 +2345,9 @@ describe('Promotions in Public API', () => {
 			expect(response.status).toBe(403);
 		});
 
-		it('rejects a user without the push grant', async () => {
-			// The key carries the push scope, but a member's role does not grant it.
-			const member = await createMemberWithApiKey({ scopes: ['gitConnection:push'] });
+		it('rejects a user without the promote grant', async () => {
+			// The key carries the promote scope, but a member's role does not grant it.
+			const member = await createMemberWithApiKey({ scopes: ['promotions:promote'] });
 			const response = await testServer
 				.publicApiAgentFor(member)
 				.post('/promotions/projects/proj1/promote')
@@ -2357,12 +2357,12 @@ describe('Promotions in Public API', () => {
 
 		it('requires a licensed and active module', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
-			testServer.license.disable('feat:gitConnections');
+			testServer.license.disable('feat:promotions');
 			expect(
 				(await agent.post('/promotions/projects/proj1/promote').send({ workflowIds: ['w1'] }))
 					.status,
 			).toBe(403);
-			testServer.license.enable('feat:gitConnections');
+			testServer.license.enable('feat:promotions');
 			const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
 			try {
 				const project = await createTeamProject('Team project', owner);
@@ -2394,10 +2394,10 @@ describe('Promotions in Public API', () => {
 				.mockResolvedValue(promoteResult);
 			try {
 				const withVars = testServer.publicApiAgentFor(
-					await createOwnerWithApiKey({ scopes: ['gitConnection:push', 'variable:list'] }),
+					await createOwnerWithApiKey({ scopes: ['promotions:promote', 'variable:list'] }),
 				);
 				const withoutVars = testServer.publicApiAgentFor(
-					await createOwnerWithApiKey({ scopes: ['gitConnection:push'] }),
+					await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
 				);
 
 				const first = await withVars
@@ -2446,7 +2446,7 @@ describe('Promotions in Public API', () => {
 			expectedSource: { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) },
 		};
 
-		it.each(['apply', 'apply/continue'])('%s requires the pull API-key scope', async (route) => {
+		it.each(['apply', 'apply/continue'])('%s requires the apply API-key scope', async (route) => {
 			const restrictedOwner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
 			const response = await testServer
 				.publicApiAgentFor(restrictedOwner)
@@ -2456,10 +2456,10 @@ describe('Promotions in Public API', () => {
 		});
 
 		it.each(['apply', 'apply/continue'])(
-			'%s rejects a user without the pull grant',
+			'%s rejects a user without the apply grant',
 			async (route) => {
-				// The key carries the pull scope, but a member's role does not grant it.
-				const member = await createMemberWithApiKey({ scopes: ['gitConnection:pull'] });
+				// The key carries the apply scope, but a member's role does not grant it.
+				const member = await createMemberWithApiKey({ scopes: ['promotions:apply'] });
 				const response = await testServer
 					.publicApiAgentFor(member)
 					.post(`/promotions/projects/proj1/${route}`)
@@ -2472,11 +2472,11 @@ describe('Promotions in Public API', () => {
 			'%s requires a licensed and active module',
 			async (route) => {
 				const agent = testServer.publicApiAgentFor(owner);
-				testServer.license.disable('feat:gitConnections');
+				testServer.license.disable('feat:promotions');
 				expect(
 					(await agent.post(`/promotions/projects/proj1/${route}`).send(selectionBody)).status,
 				).toBe(403);
-				testServer.license.enable('feat:gitConnections');
+				testServer.license.enable('feat:promotions');
 				const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
 				try {
 					expect(
@@ -2519,7 +2519,7 @@ describe('Promotions in Public API', () => {
 		});
 
 		it.each(['blocked', 'applied', 'source-changed'] as const)(
-			'returns the %s contract through both selective apply routes with only the pull scope',
+			'returns the %s contract through both selective apply routes with only the apply scope',
 			async (status) => {
 				const consumers = [
 					{
@@ -2581,7 +2581,7 @@ describe('Promotions in Public API', () => {
 					.spyOn(service, 'continueApplyProjectSelection')
 					.mockResolvedValue(result);
 				try {
-					const restrictedOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:pull'] });
+					const restrictedOwner = await createOwnerWithApiKey({ scopes: ['promotions:apply'] });
 					const agent = testServer.publicApiAgentFor(restrictedOwner);
 					for (const route of ['apply', 'apply/continue']) {
 						const response = await agent
@@ -2614,7 +2614,7 @@ describe('Promotions in Public API', () => {
 		};
 		const unknownId = randomUUID();
 
-		it.each(['apply', 'apply/continue'])('%s requires the pull API-key scope', async (route) => {
+		it.each(['apply', 'apply/continue'])('%s requires the apply API-key scope', async (route) => {
 			const restrictedOwner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
 			const response = await testServer
 				.publicApiAgentFor(restrictedOwner)
@@ -2627,12 +2627,12 @@ describe('Promotions in Public API', () => {
 			'%s requires a licensed and active module',
 			async (route) => {
 				const agent = testServer.publicApiAgentFor(owner);
-				testServer.license.disable('feat:gitConnections');
+				testServer.license.disable('feat:promotions');
 				expect(
 					(await agent.post(`/promotions/environments/${unknownId}/${route}`).send(continueBody))
 						.status,
 				).toBe(403);
-				testServer.license.enable('feat:gitConnections');
+				testServer.license.enable('feat:promotions');
 				const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
 				try {
 					expect(
@@ -2646,7 +2646,7 @@ describe('Promotions in Public API', () => {
 		);
 
 		it.each(['apply', 'apply/continue'])(
-			'%s rejects a user without the pull grant',
+			'%s rejects a user without the apply grant',
 			async (route) => {
 				await Container.get(UserRepository).update(owner.id, { role: GLOBAL_MEMBER_ROLE });
 				const response = await testServer
@@ -2706,7 +2706,7 @@ describe('Promotions in Public API', () => {
 			'returns the %s contract through both Apply routes with only the pull API-key scope',
 			async (status) => {
 				const id = await createEnvironment(testServer.publicApiAgentFor(owner));
-				const restrictedOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:pull'] });
+				const restrictedOwner = await createOwnerWithApiKey({ scopes: ['promotions:apply'] });
 				const agent = testServer.publicApiAgentFor(restrictedOwner);
 				const consumers = [
 					{
