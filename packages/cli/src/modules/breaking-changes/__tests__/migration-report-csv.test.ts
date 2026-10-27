@@ -17,7 +17,6 @@ function workflowRule(overrides: Partial<WorkflowRule> = {}): WorkflowRule {
 		ruleImpact: 'executionsFail',
 		recommendations: [],
 		migratable: false,
-		assistantAction: 'fix',
 		nbAffectedWorkflows: 4,
 		nbWontFixWorkflows: 1,
 		...overrides,

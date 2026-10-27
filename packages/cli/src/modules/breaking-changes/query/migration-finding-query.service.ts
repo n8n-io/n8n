@@ -21,7 +21,6 @@ import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import { ErrorReporter } from 'n8n-core';
 
-import { assistantActionOf } from '../assistant-action';
 import { MigrationRegistry } from '../breaking-changes.migration-registry.service';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
@@ -54,6 +53,9 @@ const workflowFilter = (scope: ReportScope) =>
 
 /** The rule fields both report types share. */
 export type RuleDescription = Omit<BreakingChangeWorkflowRuleResult, 'affectedWorkflows'>;
+
+/** What n8n Assistant can do with a rule's findings. A rule that does not opt in offers none. */
+const assistantActionOf = (rule: WorkflowLevelRule) => rule.getMetadata().assistant ?? 'none';
 
 /** The same fields the scan loads, so a rule sees the same workflow data on both paths. */
 const WORKFLOW_FIELDS = ['name', 'active', 'activeVersionId', 'nodes', 'updatedAt'];
@@ -202,24 +204,34 @@ export class MigrationFindingQueryService {
 			});
 		}
 
-		return { ...(await this.describeRule(rule, affectedWorkflows)), affectedWorkflows };
+		return {
+			...(await this.describeRule(rule, affectedWorkflows)),
+			affectedWorkflows,
+			assistantAction: assistantActionOf(rule),
+		};
 	}
 
 	/**
-	 * One workflow rule as the report describes it, with the workflow's current issues for it.
-	 * The caller loads the workflow and checks access. Undefined when no workflow rule has the id.
+	 * One finding for a hand-off to n8n Assistant: the rule and the workflow's current issues.
+	 * Undefined unless the rule targets this version, checks one workflow at a time and offers
+	 * the Assistant. The caller loads the workflow and checks access.
 	 */
 	async describeWorkflowFinding(
+		targetVersion: BreakingChangeVersion,
 		ruleId: string,
 		workflow: WorkflowEntity,
 	): Promise<{ rule: RuleDescription; issues: BreakingChangeWorkflowIssue[] } | undefined> {
 		const rule = this.ruleRegistry.getRule(ruleId);
-		if (!rule || !isWorkflowLevelRule(rule)) return undefined;
+		if (
+			!rule ||
+			!('detectWorkflow' in rule) ||
+			rule.getMetadata().version !== targetVersion ||
+			assistantActionOf(rule) === 'none'
+		) {
+			return undefined;
+		}
 
-		const issuesByWorkflow =
-			'collectWorkflowData' in rule
-				? await this.issuesFromScan(rule.getMetadata().version, rule)
-				: await this.issuesFromRecheck(rule, [workflow]);
+		const issuesByWorkflow = await this.issuesFromRecheck(rule, [workflow]);
 
 		return {
 			rule: await this.describeRule(rule),
@@ -240,7 +252,6 @@ export class MigrationFindingQueryService {
 			ruleDocumentationUrl: metadata.documentationUrl,
 			recommendations: await rule.getRecommendations(affectedWorkflows),
 			migratable: this.migrationRegistry.has(rule.id),
-			assistantAction: assistantActionOf(rule),
 		};
 	}
 

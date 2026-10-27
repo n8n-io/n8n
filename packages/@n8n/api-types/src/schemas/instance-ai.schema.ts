@@ -1567,11 +1567,7 @@ export type InstanceAiSetupPanelExecuteHandoffContext = z.infer<
 	typeof instanceAiSetupPanelExecuteHandoffContextSchema
 >;
 
-/**
- * What an automated migration left for the Assistant: the refusal message, or
- * the parameters it could not carry over and the behavior changes it noted.
- * Display text from the migration result, so every field is length-capped.
- */
+/** What an automated migration left for the Assistant. Display text, so every field is length-capped. */
 export const instanceAiAutomatedMigrationOutcomeSchema = z.discriminatedUnion('outcome', [
 	z.object({
 		outcome: z.literal('refused'),
@@ -1588,11 +1584,7 @@ export type InstanceAiAutomatedMigrationOutcome = z.infer<
 	typeof instanceAiAutomatedMigrationOutcomeSchema
 >;
 
-/**
- * Sent when the user opens the Assistant from a migration report finding. The
- * server reads the rule and the workflow's current issues itself, so the client
- * sends ids only, plus what an automated migration left behind, if one ran.
- */
+/** Opens the Assistant on one migration report finding. The client sends ids only; the server reads the finding. */
 export const instanceAiMigrationReportHandoffContextSchema = z.object({
 	source: z.literal('migration-report'),
 	ruleId: z.string().min(1).max(128),

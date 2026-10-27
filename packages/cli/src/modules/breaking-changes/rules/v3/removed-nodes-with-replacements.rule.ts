@@ -1,8 +1,4 @@
-import type {
-	BreakingChangeAffectedWorkflow,
-	BreakingChangeAssistantAction,
-	BreakingChangeRecommendation,
-} from '@n8n/api-types';
+import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
@@ -19,8 +15,7 @@ type NodeReplacement = {
 	removedNodeName: string;
 	removedNodeType: string;
 	recommendations: BreakingChangeRecommendation[];
-	/** Set when n8n Assistant can do the replacement. The report offers no Assistant otherwise. */
-	assistant?: BreakingChangeAssistantAction;
+	assistant?: BreakingChangeRuleMetadata['assistant'];
 };
 
 function createNodeReplacementRule({

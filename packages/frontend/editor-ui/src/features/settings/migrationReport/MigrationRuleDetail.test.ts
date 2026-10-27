@@ -27,14 +27,14 @@ vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	notifyFindingOwners: vi.fn(),
 }));
 
-const assistant = vi.hoisted(() => ({ start: vi.fn() }));
+const assistant = vi.hoisted(() => ({ open: vi.fn() }));
 // Off by default, so the other suites render the report without Assistant buttons.
 const assistantAvailable = ref(false);
 
-vi.mock('@/features/ai/instanceAi/composables/useMigrationReportAssistantHandoff', () => ({
-	useMigrationReportAssistantHandoff: () => ({
+vi.mock('./useMigrationFindingAssistant', () => ({
+	useMigrationFindingAssistant: () => ({
 		available: computed(() => assistantAvailable.value),
-		start: assistant.start,
+		open: assistant.open,
 	}),
 }));
 
@@ -800,6 +800,8 @@ describe('MigrationRuleDetail', () => {
 					name: MIGRATE_WORKFLOW_MODAL_KEY,
 					data: expect.objectContaining({
 						ruleId: 'rule-1',
+						ruleTitle: 'Test Rule',
+						assistantAction: 'fix',
 						workflows: [expect.objectContaining({ id: mockWorkflowWithIssue.id })],
 					}),
 				}),
@@ -829,7 +831,6 @@ describe('MigrationRuleDetail', () => {
 	describe('n8n Assistant', () => {
 		beforeEach(() => {
 			assistantAvailable.value = true;
-			assistant.start.mockResolvedValue('started');
 		});
 
 		it('offers to fix a workflow when the rule has no automated migration', async () => {
@@ -845,11 +846,9 @@ describe('MigrationRuleDetail', () => {
 			expect(button).toHaveAttribute('aria-label', 'Fix with n8n Assistant');
 			await userEvent.click(button);
 
-			expect(assistant.start).toHaveBeenCalledWith({
-				ruleId: 'rule-1',
-				ruleTitle: 'Test Rule',
-				workflow: { id: 'workflow-1', name: 'Test Workflow 1', homeProjectId: 'project-1' },
-				automatedMigration: undefined,
+			expect(assistant.open).toHaveBeenCalledWith({
+				rule: expect.objectContaining({ ruleId: 'rule-1', ruleTitle: 'Test Rule' }),
+				workflow: expect.objectContaining({ id: 'workflow-1', homeProjectId: 'project-1' }),
 			});
 		});
 
@@ -867,57 +866,32 @@ describe('MigrationRuleDetail', () => {
 			expect(button).toHaveAttribute('aria-label', 'Review with n8n Assistant');
 		});
 
-		it('offers no Assistant on the row when the rule has an automated migration', async () => {
-			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
-				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),
-			);
-			renderComponent({ props: { migrationRuleId: 'rule-1' } });
-
-			await screen.findByTestId('migrate-workflow-button');
-			expect(screen.queryByTestId('migration-open-in-assistant-button')).not.toBeInTheDocument();
-		});
-
-		it('offers no Assistant when the rule declares none', async () => {
-			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
-				createMockRuleResult({
-					assistantAction: 'none',
-					affectedWorkflows: [mockWorkflowWithIssue],
-				}),
-			);
-			renderComponent({ props: { migrationRuleId: 'rule-1' } });
-
-			await waitFor(() => expect(screen.getByText('Test Rule')).toBeInTheDocument());
-			expect(screen.queryByTestId('migration-open-in-assistant-button')).not.toBeInTheDocument();
-		});
-
-		it('offers no Assistant when it is unavailable', async () => {
-			assistantAvailable.value = false;
-			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
-				createMockRuleResult({ affectedWorkflows: [mockWorkflowWithIssue] }),
-			);
-			renderComponent({ props: { migrationRuleId: 'rule-1' } });
-
-			await waitFor(() => expect(screen.getByText('Test Rule')).toBeInTheDocument());
-			expect(screen.queryByTestId('migration-open-in-assistant-button')).not.toBeInTheDocument();
-		});
-
-		it('passes the rule title and impact to the migrate modal', async () => {
-			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
-				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),
-			);
-			renderComponent({ props: { migrationRuleId: 'rule-1' } });
-			await userEvent.click(await screen.findByTestId('migrate-workflow-button'));
-
-			expect(uiStore.openModalWithData).toHaveBeenCalledWith(
-				expect.objectContaining({
-					data: expect.objectContaining({
-						ruleTitle: 'Test Rule',
-						ruleImpact: 'executionsFail',
-						assistantAction: 'fix',
+		it.each([
+			{
+				when: 'the rule has an automated migration',
+				migratable: true,
+				action: 'fix',
+				available: true,
+			},
+			{ when: 'the rule declares none', migratable: false, action: 'none', available: true },
+			{ when: 'the Assistant is unavailable', migratable: false, action: 'fix', available: false },
+		] as const)(
+			'offers no Assistant on the row when $when',
+			async ({ migratable, action, available }) => {
+				assistantAvailable.value = available;
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({
+						migratable,
+						assistantAction: action,
+						affectedWorkflows: [mockWorkflowWithIssue],
 					}),
-				}),
-			);
-		});
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+				await screen.findByText('Test Workflow 1');
+				expect(screen.queryByTestId('migration-open-in-assistant-button')).not.toBeInTheDocument();
+			},
+		);
 	});
 
 	describe('data table', () => {

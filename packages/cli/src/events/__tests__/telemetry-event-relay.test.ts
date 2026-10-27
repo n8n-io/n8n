@@ -5096,7 +5096,6 @@ describe('TelemetryEventRelay', () => {
 								ruleDocumentationUrl: 'https://docs.n8n.io',
 								recommendations: [],
 								migratable: false,
-								assistantAction: 'fix',
 								nbAffectedWorkflows: 4,
 								nbWontFixWorkflows: 1,
 							},

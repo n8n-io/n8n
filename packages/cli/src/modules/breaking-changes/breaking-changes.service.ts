@@ -13,7 +13,6 @@ import { In } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 
-import { assistantActionOf } from './assistant-action';
 import { MigrationRegistry } from './breaking-changes.migration-registry.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { groupNodesByType } from './group-nodes-by-type';
@@ -146,7 +145,6 @@ export class BreakingChangeService {
 					affectedWorkflows: workflowResults,
 					recommendations: await rule.getRecommendations(workflowResults),
 					migratable: this.migrationRegistry.has(rule.id),
-					assistantAction: assistantActionOf(rule),
 				});
 			}
 		}
@@ -196,7 +194,6 @@ export class BreakingChangeService {
 					affectedWorkflows,
 					recommendations: await rule.getRecommendations(affectedWorkflows),
 					migratable: this.migrationRegistry.has(rule.id),
-					assistantAction: assistantActionOf(rule),
 				});
 			}
 		}

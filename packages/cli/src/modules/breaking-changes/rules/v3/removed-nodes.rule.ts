@@ -32,7 +32,6 @@ export class RemovedNodesV3Rule implements IBreakingChangeWorkflowRule {
 			description: 'Several nodes have been removed and will no longer work',
 			category: BreakingChangeCategory.workflow,
 			impact: 'executionsFail',
-			// These nodes have no replacement, so the user picks the alternative.
 			assistant: 'review',
 		};
 	}

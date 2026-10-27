@@ -1,4 +1,7 @@
-import type { InstanceAiMigrationReportHandoffContext } from '@n8n/api-types';
+import type {
+	InstanceAiAutomatedMigrationOutcome,
+	InstanceAiMigrationReportHandoffContext,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User, WorkflowEntity } from '@n8n/db';
@@ -32,7 +35,6 @@ const rule: MigrationReportFinding['rule'] = {
 		},
 	],
 	migratable: false,
-	assistantAction: 'fix',
 };
 
 const finding: MigrationReportFinding = {
@@ -78,6 +80,7 @@ describe('resolveMigrationReportFinding', () => {
 			'workflow:read',
 		]);
 		expect(findingQuery.describeWorkflowFinding).toHaveBeenCalledWith(
+			'v3',
 			'function-removed-v3',
 			workflow,
 		);
@@ -90,7 +93,7 @@ describe('resolveMigrationReportFinding', () => {
 		expect(findingQuery.describeWorkflowFinding).not.toHaveBeenCalled();
 	});
 
-	it('rejects a rule id the report does not know', async () => {
+	it('rejects a finding the Assistant cannot open', async () => {
 		findingQuery.describeWorkflowFinding.mockResolvedValue(undefined);
 
 		await expect(resolveMigrationReportFinding(handoff, user)).rejects.toThrow(UserError);
@@ -105,89 +108,59 @@ describe('resolveMigrationReportFinding', () => {
 });
 
 describe('buildMigrationReportContextBlock', () => {
-	it('describes the finding, the affected nodes and the recommendation, then the skill', () => {
+	it('carries the workflow, the finding, the affected nodes, the recommendation and the skill', () => {
 		const block = buildMigrationReportContextBlock(handoff, finding, SKILL);
 
 		expect(block.startsWith('<migration-report-context>\n')).toBe(true);
 		expect(block.endsWith('\n</migration-report-context>')).toBe(true);
-		expect(block).toContain(
-			JSON.stringify({
-				source: 'migration-report',
-				ruleId: 'function-removed-v3',
-				workflowId: 'wf-1',
-			}),
-		);
-		expect(block).toContain('workflow "Invoice sync" (id `wf-1`)');
-		expect(block).toContain('Finding: Function node removed (`function-removed-v3`)');
-		expect(block).toContain('executions of the affected nodes will fail after the update');
-		expect(block).toContain(
-			'- "Transform" (id `node-1`): Function node \'Transform\' is no longer supported. Replace this node with Code.',
-		);
-		expect(block).toContain(
-			'- Replace with Code: Replace this node with Code and set Mode to Run Once for All Items.',
-		);
-		expect(block).toContain('Documentation: https://docs.n8n.io/changelog/v30-breaking-changes');
-		expect(block).toContain(`<v3-migration-skill>\n${SKILL}\n</v3-migration-skill>`);
-	});
-
-	it('tells the Assistant to fix, review or explain, from the action the rule declares', () => {
-		const block = (assistantAction: MigrationReportFinding['rule']['assistantAction']) =>
-			buildMigrationReportContextBlock(
-				handoff,
-				{ ...finding, rule: { ...rule, assistantAction } },
-				SKILL,
-			);
-
-		expect(block('fix')).toContain('Fix the workflow so the report no longer finds this issue.');
-		expect(block('review')).toContain('This finding is a review');
-		expect(block('review')).toContain('Do not change the workflow only to clear the finding.');
-		expect(block('none')).toContain('This finding cannot be fixed in the workflow.');
+		for (const text of [
+			'"Invoice sync" (id `wf-1`)',
+			'Function node removed (`function-removed-v3`)',
+			"Function node 'Transform' is no longer supported",
+			'Replace this node with Code and set Mode to Run Once for All Items.',
+			'https://docs.n8n.io/changelog/v30-breaking-changes',
+			`<v3-migration-skill>\n${SKILL}\n</v3-migration-skill>`,
+		]) {
+			expect(block).toContain(text);
+		}
 	});
 
 	it('says the report no longer finds the issue when the workflow has none', () => {
 		const block = buildMigrationReportContextBlock(handoff, { ...finding, issues: [] }, SKILL);
 
-		expect(block).toContain('The report no longer finds this issue in the current workflow.');
-		expect(block).not.toContain('Affected nodes');
+		expect(block).toContain('The report no longer finds this issue');
+		expect(block).not.toContain("Function node 'Transform'");
 	});
 
-	it('passes on a refused automated migration', () => {
-		const block = buildMigrationReportContextBlock(
-			{
-				...handoff,
-				automatedMigration: {
-					outcome: 'refused',
-					message: 'The fields to split by use an expression.',
-					nodeName: 'Split',
-				},
+	it.each<{ automatedMigration: InstanceAiAutomatedMigrationOutcome; expected: string[] }>([
+		{
+			automatedMigration: {
+				outcome: 'refused',
+				message: 'The fields to split by use an expression.',
+				nodeName: 'Split',
 			},
-			finding,
-			SKILL,
-		);
-
-		expect(block).toContain(
-			'It refused on node "Split" and changed nothing: The fields to split by use an expression.',
-		);
-	});
-
-	it('passes on the notes and unmapped parameters of a partial automated migration', () => {
-		const block = buildMigrationReportContextBlock(
-			{
-				...handoff,
-				automatedMigration: {
-					outcome: 'partial',
-					notes: ['Output now contains file metadata.'],
-					unmapped: ['options.customRetryScript'],
-				},
+			expected: ['"Split"', 'The fields to split by use an expression.'],
+		},
+		{
+			automatedMigration: {
+				outcome: 'partial',
+				notes: ['Output now contains file metadata.'],
+				unmapped: ['options.customRetryScript'],
 			},
-			finding,
-			SKILL,
-		);
+			expected: ['Output now contains file metadata.', 'options.customRetryScript'],
+		},
+	])(
+		'passes on what a $automatedMigration.outcome automated migration reported',
+		({ automatedMigration, expected }) => {
+			const block = buildMigrationReportContextBlock(
+				{ ...handoff, automatedMigration },
+				finding,
+				SKILL,
+			);
 
-		expect(block).toContain('It replaced the nodes and saved the workflow, but left work behind.');
-		expect(block).toContain('- Note: Output now contains file metadata.');
-		expect(block).toContain('- Not carried over: options.customRetryScript');
-	});
+			for (const text of expected) expect(block).toContain(text);
+		},
+	);
 
 	it('escapes names and migration text so they cannot close the block', () => {
 		const block = buildMigrationReportContextBlock(

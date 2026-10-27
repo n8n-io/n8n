@@ -46,16 +46,14 @@ export const MIGRATION_REPORT_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			rule_id: z.string(),
 			workflow_id: z.string(),
-			impact: z.enum(breakingChangeRuleImpactSchema.options),
-			entry_point: z
-				.enum(['finding_row', 'automated_migration_result'])
-				.describe('Where the user clicked'),
 			automated_migration: z
 				.enum(['refused', 'partial'])
 				.optional()
-				.describe('What the automated migration left, when the user ran one first'),
+				.describe(
+					'Set when the user continued from an automated migration that refused or left work',
+				),
 			outcome: z
-				.enum(['started', 'busy', 'failed', 'setup', 'unavailable'])
+				.enum(['started', 'busy', 'failed', 'setup'])
 				.describe(
 					"The hand-off result: 'setup' sent the user to finish Assistant setup, 'busy' dropped a repeated click",
 				),

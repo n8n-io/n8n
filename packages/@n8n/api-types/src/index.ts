@@ -362,7 +362,6 @@ export type {
 
 export {
 	MIGRATION_REPORT_TARGET_VERSION,
-	breakingChangeAssistantActionSchema,
 	breakingChangeRuleImpactSchema,
 	breakingChangeVersionSchema,
 	migrationFindingStatusSchema,
@@ -491,8 +490,6 @@ export {
 	credentialDestinationDecisionSchema,
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
-	instanceAiMigrationReportHandoffContextSchema,
-	instanceAiAutomatedMigrationOutcomeSchema,
 	instanceAiHandoffContextSchema,
 	instanceAiThreadArtifactSchema,
 	instanceAiThreadTabRefSchema,

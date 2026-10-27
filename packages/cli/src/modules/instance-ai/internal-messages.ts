@@ -517,7 +517,7 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
  * `</thread-artifacts>` from closing the block and from being rewritten by the
  * `<thread-context>` wrapper's escaping, so reload restores the exact name.
  */
-export function toTagSafeJson(value: unknown): string {
+function toTagSafeJson(value: unknown): string {
 	return JSON.stringify(value).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
 }
 

@@ -49,7 +49,7 @@ import { I18nT } from 'vue-i18n';
 import FindingStateSelect from './components/FindingStateSelect.vue';
 import ImpactTag from './components/ImpactTag.vue';
 import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
-import { rowAssistantAction, useMigrationFindingAssistant } from './useMigrationFindingAssistant';
+import { useMigrationFindingAssistant } from './useMigrationFindingAssistant';
 import {
 	DEFAULT_WORKFLOW_FILTERS,
 	matchesWorkflowFilters,
@@ -212,29 +212,22 @@ function ownerLabel(workflow: AffectedWorkflow): string {
 const showMigrate = computed(() => state.value.migratable);
 
 const findingAssistant = useMigrationFindingAssistant();
-// Undefined when the Assistant is off or the rule has no row action. The loading state declares none.
-const assistantAction = computed(() =>
-	findingAssistant.available.value ? rowAssistantAction(state.value) : undefined,
-);
-
-const assistantActionLabel = computed(() =>
-	i18n.baseText(
-		assistantAction.value === 'review'
-			? 'settings.migrationReport.detail.assistant.reviewLabel'
-			: 'settings.migrationReport.detail.assistant.fixLabel',
-	),
-);
-const assistantActionText = computed(() =>
-	i18n.baseText(
-		assistantAction.value === 'review'
-			? 'settings.migrationReport.detail.assistant.review'
-			: 'settings.migrationReport.detail.assistant.fix',
-	),
-);
-
-function openInAssistant(workflow: AffectedWorkflow) {
-	void findingAssistant.open({ rule: state.value, workflow });
-}
+// A rule with an automated migration offers the Assistant in the Migrate modal, after it ran.
+const assistantButton = computed(() => {
+	const action = state.value.assistantAction;
+	if (!findingAssistant.available.value || state.value.migratable || action === 'none') {
+		return undefined;
+	}
+	return action === 'review'
+		? {
+				label: i18n.baseText('settings.migrationReport.detail.assistant.reviewLabel'),
+				text: i18n.baseText('settings.migrationReport.detail.assistant.review'),
+			}
+		: {
+				label: i18n.baseText('settings.migrationReport.detail.assistant.fixLabel'),
+				text: i18n.baseText('settings.migrationReport.detail.assistant.fix'),
+			};
+});
 
 /** Rule descriptions arrive with or without a trailing period; the header copy always ends in one. */
 const ruleDescription = computed(() => {
@@ -276,7 +269,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 	];
 
 	// The actions column holds the Migrate, Assistant and Notify buttons.
-	if (showMigrate.value || canNotify.value || assistantAction.value) {
+	if (showMigrate.value || canNotify.value || assistantButton.value) {
 		headers.push({
 			title: '',
 			key: 'actions',
@@ -284,7 +277,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 			width:
 				(showMigrate.value ? 160 : 0) +
 				(canNotify.value ? 110 : 0) +
-				(assistantAction.value ? 110 : 0),
+				(assistantButton.value ? 110 : 0),
 			disableSort: true,
 		});
 	}
@@ -327,7 +320,6 @@ function openMigrateModal(workflows: AffectedWorkflow[]) {
 		data: {
 			ruleId: props.migrationRuleId,
 			ruleTitle: state.value.ruleTitle,
-			ruleImpact: state.value.ruleImpact,
 			assistantAction: state.value.assistantAction,
 			workflows,
 			recommendations: state.value.recommendations,
@@ -1054,13 +1046,13 @@ const sortedWorkflows = computed(() => {
 						</I18nT>
 					</N8nInfoTip>
 					<!-- A short verb keeps the column narrow; the tooltip and aria-label name the Assistant. -->
-					<N8nTooltip v-if="assistantAction" :content="assistantActionText" placement="top">
+					<N8nTooltip v-if="assistantButton" :content="assistantButton.text" placement="top">
 						<N8nButton
 							size="small"
-							:label="assistantActionLabel"
-							:aria-label="assistantActionText"
+							:label="assistantButton.label"
+							:aria-label="assistantButton.text"
 							data-test-id="migration-open-in-assistant-button"
-							@click="openInAssistant(item)"
+							@click="findingAssistant.open({ rule: state, workflow: item })"
 						>
 							<template #icon>
 								<N8nAssistantIcon size="small" />
