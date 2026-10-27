@@ -133,10 +133,14 @@ export class AgentPublishService {
 		emitter: AgentPublishEmitter,
 		versionId?: string,
 		pushRef?: string,
+		expectedRevision?: number,
 	): Promise<PublishAgentResult> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
-		const expectedRevision = agent.publicationRevision;
+		if (expectedRevision !== undefined && agent.revision !== expectedRevision) {
+			throw new ConflictError('Agent was modified concurrently while publishing; please retry');
+		}
+		const expectedPublicationRevision = agent.publicationRevision;
 
 		if (!versionId && agent.versionId !== null && agent.versionId === agent.activeVersionId) {
 			return { agent };
@@ -167,7 +171,7 @@ export class AgentPublishService {
 
 		const knowledgeTotals = await this.readKnowledgeTotalsForTelemetry(agent.id);
 
-		await this.commitPublication(agent, expectedRevision, user, targetHistory);
+		await this.commitPublication(agent, expectedPublicationRevision, user, targetHistory);
 		this.eventService.emit('agent-saved', { agentId });
 		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: emitter.by }, pushRef);
 
@@ -255,13 +259,17 @@ export class AgentPublishService {
 		user: User,
 		by: AgentActor,
 		pushRef?: string,
+		expectedRevision?: number,
 	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
+		if (expectedRevision !== undefined && agent.revision !== expectedRevision) {
+			throw new ConflictError('Agent was modified concurrently while unpublishing; please retry');
+		}
 		if (!agent.activeVersionId) return agent;
-		const expectedRevision = agent.publicationRevision;
+		const expectedPublicationRevision = agent.publicationRevision;
 
-		await this.commitUnpublication(agent, expectedRevision, user);
+		await this.commitUnpublication(agent, expectedPublicationRevision, user);
 		this.eventService.emit('agent-saved', { agentId });
 		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: by }, pushRef);
 

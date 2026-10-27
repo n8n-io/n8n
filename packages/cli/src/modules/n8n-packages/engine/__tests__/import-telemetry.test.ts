@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 import type { CredentialApplyResult } from '../../entities/credential/credential.types';
+import type { PersistedAgentOutcome } from '../../entities/agent/agent-import.types';
 import type { DataTableImportRequest } from '../../entities/data-table/data-table.types';
 import type { PersistedWorkflowOutcome } from '../../entities/workflow/workflow-import.types';
 import type {
@@ -40,6 +41,7 @@ const scope = (input: {
 	projectId: string;
 	folderId?: string | null;
 	outcomes: PersistedWorkflowOutcome[];
+	agents?: PersistedAgentOutcome[];
 	removedWorkflows?: RemovedWorkflowSummary[];
 	removedFolders?: RemovedFolderSummary[];
 	credentialResult: CredentialApplyResult;
@@ -89,11 +91,12 @@ const scope = (input: {
 	const tags = input.tags ?? {};
 	const toTagRefs = (ids: string[] = []) => ids.map((id) => ({ id, name: `name-of-${id}` }));
 	const imported: ImportContentResult = {
+		agentOutcomes: input.agents ?? [],
 		workflowOutcomes: input.outcomes,
 		removedWorkflows: input.removedWorkflows ?? [],
 		removedFolders: input.removedFolders ?? [],
 		folderSummaries: [],
-		bindings: { workflows: new Map(), credentials: new Map() },
+		bindings: { agents: new Map(), workflows: new Map(), credentials: new Map() },
 		credentialResult: input.credentialResult,
 		dataTablePlan: {
 			creations: new Array(dt.created),
@@ -170,12 +173,12 @@ const scope = (input: {
 
 const request = mock<ResolvedImportPackageRequest>({
 	user: mock(),
-	workflowConflictPolicy: 'new-version',
-	workflowIdPolicy: 'new',
+	conflictPolicy: 'new-version',
+	idPolicy: 'source',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',
 	credentialConflictPolicy: 'overwrite',
-	workflowPublishingPolicy: 'preserve-published-state',
+	publishingPolicy: 'preserve-published-state',
 	folderConflictPolicy: 'overwrite',
 	variableMissingMode: 'create-stub',
 	variableConflictPolicy: 'overwrite',
@@ -208,6 +211,18 @@ describe('emitPackageImportedEvent', () => {
 					projectId: 'P1',
 					folderId: 'F1',
 					outcomes: [outcome('wf1', 'WF1', 'created'), outcome('wf2', 'WF2', 'skipped')],
+					agents: [
+						mock<PersistedAgentOutcome>({
+							status: 'created',
+							sourceAgentId: 'WF1',
+							agent: mock({ id: 'agent1' }),
+						}),
+						mock<PersistedAgentOutcome>({
+							status: 'skipped',
+							sourceAgentId: 'WF2',
+							agent: mock({ id: 'agent2' }),
+						}),
+					],
 					credentialResult: {
 						bindings: new Map([['credA', 'target-a']]),
 						matched: ['credA'],
@@ -224,6 +239,13 @@ describe('emitPackageImportedEvent', () => {
 				scope({
 					projectId: 'P2',
 					outcomes: [outcome('wf3', 'WF3', 'updated')],
+					agents: [
+						mock<PersistedAgentOutcome>({
+							status: 'updated',
+							sourceAgentId: 'WF3',
+							agent: mock({ id: 'agent3' }),
+						}),
+					],
 					credentialResult: {
 						bindings: new Map([
 							['credB', 'stub-b'],
@@ -262,6 +284,13 @@ describe('emitPackageImportedEvent', () => {
 		expect(payload.projectIds).toEqual(['P1', 'P2']);
 		// Skipped workflows are excluded; only wf1 and wf3 were actually written.
 		expect(payload.workflowIds).toEqual(['wf1', 'wf3']);
+		expect(payload.agentIds).toEqual(['agent1', 'agent3']);
+		expect(payload.options).toMatchObject({
+			workflowIdPolicy: 'source',
+			agentIdPolicy: 'source',
+			workflowPublishingPolicy: 'preserve-published-state',
+			agentPublishingPolicy: 'preserve-published-state',
+		});
 		// A multi-scope import has no single folder to attribute the event to.
 		expect(payload.folderId).toBeNull();
 		// Credential ids are resolved through each scope's binding map (source id -> target id).
@@ -271,6 +300,7 @@ describe('emitPackageImportedEvent', () => {
 			updated: [],
 		});
 		expect(payload.counts).toEqual({
+			agents: { created: 1, updated: 1, skipped: 1 },
 			workflows: { created: 1, updated: 1, skipped: 1, archived: 0, deleted: 0 },
 			folders: { removed: 0 },
 			credentials: { matched: 1, created: 3, updated: 0, requirements: 4 },
