@@ -244,6 +244,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-interrupted',
 	'confirmation-request',
 	'instance-context',
+	'skill-update',
 	'tasks-update',
 	'setup-items',
 	'preferences-applied',
@@ -1225,6 +1226,16 @@ export const aiPreferencesAppliedPayloadSchema = z.object({
 
 export type AiPreferencesAppliedPayload = z.infer<typeof aiPreferencesAppliedPayloadSchema>;
 
+export const skillUpdatePayloadSchema = z.object({
+	skillId: z.string(),
+	name: z.string().optional(),
+	version: z.string().nullable(),
+	change: z.enum(['updated', 'restored', 'unavailable']),
+	/** The content delivered for this response. Older events contain metadata only. */
+	content: z.string().optional(),
+});
+export type InstanceAiSkillUpdatePayload = z.infer<typeof skillUpdatePayloadSchema>;
+
 // ---------------------------------------------------------------------------
 // Event schema (Zod discriminated union — single source of truth)
 // ---------------------------------------------------------------------------
@@ -1291,6 +1302,7 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: instanceContextPayloadSchema,
 	}),
+	z.object({ type: z.literal('skill-update'), ...eventBase, payload: skillUpdatePayloadSchema }),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
 	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
 	z.object({
@@ -1955,6 +1967,7 @@ export type InstanceAiTimelineEntry =
 	| { type: 'reasoning'; content: string; responseId?: string }
 	| { type: 'tool-call'; toolCallId: string; responseId?: string }
 	| { type: 'child'; agentId: string; responseId?: string }
+	| ({ type: 'skill-update'; runId: string; responseId?: string } & InstanceAiSkillUpdatePayload)
 	/** Store the context summary in the timeline so normal history replay restores it. */
 	| {
 			type: 'instance-context';

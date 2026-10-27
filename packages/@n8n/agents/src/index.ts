@@ -260,6 +260,7 @@ export type {
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
+	RuntimeSkillState,
 	RuntimeSkillStateScope,
 	RuntimeSkillStateStore,
 	RuntimeSkillValidationError,

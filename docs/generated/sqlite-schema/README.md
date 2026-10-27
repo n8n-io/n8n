@@ -139,6 +139,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [self_healing_configuration_workflow](self_healing_configuration_workflow.md) | 3 |  | table |
 | [self_healing_investigation](self_healing_investigation.md) | 13 |  | table |
 | [self_healing_result](self_healing_result.md) | 16 |  | table |
+| [service_account_details](service_account_details.md) | 4 |  | table |
 | [settings](settings.md) | 3 |  | table |
 | [shared_credentials](shared_credentials.md) | 5 |  | table |
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
@@ -397,6 +398,7 @@ erDiagram
 "self_healing_result" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_result" }o--o| "workflow_suggestion" : "FOREIGN KEY (suggestionId) REFERENCES workflow_suggestion (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_result" }o--o| "user" : "FOREIGN KEY (dismissedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"service_account_details" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1791,6 +1793,12 @@ erDiagram
   datetime_3_ updatedAt
   TEXT usage
   varchar_36_ workflowId FK
+}
+"service_account_details" {
+  datetime_3_ createdAt
+  varchar_128_ name
+  datetime_3_ updatedAt
+  varchar userId PK
 }
 "settings" {
   TEXT key PK

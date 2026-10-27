@@ -314,7 +314,12 @@ type UpdateSkillInput = z.infer<typeof updateSkillInputSchema>;
 const updateTaskFieldsSchema = z
 	.object({
 		name: agentTaskSchema.shape.name.optional(),
-		objective: agentTaskSchema.shape.objective.optional().describe(TASK_OBJECTIVE_GUIDANCE),
+		// agent_builder_create_tasks is always loaded with this tool and shows the full template.
+		objective: agentTaskSchema.shape.objective
+			.optional()
+			.describe(
+				`Complete replacement objective. Follow the objective template of ${BUILDER_TOOLS.CREATE_TASKS}.`,
+			),
 		cronExpression: agentTaskSchema.shape.cronExpression.optional(),
 		timezone: agentTaskSchema.shape.timezone.describe(
 			'IANA zone the cron runs in. Pass null to move the task back to the instance timezone.',
