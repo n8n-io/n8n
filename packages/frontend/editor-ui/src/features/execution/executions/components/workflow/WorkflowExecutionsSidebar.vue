@@ -5,6 +5,7 @@ import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
 import WorkflowExecutionsCard from './WorkflowExecutionsCard.vue';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
+import WorkflowExecutionsLastRunInfo from './WorkflowExecutionsLastRunInfo.vue';
 import ExecutionsFilter from '../ExecutionsFilter.vue';
 import { VIEWS } from '@/app/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
@@ -172,9 +173,12 @@ const goToUpgrade = () => {
 <template>
 	<div :class="['executions-sidebar', $style.container]" data-test-id="executions-sidebar">
 		<div :class="$style.heading">
-			<N8nHeading tag="h2" size="medium" color="text-dark">
-				{{ i18n.baseText('generic.executions') }}
-			</N8nHeading>
+			<div :class="$style.title">
+				<N8nHeading tag="h2" size="medium" color="text-dark">
+					{{ i18n.baseText('generic.executions') }}
+				</N8nHeading>
+				<WorkflowExecutionsLastRunInfo />
+			</div>
 
 			<ConcurrentExecutionsHeader
 				v-if="showConcurrencyHeader"
@@ -275,6 +279,12 @@ const goToUpgrade = () => {
 	justify-content: space-between;
 	align-items: center;
 	padding-right: var(--spacing--md);
+}
+
+.title {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 
 .controls {

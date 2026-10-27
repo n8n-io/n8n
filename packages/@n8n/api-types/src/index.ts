@@ -17,6 +17,7 @@ export * from './schemas/mcp-tool-permissions.schema';
 export * from './instance-registry-types';
 export type * from './instance-reporting';
 export type * from './worker-pools';
+export type * from './workflow-statistics';
 export * from './node-type-availability';
 export type * from './credential-type-availability';
 export * from './redaction-enforcement';

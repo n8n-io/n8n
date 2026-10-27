@@ -1,0 +1,111 @@
+import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
+import { computed, shallowRef } from 'vue';
+import { getWorkflowStatisticsTimes } from '@n8n/rest-api-client';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import WorkflowExecutionsLastRunInfo from './WorkflowExecutionsLastRunInfo.vue';
+
+vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
+	...(await importOriginal()),
+	getWorkflowStatisticsTimes: vi.fn(),
+}));
+
+const renderComponent = createComponentRenderer(WorkflowExecutionsLastRunInfo, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'wf-1'),
+		},
+	},
+});
+
+describe('WorkflowExecutionsLastRunInfo', () => {
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+
+	beforeEach(() => {
+		createTestingPinia();
+		settingsStore = mockedStore(useSettingsStore);
+		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.isWorkflowSaved = { 'wf-1': true };
+		vi.mocked(getWorkflowStatisticsTimes).mockResolvedValue({
+			productionSuccess: '2026-10-20T10:00:00.000Z',
+			productionError: '2026-10-21T10:00:00.000Z',
+			manualSuccess: null,
+			manualError: null,
+		});
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('shows the last production execution times in a tooltip', async () => {
+		const { findByTestId, queryByTestId } = renderComponent();
+
+		await userEvent.hover(await findByTestId('last-production-execution-icon'));
+
+		expect(await findByTestId('last-production-success')).toHaveTextContent(/^Succeeded \S/);
+		expect(await findByTestId('last-production-error')).toHaveTextContent(/^Failed \S/);
+		expect(queryByTestId('last-production-execution-note')).not.toBeInTheDocument();
+		expect(getWorkflowStatisticsTimes).toHaveBeenCalledTimes(1);
+		expect(getWorkflowStatisticsTimes).toHaveBeenCalledWith(expect.anything(), 'wf-1');
+	});
+
+	it('shows the note when the workflow does not save all production executions', async () => {
+		settingsStore.saveDataSuccessExecution = 'none';
+		const { findByTestId } = renderComponent();
+
+		await userEvent.hover(await findByTestId('last-production-execution-icon'));
+
+		expect(await findByTestId('last-production-execution-note')).toBeInTheDocument();
+	});
+
+	it('treats a DEFAULT workflow setting as the instance default', async () => {
+		const { findByTestId, queryByTestId } = renderComponent({
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'wf-1'),
+					[WorkflowDocumentStoreKey as unknown as string]: shallowRef({
+						getSettingsSnapshot: () => ({
+							saveDataSuccessExecution: 'DEFAULT',
+							saveDataErrorExecution: 'DEFAULT',
+						}),
+					}),
+				},
+			},
+		});
+
+		await userEvent.hover(await findByTestId('last-production-execution-icon'));
+
+		expect(await findByTestId('last-production-success')).toBeInTheDocument();
+		expect(queryByTestId('last-production-execution-note')).not.toBeInTheDocument();
+	});
+
+	it('hides the icon when the workflow has no recorded production execution', async () => {
+		vi.mocked(getWorkflowStatisticsTimes).mockResolvedValue({
+			productionSuccess: null,
+			productionError: null,
+			manualSuccess: null,
+			manualError: null,
+		});
+		const { queryByTestId } = renderComponent();
+
+		await waitFor(() => expect(getWorkflowStatisticsTimes).toHaveBeenCalled());
+		expect(queryByTestId('last-production-execution-icon')).not.toBeInTheDocument();
+	});
+
+	it('does not request the statistics for an unsaved workflow', async () => {
+		workflowsStore.isWorkflowSaved = {};
+		const { queryByTestId } = renderComponent();
+
+		await waitFor(() =>
+			expect(queryByTestId('last-production-execution-icon')).not.toBeInTheDocument(),
+		);
+		expect(getWorkflowStatisticsTimes).not.toHaveBeenCalled();
+	});
+});
