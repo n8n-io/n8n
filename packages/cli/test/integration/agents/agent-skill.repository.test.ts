@@ -1,8 +1,10 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
+import { AgentPublishHistory } from '@/modules/agents/entities/agent-publish-history.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -90,6 +92,12 @@ describe('AgentSkillRepository', () => {
 	async function publish(agentId: string): Promise<string> {
 		const versionId = randomUUID();
 		await histories.save(histories.create({ versionId, agentId, author: 'Test' }));
+		await Container.get(DataSource).getRepository(AgentPublishHistory).insert({
+			agentId,
+			versionId,
+			event: 'activated',
+			author: 'Test',
+		});
 		return versionId;
 	}
 
@@ -98,6 +106,19 @@ describe('AgentSkillRepository', () => {
 		if (!row) throw new Error(`no saved version for ${skillId}`);
 		return row.version.id;
 	}
+
+	it('does not count never-published saved pins as skill usage', async () => {
+		const id = await createSkill();
+		const agent = await createAgent('Draft');
+		const versionId = randomUUID();
+		await histories.save(histories.create({ versionId, agentId: agent.id, author: 'Test' }));
+		await agentSkills.insertPins([
+			{ agentVersionId: versionId, skillId: id, skillVersionId: await latestVersionId(id) },
+		]);
+		expect(await agentSkills.findUsingAgentIds(id)).toEqual([]);
+		expect(await agentSkills.countUsingAgents([id])).toEqual(new Map());
+		expect(await agentSkills.findUsage(id)).toEqual({ drafts: [], pins: [], hiddenAgents: 0 });
+	});
 
 	describe('pins', () => {
 		it('finds the pinned version of each skill of one published agent version', async () => {
@@ -394,30 +415,30 @@ describe('AgentSkillRepository', () => {
 		});
 	});
 
-	describe('AgentRepository.markDraftChangedIfInSync', () => {
+	describe('AgentRepository.markFollowerDraftsChanged', () => {
 		it('gives an agent in sync with its published version a new draft version id', async () => {
 			const agent = await createAgent('Support', { inSync: true });
 
-			const changed = await agents.markDraftChangedIfInSync([agent.id]);
+			const changed = await agents.markFollowerDraftsChanged([agent.id]);
 
 			const reloaded = await agents.findOneByOrFail({ id: agent.id });
 			expect(changed).toEqual([agent.id]);
 			expect(reloaded.versionId).not.toBe(reloaded.activeVersionId);
-			expect(reloaded.revision).toBe(agent.revision);
+			expect(reloaded.revision).toBe(agent.revision + 1);
 		});
 
-		it('leaves an agent that already has unpublished changes alone', async () => {
+		it('gives an already modified draft a new fixed-content ID', async () => {
 			const agent = await createAgent('Support');
 
-			const changed = await agents.markDraftChangedIfInSync([agent.id]);
+			const changed = await agents.markFollowerDraftsChanged([agent.id]);
 
 			const reloaded = await agents.findOneByOrFail({ id: agent.id });
-			expect(changed).toEqual([]);
-			expect(reloaded.versionId).toBe(agent.versionId);
+			expect(changed).toEqual([agent.id]);
+			expect(reloaded.versionId).not.toBe(agent.versionId);
 		});
 
 		it('writes nothing for no agents', async () => {
-			expect(await agents.markDraftChangedIfInSync([])).toEqual([]);
+			expect(await agents.markFollowerDraftsChanged([])).toEqual([]);
 			expect(await agents.findProjectIdsByIds([])).toEqual([]);
 		});
 

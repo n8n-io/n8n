@@ -145,6 +145,62 @@ function unknownModel(
 	};
 }
 
+const DEFER_OR_ASK =
+	'During an initial build, do not ask now: keep building with model "", include the model ' +
+	'choice in the agent_builder_finish_setup call, then call agent_builder_resolve_llm again with ' +
+	'the answer. For a model change on an existing Agent, ask now and keep the current model and ' +
+	'credential until the new one resolves.';
+
+/** What the model must do with a result. The tool description stays short; this rides on the result. */
+function nextStepFor(result: Record<string, unknown>): string | undefined {
+	if (result.ok === true) {
+		if (result.claimedFreeOpenAiCredits === true) {
+			return 'Tell the user that free OpenAI credits were set up for this Agent.';
+		}
+		const steps: string[] = [];
+		if (result.autoPicked === true) {
+			steps.push(
+				'Tell the user which provider and model you picked and that they are changeable. Do not ask them to confirm.',
+			);
+		}
+		if (result.credentialName === N8N_CONNECT_CREDENTIAL_NAME) {
+			steps.push(
+				'Save this credential like any other, and tell the user that the model runs on Gateway credits.',
+			);
+		}
+		return steps.length > 0 ? steps.join(' ') : undefined;
+	}
+	switch (result.reason) {
+		case 'unknown_model':
+			if (result.provider === 'azure-openai') {
+				return 'availableModels lists the deployments of the Foundry project. Ask the user to choose one.';
+			}
+			return result.availableModelsTruncated === true
+				? 'availableModels is only a sample of totalAvailableModels. Ask the user with ' +
+						'agent_builder_ask_questions instead of treating it as the full list. Never retry the id that failed.'
+				: 'Retry with a model from availableModels. Never retry the id that failed.';
+		case 'ambiguous_credential':
+			return `${DEFER_OR_ASK} When the user picks a credential, pass its credentialId.`;
+		case 'model_lookup_failed':
+			return result.provider === 'azure-openai'
+				? 'Tell the user how to fix the credential, as the error says.'
+				: 'Retry agent_builder_resolve_llm once. Do not guess a model.';
+		case 'unsupported_provider':
+			return `The provider must come from supportedProviders. If the user named it, tell them it is not supported. ${DEFER_OR_ASK}`;
+		case 'missing_credential':
+		case 'ambiguous_provider_or_credential':
+			return DEFER_OR_ASK;
+		default:
+			return undefined;
+	}
+}
+
+function withNextStep(result: unknown): unknown {
+	if (typeof result !== 'object' || result === null) return result;
+	const nextStep = nextStepFor({ ...result });
+	return nextStep ? { ...result, nextStep } : result;
+}
+
 function modelLookupFailed(provider: string, requestedModel: string | undefined, error: unknown) {
 	return {
 		ok: false as const,
@@ -341,48 +397,15 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.RESOLVE_LLM)
 		.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.RESOLVE_LLM))
 		.description(
-			'Resolve the agent main LLM without showing a picker. ' +
-				'A fresh agent may already have a model and credential persisted by the system at creation ' +
-				'(a sensible default was auto-selected). Before calling this tool on a fresh agent, call ' +
-				'agent-context with type "config" first: if model and credential are already set, keep them, mention the choice ' +
-				'in your summary as changeable, and do not call agent_builder_resolve_llm. Only when model is empty call ' +
-				'agent_builder_resolve_llm once, silently, before the first config write to detect existing credentials — ' +
-				'with provider/model when the user named them, otherwise without arguments. ' +
-				'Also call it whenever the user names or changes a provider or model. ' +
-				'If provider is given, resolves only that provider; if model is omitted, uses the ' +
-				'provider default model. Every model it returns — the default included — is checked ' +
-				'against the list the chosen credential can actually reach, so reason "unknown_model" ' +
-				'(carrying availableModels) can come back even when you passed no model: retry with a ' +
-				'value from availableModels, never the id that just failed. availableModels is capped: when ' +
-				'availableModelsTruncated is true, it is a sample of totalAvailableModels — ask the user with ' +
-				'agent_builder_ask_questions instead of treating it as the full list. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
-				'and omit model unless the user named a concrete OpenRouter model id. ' +
-				'For Microsoft Foundry (provider="azure-openai"), the models are the deployments of the ' +
-				'credential\'s project: pass a deployment name or the model it serves (e.g. "gpt-4.1"). Without ' +
-				'a model, a project with one deployment resolves to it; otherwise reason "unknown_model" lists ' +
-				'the deployments for the user to choose. A Foundry "model_lookup_failed" error says how the ' +
-				'user fixes the credential; tell the user. Returns ok=false ' +
-				'when credentials are missing, unsupported, or ambiguous — during an initial build, do not ' +
-				'ask; keep building with model "" and include the model choice in the trailing ' +
-				'agent_builder_finish_setup call, then call agent_builder_resolve_llm again with the answer. For a model ' +
-				'change on an existing agent, ask immediately and keep the current model and credential until the new one resolves. ' +
-				'When no matching credential exists and the user is eligible for free OpenAI credits, the tool ' +
-				'claims them automatically and resolves to an OpenAI model the new key can reach (normally ' +
-				'gpt-5-mini) — the result carries ' +
-				'claimedFreeOpenAiCredits: true; tell the user free OpenAI credits were set up. When the ' +
-				'provider has no own credential but Gateway credits (the managed option) serve it, the tool ' +
-				'resolves to the managed credential — the result credentialName is "Gateway credits"; persist it ' +
-				'like any credential and tell the user the model runs on Gateway credits. When the user ' +
-				'explicitly asks to use Gateway credits, pass useGatewayCredits: true (with provider when named): ' +
-				'the tool resolves Gateway credits for that provider without a picker even if the user has their ' +
-				'own credential for it, and returns ok=false with reason "gateway_credits_unsupported_provider", ' +
-				'"ambiguous_gateway_credits_provider" (with providers), or "gateway_credits_unavailable" (Gateway ' +
-				'credits serve no provider on this instance) when it cannot. When multiple ' +
-				'providers each have one credential, the tool auto-picks the recommended provider — the result ' +
-				'carries autoPicked: true and otherProviders; state the pick as changeable, do not ask to confirm it. ' +
-				'When the user picks between multiple credentials of one provider, pass the picked credentialId ' +
-				'from the earlier ambiguous result.',
+			"Resolve the Agent's main LLM and credential without a picker. On a fresh Agent, read " +
+				'agent-context type "config" first: when model and credential are set, keep them, mention the ' +
+				'model in your summary as changeable, and do not call this tool. Otherwise call it once, silently, before the first config write, with ' +
+				'provider/model when the user named them. Call it again whenever the user names or changes a ' +
+				'provider or model. For "Anthropic via OpenRouter", pass provider "openrouter". For Microsoft ' +
+				'Foundry (provider "azure-openai"), pass a deployment name or the model it serves. Results that ' +
+				'need an action carry `nextStep`: follow it.',
 		)
+		.toModelOutput(withNextStep)
 		.input(
 			z.object({
 				provider: z

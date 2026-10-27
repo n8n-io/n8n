@@ -41,6 +41,7 @@ import { deriveWhatsAppVerifyToken, stringProperty, stringValue } from '../../in
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
 import { buildIntegrationConnectionId } from '../../integration-tool-factory';
 import { startTypingIndicator } from '../typing-indicator';
+import { WhatsAppSetupTelemetryService } from './whatsapp-setup-telemetry.service';
 import { WhatsAppWebhookVerificationStore } from './whatsapp-webhook-verification.store';
 import { buildWhatsAppOriginDraft } from './whatsapp-origin';
 import type { DecodedThread, OriginInput } from '../../integration-origin-support';
@@ -196,6 +197,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
 		private readonly webhookVerification: WhatsAppWebhookVerificationStore,
+		private readonly setupTelemetry: WhatsAppSetupTelemetryService,
 	) {
 		super();
 	}
@@ -244,6 +246,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		// Recorded so the setup can confirm the step. Not awaited, because Meta
 		// times out the handshake and the record is only for display.
 		void this.webhookVerification.markVerified(context.agentId);
+		this.setupTelemetry.webhookVerified(context.agentId, 'setup');
 		return { status: 200, body: challenge, raw: true };
 	}
 
@@ -309,6 +312,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		// retry cycle against an already-limited number instead of failing fast.
 		const connectionId = buildIntegrationConnectionId(ctx.integration);
 		const webhookVerification = this.webhookVerification;
+		const setupTelemetry = this.setupTelemetry;
 		const agentId = ctx.agentId;
 
 		// Wraps the real adapter to enforce the 24-hour customer service window
@@ -321,7 +325,10 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 			// the same agent still confirms the step.
 			protected override handleVerificationChallenge(request: Request): Response {
 				const response = super.handleVerificationChallenge(request);
-				if (response.status === 200) void webhookVerification.markVerified(agentId);
+				if (response.status === 200) {
+					void webhookVerification.markVerified(agentId);
+					setupTelemetry.webhookVerified(agentId, 'connected');
+				}
 				return response;
 			}
 
