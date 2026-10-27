@@ -187,7 +187,6 @@ it.each(['resolves', 'rejects'])(
 		}
 		await waitAllPromises();
 
-		expect(view.getByText('Loading configurations…')).toBeVisible();
 		expect(view.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
 		expect(showError).not.toHaveBeenCalled();
 		current.resolve(undefined);

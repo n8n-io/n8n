@@ -198,7 +198,7 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 			<label>{{ i18n.baseText('selfHealing.config.heading') }}</label>
 		</h3>
 		<slot v-if="isPersonalTab && loading" name="loading" />
-		<p v-else-if="loading">{{ i18n.baseText('selfHealing.config.loading') }}</p>
+		<template v-else-if="loading" />
 		<N8nButton v-else-if="failed" type="button" variant="outline" @click="load">{{
 			i18n.baseText('selfHealing.config.retry')
 		}}</N8nButton>

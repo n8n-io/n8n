@@ -342,7 +342,7 @@ onBeforeRouteUpdate(async (to, from) => {
 				"
 				:show-docs-link="false"
 			/>
-			<p v-if="loading">{{ i18n.baseText('selfHealing.config.loading') }}</p>
+			<template v-if="loading" />
 			<N8nButton v-else-if="loadError" variant="outline" @click="load">{{
 				i18n.baseText('selfHealing.config.retry')
 			}}</N8nButton>

@@ -10492,7 +10492,6 @@
 	"selfHealing.config.createAction": "Create configuration",
 	"selfHealing.config.allScope": "All",
 	"selfHealing.config.edit": "Edit self-healing configuration",
-	"selfHealing.config.loading": "Loading configurations…",
 	"selfHealing.config.retry": "Try again",
 	"selfHealing.config.empty": "No self-healing configuration. Add one to enrol this project's workflows.",
 	"selfHealing.config.emptyHeading": "Set up self-healing",
