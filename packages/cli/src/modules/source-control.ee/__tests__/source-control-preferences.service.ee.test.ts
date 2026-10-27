@@ -5,7 +5,7 @@ import { readFile, writeFile, access, mkdir } from 'fs/promises';
 import type { InstanceSettings, Cipher } from 'n8n-core';
 import os from 'os';
 import path from 'path';
-import { mock } from 'vitest-mock-extended';
+import { mock, mockReset } from 'vitest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
@@ -466,6 +466,68 @@ describe('SourceControlPreferencesService', () => {
 			);
 
 			await expect(testService.resetKnownHosts()).resolves.toBeUndefined();
+		});
+	});
+
+	describe('loadFromDbAndApplySourceControlPreferences', () => {
+		let loader: SourceControlPreferencesService;
+
+		beforeEach(() => {
+			mockReset(mockSettingsRepository);
+			loader = new SourceControlPreferencesService(
+				instanceSettings,
+				mockLogger,
+				mockCipher,
+				mockSettingsRepository,
+				mock(),
+				mock(),
+			);
+			vi.spyOn(loader as any, 'getKeyPairFromDatabase').mockResolvedValue({
+				publicKey: 'test',
+				encryptedPrivateKey: 'test',
+			});
+		});
+
+		const savedVersion = () => {
+			const [saved] = mockSettingsRepository.save.mock.calls[0] as [{ value: string }];
+			return JSON.parse(saved.value).environmentsVersion;
+		};
+
+		it.each([
+			[true, 'v1'],
+			[false, 'v2'],
+		])(
+			'writes the environments version once for a row without one (connected: %s -> %s)',
+			async (connected, version) => {
+				mockSettingsRepository.findOne.mockResolvedValue({
+					value: JSON.stringify({ connected, branchName: 'main' }),
+				} as never);
+
+				await loader.loadFromDbAndApplySourceControlPreferences();
+
+				expect(mockSettingsRepository.save).toHaveBeenCalledTimes(1);
+				expect(savedVersion()).toBe(version);
+				expect(loader.getPreferences().environmentsVersion).toBe(version);
+			},
+		);
+
+		it('keeps the stored environments version and does not write', async () => {
+			mockSettingsRepository.findOne.mockResolvedValue({
+				value: JSON.stringify({ connected: true, environmentsVersion: 'v2' }),
+			} as never);
+
+			await loader.loadFromDbAndApplySourceControlPreferences();
+
+			expect(mockSettingsRepository.save).not.toHaveBeenCalled();
+			expect(loader.getPreferences().environmentsVersion).toBe('v2');
+		});
+
+		it('starts a new instance on v2', async () => {
+			mockSettingsRepository.findOne.mockResolvedValue(null);
+
+			await loader.loadFromDbAndApplySourceControlPreferences();
+
+			expect(savedVersion()).toBe('v2');
 		});
 	});
 

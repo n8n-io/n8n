@@ -60,7 +60,7 @@ n8n-cli --url=https://my-n8n.app.n8n.cloud --api-key=n8n_api_xxxxx workflow list
 | `data-table` | `list`, `get`, `create`, `delete`, `rows`, `add-rows`, `update-rows`, `upsert-rows`, `delete-rows` |
 | `user` | `list`, `get` |
 | `config` | `set-url`, `set-api-key`, `show` |
-| `promotion-provider` | `list`, `get`, `create`, `update`, `delete` |
+| `promotion-provider` | `list`, `get`, `create`, `update`, `delete`, `list-repositories`, `list-branches` |
 | `promotion-environment` | `list`, `get`, `create`, `update`, `delete`, `connect`, `disconnect`, `list-changes`, `promote`, `promote-selection`, `apply`, `apply-continue`, `apply-selection`, `apply-selection-continue`, `list-projects`, `add-project`, `remove-project` |
 | `source-control` | `pull` |
 | `package` | `export`, `import` _(beta)_, `import-selection` _(beta)_ |
@@ -69,6 +69,14 @@ n8n-cli --url=https://my-n8n.app.n8n.cloud --api-key=n8n_api_xxxxx workflow list
 | `login` / `logout` | _(top-level)_ |
 
 Every command supports `--help` for detailed usage.
+
+Use `package export --agent-id=<id>` to export Agents. Repeat `--agent-id` to
+select several Agents, or combine it with `--workflow-id` and `--folder-id`.
+Import the archive with `package import --file=<file.n8np>`. The shared
+`--conflict-policy`, `--id-policy`, and `--publishing-policy` settings apply to
+both Agents and workflows. Only `source` is supported for `--id-policy`.
+See [package commands](docs/commands/package.md)
+for scopes, defaults, and examples. Agent packages use the ordinary import command.
 
 ## Output formats
 

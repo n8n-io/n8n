@@ -37,17 +37,6 @@ export interface PreparedWorkflow {
 	tagIds?: string[];
 }
 
-export type WorkflowPlannedAction = 'create' | 'update' | 'skip';
-
-/**
- * A conflict policy's verdict for one workflow. `blocked` aborts the import and
- * is set only by the `fail` policy.
- */
-export interface WorkflowDecision {
-	action: WorkflowPlannedAction;
-	blocked: boolean;
-}
-
 /**
  * The decided plan for one workflow. Discriminated by `action` so that
  * `update`/`skip` carry the pre-existing workflow they operate on, while
@@ -63,6 +52,11 @@ export type WorkflowPlanItem =
 			action: 'update';
 			existing: WorkflowEntity;
 			archiveTransition: WorkflowArchiveTransition | null;
+			/**
+			 * Set under `layoutConflictPolicy=follow-package`: the folder the update moves the workflow to.
+			 * `null` is the project root.
+			 */
+			moveToFolderId?: string | null;
 	  } & PreparedWorkflow)
 	| ({ action: 'skip'; existing: WorkflowEntity } & PreparedWorkflow);
 

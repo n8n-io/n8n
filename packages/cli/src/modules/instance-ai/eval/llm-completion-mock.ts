@@ -21,19 +21,19 @@ import {
 
 const COMPLETION_MOCK_PROMPT = `You simulate ONE response from the LLM that powers an AI agent inside an n8n workflow under evaluation. The agent runs a tool-calling loop and calls you once per turn. Decide the agent's NEXT step and submit it via submit_agent_step.
 
-This is a MOCK whose only purpose is to exercise the workflow's wiring and data flow — NOT to produce a realistic deliverable. Keep everything MINIMAL and schema-valid. Never write long documents, full HTML pages, or essays; a short stub string that satisfies the schema is ideal.
+This is a MOCK that exercises the workflow's wiring and data flow. Keep tool-call arguments MINIMAL and schema-valid. The final answer is different: downstream nodes send, parse, or store it, so it must be the deliverable the agent's instructions ask for (the newsletter, the article, the summary), in the format they ask for, built from the data in the conversation. Keep it compact — a short version of the real thing, never a long document — but never a placeholder such as "Done." or "OK".
 
 You are given the conversation so far, whether any tool results have come back, and the tools the agent may call (each with its JSON input schema).
 
 How to decide:
 - If NO tool results are present yet and the agent's instructions describe gathering/processing steps, advance the loop: pick the SINGLE most appropriate NON-final tool and call it. Do not jump to the final answer on the first turn.
-- Once tool results are present (or only a "final answer" / "format response" style tool remains sensible), finalize: if such a structured-output tool exists, call it; otherwise return a short final answer.
+- Once tool results are present (or only a "final answer" / "format response" style tool remains sensible), finalize: if such a structured-output tool exists, call it; otherwise return the final answer the instructions ask for.
 
 Rules:
 - kind="tool_call": set toolName to one of the available tools and toolArguments to an object matching THAT tool's input schema EXACTLY (same keys, nesting, and types). Use the SMALLEST valid value for every field — a one-line string, a single-element array — never a long document.
-- kind="final": set content to a short final answer string. Two structured-output cases override this:
+- kind="final": set content to a compact version of the deliverable the agent's instructions ask for, in the requested format (HTML, Markdown, JSON, plain text). Two structured-output cases override this:
   - If a structured-output / "format final response" style tool is available, NEVER finalize with plain content — call that tool with schema-valid arguments instead.
-  - Only when NO such tool exists but the conversation carries structured-output format instructions (a JSON schema the reply must match): content MUST be exactly JSON that satisfies THAT schema — every declared field present, exact key names, correct types (a numeric field gets a number like 42, never a descriptive string like "about 42" or "below the 42 threshold"). Do NOT add fields the schema does not declare, and do NOT wrap the object in an extra key unless the schema itself declares that wrapper (some parsers require a specific top-level key such as "__structured__output" — include it only when the schema shows it). Reproduce a \`\`\`json code block only if the instructions show one. Keep-it-minimal applies to field VALUES only — never drop declared fields.
+  - Only when NO such tool exists but the conversation carries structured-output format instructions (a JSON schema the reply must match): put the answer in structuredContent as a JSON object, not in content as a string. The object MUST satisfy THAT schema — every declared field present, exact key names, correct types (a numeric field gets a number like 42, never a descriptive string like "about 42" or "below the 42 threshold"). Do NOT add fields the schema does not declare, and do NOT wrap the object in an extra key unless the schema itself declares that wrapper (some parsers require a specific top-level key such as "__structured__output" — include it only when the schema shows it). Keep field VALUES short but real (a one-paragraph article body, not "Done.") — never drop declared fields.
 - content is ONLY the assistant's answer (plain text, or the structured JSON). NEVER wrap it in a provider API envelope — no chat.completion/response object, no "choices"/"output"/"id"/"object" keys. The harness adds the wire envelope.
 - Call exactly ONE tool per step. Never fabricate a whole multi-step result in a single turn.
 - If the scenario, node hint, or data context states a specific value, reproduce it; otherwise keep values minimal.`;
@@ -49,6 +49,7 @@ interface CompletionStep {
 	toolName?: string;
 	toolArguments?: Record<string, unknown>;
 	content?: string;
+	structuredContent?: Record<string, unknown>;
 }
 
 export interface LlmCompletionMockOptions {
@@ -74,7 +75,15 @@ const submitStepSchema = z.object({
 	content: z
 		.string()
 		.optional()
-		.describe('Required for kind="final": a short final answer string.'),
+		.describe(
+			'Required for kind="final": a compact version of the deliverable the agent\'s instructions ask for, never a placeholder.',
+		),
+	structuredContent: z
+		.record(z.unknown())
+		.optional()
+		.describe(
+			'For kind="final" when the answer must be JSON: the JSON object itself, in place of content.',
+		),
 });
 
 function asString(value: unknown): string | undefined {
@@ -271,6 +280,9 @@ export function createLlmCompletionMockHandler(
 					// A named tool always wins, even on a step labeled "final" — structured-output
 					// agents finalize by calling the tool. Capture it regardless of `kind`.
 					if (input.toolName) {
+						if (!tools.some((tool) => tool.name === input.toolName)) {
+							return `Invalid: no tool named "${input.toolName}". Use one of the listed tools.`;
+						}
 						capture.kind = 'tool_call';
 						capture.toolName = input.toolName;
 						capture.toolArguments = input.toolArguments ?? {};
@@ -279,10 +291,18 @@ export function createLlmCompletionMockHandler(
 					if (input.kind === 'tool_call') {
 						return 'Invalid: kind="tool_call" requires toolName. Call submit_agent_step again.';
 					}
+					if (!input.structuredContent && !input.content) {
+						return 'Invalid: kind="final" requires content or structuredContent. Call submit_agent_step again.';
+					}
 					capture.kind = 'final';
-					capture.content = input.content ?? '';
+					// Serialized here, so quotes inside long values (HTML, prose) never break the JSON.
+					capture.content = input.structuredContent
+						? JSON.stringify(input.structuredContent)
+						: (input.content ?? '');
 					return 'Accepted.';
 				})
+				// Without this, the model keeps resubmitting after "Accepted." (about 14 calls a turn on Sonnet 5.5).
+				.endsTurnWhen((output) => output === 'Accepted.')
 				.build(),
 		);
 

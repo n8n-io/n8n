@@ -2,9 +2,11 @@ import type { LdapConfig, ConnectionSecurity } from '@n8n/constants';
 import type { AuthProviderSyncHistory } from '@n8n/db';
 import {
 	AuthIdentity,
+	Person,
 	User,
 	AuthIdentityRepository,
 	AuthProviderSyncHistoryRepository,
+	PersonRepository,
 	UserRepository,
 	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
@@ -83,21 +85,11 @@ export const getAuthIdentityByLdapId = async (
  * @param idAttributeValue - LDAP ID value
  */
 export const getUserByLdapId = async (idAttributeValue: string) => {
-	return await Container.get(UserRepository).findOne({
-		relations: { role: true },
-		where: {
-			authIdentities: {
-				providerId: idAttributeValue,
-				providerType: 'ldap',
-			},
-		},
-	});
+	return await Container.get(PersonRepository).findByLdapId(idAttributeValue);
 };
 
-export const getUserByEmail = async (email: string): Promise<User | null> => {
-	return await Container.get(UserRepository).findOne({
-		where: { email },
-	});
+export const getUserByEmail = async (email: string): Promise<Person | null> => {
+	return await Container.get(PersonRepository).findByEmail(email);
 };
 
 /**
@@ -181,21 +173,22 @@ export const processUsers = async (
 				// invite that predates LDAP), link the existing user to the LDAP identity
 				// instead of creating a duplicate row and tripping the unique email
 				// constraint — same behaviour as LdapService.handleLogin.
-				const existingUser = await transactionManager.findOne(User, {
+				const existingPerson = await transactionManager.findOne(Person, {
 					where: { email: user.email },
 				});
 
-				if (existingUser) {
+				if (existingPerson) {
 					const hasChanges =
-						existingUser.firstName !== user.firstName || existingUser.lastName !== user.lastName;
+						existingPerson.firstName !== user.firstName ||
+						existingPerson.lastName !== user.lastName;
 
 					if (hasChanges) {
-						existingUser.firstName = user.firstName;
-						existingUser.lastName = user.lastName;
-						await transactionManager.save(User, existingUser);
+						existingPerson.firstName = user.firstName;
+						existingPerson.lastName = user.lastName;
+						await transactionManager.save(Person, existingPerson);
 					}
 
-					const authIdentity = AuthIdentity.create(existingUser, ldapId);
+					const authIdentity = AuthIdentity.create(existingPerson, ldapId);
 					return await transactionManager.save(authIdentity);
 				}
 
@@ -211,21 +204,21 @@ export const processUsers = async (
 					providerId: ldapId,
 				});
 				if (authIdentity?.userId) {
-					const existingUser = await transactionManager.findOneBy(User, {
+					const existingPerson = await transactionManager.findOneBy(Person, {
 						id: authIdentity.userId,
 					});
-					if (existingUser) {
+					if (existingPerson) {
 						// Only update if data has actually changed
 						const hasChanges =
-							existingUser.email !== user.email ||
-							existingUser.firstName !== user.firstName ||
-							existingUser.lastName !== user.lastName;
+							existingPerson.email !== user.email ||
+							existingPerson.firstName !== user.firstName ||
+							existingPerson.lastName !== user.lastName;
 
 						if (hasChanges) {
-							existingUser.email = user.email;
-							existingUser.firstName = user.firstName;
-							existingUser.lastName = user.lastName;
-							await transactionManager.save(User, existingUser);
+							existingPerson.email = user.email;
+							existingPerson.firstName = user.firstName;
+							existingPerson.lastName = user.lastName;
+							await transactionManager.save(Person, existingPerson);
 						}
 					}
 				}
@@ -235,11 +228,11 @@ export const processUsers = async (
 					providerId: ldapId,
 				});
 				if (authIdentity?.userId) {
-					const user = await transactionManager.findOneBy(User, { id: authIdentity.userId });
+					const person = await transactionManager.findOneBy(Person, { id: authIdentity.userId });
 
-					if (user) {
-						user.disabled = true;
-						await transactionManager.save(user);
+					if (person) {
+						person.disabled = true;
+						await transactionManager.save(person);
 					}
 
 					await transactionManager.delete(AuthIdentity, { userId: authIdentity?.userId });
@@ -333,10 +326,11 @@ export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: strin
 export const updateLdapUserOnLocalDb = async (identity: AuthIdentity, data: Partial<User>) => {
 	const userId = identity?.user?.id;
 	if (userId) {
-		const user = await Container.get(UserRepository).findOneBy({ id: userId });
+		const personRepository = Container.get(PersonRepository);
+		const person = await personRepository.findById(userId);
 
-		if (user) {
-			await Container.get(UserRepository).save({ id: userId, ...data }, { transaction: true });
+		if (person) {
+			await personRepository.save(Object.assign(person, data));
 		}
 	}
 };

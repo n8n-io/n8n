@@ -840,6 +840,7 @@ describe('AgentIntegrationPersistenceService', () => {
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 				projectId,
 				excludePersonalRoute: true,
+				excludeResolvable: true,
 			});
 			expect(emitSetupCompleted).toHaveBeenCalledOnce();
 			expect(agentRepository.updateIntegrations.mock.invocationCallOrder[0]).toBeLessThan(

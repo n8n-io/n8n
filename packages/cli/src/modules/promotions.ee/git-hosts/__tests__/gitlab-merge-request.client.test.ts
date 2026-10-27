@@ -147,6 +147,22 @@ describe('GitLabMergeRequestClient', () => {
 		expect(created.diff_refs).toBeUndefined();
 	});
 
+	it('keeps the users who merged or closed the merge request', async () => {
+		respond(201, {
+			...mergeRequest,
+			state: 'merged',
+			merge_user: { name: 'Ada Lovelace', username: 'ada' },
+			merged_by: { name: 'Ada Lovelace' },
+			closed_by: null,
+		});
+
+		const created = await openMergeRequest();
+
+		expect(created.merge_user).toEqual({ name: 'Ada Lovelace' });
+		expect(created.merged_by).toEqual({ name: 'Ada Lovelace' });
+		expect(created.closed_by).toBeNull();
+	});
+
 	it('rejects a merge request response that misses required fields', async () => {
 		respond(201, { iid: 3 });
 
