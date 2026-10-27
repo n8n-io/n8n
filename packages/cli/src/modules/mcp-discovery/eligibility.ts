@@ -9,7 +9,7 @@ export type McpDiscoveryEligibilityInput = {
 	assistantMutationAt?: number | null;
 };
 
-export const MCP_DISCOVERY_DELAY_MS = 30 * 60 * 1000;
+export const MCP_DISCOVERY_DELAY_MS = 0;
 export type McpDiscoveryEligibility =
 	| { status: 'unknown' }
 	| { status: 'excluded'; reason: 'trial' | 'assistant' | 'client' }

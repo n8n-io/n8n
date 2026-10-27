@@ -1,6 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 
+import { extractAgentCredentialIds } from '@/modules/agents/utils/extract-agent-credential-ids';
 import { NodeTypes } from '@/node-types';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
@@ -14,6 +15,7 @@ import {
 	requiredAgentScopes,
 	type AgentImportOutcome,
 	type AgentImportPlan,
+	type AgentPlanItem,
 	type PreparedAgent,
 	type PersistedAgentOutcome,
 } from '../entities/agent/agent-import.types';
@@ -691,7 +693,10 @@ function scopeAgentRequirements(
 	const filter = <T extends { usedBy: PackageRequirementConsumer[] }>(
 		requirements: T[] | undefined,
 	) => identifyRequirements(requirements, input.workflows, active);
-	const requirements = filter(input.credentialRequest.requirements);
+	const requirements = withoutChannelOnlyConsumers(
+		filter(input.credentialRequest.requirements),
+		active,
+	);
 	const originalIds = new Set(input.credentialRequest.requirements?.map(({ id }) => id));
 	const activeIds = new Set(requirements?.map(({ id }) => id));
 	const bindings = input.credentialRequest.credentialBindings;
@@ -715,6 +720,27 @@ function scopeAgentRequirements(
 			requirements: filter(input.variableRequest.requirements),
 		},
 	};
+}
+
+/** Imported channels never use package credentials, so a channel reference alone requires none. */
+function withoutChannelOnlyConsumers<
+	T extends { id: string; usedBy: PackageRequirementConsumer[] },
+>(requirements: T[] | undefined, agents: AgentPlanItem[]): T[] | undefined {
+	if (!requirements) return undefined;
+	const referenced = new Map(
+		agents.map((item) => [
+			item.sourceAgentId,
+			extractAgentCredentialIds({ ...item.config, integrations: [] }),
+		]),
+	);
+	return requirements
+		.map((requirement) => ({
+			...requirement,
+			usedBy: requirement.usedBy.filter(
+				({ kind, id }) => kind !== 'agent' || referenced.get(id)?.has(requirement.id),
+			),
+		}))
+		.filter((requirement) => requirement.usedBy.length > 0);
 }
 
 function publishingBlockers(
