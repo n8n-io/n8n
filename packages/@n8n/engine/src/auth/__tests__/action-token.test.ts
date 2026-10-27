@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-	ACTION_TOKEN,
+	ACTION_TOKEN_SPEC,
 	InvalidActionTokenError,
 	mintActionToken,
 	verifyActionToken,
@@ -13,7 +13,7 @@ const secret = 'a'.repeat(32);
 
 /** Past every deadline the verifier allows, so one advance covers expiry and max age. */
 const PAST_EVERY_DEADLINE_MS =
-	(ACTION_TOKEN.ttlSeconds + ACTION_TOKEN.clockToleranceSeconds + 1) * 1000;
+	(ACTION_TOKEN_SPEC.ttlSeconds + ACTION_TOKEN_SPEC.clockToleranceSeconds + 1) * 1000;
 
 /**
  * Signs a token from raw claims, bypassing {@link mintActionToken}. Only for
@@ -24,8 +24,8 @@ const PAST_EVERY_DEADLINE_MS =
 const signRawToken = (claims: Record<string, unknown>, options: jwt.SignOptions = {}) =>
 	jwt.sign(claims, secret, {
 		algorithm: 'HS256',
-		issuer: ACTION_TOKEN.issuer,
-		audience: ACTION_TOKEN.audience,
+		issuer: ACTION_TOKEN_SPEC.issuer,
+		audience: ACTION_TOKEN_SPEC.audience,
 		...options,
 	});
 
@@ -67,14 +67,14 @@ describe('verifyActionToken', () => {
 	it('rejects a token whose scope is not one the data plane can mint', () => {
 		const token = signRawToken(
 			{ scope: 'credentials:write' },
-			{ expiresIn: ACTION_TOKEN.ttlSeconds },
+			{ expiresIn: ACTION_TOKEN_SPEC.ttlSeconds },
 		);
 
 		expect(() => verify(token)).toThrow(InvalidActionTokenError);
 	});
 
 	it('rejects a token without a scope', () => {
-		const token = signRawToken({}, { expiresIn: ACTION_TOKEN.ttlSeconds });
+		const token = signRawToken({}, { expiresIn: ACTION_TOKEN_SPEC.ttlSeconds });
 
 		expect(() => verify(token)).toThrow(InvalidActionTokenError);
 	});
@@ -99,7 +99,7 @@ describe('verifyActionToken', () => {
 	it('accepts a token still inside its lifetime', () => {
 		const token = mintActionToken(secret, 'lifecycle-events:write');
 
-		vi.advanceTimersByTime((ACTION_TOKEN.ttlSeconds - 1) * 1000);
+		vi.advanceTimersByTime((ACTION_TOKEN_SPEC.ttlSeconds - 1) * 1000);
 
 		expect(() => verify(token)).not.toThrow();
 	});
@@ -116,7 +116,7 @@ describe('verifyActionToken', () => {
 		const now = Date.now();
 
 		// Minted on a clock that runs ahead of this host by more than it tolerates.
-		vi.setSystemTime(now + (ACTION_TOKEN.clockToleranceSeconds + 60) * 1000);
+		vi.setSystemTime(now + (ACTION_TOKEN_SPEC.clockToleranceSeconds + 60) * 1000);
 		const token = mintActionToken(secret, 'lifecycle-events:write');
 		vi.setSystemTime(now);
 
@@ -141,7 +141,7 @@ describe('verifyActionToken', () => {
 	it('rejects a token with the wrong audience', () => {
 		const token = signRawToken(
 			{ scope: 'lifecycle-events:write' },
-			{ audience: 'someone-else', expiresIn: ACTION_TOKEN.ttlSeconds },
+			{ audience: 'someone-else', expiresIn: ACTION_TOKEN_SPEC.ttlSeconds },
 		);
 
 		expect(() => verify(token)).toThrow(InvalidActionTokenError);
@@ -150,7 +150,7 @@ describe('verifyActionToken', () => {
 	it('rejects a token with the wrong issuer', () => {
 		const token = signRawToken(
 			{ scope: 'lifecycle-events:write' },
-			{ issuer: 'someone-else', expiresIn: ACTION_TOKEN.ttlSeconds },
+			{ issuer: 'someone-else', expiresIn: ACTION_TOKEN_SPEC.ttlSeconds },
 		);
 
 		expect(() => verify(token)).toThrow(InvalidActionTokenError);
@@ -161,9 +161,9 @@ describe('verifyActionToken', () => {
 		const payload = Buffer.from(
 			JSON.stringify({
 				scope: 'lifecycle-events:write',
-				iss: ACTION_TOKEN.issuer,
-				aud: ACTION_TOKEN.audience,
-				exp: Math.floor(Date.now() / 1000) + ACTION_TOKEN.ttlSeconds,
+				iss: ACTION_TOKEN_SPEC.issuer,
+				aud: ACTION_TOKEN_SPEC.audience,
+				exp: Math.floor(Date.now() / 1000) + ACTION_TOKEN_SPEC.ttlSeconds,
 			}),
 		).toString('base64url');
 

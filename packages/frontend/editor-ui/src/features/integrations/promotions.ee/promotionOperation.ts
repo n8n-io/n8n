@@ -26,18 +26,11 @@ export function toOperationRequest(
 }
 
 /**
- * `missing`, `access`, `conflict`, `moved` (to another project) and `location` (another folder
- * in the project) stop the apply of their workflows. A `destructive` data table change needs a
- * confirmation. A `warning` only informs.
+ * `missing`, `access`, `conflict` and `moved` (between projects) stop the operation for their
+ * workflows. A moved folder stops Apply for every workflow. A `destructive` data table change
+ * needs a confirmation. A `warning` only informs.
  */
-export type BlockerKind =
-	| 'missing'
-	| 'access'
-	| 'conflict'
-	| 'moved'
-	| 'location'
-	| 'destructive'
-	| 'warning';
+export type BlockerKind = 'missing' | 'access' | 'conflict' | 'moved' | 'destructive' | 'warning';
 
 export type Blocker = {
 	kind: BlockerKind;
@@ -92,10 +85,16 @@ export function scopeCheck(check: ApplyCheckResult, graph: SelectionGraph): Appl
 			warnings: scope(preflight.warnings),
 		},
 		movedWorkflows: check.movedWorkflows.filter(({ id }) => listed(id)),
+		// A folder that moved into the project stops the import for every selection, so keep all.
+		movedFolders: check.movedFolders,
 	};
 }
 
-export function listBlockers({ preflight, movedWorkflows }: ApplyCheckResult): Blocker[] {
+export function listBlockers({
+	preflight,
+	movedWorkflows,
+	movedFolders,
+}: ApplyCheckResult): Blocker[] {
 	const blockers: Blocker[] = [];
 	for (const binding of preflight.missingBindings) {
 		blockers.push({
@@ -153,7 +152,20 @@ export function listBlockers({ preflight, movedWorkflows }: ApplyCheckResult): B
 	for (const { id } of movedWorkflows) {
 		blockers.push({ kind: 'moved', resourceKey: workflowKey(id), workflowKeys: [workflowKey(id)] });
 	}
+	// The page blocks every selection while such a folder exists, so this only marks the folder row.
+	for (const { id } of movedFolders) {
+		blockers.push({ kind: 'moved', resourceKey: `folder:${id}`, workflowKeys: [] });
+	}
 	return blockers;
+}
+
+/** Workflows that moved between projects on this instance, in either direction. Promote refuses them. */
+export function crossProjectMoveBlockers(graph: SelectionGraph): Blocker[] {
+	return [...graph.resources.values()].flatMap(({ key, movedToProject, movedFromProject }) =>
+		movedToProject || movedFromProject
+			? [{ kind: 'moved' as const, resourceKey: key, workflowKeys: [key] }]
+			: [],
+	);
 }
 
 export type BlockerIndex = {
@@ -186,23 +198,6 @@ export function indexBlockers(blockers: Blocker[]): BlockerIndex {
 /** The blockers that a tree row or a card shows: a workflow shows what stops it. */
 export const blockersOf = (index: BlockerIndex, { key, type }: PromotionResource) =>
 	type === 'workflow' ? index.byWorkflow.get(key) : index.byResource.get(key);
-
-/**
- * Folders and workflows that the branch holds under another parent. Apply cannot move them on
- * this instance. A folder stops the import for every selection. A workflow stops its own apply.
- */
-export function locationConflicts(graph: SelectionGraph) {
-	return [...graph.resources.values()].filter(
-		({ type, previousParentKey }) =>
-			(type === 'folder' || type === 'workflow') && previousParentKey !== undefined,
-	);
-}
-
-export const locationBlocker = ({ key, type }: PromotionResource): Blocker => ({
-	kind: 'location',
-	resourceKey: key,
-	workflowKeys: type === 'workflow' ? [key] : [],
-});
 
 /** True when the apply of these workflows removes data table values. */
 export function touchesDestructiveChange(index: BlockerIndex, keys: Iterable<ResourceKey>) {

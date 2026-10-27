@@ -245,6 +245,33 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 	const memoryBase = { enabled: true, storage: 'n8n' as const };
 
+	const withGuidance = (guidance: unknown) =>
+		AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				episodicMemory: { enabled: true, credential: 'credential-id', guidance },
+			},
+		});
+
+	it('trims and preserves capture guidance topics', () => {
+		const parsed = withGuidance({ include: [' timezone '], exclude: ['passwords'] });
+
+		expect(parsed.success).toBe(true);
+		if (!parsed.success) return;
+		expect(parsed.data.memory?.episodicMemory).toMatchObject({
+			guidance: { include: ['timezone'], exclude: ['passwords'] },
+		});
+	});
+
+	it('rejects empty, too long, or too many capture guidance topics', () => {
+		expect(withGuidance({ include: ['  '] }).success).toBe(false);
+		expect(withGuidance({ exclude: ['x'.repeat(101)] }).success).toBe(false);
+		expect(
+			withGuidance({ include: Array.from({ length: 21 }, (_, i) => `topic ${i}`) }).success,
+		).toBe(false);
+	});
+
 	it('preserves episodic memory task models', () => {
 		const parsed = AgentJsonConfigSchema.parse({
 			...baseConfig,

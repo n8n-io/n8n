@@ -32,7 +32,6 @@ import {
 	type AgentExecutionUsageRow,
 } from '../repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
-import { AgentRepository } from '../repositories/agent.repository';
 import { AgentThreadGrantRepository } from '../repositories/agent-thread-grant.repository';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from '../types/agent-queued-message';
@@ -138,7 +137,6 @@ export class SystemAgentExecutionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly registry: SystemAgentRegistry,
-		private readonly agentRepository: AgentRepository,
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly executionService: AgentExecutionService,
@@ -152,12 +150,6 @@ export class SystemAgentExecutionService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly threadGrants: AgentThreadGrantRepository,
 	) {}
-
-	/** Register a provider and make sure its instance agent row exists. */
-	async register(provider: SystemAgentProvider): Promise<void> {
-		await this.agentRepository.ensureInstanceAgent(provider.agentId, provider.name);
-		this.registry.register(provider);
-	}
 
 	resourceIdFor(user: Pick<User, 'id'>): string {
 		return systemChatMemoryResourceId(user.id);
@@ -596,6 +588,7 @@ export class SystemAgentExecutionService {
 				hostEvents,
 				controller.signal,
 				thread,
+				{ provider, user },
 				async () => {
 					return await provider.prepareTurn({
 						type: 'start',
@@ -689,6 +682,7 @@ export class SystemAgentExecutionService {
 			hostEvents,
 			controller.signal,
 			thread,
+			{ provider, user: params.user },
 			async () =>
 				await provider.prepareTurn({
 					type: 'resume',
@@ -937,13 +931,15 @@ export class SystemAgentExecutionService {
 	/**
 	 * Prepare a turn and attach its file store. When this fails, release the
 	 * lease before the error goes up, so that the source does not keep a lease
-	 * for a turn that never ran.
+	 * for a turn that never ran. The error goes up in the form that the
+	 * provider's `formatSetupError` gives.
 	 */
 	private async prepareOrRelease(
 		workspace: TurnWorkspace | undefined,
 		hostEvents: SystemAgentHostEventChannel,
 		signal: AbortSignal,
 		thread: AgentExecutionThread,
+		setup: { provider: SystemAgentProvider; user: User },
 		prepare: () => Promise<SystemAgentTurnHandle>,
 	): Promise<SystemAgentTurnHandle> {
 		try {
@@ -953,7 +949,32 @@ export class SystemAgentExecutionService {
 		} catch (error) {
 			hostEvents.close();
 			await workspace?.release({ status: signal.aborted ? 'cancelled' : 'errored', error });
-			throw error;
+			if (signal.aborted) throw error;
+			const formatted = await this.formatSetupError(setup.provider, setup.user, thread, error);
+			throw formatted ? new AgentFormattedTurnError(formatted, error) : error;
+		}
+	}
+
+	/**
+	 * The user-facing form of an error that `prepareTurn` threw, from the
+	 * provider hook. Follows the same rules as `formatTurnError`.
+	 */
+	private async formatSetupError(
+		provider: SystemAgentProvider,
+		user: User,
+		thread: AgentExecutionThread,
+		error: unknown,
+	): Promise<FormattedTurnError | undefined> {
+		if (!provider.formatSetupError || chatErrorCode(error) !== undefined) return undefined;
+		try {
+			const formatted = await provider.formatSetupError(user, error);
+			return formatted?.message ? formatted : undefined;
+		} catch (formatError) {
+			this.logger.warn('System agent setup error formatter failed', {
+				threadId: thread.id,
+				error: formatError,
+			});
+			return undefined;
 		}
 	}
 

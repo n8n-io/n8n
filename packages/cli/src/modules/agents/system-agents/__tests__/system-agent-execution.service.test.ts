@@ -34,9 +34,8 @@ import type {
 	AgentExecutionUsageRow,
 } from '../../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
-import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
-import type { AgentTurnFinalizeOutcome } from '../../types/agent-turn-outcome';
+import type { AgentTurnFinalizeOutcome, FormattedTurnError } from '../../types/agent-turn-outcome';
 import { executionToMessagesDto } from '../../utils/execution-to-message-mapper';
 import { SystemAgentExecutionService } from '../system-agent-execution.service';
 import { SystemAgentRegistry } from '../system-agent-registry';
@@ -107,7 +106,6 @@ function setup(
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const executionService = mock<AgentExecutionService>();
 	const chatExecutionService = mock<AgentChatExecutionService>();
-	const agentRepository = mock<AgentRepository>();
 	const attachmentService = mock<AgentChatAttachmentService>();
 	const agentMemory = mock<N8nMemoryImpl>();
 	const n8nMemory = mock<N8nMemory>();
@@ -134,6 +132,9 @@ function setup(
 		name: 'Test Assistant',
 		authorize: vi.fn(async (_user: User, _projectId: string) => true),
 		prepareTurn: vi.fn(async (_turn: SystemAgentTurn<TestLease>) => handle),
+		formatSetupError: vi.fn(
+			async (_user: User, _error: unknown): Promise<FormattedTurnError | undefined> => undefined,
+		),
 		normalizeResumeData: vi.fn((data: unknown) => ({ normalized: data })),
 		...(workspace ? { workspace } : {}),
 	} satisfies SystemAgentProvider<TestLease>;
@@ -154,7 +155,6 @@ function setup(
 	const service = new SystemAgentExecutionService(
 		logger,
 		registry,
-		agentRepository,
 		threadRepository,
 		executionRepository,
 		executionService,
@@ -186,7 +186,6 @@ function setup(
 		txRunner,
 		executionService,
 		chatExecutionService,
-		agentRepository,
 		registry,
 		attachmentService,
 		n8nMemory,
@@ -1008,6 +1007,66 @@ describe('SystemAgentExecutionService', () => {
 			});
 		});
 
+		it('formats an error that the turn setup threw', async () => {
+			const { service, provider, turnExecutionService } = setup([]);
+			const setupFailure = new Error('credits exhausted');
+			provider.prepareTurn.mockRejectedValue(setupFailure);
+			provider.formatSetupError.mockResolvedValue(quotaError);
+
+			const error = await service
+				.consume(claimFor(), user, new AbortController().signal, vi.fn())
+				.catch((e: unknown) => e);
+
+			expect(provider.formatSetupError).toHaveBeenCalledWith(user, setupFailure);
+			expect(error).toBeInstanceOf(AgentFormattedTurnError);
+			expect(error).toMatchObject({ message: quotaError.message, errorCode: 'quota_exhausted' });
+			expect(toChatErrorEvent(error, 'Chat failed')).toEqual({
+				type: 'error',
+				message: quotaError.message,
+				errorCode: 'quota_exhausted',
+			});
+			expect(turnExecutionService.execute).not.toHaveBeenCalled();
+		});
+
+		it('keeps the setup error of a stopped turn', async () => {
+			const { service, provider } = setup([]);
+			const claimController = new AbortController();
+			const setupFailure = new Error('setup stopped');
+			provider.prepareTurn.mockImplementation(async () => {
+				claimController.abort();
+				throw setupFailure;
+			});
+			provider.formatSetupError.mockResolvedValue(quotaError);
+
+			await expect(service.consume(claimFor(), user, claimController.signal, vi.fn())).rejects.toBe(
+				setupFailure,
+			);
+			expect(provider.formatSetupError).not.toHaveBeenCalled();
+		});
+
+		it('keeps a setup error that already has a client code', async () => {
+			const { service, provider } = setup([]);
+			const running = new AgentTurnAlreadyRunningError();
+			provider.prepareTurn.mockRejectedValue(running);
+			provider.formatSetupError.mockResolvedValue(quotaError);
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toBe(running);
+			expect(provider.formatSetupError).not.toHaveBeenCalled();
+		});
+
+		it('keeps the raw setup error when the setup formatter fails', async () => {
+			const { service, provider } = setup([]);
+			const setupFailure = new Error('no model');
+			provider.prepareTurn.mockRejectedValue(setupFailure);
+			provider.formatSetupError.mockRejectedValue(new Error('formatter broke'));
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toBe(setupFailure);
+		});
+
 		it('formats the errors of a resumed turn', async () => {
 			const { service, handle, checkpointStorage } = setup([errorChunk]);
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
@@ -1758,41 +1817,6 @@ describe('SystemAgentExecutionService', () => {
 			);
 		});
 	});
-	describe('register', () => {
-		it('seeds the instance agent row before it registers the provider', async () => {
-			const { service, agentRepository, registry } = setup();
-			const provider = {
-				agentId: 'other-agent',
-				name: 'Other Agent',
-				authorize: vi.fn(async () => true),
-				prepareTurn: vi.fn(),
-			} satisfies SystemAgentProvider;
-
-			await service.register(provider);
-
-			expect(agentRepository.ensureInstanceAgent).toHaveBeenCalledWith(
-				'other-agent',
-				'Other Agent',
-			);
-			expect(registry.get('other-agent')).toBe(provider);
-		});
-
-		it('does not register a provider whose agent row cannot be seeded', async () => {
-			const { service, agentRepository, registry } = setup();
-			agentRepository.ensureInstanceAgent.mockRejectedValue(new Error('project agent'));
-
-			await expect(
-				service.register({
-					agentId: 'other-agent',
-					name: 'Other Agent',
-					authorize: vi.fn(async () => true),
-					prepareTurn: vi.fn(),
-				}),
-			).rejects.toThrow('project agent');
-			expect(registry.has('other-agent')).toBe(false);
-		});
-	});
-
 	describe('hidden turns', () => {
 		it('runs a hidden queued message like any other system turn', async () => {
 			const { service, provider, prepared } = setup([textChunk]);

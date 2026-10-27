@@ -1,6 +1,7 @@
 import {
 	AgentIntegrationConfig,
 	isCredentialAgentIntegration,
+	isDraftIntegration,
 	type AgentIntegrationSettings,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -611,8 +612,11 @@ export class ChatIntegrationService {
 			}
 		}
 
+		// A draft has no credential yet, so there is nothing to connect.
 		const additions = nextExternal.filter(
-			(integration) => !previousKeys.has(buildIntegrationConnectionId(integration)),
+			(integration) =>
+				!isDraftIntegration(integration) &&
+				!previousKeys.has(buildIntegrationConnectionId(integration)),
 		);
 
 		if (additions.length > 0 && !agent.activeVersionId) {
@@ -1129,7 +1133,11 @@ export class ChatIntegrationService {
 				`Credential ${credentialId} not found or not accessible to project ${projectId}`,
 			);
 		}
-		const decrypted = await this.credentialsService.decrypt(credential, true);
+		const decrypted = await this.credentialsService.decryptForUse(
+			credential,
+			{ kind: 'system', reason: 'integration' },
+			projectId,
+		);
 		return decrypted;
 	}
 

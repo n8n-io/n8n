@@ -254,9 +254,9 @@ describe('contentImport on a git pull', () => {
 	/** Mirrors what a promotions Apply runs: the package is source of truth. */
 	const pullPolicy: Omit<ImportRequest, 'user'> = {
 		projectConflictPolicy: 'overwrite',
-		workflowConflictPolicy: 'new-version',
-		workflowIdPolicy: 'source',
-		workflowPublishingPolicy: 'match-source',
+		conflictPolicy: 'new-version',
+		idPolicy: 'source',
+		publishingPolicy: 'match-source',
 		missingNodeTypeMode: 'fail',
 		credentialMatchingMode: 'id-only',
 		credentialMissingMode: 'create-stub',

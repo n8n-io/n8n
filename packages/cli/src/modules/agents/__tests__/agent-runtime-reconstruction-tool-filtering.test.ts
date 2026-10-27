@@ -396,7 +396,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		expect(toolNamesPassedToBuildFromJson()).toEqual(['Get date']);
 	});
 
-	describe('with personal credentials not supported by agents', () => {
+	describe('with credentials not supported by agents', () => {
 		function makeReadableCredentialFinder() {
 			const credentialsFinderService = mock<CredentialsFinderService>();
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
@@ -425,7 +425,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
 				testUser,
-				{ projectId, excludePersonalRoute: true },
+				{ projectId, excludePersonalRoute: true, excludeResolvable: true },
 			);
 			expect(toolNamesPassedToBuildFromJson()).toEqual(['Get date']);
 			expect(result.userToolAccessSnapshot?.credentialIds).toEqual([]);
@@ -684,7 +684,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
 				testUser,
-				{ projectId, excludePersonalRoute: true },
+				{ projectId, excludePersonalRoute: true, excludeResolvable: true },
 			);
 			expect(integrationsPassedToDescriptors()).toEqual([slackIntegration('cred-1')]);
 		});

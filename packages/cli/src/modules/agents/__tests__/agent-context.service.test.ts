@@ -585,4 +585,30 @@ describe('AgentContextService', () => {
 		);
 		expect(agentExecutionService.getThreadDetail).toHaveBeenCalledTimes(1);
 	});
+
+	it('lists sessions for the user and checks access on each list', async () => {
+		const { service, agentExecutionService } = makeService();
+		agentExecutionService.getThreads.mockResolvedValue({ threads: [], nextCursor: 'next' });
+
+		await expect(
+			service.listSessions(user, 'project-1', 'agent-1', {
+				origin: 'mcp',
+				updatedAfter: '2026-09-17T10:00:00.000Z',
+			}),
+		).resolves.toEqual({ sessions: [], nextCursor: 'next' });
+		expect(agentExecutionService.getThreads).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			user.id,
+			20,
+			undefined,
+			{ origin: 'mcp', updatedAfter: new Date('2026-09-17T10:00:00.000Z') },
+		);
+
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+		await expect(service.listSessions(user, 'project-1', 'agent-1', {})).rejects.toThrow(
+			ForbiddenError,
+		);
+		expect(agentExecutionService.getThreads).toHaveBeenCalledTimes(1);
+	});
 });
