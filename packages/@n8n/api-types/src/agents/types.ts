@@ -222,6 +222,21 @@ export interface AgentSkill {
 	references?: AgentSkillReference[];
 }
 
+/**
+ * The versions of one attached skill, as the agent builder shows them. Numbers are
+ * `skill_version.version`.
+ */
+export interface AgentSkillVersionInfo {
+	/** The version the draft runs: the pinned one, else the latest. */
+	draft: number;
+	/** The version the published agent runs. Null when the published agent does not use the skill. */
+	published: number | null;
+	/** The newest saved version of the skill. */
+	latest: number;
+	/** True when the draft ref is pinned to a version. */
+	pinned: boolean;
+}
+
 export interface AgentConfigResponse {
 	config: AgentJsonConfig;
 	configHash: string;

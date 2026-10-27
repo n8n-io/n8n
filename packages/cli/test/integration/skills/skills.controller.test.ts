@@ -331,7 +331,15 @@ describe('SkillsController', () => {
 
 			expect(asOutsider.body.data.usedBy).toEqual({ drafts: [], pins: [], hiddenAgents: 1 });
 			expect(asEditor.body.data.usedBy).toEqual({
-				drafts: [{ agentId: agent.id, agentName: 'Support bot', projectId: project.id }],
+				drafts: [
+					{
+						agentId: agent.id,
+						agentName: 'Support bot',
+						projectId: project.id,
+						version: 1,
+						pinned: false,
+					},
+				],
 				pins: [],
 				hiddenAgents: 0,
 			});
@@ -525,6 +533,81 @@ describe('SkillsController', () => {
 			expect(forOutsider.body.data).toEqual([
 				expect.objectContaining({ id: ownerUser.id, email: ownerUser.email }),
 			]);
+		});
+	});
+
+	describe('versions', () => {
+		it('lists every version newest first, with the user who saved it', async () => {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+			await editor
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', baseSkillHash: skillHash })
+				.expect(200);
+
+			const { body: list } = await viewer.get(`/skills/${id}/versions`).expect(200);
+
+			expect(list.data.map((version: { version: number }) => version.version)).toEqual([2, 1]);
+			expect(list.data[0]).toEqual({
+				id: expect.any(String),
+				version: 2,
+				createdBy: expect.objectContaining({ id: expect.any(String) }),
+				createdAt: expect.any(String),
+			});
+		});
+
+		it('returns the content of one version', async () => {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+			await editor
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', baseSkillHash: skillHash })
+				.expect(200);
+
+			const { body: first } = await viewer.get(`/skills/${id}/versions/1`).expect(200);
+
+			expect(first.data).toMatchObject({ version: 1, skill: { instructions: 'Be brief.' } });
+			await viewer.get(`/skills/${id}/versions/3`).expect(404);
+			await viewer.get(`/skills/${id}/versions/0`).expect(400);
+			await viewer.get(`/skills/${id}/versions/latest`).expect(400);
+		});
+
+		it('hides the versions of a skill the user cannot see', async () => {
+			const { id } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+
+			await outsider.get(`/skills/${id}/versions`).expect(404);
+			await outsider.get(`/skills/${id}/versions/1`).expect(404);
+		});
+
+		it('saves the content of an old version as a new version', async () => {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+			const saved = await editor
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', baseSkillHash: skillHash })
+				.expect(200);
+			const { body: old } = await editor.get(`/skills/${id}/versions/1`).expect(200);
+
+			const restored = await editor
+				.patch(`/skills/${id}`)
+				.send({ ...old.data.skill, baseSkillHash: saved.body.data.skillHash })
+				.expect(200);
+
+			expect(restored.body.data).toMatchObject({ version: 3, created: true });
+			expect(restored.body.data.skill.instructions).toBe('Be brief.');
 		});
 	});
 

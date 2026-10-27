@@ -1,4 +1,4 @@
-import type { SkillAgentOption, SkillUsage } from '@n8n/api-types';
+import { skillNameKey, type SkillAgentOption, type SkillUsage } from '@n8n/api-types';
 import { UserRepository, type OperationContext } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
@@ -81,8 +81,10 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 	/**
 	 * The check an agent config save runs on the skill refs it gets. The agent's current
 	 * refs come from its dependency rows. Unknown ids are dropped unless already
-	 * attached. A ref keeps a pin only when the agent already had it. A new ref
-	 * must be attachable and must not clash by name.
+	 * attached. A ref keeps its `versionId` when it is a saved version of that skill; a
+	 * pin to a version of another skill or to no version is refused. A pin needs no skill
+	 * permission, as a revert does: it writes no skill row. A new ref must be attachable,
+	 * and a new ref or a changed pin must not introduce a name clash.
 	 */
 	async checkRefs(
 		agent: { id: string; projectId: string | null },
@@ -92,7 +94,7 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 		const current =
 			(await this.agentSkillRepository.findDependencies([agent.id], ctx)).get(agent.id) ?? [];
 		const existingIds = new Set(current.map((ref) => ref.skillId));
-		const existingPins = new Map(current.map((ref) => [ref.skillId, ref.versionId]));
+		const existingPins = new Map(current.map((ref) => [ref.skillId, ref.versionId ?? undefined]));
 		const found = new Map(
 			(
 				await this.skillRepository.findByIds(
@@ -101,23 +103,29 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 				)
 			).map((skill) => [skill.id, skill]),
 		);
-		const kept = refs
-			.filter((ref) => existingIds.has(ref.id) || found.has(ref.id))
-			.map(({ versionId, ...ref }) =>
-				versionId !== undefined && existingPins.get(ref.id) === versionId
-					? { ...ref, versionId }
-					: ref,
-			);
+		const kept = refs.filter((ref) => existingIds.has(ref.id) || found.has(ref.id));
+		await this.assertPinsBelongToSkills(kept, existingPins, ctx);
 		const newIds = [...new Set(kept.map((ref) => ref.id))].filter(
 			(id) => !existingIds.has(id) && found.has(id),
 		);
-		if (newIds.length === 0) return kept;
+		const repinned = kept.filter(
+			(ref) => existingIds.has(ref.id) && existingPins.get(ref.id) !== ref.versionId,
+		);
+		if (newIds.length === 0 && repinned.length === 0) return kept;
 		// Shared lock until the attach commits, so `changeTarget` cannot narrow a skill in between.
-		if (ctx.trx) await this.skillRepository.lockForPublish(newIds, ctx);
+		if (ctx.trx && newIds.length > 0) await this.skillRepository.lockForPublish(newIds, ctx);
 
 		const keptExisting = kept.filter((ref) => existingIds.has(ref.id));
-		const newRefs = newIds.map((id) => ({ id }));
-		const nameOf = await this.skillService.runtimeNames([...keptExisting, ...newRefs], ctx);
+		// The first ref of a new skill decides its pin, as `replaceDependencies` stores it.
+		const newRefs = newIds.flatMap((id) => kept.find((ref) => ref.id === id) ?? []);
+		const previousRefs = repinned.map((ref) => ({
+			id: ref.id,
+			versionId: existingPins.get(ref.id),
+		}));
+		const nameOf = await this.skillService.runtimeNames(
+			[...keptExisting, ...newRefs, ...previousRefs],
+			ctx,
+		);
 		for (const id of newIds) {
 			const skill = found.get(id);
 			if (skill && !this.isAttachable(skill, agent)) {
@@ -126,10 +134,19 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 				);
 			}
 		}
-		// A kept ref runs its pinned version, so compare the name of that version.
+		// A ref runs its pinned version, so compare the name of that version. A changed pin
+		// that keeps the name it had before introduces nothing new.
+		const renamed = repinned.filter((ref) => {
+			const before = nameOf({ id: ref.id, versionId: existingPins.get(ref.id) });
+			const after = nameOf(ref);
+			return (
+				after !== undefined && before !== undefined && skillNameKey(before) !== skillNameKey(after)
+			);
+		});
+		const renamedIds = new Set(renamed.map((ref) => ref.id));
 		const clashes = findIntroducedNameClashes(
-			keptExisting.flatMap((ref) => nameOf(ref) ?? []),
-			newRefs.flatMap((ref) => nameOf(ref) ?? []),
+			keptExisting.filter((ref) => !renamedIds.has(ref.id)).flatMap((ref) => nameOf(ref) ?? []),
+			[...renamed, ...newRefs].flatMap((ref) => nameOf(ref) ?? []),
 		);
 		if (clashes.length > 0) {
 			throw new UserError(
@@ -137,6 +154,38 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 			);
 		}
 		return kept;
+	}
+
+	/**
+	 * Refuses a submitted pin that is not a saved version of the ref's skill. A pin that
+	 * the draft already has is not read again.
+	 */
+	private async assertPinsBelongToSkills(
+		refs: SkillRef[],
+		existingPins: Map<string, string | undefined>,
+		ctx: OperationContext,
+	): Promise<void> {
+		const changed = refs.filter(
+			(ref) => ref.versionId !== undefined && existingPins.get(ref.id) !== ref.versionId,
+		);
+		if (changed.length === 0) return;
+		const versions = await this.skillRepository.findVersionRefs(
+			changed.flatMap((ref) => ref.versionId ?? []),
+			ctx,
+		);
+		for (const ref of changed) {
+			const version = ref.versionId ? versions.get(ref.versionId) : undefined;
+			if (!version) {
+				throw new UserError(
+					`Skill ${ref.id} has no saved version ${ref.versionId}. Pick a version from the version list of this skill.`,
+				);
+			}
+			if (version.skillId !== ref.id) {
+				throw new UserError(
+					`Version ${ref.versionId} belongs to another skill, not to skill ${ref.id}. Pick a version of this skill.`,
+				);
+			}
+		}
 	}
 
 	async assertVersionAccess(

@@ -1165,7 +1165,15 @@ describe('SkillService', () => {
 				new Map([['skill_a', versionRow(skillRow('skill_a'), 2)]]),
 			);
 			skillAgents.findUsage.mockResolvedValue({
-				drafts: [{ agentId: 'agent-1', agentName: 'Support bot', projectId: PROJECT }],
+				drafts: [
+					{
+						agentId: 'agent-1',
+						agentName: 'Support bot',
+						projectId: PROJECT,
+						version: 2,
+						pinned: false,
+					},
+				],
 				pins: [
 					{ agentId: 'agent-2', agentName: 'Sales bot', projectId: PROJECT, version: 2 },
 					{ agentId: 'agent-3', agentName: 'Old bot', projectId: PROJECT, version: null },
@@ -1187,7 +1195,15 @@ describe('SkillService', () => {
 				new Map([['skill_a', versionRow(skillRow('skill_a'), 2)]]),
 			);
 			skillAgents.findUsage.mockResolvedValue({
-				drafts: [{ agentId: 'agent-1', agentName: 'Support bot', projectId: PROJECT }],
+				drafts: [
+					{
+						agentId: 'agent-1',
+						agentName: 'Support bot',
+						projectId: PROJECT,
+						version: 2,
+						pinned: false,
+					},
+				],
 				pins: [],
 				hiddenAgents: 2,
 			});

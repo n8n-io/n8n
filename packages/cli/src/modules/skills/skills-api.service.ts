@@ -13,6 +13,8 @@ import type {
 	SkillUserDto,
 	SkillNewNameQueryDto,
 	SkillNewNameResponse,
+	SkillVersionDetail,
+	SkillVersionSummary,
 } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, UserRepository, type User } from '@n8n/db';
@@ -24,6 +26,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { SkillAgentsProxy } from './skill-agents-proxy.service';
 import { getSkillHash } from './skill-hash';
+import type { SkillVersion } from './skill-version.entity';
 import type { Skill } from './skill.entity';
 import {
 	SkillRepository,
@@ -237,6 +240,23 @@ export class SkillsApiService {
 		return { id: skillId, ...saved, skillHash: getSkillHash(saved.skill) };
 	}
 
+	/** Every saved version of the skill, newest first, so the first one is the latest. Needs read access. */
+	async listVersions(user: User, skillId: string): Promise<SkillVersionSummary[]> {
+		await this.requireAccess(user, skillId, 'read');
+		const versions = await this.skillRepository.findVersionList(skillId);
+		const users = await this.findCreators(versions.flatMap((version) => version.createdById ?? []));
+		return versions.map((version) => toVersionSummary(version, users));
+	}
+
+	/** One saved version with its content. Needs read access. */
+	async getVersion(user: User, skillId: string, version: number): Promise<SkillVersionDetail> {
+		await this.requireAccess(user, skillId, 'read');
+		const row = await this.skillRepository.findVersionByNumber(skillId, version);
+		if (!row) throw new NotFoundError('Skill version not found');
+		const users = await this.findCreators(row.version.createdById ? [row.version.createdById] : []);
+		return { ...toVersionSummary(row.version, users), skill: toAgentSkill(row) };
+	}
+
 	async delete(user: User, skillId: string, source: SkillTelemetrySource = 'ui'): Promise<void> {
 		const skill = await this.requireAccess(user, skillId, 'delete');
 		// The conflict message names only the agents the user may read, as the detail does.
@@ -431,4 +451,16 @@ export class SkillsApiService {
 			]),
 		);
 	}
+}
+
+function toVersionSummary(
+	version: Pick<SkillVersion, 'id' | 'version' | 'createdById' | 'createdAt'>,
+	users: Map<string, SkillUserDto>,
+): SkillVersionSummary {
+	return {
+		id: version.id,
+		version: version.version,
+		createdBy: version.createdById ? (users.get(version.createdById) ?? null) : null,
+		createdAt: version.createdAt.toISOString(),
+	};
 }

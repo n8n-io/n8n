@@ -265,6 +265,72 @@ describe('AgentSkillRefsService', () => {
 		);
 	});
 
+	describe('findSkillVersions', () => {
+		const otherPin = '1c3d7a2f-8e4b-4d2c-a03f-6b7c8d9e0f1a';
+		const publishedPin = '2d4e8b3a-9f5c-4e3d-b14a-7c8d9e0f1a2b';
+
+		beforeEach(() => {
+			skillRepository.findLatestSummaries.mockResolvedValue(
+				new Map([
+					['follows', { name: 'Follows', description: '', version: 5 }],
+					['pinned', { name: 'Pinned', description: '', version: 7 }],
+					['wrong_pin', { name: 'Wrong pin', description: '', version: 2 }],
+				]),
+			);
+			skillRepository.findVersionRefs.mockResolvedValue(
+				new Map([
+					[pinId, { skillId: 'pinned', version: 3 }],
+					[otherPin, { skillId: 'follows', version: 4 }],
+					[publishedPin, { skillId: 'follows', version: 4 }],
+				]),
+			);
+			agentSkillRepository.findPinnedVersionIds.mockResolvedValue(
+				new Map([['follows', publishedPin]]),
+			);
+		});
+
+		it('returns the draft, published and latest version of each ref', async () => {
+			const versions = await service.findSkillVersions(
+				{ activeVersionId: 'agent-v2' },
+				[
+					{ type: 'skill', id: 'follows' },
+					{ type: 'skill', id: 'pinned', versionId: pinId },
+					{ type: 'skill', id: 'wrong_pin', versionId: otherPin },
+					{ type: 'skill', id: 'gone' },
+				],
+				ctx,
+			);
+
+			expect(versions).toEqual({
+				follows: { draft: 5, published: 4, latest: 5, pinned: false },
+				pinned: { draft: 3, published: null, latest: 7, pinned: true },
+				// The runtime ignores a pin to a version of another skill.
+				wrong_pin: { draft: 2, published: null, latest: 2, pinned: false },
+			});
+			expect(agentSkillRepository.findPinnedVersionIds).toHaveBeenCalledWith('agent-v2', ctx);
+		});
+
+		it('has no published version for an agent that is not published', async () => {
+			const versions = await service.findSkillVersions(
+				{ activeVersionId: null },
+				[{ type: 'skill', id: 'follows' }],
+				ctx,
+			);
+
+			expect(versions).toEqual({
+				follows: { draft: 5, published: null, latest: 5, pinned: false },
+			});
+			expect(agentSkillRepository.findPinnedVersionIds).not.toHaveBeenCalled();
+		});
+
+		it('reads nothing for an agent without skills', async () => {
+			await expect(service.findSkillVersions({ activeVersionId: null }, [], ctx)).resolves.toEqual(
+				{},
+			);
+			expect(skillRepository.findLatestSummaries).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('findOutdatedSkillIds', () => {
 		const body = (instructions: string) => ({
 			name: 'Skill',

@@ -231,12 +231,26 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 			manager,
 			ctx,
 		);
+		const visibleDrafts = drafted.filter(isVisible);
+		const draftVersions = await this.findDraftVersions(
+			skillId,
+			visibleDrafts.map((agent) => agent.id),
+			ctx,
+		);
 		return {
-			drafts: drafted.filter(isVisible).map((agent) => ({
-				agentId: agent.id,
-				agentName: agent.name,
-				projectId: agent.projectId,
-			})),
+			drafts: visibleDrafts.flatMap((agent) => {
+				const draft = draftVersions.get(agent.id);
+				if (!draft) return [];
+				return [
+					{
+						agentId: agent.id,
+						agentName: agent.name,
+						projectId: agent.projectId,
+						version: draft.version,
+						pinned: draft.pinned,
+					},
+				];
+			}),
 			pins: visiblePublished.map((agent) => ({
 				agentId: agent.id,
 				agentName: agent.name,
@@ -245,6 +259,58 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 			})),
 			hiddenAgents: hidden.size,
 		};
+	}
+
+	/**
+	 * The version each agent draft runs, keyed by agent id: the pinned version, else the
+	 * latest. A pin to a version of another skill counts as following, as the runtime reads it.
+	 */
+	private async findDraftVersions(
+		skillId: string,
+		agentIds: string[],
+		ctx: OperationContext,
+	): Promise<Map<string, { version: number; pinned: boolean }>> {
+		const result = new Map<string, { version: number; pinned: boolean }>();
+		if (agentIds.length === 0) return result;
+		const latest = (await this.skillRepository.findLatestSummaries([skillId], ctx)).get(skillId);
+		if (!latest) return result;
+		const deps = await inChunks(
+			agentIds,
+			async (chunk) =>
+				await this.managerFor(ctx).find(AgentSkillDependency, {
+					select: ['agentId', 'skillVersionId'],
+					where: { skillId, agentId: In(chunk) },
+				}),
+		);
+		const pins = await this.skillRepository.findVersionRefs(
+			deps.flatMap((dep) => dep.skillVersionId ?? []),
+			ctx,
+		);
+		for (const dep of deps) {
+			const pin = dep.skillVersionId ? pins.get(dep.skillVersionId) : undefined;
+			result.set(
+				dep.agentId,
+				pin?.skillId === skillId
+					? { version: pin.version, pinned: true }
+					: { version: latest.version, pinned: false },
+			);
+		}
+		return result;
+	}
+
+	/**
+	 * The version id each skill has in one published agent version, keyed by skill id.
+	 * Reads no version or file rows.
+	 */
+	async findPinnedVersionIds(
+		agentVersionId: string,
+		ctx: OperationContext = {},
+	): Promise<Map<string, string>> {
+		const pins = await this.managerFor(ctx).find(AgentVersionSkillDependency, {
+			select: ['skillId', 'skillVersionId'],
+			where: { agentVersionId },
+		});
+		return new Map(pins.map((pin) => [pin.skillId, pin.skillVersionId]));
 	}
 
 	/** The agents that use the skill: a draft ref or a published pin. */
