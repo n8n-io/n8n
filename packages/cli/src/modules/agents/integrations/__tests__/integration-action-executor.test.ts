@@ -61,6 +61,9 @@ import type { IntegrationMessageContext } from '../integration-tool-types';
 import { LinearIntegration } from '../platforms/linear/linear-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import { TeamsIntegration } from '../platforms/teams/teams-integration';
+import { TelegramIntegration } from '../platforms/telegram/telegram-integration';
+import type { UrlService } from '@n8n/backend-services';
+import type { InstanceSettings } from 'n8n-core';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
@@ -1925,7 +1928,7 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 			fileSizeBytes: 3,
 		};
 
-		function buildExecutor(integration: AgentIntegrationConfig = slack) {
+		function buildExecutor(integration: AgentIntegrationConfig = slack, files = [chartFile]) {
 			const sent = { id: '123.457', threadId: 'slack:C123:123.457' };
 			const thread = { post: vi.fn().mockResolvedValue(sent), subscribe: vi.fn() };
 			const channel = { post: vi.fn().mockResolvedValue(sent) };
@@ -1935,13 +1938,23 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 			const chatIntegrationService = mock<ChatIntegrationService>();
 			chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 			const attachmentService = mock<AgentChatAttachmentService>();
-			attachmentService.getReadable.mockImplementation(async (fileId) =>
-				fileId === chartFile.id ? (chartFile as never) : null,
+			attachmentService.getReadable.mockImplementation(
+				async (fileId) => (files.find((file) => file.id === fileId) as never) ?? null,
 			);
 			attachmentService.getBuffer.mockResolvedValue(Buffer.from('png'));
+			const registry = buildRegistry();
+			registry.register(
+				new TelegramIntegration(
+					mock<Logger>(),
+					mock<UrlService>(),
+					mock<AgentRepository>(),
+					mock<InstanceSettings>(),
+					mock<OutboundHttp>(),
+				),
+			);
 			const executor = new ChatIntegrationActionExecutor(
 				chatIntegrationService,
-				buildRegistry(),
+				registry,
 				new ChannelRateLimitGuard(),
 				attachmentService,
 			);
@@ -1989,6 +2002,62 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 				card: expect.objectContaining({ type: 'card' }),
 				files: [expect.objectContaining({ filename: 'chart.png' })],
 			});
+		});
+
+		it('posts Telegram files as attachments typed by MIME type', async () => {
+			const { executor, descriptor, thread } = buildExecutor(telegram);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Here is the chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				currentMessageContext: {
+					...currentMessageContext,
+					integrationConnectionId: 'telegram:cred-telegram',
+					platform: 'telegram',
+				},
+				fileScope,
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalledWith({
+				raw: 'Here is the chart',
+				attachments: [
+					{ type: 'image', data: Buffer.from('png'), name: 'chart.png', mimeType: 'image/png' },
+				],
+			});
+		});
+
+		it('refuses a Telegram media group that mixes documents with images', async () => {
+			const report = {
+				...chartFile,
+				id: 'file-2',
+				fileName: 'report.pdf',
+				mimeType: 'application/pdf',
+			};
+			const { executor, descriptor, thread, attachmentService } = buildExecutor(telegram, [
+				chartFile,
+				report,
+			]);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'send_dm',
+				input: { userId: '42', message: { text: 'Files' }, fileIds: ['file-1', 'file-2'] },
+				awaitResponse: false,
+				fileScope,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: {
+					code: 'FILE_UPLOAD_LIMIT_EXCEEDED',
+					message: expect.stringContaining('separate messages'),
+				},
+			});
+			expect(attachmentService.getBuffer).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
 		});
 
 		it('returns FILE_NOT_FOUND when the thread cannot read a file', async () => {

@@ -38,6 +38,14 @@ export function unsupportedAction(platform: string, action: string): Integration
 	);
 }
 
+/** The chat SDK attachment type for a MIME type. */
+export function fileAttachmentType(mimeType: string): 'image' | 'video' | 'audio' | 'file' {
+	if (mimeType.startsWith('image/')) return 'image';
+	if (mimeType.startsWith('video/')) return 'video';
+	if (mimeType.startsWith('audio/')) return 'audio';
+	return 'file';
+}
+
 export function normalizePlatformId(platform: string, id: string): string {
 	return id.includes(':') ? id : `${platform}:${id}`;
 }

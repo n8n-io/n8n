@@ -1,7 +1,7 @@
 import { richMessageSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import type { Adapter, FileUpload, SentMessage } from 'chat';
+import type { Adapter, Attachment, PostableCard, SentMessage } from 'chat';
 import { z } from 'zod';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -21,6 +21,7 @@ import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import { fileIdsSchema } from './integration-tool-definitions';
 import {
 	connectionUnavailable,
+	fileAttachmentType,
 	integrationError,
 	normalizePlatformId,
 	unsupportedAction,
@@ -66,6 +67,13 @@ const addReactionInputSchema = z.object({
 });
 
 type MessagePayload = z.infer<typeof messageSchema>;
+
+/** An agent file loaded for a send. It is a valid chat SDK `FileUpload`. */
+interface OutboundFile {
+	data: Buffer;
+	filename: string;
+	mimeType: string;
+}
 
 /**
  * Dispatches action invocations between cross-platform actions (`respond`,
@@ -253,7 +261,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	private async respondInCurrentThread(
 		chat: ChatInstance,
 		params: IntegrationActionParams,
-		files: FileUpload[],
+		files: OutboundFile[],
 	): Promise<IntegrationActionResult> {
 		const input = respondInputSchema.parse(params.input);
 		const threadId = params.currentMessageContext?.target.threadId;
@@ -295,7 +303,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	private async sendDirectMessage(
 		chat: ChatInstance,
 		params: IntegrationActionParams,
-		files: FileUpload[],
+		files: OutboundFile[],
 	): Promise<IntegrationActionResult> {
 		const input = sendDmInputSchema.parse(params.input);
 		// The Chat SDK guesses the adapter from the user ID's shape and knows one
@@ -369,7 +377,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	private async sendChannelMessage(
 		chat: ChatInstance,
 		params: IntegrationActionParams,
-		files: FileUpload[],
+		files: OutboundFile[],
 	): Promise<IntegrationActionResult> {
 		const input = sendChannelMessageInputSchema.parse(params.input);
 		const platform = params.descriptor.integration.type;
@@ -401,12 +409,13 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		descriptor: IntegrationToolConnectionDescriptor,
 		message: MessagePayload,
 		params: { awaitResponse: boolean; runId?: string; toolCallId?: string },
-		files: FileUpload[] = [],
+		files: OutboundFile[] = [],
 	) {
 		const cardPayload = message.card;
+		const fileFields = this.toFileFields(descriptor, files);
 		// A string post is plain text, and `raw` keeps it plain text with files.
 		if (!cardPayload)
-			return files.length ? { raw: message.text ?? '', files } : (message.text ?? '');
+			return fileFields ? { raw: message.text ?? '', ...fileFields } : (message.text ?? '');
 
 		if (params.awaitResponse && (!params.runId || !params.toolCallId)) {
 			throw new Error('Interactive integration actions require runId and toolCallId.');
@@ -430,7 +439,27 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			descriptor.integration.type,
 		);
 
-		return files.length ? { card, files } : { card };
+		// The adapters read `attachments` from a card post too, but PostableCard does not declare it.
+		const postable: PostableCard & { attachments?: Attachment[] } = { card, ...fileFields };
+		return postable;
+	}
+
+	private toFileFields(
+		descriptor: IntegrationToolConnectionDescriptor,
+		files: OutboundFile[],
+	): { files: OutboundFile[] } | { attachments: Attachment[] } | undefined {
+		if (files.length === 0) return undefined;
+		if (!this.integrationRegistry.get(descriptor.integration.type)?.sendFilesAsAttachments) {
+			return { files };
+		}
+		return {
+			attachments: files.map((file) => ({
+				type: fileAttachmentType(file.mimeType),
+				data: file.data,
+				name: file.filename,
+				mimeType: file.mimeType,
+			})),
+		};
 	}
 
 	/**
@@ -441,7 +470,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	private async loadFiles(
 		params: IntegrationActionParams,
 		integrationDef: AgentChatIntegration | undefined,
-	): Promise<FileUpload[] | IntegrationActionResult> {
+	): Promise<OutboundFile[] | IntegrationActionResult> {
 		if (
 			params.action !== 'respond' &&
 			params.action !== 'send_dm' &&
@@ -495,6 +524,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			}
 			attachments.push(attachment);
 		}
+		const refusal = integrationDef.checkOutboundFiles?.(attachments);
+		if (refusal)
+			return integrationError(INTEGRATION_ERROR_CODES.FILE_UPLOAD_LIMIT_EXCEEDED, refusal);
 
 		// Each file is loaded into memory. MAX_CHANNEL_SEND_FILE_BYTES caps the size.
 		return await Promise.all(

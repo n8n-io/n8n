@@ -25,6 +25,7 @@ import {
 import type { SuspendComponent } from '../../component-mapper';
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadTelegramAdapter } from '../../esm-loader';
+import { fileAttachmentType } from '../../integration-helpers';
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
 import {
 	createTelegramBridgeExecutionContext,
@@ -104,6 +105,9 @@ export class TelegramIntegration extends AgentChatIntegration {
 	// The Bot API sends up to 50 MB for each file, and up to 10 files as one media group.
 	readonly fileUploadLimits = { maxFiles: 10, maxFileBytes: 50 * 1024 * 1024 };
 
+	// sendDocument shows an image as a generic file. Typed attachments use sendPhoto, sendVideo and sendAudio.
+	readonly sendFilesAsAttachments = true;
+
 	readonly needsShortCallbackData = true;
 
 	readonly deleteActionMessageBeforeResume = false;
@@ -113,6 +117,18 @@ export class TelegramIntegration extends AgentChatIntegration {
 	// Telegram rich messages hold up to 32,768 characters. A bot without rich
 	// messages falls back to the 4,096-character format, which the adapter cuts.
 	readonly maxMessageLength = 30_000;
+
+	/** A media group can mix photos and videos, but documents and audio go only with their own type. */
+	checkOutboundFiles(files: Array<{ mimeType: string }>): string | undefined {
+		const groups = new Set(
+			files.map(({ mimeType }) => {
+				const type = fileAttachmentType(mimeType);
+				return type === 'image' || type === 'video' ? 'visual' : type;
+			}),
+		);
+		if (groups.size <= 1) return undefined;
+		return 'Telegram can send images and videos together, but documents and audio files only with files of the same type. Send them in separate messages.';
+	}
 
 	formatActionDecisionMessage({
 		approved,

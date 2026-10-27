@@ -331,6 +331,18 @@ export abstract class AgentChatIntegration {
 	 */
 	readonly fileUploadLimits?: FileUploadLimits;
 
+	/**
+	 * Post agent files as typed `attachments` instead of `files`. The type comes
+	 * from the MIME type, so the platform can send an image as a photo.
+	 */
+	readonly sendFilesAsAttachments: boolean = false;
+
+	/**
+	 * Return an error message when the platform cannot send these files in one
+	 * message. Runs before the files are loaded.
+	 */
+	checkOutboundFiles?(files: Array<{ mimeType: string }>): string | undefined;
+
 	/** Read-only context queries exposed through the generated integration context tool. */
 	get contextQueries(): IntegrationContextQuery[] {
 		return this.contextToolDefinitions.map((definition) => definition.name);
