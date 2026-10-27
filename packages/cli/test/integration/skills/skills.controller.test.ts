@@ -34,6 +34,7 @@ describe('SkillsController', () => {
 	const postHog = mockInstance(PostHogClient);
 	let ownerUser: User;
 	let memberUser: User;
+	let editorUser: User;
 	let owner: SuperAgentTest;
 	let member: SuperAgentTest;
 	let editor: SuperAgentTest;
@@ -44,7 +45,7 @@ describe('SkillsController', () => {
 	beforeAll(async () => {
 		ownerUser = await createOwner();
 		memberUser = await createMember();
-		const editorUser = await createMember();
+		editorUser = await createMember();
 		const viewerUser = await createMember();
 		owner = server.authAgentFor(ownerUser);
 		member = server.authAgentFor(memberUser);
@@ -554,7 +555,7 @@ describe('SkillsController', () => {
 			expect(list.data[0]).toEqual({
 				id: expect.any(String),
 				version: 2,
-				createdBy: expect.objectContaining({ id: expect.any(String) }),
+				createdBy: expect.objectContaining({ id: editorUser.id }),
 				createdAt: expect.any(String),
 			});
 		});
