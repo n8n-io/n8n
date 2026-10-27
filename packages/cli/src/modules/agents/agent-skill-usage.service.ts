@@ -138,6 +138,22 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 		return kept;
 	}
 
+	async assertVersionAccess(
+		agent: { id: string; projectId: string | null },
+		refs: SkillRef[],
+		ctx: OperationContext,
+	): Promise<void> {
+		const ids = refs.map(({ id }) => id);
+		if (ids.length === 0) return;
+		await this.skillRepository.lockForPublish(ids, ctx);
+		const skills = await this.skillRepository.findByIds(ids, ctx);
+		const accessible = new Set(
+			skills.filter((skill) => this.isAttachable(skill, agent)).map(({ id }) => id),
+		);
+		if (ids.some((id) => !accessible.has(id)))
+			throw new UserError('A saved skill is no longer available to this agent');
+	}
+
 	// ---------------------------------------------------------------- SkillAgentsProvider
 
 	async findAgents(agentIds: string[], ctx: OperationContext) {
@@ -213,7 +229,7 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 
 	async markFollowersChanged(skillId: string, ctx: OperationContext): Promise<string[]> {
 		const followingIds = await this.agentSkillRepository.findFollowingAgentIds([skillId], ctx);
-		await this.agentRepository.markDraftChangedIfInSync(followingIds, ctx);
+		await this.agentRepository.markFollowerDraftsChanged(followingIds, ctx);
 		return followingIds;
 	}
 

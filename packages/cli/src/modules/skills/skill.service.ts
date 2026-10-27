@@ -476,16 +476,12 @@ export class SkillService {
 		}
 	}
 
-	// ---------------------------------------------------------------- publish
+	// ---------------------------------------------------------------- snapshots
 
-	/**
-	 * Publish, step 1: the version id each ref resolves to, keyed by ref id. Publish
-	 * creates no version. Needs the caller's transaction for the publish lock.
-	 */
-	async snapshotForPublish(refs: SkillRef[], ctx: OperationContext): Promise<Map<string, string>> {
+	/** Read immutable skill versions without reversing the skill-edit lock order. */
+	async snapshotForSave(refs: SkillRef[], ctx: OperationContext): Promise<Map<string, string>> {
 		const refIds = [...new Set(refs.map((ref) => ref.id))];
-		await this.skillRepository.lockForPublish(refIds, ctx);
-		// The same rule as `resolveRows`, without loading the content that publish does not use.
+		// Use the same resolution rule as runtime without loading skill content.
 		const latest = await this.skillRepository.findLatestVersionIds(refIds, ctx);
 		const pinnedSkillIds = await this.skillRepository.findSkillIdsOfVersions(
 			refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : [])),

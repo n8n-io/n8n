@@ -64,7 +64,7 @@
         "description": "View and update CLI configuration"
       },
       "promotion-provider": {
-        "description": "Create and manage the providers that hold promotion credentials"
+        "description": "Create and manage promotion providers, and list the repositories and branches of a GitLab provider"
       },
       "promotion-environment": {
         "description": "Create and manage promotion environments, and promote or apply packages"
