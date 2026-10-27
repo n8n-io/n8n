@@ -397,6 +397,7 @@ describe('GlobalConfig', () => {
 			confirmationTimeout: 86_400_000,
 			runDebugEnabled: false,
 			thinkingEnabled: true,
+			dynamicToolsEnabled: true,
 			canvasNodeContextEnabled: false,
 			promptVersion: '',
 			nodeUsageEnabled: false,

@@ -213,6 +213,15 @@ export class InstanceAiConfig {
 	thinkingEnabled: boolean = true;
 
 	/**
+	 * Whether the n8n Assistant reaches its less common tools through a fixed tool catalog
+	 * instead of the model provider's tool search. The catalog works with every model
+	 * provider and keeps the prompt cache valid when the assistant uses a new tool.
+	 * Set to `false` to use the provider's tool search instead.
+	 */
+	@Env('N8N_INSTANCE_AI_DYNAMIC_TOOLS_ENABLED')
+	dynamicToolsEnabled: boolean = true;
+
+	/**
 	 * Force-enable canvas-selected-nodes chat context in Instance AI.
 	 * Acts as an operator-level override of the PostHog rollout flag
 	 * (`104_canvas_aia_node_context`). Cannot force-disable: setting this to
