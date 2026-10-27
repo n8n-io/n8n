@@ -187,10 +187,12 @@ it.each(['resolves', 'rejects'])(
 		}
 		await waitAllPromises();
 
+		expect(view.getByTestId('self-healing-config-loading')).toBeVisible();
 		expect(view.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
 		expect(showError).not.toHaveBeenCalled();
 		current.resolve(undefined);
 		expect(await view.findByRole('button', { name: 'Save changes' })).toBeDisabled();
+		expect(view.queryByTestId('self-healing-config-loading')).not.toBeInTheDocument();
 	},
 );
 
