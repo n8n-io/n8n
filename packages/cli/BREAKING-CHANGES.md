@@ -13,6 +13,13 @@ Regenerate existing Promotions snapshots.
 Package import errors also use `usedBy` for resource consumers.
 Update API clients to read each consumer's `kind` and `id`.
 
+The package import API now uses `conflictPolicy` for both Agents and workflows.
+Update API clients to send this field to `/api/v1/n8n-packages/import` and `/api/v1/n8n-packages/import-selection`.
+Both endpoints reject the old `workflowConflictPolicy` field.
+The ordinary import endpoint requires `conflictPolicy`.
+The selection endpoint defaults it to `new-version`.
+The current CLI sends the new field and keeps its existing flags.
+
 # 2.0.0
 
 ### What changed?

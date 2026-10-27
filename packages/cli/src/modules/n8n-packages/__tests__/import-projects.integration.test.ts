@@ -66,7 +66,7 @@ async function importProjects(
 			user,
 			packageBuffer,
 			apiKeyScopes,
-			workflowConflictPolicy: 'new-version',
+			conflictPolicy: 'new-version',
 			...overrides,
 		}),
 	);

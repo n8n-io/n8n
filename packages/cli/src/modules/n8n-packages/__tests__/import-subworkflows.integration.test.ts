@@ -28,10 +28,7 @@ import { executeWorkflowNode } from './utils/test-builders';
 
 type ImportPackageParams = Pick<ImportPackageRequest, 'user' | 'packageBuffer'> &
 	Partial<
-		Pick<
-			ImportPackageRequest,
-			'workflowIdPolicy' | 'workflowPublishingPolicy' | 'workflowConflictPolicy'
-		>
+		Pick<ImportPackageRequest, 'workflowIdPolicy' | 'workflowPublishingPolicy' | 'conflictPolicy'>
 	>;
 
 async function importPackage(params: ImportPackageParams) {
@@ -221,7 +218,7 @@ describe('Package import of workflows with sub-workflows', () => {
 			user: owner,
 			packageBuffer: await buildSubWorkflowPackage([v2, errorHandler]),
 			workflowIdPolicy: WorkflowIdPolicy.Source,
-			workflowConflictPolicy: 'new-version',
+			conflictPolicy: 'new-version',
 		});
 
 		const importedMain = await findImported(result, 'CHEDDAR');

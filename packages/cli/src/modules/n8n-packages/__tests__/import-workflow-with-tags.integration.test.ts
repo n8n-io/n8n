@@ -161,13 +161,13 @@ describe('workflow package import — with tags', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 			const second = await importPackage({
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(first.tags.created).toEqual(['prod']);
@@ -522,7 +522,7 @@ describe('workflow package import — with tags', () => {
 				projectId: targetProject.id,
 				packageBuffer,
 				tagConflictPolicy: 'rename',
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(first.tags.reconciled).toEqual(['prod']);
@@ -597,7 +597,7 @@ describe('workflow package import — with tags', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 			const imported = await workflowRepository.findOneByOrFail({
 				id: first.workflows[0].localId,
@@ -609,7 +609,7 @@ describe('workflow package import — with tags', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(await tagIdsOf(imported.id)).toEqual([tag.id]);
@@ -624,7 +624,7 @@ describe('workflow package import — with tags', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 			const imported = await workflowRepository.findOneByOrFail({
 				id: first.workflows[0].localId,
@@ -636,7 +636,7 @@ describe('workflow package import — with tags', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(await tagIdsOf(imported.id)).toEqual([]);
@@ -662,13 +662,13 @@ describe('workflow package import — with tags', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 			const second = await importPackage({
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(second.workflows[0].status).toBe('updated');
@@ -686,7 +686,7 @@ describe('workflow package import — with tags', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 			const imported = await workflowRepository.findOneByOrFail({
 				id: first.workflows[0].localId,
@@ -698,7 +698,7 @@ describe('workflow package import — with tags', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(await tagIdsOf(imported.id)).toEqual([extra.id]);
@@ -717,7 +717,7 @@ describe('workflow package import — with tags', () => {
 			user: owner,
 			projectId: targetProject.id,
 			packageBuffer,
-			workflowConflictPolicy: 'skip',
+			conflictPolicy: 'skip',
 			tagConflictPolicy: 'fail',
 		});
 
@@ -743,7 +743,7 @@ describe('workflow package import — with tags', () => {
 			user: owner,
 			projectId: targetProject.id,
 			packageBuffer,
-			workflowConflictPolicy: 'skip',
+			conflictPolicy: 'skip',
 			apiKeyScopes: ['workflow:import'],
 		});
 

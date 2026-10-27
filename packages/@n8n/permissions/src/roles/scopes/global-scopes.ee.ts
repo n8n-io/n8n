@@ -9,6 +9,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'agent:create',
 	'agent:read',
 	'agent:export',
+	'agent:import',
 	'agent:update',
 	'agent:delete',
 	'agent:list',

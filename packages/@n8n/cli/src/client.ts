@@ -16,7 +16,7 @@ export interface ImportPackageFields {
 	credentialMissingMode?: string;
 	credentialConflictPolicy?: string;
 	bindings?: string;
-	workflowConflictPolicy: string;
+	conflictPolicy: string;
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
 	missingNodeTypeMode?: string;
@@ -40,7 +40,7 @@ export interface ImportPackageSelectionFields {
 	selectedWorkflowIds: string[];
 	/** Destination workflow IDs to remove. */
 	deletedWorkflowIds?: string[];
-	workflowConflictPolicy?: string;
+	conflictPolicy?: string;
 	workflowIdPolicy?: string;
 	overwriteDeletionPolicy?: string;
 }
@@ -814,7 +814,7 @@ export class N8nClient {
 		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
 		const stringFields: Record<string, string | undefined> = {
 			selectedProjectId: fields.selectedProjectId,
-			workflowConflictPolicy: fields.workflowConflictPolicy,
+			conflictPolicy: fields.conflictPolicy,
 			workflowIdPolicy: fields.workflowIdPolicy,
 			overwriteDeletionPolicy: fields.overwriteDeletionPolicy,
 		};
