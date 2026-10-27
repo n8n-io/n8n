@@ -1841,20 +1841,8 @@ export class WorkflowService {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
 
-		const activeVersionId = workflow.activeVersionId;
-		if (activeVersionId !== null) {
-			if (this.globalConfig.workflows.useWorkflowPublicationService) {
-				await this._unpublishViaOutbox(user.id, workflowId, activeVersionId, workflow.updatedAt);
-			} else {
-				await this.activeWorkflowManager.remove(workflowId);
-
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId,
-					versionId: activeVersionId,
-					event: 'deactivated',
-					userId: user.id,
-				});
-			}
+		if (workflow.activeVersionId !== null) {
+			await this._teardownActiveVersion(workflow, workflow.activeVersionId, user.id);
 		}
 
 		const versionId = uuid();
