@@ -2,6 +2,55 @@ import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nMarkdown from './Markdown.vue';
 import N8nCodeBlock from '../N8nCodeBlock';
+import N8nIcon from '../N8nIcon';
+
+/** Show icons for same-origin workflow paths and leave other links unchanged. */
+export const LinkSlot: StoryFn = (args) => ({
+	components: { N8nMarkdown, N8nIcon },
+	setup() {
+		const pathIcons: Record<string, InstanceType<typeof N8nIcon>['$props']['icon']> = {
+			'/workflow': 'workflow',
+		};
+
+		function getLinkIcon(href: string) {
+			try {
+				const url = new URL(href, window.location.origin);
+				if (url.origin !== window.location.origin) return undefined;
+
+				for (const [path, icon] of Object.entries(pathIcons)) {
+					if (url.pathname === path || url.pathname.startsWith(`${path}/`)) return icon;
+				}
+			} catch {
+				return undefined;
+			}
+			return undefined;
+		}
+
+		return { args, getLinkIcon };
+	},
+	template: `
+		<N8nMarkdown v-bind="args">
+			<template #link="link">
+				<a :href="link.href" :title="link.title" :target="link.target" :rel="link.rel">
+					<N8nIcon v-if="getLinkIcon(link.href)" :icon="getLinkIcon(link.href)" aria-hidden="true" />
+					{{ link.label }}
+				</a>
+			</template>
+		</N8nMarkdown>
+	`,
+});
+
+LinkSlot.args = {
+	content: [
+		'## Custom links',
+		'Open [My workflow](/workflow/123 "Open workflow") to edit it.',
+		'',
+		'- [Workflow root](/workflow) also shows an icon.',
+		'- [Workflow list](/workflows) does not match the path.',
+		'- [External workflow](https://example.com/workflow/123) stays a normal link.',
+		'- [Documentation](https://docs.n8n.io) stays a normal link.',
+	].join('\n'),
+};
 
 export default {
 	title: 'Core/Markdown',

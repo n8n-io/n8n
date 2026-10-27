@@ -475,7 +475,7 @@ describe('InstanceAiMarkdown', () => {
 			return getByTestId('markdown-output');
 		}
 
-		it('should render the subject agent name as plain text', () => {
+		it('should decorate the subject agent name as a resource', () => {
 			const registry = makeRegistry([
 				{ type: 'agent', id: 'agent-1', name: 'Simple Triggered Assistant' },
 				{ type: 'workflow', id: 'wf-1', name: 'Trigger Workflow' },
@@ -485,17 +485,22 @@ describe('InstanceAiMarkdown', () => {
 
 			const output = renderInEmbed('I saved Simple Triggered Assistant and built Trigger Workflow');
 
-			expect(output.textContent).not.toContain('n8n-resource://agent/agent-1');
+			expect(output.textContent).toContain(
+				'[Simple Triggered Assistant](n8n-resource://agent/agent-1)',
+			);
 			expect(output.textContent).toContain('[Trigger Workflow](n8n-resource://workflow/wf-1)');
 		});
 
 		it.each([
 			'<a href="n8n-resource://agent/agent-1">Simple Triggered Assistant</a>',
 			'<a href="/projects/project-1/agents/agent-1">Simple Triggered Assistant</a>',
-		])('should unwrap links to the subject agent: %s', (content) => {
+		])('should keep the resource icon for the subject agent: %s', (content) => {
 			const output = renderInEmbed(content);
 
-			expect(output.querySelector('a')).toBeNull();
+			const link = output.querySelector('a');
+			expect(link?.dataset.resourceChip).toBe('agent');
+			expect(link?.getAttribute('href')).toBeTruthy();
+			expect(link?.querySelector('svg')).not.toBeNull();
 			expect(output.textContent).toBe('Simple Triggered Assistant');
 		});
 
