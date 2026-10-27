@@ -6,6 +6,17 @@ import { createComponentRenderer } from '@/__tests__/render';
 
 import AssistantConfirmationCard from '../AssistantConfirmationCard.vue';
 import type { AssistantConfirmationInput } from '../assistantConfirmation';
+import { ASSISTANT_AGENT_THREAD_ID } from '../assistantAgentThreads';
+
+const { telemetryTrack } = vi.hoisted(() => ({ telemetryTrack: vi.fn() }));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrack }),
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ instanceId: 'test-instance-id' }),
+}));
 
 const push = vi.hoisted(() => ({
 	listeners: [] as Array<(event: { type: string; data: Record<string, unknown> }) => void>,
@@ -47,6 +58,7 @@ const renderComponent = createComponentRenderer(AssistantConfirmationCard, {
 describe('AssistantConfirmationCard', () => {
 	beforeEach(() => {
 		push.listeners = [];
+		telemetryTrack.mockReset();
 	});
 
 	it('submits the answers of a questions card', async () => {
@@ -281,6 +293,176 @@ describe('AssistantConfirmationCard', () => {
 			}
 
 			expect(emitted().submit).toEqual([[{ kind: 'approval', approved: true, userInput: 'e-1' }]]);
+		});
+	});
+
+	describe('telemetry', () => {
+		/**
+		 * Renders the card in the open thread. With `accept`, the card unmounts on submit,
+		 * as the chat removes a card when it takes the answer.
+		 */
+		function renderInThread(input: AssistantConfirmationInput, accept = true) {
+			const holder: { unmount?: () => void } = {};
+			const result = renderComponent({
+				props: { input, ...(accept ? { onSubmit: () => holder.unmount?.() } : {}) },
+				global: { provide: { [ASSISTANT_AGENT_THREAD_ID]: 'thread-1' } },
+			});
+			holder.unmount = result.unmount;
+			return result;
+		}
+
+		it('tracks an approval with the same event as the current Assistant once the chat takes it', async () => {
+			const { getByTestId } = renderInThread({
+				requestId: 'req-aa',
+				inputThreadId: 'input-thread-1',
+				message: 'Run the workflow',
+				severity: 'info',
+				toolName: 'workflow_builder_executions',
+				args: { action: 'run', workflowId: 'wf-1' },
+			});
+
+			await fireEvent.click(getByTestId('approval-card-allow-once'));
+			await nextTick();
+
+			expect(telemetryTrack).toHaveBeenCalledTimes(1);
+			expect(telemetryTrack).toHaveBeenCalledWith('User finished providing input', {
+				thread_id: 'thread-1',
+				input_thread_id: 'input-thread-1',
+				instance_id: 'test-instance-id',
+				action_source: 'unknown',
+				type: 'approval',
+				provided_inputs: [
+					{
+						label: 'Run the workflow',
+						options: ['approve', 'deny', 'approve_always'],
+						option_chosen: 'approve',
+					},
+				],
+				skipped_inputs: [],
+			});
+		});
+
+		it('tracks always allow as approve_always', async () => {
+			const { getByTestId } = renderInThread({
+				requestId: 'req-aa',
+				message: 'Run the workflow',
+				severity: 'info',
+				toolName: 'workflow_builder_executions',
+				args: { action: 'run', workflowId: 'wf-1' },
+			});
+
+			await fireEvent.click(getByTestId('approval-card-always-allow'));
+			await nextTick();
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({
+					provided_inputs: [expect.objectContaining({ option_chosen: 'approve_always' })],
+				}),
+			);
+		});
+
+		it('tracks the answers of a questions card with the number of questions', async () => {
+			const { getByTestId } = renderInThread({
+				requestId: 'req-q',
+				message: 'A few questions',
+				inputType: 'questions',
+				questions: [{ id: 'q1', question: 'Which?', type: 'single', options: ['a', 'b'] }],
+			});
+
+			await fireEvent.click(getByTestId('assistant-agent-questions'));
+			await nextTick();
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({
+					type: 'questions',
+					provided_inputs: [
+						{
+							label: 'q1',
+							question: 'Which?',
+							input_type: 'single',
+							options: ['a', 'b'],
+							option_chosen: 'a',
+						},
+					],
+					skipped_inputs: [],
+					num_tasks: 1,
+				}),
+			);
+		});
+
+		it('tracks a skipped text card as a skipped input', async () => {
+			const { getByText } = renderInThread({
+				requestId: 'req-t',
+				message: 'What is the channel?',
+				inputType: 'text',
+			});
+
+			await fireEvent.click(getByText('Skip'));
+			await nextTick();
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({
+					type: 'text',
+					provided_inputs: [],
+					skipped_inputs: [
+						{
+							label: 'What is the channel?',
+							question: 'What is the channel?',
+							input_type: 'text',
+							options: [],
+						},
+					],
+				}),
+			);
+		});
+
+		it('does not track an answer that the busy chat refuses', async () => {
+			const { getByTestId } = renderInThread(
+				{ requestId: 'req-2', message: 'Paused', inputType: 'continue' },
+				false,
+			);
+
+			await fireEvent.click(getByTestId('assistant-agent-continue'));
+			await nextTick();
+
+			expect(telemetryTrack).not.toHaveBeenCalled();
+		});
+
+		it('does not track a test listener that a push event settles', async () => {
+			renderInThread({
+				requestId: 'req-11',
+				message: 'Send a test request',
+				testListener: {
+					workflowId: 'wf-1',
+					deadlineAt: new Date().toISOString(),
+					triggers: [
+						{ nodeName: 'Webhook', method: 'POST', url: 'https://n8n.test/webhook-test/a' },
+					],
+				},
+			});
+
+			for (const listener of push.listeners) {
+				listener({ type: 'testWebhookReceived', data: { workflowId: 'wf-1', executionId: 'e-1' } });
+			}
+			await nextTick();
+
+			expect(telemetryTrack).not.toHaveBeenCalled();
+		});
+
+		it('does not track domain access, like the current Assistant', async () => {
+			const { getByTestId } = renderInThread({
+				requestId: 'req-1',
+				message: 'Allow access?',
+				domainAccess: { url: 'https://example.com/a', host: 'example.com' },
+			});
+
+			await fireEvent.click(getByTestId('domain-access-allow-once'));
+			await nextTick();
+
+			expect(telemetryTrack).not.toHaveBeenCalled();
 		});
 	});
 });
