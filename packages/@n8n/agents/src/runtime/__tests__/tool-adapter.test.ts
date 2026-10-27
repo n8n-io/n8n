@@ -176,6 +176,25 @@ describe('toAiSdkTools — JSON Schema / fixSchema', () => {
 		expect(secondCall.type).toBe('object');
 	});
 
+	it('adds type "string" to propertyNames schemas that omit it', () => {
+		const rawSchema: JSONSchema7 = {
+			type: 'object',
+			properties: {
+				tools: {
+					type: 'object',
+					propertyNames: { minLength: 1 },
+					additionalProperties: { type: 'string' },
+				},
+			},
+		};
+
+		toAiSdkTools([makeJsonSchemaTool(rawSchema, { mcpTool: true })]);
+
+		expect(jsonSchemaMock.mock.calls[0][0].properties?.tools).toMatchObject({
+			propertyNames: { type: 'string', minLength: 1 },
+		});
+	});
+
 	it('disables provider strict mode for MCP tools without changing optional properties', () => {
 		const rawSchema: JSONSchema7 = {
 			type: 'object',

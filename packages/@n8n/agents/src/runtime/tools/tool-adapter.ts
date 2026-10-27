@@ -12,7 +12,7 @@ import {
 	type ToolContext,
 } from '../../types';
 import type { JSONValue } from '../../types/utils/json';
-import { fixSchema } from '../../utils/json-schema';
+import { addStringTypeToPropertyNames, fixSchema } from '../../utils/json-schema';
 import { isZodSchema } from '../../utils/zod';
 import { loadAi } from '../model/lazy-ai';
 import { applyToolProviderOptionDefaults } from '../model/provider-quirks';
@@ -90,7 +90,7 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 			} else {
 				result[t.name] = ai.tool({
 					description: t.description,
-					inputSchema: ai.jsonSchema(fixSchema(t.inputSchema)),
+					inputSchema: ai.jsonSchema(fixSchema(addStringTypeToPropertyNames(t.inputSchema))),
 					providerOptions,
 					strict,
 				});

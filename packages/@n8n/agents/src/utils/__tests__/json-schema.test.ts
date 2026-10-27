@@ -1,6 +1,6 @@
 import type { JSONSchema7 } from 'json-schema';
 
-import { fixSchema, lockAdditionalProperties } from '../json-schema';
+import { addStringTypeToPropertyNames, fixSchema, lockAdditionalProperties } from '../json-schema';
 
 describe('fixSchema', () => {
 	it('adds type "object" when properties is present but type is absent', () => {
@@ -23,6 +23,58 @@ describe('fixSchema', () => {
 		const input: JSONSchema7 = { properties: { x: { type: 'string' } } };
 		fixSchema(input);
 		expect(input).not.toHaveProperty('type');
+	});
+});
+
+describe('addStringTypeToPropertyNames', () => {
+	it('adds type "string" to nested propertyNames schemas that omit it', () => {
+		const result = addStringTypeToPropertyNames({
+			type: 'object',
+			properties: {
+				servers: {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: {
+							tools: {
+								type: 'object',
+								propertyNames: { minLength: 1 },
+								additionalProperties: { type: 'string' },
+							},
+						},
+					},
+				},
+				mode: { anyOf: [{ type: 'object', propertyNames: { enum: ['a', 'b'] } }] },
+			},
+			$defs: { map: { type: 'object', propertyNames: { pattern: '^x' } } },
+		});
+
+		expect(result.properties?.servers).toMatchObject({
+			items: { properties: { tools: { propertyNames: { type: 'string', minLength: 1 } } } },
+		});
+		expect(result.properties?.mode).toMatchObject({
+			anyOf: [{ propertyNames: { type: 'string', enum: ['a', 'b'] } }],
+		});
+		expect(result.$defs?.map).toMatchObject({ propertyNames: { type: 'string', pattern: '^x' } });
+	});
+
+	it('keeps an existing propertyNames type', () => {
+		const schema: JSONSchema7 = { type: 'object', propertyNames: { type: 'string', maxLength: 3 } };
+		expect(addStringTypeToPropertyNames(schema)).toEqual(schema);
+	});
+
+	it('does not treat a property named propertyNames as the keyword', () => {
+		const schema: JSONSchema7 = {
+			type: 'object',
+			properties: { propertyNames: { description: 'a field' } },
+		};
+		expect(addStringTypeToPropertyNames(schema)).toEqual(schema);
+	});
+
+	it('does not mutate the input schema', () => {
+		const input: JSONSchema7 = { type: 'object', propertyNames: { minLength: 1 } };
+		addStringTypeToPropertyNames(input);
+		expect(input.propertyNames).toEqual({ minLength: 1 });
 	});
 });
 
