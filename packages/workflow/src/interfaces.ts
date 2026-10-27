@@ -1125,6 +1125,8 @@ export type SSHCredentials = {
 	sshHost: string;
 	sshPort: number;
 	sshUser: string;
+	/** SHA256 fingerprint of the SSH server host key, as printed by `ssh-keygen -lf` */
+	sshHostKeyFingerprint?: string;
 } & (
 	| {
 			sshAuthenticateWith: 'password';

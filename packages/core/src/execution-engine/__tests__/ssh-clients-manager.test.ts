@@ -1,7 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { SSHCredentials } from 'n8n-workflow';
-import { Client } from 'ssh2';
+import { createHash } from 'node:crypto';
+import type { AddressInfo } from 'node:net';
+import { Client, Server, utils } from 'ssh2';
 import { mock } from 'vitest-mock-extended';
 
 import { SSHClientsConfig, SSHClientsManager } from '../ssh-clients-manager';
@@ -92,6 +94,111 @@ describe('getClient', () => {
 			expect(client).toBe(ogClient);
 		}
 		expect(connectSpy).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('host key verification', () => {
+	const hostKey = Buffer.from('host-key');
+	const fingerprint = `SHA256:${createHash('sha256').update(hostKey).digest('base64').replace(/=+$/, '')}`;
+
+	const getHostVerifier = () => {
+		const config = connectSpy.mock.calls[0][0];
+		return config.hostVerifier as ((key: Buffer) => boolean) | undefined;
+	};
+
+	it('should not verify the host key when no fingerprint is set', async () => {
+		await sshClientsManager.getClient(credentials);
+
+		expect(getHostVerifier()).toBeUndefined();
+	});
+
+	it('should not verify the host key when the fingerprint is empty', async () => {
+		await sshClientsManager.getClient({ ...credentials, sshHostKeyFingerprint: '  ' });
+
+		expect(getHostVerifier()).toBeUndefined();
+	});
+
+	it('should accept a host key that matches the fingerprint', async () => {
+		await sshClientsManager.getClient({ ...credentials, sshHostKeyFingerprint: fingerprint });
+
+		expect(getHostVerifier()?.(hostKey)).toBe(true);
+	});
+
+	it.each([
+		['without the SHA256: prefix', fingerprint.replace('SHA256:', '')],
+		['with base64 padding', `${fingerprint}=`],
+		['with surrounding whitespace', ` ${fingerprint}\n`],
+	])('should accept a matching fingerprint %s', async (_, value) => {
+		await sshClientsManager.getClient({ ...credentials, sshHostKeyFingerprint: value });
+
+		expect(getHostVerifier()?.(hostKey)).toBe(true);
+	});
+
+	it('should reject a host key that does not match the fingerprint', async () => {
+		await sshClientsManager.getClient({ ...credentials, sshHostKeyFingerprint: fingerprint });
+
+		expect(getHostVerifier()?.(Buffer.from('other-host-key'))).toBe(false);
+	});
+
+	it('should not reuse a client across different fingerprints', async () => {
+		const client1 = await sshClientsManager.getClient(credentials);
+		const client2 = await sshClientsManager.getClient({
+			...credentials,
+			sshHostKeyFingerprint: fingerprint,
+		});
+
+		expect(client1).not.toBe(client2);
+		expect(connectSpy).toHaveBeenCalledTimes(2);
+	});
+
+	describe('against a real SSH server', () => {
+		let server: Server;
+		let port: number;
+		let serverFingerprint: string;
+
+		beforeEach(async () => {
+			connectSpy.mockRestore();
+
+			const keys = utils.generateKeyPairSync('ed25519');
+			const publicKey = utils.parseKey(keys.public);
+			if (publicKey instanceof Error) throw publicKey;
+			serverFingerprint = `SHA256:${createHash('sha256').update(publicKey.getPublicSSH()).digest('base64')}`;
+
+			server = new Server({ hostKeys: [keys.private] }, (client) => {
+				client.on('authentication', (ctx) => ctx.accept());
+				client.on('error', () => {});
+			});
+			await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+			port = (server.address() as AddressInfo).port;
+		});
+
+		afterEach(async () => {
+			sshClientsManager.onShutdown();
+			await new Promise((resolve) => server.close(resolve));
+		});
+
+		it('should connect when the fingerprint matches', async () => {
+			const client = await sshClientsManager.getClient({
+				...credentials,
+				sshHost: '127.0.0.1',
+				sshPort: port,
+				sshHostKeyFingerprint: serverFingerprint,
+			});
+
+			expect(client).toBeInstanceOf(Client);
+		});
+
+		it('should fail to connect when the fingerprint does not match', async () => {
+			await expect(
+				sshClientsManager.getClient({
+					...credentials,
+					sshHost: '127.0.0.1',
+					sshPort: port,
+					sshHostKeyFingerprint: fingerprint,
+				}),
+			).rejects.toThrow('Host denied (verification failed)');
+			expect(sshClientsManager.clients.size).toBe(0);
+		});
 	});
 });
 
