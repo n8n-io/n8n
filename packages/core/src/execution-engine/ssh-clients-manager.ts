@@ -131,7 +131,8 @@ export class SSHClientsManager {
 			.update(JSON.stringify({ ...sshConfig, expectedFingerprint }))
 			.digest('base64');
 
-		if (expectedFingerprint) {
+		// Check the raw input so a value like `SHA256:` rejects instead of skipping the check
+		if (sshHostKeyFingerprint?.trim()) {
 			sshConfig.hostVerifier = (key: Buffer) => {
 				const fingerprint = createHash('sha256').update(key).digest('base64').replace(/=+$/, '');
 				if (fingerprint === expectedFingerprint) return true;

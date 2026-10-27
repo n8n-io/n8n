@@ -140,6 +140,15 @@ describe('host key verification', () => {
 		expect(getHostVerifier()?.(Buffer.from('other-host-key'))).toBe(false);
 	});
 
+	it.each(['SHA256:', 'sha256:', '=', 'SHA256:=='])(
+		'should reject every host key when the fingerprint is `%s`',
+		async (value) => {
+			await sshClientsManager.getClient({ ...credentials, sshHostKeyFingerprint: value });
+
+			expect(getHostVerifier()?.(hostKey)).toBe(false);
+		},
+	);
+
 	it('should not reuse a client across different fingerprints', async () => {
 		const client1 = await sshClientsManager.getClient(credentials);
 		const client2 = await sshClientsManager.getClient({
