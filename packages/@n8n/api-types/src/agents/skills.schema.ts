@@ -13,6 +13,8 @@ import { Z } from '../zod-class';
 
 export const SKILLS_MAX_PAGE_SIZE = 100;
 export const ASSISTANT_SKILLS_FLAG = '130_attach_skills_to_assistant';
+/** Per-user PostHog flag for Skill Sync. Force it on with `N8N_FEATURE_FLAG_OVERRIDES`. */
+export const SKILL_SYNC_FLAG = '136_skill_sync';
 
 /** Optional on purpose: without `take` the caller gets every visible skill. */
 const optionalTake = z

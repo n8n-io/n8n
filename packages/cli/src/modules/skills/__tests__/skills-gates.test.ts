@@ -1,10 +1,13 @@
-import { ASSISTANT_SKILLS_FLAG } from '@n8n/api-types';
+import { ASSISTANT_SKILLS_FLAG, SKILL_SYNC_FLAG } from '@n8n/api-types';
+import type { User } from '@n8n/db';
+import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { PostHogClient } from '@/posthog';
 
 import { AssistantSkillsFlagGate } from '../services/assistant-skills-flag-gate';
 import type { SkillUsage } from '../services/skill-usage.contracts';
+import { SkillSyncFlagGate } from '../services/skill-sync-flag-gate';
 import { SkillUsageProxy } from '../services/skill-usage-proxy.service';
 import { SkillsGate } from '../services/skills-gate';
 
@@ -14,8 +17,11 @@ describe('skills gates', () => {
 		const skillsGate = new SkillsGate(proxy);
 		const postHog = mock<PostHogClient>();
 		const assistantGate = new AssistantSkillsFlagGate(skillsGate, postHog);
-		return { proxy, skillsGate, postHog, assistantGate };
+		const syncGate = new SkillSyncFlagGate(skillsGate, postHog);
+		return { proxy, skillsGate, postHog, assistantGate, syncGate };
 	}
+
+	const user = mock<User>({ id: 'user-1' });
 
 	it('keeps both gates off until the agents module registers its SkillUsage', async () => {
 		const { skillsGate, postHog, assistantGate } = createGates();
@@ -44,6 +50,43 @@ describe('skills gates', () => {
 			expect(postHog.getFeatureFlagForInstance).toHaveBeenCalledWith(ASSISTANT_SKILLS_FLAG);
 		},
 	);
+
+	it('keeps Skill Sync off while skills are off, whatever the flag says', async () => {
+		const { postHog, syncGate } = createGates();
+		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
+
+		expect(await syncGate.isEnabled(user)).toBe(false);
+		await expect(syncGate.assertEnabled(user)).rejects.toThrow(NotFoundError);
+		expect(postHog.getFeatureFlags).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ flag: true, expected: true },
+		{ flag: false, expected: false },
+		{ flag: 'test', expected: false },
+		{ flag: undefined, expected: false },
+	])(
+		'turns Skill Sync on only for the user flag value true (flag: $flag)',
+		async ({ flag, expected }) => {
+			const { proxy, postHog, syncGate } = createGates();
+			postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: flag });
+			proxy.register(mock<SkillUsage>());
+
+			expect(await syncGate.isEnabled(user)).toBe(expected);
+			expect(postHog.getFeatureFlags).toHaveBeenCalledWith(user);
+		},
+	);
+
+	it('answers 404 for a user without the Skill Sync flag', async () => {
+		const { proxy, postHog, syncGate } = createGates();
+		proxy.register(mock<SkillUsage>());
+
+		postHog.getFeatureFlags.mockResolvedValue({});
+		await expect(syncGate.assertEnabled(user)).rejects.toThrow(NotFoundError);
+
+		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
+		await expect(syncGate.assertEnabled(user)).resolves.toBeUndefined();
+	});
 
 	it('gives empty answers before the agents module registers its SkillUsage', async () => {
 		const { proxy } = createGates();

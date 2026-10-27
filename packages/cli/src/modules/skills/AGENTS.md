@@ -71,7 +71,7 @@ Two checks enforce two rules. The code-health rule `skills-module-boundary` reso
 | Allowed import | Used in | Needed before a move to a package |
 | -- | -- | -- |
 | `userHasScopes` (`@/permissions.ee/check-access`) | `SkillAccessService` | The scope checks move to `@n8n/backend-services`, as its README plans. |
-| `PostHogClient` (`@/posthog`) | `AssistantSkillsFlagGate` | A shared package, or a contract that cli implements |
+| `PostHogClient` (`@/posthog`) | `AssistantSkillsFlagGate`, `SkillSyncFlagGate` | A shared package, or a contract that cli implements |
 | `Telemetry` (`@/telemetry`) | `SkillsTelemetry` | A shared package, or a contract that cli implements |
 
 These rules keep the module ready to move to `packages/modules/skills/backend`, like `packages/modules/insights/backend`. The ownership transfer manifest (`src/services/ownership-transfer/ownership-transfer.manifest.json`) also holds the path of `skill.entity.ts`.
@@ -89,6 +89,7 @@ Split services by capability, never by caller.
 
 - `SkillsGate.isEnabled` reads one fact: the agents module registered its `SkillUsage`. Without the agents module, the delete and move guards cannot see the agents that use a skill. Every entry point (REST, MCP, n8n Assistant) checks this gate. Do not check `isActive('agents')` or the proxy in other code.
 - `AssistantSkillsFlagGate.isEnabled()` needs two facts: `SkillsGate` is on, and the PostHog instance flag `ASSISTANT_SKILLS_FLAG` is on. It switches n8n Assistant skills separately from skills.
+- `SkillSyncFlagGate.isEnabled(user)` needs two facts: `SkillsGate` is on, and the per-user PostHog flag `SKILL_SYNC_FLAG` is on for that user. Every Skill Sync route calls `assertEnabled`, which answers 404. The check task has no user, so it reads the flag of the user who created the source. Force the flag on with `N8N_FEATURE_FLAG_OVERRIDES='{"136_skill_sync":true}'`. The frontend reads the same flag through `useSkillSyncFlag`.
 
 ## DI and start order
 
