@@ -22,9 +22,10 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 			version: 'v3',
 			title: 'AI Transform node is deprecated',
 			description:
-				'The AI Transform node is deprecated. Its generated code runs as a Code node instead.',
+				'The AI Transform node is deprecated and v3 removes it. After the upgrade, a published workflow that still contains it does not activate. Run the automatic migration from the Migration Report to replace it with a Code node that runs the same generated code.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'executionsFail',
+			documentationUrl: 'https://docs.n8n.io/changelog/v30-breaking-changes',
 		};
 	}
 
@@ -34,9 +35,9 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 	): Promise<BreakingChangeRecommendation[]> {
 		return [
 			{
-				action: 'Replace AI Transform with a Code node',
+				action: 'Run the automatic migration to a Code node',
 				description:
-					'The AI Transform node runs its generated JavaScript in the same sandbox as the Code node. Migrate it to a Code node to keep it working.',
+					'Run the automatic migration from the Migration Report before you upgrade. It replaces each AI Transform node with a Code node that runs the same generated JavaScript. If a node never generated code, the migration cannot convert it: replace that node with a Code node by hand.',
 			},
 		];
 	}
@@ -51,7 +52,7 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 		return reportAffectedNodes(affectedNodes, (node) => ({
 			title: `Node '${node.name}' uses the deprecated AI Transform node`,
 			description:
-				'The AI Transform node is deprecated. Migrate it to a Code node to keep it working.',
+				'Run the automatic migration from the Migration Report to replace this node with a Code node. If this workflow is published, it does not activate after the upgrade until you migrate this node.',
 			level: 'warning',
 		}));
 	}
