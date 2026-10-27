@@ -295,7 +295,7 @@ Key points:
   `preflight`.
 - The `--expected-*` flags go together: pass all three or none. The commit SHA
   must be the full SHA.
-- API key scopes for this group are named `gitConnection:*`. `promote` also needs
+- API key scopes for this group are named `promotions:*`. `promote` also needs
   `variable:list` when the workflows reference variables.
 
 ## Other

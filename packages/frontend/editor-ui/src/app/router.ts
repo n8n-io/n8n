@@ -27,6 +27,8 @@ import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import {
 	canManageInstanceAi,
 	canMessageInstanceAi,
@@ -971,6 +973,8 @@ export const routes: RouteRecordRaw[] = [
 				path: 'environments',
 				name: VIEWS.SOURCE_CONTROL,
 				component: SettingsSourceControl,
+				beforeEnter: () =>
+					!usePromotionsEnabled().isEnabled.value || { name: PROMOTIONS_SETTINGS_VIEW },
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {

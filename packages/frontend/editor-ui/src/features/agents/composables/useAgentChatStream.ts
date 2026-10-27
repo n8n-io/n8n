@@ -13,7 +13,12 @@ import type {
 	AgentTokenUsage,
 	CancellationResumeData,
 } from '@n8n/api-types';
-import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
+import {
+	AGENT_CHAT_ERROR_CODES,
+	applyForwardedChildChunk,
+	APPROVAL_TOOL_NAME,
+	emptyChildTrace,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { convertFileToBinaryData, resolveFileMimeType } from '@/app/utils/fileUtils';
 import {
@@ -1305,7 +1310,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'error': {
 				session.errorEmitted = true;
-				if (event.errorCode === 'turn_already_running') {
+				if (event.errorCode === AGENT_CHAT_ERROR_CODES.turnAlreadyRunning) {
 					session.busy = true;
 					isCancelling.value = false;
 					stopTargetId = undefined;
@@ -1315,9 +1320,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				settleOpenReasoning(session);
 				dropOrphanMintedBubbles(session);
 				markInFlightStateFailed(session);
-				if (event.errorCode === 'agent_misconfigured') {
+				if (event.errorCode === AGENT_CHAT_ERROR_CODES.agentMisconfigured) {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
-				} else if (event.errorCode === 'agent_unavailable') {
+				} else if (event.errorCode === AGENT_CHAT_ERROR_CODES.agentUnavailable) {
 					params.onAgentUnavailable?.();
 				} else if (session.userMessage && !session.executionId) {
 					showError(new Error(event.message), locale.baseText('agents.chat.queue.sendError'));
