@@ -46,8 +46,6 @@ export {
 // ASK_QUESTIONS_TOOL_NAME / CONFIGURE_CHANNEL_TOOL_NAME come from
 // ./agent-interaction.schema (re-exported below via `export *`).
 export {
-	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
 	cancellationResumeSchema,
 	type CancellationResumeData,

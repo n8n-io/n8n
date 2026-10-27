@@ -33,13 +33,16 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 	CREATE_TASKS: 'agent_builder_create_tasks',
 	UPDATE_TASK: 'agent_builder_update_task',
 	FINISH_SETUP: 'agent_builder_finish_setup',
+	/** No longer registered. Builders use `get_node_parameter_options`. */
 	GET_RESOURCE_LOCATOR_OPTIONS: 'agent_builder_get_resource_locator_options',
 	CALL_AGENT: 'agent_builder_call_agent',
 	PUBLISH_AGENT: 'agent_builder_publish_agent',
 	UNPUBLISH_AGENT: 'agent_builder_unpublish_agent',
 	RESOLVE_LLM: 'agent_builder_resolve_llm',
 	VERIFY_MCP_SERVER: 'agent_builder_verify_mcp_server',
+	/** No longer registered. Builders use `search_nodes`. */
 	SEARCH_NODES: 'agent_builder_search_nodes',
+	/** No longer registered. Builders use `get_node_types`. */
 	GET_NODE_TYPES: 'agent_builder_get_node_types',
 	/** No longer registered. Builders use `setup_credentials` with target `agent`. */
 	ASK_CREDENTIAL: 'agent_builder_ask_credential',
