@@ -214,6 +214,11 @@ export class SelfHealingConfigurationService {
 		return await this.configurations.hasReviewerWithSharedWorkflowAccess(configuration, roles, ctx);
 	}
 
+	async isReviewer(configurationId: number, userId: string, ctx: OperationContext) {
+		const { globalRoleSlugs } = await this.reviewerRoles(ctx);
+		return await this.configurations.isReviewer(configurationId, userId, globalRoleSlugs, ctx);
+	}
+
 	private async canEnable(user: User, projectId: string) {
 		return await userHasScopes(
 			user,

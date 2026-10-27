@@ -1770,7 +1770,7 @@ describe('Inbox source reads', () => {
 			).resolves.toMatchObject({ reviewState: 'dismissed' });
 		});
 
-		it('excludes global admins and other-project members who are not project members', async () => {
+		it('includes instance admins outside the project and excludes other-project members', async () => {
 			const { project, original, result } = await teamFixture();
 			const admin = await createUser({ role: GLOBAL_OWNER_ROLE });
 			const outsider = await createUser();
@@ -1782,14 +1782,15 @@ describe('Inbox source reads', () => {
 				role: 'workflow:editor',
 			});
 
-			for (const reviewer of [admin, outsider]) {
-				await expectReviewer(reviewer, false);
-				await expect(
-					service.getDetail(reviewer, project.id, original.id, result.id),
-				).rejects.toThrow(NotFoundError);
-			}
+			await expectReviewer(outsider, false);
+			await expect(service.getDetail(outsider, project.id, original.id, result.id)).rejects.toThrow(
+				NotFoundError,
+			);
+			await expectReviewer(admin, true);
+			await expect(
+				service.getDetail(admin, project.id, original.id, result.id),
+			).resolves.toMatchObject({ resultId: result.id });
 
-			await addReviewer(result.configurationId, admin.id);
 			await Container.get(SelfHealingConfigurationRepository).update(result.configurationId, {
 				includeAllProjectMembers: false,
 			});
@@ -1798,8 +1799,29 @@ describe('Inbox source reads', () => {
 				NotFoundError,
 			);
 
-			await linkUserToProject(admin, project, 'project:viewer');
+			await addReviewer(result.configurationId, admin.id);
 			await expectReviewer(admin, true);
+			await Container.get(UserRepository).update(admin.id, { role: GLOBAL_MEMBER_ROLE });
+			await expectReviewer(admin, false);
+		});
+
+		it('shows personal project results only to the project owner', async () => {
+			const { user, project, original, result } = await fixture();
+			await useProjectMembersOnly(result.configurationId);
+			const admin = await createUser({ role: GLOBAL_OWNER_ROLE });
+			await addReviewer(result.configurationId, admin.id);
+
+			await expectReviewer(user, true);
+			await expectReviewer(admin, false);
+			await expect(service.getDetail(admin, project.id, original.id, result.id)).rejects.toThrow(
+				NotFoundError,
+			);
+			await expect(service.dismiss(admin, project.id, original.id, result.id)).rejects.toThrow(
+				NotFoundError,
+			);
+			await expect(
+				service.dismiss(user, project.id, original.id, result.id),
+			).resolves.toMatchObject({ reviewState: 'dismissed' });
 		});
 
 		it('lists a member who is also selected individually once before pagination', async () => {
@@ -1839,36 +1861,30 @@ describe('Inbox source reads', () => {
 		});
 	});
 
-	it.each([
-		['an editor', GLOBAL_MEMBER_ROLE, 'project:editor'],
-		['the instance owner', GLOBAL_OWNER_ROLE, 'project:viewer'],
-	] as const)(
-		'revokes review access when %s selected individually leaves the project',
-		async (_label, globalRole, projectRole) => {
-			testServer.license.enable('feat:sharing');
-			const { project, original, result } = await fixture('fix_ready', true, {
-				inTeamProject: true,
-			});
-			const reviewer = await createUser({ role: globalRole });
-			await addReviewer(result.configurationId, reviewer.id);
-			await linkUserToProject(reviewer, project, projectRole);
-			await shareWorkflowWithUsers(original, [reviewer]);
-			expect(await service.countForInbox(reviewer)).toEqual({ open: 1, closed: 0 });
+	it('revokes review access when an editor selected individually leaves the project', async () => {
+		testServer.license.enable('feat:sharing');
+		const { project, original, result } = await fixture('fix_ready', true, {
+			inTeamProject: true,
+		});
+		const reviewer = await createUser();
+		await addReviewer(result.configurationId, reviewer.id);
+		await linkUserToProject(reviewer, project, 'project:editor');
+		await shareWorkflowWithUsers(original, [reviewer]);
+		expect(await service.countForInbox(reviewer)).toEqual({ open: 1, closed: 0 });
 
-			await Container.get(ProjectRelationRepository).delete({
-				userId: reviewer.id,
-				projectId: project.id,
-			});
-			expect(await service.countForInbox(reviewer)).toEqual({ open: 0, closed: 0 });
-			expect(await service.listForInbox(reviewer, { state: 'open', limit: 10 })).toEqual([]);
-			await expect(service.getDetail(reviewer, project.id, original.id, result.id)).rejects.toThrow(
-				NotFoundError,
-			);
-			await expect(
-				service.act(reviewer, project.id, original.id, result.id, 'apply'),
-			).rejects.toThrow(NotFoundError);
-		},
-	);
+		await Container.get(ProjectRelationRepository).delete({
+			userId: reviewer.id,
+			projectId: project.id,
+		});
+		expect(await service.countForInbox(reviewer)).toEqual({ open: 0, closed: 0 });
+		expect(await service.listForInbox(reviewer, { state: 'open', limit: 10 })).toEqual([]);
+		await expect(service.getDetail(reviewer, project.id, original.id, result.id)).rejects.toThrow(
+			NotFoundError,
+		);
+		await expect(
+			service.act(reviewer, project.id, original.id, result.id, 'apply'),
+		).rejects.toThrow(NotFoundError);
+	});
 
 	it('paginates by latest update even when a result was created earlier', async () => {
 		const prepared = await fixture();

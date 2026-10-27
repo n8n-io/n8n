@@ -80,11 +80,12 @@ export class SelfHealingResultService {
 		if (!user || user.disabled) {
 			throw new ForbiddenError('Workflow edit access is required.');
 		}
-		const [projectRoles, workflowRoles] = await Promise.all([
+		const [projectRoles, workflowRoles, globalRoles] = await Promise.all([
 			this.roles.rolesWithScope('project', REVIEWER_SCOPES),
 			this.roles.rolesWithScope('workflow', REVIEWER_SCOPES),
+			this.roles.rolesWithScope('global', REVIEWER_SCOPES),
 		]);
-		return { user, globalScopes: REVIEWER_SCOPES, projectRoles, workflowRoles };
+		return { user, globalScopes: REVIEWER_SCOPES, projectRoles, workflowRoles, globalRoles };
 	}
 
 	async listForInbox(user: User, query: InboxSourceQuery): Promise<InboxSelfHealingItem[]> {
@@ -415,7 +416,11 @@ export class SelfHealingResultService {
 	) {
 		const reviewer = await this.suggestions.requireEditor(user.id, workflowId, ctx);
 		const result = await this.results.getResult(resultId, { projectId, workflowId }, ctx);
-		const isReviewer = await this.configurations.isReviewer(result.configurationId, user.id, ctx);
+		const isReviewer = await this.configurationService.isReviewer(
+			result.configurationId,
+			user.id,
+			ctx,
+		);
 		if (!isReviewer) {
 			throw new NotFoundError('Self-healing result not found.');
 		}

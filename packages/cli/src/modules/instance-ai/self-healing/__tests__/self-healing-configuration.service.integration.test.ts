@@ -8,6 +8,7 @@ import {
 } from '@n8n/backend-test-utils';
 import {
 	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
 	ProjectRelationRepository,
 	ProjectRepository,
 	TransactionRunner,
@@ -19,8 +20,8 @@ import {
 	wrapMigration,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
-import { WorkflowMutationHooksProxy } from '@n8n/backend-services';
+import { DataSource, In } from '@n8n/typeorm';
+import { RoleService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -45,7 +46,10 @@ import { SelfHealingConfigurationRepository } from '../database/self-healing-con
 import { SelfHealingConfigurationReviewer } from '../database/self-healing-configuration-reviewer.entity';
 import { SelfHealingConfigurationWorkflow } from '../database/self-healing-configuration-workflow.entity';
 import { SelfHealingInvestigation } from '../database/self-healing-investigation.entity';
-import { SelfHealingConfigurationService } from '../self-healing-configuration.service';
+import {
+	REVIEWER_SCOPES,
+	SelfHealingConfigurationService,
+} from '../self-healing-configuration.service';
 
 mockInstance(ActiveWorkflowManager);
 const runtime = mockInstance(InstanceAiService);
@@ -377,11 +381,12 @@ it('lets a personal project owner manage self-healing in their personal project'
 	const workflow = await createWorkflow({}, project);
 	const agent = server.authAgentFor(owner);
 	const url = `/projects/${project.id}/self-healing-configurations`;
+	const admin = await createOwner();
 
 	const options = await agent.get(`${url}/options`).expect(200);
 	expect(options.body.data).toMatchObject({
 		workflows: [{ id: workflow.id }],
-		reviewers: expect.arrayContaining([expect.objectContaining({ id: owner.id })]),
+		reviewers: [expect.objectContaining({ id: owner.id })],
 	});
 	const created = await agent
 		.post(url)
@@ -400,7 +405,20 @@ it('lets a personal project owner manage self-healing in their personal project'
 		reviewerIds: [],
 		includeAllProjectMembers: true,
 	});
-	expect(await repository.isReviewer(id, owner.id, {})).toBe(true);
+	expect(await configurations.isReviewer(id, owner.id, {})).toBe(true);
+	await Container.get(DataSource)
+		.getRepository(SelfHealingConfigurationReviewer)
+		.insert({ configurationId: id, userId: admin.id });
+	expect(await configurations.isReviewer(id, admin.id, {})).toBe(false);
+	await agent
+		.patch(`${url}/${id}`)
+		.send({
+			scope: 'selected',
+			workflowIds: [workflow.id],
+			reviewerIds: [admin.id],
+			includeAllProjectMembers: true,
+		})
+		.expect(400);
 	const configuration = await repository.findOneByOrFail({ id });
 	expect((await configurations.resolveActorOrPause(configuration, workflow.id, {}))?.id).toBe(
 		owner.id,
@@ -691,6 +709,7 @@ it('validates only requested IDs and stores duplicate selections once', async ()
 	const otherAdmin = await createUser({ role: GLOBAL_ADMIN_ROLE });
 	await linkUserToProject(otherAdmin, project, 'project:viewer');
 	const outsideAdmin = await createUser({ role: GLOBAL_ADMIN_ROLE });
+	const outsider = await createUser();
 	const otherEditor = await createUser();
 	await linkUserToProject(otherEditor, project, 'project:editor');
 	const workflowLookup = vi.spyOn(repository, 'listProjectWorkflows');
@@ -728,10 +747,16 @@ it('validates only requested IDs and stores duplicate selections once', async ()
 
 		const choices = await configurations.getConfigurationChoices(project.id);
 		expect(choices.workflows).toHaveLength(2);
-		expect(choices.reviewers.map(({ id }) => id).sort()).toEqual(
-			[user.id, globalAdmin.id, otherAdmin.id, otherEditor.id].sort(),
+		expect(choices.reviewers.map(({ id }) => id)).toEqual(
+			expect.arrayContaining([
+				user.id,
+				globalAdmin.id,
+				otherAdmin.id,
+				otherEditor.id,
+				outsideAdmin.id,
+			]),
 		);
-		expect(choices.reviewers.map(({ id }) => id)).not.toContain(outsideAdmin.id);
+		expect(choices.reviewers.map(({ id }) => id)).not.toContain(outsider.id);
 	} finally {
 		workflowLookup.mockRestore();
 		reviewerLookup.mockRestore();
@@ -751,7 +776,7 @@ it('does not look up workflows when saving all-workflow coverage', async () => {
 	}
 });
 
-it('accepts project members with scope-derived global or project roles and rejects others', async () => {
+it('accepts project members and global edit roles in team projects and rejects others', async () => {
 	const { user, project, input } = await fixture();
 	const projectRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update']);
 	const globalRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
@@ -764,7 +789,6 @@ it('accepts project members with scope-derived global or project roles and rejec
 	const outsideGlobalReviewer = await createUser({ role: globalRole });
 	const outsideAdmin = await createUser({ role: GLOBAL_ADMIN_ROLE });
 	const disabledAdmin = await createUser({ role: GLOBAL_ADMIN_ROLE, disabled: true });
-	await linkUserToProject(disabledAdmin, project, 'project:viewer');
 	const disabledEditor = await createUser({ disabled: true });
 	await linkUserToProject(disabledEditor, project, 'project:editor');
 	const reader = await createUser();
@@ -773,13 +797,16 @@ it('accepts project members with scope-derived global or project roles and rejec
 	const outsider = await createUser();
 	const otherProject = await createTeamProject(undefined, outsider);
 	await linkUserToProject(outsider, otherProject, projectRole.slug);
-	const reviewerIds = [projectReviewer.id, globalReviewer.id];
+	const reviewerIds = [
+		projectReviewer.id,
+		globalReviewer.id,
+		outsideGlobalReviewer.id,
+		outsideAdmin.id,
+	];
 	const saved = await configurations.save(user, project.id, { ...input, reviewerIds });
 	expect([...saved.reviewerIds].sort()).toEqual([...reviewerIds].sort());
 
 	for (const invalidId of [
-		outsideGlobalReviewer.id,
-		outsideAdmin.id,
 		disabledAdmin.id,
 		disabledEditor.id,
 		reader.id,
@@ -1028,6 +1055,16 @@ describe('project member reviewers', () => {
 		await shareWorkflowWithProjects(workflow, [{ project }]);
 	}
 
+	// Users with a global edit role are implicit members of every team project.
+	async function disableGlobalEditors() {
+		const slugs = await Container.get(RoleService).rolesWithScope('global', REVIEWER_SCOPES);
+		const users = Container.get(UserRepository);
+		const editors = await users.findBy({ role: { slug: In(slugs) } });
+		if (editors.length) {
+			await users.update({ id: In(editors.map(({ id }) => id)) }, { disabled: true });
+		}
+	}
+
 	it('saves project members as the only reviewers and lists them as a group', async () => {
 		const { user, project, input, url } = await teamFixture();
 		const created = await server
@@ -1094,10 +1131,11 @@ describe('project member reviewers', () => {
 	});
 
 	it('rejects the project group when no member can edit workflows', async () => {
+		await disableGlobalEditors();
 		const { user, project, input } = await teamFixture();
 		const disabledEditor = await createUser({ disabled: true });
 		await linkUserToProject(disabledEditor, project, 'project:editor');
-		await createUser({ role: GLOBAL_ADMIN_ROLE });
+		await createUser({ role: GLOBAL_ADMIN_ROLE, disabled: true });
 		await linkUserToProject(user, project, 'project:viewer');
 
 		await expect(configurations.save(user, project.id, input)).rejects.toThrow(
@@ -1118,31 +1156,42 @@ describe('project member reviewers', () => {
 		});
 	});
 
-	it('lets a global admin outside the project pick only the group or project members', async () => {
+	it('offers and accepts instance owners and admins outside the project as reviewers', async () => {
 		const { user, project, input } = await teamFixture();
-		const admin = await createUser({ role: GLOBAL_ADMIN_ROLE });
+		const [admin, owner] = await Promise.all([createAdmin(), createOwner()]);
+		const disabledAdmin = await createUser({ role: GLOBAL_ADMIN_ROLE, disabled: true });
 
 		const choices = await configurations.getConfigurationChoices(project.id);
-		expect(choices.reviewers.map(({ id }) => id)).toEqual([user.id]);
-		await expect(
-			configurations.save(admin, project.id, {
-				...input,
-				reviewerIds: [admin.id],
-				includeAllProjectMembers: false,
-			}),
-		).rejects.toThrow('project members with workflow edit access');
-		expect(await configurations.list(project.id)).toEqual([]);
+		const choiceIds = choices.reviewers.map(({ id }) => id);
+		expect(choiceIds).toEqual(expect.arrayContaining([user.id, admin.id, owner.id]));
+		expect(choiceIds).not.toContain(disabledAdmin.id);
 
-		const saved = await configurations.save(admin, project.id, input);
-		expect(saved).toMatchObject({ includeAllProjectMembers: true, reviewerIds: [] });
-		expect(
-			await configurations.save(
+		const saved = await configurations.save(admin, project.id, {
+			...input,
+			reviewerIds: [admin.id, owner.id],
+			includeAllProjectMembers: false,
+		});
+		expect([...saved.reviewerIds].sort()).toEqual([admin.id, owner.id].sort());
+		expect(await configurations.isReviewer(saved.id, admin.id, {})).toBe(true);
+		expect(await configurations.isReviewer(saved.id, user.id, {})).toBe(false);
+		await expect(
+			configurations.save(
 				admin,
 				project.id,
-				{ ...input, reviewerIds: [user.id], includeAllProjectMembers: false },
+				{ ...input, reviewerIds: [disabledAdmin.id], includeAllProjectMembers: false },
 				saved.id,
 			),
-		).toMatchObject({ includeAllProjectMembers: false, reviewerIds: [user.id] });
+		).rejects.toThrow('project members with workflow edit access');
+	});
+
+	it('includes instance owners and admins outside the project in the project group', async () => {
+		const { project, input } = await teamFixture();
+		const admin = await createAdmin();
+		const saved = await configurations.save(admin, project.id, input);
+
+		expect(await configurations.isReviewer(saved.id, admin.id, {})).toBe(true);
+		await Container.get(UserRepository).update(admin.id, { role: GLOBAL_MEMBER_ROLE });
+		expect(await configurations.isReviewer(saved.id, admin.id, {})).toBe(false);
 	});
 
 	it('pauses when the only listed reviewer leaves the project', async () => {
@@ -1170,34 +1219,36 @@ describe('project member reviewers', () => {
 	});
 
 	it('pauses when no member can review and resumes after a member gains access', async () => {
+		await disableGlobalEditors();
 		const { user, project, workflow, input } = await teamFixture();
-		const enabler = await createUser({ role: GLOBAL_ADMIN_ROLE });
-		const configuration = await configurations.save(enabler, project.id, {
+		const admin = await createAdmin();
+		await linkUserToProject(user, project, 'project:viewer');
+		const configuration = await configurations.save(admin, project.id, {
 			...input,
 			enabled: true,
 		});
-		await linkUserToProject(user, project, 'project:viewer');
 
+		await Container.get(UserRepository).update(admin.id, { role: GLOBAL_MEMBER_ROLE });
 		await configurations.recheckAccess(configuration.id, project.id, workflow.id);
 		expect(await configurations.get(project.id, configuration.id)).toMatchObject({
 			enabled: false,
 			includeAllProjectMembers: true,
 		});
 		await expect(
-			configurations.setEnabled(enabler, project.id, configuration.id, true),
+			configurations.setEnabled(user, project.id, configuration.id, true),
 		).rejects.toThrow('No reviewer can edit these workflows');
 
 		const member = await createUser();
 		await linkUserToProject(member, project, 'project:editor');
 		expect(
-			await configurations.setEnabled(enabler, project.id, configuration.id, true),
-		).toMatchObject({ enabled: true, enabledById: enabler.id });
+			await configurations.setEnabled(member, project.id, configuration.id, true),
+		).toMatchObject({ enabled: true, enabledById: member.id });
 	});
 
 	it('keeps the project group when a member edits a covered workflow through a share', async () => {
+		await disableGlobalEditors();
 		const { user, project, workflow, input } = await teamFixture();
-		const enabler = await createUser({ role: GLOBAL_ADMIN_ROLE });
-		const configuration = await configurations.save(enabler, project.id, {
+		const configuration = await configurations.save(user, project.id, {
 			...input,
 			enabled: true,
 		});
@@ -1207,13 +1258,8 @@ describe('project member reviewers', () => {
 		await configurations.recheckAccess(configuration.id, project.id, workflow.id);
 		expect(await configurations.get(project.id, configuration.id)).toMatchObject({
 			enabled: true,
-			enabledById: enabler.id,
+			enabledById: user.id,
 		});
-
-		await configurations.setEnabled(enabler, project.id, configuration.id, false);
-		expect(
-			await configurations.setEnabled(enabler, project.id, configuration.id, true),
-		).toMatchObject({ enabled: true });
 		expect(await configurations.save(user, project.id, input, configuration.id)).toMatchObject({
 			includeAllProjectMembers: true,
 			reviewerIds: [],
@@ -1221,6 +1267,7 @@ describe('project member reviewers', () => {
 	});
 
 	it('ignores shares that do not give a project member access to a covered workflow', async () => {
+		await disableGlobalEditors();
 		const { user, project, workflow, input } = await teamFixture();
 		const selectedElsewhere = await createWorkflow({}, project);
 		await configurations.save(user, project.id, {
