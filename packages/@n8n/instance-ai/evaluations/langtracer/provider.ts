@@ -35,11 +35,19 @@ const REMOVED_SEED_KEYS: Record<string, string> = {
 };
 
 /** Normalize + validate an `export_suite` payload into n8n test cases (same
- *  filter/exclude/tier selection as the disk loader); failures are aggregated so
- *  a drift surfaces every bad case at once. */
+ *  filter/exclude/tier selection as the disk loader). A case that does not load is
+ *  skipped with a warning naming every issue, so one case written for a newer
+ *  harness (a seed field this one predates) does not stop the whole suite. The load
+ *  fails only when no case is valid. */
 export function casesFromExportedFiles(
 	files: ExportedSuite['files'],
-	opts: { suite: string; filter?: string; exclude?: string; tier?: string },
+	opts: {
+		suite: string;
+		filter?: string;
+		exclude?: string;
+		tier?: string;
+		logger?: Pick<EvalLogger, 'warn'>;
+	},
 ): WorkflowTestCaseWithFile[] {
 	const cases: WorkflowTestCaseWithFile[] = [];
 	const errors: string[] = [];
@@ -69,9 +77,9 @@ export function casesFromExportedFiles(
 	}
 
 	if (errors.length > 0) {
-		throw new Error(
-			`Invalid test case(s) exported from lang-tracer suite "${opts.suite}":\n${errors.join('\n')}`,
-		);
+		const report = `Invalid test case(s) exported from lang-tracer suite "${opts.suite}":\n${errors.join('\n')}`;
+		if (cases.length === 0) throw new Error(report);
+		opts.logger?.warn(`${report}\nSkipping ${String(errors.length)} case(s); running the rest.`);
 	}
 
 	return applyCaseSelection(cases, opts);

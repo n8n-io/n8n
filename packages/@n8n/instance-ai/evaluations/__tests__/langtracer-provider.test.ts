@@ -91,6 +91,24 @@ describe('casesFromExportedFiles', () => {
 		).toThrow(/broken\.json/);
 	});
 
+	it('skips an invalid case with a warning and keeps the valid ones', () => {
+		const logger = { warn: vi.fn() };
+		const cases = casesFromExportedFiles(
+			{
+				'good.json': validCase(),
+				'newer-field.json': validCase({
+					seed: { mode: 'inline', workflows: [], someFutureField: [] },
+				}),
+			},
+			{ suite: 'demo', logger },
+		);
+
+		expect(cases.map((c) => c.fileSlug)).toEqual(['good']);
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringMatching(/newer-field\.json[\s\S]*Skipping 1 case/),
+		);
+	});
+
 	it('applies --filter by file slug', () => {
 		const cases = casesFromExportedFiles(
 			{ 'keep-me.json': validCase(), 'drop-me.json': validCase() },
