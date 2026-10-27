@@ -100,15 +100,23 @@ async function onPaginationAndSortUpdated(payload: {
 	await scheduleFetch();
 }
 
+function removeApp(appId: string) {
+	if (!apps.value.some((app) => app.id === appId)) return;
+	apps.value = apps.value.filter((app) => app.id !== appId);
+	totalApps.value = Math.max(0, totalApps.value - 1);
+}
+
 async function onAppDeleted(appId: string) {
-	if (apps.value.length === 1 && currentPage.value > 1 && layout.value) {
+	const isOnlyAppOnPage = apps.value.length === 1 && apps.value[0].id === appId;
+	if (isOnlyAppOnPage && currentPage.value > 1 && layout.value) {
 		// Keep the card until the previous page loads, so the empty state does not flash.
 		await layout.value.setCurrentPage(currentPage.value - 1);
 		await initialize();
+		// The reload can fail and keep the old page.
+		removeApp(appId);
 		return;
 	}
-	apps.value = apps.value.filter((app) => app.id !== appId);
-	totalApps.value = Math.max(0, totalApps.value - 1);
+	removeApp(appId);
 	await fetchApps();
 }
 </script>

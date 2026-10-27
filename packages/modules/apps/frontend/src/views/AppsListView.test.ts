@@ -60,7 +60,7 @@ const renderComponent = createComponentRenderer(AppsListView, {
 				props: ['app'],
 				emits: ['deleted'],
 				template:
-					'<div data-test-id="app-card"><button :data-test-id="\'delete-\' + app.id" @click="$emit(\'deleted\', app.id)" /></div>',
+					'<div data-test-id="app-card"><button :data-test-id="\'delete-\' + app.id" @click="$emit(\'deleted\', app.id)" /><button :data-test-id="\'delete-other-\' + app.id" @click="$emit(\'deleted\', \'other-app\')" /></div>',
 			},
 		},
 	},
@@ -226,6 +226,46 @@ describe('AppsListView', () => {
 		await new Promise((resolve) => setTimeout(resolve, 0));
 
 		expect(queryAllByTestId('app-card')).toHaveLength(0);
+		await waitFor(() => expect(queryAllByTestId('app-card')).toHaveLength(2));
+		expect(listApps).toHaveBeenCalledTimes(2);
+	});
+
+	it('removes the deleted card when loading the previous page fails', async () => {
+		vi.mocked(listApps).mockResolvedValue({ data: [app('51')], count: 51 });
+		const { findAllByTestId, getByTestId, queryByTestId } = renderComponent();
+		await findAllByTestId('app-card');
+		await userEvent.click(getByTestId('sort'));
+		await waitFor(() =>
+			expect(listApps).toHaveBeenLastCalledWith(
+				expect.anything(),
+				undefined,
+				expect.objectContaining({ skip: 50 }),
+			),
+		);
+		vi.mocked(listApps).mockRejectedValueOnce(new Error('Network error'));
+
+		await userEvent.click(getByTestId('delete-51'));
+
+		await waitFor(() => expect(queryByTestId('delete-51')).not.toBeInTheDocument());
+	});
+
+	it('stays on the page when the deleted app is not the only card shown', async () => {
+		vi.mocked(listApps).mockResolvedValue({ data: [app('52')], count: 52 });
+		const { findAllByTestId, getByTestId } = renderComponent();
+		await findAllByTestId('app-card');
+		await userEvent.click(getByTestId('sort'));
+		await waitFor(() =>
+			expect(listApps).toHaveBeenLastCalledWith(
+				expect.anything(),
+				undefined,
+				expect.objectContaining({ skip: 50 }),
+			),
+		);
+
+		await userEvent.click(getByTestId('delete-other-52'));
+
+		expect(setCurrentPage).not.toHaveBeenCalled();
+		expect(getByTestId('delete-52')).toBeInTheDocument();
 	});
 
 	it('removes a deleted app and reloads the list', async () => {
