@@ -1,5 +1,7 @@
 import {
 	AGENT_SKILL_NAME_MAX_LENGTH,
+	hasSkillInstructions,
+	SKILL_INSTRUCTIONS_REQUIRED_MESSAGE,
 	skillNameKey,
 	type AgentSkill,
 	type CreateSkillDto,
@@ -90,7 +92,9 @@ function assertUnchangedSince(
 }
 
 function assertHasInstructions(skill: AgentSkill): void {
-	if (!skill.instructions.trim()) throw new UserError('Skill instructions are required.');
+	if (!hasSkillInstructions(skill.instructions)) {
+		throw new UserError(SKILL_INSTRUCTIONS_REQUIRED_MESSAGE);
+	}
 }
 
 /** How a refusal counts the agents in projects the user may not read. */
