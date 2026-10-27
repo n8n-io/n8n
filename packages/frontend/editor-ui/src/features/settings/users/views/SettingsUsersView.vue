@@ -89,9 +89,13 @@ onMounted(async () => {
 const usersListActions = computed((): Array<UserAction<IUser>> => {
 	return [
 		{
-			label: i18n.baseText('settings.users.actions.copyInviteLink'),
-			value: 'copyInviteLink',
-			guard: (user) => usersStore.usersLimitNotReached && !user.firstName && !!user.inviteAcceptUrl,
+			label: i18n.baseText('settings.users.actions.generateInviteLink'),
+			value: 'generateInviteLink',
+			guard: (user) =>
+				hasPermission(['rbac'], { rbac: { scope: 'user:generateInviteLink' } }) &&
+				usersStore.usersLimitNotReached &&
+				user.id !== usersStore.currentUserId &&
+				!user.firstName,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.reinvite'),
@@ -155,6 +159,9 @@ async function onUsersListAction({ action, userId }: { action: string; userId: s
 			break;
 		case 'copyInviteLink':
 			await onCopyInviteLink(userId);
+			break;
+		case 'generateInviteLink':
+			await onGenerateInviteLink(userId);
 			break;
 		case 'copyPasswordResetLink':
 			await onCopyPasswordResetLink(userId);
@@ -221,6 +228,23 @@ async function onCopyInviteLink(userId: string) {
 			title: i18n.baseText('settings.users.inviteUrlCreated'),
 			message: i18n.baseText('settings.users.inviteUrlCreated.message'),
 		});
+	}
+}
+async function onGenerateInviteLink(userId: string) {
+	try {
+		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
+		if (user) {
+			const url = await usersStore.generateInviteLink({ id: userId });
+			void clipboard.copy(url.link);
+
+			showToast({
+				type: 'success',
+				title: i18n.baseText('settings.users.inviteUrlCreated'),
+				message: i18n.baseText('settings.users.inviteUrlCreated.message'),
+			});
+		}
+	} catch (error) {
+		showError(error, i18n.baseText('settings.users.inviteLinkError'));
 	}
 }
 async function onCopyPasswordResetLink(userId: string) {

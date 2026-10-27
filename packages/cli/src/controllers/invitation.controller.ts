@@ -2,7 +2,7 @@ import { AcceptInvitationRequestDto, InviteUsersRequestDto } from '@n8n/api-type
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
-import { Post, GlobalScope, RestController, Body, Param } from '@n8n/decorators';
+import { Post, GlobalScope, RestController, Body } from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -88,26 +88,17 @@ export class InvitationController {
 	}
 
 	/**
-	 * Fill out user shell with first name, last name, and password.
+	 * Process invitation acceptance: validate users, update invitee, and handle authentication.
 	 */
-	@Post('/:id/accept', { skipAuth: true })
-	async acceptInvitation(
+	private async processInvitationAcceptance(
+		inviterId: string,
+		inviteeId: string,
+		firstName: string,
+		lastName: string,
+		password: string,
 		req: AuthlessRequest,
 		res: Response,
-		@Body payload: AcceptInvitationRequestDto,
-		@Param('id') inviteeId: string,
-	) {
-		if (isSsoCurrentAuthenticationMethod()) {
-			this.logger.debug(
-				'Invite links are not supported on this system, please use single sign on instead.',
-			);
-			throw new BadRequestError(
-				'Invite links are not supported on this system, please use single sign on instead.',
-			);
-		}
-
-		const { inviterId, firstName, lastName, password } = payload;
-
+	): Promise<Awaited<ReturnType<UserService['toPublic']>>> {
 		const users = await this.userRepository.find({
 			where: [{ id: inviterId }, { id: inviteeId }],
 			relations: ['role'],
@@ -157,5 +148,46 @@ export class InvitationController {
 			posthog: this.postHog,
 			withScopes: true,
 		});
+	}
+
+	/**
+	 * Fill out user shell with first name, last name, and password using JWT token.
+	 */
+	@Post('/accept', { skipAuth: true })
+	async acceptInvitationWithToken(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: AcceptInvitationRequestDto,
+	) {
+		if (isSsoCurrentAuthenticationMethod()) {
+			this.logger.debug(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+			throw new BadRequestError(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+		}
+
+		if (!payload.token) {
+			this.logger.debug('Request to accept invitation failed because token is missing');
+			throw new BadRequestError('Token is required');
+		}
+
+		const { firstName, lastName, password } = payload;
+
+		// Extract inviterId and inviteeId from JWT token
+		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload(
+			payload.token,
+		);
+
+		return await this.processInvitationAcceptance(
+			inviterId,
+			inviteeId,
+			firstName,
+			lastName,
+			password,
+			req,
+			res,
+		);
 	}
 }

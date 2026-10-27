@@ -197,7 +197,7 @@ describe('AuthController', () => {
 
 		it('throws a BadRequestError if SSO is enabled', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
-			const id = uuidv4();
+			const token = 'valid-jwt-token';
 
 			const authController = new AuthController(
 				logger,
@@ -211,8 +211,7 @@ describe('AuthController', () => {
 			);
 
 			const payload = new ResolveSignupTokenQueryDto({
-				inviterId: id,
-				inviteeId: id,
+				token,
 			});
 
 			const req = mock<AuthlessRequest>({
@@ -230,6 +229,7 @@ describe('AuthController', () => {
 		it('throws a ForbiddenError if the users quota is reached', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			const id = uuidv4();
+			const token = 'valid-jwt-token';
 
 			const authController = new AuthController(
 				logger,
@@ -243,8 +243,7 @@ describe('AuthController', () => {
 			);
 
 			const payload = new ResolveSignupTokenQueryDto({
-				inviterId: id,
-				inviteeId: id,
+				token,
 			});
 
 			const req = mock<AuthlessRequest>({
@@ -252,6 +251,10 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
+			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+				inviterId: id,
+				inviteeId: id,
+			});
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(false);
 
 			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
@@ -262,6 +265,7 @@ describe('AuthController', () => {
 		it('throws a BadRequestError if the users are not found', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			const id = uuidv4();
+			const token = 'valid-jwt-token';
 
 			const authController = new AuthController(
 				logger,
@@ -275,8 +279,7 @@ describe('AuthController', () => {
 			);
 
 			const payload = new ResolveSignupTokenQueryDto({
-				inviterId: id,
-				inviteeId: id,
+				token,
 			});
 
 			const req = mock<AuthlessRequest>({
@@ -284,6 +287,10 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
+			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+				inviterId: id,
+				inviteeId: id,
+			});
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
 			jest.spyOn(userRepository, 'findManyByIds').mockResolvedValue([]);
 
@@ -295,6 +302,7 @@ describe('AuthController', () => {
 		it('throws a BadRequestError if the invitee already has a password', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			const id = uuidv4();
+			const token = 'valid-jwt-token';
 
 			const authController = new AuthController(
 				logger,
@@ -308,8 +316,7 @@ describe('AuthController', () => {
 			);
 
 			const payload = new ResolveSignupTokenQueryDto({
-				inviterId: id,
-				inviteeId: id,
+				token,
 			});
 
 			const req = mock<AuthlessRequest>({
@@ -317,6 +324,10 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
+			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+				inviterId: id,
+				inviteeId: id,
+			});
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
 			jest.spyOn(userRepository, 'findManyByIds').mockResolvedValue([
 				mock<User>({
@@ -337,6 +348,7 @@ describe('AuthController', () => {
 		it('throws a BadRequestError if the inviter does not exist or is not set up', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			const id = uuidv4();
+			const token = 'valid-jwt-token';
 
 			const authController = new AuthController(
 				logger,
@@ -350,8 +362,7 @@ describe('AuthController', () => {
 			);
 
 			const payload = new ResolveSignupTokenQueryDto({
-				inviterId: id,
-				inviteeId: id,
+				token,
 			});
 
 			const req = mock<AuthlessRequest>({
@@ -359,6 +370,10 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
+			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+				inviterId: id,
+				inviteeId: id,
+			});
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
 			jest.spyOn(userRepository, 'findManyByIds').mockResolvedValue([
 				mock<User>({
@@ -381,6 +396,7 @@ describe('AuthController', () => {
 		it('returns the inviter if the invitation is valid', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			const id = uuidv4();
+			const token = 'valid-jwt-token';
 
 			const authController = new AuthController(
 				logger,
@@ -394,8 +410,7 @@ describe('AuthController', () => {
 			);
 
 			const payload = new ResolveSignupTokenQueryDto({
-				inviterId: id,
-				inviteeId: id,
+				token,
 			});
 
 			const req = mock<AuthlessRequest>({
@@ -403,6 +418,10 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
+			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+				inviterId: id,
+				inviteeId: id,
+			});
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
 			jest.spyOn(userRepository, 'findManyByIds').mockResolvedValue([
 				mock<User>({
@@ -427,6 +446,159 @@ describe('AuthController', () => {
 					lastName: 'Inviter last name',
 				},
 			});
+		});
+
+		it('validates JWT token and returns inviter if token is valid', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			const inviterId = uuidv4();
+			const inviteeId = uuidv4();
+			const token = 'valid-jwt-token';
+
+			const authController = new AuthController(
+				logger,
+				authService,
+				mfaService,
+				userService,
+				license,
+				userRepository,
+				eventService,
+				postHog,
+			);
+
+			// Use type assertion to bypass zod-class validation for all-optional schemas
+			// Validation is handled in the service layer
+			const payload = { token } as ResolveSignupTokenQueryDto;
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+			});
+			const res = mock<Response>();
+
+			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+				inviterId,
+				inviteeId,
+			});
+			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
+			jest.spyOn(userRepository, 'findManyByIds').mockResolvedValue([
+				mock<User>({
+					id: inviterId,
+					email: 'inviter@example.com',
+					firstName: 'Inviter first name',
+					lastName: 'Inviter last name',
+					password: null,
+				}),
+				mock<User>({
+					id: inviteeId,
+					email: 'invitee@example.com',
+					firstName: 'Invitee first name',
+					lastName: 'Invitee last name',
+					password: null,
+				}),
+			]);
+
+			await expect(authController.resolveSignupToken(req, res, payload)).resolves.toEqual({
+				inviter: {
+					firstName: 'Inviter first name',
+					lastName: 'Inviter last name',
+				},
+			});
+
+			expect(userService.getInvitationIdsFromPayload).toHaveBeenCalledWith(token);
+		});
+
+		it('throws BadRequestError if JWT token is invalid', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			const token = 'invalid-jwt-token';
+
+			const authController = new AuthController(
+				logger,
+				authService,
+				mfaService,
+				userService,
+				license,
+				userRepository,
+				eventService,
+				postHog,
+			);
+
+			// Use type assertion to bypass zod-class validation for all-optional schemas
+			// Validation is handled in the service layer
+			const payload = { token } as ResolveSignupTokenQueryDto;
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+			});
+			const res = mock<Response>();
+
+			jest
+				.spyOn(userService, 'getInvitationIdsFromPayload')
+				.mockRejectedValue(new BadRequestError('Invalid invite URL'));
+
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new BadRequestError('Invalid invite URL'),
+			);
+		});
+
+		it('throws BadRequestError if JWT token payload is missing inviterId or inviteeId', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			const token = 'valid-jwt-token';
+
+			const authController = new AuthController(
+				logger,
+				authService,
+				mfaService,
+				userService,
+				license,
+				userRepository,
+				eventService,
+				postHog,
+			);
+
+			// Use type assertion to bypass zod-class validation for all-optional schemas
+			// Validation is handled in the service layer
+			const payload = { token } as ResolveSignupTokenQueryDto;
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+			});
+			const res = mock<Response>();
+
+			jest
+				.spyOn(userService, 'getInvitationIdsFromPayload')
+				.mockRejectedValue(new BadRequestError('Invalid invite URL'));
+
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new BadRequestError('Invalid invite URL'),
+			);
+		});
+
+		it('throws BadRequestError if token is missing', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+
+			const authController = new AuthController(
+				logger,
+				authService,
+				mfaService,
+				userService,
+				license,
+				userRepository,
+				eventService,
+				postHog,
+			);
+
+			// Create empty payload to test validation when token is missing
+			// Use type assertion to bypass zod-class validation for all-optional schemas
+			// Validation is handled in the service layer
+			const payload = {} as ResolveSignupTokenQueryDto;
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+			});
+			const res = mock<Response>();
+
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new BadRequestError('Token is required'),
+			);
 		});
 	});
 });

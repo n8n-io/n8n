@@ -249,13 +249,12 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const validateSignupToken = async (params: { inviteeId: string; inviterId: string }) => {
+	const validateSignupToken = async (params: { token: string }) => {
 		return await usersApi.validateSignupToken(rootStore.restApiContext, params);
 	};
 
 	const acceptInvitation = async (params: {
-		inviteeId: string;
-		inviterId: string;
+		token: string;
 		firstName: string;
 		lastName: string;
 		password: string;
@@ -346,6 +345,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const getUserPasswordResetLink = async (params: { id: string }) => {
 		return await usersApi.getPasswordResetLink(rootStore.restApiContext, params);
+	};
+
+	const generateInviteLink = async (params: { id: string }) => {
+		return await usersApi.generateInviteLink(rootStore.restApiContext, params);
 	};
 
 	const submitPersonalizationSurvey = async (results: IPersonalizationLatestVersion) => {
@@ -482,6 +485,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		inviteUsers,
 		reinviteUser,
 		getUserPasswordResetLink,
+		generateInviteLink,
 		submitPersonalizationSurvey,
 		showPersonalizationSurvey,
 		fetchMfaQR,

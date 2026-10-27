@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-export class ResolveSignupTokenQueryDto extends Z.class({
-	inviterId: z.string().uuid(),
-	inviteeId: z.string().uuid(),
-}) {}
+// Only support JWT token-based invites (tamper-proof)
+const resolveSignupTokenShape = {
+	token: z.string().min(1, 'Token is required'),
+};
+
+export class ResolveSignupTokenQueryDto extends Z.class(resolveSignupTokenShape) {}

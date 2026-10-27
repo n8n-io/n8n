@@ -1,7 +1,14 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
-import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, Role, User, UserRepository } from '@n8n/db';
+import {
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
+	Role,
+	User,
+	UserRepository,
+} from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
@@ -13,6 +20,7 @@ import type { UserManagementMailer } from '@/user-management/email';
 
 import type { RoleService } from '../role.service';
 import { type PublicApiKeyService } from '../public-api-key.service';
+import { JwtService } from '../jwt.service';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
@@ -31,6 +39,9 @@ describe('UserService', () => {
 	const roleService = mock<RoleService>();
 	const mailer = mock<UserManagementMailer>();
 	const publicApiKeyService = mock<PublicApiKeyService>();
+	const jwtService = mockInstance(JwtService, {
+		sign: jest.fn().mockReturnValue('mock-jwt-token'),
+	});
 	const userService = new UserService(
 		mock(),
 		userRepository,
@@ -40,6 +51,7 @@ describe('UserService', () => {
 		publicApiKeyService,
 		roleService,
 		globalConfig,
+		jwtService,
 	);
 
 	const commonMockUser = Object.assign(new User(), {
@@ -91,28 +103,6 @@ describe('UserService', () => {
 			expect(scoped.globalScopes).toEqual(GLOBAL_MEMBER_ROLE.scopes.map((s) => s.slug));
 			expect(unscoped.globalScopes).toBeUndefined();
 		});
-
-		it('should add invite URL if requested', async () => {
-			const firstUser = Object.assign(new User(), { id: uuid(), role: GLOBAL_MEMBER_ROLE });
-			const secondUser = Object.assign(new User(), {
-				id: uuid(),
-				role: GLOBAL_MEMBER_ROLE,
-				isPending: true,
-			});
-
-			const withoutUrl = await userService.toPublic(secondUser);
-			const withUrl = await userService.toPublic(secondUser, {
-				withInviteUrl: true,
-				inviterId: firstUser.id,
-			});
-
-			expect(withoutUrl.inviteAcceptUrl).toBeUndefined();
-
-			const url = new URL(withUrl.inviteAcceptUrl ?? '');
-
-			expect(url.searchParams.get('inviterId')).toBe(firstUser.id);
-			expect(url.searchParams.get('inviteeId')).toBe(secondUser.id);
-		});
 	});
 
 	describe('inviteUrl visibility', () => {
@@ -122,36 +112,14 @@ describe('UserService', () => {
 			});
 
 			describe('toPublic', () => {
-				it('should include inviteAcceptUrl if requested', async () => {
-					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+				it('should not include inviteAcceptUrl', async () => {
 					const pendingUser = Object.assign(new User(), {
 						id: uuid(),
 						role: GLOBAL_MEMBER_ROLE,
 						isPending: true,
 					});
 
-					const result = await userService.toPublic(pendingUser, {
-						withInviteUrl: true,
-						inviterId: inviter.id,
-					});
-
-					expect(result.inviteAcceptUrl).toBeDefined();
-					const url = new URL(result.inviteAcceptUrl ?? '');
-					expect(url.searchParams.get('inviterId')).toBe(inviter.id);
-					expect(url.searchParams.get('inviteeId')).toBe(pendingUser.id);
-				});
-
-				it('should not include inviteAcceptUrl if not requested', async () => {
-					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
-					const pendingUser = Object.assign(new User(), {
-						id: uuid(),
-						role: GLOBAL_MEMBER_ROLE,
-						isPending: true,
-					});
-
-					const result = await userService.toPublic(pendingUser, {
-						inviterId: inviter.id,
-					});
+					const result = await userService.toPublic(pendingUser);
 
 					expect(result.inviteAcceptUrl).toBeUndefined();
 				});
@@ -172,6 +140,8 @@ describe('UserService', () => {
 					const result = await userService.inviteUsers(owner, invitations);
 
 					expect(result.usersInvited[0].user.inviteAcceptUrl).toBeDefined();
+					expect(result.usersInvited[0].user.inviteAcceptUrl).toContain('token=mock-jwt-token');
+					expect(jwtService.sign).toHaveBeenCalled();
 				});
 
 				it('should not include inviteAcceptUrl if email was sent', async () => {
@@ -198,33 +168,14 @@ describe('UserService', () => {
 			});
 
 			describe('toPublic', () => {
-				it('should not include inviteAcceptUrl if requested', async () => {
-					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+				it('should not include inviteAcceptUrl', async () => {
 					const pendingUser = Object.assign(new User(), {
 						id: uuid(),
 						role: GLOBAL_MEMBER_ROLE,
 						isPending: true,
 					});
 
-					const result = await userService.toPublic(pendingUser, {
-						withInviteUrl: true,
-						inviterId: inviter.id,
-					});
-
-					expect(result.inviteAcceptUrl).toBeUndefined();
-				});
-
-				it('should not include inviteAcceptUrl if not requested', async () => {
-					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
-					const pendingUser = Object.assign(new User(), {
-						id: uuid(),
-						role: GLOBAL_MEMBER_ROLE,
-						isPending: true,
-					});
-
-					const result = await userService.toPublic(pendingUser, {
-						inviterId: inviter.id,
-					});
+					const result = await userService.toPublic(pendingUser);
 
 					expect(result.inviteAcceptUrl).toBeUndefined();
 				});
@@ -381,6 +332,114 @@ describe('UserService', () => {
 				{ role: { slug: 'global:member' } },
 			);
 			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).toHaveBeenCalled();
+		});
+	});
+
+	describe('getInvitationIdsFromPayload', () => {
+		it('should extract inviterId and inviteeId from valid JWT token', async () => {
+			const inviterId = uuid();
+			const inviteeId = uuid();
+			const token = 'valid-jwt-token';
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			jwtService.verify.mockReturnValue({
+				inviterId,
+				inviteeId,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+
+			const result = await userService.getInvitationIdsFromPayload(token);
+
+			expect(result).toEqual({ inviterId, inviteeId });
+			expect(jwtService.verify).toHaveBeenCalledWith(token);
+			expect(userRepository.findOne).toHaveBeenCalledWith({
+				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+			});
+		});
+
+		it('should throw BadRequestError if JWT token verification fails', async () => {
+			const token = 'invalid-jwt-token';
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			jwtService.verify.mockImplementation(() => {
+				throw new Error('Invalid token');
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(BadRequestError);
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(
+				'Invalid invite URL',
+			);
+		});
+
+		it('should throw BadRequestError if JWT token payload is missing inviterId', async () => {
+			const token = 'valid-jwt-token';
+			const inviteeId = uuid();
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			jwtService.verify.mockReturnValue({
+				inviteeId,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(BadRequestError);
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(
+				'Invalid invite URL',
+			);
+		});
+
+		it('should throw BadRequestError if JWT token payload is missing inviteeId', async () => {
+			const token = 'valid-jwt-token';
+			const inviterId = uuid();
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			jwtService.verify.mockReturnValue({
+				inviterId,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(BadRequestError);
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(
+				'Invalid invite URL',
+			);
+		});
+
+		it('should throw error when instance owner is not found', async () => {
+			const inviterId = uuid();
+			const inviteeId = uuid();
+			const token = 'valid-jwt-token';
+
+			jwtService.verify.mockReturnValue({
+				inviterId,
+				inviteeId,
+			});
+
+			userRepository.findOne.mockResolvedValue(null);
+
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(BadRequestError);
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(
+				'Instance owner not found',
+			);
 		});
 	});
 });
