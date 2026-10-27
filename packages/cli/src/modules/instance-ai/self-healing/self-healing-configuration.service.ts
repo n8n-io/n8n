@@ -6,6 +6,9 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { RoleService } from '@n8n/backend-services';
 import {
+	ProjectRelationRepository,
+	ProjectRepository,
+	RoleRepository,
 	SharedWorkflowRepository,
 	TransactionRunner,
 	UserRepository,
@@ -14,6 +17,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -22,14 +26,22 @@ import { SelfHealingConfiguration } from './database/self-healing-configuration.
 import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 
+export const REVIEWER_SCOPES: Scope[] = ['workflow:read', 'workflow:update'];
+
+const NO_ELIGIBLE_REVIEWER =
+	'No reviewer can edit these workflows. Add a reviewer who can edit them, or give a reviewer edit access.';
+
 @Service()
 export class SelfHealingConfigurationService {
 	constructor(
 		private readonly configurations: SelfHealingConfigurationRepository,
 		private readonly workflows: WorkflowFinderService,
 		private readonly ownership: SharedWorkflowRepository,
+		private readonly projectRelations: ProjectRelationRepository,
+		private readonly projects: ProjectRepository,
 		private readonly users: UserRepository,
 		private readonly roles: RoleService,
+		private readonly roleRepository: RoleRepository,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly investigations: SelfHealingInvestigationRepository,
 		private readonly logger: Logger,
@@ -37,6 +49,16 @@ export class SelfHealingConfigurationService {
 
 	async afterWorkflowsTransferred(workflowIds: string[]): Promise<void> {
 		await this.configurations.removeWorkflowSelections(workflowIds);
+	}
+
+	async canConfigure(user: User, projectId: string) {
+		const [project] = await this.projects.findTypesByIds([projectId]);
+		if (project?.type !== 'personal') {
+			return await userHasScopes(user, ['project:update'], false, { projectId });
+		}
+
+		const [relation] = await this.projectRelations.findByUserAndProjects(user.id, [projectId]);
+		return relation?.role.slug === PROJECT_OWNER_ROLE_SLUG;
 	}
 
 	async list(projectId: string) {
@@ -50,12 +72,15 @@ export class SelfHealingConfigurationService {
 	}
 
 	async getConfigurationChoices(projectId: string): Promise<SelfHealingConfigurationOptions> {
-		const [workflows, reviewers] = await Promise.all([
+		const [project, workflows, reviewers] = await Promise.all([
+			this.projects.findOneBy({ id: projectId }),
 			this.configurations.listProjectWorkflows(projectId),
 			this.findEligibleReviewers(projectId),
 		]);
+		if (!project) throw new NotFoundError('Project not found.');
 
 		return {
+			project: { name: project.name, icon: project.icon },
 			workflows: workflows.map(({ id, name }) => ({ id, name })),
 			reviewers: reviewers.map(({ id, email, firstName, lastName }) => ({
 				id,
@@ -92,9 +117,13 @@ export class SelfHealingConfigurationService {
 			}
 
 			configuration.scope = input.scope;
+			configuration.includeAllProjectMembers = input.includeAllProjectMembers;
 
 			await this.configurations.saveConfiguration(configuration, ctx);
 			await this.configurations.replaceSelections(configuration, input, ctx);
+			if (!(await this.hasEligibleReviewer(configuration, ctx))) {
+				throw new BadRequestError(NO_ELIGIBLE_REVIEWER);
+			}
 			return configuration.id;
 		});
 
@@ -109,8 +138,8 @@ export class SelfHealingConfigurationService {
 
 		const threadIds = await this.transactionRunner.run({}, async (ctx) => {
 			const configuration = await this.requireConfiguration(id, projectId, ctx);
-			if (enabled && !(await this.configurations.hasReviewers(id, ctx))) {
-				throw new BadRequestError('Select at least one reviewer before enabling self-healing.');
+			if (enabled && !(await this.hasEligibleReviewer(configuration, ctx))) {
+				throw new BadRequestError(NO_ELIGIBLE_REVIEWER);
 			}
 			this.changeEnabled(configuration, enabled, user, canEnable);
 			await this.configurations.saveConfiguration(configuration, ctx);
@@ -144,25 +173,45 @@ export class SelfHealingConfigurationService {
 			}
 		}
 
+		if (input.reviewerIds.length === 0) {
+			if (!input.includeAllProjectMembers) {
+				throw new BadRequestError('Select at least one reviewer.');
+			}
+			// The project group is checked against saved selections in save().
+			return;
+		}
+
 		const reviewers = await this.findEligibleReviewers(projectId, input.reviewerIds);
 		const eligibleReviewerIds = new Set(reviewers.map(({ id }) => id));
 		if (input.reviewerIds.some((id) => !eligibleReviewerIds.has(id))) {
-			throw new BadRequestError('Select reviewers with workflow edit access to this project.');
+			throw new BadRequestError(
+				'Select reviewers who are project members with workflow edit access.',
+			);
 		}
 	}
 
-	private async findEligibleReviewers(projectId: string, userIds?: string[]) {
-		const scopes = ['workflow:read', 'workflow:update'] as const;
-		const [projectRoleSlugs, globalRoleSlugs] = await Promise.all([
-			this.roles.rolesWithScope('project', [...scopes]),
-			this.roles.rolesWithScope('global', [...scopes]),
+	private async reviewerRoles(ctx: OperationContext = {}) {
+		const loadRoles = async () => await this.roleRepository.findAll(ctx);
+		const [projectRoleSlugs, globalRoleSlugs, workflowRoleSlugs] = await Promise.all([
+			this.roles.rolesWithScope('project', REVIEWER_SCOPES, loadRoles),
+			this.roles.rolesWithScope('global', REVIEWER_SCOPES, loadRoles),
+			this.roles.rolesWithScope('workflow', REVIEWER_SCOPES, loadRoles),
 		]);
-		return await this.users.findEligibleByProjectOrGlobalRoles({
-			projectId,
-			projectRoleSlugs,
-			globalRoleSlugs,
-			userIds,
-		});
+		return { projectRoleSlugs, globalRoleSlugs, workflowRoleSlugs };
+	}
+
+	private async findEligibleReviewers(projectId: string, userIds?: string[]) {
+		const roles = await this.reviewerRoles();
+		return await this.configurations.findProjectMembersWithEditAccess(projectId, roles, userIds);
+	}
+
+	private async hasEligibleReviewer(
+		configuration: SelfHealingConfiguration,
+		ctx: OperationContext,
+	) {
+		const roles = await this.reviewerRoles(ctx);
+		if (await this.configurations.hasReviewerWithEditRole(configuration, roles, ctx)) return true;
+		return await this.configurations.hasReviewerWithSharedWorkflowAccess(configuration, roles, ctx);
 	}
 
 	private async canEnable(user: User, projectId: string) {
@@ -237,7 +286,7 @@ export class SelfHealingConfigurationService {
 	) {
 		if (!configuration.enabled) return null;
 
-		if (!(await this.configurations.hasReviewers(configuration.id, ctx))) {
+		if (!(await this.hasEligibleReviewer(configuration, ctx))) {
 			configuration.enabled = false;
 			await this.configurations.saveConfiguration(configuration, ctx);
 			return null;

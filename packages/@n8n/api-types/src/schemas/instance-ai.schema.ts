@@ -1113,6 +1113,13 @@ export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
 });
 
+/** Host event of an Assistant agent turn with the temporary workflows that the turn end archived. */
+export const ASSISTANT_WORKFLOWS_ARCHIVED_EVENT = 'workflows-archived';
+
+export const workflowsArchivedPayloadSchema = z.object({
+	workflowIds: z.array(z.string()),
+});
+
 /**
  * One entry of the setup panel checklist. Service-keyed (one row per
  * credential type, fanned out to all nodes that use it via `nodeBindings`),

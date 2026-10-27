@@ -134,7 +134,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [scheduled_task](scheduled_task.md) | 19 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
-| [self_healing_configuration](self_healing_configuration.md) | 7 |  | table |
+| [self_healing_configuration](self_healing_configuration.md) | 8 |  | table |
 | [self_healing_configuration_reviewer](self_healing_configuration_reviewer.md) | 2 |  | table |
 | [self_healing_configuration_workflow](self_healing_configuration_workflow.md) | 3 |  | table |
 | [self_healing_investigation](self_healing_investigation.md) | 13 |  | table |
@@ -1748,6 +1748,7 @@ erDiagram
   boolean enabled
   varchar enabledById FK
   INTEGER id
+  BOOLEAN includeAllProjectMembers
   varchar_36_ projectId FK
   varchar_16_ scope
   datetime_3_ updatedAt

@@ -35,6 +35,8 @@ import type {
 	AgentCatalogModel,
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
+	UpdateAgentVersionDto,
+	AgentPublishHistoryItemDto,
 	ChatIntegrationDescriptor,
 	SkillDetail,
 	SkillListItem,
@@ -629,12 +631,13 @@ export const publishAgent = async (
 	projectId: string,
 	agentId: string,
 	versionId?: string,
+	metadata?: UpdateAgentVersionDto,
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/publish`,
-		versionId ? { versionId } : undefined,
+		{ versionId, ...metadata },
 	);
 };
 
@@ -676,6 +679,33 @@ export const revertAgentToVersion = async (
 	);
 };
 
+export const getAgentVersion = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	versionId: string,
+): Promise<AgentVersionListItemDto> =>
+	await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/versions/${versionId}`,
+	);
+
+export const updateAgentVersion = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	versionId: string,
+	metadata: UpdateAgentVersionDto,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/projects/${projectId}/agents/v2/${agentId}/versions/${versionId}`,
+		metadata,
+	);
+};
+
 export const listAgentVersions = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -689,6 +719,19 @@ export const listAgentVersions = async (
 		params,
 	);
 };
+
+export const listAgentPublishHistory = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	params: { take: number; skip: number },
+): Promise<AgentPublishHistoryItemDto[]> =>
+	await makeRestApiRequest<AgentPublishHistoryItemDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/publish-history`,
+		params,
+	);
 
 export const getAgentBudgetSpend = async (
 	context: IRestApiContext,

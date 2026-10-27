@@ -112,7 +112,6 @@ export async function writeImportManifest(options: {
 
 	const manifest = packageManifestSchema.parse({
 		packageFormatVersion: '1',
-		exportedAt: new Date().toISOString(),
 		sourceN8nVersion: N8N_VERSION,
 		sourceId,
 		...collections,

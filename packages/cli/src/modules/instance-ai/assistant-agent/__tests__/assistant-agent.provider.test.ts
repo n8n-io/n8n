@@ -1,3 +1,4 @@
+import { ASSISTANT_WORKFLOWS_ARCHIVED_EVENT } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -53,8 +54,9 @@ function setup() {
 		nodeContextEnabled: false,
 	} as Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>);
 	const creditService = mock<InstanceAiCreditService>();
+	const archiveIfAiTemporary = vi.fn(async () => true);
 	const environment = {
-		context: {},
+		context: { workflowService: { archiveIfAiTemporary } },
 		orchestrationContext: {},
 		modelId: 'anthropic/claude-sonnet',
 		skillScope: { profile: { mode: 'default' } },
@@ -96,6 +98,7 @@ function setup() {
 		environment,
 		input,
 		agent,
+		archiveIfAiTemporary,
 	};
 }
 
@@ -214,15 +217,20 @@ describe('AssistantAgentProvider', () => {
 					timeZone: 'Europe/Helsinki',
 					// Node attachments need their gate, which is off here.
 					contextAttachments: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
+					// The agents runtime titles the thread after the turn.
+					titledByRuntime: true,
 				}),
 			);
 			expect(agentFactory.createAgent).toHaveBeenCalledWith(expect.anything(), runtime, {
 				user,
 				threadId: 'thread-1',
 				runId: 'run-1',
+				generateTitle: true,
 			});
 			expect(handle.agent).toBe(agent);
 			expect(handle.input).toBe('Build a digest');
+			// The title describes the user's words, not the context blocks of the input.
+			expect(handle.runOptions?.titleText).toBe('Build a digest');
 			expect(handle.hostMetadata).toMatchObject({
 				assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
 				buildMode: 'default',
@@ -337,6 +345,166 @@ describe('AssistantAgentProvider', () => {
 			);
 		});
 
+		describe('side-call usage', () => {
+			const usage = { promptTokens: 50, completionTokens: 5, totalTokens: 55 };
+
+			it.each(['title', 'episodic'] as const)(
+				'claims the %s call against the credits',
+				async (task) => {
+					const { provider, creditService } = setup();
+
+					const handle = await provider.prepareTurn(startTurn());
+					await handle.onSideCallUsage?.({
+						task,
+						model: 'anthropic/claude-haiku-4-5',
+						usage,
+						reportId: 'report-1',
+					});
+
+					expect(creditService.claimRunUsage).toHaveBeenCalledWith(
+						user,
+						'thread-1',
+						`run-1:${task}:report-1`,
+						expect.arrayContaining([expect.anything()]),
+						'completed',
+					);
+				},
+			);
+
+			it.each(['observer', 'reflector'] as const)(
+				'does not claim the %s call, which the memory options claim',
+				async (task) => {
+					const { provider, creditService } = setup();
+
+					const handle = await provider.prepareTurn(startTurn());
+					await handle.onSideCallUsage?.({
+						task,
+						model: 'anthropic/claude-haiku-4-5',
+						usage,
+						reportId: 'report-1',
+					});
+
+					expect(creditService.claimRunUsage).not.toHaveBeenCalled();
+				},
+			);
+
+			it('keeps the turn going when the claim fails', async () => {
+				const { provider, creditService } = setup();
+				creditService.claimRunUsage.mockRejectedValueOnce(new Error('billing down'));
+
+				const handle = await provider.prepareTurn(startTurn());
+
+				await expect(
+					handle.onSideCallUsage?.({
+						task: 'title',
+						model: 'anthropic/claude-haiku-4-5',
+						usage,
+						reportId: 'report-1',
+					}),
+				).resolves.toBeUndefined();
+			});
+		});
+
+		describe('temporary workflows', () => {
+			function turnWithMarkedWorkflows() {
+				return startTurn({
+					memory: mock<SystemAgentStartTurn['memory']>({
+						getThread: vi.fn(async () => ({
+							id: 'thread-1',
+							resourceId: 'system-chat:user-1',
+							metadata: { assistantTemporaryWorkflowIds: ['wf-1', 'wf-2'] },
+						})) as never,
+					}),
+				});
+			}
+
+			it('archives the workflows that the thread still marks when the turn ends', async () => {
+				const { provider, archiveIfAiTemporary } = setup();
+
+				const handle = await provider.prepareTurn(turnWithMarkedWorkflows());
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
+
+				expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-1');
+				expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-2');
+			});
+
+			it('tells the chat which workflows it archived', async () => {
+				const { provider, archiveIfAiTemporary } = setup();
+				archiveIfAiTemporary.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+				const turn = turnWithMarkedWorkflows();
+
+				const handle = await provider.prepareTurn(turn);
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
+
+				expect(turn.emitHostEvent).toHaveBeenCalledWith(
+					ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
+					{ workflowIds: ['wf-1'] },
+					{ key: 'turn' },
+				);
+			});
+
+			it('sends no archived event when it archived nothing', async () => {
+				const { provider, archiveIfAiTemporary } = setup();
+				archiveIfAiTemporary.mockResolvedValue(false);
+				const turn = turnWithMarkedWorkflows();
+
+				const handle = await provider.prepareTurn(turn);
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
+
+				expect(turn.emitHostEvent).not.toHaveBeenCalledWith(
+					ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
+					expect.anything(),
+					expect.anything(),
+				);
+			});
+
+			it('keeps them while the turn waits for the user', async () => {
+				const { provider, archiveIfAiTemporary } = setup();
+				const turn = turnWithMarkedWorkflows();
+
+				const handle = await provider.prepareTurn(turn);
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'suspended' });
+
+				expect(archiveIfAiTemporary).not.toHaveBeenCalled();
+				expect(turn.emitHostEvent).not.toHaveBeenCalled();
+			});
+
+			it('drops the marker of a workflow that it cannot archive', async () => {
+				const { provider, archiveIfAiTemporary } = setup();
+				archiveIfAiTemporary.mockResolvedValueOnce(false);
+				const turn = turnWithMarkedWorkflows();
+
+				const handle = await provider.prepareTurn(turn);
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
+
+				// The store patches through the memory's own `patchThread`, which the type leaves out.
+				const { patchThread } = turn.memory as unknown as {
+					patchThread: ReturnType<typeof vi.fn>;
+				};
+				expect(patchThread).toHaveBeenCalledTimes(1);
+				const [{ update }] = patchThread.mock.calls[0] as [
+					{ update: (thread: unknown) => unknown },
+				];
+				expect(
+					update({
+						id: 'thread-1',
+						resourceId: 'system-chat:user-1',
+						metadata: { assistantTemporaryWorkflowIds: ['wf-1', 'wf-2'] },
+					}),
+				).toEqual({ metadata: { assistantTemporaryWorkflowIds: ['wf-2'] } });
+			});
+
+			it('continues with the next workflow when one archive fails', async () => {
+				const { provider, archiveIfAiTemporary } = setup();
+				archiveIfAiTemporary.mockRejectedValueOnce(new Error('gone'));
+
+				const handle = await provider.prepareTurn(turnWithMarkedWorkflows());
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'errored' });
+
+				expect(archiveIfAiTemporary).toHaveBeenCalledTimes(2);
+			});
+		});
+
 		describe('formatError', () => {
 			it('shows the user-facing text of an error', async () => {
 				const { provider } = setup();
@@ -430,6 +598,7 @@ describe('AssistantAgentProvider', () => {
 			);
 			expect(turnInput.buildInput).not.toHaveBeenCalled();
 			expect(handle.input).toBeUndefined();
+			expect(handle.runOptions).not.toHaveProperty('titleText');
 		});
 
 		it('gives the turn the sandbox of its workspace lease', async () => {

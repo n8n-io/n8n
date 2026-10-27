@@ -98,7 +98,7 @@ describe('skills gates', () => {
 		expect(await proxy.countUsingAgents(['skill-1'], ctx)).toBe(counts);
 		expect(await proxy.findUsingAgentIds('skill-1', ctx)).toEqual(['agent-1']);
 		await proxy.assertRenameKeepsNamesApart('skill-1', 'Old', 'New', ctx);
-		expect(await proxy.markFollowersChanged('skill-1', ctx)).toEqual(['agent-2']);
+		expect(await proxy.markFollowersChanged('skill-1', ctx, 'user-1')).toEqual(['agent-2']);
 		await proxy.refreshAgents(['agent-1'], 'push-ref');
 
 		expect(usage.findAgents).toHaveBeenCalledWith(['agent-1'], ctx);
@@ -108,7 +108,7 @@ describe('skills gates', () => {
 		expect(usage.countUsingAgents).toHaveBeenCalledWith(['skill-1'], ctx);
 		expect(usage.findUsingAgentIds).toHaveBeenCalledWith('skill-1', ctx);
 		expect(usage.assertRenameKeepsNamesApart).toHaveBeenCalledWith('skill-1', 'Old', 'New', ctx);
-		expect(usage.markFollowersChanged).toHaveBeenCalledWith('skill-1', ctx);
+		expect(usage.markFollowersChanged).toHaveBeenCalledWith('skill-1', ctx, 'user-1');
 		expect(usage.refreshAgents).toHaveBeenCalledWith(['agent-1'], 'push-ref');
 	});
 });

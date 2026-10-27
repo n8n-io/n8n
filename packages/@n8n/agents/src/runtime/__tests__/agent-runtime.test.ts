@@ -37,6 +37,7 @@ import { createBudgetGuardrail } from '../guardrails/budget-guardrail';
 import { spendLedger } from '../guardrails/__tests__/spend-ledger';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { StreamSink } from '../loop/stream-sink';
+import { DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION } from '../memory/episodic-memory-defaults';
 import { InMemoryMemory } from '../memory/memory-store';
 import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
 import { AgentEventBus } from '../state/event-bus';
@@ -7870,6 +7871,51 @@ describe('tool systemInstruction merging', () => {
 		expect(text).toContain('</built_in_rules>');
 		expect(text).toContain('You are a helpful assistant.');
 		expect(text.indexOf('<built_in_rules>')).toBeLessThan(text.indexOf('You are a helpful'));
+	});
+
+	it('adds episodic capture guidance to the flag_memory instruction and content field only when set', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+		const runWith = async (guidance?: { include?: string[]; exclude?: string[] }) => {
+			generateText.mockClear();
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'You are a test assistant.',
+				memory: new InMemoryMemory(),
+				episodicMemory: { embedder: fakeEmbedder, guidance },
+			});
+			await runtime.generate('hello', {
+				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			});
+			const callArgs = generateText.mock.calls[0][0] as {
+				tools: { flag_memory: { inputSchema: z.ZodObject<{ content: z.ZodString }> } };
+			};
+			const flagTool = callArgs.tools.flag_memory.inputSchema.shape.content.description ?? '';
+			return { text: getSystemMessageText(), flagTool };
+		};
+
+		const { text, flagTool } = await runWith({
+			include: ['timezone'],
+			exclude: ['client "names"'],
+		});
+		expect(text).toContain(
+			`${DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION}\n<capture_guidance>`,
+		);
+		expect(text).toContain('Prioritize: "timezone".');
+		expect(text).toContain(
+			'Exclude: "client \\"names\\"". This rule overrides every other flag_memory rule',
+		);
+		expect(flagTool).toContain('Must not contain details about:');
+
+		const empty = await runWith({ include: [], exclude: [] });
+		expect(empty.text).toContain(DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION);
+		expect(empty.text).not.toContain('<capture_guidance>');
+		expect(empty.flagTool).not.toContain('Must not contain details about:');
+
+		const includeOnly = await runWith({ include: ['timezone'] });
+		expect(includeOnly.text).toContain('Prioritize: "timezone".');
+		expect(includeOnly.text).not.toContain('Exclude:');
 	});
 
 	it('joins multiple tools systemInstructions into a single block', async () => {

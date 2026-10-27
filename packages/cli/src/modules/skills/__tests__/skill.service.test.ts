@@ -358,7 +358,7 @@ describe('SkillService', () => {
 				user.id,
 			);
 
-			expect(skillUsage.markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX);
+			expect(skillUsage.markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX, user.id);
 			expect(result.followingAgentIds).toEqual(['agent-1', 'agent-2']);
 		});
 

@@ -16,7 +16,10 @@ vi.mock('@n8n/di', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@n8n/di')>();
 	return {
 		...actual,
-		Container: { ...actual.Container, get: vi.fn(() => ({ clearRuntimes })) },
+		Container: {
+			...actual.Container,
+			get: vi.fn(() => ({ clearRuntimes, captureVersion: vi.fn() })),
+		},
 	};
 });
 
@@ -41,7 +44,7 @@ describe('AgentSkillUsage', () => {
 	const agents = mock<AgentRepository>();
 	const broadcaster = mock<AgentUpdateBroadcaster>();
 	const skillRuntime = mock<SkillRuntimeService>();
-	const service = new AgentSkillUsage(agentSkills, agents, skillRuntime, broadcaster);
+	const service = new AgentSkillUsage(agentSkills, agents, skillRuntime, broadcaster, mock());
 
 	beforeEach(() => {
 		vi.resetAllMocks();

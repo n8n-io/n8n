@@ -426,6 +426,8 @@ export {
 	taskListSchema,
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
+	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
+	workflowsArchivedPayloadSchema,
 	agentSpawnedPayloadSchema,
 	agentActivitySchema,
 	agentChangeSchema,

@@ -293,6 +293,8 @@ export class AgentSkillRefsService {
 		const ids = (refs ?? []).map(({ id }) => id);
 		await this.skillRuntime.lockForEdit(ids, ctx);
 		const existing = await this.skillRuntime.findTargets(ids, ctx);
+		// Detach old refs to prevent partial Agent snapshots during skill saves.
+		await this.writeDependencies(agent.id, [], ctx);
 		for (const ref of refs ?? []) {
 			const target = existing.get(ref.id);
 			if (target) {
