@@ -2,14 +2,17 @@ packages/cli/src/modules/promotions.ee/promotion-preview.ts
   s_8056da22c66cb7::t_3f7268a3d30923 17,226,232,267,270-272,278-284,401-405
   s_8056da22c66cb7::t_e458b5d4e403ac 264-266
   s_8056da22c66cb7::t_676c9b000cfd22 273-276
+  s_8056da22c66cb7::t_816c0b7857a38f 268-269
 packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
   s_8056da22c66cb7::t_6330475e17c2a7 90,484,2620
   s_8056da22c66cb7::t_813d3341b0b6bb 8
   s_8056da22c66cb7::t_d0580c18cbd5ff 91,487
+  s_8056da22c66cb7::t_655d9d2716d0d7 205
 packages/cli/src/modules/promotions.ee/git-commit-package-reader.ts
   s_8056da22c66cb7::t_509bcb20e56dd4 1-35
 packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
   s_8056da22c66cb7::t_3099afb17cefdd 191-230,279-280,288-289,303
+  s_8056da22c66cb7::t_1c60d9ade4b819 264-278,281-287
 packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
   s_8056da22c66cb7::t_676c9b000cfd22 344-346
   s_8056da22c66cb7::t_db63c8b42f51dc 28,36,48,381,426,441,447,451,459
@@ -20,6 +23,8 @@ packages/cli/src/modules/promotions.ee/apply-preview.ts
   s_8056da22c66cb7::t_e458b5d4e403ac 32,50-51,63-80
   s_8056da22c66cb7::t_c20b78234a8002 1-13,15-30,33,37-49,52-62,81-90,95-131,133-142,144-184,198-199,201-202,204-235,238-244,246-254,258-307,317-319,324-327,333-379,384-387,391-412,416-452,457-459,466-469,472-480,483-488,490-507,512,516,518-532,535-571,576-596,598-605,610-613
   s_8056da22c66cb7::t_df8ac243b44769 14,203,413-415,453-456,460-465,470-471,481-482,489
+  s_8056da22c66cb7::t_7411a0b722cc56 31,132,143,236-237,309-316
+  s_8056da22c66cb7::t_c86f4a6170eab4 185-197
 packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
   s_8056da22c66cb7::t_3099afb17cefdd 4-5,7,9,99-105
 packages/cli/src/modules/promotions.ee/promotion-change.service.ts
@@ -31,6 +36,9 @@ packages/cli/src/modules/promotions.ee/promotion-change.service.ts
   s_8056da22c66cb7::t_676c9b000cfd22 60
   s_8056da22c66cb7::t_0df679704e02a6 63-64,118,636-648
   s_8056da22c66cb7::t_4aa8163bc56f3a 280
+  s_8056da22c66cb7::t_fbe57349ccc0fe 183,190,195-198
+  s_8056da22c66cb7::t_ba6fc2e55a845e 162-182
+  s_8056da22c66cb7::t_75f1893d9855b0 65
 packages/cli/src/modules/promotions.ee/instance-package.ts
   s_8056da22c66cb7::t_f43581f8ea6caa 1-27,30-68
   s_8056da22c66cb7::t_676c9b000cfd22 28-29
@@ -42,18 +50,30 @@ packages/cli/src/modules/promotions.ee/apply-preview.service.ts
   s_8056da22c66cb7::t_b944a8fef914bd 182-187
   s_8056da22c66cb7::t_d0580c18cbd5ff 37,89,157-159,163,165-166,168-169,175-177,188-189
   s_8056da22c66cb7::t_158c1cdc6dba1a 121-131,133,135,137,264-284
+  s_8056da22c66cb7::t_7411a0b722cc56 7,21,23,26,35,68-70,87-88,114-115,119,134,197,212,215-239,246,248,252-253,259-263,285
+  s_8056da22c66cb7::t_5e32dbee149074 213-214
 packages/cli/src/modules/promotions.ee/promotions.service.ts
   s_8056da22c66cb7::t_6d28e1bb17e158 732,768-787
   s_8056da22c66cb7::t_95a15d6f2930b7 788-789
+  s_8056da22c66cb7::t_775c3572f0cd62 76,157,747,836,963
 packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
   s_8056da22c66cb7::t_4c631166f1c948 959-961,978-979,980-981,983-987,990-994,1001,1004,1010-1012,1013-1014
   s_8056da22c66cb7::t_3bc842bad47627 36,71-76
+  s_8056da22c66cb7::t_5e32dbee149074 962,995,1002
+  s_8056da22c66cb7::t_db0ee7ebf5027d 958,963-977,988-989,996-1000,1003
+  s_8056da22c66cb7::t_42fa06fb5e0678 982,1005-1009
+  s_8056da22c66cb7::t_b18fcc55d8f814 80
 packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
   s_8056da22c66cb7::t_3099afb17cefdd 8,214
 packages/cli/src/modules/promotions.ee/local-package-entities.service.ts
   s_8056da22c66cb7::t_d0580c18cbd5ff 1,3-16,18-27,29,37-38,42-64
   s_8056da22c66cb7::t_08d92156c10588 2,17,28,30-36
   s_8056da22c66cb7::t_676c9b000cfd22 39-41
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_8056da22c66cb7::t_8b509ea42fb0ad 1,15-16
+  s_8056da22c66cb7::t_26fb296b1884fa 50,53
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_8056da22c66cb7::t_655d9d2716d0d7 35,158-167
 ---
 {
   "schema_version": "authorship/3.0.0",
