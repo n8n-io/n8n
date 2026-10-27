@@ -60,11 +60,11 @@ export class WorkSummaryAccumulator {
 			case 'tool-call': {
 				const { toolCallId, args } = event.payload;
 				if (!toolCallId) break;
-				// Resumed streams can replay calls stored under a former tool name.
-				const toolName = resolveBuilderToolName(event.payload.toolName);
 				const action = typeof args?.action === 'string' ? args.action : undefined;
+				// Resumed streams can replay calls stored under a former tool name.
+				const toolName = resolveBuilderToolName(event.payload.toolName, action);
 				const filteredByNodeTypes =
-					toolName === DOMAIN_TOOL_IDS.WORKFLOWS &&
+					toolName === DOMAIN_TOOL_IDS.LIST_WORKFLOWS &&
 					Array.isArray(args?.nodeTypes) &&
 					args.nodeTypes.length > 0;
 				this.calls.set(toolCallId, {
