@@ -956,6 +956,29 @@ describe('ExecutionLevelTracer', () => {
 			expect(headers.traceparent).toBeUndefined();
 		});
 
+		it('should not throw when injection fails, so telemetry never stops the request', () => {
+			const failingSettings = {
+				getSettings: () => {
+					throw new Error('settings unavailable');
+				},
+			} as unknown as OtelSettingsService;
+			const failingTracer = new ExecutionLevelTracer(
+				otel.asOtelService(),
+				failingSettings,
+				logger,
+				new OtelCustomAttributesConfig(),
+			);
+
+			const headers: Record<string, string> = {};
+			expect(() => failingTracer.injectTraceHeaders('exec-fail', 'HTTP', headers)).not.toThrow();
+
+			expect(headers).toEqual({});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to inject trace headers',
+				expect.objectContaining({ executionId: 'exec-fail' }),
+			);
+		});
+
 		it('should no-op when injectOutbound is false', () => {
 			const noInjectTracer = makeTracer({ settings: { injectOutbound: false } });
 

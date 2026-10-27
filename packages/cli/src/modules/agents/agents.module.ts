@@ -11,13 +11,9 @@ export class AgentsModule implements ModuleInterface {
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
-		// The skills module reads the skills hub setting before this module starts. Tell it
-		// which agents use skills, then, with the hub on, copy inline agent skills into the
-		// hub on each main before agents run.
+		// The skills module starts before this module. Tell it which agents use skills.
 		const { registerSkillAgentsProvider } = await import('./register-skill-agents-provider.js');
 		registerSkillAgentsProvider();
-		const { SkillsHubStartupCopy } = await import('./skills/skills-hub-startup-copy.js');
-		await Container.get(SkillsHubStartupCopy).runOnStartup();
 
 		// Imported for its `@OnLifecycleEvent` registration, which happens at
 		// class-decoration time — nothing else references this service.
@@ -251,7 +247,6 @@ export class AgentsModule implements ModuleInterface {
 		const { KnowledgeAvailabilityService } = await import(
 			'@/modules/knowledge/knowledge-availability.service.js'
 		);
-		const { SkillsHubRollout } = await import('@/modules/skills/skills-hub-rollout.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
@@ -259,7 +254,6 @@ export class AgentsModule implements ModuleInterface {
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(KnowledgeAvailabilityService).isFileKnowledgeEnabled(),
 			proxyEnabled,
-			skillsHubEnabled: Container.get(SkillsHubRollout).isEnabled,
 		};
 	}
 
@@ -283,6 +277,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
 		const { AgentPlan } = await import('./entities/agent-plan.entity.js');
 		const { AgentPlanHistory } = await import('./entities/agent-plan-history.entity.js');
+		const { AgentPublishHistory } = await import('./entities/agent-publish-history.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
@@ -338,6 +333,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentPlan,
 			AgentPlanHistory,
 			AgentHistory,
+			AgentPublishHistory,
 			AgentCredentialDependency,
 			AgentWorkflowDependency,
 			AgentTask,

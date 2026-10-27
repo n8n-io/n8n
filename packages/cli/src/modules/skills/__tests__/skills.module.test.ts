@@ -1,6 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
 import { AssistantSkillProviderProxy } from '@n8n/backend-services';
-import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -10,7 +8,6 @@ import type { PostHogClient } from '@/posthog';
 import { HubAssistantSkillProvider } from '../hub-assistant-skill-provider.service';
 import { SkillAgentsProxy, type SkillAgentsProvider } from '../skill-agents-proxy.service';
 import type { SkillService } from '../skill.service';
-import { SkillsHubRollout } from '../skills-hub-rollout';
 import { SkillsModule } from '../skills.module';
 import { AssistantSkillsRollout } from '../assistant-skills-rollout';
 
@@ -21,19 +18,15 @@ describe('SkillsModule', () => {
 	afterEach(() => Container.reset());
 
 	it.each([
-		[false, true, false],
-		[true, false, false],
-		[true, true, true],
+		[false, false],
+		[true, true],
 	])(
-		'gates Assistant reads across module startup (Hub: %s, Assistant: %s)',
-		async (hubEnabled, assistantEnabled, expected) => {
-			const config = new AgentsConfig();
-			config.skillsHubEnabled = hubEnabled;
+		'gates Assistant reads across module startup (Assistant: %s)',
+		async (assistantEnabled, expected) => {
 			const agents = new SkillAgentsProxy();
-			const rollout = new SkillsHubRollout(config, mock<Logger>(), agents);
 			const postHog = mock<PostHogClient>();
 			postHog.getFeatureFlagForInstance.mockResolvedValue(assistantEnabled);
-			const assistantRollout = new AssistantSkillsRollout(rollout, postHog);
+			const assistantRollout = new AssistantSkillsRollout(agents, postHog);
 			const service = mock<SkillService>();
 			const proxy = new AssistantSkillProviderProxy();
 			const context = { user: mock<User>() };
@@ -55,7 +48,7 @@ describe('SkillsModule', () => {
 				content: 'Guide.',
 			};
 			service.readFileForAssistant.mockResolvedValue(file);
-			Container.set(SkillsHubRollout, rollout);
+			Container.set(SkillAgentsProxy, agents);
 			Container.set(AssistantSkillProviderProxy, proxy);
 			Container.set(
 				HubAssistantSkillProvider,

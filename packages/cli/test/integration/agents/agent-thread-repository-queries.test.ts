@@ -90,6 +90,64 @@ describe('Agent thread repository queries for system agents', () => {
 
 	const ids = (threads: AgentExecutionThread[]) => threads.map(({ id }) => id);
 
+	describe('findAccessibleById', () => {
+		it.each(['project', 'user'] as const)('finds an accessible %s session', async (accessScope) => {
+			const thread = await createThread({ accessScope });
+			expect(
+				await threadRepo.findAccessibleById(thread.id, projectId, agentId, ownerId),
+			).toMatchObject({ id: thread.id });
+		});
+
+		it('finds a shared session for another project member', async () => {
+			const thread = await createThread({ accessScope: 'project', ownerId: null });
+			expect(
+				await threadRepo.findAccessibleById(thread.id, projectId, agentId, otherUserId),
+			).toMatchObject({ id: thread.id });
+		});
+
+		it.each(['project', 'user'] as const)(
+			'finds an accessible %s child session',
+			async (accessScope) => {
+				const parent = await createThread({ accessScope });
+				const child = await createThread({ accessScope, parentThreadId: parent.id });
+				expect(
+					await threadRepo.findAccessibleById(child.id, projectId, agentId, ownerId),
+				).toMatchObject({ id: child.id });
+				if (accessScope === 'user') {
+					expect(
+						await threadRepo.findAccessibleById(child.id, projectId, agentId, otherUserId),
+					).toBeNull();
+				}
+			},
+		);
+
+		it('does not return sessions outside the requested scope', async () => {
+			const thread = await createThread();
+			const otherProject = await createTeamProject();
+			for (const [requestedProject, requestedAgent, requestedUser] of [
+				[otherProject.id, agentId, ownerId],
+				[projectId, otherAgentId, ownerId],
+				[projectId, agentId, otherUserId],
+			]) {
+				expect(
+					await threadRepo.findAccessibleById(
+						thread.id,
+						requestedProject,
+						requestedAgent,
+						requestedUser,
+					),
+				).toBeNull();
+			}
+			await threadRepo.update(thread.id, { ownerId: null });
+			expect(
+				await threadRepo.findAccessibleById(thread.id, projectId, agentId, ownerId),
+			).toBeNull();
+			expect(
+				await threadRepo.findAccessibleById('missing', projectId, agentId, ownerId),
+			).toBeNull();
+		});
+	});
+
 	describe('findOwnedByAgent', () => {
 		it("returns the owner's top-level private sessions with the agent, newest first", async () => {
 			const older = await createThread({}, '2024-01-01T00:00:00.000Z');

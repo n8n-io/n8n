@@ -17,6 +17,10 @@ const unique = arrayExtensions.functions.unique as (
 	extraArgs: string[],
 ) => unknown[];
 
+const min = arrayExtensions.functions.min as (value: unknown[]) => number;
+
+const max = arrayExtensions.functions.max as (value: unknown[]) => number;
+
 const chunk = arrayExtensions.functions.chunk as (
 	value: unknown[],
 	extraArgs: unknown[],
@@ -147,5 +151,26 @@ describe('chunk', () => {
 		for (const size of [-1, 0, NaN, '5', undefined]) {
 			expect(() => chunk([1, 2, 3], [size])).toThrow('positive numeric arg');
 		}
+	});
+});
+
+describe('min() and max()', () => {
+	it('should work on arrays too large to spread into Math.min/Math.max', () => {
+		const list = Array.from({ length: 200_000 }, (_, i) => i - 100_000);
+		expect(min(list)).toBe(-100_000);
+		expect(max(list)).toBe(99_999);
+	});
+
+	it('should keep the results for empty arrays and NaN elements', () => {
+		expect(min([])).toBe(Infinity);
+		expect(max([])).toBe(-Infinity);
+		expect(min([1, NaN, 2])).toBeNaN();
+		expect(max([1, NaN, 2])).toBeNaN();
+		// eslint-disable-next-line no-sparse-arrays
+		expect(min([1, , 3])).toBeNaN();
+		// eslint-disable-next-line no-sparse-arrays
+		expect(max([1, , 3])).toBeNaN();
+		expect(min(new Array(3))).toBeNaN();
+		expect(max(new Array(3))).toBeNaN();
 	});
 });

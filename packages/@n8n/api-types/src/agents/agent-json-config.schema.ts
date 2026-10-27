@@ -52,6 +52,18 @@ const ObservationalMemoryConfigSchema = z.object({
 	lockTtlMs: z.number().int().min(0).optional(),
 });
 
+export const EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS = 20;
+export const EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH = 100;
+
+const EpisodicMemoryGuidanceTopicsSchema = z
+	.array(z.string().trim().min(1).max(EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH))
+	.max(EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS);
+
+const EpisodicMemoryGuidanceSchema = z.object({
+	include: EpisodicMemoryGuidanceTopicsSchema.optional(),
+	exclude: EpisodicMemoryGuidanceTopicsSchema.optional(),
+});
+
 const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	z.object({
 		enabled: z.literal(false),
@@ -62,6 +74,7 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 		reflectorModel: MemoryWorkerModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),
 		maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
+		guidance: EpisodicMemoryGuidanceSchema.optional(),
 	}),
 ]);
 
@@ -259,7 +272,7 @@ export const McpServerConfigSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Credential id from agent_builder_ask_credential. Required when authentication is not "none"',
+				'Credential id from setup_credentials(target: "agent"). Required when authentication is not "none"',
 			),
 		metadata: z
 			.object({

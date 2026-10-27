@@ -20,7 +20,7 @@ import {
 import type { NextFunction, Request, Response } from 'express';
 
 import { SkillsApiService } from './skills-api.service';
-import { SkillsHubRollout } from './skills-hub-rollout';
+import { SkillAgentsProxy } from './skill-agents-proxy.service';
 
 /**
  * Skills for the settings page. No route scope: the scope of each skill decides who may
@@ -30,13 +30,13 @@ import { SkillsHubRollout } from './skills-hub-rollout';
 export class SkillsController {
 	constructor(
 		private readonly skillsApi: SkillsApiService,
-		private readonly rollout: SkillsHubRollout,
+		private readonly skillAgents: SkillAgentsProxy,
 	) {}
 
-	/** Runs before the request is validated, so every request answers 404 while the flag is off. */
+	/** Runs before the request is validated, so every request answers 404 while the agents module is off. */
 	@Middleware()
-	requireSkillsHub(_req: Request, res: Response, next: NextFunction) {
-		if (!this.rollout.isEnabled) {
+	requireSkillProvider(_req: Request, res: Response, next: NextFunction) {
+		if (!this.skillAgents.hasProvider) {
 			res.status(404).send('Not found');
 			return;
 		}

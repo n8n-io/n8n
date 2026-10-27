@@ -28,6 +28,8 @@ import {
 	type SkillTarget,
 } from './skill.repository';
 
+export type McpSkillContent = { id: string; projectId: string | null; skill: AgentSkill };
+
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
 export type SkillRef = { id: string; versionId?: string };
 
@@ -70,6 +72,10 @@ export function toAgentSkill(row: ResolvedSkillRow): AgentSkill {
 			? { references: row.files.map(({ path, content }) => ({ path, content })) }
 			: {}),
 	};
+}
+
+function toMcpSkillContent(row: ResolvedSkillRow): McpSkillContent {
+	return { id: row.skill.id, projectId: row.skill.projectId, skill: toAgentSkill(row) };
 }
 
 function assertHasInstructions(skill: AgentSkill): void {
@@ -161,6 +167,34 @@ export class SkillService {
 			frontmatter: version.frontmatter,
 			files: files.map(({ path }) => ({ path })),
 		};
+	}
+
+	async listForMcp(
+		user: User,
+		skip: number,
+		take: number,
+	): Promise<{ count: number; skills: McpSkillContent[] }> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
+		const page = await this.skillRepository.findVisiblePage(
+			{ projectIds: projectIds ?? 'all', agentIds: [] },
+			{ skip, take },
+		);
+		const rows = await this.skillRepository.findLatestSaved(page.skills.map((skill) => skill.id));
+		return {
+			count: page.count,
+			skills: page.skills.flatMap((skill) => {
+				const row = rows.get(skill.id);
+				return row ? [toMcpSkillContent(row)] : [];
+			}),
+		};
+	}
+
+	async readForMcp(user: User, skillId: string): Promise<McpSkillContent | null> {
+		const row = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
+		if (!row || row.skill.agentId !== null || !(await this.canAccess(user, row.skill, 'read'))) {
+			return null;
+		}
+		return toMcpSkillContent(row);
 	}
 
 	async readFileForAssistant(
@@ -272,6 +306,7 @@ export class SkillService {
 	 */
 	async create(
 		input: {
+			id?: string;
 			target: SkillTarget;
 			skill: AgentSkill;
 			source: SkillSource;
@@ -285,7 +320,7 @@ export class SkillService {
 		if (input.checkNameTaken) {
 			await this.assertNameFree(skill.name, input.target, undefined, ctx);
 		}
-		const id = `skill_${generateNanoId()}`;
+		const id = input.id ?? `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
 			{ id, target: input.target, source: input.source, createdById: input.createdById },
 			toSkillContent(skill),
@@ -375,7 +410,7 @@ export class SkillService {
 				userId,
 				txCtx,
 			);
-			const followingIds = await this.skillAgents.markFollowersChanged(skillId, txCtx);
+			const followingIds = await this.skillAgents.markFollowersChanged(skillId, txCtx, userId);
 			const result = { versionId, version, created: true, skill, followingAgentIds: followingIds };
 			return { saved: result, following: followingIds };
 		});
@@ -441,21 +476,26 @@ export class SkillService {
 		}
 	}
 
-	// ---------------------------------------------------------------- publish
+	// ---------------------------------------------------------------- snapshots
 
-	/**
-	 * Publish, step 1: the version each ref resolves to. Publish
-	 * creates no version. Needs the caller's transaction for the publish lock.
-	 */
-	async snapshotForPublish(
-		refs: SkillRef[],
-		ctx: OperationContext,
-	): Promise<{ skills: Record<string, AgentSkill>; versionByRef: Map<string, string> }> {
+	/** Read immutable skill versions without reversing the skill-edit lock order. */
+	async snapshotForSave(refs: SkillRef[], ctx: OperationContext): Promise<Map<string, string>> {
 		const refIds = [...new Set(refs.map((ref) => ref.id))];
-		await this.skillRepository.lockForPublish(refIds, ctx);
-		const rows = await this.resolveRows(refs, ctx);
-		const versionByRef = new Map([...rows].map(([refId, row]) => [refId, row.version.id]));
-		return { skills: toRecord(rows), versionByRef };
+		// Use the same resolution rule as runtime without loading skill content.
+		const latest = await this.skillRepository.findLatestVersionIds(refIds, ctx);
+		const pinnedSkillIds = await this.skillRepository.findSkillIdsOfVersions(
+			refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : [])),
+			ctx,
+		);
+		const versionByRef = new Map<string, string>();
+		for (const ref of refs) {
+			const versionId =
+				ref.versionId && pinnedSkillIds.get(ref.versionId) === ref.id
+					? ref.versionId
+					: latest.get(ref.id);
+			if (versionId) versionByRef.set(ref.id, versionId);
+		}
+		return versionByRef;
 	}
 
 	// ---------------------------------------------------------------- move
