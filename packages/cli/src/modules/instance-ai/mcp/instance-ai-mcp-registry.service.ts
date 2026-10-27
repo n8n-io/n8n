@@ -21,6 +21,7 @@ import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { createMcpAuthFetch } from '@/modules/mcp-registry/mcp-auth-fetch';
+import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
 import {
 	isSupportedMcpRegistryCredentialType,
 	prepareMcpRegistryConnection,
@@ -511,28 +512,11 @@ export class InstanceAiMcpRegistryService {
 		connection.credentialId = newCredentialId;
 	}
 
-	/**
-	 * A connection sends requests as the credential's account, so read access is
-	 * not enough: a project viewer can read a credential but not use it.
-	 * `credential:connect` is held by the roles that can use it (project editors
-	 * and admins, direct sharees, instance owners and admins). A static global
-	 * credential is open to every member, so read access is enough for it.
-	 */
 	private async findUsableCredential(
 		credentialId: string,
 		user: User,
 	): Promise<CredentialsEntity | null> {
-		const connectable = await this.credentialsFinderService.findCredentialForUser(
-			credentialId,
-			user,
-			['credential:connect'],
-		);
-		if (connectable) return connectable;
-
-		const readable = await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
-			'credential:read',
-		]);
-		return readable?.isGlobal && !readable.isResolvable ? readable : null;
+		return await findUsableMcpCredential(this.credentialsFinderService, credentialId, user);
 	}
 
 	private assertCredentialAllowed(server: McpRegistryServer, credentialType: string): void {

@@ -343,28 +343,64 @@ describe('McpConnectionDiscoveryService', () => {
 		expect(mcpClientListToolsMock).not.toHaveBeenCalled();
 	});
 
-	it('requires connect scope for resolvable credentials', async () => {
-		const { service, credentialsFinderService } = createService();
-		const resolvableCredential = mock<CredentialsEntity>({
-			id: credential.id,
-			name: credential.name,
-			type: credential.type,
-			shared: credential.shared,
-			isResolvable: true,
-		});
-		credentialsFinderService.findCredentialForUser
-			.mockResolvedValueOnce(resolvableCredential)
-			.mockResolvedValueOnce(null);
+	describe('credential use access', () => {
+		/** Simulates a user who can read the credential but does not hold `credential:connect`. */
+		function grantReadOnly(
+			credentialsFinderService: ReturnType<typeof createService>['credentialsFinderService'],
+			overrides: Partial<CredentialsEntity>,
+		) {
+			const readable = { ...credential, isGlobal: false, isResolvable: false, ...overrides };
+			credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (_id, _user, scopes) =>
+					scopes.includes('credential:connect') ? null : (readable as CredentialsEntity),
+			);
+		}
 
-		await expect(
-			service.discover(user, { slug: 'git hub', credentialId: 'credential-1' }),
-		).rejects.toBeInstanceOf(NotFoundError);
-		expect(credentialsFinderService.findCredentialForUser).toHaveBeenNthCalledWith(
-			2,
-			'credential-1',
-			user,
-			['credential:connect'],
-		);
+		it('uses a credential the user can connect', async () => {
+			const { service, credentialsFinderService } = createService();
+			mcpClientListToolsMock.mockResolvedValue([]);
+
+			await expect(
+				service.discover(user, { slug: 'git hub', credentialId: 'credential-1' }),
+			).resolves.toMatchObject({ status: 'connected' });
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'credential-1',
+				user,
+				['credential:connect'],
+			);
+		});
+
+		it('refuses a credential the user can only read', async () => {
+			const { service, credentialsFinderService, credentialsHelper } = createService();
+			grantReadOnly(credentialsFinderService, {});
+
+			await expect(
+				service.discover(user, { slug: 'git hub', credentialId: 'credential-1' }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+			expect(mcpClientListToolsMock).not.toHaveBeenCalled();
+		});
+
+		it('refuses a resolvable credential the user can only read', async () => {
+			const { service, credentialsFinderService, credentialsHelper } = createService();
+			grantReadOnly(credentialsFinderService, { isGlobal: true, isResolvable: true });
+
+			await expect(
+				service.discover(user, { slug: 'git hub', credentialId: 'credential-1' }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+		});
+
+		it('allows a static global credential with read access', async () => {
+			const { service, credentialsFinderService, credentialsHelper } = createService();
+			grantReadOnly(credentialsFinderService, { isGlobal: true });
+			mcpClientListToolsMock.mockResolvedValue([]);
+
+			await expect(
+				service.discover(user, { slug: 'git hub', credentialId: 'credential-1' }),
+			).resolves.toMatchObject({ status: 'connected' });
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalled();
+		});
 	});
 
 	it('discovers a paired server with Gateway credits and returns an entry without a stored credential', async () => {
