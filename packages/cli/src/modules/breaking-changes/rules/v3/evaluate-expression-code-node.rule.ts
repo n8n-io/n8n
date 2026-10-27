@@ -49,6 +49,11 @@ export class EvaluateExpressionCodeNodeRule implements IBreakingChangeWorkflowRu
 	): Promise<WorkflowDetectionReport> {
 		const codeNodes = nodesGroupedByType.get(CODE_NODE_TYPE) ?? [];
 		const affectedNodes = codeNodes.filter((node) => {
+			// Same language resolution as the Code node: v1 is always JavaScript
+			const language =
+				node.typeVersion === 2 ? (node.parameters?.language ?? 'javaScript') : 'javaScript';
+			if (language !== 'javaScript') return false;
+
 			const code = node.parameters?.jsCode;
 			return typeof code === 'string' && code.includes(HELPER_NAME);
 		});

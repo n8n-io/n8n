@@ -37,12 +37,31 @@ describe('EvaluateExpressionCodeNodeRule', () => {
 			expect(result.issues).toHaveLength(0);
 		});
 
-		it('should not be affected by a Code node without JavaScript code', async () => {
+		it('should detect a v2 Code node that uses the default language', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
-				createNode('Code', 'n8n-nodes-base.code', {
-					language: 'python',
-					pythonCode: 'return _input.all()',
-				}),
+				{
+					...createNode('Code', 'n8n-nodes-base.code', {
+						jsCode: "return [{ json: { value: $evaluateExpression('{{ $json.name }}', 0) } }];",
+					}),
+					typeVersion: 2,
+				},
+			]);
+
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+
+			expect(result.isAffected).toBe(true);
+		});
+
+		it('should not be affected by a Python Code node that keeps old JavaScript code', async () => {
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+				{
+					...createNode('Code', 'n8n-nodes-base.code', {
+						language: 'pythonNative',
+						jsCode: "return [{ json: { value: $evaluateExpression('{{ $json.name }}', 0) } }];",
+						pythonCode: 'return _items',
+					}),
+					typeVersion: 2,
+				},
 			]);
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
