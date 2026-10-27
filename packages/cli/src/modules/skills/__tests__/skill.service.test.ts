@@ -981,6 +981,57 @@ describe('SkillService', () => {
 		});
 	});
 
+	describe('runtimeVersions', () => {
+		beforeEach(() => {
+			skills.findLatestSummaries.mockResolvedValue(
+				new Map([
+					['follows', { name: 'Follows', description: '', version: 5 }],
+					['pinned', { name: 'Pinned', description: '', version: 7 }],
+					['wrong_pin', { name: 'Wrong pin', description: '', version: 2 }],
+				]),
+			);
+			skills.findVersionRefs.mockResolvedValue(
+				new Map([
+					['pinned-v3', { skillId: 'pinned', version: 3 }],
+					['follows-v4', { skillId: 'follows', version: 4 }],
+				]),
+			);
+		});
+
+		it('gives the pinned version, else the latest, with the latest version', async () => {
+			const versionOf = await service.runtimeVersions(
+				[{ id: 'follows' }, { id: 'pinned', versionId: 'pinned-v3' }],
+				{},
+			);
+
+			expect(versionOf({ id: 'follows' })).toEqual({ version: 5, pinned: false, latest: 5 });
+			expect(versionOf({ id: 'pinned', versionId: 'pinned-v3' })).toEqual({
+				version: 3,
+				pinned: true,
+				latest: 7,
+			});
+		});
+
+		it('treats a pin to a version of another skill as following, as the runtime does', async () => {
+			const versionOf = await service.runtimeVersions(
+				[{ id: 'wrong_pin', versionId: 'follows-v4' }],
+				{},
+			);
+
+			expect(versionOf({ id: 'wrong_pin', versionId: 'follows-v4' })).toEqual({
+				version: 2,
+				pinned: false,
+				latest: 2,
+			});
+		});
+
+		it('gives nothing for a skill that is gone', async () => {
+			const versionOf = await service.runtimeVersions([{ id: 'gone' }], {});
+
+			expect(versionOf({ id: 'gone' })).toBeUndefined();
+		});
+	});
+
 	describe('snapshotForSave', () => {
 		it('resolves each saved version without taking the publication lock', async () => {
 			skills.findLatestVersionIds.mockResolvedValue(
@@ -991,10 +1042,10 @@ describe('SkillService', () => {
 				]),
 			);
 			// A pin of another skill falls back to the latest version, as at runtime.
-			skills.findSkillIdsOfVersions.mockResolvedValue(
+			skills.findVersionRefs.mockResolvedValue(
 				new Map([
-					['skill_b-v1', 'skill_b'],
-					['skill_a-v1', 'skill_a'],
+					['skill_b-v1', { skillId: 'skill_b', version: 1 }],
+					['skill_a-v1', { skillId: 'skill_a', version: 1 }],
 				]),
 			);
 

@@ -433,40 +433,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 		});
 	}
 
-	/** The skill of each version, keyed by version id, without its content. */
-	async findSkillIdsOfVersions(
-		versionIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Map<string, string>> {
-		const manager = this.managerFor(ctx);
-		const versions = await inChunks(
-			unique(versionIds),
-			async (chunk) =>
-				await manager.find(SkillVersion, {
-					select: ['id', 'skillId'],
-					where: { id: In(chunk) },
-				}),
-		);
-		return new Map(versions.map((version) => [version.id, version.skillId]));
-	}
-
-	/** The number of each version, keyed by version id. */
-	async findVersionNumbers(
-		versionIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Map<string, number>> {
-		const manager = this.managerFor(ctx);
-		const versions = await inChunks(
-			versionIds,
-			async (chunk) =>
-				await manager.find(SkillVersion, {
-					select: ['id', 'version'],
-					where: { id: In(chunk) },
-				}),
-		);
-		return new Map(versions.map((version) => [version.id, version.version]));
-	}
-
 	/** The skill and number of each version, keyed by version id, without its content. */
 	async findVersionRefs(
 		versionIds: string[],

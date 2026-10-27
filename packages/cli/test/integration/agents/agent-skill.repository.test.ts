@@ -282,8 +282,7 @@ describe('AgentSkillRepository', () => {
 					agentId: drafting.id,
 					agentName: 'Drafting',
 					projectId: project.id,
-					version: 2,
-					pinned: false,
+					skillVersionId: null,
 				},
 			]);
 			expect(usage.pins).toHaveLength(2);
@@ -316,8 +315,7 @@ describe('AgentSkillRepository', () => {
 						agentId: visible.id,
 						agentName: 'Visible',
 						projectId: project.id,
-						version: 1,
-						pinned: false,
+						skillVersionId: null,
 					},
 				],
 				pins: [],
@@ -325,10 +323,9 @@ describe('AgentSkillRepository', () => {
 			});
 		});
 
-		it('shows the version each draft runs: the pinned one, else the latest', async () => {
+		it('keeps the pin of each draft ref', async () => {
 			const id = await createSkill();
 			const v1 = await latestVersionId(id);
-			await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
 			const following = await createAgent('Following');
 			await agentSkills.replaceDependencies(following.id, [{ skillId: id }]);
 			const pinned = await createAgent('Pinned');
@@ -338,13 +335,13 @@ describe('AgentSkillRepository', () => {
 
 			expect(usage.drafts).toEqual(
 				expect.arrayContaining([
-					expect.objectContaining({ agentId: following.id, version: 2, pinned: false }),
-					expect.objectContaining({ agentId: pinned.id, version: 1, pinned: true }),
+					expect.objectContaining({ agentId: following.id, skillVersionId: null }),
+					expect.objectContaining({ agentId: pinned.id, skillVersionId: v1 }),
 				]),
 			);
 		});
 
-		it('reads the version ids one published agent version pins', async () => {
+		it('reads the version numbers one published agent version pins', async () => {
 			const id = await createSkill();
 			const v1 = await latestVersionId(id);
 			const agent = await createAgent('Published');
@@ -353,7 +350,7 @@ describe('AgentSkillRepository', () => {
 				{ agentVersionId: agentVersion, skillId: id, skillVersionId: v1 },
 			]);
 
-			expect(await agentSkills.findPinnedVersionIds(agentVersion)).toEqual(new Map([[id, v1]]));
+			expect(await agentSkills.findPinnedVersionNumbers(agentVersion)).toEqual(new Map([[id, 1]]));
 		});
 
 		it('is empty for a skill nobody uses', async () => {

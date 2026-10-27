@@ -388,6 +388,36 @@ describe('AgentSkillUsageService', () => {
 		});
 	});
 
+	describe('findUsage', () => {
+		it('shows the version each draft runs: the pinned one, else the latest', async () => {
+			agentSkills.findUsage.mockResolvedValue({
+				drafts: [
+					{ agentId: 'a1', agentName: 'Following', projectId: PROJECT, skillVersionId: null },
+					{ agentId: 'a2', agentName: 'Pinned', projectId: PROJECT, skillVersionId: 'skill_a-v1' },
+				],
+				pins: [],
+				hiddenAgents: 1,
+			});
+			skills.findLatestSummaries.mockResolvedValue(
+				new Map([['skill_a', { name: 'Tone', description: '', version: 3 }]]),
+			);
+			skills.findVersionRefs.mockResolvedValue(
+				new Map([['skill_a-v1', { skillId: 'skill_a', version: 1 }]]),
+			);
+
+			const usage = await service.findUsage('skill_a', 'all', {});
+
+			expect(usage).toEqual({
+				drafts: [
+					{ agentId: 'a1', agentName: 'Following', projectId: PROJECT, version: 3, pinned: false },
+					{ agentId: 'a2', agentName: 'Pinned', projectId: PROJECT, version: 1, pinned: true },
+				],
+				pins: [],
+				hiddenAgents: 1,
+			});
+		});
+	});
+
 	describe('assertRenameKeepsNamesApart', () => {
 		function givenFollower(otherName: string) {
 			agentSkills.findFollowingAgents.mockResolvedValue([{ id: 'agent-1', name: 'Sales bot' }]);

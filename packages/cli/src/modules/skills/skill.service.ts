@@ -30,6 +30,9 @@ import {
 
 export type McpSkillContent = { id: string; projectId: string | null; skill: AgentSkill };
 
+/** The version a skill ref runs, whether a pin decides it, and the latest version. */
+export type RuntimeVersion = { version: number; pinned: boolean; latest: number };
+
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
 export type SkillRef = { id: string; versionId?: string };
 
@@ -297,6 +300,34 @@ export class SkillService {
 		};
 	}
 
+	/**
+	 * The version number each ref runs and whether a pin decides it, by the same rule as
+	 * `resolveRows`: a pin to a version of another skill counts as following. Reads no content.
+	 */
+	async runtimeVersions(
+		refs: Array<{ id: string; versionId?: string | null }>,
+		ctx: OperationContext,
+	): Promise<(ref: { id: string; versionId?: string | null }) => RuntimeVersion | undefined> {
+		const [latest, pins] = await Promise.all([
+			this.skillRepository.findLatestSummaries(
+				refs.map((ref) => ref.id),
+				ctx,
+			),
+			this.skillRepository.findVersionRefs(
+				refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : [])),
+				ctx,
+			),
+		]);
+		return (ref) => {
+			const newest = latest.get(ref.id)?.version;
+			if (newest === undefined) return undefined;
+			const pin = ref.versionId ? pins.get(ref.versionId) : undefined;
+			return pin?.skillId === ref.id
+				? { version: pin.version, pinned: true, latest: newest }
+				: { version: newest, pinned: false, latest: newest };
+		};
+	}
+
 	// ---------------------------------------------------------------- writes
 
 	/** Creates a skill with its v1. Returns the new id. */
@@ -483,14 +514,14 @@ export class SkillService {
 		const refIds = [...new Set(refs.map((ref) => ref.id))];
 		// Use the same resolution rule as runtime without loading skill content.
 		const latest = await this.skillRepository.findLatestVersionIds(refIds, ctx);
-		const pinnedSkillIds = await this.skillRepository.findSkillIdsOfVersions(
+		const pins = await this.skillRepository.findVersionRefs(
 			refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : [])),
 			ctx,
 		);
 		const versionByRef = new Map<string, string>();
 		for (const ref of refs) {
 			const versionId =
-				ref.versionId && pinnedSkillIds.get(ref.versionId) === ref.id
+				ref.versionId && pins.get(ref.versionId)?.skillId === ref.id
 					? ref.versionId
 					: latest.get(ref.id);
 			if (versionId) versionByRef.set(ref.id, versionId);

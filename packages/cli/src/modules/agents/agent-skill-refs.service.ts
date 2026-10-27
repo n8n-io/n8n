@@ -135,30 +135,21 @@ export class AgentSkillRefsService {
 		ctx: OperationContext,
 	): Promise<Record<string, AgentSkillVersionInfo>> {
 		if (skillRefs.length === 0) return {};
-		const skillIds = skillRefs.map((ref) => ref.id);
-		const published = agent.activeVersionId
-			? await this.agentSkillRepository.findPinnedVersionIds(agent.activeVersionId, ctx)
-			: new Map<string, string>();
-		const [latest, versions] = await Promise.all([
-			this.skillRepository.findLatestSummaries(skillIds, ctx),
-			this.skillRepository.findVersionRefs(
-				[...skillRefs.flatMap((ref) => ref.versionId ?? []), ...published.values()],
-				ctx,
-			),
+		const [versionOf, published] = await Promise.all([
+			this.skillService.runtimeVersions(skillRefs, ctx),
+			agent.activeVersionId
+				? this.agentSkillRepository.findPinnedVersionNumbers(agent.activeVersionId, ctx)
+				: new Map<string, number>(),
 		]);
 		const result: Record<string, AgentSkillVersionInfo> = {};
 		for (const ref of skillRefs) {
-			const newest = latest.get(ref.id);
-			if (!newest) continue;
-			// The runtime ignores a pin to a version of another skill, see `resolveForAgentDraft`.
-			const pin = ref.versionId ? versions.get(ref.versionId) : undefined;
-			const pinned = pin?.skillId === ref.id;
-			const publishedId = published.get(ref.id);
+			const runtime = versionOf(ref);
+			if (!runtime) continue;
 			result[ref.id] = {
-				draft: pin && pinned ? pin.version : newest.version,
-				published: publishedId ? (versions.get(publishedId)?.version ?? null) : null,
-				latest: newest.version,
-				pinned,
+				draft: runtime.version,
+				published: published.get(ref.id) ?? null,
+				latest: runtime.latest,
+				pinned: runtime.pinned,
 			};
 		}
 		return result;
