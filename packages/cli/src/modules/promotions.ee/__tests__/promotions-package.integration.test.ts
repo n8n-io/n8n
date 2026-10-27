@@ -2900,8 +2900,14 @@ describe('Promote a project selection — branch effects', () => {
 			canExportVariableValues: true,
 		};
 
-		await rename(bareDir, `${bareDir}.offline`);
+		// The remote refuses the push, so the promote commits and then rolls the commit back.
+		const preReceiveHook = path.join(bareDir, 'hooks', 'pre-receive');
+		const pushAttempted = path.join(testRoot, 'push-attempted');
+		await writeFile(preReceiveHook, `#!/bin/sh\ntouch '${pushAttempted}'\nexit 1\n`, {
+			mode: 0o755,
+		});
 		await expect(service.promoteProjectSelection(project.id, owner, request)).rejects.toThrow();
+		await expect(stat(pushAttempted)).resolves.toBeDefined();
 
 		// The checkout is back to a branch with no commits and no package.
 		await expect(stat(path.join(repositoryFolder, 'n8n'))).rejects.toMatchObject({
@@ -2912,7 +2918,7 @@ describe('Promote a project selection — branch effects', () => {
 		).toBe('');
 		expect((await checkoutGit.status()).isClean()).toBe(true);
 
-		await rename(`${bareDir}.offline`, bareDir);
+		await rm(preReceiveHook);
 		await service.promoteProjectSelection(project.id, owner, request);
 
 		expect((await simpleGit(bareDir).raw(['rev-list', '--count', 'main'])).trim()).toBe('1');

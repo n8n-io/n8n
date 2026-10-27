@@ -134,7 +134,9 @@ describe('PromotionsService', () => {
 		);
 		// An empty remote by default, so the promote check for moved workflows has nothing to read.
 		gitService.listBranchTree.mockResolvedValue({ commitSha: null, lsTreeOutput: '' });
-		// Branch mode resets to this base commit, which holds no package by default.
+		// The remote holds the base branch, so every promote resets the checkout to it.
+		gitService.hasRemoteBranch.mockResolvedValue(true);
+		// The base commit a promote resets to holds no package by default.
 		gitService.prepareCheckoutForPromotion.mockResolvedValue({ commitSha: 'b'.repeat(40) });
 		gitService.findPathsAtCommit.mockResolvedValue(new Set());
 		n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-'));
@@ -285,6 +287,7 @@ describe('PromotionsService', () => {
 			};
 
 			beforeEach(() => {
+				gitService.prepareCheckoutForPromotion.mockResolvedValue({ commitSha: 'a'.repeat(40) });
 				gitService.listBranchTree.mockResolvedValue({
 					commitSha: 'a'.repeat(40),
 					lsTreeOutput: 'n8n/manifest.json',
@@ -503,6 +506,7 @@ describe('PromotionsService', () => {
 					commitMessage: 'first promote',
 				});
 
+				expect(gitService.prepareCheckoutForPromotion).not.toHaveBeenCalled();
 				expect(gitService.readFilesAtCommit).not.toHaveBeenCalled();
 				expect(gitService.commitAndPush).toHaveBeenCalled();
 			});
@@ -541,7 +545,6 @@ describe('PromotionsService', () => {
 		});
 
 		it('writes the package into n8n and leaves the repository root alone', async () => {
-			gitService.hasRemoteBranch.mockResolvedValue(true);
 			const { repositoryFolder } = workingDirectory.paths(ENVIRONMENT_ID);
 			const packageFolder = path.join(repositoryFolder, 'n8n');
 			await mkdir(path.join(repositoryFolder, '.git'), { recursive: true });
