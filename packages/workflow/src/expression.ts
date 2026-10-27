@@ -608,7 +608,7 @@ export class Expression {
 	private static countNativeResult(native: ReturnType<typeof evaluateNatively>) {
 		if (this.observability) {
 			const result = native.handled ? 'handled' : native.fallbackReason ? 'fallback' : 'declined';
-			const reason = native.handled ? '' : (native.fallbackReason ?? '');
+			const reason = native.handled ? 'none' : (native.fallbackReason ?? 'none');
 			this.observability.metrics.counter(EXPRESSION_METRICS.nativeEvaluations.name, 1, {
 				result,
 				reason,

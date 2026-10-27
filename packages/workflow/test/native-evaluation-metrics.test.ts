@@ -45,8 +45,8 @@ describe('Expression - native evaluation metrics', () => {
 		workflow.expression.getParameterValue(value, null, 0, 0, 'node', [{ json }], 'manual', {});
 
 	test.each([
-		['={{ $json.name }}', { name: 'a' }, 'handled', ''],
-		['={{ (() => 1)() }}', {}, 'declined', ''],
+		['={{ $json.name }}', { name: 'a' }, 'handled', 'none'],
+		['={{ (() => 1)() }}', {}, 'declined', 'none'],
 		['={{ $json.name.toUpperCase() }}', { name: 1 }, 'fallback', 'unsupported_method'],
 		['=a {{ $json.name }}', { name: {} }, 'fallback', 'unsupported_type'],
 		["={{ $json.name.replace('a', '$&') }}", { name: 'a' }, 'fallback', 'replace_pattern'],
@@ -66,7 +66,7 @@ describe('Expression - native evaluation metrics', () => {
 		expect(observability.metrics.counter).toHaveBeenCalledExactlyOnceWith(
 			EXPRESSION_METRICS.nativeEvaluations.name,
 			1,
-			{ result: 'handled', reason: '' },
+			{ result: 'handled', reason: 'none' },
 		);
 	});
 
