@@ -169,7 +169,7 @@ export class PublicApiRateLimitService {
 		return {
 			requestPropertyName: ENDPOINT_LIMIT,
 			storeName: `endpoint:${access}:${endpoint}`,
-			readLimit: () => this.getLimitsFromConfig(access).perEndpoint,
+			readLimit: () => this.getLimits(access).perEndpoint,
 		};
 	}
 
@@ -180,14 +180,14 @@ export class PublicApiRateLimitService {
 			layer = {
 				requestPropertyName: ALL_ENDPOINTS_LIMIT,
 				storeName: `all:${access}`,
-				readLimit: () => this.getLimitsFromConfig(access).allEndpoints,
+				readLimit: () => this.getLimits(access).allEndpoints,
 			};
 			this.allEndpointsLayers.set(access, layer);
 		}
 		return layer;
 	}
 
-	private getLimitsFromConfig(access: RateLimitAccessName): AccessRequestLimits {
+	private getLimits(access: RateLimitAccessName): AccessRequestLimits {
 		const { config } = this;
 		const limits: Record<RateLimitAccessName, AccessRequestLimits> = {
 			read: {
