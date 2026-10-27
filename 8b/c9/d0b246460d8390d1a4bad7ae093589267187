@@ -1,0 +1,71 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_8056da22c66cb7::t_5f3e3381dbe0fc 14,16
+  s_8056da22c66cb7::t_a303c3144e0604 2044
+  s_8056da22c66cb7::t_22eb147f6725ae 2018-2022,2030-2032,2034,2054,2071-2075,2342-2343,2345-2349,2352-2353,2356-2357,2365-2369
+  s_8056da22c66cb7::t_09e5576354a9f1 2457,2550,2628-2629
+  s_8056da22c66cb7::t_e6468afda3f888 92,148-157,1912,1941-1944,1988-1990,1992-1993,1995,1998-2007,2065,2199,2223,2237,2243,2249,2262,2276,2305,2448,2460,2473-2487,2489,2492-2493,2498-2512,2514,2519,2526,2565,2577,2588,2594,2630
+  s_8056da22c66cb7::t_8326772b98465e 39,173,1911,1913-1926,1948-1954,2090,2111,2113-2114,2116-2117,2200-2207,2231,2248,2250-2257,2263,2269-2270,2272,2277-2284,2303-2304,2306,2312,2322,2326,2333-2334,2383,2393,2398-2403,2411,2413-2415,2417,2433,2548,2586-2587,2595-2602,2610,2618,2620,2626
+  s_8056da22c66cb7::t_3e4687a868f227 2437-2447,2453-2455,2578,2580-2584
+  s_8056da22c66cb7::t_606ac862d77b72 2209
+  s_8056da22c66cb7::t_5e1ec0f3c97d86 5
+  s_8056da22c66cb7::t_410f4bb6c22c6d 9,1927-1928,1931-1940,1956-1959,1967-1983,1985-1987,2008,2011,2017,2037,2039,2043,2046-2048,2051-2053,2059-2064,2066,2070,2230,2338-2341,2436,2449-2452,2585
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_8056da22c66cb7::t_21356b5b655cac 527
+  s_8056da22c66cb7::t_f9de163639bc41 651,675
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
+  s_8056da22c66cb7::t_09a2e1aa4fd4b0 21,39,100,148,158
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_8056da22c66cb7::t_2fdd18fbbab072 2426,2460-2473
+  s_8056da22c66cb7::t_a6d63ee953066c 52
+  s_8056da22c66cb7::t_d275aefa9eda1b 2087,2102-2115
+  s_8056da22c66cb7::t_ffc76f25adfe90 2136-2141,2145-2148,2150-2151,2574-2592
+  s_8056da22c66cb7::t_4c910144f3470a 2457-2459
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  s_8056da22c66cb7::t_993c81e0e17b95 145-158,245-249
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreviewLabels.ts
+  s_8056da22c66cb7::t_09a2e1aa4fd4b0 1,10-20,105-119
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_8056da22c66cb7::t_8bc15bf9d7dbcf 141
+  s_8056da22c66cb7::t_1a900d66b93ca1 197-203,209-221
+  s_8056da22c66cb7::t_c20b78234a8002 204,222
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_8056da22c66cb7::t_b8f61ac3e56aeb 192,196
+  s_8056da22c66cb7::t_1a900d66b93ca1 195,202
+  s_8056da22c66cb7::t_6d7c031af80bdf 193-194,199,206-207
+  s_8056da22c66cb7::t_e61a04a8959323 200
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
+  s_8056da22c66cb7::t_09a2e1aa4fd4b0 17,42,176,189-193,195,302
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_8056da22c66cb7::t_5d9442eabc25e9 13,841,847,886,889,894,904,907-911,1549-1555,1561-1562
+  s_8056da22c66cb7::t_f9fb24d64f445b 75
+  s_8056da22c66cb7::t_9dac3182e70d2a 77
+  s_8056da22c66cb7::t_1efcb3546a570e 15,42,76,987-990,992-993,998,1001-1003,1005,1009,1012-1013,1025-1026,1028-1034,1036,1038-1044
+  s_8056da22c66cb7::t_22eb147f6725ae 68,1556-1560
+  s_8056da22c66cb7::t_b22e687d643e2d 74
+  s_8056da22c66cb7::t_64264a947e1b88 845-846,848
+  s_8056da22c66cb7::t_793799f55884e1 29
+  s_8056da22c66cb7::t_1a900d66b93ca1 663-666,674-678,790-798,803-805,807-812,814-820,823,832-837,849,860,883-885,887-888,890-893,895-903,905-906,912-930,932-956,959,962-965,967-971,973,991,999,1004,1037,1045
+  s_8056da22c66cb7::t_a9377703947a34 1563
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_8056da22c66cb7::t_1a900d66b93ca1 157-166,179,188,210-211
+packages/cli/src/modules/promotions.ee/__tests__/cross-project-moves.test.ts
+  s_8056da22c66cb7::t_dabee03b068121 82,91-92
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_8056da22c66cb7::t_2594b6b4f9b836 1015-1050
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8bc9d0b246460d8390d1a4bad7ae093589267187",
+  "prompts": {},
+  "sessions": {
+    "s_8056da22c66cb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b1ea0a0-5534-410d-8325-1a2b74c81085",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

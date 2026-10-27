@@ -1,0 +1,25 @@
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_02f30e88687580::t_c733fd6e8e112d 92
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_02f30e88687580::t_c733fd6e8e112d 683,693-695
+packages/@n8n/instance-ai/docs/tools.md
+  s_02f30e88687580::t_c733fd6e8e112d 863-864
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_02f30e88687580::t_c733fd6e8e112d 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cea4882d3dc4d881c68d2115fd77408ef255ac35",
+  "prompts": {},
+  "sessions": {
+    "s_02f30e88687580": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1688e-5ff5-76a0-a4b7-22494ec8b06c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
