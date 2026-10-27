@@ -1446,14 +1446,33 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 
 		it.each([
-			{ name: 'requested stop', previewChat: true, abort: true, expectedReason: 'cancelled' },
-			{ name: 'caller abort', previewChat: true, abort: true, expectedReason: 'cancelled' },
-			{ name: 'model failure', previewChat: true, abort: false, expectedReason: 'error' },
+			{
+				name: 'requested stop',
+				previewChat: true,
+				abort: true,
+				error: new DOMException('Runtime ended', 'AbortError'),
+				expectedReason: 'cancelled',
+			},
+			{
+				name: 'caller abort',
+				previewChat: true,
+				abort: true,
+				error: new DOMException('Runtime ended', 'AbortError'),
+				expectedReason: 'cancelled',
+			},
+			{
+				name: 'model failure',
+				previewChat: true,
+				abort: false,
+				error: new Error('Runtime ended'),
+				expectedReason: 'error',
+			},
 			{
 				name: 'session stop',
 				previewChat: false,
 				abort: true,
 				abortReason: SESSION_STOPPED_REASON,
+				error: new DOMException('Runtime ended', 'AbortError'),
 				expectedReason: 'cancelled',
 			},
 			{
@@ -1461,15 +1480,41 @@ describe('AgentExecutionOrchestratorService', () => {
 				previewChat: true,
 				abort: true,
 				abortReason: new OperationalError('Execution ownership lost'),
+				error: new Error('Runtime ended'),
 				expectedReason: 'error',
 			},
-			{ name: 'non-chat abort', previewChat: false, abort: true, expectedReason: 'error' },
+			{
+				name: 'non-chat abort',
+				previewChat: false,
+				abort: true,
+				error: new Error('Runtime ended'),
+				expectedReason: 'error',
+			},
+			{
+				name: 'non-chat AbortError',
+				previewChat: false,
+				abort: true,
+				error: new DOMException('Runtime ended', 'AbortError'),
+				expectedReason: 'error',
+			},
+			{
+				name: 'model failure after chat abort',
+				previewChat: true,
+				abort: true,
+				error: new Error('Runtime ended'),
+				expectedReason: 'error',
+			},
+			{
+				name: 'model failure after session stop',
+				previewChat: false,
+				abort: true,
+				abortReason: SESSION_STOPPED_REASON,
+				error: new Error('Runtime ended'),
+				expectedReason: 'error',
+			},
 		])('emits the correct finish reason after $name', async (scenario) => {
 			const controller = new AbortController();
-			const error =
-				scenario.expectedReason === 'cancelled'
-					? new DOMException('Runtime ended', 'AbortError')
-					: new Error('Runtime ended');
+			const { error } = scenario;
 			const usage = { promptTokens: 2, completionTokens: 3, totalTokens: 5, cost: 0.01 };
 			const { stream, executionService, chatExecutionService, backgroundJobs } = makeTurn({
 				previewChat: scenario.previewChat,
@@ -1481,7 +1526,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					{ type: 'finish', finishReason: 'error', model: 'mock-model', usage },
 				],
 			});
-			if (scenario.name === 'ownership loss' || scenario.name === 'session stop')
+			if (scenario.abortReason !== undefined)
 				executionService.getAbortSignal.mockReturnValue(controller.signal);
 			const chunks: AgentExecutionStreamChunk[] = [];
 			for await (const chunk of stream) {

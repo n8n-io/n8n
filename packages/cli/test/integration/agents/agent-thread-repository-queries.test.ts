@@ -105,6 +105,22 @@ describe('Agent thread repository queries for system agents', () => {
 			).toMatchObject({ id: thread.id });
 		});
 
+		it.each(['project', 'user'] as const)(
+			'finds an accessible %s child session',
+			async (accessScope) => {
+				const parent = await createThread({ accessScope });
+				const child = await createThread({ accessScope, parentThreadId: parent.id });
+				expect(
+					await threadRepo.findAccessibleById(child.id, projectId, agentId, ownerId),
+				).toMatchObject({ id: child.id });
+				if (accessScope === 'user') {
+					expect(
+						await threadRepo.findAccessibleById(child.id, projectId, agentId, otherUserId),
+					).toBeNull();
+				}
+			},
+		);
+
 		it('does not return sessions outside the requested scope', async () => {
 			const thread = await createThread();
 			const otherProject = await createTeamProject();

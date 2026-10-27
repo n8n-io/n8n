@@ -6,11 +6,7 @@
 export function isAbortError(error: unknown): boolean {
 	if (!(error instanceof Error)) return false;
 	if (error.name === 'AbortError') return true;
-	return (
-		error.message === 'Aborted' ||
-		error.message === 'This operation was aborted' ||
-		error.message === 'Agent run was aborted'
-	);
+	return error.message === 'Aborted' || error.message === 'This operation was aborted';
 }
 
 export function createAbortError(reason?: unknown): Error {

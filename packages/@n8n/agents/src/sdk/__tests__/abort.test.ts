@@ -13,7 +13,6 @@ describe('abort helpers', () => {
 		it('detects known abort messages', () => {
 			expect(isAbortError(new Error('Aborted'))).toBe(true);
 			expect(isAbortError(new Error('This operation was aborted'))).toBe(true);
-			expect(isAbortError(new Error('Agent run was aborted'))).toBe(true);
 		});
 
 		it('rejects unrelated errors', () => {
