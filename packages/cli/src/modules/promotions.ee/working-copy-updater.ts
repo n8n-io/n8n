@@ -11,7 +11,7 @@ import { BadRequestError, InternalServerError } from '@n8n/errors';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { containerMoves, isUnder, staleWorkflowTargets } from './branch-placement';
+import { containerMoves, isUnder, projectHolding, staleWorkflowTargets } from './branch-placement';
 import type { BranchLayout, ContainerMove } from './branch-placement';
 import { writeImportManifest } from './import-manifest-bridge';
 import { PromotionsWorkflowsMovedCrossProjectError } from './promotions-selective-push.error';
@@ -311,7 +311,12 @@ export class WorkingCopyUpdater {
 			(w) => selected.has(w.id) && (!projectTarget || !isUnder(w.target, projectTarget)),
 		);
 		if (moved.length > 0) {
-			throw new PromotionsWorkflowsMovedCrossProjectError(moved.map((workflow) => workflow.id));
+			throw new PromotionsWorkflowsMovedCrossProjectError(
+				moved.map(({ id, target }) => {
+					const project = projectHolding(branch.projects, target);
+					return { id, detail: project && `in project "${project.name}" on the branch` };
+				}),
+			);
 		}
 	}
 
@@ -332,7 +337,7 @@ export class WorkingCopyUpdater {
 		);
 		if (foreign) {
 			throw new BadRequestError(
-				`"${foreign.from}" belongs to another project on the branch. A selective push cannot move it. Push all projects instead.`,
+				`"${foreign.from}" belongs to another project on the branch. Promotion can't move it between projects. Move it back on this instance, then promote again.`,
 			);
 		}
 	}

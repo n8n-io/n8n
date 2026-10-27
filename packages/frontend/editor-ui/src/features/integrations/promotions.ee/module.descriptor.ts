@@ -5,7 +5,6 @@ import { RouterView, type RouteLocationNormalized, type RouteRecordRaw } from 'v
 
 import { VIEWS } from '@/app/constants';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
-import { PROMOTIONS_MODALS } from './modals';
 import {
 	PROMOTION_PREVIEW_VIEWS,
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
@@ -18,9 +17,9 @@ const SettingsView = async () => await import('./views/PromotionsSettingsView.vu
 const EnvironmentView = async () => await import('./views/PromotionEnvironmentView.vue');
 const PreviewView = async () => await import('./views/PromotionPreviewView.vue');
 
-// Check the rollout flag here because module routes skip custom middleware.
+// Module routes skip custom middleware, so the gate runs here.
 const requirePromotionsEnabled = () =>
-	usePromotionsEnabled().isEnabled.value || { name: VIEWS.HOMEPAGE };
+	usePromotionsEnabled().isEnabled.value || { name: VIEWS.SOURCE_CONTROL };
 
 /** A project page that shows the changes before the user promotes or applies them. */
 const previewRoute = (direction: PromotionDirection): RouteRecordRaw => ({
@@ -86,5 +85,4 @@ export const PromotionsModule = defineFrontendModule({
 		previewRoute('promote'),
 		previewRoute('apply'),
 	],
-	modals: PROMOTIONS_MODALS,
 });

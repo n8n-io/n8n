@@ -9,6 +9,7 @@ import type {
 	EngineErrorResponse,
 	ExecutionSnapshot,
 	ExecutionStatus,
+	FindLatestExecutionRequest,
 	StartExecutionRequest,
 	StartExecutionResult,
 	SearchExecutionsRequest,
@@ -133,6 +134,26 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		});
 		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
 		return response.body as SearchExecutionsResponse;
+	}
+
+	async findLatestExecution(
+		request: FindLatestExecutionRequest,
+	): Promise<ExecutionSnapshot | undefined> {
+		const response = await this.http.request<ExecutionSnapshot | EngineErrorResponse>({
+			url: '/api/workflow-executions/search/latest',
+			method: 'POST',
+			body: request,
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+			disableFollowRedirect: true,
+		});
+
+		if (response.statusCode === 404) return undefined;
+
+		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
+
+		return response.body as ExecutionSnapshot;
 	}
 
 	async cancelExecution(id: ExecutionIdV2): Promise<CancelExecutionOutcome | undefined> {

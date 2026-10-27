@@ -5,21 +5,14 @@ import AgentPanel from './AgentPanel.vue';
  * Credential selection is handled inside the model picker — no separate
  * credential field.
  */
-import { computed, onBeforeUnmount, ref, useId, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import {
-	N8nCallout,
-	N8nIconButton,
-	N8nInput,
-	N8nMarkdownEditor,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nCallout, N8nIconButton, N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
 import { useToast } from '@n8n/composables/useToast';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useUsersStore } from '@n8n/stores/users.store';
 import shared from '../styles/agent-panel.module.scss';
@@ -73,7 +66,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const instructionsEditorId = useId();
 const usersStore = useUsersStore();
-const credentialsStore = useCredentialsStore();
 const { showError } = useToast();
 const { catalog, ensureLoaded, getModelsForPicker, getDefaultModelForPicker, isLoading } =
 	useModelCatalog();
@@ -144,104 +136,6 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 	};
 });
 
-// Azure OpenAI classic deployments are user-named in Azure and surfaced in the
-// deployment-based URL path; Foundry endpoints take the model id directly, so
-// the deployment name only applies to classic. The credential's `endpointType`
-// is only readable with credential edit access — when it can't be determined,
-// keep the field visible and let backend validation stay the enforcement point.
-const azureEndpointType = ref<'classic' | 'foundry' | 'unknown'>('unknown');
-
-watch(
-	[configProvider, () => props.config?.credential],
-	async ([provider, credentialId]) => {
-		azureEndpointType.value = 'unknown';
-		if (provider !== 'azure-openai' || !credentialId || credentialId === AI_GATEWAY_MANAGED_TAG) {
-			return;
-		}
-		try {
-			const credential = await credentialsStore.getCredentialData({ id: credentialId });
-			// Ignore stale responses from rapid credential switches.
-			if (props.config?.credential !== credentialId) return;
-			const data = credential && typeof credential.data === 'object' ? credential.data : undefined;
-			if (data?.endpointType === 'classic' || data?.endpointType === 'foundry') {
-				azureEndpointType.value = data.endpointType;
-			}
-		} catch {
-			// No read access to the credential data (e.g. shared credential) —
-			// keep 'unknown' so the field stays visible.
-		}
-	},
-	{ immediate: true },
-);
-
-const showDeploymentName = computed(() => {
-	if (props.disabled || !props.showModel) return false;
-	if (configProvider.value !== 'azure-openai') return false;
-	const credentialId = props.config?.credential;
-	if (!credentialId || credentialId === AI_GATEWAY_MANAGED_TAG) return false;
-	if (!credentialsStore.getCredentialById(credentialId)) return false;
-	// Visible for classic, foundry, and unknown endpoint types alike: a
-	// deployment name is optional on Foundry but can override the model id.
-	return true;
-});
-
-const deploymentName = ref(props.config?.modelDeploymentName ?? '');
-const deploymentNameFocused = ref(false);
-
-watch(
-	() => props.config?.modelDeploymentName ?? '',
-	(value) => {
-		// The autosave round-trip echoes the server's config copy, which lags the
-		// input by a save cycle — syncing it mid-typing would wipe newer keystrokes.
-		// External updates (model-change seeding, AI edits) land while unfocused.
-		if (deploymentNameFocused.value) return;
-		if (value !== deploymentName.value) deploymentName.value = value;
-		// Parent replaced the value (agent switch / echo). Drop a queued emit
-		// so it cannot write the previous agent's name onto the new config.
-		cancelDeploymentNameEmit();
-	},
-);
-
-// Hand-rolled so a model change can drop a queued emit. `useDebounceFn` has no cancel.
-let deploymentNameEmitTimer: ReturnType<typeof setTimeout> | undefined;
-
-function cancelDeploymentNameEmit() {
-	if (deploymentNameEmitTimer === undefined) return;
-	clearTimeout(deploymentNameEmitTimer);
-	deploymentNameEmitTimer = undefined;
-}
-
-onBeforeUnmount(cancelDeploymentNameEmit);
-
-function scheduleDeploymentNameEmit(value: string) {
-	cancelDeploymentNameEmit();
-	deploymentNameEmitTimer = setTimeout(() => {
-		deploymentNameEmitTimer = undefined;
-		emit('update:config', { modelDeploymentName: value });
-	}, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
-}
-
-function onDeploymentNameInput(value: string) {
-	deploymentName.value = value;
-	emit('draft:config');
-	if (props.immediateUpdates) {
-		cancelDeploymentNameEmit();
-		emit('update:config', { modelDeploymentName: value });
-		return;
-	}
-	scheduleDeploymentNameEmit(value);
-}
-
-function deriveDefaultDeploymentName(selection: AgentModelSelection): string {
-	// Azure deployments are conventionally named after the model. Default the
-	// deployment name to the chosen model's display name, lowercased with
-	// whitespace turned into dashes (e.g. "GPT-4o mini" → "gpt-4o-mini").
-	const displayName =
-		filteredAgents.value[selection.provider]?.models.find((m) => m.model === selection.model)
-			?.name ?? selection.model;
-	return displayName.toLowerCase().replace(/\s+/g, '-');
-}
-
 function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' = 'user') {
 	const credentialId = effectiveCredentials.value?.[selection.provider];
 	if (!credentialId) {
@@ -270,22 +164,6 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 	// A default applied by the resolver surfaces a hint so the user knows they
 	// can change it; any explicit user pick clears the hint.
 	defaultModelHint.value = source === 'auto';
-	// The deployment name is optional on Foundry: an empty value means the
-	// call uses the model id. Classic requires a user-named deployment, so
-	// seed it from the model — deployments are usually named after the model.
-	// Foundry deployments are often named differently, so a model-derived
-	// guess would be wrong; clear instead, so the old model's deployment
-	// name can't survive a model switch.
-	cancelDeploymentNameEmit();
-	const deploymentNameChange: { modelDeploymentName?: string } =
-		selection.provider !== 'azure-openai'
-			? {}
-			: azureEndpointType.value === 'foundry'
-				? { modelDeploymentName: '' }
-				: { modelDeploymentName: deriveDefaultDeploymentName(selection) };
-	if (deploymentNameChange.modelDeploymentName !== undefined) {
-		deploymentName.value = deploymentNameChange.modelDeploymentName;
-	}
 	emit(
 		'update:config',
 		{
@@ -294,7 +172,6 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 			...webSearchChanges,
 			...promptCachingChanges,
 			...reasoningChanges,
-			...deploymentNameChange,
 		},
 		// A pending agent must not be persisted just because a default model was
 		// auto-applied — let the host apply it to the draft without autosaving.
@@ -449,30 +326,6 @@ defineExpose({ focusInstructions, focusModel });
 							/>
 						</div>
 					</N8nCallout>
-				</div>
-
-				<div
-					v-if="showDeploymentName"
-					:class="$style.field"
-					data-testid="agent-deployment-name-field"
-				>
-					<label :class="[$style.label, props.disabled && shared.disabled]">
-						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
-							i18n.baseText('agents.builder.agent.model.deploymentName.label')
-						}}</N8nText>
-					</label>
-					<N8nInput
-						:model-value="deploymentName"
-						:placeholder="i18n.baseText('agents.builder.agent.model.deploymentName.placeholder')"
-						:disabled="props.disabled"
-						data-testid="agent-deployment-name"
-						@focus="deploymentNameFocused = true"
-						@blur="deploymentNameFocused = false"
-						@update:model-value="onDeploymentNameInput"
-					/>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('agents.builder.agent.model.deploymentName.description') }}
-					</N8nText>
 				</div>
 			</div>
 			<div

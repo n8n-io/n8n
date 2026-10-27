@@ -115,15 +115,20 @@ erDiagram
   BOOLEAN acceptsSteering
   TEXT attachments
   TEXT author
+  INTEGER cacheReadTokens
+  INTEGER cacheWriteTokens
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
   INTEGER duration
   TEXT error
   TEXT failureSummary
+  VARCHAR_32_ finishReason
+  VARCHAR_64_ guardrailCode
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
+  varchar_36_ parentExecutionId FK
   INTEGER promptTokens
   varchar_32_ source
   datetime_3_ startedAt
@@ -170,6 +175,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   varchar id PK
+  VARCHAR_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled

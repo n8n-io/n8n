@@ -1,4 +1,4 @@
-import { ImportResultDto } from '../import-result.dto';
+import { ImportBlockedErrorDto, ImportResultDto } from '../import-result.dto';
 
 describe('ImportResultDto', () => {
 	it('accepts a project-package happy-path result', () => {
@@ -105,4 +105,34 @@ describe('ImportResultDto', () => {
 
 		expect(result.success).toBe(true);
 	});
+});
+
+describe('ImportBlockedErrorDto', () => {
+	it.each([
+		{ kind: 'task-id', sourceTaskId: 'task-1', success: true },
+		{ kind: 'task-id', sourceTaskId: undefined, success: false },
+		{ kind: 'existing', sourceTaskId: undefined, success: true },
+		{ kind: 'existing', sourceTaskId: 'task-1', success: false },
+		{ kind: 'id', sourceTaskId: undefined, success: true },
+		{ kind: 'id', sourceTaskId: 'task-1', success: false },
+	])(
+		'validates $kind conflicts with sourceTaskId=$sourceTaskId',
+		({ kind, sourceTaskId, success }) => {
+			const result = ImportBlockedErrorDto.safeParse({
+				message: 'The package import is blocked.',
+				issues: [
+					{
+						type: 'agent-conflict',
+						kind,
+						sourceAgentId: 'agent-1',
+						projectId: 'proj-1',
+						sourceTaskId,
+						targetIds: ['target-1'],
+					},
+				],
+			});
+
+			expect(result.success).toBe(success);
+		},
+	);
 });

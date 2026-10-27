@@ -78,12 +78,15 @@ export class WorkflowPackageImporter {
 			request.projectId,
 			request.folderId,
 			folders.length > 0,
+			!manifest.workflows?.length && manifest.agents?.length ? 'agent:read' : 'workflow:import',
 		);
 
 		const workflows = await this.packageParser.getWorkflows(reader);
+		const agents = manifest.agents?.length ? await this.packageParser.getAgents(reader) : [];
 		const credentialRequirements = identifyRequirements(
 			manifest.requirements?.credentials,
 			workflows,
+			agents,
 		);
 		const credentialRequest: CredentialBindingRequest = {
 			requirements: credentialRequirements,
@@ -103,8 +106,13 @@ export class WorkflowPackageImporter {
 		const dataTableRequirements = identifyRequirements(
 			manifest.requirements?.dataTables,
 			workflows,
+			agents,
 		);
-		if (dataTableRequirements?.length && request.dataTableMissingMode === 'create') {
+		// Plan Agent actions first. Skipped Agents do not require dependency write scopes.
+		if (
+			dataTableRequirements?.some(({ usedBy }) => usedBy.some(({ kind }) => kind === 'workflow')) &&
+			request.dataTableMissingMode === 'create'
+		) {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['dataTable:create']);
 		}
 		const dataTableRequest: DataTableImportRequest = {
@@ -115,7 +123,11 @@ export class WorkflowPackageImporter {
 			schemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 		};
 
-		const variableRequirements = identifyRequirements(manifest.requirements?.variables, workflows);
+		const variableRequirements = identifyRequirements(
+			manifest.requirements?.variables,
+			workflows,
+			agents,
+		);
 		const bundledVariables = needsBundledVariableValues(
 			request,
 			(variableRequirements?.length ?? 0) > 0,
@@ -144,22 +156,29 @@ export class WorkflowPackageImporter {
 			folders,
 			workflows,
 			credentialRequest,
+			agents,
+			agentRequirements: identifyRequirements(manifest.requirements?.agents, workflows, agents),
 			dataTableRequest,
 			variableRequest,
 			tagRequest,
 			options: request,
-			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
+			subWorkflowRequirements: identifyRequirements(
+				manifest.requirements?.workflows,
+				workflows,
+				agents,
+			),
 			checkRootPlacement: false,
 		});
 
+		const plannedCredentialRequest = plan.input.credentialRequest;
 		const missingCredentialIds = new Set(
 			plan.credentialPlan.failures.filter(canStubNotFoundFailure).map(({ sourceId }) => sourceId),
 		);
 		if (needsBundledCredentialData(request, missingCredentialIds.size > 0)) {
-			credentialRequest.requirements = placeCredentialData({
-				requirements: credentialRequirements,
+			plannedCredentialRequest.requirements = placeCredentialData({
+				requirements: plannedCredentialRequest.requirements,
 				bundledCredentials:
-					credentialRequest.packageCredentials ??
+					plannedCredentialRequest.packageCredentials ??
 					(await this.packageParser.getCredentials(reader, missingCredentialIds)),
 			});
 		}
@@ -183,9 +202,9 @@ export class WorkflowPackageImporter {
 			{
 				context,
 				imported: content,
-				credentialRequest,
-				dataTableRequest,
-				variableRequest,
+				credentialRequest: plannedCredentialRequest,
+				dataTableRequest: plan.input.dataTableRequest,
+				variableRequest: plan.input.variableRequest,
 				tagRequest,
 			},
 		];
@@ -229,10 +248,11 @@ export class WorkflowPackageImporter {
 		projectId: string | undefined,
 		folderId: string | undefined,
 		needsFolderCreate: boolean,
+		importScope: 'workflow:import' | 'agent:read',
 	): Promise<ImportContext> {
 		const scopes: Scope[] = needsFolderCreate
-			? ['workflow:import', 'folder:create', 'folder:update']
-			: ['workflow:import'];
+			? [importScope, 'folder:create', 'folder:update']
+			: [importScope];
 		const project = await this.resolveImportProject(user, projectId, scopes);
 		await this.assertFolderExistsInProject(folderId, project.id);
 

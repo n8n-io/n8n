@@ -144,8 +144,7 @@ jobs:
         with:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
-          # This job uploads artifacts and needs no token post-checkout — drop the
-          # persisted credential so it can't leak (zizmor: artipacked).
+          # This job uploads artifacts and needs no token after checkout.
           persist-credentials: false
 
       - name: Setup Environment
@@ -200,6 +199,7 @@ jobs:
               -e N8N_AI_ENABLED=true \
               -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \
               -e N8N_AI_ASSISTANT_BASE_URL="" \
+              -e N8N_INSTANCE_AI_EVAL_INSTANCE=true \
               -e N8N_LICENSE_ACTIVATION_KEY="$N8N_LICENSE_ACTIVATION_KEY" \
               -e N8N_LICENSE_CERT="$N8N_LICENSE_CERT" \
               -e N8N_ENCRYPTION_KEY="$N8N_ENCRYPTION_KEY" \

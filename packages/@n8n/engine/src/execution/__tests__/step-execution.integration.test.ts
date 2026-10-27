@@ -257,7 +257,6 @@ describe('step execution (integration)', () => {
 		const wait = {
 			resumeAt: '2099-01-01T00:00:00.000Z',
 			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
-			acceptsResumeRequest: false,
 		};
 		const executor: IStepExecutor = {
 			execute: async () => {
@@ -299,7 +298,6 @@ describe('step execution (integration)', () => {
 		const wait = {
 			resumeAt: '2020-01-01T00:00:00.000Z',
 			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
-			acceptsResumeRequest: false,
 		};
 		const requests: StepExecutionRequest[] = [];
 		const executor: IStepExecutor = {
@@ -355,7 +353,6 @@ describe('step execution (integration)', () => {
 		const wait = {
 			resumeAt: '2099-01-01T00:00:00.000Z',
 			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
-			acceptsResumeRequest: false,
 		};
 		const executor: IStepExecutor = {
 			execute: async (request) => {

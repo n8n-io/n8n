@@ -43,14 +43,15 @@ import {
 	resolveEmbeddingProviderOptionsFromCredential,
 	type ManagedEmbeddingProviderOptions,
 	type ManagedEmbeddingProviderOptionsResolver,
-} from './embedding-credential';
+} from '@/modules/knowledge/vector-stores/embedding-credential';
 import { resolveCredentialAwareModelConfig } from './model-config';
 import { resolveProviderToolName } from './provider-tool-aliases';
 import {
 	resolveWebSearchGatewayProxyConfig,
 	type AiGatewaySearchCredentialResolver,
 } from './web-search-credential';
-import { buildVectorStore } from './vector-store-factory';
+import { buildVectorStore } from '@/modules/knowledge/vector-stores/factory';
+import type { FinishKnowledgeToolCall } from '../agent-knowledge-usage-tracker';
 
 export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
 
@@ -147,6 +148,38 @@ export interface BuildFromJsonOptions {
 	 * them on their own cache key.
 	 */
 	previewChat?: boolean;
+	/** Called when each vector store search starts. The returned function gets the size of the output that the model gets. */
+	onVectorStoreSearch?: (runId: string | undefined) => FinishKnowledgeToolCall;
+}
+
+function countVectorStoreSearches(
+	searchTool: BuiltTool,
+	onVectorStoreSearch: (runId: string | undefined) => FinishKnowledgeToolCall,
+): BuiltTool {
+	const searchHandler = searchTool.handler;
+	if (!searchHandler) {
+		return searchTool;
+	}
+
+	return {
+		...searchTool,
+		async handler(input, ctx) {
+			const finishSearch = onVectorStoreSearch(ctx.runId);
+			let output: unknown;
+			try {
+				output = await searchHandler.call(searchTool, input, ctx);
+			} catch (error) {
+				finishSearch({ failed: true });
+				throw error;
+			}
+
+			const modelOutput = searchTool.toModelOutput ? searchTool.toModelOutput(output) : output;
+			const json: string | undefined = JSON.stringify(modelOutput);
+			const contentChars = json?.length ?? 0;
+			finishSearch({ failed: false, contentChars });
+			return output;
+		},
+	};
 }
 
 /**
@@ -214,7 +247,12 @@ export async function buildFromJson(
 			// selected yet — skip them rather than failing the whole agent build.
 			if (!vectorStoreConfig.credential || !vectorStoreConfig.embedding.credential) continue;
 			const vectorStore = await buildVectorStore(vectorStoreConfig, options.credentialProvider);
-			agent.vectorStore(vectorStore, { description: vectorStoreConfig.useWhen });
+			const searchTool = vectorStore.asTool({ description: vectorStoreConfig.useWhen }).build();
+			agent.tool(
+				options.onVectorStoreSearch
+					? countVectorStoreSearches(searchTool, options.onVectorStoreSearch)
+					: searchTool,
+			);
 		}
 	}
 
@@ -639,7 +677,6 @@ async function resolveModelConfig(
 		config.model,
 		config.credential,
 		credentialProvider,
-		config.modelDeploymentName,
 	);
 }
 

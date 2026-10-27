@@ -16,7 +16,6 @@ import type {
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { sleep } from '@n8n/utils/sleep';
 import {
 	BINARY_ENCODING,
 	NodeApiError,
@@ -25,6 +24,8 @@ import {
 	jsonParse,
 	removeCircularRefs,
 	setSafeObjectProperty,
+	sleepUnlessExecutionCancelled,
+	throwIfExecutionCancelled,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -342,9 +343,12 @@ export class HttpRequestV3 implements INodeType {
 				const batchSize = batching?.batch?.batchSize > 0 ? batching?.batch?.batchSize : 1;
 				const batchInterval = batching?.batch.batchInterval;
 
+				// Stop sending requests when the execution is cancelled
+				throwIfExecutionCancelled(this);
+
 				if (itemIndex > 0 && batchSize >= 0 && batchInterval > 0) {
 					if (itemIndex % batchSize === 0) {
-						await sleep(batchInterval);
+						await sleepUnlessExecutionCancelled(this, batchInterval);
 					}
 				}
 
@@ -806,7 +810,8 @@ export class HttpRequestV3 implements INodeType {
 					requestPromises.push(requestWithAuthentication);
 				}
 			} catch (error) {
-				if (!this.continueOnFail()) throw error;
+				// A cancelled execution must not continue with the next items
+				if (this.getExecutionCancelSignal()?.aborted || !this.continueOnFail()) throw error;
 
 				requestPromises.push(Promise.reject(error).catch(() => {}));
 

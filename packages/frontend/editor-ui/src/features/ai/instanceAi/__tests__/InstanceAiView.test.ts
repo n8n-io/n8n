@@ -66,7 +66,6 @@ describe('InstanceAiView', () => {
 		pinia = createTestingPinia();
 		const settingsStore = useInstanceAiSettingsStore();
 		settingsStore.refreshModuleSettings = vi.fn().mockResolvedValue(undefined);
-		settingsStore.ensurePreferencesLoaded = vi.fn().mockResolvedValue(undefined);
 		vi.mocked(hasPermission).mockReturnValue(false);
 		routerPush.mockClear();
 		routerReplace.mockClear();
@@ -140,7 +139,6 @@ describe('InstanceAiView', () => {
 			'instance-ai': {
 				enabled: true,
 				mcpConnectionsAvailable: true,
-				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,
 				cloudManaged: false,
@@ -149,6 +147,7 @@ describe('InstanceAiView', () => {
 				workflowBuilderAvailable: false,
 				sandboxUnavailableReason: null,
 				runDebugEnabled: false,
+				workflowSuggestionsEnabled: false,
 			},
 		};
 		routeState.name = 'InstanceAiThread';
@@ -171,7 +170,6 @@ describe('InstanceAiView', () => {
 			'instance-ai': {
 				enabled: true,
 				mcpConnectionsAvailable: true,
-				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,
 				cloudManaged: false,
@@ -180,6 +178,7 @@ describe('InstanceAiView', () => {
 				workflowBuilderAvailable: true,
 				sandboxUnavailableReason: null,
 				runDebugEnabled: false,
+				workflowSuggestionsEnabled: false,
 			},
 		};
 
@@ -197,7 +196,6 @@ describe('InstanceAiView', () => {
 			'instance-ai': {
 				enabled: true,
 				mcpConnectionsAvailable: true,
-				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,
 				cloudManaged: false,
@@ -206,6 +204,7 @@ describe('InstanceAiView', () => {
 				workflowBuilderAvailable: true,
 				sandboxUnavailableReason: null,
 				runDebugEnabled: false,
+				workflowSuggestionsEnabled: false,
 			},
 		};
 		const { getByTestId, queryByTestId } = renderView({ pinia });

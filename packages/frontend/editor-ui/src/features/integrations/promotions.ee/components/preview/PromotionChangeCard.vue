@@ -3,6 +3,7 @@ import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nCallout,
+	N8nCheckbox,
 	N8nIcon,
 	N8nLoading,
 	N8nText,
@@ -10,7 +11,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import type { DetailEntry } from '../../composables/usePromotionResourceDetails';
@@ -25,62 +26,55 @@ import {
 	sideState,
 	type DetailSide,
 } from '../../promotionPreview.content';
-import type { ResourceKey, SelectionGraph } from '../../promotionPreview.selection';
+import type { ResourceKey, SelectionCheck, SelectionGraph } from '../../promotionPreview.selection';
 import { isContainer, resourceIcon } from '../../promotionPreview.tree';
+import { hasWorkflowDiff } from '../../promotionPreview.workflow';
 import DataTableChangeDetails from './DataTableChangeDetails.vue';
 import PromotionFieldChanges from './PromotionFieldChanges.vue';
+import PromotionWorkflowPreview from './PromotionWorkflowPreview.vue';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
 
-const props = defineProps<{
-	resource: PromotionResource;
-	graph: SelectionGraph;
-	direction: PromotionDirection;
-	included: boolean;
-	entry?: DetailEntry;
-	inspected: boolean;
-	blockers?: Blocker[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		resource: PromotionResource;
+		graph: SelectionGraph;
+		direction: PromotionDirection;
+		selection: SelectionCheck;
+		entry?: DetailEntry;
+		inspected: boolean;
+		blockers?: Blocker[];
+		diffActive?: boolean;
+		/** False for a list that users only read. */
+		selectable?: boolean;
+	}>(),
+	{ selectable: true },
+);
 
 const emit = defineEmits<{
 	inspect: [key: ResourceKey];
+	toggle: [];
 	retry: [];
 	refresh: [];
+	activateDiff: [];
+	deactivateDiff: [];
 }>();
 
 const i18n = useI18n();
 const nameOf = (key: string) => props.graph.resources.get(key)?.name ?? key;
-const { changeLabel, blockerMessage } = usePromotionPreviewLabels();
-// A moved folder explains itself in the card body.
-const blocker = computed(() =>
-	props.resource.type === 'folder' ? undefined : blockerMessage(props.resource, props.blockers),
-);
+const { changeLabel, blockerMessage, selectLabel } = usePromotionPreviewLabels();
+const blocker = computed(() => blockerMessage(props.resource, props.blockers));
 
 // Cards start open. Inspecting a resource from the tree opens its card again.
-const open = ref(true);
+const open = defineModel<boolean>('open', { default: true });
 watch(
 	() => props.inspected,
 	(inspected) => {
 		if (inspected) open.value = true;
 	},
 );
-// A blocker matters more than the inclusion, so it takes the place of the inclusion icon.
-const status = computed(() => {
-	if (blocker.value) {
-		return { label: blocker.value, icon: 'circle-alert' as const, tone: 'blocked' };
-	}
-	return props.included
-		? {
-				label: i18n.baseText('promotions.preview.card.included'),
-				icon: 'circle-check' as const,
-				tone: 'included',
-			}
-		: {
-				label: i18n.baseText('promotions.preview.card.notIncluded'),
-				icon: 'circle-minus' as const,
-				tone: undefined,
-			};
+watch(open, (isOpen) => {
+	if (!isOpen && props.diffActive) emit('deactivateDiff');
 });
-
 // On a project page, project scope is the default, so only global variables say so.
 const scope = computed(() =>
 	props.resource.key.startsWith('variable:global:')
@@ -90,21 +84,23 @@ const scope = computed(() =>
 
 type Footer = { keypath: BaseTextKey; workflows: Array<{ key: ResourceKey; name: string }> };
 
-// Resources that users cannot select name the workflows that use or call them.
+// Resources that users cannot select name the workflows that use or call them. A resource
+// that a review deletes can have no such workflow left.
 const footer = computed((): Footer | undefined => {
 	const { resource, graph } = props;
 	if (resource.selectable || isContainer(resource)) return undefined;
 	const users = graph.requiredBy.get(resource.key) ?? [];
+	const callers = graph.calledBy.get(resource.key) ?? [];
 	const named = (keys: readonly ResourceKey[]) => keys.map((key) => ({ key, name: nameOf(key) }));
 	if (users.length > 0)
 		return { keypath: 'promotions.preview.card.usedBy', workflows: named(users) };
-	return {
-		keypath: 'promotions.preview.card.calledBy',
-		workflows: named(graph.calledBy.get(resource.key) ?? []),
-	};
+	if (callers.length > 0)
+		return { keypath: 'promotions.preview.card.calledBy', workflows: named(callers) };
+	return undefined;
 });
 
 const detail = computed(() => (props.entry?.status === 'loaded' ? props.entry.detail : undefined));
+const hasDiff = computed(() => hasWorkflowDiff(props.resource));
 const stale = computed(() => !!detail.value && isStaleDetail(detail.value, props.resource));
 const fieldChanges = computed(() => {
 	const context = { direction: props.direction, resource: props.resource, containerName: nameOf };
@@ -123,12 +119,6 @@ const absentSides = computed((): DetailSide[] => {
 		(side) => sideState(current, side).kind === 'absent',
 	);
 });
-const isApplyMove = computed(
-	() =>
-		props.direction === 'apply' &&
-		props.resource.type === 'folder' &&
-		props.resource.previousParentKey !== undefined,
-);
 // Tags belong to the whole instance, so Apply changes them outside this project too.
 const tagNote = computed(() => {
 	const { direction, resource } = props;
@@ -148,54 +138,70 @@ const tagNote = computed(() => {
 			data-test-id="promotion-preview-card"
 			:data-resource-key="resource.key"
 		>
-			<CollapsibleTrigger :class="$style.header" data-test-id="promotion-preview-card-toggle">
-				<N8nIcon :icon="resourceIcon(resource.type)" size="small" :class="$style.icon" />
-				<span :class="$style.heading">
-					<N8nText
-						bold
-						size="medium"
-						color="text-dark"
-						:title="resource.name"
-						:class="$style.title"
-					>
-						{{ resource.name }}
-					</N8nText>
-					<N8nText v-if="changeLabel(resource, direction)" step="xs" color="text-light">
-						{{ changeLabel(resource, direction) }}
-					</N8nText>
-				</span>
-				<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
-				<N8nTooltip :content="status.label" as-child>
-					<span
-						role="img"
-						:aria-label="status.label"
-						:class="[$style.status, status.tone && $style[status.tone]]"
-						data-test-id="promotion-preview-card-status"
-						:data-included="included"
-					>
-						<N8nIcon :icon="status.icon" size="medium" />
+			<div :class="$style.header">
+				<!-- A sibling of the trigger, as a checkbox cannot sit inside a button. -->
+				<N8nCheckbox
+					v-if="selectable"
+					:model-value="selection.checked"
+					:indeterminate="selection.indeterminate"
+					:disabled="selection.disabled"
+					:aria-label="selectLabel(resource)"
+					data-test-id="promotion-preview-card-checkbox"
+					@update:model-value="emit('toggle')"
+				/>
+				<CollapsibleTrigger :class="$style.trigger" data-test-id="promotion-preview-card-toggle">
+					<N8nIcon :icon="resourceIcon(resource.type)" size="small" :class="$style.icon" />
+					<span :class="$style.heading">
+						<N8nText
+							bold
+							size="medium"
+							color="text-dark"
+							:title="resource.name"
+							:class="$style.title"
+						>
+							{{ resource.name }}
+						</N8nText>
+						<N8nText v-if="changeLabel(resource, direction)" step="xs" color="text-light">
+							{{ changeLabel(resource, direction) }}
+						</N8nText>
 					</span>
-				</N8nTooltip>
-			</CollapsibleTrigger>
+					<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
+					<N8nTooltip v-if="blocker" as-child>
+						<!-- Plain text: a personal project name such as `Name <email>` is not HTML. -->
+						<template #content>{{ blocker }}</template>
+						<span
+							role="img"
+							:aria-label="blocker"
+							:class="$style.blocker"
+							data-test-id="promotion-preview-card-blocker"
+						>
+							<N8nIcon icon="circle-alert" size="medium" color="--icon-color--warning" />
+						</span>
+					</N8nTooltip>
+				</CollapsibleTrigger>
+			</div>
 
 			<CollapsibleContent>
 				<div :class="$style.notices">
-					<N8nCallout v-if="entry?.status === 'missing'" theme="warning" slim>
-						{{ i18n.baseText('promotions.preview.card.missing') }}
-						<template #trailingContent>
-							<N8nButton variant="outline" size="small" @click="emit('refresh')">
-								{{ i18n.baseText('promotions.preview.refresh') }}
-							</N8nButton>
-						</template>
-					</N8nCallout>
-					<N8nCallout v-else-if="entry?.status === 'error'" theme="danger" slim>
-						{{ i18n.baseText('promotions.preview.card.loadFailed') }}
-						<template #trailingContent>
-							<N8nButton variant="outline" size="small" @click="emit('retry')">
-								{{ i18n.baseText('promotions.preview.state.retry') }}
-							</N8nButton>
-						</template>
-					</N8nCallout>
+					<!-- A workflow diff shows these states in its own area. -->
+					<template v-if="!hasDiff">
+						<N8nCallout v-if="entry?.status === 'missing'" theme="warning" slim>
+							{{ i18n.baseText('promotions.preview.card.missing') }}
+							<template #trailingContent>
+								<N8nButton variant="outline" size="small" @click="emit('refresh')">
+									{{ i18n.baseText('promotions.preview.refresh') }}
+								</N8nButton>
+							</template>
+						</N8nCallout>
+						<N8nCallout v-else-if="entry?.status === 'error'" theme="danger" slim>
+							{{ i18n.baseText('promotions.preview.card.loadFailed') }}
+							<template #trailingContent>
+								<N8nButton variant="outline" size="small" @click="emit('retry')">
+									{{ i18n.baseText('promotions.preview.state.retry') }}
+								</N8nButton>
+							</template>
+						</N8nCallout>
+					</template>
 					<N8nCallout v-if="stale" theme="warning" slim data-test-id="promotion-preview-card-stale">
 						{{ i18n.baseText('promotions.preview.card.stale') }}
 						<template #trailingContent>
@@ -204,7 +210,7 @@ const tagNote = computed(() => {
 							</N8nButton>
 						</template>
 					</N8nCallout>
-					<N8nCallout v-if="detail && hasUnreadableSide(detail)" theme="info" slim>
+					<N8nCallout v-if="!hasDiff && detail && hasUnreadableSide(detail)" theme="info" slim>
 						{{ i18n.baseText('promotions.preview.card.unreadable') }}
 					</N8nCallout>
 				</div>
@@ -217,7 +223,11 @@ const tagNote = computed(() => {
 				>
 					{{ i18n.baseText('promotions.preview.card.noChanges') }}
 				</N8nText>
-				<N8nLoading v-else-if="entry?.status === 'loading'" :rows="2" :class="$style.padded" />
+				<N8nLoading
+					v-else-if="entry?.status === 'loading' && !hasDiff"
+					:rows="2"
+					:class="$style.padded"
+				/>
 				<template v-else>
 					<DataTableChangeDetails
 						v-if="dataTable"
@@ -230,6 +240,18 @@ const tagNote = computed(() => {
 						:direction="direction"
 						:absent-sides="absentSides"
 					/>
+					<PromotionWorkflowPreview
+						v-if="hasDiff"
+						:active="!!diffActive && open"
+						:entry="entry"
+						:resource-key="resource.key"
+						:workflow-name="resource.name"
+						:direction="direction"
+						:graph="graph"
+						@activate="emit('activateDiff')"
+						@retry="emit('retry')"
+						@refresh="emit('refresh')"
+					/>
 					<N8nText
 						v-if="detail?.type === 'variable' && detail.valueHidden"
 						step="2xs"
@@ -238,17 +260,19 @@ const tagNote = computed(() => {
 					>
 						{{ i18n.baseText('promotions.preview.variable.valueHidden') }}
 					</N8nText>
-					<N8nText v-if="isApplyMove" step="2xs" color="text-light" :class="$style.padded">
-						{{ i18n.baseText('promotions.preview.folder.moveConflict') }}
-					</N8nText>
 					<N8nText v-if="tagNote" step="2xs" color="text-light" :class="$style.padded">
 						{{ tagNote }}
 					</N8nText>
 				</template>
 
-				<footer v-if="footer" :class="$style.footer">
+				<footer v-if="footer || scope" :class="$style.footer">
 					<N8nText v-if="scope" step="2xs" color="text-light">{{ scope }}</N8nText>
-					<N8nText step="2xs" color="text-light" data-test-id="promotion-preview-card-inclusion">
+					<N8nText
+						v-if="footer"
+						step="2xs"
+						color="text-light"
+						data-test-id="promotion-preview-card-inclusion"
+					>
 						<I18nT :keypath="footer.keypath" scope="global">
 							<template #names>
 								<PromotionWorkflowLinks
@@ -286,17 +310,26 @@ const tagNote = computed(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	width: 100%;
 	min-height: var(--height--xl);
 	padding: 0 var(--spacing--sm);
+
+	[data-state='open'] > & {
+		border-bottom: var(--border);
+	}
+}
+
+.trigger {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	align-self: stretch;
+	padding: 0;
 	border: none;
 	background: none;
 	text-align: left;
 	cursor: pointer;
-
-	&[data-state='open'] {
-		border-bottom: var(--border);
-	}
 
 	&:focus-visible {
 		outline: var(--focus--border-width) solid var(--focus--outline-color);
@@ -365,17 +398,10 @@ const tagNote = computed(() => {
 	margin-right: var(--spacing--2xs);
 }
 
-.status {
+.blocker {
 	display: flex;
+	flex-shrink: 0;
+	align-items: center;
 	margin-left: auto;
-	color: var(--icon-color);
-}
-
-.included {
-	color: var(--icon-color--success);
-}
-
-.blocked {
-	color: var(--icon-color--warning);
 }
 </style>

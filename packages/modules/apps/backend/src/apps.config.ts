@@ -5,6 +5,22 @@ const positiveInteger = z.coerce.number().int().positive().max(Number.MAX_SAFE_I
 
 @Config
 export class AppsConfig {
+	/** Maximum duration of one app build attempt, in milliseconds. Increase this limit for apps that need more time to install dependencies or compile. */
+	@Env('N8N_APPS_BUILD_TIMEOUT_MS', positiveInteger.max(2 ** 31 - 1))
+	buildTimeoutMs: number = 10 * 60 * 1000;
+
+	/** Maximum time an app version can stay queued before n8n marks its build as failed, in milliseconds. */
+	@Env('N8N_APPS_BUILD_START_TIMEOUT_MS', positiveInteger)
+	buildStartTimeoutMs: number = 60 * 1000;
+
+	/** Maximum command output returned with an app build error, in bytes. */
+	@Env('N8N_APPS_MAX_BUILD_LOG_BYTES', positiveInteger)
+	maxBuildLogBytes: number = 32 * 1024;
+
+	/** Maximum attempts per build request, including the first attempt. n8n retries temporary provider and storage failures within this limit. */
+	@Env('N8N_APPS_MAX_BUILD_ATTEMPTS', positiveInteger)
+	maxBuildAttempts: number = 3;
+
 	/** Maximum versions to keep per app. Versions still in use are kept even when they exceed this limit. */
 	@Env('N8N_APPS_MAX_VERSIONS_PER_APP', positiveInteger)
 	maxVersionsPerApp: number = 20;

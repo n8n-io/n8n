@@ -4,6 +4,7 @@ import type {
 	PromotionChangesQueryDto,
 	PromotionDirection,
 	PromotionPreview,
+	PromotionResource,
 	PromotionResourceDetail,
 	PromotionResourceDetails,
 	PromotionResourceDetailsRequestDto,
@@ -23,6 +24,7 @@ import {
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	CredentialsRepository,
+	SharedWorkflowRepository,
 	VariablesRepository,
 	WorkflowRepository,
 	type User,
@@ -61,22 +63,25 @@ import {
 	type PackageManifest,
 } from '@/modules/n8n-packages/spec/manifest.schema';
 import { getWorkflowConsumerIds } from '@/modules/n8n-packages/spec/requirement-consumers';
-import type {
-	PackageRequirementConsumer,
-	PackageRequirements,
-} from '@/modules/n8n-packages/spec/requirements.schema';
+import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
+import { projectHolding } from './branch-placement';
+import { toInstanceProject, type InstanceProject } from './cross-project-moves';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { diffPackageFiles } from './diff-package-files';
 import {
 	buildPreview,
 	indexSide,
+	scopeManifestToProject,
 	variableResourceKey,
 	type ApplyDestination,
 	type PreviewSide,
 } from './promotion-preview';
+import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
+import { PromotionReviewGateService } from './promotion-review-gate.service';
 import { PromotionsService } from './promotions.service';
+import { checkoutBranchName } from './promotions-git.utils';
 import type { BranchPackage } from './promotions.types';
 
 const DEPENDENCY_COLLECTIONS = {
@@ -121,7 +126,7 @@ type LocalDataTable = { content: string; blobSha: string };
 
 type LocalTag = LocalDataTable & { id: string; name: string };
 
-type DetailSide = { content: string | null; blobSha: string | null };
+export type DetailSide = { content: string | null; blobSha: string | null };
 
 type PackageDiff = {
 	changedIds: Set<string>;
@@ -139,12 +144,15 @@ export class PromotionChangeService {
 		private readonly promotionsService: PromotionsService,
 		private readonly packagesService: N8nPackagesService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly variablesRepository: VariablesRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly tagImporter: TagImporter,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableSerializer: DataTableSerializer,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly environmentResolver: PromotionEnvironmentResolver,
+		private readonly reviewGate: PromotionReviewGateService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
@@ -175,11 +183,45 @@ export class PromotionChangeService {
 		direction: PromotionDirection,
 		query: PromotionChangesQueryDto,
 	): Promise<PromotionPreview> {
+		if (direction === 'promote') {
+			// The gate runs before the git and export work, so a blocked project skips both.
+			this.assertCanPreview(user, direction);
+			const input = await this.environmentResolver.resolveForProject(projectId, direction);
+			// Only a branched promote opens a review. A direct push has nothing to wait for, even
+			// when an older review of the environment is still open.
+			const blocker =
+				input.config.direction === 'promote' && input.config.settings.createBranchOnPromotion
+					? await this.reviewGate.findPromoteBlocker(projectId, input.environmentId)
+					: null;
+			if (blocker) {
+				return {
+					commitSha: null,
+					source: {
+						environmentId: input.environmentId,
+						branchName: checkoutBranchName(input.config),
+					},
+					changes: [],
+					resources: [],
+					dependencies: [],
+					blocker,
+				};
+			}
+		}
 		const comparison = await this.compareProject(user, projectId, direction);
 		const { branch, instance, archiveState } = comparison;
+		// Promote compares with the branch manifest to see renames and moves. The manifest can list
+		// other projects while this project has no files on the branch yet, and the move markers
+		// still need it.
+		const promoteBase =
+			direction === 'promote' && (branch.hasManifest || branch.files.length > 0)
+				? await this.readBranchManifest(branch)
+				: null;
 		const branchSide: PreviewSide = {
 			manifest:
-				comparison.branchManifest ?? (await this.readPromoteBaseManifest(branch, projectId)),
+				comparison.branchManifest ??
+				(promoteBase && branch.files.length > 0
+					? scopeManifestToProject(promoteBase, projectId)
+					: null),
 			blobByPath: blobsByPath(branch.files),
 		};
 		const instanceSide: PreviewSide = {
@@ -195,14 +237,60 @@ export class PromotionChangeService {
 					)
 				: null;
 		const { resources, dependencies } = buildPreview({
-			direction,
-			projectId,
+			operation: { direction, destination },
+			projectIds: [projectId],
 			base: direction === 'promote' ? branchSide : instanceSide,
 			desired: direction === 'promote' ? instanceSide : branchSide,
 			isArchived: (path) => archiveState.get(path) ?? false,
-			destination,
 		});
-		return { ...toChanges(comparison, query), resources, dependencies };
+		return {
+			...toChanges(comparison, query),
+			resources: promoteBase
+				? await this.markCrossProjectMoves(projectId, resources, promoteBase)
+				: resources,
+			dependencies,
+		};
+	}
+
+	/**
+	 * A project promote refuses a workflow that moved between projects, so the preview names the
+	 * other project on both sides of the move:
+	 * - a deleted workflow that another project owns now on this instance moved out;
+	 * - an added workflow that the branch holds under another project moved in.
+	 */
+	private async markCrossProjectMoves(
+		projectId: string,
+		resources: PromotionResource[],
+		branchManifest: PackageManifest,
+	): Promise<PromotionResource[]> {
+		const deletedIds = resources
+			.filter(({ type, change }) => type === 'workflow' && change === 'deleted')
+			.map(({ id }) => id);
+		const owners =
+			deletedIds.length > 0
+				? await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(deletedIds)
+				: new Map<string, InstanceProject>();
+		const branchTargets = new Map(
+			(branchManifest.workflows ?? []).map(({ id, target }) => [id, target]),
+		);
+		const elsewhere = <P extends { id: string }>(project: P | undefined) =>
+			project && project.id !== projectId ? project : undefined;
+		const branchProjectOf = (id: string) => {
+			const target = branchTargets.get(id);
+			return target === undefined ? undefined : projectHolding(branchManifest.projects, target);
+		};
+
+		return resources.map((resource) => {
+			if (resource.type !== 'workflow') return resource;
+			const owner = resource.change === 'deleted' ? elsewhere(owners.get(resource.id)) : undefined;
+			if (owner) return { ...resource, movedToProject: toInstanceProject(owner) };
+			// The branch holds team projects only, so its project name is safe to show.
+			const branchProject =
+				resource.change === 'added' ? elsewhere(branchProjectOf(resource.id)) : undefined;
+			return branchProject
+				? { ...resource, movedFromProject: { id: branchProject.id, name: branchProject.name } }
+				: resource;
+		});
 	}
 
 	/**
@@ -492,27 +580,20 @@ export class PromotionChangeService {
 		branch: BranchPackage,
 		projectId: string,
 	): Promise<DesiredPackage> {
+		const manifest = await this.readBranchManifest(branch);
+		return { files: branch.files, manifest: scopeManifestToProject(manifest, projectId) };
+	}
+
+	/** The whole branch manifest, across every project of the package. */
+	private async readBranchManifest(branch: BranchPackage): Promise<PackageManifest> {
 		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
-		const manifest = parseBranchManifest(
+		const manifest = parsePackageManifest(
 			(await branch.readFiles([manifestPath])).get(manifestPath),
-			projectId,
 		);
 		if (!manifest) {
 			throw new BadRequestError('The package manifest on the branch cannot be read');
 		}
-		return { files: branch.files, manifest };
-	}
-
-	/**
-	 * Promote compares with the branch manifest to see renames and moves.
-	 * A branch without package files has no manifest yet.
-	 */
-	private async readPromoteBaseManifest(
-		branch: BranchPackage,
-		projectId: string,
-	): Promise<PackageManifest | null> {
-		if (branch.files.length === 0) return null;
-		return (await this.readBranchDesired(branch, projectId)).manifest;
+		return manifest;
 	}
 
 	/**
@@ -587,10 +668,16 @@ function parseBranchJson<T = unknown>(raw: string): T | undefined {
 	}
 }
 
+/** Parses a package manifest read from Git. `null` when the file is missing or invalid. */
+export function parsePackageManifest(raw: string | undefined): PackageManifest | null {
+	const manifest = packageManifestSchema.safeParse(parseBranchJson(raw ?? ''));
+	return manifest.success ? manifest.data : null;
+}
+
 /** Parses the branch manifest and keeps this project's part. `null` when the file is missing or invalid. */
 function parseBranchManifest(raw: string | undefined, projectId: string): PackageManifest | null {
-	const manifest = packageManifestSchema.safeParse(parseBranchJson(raw ?? ''));
-	return manifest.success ? scopeManifestToProject(manifest.data, projectId) : null;
+	const manifest = parsePackageManifest(raw);
+	return manifest && scopeManifestToProject(manifest, projectId);
 }
 
 function blobsByPath(files: readonly PackageFile[]): Map<string, string> {
@@ -628,7 +715,7 @@ function parseContent<Schema extends z.ZodTypeAny>(
 	return parsed.success ? parsed.data : null;
 }
 
-function toDetail({
+export function toDetail({
 	key,
 	type,
 	before,
@@ -686,53 +773,6 @@ async function readBranchArchiveState(
 			parseBranchJson<SerializedWorkflow>(raw)?.isArchived ?? false,
 		]),
 	);
-}
-
-/**
- * Keeps only this project's workflows, the requirement rows they use, and the
- * variables they can see, so a dependency change on the branch cannot list
- * another project's workflows or resolve a name to another project's variable.
- */
-export function scopeManifestToProject(
-	manifest: PackageManifest,
-	projectId: string,
-): PackageManifest {
-	const projectTarget = manifest.projects?.find(({ id }) => id === projectId)?.target;
-	const inProject = ({ target }: ManifestEntry) =>
-		projectTarget !== undefined && target.startsWith(`${projectTarget}/`);
-	const workflows = (manifest.workflows ?? []).filter(inProject);
-	const workflowIds = new Set(workflows.map(({ id }) => id));
-	// Variables resolve by name, and the project's own variable shadows the global one.
-	const variables = new Map<string, ManifestEntry>();
-	for (const entry of manifest.variables ?? []) {
-		const isGlobal = !entry.target.startsWith(`${PACKAGE_ENTITY_LAYOUT.projects.directory}/`);
-		if (inProject(entry) || (isGlobal && !variables.has(entry.name))) {
-			variables.set(entry.name, entry);
-		}
-	}
-	const scopeRows = <T extends { usedBy: PackageRequirementConsumer[] }>(rows: T[] | undefined) => {
-		const kept = rows
-			?.map((row) => ({
-				...row,
-				usedBy: row.usedBy.filter(({ kind, id }) => kind === 'workflow' && workflowIds.has(id)),
-			}))
-			.filter((row) => row.usedBy.length > 0);
-		return kept?.length ? kept : undefined;
-	};
-	const { requirements } = manifest;
-	return {
-		...manifest,
-		workflows,
-		variables: [...variables.values()],
-		requirements: requirements && {
-			credentials: scopeRows(requirements.credentials),
-			dataTables: scopeRows(requirements.dataTables),
-			workflows: scopeRows(requirements.workflows),
-			variables: scopeRows(requirements.variables),
-			tags: scopeRows(requirements.tags),
-			nodeTypes: scopeRows(requirements.nodeTypes),
-		},
-	};
 }
 
 function applyQuery(

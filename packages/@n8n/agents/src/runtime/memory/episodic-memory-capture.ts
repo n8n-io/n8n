@@ -157,6 +157,7 @@ export interface RunEpisodicMemoryCandidateProcessorOpts {
 	now?: Date;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	modelFetch?: typeof globalThis.fetch;
 	agentName?: string;
 	/**
 	 * Receives each episodic model call's usage the moment it resolves — once
@@ -461,6 +462,7 @@ async function runEpisodicMemoryReflection(
 		entries: cluster,
 		sources,
 		executionCounter: opts.executionCounter,
+		modelFetch: opts.modelFetch,
 	});
 	const reflectionResult =
 		'reflection' in reflectResult
