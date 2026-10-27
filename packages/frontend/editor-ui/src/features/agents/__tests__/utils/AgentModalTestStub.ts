@@ -11,6 +11,7 @@ export const AgentModalTestStub = defineComponent({
 		showBack: { type: Boolean, default: false },
 		showFooter: { type: Boolean, default: undefined },
 		showCancel: { type: Boolean, default: true },
+		cancelLabel: { type: String, default: undefined },
 		bodyFlush: { type: Boolean, default: false },
 		stableHeight: { type: Boolean, default: false },
 		busy: { type: Boolean, default: false },
@@ -55,6 +56,7 @@ export const AgentModalTestStub = defineComponent({
 				/>
 				<h2 v-else>{{ title }}</h2>
 				<span v-if="titleError" data-testid="agent-modal-title-error">{{ titleError }}</span>
+				<slot name="titleSuffix" />
 				<slot name="headerActions" />
 				<button
 					data-testid="dialog-close-button"
@@ -83,7 +85,7 @@ export const AgentModalTestStub = defineComponent({
 							data-testid="agent-modal-cancel"
 							:disabled="busy"
 							@click="$emit('update:open', false)"
-						>Cancel</button>
+						>{{ cancelLabel ?? 'Cancel' }}</button>
 						<slot name="footerActions" />
 					</div>
 				</slot>
@@ -103,6 +105,7 @@ export const AgentModalMultiStepTestStub = defineComponent({
 		showBack: { type: Boolean, default: false },
 		showFooter: { type: Boolean, default: undefined },
 		showCancel: { type: Boolean, default: true },
+		cancelLabel: { type: String, default: undefined },
 		bodyFlush: { type: Boolean, default: false },
 		stableHeight: { type: Boolean, default: false },
 		busy: { type: Boolean, default: false },
@@ -120,6 +123,7 @@ export const AgentModalMultiStepTestStub = defineComponent({
 			@back="$emit('back')"
 		>
 			<template #titlePrefix><slot name="titlePrefix" /></template>
+			<template #titleSuffix><slot name="titleSuffix" /></template>
 			<template #headerActions><slot name="headerActions" /></template>
 			<slot />
 			<template #footerLeft><slot name="footerLeft" /></template>
