@@ -298,7 +298,13 @@ export class WebhookService {
 	}
 
 	private async deleteWebhooks(webhooks: WebhookEntity[]) {
-		void this.cacheService.deleteMany(webhooks.map((w) => w.cacheKey));
+		try {
+			await this.cacheService.deleteMany(webhooks.map((w) => w.cacheKey));
+		} catch (error) {
+			this.logger.warn('Failed to remove webhooks from cache', {
+				error: ensureError(error).message,
+			});
+		}
 
 		return await this.webhookRepository.remove(webhooks);
 	}
